@@ -664,25 +664,76 @@ class WikiGenerator:
         if ent.get("type") not in _ALLOWED_EXTRACT_TYPES: return False
         return True
 
+    @staticmethod
+    def _inverse_label_for(label: str) -> str:
+        """한국어 relation label의 inverse 한국어 label.
+
+        Ontology의 ``RELATION_TYPES[type]['inverse']``는 영어 type ID만
+        지정한다 (e.g. ``BELONGS_TO``→``HAS_MEMBER``). 그 inverse가 다시
+        ``RELATION_TYPES``에 항목으로 등록된 경우는 거의 없으므로, 비대칭
+        relation의 inverse 한국어 label은 정의 부재 상태다.
+
+        실용적 fallback: RELATED_TO(91% 차지)는 대칭이라 같은 label
+        ('관련')을 그대로 쓰고, 비대칭에서 inverse label을 못 찾으면
+        '관련'으로 떨어뜨린다 (graph_paths 채움이 우선, 정확한 inverse
+        label 도입은 별도 작업).
+        """
+        try:
+            from core.ontology import (
+                RELATION_TYPES, normalize_relation, get_relation_label,
+            )
+        except ImportError:
+            return "관련"
+        std = normalize_relation(label)
+        info = RELATION_TYPES.get(std, {})
+        inv = info.get("inverse")
+        if not inv:
+            return "관련"
+        if inv == std:
+            return get_relation_label(std) or "관련"
+        inv_info = RELATION_TYPES.get(inv)
+        if inv_info and inv_info.get("label"):
+            return inv_info["label"]
+        return "관련"
+
     def _build_entity_relations(
         self,
         source_name:   str,
         raw_relations: List,
     ) -> List[Dict]:
-        """source 이름이 일치하는 relation만 추출하여 표준 형식으로 반환."""
+        """이 entity가 source 또는 target인 relation을 표준 형식으로 모은다.
+
+        Issue #11: 이전 구현은 source==self만 골라서 target 입장 entity의
+        relations 필드가 빈 채로 끝났다. graph_paths가 비어 expand가 항상
+        0을 반환했다. 이제 양방향으로 부착한다 (incoming은 inverse label).
+        """
         out: List[Dict] = []
+        seen: set = set()
         for r in raw_relations or []:
-            if not isinstance(r, dict): continue
-            src = (r.get("source") or "").strip()
-            if src != source_name: continue
-            tgt = (r.get("target") or "").strip()
-            if not tgt or len(tgt) > 80 or not _SAFE_ENTITY_NAME_RE.match(tgt):
+            if not isinstance(r, dict):
                 continue
+            src = (r.get("source") or "").strip()
+            tgt = (r.get("target") or "").strip()
             label = (r.get("label") or "관련").strip()[:20]
             try:
                 conf = float(r.get("confidence", 0.7))
             except (TypeError, ValueError):
                 conf = 0.7
             conf = max(0.0, min(1.0, conf))
-            out.append({"target": tgt, "label": label, "confidence": conf})
+
+            # Outgoing: source가 self
+            if src == source_name and tgt and len(tgt) <= 80 \
+                    and _SAFE_ENTITY_NAME_RE.match(tgt):
+                key = (tgt, label)
+                if key not in seen:
+                    seen.add(key)
+                    out.append({"target": tgt, "label": label, "confidence": conf})
+            # Incoming: target이 self → source를 inverse label로 추가
+            elif tgt == source_name and src and len(src) <= 80 \
+                    and _SAFE_ENTITY_NAME_RE.match(src):
+                inv_label = self._inverse_label_for(label)
+                key = (src, inv_label)
+                if key not in seen:
+                    seen.add(key)
+                    out.append({"target": src, "label": inv_label, "confidence": conf})
         return out
