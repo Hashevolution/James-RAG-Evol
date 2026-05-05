@@ -25,7 +25,9 @@ from utils.metadata import MetadataGenerator
 
 class FileProcessor:
     def __init__(self):
-        self.gemma_client = GemmaClient()
+        # vision 호출은 RouterWrapper.call_gemma_vision이 GemmaClient에 위임
+        from llm.router import RouterWrapper
+        self.gemma_client = RouterWrapper("vision")
         self.metadata_gen = MetadataGenerator()
         # Fix 1: RAGEngine import 제거 → 순환 임포트 차단
         # 저장 책임은 server_llmwiki.py의 rag_engine.save_to_wiki()로 이전

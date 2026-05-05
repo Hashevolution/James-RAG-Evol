@@ -4,11 +4,12 @@ PROJECT JAMES - Metadata Utilities
 """
 import re
 import json
-from core.gemma_client import GemmaClient
+from core.gemma_client import GemmaClient   # type/fallback retained
+from llm.router import RouterWrapper
 
 class MetadataGenerator:
     def __init__(self):
-        self.gemma_client = GemmaClient()
+        self.gemma_client = RouterWrapper("extract")
 
     def safe_parse_json(self, text: str) -> dict:
         """JSON 파싱 (브라켓 카운팅 방식)"""

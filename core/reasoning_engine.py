@@ -50,9 +50,10 @@ class ReasoningEngine:
     """
 
     def __init__(self, default_role: str = "external"):
+        from llm.router import RouterWrapper
         self.graph     = GraphEngine()
         self.retrieval = RetrievalEngine()
-        self.llm       = GemmaClient()
+        self.llm       = RouterWrapper("general")
         self.security  = SecurityLayer()
         self.default_role = default_role
 

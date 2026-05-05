@@ -45,8 +45,8 @@ class SelfLearner:
     def _get_llm(self):
         if self._llm is None:
             try:
-                from core.gemma_client import GemmaClient
-                self._llm = GemmaClient()
+                from llm.router import RouterWrapper
+                self._llm = RouterWrapper("general")
             except Exception:
                 pass
         return self._llm

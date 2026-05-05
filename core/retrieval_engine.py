@@ -34,8 +34,9 @@ class RetrievalEngine:
     """
 
     def __init__(self):
+        from llm.router import RouterWrapper
         self.vector_store = VectorStore()
-        self.llm          = GemmaClient()
+        self.llm          = RouterWrapper("extract")
 
     # ─── 로그 ───────────────────────────────────────────────
 

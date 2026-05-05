@@ -159,6 +159,36 @@ def call_router(
     return llm.generate(messages, **kwargs)
 
 
+class RouterWrapper:
+    """GemmaClient.call_gemma 호환 인스턴스 wrapper (Issue #13 Phase 2).
+
+    호출 site의 ``self.llm = GemmaClient()`` 패턴을
+    ``self.llm = RouterWrapper("general")`` 로 1줄 교체하면 그 클래스의
+    모든 ``.call_gemma(...)`` 호출이 자동으로 router를 거쳐
+    task-aware 모델로 전달된다.
+
+    task_type은 인스턴스 default를 가지고 가되, 호출 시점에 ``task_type=``
+    kwarg로 override 가능. ``call_gemma_vision`` 은 현재 LLaVA wrapper가
+    아직 multimodal generate를 지원하지 않아 GemmaClient에 직접 위임 —
+    vision routing은 별도 작업.
+    """
+
+    def __init__(self, default_task: str = "general"):
+        self.default_task = default_task
+        self.name         = f"router_wrapper:{default_task}"
+
+    def call_gemma(self, prompt: str, **kwargs) -> str:
+        task = kwargs.pop("task_type", self.default_task)
+        return call_router(prompt, task_type=task, **kwargs)
+
+    def call_gemma_vision(self, prompt: str, image_path: str, **kwargs) -> str:
+        from core.gemma_client import GemmaClient
+        return GemmaClient().call_gemma_vision(prompt, image_path, **kwargs)
+
+    def is_available(self) -> bool:
+        return True
+
+
 # ─── 자가 테스트 ─────────────────────────────────────────────
 
 if __name__ == "__main__":

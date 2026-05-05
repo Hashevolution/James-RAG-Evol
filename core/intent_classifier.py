@@ -130,8 +130,8 @@ chat / retrieval / coding / wiki_edit / self_evolve / agent / app_dev"""
     def _get_llm(self):
         if self._llm is None:
             try:
-                from core.gemma_client import GemmaClient
-                self._llm = GemmaClient()
+                from llm.router import RouterWrapper
+                self._llm = RouterWrapper("classify")
             except Exception:
                 pass
         return self._llm

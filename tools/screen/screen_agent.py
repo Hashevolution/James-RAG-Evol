@@ -109,8 +109,10 @@ class ScreenAgent:
 
         analysis = ""
         try:
-            from core.gemma_client import GemmaClient
-            analysis = GemmaClient().call_gemma(prompt, timeout=60, use_cache=False)
+            from llm.router import call_router
+            analysis = call_router(
+                prompt, task_type="general", timeout=60, use_cache=False,
+            )
         except Exception as e:
             analysis = f"[LLM 분석 실패: {e}]"
 

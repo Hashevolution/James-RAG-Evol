@@ -12,8 +12,9 @@ from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 from config import WIKI_DIR
-from core.gemma_client import GemmaClient
+from core.gemma_client import GemmaClient   # type/fallback retained
 from core.vector_store import VectorStore
+from llm.router import RouterWrapper
 from utils.metadata import MetadataGenerator
 
 
@@ -57,7 +58,7 @@ class WikiGenerator:
           source_type='prod' → wiki/entity/prod/{type}/
           source_type='test' → wiki/entity/test/{type}/
         """
-        self.gemma_client = GemmaClient()
+        self.gemma_client = RouterWrapper("extract")
         self.metadata_gen = MetadataGenerator()
         self.vector_store = VectorStore()
 

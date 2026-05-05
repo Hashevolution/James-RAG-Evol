@@ -913,9 +913,9 @@ async def summarize_session(
             for t in turns
         ])
 
-        # LLM으로 요약 생성
-        from core.gemma_client import GemmaClient
-        llm = GemmaClient()
+        # LLM으로 요약 생성 (#13: router 경유)
+        from llm.router import RouterWrapper
+        llm = RouterWrapper("general")
         summary_prompt = (
             f"아래 대화를 3줄 이내로 핵심만 요약해줘. "
             f"주제와 결론 중심으로.\n\n{dialogue[:1500]}\n\n요약:"
@@ -1071,8 +1071,8 @@ async def generate_proposals(
     _require_admin(api_key, role)
     try:
         from tools.self.evo_analyzer import generate_proposals_from_signals
-        from core.gemma_client import GemmaClient
-        proposals = generate_proposals_from_signals(GemmaClient())
+        from llm.router import RouterWrapper
+        proposals = generate_proposals_from_signals(RouterWrapper("general"))
         return {"generated": len(proposals),
                 "proposals": [{"id": p["proposal_id"],
                                "title": p["title"],
@@ -1162,9 +1162,9 @@ async def learn_topic_api(
             domain = classify_domain(topic, results)
 
             # ④ LLM 처리 — 컨텍스트 최소화 (한국어는 토큰 2~3배)
-            # num_ctx=2048 기준: 입력 800자 이내가 안전
-            from core.gemma_client import GemmaClient
-            llm = GemmaClient()
+            # num_ctx=2048 기준: 입력 800자 이내가 안전 (#13: router 경유)
+            from llm.router import RouterWrapper
+            llm = RouterWrapper("extract")
 
             # snippet만 사용 (body 제외) — 짧고 정제된 내용
             snippet_ctx = "\n".join([
