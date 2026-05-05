@@ -6,9 +6,21 @@ Sensitive values come from environment variables (.env file or system).
 No hardcoded user paths — works on any machine after install.
 """
 
+import logging
 import os
 import sys
 from pathlib import Path
+
+# ────────────────────────────────────────────────────────────────
+#  pdfminer 노이즈 차단
+# ────────────────────────────────────────────────────────────────
+# markitdown[pdf]가 의존하는 pdfminer는 폰트 메타데이터 누락 시
+# 매 페이지 WARNING을 찍는다. e.g. "Could not get FontBBox from
+# font descriptor". 텍스트 추출 자체는 성공하므로 무해하지만,
+# 30개 PDF 일괄 업로드처럼 양이 많으면 콘솔이 도배된다.
+# ERROR 이상만 살려서 진짜 문제만 보이게 한다.
+for _noisy in ("pdfminer", "pdfminer.pdffont", "pdfminer.pdfinterp"):
+    logging.getLogger(_noisy).setLevel(logging.ERROR)
 
 # ────────────────────────────────────────────────────────────────
 #  .env 파일 자동 로드 (프로젝트 루트에 .env가 있으면)
