@@ -161,15 +161,17 @@ chat / retrieval / coding / wiki_edit / self_evolve / agent / app_dev"""
         try:
             t0  = time.time()
             # [P8-OPT] 분류는 경량 옵션으로 (num_predict=20, ctx=512)
+            from llm.router import call_router
             try:
                 from config import LLM_OPTIONS_FAST
-                raw = llm.call_gemma(
-                    prompt, timeout=timeout,
-                    use_cache=False,
-                    options=LLM_OPTIONS_FAST
+                raw = call_router(
+                    prompt, task_type="classify", timeout=timeout,
+                    use_cache=False, options=LLM_OPTIONS_FAST,
                 )
             except Exception:
-                raw = llm.call_gemma(prompt, timeout=timeout, use_cache=False)
+                raw = call_router(
+                    prompt, task_type="classify", timeout=timeout, use_cache=False,
+                )
 
             elapsed = time.time() - t0
 

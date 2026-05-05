@@ -100,8 +100,9 @@ class MetadataGenerator:
             + "\n\nJSON:"
         )
 
-        # 문서 기준으로 LLM 호출
-        output = self.gemma_client.call_gemma(prompt, use_cache=True)
+        # 문서 기준으로 LLM 호출 (#13: router 경유, task_type=extract)
+        from llm.router import call_router
+        output = call_router(prompt, task_type="extract", use_cache=True)
         print(f"[DEBUG] generate_metadata raw output:\n{output}")
         meta = self.safe_parse_json(output)
 

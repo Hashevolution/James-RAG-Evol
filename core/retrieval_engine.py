@@ -161,7 +161,10 @@ class RetrievalEngine:
     ) -> List[Dict]:
         """LLM JSON 추출 + rule-based fallback"""
         prompt   = self._build_entity_prompt(query, docs)
-        response = self.llm.call_gemma(prompt, use_cache=True, timeout=timeout)
+        from llm.router import call_router
+        response = call_router(
+            prompt, task_type="extract", use_cache=True, timeout=timeout,
+        )
 
         print(f"[DEBUG] entity raw: {response[:200] if response else '(empty)'}")
 

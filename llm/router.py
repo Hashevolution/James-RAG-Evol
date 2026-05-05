@@ -129,6 +129,36 @@ def list_available() -> Dict[str, bool]:
     return result
 
 
+# ─── 호환 helper (Issue #13) ──────────────────────────────────
+#
+# 기존 호출 site들은 GemmaClient.call_gemma(prompt, timeout, use_cache, max_tokens)
+# 형태로 직접 호출하고 있다. Router의 BaseLLM.generate는 messages 형식이라
+# 시그니처가 달라 substitution이 안 된다.
+#
+# call_router는 동일한 단일 prompt 인터페이스를 유지하면서 내부적으로
+# router.route()를 거쳐 task-aware 모델로 전달한다. 결과적으로 각 호출
+# site는 GemmaClient를 import하지 않고 task_type을 명시하는 형태로
+# 1줄 마이그레이션이 가능해진다.
+#
+# 현재 모든 task_type이 결국 default(GemmaClient/gemma4:e4b)로 떨어지지만,
+# Issue #15(어드민 모델 선택 persistence)가 들어오면 이 함수가 task별로
+# 다른 모델을 자동 사용하게 된다.
+
+def call_router(
+    prompt:    str,
+    task_type: Optional[str] = None,
+    **kwargs,
+) -> str:
+    """call_gemma 호환 인터페이스. router를 거쳐 적절한 LLM에 prompt 전달."""
+    llm = route(prompt, task_type=task_type)
+    if llm is None:
+        # Hard fallback: router가 모두 실패하면 GemmaClient 직접
+        from core.gemma_client import GemmaClient
+        return GemmaClient().call_gemma(prompt, **kwargs)
+    messages = [{"role": "user", "content": prompt}]
+    return llm.generate(messages, **kwargs)
+
+
 # ─── 자가 테스트 ─────────────────────────────────────────────
 
 if __name__ == "__main__":

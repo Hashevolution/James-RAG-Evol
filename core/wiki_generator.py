@@ -623,7 +623,8 @@ class WikiGenerator:
             + "\n\nJSON:"
         )
         try:
-            response = self.gemma_client.call_gemma(prompt, use_cache=False)
+            from llm.router import call_router
+            response = call_router(prompt, task_type="extract", use_cache=False)
         except Exception as e:
             print(f"[ENTITY-EXTRACT] LLM call FAIL: {e}")
             return {"entities": [], "relations": []}
