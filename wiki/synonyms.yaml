@@ -1,0 +1,35 @@
+# PROJECT JAMES — Entity Synonym Map (Issue #3)
+#
+# Each entry is a synonym group: one canonical name plus a list of
+# surface forms that should resolve to the same entity. Loaded by
+# core/wiki_generator.py at module import time. Used to expand the
+# `aliases` field both at entity-creation time (new entities pick up
+# the canonical+all forms automatically) and via
+# scripts/migrate_aliases.py (one-shot backfill for existing entities).
+#
+# Why soft (alias) instead of hard merge:
+#   - Multiple .md files for the same concept stay separate; we just
+#     ensure each one's `aliases` includes every surface form.
+#   - graph_engine.build_entity_map_snapshot already indexes every
+#     alias, so lookups by any surface form land on the right entity.
+#   - No risk of breaking entity_id references in other files.
+#
+# Hard merge (collapse two entity files into one canonical, rewrite
+# all incoming target_ids) is a separate, riskier follow-up — out of
+# scope here.
+#
+# Add your own domain mappings below. Format:
+#
+#   - canonical: <preferred display name>
+#     aliases: [<form1>, <form2>, ...]
+
+# ── Crypto (sample) ───────────────────────────────────────────
+- canonical: 비트코인
+  aliases: [BTC, Bitcoin]
+
+- canonical: 이더리움
+  aliases: [ETH, Ethereum]
+
+# ── Add your own below ────────────────────────────────────────
+# - canonical: <name>
+#   aliases: [<form1>, <form2>]
