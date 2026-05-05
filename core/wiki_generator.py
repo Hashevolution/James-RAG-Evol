@@ -21,6 +21,33 @@ _SAFE_ENTITY_NAME_RE = re.compile(r'^[A-Za-z0-9가-힣\s\-_,()&·\.]{2,80}$')
 _ALLOWED_EXTRACT_TYPES = frozenset(("person", "org", "concept"))
 _ONTOLOGY_LABELS_KO = "공부, 연구, 가르침, 소속, 근무, 분류, 구성, 관련, 생산, 산업, 분야, 설립됨"
 
+# 괄호 패턴 — 반각/전각 모두 처리. e.g. "RAG (검색 증강 생성)" / "RAG（검색 증강 생성）"
+_PAREN_ALIAS_RE = re.compile(r'^(.+?)\s*[\(（](.+?)[\)）]\s*$')
+
+
+def _expand_alias_candidates(name: str) -> List[str]:
+    """이름에서 alias 후보를 자동 추출.
+
+    - 괄호 패턴 ``"X (Y)"`` → ``["X (Y)", "X", "Y"]``
+    - 그 외에는 ``[name]`` 만 반환
+
+    LLM이 풍부한 이름(`"RAG (검색 증강 생성)"`)으로 entity를 만들고,
+    질의 시점엔 짧은 형태(`"RAG"`)로 entity를 추출하기 때문에
+    매칭 갭을 메우려면 양쪽 형태를 모두 alias로 등록해야 한다.
+    """
+    if not isinstance(name, str):
+        return []
+    name = name.strip()
+    if not name:
+        return []
+    out: List[str] = [name]
+    m = _PAREN_ALIAS_RE.match(name)
+    if m:
+        for part in (m.group(1).strip(), m.group(2).strip()):
+            if part and part not in out and len(part) >= 2:
+                out.append(part)
+    return out
+
 
 class WikiGenerator:
 
@@ -205,10 +232,11 @@ class WikiGenerator:
 
         path = self.entity_path / entity_type / f"{normalized}.md"
 
-        # aliases
-        aliases = list({name})
-        if entity.get("attributes", {}).get("약자"):
-            aliases.append(entity["attributes"]["약자"])
+        # aliases — `"X (Y)"` 패턴은 outer/inner도 자동 등록 (Issue #7)
+        aliases = _expand_alias_candidates(name)
+        short = entity.get("attributes", {}).get("약자")
+        if short and short not in aliases:
+            aliases.append(short)
 
         # =========================
         # RELATIONS + Ontology 정규화
