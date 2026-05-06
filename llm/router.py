@@ -185,6 +185,33 @@ class RouterWrapper:
         from core.gemma_client import GemmaClient
         return GemmaClient().call_gemma_vision(prompt, image_path, **kwargs)
 
+    def get_cache_stats(self) -> dict:
+        """GemmaClient.get_cache_stats 호환 schema 반환.
+
+        v0.1.3.1 hotfix — `core/reasoning_engine.py:920` 의 호출이 PR #18의
+        ``self.llm`` 인스턴스 교체(GemmaClient → RouterWrapper) 이후
+        AttributeError를 발생시켜 query 응답이 500으로 깨지는 회귀 fix.
+
+        실제 cache는 OllamaClient가 호출 시점에 새 GemmaClient를 만드는
+        구조라 누적되지 않는다. 정확한 cache 통계는 별도 후속 (router
+        레벨 캐시 통합 — #15와 합본 후보). 여기서는 schema 일관성만
+        지킨다 — reasoning_engine print에서 KeyError 안 나게.
+        """
+        try:
+            from core.gemma_client import GemmaClient
+            return GemmaClient().get_cache_stats()
+        except Exception:
+            return {
+                "hits":       0,
+                "misses":     0,
+                "errors":     0,
+                "total":      0,
+                "hit_rate":   0.0,
+                "hit_rate_%": "0.0%",
+                "cache_size": 0,
+                "ttl":        0,
+            }
+
     def is_available(self) -> bool:
         return True
 
