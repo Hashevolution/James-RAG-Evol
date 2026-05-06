@@ -758,6 +758,74 @@ async def llm_delete(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ─── Issue #15: per-task model selection persistence ───────────
+
+def _list_installed_ollama_models() -> set:
+    """ollama list 결과에서 설치된 모델 이름 set 반환. 실패 시 빈 set."""
+    try:
+        import urllib.request, json as _json
+        req = urllib.request.Request("http://localhost:11434/api/tags")
+        with urllib.request.urlopen(req, timeout=5) as r:
+            data = _json.loads(r.read())
+        return {m.get("name", "") for m in data.get("models", []) if m.get("name")}
+    except Exception:
+        return set()
+
+
+@app.get("/admin/llm/selections", summary="task별 LLM 매핑 조회 [#15]")
+async def llm_selections_get(
+    api_key: str,
+    role: str = Depends(get_role_from_request),
+):
+    """현재 ``llm.selection`` 의 ``task_type → model`` 매핑 전체 반환."""
+    _require_admin(api_key, role)
+    from llm.selection import get_all_selections
+    return {"selections": get_all_selections()}
+
+
+@app.post("/admin/llm/select", summary="task별 LLM 매핑 저장 [#15]")
+async def llm_select_set(
+    api_key:   str,
+    task_type: str,
+    model:     str,
+    role: str = Depends(get_role_from_request),
+):
+    """``task_type`` 의 추론에 사용할 model을 지정. ollama에 설치된 model만 허용."""
+    _require_admin(api_key, role)
+    task_type = (task_type or "").strip()
+    model     = (model or "").strip()
+    if not task_type or len(task_type) > 32:
+        raise HTTPException(status_code=400, detail="task_type 필수 (1-32자)")
+    if not model or len(model) > 80:
+        raise HTTPException(status_code=400, detail="model 필수 (1-80자)")
+
+    installed = _list_installed_ollama_models()
+    if installed and model not in installed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"'{model}' 미설치 (ollama list 기준). /admin/llm/installed 확인.",
+        )
+
+    from llm.selection import set_model_for_task
+    set_model_for_task(task_type, model)
+    _write_audit(role, "/admin/llm/select", query=f"{task_type}={model}", elapsed_sec=0)
+    return {"ok": True, "task_type": task_type, "model": model}
+
+
+@app.delete("/admin/llm/select", summary="task별 LLM 매핑 제거 [#15]")
+async def llm_select_remove(
+    api_key:   str,
+    task_type: str,
+    role: str = Depends(get_role_from_request),
+):
+    """``task_type`` 매핑 제거. 기본 model로 fallback."""
+    _require_admin(api_key, role)
+    from llm.selection import remove_model_for_task
+    removed = remove_model_for_task(task_type)
+    _write_audit(role, "/admin/llm/select#delete", query=task_type, elapsed_sec=0)
+    return {"ok": True, "task_type": task_type, "removed": removed}
+
+
 async def web_search_status(api_key: str):
     """현재 활성 검색 엔진 (Tavily / DuckDuckGo) 상태 반환."""
     verify_api_key(api_key)   # api_key 검증만으로 충분 (상태 조회)

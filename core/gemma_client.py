@@ -150,13 +150,22 @@ class GemmaClient:
 
     # ─── 메인 LLM 호출 ───────────────────────────────────────
 
-    def call_gemma(self, prompt: str, timeout: int = 90, use_cache: bool = True, max_tokens: int = 0) -> str:
+    def call_gemma(
+        self,
+        prompt: str,
+        timeout: int = 90,
+        use_cache: bool = True,
+        max_tokens: int = 0,
+        model: str = None,
+    ) -> str:
         """
         Gemma 모델 호출.
         [CACHE-BUG-FIX] 에러 응답 캐시 금지
         [C2-FIX]        <think> 블록 3단계 복구
         [CACHE-STAT]    hit/miss 카운터 업데이트
+        [#15]           model override (None이면 config.GEMMA_MODEL 기본)
         """
+        actual_model = model or GEMMA_MODEL
         self._total_calls += 1
         cache_key = self._generate_cache_key(prompt)
 
@@ -191,7 +200,7 @@ class GemmaClient:
                 resp = requests.post(
                     OLLAMA_API_URL,
                     json={
-                        "model":  GEMMA_MODEL,
+                        "model":  actual_model,
                         "prompt": prompt,
                         "stream": False,
                         "options": {

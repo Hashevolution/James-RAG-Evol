@@ -149,7 +149,22 @@ def call_router(
     task_type: Optional[str] = None,
     **kwargs,
 ) -> str:
-    """call_gemma 호환 인터페이스. router를 거쳐 적절한 LLM에 prompt 전달."""
+    """call_gemma 호환 인터페이스. router를 거쳐 적절한 LLM에 prompt 전달.
+
+    Issue #15: ``llm.selection`` 에 task_type → model 매핑이 있으면 그
+    model을 kwargs["model"]로 주입해서 BaseLLM.generate가 운영자 선택을
+    존중하게 한다. 호출자가 명시적으로 ``model=`` 을 넘긴 경우는 우선.
+    """
+    # Operator override per-task (admin endpoint에서 set)
+    if task_type and "model" not in kwargs:
+        try:
+            from llm.selection import get_model_for_task
+            chosen = get_model_for_task(task_type)
+            if chosen:
+                kwargs["model"] = chosen
+        except Exception:
+            pass
+
     llm = route(prompt, task_type=task_type)
     if llm is None:
         # Hard fallback: router가 모두 실패하면 GemmaClient 직접
