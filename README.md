@@ -80,7 +80,7 @@ Open `http://localhost:8000`
      ↓
 [Query Router]         ← chat / coding / retrieval / web_search
      ↓
-[Hybrid Search]        ← Vector(60%) + BM25(20%) + keyword(20%)
+[Hybrid Search]        ← Vector(60%) + BM25(20%) + keyword(10%) + name(10%)
      ↓
 [Graph Engine]         ← DFS + confidence + sensitivity gating
      ↓

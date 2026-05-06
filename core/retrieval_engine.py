@@ -263,6 +263,17 @@ class RetrievalEngine:
 
     @staticmethod
     def calculate_confidence(r: Dict) -> float:
+        """답변 신뢰도 점수 (0~1).
+
+        ``hybrid_search`` ranking 가중치(``0.6/0.2/0.1/0.1``)와는 별도
+        분포(``0.5/0.2/0.2/0.1``). vector 영향력을 약간 낮추고
+        keyword/name (표면 형태가 정확히 일치하는 신호)에 더 높은
+        confidence를 부여한다 — 검색 ranking은 의미 거리가 핵심이지만,
+        답변 confidence는 사용자 질의에 명시된 단어가 실제로 문서에
+        있다는 사실에 더 의존하는 게 자연스럽다는 판단.
+
+        합 = 1.0. ``round(..., 3)`` 후 ``[0, 1]`` 범위 강제.
+        """
         return max(0.0, min(1.0, round(
             r.get("vector_score", 0) * 0.5 +
             r.get("bm25_score", 0) * 0.2 +

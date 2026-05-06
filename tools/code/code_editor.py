@@ -32,7 +32,7 @@ PROTECTED_FILES = {
     "graph_rag_engine.py", "graph_engine.py", "reasoning_engine.py",
     "retrieval_engine.py", "security_layer.py", "memory_loom.py",
     "memory_trust.py", "gemma_client.py", "auth.py", "config.py",
-    "jepa_adapter.py", "orchestrator.py",
+    "jepa_adapter.py", "query_expander.py", "orchestrator.py",
 }
 
 

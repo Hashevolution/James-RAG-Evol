@@ -82,7 +82,7 @@ def retrieve(
 
     Path:
       1. original_query  → hybrid_search
-      2. expanded_query  → hybrid_search (JEPA 성공 시 다름, 실패 시 동일)
+      2. expanded_query  → hybrid_search (query_expander 성공 시 다름, 실패 시 동일)
       3. keyword_query   → hybrid_search
 
     결과 merge: 단순 concat → deduplicate
@@ -166,7 +166,7 @@ if __name__ == "__main__":
     call_count[0] = 0
     retrieve(
         original_query="경제학",
-        expanded_query="경제학",   # JEPA 실패 시 동일
+        expanded_query="경제학",   # query_expander 실패 시 동일
         hybrid_search_fn=mock_search,
     )
     # original + keyword만 = 2회 (expanded 중복 제거)

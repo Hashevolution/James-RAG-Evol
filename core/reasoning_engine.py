@@ -591,13 +591,14 @@ class ReasoningEngine:
 
         # ── Retrieval → 기존 Loop 그대로 진행 ────────────────
 
-        # ── STEP 0.5b: JEPA query expansion [P5] ─────────────
-        # [STEP2-C] jepa_adapter.py 현재 비활성화 상태
+        # ── STEP 0.5b: query expansion [P5] ──────────────────
+        # core/query_expander.py (was core/jepa_adapter.py — 단순 동의어
+        # 사전, JEPA 메커니즘과 무관) 현재 비활성화 상태.
         # → Phase 9에서 멀티모달 임베딩 확장 시 재활성화 예정
         # → 현재는 원본 쿼리 그대로 사용 (0ms 오버헤드)
-        t_jepa = time.time()
-        expanded_query = safe_query   # JEPA 없이 원본 사용
-        self._elapsed(t_jepa, "STEP0.5 JEPA_expand")
+        t_qexp = time.time()
+        expanded_query = safe_query   # 확장 없이 원본 사용
+        self._elapsed(t_qexp, "STEP0.5 query_expand")
 
         # ── Loop 상태 초기화 ─────────────────────────────────
         loop_state = {
