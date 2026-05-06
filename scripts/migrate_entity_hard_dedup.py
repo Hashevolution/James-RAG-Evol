@@ -42,9 +42,13 @@ Safety:
     ``workspace/backups/entity_prod_<UTC>.zip`` before any mutation
     unless ``--no-backup`` is set. The script aborts if the backup
     cannot be written.
-  - ChromaDB embedding chunks keyed off dropped ``entity_id`` are
-    NOT removed by this script (re-indexing is a separate concern).
-    A caveat line is printed at the end so operators know.
+  - ChromaDB needs no follow-up action. Document chunks are keyed by
+    UUID and the metadata schema does not store ``entity_id`` (only
+    ``source``/``sensitivity``/``owner``/``category``/``source_type``).
+    Entity → ``entity_id`` resolution happens at query time from .md
+    frontmatter via ``graph_engine.match_entities`` (which now sees
+    the merged canonical + alias index), so the migration is
+    reflected automatically at next query without re-indexing.
 """
 from __future__ import annotations
 
@@ -398,8 +402,9 @@ def main() -> int:
     print(f"entities rewritten (incoming): {rewritten_count}")
     if skipped:
         print(f"groups skipped (conflict): {len(skipped)} → {skipped}")
-    print(f"ChromaDB caveat:   embedding chunks for dropped entity_ids "
-          f"remain in chroma_db/ — re-index separately if needed.")
+    print(f"ChromaDB:          no action needed — chunk metadata does "
+          f"not carry entity_id; entity resolution is .md-driven at "
+          f"query time.")
 
     if not args.apply:
         print("\nRe-run with --apply to write changes.")
