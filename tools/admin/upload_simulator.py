@@ -23,6 +23,10 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))))
 
+# Issue #2: cp949 콘솔에서 box-drawing 문자 크래시 방지.
+from utils.console import ensure_utf8_console
+ensure_utf8_console()
+
 G = "\033[92m"; R = "\033[91m"; Y = "\033[93m"; C = "\033[96m"
 B = "\033[1m";  E = "\033[0m"
 

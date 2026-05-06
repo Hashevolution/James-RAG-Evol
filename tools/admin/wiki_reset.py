@@ -28,6 +28,11 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))))
 
+# Issue #2: cp949 콘솔에서 box-drawing 문자(`═`, `─` …) 출력 시
+# UnicodeEncodeError 크래시 방지. 모든 print 전에 stdout 인코딩 강제.
+from utils.console import ensure_utf8_console
+ensure_utf8_console()
+
 try:
     from config import BASE_DIR, WIKI_DIR, CHROMA_DIR
 except ImportError:

@@ -7,6 +7,31 @@ import json
 from core.gemma_client import GemmaClient   # type/fallback retained
 from llm.router import RouterWrapper
 
+# Issue #4: LLM 호출이 실패하면 GemmaClient는 "[Gemma 오류] 404 …",
+# "[Gemma 응답 없음]" 같은 sentinel 문자열을 응답 자리에 그대로 반환한다.
+# 그게 safe_parse_json까지 살아남으면 비-JSON 텍스트 fallback에서
+# `summary = text[:100]`으로 entity의 user-visible 필드에 저장돼 wiki를
+# 오염시켰다 (실데이터 검증 중 발견 — STEP 7 발견 #2). 이 패턴을 만나면
+# summary를 비워서 wiki에 진단 텍스트가 새는 걸 막는다.
+_LLM_ERROR_SENTINELS = (
+    "[gemma 오류]",
+    "[gemma 응답 없음]",
+    "응답 없음",
+    "client error: not found",
+    "internal server error",
+    "timeouterror",
+    "connectionerror",
+    "[llm 분석 실패",
+)
+
+
+def _is_llm_error_sentinel(text: str) -> bool:
+    if not isinstance(text, str) or not text:
+        return False
+    low = text.lower()
+    return any(p in low for p in _LLM_ERROR_SENTINELS)
+
+
 class MetadataGenerator:
     def __init__(self):
         self.gemma_client = RouterWrapper("extract")
@@ -79,10 +104,18 @@ class MetadataGenerator:
             except Exception:
                 pass
 
+        # Issue #4: LLM 에러 sentinel을 사용자 visible summary로 저장하지 않는다.
+        # 일반 비-JSON 텍스트는 첫 100자로 fallback (LLM이 자유 형식 답변한 경우 등).
+        if _is_llm_error_sentinel(text):
+            return {
+                "keywords": [],
+                "summary":  "",
+                "category": "기타",
+            }
         return {
             "keywords": [],
-            "summary": text[:100] if text else "분석 실패",
-            "category": "기타"
+            "summary":  text[:100] if text else "",
+            "category": "기타",
         }
     
     def generate_metadata(self, text: str) -> dict:
