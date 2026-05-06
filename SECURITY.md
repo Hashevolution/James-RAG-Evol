@@ -49,7 +49,7 @@ JAMES implements defense-in-depth across the RAG pipeline.
 ### Authentication
 
 - JWT tokens with HS256 signing
-- 24-hour expiration (configurable)
+- 8-hour expiration (configurable via `JWT_EXPIRE` in `core/auth.py`)
 - Rate limiting: 30 requests / 60 seconds per user
 - Full audit log in SQLite (every request, decision, denial)
 

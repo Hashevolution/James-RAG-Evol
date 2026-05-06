@@ -139,9 +139,15 @@ CHROMA_COLLECTION = "james_prototype"
 #   Bash/Zsh:     export JAMES_API_KEY=your_key
 API_KEY = os.environ.get("JAMES_API_KEY", "")
 if not API_KEY:
-    print("[CONFIG] WARNING: JAMES_API_KEY not set — using dev fallback")
-    print("[CONFIG]          For production: set JAMES_API_KEY in .env or environment")
-    API_KEY = "dev_only_change_me"
+    # P0 보안 (v0.1.3.1 handover Item C) — fail-fast.
+    # 이전엔 "dev_only_change_me" hardcode fallback. WARNING 한 줄만 출력하고
+    # 그대로 운영 진입 가능했고, 그 secret으로 인증 통과한 client는 admin
+    # 권한까지 받음. 더이상 silent.
+    raise RuntimeError(
+        "JAMES_API_KEY must be set in .env or environment before starting "
+        "the server. Generate one with:\n"
+        "    python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+    )
 
 # ────────────────────────────────────────────────────────────────
 #  Upload limits
@@ -161,7 +167,7 @@ TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
 # ────────────────────────────────────────────────────────────────
 print(f"[CONFIG] PROJECT JAMES ready")
 print(f"[CONFIG] BASE_DIR: {BASE_DIR}")
-print(f"[CONFIG] API_KEY source: {'env:JAMES_API_KEY' if os.environ.get('JAMES_API_KEY') else 'dev fallback'}")
+print("[CONFIG] API_KEY source: env:JAMES_API_KEY")
 
 if TESSERACT_PATH:
     print(f"[CONFIG] Tesseract: {TESSERACT_PATH}")

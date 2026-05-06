@@ -21,17 +21,30 @@ import base64
 from typing import Optional, Dict
 from pathlib import Path
 
+# .env 자동 로드 보장 (config 모듈이 import 시점에 .env 파싱하여
+# os.environ에 주입). server_llmwiki는 config을 명시 import하지만,
+# core.auth만 단독 import되는 경로(테스트, 마이그레이션 스크립트 등)
+# 에서도 환경변수가 살아있도록 side-effect import.
+try:
+    import config  # noqa: F401
+except Exception:
+    pass
+
 # ─── 설정 ────────────────────────────────────────────────────
 
-JWT_SECRET = os.environ.get(
-    "JAMES_JWT_SECRET",
-    "james_dev_secret_change_in_prod_2026"   # 환경변수 없으면 경고
-)
+JWT_SECRET = os.environ.get("JAMES_JWT_SECRET")
+if not JWT_SECRET or len(JWT_SECRET) < 32:
+    # P0 보안 (v0.1.3.1 handover Item A) — fail-fast.
+    # 이전엔 하드코드 fallback이라 secret 미설정 환경에서 모든 JWT 서명이
+    # 동일 시크릿으로 이뤄져 위조 공격에 무방비였음. 더이상 silent.
+    raise RuntimeError(
+        "JAMES_JWT_SECRET must be set to a string of 32+ characters "
+        "before importing core.auth. Generate one with:\n"
+        "    python -c \"import secrets; print(secrets.token_urlsafe(32))\"\n"
+        "Then set it in .env or as an environment variable."
+    )
 JWT_ALGO   = "HS256"
-JWT_EXPIRE = 3600 * 8   # 8시간 (개발/운영 모두 적합)
-
-if JWT_SECRET == "james_dev_secret_change_in_prod_2026":
-    print("[AUTH] ⚠️  JAMES_JWT_SECRET 환경변수 미설정 — 개발 시크릿 사용 중 (운영 금지)")
+JWT_EXPIRE = 3600 * 8   # 8h. SECURITY.md와 일치.
 
 # 운영 모드 플래그 (환경변수로 제어)
 # JAMES_DEV_MODE=0 이면 X-Role 헤더 비활성화
@@ -56,7 +69,9 @@ def _get_conn() -> sqlite3.Connection:
     return conn
 
 def _init_db():
-    """DB 초기화 + 기본 계정 생성 (없을 때만)"""
+    """DB 초기화 + admin 계정 1개 (랜덤 또는 환경변수, 첫 부팅 한 번만)."""
+    import secrets as _secrets
+
     conn = _get_conn()
     try:
         conn.execute("""
@@ -70,19 +85,28 @@ def _init_db():
         """)
         conn.commit()
 
-        # 기본 계정 삽입 (이미 존재하면 무시)
-        defaults = [
-            ("admin",     _hash_password("admin_pw_change_me"), "admin"),
-            ("manager1",  _hash_password("manager_pw"),         "manager"),
-            ("employee1", _hash_password("employee_pw"),         "employee"),
-            ("guest",     _hash_password("guest_pw"),            "external"),
-        ]
-        conn.executemany(
-            "INSERT OR IGNORE INTO users (username, password_hash, role) VALUES (?, ?, ?)",
-            defaults,
+        # P0 보안 (v0.1.3.1 handover Item B) — admin 1개만, 랜덤 또는 환경변수.
+        # 이전엔 admin/manager1/employee1/guest 4계정 평문 비번이 소스에 박혀
+        # git log에서 누구나 볼 수 있었음. 이제:
+        #   1) 첫 부팅 시 admin 1개만 생성. manager/employee/external은 admin이
+        #      가입 endpoint로 직접 만들도록.
+        #   2) JAMES_INIT_ADMIN_PW 환경변수 우선. 없으면 16-byte URL-safe 랜덤.
+        #   3) 새로 생성된 경우에만 콘솔에 비번 출력 (기존 admin 있으면 무동작).
+        env_pw   = os.environ.get("JAMES_INIT_ADMIN_PW")
+        admin_pw = env_pw or _secrets.token_urlsafe(16)
+        cur = conn.execute(
+            "INSERT OR IGNORE INTO users (username, password_hash, role) "
+            "VALUES (?, ?, ?)",
+            ("admin", _hash_password(admin_pw), "admin"),
         )
+        admin_created = cur.rowcount > 0
         conn.commit()
+
         print(f"[AUTH] SQLite USER_DB 초기화: {_DB_PATH}")
+        if admin_created and not env_pw:
+            print(f"[AUTH] Initial admin password (CHANGE IMMEDIATELY): {admin_pw}")
+        elif admin_created and env_pw:
+            print("[AUTH] admin created from JAMES_INIT_ADMIN_PW")
     finally:
         conn.close()
 
