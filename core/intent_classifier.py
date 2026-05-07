@@ -103,15 +103,28 @@ class IntentClassifier:
         # `retrieval` and produced hallucinated answers because the wiki
         # file *list* is not in any vector chunk. Now routed to handle_meta
         # which calls tools/wiki/wiki_editor.py::list_entities() directly.
-        # Keep narrow — must combine an "inventory verb" with a wiki/data
-        # noun, or be one of the canonical phrasings, so we don't hijack
-        # legitimate retrieval like "BlackRock 목록 알려줘".
+        #
+        # Patterns must combine an inventory verb (목록 / 보여 / 알려 / 뭐
+        # / 있는지 / list / show / what ... do you have) with a wiki/data
+        # noun (wiki / 자료 / 문서 / 데이터 / entity / knowledge). This
+        # keeps "BlackRock 목록 알려줘" (specific topic) out of meta.
         "meta": [
+            # 캐논 형식: "wiki 목록", "내부 자료 보여줘"
             r"(wiki|위키|내부\s*자료|보유\s*자료|가지고\s*있는)\s*(목록|리스트|보여)",
             r"(어떤|무슨)\s*(자료|문서|wiki|위키|entity|엔티티).{0,15}(있|가지)",
             r"^(자료|문서|entity|엔티티)\s*(목록|리스트)\s*[?\.!]?$",
-            r"(list|show)\s+(all\s+)?(entities|wiki|documents|files)",
-            r"^what\s+do\s+you\s+(have|know\s+about)",
+            # 캐주얼 한국어: "데이터 뭐 있는지", "문서 뭐가 있어"
+            r"(데이터|자료|문서|wiki|위키|entity|엔티티|knowledge)\s*(뭐|무슨|어떤)",
+            r"(뭐|무슨|어떤)\s*(자료|문서|데이터|wiki|entity)\s*(있|가지|보유)",
+            # 캐주얼 한국어: "저장된 데이터", "갖고 있는 자료", "보유 자료"
+            r"(저장된|보유|갖고\s*있는|가지고\s*있는|아는)\s*\S{0,5}\s*(데이터|자료|문서|정보|내용|것|거)",
+            # 캐주얼 한국어: "아는거 뭐 있어", "알고 있는 거 뭐"
+            r"(아는|알고\s*있는)\s*(거|것).{0,8}(뭐|무슨|어떤)",
+            r"내부\s*에?\s*(무슨|뭐|어떤)\s*(자료|문서|데이터|것|거)",
+            # 영어 — 더 유연하게 (PR #73 패턴은 'what do you' 만 잡음)
+            r"(list|show)\s+(all\s+|me\s+)?(your\s+)?(entities|wiki|documents|files|data|knowledge)",
+            r"^what\s+(\S+\s+){0,3}do\s+you\s+(have|know)",
+            r"(your|the)\s+(knowledge\s*base|data\s*set|wiki|files|documents)\b",
         ],
     }
 

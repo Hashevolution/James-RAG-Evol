@@ -30,22 +30,48 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 class FastPatternRoutingTests(unittest.TestCase):
     """The fast-path classifier must catch inventory queries before
-    they fall through to retrieval. These five forms are the canonical
-    user-feedback signature ('어떤 자료가 있어?' from 2026-05-08)."""
+    they fall through to retrieval. v2 (2026-05-08 follow-up): user
+    reported the chat page didn't trigger meta mode — root cause was
+    the v1 patterns covered only formal phrasings ('wiki 목록 보여줘')
+    and missed the casual ones a real user actually types
+    ('데이터 뭐 있는지 보여줘', 'what data do you have'). v2 adds 7
+    more patterns covering casual KO + flexible EN forms."""
 
-    def test_korean_inventory_phrasings_route_to_meta(self):
+    def test_korean_formal_inventory_phrasings_route_to_meta(self):
         from core.intent_classifier import IntentClassifier
         cls = IntentClassifier()
         for q in (
             "wiki 목록 보여줘",
+            "wiki 목록",
             "내부 자료 목록 보여줘",
+            "내부 자료 목록",
             "어떤 자료가 있어?",
             "무슨 문서가 있는지 알려줘",
             "보유 자료 리스트 보여줘",
         ):
             mode = cls.classify_fast(q)
             self.assertEqual(mode, "meta",
-                             f"inventory phrasing should route to meta: {q!r}, got {mode!r}")
+                             f"formal inventory should route to meta: {q!r}, got {mode!r}")
+
+    def test_korean_casual_inventory_phrasings_route_to_meta(self):
+        # v2 — these are the phrasings the user actually typed in
+        # chat that fell through to retrieval and produced hallucinated
+        # answers. Must now route to meta via fast pattern (no LLM
+        # latency, no misclassification risk).
+        from core.intent_classifier import IntentClassifier
+        cls = IntentClassifier()
+        for q in (
+            "내부에 무슨 자료 있는지 알려줘",
+            "데이터 뭐 있는지 보여줘",
+            "문서 뭐가 있어?",
+            "저장된 데이터 보여줘",
+            "갖고 있는 자료 알려줘",
+            "아는거 뭐 있어?",
+            "내부에 어떤 데이터 있어",
+        ):
+            mode = cls.classify_fast(q)
+            self.assertEqual(mode, "meta",
+                             f"casual inventory should route to meta: {q!r}, got {mode!r}")
 
     def test_english_inventory_phrasings_route_to_meta(self):
         from core.intent_classifier import IntentClassifier
@@ -53,8 +79,11 @@ class FastPatternRoutingTests(unittest.TestCase):
         for q in (
             "list all entities",
             "show all wiki",
+            "show me your knowledge base",
             "what do you have?",
             "what do you know about",
+            "what data do you have",          # v2 — earlier missed this
+            "your knowledge base",            # v2 — noun-phrase pattern
         ):
             mode = cls.classify_fast(q)
             self.assertEqual(mode, "meta",
@@ -63,7 +92,8 @@ class FastPatternRoutingTests(unittest.TestCase):
     def test_specific_topic_does_NOT_route_to_meta(self):
         # "BlackRock 정보 알려줘" — specific topic retrieval. Must NOT
         # be hijacked by the meta pattern (the user wants content, not
-        # an inventory).
+        # an inventory). The v2 broader patterns increase the risk of
+        # hijacking — this test guards that risk.
         from core.intent_classifier import IntentClassifier
         cls = IntentClassifier()
         for q in (
@@ -71,10 +101,24 @@ class FastPatternRoutingTests(unittest.TestCase):
             "비트코인에 대해 설명해줘",
             "RAG가 무엇인가?",
             "Anthropic은 어떤 회사인가?",
+            "BTC ETF 출시한 회사 목록",   # specific-topic + 목록
+            "OpenAI의 최신 모델 전략",
         ):
             mode = cls.classify_fast(q)
             self.assertNotEqual(mode, "meta",
                                 f"specific-topic query must NOT route to meta: {q!r}")
+
+    def test_too_short_or_ambiguous_falls_through_to_llm(self):
+        # "뭐 있어?" alone is ambiguous (could be office / dinner /
+        # anything). It should NOT be hijacked into meta — let the LLM
+        # classifier decide based on full context. "안녕" is a clear chat.
+        from core.intent_classifier import IntentClassifier
+        cls = IntentClassifier()
+        # "안녕" has its own chat fast-pattern (not meta).
+        self.assertEqual(cls.classify_fast("안녕"), "chat")
+        # "뭐 있어?" too vague — must NOT match meta. (May or may not
+        # match other patterns; we only assert it's not meta.)
+        self.assertNotEqual(cls.classify_fast("뭐 있어?"), "meta")
 
 
 class RoleAllowedTests(unittest.TestCase):
