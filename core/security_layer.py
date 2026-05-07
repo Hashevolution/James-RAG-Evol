@@ -180,14 +180,20 @@ def cross_stage_abac_verify(
     """
     [P4-SEC-2] Vector → Graph → Output 3단계 동일 ABAC 정책 검증.
     external이 confidential을 어느 단계에서도 볼 수 없도록 보장.
+
+    #44 phase 2-C: Stage 1/2 route through PolicyEngine so the cross-stage
+    invariant is checked against the same source of policy as live retrieval
+    and graph traversal. Lazy import avoids module-load cycle.
     """
+    from core.policy_engine import default_engine as _policy
+
     violations, stage_results = [], {}
 
     # Stage 1: Vector
     v_pass = v_fail = 0
     for doc in vector_docs:
         meta = doc.get("metadata", {"sensitivity": "public"})
-        if check_access(user_role, meta):
+        if _policy.can_retrieve(user_role, meta).allowed:
             v_pass += 1
         else:
             v_fail += 1
@@ -199,7 +205,7 @@ def cross_stage_abac_verify(
     # Stage 2: Graph
     g_pass = g_fail = 0
     for entity in graph_entities:
-        if check_access(user_role, entity):
+        if _policy.can_walk(user_role, entity).allowed:
             g_pass += 1
         else:
             g_fail += 1

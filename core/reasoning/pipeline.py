@@ -315,7 +315,12 @@ def run_retrieval_pipeline(
     engine._elapsed(t_llm, "LLM_generate")
 
     # ── Output Filter ────────────────────────────────────
+    # #44 phase 2-C: gate the role-based filter through PolicyEngine.can_emit
+    # so the output stage is wired to the same engine as retrieval/graph.
+    # Phase-1 can_emit always allows (filter_answer_by_role still mutates);
+    # future tightening can add real refuse-to-emit semantics here.
     try:
+        from core.policy_engine import default_engine as _policy
         wiki_persons = []
         if user_role == "external":
             wiki_persons = [
@@ -324,11 +329,12 @@ def run_retrieval_pipeline(
                 for fm in [engine.graph.wiki_generator._read_frontmatter(__import__("pathlib").Path(fp))]
                 if fm and fm.get("entity_type") == "person" and fm.get("name")
             ]
-        answer = filter_answer_by_role(
-            answer, user_role,
-            loop_state["graph_context"],
-            wiki_person_names=wiki_persons,
-        )
+        if _policy.can_emit(user_role, answer).allowed:
+            answer = filter_answer_by_role(
+                answer, user_role,
+                loop_state["graph_context"],
+                wiki_person_names=wiki_persons,
+            )
     except Exception as e:
         engine._log("output_filter", e, user_role)
 
