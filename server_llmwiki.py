@@ -1905,21 +1905,94 @@ async def admin_patches(api_key: str, status: str = "all",
         return {"patches": [], "error": str(e)}
 
 
-@app.post("/admin/patch/approve", summary="Patch 승인 [P7]")
+@app.post("/admin/patch/approve", summary="Patch 승인 [#48 phase 1]")
 async def admin_patch_approve(request: Request, role: str = Depends(get_role_from_request)):
+    """Approve + deploy a pending patch.
+
+    #48 phase 1 contract:
+      - 403 unless `JAMES_ENABLE_EVOLUTION=1` (operator opt-in).
+      - Caller must include `approver_username` in the JSON body —
+        the audit log records WHO approved each deployed patch.
+      - Caller's resolved role must equal `JAMES_EVOLUTION_APPROVER_ROLE`
+        (default "admin"). Other admin endpoints already enforce
+        admin via `_require_admin`; this gate adds the explicit
+        "approver-role" check so the env var stays load-bearing.
+      - On success the patch JSON is updated in place with
+        `approver_username` / `approver_role` / `approved_at` /
+        `approval_method`, and the lifecycle is recorded in
+        `james_patch_log.jsonl` (visible via /admin/audit).
+    """
     body = await request.json()
     _require_admin(body.get("api_key",""), role)
-    patch_id = body.get("patch_id","")
+
+    # #48 phase 1 — opt-in gate.
+    from config import EVOLUTION_ENABLED, APPROVER_ROLE
+    if not EVOLUTION_ENABLED:
+        raise HTTPException(
+            status_code=403,
+            detail="evolution_disabled: set JAMES_ENABLE_EVOLUTION=1 to enable",
+        )
+    if role != APPROVER_ROLE:
+        raise HTTPException(
+            status_code=403,
+            detail=f"approver_role_mismatch: required {APPROVER_ROLE!r}, got {role!r}",
+        )
+
+    patch_id          = body.get("patch_id", "").strip()
+    approver_username = (body.get("approver_username") or "").strip()
+    approval_method   = (body.get("approval_method") or "api").strip()
+
+    if not patch_id:
+        raise HTTPException(status_code=400, detail="patch_id required")
+    if not approver_username:
+        raise HTTPException(status_code=400, detail="approver_username required (#48 audit)")
+
     try:
         from tools.patch.patch_generator import load_patch
         from tools.patch.patch_validator import validate_patch
         from tools.patch.patch_applier   import apply as patch_apply
+        from tools.patch.approval        import record_approval, record_outcome
+
         patch = load_patch(patch_id)
-        if not patch: raise HTTPException(status_code=404, detail="Patch 없음")
+        if not patch:
+            raise HTTPException(status_code=404, detail="Patch 없음")
+
         passed, failures = validate_patch(patch)
-        if not passed: return {"success": False, "failures": failures}
+        if not passed:
+            return {"success": False, "failures": failures}
+
+        # Record approver BEFORE apply — if apply crashes, the audit
+        # log still shows who tried to deploy what. Restoring this
+        # ordering is the entire reason this PR exists.
+        rec_ok, rec = record_approval(
+            patch_id          = patch_id,
+            approver_username = approver_username,
+            approver_role     = role,
+            approval_method   = approval_method,
+        )
+        if not rec_ok:
+            raise HTTPException(status_code=500, detail=f"approval_record_failed: {rec.get('error')}")
+
+        # Re-load with approval fields baked in so apply() sees the
+        # final patch shape (forward-compat — applier may grow to
+        # honor approval metadata).
+        patch = rec
         ok, msg = patch_apply(patch, validated=True)
-        return {"success": ok, "message": msg}
+
+        # Lifecycle: deployed | rolled_back. Phase 2 will plug the
+        # before/after metrics from bench.py here.
+        record_outcome(
+            patch_id, "deployed" if ok else "rolled_back",
+            detail=msg,
+        )
+        return {
+            "success":           ok,
+            "message":           msg,
+            "patch_id":          patch_id,
+            "approver_username": approver_username,
+            "approver_role":     role,
+            "approval_method":   approval_method,
+        }
     except HTTPException: raise
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 

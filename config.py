@@ -163,6 +163,28 @@ UPLOAD_FOLDER    = UPLOAD_DIR  # alias
 TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
 
 # ────────────────────────────────────────────────────────────────
+#  Self-evolution gate (#48, Axis 5)
+# ────────────────────────────────────────────────────────────────
+# Default off. Operators must opt in by setting JAMES_ENABLE_EVOLUTION=1.
+# `/admin/patch/approve` returns 403 unless this is true.
+EVOLUTION_ENABLED = os.environ.get("JAMES_ENABLE_EVOLUTION", "0") == "1"
+
+# Role required to approve patches. Defaults to "admin".
+APPROVER_ROLE = os.environ.get("JAMES_EVOLUTION_APPROVER_ROLE", "admin").strip().lower()
+
+# Auto-approval. Tests / dev only — both flags must be true AND
+# JAMES_DEV_MODE must be 1, otherwise the server refuses to start.
+# This is the "fail-closed in production" guarantee from #48.
+AUTO_APPROVE = os.environ.get("JAMES_AUTO_APPROVE", "0") == "1"
+_DEV_MODE_AT_IMPORT = os.environ.get("JAMES_DEV_MODE", "1") == "1"
+if AUTO_APPROVE and not _DEV_MODE_AT_IMPORT:
+    raise RuntimeError(
+        "JAMES_AUTO_APPROVE=1 requires JAMES_DEV_MODE=1 — auto-approval is "
+        "not allowed in non-dev environments. Either unset JAMES_AUTO_APPROVE "
+        "or set JAMES_DEV_MODE=1 explicitly. Refusing to start."
+    )
+
+# ────────────────────────────────────────────────────────────────
 #  Startup messages
 # ────────────────────────────────────────────────────────────────
 print(f"[CONFIG] PROJECT JAMES ready")
@@ -181,3 +203,10 @@ if TAVILY_API_KEY:
     print(f"[CONFIG] Tavily search enabled (key: {TAVILY_API_KEY[:8]}...)")
 else:
     print(f"[CONFIG] Tavily key not set → using DuckDuckGo fallback")
+
+# Evolution-gate banner — operator must see this on boot.
+if EVOLUTION_ENABLED:
+    print(f"[CONFIG] ⚙️  Self-evolution ENABLED (approver role: {APPROVER_ROLE})"
+          + (f" — AUTO_APPROVE on (DEV_MODE={_DEV_MODE_AT_IMPORT})" if AUTO_APPROVE else ""))
+else:
+    print(f"[CONFIG] Self-evolution disabled (set JAMES_ENABLE_EVOLUTION=1 to enable)")
