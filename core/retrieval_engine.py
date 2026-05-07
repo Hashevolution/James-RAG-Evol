@@ -21,7 +21,8 @@ from rank_bm25 import BM25Okapi
 
 from core.vector_store import VectorStore
 from core.gemma_client import GemmaClient
-from core.security_layer import check_access, log_system_event
+from core.security_layer import log_system_event
+from core.policy_engine import default_engine as _policy
 from utils.tokenizer import tokenize
 
 SYSTEM_LOG_PATH = "james_system_log.jsonl"
@@ -98,10 +99,13 @@ class RetrievalEngine:
                 if r.get("metadata", {}).get("source_type", "prod") == source_type
             ]
 
-        # ABAC 필터
+        # ABAC 필터 — #44 phase 2-A: routed through PolicyEngine.can_retrieve
+        # so future policy changes touch one file (core/policy_engine.py) instead
+        # of every retrieval call site. PolicyEngine.can_retrieve currently
+        # delegates to security_layer.check_access bit-for-bit (#50).
         vec_results = [
             r for r in vec_results
-            if check_access(user_role, r.get("metadata", {"sensitivity": "internal"}))
+            if _policy.can_retrieve(user_role, r.get("metadata", {"sensitivity": "internal"})).allowed
         ]
 
         if not vec_results:
