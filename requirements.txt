@@ -52,6 +52,12 @@ opencv-python>=4.9.0
 ffmpeg-python>=0.2.0
 openai-whisper>=20231117
 
+# ── Evaluation Harness (Issue #46, Axis 2-B) ───────────────────
+# RAGAS pulls scikit-network which needs MSVC build tools on Windows
+# unless wheels are available. If install fails on Windows, run:
+#   pip install ragas --only-binary=:all:
+ragas>=0.4.0
+
 # ═══════════════════════════════════════════════════════════════
 #  System Requirements (install separately, not via pip)
 # ═══════════════════════════════════════════════════════════════
