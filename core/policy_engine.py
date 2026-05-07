@@ -29,6 +29,8 @@ Design notes:
 """
 from __future__ import annotations
 
+import time
+import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
@@ -60,6 +62,50 @@ class TrustedContent:
     text:   str
     source: str    # "user" | "doc" | "ocr" | "asr" | "vision" | "web"
     trust:  str    # "high" | "medium" | "low"
+
+
+@dataclass(frozen=True)
+class Capability:
+    """Short-lived authorization token issued by PolicyEngine.
+
+    Phase 3 of #44 — replaces ad-hoc string allowlists in
+    `tools/code/sandbox.py` and `tools/router.py` with capability tokens
+    carrying an explicit (role, action, scope, ttl) tuple.
+
+    Tokens are in-process only; cryptographic signing/binding is out of
+    scope per #44 (deferred to v1.0 hardening). The `token_id` exists
+    for audit-log correlation, not authentication.
+    """
+    role:       str    # caller role at issue time, e.g. "admin"
+    action:     str    # e.g. "fs.read", "fs.write", "shell.exec"
+    scope:      str    # path-prefix scope, or "*" for unbounded
+    issued_at:  float  # time.time() at issue
+    expires_at: float  # issued_at + ttl_seconds
+    token_id:   str    # uuid4 hex; goes in audit logs
+
+    def is_expired(self, now: Optional[float] = None) -> bool:
+        """True if `now` (default: time.time()) is at-or-past expiry."""
+        return (now if now is not None else time.time()) >= self.expires_at
+
+
+def _scope_contains(cap_scope: str, requested: str) -> bool:
+    """True if a capability with `cap_scope` covers a `requested` path.
+
+    Rules (phase 3 — deliberately simple, structured globs deferred):
+      - "*" covers anything.
+      - exact string match covers itself.
+      - `cap_scope` ending in "/" (or normalized to) is a directory
+        prefix; `requested` must start with that prefix to match.
+
+    Trailing-slash normalization avoids the `./workspace` vs
+    `./workspaceextra` partial-match bug.
+    """
+    if cap_scope == "*":
+        return True
+    if cap_scope == requested:
+        return True
+    cap_norm = cap_scope if cap_scope.endswith(("/", "\\")) else cap_scope + "/"
+    return requested.startswith(cap_norm)
 
 
 class PolicyEngine:
@@ -109,16 +155,18 @@ class PolicyEngine:
     ) -> Decision:
         """Tool execution: may this role invoke this tool with these args?
 
-        Phase 1: admin-only. The capability-token model arrives in the
-        sandbox migration PR (#44 phase 3). Until then, callers may
-        bypass this method; the existing admin checks in
-        `tools/router.py::execute_tool` and `tools/code/sandbox.py`
-        remain authoritative.
+        Phase 1/3-1: admin-only — preserved bit-for-bit so the
+        `issue_capability()` issuance gate keeps the same surface as the
+        legacy `tools/router.py::execute_tool` admin gate. Per-action
+        relaxation (e.g. fs.read for employees) is deferred to phase 3-2
+        when router migrates onto this method; today no production caller
+        depends on it.
 
         Args:
           role:  caller role.
-          tool:  tool name (e.g. "read_file", "execute_command").
-          args:  reserved for capability-token scope match in phase 3
+          tool:  tool name (e.g. "read_file", "execute_command", or
+                 capability-action like "fs.write").
+          args:  reserved for capability-token scope match in phase 3-2+
                  (currently ignored).
         """
         ok = (role == "admin")
@@ -126,6 +174,99 @@ class PolicyEngine:
             allowed=ok,
             reason="role.is_admin" if ok else "role.not_admin",
             applied_rule="policy.tool.admin_only",
+        )
+
+    def issue_capability(
+        self,
+        role:        str,
+        action:      str,
+        scope:       str,
+        ttl_seconds: int = 60,
+    ) -> Optional[Capability]:
+        """Issue a short-lived capability for a (role, action, scope) request.
+
+        Phase 3 of #44 — the issuance gate is `can_call_tool(role, action)`.
+        If the policy denies issuance, returns None and the caller MUST
+        treat that as a hard refusal (do not fall back to legacy gates).
+
+        Phase 3-1: routers/sandboxes do not yet require capability tokens —
+        the existing admin/path checks remain authoritative. This method
+        exists so phase 3-2 can flip the contract atomically.
+
+        Args:
+          role:         caller role.
+          action:       canonical action id (e.g. "fs.read", "fs.write",
+                        "shell.exec"). Free-form for now; phase 3-2 may
+                        formalize the namespace.
+          scope:        path-prefix or "*"; see `_scope_contains`.
+          ttl_seconds:  token lifetime; default 60s matches issue
+                        recommendation in #44.
+
+        Returns:
+          A `Capability` on success, or None if issuance is denied.
+        """
+        if ttl_seconds <= 0:
+            return None
+        decision = self.can_call_tool(role, action, args={"scope": scope})
+        if not decision.allowed:
+            return None
+        now = time.time()
+        return Capability(
+            role=role,
+            action=action,
+            scope=scope,
+            issued_at=now,
+            expires_at=now + ttl_seconds,
+            token_id=uuid.uuid4().hex,
+        )
+
+    def verify_capability(
+        self,
+        cap:    Optional[Capability],
+        action: str,
+        scope:  str,
+        now:    Optional[float] = None,
+    ) -> Decision:
+        """Verify `cap` authorizes `(action, scope)` and is not expired.
+
+        Phase 3 of #44 — sandbox/router will call this immediately before
+        executing a privileged action. `now` is injectable for tests.
+
+        Decision rules (in order):
+          1. `cap is None`              → missing
+          2. expired                    → expired
+          3. action mismatch            → action_mismatch
+          4. scope not contained        → scope_out_of_bounds
+          5. otherwise                  → allowed
+        """
+        if cap is None:
+            return Decision(
+                allowed=False,
+                reason="capability.missing",
+                applied_rule="policy.cap.missing",
+            )
+        if cap.is_expired(now):
+            return Decision(
+                allowed=False,
+                reason="capability.expired",
+                applied_rule="policy.cap.expired",
+            )
+        if cap.action != action:
+            return Decision(
+                allowed=False,
+                reason=f"capability.action_mismatch[{cap.action}!={action}]",
+                applied_rule="policy.cap.action_mismatch",
+            )
+        if not _scope_contains(cap.scope, scope):
+            return Decision(
+                allowed=False,
+                reason=f"capability.scope_out_of_bounds[{scope} not in {cap.scope}]",
+                applied_rule="policy.cap.scope_mismatch",
+            )
+        return Decision(
+            allowed=True,
+            reason="capability.valid",
+            applied_rule="policy.cap.allow",
         )
 
     def can_emit(self, role: str, content: str) -> Decision:
