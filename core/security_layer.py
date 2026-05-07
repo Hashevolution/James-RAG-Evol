@@ -59,6 +59,69 @@ ATTACK_REGEX = [
     r"pretend\s+(you|to)",
 ]
 
+# ─── #8 Risky-coding policy (Axis 6) ────────────────────────
+# Hard-refuse policy: requests that *ask the model to produce a
+# destructive shell/SQL/file command* are blocked at pre_check, before
+# the LLM is called. The user gets the same "차단되었습니다" reason as
+# prompt-injection blocks (q11) — byte-identical 26-char response.
+#
+# This is distinct from prompt-injection (ATTACK_PATTERNS): those try
+# to subvert the system prompt. Risky-coding is a borderline case — the
+# user is asking a legitimate-looking question whose *answer* would
+# enable destructive action.
+#
+# Patterns are intentionally narrow: the trigger requires both a
+# destructive verb AND a scope marker ("all/every/모든/전체/wiki 폴더의"
+# etc.) so a documentation question like "rm -rf 옵션 설명해줘" is NOT
+# blocked unless paired with a target scope. See SECURITY.md §2.4 for
+# the policy decision and the "if blocked legitimately" escape hatch.
+RISKY_CODING_REGEX = [
+    # Explicit destructive shell commands (highest signal)
+    r"\brm\s+-rf\b",
+    r"\bdd\s+if=",
+    r"\bshred\s+",
+    r"\bmkfs\.",
+    r"\bdel\s+/[fsq]\s",
+    r"\brmdir\s+/s\s",
+    r"format\s+[a-z]:",
+    # SQL drop / truncate
+    r"\bdrop\s+(database|table|schema|index)\b",
+    r"\btruncate\s+table\b",
+    # Destructive git
+    r"\bgit\s+reset\s+--hard\b",
+    r"\bgit\s+push\s+(-f\b|--force\b)",
+    r"\bgit\s+clean\s+-[fdx]",
+    # Process kill
+    r"\bkill\s+-9\b",
+    r"\bkillall\s+",
+    # All-files / scope-wide deletion (English)
+    r"(delete|remove|wipe|erase)\s+(all|every|the entire|whole)\s+\S{0,15}\s*(files?|data|directory|folder)",
+    # All-files / scope-wide deletion (Korean) — q12 signature
+    r"(전체|모든|모든 파일|전부)\s*\S{0,20}\s*(삭제|지우|제거|초기화|포맷)",
+    r"(폴더|디렉토리|directory)\s*\S{0,15}\s*(통째로|모두|전부)\s*(삭제|지우)",
+    r"(데이터베이스|database|DB)\s*\S{0,10}\s*(삭제|drop|초기화|reset)",
+    r"(강제|force)\s*(푸시|push|reset|초기화)",
+]
+
+
+def detect_risky_coding(query: str) -> bool:
+    """[#8] True if `query` is asking the assistant to produce a
+    clearly-destructive shell/SQL/git/file command.
+
+    Distinct from `detect_attack` (prompt-injection). The match set is
+    deliberately narrow — see RISKY_CODING_REGEX comment. Block reason
+    is identical to the prompt-injection block so q11 / q12 are
+    indistinguishable to a downstream caller (one byte-identical
+    "차단되었습니다" response across all hard-refuse paths).
+    """
+    if not query:
+        return False
+    for pattern in RISKY_CODING_REGEX:
+        if re.search(pattern, query, flags=re.IGNORECASE):
+            return True
+    return False
+
+
 # [P4-SEC-1] Instruction Isolation 패턴
 INSTRUCTION_INJECTION_PATTERNS = [
     r"(당신은|너는|you are|you're)\s+.{0,30}(assistant|helper|agent|bot|ai)",
@@ -365,6 +428,25 @@ class SecurityLayer:
                         "query": query}
         except Exception as e:
             log_system_event("pre_check.detect", str(e), role=user_role)
+            return {"allowed": False, "reason": "보안 검사 실패", "query": query}
+
+        # 2.5. Risky-coding policy [#8 Axis 6] — hard-refuse for queries
+        # that ask the model to produce a clearly-destructive command.
+        # Distinct from prompt-injection (above): the user isn't trying
+        # to subvert the system, but answering would still enable harm.
+        # Same block reason as detect_attack so the response is
+        # byte-identical for both classes (audit / bench invariants).
+        try:
+            if detect_risky_coding(query):
+                log_attack(query, user_role, attack_type="risky_coding")
+                log_system_event("risky_coding_blocked", f"query={query[:80]}",
+                                 role=user_role, level="WARN")
+                print(f"[SECURITY] 🚨 위험 코딩 요청 차단 (role={user_role})")
+                return {"allowed": False,
+                        "reason": "자료에 없음. 보안 정책에 의해 차단되었습니다.",
+                        "query": query}
+        except Exception as e:
+            log_system_event("pre_check.risky_coding", str(e), role=user_role)
             return {"allowed": False, "reason": "보안 검사 실패", "query": query}
 
         # 3. Instruction Isolation [P4-SEC-1]

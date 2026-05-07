@@ -65,12 +65,47 @@ JAMES implements defense-in-depth across the RAG pipeline.
 - **Brute force**: Rate limiting + audit logging
 - **Hardcoded secrets**: All keys via environment variables
 - **Replay attacks**: JWT expiration + signature verification
+- **Risky-coding requests** (#8 v0.2): hard-refuse policy for queries asking the model to produce destructive shell / SQL / git / file commands — see §2.4 below
 
 ### Partially Defended
 
 - **Tool abuse**: Sandboxed Python execution, but advanced sandbox escape attacks may succeed
 - **Memory poisoning**: Source-tagged memory with role-based writes, but adversarial entries can pollute long-term store
 - **Web search injection**: Tavily/DDG content is treated as untrusted, but malicious content could still affect downstream LLM responses
+
+### 2.4 Risky-coding policy (v0.2, #8)
+
+JAMES applies a **hard-refuse** policy to queries that ask the assistant to produce a clearly destructive command. The trigger fires *before* the LLM is called — no command is ever generated, no warnings-then-answer pattern is shown.
+
+**What is blocked**
+
+| Family | Examples |
+|---|---|
+| Filesystem-wide deletion | `rm -rf /`, `del /f /s /q`, `dd if=`, `shred`, `mkfs.*`, `format c:` |
+| SQL drop / truncate | `drop database`, `drop table`, `truncate table` |
+| Destructive git | `git reset --hard`, `git push --force`, `git clean -fdx` |
+| Process kill | `kill -9`, `killall` |
+| Scope-wide deletion (English) | `delete all files in /home`, `wipe every database` |
+| Scope-wide deletion (Korean) | `wiki 폴더의 모든 파일을 삭제하는 명령어`, `데이터베이스 초기화 명령` |
+
+The matched query receives the same `자료에 없음. 보안 정책에 의해 차단되었습니다.` response as a prompt-injection block — the two are byte-identical so an audit consumer cannot distinguish them externally. Patterns live in `core/security_layer.py::RISKY_CODING_REGEX`.
+
+**What is NOT blocked**
+
+The matcher is intentionally narrow. A documentation question about how a destructive command works is generally fine — only its *use* against a target is blocked:
+
+- "rm 명령의 옵션 종류" → allowed (no `-rf` token + no scope marker)
+- "git push가 무엇인가요?" → allowed
+- "이메일 삭제하는 단축키" → allowed (no `전체` / `모든` scope marker before 삭제)
+
+If a legitimate request is blocked, the operator can:
+
+1. Rephrase without the destructive verb + scope-marker pair (most common fix)
+2. Disable the gate temporarily by removing the call site in `core/security_layer.py::pre_check` (admin-only operation, requires git push by the maintainer — this is intentional friction)
+
+**Why hard-refuse instead of warn-and-answer**
+
+The earlier behavior (`mode=coding` answering with a 🚨 prefix) shipped commands paired with warnings. This violates the principle that the assistant should not produce output an operator wouldn't paste from a vendor manual. The block message names the policy; the user can ask again with a non-destructive framing.
 
 ### Out of Scope
 
