@@ -98,7 +98,8 @@ class CharacterProfile:
 
     def _load(self):
         try:
-            from core.memory_store import MemoryStore, _connect
+            from core.memory import MemoryStore
+            from core.memory.store import _connect
             with _connect() as conn:
                 rows = conn.execute(
                     "SELECT key, value FROM preferences WHERE key LIKE 'trait:%'"
@@ -113,7 +114,7 @@ class CharacterProfile:
 
     def _save(self):
         try:
-            from core.memory_store import _connect
+            from core.memory.store import _connect
             now = datetime.now().isoformat()
             with _connect() as conn:
                 for tid, val in self._values.items():

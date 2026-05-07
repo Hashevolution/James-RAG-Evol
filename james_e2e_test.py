@@ -339,7 +339,7 @@ TEST_SESSION = f"e2e_test_{int(time.time())}"
 # 3-1. 대화 저장
 t0 = time.time()
 try:
-    from core.memory_store import MemoryStore
+    from core.memory import MemoryStore
     ms = MemoryStore()
     ok_save = ms.save_turn(
         session_id=TEST_SESSION,
@@ -354,7 +354,7 @@ except Exception as e:
 # 3-2. 히스토리 조회
 t0 = time.time()
 try:
-    from core.memory_store import MemoryStore
+    from core.memory import MemoryStore
     ms = MemoryStore()
     turns = ms.get_recent_turns(TEST_SESSION, limit=5)
     ok_hist = len(turns) >= 2  # user + assistant
@@ -367,7 +367,7 @@ except Exception as e:
 # 3-3. LLM 컨텍스트 주입
 t0 = time.time()
 try:
-    from core.memory_store import MemoryStore
+    from core.memory import MemoryStore
     ms = MemoryStore()
     ctx = ms.get_history_context(TEST_SESSION, limit=3)
     ok_ctx = bool(ctx) and "자메스" in ctx
@@ -380,7 +380,7 @@ except Exception as e:
 # 3-4. 장기 기억 (세션 요약)
 t0 = time.time()
 try:
-    from core.memory_store import MemoryStore
+    from core.memory import MemoryStore
     ms = MemoryStore()
     ok_summary = ms.save_session_summary(
         TEST_SESSION,
@@ -398,7 +398,7 @@ except Exception as e:
 # 3-5. Memory Extractor (중요 정보 추출)
 t0 = time.time()
 try:
-    from core.memory_extractor import extract_memory
+    from core.memory import extract_memory
     extracted = extract_memory(
         "앞으로 항상 간결하게 답변해줘. 내 이름은 관리자야.",
         response=""
@@ -413,7 +413,7 @@ except Exception as e:
 # 3-6. LOOM Gate (품질 필터)
 t0 = time.time()
 try:
-    from core.memory_loom import MemoryLoom
+    from core.memory import MemoryLoom
     loom = MemoryLoom()
     # store는 result dict를 받음
     result_low = {
@@ -794,7 +794,7 @@ s8 = 0
 # 8-1. P1-5: 페르소나 명령 감지
 t0 = time.time()
 try:
-    from core.memory_extractor import is_persona_command, extract_persona_command
+    from core.memory import is_persona_command, extract_persona_command
     cases = [
         ("J라고 불러줘",       True,  "persona_name"),
         ("앞으로 영어로 답해", True,  "persona_language"),
@@ -820,7 +820,7 @@ except Exception as e:
 # 8-2. P1-5: 페르소나 파싱 정확도
 t0 = time.time()
 try:
-    from core.memory_extractor import extract_persona_command
+    from core.memory import extract_persona_command
     result = extract_persona_command("J라고 불러줘")
     parse_ok = (result.get("name") == "J" and result.get("type") == "persona_name")
     s8 += step("P1-5: 이름 파싱 정확도",
@@ -879,7 +879,7 @@ except Exception as e:
 # 8-6. P3-4: 세션 목록 조회
 t0 = time.time()
 try:
-    from core.memory_store import MemoryStore
+    from core.memory import MemoryStore
     ms = MemoryStore()
     sessions = ms.get_all_sessions()
     session_ok = isinstance(sessions, list)

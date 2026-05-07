@@ -123,7 +123,7 @@ class ReasoningEngine:
         memory_context = ""
         system_prompt  = ""
         try:
-            from core.memory_store import MemoryStore
+            from core.memory import MemoryStore
             store         = MemoryStore()
             system_prompt = store.get_system_prompt()
             pref_context  = store.get_context(user_role)
@@ -165,11 +165,11 @@ class ReasoningEngine:
 
         # ── [P1-5] 페르소나 명령 감지 → 장기기억 즉시 저장 ──
         try:
-            from core.memory_extractor import is_persona_command, extract_persona_command
+            from core.memory import is_persona_command, extract_persona_command
             if is_persona_command(safe_query):
                 persona_data = extract_persona_command(safe_query)
                 if persona_data and persona_data.get("type") != "persona_unknown":
-                    from core.memory_store import MemoryStore as _MS
+                    from core.memory import MemoryStore as _MS
                     _ms = _MS()
                     p_type = persona_data.get("type", "")
                     # 호칭 변경 → 장기기억 (영속)
@@ -253,8 +253,8 @@ class ReasoningEngine:
 
             # Memory 추출 + 저장 (응답에 영향 없음)
             try:
-                from core.memory_extractor import extract_memory, validate_memory
-                from core.memory_store import MemoryStore
+                from core.memory import extract_memory, validate_memory
+                from core.memory import MemoryStore
                 candidate = extract_memory(safe_query, answer)
                 if validate_memory(candidate):
                     MemoryStore().save(candidate)
@@ -892,7 +892,7 @@ class ReasoningEngine:
         # ── Memory Loom 조건부 저장 [P5] ─────────────────────
         # Output Filter 이후, 검증된 결과에만 적용
         try:
-            from core.memory_loom import store_result
+            from core.memory import store_result
             if loop_state["graph_paths"] and not any(
                 answer.startswith(p) for p in ("답변 생성에 실패", "LLM 응답 생성 중 오류")
             ):

@@ -580,7 +580,7 @@ async def query(
     # [P7] 대화 히스토리 자동 저장
     if not result.get("blocked") and answer:
         try:
-            from core.memory_store import MemoryStore
+            from core.memory import MemoryStore
             MemoryStore().save_turn(
                 session_id = session_id,
                 question   = question,
@@ -899,7 +899,7 @@ async def get_history(
 ):
     verify_api_key(api_key)
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         turns = MemoryStore().get_recent_turns(session_id, limit)
         return {"session_id": session_id, "turns": turns, "count": len(turns)}
     except Exception as e:
@@ -913,7 +913,7 @@ async def get_sessions(
 ):
     verify_api_key(api_key)
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         return {"sessions": MemoryStore().get_all_sessions()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -933,7 +933,7 @@ async def rename_session(
     if len(name) > 60:
         raise HTTPException(status_code=400, detail="이름은 60자 이내")
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         ok = MemoryStore().set_session_name(session_id, name.strip())
         return {"success": ok, "session_id": session_id, "name": name}
     except Exception as e:
@@ -948,7 +948,7 @@ async def delete_history(
 ):
     verify_api_key(api_key)
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         ok = MemoryStore().delete_session(session_id)
         return {"success": ok, "session_id": session_id}
     except Exception as e:
@@ -967,7 +967,7 @@ async def summarize_session(
     """
     verify_api_key(api_key)
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         store = MemoryStore()
 
         # 해당 세션 대화 조회
@@ -1022,7 +1022,7 @@ async def get_long_term(
     """이전 세션 요약 목록 조회."""
     verify_api_key(api_key)
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         summaries = MemoryStore().get_session_summaries(limit)
         return {"summaries": summaries, "count": len(summaries)}
     except Exception as e:
@@ -1101,7 +1101,7 @@ async def save_rejection_memory(
     """[4-C] 거부 사유 → memory_store 장기기억 저장."""
     _require_admin(api_key, role)
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         ms  = MemoryStore()
         key = f"rejection:{data.proposal_id[:12]}"
         ms.save_preference({
@@ -1727,7 +1727,7 @@ async def admin_dashboard(api_key: str, role: str = Depends(get_role_from_reques
         pending_patches = len(list_patches("PENDING_APPROVAL"))
     except: pending_patches = 0
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         stats = MemoryStore().get_stats()
         memory_count = sum(v for v in stats.values() if isinstance(v, int))
     except: memory_count = 0
@@ -1830,7 +1830,8 @@ async def admin_entities(api_key: str, role: str = Depends(get_role_from_request
 async def admin_memory(api_key: str, role: str = Depends(get_role_from_request)):
     _require_admin(api_key, role)
     try:
-        from core.memory_store import MemoryStore, _connect
+        from core.memory import MemoryStore
+        from core.memory.store import _connect
         stats = MemoryStore().get_stats()
         with _connect() as conn:
             prefs = [dict(r) for r in conn.execute(
@@ -1907,7 +1908,7 @@ async def admin_settings_get(api_key: str, role: str = Depends(get_role_from_req
     _require_admin(api_key, role)
     from config import GEMMA_MODEL
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         persona = MemoryStore().get_persona()
     except Exception:
         persona = {}
@@ -1920,7 +1921,7 @@ async def admin_settings_get(api_key: str, role: str = Depends(get_role_from_req
 async def admin_persona_get(api_key: str, role: str = Depends(get_role_from_request)):
     verify_api_key(api_key)   # api_key만 검증 (role 무관)
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         return {"persona": MemoryStore().get_persona()}
     except Exception as e:
         return {"persona": {}, "error": str(e)}
@@ -1939,7 +1940,8 @@ async def admin_persona_set(data: PersonaRequest,
                              role: str = Depends(get_role_from_request)):
     verify_api_key(data.api_key)   # api_key만 검증 (role 무관)
     try:
-        from core.memory_store import MemoryStore, _connect
+        from core.memory import MemoryStore
+        from core.memory.store import _connect
         # persona 테이블 없으면 자동 생성
         with _connect() as conn:
             conn.execute("""

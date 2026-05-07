@@ -376,7 +376,7 @@ def run_reasoning_connection_tests():
         protected = [
             "core.graph_engine",
             "core.security_layer",
-            "core.memory_loom",
+            "core.memory.loom",
             "core.ontology",
         ]
         for module_name in protected:

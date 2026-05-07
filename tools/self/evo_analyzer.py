@@ -359,7 +359,7 @@ class EvoExecutor:
         meta    = proposal.get("metadata", {})
         changes = meta.get("changes", {})
 
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         store = MemoryStore()
         applied = []
         for key, value in changes.items():

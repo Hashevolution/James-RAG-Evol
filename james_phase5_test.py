@@ -226,12 +226,7 @@ def run_memory_loom_tests():
     print("="*55)
 
     try:
-        from core.memory_loom import (
-            MemoryLoom,
-            MAX_WRITES_PER_SESSION,
-            MEMORY_CONFIDENCE_TH,
-            MEMORY_DEDUP_WINDOW,
-        )
+        from core.memory import MemoryLoom, MAX_WRITES_PER_SESSION, MEMORY_CONFIDENCE_TH, MEMORY_DEDUP_WINDOW
     except ImportError as e:
         print(f"  ⚠️  import 실패: {e}"); return
 
@@ -348,7 +343,7 @@ def run_security_regression():
 
     try:
         from core.security_layer import SecurityLayer, detect_attack, check_access
-        from core.memory_loom import MemoryLoom
+        from core.memory import MemoryLoom
     except ImportError as e:
         print(f"  ⚠️  import 실패: {e}"); return
 

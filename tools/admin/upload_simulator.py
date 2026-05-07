@@ -111,7 +111,7 @@ def main():
     # ─── 5. Memory Trust 검증 ────────────────────────────
     print(f"\n{C}[5] Memory Trust 신뢰도 검증{E}")
     try:
-        from core.memory_trust import verify_before_write
+        from core.memory import verify_before_write
         ok, reason, score = verify_before_write(
             entity    = TEST_ENTITY,
             user_role = "admin",

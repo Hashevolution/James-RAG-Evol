@@ -46,7 +46,7 @@ james_users.db
 james_audit.db
 james_sessions.db
 chroma_db/
-memory/
+/memory/
 workspace/
 uploads/
 backups/

@@ -269,7 +269,7 @@ class WikiGenerator:
         """
         # ── Memory Trust 검증 ──────────────────────────────
         try:
-            from core.memory_trust import verify_before_write
+            from core.memory import verify_before_write
             ok, reason, score = verify_before_write(
                 entity    = entity,
                 user_role = user_role,

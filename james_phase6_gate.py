@@ -356,7 +356,7 @@ def run_memory_safety():
 
     def t_contamination_blocked():
         """오염 데이터 저장 시도 → Gate 차단"""
-        from core.memory_loom import MemoryLoom
+        from core.memory import MemoryLoom
         loom = MemoryLoom()
         # 오염 시나리오: low confidence + ontology_valid=False
         poisoned = {
@@ -372,7 +372,7 @@ def run_memory_safety():
 
     def t_conflict_no_accumulation():
         """conflict 발생 시 양쪽 모두 저장 안 됨 → 누적 방지"""
-        from core.memory_loom import MemoryLoom
+        from core.memory import MemoryLoom
         loom = MemoryLoom()
         base = {"confidence":0.9,"ontology_valid":True,"entity_id":"eC",
                 "relation_type":"IS_A","tail_id":"tC_original","text":"원본"}
@@ -387,7 +387,7 @@ def run_memory_safety():
 
     def t_write_rate_hard_limit():
         """세션당 MAX_WRITES=3 절대 초과 불가"""
-        from core.memory_loom import MemoryLoom, MAX_WRITES_PER_SESSION
+        from core.memory import MemoryLoom, MAX_WRITES_PER_SESSION
         loom = MemoryLoom()
         stored = 0
         for i in range(MAX_WRITES_PER_SESSION + 5):
@@ -400,7 +400,7 @@ def run_memory_safety():
 
     def t_write_log_traceable():
         """write log로 저장 내역 추적 가능"""
-        from core.memory_loom import MemoryLoom
+        from core.memory import MemoryLoom
         loom = MemoryLoom()
         loom.store({"confidence":0.9,"ontology_valid":True,
                     "entity_id":"eL","relation_type":"IS_A",
@@ -411,7 +411,7 @@ def run_memory_safety():
 
     def t_dedup_window_prevents_repeat():
         """DEDUP_WINDOW 내 동일 triple 반복 저장 불가"""
-        from core.memory_loom import MemoryLoom
+        from core.memory import MemoryLoom
         loom = MemoryLoom()
         entry = {"confidence":0.9,"ontology_valid":True,
                  "entity_id":"eD","relation_type":"IS_A","tail_id":"tD","text":"D"}
@@ -423,7 +423,7 @@ def run_memory_safety():
 
     def t_memory_trust_gate():
         """Memory Trust Score — threshold 미달 시 write 거부"""
-        from core.memory_trust import verify_before_write
+        from core.memory import verify_before_write
         # external role → trust=0.1 → score<0.5 → 거부
         entity = {"name":"테스트","type":"concept","relations":[]}
         ok_b, reason, score = verify_before_write(entity, "external", wiki_dir=None)

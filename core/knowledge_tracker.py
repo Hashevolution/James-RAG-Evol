@@ -188,7 +188,7 @@ class KnowledgeTracker:
 
     def _load(self):
         try:
-            from core.memory_store import _connect
+            from core.memory.store import _connect
             with _connect() as conn:
                 rows = conn.execute(
                     "SELECT key, value FROM preferences WHERE key LIKE 'domain:%'"
@@ -203,7 +203,7 @@ class KnowledgeTracker:
 
     def _save(self):
         try:
-            from core.memory_store import _connect
+            from core.memory.store import _connect
             now = datetime.now().isoformat()
             with _connect() as conn:
                 for d, v in self._scores.items():
