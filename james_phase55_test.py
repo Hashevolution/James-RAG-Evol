@@ -359,7 +359,7 @@ def run_reasoning_connection_tests():
 
     def t_execute_tool_connected():
         import inspect
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine.query)
         ok = "execute_tool" in src and "pending_actions" in src
         return ok, f"execute_tool 연결={ok} | pending_actions 조건부={ok}"
@@ -367,7 +367,7 @@ def run_reasoning_connection_tests():
     def t_tool_conditional_only():
         """actions 없으면 Tool 미실행 — 조건부"""
         import inspect
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine.query)
         # actions 있을 때만 실행하는 조건 확인
         ok = ("pending_actions" in src and
@@ -396,7 +396,7 @@ def run_reasoning_connection_tests():
     def t_security_still_first():
         """보안이 Tool보다 먼저 실행"""
         import inspect
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine.query)
         pre_idx  = src.find("pre_check")
         tool_idx = src.find("execute_tool")
@@ -405,7 +405,7 @@ def run_reasoning_connection_tests():
 
     def t_max_loop_unchanged():
         """MAX_LOOP=2 변경 없음"""
-        from core.reasoning_engine import MAX_LOOP
+        from core.reasoning import MAX_LOOP
         return MAX_LOOP == 2, f"MAX_LOOP={MAX_LOOP} (변경 없음)"
 
     for name, fn in [

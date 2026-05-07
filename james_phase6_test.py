@@ -109,19 +109,19 @@ def run_latency_checks():
 
     def t_timing_target_code():
         """코드에 30초 목표 설정 존재"""
-        import inspect, core.reasoning_engine as re_mod
+        import inspect, core.reasoning.engine as re_mod
         src = inspect.getsource(re_mod)
         ok = "TIMING_TARGET_SEC" in src or "30" in src
         return ok, f"30초 목표 코드 존재={ok}"
 
     def t_loop_timeout():
-        from core.reasoning_engine import LOOP_TIMEOUT, MAX_LOOP
+        from core.reasoning import LOOP_TIMEOUT, MAX_LOOP
         ok = LOOP_TIMEOUT <= 30 and MAX_LOOP == 2
         return ok, f"LOOP_TIMEOUT={LOOP_TIMEOUT}s MAX_LOOP={MAX_LOOP}"
 
     def t_context_limit():
         import inspect
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine._generate_answer)
         ok = "800" in src or "[:800]" in src
         return ok, f"context[:800] 제한={ok}"
@@ -720,7 +720,7 @@ def run_query_router_checks():
     def t_reasoning_engine_connected():
         """reasoning_engine에 QueryRouter 연결"""
         import inspect
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine.query)
         ok = "QueryRouter" in src and "mode" in src
         return ok, f"QueryRouter 연결={ok}"
@@ -728,7 +728,7 @@ def run_query_router_checks():
     def t_security_before_router():
         """보안이 Router보다 먼저"""
         import inspect
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine.query)
         ok = src.index("pre_check") < src.index("QueryRouter")
         return ok, f"pre_check(먼저) < QueryRouter"
@@ -831,7 +831,7 @@ def run_memory_checks():
     def t_reasoning_engine_memory():
         """reasoning_engine에 Memory 연결"""
         import inspect
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine.query)
         ok = "MemoryStore" in src and "extract_memory" in src
         return ok, f"MemoryStore+extract_memory 연결={ok}"

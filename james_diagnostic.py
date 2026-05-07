@@ -312,7 +312,7 @@ def run_graph_checks():
         try:
             from core.graph_engine import DEPTH_DECAY, DFS_SCORE_THRESHOLD, MAX_DEPTH
         except ImportError:
-            from core.reasoning_engine import MAX_LOOP
+            from core.reasoning import MAX_LOOP
             DEPTH_DECAY, DFS_SCORE_THRESHOLD, MAX_DEPTH = 0.7, 0.05, 4
         low_halt  = (0.1  * (DEPTH_DECAY**3)) < DFS_SCORE_THRESHOLD
         high_halt = (2.0  * (DEPTH_DECAY**3)) < DFS_SCORE_THRESHOLD
@@ -486,7 +486,7 @@ def run_phase4_checks():
     def t_timing_structure():
         """Phase 4.5: 타이밍 계측 로직은 reasoning_engine.py에 위치"""
         import inspect
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine.query)
         return "_elapsed" in src and "TIMING" in src, \
                f"_elapsed 계측 구조 존재 | TIMING 출력 존재", None
@@ -494,7 +494,7 @@ def run_phase4_checks():
     def t_context_limit():
         """Phase 4.5: context 800자 제한은 reasoning_engine._generate_answer에 위치"""
         import inspect
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine._generate_answer)
         return "800" in src or "context[:800]" in src, "context[:800] 제한 존재", None
 
@@ -612,7 +612,7 @@ def run_phase4_checks():
 
     def t_error_prefix_check():
         """Phase 4.5: _LLM_ERROR_PREFIXES, _NO_INFO_PATTERNS는 ReasoningEngine에 위치"""
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         ok = hasattr(ReasoningEngine,"_LLM_ERROR_PREFIXES") and hasattr(ReasoningEngine,"_NO_INFO_PATTERNS")
         return ok, "에러prefix체크+no_info패턴 속성 존재 (ReasoningEngine)", None
 

@@ -364,7 +364,7 @@ def run_security_regression():
     def t_security_before_jepa():
         """security pre_check가 JEPA보다 먼저 실행되는지 코드 확인"""
         import inspect
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine.query)
         pre_idx  = src.find("pre_check")
         jepa_idx = src.find("jepa_expand")
