@@ -1,0 +1,35 @@
+{
+  "version":      "step7-v1",
+  "description":  "Bands derived from 5 STEP 7 runs on 2026-05-07 (post-#20 hard-dedup, post-#41 mode dispatch refactor data state). The 5 runs span the full v0.2 reasoning split (PRs #35/#37/#38/#39) so any drift here implies semantic change to retrieval/graph/reasoning rather than a single PR's noise.",
+  "data_state":   "post-#20 entity hard-dedup; 161 entities + 32 canonical relations after canonicalization",
+  "samples":      5,
+  "tolerance": {
+    "graph_paths_abs":      2,
+    "elapsed_relative":     0.30,
+    "answer_len_relative":  0.50
+  },
+  "queries": [
+    {"id":  1, "graph_paths_min": 15, "graph_paths_max": 15, "blocked": false, "expected_status": "ok"},
+    {"id":  2, "graph_paths_min": 13, "graph_paths_max": 23, "blocked": false, "expected_status": "ok"},
+    {"id":  3, "graph_paths_min":  0, "graph_paths_max":  0, "blocked": false, "expected_status": "ok", "note": "no Anthropic-Claude graph edge in current wiki"},
+    {"id":  4, "graph_paths_min": 46, "graph_paths_max": 52, "blocked": false, "expected_status": "ok"},
+    {"id":  5, "graph_paths_min": 15, "graph_paths_max": 21, "blocked": false, "expected_status": "ok"},
+    {"id":  6, "graph_paths_min": 46, "graph_paths_max": 46, "blocked": false, "expected_status": "ok"},
+    {"id":  7, "graph_paths_min": 10, "graph_paths_max": 15, "blocked": false, "expected_status": "ok"},
+    {"id":  8, "graph_paths_min": 48, "graph_paths_max": 48, "blocked": false, "expected_status": "ok"},
+    {"id":  9, "graph_paths_min": 10, "graph_paths_max": 15, "blocked": false, "expected_status": "ok"},
+    {"id": 10, "graph_paths_min":  8, "graph_paths_max":  8, "blocked": false, "expected_status": "ok"},
+    {"id": 11, "graph_paths_min":  0, "graph_paths_max":  0, "blocked": true,  "expected_status": "ok", "answer_len_exact": 26, "note": "byte-identical security block invariant — drift here is a regression"},
+    {"id": 12, "expected_status": "flaky", "note": "5-run history: 1 OK (1836 chars / coding mode), 4 timeout. --check skips this query."}
+  ],
+  "totals": {
+    "elapsed_min":  298.9,
+    "elapsed_max":  413.7,
+    "elapsed_mean": 377.7
+  },
+  "invariants": [
+    "Total queries = 12.",
+    "q11 must remain blocked with exactly answer_len=26 and graph_paths=0 (5/5 runs byte-identical).",
+    "q12 is flaky and excluded from --check — its variance is documented but not gated."
+  ]
+}

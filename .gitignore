@@ -53,6 +53,8 @@ backups/
 
 # RAGAS run outputs (Issue #46) — committed baseline lives in eval/ragas/
 reports/ragas_*.json
+# bench.py per-run reports (Issue #45) — committed baseline lives in eval/regression/
+reports/bench_*.json
 
 # 사용자 PDF에서 추출된 wiki entity (개인 데이터, repo에 푸시 X)
 # 폴더 구조는 유지 (wiki_generator/wiki_reset가 자동 재생성)
