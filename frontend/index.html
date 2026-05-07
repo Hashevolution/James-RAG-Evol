@@ -365,6 +365,42 @@
   }
   .folder-input::placeholder { color: var(--muted); opacity: .6; }
 
+  /* ── 진행 표시 (Issue #14) ── */
+  .file-progress-row {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 4px;
+  }
+  .file-progress-bar {
+    flex: 1; height: 3px;
+    background: rgba(255,255,255,.06);
+    border-radius: 2px; overflow: hidden;
+  }
+  .file-progress-fill {
+    height: 100%; width: 0;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    transition: width .15s ease;
+  }
+  .file-progress-pct {
+    font-size: 9px; font-family: var(--font-mono);
+    color: var(--muted); min-width: 32px; text-align: right;
+  }
+  .queue-progress {
+    margin: 0 16px 8px; padding: 8px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 11px; font-family: var(--font-mono);
+  }
+  .queue-progress-text { color: var(--accent2); margin-bottom: 4px; word-break: break-all; }
+  .queue-progress-bar  {
+    height: 2px; background: rgba(255,255,255,.06);
+    border-radius: 1px; overflow: hidden;
+  }
+  .queue-progress-fill {
+    height: 100%; width: 0; background: var(--accent);
+    transition: width .2s ease;
+  }
+
   .upload-btn {
     margin: 0 16px 16px;
     width: calc(100% - 32px);
@@ -702,6 +738,12 @@
     </div>
 
     <div class="file-list" id="file-list"></div>
+
+    <!-- 큐 진행 표시 (Issue #14) — 다중 파일 업로드 동안 표시 -->
+    <div class="queue-progress" id="queue-progress" style="display:none;">
+      <div class="queue-progress-text" id="queue-progress-text"></div>
+      <div class="queue-progress-bar"><div class="queue-progress-fill" id="queue-progress-fill"></div></div>
+    </div>
 
     <button class="upload-btn" id="upload-btn" onclick="uploadFiles()" disabled>
       <span data-i18n="upload.btn_default">업로드 및 분석</span>

@@ -36,6 +36,7 @@ function addFiles(files) {
       id:          Date.now() + '_' + Math.random().toString(36).slice(2,6),
       status:      'ready',
       instruction: '',   // 파일별 저장 지시
+      xhr:         null, // in-flight XMLHttpRequest (set during upload, cleared after)
     };
     uploadQueue.push(item);
     renderFileItem(item);
@@ -43,13 +44,25 @@ function addFiles(files) {
   updateUploadBtn();
 }
 
-/* ── 파일 제거 ── */
-function removeFile(id) {
+/* ── 파일 제거 또는 진행 중 취소 ──
+ *  Issue #14: when upload is in flight (item.status === 'upload' and xhr
+ *  exists), the same per-file button now aborts the XMLHttpRequest instead
+ *  of removing from the queue. The 'abort' handler in uploadOne() then
+ *  surfaces it as `error` with label '취소됨'.
+ */
+function removeOrCancel(id) {
+  const item = uploadQueue.find(i => String(i.id) === String(id));
+  if (item && item.status === 'upload' && item.xhr) {
+    try { item.xhr.abort(); } catch (_) {}
+    return;   // do not remove DOM yet — uploadFiles loop will reach the catch and re-render
+  }
   uploadQueue = uploadQueue.filter(i => String(i.id) !== String(id));
   const el = document.getElementById(`file-${id}`);
   if (el) el.remove();
   updateUploadBtn();
 }
+// Backwards-compat alias for any inline onclick that still calls removeFile
+function removeFile(id) { removeOrCancel(id); }
 
 /* ── 업로드 버튼 상태 ── */
 function updateUploadBtn() {
@@ -91,7 +104,11 @@ function renderFileItem(item) {
         <div class="file-size">${formatSize(item.file.size)}</div>
       </div>
       <span class="file-status status-ready" id="status-${item.id}">대기</span>
-      <button class="remove-btn" onclick="removeFile('${item.id}')" title="제거">✕</button>
+      <button class="remove-btn" id="action-${item.id}" onclick="removeOrCancel('${item.id}')" title="제거">✕</button>
+    </div>
+    <div class="file-progress-row" id="progress-${item.id}" style="display:none;">
+      <div class="file-progress-bar"><div class="file-progress-fill" id="progress-fill-${item.id}"></div></div>
+      <span class="file-progress-pct" id="progress-pct-${item.id}">0%</span>
     </div>
     <div class="file-folder-row">
       <span class="folder-icon">📂</span>
@@ -118,8 +135,37 @@ function setStatus(id, status, label) {
   if (!el) return;
   el.className = `file-status status-${status}`;
   el.textContent = label;
-  const btn = el.parentElement?.querySelector('.remove-btn');
-  if (btn) btn.style.display = (status === 'ready' || status === 'error') ? '' : 'none';
+  // Action button: stays visible across all states; title swaps to '취소' during upload.
+  const btn = document.getElementById(`action-${id}`);
+  if (btn) {
+    if (status === 'upload')      { btn.style.display = ''; btn.title = '취소'; }
+    else if (status === 'done')   { btn.style.display = 'none'; }
+    else                           { btn.style.display = ''; btn.title = '제거'; }
+  }
+  // Per-file progress bar visible only during upload.
+  const prog = document.getElementById(`progress-${id}`);
+  if (prog) prog.style.display = (status === 'upload') ? '' : 'none';
+}
+
+function setProgress(id, pct) {
+  const fill = document.getElementById(`progress-fill-${id}`);
+  if (fill) fill.style.width = pct + '%';
+  const lbl  = document.getElementById(`progress-pct-${id}`);
+  if (lbl)  lbl.textContent = pct + '%';
+}
+
+/* ── 큐 진행 표시 (Issue #14) ──
+ *  pass `total + 1` for current to hide the queue indicator after the run.
+ */
+function setQueueProgress(current, total, filename) {
+  const box = document.getElementById('queue-progress');
+  if (!box) return;
+  if (current > total || total <= 0) { box.style.display = 'none'; return; }
+  box.style.display = '';
+  const txt = document.getElementById('queue-progress-text');
+  if (txt) txt.textContent = `업로드 중 ${current}/${total} — ${filename}`;
+  const fill = document.getElementById('queue-progress-fill');
+  if (fill) fill.style.width = Math.round(((current - 1) / total) * 100) + '%';
 }
 
 /* ── 전체 공통 지시 → 빈 파일에 적용 ── */
@@ -135,6 +181,53 @@ function applyGlobalInstruction() {
   });
 }
 
+/* ── 단일 파일 업로드 (XHR + progress) — Issue #14 ──
+ *  fetch()로는 upload progress 이벤트를 받을 수 없어 XMLHttpRequest로
+ *  바꿨다. xhr.upload.onprogress가 e.loaded/e.total을 주므로 파일별
+ *  진행률을 실시간 표시한다. xhr.abort()로 in-flight 취소 가능.
+ *
+ *  반환: 성공 시 server JSON, 실패/취소 시 throw (메시지 'aborted'/네트워크 등).
+ */
+function uploadOne(item) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    item.xhr = xhr;
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        setProgress(item.id, Math.round((e.loaded / e.total) * 100));
+      }
+    });
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try { resolve(JSON.parse(xhr.responseText || '{}')); }
+        catch (_) { reject(new Error('invalid JSON response')); }
+      } else {
+        let detail = `${xhr.status} ${xhr.statusText}`;
+        try {
+          const body = JSON.parse(xhr.responseText || '{}');
+          if (body && body.detail) detail = body.detail;
+        } catch (_) {}
+        reject(new Error(detail));
+      }
+    });
+    xhr.addEventListener('error', () => reject(new Error('network error')));
+    xhr.addEventListener('abort', () => reject(new Error('aborted')));
+
+    const form = new FormData();
+    form.append('file',        item.file);
+    form.append('api_key',     getApiKey());
+    form.append('source_type', SOURCE_TYPE);
+    if (item.instruction.trim())
+      form.append('instruction', item.instruction.trim());
+
+    xhr.open('POST', `${API}/upload/`);
+    const tok = localStorage.getItem('james_token') || '';
+    if (tok) xhr.setRequestHeader('Authorization', `Bearer ${tok}`);
+    xhr.send(form);
+  });
+}
+
 /* ── 업로드 실행 ── */
 async function uploadFiles() {
   const pending = uploadQueue.filter(i => i.status === 'ready');
@@ -147,33 +240,19 @@ async function uploadFiles() {
   btn.disabled = true;
   btn.textContent = '업로드 중...';
 
-  const tok = localStorage.getItem('james_token') || '';
   let successCount = 0;
   const results = [];
+  const total   = pending.length;
 
-  for (const item of pending) {
+  for (let idx = 0; idx < pending.length; idx++) {
+    const item = pending[idx];
+    item.status = 'upload';
     setStatus(item.id, 'upload', '전송 중');
+    setProgress(item.id, 0);
+    setQueueProgress(idx + 1, total, item.file.name);
     try {
-      const form = new FormData();
-      form.append('file',        item.file);
-      form.append('api_key',     getApiKey());
-      form.append('source_type', SOURCE_TYPE);
-      if (item.instruction.trim())
-        form.append('instruction', item.instruction.trim());
-
-      const headers = {};
-      if (tok) headers['Authorization'] = `Bearer ${tok}`;
-
-      const r = await fetch(`${API}/upload/`, {
-        method: 'POST', headers, body: form,
-      });
-
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({}));
-        throw new Error(err.detail || `${r.status} ${r.statusText}`);
-      }
-
-      const data = await r.json();
+      const data = await uploadOne(item);
+      setProgress(item.id, 100);
       setStatus(item.id, 'done', '완료');
       item.status = 'done';
       successCount++;
@@ -182,14 +261,18 @@ async function uploadFiles() {
         instruction: item.instruction,
         ...data,
       });
-
     } catch (err) {
-      setStatus(item.id, 'error', `실패: ${err.message.slice(0,20)}`);
+      const aborted = err && err.message === 'aborted';
+      const label   = aborted ? '취소됨' : `실패: ${(err.message || '').slice(0,20)}`;
+      setStatus(item.id, 'error', label);
       item.status = 'error';
-      console.error(`업로드 실패: ${item.file.name}`, err);
+      if (!aborted) console.error(`업로드 실패: ${item.file.name}`, err);
+    } finally {
+      item.xhr = null;
     }
   }
 
+  setQueueProgress(total + 1, total, '');   // hide
   btn.textContent = '업로드 및 분석';
   updateUploadBtn();
 

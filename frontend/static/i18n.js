@@ -107,6 +107,10 @@ const TRANSLATIONS = {
     'upload.category':       'Category: {cat}',
     'upload.sensitivity':    'Security: {level}',
     'upload.complete_msg':   'Upload complete:\n\n{summary}',
+    'upload.cancel':         'Cancel',
+    'upload.aborted':        'Cancelled',
+    'upload.queue_progress': 'Uploading {current}/{total} — {filename}',
+    'upload.percent':        '{pct}%',
 
     'admin.dashboard':       'Dashboard',
     'admin.users':           'Users',
@@ -415,6 +419,10 @@ const TRANSLATIONS = {
     'upload.category':       '분류: {cat}',
     'upload.sensitivity':    '보안: {level}',
     'upload.complete_msg':   '파일 업로드 완료:\n\n{summary}',
+    'upload.cancel':         '취소',
+    'upload.aborted':        '취소됨',
+    'upload.queue_progress': '업로드 중 {current}/{total} — {filename}',
+    'upload.percent':        '{pct}%',
 
     'admin.dashboard':       '대시보드',
     'admin.users':           '사용자',
