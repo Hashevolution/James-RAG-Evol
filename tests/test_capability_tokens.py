@@ -40,11 +40,41 @@ class CapabilityIssueTests(unittest.TestCase):
         self.assertGreater(cap.expires_at, cap.issued_at)
         self.assertEqual(len(cap.token_id), 32)   # uuid4 hex
 
-    def test_non_admin_issuance_denied(self):
+    def test_fs_write_admin_only(self):
+        # Phase 3-2: fs.write stays admin-only.
         for role in ("employee", "manager", "external", "", "unknown"):
             with self.subTest(role=role):
                 cap = self.engine.issue_capability(role, "fs.write", "./workspace/")
                 self.assertIsNone(cap)
+
+    def test_fs_read_employee_and_above(self):
+        # Phase 3-2: fs.read relaxed to employee+ (level >= 1).
+        for role in ("employee", "manager", "admin"):
+            with self.subTest(role=role):
+                cap = self.engine.issue_capability(role, "fs.read", "./workspace/")
+                self.assertIsNotNone(cap, msg=f"{role} should issue fs.read")
+                self.assertEqual(cap.action, "fs.read")
+
+    def test_fs_read_external_denied(self):
+        cap = self.engine.issue_capability("external", "fs.read", "./workspace/")
+        self.assertIsNone(cap)
+
+    def test_shell_exec_admin_only(self):
+        for role in ("employee", "manager", "external", "unknown"):
+            with self.subTest(role=role):
+                cap = self.engine.issue_capability(role, "shell.exec", "*")
+                self.assertIsNone(cap)
+        cap = self.engine.issue_capability("admin", "shell.exec", "*")
+        self.assertIsNotNone(cap)
+
+    def test_unknown_action_falls_back_to_admin(self):
+        # Fail-closed: anything not in _TOOL_ACTION_MIN_ROLE → admin-only.
+        for role in ("employee", "manager", "external"):
+            with self.subTest(role=role):
+                cap = self.engine.issue_capability(role, "made.up.action", "*")
+                self.assertIsNone(cap)
+        cap = self.engine.issue_capability("admin", "made.up.action", "*")
+        self.assertIsNotNone(cap)
 
     def test_invalid_ttl_rejected(self):
         for ttl in (0, -1, -60):
@@ -56,6 +86,29 @@ class CapabilityIssueTests(unittest.TestCase):
         a = self.engine.issue_capability("admin", "fs.write", "./workspace/")
         b = self.engine.issue_capability("admin", "fs.write", "./workspace/")
         self.assertNotEqual(a.token_id, b.token_id)
+
+
+class CanCallToolDecisionTests(unittest.TestCase):
+    """Phase 3-2: can_call_tool returns the right applied_rule per action."""
+
+    def setUp(self):
+        self.engine = PolicyEngine()
+
+    def test_applied_rule_per_action(self):
+        for action in ("fs.read", "fs.write", "shell.exec", "tool.invoke"):
+            with self.subTest(action=action):
+                d = self.engine.can_call_tool("admin", action)
+                self.assertEqual(d.applied_rule, f"policy.tool.{action}")
+
+    def test_fs_read_employee_allowed_decision(self):
+        d = self.engine.can_call_tool("employee", "fs.read")
+        self.assertTrue(d.allowed)
+        self.assertIn("employee_ge_employee", d.reason)
+
+    def test_fs_write_employee_denied_decision(self):
+        d = self.engine.can_call_tool("employee", "fs.write")
+        self.assertFalse(d.allowed)
+        self.assertIn("employee_lt_admin", d.reason)
 
 
 class CapabilityVerifyTests(unittest.TestCase):

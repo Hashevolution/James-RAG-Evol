@@ -177,12 +177,19 @@ def run_tool_system_tests():
         return not missing, f"필수 보호파일 포함 | 누락={missing}"
 
     def t_router_user_blocked():
-        """user role → PROTECTED_FILES 접근 차단"""
+        """user role → PROTECTED_FILES 접근 차단
+
+        Phase 3-2 (#44): "user" is unknown to ROLE_LEVEL, so the
+        capability gate fires first → CAPABILITY_DENIED is now an
+        accepted (and strictly stronger) block reason.
+        """
         from tools.router import execute_tool
         action  = {"name":"read_file","input":{"path":"core/security_layer.py"}}
         context = {"user_role":"user"}
         result  = execute_tool(action, context)
-        ok = result.get("error") in ("PROTECTED", "DENIED", "UNKNOWN_TOOL")
+        ok = result.get("error") in (
+            "PROTECTED", "DENIED", "UNKNOWN_TOOL", "CAPABILITY_DENIED",
+        )
         return ok, f"user PROTECTED 차단: {result.get('error')}"
 
     def t_router_admin_override():

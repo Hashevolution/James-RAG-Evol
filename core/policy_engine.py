@@ -20,10 +20,10 @@ Design notes:
   - `Decision` is frozen + carries `applied_rule` for audit-log correlation.
   - Methods take primitives (role + dict), no engine state. Trivially
     mockable in tests, stateless in production.
-  - `can_call_tool` is intentionally restrictive in phase 1 (admin-only)
-    until the capability-token model lands. Existing `tools/router.py`
-    admin gates remain authoritative — call sites MAY bypass this method
-    during phases 1-2.
+  - `can_call_tool` consults `_TOOL_ACTION_MIN_ROLE` (phase 3-2): per-
+    action policy with admin-only fallback. `tools/router.py` is now the
+    single chokepoint that issues + verifies capabilities through this
+    engine; sandbox path/command checks remain as defense-in-depth.
   - `TrustedContent` is defined now so its identity stays stable across
     the migration PRs that will start returning it from extractors.
 """
@@ -86,6 +86,23 @@ class Capability:
     def is_expired(self, now: Optional[float] = None) -> bool:
         """True if `now` (default: time.time()) is at-or-past expiry."""
         return (now if now is not None else time.time()) >= self.expires_at
+
+
+# Phase 3-2 (#44): canonical capability-action → minimum role required.
+# The mapping is consulted by `PolicyEngine.can_call_tool` and therefore
+# also by `issue_capability` (which gates issuance through the same
+# decision). Unknown actions fall through to admin-only — fail-closed,
+# preserving the phase 3-1 baseline.
+#
+# Action-name scheme is intentionally namespaced ("fs.*", "shell.*") so
+# new tool families (e.g. "net.fetch", "db.query") can be added without
+# disturbing existing entries. Roles use the same vocabulary as
+# `core.security_layer.ROLE_LEVEL`.
+_TOOL_ACTION_MIN_ROLE: Dict[str, str] = {
+    "fs.read":    "employee",
+    "fs.write":   "admin",
+    "shell.exec": "admin",
+}
 
 
 def _scope_contains(cap_scope: str, requested: str) -> bool:
@@ -153,27 +170,42 @@ class PolicyEngine:
         tool:  str,
         args:  Optional[Dict[str, Any]] = None,
     ) -> Decision:
-        """Tool execution: may this role invoke this tool with these args?
+        """Tool execution: may this role invoke this action?
 
-        Phase 1/3-1: admin-only — preserved bit-for-bit so the
-        `issue_capability()` issuance gate keeps the same surface as the
-        legacy `tools/router.py::execute_tool` admin gate. Per-action
-        relaxation (e.g. fs.read for employees) is deferred to phase 3-2
-        when router migrates onto this method; today no production caller
-        depends on it.
+        Phase 3-2 (#44): action-typed gate. The decision consults
+        `_TOOL_ACTION_MIN_ROLE` to map a canonical action id to the
+        minimum role level required, using `ROLE_LEVEL` from
+        `core.security_layer` for the comparison. Unknown actions
+        fall back to admin-only — fail-closed by design.
+
+        Action policy (current):
+          - "fs.read"     → employee+   (read_file / list_files / analysis)
+          - "fs.write"    → admin       (code editor / patch apply)
+          - "shell.exec"  → admin       (sandbox subprocess)
+          - any other     → admin       (legacy router gate, unchanged)
 
         Args:
-          role:  caller role.
-          tool:  tool name (e.g. "read_file", "execute_command", or
-                 capability-action like "fs.write").
-          args:  reserved for capability-token scope match in phase 3-2+
-                 (currently ignored).
+          role:  caller role (must exist in `ROLE_LEVEL`; unknown
+                 roles are treated as below `external` and denied).
+          tool:  canonical capability-action id. Tool *names* (e.g.
+                 "read_file") are mapped to actions by the router —
+                 callers should pass actions, not raw tool names.
+          args:  reserved for scope-aware decisions; ignored here.
+                 Path scope is enforced by `verify_capability`.
         """
-        ok = (role == "admin")
+        from core.security_layer import ROLE_LEVEL
+        min_role       = _TOOL_ACTION_MIN_ROLE.get(tool, "admin")
+        caller_level   = ROLE_LEVEL.get(role,     -1)
+        required_level = ROLE_LEVEL.get(min_role, ROLE_LEVEL["admin"])
+        ok = caller_level >= required_level
         return Decision(
             allowed=ok,
-            reason="role.is_admin" if ok else "role.not_admin",
-            applied_rule="policy.tool.admin_only",
+            reason=(
+                f"role.{role or 'unknown'}_ge_{min_role}"
+                if ok
+                else f"role.{role or 'unknown'}_lt_{min_role}"
+            ),
+            applied_rule=f"policy.tool.{tool}",
         )
 
     def issue_capability(
@@ -189,15 +221,15 @@ class PolicyEngine:
         If the policy denies issuance, returns None and the caller MUST
         treat that as a hard refusal (do not fall back to legacy gates).
 
-        Phase 3-1: routers/sandboxes do not yet require capability tokens —
-        the existing admin/path checks remain authoritative. This method
-        exists so phase 3-2 can flip the contract atomically.
+        Phase 3-2: `tools/router.py::execute_tool` issues a capability for
+        every tool invocation through this method, then calls
+        `verify_capability` immediately before dispatch. Sandbox path /
+        command checks remain in place as defense-in-depth.
 
         Args:
           role:         caller role.
           action:       canonical action id (e.g. "fs.read", "fs.write",
-                        "shell.exec"). Free-form for now; phase 3-2 may
-                        formalize the namespace.
+                        "shell.exec"). Mapped via `_TOOL_ACTION_MIN_ROLE`.
           scope:        path-prefix or "*"; see `_scope_contains`.
           ttl_seconds:  token lifetime; default 60s matches issue
                         recommendation in #44.
