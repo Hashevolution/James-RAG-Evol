@@ -41,6 +41,13 @@ Usage from a request handler:
 Fire-and-forget: `log_stage` swallows IO errors so a disk-full event
 never crashes a live query. Failures are silent — the request still
 succeeds and the operator notices via missing traces.
+
+Console mirror (operator workflow):
+  Set `JAMES_TRACE_STDOUT=1` before launching the server to mirror
+  every `log_stage` line to stdout in addition to the JSONL file. This
+  restores the pre-#67 PowerShell debug-watcher workflow without
+  rolling back the per-trace file design. Default off — production
+  consoles stay clean, the JSONL files remain authoritative.
 """
 from __future__ import annotations
 
@@ -140,15 +147,25 @@ def log_stage(stage: str, **fields) -> None:
         "ts_ns":    time.time_ns(),
         **fields,
     }
+    line = json.dumps(entry, ensure_ascii=False, default=str)
     try:
         path = _trace_file_for(tid)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False, default=str) + "\n")
+            f.write(line + "\n")
     except Exception:
         # Silent — observability must never wedge a request on disk
         # failure. Operators see the gap (missing trace) and act.
         pass
+    # Optional stdout mirror — restores the pre-#67 PowerShell
+    # debug-watcher workflow. Toggled per-process via env var so a
+    # production deploy stays quiet by default. Wrapped in try so a
+    # cp949 console encoding crash can never wedge a live request.
+    if os.getenv("JAMES_TRACE_STDOUT", "").strip() in ("1", "true", "TRUE", "yes"):
+        try:
+            print(f"[trace {tid[:8]}] {line}", flush=True)
+        except Exception:
+            pass
 
 
 def read_trace(trace_id: str, day: Optional[str] = None) -> list:

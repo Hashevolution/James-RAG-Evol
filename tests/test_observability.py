@@ -189,5 +189,101 @@ class TraceFileLayoutTests(unittest.TestCase):
             self.assertEqual(obj["trace_id"], tid)
 
 
+class StdoutMirrorTests(unittest.TestCase):
+    """JAMES_TRACE_STDOUT toggle — restores the pre-#67 PowerShell
+    debug-watcher workflow without rolling back per-trace JSONL files.
+    Default off (production stays quiet); env=1 mirrors every line to
+    stdout. The mirror must never break the JSONL write contract."""
+
+    def setUp(self):
+        from core.observability import set_trace_root, current_trace_id
+        self._tmp = tempfile.TemporaryDirectory()
+        set_trace_root(Path(self._tmp.name))
+        current_trace_id.set("")
+        self._orig_env = os.environ.get("JAMES_TRACE_STDOUT")
+
+    def tearDown(self):
+        from core.observability import set_trace_root
+        set_trace_root(None)
+        self._tmp.cleanup()
+        if self._orig_env is None:
+            os.environ.pop("JAMES_TRACE_STDOUT", None)
+        else:
+            os.environ["JAMES_TRACE_STDOUT"] = self._orig_env
+
+    def _capture_stdout(self, fn):
+        import io
+        from contextlib import redirect_stdout
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            fn()
+        return buf.getvalue()
+
+    def test_stdout_silent_by_default(self):
+        from core.observability import start_trace, log_stage
+        os.environ.pop("JAMES_TRACE_STDOUT", None)
+        def run():
+            start_trace()
+            log_stage("retrieve", top_k=8)
+        out = self._capture_stdout(run)
+        self.assertEqual(out, "",
+                         "log_stage must NOT print when JAMES_TRACE_STDOUT unset")
+
+    def test_stdout_mirrors_when_enabled(self):
+        from core.observability import start_trace, log_stage
+        os.environ["JAMES_TRACE_STDOUT"] = "1"
+        captured = {}
+        def run():
+            captured["tid"] = start_trace()
+            log_stage("retrieve", top_k=8, top_vector_score=0.82)
+        out = self._capture_stdout(run)
+        self.assertIn("[trace ", out, "stdout mirror missing trace prefix")
+        self.assertIn(captured["tid"][:8], out,
+                      "stdout mirror must include trace_id short form")
+        self.assertIn('"stage": "retrieve"', out,
+                      "stdout mirror must contain the JSONL line")
+        self.assertIn('"top_k": 8', out)
+
+    def test_stdout_truthy_variants(self):
+        from core.observability import start_trace, log_stage
+        for val in ("1", "true", "TRUE", "yes"):
+            os.environ["JAMES_TRACE_STDOUT"] = val
+            def run():
+                start_trace()
+                log_stage("smoke")
+            out = self._capture_stdout(run)
+            self.assertIn("[trace ", out, f"value {val!r} should enable mirror")
+
+    def test_stdout_falsy_variants_stay_silent(self):
+        from core.observability import start_trace, log_stage
+        for val in ("0", "false", "no", ""):
+            os.environ["JAMES_TRACE_STDOUT"] = val
+            def run():
+                start_trace()
+                log_stage("smoke")
+            out = self._capture_stdout(run)
+            self.assertEqual(out, "", f"value {val!r} must not enable mirror")
+
+    def test_jsonl_still_written_when_mirror_enabled(self):
+        # The mirror is additive — JSONL file write must still succeed.
+        from core.observability import start_trace, log_stage, read_trace
+        os.environ["JAMES_TRACE_STDOUT"] = "1"
+        def run():
+            tid = start_trace()
+            log_stage("retrieve", top_k=8)
+            return tid
+        tid = None
+        # Use the capture helper just to keep the test stdout clean
+        import io
+        from contextlib import redirect_stdout
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            tid = run()
+        rows = read_trace(tid)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["stage"], "retrieve")
+        self.assertEqual(rows[0]["top_k"], 8)
+
+
 if __name__ == "__main__":
     unittest.main()
