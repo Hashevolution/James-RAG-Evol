@@ -291,6 +291,10 @@ class QueryRequest(BaseModel):
     # Non-admin callers see no behavior change — the field is silently
     # dropped from the response shape.
     include_contexts: bool = False
+    # Response shape control — brief / standard / detailed. Empty
+    # string falls through to JAMES_RESPONSE_STYLE env then `standard`.
+    # See core/response_style.py for the resolver and preset defs.
+    response_style:   str  = ""
 
 class QueryResponse(BaseModel):
     question:       str
@@ -596,6 +600,7 @@ async def query(
         user_role        = role,
         session_id       = session_id,
         session_language = data.session_language,  # [STEP2-A] 세션 언어
+        response_style   = data.response_style,    # brief/standard/detailed
     )
     elapsed = time.time() - t_start
 

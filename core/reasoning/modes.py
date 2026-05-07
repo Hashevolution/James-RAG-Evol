@@ -32,7 +32,11 @@ def handle_chat(
     memory_context: str,
     user_role: str,
     t_start: float,
+    response_style: str = "",
 ) -> Dict[str, Any]:
+    from core.response_style import resolve_style
+    style = resolve_style(response_style)
+
     t_direct = time.time()
     try:
         # system_prompt + memory_context 주입
@@ -40,7 +44,7 @@ def handle_chat(
         mem_prefix = f"{memory_context}\n\n" if memory_context else ""
         raw_answer = engine.llm.call_gemma(
             f"{sys_prefix}{mem_prefix}질문: {safe_query}\n\n답변:",
-            use_cache=True, timeout=60, max_tokens=2000,
+            use_cache=True, timeout=60, max_tokens=style.max_tokens,
         )
         # [P7-FIX] 글자 사이 \n 제거 → 세로줄 방지
         if raw_answer:

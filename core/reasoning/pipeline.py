@@ -34,6 +34,7 @@ def run_retrieval_pipeline(
     user_role: str,
     source_type: str,
     t_start: float,
+    response_style: str = "",
 ) -> Dict[str, Any]:
     # ── STEP 0.5b: query expansion [P5] ──────────────────
     # core/query_expander.py (was core/jepa_adapter.py — 단순 동의어
@@ -307,15 +308,19 @@ def run_retrieval_pipeline(
                 combined_context = web_clean + "\n\n" + safe_context
             else:
                 combined_context = safe_context
+            from core.response_style import resolve_style as _resolve_style
+            _style = _resolve_style(response_style)
             answer_raw = engine.llm.call_gemma(
                 f"{sys_prefix}"
                 f"{'[웹 검색 결과 포함]' if web_context else ''}"
                 f"\n질문: {safe_query}\n\n답변:",
-                use_cache=(not web_context), timeout=90, max_tokens=2000,
+                use_cache=(not web_context), timeout=90,
+                max_tokens=_style.max_tokens,
             ) if not combined_context.strip() else engine._generate_answer(
                 safe_query,
                 combined_context,
-                system_prompt
+                system_prompt,
+                response_style=response_style,
             )
             answer_raw = answer_raw if answer_raw else ""
 
@@ -325,19 +330,21 @@ def run_retrieval_pipeline(
                 print(f"[ROUTER] retrieval_fallback (score={unified_score:.3f}) → LLM 직접")
                 answer = answer_raw
             else:
-                answer = engine._generate_answer(safe_query, safe_context, system_prompt)
+                answer = engine._generate_answer(safe_query, safe_context, system_prompt, response_style=response_style)
         else:
             # 관련 자료 있음 → System Prompt + RAG 컨텍스트 + LLM 답변
-            answer = engine._generate_answer(safe_query, safe_context, system_prompt)
+            answer = engine._generate_answer(safe_query, safe_context, system_prompt, response_style=response_style)
 
         # [P7] "자료 없음" 단독 응답(추론 없음)이면 system_prompt 포함 재시도
         _no_data = ("자료에 없음. 관련된", "답변 생성에 실패", "LLM 응답 생성 중 오류")
         if answer and any(answer.startswith(p) for p in _no_data):
             sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
+            from core.response_style import resolve_style as _resolve_style
+            _style_retry = _resolve_style(response_style)
             retry = engine.llm.call_gemma(
                 f"{sys_prefix}질문: {safe_query}\n\n"
                 "📚 자료 기반: 관련 내부 자료 없음\n💡 추론:",
-                use_cache=False, timeout=60, max_tokens=2000,
+                use_cache=False, timeout=60, max_tokens=_style_retry.max_tokens,
             )
             if retry and not any(retry.startswith(p) for p in engine._LLM_ERROR_PREFIXES):
                 print(f"[ROUTER] post_check → 재시도 (persona 포함)")

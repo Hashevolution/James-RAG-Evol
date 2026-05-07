@@ -95,6 +95,7 @@ class ReasoningEngine:
         user_role:   str        = None,
         source_type: Optional[str] = "prod",   # [P4.5-2] 기본 prod
         session_id:  str        = "default",   # [P7-FIX] 메모리 시스템 연동
+        response_style: str     = "",          # brief / standard / detailed — see core/response_style.py
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -232,7 +233,7 @@ class ReasoningEngine:
 
         # ── Mode dispatch (#29 phase 2: extracted to core/reasoning/modes.py) ──
         if mode == "chat":
-            return handle_chat(self, safe_query, system_prompt, memory_context, user_role, t_start)
+            return handle_chat(self, safe_query, system_prompt, memory_context, user_role, t_start, response_style=response_style)
         if mode == "wiki_edit":
             return handle_wiki_edit(self, safe_query, system_prompt, user_role, t_start)
         if mode == "self_evolve":
@@ -246,6 +247,7 @@ class ReasoningEngine:
         from core.reasoning.pipeline import run_retrieval_pipeline
         return run_retrieval_pipeline(
             self, safe_query, system_prompt, user_role, source_type, t_start,
+            response_style=response_style,
         )
 
 
@@ -283,8 +285,19 @@ class ReasoningEngine:
         return "general"
 
     def _generate_answer(self, question: str, context: str,
-                          system_prompt: str = "") -> str:
-        """RAG context + LLM 자유 추론. 한/영 자동 감지."""
+                          system_prompt: str = "",
+                          response_style: str = "") -> str:
+        """RAG context + LLM 자유 추론. 한/영 자동 감지.
+
+        `response_style`: brief / standard / detailed — see
+        `core/response_style.py`. Empty string falls through to env
+        var then `standard` default. Brief drops the 📚/💡 structural
+        rule entirely; standard/detailed keep it but with different
+        token caps.
+        """
+        from core.response_style import resolve_style
+        style = resolve_style(response_style)
+
         safe_q    = RetrievalEngine._sanitize(question, 300)
         sys_block = f"{system_prompt}\n\n" if system_prompt else ""
 
@@ -297,42 +310,50 @@ class ReasoningEngine:
             lbl_data = "📚 Data-based"
             lbl_inf  = "💡 Reasoning"
             no_data  = "No relevant internal data"
-            rule_txt = (
-                "Answer structure:\n"
-                "📚 Data-based: (facts from internal data only, or 'No relevant data')\n"
-                "💡 Reasoning: (free analysis using data + knowledge)\n"
-                "Rules: Both sections required. Data-based = confirmed facts only.\n"
-            )
+            rule_txt = style.rule_text_en
         else:
             lbl_data = "📚 자료 기반"
             lbl_inf  = "💡 추론"
             no_data  = "관련 내부 자료 없음"
-            rule_txt = (
-                "답변 구조:\n"
-                "📚 자료 기반: (내부 자료 사실만. 없으면 '관련 자료 없음')\n"
-                "💡 추론: (자료와 지식을 연결한 자유 분석)\n"
-                "규칙: 두 섹션 모두 작성. 자료 기반은 확인된 사실만.\n"
-            )
+            rule_txt = style.rule_text_ko
 
         if context and len(context.strip()) >= 50:
-            prompt = (
-                f"{sys_block}"
-                f"[{'Internal Data' if is_en else '내부 자료'}]\n{context[:1000]}\n\n"
-                f"[{'Question' if is_en else '질문'}]\n{safe_q}\n\n"
-                f"{rule_txt}\n"
-                f"{'Answer' if is_en else '답변'}:\n"
-            )
+            if style.force_two_sections:
+                prompt = (
+                    f"{sys_block}"
+                    f"[{'Internal Data' if is_en else '내부 자료'}]\n{context[:1000]}\n\n"
+                    f"[{'Question' if is_en else '질문'}]\n{safe_q}\n\n"
+                    f"{rule_txt}\n"
+                    f"{'Answer' if is_en else '답변'}:\n"
+                )
+            else:
+                # brief: no 📚/💡 split — single concise paragraph.
+                prompt = (
+                    f"{sys_block}"
+                    f"[{'Internal Data' if is_en else '내부 자료'}]\n{context[:1000]}\n\n"
+                    f"[{'Question' if is_en else '질문'}]\n{safe_q}\n\n"
+                    f"{rule_txt}"
+                    f"{'Answer' if is_en else '답변'}:\n"
+                )
         else:
-            prompt = (
-                f"{sys_block}"
-                f"[{'Question' if is_en else '질문'}]\n{safe_q}\n\n"
-                f"{lbl_data}: {no_data}\n{lbl_inf}:\n"
-            )
+            if style.force_two_sections:
+                prompt = (
+                    f"{sys_block}"
+                    f"[{'Question' if is_en else '질문'}]\n{safe_q}\n\n"
+                    f"{lbl_data}: {no_data}\n{lbl_inf}:\n"
+                )
+            else:
+                prompt = (
+                    f"{sys_block}"
+                    f"[{'Question' if is_en else '질문'}]\n{safe_q}\n\n"
+                    f"{rule_txt}"
+                    f"{'Answer' if is_en else '답변'}:\n"
+                )
 
         try:
             answer = self.llm.call_gemma(
                 prompt, timeout=120, use_cache=True,
-                max_tokens=2000,   # 긴 답변 허용 (기존 700 → 2000)
+                max_tokens=style.max_tokens,
             )
             if not answer or any(answer.startswith(p) for p in self._LLM_ERROR_PREFIXES):
                 return "답변 생성에 실패했습니다."
