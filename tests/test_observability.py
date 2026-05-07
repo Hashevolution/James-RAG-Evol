@@ -190,10 +190,10 @@ class TraceFileLayoutTests(unittest.TestCase):
 
 
 class StdoutMirrorTests(unittest.TestCase):
-    """JAMES_TRACE_STDOUT toggle — restores the pre-#67 PowerShell
-    debug-watcher workflow without rolling back per-trace JSONL files.
-    Default off (production stays quiet); env=1 mirrors every line to
-    stdout. The mirror must never break the JSONL write contract."""
+    """JAMES_TRACE_STDOUT toggle — mirrors per-trace JSONL lines to
+    stdout for the operator workflow. v2 default is ON (single-user
+    operator setup is the dominant case); set =0/false/no to silence.
+    The JSONL file write must never be affected by the mirror state."""
 
     def setUp(self):
         from core.observability import set_trace_root, current_trace_id
@@ -219,66 +219,75 @@ class StdoutMirrorTests(unittest.TestCase):
             fn()
         return buf.getvalue()
 
-    def test_stdout_silent_by_default(self):
+    def test_stdout_mirrors_by_default(self):
+        # v2: env unset → mirror ON (operator workflow default).
         from core.observability import start_trace, log_stage
         os.environ.pop("JAMES_TRACE_STDOUT", None)
-        def run():
-            start_trace()
-            log_stage("retrieve", top_k=8)
-        out = self._capture_stdout(run)
-        self.assertEqual(out, "",
-                         "log_stage must NOT print when JAMES_TRACE_STDOUT unset")
-
-    def test_stdout_mirrors_when_enabled(self):
-        from core.observability import start_trace, log_stage
-        os.environ["JAMES_TRACE_STDOUT"] = "1"
         captured = {}
         def run():
             captured["tid"] = start_trace()
-            log_stage("retrieve", top_k=8, top_vector_score=0.82)
+            log_stage("retrieve", top_k=8)
         out = self._capture_stdout(run)
-        self.assertIn("[trace ", out, "stdout mirror missing trace prefix")
-        self.assertIn(captured["tid"][:8], out,
-                      "stdout mirror must include trace_id short form")
-        self.assertIn('"stage": "retrieve"', out,
-                      "stdout mirror must contain the JSONL line")
-        self.assertIn('"top_k": 8', out)
+        self.assertIn("[trace ", out,
+                      "v2 default must mirror to stdout when env unset")
+        self.assertIn(captured["tid"][:8], out)
 
-    def test_stdout_truthy_variants(self):
+    def test_stdout_silent_when_explicitly_off(self):
         from core.observability import start_trace, log_stage
-        for val in ("1", "true", "TRUE", "yes"):
+        for val in ("0", "false", "FALSE", "no"):
             os.environ["JAMES_TRACE_STDOUT"] = val
             def run():
                 start_trace()
                 log_stage("smoke")
+            out = self._capture_stdout(run)
+            self.assertEqual(out, "",
+                             f"JAMES_TRACE_STDOUT={val!r} must silence mirror")
+
+    def test_stdout_silent_when_empty_string(self):
+        # Explicit empty string also silences — distinguishes "operator
+        # set this to empty on purpose" from "env unset" (the latter
+        # uses the default-on path).
+        from core.observability import start_trace, log_stage
+        os.environ["JAMES_TRACE_STDOUT"] = ""
+        def run():
+            start_trace()
+            log_stage("smoke")
+        out = self._capture_stdout(run)
+        self.assertEqual(out, "",
+                         "empty-string env must silence mirror")
+
+    def test_stdout_mirrors_when_explicitly_on(self):
+        from core.observability import start_trace, log_stage
+        captured = {}
+        for val in ("1", "true", "TRUE", "yes", "anything"):
+            os.environ["JAMES_TRACE_STDOUT"] = val
+            def run():
+                captured["tid"] = start_trace()
+                log_stage("retrieve", top_k=8, top_vector_score=0.82)
             out = self._capture_stdout(run)
             self.assertIn("[trace ", out, f"value {val!r} should enable mirror")
+            self.assertIn(captured["tid"][:8], out)
+            self.assertIn('"stage": "retrieve"', out)
+            self.assertIn('"top_k": 8', out)
 
-    def test_stdout_falsy_variants_stay_silent(self):
-        from core.observability import start_trace, log_stage
-        for val in ("0", "false", "no", ""):
-            os.environ["JAMES_TRACE_STDOUT"] = val
-            def run():
-                start_trace()
-                log_stage("smoke")
-            out = self._capture_stdout(run)
-            self.assertEqual(out, "", f"value {val!r} must not enable mirror")
-
-    def test_jsonl_still_written_when_mirror_enabled(self):
-        # The mirror is additive — JSONL file write must still succeed.
+    def test_jsonl_still_written_when_mirror_silenced(self):
+        # The mirror state must not affect JSONL file writes — silencing
+        # the console must NOT silence the file (and vice versa).
         from core.observability import start_trace, log_stage, read_trace
-        os.environ["JAMES_TRACE_STDOUT"] = "1"
+        os.environ["JAMES_TRACE_STDOUT"] = "0"
         def run():
             tid = start_trace()
             log_stage("retrieve", top_k=8)
             return tid
         tid = None
-        # Use the capture helper just to keep the test stdout clean
         import io
         from contextlib import redirect_stdout
         buf = io.StringIO()
         with redirect_stdout(buf):
             tid = run()
+        # Stdout silenced
+        self.assertEqual(buf.getvalue(), "")
+        # JSONL still written
         rows = read_trace(tid)
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["stage"], "retrieve")
