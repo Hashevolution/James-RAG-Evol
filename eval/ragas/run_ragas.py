@@ -107,18 +107,100 @@ def _build_embeddings():
     return LangchainEmbeddingsWrapper(_LocalSentenceTransformerEmbeddings(model_path))
 
 
-def _load_fixture(path: Path) -> List[dict]:
+def _load_fixture(path: Path, live: bool = False) -> List[dict]:
+    """Load and validate a fixture file.
+
+    In offline mode (default) every row must already carry RAGAS's full
+    required set (`user_input`, `retrieved_contexts`, `response`,
+    `reference`). In `--live` mode the fixture only needs `user_input`
+    and `reference`; the runner will fill `retrieved_contexts` and
+    `response` from the live `/query/` endpoint.
+    """
     raw = json.loads(path.read_text(encoding="utf-8"))
     rows = raw.get("rows") or []
     if not rows:
         raise RuntimeError(f"fixture {path} has no rows")
-    # Validate every required field exists (RAGAS will fail cryptically otherwise)
-    required = ("user_input", "retrieved_contexts", "response", "reference")
+    required = ("user_input", "reference") if live else (
+        "user_input", "retrieved_contexts", "response", "reference",
+    )
     for i, r in enumerate(rows):
         missing = [k for k in required if k not in r]
         if missing:
             raise RuntimeError(f"fixture row {i}: missing fields {missing}")
     return rows
+
+
+# ─── #65 phase 3: live /query/ driver ────────────────────────
+
+def _load_api_key() -> str:
+    """Mirror `scripts/bench.py::_load_api_key`. Read from JAMES_API_KEY env
+    var, falling back to the project's `.env` file (utf-8-sig-tolerant)."""
+    import os
+    env_v = os.environ.get("JAMES_API_KEY")
+    if env_v:
+        return env_v.strip()
+    env_path = ROOT / ".env"
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8-sig").splitlines():
+            if line.startswith("JAMES_API_KEY="):
+                return line.split("=", 1)[1].strip()
+    raise RuntimeError(
+        "JAMES_API_KEY not found in .env or environment. "
+        "Set it before running with --live."
+    )
+
+
+def _drive_live(rows: List[dict], base_url: str, timeout: int) -> List[dict]:
+    """For each fixture row, POST `user_input` to `/query/` and replace
+    `retrieved_contexts` + `response` with the live server's answer.
+
+    The endpoint requires admin role (for `include_contexts=true`); the
+    runner uses `JAMES_API_KEY` for auth. `session_id` is unique per row
+    so the conversation memory does not bleed between rows.
+
+    Rows the server returns blocked / errored are kept with empty
+    contexts and a placeholder response — RAGAS will mark them NaN and
+    drop them from the metric mean (same handling the offline path
+    already gets).
+    """
+    import requests
+    api_key = _load_api_key()
+    print(f"[RAGAS] live driver → {base_url}/query/ ({len(rows)} rows)")
+
+    out: List[dict] = []
+    for i, r in enumerate(rows, start=1):
+        payload = {
+            "api_key":          api_key,
+            "question":         r["user_input"],
+            "session_id":       f"ragas_live_{i}",
+            "include_contexts": True,
+        }
+        try:
+            t0 = time.time()
+            resp = requests.post(
+                f"{base_url}/query/", json=payload, timeout=timeout,
+            )
+            elapsed = round(time.time() - t0, 1)
+            data = resp.json() if resp.status_code == 200 else {}
+        except Exception as e:
+            print(f"[RAGAS]   row {i}: live query failed — {e}")
+            data, elapsed = {}, 0.0
+
+        contexts = data.get("retrieved_contexts") or []
+        response = data.get("answer") or ""
+        if data.get("blocked"):
+            print(f"[RAGAS]   row {i}: BLOCKED in {elapsed}s")
+        else:
+            print(f"[RAGAS]   row {i}: {len(contexts)} ctx, "
+                  f"{len(response)} chars, {elapsed}s")
+
+        out.append({
+            "user_input":         r["user_input"],
+            "retrieved_contexts": contexts,
+            "response":           response,
+            "reference":          r["reference"],
+        })
+    return out
 
 
 # RAGAS metrics fall into two families with different reproducibility
@@ -225,11 +307,28 @@ def main() -> int:
         help="DESTRUCTIVE: extend baseline bands from this run "
              "(use only on intentional scope-change PRs)",
     )
+    ap.add_argument(
+        "--live", action="store_true",
+        help="drive each fixture row through /query/ on a running JAMES server "
+             "(replaces pre-baked retrieved_contexts/response with live data)",
+    )
+    ap.add_argument(
+        "--base-url", default="http://127.0.0.1:8000",
+        help="JAMES server base URL for --live (default: http://127.0.0.1:8000)",
+    )
+    ap.add_argument(
+        "--live-timeout", type=int, default=120,
+        help="per-query timeout in seconds for --live (default: 120)",
+    )
     args = ap.parse_args()
 
     fixture_path = Path(args.fixture)
-    rows = _load_fixture(fixture_path)
-    print(f"[RAGAS] loaded {len(rows)} rows from {fixture_path.name}")
+    rows = _load_fixture(fixture_path, live=args.live)
+    print(f"[RAGAS] loaded {len(rows)} rows from {fixture_path.name}"
+          + (" (live mode)" if args.live else ""))
+
+    if args.live:
+        rows = _drive_live(rows, args.base_url, args.live_timeout)
 
     # Build engines lazily so an import error in optional deps is reported
     # with context rather than a cryptic top-level traceback.

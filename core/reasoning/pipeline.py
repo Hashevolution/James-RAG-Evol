@@ -386,6 +386,12 @@ def run_retrieval_pipeline(
         "graph_paths":   loop_state["graph_paths"],
         "graph_used":    len(loop_state["graph_context"]),
         "sources":       [d.get("source", "unknown") for d in loop_state["docs"][:3]],
+        # [#65 phase 3] full chunk texts that fed the LLM, surfaced for
+        # RAGAS `context_precision` / `context_recall` evaluation against
+        # the live retrieval path. The /query/ endpoint admin-gates the
+        # exposure; consumers outside the endpoint already see the same
+        # data via `loop_state["docs"]` if they hold the engine.
+        "retrieved_contexts": [d.get("text", "") for d in loop_state["docs"]],
         "blocked":       False,
         "timing_sec":    round(total, 2),
         "unified_score": round(unified_score if "unified_score" in dir() else 0.0, 3),

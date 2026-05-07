@@ -284,6 +284,13 @@ class QueryRequest(BaseModel):
     source_type:      str = "prod"
     session_id:       str = "default"   # 대화 세션 구분
     session_language: str = ""          # [STEP2-A] 세션 언어 (빈 문자열=기본)
+    # [#65 phase 3] admin-only debug field. When True AND the resolved
+    # role is "admin", the response carries `retrieved_contexts` (the
+    # actual chunk texts that fed the LLM). Used by `eval/ragas/run_ragas.py
+    # --live` to drive RAGAS evaluation against the live retrieval path.
+    # Non-admin callers see no behavior change — the field is silently
+    # dropped from the response shape.
+    include_contexts: bool = False
 
 class QueryResponse(BaseModel):
     question:       str
@@ -297,6 +304,8 @@ class QueryResponse(BaseModel):
     mode:           str   = ""
     session_id:     str   = ""
     direction_id:   str   = ""
+    # [#65 phase 3] populated only when request.include_contexts AND role==admin.
+    retrieved_contexts: Optional[list] = None
 
 class UploadResponse(BaseModel):
     status:      str
@@ -641,7 +650,7 @@ async def query(
     except Exception:
         pass
 
-    return {
+    response = {
         "question":      question,
         "answer":        answer,
         "sources":       result.get("sources", []),
@@ -656,6 +665,13 @@ async def query(
             result.get("mode",""), question
         ) if not result.get("blocked") else "",
     }
+    # [#65 phase 3] admin-only RAGAS evaluation hook. The chunk texts that
+    # fed the LLM are surfaced only when (a) caller opted in via
+    # `include_contexts=true` AND (b) resolved role is "admin". Other
+    # roles see the same response shape as before.
+    if data.include_contexts and role == "admin":
+        response["retrieved_contexts"] = result.get("retrieved_contexts", [])
+    return response
 
 
 @app.get("/status/", response_model=StatusResponse, summary="서버 상태")
