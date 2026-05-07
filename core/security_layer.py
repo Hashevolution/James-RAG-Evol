@@ -162,7 +162,12 @@ def check_access(user_role: str, entity: dict) -> bool:
     return ROLE_LEVEL.get(user_role, 0) >= SENSITIVITY_LEVEL.get(sensitivity, 0)
 
 def filter_graph_by_abac(graph_context: list, user_role: str) -> list:
-    return [e for e in graph_context if check_access(user_role, e)]
+    # #44 phase 2-B: graph ABAC routes through PolicyEngine.can_walk so future
+    # graph-specific policy (depth caps, relation-type guards) lands in one
+    # place. PolicyEngine.can_walk currently delegates back to check_access
+    # bit-for-bit (#50). Lazy import avoids module-load cycle.
+    from core.policy_engine import default_engine as _policy
+    return [e for e in graph_context if _policy.can_walk(user_role, e).allowed]
 
 # ─── [P4-SEC-2] ABAC 3단계 일관성 검증 ─────────────────────
 
