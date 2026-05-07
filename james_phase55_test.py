@@ -13,6 +13,10 @@ Phase 5.5 통과 기준:
   [P55-6] 감사 로그   — tool_used + protected_block + admin_override 기록
   [P55-7] 보안 유지   — Core Engine 무수정 + 기존 보안 100% 유지
 """
+# Reconfigure stdout to UTF-8 before any top-level prints (this script emits
+# Korean banners + emoji on import). See utils/console.py for rationale.
+from utils.console import ensure_utf8_console
+ensure_utf8_console()
 
 import sys
 import os

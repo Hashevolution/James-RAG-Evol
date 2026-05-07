@@ -29,6 +29,10 @@ PROJECT JAMES — E2E 통합 테스트 (Phase 1~7 유기적 연결 검증)
   james_phase7_test.py    ← 유지 (파일 구조 확인)
   이 파일                 ← 신규 (전체 유기적 E2E)
 """
+# Reconfigure stdout to UTF-8 before any top-level prints (this script emits
+# Korean banners + emoji on import). See utils/console.py for rationale.
+from utils.console import ensure_utf8_console
+ensure_utf8_console()
 
 import sys, os, json, re, time, traceback
 from pathlib import Path

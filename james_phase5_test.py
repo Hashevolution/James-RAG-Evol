@@ -15,6 +15,10 @@ Phase 5 통과 기준:
   [P5-7] 기존 DFS node 3~5 유지
   [P5-8] 기존 GraphRAG 응답 품질 저하 없음
 """
+# Reconfigure stdout to UTF-8 before any top-level prints (this script emits
+# Korean banners + emoji on import). See utils/console.py for rationale.
+from utils.console import ensure_utf8_console
+ensure_utf8_console()
 
 import sys
 import time

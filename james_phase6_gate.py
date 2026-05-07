@@ -18,6 +18,10 @@ Phase 6 진입 체크리스트:
   A등급 (≥90%) → 실패 항목 수정 후 재검증
   B등급 이하   → Phase 6 진입 금지
 """
+# Reconfigure stdout to UTF-8 before any top-level prints (this script emits
+# Korean banners + emoji on import). See utils/console.py for rationale.
+from utils.console import ensure_utf8_console
+ensure_utf8_console()
 
 import sys
 import time

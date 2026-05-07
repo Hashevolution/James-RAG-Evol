@@ -17,6 +17,10 @@ Phase 6 통과 기준:
   [P6-8] Query Router 분기 동작    ← 신규
   [P6-9] Memory Step 1 동작        ← 신규
 """
+# Reconfigure stdout to UTF-8 before any top-level prints (this script emits
+# Korean banners + emoji on import). See utils/console.py for rationale.
+from utils.console import ensure_utf8_console
+ensure_utf8_console()
 
 import sys
 import os

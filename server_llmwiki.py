@@ -9,6 +9,13 @@ Phase 4 변경:
   [P4-SRV-5] Instruction Isolation 문서 업로드 시 적용
 """
 
+# Reconfigure stdout/stderr to UTF-8 BEFORE any imports that print (config.py
+# emits banner lines on import). Otherwise non-ASCII chars in any TIMING /
+# diagnostic print path crash with UnicodeEncodeError on Windows cp949 console
+# and propagate up to FastAPI as HTTP 400. Same helper used by admin scripts (#2/#24).
+from utils.console import ensure_utf8_console
+ensure_utf8_console()
+
 import os
 import sqlite3
 import uuid
