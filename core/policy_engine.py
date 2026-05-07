@@ -8,7 +8,8 @@ bit. Subsequent migration PRs will:
             `PolicyEngine.can_retrieve / can_walk / can_emit` (one PR per
             consumer: retrieval, graph, output).
   Phase 3 — sandbox migration to capability tokens (`can_call_tool`).
-  Phase 4 — multimodal extractor outputs wrapped in `TrustedContent`.
+  Phase 4 — multimodal extractor outputs wrapped in `TrustedContent`,
+            funneled through `quarantine()` before joining LLM context.
 
 After all four phases, direct `check_access` imports outside of
 `security_layer.py` (the implementation backend) and `policy_engine.py`
@@ -30,7 +31,7 @@ Design notes:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -141,6 +142,48 @@ class PolicyEngine:
             allowed=True,
             reason="policy.emit.always_allow_v1",
             applied_rule="policy.emit.passthrough",
+        )
+
+    def quarantine(self, content: TrustedContent) -> Tuple[str, Decision]:
+        """[#44 phase 4] Single chokepoint for content entering LLM context.
+
+        Low-trust sources (web search results, OCR text, ASR transcripts,
+        vision captions) carry adversarial risk: a poisoned page or image
+        can embed prompt-injection strings ("ignore previous instructions
+        and ...") that piggyback on the requester's role. The reasoning
+        pipeline must funnel every such string through this method
+        before joining it into the LLM context.
+
+        Behavior:
+          - trust == "low":   route through `extract_data_only()`, which
+                              neutralizes injection patterns in place.
+                              Returns the cleaned text + a Decision whose
+                              reason carries `modified={bool}` for audit
+                              correlation.
+          - trust == "medium" / "high": pass through unchanged. The
+                              "user" source (direct query) is the canonical
+                              high-trust case; "doc" (internal corpus) is
+                              already sanitized at ingestion via
+                              `sanitize_document_content`.
+
+        Returns:
+          (sanitized_text, decision). Always allowed in phase 4 — the
+          method is a sanitization chokepoint, not a deny gate. Future
+          phases may escalate to deny on critical patterns.
+        """
+        if content.trust == "low":
+            from core.security_layer import extract_data_only
+            clean, modified = extract_data_only(content.text)
+            return clean, Decision(
+                allowed=True,
+                reason=f"quarantine.low_trust.modified={modified}",
+                applied_rule="policy.quarantine.low_trust",
+            )
+
+        return content.text, Decision(
+            allowed=True,
+            reason=f"quarantine.passthrough.trust_{content.trust}",
+            applied_rule="policy.quarantine.passthrough",
         )
 
 

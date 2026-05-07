@@ -272,7 +272,18 @@ def run_retrieval_pipeline(
                 print(f"[WEB] 검색 모듈 오류: {we}")
 
             # 웹 검색 결과 있으면 컨텍스트에 포함
-            combined_context = (web_context + "\n\n" if web_context else "") + safe_context
+            # #44 phase 4: web 결과는 low-trust → PolicyEngine.quarantine 통과
+            # ("ignore previous instructions" 류 injection 패턴 중립화).
+            # safe_context 는 이미 retrieval/graph 단계의 ABAC + 문서 ingestion 시
+            # sanitize_document_content() 를 거친 high-trust 영역이므로 추가 처리 없음.
+            if web_context:
+                from core.policy_engine import default_engine, TrustedContent
+                web_clean, _ = default_engine.quarantine(
+                    TrustedContent(text=web_context, source="web", trust="low")
+                )
+                combined_context = web_clean + "\n\n" + safe_context
+            else:
+                combined_context = safe_context
             answer_raw = engine.llm.call_gemma(
                 f"{sys_prefix}"
                 f"{'[웹 검색 결과 포함]' if web_context else ''}"
