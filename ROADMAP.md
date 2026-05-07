@@ -3,6 +3,9 @@
 > **Note**: This roadmap describes intended directions, not commitments.
 > Priorities will shift based on user feedback and real-world testing.
 
+For the underlying readiness framework (6 dimensions, gate criteria,
+branching forms), see [`docs/PLATFORM_READINESS.md`](docs/PLATFORM_READINESS.md).
+
 ---
 
 ## v0.1.0 — Foundation (current, alpha)
@@ -127,76 +130,132 @@ The following moved to v0.3 to keep v0.2 focused:
 
 ---
 
-## v0.3.0 — Multi-Agent + Graph DB (~6 months)
+## v0.3.0 — Platform Skeleton (~6 months after v0.2)
 
-**Theme**: Scale beyond single-user, optional graph DB backend.
+**Theme**: define and freeze the extension contract that all future
+domain packs will be built against.
 
-### Priorities
+**Required for**: any domain pack work (forbidden until this gate passes).
 
-- **Optional Neo4j backend**
-  - Migrate from markdown wiki to graph DB
-  - Cypher query support
-  - Backward compatibility with markdown
+### Deliverables
 
-- **Multi-agent system**
-  - Specialist agents (researcher, coder, security)
-  - Agent-to-agent communication
-  - Task decomposition + delegation
+- [ ] `core/plugins/base.py` — typed interfaces for 4 plugin types:
+  - `OntologyPack` (entity types, relations, hierarchies)
+  - `PromptPack` (system prompts, few-shot examples per task)
+  - `UIPanel` (server-rendered admin/user widgets)
+  - `Scorer` (custom retrieval/answer scoring overrides)
+- [ ] `core/plugins/loader.py` — `JAMES_PLUGINS=general,reference`
+      env-driven dynamic loader; signed manifest; SemVer enforcement
+- [ ] `packs/general/` — JAMES's default behavior extracted as a
+      pack (dogfood gate: removing it disables JAMES; swapping changes
+      domain)
+- [ ] `docs/PLUGIN_AUTHORING.md` — author guide
+- [ ] `JAMES_WORKSPACE=` env var for multi-instance hosting (same
+      code, different data root)
+- [ ] SemVer + 12-month deprecation policy committed to
+      `docs/VERSIONING.md`
+- [ ] Eval contract: every pack passes RAGAS + STEP-N before merge
 
-- **Better evaluation**
-  - Automated benchmarking
-  - Comparison with other RAG systems
-  - Domain-specific accuracy tests
+### Done when
 
-- **API improvements**
-  - OpenAI-compatible API for drop-in replacement
-  - Streaming responses
-  - Webhook support
+- A new contributor can build a no-op pack from `docs/PLUGIN_AUTHORING.md`
+  alone in < 1 day, load it, and observe its effect.
+- The dogfood test passes: `packs/general/` produces byte-identical
+  STEP 7 results to v0.2 main; deleting the pack breaks the server
+  cleanly with a clear "no pack loaded" error.
+
+### Out of scope (deferred to v0.4)
+
+- Any domain-specific pack (legal, food, retail)
+- External plugin marketplace
+- Plugin signing infrastructure beyond manifest hash
 
 ---
 
-## v1.0.0 — Production Hardening (~12 months)
+## v0.4.0 — First Domain Pilot (~6 months after v0.3)
 
-**Theme**: Enterprise-ready features.
+**Theme**: prove the platform contract by running ONE real domain
+in production for 6 months with one external customer.
 
-### Priorities
+**Required for**: a second domain pack (forbidden until this gate passes).
 
-- **Multi-tenancy**
-  - Per-tenant data isolation
-  - Per-tenant model selection
-  - Quota management
+### Deliverables
 
-- **HTTPS + Production deployment**
-  - Default TLS configuration
-  - Docker deployment guide
-  - Kubernetes Helm charts
+- [ ] **One** domain pack chosen from informal candidates
+      (likely `packs/legal/` or `packs/food/`)
+      — selection criteria: signed PoC interest + clear legal
+      liability boundary
+- [ ] Customer onboarding playbook (`docs/CUSTOMER_ONBOARDING.md`)
+- [ ] External red-team pass on prompt injection
+      (replaces pattern-only defense with ML guard + patterns)
+- [ ] Public eval results in `eval/RESULTS.md` (mother + first pack)
+- [ ] 6-month no-core-regression production track record
 
-- **Compliance preparation**
-  - GDPR data deletion support
-  - SOC 2 audit log requirements
-  - Data residency options
+### Done when
 
-- **Advanced security**
-  - Rate limit per role / per endpoint
-  - Anomaly detection on audit log
-  - Optional 2FA
+- One paying or formal-PoC customer has run the deployment for
+  6 months with no core code change attributable to their domain
+  needs (only pack-level changes).
 
-- **Operational tooling**
-  - Backup / restore CLI
-  - Migration scripts
-  - Health check endpoint
-  - Prometheus metrics
+### Out of scope
+
+- A second domain pack
+- Vertical Product packaging
+- Public marketplace
+
+---
+
+## v1.0.0 — Production-Grade Mother (~6 months after v0.4)
+
+**Theme**: make domain branching safe for outsiders. After this gate,
+external developers can publish their own packs.
+
+### Deliverables
+
+- [ ] HTTPS / SSO / SAML / LDAP — production defaults
+- [ ] Multi-tenancy (per-tenant data isolation, per-tenant pack
+      selection, quota management)
+- [ ] SOC 2 or ISO 27001 readiness assessment
+- [ ] Backup / restore / rollback CLI tested under simulated failure
+- [ ] Prometheus + OpenTelemetry exporters
+- [ ] Public SDK and plugin author guide finalized
+- [ ] Bus factor ≥ 2 (one non-maintainer with full commit/review history)
+- [ ] Annual external red-team schedule established
+
+### Done when
+
+- A third party (not a customer) builds and publishes a pack against
+  the v1.0 SDK without contacting maintainers.
+- The platform survives a single-maintainer 30-day absence with no
+  customer-visible regressions.
+
+### Out of scope
+
+- Vertical Products (separate business decision per domain after v1.0)
+- Federation across multiple JAMES instances (Beyond v1.0 section)
 
 ---
 
 ## Beyond v1.0 — Speculative
 
-Things being considered, no commitment:
+After v1.0, growth is by domain accumulation, not core feature
+addition. See `docs/PLATFORM_READINESS.md` §4 for the three branching
+forms (Pack / Distribution / Vertical Product) and selection criteria.
 
+Long-considered, no commitment:
+
+- **Optional Neo4j backend** — migrate from markdown wiki to graph DB,
+  Cypher query support, backward compatibility with markdown
+  (was tentatively v0.3; reframed as post-v1.0 optimization)
+- **Multi-agent system** — specialist agents (researcher, coder,
+  security), agent-to-agent communication, task decomposition
+  (was tentatively v0.3; reframed as post-v1.0 capability)
+- **OpenAI-compatible API** for drop-in replacement
+- **Streaming responses + Webhook support**
 - **Federation**: connect multiple JAMES instances
 - **On-device fine-tuning**: LoRA adapters per user
 - **Edge deployment**: smaller models for embedded use
-- **Plugin marketplace**: community-contributed tools
+- **Plugin marketplace**: community-contributed packs
 - **Visual graph editor**: web UI for ontology editing
 - **Voice interface**: ASR + TTS pipeline
 
@@ -214,6 +273,10 @@ We prioritize based on:
 3. Strategic alignment with the project's direction
 4. Community contribution (volunteer-friendly tasks first)
 
+Domain-specific feature requests during v0.2 — v0.4 are out of scope.
+See `docs/handovers/v0.2.1-business-track.md` §3 for the rationale
+and the "no parallel domains" rule.
+
 ---
 
 ## Versioning
@@ -223,7 +286,10 @@ We follow [Semantic Versioning](https://semver.org/):
 - `MAJOR.MINOR.PATCH-PRERELEASE`
 - `0.x.y` versions may contain breaking changes
 - `1.0.0` and beyond will follow strict semver
+- After v1.0 ships, plugin API gets its own SemVer track with a
+  12-month deprecation guarantee (see `docs/PLATFORM_READINESS.md`
+  Gate v0.3 criteria)
 
 ---
 
-**Last updated**: v0.2.0-dev (foundation hardening plan)
+**Last updated**: v0.2.1 (platform readiness gates added)

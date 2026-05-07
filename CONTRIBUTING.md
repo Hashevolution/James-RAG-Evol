@@ -62,6 +62,33 @@ python <relevant_test>.py
 
 ---
 
+## Before Picking a Task — Current Cycle Constraints
+
+JAMES is in a deliberate **mother-hardening cycle** (v0.2 → v0.4).
+Some otherwise-attractive contributions are out of scope **until v1.0**:
+
+- ❌ **Domain-specific features** (legal-only, food-only, retail-only,
+  travel-only, government-only, etc.) — these belong in domain packs,
+  and the plugin API is not yet frozen. See
+  `docs/PLATFORM_READINESS.md` §3 for gate definitions.
+- ❌ **Customer-specific features** added to mother (`core/`) — must
+  live in a pack, never in mother.
+- ❌ **Marketing claims** about specific verticals beyond the
+  "domain candidates" table.
+
+Read these two documents before opening a domain-flavored PR:
+
+- `docs/handovers/v0.2.0-platform-track.md` — engineering priorities
+  for the current cycle (PolicyEngine, RAGAS, trace_id, STEP 7 lock)
+- `docs/handovers/v0.2.1-business-track.md` §3 — the
+  "no parallel domains" rule and what it forbids
+
+If your contribution feels domain-shaped but you believe it's
+genuinely mother-level, open a Discussion **before** the PR —
+it saves both sides a round of review.
+
+---
+
 ## Where to Start
 
 ### Easy First Contributions
@@ -83,8 +110,8 @@ python <relevant_test>.py
 
 - **Ontology extensions** — new relation types
 - **Self-evolution improvements** — Patch Pipeline robustness
-- **Graph DB backend** — Neo4j integration (v0.3 priority)
-- **Multi-agent system** — agent orchestration (v0.3 priority)
+- **Graph DB backend** — Neo4j integration (post-v1.0; was tentatively v0.3)
+- **Multi-agent system** — agent orchestration (post-v1.0; was tentatively v0.3)
 
 ---
 
