@@ -30,6 +30,7 @@ from core.security_layer    import (
 from core.ontology import get_ancestors, get_relation_weight, is_sensitive_relation
 from core.reasoning.modes import (
     handle_chat,
+    handle_meta,
     handle_wiki_edit,
     handle_self_evolve,
     handle_coding,
@@ -234,6 +235,8 @@ class ReasoningEngine:
         # ── Mode dispatch (#29 phase 2: extracted to core/reasoning/modes.py) ──
         if mode == "chat":
             return handle_chat(self, safe_query, system_prompt, memory_context, user_role, t_start, response_style=response_style)
+        if mode == "meta":
+            return handle_meta(self, safe_query, system_prompt, user_role, t_start)
         if mode == "wiki_edit":
             return handle_wiki_edit(self, safe_query, system_prompt, user_role, t_start)
         if mode == "self_evolve":

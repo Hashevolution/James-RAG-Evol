@@ -7,6 +7,7 @@ LLM이 사용자 의도를 파악해서 실행 모드를 결정.
 지원 모드:
   chat        — 일상 대화, 인사, 자기소개
   retrieval   — 지식 검색, 정보 조회
+  meta        — 내부 자료 인벤토리 ("어떤 자료가 있어?", "wiki 목록")
   coding      — 코드 작성, 버그 수정, 프로그래밍
   wiki_edit   — 지식 수정, 삭제, 추가 (admin 전용)
   agent       — 자동화, 반복 작업, 멀티스텝 실행 (확장 예정)
@@ -29,6 +30,7 @@ from typing import Optional, Tuple
 ACTIVE_MODES = {
     "chat",
     "retrieval",
+    "meta",          # 내부 wiki 인벤토리 질의 — "어떤 자료가 있어?" 류
     "coding",
     "wiki_edit",
     "self_evolve",   # [P7] 자기 인식/진화 활성화
@@ -43,9 +45,13 @@ FUTURE_MODES = {
 # role별 허용 모드
 ROLE_ALLOWED = {
     "admin":    ACTIVE_MODES | FUTURE_MODES,
-    "manager":  {"chat", "retrieval", "coding"},
-    "employee": {"chat", "retrieval", "coding"},
-    "external": {"chat", "retrieval"},
+    "manager":  {"chat", "retrieval", "meta", "coding"},
+    "employee": {"chat", "retrieval", "meta", "coding"},
+    # external sees meta too — listing entity *names* leaks no
+    # ABAC-protected content (the read still goes through retrieval +
+    # role filter). The list itself is the kind of inventory question
+    # a new external user typically asks first.
+    "external": {"chat", "retrieval", "meta"},
 }
 
 
@@ -92,6 +98,21 @@ class IntentClassifier:
             r"(로|으로)\s*(수정|변경|바꿔|고쳐)",
             r"(잘못|틀렸|틀렸어|잘못됐)",
         ],
+        # Meta / inventory queries — "what do you have?", "list everything",
+        # "wiki 목록", "내부 자료 보여줘". These previously fell through to
+        # `retrieval` and produced hallucinated answers because the wiki
+        # file *list* is not in any vector chunk. Now routed to handle_meta
+        # which calls tools/wiki/wiki_editor.py::list_entities() directly.
+        # Keep narrow — must combine an "inventory verb" with a wiki/data
+        # noun, or be one of the canonical phrasings, so we don't hijack
+        # legitimate retrieval like "BlackRock 목록 알려줘".
+        "meta": [
+            r"(wiki|위키|내부\s*자료|보유\s*자료|가지고\s*있는)\s*(목록|리스트|보여)",
+            r"(어떤|무슨)\s*(자료|문서|wiki|위키|entity|엔티티).{0,15}(있|가지)",
+            r"^(자료|문서|entity|엔티티)\s*(목록|리스트)\s*[?\.!]?$",
+            r"(list|show)\s+(all\s+)?(entities|wiki|documents|files)",
+            r"^what\s+do\s+you\s+(have|know\s+about)",
+        ],
     }
 
     # LLM 분류 프롬프트
@@ -100,7 +121,9 @@ class IntentClassifier:
 
 [모드 정의]
 - chat:        일상 대화, 인사, 자기소개 질문
-- retrieval:   정보 검색, 지식 조회
+- retrieval:   정보 검색, 지식 조회 (특정 주제에 대한 사실)
+- meta:        보유한 내부 자료 *목록* 자체에 대한 질의
+               ("어떤 자료가 있어?", "wiki 목록 보여줘", "내부 데이터 리스트")
 - coding:      코드 작성/수정/분석/버그 수정
 - wiki_edit:   지식 수정/추가/삭제 ("틀렸어", "수정해", "삭제해", "추가해", "바꿔", "고쳐")
 - self_evolve: 자메스 자신의 코드/구조 분석, 자기 인식, 자기 개선
@@ -110,19 +133,24 @@ class IntentClassifier:
 - app_dev:     앱/서비스 개발 설계 (미구현)
 
 [판단 기준]
+- 보유 자료 인벤토리 질의 → meta (내용 X, 목록 자체 O)
 - 수정/변경/삭제/추가 의도 → wiki_edit
 - "틀렸어", "잘못됐어", "다시 써", "바꿔", "고쳐" → wiki_edit
 - 코드/프로그래밍 관련 → coding
 - 자메스 자신(코드, 구조, 파일, 기능)에 대한 분석 → self_evolve
-- 정보 요청 → retrieval
+- 특정 주제에 대한 정보 요청 → retrieval
 - 대화 → chat
+
+[meta vs retrieval 구분]
+- "BlackRock 정보 알려줘" → retrieval (특정 주제)
+- "어떤 회사 정보가 있어?" → meta (목록 자체)
 
 [사용자 발화]
 {query}
 
 [출력 규칙]
 반드시 아래 중 하나만 출력 (다른 말 금지):
-chat / retrieval / coding / wiki_edit / self_evolve / agent / app_dev"""
+chat / retrieval / meta / coding / wiki_edit / self_evolve / agent / app_dev"""
 
     def __init__(self, llm_client=None):
         self._llm = llm_client   # GemmaClient 인스턴스 (lazy)

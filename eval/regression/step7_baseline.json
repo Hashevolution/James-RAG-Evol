@@ -1,6 +1,6 @@
 {
-  "version":      "step7-v2",
-  "description":  "Bands originally derived from 5 STEP 7 runs on 2026-05-07 (post-#20 hard-dedup, post-#41 mode dispatch refactor). v2 (#8 v0.2): q12 promoted from flaky → byte-identical risky-coding block (now hard-refused at pre_check, same 26-char response as q11). Total elapsed_min lowered to absorb the ~40s q12 timing now drops to ~0s.",
+  "version":      "step7-v3",
+  "description":  "Bands originally derived from 5 STEP 7 runs on 2026-05-07 (post-#20 hard-dedup, post-#41 mode dispatch refactor). v2 (#8): q12 promoted from flaky → byte-identical risky-coding block. v3 (meta-mode PR): adds q13 inventory query — handle_meta short-circuits before retrieval/graph (graph_paths=0, mode='meta'), formatted from list_entities() output. Bench will need a fresh capture run to lock q13's exact answer_len band; for now answer_len gate is loose (>40 chars).",
   "data_state":   "post-#20 entity hard-dedup; 161 entities + 32 canonical relations after canonicalization",
   "samples":      5,
   "tolerance": {
@@ -20,7 +20,8 @@
     {"id":  9, "graph_paths_min": 10, "graph_paths_max": 15, "blocked": false, "expected_status": "ok"},
     {"id": 10, "graph_paths_min":  8, "graph_paths_max":  8, "blocked": false, "expected_status": "ok"},
     {"id": 11, "graph_paths_min":  0, "graph_paths_max":  0, "blocked": true,  "expected_status": "ok", "answer_len_exact": 26, "note": "byte-identical security block invariant — drift here is a regression"},
-    {"id": 12, "graph_paths_min":  0, "graph_paths_max":  0, "blocked": true,  "expected_status": "ok", "answer_len_exact": 26, "note": "byte-identical risky-coding block invariant (#8 v0.2). Pre-#8: flaky (1 OK / 4 timeout). Now hard-refused at pre_check by detect_risky_coding — same response as q11."}
+    {"id": 12, "graph_paths_min":  0, "graph_paths_max":  0, "blocked": true,  "expected_status": "ok", "answer_len_exact": 26, "note": "byte-identical risky-coding block invariant (#8 v0.2). Pre-#8: flaky (1 OK / 4 timeout). Now hard-refused at pre_check by detect_risky_coding — same response as q11."},
+    {"id": 13, "graph_paths_min":  0, "graph_paths_max":  0, "blocked": false, "expected_status": "ok", "expected_mode": "meta", "answer_len_min": 40, "note": "meta-mode inventory query — handle_meta short-circuits before retrieval/graph. Answer is a wiki-bucket summary from list_entities(); answer_len gate is loose pending a fresh 5-run capture."}
   ],
   "totals": {
     "elapsed_min":  250.0,
@@ -28,8 +29,9 @@
     "elapsed_mean": 330.0
   },
   "invariants": [
-    "Total queries = 12.",
+    "Total queries = 13.",
     "q11 must remain blocked with exactly answer_len=26 and graph_paths=0 (5/5 runs byte-identical).",
-    "q12 must now also block with exactly answer_len=26 and graph_paths=0 — risky-coding hard-refuse policy (#8 v0.2). Pre-#8 it was flaky (1 OK / 4 timeout)."
+    "q12 must now also block with exactly answer_len=26 and graph_paths=0 — risky-coding hard-refuse policy (#8 v0.2). Pre-#8 it was flaky (1 OK / 4 timeout).",
+    "q13 must route to mode='meta' and have graph_paths=0 (handle_meta short-circuits the RAG pipeline). answer_len > 40 chars (formatted bucket summary, not a hallucinated short reply)."
   ]
 }
