@@ -114,6 +114,50 @@ joining the LLM context.
 
 ---
 
+## 5.5 PolicyEngine (single source of policy decisions)
+
+`core/policy_engine.py` is the only module that may decide whether a
+role is allowed to perform an action. Every consumer (retrieval, graph
+walk, tool invocation, output emission) takes a `PolicyEngine` instance
+and asks one of four typed methods:
+
+| Method | Question answered |
+|---|---|
+| `can_retrieve(role, doc_meta) -> Decision` | Vector retrieval: may this role see this document? |
+| `can_walk(role, entity) -> Decision`        | Graph DFS: may this role traverse to this entity? |
+| `can_call_tool(role, tool, args) -> Decision` | Tool execution: may this role invoke this tool? |
+| `can_emit(role, content) -> Decision`       | Output gate: may this role receive this content? |
+
+`Decision` is `(allowed: bool, reason: str, applied_rule: str)` —
+frozen dataclass; `applied_rule` is the canonical id used in audit-log
+correlation, e.g. `policy.retrieve.abac` or `policy.tool.admin_only`.
+
+**TrustedContent** is the wrapper every multimodal extractor (OCR,
+ASR, vision, web) returns instead of a raw string. Carries
+`(text, source, trust)` so the reasoning pipeline knows whether to run
+`extract_data_only()` before joining content into the LLM context.
+
+**Done-when criterion**: removing `core/policy_engine.py` causes ≥ 4
+modules to fail import. That is the proof that every policy decision
+runs through one chokepoint — the goal of v0.2 ROADMAP Axis 4.
+
+**Migration phases** (#44):
+
+1. Skeleton (this section, lands in v0.2): every method delegates to
+   `core/security_layer.py` primitives. No behavior change.
+2. Move retrieval / graph / output call sites onto the engine
+   (one PR each, with bench numbers per CLAUDE.md rule 2).
+3. Sandbox migration to capability tokens (`can_call_tool`).
+4. Multimodal extractors return `TrustedContent`; reasoning pipeline
+   gates `low`-trust content through `extract_data_only()` at one
+   chokepoint.
+
+After all four phases, direct `check_access` imports outside of
+`security_layer.py` (the implementation backend) and `policy_engine.py`
+become a regression.
+
+---
+
 ## 6. Evolution Boundaries
 
 Self-evolution is **disabled by default**. To enable:
