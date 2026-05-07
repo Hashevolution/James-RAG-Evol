@@ -22,7 +22,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
-from tools.code.sandbox import validate_path, validate_command, log_security_event
+from tools.code.sandbox import policy_validate_path, validate_command, log_security_event
 
 AUDIT_LOG_PATH = "james_audit_tool.jsonl"
 BACKUP_DIR     = "./workspace/.backups"
@@ -56,11 +56,16 @@ def _log_edit(path: str, operation: str, success: bool, detail: str = ""):
 
 class CodeEditor:
     """
-    Sandbox 통과 후 안전한 파일 수정 도구.
+    PolicyEngine + Sandbox 통과 후 안전한 파일 수정 도구.
     수정 전 자동 백업, 모든 변경 diff 기록.
+
+    Phase 3-3 (#44): 모든 경로 검증이 PolicyEngine.issue_capability(
+    "fs.write")를 거친다. fs.write는 admin-only이므로 비-admin role로
+    이 클래스를 instantiate해 호출해도 차단된다 (자가 테스트는 admin).
     """
 
-    def __init__(self):
+    def __init__(self, user_role: str = "admin"):
+        self.user_role = user_role
         os.makedirs(BACKUP_DIR, exist_ok=True)
 
     # ─── 보호 파일 확인 ──────────────────────────────────────
@@ -102,7 +107,7 @@ class CodeEditor:
         Sandbox 검증 → 보호 파일 확인 → 백업 → 쓰기 → 로그.
         """
         # 1. Sandbox 경로 검증
-        path_ok, reason = validate_path(path)
+        path_ok, reason = policy_validate_path(path, self.user_role, "fs.write")
         if not path_ok:
             log_security_event("PATH_VIOLATION", f"write:{path}")
             _log_edit(path, "write", False, reason)
@@ -152,7 +157,7 @@ class CodeEditor:
         Returns:
             (success, message, diff)
         """
-        path_ok, reason = validate_path(path)
+        path_ok, reason = policy_validate_path(path, self.user_role, "fs.write")
         if not path_ok:
             log_security_event("PATH_VIOLATION", f"replace:{path}")
             return False, f"경로 차단: {reason}", ""
@@ -204,7 +209,7 @@ class CodeEditor:
         content:   str,
     ) -> Tuple[bool, str]:
         """특정 라인 이후 내용 삽입."""
-        path_ok, reason = validate_path(path)
+        path_ok, reason = policy_validate_path(path, self.user_role, "fs.write")
         if not path_ok:
             return False, f"경로 차단: {reason}"
 
@@ -232,7 +237,7 @@ class CodeEditor:
 
     def restore_backup(self, path: str) -> Tuple[bool, str]:
         """가장 최근 백업으로 복원."""
-        path_ok, _ = validate_path(path)
+        path_ok, _ = policy_validate_path(path, self.user_role, "fs.write")
         if not path_ok:
             return False, "경로 차단"
 

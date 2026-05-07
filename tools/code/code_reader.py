@@ -17,7 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from tools.code.sandbox import validate_path, log_security_event, ALLOWED_PATHS
+from tools.code.sandbox import policy_validate_path, log_security_event, ALLOWED_PATHS
 
 AUDIT_LOG_PATH = "james_audit_tool.jsonl"
 
@@ -51,8 +51,15 @@ def _log_read(path: str, lines: int, success: bool):
 class CodeReader:
     """
     workspace 내 파일 읽기 전용 도구.
-    모든 접근은 Sandbox 검증 후 허용.
+    모든 접근은 PolicyEngine + Sandbox 검증 후 허용.
+
+    Phase 3-3 (#44): 인스턴스 단위 user_role을 보관해 모든 경로 검증이
+    PolicyEngine.issue_capability("fs.read")를 거치도록 한다. 외부에서
+    role을 지정하지 않으면 admin (호환성 — 자가 테스트 / 직접 호출).
     """
+
+    def __init__(self, user_role: str = "admin"):
+        self.user_role = user_role
 
     def read_file(
         self,
@@ -71,8 +78,8 @@ class CodeReader:
         Returns:
             (success, content, metadata)
         """
-        # Sandbox 경로 검증
-        path_ok, reason = validate_path(path)
+        # PolicyEngine + sandbox 경로 검증 (#44 phase 3-3)
+        path_ok, reason = policy_validate_path(path, self.user_role, "fs.read")
         if not path_ok:
             log_security_event("PATH_VIOLATION", f"read:{path} → {reason}")
             _log_read(path, 0, False)
@@ -140,7 +147,7 @@ class CodeReader:
         """
         workspace 내 파일 목록 조회.
         """
-        path_ok, reason = validate_path(directory)
+        path_ok, reason = policy_validate_path(directory, self.user_role, "fs.read")
         if not path_ok:
             log_security_event("PATH_VIOLATION", f"list:{directory}")
             return False, []
@@ -171,7 +178,7 @@ class CodeReader:
         """
         디렉토리 구조 트리 형태 반환.
         """
-        path_ok, reason = validate_path(directory)
+        path_ok, reason = policy_validate_path(directory, self.user_role, "fs.read")
         if not path_ok:
             log_security_event("PATH_VIOLATION", f"structure:{directory}")
             return False, f"차단: {reason}"

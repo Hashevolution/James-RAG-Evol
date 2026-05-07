@@ -17,7 +17,7 @@ import time
 from datetime import datetime
 from typing import Dict, Optional, Tuple
 
-from tools.code.sandbox import validate_path, log_security_event
+from tools.code.sandbox import policy_validate_path, log_security_event
 from tools.code.code_reader import CodeReader
 
 AUDIT_LOG_PATH = "james_audit_tool.jsonl"
@@ -57,8 +57,8 @@ class CodeAnalyzer:
     """
 
     def __init__(self, user_role: str = "admin"):
-        self.reader    = CodeReader()
         self.user_role = user_role
+        self.reader    = CodeReader(user_role=user_role)
         self._engine   = None   # lazy init
 
     def _get_engine(self):
@@ -92,8 +92,8 @@ class CodeAnalyzer:
         """
         t_start = time.time()
 
-        # 1. Sandbox 경로 검증
-        path_ok, reason = validate_path(path)
+        # 1. PolicyEngine + sandbox 경로 검증 (#44 phase 3-3)
+        path_ok, reason = policy_validate_path(path, self.user_role, "fs.read")
         if not path_ok:
             log_security_event("PATH_VIOLATION", f"analyze:{path}")
             return False, f"경로 차단: {reason}", {}

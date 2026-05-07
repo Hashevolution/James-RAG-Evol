@@ -1,7 +1,14 @@
 """
-PROJECT JAMES - Mini Sandbox v2.1 (Phase 5.5)
+PROJECT JAMES - Mini Sandbox v2.2 (Phase 5.5 + #44 phase 3-3)
 
-v2.1 변경:
+v2.2 변경:
+  - policy_validate_path() 신규 — PolicyEngine.issue_capability /
+    verify_capability를 거친 후 기존 validate_path를 호출
+    (defense-in-depth)
+  - tools/code/* 및 tools/patch/* 의 validate_path 직접 호출자가
+    policy_validate_path로 마이그레이션
+
+v2.1 (유지):
   - admin role → ALLOWED_PATHS 우회 가능 (경로 제한 해제)
   - BLOCKED_COMMANDS → admin도 차단 (명령어는 예외 없음)
   - admin_override → 감사 로그 반드시 기록
@@ -17,6 +24,7 @@ v2.1 변경:
   user/employee/manager role:
     ❌ ALLOWED_PATHS 외 접근 차단
     ❌ BLOCKED_COMMANDS 차단
+    ❌ PolicyEngine action 자격 (fs.read employee+, fs.write admin) 미충족 시 차단
 """
 
 import os
@@ -144,6 +152,64 @@ def validate_command(command: str) -> Tuple[bool, str]:
             return False, f"위험 패턴: '{pattern}'"
 
     return True, ""
+
+
+# ─── PolicyEngine 통합 검증 (#44 phase 3-3) ──────────────────
+
+def policy_validate_path(
+    path:   str,
+    role:   str,
+    action: str = "fs.read",
+) -> Tuple[bool, str]:
+    """경로 접근을 PolicyEngine + sandbox validate_path 둘 다 통과해야 허용.
+
+    Phase 3-3 (#44): tool-side 호출자(read_file, code_reader,
+    code_editor, code_analyzer, patch_generator)가 PolicyEngine을
+    bypass 하지 못하도록 강제. router를 거치지 않은 직접 호출
+    경로(자가 테스트, CLI, 다른 tool 간 호출)에서도 정책이 적용됨.
+
+    검증 순서:
+      1. PolicyEngine.issue_capability(role, action, path)
+         - role이 action에 대해 자격 미달 → (False, "policy.denied(...)")
+         - 자격 통과 → 짧은 capability 토큰 발급
+      2. PolicyEngine.verify_capability(cap, action, path)
+         - scope/action 미스매치 → (False, "policy.invalid(...)")
+      3. 기존 sandbox validate_path(path, role)
+         - BLOCKED_PATH_PATTERNS / ALLOWED_PATHS 검사 (defense-in-depth)
+
+    Args:
+      path:    경로 (sandbox validate_path와 동일 의미).
+      role:    호출자 role (admin/manager/employee/external).
+      action:  policy action id.
+               - "fs.read"  : 파일/디렉토리 읽기 (employee+ 허용)
+               - "fs.write" : 파일 수정/패치 (admin only)
+
+    Returns:
+      (True, "") on success, otherwise (False, reason).
+    """
+    from core.policy_engine import default_engine
+
+    cap = default_engine.issue_capability(role, action, path or "*")
+    if cap is None:
+        reason = f"policy.denied(role={role!r}, action={action!r})"
+        log_security_event(
+            "POLICY_DENIED",
+            f"path={path[:60] if path else ''} action={action}",
+            blocked=True, role=role,
+        )
+        return False, reason
+
+    verify = default_engine.verify_capability(cap, action, path or "*")
+    if not verify.allowed:
+        log_security_event(
+            "POLICY_INVALID",
+            f"path={path[:60] if path else ''} action={action} reason={verify.reason}",
+            blocked=True, role=role,
+        )
+        return False, f"policy.invalid({verify.reason})"
+
+    # PolicyEngine 통과 후에도 기존 sandbox 경로 정책은 적용 — defense-in-depth.
+    return validate_path(path, role)
 
 
 # ─── 통합 검증 ───────────────────────────────────────────────

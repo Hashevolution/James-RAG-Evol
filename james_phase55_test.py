@@ -249,16 +249,18 @@ def run_read_file_tests():
                f"name={tool.name} sandbox={tool.requires_sandbox}"
 
     def t_read_normal():
+        # Phase 3-3 (#44): "user" is not in ROLE_LEVEL — use "employee"
+        # (the canonical non-admin internal role) to test the success path.
         from tools.code.read_file import ReadFileTool
         tool   = ReadFileTool()
-        result = tool.execute({"path":"./workspace/_diag_test.py","role":"user"})
+        result = tool.execute({"path":"./workspace/_diag_test.py","role":"employee"})
         ok = result.get("success") and "hello" in str(result.get("result",""))
         return ok, f"정상 읽기={ok} | {str(result.get('result',''))[:40]}"
 
     def t_read_path_escape():
         from tools.code.read_file import ReadFileTool
         tool   = ReadFileTool()
-        result = tool.execute({"path":"../secret.py","role":"user"})
+        result = tool.execute({"path":"../secret.py","role":"employee"})
         return not result.get("success"), f"경로 탈출 차단={not result.get('success')}"
 
     def t_read_authorize_employee():
@@ -277,7 +279,7 @@ def run_read_file_tests():
         from tools.code.read_file import ReadFileTool
         tool   = ReadFileTool()
         result = tool.execute({"path":"./workspace/_diag_test.py",
-                                "start_line":2,"end_line":2,"role":"user"})
+                                "start_line":2,"end_line":2,"role":"employee"})
         ok = result.get("success") and "hello" in str(result.get("result",""))
         return ok, f"라인 범위 읽기={ok}"
 

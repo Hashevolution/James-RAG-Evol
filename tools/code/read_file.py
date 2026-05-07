@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 from tools.base_tool import BaseTool
-from tools.code.sandbox import validate_path, log_security_event
+from tools.code.sandbox import policy_validate_path, log_security_event
 
 SUPPORTED_EXT = {
     ".py",".js",".ts",".java",".cpp",".c",".h",".go",".rs",
@@ -46,8 +46,8 @@ class ReadFileTool(BaseTool):
         end_line   = input_data.get("end_line")
         role       = input_data.get("role", "user")
 
-        # Sandbox 경로 검증
-        path_ok, reason = validate_path(path, role)
+        # PolicyEngine + sandbox 경로 검증 (#44 phase 3-3)
+        path_ok, reason = policy_validate_path(path, role, "fs.read")
         if not path_ok:
             log_security_event("PATH_VIOLATION", f"read:{path}", role=role)
             return self._error(f"경로 차단: {reason}")
@@ -84,7 +84,7 @@ class ReadFileTool(BaseTool):
 
     def list_files(self, directory: str = "./workspace", role: str = "user") -> dict:
         """디렉토리 내 파일 목록."""
-        path_ok, reason = validate_path(directory, role)
+        path_ok, reason = policy_validate_path(directory, role, "fs.read")
         if not path_ok:
             return self._error(f"경로 차단: {reason}")
         p = Path(directory)
