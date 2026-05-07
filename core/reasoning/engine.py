@@ -292,11 +292,10 @@ class ReasoningEngine:
                           response_style: str = "") -> str:
         """RAG context + LLM 자유 추론. 한/영 자동 감지.
 
-        `response_style`: brief / standard / detailed — see
-        `core/response_style.py`. Empty string falls through to env
-        var then `standard` default. Brief drops the 📚/💡 structural
-        rule entirely; standard/detailed keep it but with different
-        token caps.
+        `response_style`: kept for API back-compat — v2 always returns
+        the NATURAL_PRESET (single natural-flow guide, no rigid
+        emoji-section template). See core/response_style.py for the
+        v1→v2 redesign rationale.
         """
         from core.response_style import resolve_style
         style = resolve_style(response_style)
@@ -330,7 +329,10 @@ class ReasoningEngine:
                     f"{'Answer' if is_en else '답변'}:\n"
                 )
             else:
-                # brief: no 📚/💡 split — single concise paragraph.
+                # Natural-flow path (v2 default): rule_txt teaches
+                # 핵심→근거→대안 prose composition without the rigid
+                # 📚/💡 labels. The model picks length from the prompt,
+                # not from a token budget.
                 prompt = (
                     f"{sys_block}"
                     f"[{'Internal Data' if is_en else '내부 자료'}]\n{context[:1000]}\n\n"

@@ -1,15 +1,23 @@
-"""Response-style preset resolver and call-site contracts.
+"""Response-style — natural-flow answer prompt.
+
+v2 redesign (2026-05-08): the v1 brief/standard/detailed presets
+were rejected by user feedback ("글자수를 짧게 하기 위해 자르는게
+아니고 문단을 나눠서 핵심 답변, 근거, 대안제시"). v2 collapses to
+one NATURAL_PRESET that teaches a Claude-style flow without rigid
+emoji-section template; max_tokens stays generous and the model
+picks length from the prompt.
 
 Coverage:
-  - `resolve_style()`: explicit kwarg → env var → `standard` default
-    precedence. Unknown values fall through rather than raising.
-  - Each preset's max_tokens + force_two_sections fields match the
-    documented contract (brief=600/no-split, standard=1200/two-section,
-    detailed=2000/two-section).
-  - Source-level contract: every LLM call site in core/reasoning/
-    derives max_tokens from `resolve_style(...)` rather than hard-
-    coding 2000 — a future refactor that re-introduces the literal
-    fails the contract test and a reviewer makes a conscious choice.
+  - All public ids (brief / standard / detailed) and explicit "" /
+    None / unknown values resolve to NATURAL_PRESET (one preset only).
+  - NATURAL preset properties: max_tokens=2000, force_two_sections
+    is False (legacy field — kept for API compat), rule_text mentions
+    the 핵심/근거/대안 flow and explicitly forbids 📚/💡 labels.
+  - Source-level contracts:
+      * engine._generate_answer / modes.handle_chat / pipeline web
+        fallback all derive max_tokens from resolve_style (no literal).
+      * No call site retains the literal "📚 자료 기반" or "💡 추론"
+        as a forced template (v1 had these baked in; v2 must not).
 
 Run:
   python -m unittest tests.test_response_style
@@ -23,7 +31,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-class ResolveStyleTests(unittest.TestCase):
+class NaturalFlowResolverTests(unittest.TestCase):
     def setUp(self):
         self._orig_env = os.environ.get("JAMES_RESPONSE_STYLE")
 
@@ -33,142 +41,115 @@ class ResolveStyleTests(unittest.TestCase):
         else:
             os.environ["JAMES_RESPONSE_STYLE"] = self._orig_env
 
-    def test_default_is_standard(self):
-        from core.response_style import resolve_style, STANDARD
+    def test_default_resolves_to_natural(self):
+        from core.response_style import resolve_style, NATURAL_PRESET
         os.environ.pop("JAMES_RESPONSE_STYLE", None)
-        s = resolve_style()
-        self.assertEqual(s.name, STANDARD)
-        self.assertEqual(s.max_tokens, 1200)
-        self.assertTrue(s.force_two_sections)
+        self.assertIs(resolve_style(), NATURAL_PRESET)
 
-    def test_explicit_brief(self):
-        from core.response_style import resolve_style, BRIEF
-        s = resolve_style("brief")
-        self.assertEqual(s.name, BRIEF)
-        self.assertEqual(s.max_tokens, 600)
-        self.assertFalse(s.force_two_sections,
-                         "brief must NOT force the 📚/💡 two-section split")
+    def test_all_legacy_ids_resolve_to_natural(self):
+        from core.response_style import resolve_style, NATURAL_PRESET
+        for legacy in ("brief", "standard", "detailed",
+                       "BRIEF", "Standard", "  detailed  "):
+            self.assertIs(resolve_style(legacy), NATURAL_PRESET,
+                          f"legacy id {legacy!r} must resolve to NATURAL")
 
-    def test_explicit_detailed(self):
-        from core.response_style import resolve_style, DETAILED
-        s = resolve_style("detailed")
-        self.assertEqual(s.name, DETAILED)
-        self.assertEqual(s.max_tokens, 2000,
-                         "detailed preserves the pre-this-PR 2000-token cap")
-        self.assertTrue(s.force_two_sections)
+    def test_unknown_values_resolve_to_natural(self):
+        from core.response_style import resolve_style, NATURAL_PRESET
+        for val in ("verbose", "nonsense", "", "  "):
+            self.assertIs(resolve_style(val), NATURAL_PRESET)
 
-    def test_explicit_kwarg_beats_env(self):
-        from core.response_style import resolve_style, BRIEF
-        os.environ["JAMES_RESPONSE_STYLE"] = "detailed"
-        s = resolve_style("brief")
-        self.assertEqual(s.name, BRIEF,
-                         "explicit kwarg must override env var")
-
-    def test_env_var_used_when_no_explicit(self):
-        from core.response_style import resolve_style, BRIEF
-        os.environ["JAMES_RESPONSE_STYLE"] = "brief"
-        s = resolve_style()
-        self.assertEqual(s.name, BRIEF)
-        s = resolve_style("")
-        self.assertEqual(s.name, BRIEF, "empty string treated as no explicit")
-
-    def test_env_var_case_insensitive(self):
-        from core.response_style import resolve_style, BRIEF
-        for val in ("BRIEF", "Brief", "  brief  "):
+    def test_env_var_does_not_change_outcome_in_v2(self):
+        from core.response_style import resolve_style, NATURAL_PRESET
+        for val in ("brief", "detailed", "anything"):
             os.environ["JAMES_RESPONSE_STYLE"] = val
-            s = resolve_style()
-            self.assertEqual(s.name, BRIEF, f"env value {val!r} should resolve")
+            self.assertIs(resolve_style(), NATURAL_PRESET,
+                          f"env={val!r} must still return NATURAL in v2")
 
-    def test_unknown_falls_through_to_default(self):
-        from core.response_style import resolve_style, STANDARD
-        os.environ.pop("JAMES_RESPONSE_STYLE", None)
-        # Unknown explicit AND no env → standard. Defensive: a typo in
-        # API call must not raise — this matches the rest of the
-        # reasoning pipeline's behavior.
-        s = resolve_style("verbose")
-        self.assertEqual(s.name, STANDARD)
-        s = resolve_style("nonsense-value")
-        self.assertEqual(s.name, STANDARD)
+    def test_natural_preset_properties(self):
+        from core.response_style import NATURAL_PRESET
+        self.assertEqual(NATURAL_PRESET.name, "natural")
+        self.assertEqual(NATURAL_PRESET.max_tokens, 2000,
+                         "v2 keeps generous max_tokens — length is "
+                         "picked by the model from the prompt, not by a cap")
+        self.assertFalse(NATURAL_PRESET.force_two_sections,
+                         "v2 must NOT force the rigid 📚/💡 template")
 
-    def test_unknown_explicit_falls_to_env_not_default(self):
-        from core.response_style import resolve_style, BRIEF
-        os.environ["JAMES_RESPONSE_STYLE"] = "brief"
-        # Unknown explicit but valid env → env wins (not default).
-        s = resolve_style("nonsense")
-        self.assertEqual(s.name, BRIEF,
-                         "unknown explicit must fall through to env, not skip it")
-
-    def test_rule_text_brief_has_no_emoji_split(self):
-        from core.response_style import resolve_style
-        s = resolve_style("brief")
-        self.assertNotIn("📚", s.rule_text_ko)
-        self.assertNotIn("💡", s.rule_text_ko)
-        self.assertNotIn("📚", s.rule_text_en)
-        self.assertNotIn("💡", s.rule_text_en)
-
-    def test_rule_text_standard_keeps_split_but_compact(self):
-        from core.response_style import resolve_style
-        s = resolve_style("standard")
-        self.assertIn("📚", s.rule_text_ko)
-        self.assertIn("💡", s.rule_text_ko)
-        # Standard rule text is shorter than detailed — the user-visible
-        # difference between them is conciseness.
-        s_detailed = resolve_style("detailed")
-        self.assertLess(len(s.rule_text_ko), len(s_detailed.rule_text_ko),
-                        "standard rule text must be shorter than detailed")
+    def test_rule_text_teaches_flow_not_rigid_template(self):
+        from core.response_style import NATURAL_PRESET
+        ko = NATURAL_PRESET.rule_text_ko
+        en = NATURAL_PRESET.rule_text_en
+        # Flow elements present in Korean rule
+        self.assertIn("핵심 답", ko)
+        self.assertIn("근거", ko)
+        # Flow elements present in English rule
+        self.assertIn("Direct answer", en)
+        self.assertIn("evidence", en.lower())
+        # Explicit ban on the v1 emoji template
+        self.assertIn("📚", ko, "rule must mention the forbidden label so it's clear what NOT to use")
+        self.assertIn("📚", en)
+        # Explicit "no character-count limit" — user said 글자수 상관없다
+        self.assertIn("글자수 제약 없음", ko)
+        self.assertIn("character-count limit", en)
 
 
 class CallSiteContractTests(unittest.TestCase):
-    """Source-level: every LLM call site in core/reasoning/ must derive
-    max_tokens from resolve_style — no hard-coded 2000 literal allowed.
-    A future refactor that re-introduces 2000 will fail here and a
-    reviewer will make a conscious choice."""
+    """Source-level: every LLM call site in core/reasoning/ derives
+    max_tokens from resolve_style. No literal `max_tokens=2000` and
+    no literal forced "📚 자료 기반" / "💡 추론" label injection
+    survives in v2."""
 
-    def test_engine_generate_answer_uses_style(self):
+    def test_engine_uses_resolve_style(self):
         import core.reasoning.engine as eng
         import inspect
-        src = inspect.getsource(eng._generate_answer if hasattr(eng, "_generate_answer")
-                                else eng.ReasoningEngine._generate_answer)
-        self.assertIn("resolve_style", src,
-                      "_generate_answer must call resolve_style")
-        self.assertIn("style.max_tokens", src,
-                      "_generate_answer must use style.max_tokens, not literal")
-        self.assertNotIn("max_tokens=2000", src,
-                         "literal max_tokens=2000 must be removed from _generate_answer")
+        src = inspect.getsource(eng.ReasoningEngine._generate_answer)
+        self.assertIn("resolve_style", src)
+        self.assertIn("style.max_tokens", src)
+        self.assertNotIn("max_tokens=2000", src)
 
-    def test_modes_handle_chat_uses_style(self):
+    def test_modes_handle_chat_uses_style_and_flow(self):
         import core.reasoning.modes as modes_mod
         import inspect
         src = inspect.getsource(modes_mod.handle_chat)
-        self.assertIn("resolve_style", src,
-                      "handle_chat must call resolve_style")
-        self.assertIn("style.max_tokens", src,
-                      "handle_chat must use style.max_tokens, not literal")
-        self.assertNotIn("max_tokens=2000", src,
-                         "literal max_tokens=2000 must be removed from handle_chat")
+        self.assertIn("resolve_style", src)
+        self.assertIn("style.max_tokens", src)
+        self.assertNotIn("max_tokens=2000", src)
+        # Flow guide injected into the chat prompt — pre-v2 chat had no rule.
+        self.assertIn("rule_txt", src,
+                      "handle_chat must inject the natural-flow rule_text "
+                      "into the prompt (pre-v2 it didn't)")
 
-    def test_pipeline_uses_style_for_web_fallback(self):
+    def test_pipeline_uses_style(self):
         import core.reasoning.pipeline as pipeline_mod
         import inspect
         src = inspect.getsource(pipeline_mod.run_retrieval_pipeline)
-        self.assertIn("resolve_style", src,
-                      "pipeline must call resolve_style for web fallback")
-        # Both call_gemma sites in pipeline (web fallback + retry) must
-        # use style.max_tokens, not 2000. We accept any style variable
-        # name (`_style.max_tokens` / `_style_retry.max_tokens` etc).
-        self.assertNotIn("max_tokens=2000", src,
-                         "literal max_tokens=2000 must be removed from pipeline")
+        self.assertIn("resolve_style", src)
+        self.assertNotIn("max_tokens=2000", src)
+        # No retry-path forced "📚 자료 기반: 관련 내부 자료 없음" prefix.
+        # The v1 retry concatenated this string verbatim into the answer
+        # — v2 lets the model phrase it naturally.
+        self.assertNotIn(
+            '"📚 자료 기반: 관련 내부 자료 없음\\n💡 추론: " + retry',
+            src,
+            "v2 must not force the 📚/💡 template into the retry path",
+        )
 
-    def test_query_endpoint_passes_response_style(self):
-        import server_llmwiki as srv
+
+class ChatParagraphPreservationTests(unittest.TestCase):
+    """User feedback explicitly said 문단을 나눠서. The pre-v2
+    handle_chat post-processed `\\n\\n` → space, killing paragraph
+    breaks. v2 must preserve them."""
+
+    def test_handle_chat_preserves_paragraph_breaks(self):
+        import core.reasoning.modes as modes_mod
         import inspect
-        src = inspect.getsource(srv)
-        self.assertIn("response_style", src,
-                      "/query/ must accept and forward response_style")
-        self.assertIn("response_style:   str", src,
-                      "QueryRequest must declare response_style field")
-        self.assertIn("response_style   = data.response_style", src,
-                      "/query/ must forward data.response_style to rag_engine.query")
+        src = inspect.getsource(modes_mod.handle_chat)
+        # The v1 regex `r'\n{2,}'` → ' ' must be gone.
+        self.assertNotIn(r"r'\n{2,}'", src,
+                         "v1 paragraph-collapse regex must be removed")
+        self.assertNotIn(r'r"\n{2,}"', src)
+        # v2 collapses 3+ newlines to exactly 2 — preserves \n\n.
+        self.assertIn(r'r"\n{3,}"', src,
+                      "v2 must collapse 3+ newlines to 2, preserving paragraphs")
 
 
 if __name__ == "__main__":

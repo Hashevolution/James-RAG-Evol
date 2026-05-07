@@ -310,10 +310,15 @@ def run_retrieval_pipeline(
                 combined_context = safe_context
             from core.response_style import resolve_style as _resolve_style
             _style = _resolve_style(response_style)
+            # Pick the right-language flow guide for the no-context
+            # web-fallback prompt below. Same heuristic as engine + chat.
+            _korean = sum(1 for c in safe_query if "가" <= c <= "힣")
+            _is_ko = _korean >= max(1, len(safe_query) * 0.2)
+            _rule = _style.rule_text_ko if _is_ko else _style.rule_text_en
             answer_raw = engine.llm.call_gemma(
                 f"{sys_prefix}"
                 f"{'[웹 검색 결과 포함]' if web_context else ''}"
-                f"\n질문: {safe_query}\n\n답변:",
+                f"\n{_rule}\n질문: {safe_query}\n\n답변:",
                 use_cache=(not web_context), timeout=90,
                 max_tokens=_style.max_tokens,
             ) if not combined_context.strip() else engine._generate_answer(
@@ -341,14 +346,19 @@ def run_retrieval_pipeline(
             sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
             from core.response_style import resolve_style as _resolve_style
             _style_retry = _resolve_style(response_style)
+            _korean_r = sum(1 for c in safe_query if "가" <= c <= "힣")
+            _is_ko_r = _korean_r >= max(1, len(safe_query) * 0.2)
+            _rule_r = _style_retry.rule_text_ko if _is_ko_r else _style_retry.rule_text_en
             retry = engine.llm.call_gemma(
-                f"{sys_prefix}질문: {safe_query}\n\n"
-                "📚 자료 기반: 관련 내부 자료 없음\n💡 추론:",
+                f"{sys_prefix}{_rule_r}\n"
+                f"질문: {safe_query}\n\n"
+                "(내부 자료에는 직접 언급이 없습니다. "
+                "위 가이드를 따라 자연스럽게 답하세요.)\n답변:",
                 use_cache=False, timeout=60, max_tokens=_style_retry.max_tokens,
             )
             if retry and not any(retry.startswith(p) for p in engine._LLM_ERROR_PREFIXES):
                 print(f"[ROUTER] post_check → 재시도 (persona 포함)")
-                answer = "📚 자료 기반: 관련 내부 자료 없음\n💡 추론: " + retry
+                answer = retry
 
     except Exception as e:
         engine._log("generate_answer", e, user_role)

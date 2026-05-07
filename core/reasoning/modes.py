@@ -37,21 +37,26 @@ def handle_chat(
     from core.response_style import resolve_style
     style = resolve_style(response_style)
 
+    # Detect language by Korean character ratio to pick the
+    # right-language flow guide. Same heuristic as engine._generate_answer.
+    korean_chars = sum(1 for c in safe_query if "가" <= c <= "힣")
+    is_ko = korean_chars >= max(1, len(safe_query) * 0.2)
+    rule_txt = style.rule_text_ko if is_ko else style.rule_text_en
+
     t_direct = time.time()
     try:
-        # system_prompt + memory_context 주입
+        # system_prompt + memory_context + flow guide 주입
         sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
         mem_prefix = f"{memory_context}\n\n" if memory_context else ""
         raw_answer = engine.llm.call_gemma(
-            f"{sys_prefix}{mem_prefix}질문: {safe_query}\n\n답변:",
+            f"{sys_prefix}{mem_prefix}{rule_txt}\n질문: {safe_query}\n\n답변:",
             use_cache=True, timeout=60, max_tokens=style.max_tokens,
         )
-        # [P7-FIX] 글자 사이 \n 제거 → 세로줄 방지
+        # Preserve paragraph breaks (\n\n) — user feedback wants
+        # natural 문단 separation, not a single block of text.
+        # Collapse 3+ newlines to exactly 2 to keep things tidy.
         if raw_answer:
-            # \n\n 이상 → 단락 구분 (공백)
-            answer = re.sub(r'\n{2,}', ' ', raw_answer)
-            # 단일 \n → 완전 제거 (한국어 글자 사이 세로줄 방지)
-            answer = re.sub(r'\n', '', answer).strip()
+            answer = re.sub(r"\n{3,}", "\n\n", raw_answer).strip()
         else:
             answer = ""
         if not answer or any(answer.startswith(p) for p in engine._LLM_ERROR_PREFIXES):
