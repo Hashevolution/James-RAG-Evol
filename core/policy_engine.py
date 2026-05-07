@@ -317,6 +317,50 @@ class PolicyEngine:
             applied_rule="policy.emit.passthrough",
         )
 
+    def sanitize_for_ingestion(
+        self,
+        content: TrustedContent,
+        source:  str = "unknown",
+    ) -> Tuple[str, Decision]:
+        """[#44 phase 4-C] Single chokepoint for content entering persistent storage.
+
+        Distinct from `quarantine`, which is for **join time** (LLM
+        context). Ingestion sanitizes ALL trust levels, because:
+          - A medium-trust uploaded PDF can still embed `ignore previous
+            instructions` strings (poisoned ingestion vector → poisoned
+            retrieval result).
+          - An admin-uploaded internal handbook is "medium" by trust
+            but its bytes still pass through `extract_data_only` so a
+            single ruleset governs the corpus.
+
+        `quarantine` short-circuits on medium/high (passthrough) precisely
+        because this method already cleaned them at ingestion. Callers
+        outside the upload path should use `quarantine`.
+
+        Behavior:
+          - always run `extract_data_only(content.text)`.
+          - on modification, log via `log_attack` so the existing
+            `doc_injection:<source>` audit-log record is preserved
+            bit-for-bit (legacy `sanitize_document_content` contract).
+
+        Returns:
+          (clean_text, Decision). `Decision.reason` carries
+          `modified={bool}` for audit correlation.
+        """
+        from core.security_layer import extract_data_only, log_attack
+        clean, modified = extract_data_only(content.text)
+        if modified:
+            log_attack(
+                content.text[:100],
+                "system",
+                attack_type=f"doc_injection:{source}",
+            )
+        return clean, Decision(
+            allowed=True,
+            reason=f"ingestion.sanitized.modified={modified}",
+            applied_rule="policy.ingestion.sanitize",
+        )
+
     def quarantine(self, content: TrustedContent) -> Tuple[str, Decision]:
         """[#44 phase 4] Single chokepoint for content entering LLM context.
 

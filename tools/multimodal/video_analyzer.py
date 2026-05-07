@@ -323,6 +323,49 @@ def _get_duration(video_path: str) -> float:
         return 0.0
 
 
+# ─── #44 phase 4-C: TrustedContent wrapper ──────────────────
+
+def analyze_video_trusted(video_path: str, role: str = "admin"):
+    """[#44 phase 4-C] 영상 분석 결과를 `TrustedContent` 로 wrap.
+
+    LLM 컨텍스트로 합류 가능한 텍스트 — 요약, ASR transcript, 프레임별
+    설명 — 을 결합하여 반환. 프레임 metadata (timestamp_sec) 는 텍스트
+    경로에 노출하되 prompt-injection 위험은 frame 설명 본문에 한정된다.
+
+    Trust 분류 (#44 §3):
+      - source = "asr"   (영상에는 ASR transcript + vision 둘 다 있지만
+                          더 위험한 lower-bound 인 ASR 로 분류 — 텍스트
+                          음성에 prompt-injection 을 삽입한 공격이
+                          프레임 vision 보다 단순)
+      - trust  = "low"   (외부 영상 ingestion → 항상 low)
+
+    호출자는 `default_engine.quarantine(tc)` 로 LLM 합류 직전 검역할 수
+    있다. 분석이 실패하면 `text=""` 인 빈 TrustedContent 를 반환한다.
+
+    `analyze_video()` (dict 반환) 는 HTTP 엔드포인트가 그대로 사용 중
+    이므로 시그니처 변경 없이 유지한다.
+    """
+    from core.policy_engine import TrustedContent
+
+    result = analyze_video(video_path, role)
+
+    parts = []
+    summary = result.get("summary", "") or ""
+    if summary:
+        parts.append(f"요약: {summary}")
+    transcript = result.get("transcript", "") or ""
+    if transcript:
+        parts.append(f"음성: {transcript}")
+    for f in (result.get("frames", []) or [])[:5]:   # 최대 5 프레임 미리보기
+        desc = (f or {}).get("description", "") or ""
+        if desc:
+            ts = (f or {}).get("timestamp_sec", 0)
+            parts.append(f"[{ts}초] {desc}")
+    text = "\n".join(parts)
+
+    return TrustedContent(text=text, source="asr", trust="low")
+
+
 # ─── wiki 저장 구조 생성 ─────────────────────────────────────
 
 def to_wiki_entity(analysis: dict) -> dict:

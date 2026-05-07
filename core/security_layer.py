@@ -149,10 +149,22 @@ def extract_data_only(raw_input: str) -> Tuple[str, bool]:
     return text.strip(), modified
 
 def sanitize_document_content(content: str, source: str = "unknown") -> str:
-    """[P4-SEC-1] 문서 저장 전 정제 — poisoned embedding 방지"""
-    clean, was_modified = extract_data_only(content)
-    if was_modified:
-        log_attack(content[:100], "system", attack_type=f"doc_injection:{source}")
+    """[P4-SEC-1] 문서 저장 전 정제 — poisoned embedding 방지.
+
+    #44 phase 4-C: backwards-compat shim. Delegates to
+    `PolicyEngine.sanitize_for_ingestion` so `core/policy_engine.py` is
+    the single ingestion-time decision point. Callers passing a raw `str`
+    (legacy code path) get wrapped as `TrustedContent(source="doc",
+    trust="medium")` — the canonical ingestion default; new callers
+    should construct their own `TrustedContent` and call
+    `default_engine.sanitize_for_ingestion(tc, source=...)` directly.
+
+    Lazy import avoids a module-load cycle (`policy_engine` lazily
+    imports `extract_data_only` / `log_attack` from this module).
+    """
+    from core.policy_engine import default_engine, TrustedContent
+    tc = TrustedContent(text=content, source="doc", trust="medium")
+    clean, _ = default_engine.sanitize_for_ingestion(tc, source=source)
     return clean
 
 # ─── ABAC ────────────────────────────────────────────────────

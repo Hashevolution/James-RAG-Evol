@@ -34,7 +34,7 @@ from config import UPLOAD_DIR, WIKI_DIR, CHROMA_DIR, API_KEY, MAX_UPLOAD_BYTES
 from core.graph_rag_engine import RAGEngine
 from core.feedback_engine import FeedbackEngine
 from core.auth import authenticate, get_role_from_token, add_user, ALLOWED_ROLES, DEV_MODE
-from core.security_layer import sanitize_document_content
+from core.policy_engine import default_engine
 from processors.file_processor import FileProcessor
 
 try:
@@ -404,16 +404,19 @@ async def upload(
         raise HTTPException(status_code=500, detail=f"파일 저장 실패: {e}")
 
     try:
-        # #44 phase 4-B: process_file 가 TrustedContent 반환. provenance 는
-        # 로그/감사용으로 보관하고 텍스트는 기존 ingestion-time 검역
-        # (sanitize_document_content) 로 동일하게 처리한다. 향후 phase 가
-        # 단일 PolicyEngine.quarantine chokepoint 로 통일할 예정.
+        # #44 phase 4-B: process_file 가 TrustedContent 반환.
+        # #44 phase 4-C: ingestion 검역은 PolicyEngine 단일 chokepoint
+        # (`default_engine.sanitize_for_ingestion`) 로 라우팅. 기존
+        # `sanitize_document_content` 는 backwards-compat shim 으로 유지되며
+        # 동일한 코드 경로(extract_data_only + log_attack) 를 사용한다.
         tc = file_processor.process_file(filepath, file.filename)
         print(f"[UPLOAD] provenance source={tc.source} trust={tc.trust} "
               f"file={file.filename}")
 
-        # [P4-SRV-5] Instruction Isolation
-        raw_content = sanitize_document_content(tc.text, source=file.filename)
+        # [P4-SRV-5] Instruction Isolation — PolicyEngine ingestion gate
+        raw_content, _sanitize_decision = default_engine.sanitize_for_ingestion(
+            tc, source=file.filename,
+        )
 
         meta   = file_processor.generate_file_metadata(raw_content)
         from utils.tokenizer import split_chunks

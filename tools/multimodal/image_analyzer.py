@@ -251,6 +251,49 @@ def _extract_tags(text: str) -> list:
     return list(set(tags))[:10]
 
 
+# ─── #44 phase 4-C: TrustedContent wrapper ──────────────────
+
+def analyze_image_trusted(image_path: str, role: str = "admin"):
+    """[#44 phase 4-C] 이미지 분석 결과를 `TrustedContent` 로 wrap.
+
+    LLM 컨텍스트로 합류 가능한 텍스트 부분 (description / location /
+    persons / tags) 를 결합하여 반환. EXIF 메타데이터는 trust 와 무관
+    하므로 텍스트에 합류시키지 않는다.
+
+    Trust 분류 (#44 §3):
+      - source = "vision" (llava 비전 모델 출력)
+      - trust  = "low"    (모델 환각 + 이미지에 새겨진 prompt-injection
+                           텍스트가 OCR-like 경로로 흡수될 수 있음)
+
+    호출자는 `default_engine.quarantine(tc)` 로 LLM 합류 직전 검역할 수
+    있다. 분석이 실패하면 `text=""` 인 빈 TrustedContent 를 반환하므로
+    호출자는 별도 분기를 줄일 수 있다.
+
+    `analyze_image()` (dict 반환) 는 HTTP 엔드포인트가 그대로 사용 중
+    이므로 시그니처 변경 없이 유지한다.
+    """
+    from core.policy_engine import TrustedContent
+
+    result = analyze_image(image_path, role)
+
+    parts = []
+    description = result.get("description", "") or ""
+    if description:
+        parts.append(description)
+    location = result.get("location", "") or ""
+    if location:
+        parts.append(f"장소: {location}")
+    persons = result.get("persons", []) or []
+    if persons:
+        parts.append(f"인물: {', '.join(str(p) for p in persons)}")
+    tags = result.get("tags", []) or []
+    if tags:
+        parts.append(f"태그: {', '.join(str(t) for t in tags)}")
+    text = "\n".join(parts)
+
+    return TrustedContent(text=text, source="vision", trust="low")
+
+
 # ─── wiki 저장 구조 생성 ─────────────────────────────────────
 
 def to_wiki_entity(analysis: dict) -> dict:

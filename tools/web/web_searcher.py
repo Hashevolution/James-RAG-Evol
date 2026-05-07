@@ -209,6 +209,30 @@ def format_search_results(results: List[Dict]) -> str:
     return "\n".join(lines)
 
 
+def search_web_trusted(query: str, max_results: int = MAX_RESULTS):
+    """[#44 phase 4-C] 검색 결과를 `TrustedContent(source="web", trust="low")` 로 wrap.
+
+    `search_web` + `format_search_results` 의 thin wrapper. 호출자는
+    구조화된 dict 가 필요하면 `search_web` 를 직접 호출하고, LLM 컨텍스트로
+    합류시킬 텍스트만 필요하면 이 함수를 사용해 producer-side 에서 trust
+    boundary 를 명시적으로 표현한다 (`core.reasoning.pipeline` 의 web
+    fallback 경로처럼 consumer-side 에서 wrap 하는 패턴의 대안).
+
+    프로듀서 측 wrapping 의 이점:
+      - tool-router (현재 부재, future) 가 multimodal extractor 결과를
+        `TrustedContent` 로 라우팅하기 시작하면 추가 변환 없이 호환.
+      - 호출자가 `default_engine.quarantine(tc)` 한 줄로 처리 가능.
+
+    Trust 분류 (#44 §3):
+      - source = "web"   (외부 페이지 본문 / 검색 스니펫)
+      - trust  = "low"   (제3자 저작, prompt-injection 위험)
+    """
+    from core.policy_engine import TrustedContent
+    results = search_web(query, max_results)
+    text    = format_search_results(results) if results else ""
+    return TrustedContent(text=text, source="web", trust="low")
+
+
 # ── URL 본문 fetch ────────────────────────────────────────────────
 
 # 본문 fetch 스킵 도메인 (메타데이터만 나오는 곳)
