@@ -306,6 +306,9 @@ class QueryResponse(BaseModel):
     direction_id:   str   = ""
     # [#65 phase 3] populated only when request.include_contexts AND role==admin.
     retrieved_contexts: Optional[list] = None
+    # [#47 phase 1] end-to-end trace correlation. Always populated; users
+    # quote this on bug reports so we can read back the per-stage trace.
+    trace_id:       str   = ""
 
 class UploadResponse(BaseModel):
     status:      str
@@ -573,10 +576,19 @@ async def query(
     verify_api_key(data.api_key)
     ip = get_client_ip(request)
 
+    # [#47 phase 1] start a trace at the API edge. Stage logs from any
+    # downstream module reading `current_trace_id` correlate to this id.
+    from core.observability import start_trace, log_stage
+    trace_id = start_trace()
+
     question   = data.question.strip()
     session_id = data.session_id or "default"
     if not question:
+        log_stage("auth", role=role, allowed=False, reason="empty_question")
         raise HTTPException(status_code=400, detail="질문이 비어 있습니다.")
+
+    log_stage("auth", role=role, allowed=True, session_id=session_id,
+              question_len=len(question), include_contexts=data.include_contexts)
 
     t_start = time.time()
     result  = rag_engine.query(
@@ -586,6 +598,12 @@ async def query(
         session_language = data.session_language,  # [STEP2-A] 세션 언어
     )
     elapsed = time.time() - t_start
+
+    log_stage("complete", elapsed_ms=int(elapsed * 1000),
+              blocked=bool(result.get("blocked", False)),
+              answer_len=len(result.get("answer", "") or ""),
+              graph_paths=len(result.get("graph_paths") or []),
+              mode=result.get("mode", ""))
 
     answer = result.get("answer", "")
 
@@ -664,6 +682,8 @@ async def query(
         "direction_id":  FeedbackEngine.make_direction_id(
             result.get("mode",""), question
         ) if not result.get("blocked") else "",
+        # [#47 phase 1] correlate response to per-stage trace file.
+        "trace_id":      trace_id,
     }
     # [#65 phase 3] admin-only RAGAS evaluation hook. The chunk texts that
     # fed the LLM are surfaced only when (a) caller opted in via

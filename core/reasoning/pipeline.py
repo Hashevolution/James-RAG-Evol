@@ -24,6 +24,7 @@ from typing import Any, Dict
 
 from core.reasoning.engine import MAX_LOOP, LOOP_TIMEOUT, TIMING_TARGET_SEC
 from core.security_layer import filter_answer_by_role
+from core.observability import log_stage
 
 
 def run_retrieval_pipeline(
@@ -96,6 +97,17 @@ def run_retrieval_pipeline(
             loop_state["doc_context"]   = doc_ctx
             loop_state["avg_vec_score"] = avg_score
             print(f"  docs={len(docs)} avg_score={avg_score:.3f}")
+            # [#47 phase 1] retrieve stage — top_k actually returned, best
+            # vector score, and the BM25 score of doc[0] when it carries one.
+            top_doc = docs[0] if docs else {}
+            log_stage(
+                "retrieve",
+                top_k=len(docs),
+                avg_vec_score=round(avg_score, 4),
+                top_vector_score=round(top_doc.get("score", 0.0), 4),
+                top_bm25_score=round(top_doc.get("bm25", 0.0), 4) if "bm25" in top_doc else None,
+                source_type=source_type,
+            )
 
         # ── Loop 1: Expand (Graph DFS) ────────────────
         elif loop_idx == 1:
@@ -120,8 +132,19 @@ def run_retrieval_pipeline(
                 loop_state["graph_context"] = graph_ctx
                 loop_state["graph_paths"]   = graph_paths
                 print(f"  entities={len(entities)} graph_nodes={len(graph_ctx)} paths={len(graph_paths)}")
+                # [#47 phase 1] graph stage — entities matched, paths walked,
+                # and the integrity-validated id count as observability fields.
+                log_stage(
+                    "graph",
+                    entities_extracted=len(entities),
+                    entity_ids_matched=len(entity_ids),
+                    valid_entity_ids=len(valid_ids),
+                    graph_nodes=len(graph_ctx),
+                    paths_walked=len(graph_paths),
+                )
             except Exception as e:
                 engine._log("loop1_expand", e, user_role)
+                log_stage("graph", error=str(e)[:200])
 
         # ── Loop 2: Verify (최종 컨텍스트 결합) ──────
         elif loop_idx == 2:
@@ -324,6 +347,17 @@ def run_retrieval_pipeline(
         engine._log("generate_answer", e, user_role)
         answer = "답변 생성 중 오류가 발생했습니다."
     engine._elapsed(t_llm, "LLM_generate")
+    # [#47 phase 1] answer stage — model latency + size signals so a
+    # diagnoser can tell "blank answer because LLM timed out" from
+    # "blank answer because retrieval was empty".
+    log_stage(
+        "answer",
+        latency_ms=int((time.time() - t_llm) * 1000),
+        answer_len=len(answer or ""),
+        answer_starts_with_error=any(
+            (answer or "").startswith(p) for p in engine._LLM_ERROR_PREFIXES
+        ),
+    )
 
     # ── Output Filter ────────────────────────────────────
     # #44 phase 2-C: gate the role-based filter through PolicyEngine.can_emit
