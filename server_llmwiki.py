@@ -404,10 +404,16 @@ async def upload(
         raise HTTPException(status_code=500, detail=f"파일 저장 실패: {e}")
 
     try:
-        raw_content = file_processor.process_file(filepath, file.filename)
+        # #44 phase 4-B: process_file 가 TrustedContent 반환. provenance 는
+        # 로그/감사용으로 보관하고 텍스트는 기존 ingestion-time 검역
+        # (sanitize_document_content) 로 동일하게 처리한다. 향후 phase 가
+        # 단일 PolicyEngine.quarantine chokepoint 로 통일할 예정.
+        tc = file_processor.process_file(filepath, file.filename)
+        print(f"[UPLOAD] provenance source={tc.source} trust={tc.trust} "
+              f"file={file.filename}")
 
         # [P4-SRV-5] Instruction Isolation
-        raw_content = sanitize_document_content(raw_content, source=file.filename)
+        raw_content = sanitize_document_content(tc.text, source=file.filename)
 
         meta   = file_processor.generate_file_metadata(raw_content)
         from utils.tokenizer import split_chunks

@@ -8,6 +8,18 @@ PROJECT JAMES - File Processor Module
          → 메타데이터 생성은 별도 메서드로 분리
   Fix 3. sensitivity 강제 override (사용자 입력 신뢰 금지)
   Fix 4. 컨텐츠 기반 자동 sensitivity 상향
+  Fix 5. (#44 phase 4-B) 모든 extractor 가 TrustedContent 를 반환.
+         source/trust 분류:
+           - .txt/.md/.pdf-MarkItDown/.office       → ("doc",    "medium")
+           - .pdf OCR fallback / 스캔 PDF           → ("ocr",    "low")
+           - 이미지 vision tiling 성공              → ("vision", "low")
+           - 이미지 EasyOCR / Tesseract             → ("ocr",    "low")
+           - 음성 (Whisper ASR)                     → ("asr",    "low")
+           - 영상 (현재 stub, 향후 ASR+vision)       → ("asr",    "low")
+           - 지원하지 않는 형식 / 처리 오류 placeholder → ("doc",    "medium")
+         호출자(server_llmwiki.py 업로드 핸들러)는 `tc.text` 를 받아
+         기존 sanitize_document_content 를 통해 ingestion-time 검역 유지.
+         후속 phase 가 단일 quarantine chokepoint 로 통일 예정.
 """
 import os
 import re
@@ -20,6 +32,7 @@ from pdf2image import convert_from_path
 
 from config import UPLOAD_FOLDER, POPPLER_PATH, TESSERACT_PATH
 from core.gemma_client import GemmaClient
+from core.policy_engine import TrustedContent
 from utils.metadata import MetadataGenerator
 
 
@@ -57,11 +70,11 @@ class FileProcessor:
     # 텍스트 추출 메서드들
     # ─────────────────────────────────────
 
-    def extract_text(self, filepath):
+    def extract_text(self, filepath) -> TrustedContent:
         with open(filepath, "r", encoding="utf-8") as f:
             data = f.read()
         print(f"[DEBUG] 텍스트 읽기 완료 ({len(data)}자)")
-        return data
+        return TrustedContent(text=data, source="doc", trust="medium")
 
     def _extract_with_markitdown(self, filepath: str) -> str:
         try:
@@ -75,11 +88,13 @@ class FileProcessor:
             print(f"[DEBUG] MarkItDown 실패: {e}")
             return ""
 
-    def extract_pdf(self, filepath):
+    def extract_pdf(self, filepath) -> TrustedContent:
         text = self._extract_with_markitdown(filepath)
         if not text or len(text) < 100:
+            # OCR fallback — 스캔 PDF 는 이미지 기반이므로 low-trust ocr.
             text = self._extract_scanned_pdf(filepath)
-        return text
+            return TrustedContent(text=text, source="ocr", trust="low")
+        return TrustedContent(text=text, source="doc", trust="medium")
 
     def _extract_scanned_pdf(self, filepath):
         try:
@@ -96,9 +111,13 @@ class FileProcessor:
             print(f"[DEBUG] 스캔 PDF OCR 실패: {e}")
             return "[PDF OCR 실패]"
 
-    def extract_office(self, filepath):
+    def extract_office(self, filepath) -> TrustedContent:
         text = self._extract_with_markitdown(filepath)
-        return text if text else "[문서 변환 실패]"
+        return TrustedContent(
+            text=text if text else "[문서 변환 실패]",
+            source="doc",
+            trust="medium",
+        )
 
     def _preprocess_image(self, img):
         w, h  = img.size
@@ -134,21 +153,39 @@ class FileProcessor:
             print(f"[DEBUG] Vision 오류: {e}")
             return ""
 
-    def extract_image(self, filepath):
-        text = self._extract_with_vision_tiling(filepath)
+    def extract_image(self, filepath) -> TrustedContent:
+        # 이미지에서 추출된 모든 텍스트는 low-trust (적대적 픽셀 가능).
+        # vision tiling 성공 시 source="vision", OCR fallback 시 source="ocr".
+        text   = self._extract_with_vision_tiling(filepath)
+        source = "vision"
         if len(text) < 10:
-            text = self._extract_with_easyocr(filepath)
+            text   = self._extract_with_easyocr(filepath)
+            source = "ocr"
         if len(text) < 10:
-            text = self._extract_with_tesseract(Image.open(filepath))
-        return f"[이미지 분석 결과]\n{text}"
+            text   = self._extract_with_tesseract(Image.open(filepath))
+            source = "ocr"
+        return TrustedContent(
+            text=f"[이미지 분석 결과]\n{text}",
+            source=source,
+            trust="low",
+        )
 
-    def extract_audio(self, filepath):
+    def extract_audio(self, filepath) -> TrustedContent:
         model = self.get_whisper_model()
         res   = model.transcribe(filepath, language="ko")
-        return f"[음성 변환]\n{res.get('text', '')}"
+        return TrustedContent(
+            text=f"[음성 변환]\n{res.get('text', '')}",
+            source="asr",
+            trust="low",
+        )
 
-    def extract_video(self, filepath):
-        return "[영상 분석 결과 - 샘플링 기반]"
+    def extract_video(self, filepath) -> TrustedContent:
+        # Stub — 향후 frame ASR + vision caption 합성. 둘 다 low-trust.
+        return TrustedContent(
+            text="[영상 분석 결과 - 샘플링 기반]",
+            source="asr",
+            trust="low",
+        )
 
     # ─────────────────────────────────────
     # Fix 3+4: sensitivity 강제 override
@@ -181,10 +218,13 @@ class FileProcessor:
     # 메타데이터 생성은 generate_file_metadata()로 분리
     # ─────────────────────────────────────
 
-    def process_file(self, filepath: str, original_filename: str) -> str:
+    def process_file(self, filepath: str, original_filename: str) -> TrustedContent:
         """
         파일 → 텍스트 추출만 담당 (저장 X)
         Fix 2: str 반환 (tuple 제거)
+        Fix 5 (#44 phase 4-B): TrustedContent 반환. 내부 extractor 의
+              source/trust 를 상위로 전파 — 호출자가 PolicyEngine.quarantine
+              으로 일원화할 수 있도록 provenance 보존.
         저장은 server_llmwiki.py의 rag_engine.save_to_wiki()에서 수행
         """
         filename = os.path.basename(filepath)
@@ -194,30 +234,39 @@ class FileProcessor:
         print(f"[SYSTEM] 파일 처리: {filename}")
         print(f"{'='*50}")
 
-        content = f"# 파일: {original_filename}\n\n"
-
         try:
             if ext in ["txt", "md"]:
-                content += self.extract_text(filepath)
+                inner = self.extract_text(filepath)
             elif ext == "pdf":
-                content += self.extract_pdf(filepath)
+                inner = self.extract_pdf(filepath)
             elif ext in ["png", "jpg", "jpeg", "bmp", "tiff", "webp"]:
-                content += self.extract_image(filepath)
+                inner = self.extract_image(filepath)
             elif ext in ["mp3", "wav", "m4a", "ogg"]:
-                content += self.extract_audio(filepath)
+                inner = self.extract_audio(filepath)
             elif ext in ["mp4", "avi", "mov", "mkv"]:
-                content += self.extract_video(filepath)
+                inner = self.extract_video(filepath)
             elif ext in ["docx", "doc", "xlsx", "xls", "pptx", "ppt", "hwp", "hwpx"]:
-                content += self.extract_office(filepath)
+                inner = self.extract_office(filepath)
             else:
                 print(f"[WARN] 지원하지 않는 형식: {ext}")
-                content += "[지원하지 않는 형식]"
+                inner = TrustedContent(
+                    text="[지원하지 않는 형식]", source="doc", trust="medium",
+                )
         except Exception as e:
             print(f"[ERROR] 파일 처리 오류: {e}")
-            content += f"[처리 오류] {str(e)}"
+            inner = TrustedContent(
+                text=f"[처리 오류] {e}", source="doc", trust="medium",
+            )
 
-        print(f"[DEBUG] 텍스트 추출 완료 ({len(content)}자)")
-        return content
+        # 파일명 헤더는 서버 발 system 텍스트이므로 내부 extractor 의 trust 를 상속.
+        composed_text = f"# 파일: {original_filename}\n\n{inner.text}"
+        print(f"[DEBUG] 텍스트 추출 완료 ({len(composed_text)}자, "
+              f"source={inner.source} trust={inner.trust})")
+        return TrustedContent(
+            text=composed_text,
+            source=inner.source,
+            trust=inner.trust,
+        )
 
     def generate_file_metadata(self, content: str) -> dict:
         """
