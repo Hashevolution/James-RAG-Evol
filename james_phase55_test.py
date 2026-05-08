@@ -238,7 +238,11 @@ def run_read_file_tests():
     print("="*55)
 
     os.makedirs("./workspace", exist_ok=True)
-    with open("./workspace/_diag_test.py", "w") as f:
+    # encoding="utf-8" required: on Windows the default is cp949, which
+    # would silently corrupt the Korean comment. ReadFileTool then reads
+    # with utf-8 + errors="replace" and emits � replacement chars in
+    # the test report (visible in older james_phase55_report.json runs).
+    with open("./workspace/_diag_test.py", "w", encoding="utf-8") as f:
         f.write("# 진단 테스트 파일\nprint('hello')\nx = 1 + 2\n")
 
     def t_read_tool_exists():

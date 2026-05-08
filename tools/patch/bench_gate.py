@@ -139,6 +139,13 @@ def _run_bench_check_blocking(suite: str, timeout_s: int) -> tuple[bool, str]:
             cwd=str(ROOT),
             capture_output=True,
             text=True,
+            # encoding/errors required on Windows: bench.py prints
+            # Korean query strings; without explicit utf-8 the parent
+            # decodes via locale.getpreferredencoding() which is cp949
+            # on Korean Windows installs, mojibaking the captured tail
+            # that lands in record_outcome.detail.
+            encoding="utf-8",
+            errors="replace",
             timeout=timeout_s,
         )
     except subprocess.TimeoutExpired:

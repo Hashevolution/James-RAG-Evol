@@ -217,7 +217,10 @@ if __name__ == "__main__":
 
     import os
     os.makedirs("./workspace", exist_ok=True)
-    with open("./workspace/test.py", "w") as f:
+    # encoding="utf-8" required: Windows default is cp949 → Korean
+    # comment would be saved in cp949 and CodeReader's utf-8 read
+    # would emit replacement chars.
+    with open("./workspace/test.py", "w", encoding="utf-8") as f:
         f.write("# 테스트 파일\nprint('hello')\n")
 
     reader = CodeReader()

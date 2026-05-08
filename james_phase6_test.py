@@ -296,7 +296,9 @@ def run_patch_flow_checks():
 
     os.makedirs("./workspace/patches", exist_ok=True)
     os.makedirs("./workspace", exist_ok=True)
-    with open("./workspace/_patch_test.py", "w") as f:
+    # encoding="utf-8" required: Windows default is cp949 → Korean
+    # comment would be saved in cp949 and corrupt downstream utf-8 reads.
+    with open("./workspace/_patch_test.py", "w", encoding="utf-8") as f:
         f.write("# 테스트 파일\nx = 1\n")
 
     def t_generator_exists():
