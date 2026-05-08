@@ -78,10 +78,9 @@ class NaturalFlowResolverTests(unittest.TestCase):
         from core.response_style import NATURAL_PRESET
         ko = NATURAL_PRESET.rule_text_ko
         en = NATURAL_PRESET.rule_text_en
-        # Flow elements present in Korean rule
+        # Core flow elements (v2 baseline)
         self.assertIn("핵심 답", ko)
         self.assertIn("근거", ko)
-        # Flow elements present in English rule
         self.assertIn("Direct answer", en)
         self.assertIn("evidence", en.lower())
         # Explicit ban on the v1 emoji template
@@ -90,6 +89,30 @@ class NaturalFlowResolverTests(unittest.TestCase):
         # Explicit "no character-count limit" — user said 글자수 상관없다
         self.assertIn("글자수 제약 없음", ko)
         self.assertIn("character-count limit", en)
+
+    def test_rule_text_v3_intent_verify_and_next_actions(self):
+        # v3 (item #2 user feedback): intent verification step (for
+        # accuracy) + next-actions block (numbered options the user
+        # can pick) must be present in the prose guide.
+        from core.response_style import NATURAL_PRESET
+        ko = NATURAL_PRESET.rule_text_ko
+        en = NATURAL_PRESET.rule_text_en
+        # KO — intent check phrase
+        self.assertIn("의도 확인", ko,
+                      "v3: intent verification must be in the rule")
+        self.assertIn("정확성", ko,
+                      "v3: intent check rationale must mention 정확성 — "
+                      "user said the purpose is accuracy, not tone")
+        # KO — next-actions block
+        self.assertIn("다음 작업", ko,
+                      "v3: closing 'next actions' block must be in the rule")
+        self.assertIn("(1)", ko,
+                      "v3: numbered options example must show (1)..(2)..(3) form")
+        # EN — same elements
+        self.assertIn("Intent check", en)
+        self.assertIn("accuracy", en.lower())
+        self.assertIn("Next actions", en)
+        self.assertIn("(1)", en)
 
 
 class CallSiteContractTests(unittest.TestCase):

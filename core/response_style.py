@@ -70,36 +70,59 @@ class StylePreset:
 
 
 # The one natural-flow preset. All public ids resolve to this.
+#
+# v3 (2026-05-08, item #2 user feedback):
+#   - Add an upfront "intent verification" step. The purpose is
+#     ACCURACY — when the question is ambiguous, the model briefly
+#     restates what it understood before answering. When the question
+#     is unambiguous, it skips the restate and answers directly.
+#   - Add a closing "next actions" block (2-3 numbered options the
+#     user can pick). Lets the user steer the next turn without
+#     re-typing context.
+#
+# These two additions move the answer toward Claude's conversational
+# style: confirm-then-answer-then-suggest. Avoid heavy templating
+# (rigid 1./2./3. headers, emoji labels) — the rule says "guidance,
+# not template" so short questions still get short prose answers.
 NATURAL_PRESET = StylePreset(
     name="natural",
     max_tokens=2000,
     force_two_sections=False,
     rule_text_ko=(
         "답변 작성 가이드:\n"
-        "- 자연스러운 한국어 문단으로 답하세요. 번호 매기기, 'STEP 1', "
-        "'📚 자료 기반', '💡 추론' 같은 라벨은 사용하지 마세요.\n"
-        "- 흐름은 다음을 따르되 강제는 아닙니다:\n"
-        "  (1) 질문에 대한 핵심 답을 먼저 한 두 문장으로 직접 제시.\n"
-        "  (2) 내부 자료에서 근거가 되는 부분을 자연스럽게 이어서 설명. "
-        "근거가 없으면 '제공된 자료에는 직접 언급이 없습니다'라고 명시.\n"
-        "  (3) 관련 시각, 한계, 또는 후속으로 물어볼 만한 내용을 짧게 덧붙이세요.\n"
-        "- 짧은 질문엔 핵심 답만으로 충분합니다. 복잡한 질문일수록 (2)(3)을 채우세요.\n"
+        "- 자연스러운 한국어 문단으로 답하세요. 'STEP 1', '📚 자료 기반', "
+        "'💡 추론' 같은 라벨은 사용하지 마세요.\n"
+        "- 다음 흐름을 따르되 강제는 아닙니다 (짧은 질문엔 짧게):\n"
+        "  • 의도 확인 (정확성 검증 목적): 질문이 애매하면 한 줄로 "
+        "    \"X를 묻는 거 맞나요?\" 라고 짧게 재확인. 명확하면 생략.\n"
+        "  • 핵심 답: 한두 문장으로 직접 답.\n"
+        "  • 근거: 내부 자료의 어느 부분에서 나온 답인지 자연스럽게 인용. "
+        "    근거가 없으면 \"제공된 자료에는 직접 언급이 없습니다\"라고 명시.\n"
+        "  • 다음 작업 제안: 관련해서 물어볼 만한 내용 또는 후속 행동 "
+        "    2-3개를 짧게 제시. 사용자가 번호로 답할 수 있게 \"다음 중 어떤 "
+        "    걸 원하시나요? (1) ... (2) ... (3) ...\" 형식 권장.\n"
+        "- 단순 사실 확인 (예: \"X가 뭐야?\")엔 의도 확인과 다음 작업 제안 "
+        "  생략 가능. 복잡한 질문일수록 모든 단계 채우세요.\n"
         "- 글자수 제약 없음. 내용에 맞는 자연스러운 길이로.\n"
     ),
     rule_text_en=(
         "Answer composition guide:\n"
-        "- Write in natural English prose. Do NOT use numbered lists, "
-        "'STEP 1' headers, or '📚 Data-based' / '💡 Reasoning' labels.\n"
-        "- Follow this flow as guidance (not a rigid template):\n"
-        "  (1) Direct answer to the question in one or two sentences first.\n"
-        "  (2) Supporting evidence from the internal data, woven into "
-        "the prose. If the data does not directly cover the question, "
-        "say so explicitly.\n"
-        "  (3) Briefly add a related angle, limitation, or a useful "
-        "follow-up question.\n"
-        "- Short questions deserve short answers. Fill in (2) and (3) "
-        "only when the question warrants it.\n"
-        "- No character-count limit. Pick a length that fits the content.\n"
+        "- Natural English prose. No 'STEP 1' headers or "
+        "'📚 Data-based' / '💡 Reasoning' labels.\n"
+        "- Follow this flow as guidance (short questions get short answers):\n"
+        "  • Intent check (accuracy purpose): if the question is "
+        "    ambiguous, briefly restate as \"You're asking about X, right?\". "
+        "    Skip when unambiguous.\n"
+        "  • Direct answer: one or two sentences.\n"
+        "  • Evidence: weave in which part of the internal data the "
+        "    answer comes from. If the data doesn't cover it, say so.\n"
+        "  • Next actions: 2-3 short options the user could pick from "
+        "    next, formatted so they can reply with a number: "
+        "    \"What would you like next? (1) ... (2) ... (3) ...\"\n"
+        "- For simple fact-checks (\"What is X?\"), intent check and "
+        "  next-actions are optional. Fill them in when the question "
+        "  warrants it.\n"
+        "- No character-count limit. Pick a length that fits.\n"
     ),
 )
 
