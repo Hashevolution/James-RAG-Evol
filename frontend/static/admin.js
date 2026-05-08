@@ -437,14 +437,24 @@ async function loadLongTerm() {
   try {
     const data = await api('/history/long-term/?limit=10');
     const tbody = document.getElementById('long-term-body');
-    tbody.innerHTML = (data.summaries || []).map(s => `
-      <tr>
-        <td class="mono">${s.saved_at?.slice(0,10) || '-'}</td>
-        <td>${s.topic || '-'}</td>
-        <td style="max-width:400px;font-size:12px">${s.summary?.slice(0,120) || '-'}</td>
-        <td>-</td>
-      </tr>
-    `).join('') || `<tr><td colspan='4' class='empty'>${t('mem.no_longterm')}</td></tr>`;
+    tbody.innerHTML = (data.summaries || []).map(s => {
+      // item #3-b: row click → original turns modal. session_id is
+      // present in the API response (memory/store.py:492).
+      const sid = s.session_id || '';
+      const onclick = sid
+        ? `onclick="openSessionTurns('${escapeHtml(sid)}', '${escapeHtml((s.topic || '').slice(0, 40))}')"`
+        : '';
+      const cursor = sid ? 'cursor:pointer' : '';
+      const hint   = sid ? '' : ' <em style="color:var(--muted);font-size:10px">(no session_id)</em>';
+      return `
+        <tr style="${cursor}" ${onclick}>
+          <td class="mono">${s.saved_at?.slice(0,10) || '-'}</td>
+          <td>${escapeHtml(s.topic || '-')}${hint}</td>
+          <td style="max-width:400px;font-size:12px">${escapeHtml((s.summary || '').slice(0,120) || '-')}</td>
+          <td>${sid ? '🔍 펼침' : '-'}</td>
+        </tr>
+      `;
+    }).join('') || `<tr><td colspan='4' class='empty'>${t('mem.no_longterm')}</td></tr>`;
   } catch (e) {
     document.getElementById('long-term-body').innerHTML =
       `<tr><td colspan="4" class="empty">${e.message}</td></tr>`;
@@ -455,22 +465,81 @@ async function loadSessions() {
   try {
     const data = await api('/history/sessions/');
     const tbody = document.getElementById('sessions-body');
-    tbody.innerHTML = (data.sessions || []).map(s => `
-      <tr>
-        <td class="mono" style="font-size:10px">${s.session_id?.slice(0,20) || '-'}</td>
-        <td class="mono">${s.turn_count ?? 0} turns</td>
-        <td class="mono">${s.started?.slice(0,16) || '-'}</td>
-        <td class="mono">${s.last?.slice(0,16) || '-'}</td>
-        <td>
-          <button class="btn btn-approve" style="font-size:10px"
-            onclick="summarizeAndDelete('${s.session_id}')" data-i18n='mem.summarize_delete'>Summarize & Delete</button>
-        </td>
-      </tr>
-    `).join('') || `<tr><td colspan='5' class='empty'>${t('mem.no_sessions')}</td></tr>`;
+    tbody.innerHTML = (data.sessions || []).map(s => {
+      const sid = s.session_id || '';
+      // item #3-b: session_id 셀 + turn_count 셀 클릭 → 원본 펼침
+      // (액션 버튼은 그대로 두고 행 일부만 클릭 가능하게 — 실수로
+      // summarize&delete 버튼 누르는 사고 방지)
+      const expandable = sid
+        ? `onclick="openSessionTurns('${escapeHtml(sid)}', '${escapeHtml(sid.slice(0,20))}')" style="cursor:pointer"`
+        : '';
+      return `
+        <tr>
+          <td class="mono" style="font-size:10px" ${expandable}>${escapeHtml(sid.slice(0,20)) || '-'}</td>
+          <td class="mono" ${expandable}>${s.turn_count ?? 0} turns</td>
+          <td class="mono">${s.started?.slice(0,16) || '-'}</td>
+          <td class="mono">${s.last?.slice(0,16) || '-'}</td>
+          <td>
+            <button class="btn btn-approve" style="font-size:10px"
+              onclick="summarizeAndDelete('${escapeHtml(sid)}')" data-i18n='mem.summarize_delete'>Summarize & Delete</button>
+          </td>
+        </tr>
+      `;
+    }).join('') || `<tr><td colspan='5' class='empty'>${t('mem.no_sessions')}</td></tr>`;
   } catch (e) {
     document.getElementById('sessions-body').innerHTML =
       `<tr><td colspan="5" class="empty">${e.message}</td></tr>`;
   }
+}
+
+/* ── item #3-b: 세션 원본 대화 펼침 modal ── */
+async function openSessionTurns(sessionId, label) {
+  const modal = document.getElementById('session-turns-modal');
+  const titleEl = document.getElementById('session-turns-title');
+  const metaEl  = document.getElementById('session-turns-meta');
+  const bodyEl  = document.getElementById('session-turns-body');
+
+  if (titleEl) titleEl.textContent = `세션 원본 대화 — ${label || sessionId}`;
+  if (metaEl)  metaEl.textContent  = `로딩 중... (session_id=${sessionId})`;
+  if (bodyEl)  bodyEl.innerHTML    = '';
+  modal.style.display = 'flex';
+
+  try {
+    const data = await api(`/history/?session_id=${encodeURIComponent(sessionId)}&limit=200`);
+    const turns = data.turns || [];
+    if (metaEl) metaEl.textContent = `session_id=${sessionId} · ${turns.length} 턴`;
+    if (turns.length === 0) {
+      bodyEl.innerHTML = `<div style="color:var(--muted);text-align:center;padding:20px">이 세션에 저장된 턴이 없습니다.</div>`;
+      return;
+    }
+    bodyEl.innerHTML = turns.map(turn => {
+      const isUser = (turn.role || turn.speaker || '').toLowerCase().includes('user');
+      const text   = turn.content || turn.text || turn.answer || '';
+      const ts     = turn.created_at || turn.time || turn.timestamp || '';
+      const tsShort = (ts || '').slice(0, 19).replace('T', ' ');
+      return `
+        <div style="display:flex;flex-direction:column;gap:4px;
+                    background:${isUser ? 'rgba(124,106,247,.10)' : 'var(--bg)'};
+                    border-left:3px solid ${isUser ? '#7c6af7' : '#3da78a'};
+                    padding:10px 12px;border-radius:4px">
+          <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono);
+                      display:flex;justify-content:space-between">
+            <span>${isUser ? '🗨️ user' : '🤖 james'}${turn.mode ? ' · mode=' + escapeHtml(turn.mode) : ''}</span>
+            <span>${escapeHtml(tsShort)}</span>
+          </div>
+          <div style="white-space:pre-wrap;font-size:13px">${escapeHtml(text)}</div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    if (metaEl) metaEl.textContent = '';
+    bodyEl.innerHTML = `<div style="color:var(--red,#f06292);text-align:center;padding:20px">로드 실패: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function closeSessionTurns(e) {
+  if (e && e.target.id !== 'session-turns-modal') return;
+  document.getElementById('session-turns-modal').style.display = 'none';
 }
 
 async function summarizeAndDelete(sessionId) {
