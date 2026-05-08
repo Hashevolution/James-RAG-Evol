@@ -112,8 +112,13 @@ class ConditionalExportTests(unittest.TestCase):
                       "sendMessage must set pendingReportRequest based on regex")
 
     def test_append_james_consumes_flag(self):
+        # Use next-function bound so future additions to appendJamesMsg
+        # (e.g. #A6-2 web-used badge) don't push the export logic past
+        # an arbitrary char limit.
         idx = self.js.index("function appendJamesMsg")
-        body = self.js[idx:idx + 5000]
+        m = re.search(r"\nfunction\s+\w+\s*\(", self.js[idx + 1:])
+        end = idx + 1 + m.start() if m else idx + 12000
+        body = self.js[idx:end]
         self.assertIn("showExportBtns", body,
                       "appendJamesMsg must check showExportBtns variable")
         self.assertIn("pendingReportRequest = false", body,

@@ -344,6 +344,10 @@ class QueryResponse(BaseModel):
     # [#47 phase 1] end-to-end trace correlation. Always populated; users
     # quote this on bug reports so we can read back the per-stage trace.
     trace_id:       str   = ""
+    # [#A6-2] 웹 검색 사용 여부 + 출처 URL — 답변 bubble의 "🌐 웹 검색
+    # 사용됨" 배지 + 출처 리스트. internal-only 답변엔 둘 다 빈/false.
+    web_used:       bool  = False
+    web_sources:    list  = []
 
 class UploadResponse(BaseModel):
     status:      str
@@ -732,6 +736,9 @@ async def query(
         ) if not result.get("blocked") else "",
         # [#47 phase 1] correlate response to per-stage trace file.
         "trace_id":      trace_id,
+        # [#A6-2] 웹 검색 사용됨 배지 + 출처 URL (자료 부족 fallback 시).
+        "web_used":      bool(result.get("web_used", False)),
+        "web_sources":   result.get("web_sources", []),
     }
     # [#65 phase 3] admin-only RAGAS evaluation hook. The chunk texts that
     # fed the LLM are surfaced only when (a) caller opted in via

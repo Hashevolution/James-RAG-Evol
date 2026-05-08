@@ -746,6 +746,35 @@ function appendJamesMsg(data) {
       (data.mode||'') + ':' + (data.answer||'').slice(0,40)
     )).slice(0,12) : '');
 
+  // [#A6-2] 웹 검색 사용됨 배지 + 출처 URL
+  // 답변에 외부 데이터(low-trust web)가 섞였음을 사용자에게 명시.
+  // 출처 URL 노출로 신뢰도 자가 판단 가능. internal-only 답변엔 미표시.
+  let webBadge = '';
+  if (data.web_used) {
+    const sources = Array.isArray(data.web_sources) ? data.web_sources : [];
+    const engine  = sources[0]?.engine || 'web';
+    const engineLabel = engine === 'tavily' ? 'Tavily'
+                      : engine === 'duckduckgo' ? 'DuckDuckGo'
+                      : '웹';
+    const sourceLines = sources.slice(0, 5).map(s => {
+      const url = s.url || '';
+      const title = (s.title || url).slice(0, 80);
+      return `<li style="margin-top:3px"><a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer"
+              style="color:var(--accent-fg);text-decoration:none;font-size:11px"
+              title="${escHtml(url)}">${escHtml(title)}</a></li>`;
+    }).join('');
+    webBadge = `
+      <details class="web-used-details" style="margin-top:6px">
+        <summary style="cursor:pointer;font-size:11px;color:#4fc3f7;
+                        font-weight:600;user-select:none;display:inline-block;
+                        background:rgba(79,195,247,.10);padding:3px 9px;
+                        border-radius:6px;border:1px solid rgba(79,195,247,.30)">
+          🌐 웹 검색 사용됨 (${escHtml(engineLabel)} · ${sources.length}건) — 출처 보기
+        </summary>
+        ${sourceLines ? `<ul style="margin:6px 0 0 18px;padding:0;font-family:var(--font-ui)">${sourceLines}</ul>` : ''}
+      </details>`;
+  }
+
   // [3-B] unified_score → 신뢰도 배지
   const score = data.unified_score;
   let confidenceBadge = '';
@@ -867,6 +896,7 @@ function appendJamesMsg(data) {
     <div class="avatar james">🧠</div>
     <div>
       <div class="bubble">${formatAnswerWithParagraphs(answer)}${pathsHtml}</div>
+      ${webBadge}
       ${confidenceBadge}
       ${metaHtml}
       ${suggestionsHtml}

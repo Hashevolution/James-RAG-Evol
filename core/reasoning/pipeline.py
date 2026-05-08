@@ -268,23 +268,29 @@ def run_retrieval_pipeline(
         sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
 
         # [P7] retrieval 결과 품질에 따라 분기
+        # [#A6-1 2026-05-08] threshold + role gate 동적 로드
+        from core.web_search_config import get_threshold, is_role_allowed
         low_relevance = (
             not safe_context
             or len(safe_context.strip()) < 50
-            or unified_score < 0.30
+            or unified_score < get_threshold()
         )
+
+        # [#A6-2] web_results를 outer scope에 선언 — 답변 후 return dict에
+        # 노출하기 위해. low_relevance 진입 안 하면 빈 리스트 → web_used=False.
+        web_results: list = []
 
         if low_relevance:
             # ── [3-E 경로 A] 내부 자료 없음 → 웹 검색 시도 ──
             web_context = ""
-            web_results = []
             try:
                 from tools.web.web_searcher import (
                     search_web, format_search_results,
                     record_search, should_promote_to_longterm,
                     save_as_longterm, update_knowledge_level, is_save_command,
                 )
-                if user_role == "admin":  # 보안: admin만 웹 검색
+                # [#A6-1] admin-only hardcode → role allowlist (settings).
+                if is_role_allowed(user_role):
                     print(f"[WEB] 내부 자료 부족 → 웹 검색: {safe_query[:40]}")
                     web_results = search_web(safe_query, max_results=4)
                     if web_results:
@@ -453,11 +459,25 @@ def run_retrieval_pipeline(
     stats = engine.llm.get_cache_stats()
     print(f"[CACHE]  {stats['hit_rate_%']} hits={stats['hits']} misses={stats['misses']}")
 
+    # [#A6-2] 웹 검색 사용 여부 + 출처 URL — 답변 bubble의 "🌐 웹 검색
+    # 사용됨" 배지 + 출처 리스트에 사용. low-trust 외부 데이터임을 사용자
+    # 에게 명시적으로 알려 신뢰도 판단 가능하게.
+    web_used    = bool(web_results)
+    web_sources = [
+        {"title": (r.get("title") or "")[:120],
+         "url":   r.get("url", ""),
+         "engine": r.get("engine", "")}
+        for r in web_results[:5] if r.get("url")
+    ]
+
     return {
         "answer":        answer,
         "graph_paths":   loop_state["graph_paths"],
         "graph_used":    len(loop_state["graph_context"]),
         "sources":       [d.get("source", "unknown") for d in loop_state["docs"][:3]],
+        # [#A6-2] web search 사용 여부 + 출처
+        "web_used":      web_used,
+        "web_sources":   web_sources,
         # [#65 phase 3] full chunk texts that fed the LLM, surfaced for
         # RAGAS `context_precision` / `context_recall` evaluation against
         # the live retrieval path. The /query/ endpoint admin-gates the
