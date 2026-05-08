@@ -879,10 +879,37 @@ async function loadWebSearchConfig() {
     if (slider && data.threshold != null) {
       slider.value = data.threshold;
       if (val) val.textContent = Number(data.threshold).toFixed(2);
+      applyWsThresholdLabel(data.threshold);
     }
   } catch (e) {
     console.warn('[admin] /admin/web-search-config/ load 실패:', e);
   }
+}
+
+/* [#A8-2] threshold 슬라이더 값 → 직관적 라벨 매핑.
+   pipeline.py 의 `unified_score < threshold` 트리거 조건상,
+   threshold 가 *높을수록* 더 많은 쿼리가 웹 검색으로 넘어간다.
+     0.05~0.20  안함    — 거의 모든 쿼리가 internal-only
+     0.20~0.35  소극    — 자료 빈약할 때만 웹
+     0.35~0.50  보통    — default (0.30) 근처, 균형
+     0.50~0.65  적극    — 자료 풍부해도 자주 웹으로 보강
+     0.65~0.80  강력    — 거의 모든 쿼리에 웹 검색 (Tavily 할당량 빠르게 소진)
+   라벨별 색상도 다르게 — 시각적 강약 표현. */
+function applyWsThresholdLabel(value) {
+  const v = parseFloat(value);
+  const valEl   = document.getElementById('ws-threshold-val');
+  const labelEl = document.getElementById('ws-threshold-label');
+  if (valEl)   valEl.textContent = v.toFixed(2);
+  if (!labelEl) return;
+  let label, bg, fg;
+  if (v < 0.20)      { label = '안함';  bg = 'rgba(138,141,153,.18)'; fg = '#8a8d99'; }
+  else if (v < 0.35) { label = '소극';  bg = 'rgba(79,195,247,.18)';  fg = '#4fc3f7'; }
+  else if (v < 0.50) { label = '보통';  bg = 'rgba(99,102,241,.18)';  fg = '#a5b4fc'; }
+  else if (v < 0.65) { label = '적극';  bg = 'rgba(255,183,77,.20)';  fg = '#ffb74d'; }
+  else               { label = '강력';  bg = 'rgba(240,98,146,.22)';  fg = '#f06292'; }
+  labelEl.textContent       = label;
+  labelEl.style.background  = bg;
+  labelEl.style.color       = fg;
 }
 
 async function saveWebSearchConfig() {

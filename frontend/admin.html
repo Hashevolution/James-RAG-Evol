@@ -877,25 +877,31 @@
         <div class="setting-row">
           <div>
             <div class="setting-label">Relevance Threshold
+              <!-- [#A8-2] 숫자 옆에 직관적 라벨 — 강력/적극/보통/소극/안함.
+                   admin.js applyWsThresholdLabel()가 슬라이더 값 → 라벨 매핑. -->
               <span style="font-weight:600;color:var(--accent)">
-                (Current: <span id="ws-threshold-val">0.30</span>)
+                (Current: <span id="ws-threshold-val">0.30</span>
+                <span id="ws-threshold-label"
+                      style="margin-left:6px;padding:1px 8px;border-radius:4px;
+                             font-size:11px;background:var(--accent-soft);
+                             color:var(--accent-fg)">보통</span>)
               </span>
             </div>
             <div class="setting-sub">unified_score 가 이 값 미만이면 웹 검색 트리거.
-              낮추면 (0.20) 자료 풍부한 corpus에서도 자주 나가고,
-              높이면 (0.50) 자료 부족해도 내부만 사용.
+              <strong>높이면 (강력)</strong> 자료 부족해도 자주 웹 검색,
+              <strong>낮추면 (안함)</strong> 자료 풍부할 때만 웹 검색.
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;min-width:260px">
             <input type="range" id="ws-threshold" min="0.05" max="0.80" step="0.05"
                    value="0.30"
                    style="flex:1;accent-color:var(--accent)"
-                   oninput="document.getElementById('ws-threshold-val').textContent=Number(this.value).toFixed(2)">
+                   oninput="applyWsThresholdLabel(this.value)">
             <div style="display:flex;gap:4px">
               <span style="font-size:11px;padding:2px 7px;border-radius:4px;
-                           background:var(--bg2);color:var(--muted)">0.05</span>
+                           background:var(--bg2);color:var(--muted)">안함</span>
               <span style="font-size:11px;padding:2px 7px;border-radius:4px;
-                           background:var(--bg2);color:var(--muted)">0.80</span>
+                           background:var(--bg2);color:var(--muted)">강력</span>
             </div>
           </div>
         </div>
