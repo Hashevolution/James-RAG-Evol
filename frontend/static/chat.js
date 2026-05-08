@@ -601,10 +601,25 @@ function appendJamesMsg(data) {
   const div = document.createElement('div');
   div.className = 'msg james';
 
+  // item #5-B: graph paths는 기본 hidden — 사용자가 "그래프 보기"
+  // 토글 클릭 시 펼침. 답변 가시성을 해치는 큰 paths 리스트 (최대
+  // 50개)가 매번 깔리던 문제 해결.
   let pathsHtml = '';
   if (paths.length > 0) {
+    const pathsId = 'gp_' + Math.random().toString(36).slice(2, 9);
     const list = paths.map(p => `<div>→ ${escHtml(p)}</div>`).join('');
-    pathsHtml = `<div class="graph-paths"><div class="path-title">GRAPH PATHS</div>${list}</div>`;
+    pathsHtml = `
+      <details class="graph-paths-details" style="margin-top:6px">
+        <summary class="graph-paths-toggle"
+                 style="cursor:pointer;font-size:11px;color:var(--muted);
+                        font-family:var(--font-mono);user-select:none;
+                        padding:2px 0">
+          🕸️ 그래프 경로 ${paths.length}개 보기
+        </summary>
+        <div id="${pathsId}" class="graph-paths" style="margin-top:6px">
+          <div class="path-title">GRAPH PATHS</div>${list}
+        </div>
+      </details>`;
   }
 
   let metaHtml = '';
