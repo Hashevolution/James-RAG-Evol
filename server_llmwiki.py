@@ -1984,15 +1984,39 @@ async def admin_patch_approve(request: Request, role: str = Depends(get_role_fro
         patch = rec
         ok, msg = patch_apply(patch, validated=True)
 
-        # Lifecycle: deployed | rolled_back. Phase 2 will plug the
-        # before/after metrics from bench.py here.
+        # If apply() itself failed, no bench gate to run — record and exit.
+        if not ok:
+            record_outcome(patch_id, "rolled_back", detail=f"apply failed: {msg}")
+            return {
+                "success":           False,
+                "message":           msg,
+                "outcome":           "rolled_back",
+                "patch_id":          patch_id,
+                "approver_username": approver_username,
+                "approver_role":     role,
+                "approval_method":   approval_method,
+            }
+
+        # #68 phase 2-A: bench eval gate. Re-runs STEP 7 against the
+        # live server in a subprocess (asyncio.to_thread so the event
+        # loop can serve the bench's incoming /query/ requests). On
+        # regression, the gate auto-rolls-back inside run_bench_gate
+        # and returns outcome_label='rolled_back'.
+        from tools.patch.bench_gate import run_bench_gate
+        gate = await run_bench_gate(patch_id, patch.get("target", ""))
+
         record_outcome(
-            patch_id, "deployed" if ok else "rolled_back",
-            detail=msg,
+            patch_id, gate.outcome_label,
+            detail=gate.detail,
+            before_metrics=gate.before_metrics,
+            after_metrics=gate.after_metrics,
         )
         return {
-            "success":           ok,
+            "success":           gate.passed,
             "message":           msg,
+            "outcome":           gate.outcome_label,
+            "before_metrics":    gate.before_metrics,
+            "after_metrics":     gate.after_metrics,
             "patch_id":          patch_id,
             "approver_username": approver_username,
             "approver_role":     role,
