@@ -97,6 +97,7 @@ class ReasoningEngine:
         source_type: Optional[str] = "prod",   # [P4.5-2] 기본 prod
         session_id:  str        = "default",   # [P7-FIX] 메모리 시스템 연동
         response_style: str     = "",          # brief / standard / detailed — see core/response_style.py
+        mode_override:  str     = "",          # item #6: 클라이언트가 chat/coding/retrieval 등 명시 → router 우회
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -224,13 +225,31 @@ class ReasoningEngine:
 
         # ── Query Router (STEP 0.5a) ─────────────────────────
         # pre_check 통과 후에만 진입. 보안 순서 유지.
-        try:
-            from core.query_router import QueryRouter
-            mode = QueryRouter().route(safe_query, user_role=user_role)
-            print(f"[ROUTER] mode={mode} | query='{safe_query[:40]}'")
-        except Exception as e:
-            self._log("query_router", e, user_role)
-            mode = "retrieval"   # fallback → 기존 Loop
+        # item #6: mode_override가 있으면 router 건너뛰고 그 모드 사용
+        # (클라이언트가 챗 페이지 dropdown으로 명시한 경우). 단,
+        # role-allowed 체크는 그대로 적용해서 권한 우회 방지.
+        from core.intent_classifier import ROLE_ALLOWED
+        VALID_OVERRIDES = {"chat", "retrieval", "meta", "coding",
+                           "wiki_edit", "self_evolve"}
+        override = (mode_override or "").strip().lower()
+        if override and override in VALID_OVERRIDES:
+            allowed = ROLE_ALLOWED.get(user_role, {"chat", "retrieval"})
+            if override in allowed:
+                mode = override
+                print(f"[ROUTER] mode={mode} (client override) | query='{safe_query[:40]}'")
+            else:
+                # 권한 없는 모드 override → router 정상 사용
+                print(f"[ROUTER] override {override!r} 권한 없음 (role={user_role}) → 자동 라우팅")
+                override = ""
+
+        if not override or override not in VALID_OVERRIDES:
+            try:
+                from core.query_router import QueryRouter
+                mode = QueryRouter().route(safe_query, user_role=user_role)
+                print(f"[ROUTER] mode={mode} | query='{safe_query[:40]}'")
+            except Exception as e:
+                self._log("query_router", e, user_role)
+                mode = "retrieval"   # fallback → 기존 Loop
 
         # ── Mode dispatch (#29 phase 2: extracted to core/reasoning/modes.py) ──
         if mode == "chat":

@@ -89,7 +89,90 @@ window.addEventListener('DOMContentLoaded', () => {
   // restoreHistory는 정의만 되어 있고 호출되지 않아 매번 빈 화면이었음.
   // localStorage에 저장된 HISTORY_KEY 데이터 그대로 화면에 재구성한다.
   try { restoreHistory(); } catch (e) { console.warn('[JAMES] restoreHistory 실패:', e); }
+
+  // item #6: 모드 picker 옵션 로드 + 자동 추천 등록
+  try { loadModePickerOptions(); } catch (e) { console.warn('[JAMES] mode picker 로드 실패:', e); }
 });
+
+/* ── item #6: 모드 picker + 자동 추천 ──
+   서버에서 role-allowed 모드 옵션을 받아 dropdown 채움. 사용자 입력에
+   따라 키워드 매치로 자동 추천 배지 표시 (현재 선택과 다를 때만).
+   사용자가 명시적으로 모드를 고르면 selectedMode = 그 값, /query/에
+   mode_override로 전달. "auto"면 mode_override 빈 문자열 → 서버는
+   intent_classifier로 자동 분류. */
+let MODE_OPTIONS = [];          // [{key, label, desc, keywords}]
+let selectedMode = 'auto';      // current dropdown value
+let recommendedMode = '';       // last-recommended (auto-suggest)
+
+async function loadModePickerOptions() {
+  try {
+    const r = await fetch(`${API}/llm/modes/?api_key=${encodeURIComponent(getApiKey())}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!r.ok) return;
+    const data = await r.json();
+    MODE_OPTIONS = data.modes || [];
+    const sel = document.getElementById('mode-picker');
+    if (!sel) return;
+    sel.innerHTML = MODE_OPTIONS.map(m =>
+      `<option value="${escHtml(m.key)}" title="${escHtml(m.desc || '')}">${escHtml(m.label)}</option>`
+    ).join('');
+    sel.value = selectedMode;
+  } catch (e) {
+    console.warn('[JAMES] /llm/modes/ fetch 실패:', e);
+  }
+}
+
+function onModePickerChange() {
+  const sel = document.getElementById('mode-picker');
+  selectedMode = sel ? sel.value : 'auto';
+  hideModeRecommend();
+}
+
+function acceptModeRecommend() {
+  if (!recommendedMode) return;
+  const sel = document.getElementById('mode-picker');
+  if (sel) {
+    sel.value = recommendedMode;
+    selectedMode = recommendedMode;
+  }
+  hideModeRecommend();
+}
+
+function hideModeRecommend() {
+  const banner = document.getElementById('mode-recommend');
+  if (banner) banner.style.display = 'none';
+  recommendedMode = '';
+}
+
+// 입력 시 keyword 매치 → 다른 모드 추천
+let _recTimer = null;
+function checkModeRecommendation(text) {
+  if (!text || text.length < 4) { hideModeRecommend(); return; }
+  if (_recTimer) clearTimeout(_recTimer);
+  _recTimer = setTimeout(() => {
+    if (selectedMode !== 'auto') return;   // 명시적으로 골랐으면 간섭 X
+    if (!MODE_OPTIONS.length) return;
+    const lower = text.toLowerCase();
+    let best = null;
+    for (const m of MODE_OPTIONS) {
+      if (m.key === 'auto') continue;
+      const kws = m.keywords || [];
+      const hit = kws.some(k => lower.includes(k.toLowerCase()));
+      if (hit) { best = m; break; }
+    }
+    if (best && best.key !== selectedMode) {
+      recommendedMode = best.key;
+      const banner = document.getElementById('mode-recommend');
+      if (banner) {
+        banner.textContent = `💡 ${best.label} 권장 — 클릭하여 전환`;
+        banner.style.display = 'inline-block';
+      }
+    } else {
+      hideModeRecommend();
+    }
+  }, 350);
+}
 
 
 /* ════════════════════════════════
@@ -323,6 +406,8 @@ function getAuthHeaders() {
 function autoResize(el) {
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+  // item #6: 입력 시 모드 추천 키워드 매치 (debounced)
+  try { checkModeRecommendation(el.value || ''); } catch (_) {}
 }
 
 /* ── 키 핸들러 ── */
@@ -406,6 +491,8 @@ async function sendMessage() {
         session_id:       SESSION_ID,
         session_language: sessionStorage.getItem('james_session_lang') || '',
         trace_id:         traceId,
+        // item #6: mode_override (auto면 빈 문자열 → 서버 자동 분류)
+        mode_override:    (selectedMode && selectedMode !== 'auto') ? selectedMode : '',
       }),
     });
 

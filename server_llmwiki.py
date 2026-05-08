@@ -321,6 +321,11 @@ class QueryRequest(BaseModel):
     # arrive (real reasoning stream, replacing the fake 2.5s timer
     # placeholder). Empty → server generates uuid7 as before.
     trace_id:         str  = ""
+    # item #6: client-side mode picker. When non-empty + recognised +
+    # role-allowed, bypasses the QueryRouter intent classifier and
+    # routes straight to that mode handler. Permitted values:
+    # chat / retrieval / meta / coding / wiki_edit / self_evolve.
+    mode_override:    str  = ""
 
 class QueryResponse(BaseModel):
     question:       str
@@ -638,6 +643,7 @@ async def query(
         session_id       = session_id,
         session_language = data.session_language,  # [STEP2-A] 세션 언어
         response_style   = data.response_style,    # brief/standard/detailed
+        mode_override    = data.mode_override,     # item #6: chat 페이지 모드 picker
     )
     elapsed = time.time() - t_start
 
@@ -752,6 +758,52 @@ async def status(api_key: str):
 @app.get("/admin/web-search-status", summary="웹 검색 엔진 상태 [3-E]")
 
 # ── [4-B] Ollama + LLM 추천 API ──────────────────────────────────
+
+@app.get("/llm/modes/", summary="챗 페이지 모드 picker 옵션 [item #6]")
+async def llm_modes(api_key: str, role: str = Depends(get_role_from_request)):
+    """Mode picker가 채울 옵션 목록.
+
+    api_key만 검증 (admin 아님). role-allowed 모드만 반환해서 클라이언트
+    가 권한 없는 모드를 보지 않도록 한다.
+
+    각 옵션:
+      key:         서버에 보낼 mode_override 값
+      label:       사용자 노출 라벨
+      desc:        한 줄 설명
+      keywords:    자동 추천에 사용 (클라이언트 측 keyword match)
+    """
+    verify_api_key(api_key)
+    from core.intent_classifier import ROLE_ALLOWED
+    allowed = ROLE_ALLOWED.get(role, {"chat", "retrieval"})
+
+    options = [
+        {"key": "auto",     "label": "🤖 자동",
+         "desc": "질문 의도를 자동 분류 (기본)",
+         "keywords": []},
+        {"key": "chat",     "label": "💬 일상 대화",
+         "desc": "검색 없이 LLM 직답",
+         "keywords": ["안녕", "고마워", "hi", "hello"]},
+        {"key": "retrieval","label": "🔍 자료 검색",
+         "desc": "내부 wiki + 그래프 추론",
+         "keywords": ["뭐야", "무엇", "설명", "알려줘", "what is"]},
+        {"key": "meta",     "label": "📚 자료 목록",
+         "desc": "보유 wiki 인벤토리",
+         "keywords": ["목록", "리스트", "어떤 자료", "list"]},
+        {"key": "coding",   "label": "💻 코딩",
+         "desc": "qwen2.5-coder 모델 사용",
+         "keywords": ["코드", "함수", "버그", "python", "def ",
+                      "javascript", "code", "function"]},
+        {"key": "wiki_edit","label": "✏️ Wiki 편집 (admin)",
+         "desc": "지식 추가/수정/삭제",
+         "keywords": ["수정해", "추가해", "삭제해"]},
+        {"key": "self_evolve","label": "🧬 자기진화 (admin)",
+         "desc": "코드 분석 / 자기 개선",
+         "keywords": ["네 코드", "구조 분석", "스스로"]},
+    ]
+    # auto는 항상 허용. 나머지는 role 권한 확인.
+    filtered = [o for o in options if o["key"] == "auto" or o["key"] in allowed]
+    return {"modes": filtered, "role": role}
+
 
 @app.get("/admin/llm/installed", summary="설치된 Ollama 모델 목록 [4-B]")
 async def llm_installed(api_key: str, role: str = Depends(get_role_from_request)):
