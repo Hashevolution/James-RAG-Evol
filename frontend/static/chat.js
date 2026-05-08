@@ -1062,6 +1062,31 @@ async function sendFeedback(directionId, signal, btn) {
      graph    · entities=3 · paths=15 (+180ms)
      answer   · 1820ms · 412 chars
 */
+/* [#1-A] 추론 단계용 SVG 아이콘 — 로봇 헤드 윤곽 + 내부에 3개 뉴런
+   노드 + 노드 간 연결선. 활성 시 각 뉴런이 phase가 다른 깜빡임 +
+   pulse glow. CSS .brain-pulse-active에 의해 애니메이션 활성/정지.
+   stage-color CSS 변수로 색상 inject (chat.js의 stage 메타와 연동). */
+function brainPulseSvg(active = true) {
+  const cls = 'brain-pulse' + (active ? ' brain-pulse-active' : '');
+  return `<span class="${cls}" aria-hidden="true">
+    <svg viewBox="0 0 24 24">
+      <!-- 로봇 헤드 외곽 — 부드러운 둥근 사각형 + 안테나 -->
+      <path class="brain-outline"
+            d="M5 7 Q5 4 8 4 L16 4 Q19 4 19 7 L19 16 Q19 19 16 19 L8 19 Q5 19 5 16 Z" />
+      <line class="brain-outline" x1="12" y1="2" x2="12" y2="4" />
+      <circle class="brain-outline" cx="12" cy="2" r="1" />
+      <!-- 뉴런 연결선 (먼저 그려서 노드 아래) -->
+      <path class="neuron-link" d="M8.5 8 L12 12 L15.5 8" />
+      <path class="neuron-link" d="M12 12 L9 15" />
+      <path class="neuron-link" d="M12 12 L15 15" />
+      <!-- 뉴런 노드 3개, 각각 다른 phase로 깜빡 -->
+      <circle class="neuron neuron-1" cx="8.5" cy="8"  r="1.6" />
+      <circle class="neuron neuron-2" cx="15.5" cy="8" r="1.6" />
+      <circle class="neuron neuron-3" cx="12" cy="14"  r="1.6" />
+    </svg>
+  </span>`;
+}
+
 function appendTyping(traceId) {
   const messages = document.getElementById('messages');
   const div = document.createElement('div');
@@ -1071,8 +1096,8 @@ function appendTyping(traceId) {
     <div class="bubble" style="min-width:220px">
       <div id="thinking-${traceId}" class="thinking-stream">
         <div class="thinking-placeholder">
-          <span class="thinking-spinner-dot"></span>
-          <span class="thinking-shimmer-text">추론 시작 중</span>
+          ${brainPulseSvg(true)}
+          <span class="thinking-shimmer-text thinking-label">추론 시작 중</span>
         </div>
       </div>
     </div>

@@ -17,10 +17,15 @@
  */
 
 /* ─────────────────────────────────────────────────────────
- * Reasoning stream animations (item #1, 2026-05-08)
+ * Reasoning stream animations (item #1, 2026-05-08; #1-A 2차 개선)
  * 응답 추론 과정 — 활성 stage는 spinner 회전 + 텍스트 shimmer,
  * 완료된 stage는 정적/회색. 진짜 진행 중인 단계가 시각적으로
  * 명확하게 살아있어 보이게.
+ *
+ * #1-A 변경 (사용자 피드백 2026-05-08):
+ *   "뇌신경이 반짝이는 로봇 모양 아이콘 + 첨부된 글자도 그라데이션하게
+ *   반짝이게" — 단색 shimmer → 무지개 multi-stop. SVG 브레인-뉴런
+ *   아이콘 (.brain-pulse) 추가. 기존 .thinking-label은 그대로 활용.
  *
  * 구조: each `.thinking-line` toggles between:
  *   .thinking-active  — 현재 진행 중 (spinner + shimmer)
@@ -37,6 +42,61 @@
 @keyframes james-shimmer {
   0%   { background-position: -180% 0; }
   100% { background-position:  180% 0; }
+}
+
+/* [#1-A] 브레인-뉴런 아이콘 — 로봇 헤드 윤곽 + 내부 노드들이
+   서로 다른 phase로 깜빡. 각 뉴런이 ⌀5px, fill에 stage-color
+   inject되어 stage 별로 다르게 보임. */
+@keyframes james-neuron-blink-1 {
+  0%, 100% { opacity: 0.25; }
+  20%, 40% { opacity: 1; }
+}
+@keyframes james-neuron-blink-2 {
+  0%, 100% { opacity: 0.25; }
+  35%, 55% { opacity: 1; }
+}
+@keyframes james-neuron-blink-3 {
+  0%, 100% { opacity: 0.25; }
+  60%, 80% { opacity: 1; }
+}
+@keyframes james-neuron-pulse {
+  0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 1px var(--stage-color, #7c6af7)); }
+  50%      { transform: scale(1.06); filter: drop-shadow(0 0 6px var(--stage-color, #7c6af7)); }
+}
+.brain-pulse {
+  width: 22px; height: 22px;
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+  --stage-color: #7c6af7;
+}
+.brain-pulse svg { width: 100%; height: 100%; overflow: visible; }
+.brain-pulse .brain-outline {
+  fill: none;
+  stroke: var(--stage-color, #7c6af7);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 2px var(--stage-color, #7c6af7));
+}
+.brain-pulse .neuron {
+  fill: var(--stage-color, #7c6af7);
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.brain-pulse .neuron-link {
+  stroke: var(--stage-color, #7c6af7);
+  stroke-width: 0.6;
+  opacity: 0.45;
+  fill: none;
+}
+.brain-pulse.brain-pulse-active .neuron-1 { animation: james-neuron-blink-1 1.4s ease-in-out infinite,
+                                                       james-neuron-pulse 1.4s ease-in-out infinite; }
+.brain-pulse.brain-pulse-active .neuron-2 { animation: james-neuron-blink-2 1.4s ease-in-out infinite,
+                                                       james-neuron-pulse 1.4s ease-in-out infinite; }
+.brain-pulse.brain-pulse-active .neuron-3 { animation: james-neuron-blink-3 1.4s ease-in-out infinite,
+                                                       james-neuron-pulse 1.4s ease-in-out infinite; }
+.brain-pulse.brain-pulse-active .brain-outline {
+  animation: james-shimmer 2.4s linear infinite;
 }
 
 .thinking-stream {
@@ -78,21 +138,27 @@
   width: 18px; text-align: center;
   transform-origin: 50% 50%;
 }
+/* [#1-A] thinking-label — 무지개 multi-stop gradient + glow.
+   기존 stage-color → white → stage-color 단순 패턴 대비, 보색 한
+   stop을 더해 "반짝거림"이 명확. text-shadow로 살짝 후광. */
 .thinking-label {
   font-weight: 600;
   font-family: inherit;
   background: linear-gradient(
     90deg,
     var(--stage-color, #7c6af7) 0%,
-    rgba(255, 255, 255, 0.92) 45%,
-    var(--stage-color, #7c6af7) 90%
+    rgba(255, 255, 255, 0.95) 30%,
+    var(--stage-accent, #f06292) 50%,
+    rgba(255, 255, 255, 0.95) 70%,
+    var(--stage-color, #7c6af7) 100%
   );
-  background-size: 200% 100%;
+  background-size: 220% 100%;
   background-position: 0 0;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
+  filter: drop-shadow(0 0 1px var(--stage-color, #7c6af7));
 }
 .thinking-detail {
   color: var(--muted, #888);
