@@ -1066,6 +1066,56 @@ async def llm_delete(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ─── [#A6-1] Web search admin config — role permission + threshold ───
+
+@app.get("/admin/web-search-config/", summary="웹 검색 설정 조회 [#A6-1]")
+async def get_web_search_config(api_key: str,
+                                 role: str = Depends(get_role_from_request)):
+    """[#A6-1] Admin reads:
+       - allowed_roles: which roles can trigger web search
+       - threshold: unified_score below which web fallback fires
+       - engine_status: live key/installed/exhausted state from
+                        get_search_engine_status() so the admin UI
+                        can render the right toast (TAVILY missing,
+                        DDG fallback active, both missing, etc.)
+    """
+    _require_admin(api_key, role)
+    from core.web_search_config import load
+    from tools.web.web_searcher import get_search_engine_status
+    cfg = load()
+    return {
+        **cfg,
+        "engine_status": get_search_engine_status(),
+    }
+
+
+class WebSearchConfigUpdate(BaseModel):
+    api_key:        str
+    allowed_roles:  list
+    threshold:      float
+
+
+@app.post("/admin/web-search-config/", summary="웹 검색 설정 갱신 [#A6-1]")
+async def set_web_search_config(data: WebSearchConfigUpdate,
+                                 role: str = Depends(get_role_from_request)):
+    """Persist web-search settings. Validates role names against
+    core.web_search_config.VALID_ROLES and threshold ∈ [0.0, 1.0].
+    Empty allowed_roles is rejected — silently disabling web search
+    is rarely the intent and harder to debug later (operator can
+    clear TAVILY_API_KEY instead if they really want it off)."""
+    _require_admin(data.api_key, role)
+    from core.web_search_config import save, validate_update
+    clean_roles, clean_threshold, err = validate_update(
+        data.allowed_roles, data.threshold,
+    )
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+    cfg = save(clean_roles, clean_threshold)
+    _write_audit(role, "/admin/web-search-config/",
+                 query=f"roles={clean_roles} threshold={clean_threshold}")
+    return {"ok": True, **cfg}
+
+
 # ─── Issue #15: per-task model selection persistence ───────────
 
 def _list_installed_ollama_models() -> set:

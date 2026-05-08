@@ -268,10 +268,13 @@ def run_retrieval_pipeline(
         sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
 
         # [P7] retrieval 결과 품질에 따라 분기
+        # [#A6-1 2026-05-08] threshold 0.30 → core.web_search_config에서
+        # 동적 로드. operator가 /admin/web-search-config/ 로 조정 가능.
+        from core.web_search_config import get_threshold, is_role_allowed
         low_relevance = (
             not safe_context
             or len(safe_context.strip()) < 50
-            or unified_score < 0.30
+            or unified_score < get_threshold()
         )
 
         if low_relevance:
@@ -284,7 +287,10 @@ def run_retrieval_pipeline(
                     record_search, should_promote_to_longterm,
                     save_as_longterm, update_knowledge_level, is_save_command,
                 )
-                if user_role == "admin":  # 보안: admin만 웹 검색
+                # [#A6-1] admin-only hardcode → role allowlist (settings).
+                # 기본값은 ["admin"]이라 기존 동작과 동일. operator가
+                # admin 페이지에서 manager/employee 등을 추가 가능.
+                if is_role_allowed(user_role):
                     print(f"[WEB] 내부 자료 부족 → 웹 검색: {safe_query[:40]}")
                     web_results = search_web(safe_query, max_results=4)
                     if web_results:

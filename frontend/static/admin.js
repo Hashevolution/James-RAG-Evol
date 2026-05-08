@@ -760,6 +760,8 @@ async function loadSettings() {
     // 체크박스는 기본값으로 초기화
     buildProtectedCheckboxes('');
   }
+  // [#A6-1] settings 진입 시 웹 검색 설정도 함께 로드
+  try { loadWebSearchConfig(); } catch (e) { console.warn(e); }
 }
 
 function updatePersonaPreview(p) {
@@ -825,6 +827,84 @@ async function saveSettings() {
     const badge = document.getElementById('model-current-badge');
     if (badge) badge.textContent = `${t('set.model_checking').replace('checking...','').trim()} ${body.model}`;
     alert(t('set.server_saved'));
+  } catch (e) {
+    alert(`Failed: ${e.message}`);
+  }
+}
+
+/* ── [#A6-1] Web Search 설정 — role 권한 + threshold 조정 + 엔진 상태 ──
+   admin 페이지 settings 섹션에서 사용. loadSettings에서 같이 호출되어
+   체크박스/슬라이더 채움. saveWebSearchConfig는 별도 버튼 (다른 설정과
+   충돌 없이 독립 저장 — TAVILY 키 변경/엔진 전환 시 별도 reload 가능). */
+async function loadWebSearchConfig() {
+  try {
+    const data = await api('/admin/web-search-config/');
+    // 엔진 상태 표시 (engine_status: tavily/duckduckgo/none)
+    const statusEl = document.getElementById('web-search-status-display');
+    if (statusEl) {
+      const s = data.engine_status || {};
+      const active = s.active_engine || 'none';
+      const lines = [];
+      if (active === 'tavily') {
+        lines.push(`✅ Tavily 활성화 (key set, advanced 모드)`);
+      } else if (active === 'duckduckgo') {
+        lines.push(`🦆 DuckDuckGo fallback`);
+        if (!s.tavily_key) lines.push(`⚠️ TAVILY_API_KEY 미설정`);
+        if (s.tavily_exhausted) lines.push(`⚠️ Tavily 할당량 소진`);
+      } else {
+        lines.push(`❌ 검색 엔진 없음`);
+        if (!s.tavily_installed) lines.push(`pip install tavily-python`);
+        if (!s.ddg_installed) lines.push(`pip install duckduckgo-search`);
+      }
+      statusEl.innerHTML = lines.map(l => `<div>${l}</div>`).join('');
+
+      // [#A6-1 (b)] TAVILY_API_KEY 미설정 + DDG가 active이면 토스트 경고.
+      // 운영자는 .env에 키 추가하면 advanced 검색 + raw_content 본문까지
+      // 무료 1000회/월 사용 가능. 어드민 페이지 진입 1회만 alert.
+      if (!s.tavily_key && active === 'duckduckgo' && !window._toastedTavily) {
+        window._toastedTavily = true;
+        if (typeof toast === 'function') {
+          toast('⚠️ TAVILY_API_KEY 미설정 — DDG fallback 동작 중. .env에 추가 추천 (free 1000/월).', 'warn');
+        }
+      }
+    }
+    // 체크박스 채움
+    const allowed = new Set(data.allowed_roles || ['admin']);
+    document.querySelectorAll('.ws-role-cb').forEach(cb => {
+      cb.checked = allowed.has(cb.value);
+    });
+    // threshold slider
+    const slider = document.getElementById('ws-threshold');
+    const val    = document.getElementById('ws-threshold-val');
+    if (slider && data.threshold != null) {
+      slider.value = data.threshold;
+      if (val) val.textContent = Number(data.threshold).toFixed(2);
+    }
+  } catch (e) {
+    console.warn('[admin] /admin/web-search-config/ load 실패:', e);
+  }
+}
+
+async function saveWebSearchConfig() {
+  const roles = Array.from(document.querySelectorAll('.ws-role-cb'))
+                     .filter(cb => cb.checked)
+                     .map(cb => cb.value);
+  if (roles.length === 0) {
+    alert('Allowed Roles는 최소 1개 필요. (전부 비활성화하려면 .env에서 TAVILY_API_KEY 제거)');
+    return;
+  }
+  const threshold = parseFloat(document.getElementById('ws-threshold').value);
+  try {
+    await api('/admin/web-search-config/', 'POST', {
+      api_key:       apiKey,
+      allowed_roles: roles,
+      threshold,
+    });
+    if (typeof toast === 'function') {
+      toast(`✅ 웹 검색 설정 저장됨 (roles=${roles.join(',')}, threshold=${threshold})`, 'success');
+    } else {
+      alert('Web search settings saved.');
+    }
   } catch (e) {
     alert(`Failed: ${e.message}`);
   }
