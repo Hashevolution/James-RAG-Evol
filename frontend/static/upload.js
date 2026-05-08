@@ -8,7 +8,7 @@ document.getElementById('file-input').addEventListener('change', e => {
   e.target.value = '';
 });
 
-/* ── 드래그 앤 드롭 ── */
+/* ── 드래그 앤 드롭 (사이드바 dropzone) ── */
 const dropZone = document.getElementById('drop-zone');
 ['dragenter','dragover'].forEach(ev =>
   dropZone.addEventListener(ev, e => {
@@ -25,6 +25,110 @@ const dropZone = document.getElementById('drop-zone');
 dropZone.addEventListener('drop', e => {
   addFiles(Array.from(e.dataTransfer.files));
 });
+
+/* ── item #7: 챗 페이지 전체에 드래그 앤 드롭 ──
+   메시지 입력하기 전에 파일을 어디든 떨어뜨리면 자동으로 큐에 추가.
+   드래그 진입 시 풀스크린 오버레이로 "여기에 놓아주세요" 시각 신호.
+
+   주의: drop 이벤트는 일반 윈도우에선 default가 "브라우저가 파일 열기"
+   라서 드래그가 페이지 밖으로 나가도 preventDefault 안 하면 새 탭에서
+   파일이 열림. 따라서 window 단위로 dragover/drop 모두 preventDefault.
+*/
+(function setupChatDropzone() {
+  // chat 페이지에서만 활성. admin.html에는 messages 컨테이너 없음.
+  if (!document.getElementById('messages')) return;
+
+  // 드래그 카운터 — dragenter/leave가 자식 요소에서도 발생해서
+  // 단순 boolean으론 깜빡임. counter로 진짜 leave 추적.
+  let dragDepth = 0;
+  let overlay = null;
+
+  function ensureOverlay() {
+    if (overlay) return overlay;
+    overlay = document.createElement('div');
+    overlay.id = 'chat-drop-overlay';
+    overlay.style.cssText = `
+      position:fixed; inset:0;
+      background:rgba(99,102,241,0.18);
+      backdrop-filter: blur(2px);
+      border:3px dashed var(--accent, #6366f1);
+      border-radius:12px;
+      z-index:10000;
+      display:none;
+      align-items:center; justify-content:center;
+      pointer-events:none;
+      transition:opacity .15s ease;
+    `;
+    overlay.innerHTML = `
+      <div style="background:var(--surface,#14161a); padding:24px 32px;
+                  border-radius:16px; border:1px solid var(--border,#25282f);
+                  box-shadow:0 12px 40px rgba(0,0,0,.5); text-align:center;
+                  pointer-events:none">
+        <div style="font-size:48px; margin-bottom:8px">📥</div>
+        <div style="font-size:16px; font-weight:600; color:var(--text,#fff)">
+          여기에 놓으면 업로드 큐에 추가됩니다
+        </div>
+        <div style="font-size:12px; color:var(--muted,#888); margin-top:6px">
+          이미지 / PDF / Word / 텍스트 파일 지원
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+
+  function showOverlay() {
+    ensureOverlay().style.display = 'flex';
+  }
+  function hideOverlay() {
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  // window 전체에 등록 — 페이지 안 어느 곳이든 드롭 가능
+  window.addEventListener('dragenter', e => {
+    // 파일 드래그만 처리 (텍스트 드래그/링크는 무시)
+    if (!e.dataTransfer || !e.dataTransfer.types) return;
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    dragDepth++;
+    if (dragDepth === 1) showOverlay();
+  });
+
+  window.addEventListener('dragover', e => {
+    if (!e.dataTransfer || !e.dataTransfer.types) return;
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();   // 새 탭에서 파일 열리는 default 차단
+    e.dataTransfer.dropEffect = 'copy';
+  });
+
+  window.addEventListener('dragleave', e => {
+    if (!e.dataTransfer || !e.dataTransfer.types) return;
+    if (!e.dataTransfer.types.includes('Files')) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) hideOverlay();
+  });
+
+  window.addEventListener('drop', e => {
+    if (!e.dataTransfer || !e.dataTransfer.files) return;
+    e.preventDefault();
+    dragDepth = 0;
+    hideOverlay();
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+
+    addFiles(files);
+    // 사이드바 자동 열기 — 큐 / 진행률 보이도록
+    if (typeof toggleSidebar === 'function') {
+      const sb = document.getElementById('sidebar');
+      if (sb && sb.classList.contains('collapsed')) {
+        toggleSidebar();
+      }
+    }
+    if (typeof toast === 'function') {
+      toast(`파일 ${files.length}개 추가됨`, 'success');
+    }
+  });
+})();
 
 /* ── 파일 추가 ── */
 function addFiles(files) {
