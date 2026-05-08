@@ -68,9 +68,10 @@ class NaturalFlowResolverTests(unittest.TestCase):
     def test_natural_preset_properties(self):
         from core.response_style import NATURAL_PRESET
         self.assertEqual(NATURAL_PRESET.name, "natural")
-        self.assertEqual(NATURAL_PRESET.max_tokens, 2000,
-                         "v2 keeps generous max_tokens — length is "
-                         "picked by the model from the prompt, not by a cap")
+        # [#A8-5 2026-05-09] 2000 → 8192 — 사용자 요청 "글자수 잘림 방지".
+        self.assertGreaterEqual(NATURAL_PRESET.max_tokens, 4096,
+                                "v3+: max_tokens must be ≥ 4096 to avoid "
+                                "truncating multi-section report answers")
         self.assertFalse(NATURAL_PRESET.force_two_sections,
                          "v2 must NOT force the rigid 📚/💡 template")
 

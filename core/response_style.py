@@ -17,8 +17,12 @@ v2 design
 - Single preset (`NATURAL`). The `brief` / `standard` / `detailed` ids
   still resolve to it for backward compat (so existing API consumers
   keep working) but they all behave identically.
-- `max_tokens=2000` everywhere — generous, the model picks the actual
-  length based on question complexity.
+- `max_tokens=8192` everywhere [#A8-5 2026-05-09 — was 2000].
+  User feedback: "대화 글자수가 중간에 짤리지 않고 최대한 다 나올수
+  있도록". 2000 ≈ 1500 Korean characters, which truncates report-style
+  multi-section answers. 8192 fits gemma's default 8K context safely
+  and lets larger-context models stretch when needed. Hard ceiling
+  retained as runaway-LLM defense.
 - `force_two_sections=False` — no rigid template. The `rule_text_*`
   block teaches the flow as guidance, not a formatting requirement.
 - Rule text instructs prose composition, explicit "do NOT use 📚/💡
@@ -52,9 +56,9 @@ class StylePreset:
     """Resolved style — what each call site needs to issue an LLM call.
 
     `name`: preset id for logging / response echo.
-    `max_tokens`: hard cap passed to call_gemma. 2000 is generous; the
-        model picks actual length from the prompt's flow guidance, not
-        from a token budget.
+    `max_tokens`: hard cap passed to call_gemma. 8192 [#A8-5] —
+        generous enough for multi-section report answers without
+        truncating; model still picks actual length from prompt flow.
     `force_two_sections`: legacy field — always False in v2. Kept on
         the dataclass so any caller still reading it gets a sane value.
     `rule_text_ko` / `rule_text_en`: the natural-flow guidance block
@@ -86,7 +90,7 @@ class StylePreset:
 # not template" so short questions still get short prose answers.
 NATURAL_PRESET = StylePreset(
     name="natural",
-    max_tokens=2000,
+    max_tokens=8192,   # [#A8-5] was 2000 — 글자수 잘림 방지
     force_two_sections=False,
     rule_text_ko=(
         "답변 작성 가이드:\n"

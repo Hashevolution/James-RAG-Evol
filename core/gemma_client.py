@@ -204,9 +204,16 @@ class GemmaClient:
                         "prompt": prompt,
                         "stream": False,
                         "options": {
-                            "num_predict": max_tokens if max_tokens > 0 else 2000,
+                            # [#A8-5 2026-05-09] num_predict 기본값 2000 → 8192.
+                            # 사용자 보고: "대화 글자수가 중간에 짤리지 않고
+                            # 최대한 다 나올수 있도록". 이전 2000 토큰 ≈ 한국어
+                            # 1500자 — 보고서 양식 답변 잘림. 8192는 gemma 8K
+                            # 컨텍스트도 안전, 더 큰 모델은 자체 컨텍스트로
+                            # 더 길게 가능. -1 (무제한)도 옵션이지만 runaway
+                            # LLM 방어 위해 hard ceiling 유지.
+                            "num_predict": max_tokens if max_tokens > 0 else 8192,
                             "temperature": 0.2,    # 결정성 강화
-                            "num_ctx":     4096,   # 컨텍스트 확장
+                            "num_ctx":     8192,   # [#A8-5] 4096 → 8192 (긴 답변 토큰까지 수용)
                         },
                     },
                     timeout=timeout,
