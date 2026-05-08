@@ -375,7 +375,14 @@ async function sendMessage() {
     }
   }
 
-  const typing = appendTyping();
+  // Real reasoning stream: client-generated trace_id is sent to the
+  // server, which uses it as the trace key. Frontend immediately
+  // starts polling /trace/poll/{trace_id} so we can display each
+  // reasoning stage as it actually happens (vs. the v0.2.0 fake
+  // 2.5s timer placeholder).
+  const traceId = (crypto.randomUUID ? crypto.randomUUID() : 't_' + Date.now() + '_' + Math.random().toString(36).slice(2,8))
+                  .replace(/-/g, '').slice(0, 32);
+  const typing = appendTyping(traceId);
   document.getElementById('send-btn').disabled = true;
 
   try {
@@ -388,6 +395,7 @@ async function sendMessage() {
         source_type:      SOURCE_TYPE,
         session_id:       SESSION_ID,
         session_language: sessionStorage.getItem('james_session_lang') || '',
+        trace_id:         traceId,
       }),
     });
 
@@ -635,39 +643,109 @@ async function sendFeedback(directionId, signal, btn) {
   }
 }
 
-function appendTyping() {
+/* ── Real reasoning stream — polls /trace/poll/{trace_id} ──
+   v0.2.0의 fake 2.5초 타이머를 진짜 stage event 폴링으로 교체.
+   각 stage(auth → retrieve → graph → answer → complete)가 실제로
+   서버에서 발생할 때마다 클라이언트가 잡아서 라인을 추가한다.
+
+   Stage별 메타데이터를 함께 표시:
+     retrieve · top_k=8 · top_vec=0.82 (250ms 누적)
+     graph    · entities=3 · paths=15 (+180ms)
+     answer   · 1820ms · 412 chars
+*/
+function appendTyping(traceId) {
   const messages = document.getElementById('messages');
   const div = document.createElement('div');
   div.className = 'msg james';
   div.innerHTML = `
     <div class="avatar james">🧠</div>
-    <div class="bubble" style="min-width:180px">
-      <div id="thinking-steps" style="display:flex;flex-direction:column;gap:4px;font-size:12px">
-        <div id="tstep-1" style="color:var(--accent);font-weight:600">${t('chat.thinking_search')}</div>
-        <div id="tstep-2" style="color:var(--muted)">${t('chat.thinking_graph')}</div>
-        <div id="tstep-3" style="color:var(--muted)">${t('chat.thinking_answer')}</div>
+    <div class="bubble" style="min-width:200px">
+      <div id="thinking-${traceId}" style="display:flex;flex-direction:column;gap:4px;
+                  font-size:11px;font-family:var(--font-mono);color:var(--muted)">
+        <div style="font-style:italic">⏳ 추론 중...</div>
       </div>
     </div>
   `;
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
 
-  // 단계별 순차 활성화 (2.5초 간격)
-  const steps = ['tstep-1','tstep-2','tstep-3'];
-  let cur = 0;
-  const timer = setInterval(() => {
-    const prev = document.getElementById(steps[cur]);
-    if (prev) { prev.style.color='var(--muted)'; prev.style.fontWeight='400'; }
-    if (cur < steps.length - 1) {
-      cur++;
-      const next = document.getElementById(steps[cur]);
-      if (next) { next.style.color='var(--accent)'; next.style.fontWeight='600'; }
+  // 폴링 상태
+  const seenStages = new Set();   // stage 종류별 1회만 표시 (반복 retrieve 등은 합산)
+  let lastNs   = 0;
+  let stopped  = false;
+  const t0     = Date.now();
+
+  const STAGE_META = {
+    auth:     { icon: '🔐', label: '권한 확인', color: '#999' },
+    retrieve: { icon: '🔍', label: '내부 자료 검색', color: '#7c6af7' },
+    rerank:   { icon: '🎯', label: '재정렬',          color: '#7c6af7' },
+    graph:    { icon: '🕸️', label: '관계 그래프 탐색', color: '#3da78a' },
+    tool:     { icon: '🔧', label: '도구 호출',       color: '#ffb74d' },
+    answer:   { icon: '🤖', label: 'LLM 답변 생성',   color: '#f06292' },
+    complete: { icon: '✅', label: '완료',            color: '#4caf7d' },
+  };
+
+  const apply = (events) => {
+    const container = document.getElementById(`thinking-${traceId}`);
+    if (!container) return;
+    // 첫 진짜 이벤트 도착 시 placeholder 제거
+    if (events.length > 0 && container.querySelector('div[style*="italic"]')) {
+      container.innerHTML = '';
     }
-  }, 2500);
+    events.forEach(ev => {
+      const stage = ev.stage;
+      if (!stage || seenStages.has(stage)) return;   // 1회 표시
+      seenStages.add(stage);
+      const m = STAGE_META[stage] || { icon: '·', label: stage, color: '#999' };
+      const ms = Date.now() - t0;
+      // stage별 의미있는 필드 일부만 추출 (시각적 잡음 줄임)
+      const detail = [];
+      if (ev.top_k != null)           detail.push(`top_k=${ev.top_k}`);
+      if (ev.top_vector_score != null) detail.push(`vec=${ev.top_vector_score.toFixed(2)}`);
+      if (ev.entities_extracted != null) detail.push(`ent=${ev.entities_extracted}`);
+      if (ev.paths_walked != null)    detail.push(`paths=${ev.paths_walked}`);
+      if (ev.latency_ms != null)      detail.push(`${ev.latency_ms}ms`);
+      if (ev.answer_len != null)      detail.push(`${ev.answer_len}자`);
+      if (ev.elapsed_ms != null)      detail.push(`총 ${ev.elapsed_ms}ms`);
+      const detailStr = detail.length ? ` · ${detail.join(' · ')}` : '';
+      const line = document.createElement('div');
+      line.style.cssText = `display:flex;align-items:center;gap:6px;color:${m.color}`;
+      line.innerHTML = `<span>${m.icon}</span><span style="font-weight:600">${m.label}</span><span style="color:var(--muted);font-size:10px">${detailStr} · @${ms}ms</span>`;
+      container.appendChild(line);
+    });
+    messages.scrollTop = messages.scrollHeight;
+  };
+
+  // 200ms 폴링 (auth → retrieve → graph → answer 보통 1-3초 안에 도착)
+  const poll = async () => {
+    if (stopped) return;
+    try {
+      const r = await fetch(`${API}/trace/poll/${traceId}?api_key=${encodeURIComponent(getApiKey())}&after_ns=${lastNs}`, {
+        headers: getAuthHeaders(),
+      });
+      if (r.ok) {
+        const data = await r.json();
+        const evs = data.events || [];
+        if (evs.length > 0) {
+          lastNs = evs[evs.length - 1].ts_ns || lastNs;
+          apply(evs);
+        }
+        if (data.complete) {
+          stopped = true;
+          return;
+        }
+      }
+    } catch (_) {
+      // 네트워크 일시 오류는 무시 — 다음 tick에 재시도
+    }
+    if (!stopped) setTimeout(poll, 200);
+  };
+  // 첫 호출 약간 지연 (서버에 첫 stage 도달 시간 확보)
+  setTimeout(poll, 100);
 
   return {
     remove() {
-      clearInterval(timer);
+      stopped = true;
       div.remove();
     }
   };

@@ -315,6 +315,12 @@ class QueryRequest(BaseModel):
     # string falls through to JAMES_RESPONSE_STYLE env then `standard`.
     # See core/response_style.py for the resolver and preset defs.
     response_style:   str  = ""
+    # Client-supplied trace_id (item: real reasoning stream). When set,
+    # the server uses this id instead of generating a new one — letting
+    # the client poll /trace/poll/{trace_id} for stage events as they
+    # arrive (real reasoning stream, replacing the fake 2.5s timer
+    # placeholder). Empty → server generates uuid7 as before.
+    trace_id:         str  = ""
 
 class QueryResponse(BaseModel):
     question:       str
@@ -602,8 +608,19 @@ async def query(
 
     # [#47 phase 1] start a trace at the API edge. Stage logs from any
     # downstream module reading `current_trace_id` correlate to this id.
+    # Client-supplied trace_id takes precedence (real-reasoning-stream
+    # feature) — lets the client poll /trace/poll/{trace_id} the moment
+    # it sends the request, before /query/ has returned a response.
+    # Sanity-check the supplied id (alphanumeric + hyphens only, 8-64
+    # chars) to keep filesystem path-safety guarantees from
+    # observability._trace_file_for.
     from core.observability import start_trace, log_stage
-    trace_id = start_trace()
+    import re as _re
+    client_tid = (data.trace_id or "").strip()
+    if client_tid and _re.fullmatch(r"[A-Za-z0-9_\-]{8,64}", client_tid):
+        trace_id = start_trace(client_tid)
+    else:
+        trace_id = start_trace()
 
     question   = data.question.strip()
     session_id = data.session_id or "default"
@@ -2197,6 +2214,57 @@ async def admin_patch_reject(request: Request, role: str = Depends(get_role_from
         d["status"] = "REJECTED"
         pf.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
     return {"success": True, "patch_id": patch_id, "status": "REJECTED"}
+
+
+@app.get("/trace/poll/{trace_id}", summary="실시간 추론 단계 polling [real-reasoning-stream]")
+async def trace_poll(
+    trace_id: str,
+    api_key:  str,
+    after_ns: int = 0,
+    role:     str = Depends(get_role_from_request),
+):
+    """Stream real reasoning stages as they arrive in the JSONL file.
+
+    Client flow:
+      1. Generate a uuid hex on the client (e.g. crypto.randomUUID).
+      2. Submit POST /query/ with the trace_id field in the body.
+      3. Immediately start polling this endpoint every ~200ms with
+         after_ns increasing each call (last seen ts_ns) — minimises
+         duplicate transfer.
+      4. Render each new event in the chat bubble (retrieve / graph /
+         answer / complete with their actual fields).
+      5. Stop polling when the response arrives OR an event with
+         stage='complete' is in the returned list.
+
+    Auth: api_key only (no admin requirement). The trace_id itself
+    acts as a capability — uuid hex is unguessable, so a different
+    user cannot poll someone else's trace. Same trust model as
+    /query/.
+
+    Path arg sanitization: only alphanumerics + hyphen + underscore
+    (8-64 chars). Keeps `core.observability._trace_file_for` from
+    looking outside `reports/trace/<day>/`.
+    """
+    verify_api_key(api_key)
+
+    # Path traversal guard — same regex as /query/'s client_tid check.
+    import re as _re
+    if not _re.fullmatch(r"[A-Za-z0-9_\-]{8,64}", trace_id):
+        raise HTTPException(status_code=400,
+                            detail="invalid trace_id format")
+
+    from core.observability import read_trace
+    rows = read_trace(trace_id)
+    # Only return events newer than the last seen timestamp.
+    new_rows = [r for r in rows if int(r.get("ts_ns") or 0) > int(after_ns or 0)]
+    is_complete = any(r.get("stage") == "complete" for r in rows)
+
+    return {
+        "trace_id":  trace_id,
+        "events":    new_rows,
+        "complete":  is_complete,
+        "total":     len(rows),
+    }
 
 
 @app.get("/admin/trace/{trace_id}", summary="단일 trace 재생 [#81 phase 3-A]")
