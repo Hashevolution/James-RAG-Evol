@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] — v0.2 Foundation Hardening
+
+### Added
+
+#### Reasoning Graph Visualizer (Axis 3 Observability/Explainability)
+- **`/admin/graph`** — new admin-only 3D page that renders every wiki
+  entity as a point in a soft-ball sphere and every ontology relation
+  as a connecting line. Drag to rotate 360°, scroll to zoom, click to
+  focus. Force-directed layout with link strength ∝ `min(deg(s), deg(t))`
+  so densely-connected nodes drift together; a custom radial spring
+  pulls the layout toward a sphere shell.
+- **`/admin/graph/snapshot`** — new admin-gated read-only data endpoint
+  (`source_type=prod|test`) that materializes the full entity + edge
+  set as JSON. Cached by `(source_type, max_mtime)`; gzip-friendly
+  short keys (`s`/`t`).
+- **Pulse animation** — when a query is asked from the page's bottom
+  query bar, the response's `graph_paths` strings are parsed
+  client-side and a cyan additive sprite tweens along each traversed
+  edge in chronological order, leaving a 4 s afterglow.
+- **Sensitivity-aware**: nodes with `sensitivity == "sensitive"` and
+  edges whose ontology entry is `sensitive=True` (HAS_SECRET,
+  KNOWS_PASSWORD, HAS_CREDENTIAL, OWNS_PRIVATE) are filtered out
+  server-side by default. `include_sensitive=1` is locked off until a
+  dedicated elevated role lands.
+
+### Implementation notes
+- New module `core/graph_snapshot.py` (~8.4 KB) sits alongside
+  `core/graph_engine.py` (15.8 KB) so the latter stays well under the
+  20 KB module-size gate. No retrieval / pipeline / ontology code was
+  modified — the visualizer is pure observability over data that
+  already exists.
+- 3D libs (Three.js 0.160, 3d-force-graph 1.73, d3-force-3d 3) are
+  loaded from CDN; matches the project's no-bundler vanilla-JS
+  posture. Vendoring for air-gapped deploys is tracked separately.
+- Tests in `tests/test_graph_snapshot.py` cover the snapshot shape,
+  sensitivity filter, mtime-based cache invalidation, server route
+  registration, and frontend artifact contract.
+
+---
+
 ## [0.1.1] — Path Auto-Detection (Patch)
 
 ### Fixed

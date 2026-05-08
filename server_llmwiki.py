@@ -191,6 +191,20 @@ async def serve_admin():
         return FileResponse(admin)
     return HTMLResponse("<h1>Admin</h1><p>frontend/admin.html 없음</p>")
 
+
+@app.get("/admin/graph", response_class=HTMLResponse, include_in_schema=False)
+async def serve_admin_graph():
+    """v0.2 Axis 3 — 3D reasoning-graph observability page.
+
+    The HTML itself is public (the user is gated client-side by a login
+    flow before any API call); the data endpoint /admin/graph/snapshot
+    is admin-only via _require_admin().
+    """
+    page = os.path.join(FRONTEND_DIR, "graph.html")
+    if os.path.exists(page):
+        return FileResponse(page)
+    return HTMLResponse("<h1>Reasoning Graph</h1><p>frontend/graph.html 없음</p>")
+
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(WIKI_DIR,   exist_ok=True)
 os.makedirs(CHROMA_DIR, exist_ok=True)
@@ -2444,6 +2458,46 @@ async def admin_entity_detail(
         "body":        body[:10000],   # safety cap on rendering
         "path":        str(p),
     }
+
+
+@app.get("/admin/graph/snapshot", summary="Reasoning graph snapshot — nodes + edges [v0.2 Axis 3]")
+async def admin_graph_snapshot(
+    api_key:           str,
+    source_type:       str  = "prod",
+    include_sensitive: int  = 0,
+    role:              str  = Depends(get_role_from_request),
+):
+    """Read-only enumeration of every wiki entity + ontology edge for
+    the /admin/graph 3D visualizer. Admin-only; sensitive nodes/edges
+    are dropped by default and require an explicit elevated role to
+    surface (which v0.2 doesn't yet have — kept off for now).
+    """
+    _require_admin(api_key, role)
+    from core.graph_snapshot import build_snapshot
+
+    src = (source_type or "prod").strip().lower()
+    if src not in ("prod", "test"):
+        src = "prod"
+
+    # v0.2: even admin cannot opt into sensitive — locked off until a
+    # dedicated elevated role lands. Re-enable here when that role exists.
+    include_sens = False
+    _ = include_sensitive  # acknowledged but ignored at this gate
+
+    # The shared engine's WikiGenerator is bound to its own source_type
+    # at construction, so for cross-source viewing we instantiate a
+    # fresh, scoped generator on demand.
+    if src == rag_engine.wiki_generator.source_type:
+        gen = rag_engine.wiki_generator
+    else:
+        from core.wiki_generator import WikiGenerator
+        gen = WikiGenerator(source_type=src)
+
+    return build_snapshot(
+        wiki_generator    = gen,
+        source_type       = src,
+        include_sensitive = include_sens,
+    )
 
 
 @app.get("/admin/memory", summary="Memory 현황 [P7]")

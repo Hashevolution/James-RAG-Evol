@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0c0d10">
+<title>JAMES — Reasoning Graph</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:        #0c0d10;
+    --surface:   #14161a;
+    --surface-2: #1a1d22;
+    --border:    #25282f;
+    --border-2:  #1c1f25;
+    --accent:    #6366f1;
+    --accent-soft: rgba(99,102,241,.12);
+    --accent-fg: #a5b4fc;
+    --brand-2:   #4fc3f7;
+    --text:      #ececf1;
+    --text-soft: #c4c6cf;
+    --muted:     #8a8d99;
+    --muted-2:   #5d616c;
+    --success:   #22c55e;
+    --danger:    #ef4444;
+    --warn:      #f59e0b;
+    --radius:    8px;
+    --radius-lg: 10px;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    --font-ui:   'Inter', 'Pretendard', system-ui, -apple-system, sans-serif;
+
+    /* type → color mapping (kept generic / domain-neutral) */
+    --t-person:   #4fc3f7;
+    --t-org:      #f59e0b;
+    --t-concept:  #a5b4fc;
+    --t-document: #94a3b8;
+  }
+
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border-2);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .logo { font-size: 14px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .logo::before {
+    content: ''; width: 22px; height: 22px; border-radius: 6px;
+    background: linear-gradient(135deg, var(--accent), #818cf8);
+  }
+  .logo span { color: var(--muted); font-weight: 500; }
+  .header-right { display: flex; gap: 8px; }
+  .nav-btn {
+    padding: 6px 12px; border-radius: var(--radius); border: 1px solid transparent;
+    background: none; color: var(--muted); font-size: 13px; cursor: pointer;
+    text-decoration: none; transition: all .15s; font-family: var(--font-ui);
+  }
+  .nav-btn:hover { background: var(--surface-2); color: var(--text); }
+
+  .main {
+    flex: 1; display: flex; min-height: 0;
+  }
+
+  /* Left sidebar */
+  aside {
+    width: 260px; flex-shrink: 0;
+    border-right: 1px solid var(--border-2);
+    background: var(--surface);
+    padding: 16px; display: flex; flex-direction: column; gap: 14px;
+    overflow-y: auto;
+  }
+  .panel-title {
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    letter-spacing: .3px; text-transform: uppercase;
+  }
+  .ctrl {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .ctrl label { font-size: 12px; color: var(--text-soft); }
+  .ctrl select, .ctrl input[type=text] {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 7px 10px; color: var(--text);
+    font-family: var(--font-ui); font-size: 13px; outline: none;
+  }
+  .ctrl select:focus, .ctrl input[type=text]:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .legend { display: flex; flex-direction: column; gap: 6px; }
+  .legend-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-soft); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  .stat {
+    background: var(--surface-2); border: 1px solid var(--border-2);
+    border-radius: 6px; padding: 10px; font-family: var(--font-mono);
+    font-size: 11px; color: var(--text-soft); line-height: 1.6;
+  }
+  .stat strong { color: var(--text); font-weight: 600; }
+
+  /* Main canvas */
+  .stage {
+    flex: 1; position: relative; min-width: 0;
+    background: radial-gradient(circle at 50% 50%, #0e1116 0%, #07080a 75%);
+  }
+  #graph-canvas { width: 100%; height: 100%; }
+
+  .overlay {
+    position: absolute; pointer-events: none;
+    font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+  }
+  .overlay.tl { top: 12px; left: 14px; }
+  .overlay.tr { top: 12px; right: 14px; text-align: right; }
+  .overlay.bl { bottom: 12px; left: 14px; }
+
+  .tooltip {
+    position: absolute; pointer-events: none;
+    background: rgba(20,22,26,.94);
+    border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 10px;
+    font-size: 12px; color: var(--text);
+    box-shadow: 0 8px 24px rgba(0,0,0,.5);
+    display: none; z-index: 20; max-width: 240px;
+  }
+  .tooltip .tt-name { font-weight: 600; margin-bottom: 4px; }
+  .tooltip .tt-meta { color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+
+  /* Bottom query bar */
+  .query-bar {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    bottom: 18px; width: min(720px, calc(100% - 40px));
+    background: rgba(20,22,26,.92);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px;
+    display: flex; gap: 8px; align-items: center;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 12px 30px rgba(0,0,0,.55);
+    z-index: 30;
+  }
+  .query-bar input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text); font-size: 14px; font-family: var(--font-ui);
+    padding: 6px 8px;
+  }
+  .query-bar input::placeholder { color: var(--muted-2); }
+  .btn-ask {
+    background: var(--accent); color: #fff; border: none;
+    border-radius: 8px; padding: 8px 16px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: background .15s;
+  }
+  .btn-ask:hover { background: #5258e6; }
+  .btn-ask:disabled { background: var(--surface-2); color: var(--muted); cursor: not-allowed; }
+
+  .answer-card {
+    position: absolute; right: 16px; top: 60px;
+    width: min(360px, calc(100% - 280px - 32px));
+    max-height: calc(100% - 100px);
+    background: rgba(20,22,26,.94);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px;
+    font-size: 13px; color: var(--text);
+    overflow-y: auto;
+    display: none;
+    z-index: 25;
+  }
+  .answer-card .ac-title {
+    font-size: 11px; color: var(--muted); margin-bottom: 6px;
+    text-transform: uppercase; letter-spacing: .3px;
+  }
+  .answer-card .ac-q { font-size: 12px; color: var(--text-soft); margin-bottom: 8px; font-style: italic; }
+  .answer-card .ac-a { line-height: 1.55; white-space: pre-wrap; }
+  .answer-card .ac-paths {
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid var(--border-2);
+    font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+  }
+  .answer-card .ac-paths div { margin: 3px 0; word-break: break-all; }
+  .answer-card .ac-close {
+    position: absolute; top: 8px; right: 10px;
+    background: transparent; border: none; color: var(--muted);
+    font-size: 18px; cursor: pointer; padding: 0; line-height: 1;
+  }
+
+  .empty-state {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 13px; pointer-events: none;
+  }
+
+  /* Login modal — same posture as admin.html */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.85);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 300;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px; width: 340px;
+    box-shadow: 0 24px 80px rgba(0,0,0,.7);
+  }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted-2); }
+
+  @media (max-width: 720px) {
+    aside { display: none; }
+    .answer-card { right: 8px; left: 8px; width: auto; top: 56px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">JAMES <span>· <span data-i18n="graph.title">Reasoning Graph</span></span></div>
+  <div class="header-right">
+    <button class="nav-btn" data-lang-toggle onclick="toggleLang()" title="Language / 언어"
+            style="font-size:12px;font-weight:600;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;color:var(--text-soft)"></button>
+    <a href="/admin" class="nav-btn">← <span data-i18n="graph.back_admin">Admin</span></a>
+    <a href="/" class="nav-btn">← <span data-i18n="graph.back_chat">Chat</span></a>
+  </div>
+</header>
+
+<div class="main">
+  <aside>
+    <div class="ctrl">
+      <span class="panel-title" data-i18n="graph.filter.source">Source</span>
+      <select id="src-select">
+        <option value="prod">prod</option>
+        <option value="test">test</option>
+      </select>
+    </div>
+
+    <div class="ctrl">
+      <span class="panel-title" data-i18n="graph.filter.search">Search</span>
+      <input id="node-search" type="text" placeholder="entity name…" data-i18n-placeholder="graph.search.ph">
+    </div>
+
+    <div>
+      <div class="panel-title" style="margin-bottom:8px" data-i18n="graph.legend.title">Legend</div>
+      <div class="legend">
+        <div class="legend-row"><span class="legend-dot" style="background:var(--t-person)"></span>   <span data-i18n="graph.legend.person">person</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:var(--t-org)"></span>      <span data-i18n="graph.legend.org">org</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:var(--t-concept)"></span>  <span data-i18n="graph.legend.concept">concept</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:var(--t-document)"></span> <span data-i18n="graph.legend.document">document</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel-title" style="margin-bottom:8px" data-i18n="graph.stats.title">Snapshot</div>
+      <div class="stat" id="stat-box">
+        <span data-i18n="common.loading">Loading...</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel-title" style="margin-bottom:8px" data-i18n="graph.tip.title">Controls</div>
+      <div class="stat" style="line-height:1.7">
+        <div data-i18n="graph.tip.rotate">drag — rotate 360°</div>
+        <div data-i18n="graph.tip.zoom">scroll — zoom</div>
+        <div data-i18n="graph.tip.click">click node — focus</div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="stage">
+    <div id="graph-canvas"></div>
+    <div class="overlay tl" id="overlay-status" data-i18n="graph.loading">Loading entities...</div>
+    <div class="overlay tr" id="overlay-counts"></div>
+    <div class="overlay bl" data-i18n="graph.hint">Ask a question below — the path the answer travels will pulse on the graph.</div>
+    <div class="tooltip" id="hover-tip"></div>
+
+    <div class="answer-card" id="answer-card">
+      <button class="ac-close" onclick="closeAnswer()">×</button>
+      <div class="ac-title" data-i18n="graph.answer.title">Answer</div>
+      <div class="ac-q" id="ac-q"></div>
+      <div class="ac-a" id="ac-a"></div>
+      <div class="ac-paths" id="ac-paths"></div>
+    </div>
+
+    <div class="query-bar">
+      <input id="qbox" type="text"
+             placeholder="Ask JAMES…"
+             data-i18n-placeholder="graph.query.ph"
+             onkeydown="if(event.key==='Enter') askQuestion()">
+      <button class="btn-ask" id="ask-btn" onclick="askQuestion()" data-i18n="graph.ask">Ask</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin login modal — same flow as admin.html -->
+<div class="modal-overlay" id="login-modal">
+  <div class="modal-card">
+    <div style="font-size:15px;font-weight:600;font-family:var(--font-mono);color:var(--accent-fg);margin-bottom:8px;letter-spacing:1px;">▸ JAMES GRAPH</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:24px;" data-i18n="auth.admin_required">Admin login required</div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px;">ADMIN ID</div>
+      <input id="login-id" type="text" placeholder="admin" value="admin"
+             autocomplete="off" spellcheck="false"
+             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 14px;color:var(--text);font-size:14px;outline:none;">
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px;">PASSWORD</div>
+      <input id="login-pw" type="password" placeholder="••••••••"
+             autocomplete="new-password"
+             onkeydown="if(event.key==='Enter') doLogin()"
+             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 14px;color:var(--text);font-size:14px;outline:none;">
+    </div>
+    <div id="login-error" style="font-size:12px;color:var(--danger);min-height:18px;margin-bottom:12px;font-family:var(--font-mono);"></div>
+    <button onclick="doLogin()"
+            style="width:100%;padding:11px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;"
+            data-i18n="auth.login">
+      Login
+    </button>
+  </div>
+</div>
+
+<!-- 3D libs (CDN) — pinned versions -->
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script src="https://unpkg.com/3d-force-graph@1.73.4/dist/3d-force-graph.min.js"></script>
+<script src="https://unpkg.com/d3-force-3d@3.0.5/dist/d3-force-3d.min.js"></script>
+
+<script src="/static/i18n.js"></script>
+<script src="/static/graph.js"></script>
+</body>
+</html>
