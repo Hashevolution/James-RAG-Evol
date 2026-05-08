@@ -241,6 +241,27 @@ def run_retrieval_pipeline(
         engine._log("post_check", e, user_role)
         safe_context = final_context
 
+    # item #5-A: 답변에 "관련 파일은 X.md, Y.md입니다" 형태로
+    # source 파일을 먼저 명시하기 위해 context 앞에 [관련 자료]
+    # 섹션을 prepend. 모델이 이 헤더를 보고 답변 첫 줄에 인용하도록
+    # rule_text가 지시한다 (response_style.py 참조).
+    source_names = []
+    seen_sources = set()
+    for d in (loop_state.get("docs") or [])[:5]:
+        s = d.get("source") or d.get("name") or d.get("path") or ""
+        if s and s not in seen_sources:
+            # 너무 긴 경로는 잘라서 표시
+            s_disp = s.split("/")[-1].split("\\")[-1]
+            source_names.append(s_disp[:60])
+            seen_sources.add(s)
+    if safe_context.strip() and source_names:
+        sources_header = (
+            "[관련 자료 목록]\n"
+            + "\n".join(f"- {s}" for s in source_names)
+            + "\n\n[자료 내용]\n"
+        )
+        safe_context = sources_header + safe_context
+
     # ── LLM 답변 생성 ────────────────────────────────────
     t_llm = time.time()
     try:
