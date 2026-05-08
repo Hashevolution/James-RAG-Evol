@@ -668,17 +668,87 @@ function appendJamesMsg(data) {
       ${exportButtons}
     </div>` : '';
 
+  // item #1-B: 답변 끝의 "(1) ... (2) ... (3) ..." 다음-행동 제안을
+  // 클릭 가능한 chip으로 변환. 클릭 → 입력창에 그 제안 텍스트 채움 +
+  // 자동 전송 (사용자가 다음 차례를 한 클릭으로 진행).
+  const suggestions = extractNextActionSuggestions(answer);
+  let suggestionsHtml = '';
+  if (suggestions.length > 0) {
+    suggestionsHtml = `
+      <div class="next-actions" style="display:flex;flex-direction:column;gap:6px;
+                                       margin-top:8px">
+        ${suggestions.map((s, i) => `
+          <button class="next-action-chip"
+                  onclick="askSuggestion(${i}, this)"
+                  data-suggestion="${encodeURIComponent(s.text)}"
+                  style="text-align:left;background:var(--surface-2);
+                         border:1px solid var(--border);border-radius:8px;
+                         padding:8px 12px;cursor:pointer;color:var(--text);
+                         font-size:13px;transition:all .15s;width:100%;
+                         font-family:inherit">
+            <span style="color:var(--accent);font-weight:600;margin-right:6px">→</span>
+            <span>${escHtml(s.text)}</span>
+          </button>
+        `).join('')}
+      </div>`;
+  }
+
   div.innerHTML = `
     <div class="avatar james">🧠</div>
     <div>
       <div class="bubble">${formatAnswer(answer)}${pathsHtml}</div>
       ${confidenceBadge}
       ${metaHtml}
+      ${suggestionsHtml}
       ${fbHtml}
     </div>
   `;
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
+}
+
+/* ── item #1-B: "(1) ... (2) ... (3) ..." 제안 추출 ──
+   답변 텍스트에서 다음 행동 제안 chip을 만들어낸다. 두 가지 일반적
+   포맷을 인식:
+     "(1) X (2) Y (3) Z"          — 한 줄 인라인
+     "(1) X\n(2) Y\n(3) Z"        — 줄바꿈 분리
+   숫자 1-9까지. 각 제안은 다음 마커 직전까지로 잘림.
+
+   답변 끝 부분(마지막 250자) 안에서만 매칭 — 본문 중간에 우연히
+   "(1) 첫째" 같은 패턴이 들어가도 제안으로 오해 안 함. */
+function extractNextActionSuggestions(answerText) {
+  if (!answerText) return [];
+  const tail = answerText.length > 600
+             ? answerText.slice(-600)
+             : answerText;
+  // 숫자 인덱스 + 텍스트. (1) X 다음에 (2)/(3)/.../EOF.
+  const re = /\((\d)\)\s*([^\n()][^\n(]*?)(?=\s*\(\d\)|\s*$)/g;
+  const out = [];
+  let m;
+  while ((m = re.exec(tail)) !== null) {
+    const text = m[2].trim().replace(/[\.。]+$/, '');
+    if (text.length >= 4 && text.length <= 200) {
+      out.push({ n: parseInt(m[1], 10), text });
+    }
+    if (out.length >= 5) break;
+  }
+  // 최소 2개일 때만 제안 chip으로 인정 — 단일 "(1)" 같은 가짜
+  // 패턴 (예: "1단계: ...")은 무시.
+  return out.length >= 2 ? out : [];
+}
+
+/* 제안 chip 클릭 → 입력창에 채우고 즉시 전송 */
+function askSuggestion(idx, btn) {
+  const text = decodeURIComponent(btn.dataset.suggestion || '');
+  if (!text.trim()) return;
+  const input = document.getElementById('chat-input');
+  if (!input) return;
+  input.value = text;
+  // 부드러운 UX — 입력창에 잠깐 보였다가 sendMessage. 사용자가 직전
+  // 제안에서 단어 하나 바꾸고 싶으면 클릭 후 입력창에 보이는 동안
+  // 멈출 수 있도록 작은 delay.
+  autoResize(input);
+  setTimeout(() => sendMessage(), 200);
 }
 
 /* ── item #4: 단일 답변 텍스트 복사 ──
