@@ -2026,6 +2026,48 @@ async def admin_patch_approve(request: Request, role: str = Depends(get_role_fro
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/admin/patch/audit", summary="Patch 라이프사이클 감사 조회 [#68 phase 2-C]")
+async def admin_patch_audit(
+    api_key:  str,
+    since:    str = "",
+    approver: str = "",
+    outcome:  str = "",
+    limit:    int = 200,
+    role:     str = Depends(get_role_from_request),
+):
+    """Filtered, newest-first slice of `james_patch_log.jsonl`.
+
+    Filters (all optional; combine for AND semantics):
+      since:    ISO 8601 lower bound (e.g. "2026-05-08" or full datetime)
+      approver: case-insensitive exact `approver_username` match
+      outcome:  case-insensitive `outcome` match — `deployed` /
+                `rolled_back` / `deployed_gate_skipped`
+      limit:    max entries returned (default 200, hard cap 1000)
+
+    See `tools/patch/audit_query.py` for filter semantics + rationale.
+    Composes with `/admin/audit` (the broader, multi-source feed) —
+    this endpoint is the patch-specific view.
+    """
+    _require_admin(api_key, role)
+    from tools.patch.audit_query import query_patch_audit
+    rows = query_patch_audit(
+        since=since or None,
+        approver=approver or None,
+        outcome=outcome or None,
+        limit=limit,
+    )
+    return {
+        "filters": {
+            "since":    since,
+            "approver": approver,
+            "outcome":  outcome,
+            "limit":    limit,
+        },
+        "count": len(rows),
+        "events": rows,
+    }
+
+
 @app.post("/admin/patch/reject", summary="Patch 거부 [P7]")
 async def admin_patch_reject(request: Request, role: str = Depends(get_role_from_request)):
     body = await request.json()
