@@ -790,12 +790,28 @@
 
     <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
       <input type="file" id="file-input" multiple accept="image/*,video/*,audio/*,.pdf,.txt,.md,.json">
+      <!-- item #8: 폴더 통째 선택용 hidden input. webkitdirectory 사용 시
+           accept 무시되고 디렉토리 picker가 뜸. -->
+      <input type="file" id="folder-input" multiple webkitdirectory directory
+             style="display:none">
       <div class="drop-icon">📂</div>
       <div class="drop-label">
         <span data-i18n="upload.drag_label">클릭하거나 드래그하여 파일 추가</span><br>
-        <span class="drop-types"><span data-i18n="upload.types">이미지 · 영상 · 오디오 · PDF · 문서</span></span>
+        <span class="drop-types"><span data-i18n="upload.types">이미지 · 영상 · 오디오 · PDF · 문서</span></span><br>
+        <span class="drop-types" style="margin-top:4px;display:inline-block">
+          폴더 통째로 드래그도 가능
+        </span>
       </div>
     </div>
+    <!-- item #8: 폴더 선택 버튼 (드래그 외 클릭 경로) -->
+    <button type="button"
+            onclick="event.stopPropagation(); document.getElementById('folder-input').click()"
+            style="margin-top:6px;width:100%;padding:8px;
+                   background:var(--surface-2);border:1px solid var(--border);
+                   border-radius:6px;color:var(--text-soft);font-size:12px;
+                   cursor:pointer;font-family:var(--font-ui)">
+      📁 폴더 선택
+    </button>
 
     <div class="instruction-box">
       <label><span data-i18n="upload.common_label">💬 공통 저장 지시 (폴더 미지정 파일에 적용)</span></label>

@@ -2,11 +2,100 @@
 
 let uploadQueue = [];
 
-/* ── 파일 입력 처리 ── */
+/* ── 파일 입력 처리 (file + webkitdirectory 둘 다 지원) ── */
+function _captureRelPath(f) {
+  // <input type="file" webkitdirectory>로 폴더를 선택한 경우
+  // file.webkitRelativePath에 "folder/sub/file.ext" 형태. 큐 표시 +
+  // 서버 전송 시 활용을 위해 file.relPath로 보존.
+  if (f.webkitRelativePath) {
+    try { f.relPath = f.webkitRelativePath; } catch (_) {}
+  }
+  return f;
+}
 document.getElementById('file-input').addEventListener('change', e => {
-  addFiles(Array.from(e.target.files));
+  addFiles(Array.from(e.target.files).map(_captureRelPath));
   e.target.value = '';
 });
+// item #8: 폴더 선택 input (별도 hidden input, webkitdirectory)
+const _folderInput = document.getElementById('folder-input');
+if (_folderInput) {
+  _folderInput.addEventListener('change', e => {
+    const files = Array.from(e.target.files).map(_captureRelPath);
+    addFiles(files);
+    if (typeof toast === 'function' && files.length > 0) {
+      toast(`폴더에서 파일 ${files.length}개 추가됨`, 'success');
+    }
+    e.target.value = '';
+  });
+}
+
+/* ── item #8: DataTransfer에서 파일 추출 (폴더 재귀 지원) ──
+   dataTransfer.files는 폴더 안의 파일을 안 펼침. webkitGetAsEntry()로
+   FileSystemEntry를 받아 디렉토리 traversal. 미지원 환경은 dataTransfer.
+   files로 fallback (top-level 파일만).
+
+   재귀 readEntries는 한 번에 최대 100개까지 반환 — empty 받을 때까지
+   loop. createReader 인스턴스 재사용해야 다음 batch가 옴 (중요).
+*/
+async function _filesFromEntry(entry, pathPrefix = '') {
+  if (!entry) return [];
+  if (entry.isFile) {
+    return new Promise((resolve) => {
+      entry.file(file => {
+        try { file.relPath = pathPrefix + file.name; } catch (_) {}
+        resolve([file]);
+      }, () => resolve([]));   // 권한 거부 등 — 빈 배열로 무시
+    });
+  }
+  if (entry.isDirectory) {
+    const reader = entry.createReader();
+    let all = [];
+    // readEntries는 batch별로 최대 ~100. 빈 배열 올 때까지 반복.
+    while (true) {
+      const batch = await new Promise((resolve) => {
+        reader.readEntries(resolve, () => resolve([]));
+      });
+      if (!batch || batch.length === 0) break;
+      for (const child of batch) {
+        const childPath = pathPrefix + entry.name + '/';
+        const subFiles = await _filesFromEntry(child, childPath);
+        all = all.concat(subFiles);
+      }
+    }
+    return all;
+  }
+  return [];
+}
+
+async function _filesFromDataTransfer(dataTransfer) {
+  // 1. items API (폴더 traversal 가능)
+  if (dataTransfer.items && dataTransfer.items.length > 0) {
+    const entries = [];
+    for (const item of dataTransfer.items) {
+      if (item.kind !== 'file') continue;
+      const getEntry = item.webkitGetAsEntry || item.getAsEntry;
+      if (typeof getEntry === 'function') {
+        const entry = getEntry.call(item);
+        if (entry) {
+          entries.push(entry);
+          continue;
+        }
+      }
+      // entry API 없는 경우 직접 file만
+      const f = item.getAsFile?.();
+      if (f) entries.push({ isFile: true, isDirectory: false,
+                             file: cb => cb(f), name: f.name });
+    }
+    let all = [];
+    for (const entry of entries) {
+      const files = await _filesFromEntry(entry, '');
+      all = all.concat(files);
+    }
+    if (all.length > 0) return all;
+  }
+  // 2. fallback: 평탄한 dataTransfer.files (폴더 traversal 불가)
+  return Array.from(dataTransfer.files || []);
+}
 
 /* ── 드래그 앤 드롭 (사이드바 dropzone) ── */
 const dropZone = document.getElementById('drop-zone');
@@ -22,8 +111,10 @@ const dropZone = document.getElementById('drop-zone');
     dropZone.classList.remove('drag-over');
   })
 );
-dropZone.addEventListener('drop', e => {
-  addFiles(Array.from(e.dataTransfer.files));
+dropZone.addEventListener('drop', async e => {
+  // item #8: 폴더 통째 드롭 시 webkitGetAsEntry로 재귀 traverse.
+  const files = await _filesFromDataTransfer(e.dataTransfer);
+  if (files.length > 0) addFiles(files);
 });
 
 /* ── item #7: 챗 페이지 전체에 드래그 앤 드롭 ──
@@ -108,12 +199,13 @@ dropZone.addEventListener('drop', e => {
     if (dragDepth === 0) hideOverlay();
   });
 
-  window.addEventListener('drop', e => {
-    if (!e.dataTransfer || !e.dataTransfer.files) return;
+  window.addEventListener('drop', async e => {
+    if (!e.dataTransfer) return;
     e.preventDefault();
     dragDepth = 0;
     hideOverlay();
-    const files = Array.from(e.dataTransfer.files);
+    // item #8: 폴더 드롭 시 재귀 traverse — sidebar drop과 동일 함수 사용
+    const files = await _filesFromDataTransfer(e.dataTransfer);
     if (files.length === 0) return;
 
     addFiles(files);
@@ -125,7 +217,10 @@ dropZone.addEventListener('drop', e => {
       }
     }
     if (typeof toast === 'function') {
-      toast(`파일 ${files.length}개 추가됨`, 'success');
+      // 폴더 드롭이면 내부 파일 다 펼쳐진 합계가 보임
+      const folderHint = files.some(f => f.relPath && f.relPath.includes('/'))
+                        ? ' (폴더 포함)' : '';
+      toast(`파일 ${files.length}개 추가됨${folderHint}`, 'success');
     }
   });
 })();
