@@ -270,6 +270,8 @@ class ReasoningEngine:
         return run_retrieval_pipeline(
             self, safe_query, system_prompt, user_role, source_type, t_start,
             response_style=response_style,
+            # [#A8-6] forward the user's "force web search" choice
+            force_web_search=kwargs.get("force_web_search", False),
         )
 
 

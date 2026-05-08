@@ -326,6 +326,13 @@ class QueryRequest(BaseModel):
     # routes straight to that mode handler. Permitted values:
     # chat / retrieval / meta / coding / wiki_edit / self_evolve.
     mode_override:    str  = ""
+    # [#A8-6] User explicitly asked for additional web exploration.
+    # When True AND role is in web_search_config.allowed_roles, pipeline's
+    # `low_relevance` gate is bypassed — web search runs regardless of
+    # `unified_score < threshold`. Chat UI surfaces this via a
+    # "🌐 웹으로 더 조사" chip on low-confidence answers; click re-issues
+    # the same question with this flag set.
+    force_web_search: bool = False
 
 class QueryResponse(BaseModel):
     question:       str
@@ -648,6 +655,7 @@ async def query(
         session_language = data.session_language,  # [STEP2-A] 세션 언어
         response_style   = data.response_style,    # brief/standard/detailed
         mode_override    = data.mode_override,     # item #6: chat 페이지 모드 picker
+        force_web_search = data.force_web_search,  # [#A8-6] explicit web exploration
     )
     elapsed = time.time() - t_start
 

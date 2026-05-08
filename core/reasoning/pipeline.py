@@ -35,6 +35,7 @@ def run_retrieval_pipeline(
     source_type: str,
     t_start: float,
     response_style: str = "",
+    force_web_search: bool = False,   # [#A8-6] 사용자가 chip 클릭 시 True
 ) -> Dict[str, Any]:
     # ── STEP 0.5b: query expansion [P5] ──────────────────
     # core/query_expander.py (was core/jepa_adapter.py — 단순 동의어
@@ -279,9 +280,13 @@ def run_retrieval_pipeline(
 
         # [P7] retrieval 결과 품질에 따라 분기
         # [#A6-1 2026-05-08] threshold + role gate 동적 로드
+        # [#A8-6 2026-05-09] force_web_search=True면 threshold 무시하고
+        # 무조건 low_relevance 분기 진입 → 웹 검색 시도. 사용자가 chat
+        # bubble의 "🌐 웹으로 더 조사" chip 클릭 시 True로 도착.
         from core.web_search_config import get_threshold, is_role_allowed
         low_relevance = (
-            not safe_context
+            force_web_search
+            or not safe_context
             or len(safe_context.strip()) < 50
             or unified_score < get_threshold()
         )

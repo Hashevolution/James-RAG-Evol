@@ -630,6 +630,16 @@ let pendingReportRequest = false;
 const REPORT_REQUEST_KEYWORDS =
   /보고서|레포트|문서로|문서\s*로\s*만들|파일로\s*만들|파일\s*로\s*저장|다운로드|export|report\s*(file|format)?/i;
 
+// [#A8-6] 가장 최근 사용자 질문을 기억 → 답변 bubble의 "🌐 웹으로 더
+// 조사" chip 클릭 시 그대로 다시 보낸다 (force_web_search=true).
+// askWithForceWeb이 직접 sendMessage를 호출하기보단 입력값을 채우고
+// 저장 후 _runQuery 핵심 로직을 직접 부르므로 입력창에 잠깐 보였다
+// 사라지는 짜증을 피한다.
+let lastUserQuestion = '';
+// [#A8-6] sendMessage가 다음 호출 1회만 force_web_search=true로 보낼지.
+// askWithForceWeb이 set, sendMessage가 read+clear (단발성).
+let _forceWebOnce = false;
+
 async function sendMessage() {
   const input = document.getElementById('chat-input');
   const text  = input.value.trim();
@@ -637,6 +647,12 @@ async function sendMessage() {
 
   // item #4: 다음 답변이 다운로드 버튼을 보일지 결정
   pendingReportRequest = REPORT_REQUEST_KEYWORDS.test(text);
+
+  // [#A8-6] 사용자 질문 보관 — 이후 chip이 재사용
+  lastUserQuestion = text;
+  // 단발성 force flag (askWithForceWeb이 직전 set)
+  const forceWeb = _forceWebOnce;
+  _forceWebOnce = false;
 
   hideWelcome();
   appendMsg('user', text);
@@ -686,6 +702,8 @@ async function sendMessage() {
         trace_id:         traceId,
         // item #6: mode_override (auto면 빈 문자열 → 서버 자동 분류)
         mode_override:    (selectedMode && selectedMode !== 'auto') ? selectedMode : '',
+        // [#A8-6] chip 클릭으로 도착한 경우만 true — 평상시 false.
+        force_web_search: forceWeb,
       }),
     });
 
@@ -800,8 +818,35 @@ function appendJamesMsg(data) {
       </details>`;
   }
 
-  // [3-B] unified_score → 신뢰도 배지
+  // [3-B] unified_score는 web chip + confidence badge 모두 참조 — 한 번만 읽기.
   const score = data.unified_score;
+
+  // [#A8-6] 자료 부족 + 웹 검색 미사용일 때 "웹으로 더 조사" chip.
+  //   - web_used=false (이미 웹 자료 받았으면 다시 보낼 필요 없음)
+  //   - unified_score < 0.50 (확신 낮은 답변 — internal-only로는 부족)
+  //   - 사용자 자체 질문은 lastUserQuestion에 보관 → 클릭 시 force flag로 재전송.
+  let forceWebChip = '';
+  if (!data.web_used && (score == null || score < 0.50)) {
+    const q = lastUserQuestion || '';
+    if (q.trim()) {
+      forceWebChip = `
+        <div style="margin-top:8px">
+          <button class="next-action-chip force-web-btn"
+                  onclick="askWithForceWeb(this)"
+                  data-question="${encodeURIComponent(q)}"
+                  style="text-align:left;background:rgba(79,195,247,.10);
+                         border:1px solid rgba(79,195,247,.45);border-radius:8px;
+                         padding:8px 12px;cursor:pointer;color:var(--text);
+                         font-size:12px;width:100%;font-family:inherit;
+                         transition:all .15s">
+            <span style="color:#4fc3f7;font-weight:600;margin-right:6px">🌐</span>
+            <span>웹 검색으로 더 자세히 조사하기</span>
+          </button>
+        </div>`;
+    }
+  }
+
+  // [3-B] unified_score → 신뢰도 배지 ([#A8-6 통합] score는 위에서 이미 읽음)
   let confidenceBadge = '';
   if (score != null) {
     const pct = Math.round(score * 100);
@@ -924,6 +969,7 @@ function appendJamesMsg(data) {
       ${webBadge}
       ${confidenceBadge}
       ${metaHtml}
+      ${forceWebChip}
       ${suggestionsHtml}
       ${fbHtml}
     </div>
@@ -976,6 +1022,29 @@ function extractNextActionSuggestions(answerText) {
     if (out.length >= 2) return out;
   }
   return [];
+}
+
+/* [#A8-6] "🌐 웹 검색으로 더 조사" chip 클릭 핸들러.
+   사용자의 직전 질문을 force_web_search=true로 다시 전송.
+   chip은 한 번 클릭되면 disabled로 바꿔서 중복 트리거 방지. */
+function askWithForceWeb(btn) {
+  if (!btn) return;
+  if (btn.disabled) return;
+  const q = decodeURIComponent(btn.dataset.question || '');
+  if (!q.trim()) {
+    toast('이전 질문을 찾을 수 없습니다.', 'error');
+    return;
+  }
+  // 입력창에 채우지 않고 force flag만 set + sendMessage 직접 트리거.
+  // 입력창은 빈 상태 유지해서 사용자가 다음 질문 바로 입력 가능.
+  const input = document.getElementById('chat-input');
+  if (!input) return;
+  input.value = q;
+  _forceWebOnce = true;
+  btn.disabled = true;
+  btn.style.opacity = '0.55';
+  btn.querySelector('span:last-child').textContent = '웹 검색 중...';
+  setTimeout(() => sendMessage(), 100);
 }
 
 /* 제안 chip 클릭 → 입력창에 채우고 즉시 전송 */
