@@ -80,9 +80,12 @@ setInterval(checkTokenExpiry, 5 * 60 * 1000);
 
 /* ── 초기화 ── */
 window.addEventListener('DOMContentLoaded', () => {
+  // [#1-C] API key는 더 이상 native prompt()로 묻지 않는다 — 폰에서
+  // 매번 system 프롬프트 띄우는 게 깨지는 UX였고, 값 변경/확인이 어려웠음.
+  // 이제 로그인 모달의 visible field에 입력. 키가 없으면 모달을 자동
+  // 띄워서 사용자가 거기서 입력 가능하도록 안내.
   if (!localStorage.getItem('james_api_key')) {
-    const key = prompt('JAMES API Key를 입력하세요:') || '';
-    if (key) localStorage.setItem('james_api_key', key);
+    setTimeout(() => showLogin(), 200);
   }
   updateRoleBadge();
   // item #3-a: 이전 대화 복원 (자가 호출 누락 버그 fix).
@@ -429,8 +432,28 @@ function setSource(type, btn) {
 function showLogin() {
   if (token) return;   // 이미 로그인됨 → 무시
   document.getElementById('login-modal').classList.remove('hidden');
+  // [#1-C] API key 필드 pre-fill — 이전에 저장된 값 표시. 비어있으면
+  // 빈 칸으로 두고 사용자가 입력. 첫 visit 시점엔 뭐가 들어갈 자리인지
+  // 명확히 보이는 게 prompt()보다 친화적.
+  const apiKeyInput = document.getElementById('login-api-key');
+  if (apiKeyInput) apiKeyInput.value = getApiKey();
   document.getElementById('login-id').focus();
   document.getElementById('login-error').textContent = '';
+}
+
+/* [#1-C] API key 보기/숨기기 토글. password 입력 필드의 type을
+   "password" ↔ "text" 로 swap. 폰에서 긴 키 복붙 시 검증 용도. */
+function toggleApiKeyVisibility() {
+  const input = document.getElementById('login-api-key');
+  const btn   = document.getElementById('login-api-key-toggle');
+  if (!input) return;
+  if (input.type === 'password') {
+    input.type = 'text';
+    if (btn) btn.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    if (btn) btn.textContent = '👁️';
+  }
 }
 
 function closeLogin() {
@@ -444,12 +467,26 @@ function closeLoginOutside(e) {
 async function doLogin() {
   const username = document.getElementById('login-id').value.trim();
   const password = document.getElementById('login-pw').value;
+  // [#1-C] API key는 모달 입력 필드에서 직접 받음. 비어있으면
+  // localStorage 기존 값 사용 (back-compat — 기존 사용자는 변경 불필요).
+  const apiKeyInput = document.getElementById('login-api-key');
+  const apiKeyEntered = (apiKeyInput?.value || '').trim();
+  const apiKeyToUse = apiKeyEntered || getApiKey();
   const errEl    = document.getElementById('login-error');
   errEl.textContent = '';
 
   if (!username || !password) {
     errEl.textContent = '아이디와 비밀번호를 입력하세요.';
     return;
+  }
+  if (!apiKeyToUse) {
+    errEl.textContent = 'API Key를 입력하세요. (.env의 JAMES_API_KEY)';
+    apiKeyInput?.focus();
+    return;
+  }
+  // 새로 입력된 값이면 localStorage에 저장 (다음 로그인 시 pre-fill).
+  if (apiKeyEntered && apiKeyEntered !== getApiKey()) {
+    localStorage.setItem('james_api_key', apiKeyEntered);
   }
 
   try {
@@ -458,7 +495,7 @@ async function doLogin() {
       headers: {'Content-Type': 'application/json'},
       body:    JSON.stringify({
         username, password,
-        api_key: getApiKey(),
+        api_key: apiKeyToUse,
       }),
     });
 

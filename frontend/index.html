@@ -970,6 +970,30 @@
              autocomplete="new-password"
              onkeydown="if(event.key==='Enter') doLogin()">
     </div>
+    <!-- [#1-C] API Key — visible field instead of one-shot prompt().
+         Pre-filled from localStorage on showLogin. Eye toggle reveals
+         the value when the user needs to copy/verify it. Same form
+         submits username + password + api_key in one POST. -->
+    <div class="modal-field">
+      <label data-i18n="auth.api_key">API Key</label>
+      <div style="position:relative">
+        <input type="password" id="login-api-key" placeholder="sk-..."
+               autocomplete="off" spellcheck="false"
+               style="padding-right:40px"
+               onkeydown="if(event.key==='Enter') doLogin()">
+        <button type="button"
+                id="login-api-key-toggle"
+                onclick="toggleApiKeyVisibility()"
+                aria-label="show/hide api key"
+                title="API Key 보기/숨기기"
+                style="position:absolute;right:8px;top:50%;
+                       transform:translateY(-50%);background:none;
+                       border:none;cursor:pointer;color:var(--muted);
+                       font-size:14px;padding:2px 4px">👁️</button>
+      </div>
+      <small style="color:var(--muted);font-size:11px;display:block;margin-top:4px"
+             data-i18n="auth.api_key_hint">서버 .env의 JAMES_API_KEY 값. 비워두면 환경변수 그대로 사용.</small>
+    </div>
     <div class="modal-error" id="login-error"></div>
     <div class="modal-actions">
       <button class="modal-btn cancel" onclick="closeLogin()" data-i18n="common.cancel">취소</button>
