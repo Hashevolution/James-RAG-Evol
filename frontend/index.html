@@ -573,6 +573,41 @@
   }
   .bubble pre code { background: none; border: none; padding: 0; font-size: 12.5px; }
 
+  /* ── [#A4-A] 문단별 복사 버튼 ──
+     hover 시 우상단에 작게 노출. 모바일에선 hover가 안 통하므로
+     항상 약하게(opacity .35) 보이도록 두고 tap 시 진하게.
+     :last-child의 margin-bottom 제거 — bubble padding과 시각적 충돌 방지. */
+  .bubble .paragraph {
+    position: relative;
+    margin-bottom: 10px;
+  }
+  .bubble .paragraph:last-child { margin-bottom: 0; }
+  .bubble .paragraph-content { padding-right: 26px; }
+  .bubble .paragraph-copy-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 11px;
+    line-height: 1.2;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .15s, color .15s;
+    color: var(--muted);
+    font-family: inherit;
+  }
+  .bubble .paragraph:hover .paragraph-copy-btn { opacity: .85; }
+  .bubble .paragraph-copy-btn:hover,
+  .bubble .paragraph-copy-btn:focus { opacity: 1; color: var(--accent); }
+  /* 모바일 — hover 미지원 환경. 항상 약하게 보이도록. */
+  @media (hover: none) and (pointer: coarse) {
+    .bubble .paragraph-copy-btn { opacity: .35; }
+    .bubble .paragraph:active .paragraph-copy-btn { opacity: 1; }
+  }
+
   .meta {
     font-size: 11px;
     color: var(--muted);

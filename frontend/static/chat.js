@@ -827,7 +827,7 @@ function appendJamesMsg(data) {
   div.innerHTML = `
     <div class="avatar james">🧠</div>
     <div>
-      <div class="bubble">${formatAnswer(answer)}${pathsHtml}</div>
+      <div class="bubble">${formatAnswerWithParagraphs(answer)}${pathsHtml}</div>
       ${confidenceBadge}
       ${metaHtml}
       ${suggestionsHtml}
@@ -1225,6 +1225,45 @@ function jamesNotify(msg, type = 'info') {
 
 /* ── 답변 포맷 ── */
 /* ── 답변 포맷 (마크다운 렌더링) ── */
+/* ── [#A4-A] 답변을 문단 단위로 split + 각 문단 복사 버튼 ──
+   사용자 요청: "대화 내용중 핵심 답변 내용 문단을 복사할수 있게 버튼
+   별도로 붙이기".
+
+   split 기준: 빈 줄 (\n\s*\n+). 코드블록은 같은 paragraph로 유지
+   (분리되면 ``` 마커가 깨져 syntax highlight 사라짐).
+
+   1문단 짜리 짧은 답변은 wrapper 없이 formatAnswer 그대로 — 시각적
+   잡음 방지 (전체 복사 버튼이 이미 답변 하단에 있음). */
+function formatAnswerWithParagraphs(text) {
+  if (!text) return '';
+  // 코드블록 보존 — 멀티라인이라도 한 chunk로.
+  const codeBlocks = [];
+  const withoutCode = text.replace(/```[\s\S]*?```/g, (match) => {
+    codeBlocks.push(match);
+    return `\x01CB${codeBlocks.length - 1}\x01`;
+  });
+  const parts = withoutCode.split(/\n\s*\n+/).map(p => p.trim()).filter(Boolean);
+  if (parts.length <= 1) {
+    // 단일 문단 — 기존 렌더링 유지 (불필요 wrapper 제거).
+    return formatAnswer(text);
+  }
+  return parts.map(part => {
+    let restored = part;
+    codeBlocks.forEach((b, i) => {
+      restored = restored.replace(`\x01CB${i}\x01`, b);
+    });
+    const escapedAttr = encodeURIComponent(restored);
+    return `<div class="paragraph">
+      <div class="paragraph-content">${formatAnswer(restored)}</div>
+      <button class="paragraph-copy-btn"
+              onclick="copyAnswerText(this)"
+              data-content="${escapedAttr}"
+              title="이 문단 복사"
+              aria-label="이 문단 복사">📋</button>
+    </div>`;
+  }).join('');
+}
+
 function formatAnswer(text) {
   const codeBlocks = [];
   text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
