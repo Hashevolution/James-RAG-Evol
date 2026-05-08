@@ -8,17 +8,25 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-  /* ── 리셋 & 변수 ── */
+  /* ── 리셋 & 변수 ──
+     [#A8-9 2026-05-09] palette polish — 보고서 관리 시스템 분위기.
+     surface tone slightly cooler (slate ↔ navy mix) for a more
+     enterprise/intelligence look. Accent stays indigo but a touch
+     deeper. New --report-bg for "report card" backgrounds. */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg:        #0c0d10;
-    --surface:   #14161a;
-    --surface-2: #1a1d22;
-    --border:    #25282f;
-    --border-2:  #1c1f25;
-    --accent:    #6366f1;
-    --accent-soft: rgba(99,102,241,.12);
-    --accent-fg: #a5b4fc;
+    --bg:        #0a0c11;       /* deeper navy-black */
+    --surface:   #131620;       /* slate-tinted surface */
+    --surface-2: #181c26;
+    --border:    #262a36;
+    --border-2:  #1d212c;
+    --accent:    #5258e6;       /* deeper indigo, less playful */
+    --accent-soft: rgba(82,88,230,.13);
+    --accent-fg: #a7afff;
+    /* [#A8-9] secondary brand mark — "intelligence cyan" — used for
+       status badges + section dividers to suggest a knowledge OS. */
+    --brand-2:   #4fc3f7;
+    --brand-2-soft: rgba(79,195,247,.10);
     --text:      #ececf1;
     --text-soft: #c4c6cf;
     --muted:     #8a8d99;
@@ -30,6 +38,23 @@
     --radius-lg: 10px;
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
     --font-ui:   'Inter', 'Pretendard', system-ui, -apple-system, sans-serif;
+    /* [#A8-9] subtle elevation for "report card" surfaces — answer
+       bubbles, settings rows, etc. Sits one notch above flat. */
+    --shadow-card: 0 1px 0 rgba(255,255,255,.02) inset,
+                   0 8px 24px rgba(0,0,0,.18);
+  }
+
+  /* [#A8-9] thin top accent rail — gives every page a subtle "system
+     header" stripe like enterprise dashboards. Doesn't move with
+     scroll, doesn't intrude on layout (1px high). */
+  body::before {
+    content: '';
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent) 0%, var(--brand-2) 100%);
+    opacity: .9;
+    z-index: 999;
+    pointer-events: none;
   }
 
   body {
@@ -63,13 +88,33 @@
     font-family: var(--font-ui);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
   }
+  /* [#A8-9] logo mark — gradient now blends accent (indigo) into
+     brand-2 (intelligence cyan) for a knowledge/security feel. Thin
+     inner shine via box-shadow inset adds depth without ostentation. */
   .logo::before {
     content: '';
     width: 22px; height: 22px;
     border-radius: 6px;
-    background: linear-gradient(135deg, var(--accent), #818cf8);
+    background: linear-gradient(135deg, var(--accent) 0%, var(--brand-2) 100%);
+    box-shadow: 0 0 0 1px rgba(255,255,255,.04) inset,
+                0 2px 6px rgba(82,88,230,.30);
+  }
+  /* [#A8-9] tagline shim — "지식·보안 인텔리전스" appears beside the
+     logo on wide screens, hides on phones. Tells visitors what JAMES
+     IS without forcing them to read welcome copy. */
+  .logo .tagline {
+    color: var(--muted-2);
+    font-weight: 400;
+    font-size: 11px;
+    letter-spacing: .4px;
+    border-left: 1px solid var(--border-2);
+    padding-left: 10px;
+    margin-left: 2px;
+  }
+  @media (max-width: 700px) {
+    .logo .tagline { display: none; }
   }
   .logo span { color: var(--muted); font-weight: 500; }
   .header-right { display: flex; gap: 8px; align-items: center; }
@@ -548,9 +593,13 @@
     word-break: break-word;
     overflow-wrap: break-word;
   }
+  /* [#A8-9] james bubble = "report card" — subtle elevation +
+     left-side accent rail to suggest a structured document. */
   .msg.james .bubble {
     background: var(--surface);
     border: 1px solid var(--border-2);
+    border-left: 2px solid var(--accent-fg);
+    box-shadow: var(--shadow-card);
     color: var(--text);
   }
   .msg.user .bubble {
@@ -759,7 +808,14 @@
 
 <!-- ── 헤더 ── -->
 <header>
-  <div class="logo">JAMES <span>· Knowledge AI</span></div>
+  <!-- [#A8-9] brand mark + tagline. JAMES is the product name;
+       the tagline frames it as a knowledge + security intelligence
+       suite, not a chat toy. -->
+  <div class="logo">
+    JAMES
+    <span>· Knowledge AI</span>
+    <span class="tagline">지식 · 보안 · 보고서 인텔리전스</span>
+  </div>
   <div class="header-right">
     <div class="source-toggle">
       <button class="active" onclick="setSource('prod', this)">PROD</button>
@@ -875,10 +931,19 @@
   <section class="chat-area">
     <div class="messages" id="messages">
       <div class="welcome" id="welcome">
+        <!-- [#A8-9] welcome reframed: knowledge + security + report
+             intelligence (was generic "Graph-RAG 지식 추론 엔진"). -->
         <div class="welcome-title">Welcome to <span>JAMES</span></div>
         <div class="welcome-sub">
-          <span data-i18n="app.subtitle">보안 중심 Graph-RAG 지식 추론 엔진</span><br>
-          <span data-i18n="app.welcome">무엇이든 물어보세요</span>
+          <span data-i18n="app.subtitle">지식·보안·보고서 인텔리전스 시스템</span><br>
+          <span style="font-size:12px;color:var(--muted-2);font-family:var(--font-mono);
+                       letter-spacing:.5px;display:inline-block;margin-top:6px;
+                       padding:2px 10px;border:1px solid var(--border-2);border-radius:4px">
+            Knowledge · Security · Reporting Intelligence
+          </span><br>
+          <span data-i18n="app.welcome" style="display:inline-block;margin-top:10px">
+            물어보거나, 자료를 업로드하거나, 보고서를 요청하세요.
+          </span>
         </div>
         <div class="welcome-chips">
           <span class="chip" onclick="useChip(this)" data-i18n="chat.example1">경제학이란 무엇인가?</span>
