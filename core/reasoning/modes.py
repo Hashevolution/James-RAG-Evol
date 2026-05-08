@@ -33,6 +33,7 @@ def handle_chat(
     user_role: str,
     t_start: float,
     response_style: str = "",
+    selected_model: str = "",   # [#A2 phase 2] catalog-validated user pick
 ) -> Dict[str, Any]:
     from core.response_style import resolve_style
     style = resolve_style(response_style)
@@ -51,6 +52,7 @@ def handle_chat(
         raw_answer = engine.llm.call_gemma(
             f"{sys_prefix}{mem_prefix}{rule_txt}\n질문: {safe_query}\n\n답변:",
             use_cache=True, timeout=60, max_tokens=style.max_tokens,
+            model=selected_model or None,
         )
         # Preserve paragraph breaks (\n\n) — user feedback wants
         # natural 문단 separation, not a single block of text.
@@ -180,6 +182,7 @@ def handle_wiki_edit(
     system_prompt: str,
     user_role: str,
     t_start: float,
+    selected_model: str = "",   # [#A2 phase 2] catalog-validated user pick
 ) -> Dict[str, Any]:
     if user_role != "admin":
         return engine._blocked_result("wiki 편집은 admin 권한만 가능합니다.")
@@ -206,7 +209,8 @@ def handle_wiki_edit(
             ' "entity_type": "person|org|concept|document"}\n\n'
             "JSON만 출력:"
         )
-        raw = engine.llm.call_gemma(parse_prompt, timeout=30, use_cache=False)
+        raw = engine.llm.call_gemma(parse_prompt, timeout=30, use_cache=False,
+                                    model=selected_model or None)
 
         # JSON 파싱
         import json as _json
@@ -253,7 +257,8 @@ def handle_wiki_edit(
                     "수정된 전체 내용만 출력 (frontmatter 포함):"
                 )
                 new_content = engine.llm.call_gemma(
-                    new_prompt, timeout=90, use_cache=False
+                    new_prompt, timeout=90, use_cache=False,
+                    model=selected_model or None,
                 )
                 if new_content:
                     ok, msg = update_entity(target, new_content, user_role)
@@ -306,6 +311,7 @@ def handle_self_evolve(
     system_prompt: str,
     user_role: str,
     t_start: float,
+    selected_model: str = "",   # [#A2 phase 2] catalog-validated user pick
 ) -> Dict[str, Any]:
     if user_role != "admin":
         return engine._blocked_result("자기 진화는 admin 권한만 가능합니다.")
@@ -370,6 +376,7 @@ def handle_self_evolve(
                     f"{sys_prefix}다음 폴더 구조를 보고 각 파일의 역할과 "
                     f"전체 아키텍처를 설명해줘:\n\n{folder_report[:2000]}\n\n설명:",
                     timeout=120, use_cache=False,
+                    model=selected_model or None,
                 )
                 answer = folder_report
                 if analysis:
@@ -386,6 +393,7 @@ def handle_self_evolve(
                 f"{sys_prefix}아래 코드를 분석하고 개선점을 제안해줘:\n\n"
                 f"파일: {fname}\n```python\n{content[:2000]}\n```\n\n분석:",
                 timeout=120, use_cache=False,
+                model=selected_model or None,
             )
             answer = (
                 f"📄 **{fname}** 분석\n\n"
@@ -423,6 +431,7 @@ def handle_self_evolve(
                     f"{sys_prefix}PROJECT JAMES의 현재 구조를 바탕으로, "
                     f"다음 관점에서 개선 제안을 해줘: {safe_query}\n\n제안:",
                     timeout=90, use_cache=False,
+                    model=selected_model or None,
                 )
                 if extra:
                     answer += f"\n\n💡 **개선 제안:**\n{extra}"
@@ -455,6 +464,7 @@ def handle_coding(
     system_prompt: str,
     user_role: str,
     t_start: float,
+    selected_model: str = "",   # [#A2 phase 2] catalog-validated user pick
 ) -> Dict[str, Any]:
     """Coding mode handler.
 
@@ -467,51 +477,81 @@ def handle_coding(
     Operator override: set JAMES_CODING_MODEL env to a lighter model
     (e.g. gemma4:e4b) if the 32B qwen-coder cold-start is hitting
     your tunnel / proxy timeout.
+
+    [#A2 phase 2] When the user has explicitly picked a model tag from
+    the secondary picker (selected_model non-empty after engine-level
+    catalog validation), we BYPASS the smart router entirely and call
+    that model directly via call_gemma. The whole point of the picker
+    is "let me override" — if the user said "gemma4:e4b" we shouldn't
+    silently re-route to qwen-coder.
     """
     from core.observability import log_stage
     t_code = time.time()
     answer = ""
 
-    # Stage logged so /trace/poll/ shows what's happening in real time.
-    log_stage("coding_route", model="qwen-coder", query_len=len(safe_query))
-
-    try:
-        from llm.router import route as llm_route
-        llm = llm_route(safe_query, task_type="coding")
-        log_stage("coding_llm_pick", llm_name=getattr(llm, "name", "?"),
-                  available=getattr(llm, "is_available", lambda: True)())
-
-        sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
-        coding_prompt = sys_prefix + safe_query
-        messages = [{"role": "user", "content": coding_prompt}]
-        answer = llm.generate(messages, timeout=120)
-        log_stage("coding_done",
-                  latency_ms=int((time.time() - t_code) * 1000),
-                  answer_len=len(answer or ""))
-    except Exception as e:
-        engine._log("coding_llm", e, user_role)
-        log_stage("coding_llm_error", error=f"{type(e).__name__}: {e}")
-        # Fallback: default GEMMA_MODEL via the engine's RouterWrapper
+    # [#A2 phase 2] User explicitly picked → bypass smart router and
+    # call the chosen model directly. The patch pipeline below still
+    # runs on the resulting `answer`.
+    if selected_model:
+        log_stage("coding_user_pick", model=selected_model,
+                  query_len=len(safe_query))
         try:
             sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
             answer = engine.llm.call_gemma(
                 f"{sys_prefix}코딩 질문: {safe_query}\n\n답변:",
-                use_cache=True, timeout=90,
+                use_cache=True, timeout=120,
+                model=selected_model,
             )
-            log_stage("coding_fallback_done",
+            log_stage("coding_user_pick_done",
                       latency_ms=int((time.time() - t_code) * 1000),
                       answer_len=len(answer or ""))
-        except Exception as e2:
-            log_stage("coding_fallback_error",
-                      error=f"{type(e2).__name__}: {e2}")
-            # Surface the actual error class to the user — silent generic
-            # message hides the diagnostic. Real cause is now visible
-            # both in the answer and the trace.
-            answer = (
-                f"코딩 답변 생성 실패. 원인: {type(e).__name__} "
-                f"(LLM router → coder), 그 후 fallback도 실패: "
-                f"{type(e2).__name__}. 서버 콘솔에서 자세한 trace 확인."
-            )
+        except Exception as e:
+            engine._log("coding_user_pick", e, user_role)
+            log_stage("coding_user_pick_error",
+                      error=f"{type(e).__name__}: {e}")
+            answer = (f"선택한 모델 '{selected_model}' 호출 실패: "
+                      f"{type(e).__name__}. 서버 콘솔 trace 확인.")
+    else:
+        # Stage logged so /trace/poll/ shows what's happening in real time.
+        log_stage("coding_route", model="qwen-coder", query_len=len(safe_query))
+
+        try:
+            from llm.router import route as llm_route
+            llm = llm_route(safe_query, task_type="coding")
+            log_stage("coding_llm_pick", llm_name=getattr(llm, "name", "?"),
+                      available=getattr(llm, "is_available", lambda: True)())
+
+            sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
+            coding_prompt = sys_prefix + safe_query
+            messages = [{"role": "user", "content": coding_prompt}]
+            answer = llm.generate(messages, timeout=120)
+            log_stage("coding_done",
+                      latency_ms=int((time.time() - t_code) * 1000),
+                      answer_len=len(answer or ""))
+        except Exception as e:
+            engine._log("coding_llm", e, user_role)
+            log_stage("coding_llm_error", error=f"{type(e).__name__}: {e}")
+            # Fallback: default GEMMA_MODEL via the engine's RouterWrapper
+            try:
+                sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
+                answer = engine.llm.call_gemma(
+                    f"{sys_prefix}코딩 질문: {safe_query}\n\n답변:",
+                    use_cache=True, timeout=90,
+                )
+                log_stage("coding_fallback_done",
+                          latency_ms=int((time.time() - t_code) * 1000),
+                          answer_len=len(answer or ""))
+            except Exception as e2:
+                log_stage("coding_fallback_error",
+                          error=f"{type(e2).__name__}: {e2}")
+                # Surface the actual error class to the user — silent generic
+                # message hides the diagnostic. Real cause is now visible
+                # both in the answer and the trace.
+                answer = (
+                    f"코딩 답변 생성 실패. 원인: {type(e).__name__} "
+                    f"(LLM router → coder), 그 후 fallback도 실패: "
+                    f"{type(e2).__name__}. 서버 콘솔에서 자세한 trace 확인."
+                )
 
     # [P7] Patch Pipeline 자동 실행
     try:

@@ -98,6 +98,7 @@ class ReasoningEngine:
         session_id:  str        = "default",   # [P7-FIX] 메모리 시스템 연동
         response_style: str     = "",          # brief / standard / detailed — see core/response_style.py
         mode_override:  str     = "",          # item #6: 클라이언트가 chat/coding/retrieval 등 명시 → router 우회
+        selected_model: str     = "",          # [#A2 phase 2] 사용자가 picker로 고른 LLM tag — 모드 결정 후 catalog 대조
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -251,17 +252,28 @@ class ReasoningEngine:
                 self._log("query_router", e, user_role)
                 mode = "retrieval"   # fallback → 기존 Loop
 
+        # ── [#A2 phase 2] selected_model validation ────────────
+        # The user's secondary-picker choice arrives untrusted. Reject
+        # anything not in the catalog for the resolved mode — silent
+        # fallback to mode default, never echo arbitrary tags to Ollama.
+        from core.model_catalog import resolve_model
+        picked_model = resolve_model(mode, (selected_model or "").strip()) or ""
+        if selected_model and not picked_model:
+            print(f"[MODEL] '{selected_model}' rejected for mode={mode} → mode default")
+        elif picked_model:
+            print(f"[MODEL] mode={mode} using user-selected '{picked_model}'")
+
         # ── Mode dispatch (#29 phase 2: extracted to core/reasoning/modes.py) ──
         if mode == "chat":
-            return handle_chat(self, safe_query, system_prompt, memory_context, user_role, t_start, response_style=response_style)
+            return handle_chat(self, safe_query, system_prompt, memory_context, user_role, t_start, response_style=response_style, selected_model=picked_model)
         if mode == "meta":
             return handle_meta(self, safe_query, system_prompt, user_role, t_start)
         if mode == "wiki_edit":
-            return handle_wiki_edit(self, safe_query, system_prompt, user_role, t_start)
+            return handle_wiki_edit(self, safe_query, system_prompt, user_role, t_start, selected_model=picked_model)
         if mode == "self_evolve":
-            return handle_self_evolve(self, safe_query, system_prompt, user_role, t_start)
+            return handle_self_evolve(self, safe_query, system_prompt, user_role, t_start, selected_model=picked_model)
         if mode == "coding":
-            return handle_coding(self, safe_query, system_prompt, user_role, t_start)
+            return handle_coding(self, safe_query, system_prompt, user_role, t_start, selected_model=picked_model)
 
         # ── Retrieval → core/reasoning/pipeline.py (#29 phase 3) ──
         # Lazy import to avoid circular dependency (pipeline imports
@@ -272,6 +284,8 @@ class ReasoningEngine:
             response_style=response_style,
             # [#A8-6] forward the user's "force web search" choice
             force_web_search=kwargs.get("force_web_search", False),
+            # [#A2 phase 2] forward validated user-picked LLM
+            selected_model=picked_model,
         )
 
 
@@ -310,13 +324,17 @@ class ReasoningEngine:
 
     def _generate_answer(self, question: str, context: str,
                           system_prompt: str = "",
-                          response_style: str = "") -> str:
+                          response_style: str = "",
+                          selected_model: str = "") -> str:
         """RAG context + LLM 자유 추론. 한/영 자동 감지.
 
         `response_style`: kept for API back-compat — v2 always returns
         the NATURAL_PRESET (single natural-flow guide, no rigid
         emoji-section template). See core/response_style.py for the
         v1→v2 redesign rationale.
+
+        `selected_model`: [#A2 phase 2] catalog-validated user pick.
+        Empty string → use config.GEMMA_MODEL default.
         """
         from core.response_style import resolve_style
         style = resolve_style(response_style)
@@ -380,6 +398,7 @@ class ReasoningEngine:
             answer = self.llm.call_gemma(
                 prompt, timeout=120, use_cache=True,
                 max_tokens=style.max_tokens,
+                model=selected_model or None,
             )
             if not answer or any(answer.startswith(p) for p in self._LLM_ERROR_PREFIXES):
                 return "답변 생성에 실패했습니다."

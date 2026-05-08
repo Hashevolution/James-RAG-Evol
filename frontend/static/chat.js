@@ -765,6 +765,9 @@ async function sendMessage() {
         mode_override:    (selectedMode && selectedMode !== 'auto') ? selectedMode : '',
         // [#A8-6] chip 클릭으로 도착한 경우만 true — 평상시 false.
         force_web_search: forceWeb,
+        // [#A2 phase 2] secondary picker로 고른 LLM tag. 서버 catalog
+        // 검증 후 mode handler의 call_gemma(model=...)로 전달.
+        selected_model:   selectedModel || '',
       }),
     });
 

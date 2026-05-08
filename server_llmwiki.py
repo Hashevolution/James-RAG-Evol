@@ -333,6 +333,12 @@ class QueryRequest(BaseModel):
     # "🌐 웹으로 더 조사" chip on low-confidence answers; click re-issues
     # the same question with this flag set.
     force_web_search: bool = False
+    # [#A2 phase 2] User-selected LLM tag from the secondary picker.
+    # Validated server-side against core.model_catalog before being passed
+    # to call_gemma. Empty string OR a tag not in the per-mode catalog
+    # silently falls back to the mode default (security: client cannot
+    # request arbitrary Ollama tags).
+    selected_model:   str  = ""
 
 class QueryResponse(BaseModel):
     question:       str
@@ -659,6 +665,7 @@ async def query(
         response_style   = data.response_style,    # brief/standard/detailed
         mode_override    = data.mode_override,     # item #6: chat 페이지 모드 picker
         force_web_search = data.force_web_search,  # [#A8-6] explicit web exploration
+        selected_model   = data.selected_model,    # [#A2 phase 2] user-picked LLM tag
     )
     elapsed = time.time() - t_start
 
@@ -792,40 +799,13 @@ async def status(api_key: str):
 def _model_catalog():
     """Mode → ordered list of (tag, weight) candidates.
 
-    Default-first ordering — picker selects index 0 unless localStorage
-    has a saved choice. Operator's `.env` (JAMES_LLM_MODEL,
-    JAMES_CODING_MODEL) is prepended if not already in the list, so a
-    custom config still appears as a candidate even if it isn't in the
-    canonical catalog.
+    [#A2 phase 2] Implementation moved to `core.model_catalog` so the
+    reasoning engine can validate `selected_model` without importing
+    server_llmwiki (circular dep). Public name kept for back-compat
+    with `tests/test_model_catalog_per_mode.py:test_catalog_function_exists`.
     """
-    from config import GEMMA_MODEL, CODING_MODEL
-    chat_default = GEMMA_MODEL
-    code_default = CODING_MODEL
-    chat_cands = [
-        (chat_default,    "light"),
-        ("gemma3:12b",    "medium"),
-        ("gemma3:27b",    "heavy"),
-    ]
-    # If operator has overridden GEMMA_MODEL to something not in our list,
-    # keep it as a candidate so the UI still shows their config.
-    if not any(c[0] == chat_default for c in chat_cands):
-        chat_cands.insert(0, (chat_default, "medium"))
-    code_cands = [
-        ("qwen2.5-coder:7b",  "light"),
-        (code_default,        "heavy"),
-        ("gemma4:e4b",        "light"),  # fallback for tiny boxes
-    ]
-    if not any(c[0] == code_default for c in code_cands):
-        code_cands.insert(0, (code_default, "heavy"))
-    return {
-        "chat":         chat_cands,
-        "retrieval":    chat_cands,
-        "wiki_edit":    chat_cands,
-        "self_evolve":  chat_cands,
-        "coding":       code_cands,
-        # auto/meta intentionally absent — auto inherits whatever the
-        # routed mode picks; meta does not call the LLM.
-    }
+    from core.model_catalog import model_catalog
+    return model_catalog()
 
 # /llm/install/ allowlist auto-derived from catalog so adding a candidate
 # above does NOT also require remembering to update the install gate.
