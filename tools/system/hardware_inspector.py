@@ -56,8 +56,20 @@ def _get_ram() -> Dict:
 
 
 def _get_gpu() -> Dict:
-    """GPU 정보 측정 (nvidia-smi 또는 다른 방법)."""
-    info = {"name": "Unknown", "vram_gb": 0, "found": False}
+    """GPU 정보 측정 (pynvml → nvidia-smi → wmic 3-단계 fallback).
+
+    Each fallback's failure reason is recorded in `info["debug"]` so a
+    "GPU Unknown 0GB" outcome can be diagnosed without re-running the
+    whole stack. The user-facing fields (`name` / `vram_gb` / `found`)
+    are unchanged. Set `JAMES_HW_DEBUG=1` to also print to stdout.
+    """
+    info = {"name": "Unknown", "vram_gb": 0, "found": False, "debug": []}
+
+    def _trace(msg: str) -> None:
+        info["debug"].append(msg)
+        if os.environ.get("JAMES_HW_DEBUG", "").strip() in ("1", "true", "yes"):
+            print(f"[HW_GPU] {msg}", flush=True)
+
     # 방법 1: pynvml
     try:
         import pynvml
@@ -69,52 +81,80 @@ def _get_gpu() -> Dict:
         info["vram_gb"] = round(mem.total / 1024**3, 1)
         info["used_gb"] = round(mem.used  / 1024**3, 1)
         info["found"]   = True
+        _trace(f"pynvml OK: {info['name']} {info['vram_gb']}GB")
         return info
-    except Exception:
-        pass
+    except ImportError as e:
+        _trace(f"pynvml not installed ({e}); falling back to nvidia-smi")
+    except Exception as e:
+        _trace(f"pynvml failed ({type(e).__name__}: {e}); falling back to nvidia-smi")
+
     # 방법 2: nvidia-smi subprocess
     try:
         import subprocess
         result = subprocess.run(
             ["nvidia-smi", "--query-gpu=name,memory.total",
              "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, timeout=5
+            capture_output=True, text=True, timeout=5,
+            encoding="utf-8", errors="replace",
         )
         if result.returncode == 0:
             lines = result.stdout.strip().split('\n')
-            if lines:
+            if lines and lines[0]:
                 parts = lines[0].split(',')
                 if len(parts) >= 2:
                     info["name"]    = parts[0].strip()
                     info["vram_gb"] = round(int(parts[1].strip()) / 1024, 1)
                     info["found"]   = True
-    except Exception:
-        pass
-    # 방법 3: Windows WMI (GPU 이름만)
-    if not info["found"]:
-        try:
-            import subprocess
-            result = subprocess.run(
-                ["wmic", "path", "win32_VideoController",
-                 "get", "name,AdapterRAM", "/format:csv"],
-                capture_output=True, text=True, timeout=5
-            )
-            if result.returncode == 0:
-                for line in result.stdout.splitlines():
-                    parts = line.strip().split(',')
-                    if len(parts) >= 3 and parts[2].strip():
-                        name = parts[2].strip()
-                        if name and name != "Name":
-                            info["name"]  = name
-                            info["found"] = True
-                            try:
-                                vram = int(parts[1].strip())
-                                info["vram_gb"] = round(vram / 1024**3, 1)
-                            except Exception:
-                                pass
-                            break
-        except Exception:
-            pass
+                    _trace(f"nvidia-smi OK: {info['name']} {info['vram_gb']}GB")
+                    return info
+                _trace(f"nvidia-smi parse failed: parts={parts!r}")
+            else:
+                _trace(f"nvidia-smi returned empty stdout")
+        else:
+            _trace(f"nvidia-smi exit={result.returncode} "
+                   f"stderr={(result.stderr or '')[:120]!r}")
+    except FileNotFoundError:
+        _trace("nvidia-smi not found in PATH; falling back to wmic")
+    except subprocess.TimeoutExpired:
+        _trace("nvidia-smi timeout (>5s); falling back to wmic")
+    except Exception as e:
+        _trace(f"nvidia-smi failed ({type(e).__name__}: {e}); falling back to wmic")
+
+    # 방법 3: Windows WMI (GPU 이름만 — VRAM은 4GB 이상에서 부정확)
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["wmic", "path", "win32_VideoController",
+             "get", "name,AdapterRAM", "/format:csv"],
+            capture_output=True, text=True, timeout=5,
+            encoding="utf-8", errors="replace",
+        )
+        if result.returncode == 0:
+            for line in result.stdout.splitlines():
+                parts = line.strip().split(',')
+                if len(parts) >= 3 and parts[2].strip():
+                    name = parts[2].strip()
+                    if name and name != "Name":
+                        info["name"]  = name
+                        info["found"] = True
+                        try:
+                            vram = int(parts[1].strip())
+                            info["vram_gb"] = round(vram / 1024**3, 1)
+                        except Exception:
+                            pass
+                        _trace(f"wmic OK: {info['name']} {info['vram_gb']}GB")
+                        return info
+            _trace(f"wmic returned no usable rows: stdout={result.stdout[:200]!r}")
+        else:
+            _trace(f"wmic exit={result.returncode}")
+    except FileNotFoundError:
+        _trace("wmic not found in PATH (Windows 11 24H2+ removed it)")
+    except subprocess.TimeoutExpired:
+        _trace("wmic timeout (>5s)")
+    except Exception as e:
+        _trace(f"wmic failed ({type(e).__name__}: {e})")
+
+    _trace("ALL fallbacks exhausted; GPU info unavailable")
     return info
 
 
