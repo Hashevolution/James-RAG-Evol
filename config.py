@@ -28,14 +28,29 @@ for _noisy in ("pdfminer", "pdfminer.pdffont", "pdfminer.pdfinterp"):
 _env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
 if os.path.exists(_env_file):
     try:
-        with open(_env_file, encoding="utf-8") as _f:
+        # `utf-8-sig` strips the BOM that Notepad / VS Code with default
+        # settings adds when saving as "UTF-8". Without this, the FIRST
+        # key parsed becomes '﻿JAMES_API_KEY' (instead of plain
+        # 'JAMES_API_KEY'), every consumer reads back empty, and the
+        # server fails fast with the unhelpful "must be set" error.
+        # Confirmed on a real user's machine 2026-05-08.
+        with open(_env_file, encoding="utf-8-sig") as _f:
             for _line in _f:
                 _line = _line.strip()
                 if not _line or _line.startswith("#") or "=" not in _line:
                     continue
                 _k, _v = _line.split("=", 1)
                 _k, _v = _k.strip(), _v.strip().strip('"').strip("'")
-                if _k and _v and _k not in os.environ:
+                # Defense-in-depth: also strip the BOM character per-key
+                # in case some other tool emits it mid-file.
+                _k = _k.lstrip("﻿")
+                # Empty env values must NOT block .env loading. If a
+                # parent process exported the var with empty string,
+                # `_k in os.environ` is True but the value is "" — the
+                # old check would skip the .env line and the empty env
+                # value would propagate as the API key. We only respect
+                # a pre-existing env value if it's non-empty.
+                if _k and _v and not os.environ.get(_k):
                     os.environ[_k] = _v
         print(f"[CONFIG] .env loaded: {_env_file}")
     except Exception as _e:
