@@ -765,34 +765,50 @@ function appendJamesMsg(data) {
   messages.scrollTop = messages.scrollHeight;
 }
 
-/* ── item #1-B: "(1) ... (2) ... (3) ..." 제안 추출 ──
-   답변 텍스트에서 다음 행동 제안 chip을 만들어낸다. 두 가지 일반적
-   포맷을 인식:
-     "(1) X (2) Y (3) Z"          — 한 줄 인라인
-     "(1) X\n(2) Y\n(3) Z"        — 줄바꿈 분리
-   숫자 1-9까지. 각 제안은 다음 마커 직전까지로 잘림.
+/* ── item #1-B + #A1: 다음-행동 제안 추출 (다중 포맷 지원) ──
+   v1은 "(1) X (2) Y (3) Z" 한 형식만 매칭 → LLM이 "1) X" "1. X"
+   "① X" 같은 변형으로 답하면 chip이 안 나오는 간헐 누락 발생
+   (사용자 보고 2026-05-08).
 
-   답변 끝 부분(마지막 250자) 안에서만 매칭 — 본문 중간에 우연히
-   "(1) 첫째" 같은 패턴이 들어가도 제안으로 오해 안 함. */
+   v2는 SUGGESTION_PATTERNS 배열을 순서대로 시도. 첫 번째로 ≥2개를
+   찾는 패턴의 결과를 채택. 패턴 우선순위:
+     ① "(1) X (2) Y (3) Z"   — strict, 우리가 권장하는 포맷
+     ② "1) X 2) Y 3) Z"      — 우괄호만
+     ③ "1. X\n2. Y\n3. Z"    — 다행 번호 목록
+     ④ "① X ② Y ③ Z"          — 원문자
+
+   답변 끝 600자만 검사 — 본문 중간 "(1) 첫째" 등을 제안으로
+   오해하지 않도록 tail 제한. */
+const SUGGESTION_PATTERNS = [
+  /\((\d)\)\s*([^\n()][^\n(]*?)(?=\s*\(\d\)|\s*$)/g,
+  /(?:^|[\s\n])(\d)\)\s+([^\n)]+?)(?=\s+\d\)|\n|$)/g,
+  /(?:^|\n)\s*(\d)\.\s+([^\n]+)/g,
+  /([①②③④⑤⑥⑦⑧⑨])\s+([^\n①-⑨]+?)(?=\s*[①-⑨]|$)/g,
+];
+
 function extractNextActionSuggestions(answerText) {
   if (!answerText) return [];
   const tail = answerText.length > 600
              ? answerText.slice(-600)
              : answerText;
-  // 숫자 인덱스 + 텍스트. (1) X 다음에 (2)/(3)/.../EOF.
-  const re = /\((\d)\)\s*([^\n()][^\n(]*?)(?=\s*\(\d\)|\s*$)/g;
-  const out = [];
-  let m;
-  while ((m = re.exec(tail)) !== null) {
-    const text = m[2].trim().replace(/[\.。]+$/, '');
-    if (text.length >= 4 && text.length <= 200) {
-      out.push({ n: parseInt(m[1], 10), text });
+  for (const re of SUGGESTION_PATTERNS) {
+    re.lastIndex = 0;
+    const out = [];
+    let m;
+    while ((m = re.exec(tail)) !== null) {
+      const text = m[2].trim().replace(/[\.。]+$/, '');
+      if (text.length >= 4 && text.length <= 200) {
+        // 동일 텍스트 중복 제거 (예: "1. X" 다음 "1) X" 둘 다 매칭 방지)
+        if (!out.some(o => o.text === text)) {
+          out.push({ n: out.length + 1, text });
+        }
+      }
+      if (out.length >= 5) break;
     }
-    if (out.length >= 5) break;
+    // 최소 2개 — 단일 매칭은 본문 잔재(예: "1단계: ...")일 가능성.
+    if (out.length >= 2) return out;
   }
-  // 최소 2개일 때만 제안 chip으로 인정 — 단일 "(1)" 같은 가짜
-  // 패턴 (예: "1단계: ...")은 무시.
-  return out.length >= 2 ? out : [];
+  return [];
 }
 
 /* 제안 chip 클릭 → 입력창에 채우고 즉시 전송 */
