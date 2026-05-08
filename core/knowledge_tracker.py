@@ -132,7 +132,18 @@ class KnowledgeTracker:
         """
         [P2-11] 실측 기반 레벨 계산.
         점수 = 피드백 누적(70%) + wiki 파일 수(20%) + 대화 수(10%)
-        레벨 = 1~10 (실제 데이터가 없으면 최소 1)
+
+        [#2-B 변경 2026-05-08] 사용자 피드백: "지식 레벨이 10에서 멈춤
+        — 무한대로 늘리고 싶다". 게임식 레벨 캡(10) 제거 → 누적 점수에
+        선형 비례. 매 5점당 +1 레벨. 시각적 표시는 도넛 차트로 전환했
+        으니 (#2-C) 큰 숫자도 깨지지 않음.
+
+        pct는 그대로 0-100 — 도넛 차트의 채움 비율로 사용. 5점 미만의
+        새 도메인엔 5%로 가시성 확보.
+
+        도넛 차트(#2-C)에 사용할 `level_max_in_tier`도 함께 반환 — 같은
+        티어(10점 단위) 내에서 다음 레벨까지의 진행도. UI는 이걸로
+        "Lv.13 (다음까지 60%)" 같은 표시 가능.
         """
         wiki_counts   = _measure_wiki_counts()
         vector_total  = _measure_vector_counts()
@@ -149,8 +160,16 @@ class KnowledgeTracker:
 
             total_score = feedback_score * 0.7 + wiki_boost * 0.2 + vector_boost * 0.1
 
-            level = max(1, min(10, int(total_score / 5) + 1))
+            # [#2-B] uncapped: max(1, ...) 만 유지하고 min(10, ...) 제거.
+            # 5점당 +1 레벨이라 100점이면 21레벨 → 1000점이면 201레벨.
+            level = max(1, int(total_score / 5) + 1)
             pct   = max(5,  min(100, int(total_score * 2) + wiki_counts.get(d, 0) * 5))
+
+            # [#2-C 도넛 차트용] 같은 5점 티어 내 다음 레벨까지 진행도.
+            # 예: total_score=12 → tier_progress = 12 - 10 = 2점 → 40%.
+            tier_floor    = (level - 1) * 5
+            tier_progress = total_score - tier_floor
+            tier_pct      = max(0, min(100, int(tier_progress / 5 * 100)))
 
             result.append({
                 "domain":       d,
@@ -160,6 +179,7 @@ class KnowledgeTracker:
                 "score":        round(total_score, 1),
                 "level":        level,
                 "pct":          pct,
+                "tier_pct":     tier_pct,    # [#2-C] 도넛 채움 %
                 "wiki_count":   wiki_counts.get(d, 0),   # [P2-11] 실측 추가
                 "vector_count": vector_total,              # [P2-11] 실측 추가
             })

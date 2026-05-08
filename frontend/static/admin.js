@@ -1440,33 +1440,67 @@ function renderCapabilities(caps) {
     </div>`).join('');
 }
 
+/* [#2-C] 도메인별 도넛 차트.
+   linear bar 대신 SVG ring으로 표시 — 진행도(tier_pct)가 호의 길이로
+   한눈에 보이고, level cap 제거(#2-B)로 두 자리 레벨도 자연스럽게
+   중앙에 표기. ring의 stroke-dasharray로 진행도를 그려 transition 적용.
+   각 도메인 색을 stage-color로 전달해 도넛 stroke + glow에 inject. */
+function _domainDonut(d) {
+  const r = 32;                // 반지름
+  const cx = 40, cy = 40;
+  const circ = 2 * Math.PI * r;
+  const tierPct = (d.tier_pct != null ? d.tier_pct : (d.pct ?? 0));
+  const filled = circ * (tierPct / 100);
+  return `
+    <svg viewBox="0 0 80 80" width="80" height="80" aria-label="domain progress">
+      <!-- 배경 트랙 -->
+      <circle cx="${cx}" cy="${cy}" r="${r}"
+              fill="none" stroke="var(--border, #2a2d33)" stroke-width="6"/>
+      <!-- 진행 호 -->
+      <circle cx="${cx}" cy="${cy}" r="${r}"
+              fill="none" stroke="${d.color}" stroke-width="6"
+              stroke-linecap="round"
+              transform="rotate(-90 ${cx} ${cy})"
+              stroke-dasharray="${filled} ${circ}"
+              style="filter:drop-shadow(0 0 4px ${d.color}88);
+                     transition:stroke-dasharray .6s ease"/>
+      <!-- 중앙 레벨 숫자 -->
+      <text x="${cx}" y="${cy + 1}" text-anchor="middle"
+            dominant-baseline="middle"
+            style="font-size:20px;font-weight:900;fill:${d.color};
+                   font-family:var(--font-mono, ui-monospace, monospace);
+                   letter-spacing:-1px">${d.level}</text>
+      <!-- "Lv" 레이블 -->
+      <text x="${cx}" y="${cy - 13}" text-anchor="middle"
+            style="font-size:8px;fill:var(--muted, #888);
+                   font-family:var(--font-mono, ui-monospace, monospace);
+                   letter-spacing:1px">LV</text>
+    </svg>
+  `;
+}
+
 function renderDomains(domains) {
   const el = document.getElementById('domain-levels');
   if (!el) return;
+  // [#2-C] 도넛 차트 그리드. 카드별 좌측 도넛 + 우측 메타데이터.
+  // [#2-B] level cap 제거 — "/10" 표기 삭제. 큰 숫자는 도넛 중앙에서
+  // 자동 fit (font-size 20px가 두 자리도 안전).
   el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">` +
     domains.map(d => `
       <div style="background:var(--surface);border:1px solid var(--border);
-        border-radius:8px;padding:14px">
-        <div style="display:flex;justify-content:space-between;
-                    align-items:center;margin-bottom:8px">
-          <span style="font-size:13px">${d.icon} <strong>${d.label}</strong></span>
-          <!-- [P2-11] 레벨 숫자: 굵고 크게 표시 -->
-          <span style="font-size:22px;font-weight:900;font-family:var(--font-mono);
-            color:${d.color};line-height:1;letter-spacing:-1px">
-            ${d.level}
-            <span style="font-size:11px;font-weight:400;color:var(--muted)">/ 10</span>
-          </span>
-        </div>
-        <div style="background:var(--bg);border-radius:4px;height:8px;overflow:hidden;margin-bottom:6px">
-          <div style="width:${d.pct}%;height:100%;
-            background:${d.color};border-radius:4px;
-            transition:width .6s ease;box-shadow:0 0 6px ${d.color}55"></div>
-        </div>
-        <!-- [P2-11] 실측 근거 표시 -->
-        <div style="display:flex;justify-content:space-between;
-                    font-size:10px;color:var(--muted);font-family:var(--font-mono)">
-          <span>📄 ${d.wiki_count ?? 0} wiki(s)</span>
-          <span>score ${d.score ?? 0}</span>
+        border-radius:8px;padding:14px;display:flex;align-items:center;gap:14px">
+        <!-- 좌: 도넛 -->
+        <div style="flex-shrink:0">${_domainDonut(d)}</div>
+        <!-- 우: 메타 -->
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;margin-bottom:6px">
+            ${d.icon} <strong>${d.label}</strong>
+          </div>
+          <div style="font-size:10px;color:var(--muted);
+                      font-family:var(--font-mono);line-height:1.6">
+            <div>다음까지 <strong style="color:${d.color}">${d.tier_pct ?? d.pct}%</strong></div>
+            <div>📄 ${d.wiki_count ?? 0} wiki · score ${d.score ?? 0}</div>
+          </div>
         </div>
       </div>`).join('') + '</div>';
 }
