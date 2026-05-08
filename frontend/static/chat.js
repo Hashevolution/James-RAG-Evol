@@ -659,10 +659,12 @@ function appendTyping(traceId) {
   div.className = 'msg james';
   div.innerHTML = `
     <div class="avatar james">🧠</div>
-    <div class="bubble" style="min-width:200px">
-      <div id="thinking-${traceId}" style="display:flex;flex-direction:column;gap:4px;
-                  font-size:11px;font-family:var(--font-mono);color:var(--muted)">
-        <div style="font-style:italic">⏳ 추론 중...</div>
+    <div class="bubble" style="min-width:220px">
+      <div id="thinking-${traceId}" class="thinking-stream">
+        <div class="thinking-placeholder">
+          <span class="thinking-spinner-dot"></span>
+          <span class="thinking-shimmer-text">추론 시작 중</span>
+        </div>
       </div>
     </div>
   `;
@@ -670,49 +672,90 @@ function appendTyping(traceId) {
   messages.scrollTop = messages.scrollHeight;
 
   // 폴링 상태
-  const seenStages = new Set();   // stage 종류별 1회만 표시 (반복 retrieve 등은 합산)
+  const seenStages = new Set();   // stage 종류별 1회만 표시
   let lastNs   = 0;
   let stopped  = false;
+  let activeLine = null;          // 현재 spinner 돌고 있는 line (item #1)
   const t0     = Date.now();
 
+  // Stage별 메타 — 아이콘은 이모지 + spinner 클래스 분리,
+  // 색상은 CSS 변수로 라인에 inject (shimmer + spinner border 색)
   const STAGE_META = {
-    auth:     { icon: '🔐', label: '권한 확인', color: '#999' },
-    retrieve: { icon: '🔍', label: '내부 자료 검색', color: '#7c6af7' },
-    rerank:   { icon: '🎯', label: '재정렬',          color: '#7c6af7' },
-    graph:    { icon: '🕸️', label: '관계 그래프 탐색', color: '#3da78a' },
-    tool:     { icon: '🔧', label: '도구 호출',       color: '#ffb74d' },
-    answer:   { icon: '🤖', label: 'LLM 답변 생성',   color: '#f06292' },
-    complete: { icon: '✅', label: '완료',            color: '#4caf7d' },
+    auth:        { icon: '🔐', label: '권한 확인',          color: '#999'    },
+    risky_coding_blocked: { icon: '🛑', label: '위험 명령 차단', color: '#f06292' },
+    retrieve:    { icon: '🔍', label: '내부 자료 검색',     color: '#7c6af7' },
+    rerank:      { icon: '🎯', label: '재정렬',              color: '#7c6af7' },
+    graph:       { icon: '🕸️', label: '관계 그래프 탐색',   color: '#3da78a' },
+    tool:        { icon: '🔧', label: '도구 호출',           color: '#ffb74d' },
+    coding_route: { icon: '⌨️', label: '코딩 LLM 라우팅',    color: '#ffb74d' },
+    coding_llm_pick: { icon: '⚙️', label: '모델 선택',       color: '#ffb74d' },
+    coding_done: { icon: '✓',  label: '코딩 완료',           color: '#4caf7d' },
+    coding_llm_error: { icon: '⚠️', label: '코더 LLM 오류',  color: '#f06292' },
+    coding_fallback_done: { icon: '↻', label: 'Fallback 완료', color: '#ffb74d' },
+    answer:      { icon: '🤖', label: 'LLM 답변 생성',       color: '#f06292' },
+    complete:    { icon: '✅', label: '완료',                color: '#4caf7d' },
+  };
+
+  // 현재 active line을 done으로 마감 (다음 stage 시작 시 호출)
+  const markActiveAsDone = () => {
+    if (activeLine) {
+      activeLine.classList.remove('thinking-active');
+      activeLine.classList.add('thinking-done');
+      activeLine = null;
+    }
   };
 
   const apply = (events) => {
     const container = document.getElementById(`thinking-${traceId}`);
     if (!container) return;
     // 첫 진짜 이벤트 도착 시 placeholder 제거
-    if (events.length > 0 && container.querySelector('div[style*="italic"]')) {
-      container.innerHTML = '';
+    if (events.length > 0) {
+      const ph = container.querySelector('.thinking-placeholder');
+      if (ph) ph.remove();
     }
     events.forEach(ev => {
       const stage = ev.stage;
-      if (!stage || seenStages.has(stage)) return;   // 1회 표시
+      if (!stage || seenStages.has(stage)) return;
       seenStages.add(stage);
-      const m = STAGE_META[stage] || { icon: '·', label: stage, color: '#999' };
+
+      // 새 stage 도착 → 이전 active를 done으로
+      markActiveAsDone();
+
+      const m = STAGE_META[stage] || { icon: '·', label: stage, color: '#888' };
       const ms = Date.now() - t0;
-      // stage별 의미있는 필드 일부만 추출 (시각적 잡음 줄임)
+
+      // 의미있는 detail 필드 일부만
       const detail = [];
-      if (ev.top_k != null)           detail.push(`top_k=${ev.top_k}`);
-      if (ev.top_vector_score != null) detail.push(`vec=${ev.top_vector_score.toFixed(2)}`);
+      if (ev.top_k != null)              detail.push(`top_k=${ev.top_k}`);
+      if (ev.top_vector_score != null)   detail.push(`vec=${ev.top_vector_score.toFixed(2)}`);
       if (ev.entities_extracted != null) detail.push(`ent=${ev.entities_extracted}`);
-      if (ev.paths_walked != null)    detail.push(`paths=${ev.paths_walked}`);
-      if (ev.latency_ms != null)      detail.push(`${ev.latency_ms}ms`);
-      if (ev.answer_len != null)      detail.push(`${ev.answer_len}자`);
-      if (ev.elapsed_ms != null)      detail.push(`총 ${ev.elapsed_ms}ms`);
+      if (ev.paths_walked != null)       detail.push(`paths=${ev.paths_walked}`);
+      if (ev.latency_ms != null)         detail.push(`${ev.latency_ms}ms`);
+      if (ev.answer_len != null)         detail.push(`${ev.answer_len}자`);
+      if (ev.elapsed_ms != null)         detail.push(`총 ${ev.elapsed_ms}ms`);
       const detailStr = detail.length ? ` · ${detail.join(' · ')}` : '';
+
       const line = document.createElement('div');
-      line.style.cssText = `display:flex;align-items:center;gap:6px;color:${m.color}`;
-      line.innerHTML = `<span>${m.icon}</span><span style="font-weight:600">${m.label}</span><span style="color:var(--muted);font-size:10px">${detailStr} · @${ms}ms</span>`;
+      // complete stage는 즉시 done 표시 (spinner 없음)
+      const isFinal = (stage === 'complete' || stage.endsWith('_done')
+                       || stage === 'coding_llm_error');
+      line.className = 'thinking-line ' + (isFinal ? 'thinking-done' : 'thinking-active');
+      line.style.setProperty('--stage-color', m.color);
+
+      line.innerHTML = `
+        <span class="thinking-icon">${m.icon}</span>
+        <span class="thinking-label thinking-shimmer-text">${escHtml(m.label)}</span>
+        <span class="thinking-detail">${escHtml(detailStr)} <span class="thinking-elapsed">@${ms}ms</span></span>
+      `;
       container.appendChild(line);
+
+      if (!isFinal) {
+        activeLine = line;
+      } else {
+        activeLine = null;
+      }
     });
+    // 폴링이 complete 받으면 모든 라인 done으로
     messages.scrollTop = messages.scrollHeight;
   };
 
@@ -732,6 +775,7 @@ function appendTyping(traceId) {
         }
         if (data.complete) {
           stopped = true;
+          markActiveAsDone();   // 마지막 active line 마감 (item #1)
           return;
         }
       }

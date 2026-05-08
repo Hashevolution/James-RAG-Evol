@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import inspect
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -251,8 +252,14 @@ class FrontendChatJsContractTests(unittest.TestCase):
                       "which trace to poll")
 
     def test_append_typing_polls_real_trace(self):
+        # Bound the window to the appendTyping function only — find
+        # the next top-level `function ` declaration.
         idx = self.js.index("function appendTyping(traceId)")
-        body = self.js[idx:idx + 4000]
+        # Look for next standalone `function NAME(` after our function
+        # to bound the search.
+        m = re.search(r"\nfunction\s+\w+\s*\(", self.js[idx + 1:])
+        end = idx + 1 + m.start() if m else idx + 8000
+        body = self.js[idx:end]
         self.assertIn("/trace/poll/", body,
                       "appendTyping must poll /trace/poll/{traceId}")
         self.assertIn("after_ns=", body,
@@ -266,7 +273,9 @@ class FrontendChatJsContractTests(unittest.TestCase):
 
     def test_stage_metadata_displayed(self):
         idx = self.js.index("function appendTyping(traceId)")
-        body = self.js[idx:idx + 4000]
+        m = re.search(r"\nfunction\s+\w+\s*\(", self.js[idx + 1:])
+        end = idx + 1 + m.start() if m else idx + 8000
+        body = self.js[idx:end]
         # Real per-stage labels must replace the static three-step UI.
         for stage_token in ("retrieve", "graph", "answer", "complete"):
             self.assertIn(f'{stage_token}:', body,

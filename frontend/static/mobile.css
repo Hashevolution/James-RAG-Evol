@@ -17,6 +17,118 @@
  */
 
 /* ─────────────────────────────────────────────────────────
+ * Reasoning stream animations (item #1, 2026-05-08)
+ * 응답 추론 과정 — 활성 stage는 spinner 회전 + 텍스트 shimmer,
+ * 완료된 stage는 정적/회색. 진짜 진행 중인 단계가 시각적으로
+ * 명확하게 살아있어 보이게.
+ *
+ * 구조: each `.thinking-line` toggles between:
+ *   .thinking-active  — 현재 진행 중 (spinner + shimmer)
+ *   .thinking-done    — 완료 (정적, 살짝 흐림)
+ * --stage-color CSS 변수에 stage별 색상이 inject됨 (chat.js).
+ * ────────────────────────────────────────────────────────*/
+@keyframes james-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes james-pulse-dot {
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50%      { opacity: 1.0; transform: scale(1.05); }
+}
+@keyframes james-shimmer {
+  0%   { background-position: -180% 0; }
+  100% { background-position:  180% 0; }
+}
+
+.thinking-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--muted, #888);
+  min-height: 24px;
+}
+.thinking-placeholder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-style: italic;
+  opacity: 0.85;
+}
+.thinking-spinner-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent, #7c6af7);
+  animation: james-pulse-dot 1.0s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.thinking-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity .35s ease, color .35s ease;
+  color: var(--stage-color, currentColor);
+  --stage-color: currentColor;
+}
+.thinking-icon {
+  flex-shrink: 0;
+  display: inline-block;
+  font-size: 14px;
+  line-height: 1;
+  width: 18px; text-align: center;
+  transform-origin: 50% 50%;
+}
+.thinking-label {
+  font-weight: 600;
+  font-family: inherit;
+  background: linear-gradient(
+    90deg,
+    var(--stage-color, #7c6af7) 0%,
+    rgba(255, 255, 255, 0.92) 45%,
+    var(--stage-color, #7c6af7) 90%
+  );
+  background-size: 200% 100%;
+  background-position: 0 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.thinking-detail {
+  color: var(--muted, #888);
+  font-size: 11px;
+  margin-left: 2px;
+}
+.thinking-elapsed {
+  color: var(--muted, #888);
+  opacity: 0.7;
+}
+
+/* Active state: spinner 회전 + label shimmer */
+.thinking-line.thinking-active .thinking-icon {
+  animation: james-spin 1.4s linear infinite;
+  filter: drop-shadow(0 0 4px var(--stage-color, #7c6af7));
+}
+.thinking-line.thinking-active .thinking-label {
+  animation: james-shimmer 2.4s linear infinite;
+}
+
+/* Done state: spinner 정지, 색상 흐림 */
+.thinking-line.thinking-done {
+  opacity: 0.55;
+}
+.thinking-line.thinking-done .thinking-icon {
+  animation: none;
+  filter: none;
+}
+.thinking-line.thinking-done .thinking-label {
+  animation: none;
+  background: none;
+  -webkit-text-fill-color: var(--stage-color, var(--muted, #888));
+  color: var(--stage-color, var(--muted, #888));
+}
+
+/* ─────────────────────────────────────────────────────────
  * Tablet + phone (≤ 768px)
  * ────────────────────────────────────────────────────────*/
 @media (max-width: 768px) {
