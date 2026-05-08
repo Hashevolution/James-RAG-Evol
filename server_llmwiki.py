@@ -2125,6 +2125,42 @@ async def admin_trace_get(
     }
 
 
+@app.get("/admin/metrics", summary="Per-stage 레이턴시 히스토그램 [#81 phase 3-B]")
+async def admin_metrics_get(
+    api_key:      str,
+    window_hours: int  = 24,
+    stage:        str  = "",
+    role:         str  = Depends(get_role_from_request),
+):
+    """Per-stage latency stats over recent traces.
+
+    Walks `reports/trace/` for the window and computes per-stage
+    p50/p90/p99/max + sample count from consecutive `ts_ns` deltas.
+
+    Query:
+      window_hours: lookback window (default 24, clamped to [1, 168]).
+      stage:        optional single-stage filter (e.g. `retrieve`).
+
+    Response:
+      {"window_hours": N, "stage_filter": "...",
+       "stages": {"retrieve": {count, p50_ms, p90_ms, p99_ms, max_ms},
+                  "graph":    {...}, ...}}
+
+    See `core/trace_metrics.py::aggregate_metrics` for the latency
+    derivation rationale (per-trace ts_ns deltas vs explicit fields).
+    """
+    _require_admin(api_key, role)
+    from core.trace_metrics import aggregate_metrics
+    stage_filter = (stage or "").strip() or None
+    stats = aggregate_metrics(window_hours=window_hours,
+                              stage_filter=stage_filter)
+    return {
+        "window_hours": max(1, min(int(window_hours or 24), 168)),
+        "stage_filter": stage_filter or "",
+        "stages":       stats,
+    }
+
+
 @app.get("/admin/audit", summary="감사 로그 [P7]")
 async def admin_audit(api_key: str, limit: int = 100,
                       role: str = Depends(get_role_from_request)):
