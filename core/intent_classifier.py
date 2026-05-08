@@ -177,14 +177,67 @@ chat / retrieval / meta / coding / wiki_edit / self_evolve / agent / app_dev"""
                 pass
         return self._llm
 
+    # ─── Specific-topic guard (item #5, 2026-05-08) ───────────────
+    # User reported "팔란티어에 대해 어떤 자료가 있지?" routes to
+    # meta (full wiki list) when they actually wanted retrieval
+    # (Palantir-specific content). The meta patterns catch any
+    # query with "어떤 자료" / "어떤 정보" / "내부 자료" type phrasings.
+    # When a specific topic prefix is present (X에 대해 / X 관련 /
+    # X의 자료), meta routing is wrong — fall through to retrieval.
+    #
+    # Generic data nouns (wiki / 자료 / 데이터 / 내부 / entity / etc.)
+    # don't count as specific topics — those still route to meta.
+    _GENERIC_DATA_NOUNS = {
+        "wiki", "위키", "자료", "문서", "데이터", "내부",
+        "entity", "엔티티", "knowledge", "정보", "것", "거",
+        "내용", "기록", "보유", "저장된", "전체", "모든",
+        "data", "info", "files", "documents",
+    }
+
+    def _has_specific_topic_prefix(self, q: str) -> bool:
+        """True if the query has a specific-topic prefix that should
+        override meta routing.
+
+        Patterns recognised:
+          - "X에 대해" / "X에 관해" / "X에 관한" / "X에서"
+          - "X 관련" / "X관련"
+          - "X의 (자료|문서|데이터|정보|내용)" — genitive + data noun
+          - Topic noun X must NOT be in _GENERIC_DATA_NOUNS — a
+            "wiki에 대해 어떤 자료" still routes to meta.
+        """
+        m = re.search(
+            r"(\S+?)\s*("
+            r"에\s*(대해|관해|관한|에서)"           # X에 대해/관해/...
+            r"|관련(된)?"                            # X 관련(된)
+            r"|의\s+(자료|문서|데이터|정보|내용|기록)"  # X의 자료/정보/...
+            r")",
+            q,
+        )
+        if not m:
+            return False
+        topic = m.group(1).strip().lower()
+        # Strip Korean particles attached to the noun.
+        topic = re.sub(r"(은|는|이|가|을|를|의|와|과)$", "", topic)
+        if not topic:
+            return False
+        # Generic-data nouns don't count — those queries are still meta.
+        return topic not in self._GENERIC_DATA_NOUNS
+
     def classify_fast(self, query: str) -> Optional[str]:
         """
         명확한 패턴은 LLM 없이 즉시 분류.
         불명확하면 None 반환 → classify_llm으로 위임.
+
+        item #5: meta 패턴은 specific-topic 사전 검사 통과시에만
+        매칭. "팔란티어에 대해 어떤 자료" 같은 specific-topic 질의는
+        meta가 아닌 retrieval로 보내야 함.
         """
         q = query.lower().strip()
+        skip_meta = self._has_specific_topic_prefix(q)
 
         for mode, patterns in self.FAST_PATTERNS.items():
+            if skip_meta and mode == "meta":
+                continue   # specific-topic 질의는 meta 우회
             for pat in patterns:
                 if re.search(pat, q, re.IGNORECASE):
                     return mode

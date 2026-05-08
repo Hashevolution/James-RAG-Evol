@@ -108,6 +108,56 @@ class FastPatternRoutingTests(unittest.TestCase):
             self.assertNotEqual(mode, "meta",
                                 f"specific-topic query must NOT route to meta: {q!r}")
 
+    def test_specific_topic_with_inventory_verb_NOT_meta(self):
+        # Item #5 (2026-05-08 user feedback): "팔란티어에 대해 어떤
+        # 자료가 있지?" was routing to meta (returning the full wiki
+        # list) when the user actually wanted Palantir-specific
+        # retrieval. Specific-topic prefix overrides meta even when
+        # an inventory verb is present.
+        from core.intent_classifier import IntentClassifier
+        cls = IntentClassifier()
+        for q in (
+            "팔란티어에 대해 어떤 자료가 있지?",
+            "비트코인에 관해 어떤 자료가 있어?",
+            "BlackRock 관련 자료 있나?",
+            "Anthropic에 대해 무슨 정보 있어?",
+            "RAG에 대해 어떤 자료",
+        ):
+            mode = cls.classify_fast(q)
+            self.assertNotEqual(mode, "meta",
+                                f"specific-topic + inventory verb must NOT route "
+                                f"to meta: {q!r} (got {mode!r})")
+
+    def test_generic_data_noun_in_topic_position_still_meta(self):
+        # Sanity: when the "topic" is itself a generic data noun
+        # (wiki, 자료, 내부 etc), meta is still correct because
+        # _has_specific_topic_prefix returns False for these.
+        from core.intent_classifier import IntentClassifier
+        cls = IntentClassifier()
+        for q in (
+            "wiki에 대해 어떤 자료가 있어?",
+            "내부에 어떤 자료 있는지",
+        ):
+            mode = cls.classify_fast(q)
+            self.assertEqual(mode, "meta",
+                             f"generic-data-noun topic should still route "
+                             f"to meta: {q!r}")
+
+    def test_has_specific_topic_prefix_logic(self):
+        # Direct unit-test of the helper so the rules are explicit.
+        from core.intent_classifier import IntentClassifier
+        cls = IntentClassifier()
+        # Specific-topic prefixes — return True
+        for q in ("팔란티어에 대해 어떤", "비트코인 관련 자료",
+                  "blackrock에 관해", "anthropic의 정보"):
+            self.assertTrue(cls._has_specific_topic_prefix(q.lower()),
+                            f"expected specific-topic prefix in {q!r}")
+        # No specific-topic prefix — return False
+        for q in ("어떤 자료가 있어", "wiki 목록 보여줘",
+                  "내부에 어떤 데이터", "wiki에 대해 어떤"):
+            self.assertFalse(cls._has_specific_topic_prefix(q.lower()),
+                             f"expected NO specific-topic prefix in {q!r}")
+
     def test_too_short_or_ambiguous_falls_through_to_llm(self):
         # "뭐 있어?" alone is ambiguous (could be office / dinner /
         # anything). It should NOT be hijacked into meta — let the LLM
