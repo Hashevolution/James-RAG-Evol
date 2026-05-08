@@ -85,6 +85,10 @@ window.addEventListener('DOMContentLoaded', () => {
     if (key) localStorage.setItem('james_api_key', key);
   }
   updateRoleBadge();
+  // item #3-a: 이전 대화 복원 (자가 호출 누락 버그 fix).
+  // restoreHistory는 정의만 되어 있고 호출되지 않아 매번 빈 화면이었음.
+  // localStorage에 저장된 HISTORY_KEY 데이터 그대로 화면에 재구성한다.
+  try { restoreHistory(); } catch (e) { console.warn('[JAMES] restoreHistory 실패:', e); }
 });
 
 
@@ -92,19 +96,26 @@ window.addEventListener('DOMContentLoaded', () => {
    대화 세션 관리
 ════════════════════════════════ */
 
-// 세션 ID — 탭 단위 유지 (새 탭은 새 세션)
+// 세션 ID — localStorage 영속화 (item #3-a, 2026-05-08).
+// 이전: sessionStorage → 폰 브라우저 닫으면 소실 → HISTORY_KEY 변경 →
+// 옛 history는 localStorage에 남았지만 표시 안 됨 (orphan).
+// 지금: localStorage라 같은 사용자가 다시 들어와도 같은 세션 ID 유지,
+// "새 대화 시작" 버튼(clearHistory)으로 명시적 종료 시에만 새 세션.
 function getSessionId() {
-  let sid = sessionStorage.getItem('james_session');
+  let sid = localStorage.getItem('james_session');
   if (!sid) {
     sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
-    sessionStorage.setItem('james_session', sid);
+    localStorage.setItem('james_session', sid);
   }
   return sid;
 }
 
 const SESSION_ID = getSessionId();
 const HISTORY_KEY = `james_history_${SESSION_ID}`;
-const MAX_STORED  = 50;  // localStorage 최대 저장 턴 수
+// item #3-a: 50 → 200. 50턴은 ~25 사용자-자메스 페어로 모바일 사용 한 번이면
+// 금방 cap. 200이면 ~100 페어, 며칠치 대화 보존 가능. localStorage 5MB 한도
+// 안에 안전 (200턴 × 평균 1KB ≈ 200KB).
+const MAX_STORED  = 200;
 
 /* ── 대화 localStorage 저장 ── */
 function saveToLocal(role, text, meta = {}) {
@@ -152,6 +163,9 @@ async function clearHistory() {
     method:  'DELETE',
     headers: getAuthHeaders(),
   }).catch(() => {});
+  // item #3-a: session_id가 localStorage에 영속이라, 초기화하면 신규 세션
+  // ID 발급해야 다음 reload 시 옛 SID가 다시 살아나지 않음.
+  localStorage.removeItem('james_session');
   location.reload();
 }
 
@@ -798,7 +812,7 @@ async function switchSession(sessionId) {
     return;
   }
   // 세션 전환: sessionStorage 업데이트 + 히스토리 로드
-  sessionStorage.setItem('james_session', sessionId);
+  localStorage.setItem('james_session', sessionId);
   toggleSessionPanel();
 
   // 현재 메시지 초기화 후 해당 세션 히스토리 표시
@@ -844,7 +858,7 @@ async function switchSession(sessionId) {
 function newSession() {
   // 새 세션 ID 생성
   const newSid = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
-  sessionStorage.setItem('james_session', newSid);
+  localStorage.setItem('james_session', newSid);
   toggleSessionPanel();
 
   // 화면 초기화
