@@ -36,10 +36,15 @@ REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # 위험도 정의
 RISK_LEVELS = {
-    "wiki_add":     "low",    # 새 지식 추가 — 낮음
-    "wiki_update":  "low",    # 지식 수정 — 낮음
-    "config_update":"medium", # 설정 변경 — 중간
-    "code_patch":   "high",   # 코드 변경 — 높음
+    "wiki_add":            "low",    # 새 지식 추가 — 낮음
+    "wiki_update":         "low",    # 지식 수정 — 낮음
+    "config_update":       "medium", # 설정 변경 — 중간
+    "code_patch":          "high",   # 코드 변경 — 높음
+    # [#A6-3] 웹 검색 결과 → wiki entity 장기 저장 admin confirm.
+    # 외부 출처(low-trust)가 wiki에 들어가 retrieval 결과로 회수되므로
+    # operator가 한 번 검토해야 한다. risk=medium으로 다른 자동 작업과
+    # 같은 우선순위로 표시.
+    "web_longterm_save":   "medium",
 }
 
 # 관찰 기준
@@ -282,6 +287,9 @@ class EvoExecutor:
                 result = self._execute_code_patch(proposal)
             elif prop_type == "config_update":
                 result = self._execute_config_update(proposal)
+            elif prop_type == "web_longterm_save":
+                # [#A6-3] admin이 confirm한 웹 검색 결과를 wiki entity로 저장.
+                result = self._execute_web_longterm_save(proposal)
             else:
                 result["message"] = f"알 수 없는 제안 유형: {prop_type}"
 
@@ -291,6 +299,53 @@ class EvoExecutor:
 
         result["elapsed_sec"] = round(time.time() - t_start, 2)
         return result
+
+    def _execute_web_longterm_save(self, proposal: Dict) -> Dict:
+        """[#A6-3] admin이 confirm한 웹 검색 결과를 wiki entity로 저장.
+
+        Pipeline은 이전엔 should_promote_to_longterm 조건 만족 시
+        save_as_longterm을 즉시 호출했다 — operator 모르는 사이 wiki에
+        외부 출처가 추가됨. 이제는 proposal로 큐잉, admin이 admin 페이지
+        Proposals에서 검토 후 Approve.
+
+        Metadata expected (pipeline.py가 채움):
+          query:        원본 사용자 쿼리
+          summary:      LLM 200자 요약 (이미 생성)
+          web_results:  search_web 결과 list (URL/title/snippet/body)
+          user_role:    원 호출자 role (audit용)
+        """
+        from tools.web.web_searcher import save_as_longterm, update_knowledge_level
+        meta = proposal.get("metadata", {}) or {}
+        query        = meta.get("query", "")
+        summary      = meta.get("summary", "")
+        web_results  = meta.get("web_results", [])
+        original_role = meta.get("user_role", "admin")
+        if not (query and summary and web_results):
+            return {
+                "success": False,
+                "message": "metadata 누락 (query/summary/web_results 필요)",
+                "details": {"missing": [
+                    k for k in ("query", "summary", "web_results")
+                    if not meta.get(k)
+                ]},
+            }
+        try:
+            path = save_as_longterm(query, web_results, summary, original_role)
+            if not path:
+                return {"success": False,
+                        "message": "save_as_longterm가 None 반환 (저장 실패)",
+                        "details": {}}
+            # admin 승인 후 저장 완료 → KnowledgeTracker 장기 +5점
+            update_knowledge_level(query, is_longterm=True)
+            return {
+                "success": True,
+                "message": f"wiki entity 저장 완료: {path}",
+                "details": {"path": str(path), "topic": query[:30]},
+            }
+        except Exception as e:
+            return {"success": False,
+                    "message": f"저장 실패: {type(e).__name__}: {e}",
+                    "details": {}}
 
     def _execute_wiki_add(self, proposal: Dict) -> Dict:
         """wiki 새 entity 추가."""

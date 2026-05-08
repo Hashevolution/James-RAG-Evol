@@ -302,7 +302,13 @@ def run_retrieval_pipeline(
 
                         # 장기 전환 조건 확인
                         if should_promote_to_longterm(safe_query) or is_save_command(safe_query):
-                            # 요약 생성 후 wiki entity 저장
+                            # [#A6-3 2026-05-08] 즉시 save_as_longterm → admin
+                            # confirm proposal로 전환. 이전엔 사용자 쿼리만으로
+                            # operator 모르는 사이 외부 출처가 wiki에 들어가
+                            # 이후 retrieval에서 회수됐다. 이제 admin이 명시적
+                            # 승인하기 전엔 wiki에 안 들어감 — pending proposal
+                            # 만 생성. 단기 저장 (record_search) + KnowledgeTracker
+                            # 단기 +2점은 그대로 (이미 위에서 적용).
                             try:
                                 summary_prompt = (
                                     f"아래 검색 결과를 한국어로 200자 이내 핵심 요약:\n"
@@ -312,11 +318,38 @@ def run_retrieval_pipeline(
                                     summary_prompt, timeout=30, use_cache=False, max_tokens=300
                                 )
                                 if summary:
-                                    save_as_longterm(safe_query, web_results, summary, user_role)
-                                    update_knowledge_level(safe_query, is_longterm=True)
-                                    print(f"[WEB→WIKI] 장기 지식 전환 (검색 {search_count}회)")
+                                    from tools.self.evo_analyzer import (
+                                        _make_proposal, save_proposal,
+                                    )
+                                    p = _make_proposal(
+                                        prop_type   = "web_longterm_save",
+                                        title       = f"[웹→Wiki] 장기 저장: {safe_query[:40]}",
+                                        description = (
+                                            f"웹 검색 누적 {search_count}회 (≥2 또는 명시 저장 요청). "
+                                            f"승인 시 검색 결과를 wiki entity로 영구 저장 + vector "
+                                            f"인덱싱. 거절하면 단기 저장만 유지."
+                                        ),
+                                        content     = (
+                                            f"[요약]\n{summary}\n\n"
+                                            f"[출처 ({len(web_results)}건)]\n"
+                                            + "\n".join(
+                                                f"- {r.get('title','')[:60]} ({r.get('url','')})"
+                                                for r in web_results[:5]
+                                            )
+                                        ),
+                                        metadata    = {
+                                            "auto_action":  "web_longterm_save",
+                                            "query":        safe_query,
+                                            "summary":      summary,
+                                            "web_results":  web_results,
+                                            "user_role":    user_role,
+                                            "search_count": search_count,
+                                        },
+                                    )
+                                    save_proposal(p)
+                                    print(f"[WEB→WIKI] admin confirm proposal 생성: {p['proposal_id']}")
                             except Exception as we:
-                                print(f"[WEB→WIKI] 요약/저장 실패: {we}")
+                                print(f"[WEB→WIKI] proposal 생성 실패: {we}")
                         else:
                             print(f"[WEB] 단기 저장 (누적 {search_count}회 / 2회 이상이면 장기 전환)")
             except Exception as we:
