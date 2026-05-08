@@ -137,7 +137,7 @@ POPPLER_PATH = _detect_poppler()
 # Ollama runs as a service — usually no need to specify binary path.
 # If you need to start it from JAMES, set OLLAMA_PATH env var.
 OLLAMA_PATH    = os.environ.get("OLLAMA_PATH", "")  # blank = use system 'ollama' on PATH
-GEMMA_MODEL    = os.environ.get("JAMES_LLM_MODEL", "gemma2:2b")
+GEMMA_MODEL    = os.environ.get("JAMES_LLM_MODEL", "gemma4:e4b")
 OLLAMA_API_URL = os.environ.get("OLLAMA_API_URL", "http://127.0.0.1:11434/api/generate")
 
 # ────────────────────────────────────────────────────────────────
