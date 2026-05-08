@@ -835,6 +835,16 @@
       </div>
     </div>
 
+    <!-- item #4: 대화 전체 복사 버튼 (input area 위) -->
+    <div class="conv-actions" style="display:flex;justify-content:flex-end;
+                                      gap:6px;padding:0 16px 4px;font-size:11px">
+      <button onclick="copyConversation()"
+              style="background:none;border:1px solid var(--border);
+                     border-radius:6px;padding:4px 10px;cursor:pointer;
+                     color:var(--muted);font-size:11px;transition:all .15s"
+              title="현재 대화 전체를 텍스트로 복사">📋 대화 전체 복사</button>
+    </div>
+
     <div class="input-area">
       <div class="input-wrap">
         <textarea id="chat-input" placeholder="Type a message (Shift+Enter for new line)"

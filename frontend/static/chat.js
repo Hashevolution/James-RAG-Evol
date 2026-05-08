@@ -345,10 +345,20 @@ function useChip(el) {
    메시지 전송
 ════════════════════════════════ */
 
+// item #4: 사용자가 "보고서로 / 파일로 만들어줘" 등 export 요청을 한
+// 직후에만 다음 답변에 다운로드 버튼이 뜬다. 일반 chat에는 버튼 없음.
+// 단순 module-scope flag — sendMessage가 set, appendJamesMsg가 read+clear.
+let pendingReportRequest = false;
+const REPORT_REQUEST_KEYWORDS =
+  /보고서|레포트|문서로|문서\s*로\s*만들|파일로\s*만들|파일\s*로\s*저장|다운로드|export|report\s*(file|format)?/i;
+
 async function sendMessage() {
   const input = document.getElementById('chat-input');
   const text  = input.value.trim();
   if (!text) return;
+
+  // item #4: 다음 답변이 다운로드 버튼을 보일지 결정
+  pendingReportRequest = REPORT_REQUEST_KEYWORDS.test(text);
 
   hideWelcome();
   appendMsg('user', text);
@@ -519,13 +529,28 @@ function appendJamesMsg(data) {
     metaHtml += `</div>`;
   }
 
-  // 👍👎 피드백 버튼 + 📥 export 드롭다운 (item #4)
-  // export 트리거는 메시지 단위로 — 사용자가 마음에 드는 답변만 저장 가능.
-  // 답변 텍스트는 data attr에 그대로 보관 (formatAnswer는 HTML 변환이라
-  // 다운로드용 원본을 별도 보관해야 함).
+  // 👍👎 피드백 버튼 (모든 답변) + 📥 export 버튼 (조건부)
+  // item #4: export 버튼은 사용자가 직전 질문에 "보고서로 / 파일로
+  // 만들어줘" 같은 키워드를 넣었을 때만 표시. 평상시 chat 답변엔
+  // 시각적 잡음 없음. 답변 단위로 결정 — 다음 답변엔 다시 hidden.
+  const showExportBtns = !!pendingReportRequest;
+  pendingReportRequest = false;   // consume the flag
   const answerEscapedAttr = encodeURIComponent(answer);
+  const exportButtons = showExportBtns ? `
+      <button class="fb-btn export-btn" onclick="exportAnswer(this, 'md')" data-content="${answerEscapedAttr}"
+        style="background:none;border:1px solid var(--border);border-radius:6px;
+               padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
+               transition:all .15s" title=".md 다운로드">📥 .md</button>
+      <button class="fb-btn export-btn" onclick="exportAnswer(this, 'docx')" data-content="${answerEscapedAttr}"
+        style="background:none;border:1px solid var(--border);border-radius:6px;
+               padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
+               transition:all .15s" title=".docx 다운로드 (Word)">📥 .docx</button>
+      <button class="fb-btn export-btn" onclick="exportAnswer(this, 'txt')" data-content="${answerEscapedAttr}"
+        style="background:none;border:1px solid var(--border);border-radius:6px;
+               padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
+               transition:all .15s" title=".txt 다운로드 (Notepad)">📥 .txt</button>` : '';
   const fbHtml = dirId ? `
-    <div class="feedback-btns" style="display:flex;gap:6px;margin-top:6px">
+    <div class="feedback-btns" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
       <button class="fb-btn" onclick="sendFeedback('${dirId}', 'explicit_positive', this)"
         style="background:none;border:1px solid var(--border);border-radius:6px;
                padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
@@ -534,18 +559,11 @@ function appendJamesMsg(data) {
         style="background:none;border:1px solid var(--border);border-radius:6px;
                padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
                transition:all .15s" title="별로예요">👎</button>
-      <button class="fb-btn" onclick="exportAnswer(this, 'md')" data-content="${answerEscapedAttr}"
+      <button class="fb-btn" onclick="copyAnswerText(this)" data-content="${answerEscapedAttr}"
         style="background:none;border:1px solid var(--border);border-radius:6px;
                padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
-               transition:all .15s" title=".md 다운로드">📥 .md</button>
-      <button class="fb-btn" onclick="exportAnswer(this, 'docx')" data-content="${answerEscapedAttr}"
-        style="background:none;border:1px solid var(--border);border-radius:6px;
-               padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
-               transition:all .15s" title=".docx 다운로드 (Word)">📥 .docx</button>
-      <button class="fb-btn" onclick="exportAnswer(this, 'txt')" data-content="${answerEscapedAttr}"
-        style="background:none;border:1px solid var(--border);border-radius:6px;
-               padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
-               transition:all .15s" title=".txt 다운로드 (Notepad)">📥 .txt</button>
+               transition:all .15s" title="이 답변 복사">📋 복사</button>
+      ${exportButtons}
     </div>` : '';
 
   div.innerHTML = `
@@ -560,6 +578,76 @@ function appendJamesMsg(data) {
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
 }
+
+/* ── item #4: 단일 답변 텍스트 복사 ──
+   data-content (URI-encoded)에서 원본을 꺼내 navigator.clipboard에
+   write. clipboard API 미지원 환경(예: 일부 모바일 비-HTTPS)을 위해
+   textarea fallback. */
+async function copyAnswerText(btn) {
+  const text = decodeURIComponent(btn.dataset.content || '');
+  if (!text.trim()) {
+    toast('복사할 내용이 없습니다.', 'error');
+    return;
+  }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    const orig = btn.textContent;
+    btn.textContent = '✓ 복사됨';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  } catch (e) {
+    toast(`복사 실패: ${e.message}`, 'error');
+  }
+}
+
+/* ── item #4: 전체 대화 복사 ──
+   localStorage HISTORY_KEY의 모든 턴을 텍스트로 직렬화해서 클립보드로.
+   포맷: "[사용자] ...\n[자메스] ...\n\n" 반복. 외부 메모장 / 메일에
+   바로 붙여넣을 수 있는 plain text. */
+async function copyConversation() {
+  let history = [];
+  try {
+    history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  } catch (_) { history = []; }
+  if (!history.length) {
+    toast('복사할 대화가 없습니다.', 'info');
+    return;
+  }
+  const lines = history.map(turn => {
+    const who = turn.role === 'user' ? '[사용자]' : '[자메스]';
+    const time = turn.time ? ' (' + new Date(turn.time).toLocaleString() + ')' : '';
+    return `${who}${time}\n${turn.text || ''}`;
+  });
+  const text = lines.join('\n\n');
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    toast(`대화 ${history.length}턴이 복사되었습니다.`, 'success');
+  } catch (e) {
+    toast(`복사 실패: ${e.message}`, 'error');
+  }
+}
+
 
 /* ── item #4: 답변 export 다운로드 ──
    서버 /export/에 POST → blob 받아 a[download] 트릭으로 다운로드.
