@@ -17,12 +17,14 @@ from utils.console import ensure_utf8_console
 ensure_utf8_console()
 
 import os
+import re
 import sqlite3
 import uuid
 import time
 import json
 from datetime import datetime
 from collections import defaultdict
+from urllib.parse import quote
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Header, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
@@ -2274,6 +2276,69 @@ async def admin_metrics_get(
         "stage_filter": stage_filter or "",
         "stages":       stats,
     }
+
+
+@app.post("/export/", summary="답변 문서 export [item #4]")
+async def export_answer(request: Request, role: str = Depends(get_role_from_request)):
+    """Export an answer (or arbitrary content) to .md / .txt / .docx.
+
+    Body:
+      content:   text to export (typically a JAMES answer the user
+                 wants to save).
+      format:    "md" / "txt" / "docx" (default "md"). "pdf" is
+                 documented as v0.3+ and silently downgrades to "md"
+                 with `fallback_reason` set in the response headers.
+      filename:  optional stem (no extension). Sanitized server-side.
+      api_key:   required (matches the rest of the API contract).
+
+    Returns: file bytes with proper MIME + Content-Disposition.
+
+    Why a POST instead of GET: the answer content may be hundreds of
+    KB. URL length limits would bite a GET. Also keeps the answer
+    text out of access logs.
+
+    Auth: api_key check only (no admin requirement). Any logged-in
+    user may export their own answers — same trust model as the
+    chat /query/ endpoint.
+    """
+    from fastapi.responses import Response
+    body = await request.json()
+    api_key  = body.get("api_key", "")
+    content  = body.get("content", "") or ""
+    fmt      = body.get("format", "md")
+    filename = body.get("filename", "")
+
+    verify_api_key(api_key)
+    if not isinstance(content, str):
+        raise HTTPException(status_code=400, detail="content must be a string")
+    # Sanity cap — 1MB of text is more than enough for an answer.
+    if len(content.encode("utf-8")) > 1_000_000:
+        raise HTTPException(
+            status_code=413,
+            detail="content too large (>1MB); split into multiple exports",
+        )
+
+    from tools.export.document_exporter import export_document
+    result = export_document(content, format=fmt, filename=filename)
+
+    # ASCII-encode the filename for the header. Browsers handle utf-8
+    # via the filename* RFC 5987 form when present, but the plain
+    # `filename=` must stay ASCII-safe.
+    ascii_name = re.sub(r"[^\w.\-]+", "_", result.filename)
+    headers = {
+        "Content-Disposition":
+            f'attachment; filename="{ascii_name}"; '
+            f"filename*=UTF-8''{quote(result.filename)}",
+        "X-James-Export-Format": result.actual_format,
+    }
+    if result.fallback_reason:
+        headers["X-James-Export-Fallback"] = result.fallback_reason[:256]
+
+    return Response(
+        content=result.data,
+        media_type=result.mime,
+        headers=headers,
+    )
 
 
 @app.get("/admin/audit", summary="감사 로그 [P7]")

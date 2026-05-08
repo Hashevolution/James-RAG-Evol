@@ -511,7 +511,11 @@ function appendJamesMsg(data) {
     metaHtml += `</div>`;
   }
 
-  // 👍👎 피드백 버튼
+  // 👍👎 피드백 버튼 + 📥 export 드롭다운 (item #4)
+  // export 트리거는 메시지 단위로 — 사용자가 마음에 드는 답변만 저장 가능.
+  // 답변 텍스트는 data attr에 그대로 보관 (formatAnswer는 HTML 변환이라
+  // 다운로드용 원본을 별도 보관해야 함).
+  const answerEscapedAttr = encodeURIComponent(answer);
   const fbHtml = dirId ? `
     <div class="feedback-btns" style="display:flex;gap:6px;margin-top:6px">
       <button class="fb-btn" onclick="sendFeedback('${dirId}', 'explicit_positive', this)"
@@ -522,6 +526,18 @@ function appendJamesMsg(data) {
         style="background:none;border:1px solid var(--border);border-radius:6px;
                padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
                transition:all .15s" title="별로예요">👎</button>
+      <button class="fb-btn" onclick="exportAnswer(this, 'md')" data-content="${answerEscapedAttr}"
+        style="background:none;border:1px solid var(--border);border-radius:6px;
+               padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
+               transition:all .15s" title=".md 다운로드">📥 .md</button>
+      <button class="fb-btn" onclick="exportAnswer(this, 'docx')" data-content="${answerEscapedAttr}"
+        style="background:none;border:1px solid var(--border);border-radius:6px;
+               padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
+               transition:all .15s" title=".docx 다운로드 (Word)">📥 .docx</button>
+      <button class="fb-btn" onclick="exportAnswer(this, 'txt')" data-content="${answerEscapedAttr}"
+        style="background:none;border:1px solid var(--border);border-radius:6px;
+               padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
+               transition:all .15s" title=".txt 다운로드 (Notepad)">📥 .txt</button>
     </div>` : '';
 
   div.innerHTML = `
@@ -535,6 +551,62 @@ function appendJamesMsg(data) {
   `;
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
+}
+
+/* ── item #4: 답변 export 다운로드 ──
+   서버 /export/에 POST → blob 받아 a[download] 트릭으로 다운로드.
+   docx fallback (python-docx 미설치 시 .md로 저장)이 발생하면 X-James-
+   Export-Fallback 헤더가 와서 사용자에게 toast로 알림. */
+async function exportAnswer(btn, fmt) {
+  const content = decodeURIComponent(btn.dataset.content || '');
+  if (!content.trim()) {
+    alert('답변 내용이 비어 있어 저장할 수 없습니다.');
+    return;
+  }
+  const orig = btn.textContent;
+  btn.textContent = '⏳ 저장 중...';
+  btn.disabled = true;
+  try {
+    const r = await fetch(`${API}/export/`, {
+      method:  'POST',
+      headers: {'Content-Type': 'application/json', ...getAuthHeaders()},
+      body: JSON.stringify({
+        api_key: getApiKey(),
+        content: content,
+        format:  fmt,
+      }),
+    });
+    if (!r.ok) {
+      const err = await r.text();
+      throw new Error(`export ${r.status}: ${err.slice(0, 120)}`);
+    }
+    const blob   = await r.blob();
+    const actual = r.headers.get('X-James-Export-Format') || fmt;
+    const fallbk = r.headers.get('X-James-Export-Fallback') || '';
+    // Content-Disposition에서 filename 추출
+    const cd = r.headers.get('Content-Disposition') || '';
+    const m  = cd.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/);
+    const name = m ? decodeURIComponent(m[1] || m[2]) : `james_answer.${actual}`;
+
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 500);
+
+    if (fallbk) {
+      // 다운로드는 됐지만 요청 포맷이 fallback으로 내려간 경우 알림
+      alert(`다운로드 완료 (${actual}). 참고: ${fallbk}`);
+    }
+  } catch (e) {
+    alert(`저장 실패: ${e.message}`);
+  } finally {
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
 }
 
 /* ── 피드백 전송 ── */
