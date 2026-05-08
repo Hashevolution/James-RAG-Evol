@@ -930,10 +930,22 @@
     </div>
     <div style="margin-bottom:14px;">
       <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px;">PASSWORD</div>
-      <input id="admin-login-pw" type="password" placeholder="••••••••"
-             autocomplete="new-password"
-             onkeydown="if(event.key==='Enter') doAdminLogin()"
-             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 14px;color:var(--text);font-size:14px;outline:none;">
+      <!-- [#A8-3] password 옆에 👁️ toggle — chat 페이지와 동일 패턴 -->
+      <div style="position:relative">
+        <input id="admin-login-pw" type="password" placeholder="••••••••"
+               autocomplete="new-password"
+               onkeydown="if(event.key==='Enter') doAdminLogin()"
+               style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 40px 10px 14px;color:var(--text);font-size:14px;outline:none;">
+        <button type="button"
+                id="admin-login-pw-toggle"
+                onclick="toggleAdminPwVisibility()"
+                aria-label="show/hide password"
+                title="비밀번호 보기/숨기기"
+                style="position:absolute;right:8px;top:50%;
+                       transform:translateY(-50%);background:none;
+                       border:none;cursor:pointer;color:var(--muted);
+                       font-size:14px;padding:4px 6px">👁️</button>
+      </div>
     </div>
     <div id="admin-login-error" style="font-size:12px;color:var(--danger);min-height:18px;margin-bottom:12px;font-family:var(--font-mono);"></div>
     <button onclick="doAdminLogin()"

@@ -48,6 +48,21 @@ function showAdminLoginModal() {
   }
 }
 
+/* [#A8-3] admin password 보기/숨기기 토글. chat 페이지와 동일 패턴 —
+   input.type 'password' ↔ 'text' swap + emoji 변경. */
+function toggleAdminPwVisibility() {
+  const input = document.getElementById('admin-login-pw');
+  const btn   = document.getElementById('admin-login-pw-toggle');
+  if (!input) return;
+  if (input.type === 'password') {
+    input.type = 'text';
+    if (btn) btn.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    if (btn) btn.textContent = '👁️';
+  }
+}
+
 async function doAdminLogin() {
   const username = document.getElementById('admin-login-id')?.value.trim() || 'admin';
   const password = document.getElementById('admin-login-pw')?.value || '';
