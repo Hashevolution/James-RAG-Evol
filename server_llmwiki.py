@@ -2082,6 +2082,49 @@ async def admin_patch_reject(request: Request, role: str = Depends(get_role_from
     return {"success": True, "patch_id": patch_id, "status": "REJECTED"}
 
 
+@app.get("/admin/trace/{trace_id}", summary="단일 trace 재생 [#81 phase 3-A]")
+async def admin_trace_get(
+    trace_id: str,
+    api_key:  str,
+    day:      str = "",
+    role:     str = Depends(get_role_from_request),
+):
+    """Read back the per-stage JSONL entries for one `trace_id`.
+
+    Path:
+      trace_id: uuid7 hex (the value the /query/ response carries
+                under `trace_id`).
+
+    Query:
+      day: YYYY-MM-DD lookup. Defaults to today. The trace files are
+           date-partitioned, so this hint avoids a directory scan.
+
+    Response:
+      {"trace_id": "...", "day": "...", "count": N,
+       "stages": [{"stage": "auth", "ts_ns": ..., ...}, ...]}
+
+    404 when no trace file exists for the (trace_id, day) pair.
+    Stages are returned in the order they were written (chronological).
+    """
+    _require_admin(api_key, role)
+    from core.observability import read_trace
+    # Normalize the day arg: empty/whitespace → today (read_trace default).
+    day_arg = (day or "").strip() or None
+    stages = read_trace(trace_id, day=day_arg)
+    if not stages:
+        raise HTTPException(
+            status_code=404,
+            detail=f"trace not found: trace_id={trace_id} day={day_arg or 'today'}",
+        )
+    from datetime import datetime
+    return {
+        "trace_id": trace_id,
+        "day":      day_arg or datetime.now().strftime("%Y-%m-%d"),
+        "count":    len(stages),
+        "stages":   stages,
+    }
+
+
 @app.get("/admin/audit", summary="감사 로그 [P7]")
 async def admin_audit(api_key: str, limit: int = 100,
                       role: str = Depends(get_role_from_request)):
