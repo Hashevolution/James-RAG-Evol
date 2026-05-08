@@ -327,6 +327,27 @@ class FrontendArtifactTests(unittest.TestCase):
         self.assertIn("/query/", self.js,
                       "graph.js must POST to /query/ to drive the animation")
 
+    def test_js_separates_api_key_from_jwt(self):
+        # Regression — earlier the auth mistakenly stored a JWT into
+        # localStorage.james_api_key, which both overwrote the chat-side
+        # API key AND failed verify_api_key on the next admin call. The
+        # login flow must now match admin.js: JWT → james_token, used
+        # via Authorization: Bearer; api_key stays untouched in
+        # james_api_key for the ?api_key= query param.
+        self.assertIn("james_token", self.js,
+                      "graph.js must store the JWT under james_token "
+                      "(NOT james_api_key)")
+        self.assertIn("'Authorization': 'Bearer ' + token", self.js,
+                      "admin requests must send the JWT as a Bearer header")
+        self.assertIn("access_token || j.token", self.js,
+                      "graph.js must read access_token (or token) from "
+                      "the /login/ response — not a non-existent api_key field")
+
+    def test_html_login_modal_has_apikey_field(self):
+        self.assertIn('id="login-apikey"', self.html,
+                      "login modal must accept an API key in case the "
+                      "user lands here without visiting the chat page first")
+
 
 if __name__ == "__main__":
     unittest.main()

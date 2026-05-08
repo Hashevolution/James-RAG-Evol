@@ -20,7 +20,14 @@
 
   // ─── State ─────────────────────────────────────────────────
   var API     = '';                // same-origin
+  // Two-channel auth (matches admin.js pattern):
+  //   apiKey  — verifies request envelope (server's JAMES_API_KEY env var).
+  //             Populated by the chat page first-run prompt; we may also
+  //             ask for it inline if the user lands here directly.
+  //   token   — JWT from POST /login/. Used in Authorization: Bearer to
+  //             prove admin role. _require_admin() needs BOTH.
   var apiKey  = localStorage.getItem('james_api_key') || '';
+  var token   = localStorage.getItem('james_token')   || '';
   var graph   = null;              // ForceGraph3D instance
   var data    = { nodes: [], links: [] };
   var nodeIdx = new Map();         // id → node ref
@@ -76,19 +83,26 @@
   window.doLogin = async function () {
     var id = document.getElementById('login-id').value.trim();
     var pw = document.getElementById('login-pw').value;
+    var keyInput = document.getElementById('login-apikey');
+    var keyVal = keyInput ? keyInput.value.trim() : '';
     setLoginError('');
+    if (keyVal) { apiKey = keyVal; localStorage.setItem('james_api_key', apiKey); }
+    if (!apiKey) { setLoginError('API key required (set on chat page or paste here)'); return; }
     try {
       var r = await fetch(API + '/login/', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ username: id, password: pw, api_key: apiKey || undefined }),
+        body:    JSON.stringify({ username: id, password: pw, api_key: apiKey }),
       });
       var j = await r.json().catch(function () { return {}; });
-      if (!r.ok) { setLoginError(j.detail || 'Login failed'); return; }
-      if (j.api_key) {
-        apiKey = j.api_key;
-        localStorage.setItem('james_api_key', apiKey);
-      }
+      if (!r.ok) { setLoginError(j.detail || ('Login failed (' + r.status + ')')); return; }
+      var tok  = j.access_token || j.token || '';
+      var role = j.role || 'external';
+      if (!tok)              { setLoginError('No token returned'); return; }
+      if (role !== 'admin')  { setLoginError('Admin role required (got: ' + role + ')'); return; }
+      token = tok;
+      localStorage.setItem('james_token', token);
+      localStorage.setItem('james_role',  role);
       hideLogin();
       bootstrap();
     } catch (e) {
@@ -100,10 +114,14 @@
   async function fetchSnapshot(source) {
     var url = API + '/admin/graph/snapshot?source_type=' +
               encodeURIComponent(source) + '&api_key=' + encodeURIComponent(apiKey);
-    var r = await fetch(url);
+    var r = await fetch(url, {
+      headers: { 'Authorization': 'Bearer ' + token },
+    });
     if (r.status === 401 || r.status === 403) {
-      apiKey = '';
-      localStorage.removeItem('james_api_key');
+      // JWT expired or non-admin — drop the token, keep apiKey.
+      token = '';
+      localStorage.removeItem('james_token');
+      localStorage.removeItem('james_role');
       showLogin();
       throw new Error('auth required');
     }
@@ -571,15 +589,19 @@
   }
 
   function start() {
-    if (!apiKey) { showLogin(); return; }
-    // Probe with a tiny request to see if our key still works.
+    if (!apiKey || !token) { showLogin(); return; }
+    // Probe with a tiny admin request to see if our token still proves admin.
     fetch(API + '/admin/graph/snapshot?source_type=prod&api_key=' +
-          encodeURIComponent(apiKey), { method: 'GET' })
+          encodeURIComponent(apiKey), {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + token },
+          })
       .then(function (r) {
         if (r.ok) { bootstrap(); return; }
-        // 401/403 → re-prompt.
-        apiKey = '';
-        localStorage.removeItem('james_api_key');
+        // 401/403 → token expired or not admin. Clear and re-prompt.
+        token = '';
+        localStorage.removeItem('james_token');
+        localStorage.removeItem('james_role');
         showLogin();
       })
       .catch(function () { showLogin(); });

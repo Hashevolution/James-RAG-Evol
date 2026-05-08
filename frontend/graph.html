@@ -328,6 +328,16 @@
              onkeydown="if(event.key==='Enter') doLogin()"
              style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 14px;color:var(--text);font-size:14px;outline:none;">
     </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px;">
+        API KEY
+        <span style="opacity:.6;font-weight:400;text-transform:none;letter-spacing:0">— blank if already set on chat page</span>
+      </div>
+      <input id="login-apikey" type="password" placeholder="JAMES_API_KEY"
+             autocomplete="off" spellcheck="false"
+             onkeydown="if(event.key==='Enter') doLogin()"
+             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 14px;color:var(--text);font-size:14px;outline:none;">
+    </div>
     <div id="login-error" style="font-size:12px;color:var(--danger);min-height:18px;margin-bottom:12px;font-family:var(--font-mono);"></div>
     <button onclick="doLogin()"
             style="width:100%;padding:11px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;"
