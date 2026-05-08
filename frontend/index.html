@@ -275,12 +275,15 @@
   .file-list::-webkit-scrollbar { width: 3px; }
   .file-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-  /* ── 드래그 앤 드롭 영역 ── */
+  /* ── 드래그 앤 드롭 영역 [#7-A 2026-05-08: 컴팩트] ──
+     사용자 피드백: "dropzone이 너무 커서 큐 항목이 보이는 영역을 좁힘".
+     padding 24→14, 아이콘 24→18, 마진 16→10. 큐는 아래에서 더 넓게
+     보이도록 max-height 제한도 풀고 sidebar flex로 fill. */
   .drop-zone {
-    margin: 16px;
+    margin: 10px 12px 8px;
     border: 1.5px dashed var(--border);
-    border-radius: var(--radius-lg);
-    padding: 24px 16px;
+    border-radius: var(--radius);
+    padding: 14px 12px;
     text-align: center;
     cursor: pointer;
     transition: all .15s;
@@ -294,12 +297,12 @@
   .drop-zone input[type="file"] {
     position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
   }
-  .drop-icon { font-size: 24px; margin-bottom: 8px; opacity: .7; }
-  .drop-label { font-size: 13px; color: var(--text-soft); line-height: 1.5; }
+  .drop-icon { font-size: 18px; margin-bottom: 4px; opacity: .7; }
+  .drop-label { font-size: 12px; color: var(--text-soft); line-height: 1.45; }
   .drop-label strong { color: var(--accent-fg); font-weight: 500; }
   .drop-types {
-    margin-top: 6px;
-    font-size: 11px;
+    margin-top: 3px;
+    font-size: 10px;
     color: var(--muted);
   }
 

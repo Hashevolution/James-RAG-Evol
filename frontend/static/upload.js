@@ -380,24 +380,47 @@ function applyGlobalInstruction() {
   });
 }
 
-/* ── 단일 파일 업로드 (XHR + progress) — Issue #14 ──
+/* [#7-B] Upload timeout — server hang에서 client-side 5분 cutoff.
+   Tunnel(Tailscale Serve) 환경에서 무응답 시 무한 대기하던 문제.
+   파일 크기 ≤ 100MB 가정이라 5분이면 충분 (실측 평균 < 30초). */
+const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
+
+/* [#7-B] 진행 stall 감지 — 30초간 progress 이벤트 없으면 hung 판정.
+   네트워크 단절 / Wi-Fi 전환 시 xhr.error 발생 안 하고 그냥 멎는 사례
+   대비. progress callback이 last_progress_ms를 갱신, 별도 인터벌이
+   30초 이상 stall 시 abort. */
+const UPLOAD_STALL_MS = 30 * 1000;
+
+/* ── 단일 파일 업로드 (XHR + progress) — Issue #14 / #7-B 보강 ──
  *  fetch()로는 upload progress 이벤트를 받을 수 없어 XMLHttpRequest로
  *  바꿨다. xhr.upload.onprogress가 e.loaded/e.total을 주므로 파일별
  *  진행률을 실시간 표시한다. xhr.abort()로 in-flight 취소 가능.
  *
- *  반환: 성공 시 server JSON, 실패/취소 시 throw (메시지 'aborted'/네트워크 등).
+ *  [#7-B 추가]
+ *  - xhr.timeout / ontimeout — 5분 hard limit
+ *  - stall watchdog — 30초간 progress 이벤트 없으면 abort + 'stalled'
+ *
+ *  반환: 성공 시 server JSON, 실패/취소 시 throw (메시지 'aborted'/
+ *        'stalled'/'timeout'/네트워크 등).
  */
 function uploadOne(item) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     item.xhr = xhr;
+    let lastProgressMs = Date.now();
+    let stallTimer = null;
+    const clearStall = () => {
+      if (stallTimer) { clearInterval(stallTimer); stallTimer = null; }
+    };
 
     xhr.upload.addEventListener('progress', (e) => {
+      lastProgressMs = Date.now();
       if (e.lengthComputable) {
         setProgress(item.id, Math.round((e.loaded / e.total) * 100));
       }
     });
     xhr.addEventListener('load', () => {
+      clearStall();
       if (xhr.status >= 200 && xhr.status < 300) {
         try { resolve(JSON.parse(xhr.responseText || '{}')); }
         catch (_) { reject(new Error('invalid JSON response')); }
@@ -410,8 +433,21 @@ function uploadOne(item) {
         reject(new Error(detail));
       }
     });
-    xhr.addEventListener('error', () => reject(new Error('network error')));
-    xhr.addEventListener('abort', () => reject(new Error('aborted')));
+    xhr.addEventListener('error',   () => { clearStall(); reject(new Error('network error')); });
+    xhr.addEventListener('abort',   () => { clearStall(); reject(new Error('aborted')); });
+    xhr.addEventListener('timeout', () => { clearStall(); reject(new Error('timeout')); });
+
+    // [#7-B] hard timeout
+    xhr.timeout = UPLOAD_TIMEOUT_MS;
+
+    // [#7-B] stall watchdog — 5초마다 progress 시각 체크.
+    stallTimer = setInterval(() => {
+      if (Date.now() - lastProgressMs > UPLOAD_STALL_MS) {
+        clearStall();
+        try { xhr.abort(); } catch(_) {}
+        reject(new Error('stalled'));
+      }
+    }, 5000);
 
     const form = new FormData();
     form.append('file',        item.file);
@@ -426,6 +462,19 @@ function uploadOne(item) {
     xhr.send(form);
   });
 }
+
+/* [#7-B] Beforeunload guard — 진행 중 업로드가 있을 때 페이지 닫기/
+   새로고침 시도하면 브라우저 confirm dialog. 모바일 폰에서 중간에
+   화면 닫아 업로드 끊기는 사례 방지. */
+window.addEventListener('beforeunload', (e) => {
+  const inFlight = (typeof uploadQueue !== 'undefined' ? uploadQueue : [])
+                   .filter(i => i.status === 'upload');
+  if (inFlight.length > 0) {
+    e.preventDefault();
+    e.returnValue = '';   // Chrome/Safari 표준
+    return '';
+  }
+});
 
 /* ── 업로드 실행 ── */
 async function uploadFiles() {
@@ -461,11 +510,21 @@ async function uploadFiles() {
         ...data,
       });
     } catch (err) {
-      const aborted = err && err.message === 'aborted';
-      const label   = aborted ? '취소됨' : `실패: ${(err.message || '').slice(0,20)}`;
+      // [#7-B] 새 에러 타입 분기:
+      //   'aborted'  — 사용자 취소
+      //   'timeout'  — 5분 hard cutoff
+      //   'stalled'  — 30초간 progress 끊김 (Wi-Fi 전환 등)
+      //   기타        — 서버 응답 / 네트워크 오류
+      const msg = err && err.message;
+      let label;
+      if (msg === 'aborted')      label = '취소됨';
+      else if (msg === 'timeout') label = '시간 초과 (5분)';
+      else if (msg === 'stalled') label = '연결 끊김 (재시도 필요)';
+      else                        label = `실패: ${(msg || '').slice(0,20)}`;
       setStatus(item.id, 'error', label);
       item.status = 'error';
-      if (!aborted) console.error(`업로드 실패: ${item.file.name}`, err);
+      const benign = msg === 'aborted';
+      if (!benign) console.error(`업로드 실패: ${item.file.name} (${msg})`, err);
     } finally {
       item.xhr = null;
     }
