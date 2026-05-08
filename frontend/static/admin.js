@@ -5,7 +5,16 @@
 // proxy. Avoids the mixed-content block when the page is loaded
 // over https but the API was hardcoded to http.
 const API  = window.location.origin;
-let token  = sessionStorage.getItem('james_token') || '';
+// [#A8-4] SSO — token + role을 localStorage에서 읽어 챗 페이지와 공유.
+// 이전 sessionStorage 값이 있으면 1회 마이그레이션 (사용자가 새로 로그인
+// 하지 않아도 즉시 어드민 페이지 진입 가능).
+(function _migrateAdminSessionToLocal() {
+  for (const k of ['james_token', 'james_role']) {
+    const sess = sessionStorage.getItem(k);
+    if (sess && !localStorage.getItem(k)) localStorage.setItem(k, sess);
+  }
+})();
+let token  = localStorage.getItem('james_token') || '';
 let apiKey = localStorage.getItem('james_api_key') || '';
 
 /* ── [STEP 5-A] 언어 토글 ── */
@@ -31,11 +40,32 @@ window.addEventListener('DOMContentLoaded', async () => {
     apiKey = prompt('JAMES API Key:') || '';
     localStorage.setItem('james_api_key', apiKey);
   }
-  const storedRole = sessionStorage.getItem('james_role') || '';
+  // [#A8-4] localStorage에서 role 읽음 — chat에서 admin으로 로그인했다면
+  // 자동으로 dashboard 진입. 비-admin role이거나 token 없으면 modal.
+  const storedRole = localStorage.getItem('james_role') || '';
   if (!token || storedRole !== 'admin') {
     showAdminLoginModal();
   } else {
     loadDashboard();
+  }
+});
+
+/* [#A8-4] cross-tab sync — 다른 탭(chat 페이지)에서 로그인/로그아웃 →
+   이 어드민 탭의 token/role 즉시 동기화. admin role 잃으면 모달 자동
+   띄움. localStorage storage 이벤트는 *다른* 탭의 변경만 받으므로 본
+   탭이 자체 변경한 상태와 충돌 안 함. */
+window.addEventListener('storage', (e) => {
+  if (e.key !== 'james_token' && e.key !== 'james_role') return;
+  token = localStorage.getItem('james_token') || '';
+  const role = localStorage.getItem('james_role') || '';
+  if (!token || role !== 'admin') {
+    // admin 권한 잃음 → modal 띄워 재로그인 유도
+    showAdminLoginModal();
+  } else {
+    // admin 권한 회복 → modal 닫고 dashboard
+    const modal = document.getElementById('admin-login-modal');
+    if (modal) modal.style.display = 'none';
+    try { loadDashboard(); } catch (_) {}
   }
 });
 
@@ -92,8 +122,10 @@ async function doAdminLogin() {
     if (role !== 'admin'){ if(errEl) errEl.textContent = `Admin role required (role: ${role})`; return; }
 
     token = tok;
-    sessionStorage.setItem('james_token', token);
-    sessionStorage.setItem('james_role',  role);
+    // [#A8-4] localStorage — chat 페이지와 공유. 다른 탭의 storage 이벤트로
+    // chat 페이지 role-badge 자동 갱신.
+    localStorage.setItem('james_token', token);
+    localStorage.setItem('james_role',  role);
 
     const modal = document.getElementById('admin-login-modal');
     if (modal) modal.style.display = 'none';
@@ -181,7 +213,9 @@ async function api(path, method='GET', body=null) {
   const r   = await fetch(`${API}${path}${sep}api_key=${apiKey}`, opts);
   if (r.status === 401) {
     token = '';
-    sessionStorage.removeItem('james_token');
+    // [#A8-4] localStorage 전환 — 401 시 chat 페이지 role-badge도 자동 갱신.
+    localStorage.removeItem('james_token');
+    localStorage.removeItem('james_role');
     alert(t('auth.expired_refresh'));
     location.reload();
     return {};

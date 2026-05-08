@@ -6,8 +6,20 @@
 // over https but the API was hardcoded to http.
 const API = window.location.origin;
 let SOURCE_TYPE = 'prod';
-let token    = sessionStorage.getItem('james_token') || '';
-let userRole = sessionStorage.getItem('james_role')  || '';
+// [#A8-4] SSO — token + role을 localStorage에 저장. sessionStorage는
+// per-tab이라 챗 ↔ 어드민 새 탭에서 인식 안 됨. localStorage는 같은 origin
+// 내 모든 탭/창 공유. JWT 자체에 만료(exp) 박혀있어서 server-side 검증
+// 시점에 거절되므로 localStorage 잔존이 보안 위협 안 됨.
+// 이전 sessionStorage에 저장된 token이 있으면 마이그레이션해서 사용성
+// 깨지지 않도록 한 번 옮긴다.
+(function _migrateSessionToLocal() {
+  for (const k of ['james_token', 'james_role']) {
+    const sess = sessionStorage.getItem(k);
+    if (sess && !localStorage.getItem(k)) localStorage.setItem(k, sess);
+  }
+})();
+let token    = localStorage.getItem('james_token') || '';
+let userRole = localStorage.getItem('james_role')  || '';
 
 /* ── [STEP 5-A / 5-C] 언어 토글 ── */
 function toggleLang() {
@@ -33,12 +45,12 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-/* ── 토큰 유틸 ── */
-function getToken()  { return sessionStorage.getItem('james_token') || token || ''; }
+/* ── 토큰 유틸 [#A8-4 SSO localStorage] ── */
+function getToken()  { return localStorage.getItem('james_token') || token || ''; }
 function saveToken(t, role) {
   token = t; userRole = role;
-  sessionStorage.setItem('james_token', t);
-  sessionStorage.setItem('james_role',  role);
+  localStorage.setItem('james_token', t);
+  localStorage.setItem('james_role',  role);
 }
 
 // JWT 만료까지 남은 초 (파싱 실패 시 0)
@@ -58,7 +70,7 @@ function checkTokenExpiry() {
   if (left === 0) {
     // 이미 만료 — 자동 재로그인 유도
     token = '';
-    sessionStorage.removeItem('james_token');
+    localStorage.removeItem('james_token');
     updateRoleBadge();
     const warn = document.createElement('div');
     warn.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);' +
@@ -506,10 +518,10 @@ async function doLogin() {
       return;
     }
 
-    // 토큰 저장
+    // 토큰 저장 [#A8-4 SSO]
     token    = data.access_token;
     userRole = data.role || 'employee';
-    sessionStorage.setItem('james_token', token);
+    localStorage.setItem('james_token', token);
     localStorage.setItem('james_role',  userRole);
 
     closeLogin();
@@ -526,11 +538,24 @@ async function doLogin() {
 function logout() {
   token    = '';
   userRole = '';
-  sessionStorage.removeItem('james_token');
-  sessionStorage.removeItem('james_role');
+  localStorage.removeItem('james_token');
+  localStorage.removeItem('james_role');
   updateRoleBadge();
   toast('로그아웃 완료', 'success');
 }
+
+/* [#A8-4] cross-tab sync — 다른 탭(어드민 페이지 등)에서 로그인/로그아웃
+   하면 즉시 이 탭에도 반영. localStorage의 storage 이벤트는 *다른* 탭의
+   변경만 받음 (자기 자신 변경 제외) — chat에서 로그인하고 어드민 새 탭
+   열면 어드민이 즉시 로그인 상태로 보이고, 반대로 어드민에서 로그아웃
+   하면 chat 탭의 role-badge도 즉시 갱신된다. */
+window.addEventListener('storage', (e) => {
+  if (e.key === 'james_token' || e.key === 'james_role') {
+    token    = localStorage.getItem('james_token') || '';
+    userRole = localStorage.getItem('james_role')  || '';
+    try { updateRoleBadge(); } catch (_) {}
+  }
+});
 
 function updateRoleBadge() {
   const badge    = document.getElementById('role-badge');
@@ -668,7 +693,7 @@ async function sendMessage() {
 
     if (r.status === 401) {
       token = '';
-      sessionStorage.removeItem('james_token');
+      localStorage.removeItem('james_token');
       updateRoleBadge();
       appendMsg('james', '⚠️ 인증이 만료됐습니다. 다시 로그인해주세요.');
       showLogin();
