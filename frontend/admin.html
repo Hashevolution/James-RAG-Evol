@@ -332,12 +332,76 @@
     <div class="page" id="page-entities">
       <div class="page-title"><span data-i18n="entity.page_title">🕸 Entity 현황</span></div>
       <div class="cards" id="entity-cards"></div>
-      <div class="section-title">▸ <span data-i18n="entity.list_title">Entity 목록</span></div>
+
+      <!-- item #1: search + paging controls -->
+      <div style="display:flex;gap:8px;align-items:center;margin:8px 0 12px;flex-wrap:wrap">
+        <input id="entities-search" type="text"
+               placeholder="이름 / id 검색 (substring)"
+               style="flex:1;min-width:200px;padding:8px 12px;
+                      background:var(--bg);border:1px solid var(--border);
+                      border-radius:6px;color:var(--fg);font-size:13px"
+               oninput="onEntitiesSearchInput()">
+        <select id="entities-etype-filter"
+                onchange="loadEntities()"
+                style="padding:8px 12px;background:var(--bg);
+                       border:1px solid var(--border);border-radius:6px;
+                       color:var(--fg);font-size:13px">
+          <option value="">모든 타입</option>
+        </select>
+        <span id="entities-counter"
+              style="font-size:12px;color:var(--muted);font-family:var(--font-mono)"></span>
+      </div>
+
+      <div class="section-title">▸ <span data-i18n="entity.list_title">Entity 목록</span> <span style="font-size:11px;color:var(--muted);margin-left:8px">(행 클릭 → 상세)</span></div>
       <div class="table-wrap">
         <table>
           <thead><tr><th data-i18n="common.name">이름</th><th data-i18n="common.type">타입</th><th data-i18n="entity.sensitivity">민감도</th><th data-i18n="entity.relations">Relations</th></tr></thead>
           <tbody id="entities-body"><tr><td colspan="4" class="loading" data-i18n="common.loading">로딩 중...</td></tr></tbody>
         </table>
+      </div>
+
+      <!-- Paging buttons -->
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+        <button onclick="entitiesPage(-1)" id="entities-prev"
+                style="padding:6px 14px;background:var(--bg);
+                       border:1px solid var(--border);border-radius:6px;
+                       color:var(--fg);cursor:pointer">← 이전</button>
+        <span id="entities-page-label"
+              style="align-self:center;font-size:12px;color:var(--muted);font-family:var(--font-mono)">page 1</span>
+        <button onclick="entitiesPage(1)" id="entities-next"
+                style="padding:6px 14px;background:var(--bg);
+                       border:1px solid var(--border);border-radius:6px;
+                       color:var(--fg);cursor:pointer">다음 →</button>
+      </div>
+
+      <!-- Detail modal -->
+      <div id="entity-detail-modal"
+           style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
+                  z-index:9999;align-items:flex-start;justify-content:center;
+                  overflow-y:auto;padding:40px 16px"
+           onclick="closeEntityDetail(event)">
+        <div style="background:var(--card,#1e1e2e);border:1px solid var(--border);
+                    border-radius:8px;padding:20px;max-width:720px;width:100%;
+                    max-height:85vh;overflow-y:auto" onclick="event.stopPropagation()">
+          <div style="display:flex;justify-content:space-between;align-items:center;
+                      margin-bottom:12px;border-bottom:1px solid var(--border);
+                      padding-bottom:8px">
+            <div id="entity-detail-title"
+                 style="font-size:16px;font-weight:600"></div>
+            <button onclick="closeEntityDetail()"
+                    style="background:transparent;border:0;color:var(--muted);
+                           cursor:pointer;font-size:20px">×</button>
+          </div>
+          <div id="entity-detail-meta"
+               style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:12px"></div>
+          <div id="entity-detail-relations"
+               style="margin-bottom:12px"></div>
+          <div class="section-title">▸ 본문</div>
+          <pre id="entity-detail-body"
+               style="white-space:pre-wrap;font-family:var(--font-mono);
+                      font-size:12px;background:var(--bg);padding:12px;
+                      border-radius:4px;max-height:50vh;overflow-y:auto"></pre>
+        </div>
       </div>
     </div>
 

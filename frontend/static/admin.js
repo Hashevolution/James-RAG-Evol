@@ -261,10 +261,34 @@ async function loadUsers() {
   }
 }
 
-/* ── Entity ── */
+/* ── Entity (item #1: search + paging + detail modal) ── */
+const ENTITIES_PAGE_SIZE = 50;
+let entitiesOffset = 0;
+let entitiesSearchTimer = null;
+
+function onEntitiesSearchInput() {
+  // debounce 250ms — substring 검색이라 keystroke마다 fetch 안 띄움
+  if (entitiesSearchTimer) clearTimeout(entitiesSearchTimer);
+  entitiesSearchTimer = setTimeout(() => {
+    entitiesOffset = 0;
+    loadEntities();
+  }, 250);
+}
+
+function entitiesPage(delta) {
+  entitiesOffset = Math.max(0, entitiesOffset + delta * ENTITIES_PAGE_SIZE);
+  loadEntities();
+}
+
 async function loadEntities() {
   try {
-    const data = await api('/admin/entities');
+    const q     = document.getElementById('entities-search')?.value.trim() || '';
+    const etype = document.getElementById('entities-etype-filter')?.value || '';
+    const qs    = `q=${encodeURIComponent(q)}&etype=${encodeURIComponent(etype)}`
+                + `&limit=${ENTITIES_PAGE_SIZE}&offset=${entitiesOffset}`;
+    const data  = await api(`/admin/entities?${qs}`);
+
+    // 카드 - corpus 전체 카운트
     const cards = document.getElementById('entity-cards');
     const counts = data.type_counts || {};
     cards.innerHTML = Object.entries(counts).map(([type, cnt]) => `
@@ -274,18 +298,105 @@ async function loadEntities() {
       </div>
     `).join('') || '';
 
+    // 타입 필터 셀렉트 — 첫 로드 시 옵션 채움 (모든 타입)
+    const sel = document.getElementById('entities-etype-filter');
+    if (sel && sel.options.length <= 1) {
+      Object.keys(counts).sort().forEach(type => {
+        const opt = document.createElement('option');
+        opt.value = type;
+        opt.textContent = type;
+        sel.appendChild(opt);
+      });
+    }
+
+    // 카운터: filtered / total_all
+    const counter = document.getElementById('entities-counter');
+    if (counter) {
+      counter.textContent = q || etype
+        ? `${data.total} / ${data.total_all} (필터됨)`
+        : `${data.total_all} 전체`;
+    }
+
+    // 테이블 — 행 클릭 → 상세
     const tbody = document.getElementById('entities-body');
-    tbody.innerHTML = (data.entities || []).slice(0, 50).map(e => `
-      <tr>
-        <td>${e.name}</td>
+    tbody.innerHTML = (data.entities || []).map(e => `
+      <tr style="cursor:pointer" onclick="openEntityDetail('${e.entity_id}')">
+        <td>${escapeHtml(e.name) || `<em style="color:var(--muted)">${e.entity_id}</em>`}</td>
         <td class="mono">${e.entity_type}</td>
         <td><span class="badge-status">${e.sensitivity || '-'}</span></td>
         <td class="mono">${e.relation_count ?? 0}</td>
       </tr>
     `).join('') || `<tr><td colspan='4' class='empty'>${t('entity.no_entity')}</td></tr>`;
+
+    // 페이지 라벨
+    const pageNo = Math.floor(entitiesOffset / ENTITIES_PAGE_SIZE) + 1;
+    const pageLabel = document.getElementById('entities-page-label');
+    if (pageLabel) pageLabel.textContent = `page ${pageNo} (${entitiesOffset + 1}-${Math.min(entitiesOffset + ENTITIES_PAGE_SIZE, data.total)})`;
+
+    const prevBtn = document.getElementById('entities-prev');
+    const nextBtn = document.getElementById('entities-next');
+    if (prevBtn) prevBtn.disabled = entitiesOffset === 0;
+    if (nextBtn) nextBtn.disabled = entitiesOffset + ENTITIES_PAGE_SIZE >= data.total;
   } catch (e) {
     document.getElementById('entities-body').innerHTML = `<tr><td colspan="4" class="empty">${e.message}</td></tr>`;
   }
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+async function openEntityDetail(entityId) {
+  const modal = document.getElementById('entity-detail-modal');
+  const titleEl = document.getElementById('entity-detail-title');
+  const metaEl  = document.getElementById('entity-detail-meta');
+  const relEl   = document.getElementById('entity-detail-relations');
+  const bodyEl  = document.getElementById('entity-detail-body');
+
+  if (titleEl) titleEl.textContent = '로딩 중...';
+  if (metaEl)  metaEl.textContent  = '';
+  if (relEl)   relEl.innerHTML     = '';
+  if (bodyEl)  bodyEl.textContent  = '';
+  modal.style.display = 'flex';
+
+  try {
+    const data = await api(`/admin/entities/${encodeURIComponent(entityId)}`);
+    if (titleEl) titleEl.textContent = data.name || data.entity_id;
+    if (metaEl) {
+      metaEl.textContent =
+        `id=${data.entity_id} · type=${data.entity_type} · ` +
+        `sensitivity=${data.sensitivity} · relations=${(data.relations||[]).length}`;
+    }
+    if (relEl) {
+      const rels = data.relations || [];
+      if (rels.length === 0) {
+        relEl.innerHTML = `<div style="font-size:11px;color:var(--muted)">관계 정보 없음</div>`;
+      } else {
+        relEl.innerHTML = `
+          <div class="section-title">▸ 관계 (${rels.length})</div>
+          <div style="font-size:12px;font-family:var(--font-mono);
+                      max-height:120px;overflow-y:auto;background:var(--bg);
+                      padding:8px;border-radius:4px">
+            ${rels.slice(0, 30).map(r =>
+              `${escapeHtml(r.predicate || r.type || '?')} → ${escapeHtml(r.target || r.target_name || '?')}`
+            ).join('<br>')}
+            ${rels.length > 30 ? `<br><em>... +${rels.length - 30}개 더</em>` : ''}
+          </div>
+        `;
+      }
+    }
+    if (bodyEl) bodyEl.textContent = data.body || '(본문 없음)';
+  } catch (e) {
+    if (titleEl) titleEl.textContent = '로드 실패';
+    if (bodyEl)  bodyEl.textContent  = e.message;
+  }
+}
+
+function closeEntityDetail(e) {
+  if (e && e.target.id !== 'entity-detail-modal') return;
+  document.getElementById('entity-detail-modal').style.display = 'none';
 }
 
 /* ── Memory ── */

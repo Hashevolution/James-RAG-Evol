@@ -1882,23 +1882,120 @@ async def admin_users(api_key: str, role: str = Depends(get_role_from_request)):
     except: return {"users": []}
 
 
-@app.get("/admin/entities", summary="Entity 현황 [P7]")
-async def admin_entities(api_key: str, role: str = Depends(get_role_from_request)):
+@app.get("/admin/entities", summary="Entity 현황 — search + paging [item #1]")
+async def admin_entities(
+    api_key: str,
+    q:       str = "",
+    etype:   str = "",
+    limit:   int = 100,
+    offset:  int = 0,
+    role:    str = Depends(get_role_from_request),
+):
+    """Entity inventory list.
+
+    Query params (all optional):
+      q       — substring filter on name + entity_id (case-insensitive)
+      etype   — exact match on entity_type (e.g. concept / org / person)
+      limit   — max rows returned (default 100, hard cap 500)
+      offset  — paging offset (default 0)
+
+    `type_counts` is computed over the FULL index (not the filtered slice)
+    so the operator always sees corpus-wide totals. `total` is the count
+    AFTER filters are applied; `total_all` is the unfiltered count.
+    """
     _require_admin(api_key, role)
     from pathlib import Path
+
+    # Clamp limit defensively — 500 covers any realistic v0.2 wiki.
+    limit  = max(1, min(int(limit or 100), 500))
+    offset = max(0, int(offset or 0))
+    q_norm = (q or "").strip().lower()
+    et_norm = (etype or "").strip().lower()
+
     entity_index = rag_engine.wiki_generator.entity_id_index
-    entities, type_counts = [], {}
-    for eid, fpath in list(entity_index.items())[:100]:
+    type_counts: dict[str, int] = {}
+    matched: list[dict] = []
+
+    for eid, fpath in entity_index.items():
         try:
             fm = rag_engine.wiki_generator._read_frontmatter(Path(fpath))
-            if not fm: continue
-            etype = fm.get("entity_type", fm.get("type","unknown"))
-            type_counts[etype] = type_counts.get(etype, 0) + 1
-            entities.append({"entity_id":eid,"name":fm.get("name",""),
-                              "entity_type":etype,"sensitivity":fm.get("sensitivity","internal"),
-                              "relation_count":len(fm.get("relations",[]))})
-        except: pass
-    return {"entities": entities, "type_counts": type_counts, "total": len(entity_index)}
+            if not fm:
+                continue
+            etype_v = fm.get("entity_type", fm.get("type", "unknown"))
+            type_counts[etype_v] = type_counts.get(etype_v, 0) + 1
+
+            # Apply filters AFTER counting (counts reflect the full corpus).
+            if et_norm and etype_v.lower() != et_norm:
+                continue
+            name = fm.get("name", "") or ""
+            if q_norm and q_norm not in name.lower() and q_norm not in eid.lower():
+                continue
+
+            matched.append({
+                "entity_id":      eid,
+                "name":           name,
+                "entity_type":    etype_v,
+                "sensitivity":    fm.get("sensitivity", "internal"),
+                "relation_count": len(fm.get("relations", [])),
+            })
+        except Exception:
+            pass
+
+    # Newest-name-first sort for stable paging UX.
+    matched.sort(key=lambda e: (e["name"] or "").lower())
+    sliced = matched[offset:offset + limit]
+
+    return {
+        "entities":   sliced,
+        "type_counts": type_counts,
+        "total":      len(matched),         # post-filter count
+        "total_all":  len(entity_index),    # corpus-wide
+        "limit":      limit,
+        "offset":     offset,
+        "filters":    {"q": q, "etype": etype},
+    }
+
+
+@app.get("/admin/entities/{entity_id}", summary="Entity 상세 [item #1]")
+async def admin_entity_detail(
+    entity_id: str,
+    api_key:   str,
+    role:      str = Depends(get_role_from_request),
+):
+    """One entity's full frontmatter + body + neighbor names.
+
+    Used by the admin entities page click-to-expand modal so the
+    operator can audit a wiki row without leaving the admin UI.
+    """
+    _require_admin(api_key, role)
+    from pathlib import Path
+
+    fpath = rag_engine.wiki_generator.entity_id_index.get(entity_id)
+    if not fpath:
+        raise HTTPException(status_code=404,
+                            detail=f"entity not found: {entity_id}")
+
+    p = Path(fpath)
+    if not p.exists():
+        raise HTTPException(status_code=404,
+                            detail=f"entity file missing on disk: {fpath}")
+
+    fm = rag_engine.wiki_generator._read_frontmatter(p) or {}
+    raw = p.read_text(encoding="utf-8", errors="replace")
+    # Body = everything after the second `---` frontmatter delimiter.
+    parts = raw.split("---", 2)
+    body = parts[2].strip() if len(parts) >= 3 else raw
+
+    return {
+        "entity_id":   entity_id,
+        "name":        fm.get("name", ""),
+        "entity_type": fm.get("entity_type", fm.get("type", "unknown")),
+        "sensitivity": fm.get("sensitivity", "internal"),
+        "frontmatter": fm,
+        "relations":   fm.get("relations", []),
+        "body":        body[:10000],   # safety cap on rendering
+        "path":        str(p),
+    }
 
 
 @app.get("/admin/memory", summary="Memory 현황 [P7]")
