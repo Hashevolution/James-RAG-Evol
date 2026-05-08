@@ -89,14 +89,14 @@
   opacity: 0.45;
   fill: none;
 }
-.brain-pulse.brain-pulse-active .neuron-1 { animation: james-neuron-blink-1 1.4s ease-in-out infinite,
-                                                       james-neuron-pulse 1.4s ease-in-out infinite; }
-.brain-pulse.brain-pulse-active .neuron-2 { animation: james-neuron-blink-2 1.4s ease-in-out infinite,
-                                                       james-neuron-pulse 1.4s ease-in-out infinite; }
-.brain-pulse.brain-pulse-active .neuron-3 { animation: james-neuron-blink-3 1.4s ease-in-out infinite,
-                                                       james-neuron-pulse 1.4s ease-in-out infinite; }
+.brain-pulse.brain-pulse-active .neuron-1 { animation: james-neuron-blink-1 0.9s ease-in-out infinite,
+                                                       james-neuron-pulse 0.9s ease-in-out infinite; }
+.brain-pulse.brain-pulse-active .neuron-2 { animation: james-neuron-blink-2 0.9s ease-in-out infinite,
+                                                       james-neuron-pulse 0.9s ease-in-out infinite; }
+.brain-pulse.brain-pulse-active .neuron-3 { animation: james-neuron-blink-3 0.9s ease-in-out infinite,
+                                                       james-neuron-pulse 0.9s ease-in-out infinite; }
 .brain-pulse.brain-pulse-active .brain-outline {
-  animation: james-shimmer 2.4s linear infinite;
+  animation: james-shimmer 1.2s linear infinite;
 }
 
 .thinking-stream {
@@ -176,7 +176,7 @@
   filter: drop-shadow(0 0 4px var(--stage-color, #7c6af7));
 }
 .thinking-line.thinking-active .thinking-label {
-  animation: james-shimmer 2.4s linear infinite;
+  animation: james-shimmer 1.2s linear infinite;
 }
 
 /* Done state: spinner 정지, 색상 흐림 */

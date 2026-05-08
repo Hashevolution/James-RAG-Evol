@@ -1154,6 +1154,20 @@ function brainPulseSvg(active = true) {
   </span>`;
 }
 
+/* [#A8-1] placeholder 멘트 rotation — 첫 stage 도착 전 사용자에게
+   "뭔가 진행 중" 신호 강화. 1.6초마다 다른 멘트로 회전. 고정된
+   "추론 시작 중" 한 줄보다 다이내믹하게 보임. */
+const THINKING_PLACEHOLDER_PHRASES = [
+  '추론 시작 중',
+  '질문 의도 분석 중',
+  '내부 자료 살펴보는 중',
+  '관련 지식 정리 중',
+  '관계 그래프 탐색 중',
+  '근거 검토 중',
+  '답변 정리 중',
+  '마무리하는 중',
+];
+
 function appendTyping(traceId) {
   const messages = document.getElementById('messages');
   const div = document.createElement('div');
@@ -1164,13 +1178,27 @@ function appendTyping(traceId) {
       <div id="thinking-${traceId}" class="thinking-stream">
         <div class="thinking-placeholder">
           ${brainPulseSvg(true)}
-          <span class="thinking-shimmer-text thinking-label">추론 시작 중</span>
+          <span class="thinking-shimmer-text thinking-label thinking-placeholder-text"
+                data-trace="${traceId}">추론 시작 중</span>
         </div>
       </div>
     </div>
   `;
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
+
+  // [#A8-1] placeholder rotation — 첫 stage 이벤트 도착 시 stop.
+  // 토큰 1개 늘릴 때 마다 다음 멘트로 자연 전환되는 듯한 효과.
+  let phraseIdx = 0;
+  const placeholderEl = div.querySelector('.thinking-placeholder-text');
+  const rotateTimer = setInterval(() => {
+    if (!placeholderEl || !placeholderEl.isConnected) {
+      clearInterval(rotateTimer);
+      return;
+    }
+    phraseIdx = (phraseIdx + 1) % THINKING_PLACEHOLDER_PHRASES.length;
+    placeholderEl.textContent = THINKING_PLACEHOLDER_PHRASES[phraseIdx];
+  }, 1600);
 
   // 폴링 상태
   const seenStages = new Set();   // stage 종류별 1회만 표시
@@ -1210,9 +1238,11 @@ function appendTyping(traceId) {
     const container = document.getElementById(`thinking-${traceId}`);
     if (!container) return;
     // 첫 진짜 이벤트 도착 시 placeholder 제거
+    // [#A8-1] placeholder rotation timer도 함께 stop.
     if (events.length > 0) {
       const ph = container.querySelector('.thinking-placeholder');
       if (ph) ph.remove();
+      try { clearInterval(rotateTimer); } catch (_) {}
     }
     events.forEach(ev => {
       const stage = ev.stage;
