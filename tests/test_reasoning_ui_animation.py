@@ -92,9 +92,17 @@ class ChatJsContractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.js = JS.read_text(encoding="utf-8")
 
-    def test_appendtyping_uses_thinking_line_classes(self):
+    def _appendTyping_body(self):
+        # [#A8-1] Use next-function bound so future additions
+        # (placeholder rotation, etc.) don't push the assertions past
+        # an arbitrary char limit.
         idx = self.js.index("function appendTyping(traceId)")
-        body = self.js[idx:idx + 4500]
+        m = re.search(r"\nfunction\s+\w+\s*\(", self.js[idx + 1:])
+        end = idx + 1 + m.start() if m else idx + 12000
+        return self.js[idx:end]
+
+    def test_appendtyping_uses_thinking_line_classes(self):
+        body = self._appendTyping_body()
         # Must add `thinking-active` for in-progress stages and
         # `thinking-done` for the final-state ones.
         self.assertIn("thinking-active", body,
@@ -105,8 +113,7 @@ class ChatJsContractTests(unittest.TestCase):
                       "to completed stages")
 
     def test_active_to_done_transition_present(self):
-        idx = self.js.index("function appendTyping(traceId)")
-        body = self.js[idx:idx + 4500]
+        body = self._appendTyping_body()
         # markActiveAsDone should remove the active class and add
         # the done class — that's how each new stage's arrival
         # closes out the previous stage.
@@ -116,16 +123,14 @@ class ChatJsContractTests(unittest.TestCase):
                       "markActiveAsDone must add the done class")
 
     def test_stage_color_set_via_css_variable(self):
-        idx = self.js.index("function appendTyping(traceId)")
-        body = self.js[idx:idx + 4500]
+        body = self._appendTyping_body()
         self.assertIn("setProperty('--stage-color'", body,
                       "appendTyping must set --stage-color CSS variable "
                       "on each line so the CSS shimmer/spinner picks "
                       "up the per-stage tint")
 
     def test_complete_stage_marks_active_as_done(self):
-        idx = self.js.index("function appendTyping(traceId)")
-        body = self.js[idx:idx + 4500]
+        body = self._appendTyping_body()
         # When data.complete arrives, the current active line must
         # be closed out — otherwise it keeps spinning forever.
         self.assertIn("markActiveAsDone()", body,
