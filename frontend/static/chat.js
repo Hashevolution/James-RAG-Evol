@@ -1,6 +1,10 @@
 /* PROJECT JAMES — Chat JS */
 
-const API = 'http://127.0.0.1:8000';
+// Same-origin: works on PC (http://127.0.0.1:8000), phone via
+// Tailscale Serve (https://james.xxx.ts.net), or any future reverse
+// proxy. Avoids the mixed-content block when the page is loaded
+// over https but the API was hardcoded to http.
+const API = window.location.origin;
 let SOURCE_TYPE = 'prod';
 let token    = sessionStorage.getItem('james_token') || '';
 let userRole = sessionStorage.getItem('james_role')  || '';
