@@ -71,8 +71,12 @@ def apply(patch: dict, validated: bool = False) -> Tuple[bool, str]:
         return False, reason
 
     # ── 2. 대상 경로 검증 ────────────────────────────────────
+    # Sandbox guard: target must be a relative-ish path starting with
+    # "." (typically "./workspace/..."). We check the RAW string, not
+    # str(Path(...)) — on Windows Path normalization strips the leading
+    # "./", which would silently reject every legitimate sandbox patch.
     p = Path(target)
-    if not target or not str(p).startswith("."):
+    if not target or not target.startswith("."):
         reason = f"잘못된 경로: {target}"
         _log("APPLY_BAD_PATH", patch_id, reason, success=False)
         return False, reason
