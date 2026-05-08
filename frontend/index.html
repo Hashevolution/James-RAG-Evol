@@ -863,6 +863,13 @@
                        font-size:11px;cursor:pointer">
           <option value="auto">🤖 자동</option>
         </select>
+        <button id="mode-install-btn"
+                onclick="triggerModelInstall()"
+                style="display:none;background:var(--accent-soft);
+                       border:1px solid var(--accent);color:var(--accent-fg);
+                       padding:4px 10px;border-radius:6px;font-size:11px;
+                       cursor:pointer;font-family:var(--font-ui)"
+                title="선택한 모드의 모델이 미설치 — 클릭하여 ollama pull"></button>
         <span id="mode-recommend"
               style="display:none;font-size:11px;color:var(--accent-fg);
                      padding:2px 8px;border:1px solid var(--accent-fg);

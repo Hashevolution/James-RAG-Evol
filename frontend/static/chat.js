@@ -114,10 +114,17 @@ async function loadModePickerOptions() {
     MODE_OPTIONS = data.modes || [];
     const sel = document.getElementById('mode-picker');
     if (!sel) return;
-    sel.innerHTML = MODE_OPTIONS.map(m =>
-      `<option value="${escHtml(m.key)}" title="${escHtml(m.desc || '')}">${escHtml(m.label)}</option>`
-    ).join('');
+    // item #6: 옵션 라벨에 실제 모델명 + 설치 상태 표시
+    sel.innerHTML = MODE_OPTIONS.map(m => {
+      const modelTag = m.model ? ` (${m.model})` : '';
+      const status = m.installed ? '' : ' ⚠️ 미설치';
+      return `<option value="${escHtml(m.key)}"
+                      title="${escHtml(m.desc || '')}${modelTag}"
+                      data-model="${escHtml(m.model || '')}"
+                      data-installed="${m.installed ? '1' : '0'}">${escHtml(m.label)}${escHtml(modelTag)}${status}</option>`;
+    }).join('');
     sel.value = selectedMode;
+    updateInstallButton();
   } catch (e) {
     console.warn('[JAMES] /llm/modes/ fetch 실패:', e);
   }
@@ -127,6 +134,57 @@ function onModePickerChange() {
   const sel = document.getElementById('mode-picker');
   selectedMode = sel ? sel.value : 'auto';
   hideModeRecommend();
+  updateInstallButton();
+}
+
+/* ── item #6: 선택된 모드의 모델이 미설치면 "설치" 버튼 노출 ──
+   admin role만 실제 install 트리거 가능 (서버에서도 가드). 비-admin
+   에겐 "관리자에게 설치 요청" 안내. */
+function updateInstallButton() {
+  const btn = document.getElementById('mode-install-btn');
+  if (!btn) return;
+  const opt = MODE_OPTIONS.find(m => m.key === selectedMode);
+  if (!opt || opt.installed || !opt.model) {
+    btn.style.display = 'none';
+    return;
+  }
+  btn.style.display = 'inline-block';
+  btn.dataset.model = opt.model;
+  btn.textContent = `📦 ${opt.model} 설치`;
+  btn.title = `${opt.model} 모델이 Ollama에 없습니다. 클릭하여 설치 시작 (admin 전용).`;
+}
+
+async function triggerModelInstall() {
+  const btn = document.getElementById('mode-install-btn');
+  const model = btn?.dataset?.model;
+  if (!model) return;
+  if (userRole !== 'admin') {
+    toast(`설치는 admin 권한 필요. 관리자에게 \`ollama pull ${model}\` 요청.`, 'error');
+    return;
+  }
+  if (!confirm(`Ollama에 ${model} 모델을 설치합니다.\n수 GB 다운로드 — 백그라운드로 진행됩니다.\n계속할까요?`)) return;
+  const orig = btn.textContent;
+  btn.textContent = '⏳ 설치 시작...';
+  btn.disabled = true;
+  try {
+    const r = await fetch(`${API}/llm/install/?api_key=${encodeURIComponent(getApiKey())}&model=${encodeURIComponent(model)}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    const data = await r.json();
+    toast(data.message || '설치 시작됨', 'success');
+    // 30초 후 모드 picker 갱신 (다운로드 진행 중일 가능성 높음)
+    setTimeout(loadModePickerOptions, 30000);
+  } catch (e) {
+    toast(`설치 실패: ${e.message}`, 'error');
+  } finally {
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
 }
 
 function acceptModeRecommend() {

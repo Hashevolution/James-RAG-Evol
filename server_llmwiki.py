@@ -761,7 +761,7 @@ async def status(api_key: str):
 
 @app.get("/llm/modes/", summary="챗 페이지 모드 picker 옵션 [item #6]")
 async def llm_modes(api_key: str, role: str = Depends(get_role_from_request)):
-    """Mode picker가 채울 옵션 목록.
+    """Mode picker가 채울 옵션 목록 + 실제 모델명 + 설치 상태.
 
     api_key만 검증 (admin 아님). role-allowed 모드만 반환해서 클라이언트
     가 권한 없는 모드를 보지 않도록 한다.
@@ -771,38 +771,122 @@ async def llm_modes(api_key: str, role: str = Depends(get_role_from_request)):
       label:       사용자 노출 라벨
       desc:        한 줄 설명
       keywords:    자동 추천에 사용 (클라이언트 측 keyword match)
+      model:       실제 Ollama 모델 태그 (없으면 빈 문자열 — meta 등)
+      installed:   Ollama에 설치되어 있는지 (false면 client에서 "Install" 버튼)
     """
     verify_api_key(api_key)
     from core.intent_classifier import ROLE_ALLOWED
+    from config import GEMMA_MODEL, CODING_MODEL
     allowed = ROLE_ALLOWED.get(role, {"chat", "retrieval"})
+
+    # 설치된 모델 set 한 번에 조회 (Ollama API).
+    installed_set = set()
+    try:
+        import urllib.request
+        with urllib.request.urlopen(
+            "http://localhost:11434/api/tags", timeout=2,
+        ) as r:
+            data = json.loads(r.read())
+        for m in data.get("models", []):
+            installed_set.add(m.get("name", ""))
+    except Exception:
+        pass   # Ollama 미실행 — installed=False로 모두 표시됨
+
+    def _mark(model: str) -> bool:
+        """Ollama list와 매칭. 정확 일치 OR 태그 prefix (e.g.
+        gemma4:e4b ≈ gemma4)."""
+        if not model:
+            return True   # meta 같이 LLM 안 쓰는 모드는 항상 'installed'
+        if model in installed_set:
+            return True
+        prefix = model.split(":", 1)[0]
+        return any(name.startswith(prefix + ":") or name == prefix
+                   for name in installed_set)
 
     options = [
         {"key": "auto",     "label": "🤖 자동",
          "desc": "질문 의도를 자동 분류 (기본)",
-         "keywords": []},
+         "keywords": [],
+         "model": "", "installed": True},
         {"key": "chat",     "label": "💬 일상 대화",
          "desc": "검색 없이 LLM 직답",
-         "keywords": ["안녕", "고마워", "hi", "hello"]},
+         "keywords": ["안녕", "고마워", "hi", "hello"],
+         "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL)},
         {"key": "retrieval","label": "🔍 자료 검색",
          "desc": "내부 wiki + 그래프 추론",
-         "keywords": ["뭐야", "무엇", "설명", "알려줘", "what is"]},
+         "keywords": ["뭐야", "무엇", "설명", "알려줘", "what is"],
+         "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL)},
         {"key": "meta",     "label": "📚 자료 목록",
-         "desc": "보유 wiki 인벤토리",
-         "keywords": ["목록", "리스트", "어떤 자료", "list"]},
+         "desc": "보유 wiki 인벤토리 (LLM 미사용)",
+         "keywords": ["목록", "리스트", "어떤 자료", "list"],
+         "model": "", "installed": True},
         {"key": "coding",   "label": "💻 코딩",
-         "desc": "qwen2.5-coder 모델 사용",
+         "desc": f"코딩 특화 모델",
          "keywords": ["코드", "함수", "버그", "python", "def ",
-                      "javascript", "code", "function"]},
+                      "javascript", "code", "function"],
+         "model": CODING_MODEL, "installed": _mark(CODING_MODEL)},
         {"key": "wiki_edit","label": "✏️ Wiki 편집 (admin)",
          "desc": "지식 추가/수정/삭제",
-         "keywords": ["수정해", "추가해", "삭제해"]},
+         "keywords": ["수정해", "추가해", "삭제해"],
+         "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL)},
         {"key": "self_evolve","label": "🧬 자기진화 (admin)",
          "desc": "코드 분석 / 자기 개선",
-         "keywords": ["네 코드", "구조 분석", "스스로"]},
+         "keywords": ["네 코드", "구조 분석", "스스로"],
+         "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL)},
     ]
     # auto는 항상 허용. 나머지는 role 권한 확인.
     filtered = [o for o in options if o["key"] == "auto" or o["key"] in allowed]
     return {"modes": filtered, "role": role}
+
+
+@app.post("/llm/install/", summary="Ollama 모델 설치 (admin) [item #6]")
+async def llm_install(api_key: str, model: str,
+                      role: str = Depends(get_role_from_request)):
+    """Trigger `ollama pull <model>` in a subprocess.
+
+    Admin-gated — model installation is heavy (multi-GB download)
+    and exposing it to non-admin would let any chat user fill the
+    operator's disk.
+
+    Validates model name against an allowlist (config defaults +
+    a few well-known alternatives). Arbitrary input rejected with
+    400 — operator must use the admin LLM page for non-listed models.
+    """
+    _require_admin(api_key, role)
+    from config import GEMMA_MODEL, CODING_MODEL
+    # Allowlist — only models we explicitly support in mode router.
+    # Operators wanting to install something else use /admin/llm/...
+    ALLOWED_MODELS = {
+        GEMMA_MODEL, CODING_MODEL,
+        "gemma4:e4b", "gemma3:12b", "gemma3:27b",
+        "qwen2.5-coder:32b", "qwen2.5-coder:7b",
+        "llava:13b",
+    }
+    if model not in ALLOWED_MODELS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"model not in allowlist. Use admin /admin/llm/install for arbitrary models.",
+        )
+
+    import subprocess
+    try:
+        # Don't block — fire-and-forget. Operator polls /llm/modes/
+        # afterwards to see installed flip to True.
+        subprocess.Popen(
+            ["ollama", "pull", model],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return {"ok": True, "model": model,
+                "message": f"`ollama pull {model}` 시작됨 (백그라운드 진행). 잠시 후 모드 picker가 자동 갱신됩니다."}
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=503,
+            detail="ollama CLI가 PATH에 없습니다. 시스템에 ollama 설치 후 재시도.",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500,
+                            detail=f"install 시작 실패: {type(e).__name__}: {e}")
 
 
 @app.get("/admin/llm/installed", summary="설치된 Ollama 모델 목록 [4-B]")
