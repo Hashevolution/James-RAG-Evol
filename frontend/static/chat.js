@@ -789,6 +789,28 @@ function appendJamesMsg(data) {
       (data.mode||'') + ':' + (data.answer||'').slice(0,40)
     )).slice(0,12) : '');
 
+  // [#A8-7] 웹 검색 답변에 "📥 위키 저장" chip — 사용자 직접 승인 흐름.
+  // pending_save_proposal_id가 있고 admin role이면 chip 노출. click →
+  // /admin/proposals/{id}/approve로 직접 wiki entity 생성. 비-admin은
+  // chip 미표시 (서버에서 거절될 거라 무의미). data 객체에 chip 상태 보관.
+  let saveWikiChip = '';
+  if (data.web_used && data.pending_save_proposal_id && userRole === 'admin') {
+    saveWikiChip = `
+      <div style="margin-top:6px">
+        <button class="next-action-chip save-wiki-btn"
+                onclick="approveWikiSave(this)"
+                data-proposal-id="${escHtml(data.pending_save_proposal_id)}"
+                style="text-align:left;background:rgba(76,175,125,.10);
+                       border:1px solid rgba(76,175,125,.45);border-radius:8px;
+                       padding:8px 12px;cursor:pointer;color:var(--text);
+                       font-size:12px;width:100%;font-family:inherit;
+                       transition:all .15s">
+          <span style="color:#4caf7d;font-weight:600;margin-right:6px">📥</span>
+          <span>이 자료를 위키로 저장 (장기 기억화)</span>
+        </button>
+      </div>`;
+  }
+
   // [#A6-2] 웹 검색 사용됨 배지 + 출처 URL
   // 답변에 외부 데이터(low-trust web)가 섞였음을 사용자에게 명시.
   // 출처 URL 노출로 신뢰도 자가 판단 가능. internal-only 답변엔 미표시.
@@ -967,6 +989,7 @@ function appendJamesMsg(data) {
     <div>
       <div class="bubble">${formatAnswerWithParagraphs(answer)}${pathsHtml}</div>
       ${webBadge}
+      ${saveWikiChip}
       ${confidenceBadge}
       ${metaHtml}
       ${forceWebChip}
@@ -1022,6 +1045,47 @@ function extractNextActionSuggestions(answerText) {
     if (out.length >= 2) return out;
   }
   return [];
+}
+
+/* [#A8-7] "📥 위키 저장" chip 클릭 핸들러.
+   chat 답변에 노출된 pending_save_proposal_id로 /admin/proposals/{id}/approve
+   직접 호출. admin role 필요 (chip 자체가 admin에게만 보이지만 server-side
+   에서도 거절). 성공 시 toast + chip을 "✓ 저장됨" 으로 disable. */
+async function approveWikiSave(btn) {
+  if (!btn || btn.disabled) return;
+  const id = btn.dataset.proposalId || '';
+  if (!id) return;
+  if (!confirm('이 검색 결과를 wiki entity로 영구 저장합니다.\n저장 후 retrieval에 활용됩니다.\n계속하시겠습니까?')) return;
+  btn.disabled = true;
+  btn.style.opacity = '0.55';
+  const labelEl = btn.querySelector('span:last-child');
+  if (labelEl) labelEl.textContent = '저장 중...';
+  try {
+    const r = await fetch(
+      `${API}/admin/proposals/${encodeURIComponent(id)}/approve?api_key=${encodeURIComponent(getApiKey())}`,
+      {
+        method:  'POST',
+        headers: getAuthHeaders(),
+        body:    JSON.stringify({api_key: getApiKey()}),
+      },
+    );
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    const data = await r.json();
+    if (data.success === false) {
+      throw new Error(data.message || '저장 실패');
+    }
+    if (labelEl) labelEl.textContent = '✓ 위키에 저장됨';
+    btn.style.background = 'rgba(76,175,125,.18)';
+    toast(`✅ 위키 저장 완료${data.details?.path ? ': ' + data.details.path : ''}`, 'success');
+  } catch (e) {
+    btn.disabled = false;
+    btn.style.opacity = '';
+    if (labelEl) labelEl.textContent = '이 자료를 위키로 저장 (장기 기억화)';
+    toast(`저장 실패: ${e.message}`, 'error');
+  }
 }
 
 /* [#A8-6] "🌐 웹 검색으로 더 조사" chip 클릭 핸들러.

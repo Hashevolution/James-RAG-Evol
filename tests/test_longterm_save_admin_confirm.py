@@ -41,39 +41,34 @@ class PipelineProposalCreationTests(unittest.TestCase):
         from core.reasoning import pipeline
         cls.src = inspect.getsource(pipeline)
 
+    def _proposal_block(self) -> str:
+        # [#A8-7 update 2026-05-09] Locator changed: gate moved from
+        # `should_promote_to_longterm(safe_query) or is_save_command(...)`
+        # to a simpler `if always_propose:` branch (always create the
+        # proposal so the chat-side save chip can offer it on first
+        # search too). Anchor on always_propose now.
+        idx = self.src.index("always_propose")
+        return self.src[idx:idx + 3000]
+
     def test_no_direct_save_as_longterm_call(self):
-        # The auto-save path that fires on should_promote_to_longterm
-        # must no longer call save_as_longterm directly. The function
-        # is still imported (it's used by the executor on approve), but
-        # not invoked from the pipeline branch.
-        # Look for the should_promote_to_longterm gate; inside that
-        # branch, `save_as_longterm(` should NOT appear.
-        m = inspect.findsource
-        # Practical check: locate the if-block for should_promote_to_longterm
-        # and confirm the body uses _make_proposal instead of
-        # save_as_longterm.
-        idx = self.src.index("should_promote_to_longterm(safe_query)")
-        # The block ends at "else:" of the same indentation. Use a
-        # generous slice and check both presences.
-        block = self.src[idx:idx + 3000]
+        # The promotion branch must not call save_as_longterm directly
+        # — it must persist a proposal for admin (or chat-side) confirm.
+        block = self._proposal_block()
         self.assertIn("_make_proposal", block,
             "promotion branch must create a proposal (admin confirm)")
         self.assertIn("save_proposal", block,
             "must persist the proposal via save_proposal")
-        # Confirm the auto-save path was removed from this block.
         self.assertNotIn("save_as_longterm(safe_query, web_results, summary",
             block,
             "promotion branch must not auto-save anymore — admin gate required")
 
     def test_proposal_type_is_web_longterm_save(self):
-        idx = self.src.index("should_promote_to_longterm(safe_query)")
-        block = self.src[idx:idx + 3000]
+        block = self._proposal_block()
         self.assertIn('"web_longterm_save"', block,
             'proposal type must be "web_longterm_save" (registered with executor)')
 
     def test_proposal_metadata_carries_query_summary_results_role(self):
-        idx = self.src.index("should_promote_to_longterm(safe_query)")
-        block = self.src[idx:idx + 3000]
+        block = self._proposal_block()
         for field in ('"query"', '"summary"', '"web_results"', '"user_role"'):
             self.assertIn(field, block,
                 f"proposal metadata must include {field} so executor can save")

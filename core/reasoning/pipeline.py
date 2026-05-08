@@ -274,6 +274,9 @@ def run_retrieval_pipeline(
     # User-reported crash: pipeline.py:498 UnboundLocalError. 사용자 환경에서
     # 첫 query에 500 응답 → 이 줄을 try 밖으로 빼서 항상 binding 보장.
     web_results: list = []
+    # [#A8-7] 웹 검색 성공 시 함께 만든 web_longterm_save proposal id.
+    # chat 페이지의 "📥 위키 저장" chip이 이걸로 approve API 직접 호출.
+    pending_save_proposal_id: str = ""
 
     try:
         sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
@@ -311,15 +314,15 @@ def run_retrieval_pipeline(
                         # 단기 지식 레벨 +2
                         update_knowledge_level(safe_query, is_longterm=False)
 
-                        # 장기 전환 조건 확인
-                        if should_promote_to_longterm(safe_query) or is_save_command(safe_query):
-                            # [#A6-3 2026-05-08] 즉시 save_as_longterm → admin
-                            # confirm proposal로 전환. 이전엔 사용자 쿼리만으로
-                            # operator 모르는 사이 외부 출처가 wiki에 들어가
-                            # 이후 retrieval에서 회수됐다. 이제 admin이 명시적
-                            # 승인하기 전엔 wiki에 안 들어감 — pending proposal
-                            # 만 생성. 단기 저장 (record_search) + KnowledgeTracker
-                            # 단기 +2점은 그대로 (이미 위에서 적용).
+                        # [#A8-7 2026-05-09] 모든 웹 검색 결과에 대해 proposal
+                        # 생성 (이전에는 search_count ≥ 2 또는 명시 저장 명령
+                        # 시에만). chat 페이지의 "📥 위키 저장" chip이 첫 검색
+                        # 부터 즉시 사용 가능해야 하므로. should_promote /
+                        # is_save_command가 true면 자동 임포턴스 표시 정도로
+                        # 확장 가능하지만 현재 단순화 — admin이 chat 또는
+                        # admin 페이지에서 명시 승인.
+                        always_propose = True   # [#A8-7] 항상 만들기
+                        if always_propose:
                             try:
                                 summary_prompt = (
                                     f"아래 검색 결과를 한국어로 200자 이내 핵심 요약:\n"
@@ -358,11 +361,10 @@ def run_retrieval_pipeline(
                                         },
                                     )
                                     save_proposal(p)
+                                    pending_save_proposal_id = p['proposal_id']
                                     print(f"[WEB→WIKI] admin confirm proposal 생성: {p['proposal_id']}")
                             except Exception as we:
                                 print(f"[WEB→WIKI] proposal 생성 실패: {we}")
-                        else:
-                            print(f"[WEB] 단기 저장 (누적 {search_count}회 / 2회 이상이면 장기 전환)")
             except Exception as we:
                 print(f"[WEB] 검색 모듈 오류: {we}")
 
@@ -522,6 +524,8 @@ def run_retrieval_pipeline(
         # [#A6-2] web search 사용 여부 + 출처
         "web_used":      web_used,
         "web_sources":   web_sources,
+        # [#A8-7] chat-side "위키 저장" chip이 approve할 proposal id (있을 때만)
+        "pending_save_proposal_id": pending_save_proposal_id,
         # [#65 phase 3] full chunk texts that fed the LLM, surfaced for
         # RAGAS `context_precision` / `context_recall` evaluation against
         # the live retrieval path. The /query/ endpoint admin-gates the

@@ -355,6 +355,9 @@ class QueryResponse(BaseModel):
     # 사용됨" 배지 + 출처 리스트. internal-only 답변엔 둘 다 빈/false.
     web_used:       bool  = False
     web_sources:    list  = []
+    # [#A8-7] chat-side "📥 위키 저장" chip이 approve API에 보낼 proposal id.
+    # 빈 문자열이면 chip 숨김. web_used=true일 때만 채워진다.
+    pending_save_proposal_id: str = ""
 
 class UploadResponse(BaseModel):
     status:      str
@@ -747,6 +750,8 @@ async def query(
         # [#A6-2] 웹 검색 사용됨 배지 + 출처 URL (자료 부족 fallback 시).
         "web_used":      bool(result.get("web_used", False)),
         "web_sources":   result.get("web_sources", []),
+        # [#A8-7] chat-side 위키 저장 chip용 proposal id
+        "pending_save_proposal_id": result.get("pending_save_proposal_id", ""),
     }
     # [#65 phase 3] admin-only RAGAS evaluation hook. The chunk texts that
     # fed the LLM are surfaced only when (a) caller opted in via
