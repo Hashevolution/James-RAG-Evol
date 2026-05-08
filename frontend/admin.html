@@ -256,53 +256,87 @@
 </header>
 
 <div class="admin-layout">
-  <!-- ── 사이드 메뉴 ── -->
-  <nav>
-    <div class="nav-section">OVERVIEW</div>
-    <div class="nav-item active" onclick="showPage('dashboard', this)">
-      <span class="nav-icon">📊</span> <span data-i18n="admin.dashboard">대시보드</span>
+  <!-- 모바일에서 사이드메뉴 토글 — item #2 -->
+  <button id="admin-nav-toggle"
+          onclick="toggleAdminNav()"
+          aria-label="메뉴 토글"
+          style="display:none;position:fixed;top:8px;left:8px;z-index:60;
+                 width:44px;height:44px;border:1px solid var(--border);
+                 background:var(--surface);color:var(--text);border-radius:8px;
+                 font-size:20px;cursor:pointer">☰</button>
+
+  <!-- ── 사이드 메뉴 (폴더블 섹션) ── -->
+  <nav id="admin-nav">
+    <div class="nav-section nav-foldable" onclick="toggleNavSection(this)">
+      <span class="nav-fold-icon">▾</span> OVERVIEW
     </div>
-    <div class="nav-section" data-i18n="admin.section_manage">관리</div>
-    <div class="nav-item" onclick="showPage('users', this)">
-      <span class="nav-icon">👥</span> <span data-i18n="admin.users">사용자</span>
+    <div class="nav-group">
+      <div class="nav-item active" onclick="showPage('dashboard', this)">
+        <span class="nav-icon">📊</span> <span data-i18n="admin.dashboard">대시보드</span>
+      </div>
     </div>
-    <div class="nav-item" onclick="showPage('entities', this)">
-      <span class="nav-icon">🕸</span> Entity
+
+    <div class="nav-section nav-foldable" onclick="toggleNavSection(this)">
+      <span class="nav-fold-icon">▾</span> <span data-i18n="admin.section_manage">관리</span>
     </div>
-    <div class="nav-item" onclick="showPage('memory', this)">
-      <span class="nav-icon">🧠</span> Memory
+    <div class="nav-group">
+      <div class="nav-item" onclick="showPage('users', this)">
+        <span class="nav-icon">👥</span> <span data-i18n="admin.users">사용자</span>
+      </div>
+      <div class="nav-item" onclick="showPage('entities', this)">
+        <span class="nav-icon">🕸</span> Entity
+      </div>
+      <div class="nav-item" onclick="showPage('memory', this)">
+        <span class="nav-icon">🧠</span> Memory
+      </div>
+      <div class="nav-item" onclick="showPage('patches', this)">
+        <span class="nav-icon">🔧</span> Patches
+      </div>
     </div>
-    <div class="nav-item" onclick="showPage('patches', this)">
-      <span class="nav-icon">🔧</span> Patches
+
+    <div class="nav-section nav-foldable" onclick="toggleNavSection(this)">
+      <span class="nav-fold-icon">▾</span> <span data-i18n="admin.section_security">보안</span>
     </div>
-    <div class="nav-section" data-i18n="admin.section_security">보안</div>
-    <div class="nav-item" onclick="showPage('audit', this)">
-      <span class="nav-icon">📋</span> <span data-i18n="admin.audit_log">감사 로그</span>
+    <div class="nav-group">
+      <div class="nav-item" onclick="showPage('audit', this)">
+        <span class="nav-icon">📋</span> <span data-i18n="admin.audit_log">감사 로그</span>
+      </div>
     </div>
-    <div class="nav-section" data-i18n="admin.section_evolution">자기진화</div>
-    <div class="nav-item" onclick="showPage('proposals', this)">
-      <span class="nav-icon">🧬</span> <span data-i18n="admin.proposal_review">제안 검토</span>
+
+    <div class="nav-section nav-foldable" onclick="toggleNavSection(this)">
+      <span class="nav-fold-icon">▾</span> <span data-i18n="admin.section_evolution">자기진화</span>
     </div>
-    <div class="nav-item" onclick="showPage('evo-reports', this)">
-      <span class="nav-icon">📈</span> <span data-i18n="admin.evo_report">진화 보고서</span>
+    <div class="nav-group">
+      <div class="nav-item" onclick="showPage('proposals', this)">
+        <span class="nav-icon">🧬</span> <span data-i18n="admin.proposal_review">제안 검토</span>
+      </div>
+      <div class="nav-item" onclick="showPage('evo-reports', this)">
+        <span class="nav-icon">📈</span> <span data-i18n="admin.evo_report">진화 보고서</span>
+      </div>
+      <div class="nav-item" onclick="showPage('character', this)">
+        <span class="nav-icon">🎭</span> <span data-i18n="admin.character">성향 캐릭터</span>
+      </div>
+      <div class="nav-item" onclick="showPage('knowledge', this)">
+        <span class="nav-icon">🏆</span> <span data-i18n="admin.growth">능력 성장</span>
+      </div>
+      <div class="nav-item" onclick="showPage('performance', this)">
+        <span class="nav-icon">📊</span> <span data-i18n="admin.performance">성능 평가</span>
+      </div>
+      <div class="nav-item" onclick="showPage('learning', this)">
+        <span class="nav-icon">🎓</span> <span data-i18n="admin.learning">자기학습</span>
+      </div>
     </div>
-    <div class="nav-item" onclick="showPage('character', this)">
-      <span class="nav-icon">🎭</span> <span data-i18n="admin.character">성향 캐릭터</span>
+
+    <div class="nav-section nav-foldable" onclick="toggleNavSection(this)">
+      <span class="nav-fold-icon">▾</span> <span data-i18n="admin.section_system">시스템</span>
     </div>
-    <div class="nav-item" onclick="showPage('knowledge', this)">
-      <span class="nav-icon">🏆</span> <span data-i18n="admin.growth">능력 성장</span>
-    </div>
-    <div class="nav-item" onclick="showPage('performance', this)">
-      <span class="nav-icon">📊</span> <span data-i18n="admin.performance">성능 평가</span>
-    </div>
-    <div class="nav-item" onclick="showPage('learning', this)">
-      <span class="nav-icon">🎓</span> <span data-i18n="admin.learning">자기학습</span>
-    </div>
-    <div class="nav-item" onclick="showPage('hardware', this)">
-      <span class="nav-icon">🛠️</span> <span data-i18n="admin.hardware">장비 현황</span>
-    </div>
-    <div class="nav-item" onclick="showPage('settings', this)">
-      <span class="nav-icon">⚙️</span> <span data-i18n="admin.settings">설정</span>
+    <div class="nav-group">
+      <div class="nav-item" onclick="showPage('hardware', this)">
+        <span class="nav-icon">🛠️</span> <span data-i18n="admin.hardware">장비 현황</span>
+      </div>
+      <div class="nav-item" onclick="showPage('settings', this)">
+        <span class="nav-icon">⚙️</span> <span data-i18n="admin.settings">설정</span>
+      </div>
     </div>
   </nav>
 

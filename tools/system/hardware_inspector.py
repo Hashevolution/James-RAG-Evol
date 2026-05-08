@@ -234,84 +234,90 @@ def _disk_level(free_gb: float) -> int:
     return 10
 
 
-# ─── 무기 메타데이터 ─────────────────────────────────────────
+# ─── 인프라 등급 메타데이터 (item #2: 게임 → 기술/비즈니스 컨셉) ─
 
 def _weapon_meta(component: str, level: int) -> Dict:
-    """컴포넌트 + 레벨 → 무기 정보."""
+    """컴포넌트 + 레벨 → 인프라 등급(tier) 정보.
+
+    기존 RPG 무기 컨셉(Magic Sword / Wizard Staff 등)을 기술 인프라
+    티어 컨셉으로 교체. 운영 컨텍스트에 맞고 영업/도입 보고서에서도
+    그대로 인용 가능. 함수명 _weapon_meta는 호환을 위해 유지 — 반환
+    딕트의 키(icon/name/role/desc)도 동일.
+    """
     weapons = {
         "cpu": {
-            "icon": "⚔️",
+            "icon": "🧮",
             "name_map": {
-                (1, 3): "Wooden Sword",
-                (4, 5): "Iron Sword",
-                (6, 7): "Silver Blade",
-                (8, 9): "Magic Sword",
-                (10, 10): "Legendary Holy Sword",
+                (1, 3):  "Entry CPU",
+                (4, 5):  "Mainstream CPU",
+                (6, 7):  "Workstation CPU",
+                (8, 9):  "High-Performance CPU",
+                (10, 10):"Server-Grade CPU",
             },
-            "role": "Computing Power",
+            "role": "Compute",
             "desc_map": {
-                (1, 3): "Basic computation",
-                (4, 5): "General inference",
-                (6, 7): "Fast parallel processing",
-                (8, 9): "High-speed reasoning engine",
-                (10, 10): "Peak performance computing",
-            }
+                (1, 3):  "Basic compute — interactive workload",
+                (4, 5):  "Mainstream inference",
+                (6, 7):  "Multi-thread parallel workload",
+                (8, 9):  "Heavy reasoning + concurrent sessions",
+                (10, 10):"Server-class throughput",
+            },
         },
         "ram": {
-            "icon": "🛡️",
+            "icon": "💾",
             "name_map": {
-                (1, 3): "Leather Shield",
-                (4, 5): "Iron Shield",
-                (6, 7): "Reinforced Shield",
-                (8, 9): "Magic Shield",
-                (10, 10): "Immortal Shield",
+                (1, 3):  "Light Memory",
+                (4, 5):  "Standard Memory",
+                (6, 7):  "Wide Context Memory",
+                (8, 9):  "Large-Batch Memory",
+                (10, 10):"Workstation Memory",
             },
             "role": "Memory",
             "desc_map": {
-                (1, 3): "Small context handling",
-                (4, 5): "General session management",
-                (6, 7): "Wide context retention",
-                (8, 9): "Large-scale batch processing",
-                (10, 10): "Unlimited memory operations",
-            }
+                (1, 3):  "Single short session",
+                (4, 5):  "Multi-session general use",
+                (6, 7):  "Long-context retention",
+                (8, 9):  "Multi-document batch",
+                (10, 10):"Enterprise-scale concurrency",
+            },
         },
         "gpu": {
-            "icon": "🪄",
+            "icon": "⚡",
             "name_map": {
-                (0, 0): "(none)",
-                (1, 3): "Apprentice Staff",
-                (4, 5): "Wizard Staff",
-                (6, 7): "Sage Staff",
-                (8, 9): "Grand Wizard Staff",
-                (10, 10): "Divine Wand",
+                (0, 0):  "CPU-only",
+                (1, 3):  "Entry Accelerator",
+                (4, 5):  "Inference-Capable GPU",
+                (6, 7):  "Production GPU",
+                (8, 9):  "High-Throughput GPU",
+                (10, 10):"Datacenter GPU",
             },
-            "role": "GPU Inference",
+            "role": "AI Acceleration",
             "desc_map": {
-                (0, 0): "CPU-only inference",
-                (1, 3): "Basic GPU acceleration",
-                (4, 5): "LLM inference capable",
-                (6, 7): "Fast LLM processing",
-                (8, 9): "Ultra-fast inference",
-                (10, 10): "Maximum AI acceleration",
-            }
+                (0, 0):  "CPU-only inference (slow on large models)",
+                (1, 3):  "Basic GPU acceleration",
+                (4, 5):  "LLM inference capable",
+                (6, 7):  "Production-grade LLM throughput",
+                (8, 9):  "Multi-model concurrent inference",
+                (10, 10):"Datacenter-class AI throughput",
+            },
         },
         "disk": {
-            "icon": "🎒",
+            "icon": "🗄️",
             "name_map": {
-                (1, 3): "Small Pouch",
-                (4, 5): "Travel Bag",
-                (6, 7): "Large Backpack",
-                (8, 9): "Magic Space Bag",
-                (10, 10): "Infinite Warehouse",
+                (1, 3):  "Personal Storage",
+                (4, 5):  "Team Storage",
+                (6, 7):  "Department Storage",
+                (8, 9):  "Enterprise Storage",
+                (10, 10):"Archive-Tier Storage",
             },
             "role": "Storage",
             "desc_map": {
-                (1, 3): "Small-scale wiki storage",
-                (4, 5): "Medium-scale data",
-                (6, 7): "Large knowledge base",
-                (8, 9): "Massive data management",
-                (10, 10): "Unlimited knowledge storage",
-            }
+                (1, 3):  "Small wiki / personal corpus",
+                (4, 5):  "Mid-size knowledge base",
+                (6, 7):  "Department-wide corpus",
+                (8, 9):  "Enterprise-scale knowledge base",
+                (10, 10):"Long-term archive + audit retention",
+            },
         },
     }
 
@@ -370,12 +376,13 @@ def get_hardware_specs() -> Dict[str, Any]:
         disk_lv * 0.10
     )
 
+    # System tier — 비즈니스/기술 도입 컨텍스트에 맞는 분류 (item #2)
     rank_map = [
-        (9, "Legendary Wizard"),
-        (7, "Grand Wizard"),
-        (5, "Wizard"),
-        (3, "Apprentice Wizard"),
-        (0, "Trainee"),
+        (9, "Datacenter Tier"),
+        (7, "Enterprise Tier"),
+        (5, "Production Tier"),
+        (3, "Workstation Tier"),
+        (0, "Personal Tier"),
     ]
     rank = next(r for (th, r) in rank_map if overall >= th)
 

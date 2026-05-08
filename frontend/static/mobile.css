@@ -129,6 +129,47 @@
 }
 
 /* ─────────────────────────────────────────────────────────
+ * Admin nav — foldable sections (item #2, 2026-05-08)
+ * 데스크탑/모바일 양쪽에서 섹션별 접기/펴기 가능. 각 nav-section을
+ * 클릭하면 바로 다음 .nav-group이 슬라이드 닫힘. 모바일은 추가로
+ * nav 자체를 햄버거 토글로 펼침/접음.
+ * ────────────────────────────────────────────────────────*/
+.nav-section.nav-foldable {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+.nav-section.nav-foldable:hover {
+  background: var(--surface-2, #1a1d22);
+}
+.nav-fold-icon {
+  display: inline-block;
+  transition: transform 0.2s ease;
+  font-size: 10px;
+  width: 10px;
+  text-align: center;
+}
+.nav-section.nav-collapsed .nav-fold-icon {
+  transform: rotate(-90deg);
+}
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: 600px;             /* enough for any group */
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+  opacity: 1;
+}
+.nav-group.nav-group-collapsed {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ─────────────────────────────────────────────────────────
  * Tablet + phone (≤ 768px)
  * ────────────────────────────────────────────────────────*/
 @media (max-width: 768px) {
@@ -239,32 +280,47 @@
 
   /* ─────────────── admin 페이지 ─────────────── */
 
-  /* admin layout — 사이드 nav가 가로로 좁아질 수 있도록 */
-  .admin-layout, .admin-sidebar, .admin-nav {
-    width: 100%;
+  /* admin nav — 모바일은 햄버거 토글 + 슬라이드 드로워 (item #2) */
+  #admin-nav-toggle {
+    display: block !important;
   }
-  /* 어드민 nav를 상단 드로워 형태로 (모바일) */
-  .admin-sidebar {
-    width: 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding: 8px 0;
+  #admin-nav {
+    position: fixed;
+    top: 0; bottom: 0; left: 0;
+    width: 80vw;
+    max-width: 320px;
+    background: var(--surface, #14161a);
+    border-right: 1px solid var(--border, #25282f);
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    z-index: 50;
+    overflow-y: auto;
+    padding: 60px 12px 20px;       /* 토글 버튼 자리 확보 */
+    box-shadow: 0 0 24px rgba(0, 0, 0, 0.6);
   }
-  .admin-nav, .nav-list, ul.nav {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 4px;
-    padding: 4px 8px;
-    -webkit-overflow-scrolling: touch;
+  #admin-nav.admin-nav-open {
+    transform: translateX(0);
+  }
+  /* admin nav 열렸을 때 본문 클릭 시 닫히도록 backdrop */
+  #admin-nav-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 49;
+    display: none;
+  }
+  #admin-nav-backdrop.show {
+    display: block;
+  }
+  /* 본문은 사이드바 위치 무관하게 풀폭 */
+  .admin-layout > main, main {
+    width: 100%;
   }
   .nav-item {
-    flex-shrink: 0;
-    padding: 8px 14px;
-    min-height: 40px;
-    font-size: 13px;
+    padding: 10px 14px;
+    min-height: 44px;
+    font-size: 14px;
     border-radius: 8px;
-    white-space: nowrap;
   }
 
   /* 페이지 본문 — 패딩 줄이고 카드들 세로 stack */

@@ -90,12 +90,48 @@ async function doAdminLogin() {
 }
 
 
+/* ── 사이드 nav 토글 (item #2) ──
+   모바일: 햄버거 버튼 → 사이드 드로워 슬라이드 인/아웃
+   섹션 fold: 각 nav-section 클릭 → 다음 .nav-group collapse 토글
+*/
+function toggleAdminNav() {
+  const nav = document.getElementById('admin-nav');
+  if (!nav) return;
+  let backdrop = document.getElementById('admin-nav-backdrop');
+  if (!backdrop) {
+    backdrop = document.createElement('div');
+    backdrop.id = 'admin-nav-backdrop';
+    backdrop.onclick = () => toggleAdminNav();
+    document.body.appendChild(backdrop);
+  }
+  const isOpen = nav.classList.toggle('admin-nav-open');
+  backdrop.classList.toggle('show', isOpen);
+}
+
+function toggleNavSection(sectionEl) {
+  // 섹션 다음 형제(.nav-group) 만 토글. 섹션 자체엔 nav-collapsed로
+  // 회전 화살표 표시.
+  if (!sectionEl) return;
+  const group = sectionEl.nextElementSibling;
+  sectionEl.classList.toggle('nav-collapsed');
+  if (group && group.classList.contains('nav-group')) {
+    group.classList.toggle('nav-group-collapsed');
+  }
+}
+
 /* ── 페이지 전환 ── */
 function showPage(id, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById(`page-${id}`).classList.add('active');
   el.classList.add('active');
+
+  // 모바일에서 페이지 선택 후 자동으로 nav 닫기 (UX)
+  const nav = document.getElementById('admin-nav');
+  if (nav && nav.classList.contains('admin-nav-open')
+      && window.matchMedia('(max-width: 768px)').matches) {
+    toggleAdminNav();
+  }
 
   const loaders = {
     dashboard:      loadDashboard,
