@@ -203,6 +203,24 @@ async def on_startup():
     """서버 시작 시 자동 실행."""
     import asyncio
 
+    # #81 phase 3-C: prune trace files older than the retention window
+    # so reports/trace/ doesn't grow unbounded over weeks of usage.
+    # One-shot per process restart — operators wanting more frequent
+    # housekeeping run a cron / scheduled task. Default 7 days; env
+    # override clamped to [1, 365].
+    try:
+        from core.observability import prune_old_traces
+        keep = int(os.environ.get("JAMES_TRACE_RETENTION_DAYS", "7"))
+        result = prune_old_traces(keep_days=keep)
+        if result["removed_days"]:
+            print(f"[OBSERVABILITY] trace prune: removed {len(result['removed_days'])} day-dir(s) "
+                  f"older than {keep}d ({', '.join(result['removed_days'])})")
+        if result["errors"]:
+            print(f"[OBSERVABILITY] trace prune errors: {result['errors']}")
+    except Exception as e:
+        # Housekeeping must never block server startup.
+        print(f"[STARTUP] trace prune skipped: {e}")
+
     async def _index():
         await asyncio.sleep(3)
         try:

@@ -57,7 +57,7 @@ import os
 import time
 import uuid
 from contextvars import ContextVar
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -192,3 +192,54 @@ def read_trace(trace_id: str, day: Optional[str] = None) -> list:
             except Exception:
                 continue
     return out
+
+
+def prune_old_traces(keep_days: int = 7) -> dict:
+    """Delete day-partitioned trace directories older than `keep_days`.
+
+    Called from the FastAPI lifespan startup hook (one-shot per process
+    restart) so `reports/trace/` doesn't grow unbounded over weeks of
+    operator usage. Operators wanting stricter retention can call
+    manually.
+
+    Args:
+      keep_days: retention window. Clamped to [1, 365]. Days strictly
+                 older than `today - keep_days` are removed.
+
+    Returns:
+      {"removed_days": [...], "kept_days": [...], "errors": [...]}
+      Failures (e.g. file in use) are recorded in `errors` but do not
+      raise — the housekeeping must never crash server startup.
+
+    Env override (read from caller, not here):
+      JAMES_TRACE_RETENTION_DAYS — caller passes this in as keep_days.
+    """
+    import shutil
+    keep_days = max(1, min(int(keep_days or 7), 365))
+    cutoff = datetime.now().date() - timedelta(days=keep_days)
+    cutoff_str = cutoff.strftime("%Y-%m-%d")
+
+    root = _trace_root()
+    result = {"removed_days": [], "kept_days": [], "errors": []}
+    if not root.exists():
+        return result
+
+    for day_dir in root.iterdir():
+        if not day_dir.is_dir():
+            continue
+        # Only process directories whose name parses as YYYY-MM-DD —
+        # otherwise we'd accidentally rmtree something user-created.
+        try:
+            datetime.strptime(day_dir.name, "%Y-%m-%d")
+        except Exception:
+            result["errors"].append(f"non-date dir skipped: {day_dir.name}")
+            continue
+        if day_dir.name < cutoff_str:
+            try:
+                shutil.rmtree(day_dir)
+                result["removed_days"].append(day_dir.name)
+            except Exception as e:
+                result["errors"].append(f"{day_dir.name}: {e}")
+        else:
+            result["kept_days"].append(day_dir.name)
+    return result
