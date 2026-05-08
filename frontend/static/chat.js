@@ -242,6 +242,69 @@ function updateInstallButton() {
   btn.title = `${target} 모델이 Ollama에 없습니다. 클릭하여 설치 시작 (admin 전용).`;
 }
 
+/* [#A8-8 2026-05-09] 모델 설치 — 진행률 표시 + non-blocking 페이지 이동.
+   서버는 ollama HTTP /api/pull 스트림을 백그라운드 thread로 파싱해서
+   _install_progress 딕트에 percent/status를 기록.
+   클라는 2.5s 간격으로 GET /admin/llm/install-progress?model=... 폴링.
+   설치 버튼이 "📦 X 설치" → "⏳ 23.5% (X)" → "✅ 설치됨" 으로 라이브 갱신.
+   사용자가 다른 페이지로 이동해도 서버 백그라운드 thread는 계속 돌아감. */
+let _installPollTimer = null;
+
+function _stopInstallPoll() {
+  if (_installPollTimer) { clearInterval(_installPollTimer); _installPollTimer = null; }
+}
+
+async function _pollInstallProgress(model, btn) {
+  try {
+    const r = await fetch(
+      `${API}/admin/llm/install-progress?api_key=${encodeURIComponent(getApiKey())}&model=${encodeURIComponent(model)}`,
+      { headers: getAuthHeaders() },
+    );
+    if (!r.ok) {
+      // 401이면 admin 권한 잃음 — poll 중단.
+      if (r.status === 401) _stopInstallPoll();
+      return;
+    }
+    const p = await r.json();
+    if (!btn || !btn.isConnected) {
+      // 버튼이 사라졌으면 (모드 picker 재로드 등) — 최소 한 번 더 알림.
+      _stopInstallPoll();
+      return;
+    }
+    if (p.error) {
+      btn.textContent = `❌ ${model} 실패`;
+      btn.title = p.error;
+      _stopInstallPoll();
+      btn.disabled = false;
+      toast(`설치 실패: ${p.error}`, 'error');
+      return;
+    }
+    if (p.done) {
+      btn.textContent = `✅ ${model} 설치 완료`;
+      btn.style.background = 'rgba(76,175,125,.18)';
+      _stopInstallPoll();
+      btn.disabled = true;   // 완료된 모델은 다시 설치 불필요
+      toast(`✅ ${model} 설치 완료`, 'success');
+      // 모드 picker 갱신 → installed=true로 라벨 새로고침
+      setTimeout(loadModePickerOptions, 600);
+      return;
+    }
+    // 진행 중 — percent 또는 status 표시.
+    const pctStr = p.percent != null ? `${p.percent}%` : '';
+    const statusStr = p.status || '진행 중';
+    if (p.percent != null) {
+      btn.textContent = `⏳ ${pctStr} (${model})`;
+    } else {
+      btn.textContent = `⏳ ${statusStr}...`;
+    }
+    btn.title = `${model} 설치 — ${statusStr}${p.completed != null && p.total != null ?
+      ` (${(p.completed/1e9).toFixed(2)}/${(p.total/1e9).toFixed(2)} GB)` : ''}`;
+  } catch (e) {
+    // 네트워크 일시 단절 — 다음 tick에 다시 시도. 폴링 멈추진 않음.
+    console.warn('[install-poll]', e);
+  }
+}
+
 async function triggerModelInstall() {
   const btn = document.getElementById('mode-install-btn');
   const model = btn?.dataset?.model;
@@ -250,8 +313,7 @@ async function triggerModelInstall() {
     toast(`설치는 admin 권한 필요. 관리자에게 \`ollama pull ${model}\` 요청.`, 'error');
     return;
   }
-  if (!confirm(`Ollama에 ${model} 모델을 설치합니다.\n수 GB 다운로드 — 백그라운드로 진행됩니다.\n계속할까요?`)) return;
-  const orig = btn.textContent;
+  if (!confirm(`Ollama에 ${model} 모델을 설치합니다.\n수 GB 다운로드 — 백그라운드로 진행됩니다.\n진행 중에도 다른 페이지 이동 가능합니다.\n계속할까요?`)) return;
   btn.textContent = '⏳ 설치 시작...';
   btn.disabled = true;
   try {
@@ -263,15 +325,14 @@ async function triggerModelInstall() {
       const err = await r.json().catch(() => ({}));
       throw new Error(err.detail || `HTTP ${r.status}`);
     }
-    const data = await r.json();
-    toast(data.message || '설치 시작됨', 'success');
-    // 30초 후 모드 picker 갱신 (다운로드 진행 중일 가능성 높음)
-    setTimeout(loadModePickerOptions, 30000);
+    // 설치 시작 OK — 진행률 폴링 시작.
+    _stopInstallPoll();   // 이전 폴링 잔재 제거
+    _pollInstallProgress(model, btn);   // 즉시 1회
+    _installPollTimer = setInterval(() => _pollInstallProgress(model, btn), 2500);
   } catch (e) {
     toast(`설치 실패: ${e.message}`, 'error');
-  } finally {
-    btn.textContent = orig;
     btn.disabled = false;
+    btn.textContent = `📦 ${model} 설치`;
   }
 }
 

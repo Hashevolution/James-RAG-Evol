@@ -941,50 +941,142 @@ async def llm_modes(api_key: str, role: str = Depends(get_role_from_request)):
     return {"modes": filtered, "role": role}
 
 
-@app.post("/llm/install/", summary="Ollama 모델 설치 (admin) [item #6]")
+# [#A8-8] In-memory install progress tracker. Keyed by model tag.
+# Populated by the background thread that streams Ollama's pull API.
+# Frontend polls /admin/llm/install-progress?model=... every 2s.
+# Survives single server lifetime — restart wipes (operator can re-pull
+# if needed; partial Ollama downloads resume on retry).
+_install_progress: dict = {}   # model -> {status, percent, completed, total, error}
+_install_lock     = None       # set lazily — threading import deferred
+
+
+def _start_install_with_progress(model: str) -> None:
+    """Background thread: stream Ollama's POST /api/pull and write
+    progress to _install_progress[model]. Ollama returns NDJSON like:
+        {"status": "pulling manifest"}
+        {"status": "downloading", "digest": "...", "total": N, "completed": N}
+        {"status": "verifying sha256"}
+        {"status": "success"}
+    We compute percent = completed / total when both fields present.
+    """
+    import threading, urllib.request, json as _json
+    global _install_lock
+    if _install_lock is None:
+        _install_lock = threading.Lock()
+
+    def _runner():
+        try:
+            req = urllib.request.Request(
+                "http://localhost:11434/api/pull",
+                data=_json.dumps({"name": model, "stream": True}).encode(),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=3600) as r:
+                for raw in r:   # NDJSON line stream
+                    line = raw.decode("utf-8", errors="ignore").strip()
+                    if not line:
+                        continue
+                    try:
+                        evt = _json.loads(line)
+                    except Exception:
+                        continue
+                    status    = evt.get("status", "")
+                    completed = evt.get("completed")
+                    total     = evt.get("total")
+                    percent   = None
+                    if isinstance(completed, (int, float)) and isinstance(total, (int, float)) and total > 0:
+                        percent = round((completed / total) * 100, 1)
+                    with _install_lock:
+                        _install_progress[model] = {
+                            "status":    status,
+                            "completed": completed,
+                            "total":     total,
+                            "percent":   percent,
+                            "error":     "",
+                            "done":      status == "success",
+                        }
+                    if status == "success":
+                        break
+        except Exception as e:
+            with _install_lock:
+                _install_progress[model] = {
+                    "status":    "error",
+                    "completed": None,
+                    "total":     None,
+                    "percent":   None,
+                    "error":     f"{type(e).__name__}: {e}",
+                    "done":      True,
+                }
+
+    t = threading.Thread(target=_runner, daemon=True, name=f"ollama-pull-{model}")
+    t.start()
+
+
+@app.post("/llm/install/", summary="Ollama 모델 설치 (admin) [item #6 + #A8-8]")
 async def llm_install(api_key: str, model: str,
                       role: str = Depends(get_role_from_request)):
-    """Trigger `ollama pull <model>` in a subprocess.
+    """Trigger `ollama pull <model>` via Ollama's HTTP streaming API
+    in a background thread. Returns immediately so the admin page can
+    show a progress bar while the multi-GB download runs.
 
-    Admin-gated — model installation is heavy (multi-GB download)
-    and exposing it to non-admin would let any chat user fill the
-    operator's disk.
+    Admin-gated. Model name validated against catalog allowlist.
 
-    Validates model name against an allowlist (config defaults +
-    a few well-known alternatives). Arbitrary input rejected with
-    400 — operator must use the admin LLM page for non-listed models.
+    [#A8-8 2026-05-09] Replaced subprocess.Popen with HTTP streaming —
+    the CLI fire-and-forget had no progress visibility. Now the
+    background thread parses Ollama's NDJSON pull stream and writes
+    {percent, completed, total, status} to _install_progress[model],
+    which the admin UI polls.
     """
     _require_admin(api_key, role)
-    # [#A2] Allowlist auto-derived from MODEL_CATALOG so adding a
-    # candidate above does NOT require remembering to update this gate.
-    # llava is kept as a manual extra (vision support — not in catalog
-    # but operators sometimes pull it for multimodal experiments).
     ALLOWED_MODELS = _allowed_install_models() | {"llava:13b"}
     if model not in ALLOWED_MODELS:
         raise HTTPException(
             status_code=400,
-            detail=f"model not in allowlist. Use admin /admin/llm/install for arbitrary models.",
+            detail="model not in allowlist. Use admin /admin/llm/install for arbitrary models.",
         )
-
-    import subprocess
+    # Reset any prior progress entry so the polling client gets fresh state.
+    _install_progress[model] = {
+        "status":    "starting",
+        "completed": None,
+        "total":     None,
+        "percent":   0.0,
+        "error":     "",
+        "done":      False,
+    }
     try:
-        # Don't block — fire-and-forget. Operator polls /llm/modes/
-        # afterwards to see installed flip to True.
-        subprocess.Popen(
-            ["ollama", "pull", model],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        return {"ok": True, "model": model,
-                "message": f"`ollama pull {model}` 시작됨 (백그라운드 진행). 잠시 후 모드 picker가 자동 갱신됩니다."}
+        _start_install_with_progress(model)
     except FileNotFoundError:
         raise HTTPException(
             status_code=503,
-            detail="ollama CLI가 PATH에 없습니다. 시스템에 ollama 설치 후 재시도.",
+            detail="ollama API에 접근할 수 없습니다 (localhost:11434). ollama 서비스가 실행 중인지 확인.",
         )
     except Exception as e:
         raise HTTPException(status_code=500,
                             detail=f"install 시작 실패: {type(e).__name__}: {e}")
+    return {"ok": True, "model": model,
+            "message": f"{model} 설치 시작됨. 진행 상황은 admin 페이지 또는 "
+                       f"GET /admin/llm/install-progress?model={model} 로 확인."}
+
+
+@app.get("/admin/llm/install-progress", summary="모델 설치 진행률 [item #A8-8]")
+async def llm_install_progress(api_key: str, model: str,
+                                role: str = Depends(get_role_from_request)):
+    """Frontend polls this every 2-3s while the install button is in
+    progress mode. Returns the latest snapshot of the background
+    thread's progress dict, or {status: 'idle'} if no install is/was
+    running for this model.
+
+    Response shape:
+      {status, percent, completed, total, done, error, model}
+    """
+    _require_admin(api_key, role)
+    snap = _install_progress.get(model)
+    if not snap:
+        return {"model": model, "status": "idle",
+                "percent": None, "completed": None, "total": None,
+                "done": False, "error": ""}
+    return {"model": model, **snap}
 
 
 @app.get("/admin/llm/installed", summary="설치된 Ollama 모델 목록 [4-B]")
