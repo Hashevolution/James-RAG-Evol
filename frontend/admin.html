@@ -2,7 +2,8 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0c0d10">
 <title>JAMES Admin</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -239,6 +240,9 @@
   .loading { color: var(--muted); font-size: 13px; padding: 20px; }
   .empty   { color: var(--muted); font-size: 13px; padding: 32px; text-align: center; }
 </style>
+<!-- mobile-responsive overrides — kept after inline styles so @media
+     rules win at narrow viewports without !important on every line -->
+<link rel="stylesheet" href="/static/mobile.css">
 </head>
 <body>
 <header>

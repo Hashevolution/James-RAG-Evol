@@ -1,0 +1,298 @@
+/* PROJECT JAMES — mobile responsive overrides
+ *
+ * Strategy: desktop-first inline styles in index.html / admin.html
+ * stay untouched; this stylesheet adds @media-gated overrides for
+ * narrow viewports (≤ 768px tablet, ≤ 480px phone).
+ *
+ * Loaded as the LAST stylesheet via <link> at the bottom of <head>
+ * so its rules win over the inline base styles. No !important
+ * needed — same specificity, later position.
+ *
+ * Three principles:
+ *   1) Touch targets ≥ 44×44px (Apple HIG / Material guidelines).
+ *   2) No fixed widths < 100vw — anything horizontal must reflow
+ *      or scroll, never clip.
+ *   3) Bottom-anchored input area + safe-area-inset-bottom for
+ *      iOS notch / home-bar.
+ */
+
+/* ─────────────────────────────────────────────────────────
+ * Tablet + phone (≤ 768px)
+ * ────────────────────────────────────────────────────────*/
+@media (max-width: 768px) {
+  body { font-size: 15px; }
+
+  /* ── 헤더 — 모바일은 여러 요소가 한 줄에 못 들어감 ── */
+  header {
+    padding: 8px 12px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .header-right {
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .logo { font-size: 13px; }
+  .logo::before { width: 18px; height: 18px; }
+
+  /* PROD/TEST 토글 — 작게 */
+  .source-toggle { font-size: 10px; }
+  .source-toggle button { padding: 5px 8px; min-height: 30px; }
+
+  /* KO|EN, ADMIN, 로그인, etc. */
+  .nav-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+    min-height: 36px;          /* touch target */
+  }
+
+  .role-badge {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+
+  /* ─────────────── chat 페이지 ─────────────── */
+
+  /* 사이드바 — 모바일에선 화면 가득, 닫혔을 때 0 */
+  .sidebar {
+    position: fixed;
+    z-index: 50;
+    inset: 0 auto 0 0;          /* top:0 right:auto bottom:0 left:0 */
+    width: 88vw;
+    max-width: 360px;
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.4);
+  }
+  .sidebar.collapsed { width: 0; box-shadow: none; }
+  .sidebar-open-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+  }
+
+  /* 메시지 영역 — 패딩 줄이고 chat 가장자리까지 사용 */
+  .messages {
+    padding: 16px 12px 12px;
+    gap: 14px;
+  }
+  .msg { max-width: 100%; }
+  .bubble {
+    padding: 10px 14px;
+    font-size: 14.5px;
+    border-radius: 12px;
+    line-height: 1.55;
+  }
+  .avatar { width: 28px; height: 28px; font-size: 12px; }
+
+  /* 웰컴 — 좁은 화면에 맞게 */
+  .welcome { padding: 24px 16px; }
+  .welcome-title { font-size: 22px; }
+  .welcome-sub { font-size: 13px; }
+  .welcome-chips { gap: 6px; margin-top: 20px; }
+  .chip { padding: 8px 12px; font-size: 12px; }
+
+  /* 입력 영역 — 모바일은 항상 바닥 + iOS safe-area */
+  .input-area, #input-area, footer.input-area {
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0));
+    gap: 6px;
+  }
+  textarea, input[type="text"], #chat-input {
+    font-size: 16px;             /* iOS 자동 줌 방지 (≥ 16px) */
+    padding: 10px 12px;
+    min-height: 44px;
+    border-radius: 10px;
+  }
+  button, .btn {
+    min-height: 36px;
+    min-width: 36px;
+  }
+
+  /* 답변 옆 buttons (👍 👎 📥) — 가로 스크롤 가능하게 */
+  .feedback-btns {
+    flex-wrap: wrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .fb-btn {
+    flex-shrink: 0;
+    padding: 6px 12px !important;
+    min-height: 32px;
+    font-size: 13px !important;
+  }
+
+  /* 그래프 패스 / 메타 정보 — 폰트 살짝 작게 */
+  .graph-paths { font-size: 11px; padding: 8px 10px; }
+  .meta { font-size: 11px; gap: 6px; }
+
+  /* ─────────────── admin 페이지 ─────────────── */
+
+  /* admin layout — 사이드 nav가 가로로 좁아질 수 있도록 */
+  .admin-layout, .admin-sidebar, .admin-nav {
+    width: 100%;
+  }
+  /* 어드민 nav를 상단 드로워 형태로 (모바일) */
+  .admin-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 8px 0;
+  }
+  .admin-nav, .nav-list, ul.nav {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 4px;
+    padding: 4px 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .nav-item {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    min-height: 40px;
+    font-size: 13px;
+    border-radius: 8px;
+    white-space: nowrap;
+  }
+
+  /* 페이지 본문 — 패딩 줄이고 카드들 세로 stack */
+  .page, .admin-page, main.admin-content {
+    padding: 12px;
+  }
+  .page-title { font-size: 16px; margin-bottom: 12px; }
+  .section-title { font-size: 13px; margin: 12px 0 8px; }
+
+  /* 카드 그리드 → 단일 컬럼 */
+  .cards {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .card { padding: 10px !important; }
+  .card-label { font-size: 10px; }
+  .card-value { font-size: 18px !important; }
+  .card-sub { font-size: 10px; }
+
+  /* 테이블 — 가로 스크롤 가능하게 */
+  .table-wrap, .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+  }
+  .table-wrap table, .admin-page table {
+    min-width: 480px;            /* 너무 좁으면 스크롤 트리거 */
+    font-size: 12px;
+  }
+  .table-wrap th, .table-wrap td,
+  .admin-page th, .admin-page td {
+    padding: 8px 6px;
+  }
+
+  /* hardware 카드, 설정 카드 등 min-width 280/260/220px → 100% */
+  [style*="min-width:280px"],
+  [style*="min-width:260px"],
+  [style*="min-width:220px"],
+  [style*="min-width:200px"] {
+    min-width: 0 !important;
+    width: 100%;
+  }
+
+  /* entities/sessions 검색 입력 + 필터 — 한 줄 → 두 줄 */
+  #entities-search, #entities-etype-filter {
+    width: 100%;
+    min-width: 0 !important;
+  }
+  #entities-counter { width: 100%; text-align: right; }
+
+  /* 페이징 버튼 — 터치 타겟 키움 */
+  #entities-prev, #entities-next {
+    min-height: 40px;
+    padding: 8px 16px !important;
+  }
+
+  /* 상세 modal / 세션 turns modal — 풀화면 */
+  #entity-detail-modal, #session-turns-modal,
+  #login-modal, #admin-login-modal {
+    padding: 12px !important;
+  }
+  #entity-detail-modal > div, #session-turns-modal > div,
+  #login-modal > div, #admin-login-modal > div {
+    max-width: 100% !important;
+    max-height: 92vh !important;
+    padding: 14px !important;
+    border-radius: 10px;
+  }
+  #entity-detail-body, #session-turns-body {
+    font-size: 12px;
+    max-height: 65vh !important;
+  }
+
+  /* dashboard 차트 — 너비 100% */
+  #dash-chart > div[style*="display:flex"],
+  #dash-chart > div[style*="display: flex"] {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+ * Phone (≤ 480px) — 더 좁은 폰
+ * ────────────────────────────────────────────────────────*/
+@media (max-width: 480px) {
+  /* 헤더 한 줄에 다 못 넣으면 숨김 우선순위:
+   * 우선 PROD/TEST 토글은 ⋮ 메뉴로 보내야 깔끔하지만 v0.2 범위 외 — 일단 작게만. */
+  .source-toggle button { padding: 4px 6px; font-size: 9px; }
+
+  /* 카드 단일 컬럼 */
+  .cards { grid-template-columns: 1fr !important; }
+
+  /* 웰컴 — 폰 화면 작아서 아주 컴팩트하게 */
+  .welcome-title { font-size: 18px; }
+  .welcome-sub { font-size: 12px; }
+
+  .bubble { font-size: 14px; padding: 9px 12px; }
+
+  /* 어드민 nav-item 더 작게 */
+  .nav-item { padding: 6px 10px; font-size: 12px; min-height: 36px; }
+
+  /* 어드민 페이지 본문 */
+  .page-title { font-size: 15px; }
+  .section-title { font-size: 12px; }
+}
+
+/* ─────────────────────────────────────────────────────────
+ * 가로 모드 (landscape) 폰 — 헤더가 너무 두꺼워지면 안됨
+ * ────────────────────────────────────────────────────────*/
+@media (max-width: 920px) and (max-height: 480px) {
+  header { padding: 4px 10px; }
+  .messages { padding: 8px 12px; }
+  .welcome { padding: 12px; }
+  .welcome-title { font-size: 18px; margin-bottom: 4px; }
+}
+
+/* ─────────────────────────────────────────────────────────
+ * 다크 모드 명시 + 시스템 모드 존중
+ * (자메스 기본은 dark — 여기선 모바일 전용 미세 조정만)
+ * ────────────────────────────────────────────────────────*/
+@media (max-width: 768px) and (prefers-color-scheme: dark) {
+  /* 폰 OLED 화면에서 가독성 */
+  .bubble { line-height: 1.6; }
+}
+
+/* ─────────────────────────────────────────────────────────
+ * 접근성 — 모바일 사용자 다수가 큰 글자 선호
+ * 시스템 폰트 크기 설정 존중 (rem이 아닌 곳도 대응)
+ * ────────────────────────────────────────────────────────*/
+@media (max-width: 768px) {
+  /* 줄바꿈 안 되어 잘리는 텍스트 방지 */
+  td, th, .card-value, .badge-status {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  /* 코드 블록 — 가로 스크롤 */
+  pre, code {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+}
