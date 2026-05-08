@@ -456,27 +456,62 @@ def handle_coding(
     user_role: str,
     t_start: float,
 ) -> Dict[str, Any]:
+    """Coding mode handler.
+
+    Routes to qwen2.5-coder via `llm.router.route(task_type="coding")`.
+    On any failure (model not installed / Ollama not responding /
+    timeout), falls back to the default GEMMA_MODEL via call_gemma so
+    the user still gets an answer. All errors are logged via
+    log_stage so the operator can see what happened in /trace/poll/.
+
+    Operator override: set JAMES_CODING_MODEL env to a lighter model
+    (e.g. gemma4:e4b) if the 32B qwen-coder cold-start is hitting
+    your tunnel / proxy timeout.
+    """
+    from core.observability import log_stage
     t_code = time.time()
     answer = ""
+
+    # Stage logged so /trace/poll/ shows what's happening in real time.
+    log_stage("coding_route", model="qwen-coder", query_len=len(safe_query))
+
     try:
         from llm.router import route as llm_route
         llm = llm_route(safe_query, task_type="coding")
-        # [P7] System Prompt를 coding 지시에도 포함
-        coding_prompt = (
-            f"{system_prompt}\n\n" if system_prompt else ""
-        ) + safe_query
+        log_stage("coding_llm_pick", llm_name=getattr(llm, "name", "?"),
+                  available=getattr(llm, "is_available", lambda: True)())
+
+        sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
+        coding_prompt = sys_prefix + safe_query
         messages = [{"role": "user", "content": coding_prompt}]
-        answer   = llm.generate(messages, timeout=120)
+        answer = llm.generate(messages, timeout=120)
+        log_stage("coding_done",
+                  latency_ms=int((time.time() - t_code) * 1000),
+                  answer_len=len(answer or ""))
     except Exception as e:
         engine._log("coding_llm", e, user_role)
+        log_stage("coding_llm_error", error=f"{type(e).__name__}: {e}")
+        # Fallback: default GEMMA_MODEL via the engine's RouterWrapper
         try:
             sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
             answer = engine.llm.call_gemma(
                 f"{sys_prefix}코딩 질문: {safe_query}\n\n답변:",
                 use_cache=True, timeout=90,
             )
-        except Exception:
-            answer = "코딩 답변 생성 중 오류가 발생했습니다."
+            log_stage("coding_fallback_done",
+                      latency_ms=int((time.time() - t_code) * 1000),
+                      answer_len=len(answer or ""))
+        except Exception as e2:
+            log_stage("coding_fallback_error",
+                      error=f"{type(e2).__name__}: {e2}")
+            # Surface the actual error class to the user — silent generic
+            # message hides the diagnostic. Real cause is now visible
+            # both in the answer and the trace.
+            answer = (
+                f"코딩 답변 생성 실패. 원인: {type(e).__name__} "
+                f"(LLM router → coder), 그 후 fallback도 실패: "
+                f"{type(e2).__name__}. 서버 콘솔에서 자세한 trace 확인."
+            )
 
     # [P7] Patch Pipeline 자동 실행
     try:

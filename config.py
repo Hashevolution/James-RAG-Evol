@@ -138,6 +138,11 @@ POPPLER_PATH = _detect_poppler()
 # If you need to start it from JAMES, set OLLAMA_PATH env var.
 OLLAMA_PATH    = os.environ.get("OLLAMA_PATH", "")  # blank = use system 'ollama' on PATH
 GEMMA_MODEL    = os.environ.get("JAMES_LLM_MODEL", "gemma4:e4b")
+# Coding-specialised model. Used by handle_coding via llm.router →
+# QwenCoderClient. Operators can swap to a smaller/faster model
+# (e.g. gemma4:e4b) if the 32B coder is too heavy for their tunnel
+# / reverse proxy timeout.
+CODING_MODEL   = os.environ.get("JAMES_CODING_MODEL", "qwen2.5-coder:32b")
 OLLAMA_API_URL = os.environ.get("OLLAMA_API_URL", "http://127.0.0.1:11434/api/generate")
 
 # ────────────────────────────────────────────────────────────────
