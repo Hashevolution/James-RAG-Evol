@@ -59,6 +59,18 @@ class PipelineReturnShapeTests(unittest.TestCase):
         self.assertLess(idx_init, idx_if,
             "web_results must be initialised before the low_relevance branch")
 
+    def test_web_results_declared_outside_try(self):
+        # [hotfix] web_results: list = [] must be declared BEFORE the
+        # outer `try:` so it stays bound even if the try fast-fails
+        # (e.g. import error inside). The user reported a 500 with
+        # UnboundLocalError because the init was inside the try.
+        try_idx  = self.src.index("\n    try:\n        sys_prefix = ")
+        init_idx = self.src.index("web_results: list = []")
+        self.assertLess(init_idx, try_idx,
+            "web_results init must come BEFORE the try: block — otherwise "
+            "any exception before the init line leaves the variable unbound, "
+            "and the return-side `bool(web_results)` raises UnboundLocalError")
+
     def test_web_sources_format_url_title(self):
         # Each entry: {"title": ..., "url": ..., "engine": ...}
         return_idx = self.src.rindex("return {")

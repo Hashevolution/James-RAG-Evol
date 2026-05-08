@@ -264,6 +264,16 @@ def run_retrieval_pipeline(
 
     # ── LLM 답변 생성 ────────────────────────────────────
     t_llm = time.time()
+
+    # [#A6-2 hotfix 2026-05-08] web_results는 outer scope에서 try 진입 *이전*에
+    # 선언해야 한다. 이전 위치는 try 블록 *내부*였는데, try가 fast-fail하면
+    # (예: core.web_search_config import 실패) 파이썬 정적 분석은 web_results를
+    # local로 인식하지만 runtime에는 binding 없이 함수 끝의
+    # `bool(web_results)` 라인에서 UnboundLocalError 발생.
+    # User-reported crash: pipeline.py:498 UnboundLocalError. 사용자 환경에서
+    # 첫 query에 500 응답 → 이 줄을 try 밖으로 빼서 항상 binding 보장.
+    web_results: list = []
+
     try:
         sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
 
@@ -275,10 +285,6 @@ def run_retrieval_pipeline(
             or len(safe_context.strip()) < 50
             or unified_score < get_threshold()
         )
-
-        # [#A6-2] web_results를 outer scope에 선언 — 답변 후 return dict에
-        # 노출하기 위해. low_relevance 진입 안 하면 빈 리스트 → web_used=False.
-        web_results: list = []
 
         if low_relevance:
             # ── [3-E 경로 A] 내부 자료 없음 → 웹 검색 시도 ──
