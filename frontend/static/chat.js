@@ -766,22 +766,24 @@ function appendJamesMsg(data) {
   // item #4: export 버튼은 사용자가 직전 질문에 "보고서로 / 파일로
   // 만들어줘" 같은 키워드를 넣었을 때만 표시. 평상시 chat 답변엔
   // 시각적 잡음 없음. 답변 단위로 결정 — 다음 답변엔 다시 hidden.
+  // [#A4-B] 답변에 ```code``` 블록이 있으면 .py 버튼도 추가 — 사용자가
+  // "파이썬 파일로" 명시 안 해도 코드 블록 답변엔 항상 .py export 가능.
   const showExportBtns = !!pendingReportRequest;
   pendingReportRequest = false;   // consume the flag
+  const hasCodeBlock = /```[\s\S]*?```/.test(answer);
   const answerEscapedAttr = encodeURIComponent(answer);
+  const _expBtnStyle = "background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;transition:all .15s";
+  const pyExportBtn = hasCodeBlock ? `
+      <button class="fb-btn export-btn" onclick="exportAnswer(this, 'py')" data-content="${answerEscapedAttr}"
+        style="${_expBtnStyle}" title=".py 다운로드 (코드 블록만 추출)">📥 .py</button>` : '';
   const exportButtons = showExportBtns ? `
       <button class="fb-btn export-btn" onclick="exportAnswer(this, 'md')" data-content="${answerEscapedAttr}"
-        style="background:none;border:1px solid var(--border);border-radius:6px;
-               padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
-               transition:all .15s" title=".md 다운로드">📥 .md</button>
+        style="${_expBtnStyle}" title=".md 다운로드">📥 .md</button>
       <button class="fb-btn export-btn" onclick="exportAnswer(this, 'docx')" data-content="${answerEscapedAttr}"
-        style="background:none;border:1px solid var(--border);border-radius:6px;
-               padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
-               transition:all .15s" title=".docx 다운로드 (Word)">📥 .docx</button>
+        style="${_expBtnStyle}" title=".docx 다운로드 (Word)">📥 .docx</button>
       <button class="fb-btn export-btn" onclick="exportAnswer(this, 'txt')" data-content="${answerEscapedAttr}"
-        style="background:none;border:1px solid var(--border);border-radius:6px;
-               padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
-               transition:all .15s" title=".txt 다운로드 (Notepad)">📥 .txt</button>` : '';
+        style="${_expBtnStyle}" title=".txt 다운로드 (Notepad)">📥 .txt</button>${pyExportBtn}`
+    : pyExportBtn;
   const fbHtml = dirId ? `
     <div class="feedback-btns" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
       <button class="fb-btn" onclick="sendFeedback('${dirId}', 'explicit_positive', this)"

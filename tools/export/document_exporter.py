@@ -37,7 +37,7 @@ from datetime import datetime
 from typing import Tuple
 
 
-SUPPORTED_FORMATS = ("md", "txt", "docx")
+SUPPORTED_FORMATS = ("md", "txt", "docx", "py")
 PDF_DEFERRED_NOTE = (
     "PDF export is deferred to v0.3 — heavy native deps. "
     "Returning markdown instead."
@@ -111,6 +111,54 @@ def _export_txt(content: str) -> bytes:
     return text.encode("utf-8")
 
 
+def _export_py(content: str) -> bytes:
+    """Render a chat answer to a .py file.
+
+    User scenario: in coding mode the LLM produces an answer with one
+    or more ```python ... ``` fences. They want to save just the code
+    (not the prose around it) as runnable .py.
+
+    Strategy:
+      - Pull out ```python / ```py / unspecified-language fenced blocks.
+      - Concatenate in order, with a single blank line between blocks.
+      - Prepend a header comment recording the export timestamp +
+        the source so the file is self-describing.
+      - If the answer has no fenced blocks at all, write the entire
+        prose as `#`-prefixed comments — preserves the answer text
+        as a documentation-only `.py`. The file still imports cleanly
+        (just does nothing) so it's a safe fallback.
+
+    No syntax validation — running the code is the user's call. We
+    don't want to swallow code that contains pseudo-code or partial
+    snippets the user explicitly asked for.
+    """
+    code_re = re.compile(r"```(?:python|py)?\s*\n([\s\S]*?)```", re.IGNORECASE)
+    blocks = [m.group(1).strip() for m in code_re.finditer(content)]
+    blocks = [b for b in blocks if b]
+    header = (
+        f"# Exported from JAMES at {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+        f"# Source: chat answer\n\n"
+    )
+    if blocks:
+        body = "\n\n".join(blocks) + "\n"
+    else:
+        # No fenced code → escape prose as comments. Lines longer than
+        # 200 chars get split so flake8/pylint don't flag the resulting
+        # file with line-too-long on every line.
+        lines = []
+        for raw_line in content.splitlines():
+            line = raw_line.rstrip()
+            if not line:
+                lines.append("#")
+                continue
+            while len(line) > 197:
+                lines.append("# " + line[:197])
+                line = line[197:]
+            lines.append("# " + line)
+        body = "\n".join(lines) + "\n"
+    return (header + body).encode("utf-8")
+
+
 def _export_docx(content: str) -> Tuple[bytes, str]:
     """Render content to a .docx via python-docx. On ImportError
     return (md_bytes, fallback_reason) instead of raising — keeps
@@ -159,9 +207,10 @@ _MIME_BY_FORMAT = {
     "md":   "text/markdown; charset=utf-8",
     "txt":  "text/plain; charset=utf-8",
     "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "py":   "text/x-python; charset=utf-8",
 }
 
-_EXT_BY_FORMAT = {"md": ".md", "txt": ".txt", "docx": ".docx"}
+_EXT_BY_FORMAT = {"md": ".md", "txt": ".txt", "docx": ".docx", "py": ".py"}
 
 
 def export_document(
@@ -215,6 +264,8 @@ def export_document(
             # python-docx missing → degrade to md, keep both reasons.
             actual = "md"
             fallback_reason = docx_fallback
+    elif actual == "py":
+        data = _export_py(content)
     else:
         # Defensive — should never reach here given the prelude.
         data = _export_md(content)
