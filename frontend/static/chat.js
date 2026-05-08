@@ -100,9 +100,14 @@ window.addEventListener('DOMContentLoaded', () => {
    사용자가 명시적으로 모드를 고르면 selectedMode = 그 값, /query/에
    mode_override로 전달. "auto"면 mode_override 빈 문자열 → 서버는
    intent_classifier로 자동 분류. */
-let MODE_OPTIONS = [];          // [{key, label, desc, keywords}]
-let selectedMode = 'auto';      // current dropdown value
+let MODE_OPTIONS = [];          // [{key, label, desc, keywords, models}]
+let selectedMode = 'auto';      // current mode-picker value
+let selectedModel = '';         // [#A2] current model-picker value (secondary dropdown)
 let recommendedMode = '';       // last-recommended (auto-suggest)
+
+/* [#A2] localStorage 키 — 모드별 선택한 모델 기억. 다른 세션/탭에서도
+   동일 선택을 유지. */
+function _modelKey(mode) { return `james_model_${mode}`; }
 
 async function loadModePickerOptions() {
   try {
@@ -124,34 +129,102 @@ async function loadModePickerOptions() {
                       data-installed="${m.installed ? '1' : '0'}">${escHtml(m.label)}${escHtml(modelTag)}${status}</option>`;
     }).join('');
     sel.value = selectedMode;
+    refreshModelPicker();
     updateInstallButton();
   } catch (e) {
     console.warn('[JAMES] /llm/modes/ fetch 실패:', e);
   }
 }
 
+/* ── [#A2] 두 번째 dropdown — 모드별 모델 후보 ──
+   모드가 바뀌면 그 모드의 models[] 후보로 다시 채운다. 후보가 0-1개
+   이거나 mode가 auto/meta면 picker 숨김.
+   weight 표기:
+     light  → 🪶 (가벼움 / 빠름)
+     medium → ⚖️
+     heavy  → 🐘 (무거움 / 정확)
+   미설치 모델은 ⚠️ 마커 + 설치 버튼이 그 모델 install 동작. */
+function refreshModelPicker() {
+  const wrap = document.getElementById('model-picker-wrap');
+  const sel  = document.getElementById('model-picker');
+  if (!wrap || !sel) return;
+  const opt = MODE_OPTIONS.find(m => m.key === selectedMode);
+  const models = opt && Array.isArray(opt.models) ? opt.models : [];
+  if (models.length < 2) {
+    // 후보 1개 이하 — 두 번째 dropdown은 가치 X. 숨김.
+    wrap.style.display = 'none';
+    selectedModel = (models[0] && models[0].tag) || (opt && opt.model) || '';
+    return;
+  }
+  wrap.style.display = 'inline-flex';
+  // localStorage에서 직전 선택 복구; 없으면 default 모델.
+  const saved = localStorage.getItem(_modelKey(selectedMode)) || '';
+  const savedValid = models.some(m => m.tag === saved);
+  selectedModel = savedValid
+                ? saved
+                : (models.find(m => m.default) || models[0]).tag;
+  const weightIcon = w => w === 'light' ? '🪶'
+                       : w === 'heavy' ? '🐘'
+                       : '⚖️';
+  sel.innerHTML = models.map(m => {
+    const status = m.installed ? '' : ' ⚠️';
+    return `<option value="${escHtml(m.tag)}"
+                    data-installed="${m.installed ? '1' : '0'}"
+                    data-weight="${escHtml(m.weight)}"
+                    title="${escHtml(m.weight)}${m.installed ? '' : ' (미설치)'}">${weightIcon(m.weight)} ${escHtml(m.tag)}${status}</option>`;
+  }).join('');
+  sel.value = selectedModel;
+}
+
+function onModelPickerChange() {
+  const sel = document.getElementById('model-picker');
+  if (!sel) return;
+  selectedModel = sel.value;
+  localStorage.setItem(_modelKey(selectedMode), selectedModel);
+  updateInstallButton();
+}
+
 function onModePickerChange() {
   const sel = document.getElementById('mode-picker');
   selectedMode = sel ? sel.value : 'auto';
   hideModeRecommend();
+  refreshModelPicker();
   updateInstallButton();
 }
 
-/* ── item #6: 선택된 모드의 모델이 미설치면 "설치" 버튼 노출 ──
+/* ── item #6 + #A2: 선택된 모드+모델이 미설치면 "설치" 버튼 노출 ──
    admin role만 실제 install 트리거 가능 (서버에서도 가드). 비-admin
-   에겐 "관리자에게 설치 요청" 안내. */
+   에겐 "관리자에게 설치 요청" 안내.
+
+   [#A2 변경] 후보 dropdown이 활성화된 모드는 *현재 선택한* 후보의
+   설치 상태를 보고 결정. dropdown 없는 모드는 기본 모델로 폴백. */
 function updateInstallButton() {
   const btn = document.getElementById('mode-install-btn');
   if (!btn) return;
   const opt = MODE_OPTIONS.find(m => m.key === selectedMode);
-  if (!opt || opt.installed || !opt.model) {
+  if (!opt) { btn.style.display = 'none'; return; }
+  // [#A2] 현재 선택한 모델로 install 결정
+  let target = '';
+  let installed = true;
+  const models = Array.isArray(opt.models) ? opt.models : [];
+  if (models.length >= 2) {
+    const cur = models.find(m => m.tag === selectedModel)
+              || models.find(m => m.default)
+              || models[0];
+    target    = cur.tag;
+    installed = !!cur.installed;
+  } else {
+    target    = opt.model || '';
+    installed = !!opt.installed;
+  }
+  if (!target || installed) {
     btn.style.display = 'none';
     return;
   }
   btn.style.display = 'inline-block';
-  btn.dataset.model = opt.model;
-  btn.textContent = `📦 ${opt.model} 설치`;
-  btn.title = `${opt.model} 모델이 Ollama에 없습니다. 클릭하여 설치 시작 (admin 전용).`;
+  btn.dataset.model = target;
+  btn.textContent = `📦 ${target} 설치`;
+  btn.title = `${target} 모델이 Ollama에 없습니다. 클릭하여 설치 시작 (admin 전용).`;
 }
 
 async function triggerModelInstall() {

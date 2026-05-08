@@ -759,9 +759,68 @@ async def status(api_key: str):
 
 # ── [4-B] Ollama + LLM 추천 API ──────────────────────────────────
 
-@app.get("/llm/modes/", summary="챗 페이지 모드 picker 옵션 [item #6]")
+# item #A2: 모드별 선택 가능한 모델 카탈로그.
+#   - chat/retrieval/wiki_edit/self_evolve: 일반 대화/추론 (gemma 계열)
+#     무게: light (e4b) → medium (12b) → heavy (27b)
+#   - coding: 코딩 특화 (qwen-coder 계열) + gemma fallback
+# 사용자가 mode 선택 시 두 번째 dropdown으로 후보 중 골라 사용.
+# 설치되지 않은 후보는 그대로 노출하되 [⚠️ 미설치] 마커 + 설치 버튼.
+# weight 분류는 어림짐작 (실제 파라미터 수가 아닌 *체감* 무게):
+#   light  ≤ 4B  — 빠른 일상 대화
+#   medium ≤ 13B — 균형, 분석 가능
+#   heavy  ≥ 20B — 상세 분석/추론, 응답 느림
+def _model_catalog():
+    """Mode → ordered list of (tag, weight) candidates.
+
+    Default-first ordering — picker selects index 0 unless localStorage
+    has a saved choice. Operator's `.env` (JAMES_LLM_MODEL,
+    JAMES_CODING_MODEL) is prepended if not already in the list, so a
+    custom config still appears as a candidate even if it isn't in the
+    canonical catalog.
+    """
+    from config import GEMMA_MODEL, CODING_MODEL
+    chat_default = GEMMA_MODEL
+    code_default = CODING_MODEL
+    chat_cands = [
+        (chat_default,    "light"),
+        ("gemma3:12b",    "medium"),
+        ("gemma3:27b",    "heavy"),
+    ]
+    # If operator has overridden GEMMA_MODEL to something not in our list,
+    # keep it as a candidate so the UI still shows their config.
+    if not any(c[0] == chat_default for c in chat_cands):
+        chat_cands.insert(0, (chat_default, "medium"))
+    code_cands = [
+        ("qwen2.5-coder:7b",  "light"),
+        (code_default,        "heavy"),
+        ("gemma4:e4b",        "light"),  # fallback for tiny boxes
+    ]
+    if not any(c[0] == code_default for c in code_cands):
+        code_cands.insert(0, (code_default, "heavy"))
+    return {
+        "chat":         chat_cands,
+        "retrieval":    chat_cands,
+        "wiki_edit":    chat_cands,
+        "self_evolve":  chat_cands,
+        "coding":       code_cands,
+        # auto/meta intentionally absent — auto inherits whatever the
+        # routed mode picks; meta does not call the LLM.
+    }
+
+# /llm/install/ allowlist auto-derived from catalog so adding a candidate
+# above does NOT also require remembering to update the install gate.
+def _allowed_install_models():
+    out = set()
+    for cands in _model_catalog().values():
+        for tag, _ in cands:
+            if tag:
+                out.add(tag)
+    return out
+
+
+@app.get("/llm/modes/", summary="챗 페이지 모드 picker 옵션 [item #6 + #A2]")
 async def llm_modes(api_key: str, role: str = Depends(get_role_from_request)):
-    """Mode picker가 채울 옵션 목록 + 실제 모델명 + 설치 상태.
+    """Mode picker가 채울 옵션 목록 + 모델 후보 카탈로그.
 
     api_key만 검증 (admin 아님). role-allowed 모드만 반환해서 클라이언트
     가 권한 없는 모드를 보지 않도록 한다.
@@ -771,8 +830,11 @@ async def llm_modes(api_key: str, role: str = Depends(get_role_from_request)):
       label:       사용자 노출 라벨
       desc:        한 줄 설명
       keywords:    자동 추천에 사용 (클라이언트 측 keyword match)
-      model:       실제 Ollama 모델 태그 (없으면 빈 문자열 — meta 등)
-      installed:   Ollama에 설치되어 있는지 (false면 client에서 "Install" 버튼)
+      model:       기본(default) 모델 태그 — backward compat
+      installed:   기본 모델 설치 상태 — backward compat
+      models:      [item #A2] 후보 리스트 — 두 번째 dropdown용
+                   각 원소: {"tag": str, "weight": "light|medium|heavy",
+                            "installed": bool, "default": bool}
     """
     verify_api_key(api_key)
     from core.intent_classifier import ROLE_ALLOWED
@@ -803,36 +865,56 @@ async def llm_modes(api_key: str, role: str = Depends(get_role_from_request)):
         return any(name.startswith(prefix + ":") or name == prefix
                    for name in installed_set)
 
+    catalog = _model_catalog()
+
+    def _models_for(mode_key: str, default_tag: str) -> list:
+        """Build the candidate list dict for a mode."""
+        cands = catalog.get(mode_key, [])
+        out = []
+        for tag, weight in cands:
+            out.append({
+                "tag":       tag,
+                "weight":    weight,
+                "installed": _mark(tag),
+                "default":   tag == default_tag,
+            })
+        return out
+
     options = [
         {"key": "auto",     "label": "🤖 자동",
          "desc": "질문 의도를 자동 분류 (기본)",
          "keywords": [],
-         "model": "", "installed": True},
+         "model": "", "installed": True, "models": []},
         {"key": "chat",     "label": "💬 일상 대화",
          "desc": "검색 없이 LLM 직답",
          "keywords": ["안녕", "고마워", "hi", "hello"],
-         "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL)},
+         "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL),
+         "models": _models_for("chat", GEMMA_MODEL)},
         {"key": "retrieval","label": "🔍 자료 검색",
          "desc": "내부 wiki + 그래프 추론",
          "keywords": ["뭐야", "무엇", "설명", "알려줘", "what is"],
-         "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL)},
+         "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL),
+         "models": _models_for("retrieval", GEMMA_MODEL)},
         {"key": "meta",     "label": "📚 자료 목록",
          "desc": "보유 wiki 인벤토리 (LLM 미사용)",
          "keywords": ["목록", "리스트", "어떤 자료", "list"],
-         "model": "", "installed": True},
+         "model": "", "installed": True, "models": []},
         {"key": "coding",   "label": "💻 코딩",
          "desc": f"코딩 특화 모델",
          "keywords": ["코드", "함수", "버그", "python", "def ",
                       "javascript", "code", "function"],
-         "model": CODING_MODEL, "installed": _mark(CODING_MODEL)},
+         "model": CODING_MODEL, "installed": _mark(CODING_MODEL),
+         "models": _models_for("coding", CODING_MODEL)},
         {"key": "wiki_edit","label": "✏️ Wiki 편집 (admin)",
          "desc": "지식 추가/수정/삭제",
          "keywords": ["수정해", "추가해", "삭제해"],
-         "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL)},
+         "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL),
+         "models": _models_for("wiki_edit", GEMMA_MODEL)},
         {"key": "self_evolve","label": "🧬 자기진화 (admin)",
          "desc": "코드 분석 / 자기 개선",
          "keywords": ["네 코드", "구조 분석", "스스로"],
-         "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL)},
+         "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL),
+         "models": _models_for("self_evolve", GEMMA_MODEL)},
     ]
     # auto는 항상 허용. 나머지는 role 권한 확인.
     filtered = [o for o in options if o["key"] == "auto" or o["key"] in allowed]
@@ -853,15 +935,11 @@ async def llm_install(api_key: str, model: str,
     400 — operator must use the admin LLM page for non-listed models.
     """
     _require_admin(api_key, role)
-    from config import GEMMA_MODEL, CODING_MODEL
-    # Allowlist — only models we explicitly support in mode router.
-    # Operators wanting to install something else use /admin/llm/...
-    ALLOWED_MODELS = {
-        GEMMA_MODEL, CODING_MODEL,
-        "gemma4:e4b", "gemma3:12b", "gemma3:27b",
-        "qwen2.5-coder:32b", "qwen2.5-coder:7b",
-        "llava:13b",
-    }
+    # [#A2] Allowlist auto-derived from MODEL_CATALOG so adding a
+    # candidate above does NOT require remembering to update this gate.
+    # llava is kept as a manual extra (vision support — not in catalog
+    # but operators sometimes pull it for multimodal experiments).
+    ALLOWED_MODELS = _allowed_install_models() | {"llava:13b"}
     if model not in ALLOWED_MODELS:
         raise HTTPException(
             status_code=400,

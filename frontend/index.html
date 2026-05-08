@@ -863,6 +863,15 @@
                        font-size:11px;cursor:pointer">
           <option value="auto">🤖 자동</option>
         </select>
+        <span id="model-picker-wrap"
+              style="display:none;align-items:center;gap:4px"
+              title="이 모드에서 사용할 모델 선택">
+          <select id="model-picker"
+                  onchange="onModelPickerChange()"
+                  style="background:var(--surface);border:1px solid var(--border);
+                         color:var(--text);padding:4px 10px;border-radius:6px;
+                         font-size:11px;cursor:pointer"></select>
+        </span>
         <button id="mode-install-btn"
                 onclick="triggerModelInstall()"
                 style="display:none;background:var(--accent-soft);
