@@ -2007,6 +2007,59 @@ def _require_admin(api_key: str, role: str):
                             detail="admin 권한 필요 — admin 계정으로 로그인하세요")
 
 
+def _read_jsonl_tail(path: str, max_lines: int = 200) -> list[dict]:
+    """[#2-A] Read only the last `max_lines` rows of a JSONL log.
+
+    The /admin/dashboard endpoint used to read the entire log file
+    line-by-line then slice [-20:]. On a year-old install with 100MB+
+    of audit logs this dominated dashboard load time (seconds → tens
+    of seconds).
+
+    Strategy: seek from the end of the file in 8KB chunks until we have
+    `max_lines + 1` newlines (one extra so we don't cut off the first
+    of the captured lines mid-record). Decode the chunk, split on \\n,
+    keep the last N. Each line is JSON-parsed; bad lines silently
+    skipped (preserves the prior fault tolerance).
+
+    Returns: list of dicts, oldest-first (matches prior caller's
+    ordering expectation).
+    """
+    try:
+        size = os.path.getsize(path)
+    except OSError:
+        return []
+    if size == 0:
+        return []
+    out_lines: list[bytes] = []
+    chunk_size = 8192
+    pos = size
+    buf = b""
+    with open(path, "rb") as f:
+        while pos > 0 and len(out_lines) <= max_lines:
+            read_size = min(chunk_size, pos)
+            pos -= read_size
+            f.seek(pos)
+            buf = f.read(read_size) + buf
+            # Count newlines we have so far. Stop when ≥ max_lines+1
+            # so the first split element is a complete line.
+            if buf.count(b"\n") >= max_lines + 1:
+                out_lines = buf.split(b"\n")[-max_lines - 1:]
+                break
+        else:
+            # Whole file fit in `max_lines` worth of data — use as-is.
+            out_lines = buf.split(b"\n")
+    rows: list[dict] = []
+    for line in out_lines:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rows.append(json.loads(line.decode("utf-8", errors="ignore")))
+        except Exception:
+            pass
+    return rows[-max_lines:]
+
+
 @app.get("/admin/dashboard", summary="관리자 대시보드 [P7]")
 async def admin_dashboard(api_key: str, role: str = Depends(get_role_from_request)):
     _require_admin(api_key, role)
@@ -2019,16 +2072,16 @@ async def admin_dashboard(api_key: str, role: str = Depends(get_role_from_reques
         user_count = len(list_users())
     except: user_count = 0
 
+    # [#2-A] tail-only JSONL 읽기 — 전체 파일 → 마지막 200행만.
+    # 사용자 보고: "어드민 페이지로 이동할때 시간이 다소 딜레이". 가장
+    # 큰 원인은 audit log가 누적되면서 dashboard load가 O(file size)로
+    # 느려진 것. 마지막 N개만 필요하므로 EOF에서 역방향 chunked read.
     security_events, recent_logs = 0, []
     for lf in ["james_attack_log.jsonl","james_audit_tool.jsonl"]:
-        try:
-            with open(lf, encoding="utf-8") as f:
-                for line in f:
-                    try:
-                        e = json.loads(line); recent_logs.append(e)
-                        if e.get("blocked") or "BLOCK" in e.get("event",""): security_events += 1
-                    except: pass
-        except: pass
+        for e in _read_jsonl_tail(lf, max_lines=200):
+            recent_logs.append(e)
+            if e.get("blocked") or "BLOCK" in e.get("event",""):
+                security_events += 1
 
     try:
         from tools.patch.patch_generator import list_patches
