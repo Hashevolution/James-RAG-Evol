@@ -17,19 +17,20 @@ Both suites are gated by `--check` mode of their runner. PRs touching `core/retr
 
 ## STEP 7 — internal regression baseline
 
-12 hand-crafted queries on the project's own wiki entities. Locked by `scripts/bench.py --suite=step7 --check` against `eval/regression/step7_baseline.json` (PR #52 / Issue #45). Baseline derived from 5 runs spanning the v0.2 reasoning split (PRs #35 / #37 / #38 / #39).
+13 hand-crafted queries on the project's own wiki entities. Locked by `scripts/bench.py --suite=step7 --check` against `eval/regression/step7_baseline.json` (PR #52 / Issue #45). Baseline `step7-v3` (q12 promoted from flaky → byte-identical security block in PR #70; q13 added in PR #73).
 
 | Metric | v0.2 baseline | Tolerance | Source |
 |---|---|---|---|
-| Total elapsed (12 queries) | 298.9 s — 413.7 s (mean 377.7 s) | ± 30 % | `step7_baseline.json::totals` |
-| q11 security block answer bytes | 26 (byte-identical) | exact | `step7_baseline.json::q11.answer_len_exact` |
-| q3 graph_paths | 0 (no Anthropic↔Claude edge yet) | ± 2 | `step7_baseline.json::q3` |
-| q11 graph_paths | 0 (security block before graph) | exact | `step7_baseline.json::q11` |
-| q1 / q4 / q6 / q8 / q10 graph_paths bands | 8 — 52 (per-query), see baseline | ± 2 | `step7_baseline.json::queries` |
+| Total elapsed (13 queries) | 250.0 s — 413.7 s (mean 330.0 s) | ± 30 % | `step7_baseline.json::totals` |
+| q11 prompt-injection block answer bytes | 26 (byte-identical) | exact | `q11.answer_len_exact` |
+| q12 risky-coding block answer bytes | 26 (byte-identical) | exact | `q12.answer_len_exact` (PR #70) |
+| q13 meta-mode inventory | mode=`meta`, graph_paths=0, answer_len ≥ 40 | exact mode | `q13` (PR #73) |
+| q3 graph_paths | 0 (no Anthropic↔Claude edge yet) | ± 2 | `q3` |
+| q1 / q4 / q6 / q8 / q10 graph_paths bands | 8 — 52 (per-query) | ± 2 | `queries` |
 
 Re-run: `python scripts/bench.py --suite=step7` (live JAMES server at `127.0.0.1:8000`, then `--check` to gate against baseline).
 
-q12 is marked `flaky` in the baseline (5-run history: 1 OK / 4 timeout) and excluded from `--check`. Investigation tracked outside this page.
+Two byte-identical security blocks (q11 prompt-injection and q12 risky-coding) share the same 26-char response so an audit consumer cannot externally distinguish the two block classes. Drift in either is a hard regression.
 
 ## RAGAS — third-party retrieval / generation metrics
 
@@ -50,10 +51,14 @@ Re-run: `python eval/ragas/run_ragas.py` (Ollama must be running at `127.0.0.1:1
 
 RAGAS uses an LLM as judge (faithfulness, answer_relevancy especially) and embeddings (context_precision, context_recall). Judge metrics are nondeterministic — the `answer_relevancy` band already spans 0.649 → 0.757 across 2 same-machine runs, and the dev-machine reference number from PR #51 (0.678) sits inside that band. The baseline is therefore a band, not a point. Embedding metrics tighten quickly: both `context_*` are 1.000 across all runs because the fixture is small and unambiguous. PRs that drift `answer_relevancy` past `[0.649, 0.757] ± 0.15` (i.e. outside [0.499, 0.907]) should investigate before merging.
 
+## v0.2 status: engineering-complete
+
+Five of the six v0.2 axes are engineering-complete as of 2026-05-08 (release v0.2.0). Axis 6 "second-user end-to-end bench run" gate is non-engineering — it's recruitment + onboarding work, tracked in the broader v0.2.1 business handover.
+
 ## Out of scope (deferred)
 
-- Live `/query/` integration for the RAGAS harness — Issue #46 phase 3, depends on a runner reusing the `bench.py` shape.
-- LegalBench subset — separate issue, after phase 3.
+- ~~Live `/query/` integration for the RAGAS harness~~ — done in PR #66.
+- LegalBench subset — intentionally deferred per the mother-platform "no parallel domains" rule until v1.0.
 - BEIR / MS MARCO — too large for laptop, defer to v0.3.
 - KLUE-RC (Korean public benchmark) — no clean public option yet, watch for v0.4.
 - Domain-specific eval suites (legal, food, etc.) — those arrive with their respective domain packs in v0.3+.

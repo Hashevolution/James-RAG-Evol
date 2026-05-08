@@ -32,93 +32,118 @@ branching forms), see [`docs/PLATFORM_READINESS.md`](docs/PLATFORM_READINESS.md)
 
 ---
 
-## v0.2.0 — Foundation Hardening (next, ~3-4 months)
+## v0.2.0 — Foundation Hardening (released 2026-05-08)
 
 **Theme**: Make the v0.1 capabilities trustworthy enough to recommend
-to a second user. Six axes, all of them P0/P1.
+to a second user. Six axes, all of them P0/P1. **Five axes engineering-
+complete.** Axis 6 ongoing — gated on second-user adoption rather than
+code, which is now in self-feedback + recruitment phase.
 
-### Axis 1 — Architecture Separation (P0)
+### Axis 1 — Architecture Separation (P0) ✅
 
 Goal: no single file owns more than one responsibility.
 
-- [ ] Split `core/reasoning_engine.py` (50 KB) into:
-      `pipeline.py` (loop), `answer.py` (generation),
-      `parsing.py` (JSON/citation extraction)
-- [ ] Consolidate `memory_*` (5 files, ~70 KB) into
-      `core/memory/` package with documented public API
-- [ ] Move `tools/self/` behind a sub-process boundary
-      (no in-proc access to core modules)
-- [ ] Public typed interfaces for: `Retriever`, `GraphEngine`,
-      `PolicyEngine`, `Reasoner`, `OutputFilter`
+- [x] Split `core/reasoning_engine.py` into `core/reasoning/`
+      package: `engine.py` (orchestration), `pipeline.py` (loop),
+      `modes.py` (mode dispatch). PRs #37 / #38 / #39.
+- [x] Consolidate `memory_*` into `core/memory/` package with
+      documented public API. PR #35.
+- [x] Public typed interfaces for: `Retriever`, `GraphEngine`,
+      `PolicyEngine`, `Reasoner`, `OutputFilter`. PR #50.
+- [ ] `tools/self/` sub-process boundary — deferred to v0.3 (no
+      observed need at v0.2 scale; in-proc access is contained).
 
-**Done when**: `import` graph is acyclic and each module has < 20 KB.
+**Done when**: ✅ `import` graph is acyclic and each module has < 20 KB.
 
-### Axis 2 — Evaluation Harness (P0)
+### Axis 2 — Evaluation Harness (P0) ✅
 
 Goal: every change is measured against the same yardsticks.
 
-- [ ] Lock STEP 7 12-query suite as committed regression baseline
-      (currently runs locally only)
-- [ ] Integrate **RAGAS** for retrieval / faithfulness / answer relevance
-- [ ] Adopt a **LegalBench** subset for domain stress test
-      (replaces vague "legal-style" prompts)
-- [ ] Add `scripts/bench.py` that runs all three on every PR locally
-- [ ] Publish numbers in PR descriptions for any change touching
-      `core/retrieval_engine.py`, `core/graph_engine.py`,
-      `core/reasoning_engine.py`
+- [x] STEP 7 13-query suite locked as committed regression baseline
+      (`eval/regression/step7_*.json`, `scripts/bench.py`). PR #52.
+- [x] **RAGAS** integrated for retrieval / faithfulness / answer
+      relevance. Live `/query/` integration. PRs #51 / #64 / #66.
+- [x] `scripts/bench.py` with `--check` / `--update-baseline`. PR #52.
+- [x] PR-contract: `core/{retrieval,graph,reasoning}` PRs paste
+      bench numbers. CLAUDE.md rule 2 + CONTRIBUTING. PR #43.
+- [ ] LegalBench subset — intentionally deferred (domain-coupled;
+      contradicts the "no parallel domains" mother-platform rule
+      until v1.0).
 
-**Done when**: a PR cannot land without bench numbers attached.
+**Done when**: ✅ a PR cannot land without bench numbers attached.
 
-### Axis 3 — Observability / Tracing (P1)
+### Axis 3 — Observability / Tracing (P1) ✅
 
 Goal: any answer can be debugged without re-running it.
 
-- [ ] OpenTelemetry-style `trace_id` end-to-end
-- [ ] Structured stage logs:
-      `query → retrieve → rerank → graph → tool → answer`
-- [ ] `GET /admin/trace/{id}` returns full pipeline replay
-- [ ] Per-stage latency histograms in `/admin/metrics`
+- [x] `trace_id` ContextVar end-to-end + structured stage logs
+      (`auth → retrieve → rerank → graph → tool → answer →
+      complete`). PR #67.
+- [x] `JAMES_TRACE_STDOUT` console mirror (default ON for the
+      single-user operator workflow). PRs #71 / #75.
+- [x] `GET /admin/trace/{trace_id}` full pipeline replay. PR #82.
+- [x] Per-stage `p50 / p90 / p99 / max` latency histograms in
+      `GET /admin/metrics?window_hours=24`. PR #83.
+- [x] 7-day auto-prune (`JAMES_TRACE_RETENTION_DAYS` env, default 7).
+      PR #84.
 
-**Done when**: a hallucination report can be diagnosed by trace_id alone.
+**Done when**: ✅ a hallucination report can be diagnosed by trace_id alone.
 
-### Axis 4 — Security Boundary (P1)
+### Axis 4 — Security Boundary (P1) ✅
 
 Goal: policy is a layer, not a sprinkle.
 
-- [ ] Extract `core/policy_engine.py` — single point of role/sensitivity
-      decisions, called by retrieval / graph / output / tools
-- [ ] Capability tokens for tool access (no direct fs path strings)
-- [ ] Multimodal inputs (image/audio/web) flagged and quarantined
-      before joining the LLM context
-- [ ] External red-team pass on prompt injection (replace pattern-only
-      defense with ML guard + patterns)
+- [x] `core/policy_engine.py` — single point of role/sensitivity
+      decisions. Wired into retrieval / graph / output / tools.
+      10 PRs (#50, #53, #54, #56, #57, #58, #59, #60, #61, #63).
+- [x] Capability tokens for tool access (no direct fs path strings).
+      PRs #57 / #58 / #59.
+- [x] Multimodal inputs flagged + quarantined before joining LLM
+      context. PRs #60 / #61 / #63.
+- [x] Risky-coding hard-refuse policy at `pre_check`. PR #70.
+- [ ] External red-team pass on prompt injection — deferred to v0.4
+      (per ROADMAP — needs an external partner, not internal work).
 
-**Done when**: removing the policy engine breaks at least 4 modules
-(meaning every consumer is wired through it).
+**Done when**: ✅ removing the policy engine breaks 6+ modules.
 
-### Axis 5 — Controlled Evolution (P1)
+### Axis 5 — Controlled Evolution (P1) ✅
 
 Goal: self-evolution cannot deploy without a human.
 
-- [ ] Wire opt-in env flag `JAMES_ENABLE_EVOLUTION=0` (default off)
-- [ ] feedback → candidate → eval → **approval (human)** → deploy → rollback
-- [ ] Eval gate uses the Axis 2 harness — no bypass
-- [ ] Audit log records approver, timestamp, before/after metrics
+- [x] Opt-in env flag `JAMES_ENABLE_EVOLUTION=0` (default off) +
+      `JAMES_AUTO_APPROVE` safety check (refuses to start without
+      `JAMES_DEV_MODE`). PR #69.
+- [x] feedback → candidate → eval → **human approval** → deploy →
+      rollback pipeline.
+- [x] Eval gate via `scripts/bench.py --check` subprocess on every
+      `/admin/patch/approve` deploy. PR #77.
+- [x] Audit log records `approver_username` / `approver_role` /
+      `approved_at` / `approval_method` / `before_metrics` /
+      `after_metrics`. Lifecycle JSONL `james_patch_log.jsonl`.
+      PRs #69 / #77.
+- [x] Auto-rollback on bench regression + lifecycle log records the
+      `ROLLED_BACK` event. Tested for byte-identical recovery
+      under simulated mid-write crash. PR #78.
+- [x] `GET /admin/patch/audit?since=&approver=&outcome=&limit=`
+      operator-facing query endpoint. PR #79.
 
-**Done when**: any patch deployed has an `approved_by` field in the
-audit DB, and deploy without it is rejected.
+**Done when**: ✅ any deployed patch has an `approver_username` field
+in the audit DB, and deploy without it is rejected.
 
-### Axis 6 — Real-Data Validation (carries forward from v0.1)
+### Axis 6 — Real-Data Validation (carries forward from v0.1) 🟡
 
 Goal: numbers from real data, not just synthetic.
 
-- [ ] 30+ real entities across diverse domains (carries from v0.1)
-- [ ] User-tested query patterns (carries from v0.1)
-- [ ] Multimodal pipeline integration completion
-- [ ] Edge case discovery and fixing
-
-**Done when**: a second user (not the maintainer) can run the bench
-suite on their own corpus end-to-end without intervention.
+- [x] Wiki corpus to 161 entities (concept 62 / org 57 / person 11
+      / document 31, hard-deduped via PR #28).
+- [x] STEP 7 13-query suite includes negative / dedup / lang-mix /
+      security / meta categories.
+- [x] Multimodal pipeline integration (image / video / audio,
+      OCR-poison quarantine). PRs #60 / #61 / #63.
+- [x] Edge case discovery: #5 / #6 / #7 / #8 / #11 / #14 / #20
+      all closed via real-data feedback loops.
+- [ ] **Second-user end-to-end bench run**: pending. This is the
+      v0.2 → v0.3 gate; not a code task but a recruitment task.
 
 ### Known cuts from earlier v0.2 plan
 
@@ -292,4 +317,6 @@ We follow [Semantic Versioning](https://semver.org/):
 
 ---
 
-**Last updated**: v0.2.1 (platform readiness gates added)
+**Last updated**: v0.2.0 release (2026-05-08) — five axes engineering-
+complete; Axis 6 second-user gate now in self-feedback + recruitment
+phase. Open issues: 0. Total PRs since v0.1.4: 44.
