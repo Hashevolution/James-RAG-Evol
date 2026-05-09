@@ -1,20 +1,29 @@
-"""Reasoning UI dynamic improvements (item #A8-1, 2026-05-09).
+"""[item #3, 2026-05-09] Reasoning UI must be stage-driven, not timer-driven.
 
-User feedback: "추론중 표시 글자 그라데이션 애니메이션을 조금도 빠르게
-움직이도록 설정하고 '추론 시작중' 외에 다른 멘트로 전환되는 등
-다이내믹하게 개선".
+History:
+  PR #97 (#A6-7): real reasoning stream — replaced the fake 2.5s timer
+    with /trace/poll/{trace_id} polling. Stage events drive a per-line
+    display (auth → retrieve → graph → answer → complete).
+  PR #126 (#A8-1): added a 1.6s timer-based rotation of 8 placeholder
+    phrases for the gap BEFORE first stage event arrives. Felt
+    dynamic but was actually decoupled from server progress.
+  Item #3 (this PR): user fed back that the rotation was "formal
+    sequential repetition" — disconnected from actual JAMES reasoning
+    progress. Removed in favor of a single static placeholder; real
+    STAGE_META lines now drive everything once the first event arrives.
 
-CSS:
-  - james-shimmer animation 2.4s → 1.2s (gradient sweep speed)
-  - neuron-blink + neuron-pulse 1.4s → 0.9s (faster firing)
+This file is the regression guard for that removal:
+  - NO timer-based rotation
+  - NO THINKING_PLACEHOLDER_PHRASES array
+  - placeholder text is static
+  - shimmer / brain animation speeds preserved (visual continuity)
 
-JS:
-  - THINKING_PLACEHOLDER_PHRASES — 8 phrases that rotate every 1.6s
-    until the first real stage event arrives. Stops cleanly when
-    apply() removes the placeholder.
+The shimmer/neuron speed assertions from the original test are kept
+because the user wanted "dynamic visual feel" via shimmer/neuron pulse
+speed (PR #126), not via phrase rotation.
 
 Run:
-  python -m unittest tests.test_reasoning_dynamic
+    python -m unittest tests.test_reasoning_dynamic
 """
 from __future__ import annotations
 
@@ -32,84 +41,122 @@ CSS = ROOT / "frontend" / "static" / "mobile.css"
 
 
 class ShimmerSpeedTests(unittest.TestCase):
+    """[#A8-1] visual dynamism via shimmer/neuron speed — kept."""
+
     @classmethod
     def setUpClass(cls):
         cls.css = CSS.read_text(encoding="utf-8")
 
     def test_shimmer_animation_faster(self):
-        # All james-shimmer animation declarations must be ≤ 1.5s.
         for m in re.finditer(r"animation:\s*james-shimmer\s+([\d.]+)s", self.css):
             duration = float(m.group(1))
             self.assertLessEqual(duration, 1.5,
-                f"james-shimmer animation duration {duration}s — must be ≤1.5s "
-                f"for the 'dynamic' feel user requested")
+                f"james-shimmer {duration}s must be ≤1.5s")
 
     def test_neuron_blink_faster(self):
-        # Each .brain-pulse-active .neuron-N rule must use ≤ 1.0s.
         for m in re.finditer(
             r"\.brain-pulse-active\s+\.neuron-\d.+?(\d+\.?\d*)s",
             self.css, re.DOTALL,
         ):
             duration = float(m.group(1))
             self.assertLessEqual(duration, 1.0,
-                f"neuron-N animation {duration}s — must be ≤1.0s")
+                f"neuron-N {duration}s must be ≤1.0s")
 
 
-class PlaceholderRotationTests(unittest.TestCase):
+class StaticPlaceholderTests(unittest.TestCase):
+    """[item #3] No timer rotation; placeholder is a single static phrase."""
+
     @classmethod
     def setUpClass(cls):
         cls.js = JS.read_text(encoding="utf-8")
 
-    def test_phrases_array_exists(self):
-        self.assertIn("THINKING_PLACEHOLDER_PHRASES", self.js,
-            "must declare a phrase rotation array")
-
-    def test_at_least_5_phrases(self):
-        m = re.search(
-            r"const\s+THINKING_PLACEHOLDER_PHRASES\s*=\s*\[(.+?)\];",
-            self.js, re.DOTALL,
+    def _appendTyping_body(self) -> str:
+        idx = self.js.index("function appendTyping")
+        # appendTyping is followed by other functions; bound at next
+        # top-level `function`/`async function`/`/* `.
+        nxt = re.search(
+            r"\n(?:function |async function |/\* )",
+            self.js[idx + 1:],
         )
-        self.assertIsNotNone(m, "couldn't locate phrases array literal")
-        # Count single-quoted strings inside.
-        phrases = re.findall(r"'([^']+)'", m.group(1))
-        self.assertGreaterEqual(len(phrases), 5,
-            f"expected ≥5 phrases, got {len(phrases)}")
-        # First phrase must still be the original "추론 시작 중" so
-        # there's no jarring change for users who saw the prior copy.
-        self.assertEqual(phrases[0], "추론 시작 중",
-            "first phrase should remain '추론 시작 중' for continuity")
+        end = idx + 1 + nxt.start() if nxt else len(self.js)
+        return self.js[idx:end]
 
-    def test_rotation_interval_set_in_appendTyping(self):
-        idx = self.js.index("function appendTyping")
-        body = self.js[idx:idx + 2500]
-        self.assertIn("setInterval", body,
-            "appendTyping must use setInterval to rotate phrases")
-        # Interval should be 1-2s — fast enough to feel alive but not
-        # vertigo-inducing.
-        m = re.search(r"setInterval\(\(?\)\s*=>\s*\{[\s\S]+?\}\s*,\s*(\d+)\s*\)",
-                      body)
-        self.assertIsNotNone(m, "couldn't extract interval delay")
-        delay = int(m.group(1))
-        self.assertGreaterEqual(delay, 800)
-        self.assertLessEqual(delay, 2500)
+    def test_no_phrases_array(self):
+        self.assertNotIn("THINKING_PLACEHOLDER_PHRASES", self.js,
+            "THINKING_PLACEHOLDER_PHRASES must be removed — placeholder "
+            "is now a single static phrase, no rotation array")
 
-    def test_rotation_clears_when_placeholder_removed(self):
-        # When the first stage event arrives we remove the placeholder.
-        # The rotation timer must also clear or it'd leak intervals
-        # forever (and try to .textContent on a detached node).
-        idx = self.js.index("첫 진짜 이벤트 도착 시 placeholder 제거")
-        body = self.js[idx:idx + 800]
-        self.assertIn("clearInterval(rotateTimer)", body,
-            "must clearInterval when placeholder is removed")
+    def test_no_timer_rotation_in_appendTyping(self):
+        body = self._appendTyping_body()
+        self.assertNotIn("rotateTimer", body,
+            "rotateTimer (1.6s setInterval) was the formal sequential "
+            "repetition the user objected to — must not exist")
+        # Also no setInterval() in appendTyping at all (no other timers
+        # belong here).
+        self.assertNotRegex(body, r"\bsetInterval\s*\(",
+            "appendTyping must not start any timer — display is purely "
+            "stage-event-driven via the existing /trace/poll polling")
 
-    def test_placeholder_text_class_present(self):
-        # The rotation logic targets .thinking-placeholder-text — ensure
-        # the placeholder span actually carries that class.
-        idx = self.js.index("function appendTyping")
-        body = self.js[idx:idx + 2500]
-        self.assertIn("thinking-placeholder-text", body,
-            "placeholder span must have a stable selector class for the "
-            "rotation timer to find it")
+    def test_placeholder_static_text_present(self):
+        body = self._appendTyping_body()
+        # The placeholder text exists as a single literal in the
+        # initial innerHTML — no JS-side mutation of textContent on a
+        # rotating cycle.
+        self.assertRegex(body, r'thinking-placeholder-text[^>]*>[^<]+<',
+            "placeholder span must contain a single static phrase")
+        # And nothing should be reassigning .textContent on the
+        # placeholder span (which the rotation timer used to do).
+        self.assertNotIn("placeholderEl.textContent", body,
+            "no runtime rewrites of placeholder text — static phrase only")
+
+    def test_placeholder_class_preserved(self):
+        # Other code paths grep on this class to remove the placeholder
+        # when first stage arrives.
+        body = self._appendTyping_body()
+        self.assertIn("thinking-placeholder", body)
+        self.assertIn("thinking-placeholder-text", body)
+
+
+class StageEventDrivenDisplayTests(unittest.TestCase):
+    """The real progress-driven mechanism (already exists since PR #97)
+    must remain wired. After this PR, it's the SOLE driver of the UI."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.js = JS.read_text(encoding="utf-8")
+
+    def test_apply_removes_placeholder_on_first_event(self):
+        # Sanity: the apply() path that handles stage events still
+        # removes the static placeholder on first event arrival.
+        idx = self.js.index("첫 진짜 stage event 도착 시 정적 placeholder 제거")
+        body = self.js[idx:idx + 400]
+        self.assertIn(".thinking-placeholder", body)
+        self.assertIn("ph.remove()", body)
+
+    def test_trace_poll_endpoint_used(self):
+        # Server-side stage events come from /trace/poll/{trace_id}.
+        self.assertIn("/trace/poll/", self.js,
+            "client must poll /trace/poll/{trace_id} for real stages")
+
+    def test_stage_meta_table_present(self):
+        # Per-stage label/icon/color mapping must remain — drives the
+        # per-line display after first event.
+        self.assertIn("STAGE_META", self.js)
+        # A handful of expected stages.
+        for stage in ("auth", "retrieve", "graph", "answer", "complete"):
+            self.assertIn(f"{stage}:", self.js,
+                f"STAGE_META should map stage '{stage}'")
+
+    def test_complete_event_marks_active_done(self):
+        # When the final 'complete' event arrives, the active stage line
+        # must transition to a finished state — this is the natural
+        # sync point with answer wrap-up the user described.
+        self.assertIn("markActiveAsDone", self.js)
+        idx = self.js.index("if (data.complete)")
+        body = self.js[idx:idx + 400]
+        self.assertIn("markActiveAsDone()", body,
+            "completion must mark the active line done — synchronizes "
+            "the UI animation with the actual answer wrap-up moment")
 
 
 if __name__ == "__main__":

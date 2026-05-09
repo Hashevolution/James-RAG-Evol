@@ -1376,20 +1376,19 @@ function brainPulseSvg(active = true) {
   </span>`;
 }
 
-/* [#A8-1] placeholder 멘트 rotation — 첫 stage 도착 전 사용자에게
-   "뭔가 진행 중" 신호 강화. 1.6초마다 다른 멘트로 회전. 고정된
-   "추론 시작 중" 한 줄보다 다이내믹하게 보임. */
-const THINKING_PLACEHOLDER_PHRASES = [
-  '추론 시작 중',
-  '질문 의도 분석 중',
-  '내부 자료 살펴보는 중',
-  '관련 지식 정리 중',
-  '관계 그래프 탐색 중',
-  '근거 검토 중',
-  '답변 정리 중',
-  '마무리하는 중',
-];
-
+/* [item #3, 2026-05-09] placeholder는 단일 정적 텍스트.
+   이전(PR #126 #A8-1)은 1.6s 타이머로 8개 멘트를 회전시켰는데,
+   이게 형식적 "순차 반복"이라 실제 서버 진행과 무관하게 돌았다.
+   사용자 피드백:
+     "답변창에 추론 답변 준비중에 나오는 애니메이션이 형식적으로
+      순차적으로 반복되는것이 아니라 실제 서버에서 디버그 되는
+      상황에서 따라 답변 마무리 정리 타이밍에 맞춰서 실제 자메스의
+      추론 과정을 맞춰서 진행해줘"
+   → 진짜 진행 신호 = `/trace/poll` 폴링이 잡는 stage 이벤트.
+     첫 stage 도착 전엔 brain 애니메이션 + 정적 placeholder만 보이고,
+     이벤트 도착 즉시 STAGE_META 기반 라인 stacking으로 자연 전환.
+     auth → retrieve → graph → answer → complete 가 실시간 표시되며
+     `complete` event에서 답변 마무리와 정확히 동기화된다. */
 function appendTyping(traceId) {
   const messages = document.getElementById('messages');
   const div = document.createElement('div');
@@ -1401,26 +1400,13 @@ function appendTyping(traceId) {
         <div class="thinking-placeholder">
           ${brainPulseSvg(true)}
           <span class="thinking-shimmer-text thinking-label thinking-placeholder-text"
-                data-trace="${traceId}">추론 시작 중</span>
+                data-trace="${traceId}">JAMES 추론 중</span>
         </div>
       </div>
     </div>
   `;
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
-
-  // [#A8-1] placeholder rotation — 첫 stage 이벤트 도착 시 stop.
-  // 토큰 1개 늘릴 때 마다 다음 멘트로 자연 전환되는 듯한 효과.
-  let phraseIdx = 0;
-  const placeholderEl = div.querySelector('.thinking-placeholder-text');
-  const rotateTimer = setInterval(() => {
-    if (!placeholderEl || !placeholderEl.isConnected) {
-      clearInterval(rotateTimer);
-      return;
-    }
-    phraseIdx = (phraseIdx + 1) % THINKING_PLACEHOLDER_PHRASES.length;
-    placeholderEl.textContent = THINKING_PLACEHOLDER_PHRASES[phraseIdx];
-  }, 1600);
 
   // 폴링 상태
   const seenStages = new Set();   // stage 종류별 1회만 표시
@@ -1459,12 +1445,11 @@ function appendTyping(traceId) {
   const apply = (events) => {
     const container = document.getElementById(`thinking-${traceId}`);
     if (!container) return;
-    // 첫 진짜 이벤트 도착 시 placeholder 제거
-    // [#A8-1] placeholder rotation timer도 함께 stop.
+    // 첫 진짜 stage event 도착 시 정적 placeholder 제거.
+    // (이후 STAGE_META 기반 라인 stacking이 인계 — 서버 진행에 정확히 동기화)
     if (events.length > 0) {
       const ph = container.querySelector('.thinking-placeholder');
       if (ph) ph.remove();
-      try { clearInterval(rotateTimer); } catch (_) {}
     }
     events.forEach(ev => {
       const stage = ev.stage;
