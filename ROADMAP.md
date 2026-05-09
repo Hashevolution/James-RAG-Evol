@@ -180,6 +180,14 @@ domain packs will be built against.
 - [ ] SemVer + 12-month deprecation policy committed to
       `docs/VERSIONING.md`
 - [ ] Eval contract: every pack passes RAGAS + STEP-N before merge
+- [ ] **Knowledge cascade** — relation provenance + delete/modify
+      cascade + graph editor.
+      Replaces the v0.2 single-`confidence` field with `sources:
+      [{doc_id, weight, role, ts}]` so file delete/modify can
+      surgically update only the affected derived knowledge without
+      losing other docs' contributions. Outline + 5-phase plan in
+      [`docs/design/v0.3-knowledge-cascade.md`](docs/design/v0.3-knowledge-cascade.md).
+      May slip to v0.3.x patch — calibrate expectations.
 
 ### Done when
 
