@@ -1888,180 +1888,464 @@ async function learnFromErrors() {
 }
 
 /* ════════════════════════════════
-   P7-EVO-D: 성향 캐릭터 UI
+   [P2 unified UX 2026-05-10]
+   성향 캐릭터 UI — Interactive radar with correlation ripple
+   - SVG radar (드래그로 vertex 직접 이동)
+   - 점선 edges = 상관관계 (녹/적색 = 양/음 weight)
+   - vertex 이동 시 backend ripple 모방 → 영향받는 vertex 펄스
+   - 하단 슬라이더는 보조 정밀 입력 (양방향 동기화)
 ════════════════════════════════ */
 
-let _traits = [];
-let _radar  = null;
+let _traits = [];                  // [{id, label, label_ko, group, value, default, icon}]
+let _correlations = [];            // [{from, to, weight}]
+let _ripple_damping = 0.3;
+let _selected_trait_id = null;     // 마지막으로 클릭/드래그한 vertex
+let _drag_state = null;            // {tid, pointerId, cx, cy, R, angle}
+
+// Group A~D 짝(opposing) — 백엔드 _OPPONENTS와 정확히 일치해야 함.
+const _OPPONENTS = {
+  curiosity:'focus',     focus:'curiosity',
+  caution:'boldness',    boldness:'caution',
+  analytical:'intuitive', intuitive:'analytical',
+  independent:'collaborative', collaborative:'independent',
+};
 
 async function loadCharacter() {
   try {
-    const data = await api('/admin/character/');
-    _traits = data.traits || [];
+    // 두 API 병렬 호출 — traits + correlations.
+    const [data, corrData] = await Promise.all([
+      api('/admin/character/'),
+      api('/admin/character/correlations').catch(() => ({correlations: [], damping: 0.3})),
+    ]);
+    _traits          = data.traits || [];
+    _correlations    = corrData.correlations || [];
+    _ripple_damping  = corrData.damping ?? 0.3;
+    renderInteractiveRadar();
     renderTraitSliders(_traits);
-    renderRadarChart(_traits);
+    renderConnectionsPanel(null);
   } catch (e) {
     console.error('[CHARACTER]', e.message);
   }
 }
 
+// ─── 인터랙티브 SVG 레이더 ───────────────────────────────────────
+function renderInteractiveRadar() {
+  const svg = document.getElementById('char-radar');
+  if (!svg) return;
+
+  const W = 600, H = 600;
+  const cx = W/2, cy = H/2;
+  const R  = Math.min(W, H)/2 - 80;          // 라벨 공간 확보
+
+  const n = _traits.length;
+  if (!n) { svg.innerHTML = ''; return; }
+
+  // 각 trait의 angle (위쪽 12시 방향이 첫 trait, 시계방향).
+  const angles = _traits.map((_, i) => (i / n) * Math.PI * 2 - Math.PI/2);
+  const angleMap = {};
+  _traits.forEach((tr, i) => { angleMap[tr.id] = angles[i]; });
+
+  // 좌표 변환 — value(0..1) → (x, y).
+  function pt(idx, v) {
+    return {
+      x: cx + Math.cos(angles[idx]) * R * v,
+      y: cy + Math.sin(angles[idx]) * R * v,
+    };
+  }
+
+  let inner = '';
+
+  // ─── 1) 격자 (4 단계) ────────────────────────────────────────
+  [0.25, 0.5, 0.75, 1.0].forEach(r => {
+    const pts = angles.map((a) =>
+      `${(cx + Math.cos(a)*R*r).toFixed(1)},${(cy + Math.sin(a)*R*r).toFixed(1)}`
+    ).join(' ');
+    inner += `<polygon class="radar-grid" points="${pts}"/>`;
+  });
+
+  // ─── 2) 축 + 라벨 ────────────────────────────────────────────
+  angles.forEach((a, i) => {
+    const x2 = cx + Math.cos(a) * R;
+    const y2 = cy + Math.sin(a) * R;
+    inner += `<line class="radar-axis" x1="${cx}" y1="${cy}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/>`;
+    // 라벨 (icon + 한글명) — 외곽
+    const lx = cx + Math.cos(a) * (R + 30);
+    const ly = cy + Math.sin(a) * (R + 30);
+    const tr = _traits[i];
+    const labelText = (tr.label_ko || tr.label);
+    inner += `
+      <text class="radar-icon" x="${lx.toFixed(1)}" y="${(ly-8).toFixed(1)}"
+            text-anchor="middle">${escapeHtml(tr.icon)}</text>
+      <text class="radar-label" x="${lx.toFixed(1)}" y="${(ly+8).toFixed(1)}"
+            text-anchor="middle">${escapeHtml(labelText)}</text>`;
+  });
+
+  // ─── 3) 짝(opposing) 연결선 — 매우 흐리게 ────────────────────
+  // 시각적으로 "두 trait이 1.0 sum 짝" 임을 알려줌.
+  const drawnPairs = new Set();
+  _traits.forEach((tr, i) => {
+    const opp = _OPPONENTS[tr.id];
+    if (!opp) return;
+    const key = [tr.id, opp].sort().join('|');
+    if (drawnPairs.has(key)) return;
+    drawnPairs.add(key);
+    const j = _traits.findIndex(x => x.id === opp);
+    if (j < 0) return;
+    const p1 = pt(i, _traits[i].value);
+    const p2 = pt(j, _traits[j].value);
+    inner += `<line class="pair-edge" x1="${p1.x.toFixed(1)}" y1="${p1.y.toFixed(1)}"
+                    x2="${p2.x.toFixed(1)}" y2="${p2.y.toFixed(1)}"/>`;
+  });
+
+  // ─── 4) 상관관계 edges (선택된 trait 강조) ───────────────────
+  _correlations.forEach((corr) => {
+    const i = _traits.findIndex(x => x.id === corr.from);
+    const j = _traits.findIndex(x => x.id === corr.to);
+    if (i < 0 || j < 0) return;
+    const p1 = pt(i, _traits[i].value);
+    const p2 = pt(j, _traits[j].value);
+    const sign = corr.weight >= 0 ? 'pos' : 'neg';
+    const isActive = _selected_trait_id &&
+                     (corr.from === _selected_trait_id || corr.to === _selected_trait_id);
+    const cls = `corr-edge ${sign}` + (isActive ? ' active' : '');
+    // 약한 곡선 (Q control point는 중심 쪽으로)
+    const mx = (p1.x + p2.x)/2;
+    const my = (p1.y + p2.y)/2;
+    const tx = cx + (mx - cx) * 0.6;
+    const ty = cy + (my - cy) * 0.6;
+    const sw = (1 + Math.abs(corr.weight) * 1.5).toFixed(2);
+    inner += `<path class="${cls}" d="M${p1.x.toFixed(1)},${p1.y.toFixed(1)}
+                                       Q${tx.toFixed(1)},${ty.toFixed(1)}
+                                       ${p2.x.toFixed(1)},${p2.y.toFixed(1)}"
+                    style="stroke-width:${sw}"/>`;
+  });
+
+  // ─── 5) 데이터 폴리곤 (값 영역) ──────────────────────────────
+  const polyPts = _traits.map((tr, i) => {
+    const p = pt(i, tr.value);
+    return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+  }).join(' ');
+  inner += `<polygon class="radar-fill" points="${polyPts}"/>`;
+
+  // ─── 6) Vertex (드래그 가능) ─────────────────────────────────
+  _traits.forEach((tr, i) => {
+    const p = pt(i, tr.value);
+    const sel = (tr.id === _selected_trait_id) ? ' selected' : '';
+    inner += `<circle class="radar-vertex${sel}"
+                      cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="6"
+                      data-trait-id="${escapeHtml(tr.id)}"
+                      data-axis-index="${i}">
+                <title>${escapeHtml(tr.label_ko || tr.label)}: ${Math.round(tr.value*100)}%</title>
+              </circle>`;
+  });
+
+  svg.innerHTML = inner;
+
+  // ─── 7) Pointer events on vertices ───────────────────────────
+  // [PR #157 패턴 준수] inline onclick 없이 addEventListener 로만.
+  svg.querySelectorAll('.radar-vertex').forEach(circle => {
+    circle.addEventListener('pointerdown', onVertexPointerDown);
+  });
+}
+
+function onVertexPointerDown(ev) {
+  ev.preventDefault();
+  const circle = ev.currentTarget;
+  const tid = circle.getAttribute('data-trait-id');
+  const idx = parseInt(circle.getAttribute('data-axis-index'), 10);
+  if (!tid || isNaN(idx)) return;
+
+  _selected_trait_id = tid;
+  circle.classList.add('dragging');
+  circle.setPointerCapture(ev.pointerId);
+
+  // SVG 내부 좌표 시스템 — viewBox 600x600 기준이지만 화면 픽셀 크기는
+  // 다를 수 있음. CTM(currentTransformationMatrix)을 사용해서 변환.
+  const svg = document.getElementById('char-radar');
+  const n = _traits.length;
+  const angle = (idx / n) * Math.PI * 2 - Math.PI/2;
+  const cx = 300, cy = 300, R = 220;       // viewBox 600x600 기준
+
+  _drag_state = { tid, idx, pointerId: ev.pointerId, cx, cy, R, angle, svg };
+
+  svg.addEventListener('pointermove', onVertexPointerMove);
+  svg.addEventListener('pointerup',   onVertexPointerUp);
+  svg.addEventListener('pointercancel', onVertexPointerUp);
+
+  // 첫 드래그 직전 상태 — selected 강조 + 영향력 패널 갱신.
+  renderConnectionsPanel(tid);
+}
+
+function _svgPointToViewBox(svg, ev) {
+  const pt = svg.createSVGPoint();
+  pt.x = ev.clientX; pt.y = ev.clientY;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return null;
+  return pt.matrixTransform(ctm.inverse());
+}
+
+function onVertexPointerMove(ev) {
+  if (!_drag_state) return;
+  const { tid, idx, cx, cy, R, angle, svg } = _drag_state;
+  const p = _svgPointToViewBox(svg, ev);
+  if (!p) return;
+  // 드래그한 좌표를 해당 axis 위 길이로 사영(projection).
+  const dx = p.x - cx, dy = p.y - cy;
+  const proj = dx * Math.cos(angle) + dy * Math.sin(angle);   // axis 위 스칼라
+  let v = proj / R;
+  v = Math.max(0, Math.min(1, v));
+  v = Math.round(v * 100) / 100;                              // 1% 단위로 snap
+  applyTraitChangeLocally(tid, v, /*animate*/ false);
+}
+
+function onVertexPointerUp(ev) {
+  if (!_drag_state) return;
+  const { tid, svg } = _drag_state;
+  svg.removeEventListener('pointermove', onVertexPointerMove);
+  svg.removeEventListener('pointerup',   onVertexPointerUp);
+  svg.removeEventListener('pointercancel', onVertexPointerUp);
+  // 드래그 종료 시점 기준으로 ripple animation 시각화.
+  const tr = _traits.find(x => x.id === tid);
+  if (tr) animateRippleFor(tid, tr.value);
+  _drag_state = null;
+  // dragging 클래스 제거 (재렌더링이 처리하지만 명시).
+  svg.querySelectorAll('.radar-vertex.dragging').forEach(c => c.classList.remove('dragging'));
+  renderInteractiveRadar();
+  renderConnectionsPanel(tid);
+}
+
+// vertex 드래그 / 슬라이더 둘 다 호출 — 백엔드 ripple 로직 미러링.
+function applyTraitChangeLocally(traitId, newValue, animate=true) {
+  const idx = _traits.findIndex(x => x.id === traitId);
+  if (idx < 0) return;
+  const old = _traits[idx].value;
+  const delta = newValue - old;
+  _traits[idx].value = newValue;
+
+  // 짝 즉시 flip.
+  const opp = _OPPONENTS[traitId];
+  const skip = new Set([traitId]);
+  if (opp) {
+    const oi = _traits.findIndex(x => x.id === opp);
+    if (oi >= 0) {
+      _traits[oi].value = Math.round((1 - newValue) * 1000) / 1000;
+      skip.add(opp);
+    }
+  }
+
+  // 상관 trait ripple — backend와 동일 식.
+  _correlations.forEach(corr => {
+    if (corr.from !== traitId) return;
+    if (skip.has(corr.to)) return;
+    const ti = _traits.findIndex(x => x.id === corr.to);
+    if (ti < 0) return;
+    const oldVal = _traits[ti].value;
+    const nudge = delta * corr.weight * _ripple_damping;
+    let nv = Math.max(0, Math.min(1, oldVal + nudge));
+    nv = Math.round(nv * 1000) / 1000;
+    _traits[ti].value = nv;
+  });
+
+  // SVG + 슬라이더 UI 동기화.
+  renderInteractiveRadar();
+  syncSlidersToTraits();
+  if (animate) {
+    // (드래그 중에는 매 프레임 호출되므로 끄고, 종료 시 한번만 발화)
+    animateRippleFor(traitId);
+  }
+}
+
+function animateRippleFor(sourceTid /*, _droppedValue */) {
+  // 드래그 종료 후 한 번만: ripple 클래스를 영향받은 vertex에 부여.
+  const svg = document.getElementById('char-radar');
+  if (!svg) return;
+  _correlations.forEach(corr => {
+    if (corr.from !== sourceTid) return;
+    const targetCircle = svg.querySelector(`.radar-vertex[data-trait-id="${corr.to}"]`);
+    if (!targetCircle) return;
+    const cls = corr.weight >= 0 ? 'ripple-pos' : 'ripple-neg';
+    targetCircle.classList.remove('ripple-pos', 'ripple-neg');
+    // force reflow → re-trigger animation
+    void targetCircle.getBoundingClientRect();
+    targetCircle.classList.add(cls);
+    // 슬라이더에도 동일 강조
+    const row = document.querySelector(`.trait-row[data-trait-id="${corr.to}"]`);
+    if (row) {
+      row.classList.remove('ripple-pos', 'ripple-neg');
+      void row.getBoundingClientRect();
+      row.classList.add(cls);
+      setTimeout(() => row.classList.remove(cls), 800);
+    }
+  });
+}
+
+// ─── 우측 패널: 선택한 trait의 영향력 ────────────────────────────
+function renderConnectionsPanel(tid) {
+  const el = document.getElementById('char-connections');
+  if (!el) return;
+  if (!tid) {
+    el.innerHTML = `<div class="char-connections-empty">${
+      escapeHtml(t('char.connections_empty') || '레이더의 점을 클릭하면 그 성향과 연결된 다른 성향들이 표시됩니다.')
+    }</div>`;
+    return;
+  }
+  const tr = _traits.find(x => x.id === tid);
+  if (!tr) { el.innerHTML = ''; return; }
+
+  // 짝 + 상관 trait 모두 모음.
+  const rows = [];
+  const opp = _OPPONENTS[tid];
+  if (opp) {
+    const o = _traits.find(x => x.id === opp);
+    if (o) rows.push({label: (o.label_ko || o.label), icon: o.icon, weight: -1.0, kind: 'pair'});
+  }
+  _correlations.forEach(c => {
+    if (c.from === tid) {
+      const o = _traits.find(x => x.id === c.to);
+      if (o) rows.push({label: (o.label_ko || o.label), icon: o.icon, weight: c.weight, kind: 'corr'});
+    }
+  });
+
+  let html = `<div style="font-size:12px;color:var(--accent);margin-bottom:6px">
+                ${escapeHtml(tr.icon)} ${escapeHtml(tr.label_ko || tr.label)}
+                <span style="color:var(--muted);font-size:11px">→ ${rows.length}</span>
+              </div>`;
+  if (rows.length === 0) {
+    html += `<div class="char-connections-empty">독립 성향 (다른 성향에 영향 없음)</div>`;
+  } else {
+    rows.forEach(r => {
+      const sign = r.weight >= 0 ? 'pos' : 'neg';
+      const arrow = r.weight >= 0 ? '↑' : '↓';
+      let weightLabel;
+      if (r.kind === 'pair') {
+        weightLabel = '짝(1.0 합)';
+      } else {
+        const eff = (r.weight * _ripple_damping).toFixed(2);
+        weightLabel = `${arrow} ${(eff > 0 ? '+' : '')}${eff}`;
+      }
+      html += `<div class="char-conn-row">
+                 <span class="char-conn-label">${escapeHtml(r.icon)} ${escapeHtml(r.label)}</span>
+                 <span class="char-conn-weight ${sign}">${escapeHtml(weightLabel)}</span>
+               </div>`;
+    });
+  }
+  el.innerHTML = html;
+}
+
+// ─── 보조 입력: 그룹별 슬라이더 (정밀 조정) ──────────────────────
 function renderTraitSliders(traits) {
   const container = document.getElementById('trait-sliders');
+  if (!container) return;
+  // Group 라벨 — i18n 미정의 시 기본값 fallback.
   const groups = {
-    A: t('char.group_a'), B: t('char.group_b'),
-    C: t('char.group_c'), D: t('char.group_d'), E: t('char.group_e')
+    A: t('char.group_a') || 'A · 인지 (탐구 ↔ 집중)',
+    B: t('char.group_b') || 'B · 신중성 (신중 ↔ 과감)',
+    C: t('char.group_c') || 'C · 사고 (분석 ↔ 직관)',
+    D: t('char.group_d') || 'D · 사회성 (독립 ↔ 협력)',
+    E: t('char.group_e') || 'E · 핵심 가치 (독립)',
+    F: t('char.group_f') || 'F · 표현 스타일 (독립)',
   };
+  // 그룹별 묶음 — Object.groupBy 사용 가능 환경이면 더 깔끔하지만 폴리필.
+  const byGroup = {};
+  traits.forEach(tr => {
+    if (!byGroup[tr.group]) byGroup[tr.group] = [];
+    byGroup[tr.group].push(tr);
+  });
+
   let html = '';
-  let currentGroup = null;
-  traits.forEach(tr => {                          // t → tr (t()함수와 충돌 방지)
-    if (tr.group !== currentGroup) {
-      if (currentGroup) html += '</div>';
-      currentGroup = tr.group;
-      html += `<div style="margin-bottom:14px">
-        <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);
-          letter-spacing:1px;margin-bottom:6px">
-          GROUP ${tr.group} — ${groups[tr.group]||''}
-        </div>`;
-    }
-    const pct = Math.round(tr.value * 100);
-    const opp = { curiosity:'focus', focus:'curiosity', caution:'boldness',
-                  boldness:'caution', analytical:'intuitive', intuitive:'analytical',
-                  independent:'collaborative', collaborative:'independent' };
-    html += `
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <span style="width:22px;text-align:center">${tr.icon}</span>
-        <span style="width:80px;font-size:12px;color:var(--text)">${tr.label}</span>
-        <input type="range" min="0" max="100" value="${pct}"
-          id="trait-${tr.id}"
-          style="flex:1;accent-color:var(--accent)"
-          oninput="onTraitChange('${tr.id}', this.value, '${opp[tr.id]||''}')">
-        <span style="width:32px;font-size:11px;font-family:var(--font-mono);
-          color:var(--accent);text-align:right" id="val-${tr.id}">${pct}%</span>
+  Object.keys(byGroup).sort().forEach(g => {
+    html += `<div class="trait-group">
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);
+                  letter-spacing:1px;margin:6px 0">
+        GROUP ${g} — ${escapeHtml(groups[g])}
       </div>`;
-  });
-  if (currentGroup) html += '</div>';
-  container.innerHTML = html;
-}
-
-function onTraitChange(traitId, pct, opponent) {
-  const val = parseInt(pct);
-  document.getElementById(`val-${traitId}`).textContent = val + '%';
-  // 상충 성향 자동 조정
-  if (opponent) {
-    const oppVal = 100 - val;
-    const oppEl = document.getElementById(`trait-${opponent}`);
-    const oppLbl = document.getElementById(`val-${opponent}`);
-    if (oppEl) oppEl.value = oppVal;
-    if (oppLbl) oppLbl.textContent = oppVal + '%';
-  }
-  // 레이더 갱신
-  const idx = _traits.findIndex(t => t.id === traitId);
-  if (idx >= 0) {
-    _traits[idx].value = val / 100;
-    if (opponent) {
-      const oppIdx = _traits.findIndex(t => t.id === opponent);
-      if (oppIdx >= 0) _traits[oppIdx].value = (100 - val) / 100;
-    }
-    renderRadarChart(_traits);
-  }
-}
-
-function renderRadarChart(traits) {
-  const canvas = document.getElementById('radar-chart');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-  const cx = W/2, cy = H/2, R = Math.min(W,H)/2 - 30;
-
-  ctx.clearRect(0, 0, W, H);
-
-  const n = traits.length;
-  const angles = traits.map((_, i) => (i / n) * Math.PI * 2 - Math.PI/2);
-
-  // 배경 격자
-  const style = getComputedStyle(document.documentElement);
-  const border = style.getPropertyValue('--border').trim() || '#333';
-  const muted  = style.getPropertyValue('--muted').trim()  || '#666';
-  const accent = style.getPropertyValue('--accent').trim() || '#7c6af7';
-
-  [0.25, 0.5, 0.75, 1.0].forEach(r => {
-    ctx.beginPath();
-    angles.forEach((a, i) => {
-      const x = cx + Math.cos(a) * R * r;
-      const y = cy + Math.sin(a) * R * r;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    byGroup[g].forEach(tr => {
+      const pct = Math.round(tr.value * 100);
+      html += `
+        <div class="trait-row" data-trait-id="${escapeHtml(tr.id)}"
+             style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <span style="width:22px;text-align:center">${escapeHtml(tr.icon)}</span>
+          <span style="width:90px;font-size:12px;color:var(--text)">${escapeHtml(tr.label_ko || tr.label)}</span>
+          <input type="range" min="0" max="100" value="${pct}"
+                 data-slider-id="${escapeHtml(tr.id)}"
+                 style="flex:1;accent-color:var(--accent)">
+          <span class="trait-pct" data-pct-id="${escapeHtml(tr.id)}"
+                style="width:36px;font-size:11px;font-family:var(--font-mono);
+                       color:var(--accent);text-align:right">${pct}%</span>
+        </div>`;
     });
-    ctx.closePath();
-    ctx.strokeStyle = border;
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    html += `</div>`;
   });
+  container.innerHTML = html;
 
-  // 축
-  angles.forEach((a, i) => {
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R);
-    ctx.strokeStyle = border;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    // 라벨
-    const lx = cx + Math.cos(a) * (R + 18);
-    const ly = cy + Math.sin(a) * (R + 18);
-    ctx.fillStyle = muted;
-    ctx.font = '10px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(traits[i].icon + ' ' + traits[i].label, lx, ly);
-  });
-
-  // 데이터 영역
-  ctx.beginPath();
-  angles.forEach((a, i) => {
-    const v = traits[i].value;
-    const x = cx + Math.cos(a) * R * v;
-    const y = cy + Math.sin(a) * R * v;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.closePath();
-  ctx.fillStyle = `${accent}33`;
-  ctx.fill();
-  ctx.strokeStyle = accent;
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // 데이터 포인트
-  angles.forEach((a, i) => {
-    const v = traits[i].value;
-    ctx.beginPath();
-    ctx.arc(cx + Math.cos(a)*R*v, cy + Math.sin(a)*R*v, 4, 0, Math.PI*2);
-    ctx.fillStyle = accent;
-    ctx.fill();
+  // [PR #157 패턴] data-attr + addEventListener — inline oninput X.
+  container.querySelectorAll('input[type="range"][data-slider-id]').forEach(input => {
+    input.addEventListener('input', onSliderInput);
+    input.addEventListener('change', onSliderChangeCommit);
   });
 }
 
+function onSliderInput(ev) {
+  const tid = ev.currentTarget.getAttribute('data-slider-id');
+  const v = parseInt(ev.currentTarget.value, 10) / 100;
+  _selected_trait_id = tid;
+  applyTraitChangeLocally(tid, v, /*animate*/ false);
+  renderConnectionsPanel(tid);
+}
+
+function onSliderChangeCommit(ev) {
+  const tid = ev.currentTarget.getAttribute('data-slider-id');
+  animateRippleFor(tid);
+}
+
+function syncSlidersToTraits() {
+  _traits.forEach(tr => {
+    const slider = document.querySelector(`input[data-slider-id="${tr.id}"]`);
+    const pct = document.querySelector(`[data-pct-id="${tr.id}"]`);
+    const newPct = Math.round(tr.value * 100);
+    if (slider && parseInt(slider.value, 10) !== newPct) slider.value = newPct;
+    if (pct) pct.textContent = newPct + '%';
+  });
+}
+
+// ─── Save / Reset ────────────────────────────────────────────────
 async function saveCharacter() {
   let ok = true;
+  // 백엔드 set_trait는 짝/ripple를 자동 적용하므로 — 중복 적용 방지를
+  // 위해 "변경된 trait의 source 만" 보내도 되지만, 안전하게는 전부
+  // POST. 서버가 멱등(idempotent)이라 같은 값 다시 보내도 문제 없음.
   for (const tr of _traits) {
-    const el = document.getElementById(`trait-${tr.id}`);
-    if (!el) continue;
-    const val = parseInt(el.value) / 100;
     try {
       await api('/admin/character/', 'POST',
-        { api_key: apiKey, trait_id: tr.id, value: val });
+        { api_key: apiKey, trait_id: tr.id, value: tr.value });
     } catch { ok = false; }
   }
-  toast(ok ? t('char.save_ok') : t('char.save_warn'), ok ? 'success' : 'warn');
+  toast(
+    ok ? (t('char.save_ok') || '성향 저장 완료')
+       : (t('char.save_warn') || '일부 성향 저장 실패'),
+    ok ? 'success' : 'warn'
+  );
 }
 
 function resetCharacter() {
-  const defaults = { curiosity:.5, focus:.5, caution:.7, boldness:.3,
+  // 백엔드 TRAITS의 default 값과 매치 — 16 traits.
+  const defaults = {
+    curiosity:.5, focus:.5, caution:.7, boldness:.3,
     analytical:.6, intuitive:.4, independent:.5, collaborative:.5,
-    security:.9, creativity:.5, empathy:.5 };
-  _traits.forEach(tr => { tr.value = defaults[tr.id] ?? 0.5; });
+    security:.9, creativity:.5, empathy:.5,
+    conciseness:.5, directness:.5, optimism:.5,
+    risk_tolerance:.4, patience:.6,
+  };
+  _traits.forEach(tr => { tr.value = defaults[tr.id] ?? tr.default ?? 0.5; });
+  _selected_trait_id = null;
+  renderInteractiveRadar();
   renderTraitSliders(_traits);
-  renderRadarChart(_traits);
+  renderConnectionsPanel(null);
 }
+
+// 글로벌 export — 인라인 onclick (HTML의 saveCharacter / resetCharacter).
+window.saveCharacter  = saveCharacter;
+window.resetCharacter = resetCharacter;
 
 /* ════════════════════════════════
    P7-EVO-E: 능력 성장 UI

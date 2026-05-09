@@ -239,6 +239,122 @@
 
   .loading { color: var(--muted); font-size: 13px; padding: 20px; }
   .empty   { color: var(--muted); font-size: 13px; padding: 32px; text-align: center; }
+
+  /* ── [P2 unified UX 2026-05-10] 성향 캐릭터 인터랙티브 레이더 ── */
+  .char-intro {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--text-soft);
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+  .char-layout {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .char-radar-wrap {
+    flex: 1 1 480px;
+    min-width: 320px;
+    position: relative;
+  }
+  .char-radar {
+    width: 100%;
+    height: auto;
+    max-width: 600px;
+    display: block;
+    margin: 0 auto;
+    touch-action: none;        /* 드래그 시 모바일 스크롤 방지 */
+    user-select: none;
+  }
+  .char-radar-hint {
+    text-align: center;
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+  /* radar SVG 내부 클래스 — JS가 부여 */
+  .char-radar .radar-grid       { fill: none; stroke: var(--border); stroke-width: 1; opacity: .35; }
+  .char-radar .radar-axis       { stroke: var(--border); stroke-width: 1; opacity: .35; }
+  .char-radar .radar-fill       { fill: var(--accent); fill-opacity: .15; stroke: var(--accent); stroke-width: 2; }
+  .char-radar .radar-label      { font-size: 11px; fill: var(--text-soft); font-family: var(--font-ui); pointer-events: none; }
+  .char-radar .radar-icon       { font-size: 14px; pointer-events: none; }
+  .char-radar .radar-vertex     { fill: var(--accent); cursor: grab; transition: r .15s, fill .25s; }
+  .char-radar .radar-vertex:hover { fill: #fff; r: 8; }
+  .char-radar .radar-vertex.dragging { cursor: grabbing; r: 9; fill: #fff; }
+  .char-radar .radar-vertex.selected { stroke: #fff; stroke-width: 2; }
+  .char-radar .radar-vertex.ripple-pos { animation: char-ripple-pos .8s ease-out; }
+  .char-radar .radar-vertex.ripple-neg { animation: char-ripple-neg .8s ease-out; }
+  .char-radar .corr-edge        { fill: none; stroke-width: 1; opacity: .25; pointer-events: none;
+                                  stroke-dasharray: 4 3; transition: opacity .25s, stroke-width .25s; }
+  .char-radar .corr-edge.pos    { stroke: #22c55e; }    /* 양 상관 — 녹색 */
+  .char-radar .corr-edge.neg    { stroke: #ef4444; }    /* 음 상관 — 빨강 */
+  .char-radar .corr-edge.active { opacity: .85; stroke-width: 2.2; stroke-dasharray: none; }
+  .char-radar .pair-edge        { stroke: var(--muted); stroke-width: 1; opacity: .15;
+                                  stroke-dasharray: 2 4; pointer-events: none; }
+
+  @keyframes char-ripple-pos {
+    0%   { fill: var(--accent); r: 6; }
+    30%  { fill: #22c55e;       r: 11; }
+    100% { fill: var(--accent); r: 6; }
+  }
+  @keyframes char-ripple-neg {
+    0%   { fill: var(--accent); r: 6; }
+    30%  { fill: #ef4444;       r: 11; }
+    100% { fill: var(--accent); r: 6; }
+  }
+
+  /* 우측 사이드 (범례 + 영향력 패널) */
+  .char-side {
+    flex: 0 0 280px;
+    min-width: 240px;
+  }
+  .char-legend { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--text-soft); }
+  .char-legend-row { display: flex; align-items: center; gap: 8px; }
+  .char-legend-edge {
+    display: inline-block; width: 22px; height: 0;
+    border-top: 2px dashed currentColor;
+  }
+  .char-legend-edge-pos { color: #22c55e; }
+  .char-legend-edge-neg { color: #ef4444; }
+  .char-legend-pair {
+    display: inline-block; width: 22px; height: 0;
+    border-top: 1px dashed var(--muted); opacity: .5;
+  }
+  .char-connections {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font-size: 12px;
+    min-height: 80px;
+  }
+  .char-connections-empty { color: var(--muted); font-size: 11px; line-height: 1.5; }
+  .char-conn-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .char-conn-row:last-child { border-bottom: none; }
+  .char-conn-label { color: var(--text); font-size: 12px; }
+  .char-conn-weight { font-family: var(--font-mono); font-size: 11px; }
+  .char-conn-weight.pos { color: #22c55e; }
+  .char-conn-weight.neg { color: #ef4444; }
+
+  /* 하단 정밀 슬라이더 — 그룹별 묶음 */
+  .char-sliders {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 8px 24px;
+  }
+  /* 슬라이더 ripple 강조 — JS가 .ripple 클래스 토글 */
+  .char-sliders .trait-row.ripple-pos .trait-pct { color: #22c55e; transition: color .8s; }
+  .char-sliders .trait-row.ripple-neg .trait-pct { color: #ef4444; transition: color .8s; }
 </style>
 <!-- mobile-responsive overrides — kept after inline styles so @media
      rules win at narrow viewports without !important on every line -->
@@ -568,29 +684,77 @@
       </div>
     </div>
 
-    <!-- 성향 캐릭터 -->
+    <!-- 성향 캐릭터 [P2 unified UX 2026-05-10] -->
+    <!-- Interactive radar with drag-to-adjust + correlation ripple. -->
+    <!-- Sliders kept as a secondary numeric input (good for fine tuning). -->
     <div class="page" id="page-character">
       <div class="page-title"><span data-i18n="char.page_title">🎭 성향 캐릭터</span></div>
-      <div style="display:flex;gap:24px;flex-wrap:wrap">
-        <!-- 레이더 차트 -->
-        <div style="flex:0 0 320px">
-          <div class="section-title"><span data-i18n="char.radar">▸ Personality Radar</span></div>
-          <canvas id="radar-chart" width="300" height="300"
-            style="display:block;margin:0 auto"></canvas>
+
+      <!-- 안내문 -->
+      <div class="char-intro" data-i18n="char.intro">
+        레이더 위 점을 드래그해서 직관적으로 성향을 조절하세요. 점선으로 연결된 성향들은 서로 영향을 줍니다.
+      </div>
+
+      <div class="char-layout">
+        <!-- 좌: 인터랙티브 SVG 레이더 -->
+        <div class="char-radar-wrap">
+          <svg id="char-radar" class="char-radar"
+               viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet"
+               role="img" aria-label="Personality Radar">
+            <!-- 동적 렌더링 — admin.js renderInteractiveRadar -->
+          </svg>
+          <div class="char-radar-hint" data-i18n="char.drag_hint">
+            ✋ 점을 안쪽/바깥쪽으로 드래그
+          </div>
         </div>
-        <!-- 슬라이더 컨트롤 -->
-        <div style="flex:1;min-width:280px">
-          <div class="section-title"><span data-i18n="char.adjust">▸ Personality Adjust</span></div>
-          <div id="trait-sliders"></div>
-          <div style="margin-top:16px;display:flex;gap:8px">
-            <button class="btn btn-primary" onclick="saveCharacter()" data-i18n="char.save">💾 Save Character</button>
+
+        <!-- 우: 범례 + 액션 + 연결 정보 -->
+        <div class="char-side">
+          <div class="section-title"><span data-i18n="char.legend">▸ 범례</span></div>
+          <div class="char-legend">
+            <div class="char-legend-row">
+              <span class="char-legend-edge char-legend-edge-pos"></span>
+              <span data-i18n="char.legend_pos">함께 증가하는 성향</span>
+            </div>
+            <div class="char-legend-row">
+              <span class="char-legend-edge char-legend-edge-neg"></span>
+              <span data-i18n="char.legend_neg">한쪽이 증가하면 다른쪽 감소</span>
+            </div>
+            <div class="char-legend-row">
+              <span class="char-legend-pair"></span>
+              <span data-i18n="char.legend_pair">짝(상충): 자동 1.0-합 유지</span>
+            </div>
+          </div>
+
+          <div class="section-title" style="margin-top:20px">
+            <span data-i18n="char.connections">▸ 선택한 성향의 영향력</span>
+          </div>
+          <div id="char-connections" class="char-connections">
+            <div class="char-connections-empty" data-i18n="char.connections_empty">
+              레이더의 점을 클릭하면 그 성향과 연결된 다른 성향들이 표시됩니다.
+            </div>
+          </div>
+
+          <div style="margin-top:20px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="saveCharacter()"
+                    data-i18n="char.save">💾 저장</button>
             <button class="btn" style="background:var(--surface);border:1px solid var(--border);color:var(--muted)"
-              onclick="resetCharacter()"><span data-i18n="set.reset_default">↩ 기본값</span></button>
-          </div>
-          <div style="margin-top:12px;font-size:11px;color:var(--muted);font-family:var(--font-mono)">
-            * Groups A~D: Opposing traits (sum=1.0 auto-adjusted)
+                    onclick="resetCharacter()">
+              <span data-i18n="set.reset_default">↩ 기본값</span>
+            </button>
           </div>
         </div>
+      </div>
+
+      <!-- 하단: 성향 그룹별 상세값 + 슬라이더 (보조 입력) -->
+      <div class="section-title" style="margin-top:24px">
+        <span data-i18n="char.fine_tune">▸ 정밀 조정</span>
+      </div>
+      <div id="trait-sliders" class="char-sliders"></div>
+      <div style="margin-top:8px;font-size:11px;color:var(--muted);font-family:var(--font-mono)">
+        <span data-i18n="char.note_pair">* Groups A~D: 상충 (합=1.0 자동조정)</span>
+        &nbsp;·&nbsp;
+        <span data-i18n="char.note_corr">* 점선 = 상관관계 (damping 0.3로 부드럽게 영향)</span>
       </div>
     </div>
 
