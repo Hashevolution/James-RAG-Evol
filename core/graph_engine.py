@@ -43,6 +43,68 @@ DFS_SCORE_THRESHOLD  = 0.05
 DEPTH_DECAY          = 0.7
 
 
+def _doc_outgoing_hop_valid(source_entity: dict, target_entity: dict) -> bool:
+    """[#A5-D, 2026-05-09] Document → entity hop validity gate.
+
+    Background — Palantir → 비트코인 spurious path
+    -----------------------------------------------
+    The wiki_generator emits two kinds of relations on a document
+    entity's `relations` list:
+      (a) the document's PRIMARY entity (the one whose `sources:` list
+          contains this document) — the doc IS about this entity;
+      (b) entities merely MENTIONED in the document — these get a
+          `RELATED_TO` edge with conf 0.7 but the document is NOT a
+          source for them.
+    Old DFS treated both kinds the same and freely traversed (a) and
+    (b) outbound from a document. This produced cross-domain false
+    paths like:
+
+        Palantir → PLTR_03(doc) → Morgan Stanley → MSBT → 비트코인
+
+    The PLTR_03 → Morgan Stanley hop is type-(b): PLTR_03 mentions
+    Morgan Stanley but is NOT a Morgan Stanley source document
+    (Morgan Stanley's sources field lists only `09_MorganStanley_*`).
+
+    Rule
+    ----
+    From a document, only follow outgoing edges where the target
+    entity has THIS document in its `sources` field. Type-(a) hops
+    pass; type-(b) hops are blocked. The rule does not apply when
+    the source entity is non-document — entity → entity inferred
+    edges (the bulk of the graph backbone, 78% at conf 0.7) are
+    untouched, avoiding the over-cut that broke option 1's bench.
+
+    Source vs target asymmetry
+    --------------------------
+    `entity.sources` carries filenames with extension (e.g.
+    `PLTR_03_밸류에이션_리스크_분석.pdf`); document entity's `name`
+    is the stem (`PLTR_03_밸류에이션_리스크_분석`). Match by stem
+    contained in any source filename.
+    """
+    if not source_entity or source_entity.get("entity_type") != "document":
+        return True   # rule only applies when source is a document
+
+    if not target_entity:
+        return True   # missing data — be permissive (other gates apply)
+
+    src_name = (source_entity.get("name") or "").strip()
+    if not src_name:
+        return True
+
+    target_sources = target_entity.get("sources") or []
+    if not isinstance(target_sources, list):
+        return True   # malformed — let other gates handle
+
+    for s in target_sources:
+        if not isinstance(s, str):
+            continue
+        # Match by stem (PLTR_03_…)  in source filename (PLTR_03_….pdf).
+        if src_name in s:
+            return True
+
+    return False
+
+
 class GraphEngine:
     """
     DFS 기반 Graph 탐색 + Ontology 검증 전담 엔진.
@@ -285,6 +347,15 @@ class GraphEngine:
                     continue
 
                 target_entity = self.load_entity(target_id)
+
+                # [#A5-D] doc→entity gate — see _doc_outgoing_hop_valid.
+                # Blocks type-(b) tangential mentions (PLTR_03 → Morgan
+                # Stanley) without touching entity→entity edges.
+                if not _doc_outgoing_hop_valid(entity, target_entity):
+                    print(f"[A5D] doc-tangential hop 차단: "
+                          f"{entity.get('name','?')} → "
+                          f"{rel.get('target','?')}")
+                    continue
 
                 # [P4.5-3] Ontology strict enforcement
                 if not self.check_strict_relation(std_type, entity, target_entity or {}):
