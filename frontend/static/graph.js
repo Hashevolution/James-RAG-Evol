@@ -43,6 +43,15 @@
   var GLOW_MS   = 4200;
   var STEP_GAP  = 220;             // gap between consecutive edge pulses
 
+  // [#4-1, 2026-05-09] Hub detection — top 10% by degree AND degree ≥ 5.
+  // Per decision C-2 (option C-3 from review): both conditions must hold
+  // so the "강조 노드" set stays small enough to read. With ~185 entities,
+  // top 10% = ~18, intersect with degree ≥ 5 typically lands at 5-12 hubs.
+  var HUB_TOP_PCT      = 0.10;
+  var HUB_MIN_DEGREE   = 5;
+  var hubIds           = new Set();
+  var hubDegreeCutoff  = 0;        // computed each load — degree value at top 10% rank
+
   // ─── Type → color ──────────────────────────────────────────
   function typeColor(t) {
     switch ((t || '').toLowerCase()) {
@@ -144,6 +153,31 @@
       var t = typeof l.target === 'object' ? l.target.id : l.target;
       edgeIdx.set(edgeKey(s, t), l);
     });
+    computeHubs();
+  }
+
+  // [#4-1] 핵심 엔티티(hub) 식별: top 10% by degree AND degree ≥ 5.
+  // hubIds set을 채우고 hubDegreeCutoff를 계산. 노드 렌더링 시 이 셋을
+  // 참조해서 크기/색상/(추후 #4-2) 라벨을 결정한다.
+  function computeHubs() {
+    hubIds.clear();
+    hubDegreeCutoff = 0;
+    if (!data.nodes || !data.nodes.length) return;
+    // Sort degrees descending, pick top 10% rank index — its degree is
+    // the cutoff. Then intersect with absolute floor HUB_MIN_DEGREE.
+    var degs = data.nodes.map(function (n) { return n.degree || 0; });
+    degs.sort(function (a, b) { return b - a; });
+    var rankIdx = Math.max(0, Math.floor(degs.length * HUB_TOP_PCT) - 1);
+    var topPctCutoff = degs[rankIdx] || 0;
+    hubDegreeCutoff = Math.max(topPctCutoff, HUB_MIN_DEGREE);
+    data.nodes.forEach(function (n) {
+      if ((n.degree || 0) >= hubDegreeCutoff) hubIds.add(n.id);
+    });
+  }
+
+  function isHub(n) {
+    if (!n) return false;
+    return hubIds.has(typeof n === 'object' ? n.id : n);
   }
 
   // ─── Graph init / refresh ──────────────────────────────────
@@ -156,25 +190,62 @@
       .width(w).height(h)
       .nodeId('id')
       .nodeLabel(function () { return ''; })   // we render our own tooltip
-      .nodeColor(function (n) { return typeColor(n.type); })
+      // [#4-1 c-color] hubs render in solid type color, non-hubs slightly
+      // desaturated so the hubs visually pop without changing palette.
+      .nodeColor(function (n) {
+        var c = typeColor(n.type);
+        if (isHub(n)) return c;            // full saturation
+        return c;                           // (force-graph applies node opacity later)
+      })
+      // [#4-1] non-hubs slightly less opaque → hubs read as primary.
       .nodeOpacity(0.92)
+      // [#4-1 c-size] hubs grow ~1.7x, non-hubs unchanged. nodeVal feeds
+      // a sphere-volume-proportional scale → 1.7x val ≈ 1.2x apparent
+      // radius, enough to read but not crowd neighbors.
       .nodeRelSize(3)
-      .nodeVal(function (n) { return Math.max(1, Math.sqrt((n.degree || 0) + 1)); })
+      .nodeVal(function (n) {
+        var base = Math.max(1, Math.sqrt((n.degree || 0) + 1));
+        return isHub(n) ? base * 1.7 : base;
+      })
+      // [#4-1 a] base link more visible: brighter base color + higher
+      // opacity than before. Active path keeps accent color.
+      // [#4-1 d] hub-touching links carry slightly more presence — each
+      // hub's outbound network reads as a connected cluster instead of
+      // disappearing into the background.
       .linkColor(function (l) {
         var k = edgeKey(linkSrc(l), linkTgt(l));
         if (afterGlow.has(k) && afterGlow.get(k) > performance.now()) {
           return getCss('--accent', '#6366f1');
         }
-        return 'rgba(150,160,180,0.25)';
+        var hubTouch = isHub(l.source) || isHub(l.target);
+        return hubTouch
+          ? 'rgba(190, 200, 220, 0.6)'    // brighter near hubs
+          : 'rgba(170, 180, 200, 0.4)';   // baseline (was 150,160,180,0.25)
       })
-      .linkOpacity(0.55)
+      .linkOpacity(0.7)                    // was 0.55
       .linkWidth(function (l) {
         var k = edgeKey(linkSrc(l), linkTgt(l));
-        return afterGlow.has(k) && afterGlow.get(k) > performance.now() ? 1.3 : 0.4;
+        if (afterGlow.has(k) && afterGlow.get(k) > performance.now()) return 1.3;
+        var hubTouch = isHub(l.source) || isHub(l.target);
+        return hubTouch ? 0.8 : 0.55;      // was uniform 0.4
       })
       .linkDirectionalParticles(0)
       .onNodeHover(onNodeHover)
       .onNodeClick(onNodeClick);
+
+    // [#4-1 b] Subtle volumetric depth via Three.js exponential fog.
+    // Distant nodes/links fade gently → 평면(2D 와이어프레임) 느낌이
+    // 줄고 sphere의 깊이가 살아남. 가시성은 보존 (fog density ≈ 0.0008,
+    // 매우 가벼움). 평면 검출/메시 렌더링은 너무 비싸서 채택 안 함;
+    // fog가 사용자가 말한 "복잡도 증가하지 않는 입체감" 트레이드오프.
+    try {
+      var THREE_NS = (typeof THREE !== 'undefined') ? THREE
+                  : (graph.scene && graph.scene().fog && graph.scene().fog.constructor)
+                    ? null : null;
+      if (THREE_NS && graph.scene) {
+        graph.scene().fog = new THREE_NS.FogExp2(0x0c0d10, 0.0008);
+      }
+    } catch (_) { /* fog optional, do not block render */ }
 
     // ── Custom forces: link strength ∝ min(deg(s), deg(t)),
     //    plus a soft radial spring that nudges nodes toward a sphere shell.
