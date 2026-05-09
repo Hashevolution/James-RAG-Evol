@@ -416,35 +416,41 @@ if __name__ == "__main__":
 
 # ── [4-B] 하드웨어 기반 LLM 추천 매트릭스 ─────────────────────
 
-LLM_CATALOG = [
-    # name, tag, min_vram_gb, min_ram_gb, desc, purpose, size_gb
-    {"name":"gemma4:e4b",         "tag":"gemma4:e4b",         "min_vram":4,  "min_ram":8,
-     "desc":"가장 빠른 일상 대화",     "purpose":["chat","general"],    "size_gb":4.0},
-    {"name":"gemma3:12b",         "tag":"gemma3:12b",         "min_vram":8,  "min_ram":16,
-     "desc":"균형형 고성능 추론",       "purpose":["chat","retrieval"],  "size_gb":7.5},
-    {"name":"gemma3:27b",         "tag":"gemma3:27b",         "min_vram":16, "min_ram":32,
-     "desc":"최고 품질 추론",          "purpose":["chat","retrieval"],  "size_gb":16.0},
-    {"name":"deepseek-coder:6.7b","tag":"deepseek-coder:6.7b","min_vram":4,  "min_ram":8,
-     "desc":"코딩 특화 경량",          "purpose":["coding"],            "size_gb":4.1},
-    {"name":"deepseek-coder:33b", "tag":"deepseek-coder:33b", "min_vram":16, "min_ram":32,
-     "desc":"코딩 특화 최고성능",       "purpose":["coding"],            "size_gb":19.0},
-    {"name":"llava:13b",          "tag":"llava:13b",          "min_vram":8,  "min_ram":16,
-     "desc":"이미지+텍스트 분석",       "purpose":["multimodal"],        "size_gb":8.0},
-    {"name":"llava:34b",          "tag":"llava:34b",          "min_vram":16, "min_ram":32,
-     "desc":"고성능 멀티모달",          "purpose":["multimodal"],        "size_gb":20.0},
-    {"name":"mistral:7b",         "tag":"mistral:7b",         "min_vram":4,  "min_ram":8,
-     "desc":"빠른 유럽어 지원",         "purpose":["chat"],              "size_gb":4.1},
-    {"name":"qwen2.5:14b",        "tag":"qwen2.5:14b",        "min_vram":10, "min_ram":16,
-     "desc":"한국어+중국어 강화",        "purpose":["chat","retrieval"],  "size_gb":9.0},
-    {"name":"phi4:14b",           "tag":"phi4:14b",           "min_vram":8,  "min_ram":16,
-     "desc":"Microsoft 소형 고성능",    "purpose":["chat","coding"],     "size_gb":8.5},
-]
+# [PR plan-2, 2026-05-09] LLM_CATALOG now derives from core.llm_catalog
+# (single source of truth). The local format is mapped from the central
+# schema for backward compat with downstream callers (admin UI etc.):
+#   central        local
+#   tag         →  name + tag (both = tag)
+#   description →  desc
+#   min_vram_gb →  min_vram
+#   min_ram_gb  →  min_ram
+def _build_local_catalog():
+    try:
+        from core.llm_catalog import CATALOG as _CENTRAL
+    except Exception:
+        return []
+    out = []
+    for e in _CENTRAL:
+        out.append({
+            "name":     e["tag"],
+            "tag":      e["tag"],
+            "min_vram": e.get("min_vram_gb", 0),
+            "min_ram":  e.get("min_ram_gb", 0),
+            "desc":     e.get("description", ""),
+            "purpose":  e.get("purpose", []),
+            "size_gb":  e.get("size_gb", 0),
+        })
+    return out
+
+
+LLM_CATALOG = _build_local_catalog()
 
 
 def get_llm_recommendations(specs: dict) -> list:
     """
     [4-B] 하드웨어 스펙 기반 LLM 모델 추천.
-    반환: 설치 가능 모델 목록 + 추천 이유
+    [PR plan-2] 내부적으로 core.llm_catalog 사용. 외부 응답 shape
+    (feasible, reasons, reason_fail) 유지.
     """
     gpu    = specs.get("gpu", {})
     ram    = specs.get("ram", {})
@@ -455,7 +461,6 @@ def get_llm_recommendations(specs: dict) -> list:
     for m in LLM_CATALOG:
         if vram >= m["min_vram"] and ram_gb >= m["min_ram"]:
             rec = {**m}
-            # 추천 이유
             reasons = []
             if vram >= m["min_vram"] * 1.5:
                 reasons.append("VRAM 여유 충분")
@@ -471,7 +476,6 @@ def get_llm_recommendations(specs: dict) -> list:
                       "reason_fail": f"VRAM {m['min_vram']}GB 필요 (현재 {vram:.0f}GB)"}
             recommended.append(m_copy)
 
-    # 추천 순서: purpose별 best 먼저
     feasible = [m for m in recommended if m["feasible"]]
     infeasible = [m for m in recommended if not m["feasible"]]
     return feasible + infeasible

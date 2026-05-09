@@ -23,27 +23,64 @@ from typing import List, Optional, Tuple
 def model_catalog() -> dict:
     """Mode → ordered list of (tag, weight) candidates.
 
-    Default-first ordering. Operator's `.env` (JAMES_LLM_MODEL,
-    JAMES_CODING_MODEL) is prepended if not already in the list, so a
-    custom config still appears as a candidate.
+    [PR plan-2, 2026-05-09] Now builds from `core.llm_catalog.CATALOG`
+    (single source of truth). Picker continues to show (tag, weight)
+    pairs for backward compat; richer metadata (purpose, vram, size,
+    description) is in the central catalog.
+
+    Operator's `.env` defaults (JAMES_LLM_MODEL, JAMES_CODING_MODEL)
+    are still prepended if they're not already in the list, so a
+    custom config tag still appears as a picker option.
+
+    Mode policy:
+      chat / retrieval / wiki_edit / self_evolve  → "chat" purpose
+        entries (a small, opinionated chat-priority list to keep the
+        secondary picker compact — not all catalog entries appear)
+      coding                                       → "coding" purpose
+        entries (qwen-coder + deepseek-coder)
     """
     from config import GEMMA_MODEL, CODING_MODEL
-    chat_default = GEMMA_MODEL
-    code_default = CODING_MODEL
-    chat_cands: List[Tuple[str, str]] = [
-        (chat_default, "light"),
-        ("gemma3:12b", "medium"),
-        ("gemma3:27b", "heavy"),
-    ]
-    if not any(c[0] == chat_default for c in chat_cands):
-        chat_cands.insert(0, (chat_default, "medium"))
-    code_cands: List[Tuple[str, str]] = [
-        ("qwen2.5-coder:7b", "light"),
-        (code_default,       "heavy"),
-        ("gemma4:e4b",       "light"),
-    ]
-    if not any(c[0] == code_default for c in code_cands):
-        code_cands.insert(0, (code_default, "heavy"))
+    from core.llm_catalog import by_purpose
+
+    # Per-mode picker list. We deliberately curate down to a few
+    # candidates so the dropdown stays readable. The full catalog is
+    # available via /admin/llm/recommend or core.llm_catalog.by_purpose.
+    chat_picker_tags = ["gemma3:4b", "gemma3:12b", "gemma3:27b", "gemma4:e4b"]
+    chat_cands: List[Tuple[str, str]] = []
+    for tag in chat_picker_tags:
+        for e in by_purpose("chat"):
+            if e["tag"] == tag:
+                chat_cands.append((e["tag"], e["weight"]))
+                break
+
+    # Operator's chat default first if not already in list.
+    if GEMMA_MODEL and not any(c[0] == GEMMA_MODEL for c in chat_cands):
+        # Look up its weight from central catalog if known, else medium.
+        from core.llm_catalog import by_tag
+        info = by_tag(GEMMA_MODEL)
+        weight = info["weight"] if info else "medium"
+        chat_cands.insert(0, (GEMMA_MODEL, weight))
+
+    coding_picker_tags = ["qwen2.5-coder:7b", "qwen2.5-coder:14b",
+                          "qwen2.5-coder:32b", "deepseek-coder:6.7b"]
+    code_cands: List[Tuple[str, str]] = []
+    for tag in coding_picker_tags:
+        for e in by_purpose("coding"):
+            if e["tag"] == tag:
+                code_cands.append((e["tag"], e["weight"]))
+                break
+
+    if CODING_MODEL and not any(c[0] == CODING_MODEL for c in code_cands):
+        from core.llm_catalog import by_tag
+        info = by_tag(CODING_MODEL)
+        weight = info["weight"] if info else "heavy"
+        code_cands.insert(0, (CODING_MODEL, weight))
+
+    # Append a non-coder light fallback for coding mode (handle_coding
+    # falls through to chat-style call_gemma if coder unavailable).
+    if not any(c[0] == "gemma4:e4b" for c in code_cands):
+        code_cands.append(("gemma4:e4b", "light"))
+
     return {
         "chat":         chat_cands,
         "retrieval":    chat_cands,
