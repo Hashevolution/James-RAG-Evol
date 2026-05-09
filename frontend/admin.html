@@ -292,6 +292,9 @@
       <div class="nav-item" onclick="showPage('patches', this)">
         <span class="nav-icon">🔧</span> Patches
       </div>
+      <div class="nav-item" onclick="showPage('uploads', this)">
+        <span class="nav-icon">📥</span> <span data-i18n="admin.upload_history">업로드 이력</span>
+      </div>
     </div>
 
     <div class="nav-section nav-foldable" onclick="toggleNavSection(this)">
@@ -683,6 +686,37 @@
     <div class="page" id="page-audit">
       <div class="page-title"><span data-i18n="audit.page_title">📋 감사 로그</span></div>
       <div class="log-box" id="audit-log"><div class="loading" data-i18n="common.loading">로딩 중...</div></div>
+    </div>
+
+    <!-- 업로드 이력 [#7-C] -->
+    <div class="page" id="page-uploads">
+      <div class="page-title">
+        <span data-i18n="uploads.page_title">📥 업로드 파일 이력</span>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+        <input type="text" id="uploads-search"
+               placeholder="파일명 검색 (Enter)"
+               data-i18n-placeholder="uploads.search_placeholder"
+               style="flex:1;min-width:200px;padding:8px 12px;
+                      background:var(--surface-2);border:1px solid var(--border);
+                      border-radius:8px;color:var(--text);font-size:13px"
+               onkeydown="if(event.key==='Enter') loadUploads()">
+        <button onclick="loadUploads()" style="padding:8px 16px;
+                background:var(--accent);color:#fff;border:0;border-radius:8px;
+                cursor:pointer;font-size:13px;font-weight:600">
+          <span data-i18n="common.search">검색</span>
+        </button>
+        <span id="uploads-meta" style="color:var(--muted);font-size:12px"></span>
+      </div>
+      <div id="uploads-table-wrap"
+           style="background:var(--surface);border:1px solid var(--border);
+                  border-radius:10px;overflow:hidden">
+        <div id="uploads-tbody" style="padding:20px">
+          <div class="loading" data-i18n="common.loading">로딩 중...</div>
+        </div>
+      </div>
+      <div id="uploads-pager" style="margin-top:14px;display:flex;
+           gap:10px;justify-content:center"></div>
     </div>
 
     <!-- 🛠️ 장비 현황 (P3-1) -->

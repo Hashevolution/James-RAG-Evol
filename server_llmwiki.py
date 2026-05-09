@@ -2855,6 +2855,82 @@ async def admin_audit(api_key: str, limit: int = 100,
     return {"logs": logs[:limit], "total": len(logs)}
 
 
+@app.get("/admin/uploads/history/",
+         summary="업로드 파일 이력 [item #7-C]")
+async def admin_uploads_history(
+    api_key: str,
+    limit:   int = 50,
+    offset:  int = 0,
+    q:       str = "",
+    role:    str = Depends(get_role_from_request),
+):
+    """[#7-C] Read /upload/ rows from the audit_log SQLite table.
+
+    Returned shape (per row): timestamp, filename (= audit `query`
+    field — `_write_audit` for /upload/ stores file.filename here),
+    user_role, ip_address, blocked, security_event.
+
+    Pagination via limit/offset (default 50 / 0). Optional `q` does a
+    case-sensitive LIKE %...% on filename. Both bound as parameters —
+    SQLite parameterisation is the trust boundary for the search box.
+
+    Admin-gated; unrelated audit endpoints already exist for the wider
+    log surface.
+    """
+    _require_admin(api_key, role)
+    # Hard cap to keep the JSON payload bounded and avoid the
+    # browser locking up if an operator passes ?limit=999999.
+    limit  = max(1, min(int(limit or 50), 500))
+    offset = max(0, int(offset or 0))
+    qstr   = (q or "").strip()
+
+    items: list = []
+    total: int  = 0
+    try:
+        conn = sqlite3.connect(_AUDIT_DB, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        if qstr:
+            cnt = conn.execute(
+                "SELECT COUNT(*) AS c FROM audit_log "
+                "WHERE endpoint='/upload/' AND query LIKE ?",
+                (f"%{qstr}%",),
+            ).fetchone()
+            rows = conn.execute(
+                "SELECT * FROM audit_log "
+                "WHERE endpoint='/upload/' AND query LIKE ? "
+                "ORDER BY id DESC LIMIT ? OFFSET ?",
+                (f"%{qstr}%", limit, offset),
+            ).fetchall()
+        else:
+            cnt = conn.execute(
+                "SELECT COUNT(*) AS c FROM audit_log "
+                "WHERE endpoint='/upload/'"
+            ).fetchone()
+            rows = conn.execute(
+                "SELECT * FROM audit_log "
+                "WHERE endpoint='/upload/' "
+                "ORDER BY id DESC LIMIT ? OFFSET ?",
+                (limit, offset),
+            ).fetchall()
+        total = int(cnt["c"]) if cnt else 0
+        for r in rows:
+            items.append({
+                "timestamp":      r["timestamp"] or "",
+                "filename":       r["query"] or "",
+                "user_role":      r["user_role"] or "",
+                "ip_address":     r["ip_address"] or "",
+                "blocked":        bool(r["blocked"]),
+                "security_event": r["security_event"] or "",
+            })
+        conn.close()
+    except Exception as e:
+        return {"items": [], "total": 0, "error": str(e),
+                "limit": limit, "offset": offset, "q": qstr}
+
+    return {"items": items, "total": total,
+            "limit": limit, "offset": offset, "q": qstr}
+
+
 @app.get("/admin/settings", summary="설정 조회 [P7]")
 async def admin_settings_get(api_key: str, role: str = Depends(get_role_from_request)):
     _require_admin(api_key, role)

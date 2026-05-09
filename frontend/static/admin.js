@@ -187,6 +187,7 @@ function showPage(id, el) {
     memory:         loadMemory,
     patches:        loadPatches,
     audit:          loadAudit,
+    uploads:        loadUploads,
     settings:       loadSettings,
     proposals:      loadProposals,
     'evo-reports':  loadEvoReports,
@@ -710,6 +711,120 @@ function renderLogEntry(l) {
     <span class="log-time">${(l.time||l.timestamp||'').slice(11,19)}</span>
     <span>[${l.event||l.action||'EVENT'}] ${l.detail||l.query||''}</span>
   </div>`;
+}
+
+/* ── 업로드 파일 이력 [#7-C] ── */
+let _uploadsOffset = 0;
+const _uploadsLimit = 50;
+
+function _escHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function loadUploads(resetOffset = true) {
+  if (resetOffset) _uploadsOffset = 0;
+  const qInput = document.getElementById('uploads-search');
+  const q = qInput ? qInput.value.trim() : '';
+  const tbody = document.getElementById('uploads-tbody');
+  const meta  = document.getElementById('uploads-meta');
+  const pager = document.getElementById('uploads-pager');
+  if (!tbody) return;
+  tbody.innerHTML = `<div class="loading">${t('common.loading') || '로딩 중...'}</div>`;
+  if (meta)  meta.textContent = '';
+  if (pager) pager.innerHTML  = '';
+
+  try {
+    const path = `/admin/uploads/history/?limit=${_uploadsLimit}` +
+                 `&offset=${_uploadsOffset}` +
+                 (q ? `&q=${encodeURIComponent(q)}` : '');
+    const data = await api(path);
+    const items = data.items || [];
+    const total = data.total || 0;
+
+    if (items.length === 0) {
+      tbody.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:var(--muted)">
+        ${q ? `'${_escHtml(q)}' 검색 결과 없음` : '업로드 이력 없음'}
+      </div>`;
+    } else {
+      tbody.innerHTML = `
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="background:var(--surface-2);text-align:left">
+              <th style="padding:10px 14px;color:var(--muted);font-weight:600">시간</th>
+              <th style="padding:10px 14px;color:var(--muted);font-weight:600">파일명</th>
+              <th style="padding:10px 14px;color:var(--muted);font-weight:600">역할</th>
+              <th style="padding:10px 14px;color:var(--muted);font-weight:600">IP</th>
+              <th style="padding:10px 14px;color:var(--muted);font-weight:600">상태</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map(it => {
+              const ts = (it.timestamp || '').slice(0, 19).replace('T', ' ');
+              const blocked = it.blocked;
+              const statusBadge = blocked
+                ? `<span style="background:#fee;color:#c00;padding:2px 8px;
+                    border-radius:4px;font-size:11px;font-weight:600">차단</span>`
+                : `<span style="background:#efe;color:#080;padding:2px 8px;
+                    border-radius:4px;font-size:11px;font-weight:600">성공</span>`;
+              const sevTitle = it.security_event
+                ? ` title="${_escHtml(it.security_event)}"` : '';
+              return `<tr style="border-top:1px solid var(--border)"${sevTitle}>
+                <td style="padding:10px 14px;font-family:var(--font-mono);
+                           font-size:11px;color:var(--muted)">${_escHtml(ts)}</td>
+                <td style="padding:10px 14px">${_escHtml(it.filename)}</td>
+                <td style="padding:10px 14px;font-size:12px">${_escHtml(it.user_role)}</td>
+                <td style="padding:10px 14px;font-family:var(--font-mono);
+                           font-size:11px;color:var(--muted)">${_escHtml(it.ip_address)}</td>
+                <td style="padding:10px 14px">${statusBadge}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    if (meta) {
+      const showStart = total === 0 ? 0 : (_uploadsOffset + 1);
+      const showEnd   = Math.min(_uploadsOffset + items.length, total);
+      meta.textContent = `${showStart}–${showEnd} / 전체 ${total}건${q ? ` ('${q}' 필터)` : ''}`;
+    }
+
+    if (pager) {
+      const hasPrev = _uploadsOffset > 0;
+      const hasNext = (_uploadsOffset + items.length) < total;
+      pager.innerHTML = `
+        <button onclick="_uploadsPrev()" ${hasPrev ? '' : 'disabled'}
+                style="padding:6px 14px;background:var(--surface-2);
+                       border:1px solid var(--border);border-radius:6px;
+                       color:var(--text);cursor:${hasPrev ? 'pointer' : 'not-allowed'};
+                       opacity:${hasPrev ? '1' : '0.4'};font-size:12px">
+          ‹ 이전
+        </button>
+        <button onclick="_uploadsNext()" ${hasNext ? '' : 'disabled'}
+                style="padding:6px 14px;background:var(--surface-2);
+                       border:1px solid var(--border);border-radius:6px;
+                       color:var(--text);cursor:${hasNext ? 'pointer' : 'not-allowed'};
+                       opacity:${hasNext ? '1' : '0.4'};font-size:12px">
+          다음 ›
+        </button>`;
+    }
+  } catch (e) {
+    tbody.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:#c00">
+      로딩 실패: ${_escHtml(e.message)}
+    </div>`;
+  }
+}
+
+function _uploadsPrev() {
+  _uploadsOffset = Math.max(0, _uploadsOffset - _uploadsLimit);
+  loadUploads(false);
+}
+
+function _uploadsNext() {
+  _uploadsOffset = _uploadsOffset + _uploadsLimit;
+  loadUploads(false);
 }
 
 /* ── 언어 전환 — i18n.js의 t() 사용으로 대체됨 ── */
