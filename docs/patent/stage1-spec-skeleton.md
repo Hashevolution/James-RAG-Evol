@@ -1,7 +1,7 @@
 # [임시명세서 초안] Umbrella System + Memory Loom 결합 출원
 
 > 본 문서는 STAGE 1(가장 우선) 임시명세서 작성을 위한 skeleton입니다.
-> KIPRIS 전자출원 시 본 문서를 기반으로 PDF·hwp로 전환하여 첨부하십시오.
+> 특허로(patent.go.kr) 전자출원 시 본 문서를 기반으로 PDF·hwp로 전환하여 첨부하십시오. (KIPRIS는 검색 전용이므로 출원 불가)
 > 작성 시 [TODO] 마커를 모두 제거·채워주세요.
 
 ---
@@ -205,7 +205,7 @@ def store(self, result: Dict) -> Tuple[bool, str]:
 
 ### 도면 1 — 시스템 전체 아키텍처
 
-KIPRIS 출원용 PDF로 변환할 mermaid 소스 (draw.io / excalidraw 등으로 다시 그려도 무방):
+특허로(patent.go.kr) 출원용 PDF로 변환할 mermaid 소스 (draw.io / excalidraw / mermaid.live 등으로 다시 그려도 무방):
 
 ```mermaid
 flowchart TD
@@ -441,5 +441,5 @@ def set_trait(self, trait_id, value):
 - [ ] 출원인 정보 기재
 - [ ] 공지예외 주장서 첨부
 - [ ] disclosure_log.txt 첨부
-- [ ] KIPRIS 전자출원 → 출원번호 수령
+- [ ] 특허로(patent.go.kr) 전자출원 → 출원번호 수령
 - [ ] 출원확인서 PDF 보관 → `docs/patent/stage1-receipt.pdf`
