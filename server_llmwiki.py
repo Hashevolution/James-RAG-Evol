@@ -991,6 +991,15 @@ def _start_install_with_progress(model: str) -> None:
                             "done":      status == "success",
                         }
                     if status == "success":
+                        # [PR plan-1] resolver cache invalidation so
+                        # the freshly-installed model is selectable
+                        # immediately on the next /query/ without
+                        # waiting 60s TTL.
+                        try:
+                            from core.model_resolver import invalidate_cache
+                            invalidate_cache()
+                        except Exception:
+                            pass
                         break
         except Exception as e:
             with _install_lock:
@@ -1095,6 +1104,28 @@ async def llm_installed(api_key: str, role: str = Depends(get_role_from_request)
                 "hint": "Ollama가 실행 중인지 확인하세요 (ollama serve)"}
 
 
+@app.get("/admin/llm/resolution",
+         summary="현재 모델 resolution 상태 [PR plan-1, 2026-05-09]")
+async def llm_resolution(api_key: str, role: str = Depends(get_role_from_request)):
+    """[PR plan-1] 운영자 가시성 — call_gemma(model=None)이 어떤 모델을
+    실제 사용하는지 + 폴백 사유.
+
+    설치된 모델이 config의 default와 다를 때 어디로 fallback 됐는지
+    감지하기 위함. resolver는 silent하게 동작하지만 결정 사유는 여기서
+    조회 가능.
+
+    Returned shape:
+      {chat: {tag, source, warning, fallback_chain},
+       coding: {tag, source, warning, fallback_chain},
+       installed: [...],
+       preference: {chat: [...], coding: [...]},
+       ttl_s: 60}
+    """
+    _require_admin(api_key, role)
+    from core.model_resolver import resolution_snapshot
+    return resolution_snapshot()
+
+
 @app.get("/admin/llm/recommend", summary="하드웨어 기반 LLM 추천 [4-B]")
 async def llm_recommend(api_key: str, role: str = Depends(get_role_from_request)):
     """현재 하드웨어 스펙에 맞는 LLM 모델 추천."""
@@ -1166,6 +1197,13 @@ async def llm_delete(
             method="DELETE",
         )
         urllib.request.urlopen(req, timeout=10)
+        # [PR plan-1] resolver cache invalidation — deleted model must
+        # not be used on the next /query/.
+        try:
+            from core.model_resolver import invalidate_cache
+            invalidate_cache()
+        except Exception:
+            pass
         _write_audit(role, "/admin/llm/delete", query=model, elapsed_sec=0)
         return {"ok": True, "model": model, "deleted": True}
     except Exception as e:

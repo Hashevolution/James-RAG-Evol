@@ -164,8 +164,29 @@ class GemmaClient:
         [C2-FIX]        <think> 블록 3단계 복구
         [CACHE-STAT]    hit/miss 카운터 업데이트
         [#15]           model override (None이면 config.GEMMA_MODEL 기본)
+        [PR plan-1, 2026-05-09] model=None일 때 core.model_resolver로
+            폴백. 운영자 PC에 config의 default 모델이 설치돼 있으면
+            그것을 그대로 사용 (behavior unchanged). 미설치면 preference
+            list에서 첫 설치된 것으로 자동 fallback. 결정은 [MODEL_RESOLVE]
+            print로 로깅돼 운영자가 보임. 하나도 설치 안 된 경우 명확한
+            "ollama pull X" 안내 메시지로 RuntimeError 발생.
         """
-        actual_model = model or GEMMA_MODEL
+        if model:
+            # Caller specified a tag — trust them (already validated
+            # by selected_model resolver in core.model_catalog if it
+            # came from picker; direct internal callers know what
+            # they're asking for).
+            actual_model = model
+        else:
+            from core.model_resolver import resolve_chat
+            resolved = resolve_chat()
+            if not resolved.tag:
+                # No models at all in Ollama — surface the install
+                # command rather than 404'ing through call_ollama.
+                raise RuntimeError(resolved.warning)
+            actual_model = resolved.tag
+            if resolved.warning:
+                print(f"[MODEL_RESOLVE] {resolved.warning}")
         self._total_calls += 1
         cache_key = self._generate_cache_key(prompt)
 
