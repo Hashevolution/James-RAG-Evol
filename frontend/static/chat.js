@@ -181,12 +181,19 @@ function refreshModelPicker() {
   const weightIcon = w => w === 'light' ? '🪶'
                        : w === 'heavy' ? '🐘'
                        : '⚖️';
+  // [item #1, 2026-05-09] explicit installed marker so user can scan
+  // the dropdown and immediately see which models are ready vs need
+  // a pull. Previously absence of ⚠️ silently meant "installed" — too
+  // subtle.
   sel.innerHTML = models.map(m => {
-    const status = m.installed ? '' : ' ⚠️';
+    const marker = m.installed ? ' ✓' : ' ⚠️ 미설치';
+    const titleStatus = m.installed
+      ? '설치됨'
+      : '미설치 — 선택 후 옆 버튼으로 설치 가능 (admin)';
     return `<option value="${escHtml(m.tag)}"
                     data-installed="${m.installed ? '1' : '0'}"
                     data-weight="${escHtml(m.weight)}"
-                    title="${escHtml(m.weight)}${m.installed ? '' : ' (미설치)'}">${weightIcon(m.weight)} ${escHtml(m.tag)}${status}</option>`;
+                    title="${escHtml(m.weight)} · ${titleStatus}">${weightIcon(m.weight)} ${escHtml(m.tag)}${marker}</option>`;
   }).join('');
   sel.value = selectedModel;
 }
@@ -207,15 +214,23 @@ function onModePickerChange() {
   updateInstallButton();
 }
 
-/* ── item #6 + #A2: 선택된 모드+모델이 미설치면 "설치" 버튼 노출 ──
-   admin role만 실제 install 트리거 가능 (서버에서도 가드). 비-admin
-   에겐 "관리자에게 설치 요청" 안내.
+/* ── item #6 + #A2 + item #1: 선택된 모드+모델이 미설치면 "설치" 버튼 노출 ──
+   [item #1, 2026-05-09 / decision C-1] admin role에게만 노출. 비-admin은
+   server-side install endpoint가 어차피 거부하므로(/llm/install/ admin
+   guard) 일반 사용자가 클릭해도 의미 없음. 토스트로 "관리자에게 요청"
+   안내하던 이전 동작은 사용자에게 "할 수 있을 것 같다"는 잘못된 신호 →
+   완전히 숨기는 게 정직.
 
    [#A2 변경] 후보 dropdown이 활성화된 모드는 *현재 선택한* 후보의
    설치 상태를 보고 결정. dropdown 없는 모드는 기본 모델로 폴백. */
 function updateInstallButton() {
   const btn = document.getElementById('mode-install-btn');
   if (!btn) return;
+  // [item #1 / C-1] admin only.
+  if (userRole !== 'admin') {
+    btn.style.display = 'none';
+    return;
+  }
   const opt = MODE_OPTIONS.find(m => m.key === selectedMode);
   if (!opt) { btn.style.display = 'none'; return; }
   // [#A2] 현재 선택한 모델로 install 결정
@@ -239,7 +254,7 @@ function updateInstallButton() {
   btn.style.display = 'inline-block';
   btn.dataset.model = target;
   btn.textContent = `📦 ${target} 설치`;
-  btn.title = `${target} 모델이 Ollama에 없습니다. 클릭하여 설치 시작 (admin 전용).`;
+  btn.title = `${target} 모델이 Ollama에 없습니다. 클릭하여 설치 시작.`;
 }
 
 /* [#A8-8 2026-05-09] 모델 설치 — 진행률 표시 + non-blocking 페이지 이동.
@@ -309,8 +324,11 @@ async function triggerModelInstall() {
   const btn = document.getElementById('mode-install-btn');
   const model = btn?.dataset?.model;
   if (!model) return;
+  // [item #1 / C-1] 버튼은 admin에게만 노출되지만, console/script로
+  // 직접 호출 가능하므로 클라이언트 측 가드도 유지. 서버 /llm/install/
+  // 도 admin 가드 있음 (이중 방어).
   if (userRole !== 'admin') {
-    toast(`설치는 admin 권한 필요. 관리자에게 \`ollama pull ${model}\` 요청.`, 'error');
+    toast('설치는 admin 권한 필요.', 'error');
     return;
   }
   if (!confirm(`Ollama에 ${model} 모델을 설치합니다.\n수 GB 다운로드 — 백그라운드로 진행됩니다.\n진행 중에도 다른 페이지 이동 가능합니다.\n계속할까요?`)) return;
@@ -587,6 +605,10 @@ async function doLogin() {
 
     closeLogin();
     updateRoleBadge();
+    // [item #1] role 변경 시 install 버튼 가시성 즉시 갱신
+    // (admin login → 미설치 모델 선택 중이면 즉시 버튼 노출, 반대로
+    //  external/employee로 다시 로그인하면 즉시 숨김)
+    try { updateInstallButton(); } catch (_) {}
     document.getElementById('login-pw').value = '';
 
     toast(`✅ ${username} (${userRole}) 로그인 완료`, 'success');
@@ -602,6 +624,8 @@ function logout() {
   localStorage.removeItem('james_token');
   localStorage.removeItem('james_role');
   updateRoleBadge();
+  // [item #1] admin 권한 잃으면 install 버튼 즉시 숨김
+  try { updateInstallButton(); } catch (_) {}
   toast('로그아웃 완료', 'success');
 }
 
@@ -615,6 +639,8 @@ window.addEventListener('storage', (e) => {
     token    = localStorage.getItem('james_token') || '';
     userRole = localStorage.getItem('james_role')  || '';
     try { updateRoleBadge(); } catch (_) {}
+    // [item #1] cross-tab role 변경 시 install 버튼 가시성도 동기화
+    try { updateInstallButton(); } catch (_) {}
   }
 });
 
