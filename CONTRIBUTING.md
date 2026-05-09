@@ -59,6 +59,7 @@ python <relevant_test>.py
 - Reference issue number if applicable
 - Describe what changed and why
 - Include test results
+- **Confirm CLA acknowledgment in the PR template** (see CLA section below)
 
 ---
 
@@ -76,12 +77,13 @@ Some otherwise-attractive contributions are out of scope **until v1.0**:
 - ❌ **Marketing claims** about specific verticals beyond the
   "domain candidates" table.
 
-Read these two documents before opening a domain-flavored PR:
+Read these documents before opening a domain-flavored PR:
 
 - `docs/handovers/v0.2.0-platform-track.md` — engineering priorities
   for the current cycle (PolicyEngine, RAGAS, trace_id, STEP 7 lock)
 - `docs/handovers/v0.2.1-business-track.md` §3 — the
   "no parallel domains" rule and what it forbids
+- `docs/strategy/ip-boundary.md` — mother / pack code-level boundary
 
 If your contribution feels domain-shaped but you believe it's
 genuinely mother-level, open a Discussion **before** the PR —
@@ -190,6 +192,7 @@ v0.x allows breaking changes, but please:
 5. **Commit** with clear messages (see below)
 6. **Push** to your fork
 7. **Open** a Pull Request against `main`
+8. **Confirm CLA acknowledgment** in the PR template
 
 ### Bench numbers — required for retrieval / graph / reasoning PRs
 
@@ -302,22 +305,55 @@ All PRs are reviewed before merging. Reviewers check:
 - Is it documented?
 - Does it follow project conventions?
 - Is the code maintainable?
+- **Is the CLA acknowledgment checkbox confirmed?**
 
 Don't be discouraged by review feedback — it's how we build a quality codebase together.
 
 ---
 
-## License
+## Contributor License Agreement (CLA)
 
-By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
+Before your contribution can be merged, you must agree to the
+[Contributor License Agreement](.github/CLA.md).
+
+**Why**: PROJECT JAMES is currently MIT-licensed, and the mother
+platform is intended to stay MIT through v1.0. However, the
+maintainer plans to release future domain packs under separate
+commercial licenses, and may evaluate alternative open-source
+models (e.g., open core, AGPL+dual, BSL) for the mother as the
+project matures — see
+[`docs/strategy/license-and-monetization.md`](docs/strategy/license-and-monetization.md)
+for the analytical framework.
+
+The CLA grants the maintainer the rights necessary to make those
+licensing decisions without re-asking every past contributor. This
+is a known failure mode for open-source projects that try to
+relicense after contributors are no longer reachable. **Your
+existing MIT-licensed access to the code is unaffected** by the CLA.
+
+**How to sign**:
+
+1. Read [`.github/CLA.md`](.github/CLA.md)
+2. Confirm the CLA acknowledgment checkbox in the PR template
+3. Submit from a verifiable GitHub account, OR sign your commits
+   with `Signed-off-by: Your Name <your@email>`
+
+The combination is treated as your binding acceptance for the
+corresponding contribution.
+
+For corporate signers (an entity granting rights on behalf of
+employees), contact the maintainer per `SECURITY.md` to arrange a
+separate written Corporate CLA.
 
 ---
 
 ## Code of Conduct
 
-Be respectful. Disagree with ideas, not people. Help newcomers. Assume good intent.
+Be respectful, helpful, and assume good intent.
 
-This is a research project — explore, experiment, ask questions.
+Full text in [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) (Contributor
+Covenant 2.1). Reports of conduct issues go through the channels
+listed in `CODE_OF_CONDUCT.md` § Enforcement.
 
 ---
 

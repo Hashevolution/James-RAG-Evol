@@ -177,7 +177,7 @@ The 6-axis readiness gates are tracked in [docs/PLATFORM_READINESS.md](docs/PLAT
 
 ## Contributing
 
-Welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for cycle constraints (no new domains until v1.0; no customer-specific features during v0.2–v0.4).
+Welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for cycle constraints (no new domains until v1.0; no customer-specific features during v0.2–v0.4) and the [Contributor License Agreement](.github/CLA.md).
 
 Priority areas:
 - Documentation, examples, translations
@@ -192,6 +192,20 @@ Priority areas:
 - 💬 Open a [Discussion](https://github.com/Hashevolution/James-RAG-Evol/discussions) for questions
 - 🐛 [File an issue](https://github.com/Hashevolution/James-RAG-Evol/issues/new/choose) for bugs
 - 🔒 [Private security advisory](https://github.com/Hashevolution/James-RAG-Evol/security/advisories/new) for vulnerabilities
+
+---
+
+## Commercial use
+
+PROJECT JAMES is currently licensed under the MIT License (see [LICENSE](LICENSE)). Anyone may use, modify, and distribute the code commercially under MIT terms.
+
+The maintainer reserves the right to release **future domain-specific extensions** (e.g., hospitality, government, travel verticals — collectively "domain packs") under a separate commercial license from separate repositories starting at the v0.4 milestone. The mother platform (this repository) is intended to remain MIT-licensed through v1.0.
+
+External code contributions are accepted under a [Contributor License Agreement](.github/CLA.md) that grants the maintainer rights to relicense the project as a whole if the maintenance model evolves (e.g., open core, dual license). Existing MIT distributions are not affected.
+
+For commercial licensing inquiries — including domain pack licensing, custom features, or alternative terms — open a [Discussion](https://github.com/Hashevolution/James-RAG-Evol/discussions) or contact the maintainer per `SECURITY.md`. Pricing is not yet public.
+
+See [docs/strategy/license-and-monetization.md](docs/strategy/license-and-monetization.md) for the analytical framework, [docs/strategy/ip-boundary.md](docs/strategy/ip-boundary.md) for the mother / pack boundary specification.
 
 ---
 

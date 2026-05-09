@@ -122,7 +122,7 @@ James-RAG-Evol/
 
 ## 보안 접근법
 
-JAMES는 보안을 **기능이 아닌 설계 원칙**으로 다룹니다:
+JAMES는 보안을 **기능이 아닌 설계 원칙**으로 다릍니다:
 
 - **3단계 접근 제어**: Vector → Graph → Output
 - **RBAC** (4가지 역할) + **ABAC** (4가지 민감도)
@@ -169,7 +169,7 @@ JAMES는 보안을 **기능이 아닌 설계 원칙**으로 다룹니다:
 - **v0.1** (완료): 핵심 엔진 + 스캐폴딩
 - **v0.2** (현 사이클, 0–4개월): Foundation Hardening — eval/test/docs 성숙도, Axes 1–6
 - **v0.3** (4–10개월): Platform Skeleton — plugin API + 일반 reference pack
-- **v0.4** (10–22개월): First Pilot — 첫 비-일반 도메인 팩 + 고객 PoC
+- **v0.4** (10–22개월): First Pilot — 첫 비-일반 도메인 팭 + 고객 PoC
 - **v1.0** (22+개월): Mother Complete — 운영 규율 + 다중 도메인 준비
 
 6축 readiness 게이트는 [docs/PLATFORM_READINESS.md](docs/PLATFORM_READINESS.md)에서 추적합니다. 현 사이클 핸드오버는 [docs/handovers/v0.2.0-platform-track.md](docs/handovers/v0.2.0-platform-track.md)에 있습니다.
@@ -178,7 +178,7 @@ JAMES는 보안을 **기능이 아닌 설계 원칙**으로 다룹니다:
 
 ## 기여
 
-환영합니다! [CONTRIBUTING.md](CONTRIBUTING.md) 참조 (사이클 제약: v1.0 전까지 새 도메인 추가 금지, v0.2–v0.4 기간 고객 특정 기능 금지).
+환영합니다! [CONTRIBUTING.md](CONTRIBUTING.md) 참조 (사이클 제약: v1.0 전까지 새 도메인 추가 금지, v0.2–v0.4 기간 고객 특정 기능 금지). 코드 기여는 [Contributor License Agreement](.github/CLA.md) 하에 수락됩니다.
 
 우선 영역:
 - 문서, 예시, 번역
@@ -193,6 +193,20 @@ JAMES는 보안을 **기능이 아닌 설계 원칙**으로 다룹니다:
 - 💬 질문은 [Discussions](https://github.com/Hashevolution/James-RAG-Evol/discussions)에서
 - 🐛 버그는 [Issue 등록](https://github.com/Hashevolution/James-RAG-Evol/issues/new/choose)
 - 🔒 보안 취약점은 [비공개 보안 권고](https://github.com/Hashevolution/James-RAG-Evol/security/advisories/new)로
+
+---
+
+## 상용 사용
+
+PROJECT JAMES는 현재 MIT 라이선스로 배포됩니다 ([LICENSE](LICENSE) 참조). MIT 조건 하에서는 누구나 상업적 사용·수정·배포가 가능합니다.
+
+운영자는 **향후 도메인 특화 확장** (예: 호스피탈리티, 정부, 여행 등 — 총칭 "도메인 팭")을 v0.4 마일스톤부터 별도 저장소에서 별도 상용 라이선스로 출시할 권리를 유지합니다. mother 플랫폼 (이 저장소)은 v1.0까지 MIT 라이선스를 유지할 예정입니다.
+
+외부 코드 기여는 [Contributor License Agreement](.github/CLA.md) 하에 수락되며, 이는 운영자에게 운영 모델이 진화할 때 (예: open core, dual license) 프로젝트 전체를 relicense할 권리를 부여합니다. 기존 MIT 배포본은 영향을 받지 않습니다.
+
+상용 라이선스 문의 — 도메인 팭 라이선스, 커스텀 기능, 대안 조건 등 — 는 [Discussions](https://github.com/Hashevolution/James-RAG-Evol/discussions)를 열거나 SECURITY.md의 운영자 연락처로 문의해주세요. 가격은 아직 공개되지 않았습니다.
+
+분석 프레임워크는 [docs/strategy/license-and-monetization.md](docs/strategy/license-and-monetization.md), mother/팭 경계 명세는 [docs/strategy/ip-boundary.md](docs/strategy/ip-boundary.md) 참조.
 
 ---
 

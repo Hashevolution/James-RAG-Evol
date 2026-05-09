@@ -1,5 +1,5 @@
 <!-- Thanks for contributing to JAMES. -->
-<!-- Read CONTRIBUTING.md cycle constraints before submitting. -->
+<!-- Read CONTRIBUTING.md cycle constraints + .github/CLA.md before submitting. -->
 
 ## Summary
 
@@ -35,7 +35,7 @@
 
 ## Discipline checklist
 
-<!-- Reaffirms cycle constraints from CONTRIBUTING.md and business-track §3. -->
+<!-- Reaffirms cycle constraints from CONTRIBUTING.md and business-track §3 / §12. -->
 
 - [ ] No domain-specific code added (legal / food / retail / travel / government) — deferred until v1.0
 - [ ] No customer-specific feature
@@ -43,6 +43,14 @@
 - [ ] No buzzword inflation (AGI, autonomous, self-improving)
 - [ ] No "we / our team" framing in new docs (project is 1 operator + Claude)
 - [ ] No private information (specific names, financial figures, contact details)
+- [ ] No `packs/*` subdirectory added (forbidden during v0.2-v0.4 per business-track §3 + ip-boundary §6)
+
+## CLA acknowledgment (required)
+
+<!-- See CONTRIBUTING.md § Contributor License Agreement and .github/CLA.md -->
+
+- [ ] I have read [`.github/CLA.md`](../.github/CLA.md) and agree to its terms for this contribution
+- [ ] I am submitting from a verifiable GitHub identity (real name / organization), OR my commits include `Signed-off-by:` lines
 
 ## Linked issues
 
