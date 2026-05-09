@@ -99,70 +99,46 @@ cd James-RAG-Evol-v010
 
 ---
 
-## 🔑 3단계: 비밀 키 만들기 + 어떤 AI 모델 쓸지 정하기 (.env 파일)
+## 🔑 3단계: 비밀 키 만들기 (.env 파일)
 
-JAMES는 보안을 위해 두 가지 비밀번호가 필요해요. 그리고 **어떤 AI 모델을 쓸지도 여기서 정해요**.
+JAMES는 보안을 위해 두 가지 비밀번호가 필요해요. **자동으로 만들어보겠습니다.**
 
-### 어떤 모델을 쓸지 먼저 결정 (RAM에 따라)
-
-| 내 컴퓨터 RAM | 추천 모델 | 다운 크기 |
-|---|---|---|
-| 16GB (최소) | `gemma3:4b` | 약 3GB |
-| 32GB+ | `gemma3:12b` | 약 7GB |
-| 8GB (작은 컴퓨터) | `gemma3:1b` | 약 1GB |
-
-> 💡 잘 모르겠으면 **`gemma3:4b`**. 5단계에서 이걸 설치할 거예요.
+> 💡 어떤 AI 모델을 쓸지는 **여기서 정하지 않아요**. 6단계에서 admin
+> 페이지가 이 컴퓨터 사양을 측정해서 자동으로 추천하고 설치해줍니다.
 
 ### Windows (PowerShell 사용)
-
-아래는 **`gemma3:4b`** 쓰는 경우. 다른 모델 쓰면 `$llmModel` 줄만 바꾸세요.
 
 ```powershell
 # 1) 비밀번호 자동 생성
 $apiKey = -join ((48..57) + (97..122) | Get-Random -Count 24 | ForEach-Object {[char]$_})
 $jwtSecret = -join ((48..57) + (97..122) + (65..90) | Get-Random -Count 40 | ForEach-Object {[char]$_})
 
-# 2) 사용할 모델 이름 (5단계에서 설치할 모델과 반드시 동일해야 함!)
-$llmModel = "gemma3:4b"
-
-# 3) .env 파일에 자동 기록
+# 2) .env 파일에 자동 기록
 @"
 JAMES_API_KEY=$apiKey
 JAMES_JWT_SECRET=$jwtSecret
-JAMES_LLM_MODEL=$llmModel
 "@ | Out-File -FilePath .env -Encoding utf8
 
-# 4) 만든 API 키 보기 (이거 기억해두세요!)
+# 3) 만든 API 키 보기 (이거 기억해두세요!)
 Write-Host "내 API 키: $apiKey"
-Write-Host "사용할 모델: $llmModel"
 ```
 
 ### macOS / Linux
 
-아래는 `gemma3:4b` 쓰는 경우. 다른 모델 쓰면 `LLM_MODEL=` 줄만 바꾸세요.
-
 ```bash
-# 1) 비밀번호 자동 생성 + 모델 이름 정하기
+# 1) 비밀번호 자동 생성 + .env 작성
 API_KEY=$(openssl rand -hex 12)
 JWT_SECRET=$(openssl rand -base64 32 | tr -d '\n')
-LLM_MODEL="gemma3:4b"
-
-# 2) .env 작성
 cat > .env <<EOF
 JAMES_API_KEY=$API_KEY
 JAMES_JWT_SECRET=$JWT_SECRET
-JAMES_LLM_MODEL=$LLM_MODEL
 EOF
 
-# 3) 확인
+# 2) 만든 API 키 보기
 echo "내 API 키: $API_KEY"
-echo "사용할 모델: $LLM_MODEL"
 ```
 
 > ⚠️ 보여진 **API 키는 종이에 적어두세요!** 나중에 로그인할 때 필요해요.
->
-> ⚠️ **`.env`의 `JAMES_LLM_MODEL`과 5단계에서 `ollama pull`로 받는 모델 이름이 반드시 같아야 해요!**
-> 다르면 답변이 안 나오고 에러가 나요. (이게 가장 흔한 실수)
 
 ---
 
@@ -181,61 +157,79 @@ pip install -r requirements.txt
 
 ---
 
-## 🤖 5단계: AI 모델 다운로드
+## 🎉 5단계: JAMES 서버 시작!
 
-⚠️ **3단계 `.env`에 적은 `JAMES_LLM_MODEL`과 같은 이름**으로 받아야 해요!
-
-3단계에서 `gemma3:4b`라고 적었으면:
-
-```powershell
-ollama pull gemma3:4b
-```
-
-3단계에서 `gemma3:1b`라고 적었으면 그것을 받고, `gemma3:12b`라고 적었으면 그것을. **이름이 정확히 일치**해야 합니다.
-
-> ⏳ 모델 크기에 따라 5~30분 (1b≈1GB, 4b≈3GB, 12b≈7GB).
-> 진행률 (10%, 50%, 100%)이 보여요.
-
-**잘 됐는지 확인:** `success` 글자가 나오면 OK! ✅
-
-**더 확인:** 받은 모델이 정말 `.env`와 같은지 확인:
-```powershell
-ollama list
-```
-출력에 `gemma3:4b`(또는 본인이 받은 모델)가 보여야 해요.
-
----
-
-## 🎉 6단계: JAMES 시작!
+검은 창에서:
 
 ```powershell
 python server_llmwiki.py
 ```
 
-**잘 됐는지 확인:** 다음과 비슷한 글들이 나오고, **검은 창이 안 닫히면** 성공이에요:
+**잘 됐는지 확인:** 다음과 비슷한 글들이 나오고 **검은 창이 안 닫히면** 성공이에요:
 
 ```
 [CONFIG] PROJECT JAMES ready
-[VECTOR_STORE] VectorStore 초기화 완료
+[STARTUP] ⚠️  Ollama에 설치된 모델이 0개입니다.
+[STARTUP]   → admin 페이지(/admin) 접속 → 자동 추천 wizard
 INFO:     Uvicorn running on http://0.0.0.0:8000
 ```
 
+> 💡 "모델이 0개입니다"는 정상 메시지예요. 6단계에서 admin이 자동으로
+> 적절한 모델을 추천해서 설치해줍니다.
+
 ---
 
-## 🌐 7단계: 브라우저로 접속!
+## 🤖 6단계: admin 페이지에서 추천 모델 설치 (자동)
+
+이게 가장 쉬운 부분이에요. JAMES가 이 컴퓨터 사양을 자동으로 측정해서 적합한 모델을 추천하고 한 번 클릭하면 설치합니다.
 
 1. **검은 창은 그대로 둔 채로** (닫지 마세요!)
-2. 크롬, 엣지, 사파리 등 브라우저 열기
-3. 주소창에 입력: `http://localhost:8000`
-4. JAMES 화면이 나오면 성공! 🎉
+2. 브라우저 열기 (크롬, 엣지 등)
+3. 주소창에 입력: `http://localhost:8000/admin`
 
-### 첫 로그인
+### 로그인
 
-1. 화면 어딘가에 **로그인 버튼**이 있어요. 누르기
-2. **API 키** 칸에 3단계에서 적어둔 키 입력
-3. **사용자 이름** 칸: `admin`
-4. **비밀번호** 칸: `admin123` (최초 기본값, 나중에 바꿀 수 있어요)
-5. **로그인** 버튼
+처음 보면 로그인 창이 떠요:
+- **API 키** 칸: 3단계에서 적어둔 키 입력
+- **사용자 이름**: `admin`
+- **비밀번호**: `admin123` (최초 기본값)
+- **로그인** 누르기
+
+### 자동 추천 wizard 자동 표시
+
+로그인 후 잠시 (~1초) 기다리면 자동으로 **"🎯 처음 실행 — LLM 모델 설치 필요"** 창이 떠요:
+
+```
+🖥️ 이 PC 사양
+  GPU: NVIDIA RTX 3060 (12GB VRAM)
+  RAM: 32GB
+  전체 등급: Level 7
+
+🤖 권장 모델 (이 PC에서 작동 가능한 것 중 우선순위)
+  ⭐ gemma3:12b — 균형형 고성능 추론 · 7.5GB     [📦 설치]
+     gemma3:4b  — 권장 일상 대화 (16GB RAM) · 3GB [📦 설치]
+     gemma3:1b  — 초경량 일상 대화 · 1GB          [📦 설치]
+```
+
+⭐ 표시된 것이 이 컴퓨터에 가장 적합한 추천이에요. **[📦 설치]** 버튼 한 번이면:
+- 모델 다운로드 시작 (몇 GB라 5~30분 걸림)
+- 진행률 바가 0% → 100%로 차오름
+- 완료 시 자동으로 알림 + JAMES가 사용 시작
+
+> 💡 컴퓨터가 작아서 ⭐ 추천이 너무 큰 것 같으면, 두 번째나 세 번째 (`gemma3:4b` / `gemma3:1b`)를 직접 누르세요. 작은 모델은 빠르지만 답변 품질은 약합니다.
+
+> 💡 다운로드가 느려도 페이지 닫지 마세요. 백그라운드로 계속 받습니다.
+
+---
+
+## 🌐 7단계: chat 페이지에서 질문해보기
+
+설치 완료된 후:
+
+1. 같은 브라우저에서 새 탭 열기
+2. 주소: `http://localhost:8000`
+3. 로그인 (admin / admin123 / API 키 — 위와 동일)
+4. JAMES 채팅 화면이 나오면 성공! 🎉
 
 ---
 
@@ -286,11 +280,11 @@ JAMES가 PDF 안의 정보들이 서로 어떻게 연결돼 있는지 그림으�
 - **Ctrl + C** 동시에 누르기
 - 끝!
 
-다시 켜려면 **6단계**부터 (`python server_llmwiki.py`).
+다시 켜려면 **5단계**부터 (`python server_llmwiki.py`). 모델은 한 번 설치하면 재실행 시 자동으로 인식돼요.
 
 ---
 
-## 🆘 막혔어요! 자주 겪는 문제 10가지
+## 🆘 막혔어요! 자주 겪는 문제
 
 ### 1. "python을 찾을 수 없습니다" 또는 "python is not recognized"
 → **Python 설치할 때 "Add to PATH" 체크 안 했어요.**
@@ -310,15 +304,25 @@ JAMES가 PDF 안의 정보들이 서로 어떻게 연결돼 있는지 그림으�
 ### 5. `pip install`이 느려요
 → 정상. 5~15분 걸려요. 빠른 인터넷이면 더 빨라요.
 
-### 6. 답변이 너무 느려요 (1분 넘게 걸림)
-→ 컴퓨터가 모델보다 작아서 그래요.
-   해결: 더 작은 모델로 바꿔보세요.
-   1) 검은 창에서: `ollama pull gemma3:1b`
-   2) `.env` 파일을 메모장으로 열기
-   3) `JAMES_LLM_MODEL=gemma3:4b` 줄을 찾아서 → `JAMES_LLM_MODEL=gemma3:1b`로 수정
-   4) 저장 후 서버 재시작 (Ctrl+C → `python server_llmwiki.py`)
+### 6. admin 페이지 wizard가 안 떠요
+→ 사용자 권한이 admin이 아닐 수 있어요. `admin / admin123`으로 로그인했는지 확인.
+   여전히 안 뜨면, **수동으로 추천 받기**:
+   `http://localhost:8000/admin` → 사이드바 **"📊 대시보드"** 또는
+   **"🛠️ 장비 현황"** → 추천 모델 표 → 설치 버튼.
 
-### 7. 답변이 이상해요 (말이 안 맞아요)
+### 7. 모델 설치가 너무 오래 걸려요
+→ 수 GB 다운로드라 느려요. 인터넷 속도 + 모델 크기에 따라 5~60분.
+   기다리는 동안 컴퓨터를 켜놓고 다른 일 해도 OK. 백그라운드로 계속
+   받습니다.
+
+### 8. 답변이 너무 느려요 (1분 넘게 걸림)
+→ 설치된 모델이 컴퓨터 사양보다 무거워서 그래요.
+   해결: admin 페이지에서 더 작은 모델 추가 설치 (예: `gemma3:1b`).
+   chat 페이지의 **🤖 모드 picker** 옆 **모델 선택 dropdown**에서
+   작은 모델로 바꾸면 즉시 반영. (모델이 없어도 자동으로 fallback해서
+   막히진 않습니다)
+
+### 9. 답변이 이상해요 (말이 안 맞아요)
 → 1b 같은 작은 모델은 한국어가 약해요. 가능하면 4b 이상 사용.
 
 ### 7-1. "model 'XXX' not found" 같은 에러
@@ -350,15 +354,15 @@ JAMES가 PDF 안의 정보들이 서로 어떻게 연결돼 있는지 그림으�
 - [ ] Ollama 설치 + `ollama --version` 확인  
 - [ ] Git 설치 + `git --version` 확인
 - [ ] JAMES 다운로드 (`git clone` 끝남)
-- [ ] `.env` 파일 만들기 (API 키 적어둠 + `JAMES_LLM_MODEL` 줄 들어있음)
+- [ ] `.env` 파일 만들기 (API 키 종이에 적어둠)
 - [ ] `pip install -r requirements.txt` 끝남
-- [ ] `ollama pull <모델>` 끝남 (`.env`의 `JAMES_LLM_MODEL`과 동일 이름!)
-- [ ] `ollama list`로 받아진 모델 확인
 - [ ] `python server_llmwiki.py` → `Uvicorn running` 보임
 
 브라우저 사용:
-- [ ] `http://localhost:8000` 열림
-- [ ] 로그인 성공 (`admin` / `admin123` / API 키)
+- [ ] `http://localhost:8000/admin` 접속 + 로그인 (`admin` / `admin123` / API 키)
+- [ ] **wizard에서 추천 모델 한 번 클릭으로 설치** ✨
+- [ ] 설치 완료 알림 확인
+- [ ] `http://localhost:8000` chat 페이지 접속
 - [ ] PDF 1개 업로드 성공
 - [ ] PDF 내용 질문 → 답 받음
 - [ ] `/admin/graph` 그래프 화면 열어봄 (선택)
