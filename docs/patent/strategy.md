@@ -44,8 +44,8 @@
 
 ### STAGE 0 — 사전 준비 (D+0~3일)
 - [x] disclosure_log.txt 생성 → `docs/patent/disclosure_log.txt`
-- [ ] KIPRIS 회원가입 + 공인인증 + 개인 출원인 등록 (사용자 본인 작업)
-- [ ] 공지예외 주장서 양식 다운로드
+- [x] KIPRIS 회원가입 + 공인인증 + 개인 출원인 등록 (사용자 본인 작업, 2026-05-09 완료)
+- [ ] 공지예외 주장서 양식 다운로드 (KIPRIS → "출원 → 서식자료실 → 공지예외 적용 신청서")
 
 ### STAGE 1 — Umbrella + Memory Loom 결합 출원 (D+4~14일, ★)
 - 명세서 20~30쪽
