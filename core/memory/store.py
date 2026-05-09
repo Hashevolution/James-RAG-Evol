@@ -20,6 +20,11 @@ except ImportError:
 
 Path(os.path.dirname(DB_PATH)).mkdir(parents=True, exist_ok=True)
 
+# [P4 unified UX 2026-05-10] persona.style / persona.custom 의 LLM 주입은
+# P4 에서 끊었지만, DB 에 옛 값이 남아 있으면 사용자에게 1회 알림.
+# 매 호출마다 로깅하면 콘솔이 시끄럽기 때문에 모듈 단위 플래그 사용.
+_PERSONA_DEPRECATION_LOGGED = {"done": False}
+
 
 def _connect() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
@@ -258,21 +263,42 @@ class MemoryStore:
     def get_system_prompt(self) -> str:
         """
         LLM 프롬프트 앞에 주입할 System Persona.
-        예: "당신의 이름은 자메스입니다. 친절하고 보안을 중시하는 AI입니다."
+
+        [P4 unified UX 2026-05-10] persona.style / persona.custom 자유텍스트는
+        🎭 성향 캐릭터 페이지의 radar 와 의미적으로 충돌하여 P3 에서 UI 제거,
+        P4 에서 LLM 프롬프트 주입까지 끊는다. 성격 관련 directives 는
+        core/character_profile.get_prompt_modifiers() 가 단독 책임 (engine.py
+        가 system_prompt 에 별도 라인으로 추가) — 단일 진실 공급원(SSOT) 유지.
+
+        남은 필드:
+          - name     : LLM 자기소개용 이름
+          - language : 항상 X로 답변하라 directive
+          - greeting : (선택) 첫 인삿말 — 향후 P4 후속에서 expression metadata
+                       구조로 정식 지원 가능
+
+        주의: DB 의 기존 persona.style / persona.custom row 는 의도적으로
+        삭제하지 않는다. 사용자가 P3 이전 입력한 값이므로 — 보존하되
+        LLM 으로의 경로만 끊음. 별도 cleanup 은 사용자가 admin UI 또는
+        SQL 로 명시적으로 수행.
         """
         persona = self.get_persona()
         name    = persona.get("name", "자메스")
-        style   = persona.get("style", "친절하고 보안을 중시하는 AI 어시스턴트")
         lang    = persona.get("language", "한국어")
-        custom  = persona.get("custom", "")
 
         lines = [f"당신의 이름은 {name}입니다."]
-        if style:
-            lines.append(f"당신은 {style}입니다.")
         if lang:
             lines.append(f"항상 {lang}로 답변하세요.")
-        if custom:
-            lines.append(custom)
+
+        # 옛 row 가 DB 에 남아 있으면 1회 deprecation 경고 (per-process).
+        # 빈번한 호출이므로 모듈 변수로 1회만 로깅.
+        if not _PERSONA_DEPRECATION_LOGGED["done"] and (
+            persona.get("style") or persona.get("custom")
+        ):
+            # [Windows cp949 안전] 이모지 사용 금지 — 콘솔 인코딩 크래시.
+            print("[PERSONA] (deprecated) persona.style / persona.custom 은 더 "
+                  "이상 LLM 프롬프트에 주입되지 않습니다. 성향은 [성향 캐릭터] "
+                  "페이지의 radar 로 조정하세요.")
+            _PERSONA_DEPRECATION_LOGGED["done"] = True
 
         return " ".join(lines)
 
