@@ -196,6 +196,41 @@
     background: transparent; border: none; color: var(--muted);
     font-size: 18px; cursor: pointer; padding: 0; line-height: 1;
   }
+  /* [#4-2 g] collapse toggle button — left of close. */
+  .answer-card .ac-toggle {
+    position: absolute; top: 8px; right: 36px;
+    background: transparent; border: none; color: var(--muted);
+    font-size: 13px; cursor: pointer; padding: 2px 6px; line-height: 1;
+    border-radius: 4px;
+  }
+  .answer-card .ac-toggle:hover { background: var(--surface-2); color: var(--text); }
+  /* [#4-2 g] collapsed state — hide everything except title row. */
+  .answer-card.ac-collapsed .ac-q,
+  .answer-card.ac-collapsed .ac-a,
+  .answer-card.ac-collapsed .ac-paths,
+  .answer-card.ac-collapsed .ac-history { display: none; }
+  .answer-card.ac-collapsed { padding: 8px 14px; }
+  /* [#4-2 h/i] history list — clickable rows under the current answer. */
+  .answer-card .ac-history {
+    margin-top: 12px; padding-top: 10px;
+    border-top: 1px solid var(--border-2);
+  }
+  .answer-card .ac-history-hdr {
+    font-size: 10px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .4px; margin-bottom: 6px;
+  }
+  .answer-card .ac-history-row {
+    padding: 6px 8px; margin: 2px 0;
+    border-radius: 5px; font-size: 12px; color: var(--text-soft);
+    cursor: pointer; transition: background .15s, color .15s;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .answer-card .ac-history-row:hover {
+    background: var(--surface-2); color: var(--text);
+  }
+  .answer-card .ac-history-row.active {
+    background: rgba(99,102,241,.12); color: var(--accent-fg);
+  }
 
   .empty-state {
     position: absolute; inset: 0;
@@ -293,11 +328,15 @@
     <div class="tooltip" id="hover-tip"></div>
 
     <div class="answer-card" id="answer-card">
-      <button class="ac-close" onclick="closeAnswer()">×</button>
+      <button class="ac-close" onclick="closeAnswer()" title="닫기 + 그래프 기본 모드로 복귀">×</button>
+      <button class="ac-toggle" id="ac-toggle"
+              onclick="toggleAnswerCard()"
+              title="답변창 펼치기/접기">▼</button>
       <div class="ac-title" data-i18n="graph.answer.title">Answer</div>
       <div class="ac-q" id="ac-q"></div>
       <div class="ac-a" id="ac-a"></div>
       <div class="ac-paths" id="ac-paths"></div>
+      <div class="ac-history" id="ac-history"></div>
     </div>
 
     <div class="query-bar">

@@ -34,8 +34,27 @@
   var nameIdx = new Map();         // normalized name → [node refs]
   var edgeIdx = new Map();         // 's|t' → link ref
   var pulses  = [];                // active sprites being tweened
-  var afterGlow = new Map();       // link key → expireAtMs
+  var afterGlow = new Map();       // legacy time-based glow (briefly used by re-fire)
   var hoverEl = null;
+
+  // [#4-2 e/j, 2026-05-09] path persistence — replaces the old time-based
+  // afterGlow expiry. Once a question's path is shown it stays lit until
+  // (a) another question is asked, (b) user clicks a history entry to
+  // switch, or (c) closeAnswer() resets to default mode. No 4.2s timer.
+  var activePathEdges = new Set();   // edge keys currently lit
+  var activePathNodes = new Set();   // node ids currently labeled (path-traversed)
+  var activeAnswerId  = null;        // which entry in answerHistory is active
+
+  // [#4-2 c-label/f] always-visible name labels. Hubs are always shown.
+  // Path-traversed nodes are shown while the path is active. Both share
+  // the same Sprite-text mechanism so nothing duplicates.
+  var labelSprites    = new Map();   // node id → THREE.Sprite (or null)
+
+  // [#4-2 h/i] in-memory question history. Decision C-3 — session-volatile,
+  // never persisted (page refresh on /admin/graph is uncommon and the
+  // history is observability scaffolding, not a save target).
+  var answerHistory   = [];          // [{id, question, answer, paths, ts}]
+  var historyCounter  = 0;           // monotonic id source
 
   // Spacing constant — radius scales with sqrt(N).
   var SPHERE_K  = 24;
@@ -154,6 +173,8 @@
       edgeIdx.set(edgeKey(s, t), l);
     });
     computeHubs();
+    // [#4-2] hubs may have changed after a fresh snapshot — labels follow.
+    refreshLabels();
   }
 
   // [#4-1] 핵심 엔티티(hub) 식별: top 10% by degree AND degree ≥ 5.
@@ -207,27 +228,32 @@
         var base = Math.max(1, Math.sqrt((n.degree || 0) + 1));
         return isHub(n) ? base * 1.7 : base;
       })
-      // [#4-1 a] base link more visible: brighter base color + higher
-      // opacity than before. Active path keeps accent color.
-      // [#4-1 d] hub-touching links carry slightly more presence — each
-      // hub's outbound network reads as a connected cluster instead of
-      // disappearing into the background.
+      // [#4-1 a / #4-2 e] base link visibility + persistent path lit.
+      // activePathEdges (no expiry) is the primary "lit" state.
+      // afterGlow (time-based) is preserved as a brief visual "echo" on
+      // a fresh re-fire so the user sees animation, but the path stays
+      // visually lit afterward via activePathEdges.
+      // [#4-1 d] hub-touching links carry slightly more presence.
       .linkColor(function (l) {
         var k = edgeKey(linkSrc(l), linkTgt(l));
-        if (afterGlow.has(k) && afterGlow.get(k) > performance.now()) {
+        if (activePathEdges.has(k) ||
+            (afterGlow.has(k) && afterGlow.get(k) > performance.now())) {
           return getCss('--accent', '#6366f1');
         }
         var hubTouch = isHub(l.source) || isHub(l.target);
         return hubTouch
-          ? 'rgba(190, 200, 220, 0.6)'    // brighter near hubs
-          : 'rgba(170, 180, 200, 0.4)';   // baseline (was 150,160,180,0.25)
+          ? 'rgba(190, 200, 220, 0.6)'
+          : 'rgba(170, 180, 200, 0.4)';
       })
-      .linkOpacity(0.7)                    // was 0.55
+      .linkOpacity(0.7)
       .linkWidth(function (l) {
         var k = edgeKey(linkSrc(l), linkTgt(l));
-        if (afterGlow.has(k) && afterGlow.get(k) > performance.now()) return 1.3;
+        if (activePathEdges.has(k) ||
+            (afterGlow.has(k) && afterGlow.get(k) > performance.now())) {
+          return 1.4;                       // slightly bolder for active
+        }
         var hubTouch = isHub(l.source) || isHub(l.target);
-        return hubTouch ? 0.8 : 0.55;      // was uniform 0.4
+        return hubTouch ? 0.8 : 0.55;
       })
       .linkDirectionalParticles(0)
       .onNodeHover(onNodeHover)
@@ -454,6 +480,152 @@
     return { src: s[0], tgt: t[0], hasEdge: false };
   }
 
+  // ─── [#4-2 c-label/f] Sprite text labels ───────────────────────
+  // Canvas-rendered text → Three.Sprite. Cheap (one canvas per node,
+  // disposed when label hidden). Only hubs + path-traversed nodes get
+  // labels; this keeps the visible label count to typically <30, which
+  // avoids the readability mess of labeling all 185 nodes.
+  function createTextSprite(text, color) {
+    if (typeof THREE === 'undefined') return null;
+    var canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 64;
+    var ctx = canvas.getContext('2d');
+    ctx.font = 'bold 24px Inter, "Pretendard", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // Drop-shadow for readability against any background.
+    ctx.shadowColor = 'rgba(0,0,0,0.85)';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.fillStyle = color || '#ffffff';
+    ctx.fillText(text || '?', 128, 32);
+    var tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = THREE.LinearFilter;     // canvas isn't power-of-two
+    var mat = new THREE.SpriteMaterial({
+      map:        tex,
+      transparent: true,
+      depthTest:   false,                    // always on top of edges
+      depthWrite:  false,
+    });
+    var sprite = new THREE.Sprite(mat);
+    sprite.scale.set(36, 9, 1);              // wide, thin
+    sprite.userData.isLabel = true;
+    return sprite;
+  }
+
+  // Dispose a sprite's texture+material to avoid leaks on rapid switches.
+  function disposeSprite(sp) {
+    if (!sp) return;
+    try {
+      var scene = graph && graph.scene && graph.scene();
+      if (scene) scene.remove(sp);
+      if (sp.material) {
+        if (sp.material.map) sp.material.map.dispose();
+        sp.material.dispose();
+      }
+    } catch (e) {}
+  }
+
+  // Recompute which nodes should have visible labels based on current
+  // hubIds + activePathNodes. Idempotent; safe to call after any state
+  // change. Labels track their node's position via per-frame update.
+  function refreshLabels() {
+    if (!graph) return;
+    var scene = graph.scene && graph.scene();
+    if (!scene) return;
+    var shouldShow = new Set();
+    hubIds.forEach(function (id) { shouldShow.add(id); });
+    activePathNodes.forEach(function (id) { shouldShow.add(id); });
+
+    // Remove labels for nodes no longer in shouldShow.
+    labelSprites.forEach(function (sprite, nodeId) {
+      if (!shouldShow.has(nodeId)) {
+        disposeSprite(sprite);
+        labelSprites.delete(nodeId);
+      }
+    });
+    // Add labels for nodes newly in shouldShow.
+    shouldShow.forEach(function (nodeId) {
+      if (labelSprites.has(nodeId)) return;
+      var n = nodeIdx.get(nodeId);
+      if (!n) return;
+      var color = activePathNodes.has(nodeId)
+        ? getCss('--brand-2', '#4fc3f7')      // path-traversed: cyan accent
+        : '#f5f7fa';                           // hub: bright white-ish
+      var sp = createTextSprite(n.name || '?', color);
+      if (!sp) return;
+      sp.userData.nodeId = nodeId;
+      scene.add(sp);
+      labelSprites.set(nodeId, sp);
+    });
+  }
+
+  // Per-frame: update each label sprite to track its node position
+  // (slightly above the node sphere). Called from pulseTick.
+  function tickLabelPositions() {
+    if (!labelSprites.size) return;
+    labelSprites.forEach(function (sp, nodeId) {
+      var n = nodeIdx.get(nodeId);
+      if (!n || !sp) return;
+      sp.position.set((n.x || 0), (n.y || 0) + 7, (n.z || 0));
+    });
+  }
+
+  // ─── [#4-2 e/j] Path activation & reset ─────────────────────────
+  // activate(answerEntry) lights the entry's edges + collects nodes for
+  // labeling. Replays the sprite pulse animation. Persists until
+  // another activate() or clearActivePath().
+  function activatePath(entry) {
+    if (!entry) return;
+    clearActivePath(/*skipRefresh*/true);
+    activeAnswerId = entry.id;
+    var hopsAll = [];
+    (entry.paths || []).forEach(function (p) {
+      var hops = parsePath(p);
+      hops.forEach(function (h) {
+        var resolved = resolveHop(h);
+        if (!resolved) return;
+        hopsAll.push(resolved);
+        if (resolved.hasEdge) {
+          activePathEdges.add(edgeKey(resolved.src.id, resolved.tgt.id));
+        }
+        activePathNodes.add(resolved.src.id);
+        activePathNodes.add(resolved.tgt.id);
+      });
+    });
+    refreshLabels();
+    // Replay sprite pulses for visual cue (but the lit edges persist).
+    var stepMs = 0;
+    var lastTgt = null;
+    hopsAll.forEach(function (resolved) {
+      setTimeout(function () { spawnPulse(resolved.src, resolved.tgt); }, stepMs);
+      stepMs += STEP_GAP;
+      lastTgt = resolved.tgt;
+    });
+    if (graph) {
+      graph.linkColor(graph.linkColor());
+      graph.linkWidth(graph.linkWidth());
+    }
+    // Camera nudge to terminal node so the user sees where the path ends.
+    if (lastTgt) {
+      setTimeout(function () { pulseTerminalNode(lastTgt); }, stepMs + 200);
+    }
+  }
+
+  function clearActivePath(skipRefresh) {
+    activePathEdges.clear();
+    activePathNodes.clear();
+    activeAnswerId = null;
+    if (!skipRefresh) {
+      refreshLabels();
+      if (graph) {
+        graph.linkColor(graph.linkColor());
+        graph.linkWidth(graph.linkWidth());
+      }
+    }
+  }
+
   // ─── Pulse animation ───────────────────────────────────────
   function spawnPulse(srcNode, tgtNode) {
     if (!graph || !srcNode || !tgtNode) return;
@@ -516,6 +688,8 @@
         graph.linkColor(graph.linkColor());
       }
     }
+    // [#4-2 c-label/f] keep labels glued to their nodes per frame.
+    tickLabelPositions();
     requestAnimationFrame(pulseTick);
   }
 
@@ -567,6 +741,8 @@
     var btn = document.getElementById('ask-btn');
     var q = (box.value || '').trim();
     if (!q) return;
+    // [#4-2 j] new question → clear current path before new one fires.
+    clearActivePath();
     btn.disabled = true;
     btn.textContent = '...';
     try {
@@ -580,37 +756,111 @@
         }),
       });
       var j = await r.json();
+      var entry;
       if (!r.ok) {
-        showAnswer(q, '[' + r.status + '] ' + (j.detail || 'error'), []);
-        return;
+        entry = recordAnswer(q, '[' + r.status + '] ' + (j.detail || 'error'), []);
+      } else {
+        entry = recordAnswer(q, j.answer || '(empty)', j.graph_paths || []);
       }
-      showAnswer(q, j.answer || '(empty)', j.graph_paths || []);
-      animatePaths(j.graph_paths || []);
+      renderAnswerCard(entry);
+      activatePath(entry);
     } catch (e) {
-      showAnswer(q, String(e), []);
+      var errEntry = recordAnswer(q, String(e), []);
+      renderAnswerCard(errEntry);
     } finally {
       btn.disabled = false;
       btn.textContent = t('graph.ask') || 'Ask';
+      box.value = '';                     // clear input for next question
     }
   };
 
-  function showAnswer(q, a, paths) {
+  // [#4-2 h] push a new entry into in-memory history. Returns the entry.
+  function recordAnswer(q, a, paths) {
+    historyCounter += 1;
+    var entry = {
+      id:       'h' + historyCounter,
+      question: q,
+      answer:   a,
+      paths:    Array.isArray(paths) ? paths.slice() : [],
+      ts:       Date.now(),
+    };
+    answerHistory.unshift(entry);          // newest first
+    return entry;
+  }
+
+  // [#4-2 g] render the current answer in the card body. Card has a
+  // collapse toggle (g) and a history list (h). The list items are
+  // clickable (i).
+  function renderAnswerCard(entry) {
     var card = document.getElementById('answer-card');
-    document.getElementById('ac-q').textContent = q;
-    document.getElementById('ac-a').textContent = a;
+    if (!card) return;
+    card.style.display = 'block';
+    card.classList.remove('ac-collapsed');   // expand on every new answer
+    document.getElementById('ac-q').textContent = entry.question || '';
+    document.getElementById('ac-a').textContent = entry.answer  || '';
     var pathsEl = document.getElementById('ac-paths');
-    pathsEl.innerHTML = '';
-    if (paths && paths.length) {
-      paths.slice(0, 8).forEach(function (p) {
+    if (pathsEl) {
+      pathsEl.innerHTML = '';
+      (entry.paths || []).slice(0, 8).forEach(function (p) {
         var d = document.createElement('div');
         d.textContent = '• ' + p;
         pathsEl.appendChild(d);
       });
     }
-    card.style.display = 'block';
+    renderHistoryList();
   }
+
+  // [#4-2 h/i] history list rendering. Each item shows the question
+  // preview + a click handler that re-activates the entry.
+  function renderHistoryList() {
+    var listEl = document.getElementById('ac-history');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    if (answerHistory.length <= 1) return;
+    var hdr = document.createElement('div');
+    hdr.className = 'ac-history-hdr';
+    hdr.textContent = '이전 질문 (' + (answerHistory.length - 1) + ')';
+    listEl.appendChild(hdr);
+    answerHistory.slice(1).forEach(function (e) {   // skip [0] (current)
+      var row = document.createElement('div');
+      row.className = 'ac-history-row';
+      row.dataset.id = e.id;
+      if (activeAnswerId === e.id) row.classList.add('active');
+      row.title = e.question + '\n\n' + (e.answer || '').slice(0, 140);
+      row.textContent = '▸ ' + (e.question.length > 38
+        ? e.question.slice(0, 38) + '...'
+        : e.question);
+      row.addEventListener('click', function () { onHistoryClick(e.id); });
+      listEl.appendChild(row);
+    });
+  }
+
+  // [#4-2 i] history item click → swap card content + re-fire path.
+  function onHistoryClick(entryId) {
+    var entry = answerHistory.find(function (e) { return e.id === entryId; });
+    if (!entry) return;
+    // Move clicked entry to top so renderHistoryList shows current state.
+    answerHistory = answerHistory.filter(function (e) { return e.id !== entryId; });
+    answerHistory.unshift(entry);
+    renderAnswerCard(entry);
+    activatePath(entry);
+  }
+
+  // [#4-2 g] collapse/expand toggle. CSS rule on .ac-collapsed hides
+  // body sections; the title row stays visible.
+  window.toggleAnswerCard = function () {
+    var card = document.getElementById('answer-card');
+    if (!card) return;
+    card.classList.toggle('ac-collapsed');
+    var btn = document.getElementById('ac-toggle');
+    if (btn) btn.textContent = card.classList.contains('ac-collapsed') ? '▲' : '▼';
+  };
+
+  // [#4-2 j] close the card AND reset to default graph mode (no lit
+  // path). History is preserved — close just hides the card.
   window.closeAnswer = function () {
     document.getElementById('answer-card').style.display = 'none';
+    clearActivePath();
   };
 
   // ─── Misc ──────────────────────────────────────────────────
