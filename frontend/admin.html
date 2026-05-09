@@ -1053,5 +1053,80 @@
     </button>
   </div>
 </div>
+
+<!-- ── First-run wizard 모달 [PR plan-3, 2026-05-09] ──────────────
+     트리거: admin 진입 시 /admin/llm/resolution.installed가 비었거나
+            chat resolver source=="none"이면 자동 표시.
+     역할:   하드웨어 측정 결과 + 추천 모델 + 원클릭 설치.
+     닫힘:   "나중에" 버튼으로 dismiss (sessionStorage에 기록 — 재진입
+            시 다시 안 띄움). 설치 완료 시 자동 닫힘. -->
+<div class="modal-overlay" id="firstrun-wizard-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);
+            align-items:center;justify-content:center;z-index:400;">
+  <div style="background:var(--surface);border:1px solid var(--border);
+              border-radius:14px;padding:36px;width:560px;max-width:92vw;
+              box-shadow:0 24px 80px rgba(0,0,0,.8);max-height:88vh;overflow-y:auto;">
+    <div style="font-size:18px;font-weight:600;color:var(--accent-fg);
+                margin-bottom:8px;letter-spacing:.3px;">
+      🎯 처음 실행 — LLM 모델 설치 필요
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6;">
+      Ollama에 설치된 모델이 없어서 답변을 만들 수 없습니다.
+      이 PC의 사양에 맞는 모델을 자동 추천해드립니다.
+    </div>
+
+    <div id="firstrun-hw-summary"
+         style="background:var(--surface-2);border:1px solid var(--border);
+                border-radius:8px;padding:12px 14px;margin-bottom:16px;
+                font-size:12px;color:var(--text-soft);line-height:1.5;">
+      <div class="loading">하드웨어 측정 중...</div>
+    </div>
+
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;
+                letter-spacing:.4px;margin-bottom:8px;">
+      🤖 권장 모델 (이 PC에서 작동 가능한 것 중 우선순위)
+    </div>
+    <div id="firstrun-recommendations"
+         style="background:var(--bg);border:1px solid var(--border);
+                border-radius:8px;padding:8px;margin-bottom:14px;
+                max-height:280px;overflow-y:auto;">
+      <div class="loading" style="padding:20px;text-align:center;color:var(--muted)">
+        추천 계산 중...
+      </div>
+    </div>
+
+    <!-- 진행률 표시 (설치 시작 후 활성화) -->
+    <div id="firstrun-progress" style="display:none;background:var(--surface-2);
+         border:1px solid var(--accent);border-radius:8px;padding:12px;
+         margin-bottom:14px;font-size:12px">
+      <div id="firstrun-progress-text"
+           style="color:var(--accent-fg);margin-bottom:6px">설치 시작 중...</div>
+      <div style="background:var(--bg);height:6px;border-radius:3px;overflow:hidden">
+        <div id="firstrun-progress-bar"
+             style="background:var(--accent);height:100%;width:0%;
+                    transition:width .3s"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:18px">
+      <button id="firstrun-later-btn"
+              onclick="firstRunDismiss()"
+              style="flex:1;padding:11px;background:var(--surface-2);
+                     border:1px solid var(--border);border-radius:8px;
+                     color:var(--muted);font-size:13px;cursor:pointer;">
+        나중에 (이 세션 동안 다시 안 띄움)
+      </button>
+      <button id="firstrun-refresh-btn"
+              onclick="firstRunCheck()"
+              style="padding:11px 16px;background:var(--surface-2);
+                     border:1px solid var(--border);border-radius:8px;
+                     color:var(--muted);font-size:13px;cursor:pointer;"
+              title="모델 설치 후 다시 확인">
+        ↻ 새로고침
+      </button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

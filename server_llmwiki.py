@@ -237,6 +237,35 @@ async def on_startup():
         # Housekeeping must never block server startup.
         print(f"[STARTUP] trace prune skipped: {e}")
 
+    # [PR plan-3, 2026-05-09] LLM readiness check + friendly install
+    # guidance. If Ollama has 0 models, every /query/ would fail. We
+    # emit a clear console banner pointing operators to the admin
+    # first-run wizard so they don't waste time debugging "[Gemma 응답
+    # 없음]" mysteries. Resolver gracefully degrades — no crash, just
+    # a clear next-step.
+    try:
+        from core.model_resolver import resolution_snapshot
+        snap = resolution_snapshot()
+        installed = snap.get("installed", [])
+        if not installed:
+            chat_warn = snap.get("chat", {}).get("warning", "")
+            print("=" * 60)
+            print("[STARTUP] ⚠️  Ollama에 설치된 모델이 0개입니다.")
+            print("[STARTUP]   → /query/ 호출 시 실패하거나 RuntimeError 발생.")
+            print("[STARTUP]   → 다음 중 하나로 모델을 설치하세요:")
+            print("[STARTUP]      a) admin 페이지(/admin) 접속 → 자동 추천 wizard")
+            print("[STARTUP]      b) 터미널에서: ollama pull gemma3:4b")
+            if chat_warn:
+                print(f"[STARTUP]   resolver 메시지: {chat_warn}")
+            print("=" * 60)
+        else:
+            chat_tag = snap.get("chat", {}).get("tag", "")
+            chat_src = snap.get("chat", {}).get("source", "")
+            print(f"[STARTUP] LLM 준비됨 — chat 모델: {chat_tag} (source: {chat_src}, "
+                  f"설치된 모델 {len(installed)}개)")
+    except Exception as e:
+        print(f"[STARTUP] LLM readiness check skipped: {e}")
+
     async def _index():
         await asyncio.sleep(3)
         try:

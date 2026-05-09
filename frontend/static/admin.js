@@ -66,6 +66,8 @@ window.addEventListener('storage', (e) => {
     const modal = document.getElementById('admin-login-modal');
     if (modal) modal.style.display = 'none';
     try { loadDashboard(); } catch (_) {}
+    // [PR plan-3] cross-tab login 후에도 first-run wizard 체크
+    setTimeout(() => { try { firstRunCheck(); } catch (_) {} }, 600);
   }
 });
 
@@ -130,10 +132,221 @@ async function doAdminLogin() {
     const modal = document.getElementById('admin-login-modal');
     if (modal) modal.style.display = 'none';
     loadDashboard();
+    // [PR plan-3] 로그인 후 LLM 모델 readiness 체크. 0개면 wizard 노출.
+    setTimeout(() => { try { firstRunCheck(); } catch (_) {} }, 600);
 
   } catch (e) {
     if(errEl) errEl.textContent = `Server error: ${e.message}`;
   }
+}
+
+/* ── [PR plan-3, 2026-05-09] First-run wizard ───────────────────
+   처음 admin 진입 시 (또는 ollama list가 비었을 때) 모달 띄움.
+   하드웨어 측정 → 추천 모델 → 원클릭 설치 흐름.
+   sessionStorage('james_firstrun_dismissed')에 dismiss 기록 — 재진입
+   시 안 띄움. 그러나 firstRunCheck()는 항상 호출되며 dismiss 됐어도
+   ↻ 새로고침 버튼이 강제 표시 가능. */
+
+let _firstRunInstallPoll = null;
+
+async function firstRunCheck() {
+  // 이번 세션에서 이미 dismiss됐고 모델이 ≥1개면 wizard 안 띄움.
+  // 강제 표시는 firstRunShow() 직접 호출.
+  try {
+    const data = await api('/admin/llm/resolution');
+    const installed = data.installed || [];
+    const dismissed = sessionStorage.getItem('james_firstrun_dismissed') === '1';
+    if (installed.length === 0) {
+      // 모델 0개면 dismiss 무시하고 강제 표시 (실제로 답변이 안 됨)
+      firstRunShow(data);
+    } else if (!dismissed) {
+      // 모델 ≥1개여도 chat resolver가 fallback 상태면 알림 (정보 차원)
+      const chatWarn = (data.chat || {}).warning || '';
+      if (chatWarn && chatWarn.includes('not installed')) {
+        // toast — modal까지는 띄우지 않음
+        if (typeof toast === 'function') {
+          toast(`ℹ️ ${chatWarn}`, 'info');
+        }
+      }
+    }
+    // hide wizard if it was shown but now we have models
+    if (installed.length > 0) {
+      const m = document.getElementById('firstrun-wizard-modal');
+      if (m) m.style.display = 'none';
+    }
+  } catch (e) {
+    console.warn('[firstrun] resolution check failed:', e.message);
+  }
+}
+
+async function firstRunShow(resolutionData) {
+  const modal = document.getElementById('firstrun-wizard-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+
+  // 1) 하드웨어 측정 + 추천
+  const hwBox = document.getElementById('firstrun-hw-summary');
+  const recBox = document.getElementById('firstrun-recommendations');
+  if (hwBox) hwBox.innerHTML = '<div class="loading">측정 중...</div>';
+  if (recBox) recBox.innerHTML = '<div class="loading" style="padding:20px;text-align:center">로딩...</div>';
+
+  try {
+    const recData = await api('/admin/llm/recommend');
+    if (!recData.ok) throw new Error(recData.error || 'recommend failed');
+    const summary = recData.specs_summary || {};
+    if (hwBox) {
+      hwBox.innerHTML = `
+        <div><strong>🖥️ 이 PC 사양</strong></div>
+        <div>GPU: ${_escHtml(summary.gpu || '?')}</div>
+        <div>RAM: ${_escHtml(summary.ram || '?')}</div>
+        <div>전체 등급: <strong style="color:var(--accent-fg)">Level ${summary.level || '?'}</strong></div>
+      `;
+    }
+    // 우선 첫 번째 chat-feasible 모델을 강조, 나머지는 sub list.
+    const recs = recData.recommendations || [];
+    const chatFeasible = recs.filter(r => r.feasible &&
+                                          (r.purpose || []).includes('chat'));
+    const codingFeasible = recs.filter(r => r.feasible &&
+                                            (r.purpose || []).includes('coding'));
+    if (recBox) {
+      let html = '';
+      if (chatFeasible.length === 0) {
+        html += `<div style="padding:14px;color:var(--warn);font-size:12px">
+          ⚠️ 이 PC 사양에 적합한 chat 모델이 없습니다. 가장 가벼운 모델 (gemma3:1b)을 시도해보세요.
+        </div>`;
+        // Force-show gemma3:1b as fallback.
+        html += _firstRunRow({tag:'gemma3:1b', desc:'초경량 (CPU-only OK)',
+                              size_gb:1.0, purpose:['chat']}, true);
+      } else {
+        // Top chat candidate gets star + 강조
+        html += '<div style="font-size:11px;color:var(--muted);padding:6px 10px;text-transform:uppercase;letter-spacing:.3px">💬 일상 대화</div>';
+        chatFeasible.slice(0, 3).forEach((r, i) => {
+          html += _firstRunRow(r, i === 0);
+        });
+        if (codingFeasible.length > 0) {
+          html += '<div style="font-size:11px;color:var(--muted);padding:6px 10px;margin-top:8px;text-transform:uppercase;letter-spacing:.3px">💻 코딩</div>';
+          codingFeasible.slice(0, 2).forEach(r => {
+            html += _firstRunRow(r, false);
+          });
+        }
+      }
+      recBox.innerHTML = html;
+    }
+  } catch (e) {
+    if (hwBox) hwBox.innerHTML = `<div style="color:#c00">측정 실패: ${_escHtml(e.message)}</div>`;
+    if (recBox) recBox.innerHTML = `<div style="padding:20px;text-align:center;color:#c00">추천 로드 실패: ${_escHtml(e.message)}</div>`;
+  }
+}
+
+function _firstRunRow(r, primary) {
+  const sizeGB = (r.size_gb != null) ? `${r.size_gb}GB` : '';
+  const desc = _escHtml(r.desc || r.description || '');
+  const tag = _escHtml(r.tag || r.name || '');
+  const stars = primary ? '⭐ ' : '   ';
+  const bg = primary ? 'rgba(99,102,241,.10)' : 'transparent';
+  const border = primary ? 'border:1px solid var(--accent);' : 'border:1px solid var(--border);';
+  return `<div style="${border}background:${bg};border-radius:7px;padding:10px 12px;margin:4px 6px;
+                       display:flex;align-items:center;gap:10px;font-size:13px">
+    <div style="flex:1;min-width:0">
+      <div style="${primary?'color:var(--accent-fg);font-weight:600':''}">${stars}${tag}</div>
+      <div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        ${desc}${sizeGB ? ' · ' + sizeGB : ''}
+      </div>
+    </div>
+    <button onclick="firstRunInstall('${tag.replace(/'/g, "\\'")}')"
+            style="padding:7px 14px;background:var(--accent);color:#fff;
+                   border:0;border-radius:6px;cursor:pointer;font-size:12px;
+                   font-weight:600;flex-shrink:0">
+      📦 설치
+    </button>
+  </div>`;
+}
+
+async function firstRunInstall(model) {
+  if (!model) return;
+  const progressBox = document.getElementById('firstrun-progress');
+  const progressText = document.getElementById('firstrun-progress-text');
+  const progressBar = document.getElementById('firstrun-progress-bar');
+  if (progressBox) progressBox.style.display = 'block';
+  if (progressText) progressText.textContent = `${model} 설치 시작 중...`;
+
+  try {
+    const r = await fetch(
+      `${API}/llm/install/?api_key=${encodeURIComponent(apiKey)}&model=${encodeURIComponent(model)}`,
+      {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      },
+    );
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    // 진행률 폴링
+    if (_firstRunInstallPoll) clearInterval(_firstRunInstallPoll);
+    _firstRunInstallPoll = setInterval(() => _firstRunPollProgress(model), 2500);
+    _firstRunPollProgress(model);   // 즉시 1회
+  } catch (e) {
+    if (progressText) progressText.textContent = `❌ 설치 실패: ${e.message}`;
+  }
+}
+
+async function _firstRunPollProgress(model) {
+  try {
+    const r = await fetch(
+      `${API}/admin/llm/install-progress?api_key=${encodeURIComponent(apiKey)}&model=${encodeURIComponent(model)}`,
+      { headers: { 'Authorization': `Bearer ${token}` } },
+    );
+    if (!r.ok) {
+      if (r.status === 401) {
+        // 세션 만료 — 폴링 중단 + localStorage 정리 (chat tab role
+        // badge도 같이 업데이트되도록 SSO 일관성 유지).
+        clearInterval(_firstRunInstallPoll);
+        _firstRunInstallPoll = null;
+        try {
+          localStorage.removeItem('james_token');
+          localStorage.removeItem('james_role');
+        } catch (_) {}
+      }
+      return;
+    }
+    const p = await r.json();
+    const progressText = document.getElementById('firstrun-progress-text');
+    const progressBar = document.getElementById('firstrun-progress-bar');
+    if (p.error) {
+      if (progressText) progressText.textContent = `❌ ${model} 실패: ${p.error}`;
+      clearInterval(_firstRunInstallPoll);
+      _firstRunInstallPoll = null;
+      return;
+    }
+    if (p.done) {
+      if (progressText) progressText.textContent = `✅ ${model} 설치 완료! 이제 답변할 수 있습니다.`;
+      if (progressBar) progressBar.style.width = '100%';
+      clearInterval(_firstRunInstallPoll);
+      _firstRunInstallPoll = null;
+      // 자동 닫기 (3초 후)
+      setTimeout(() => {
+        const modal = document.getElementById('firstrun-wizard-modal');
+        if (modal) modal.style.display = 'none';
+      }, 3000);
+      return;
+    }
+    if (progressText) {
+      const pctStr = (p.percent != null) ? `${p.percent}%` : (p.status || '진행 중');
+      progressText.textContent = `⏳ ${model}: ${pctStr}`;
+    }
+    if (progressBar && p.percent != null) {
+      progressBar.style.width = `${p.percent}%`;
+    }
+  } catch (e) {
+    console.warn('[firstrun-poll]', e);
+  }
+}
+
+function firstRunDismiss() {
+  sessionStorage.setItem('james_firstrun_dismissed', '1');
+  const modal = document.getElementById('firstrun-wizard-modal');
+  if (modal) modal.style.display = 'none';
 }
 
 
