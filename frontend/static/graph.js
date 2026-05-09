@@ -65,6 +65,12 @@
   var pulseLoopEdges  = [];          // [{src: node, tgt: node}]
   var PULSE_LOOP_MS   = 3200;        // re-fire interval — 1 cycle then breath
 
+  // [PR camera-glow, 2026-05-09] node halos — soft glowing sprite
+  // around each active path node, scale + opacity pulsing on a sine
+  // so the node "breathes". Replaces the static "active node" feel
+  // with the wrap-around glow the user described.
+  var nodeHalos       = new Map();   // nodeId → THREE.Sprite
+
   // Spacing constant — radius scales with sqrt(N).
   var SPHERE_K  = 24;
   var PULSE_MS  = 650;
@@ -404,14 +410,21 @@
 
   function onNodeClick(node) {
     if (!node || !graph) return;
-    // Aim camera at the node.
-    var distance = 240;
+    // [PR camera-glow, 2026-05-09] camera centering — move closer +
+    // longer animation so the user clearly sees the screen travel to
+    // the picked node. Previous setting felt subtle when the click
+    // came from the search drawer or neighbor panel rather than a
+    // direct 3D click.
+    var distance = 110;        // closer view of the node
     var ratio = 1;
     var d = Math.hypot(node.x || 1, node.y || 1, node.z || 1);
     if (d > 0) ratio = (d + distance) / d;
     graph.cameraPosition(
-      { x: (node.x || 0) * ratio, y: (node.y || 0) * ratio, z: (node.z || 0) * ratio },
-      node, 700,
+      { x: (node.x || 0) * ratio,
+        y: (node.y || 0) * ratio,
+        z: (node.z || 0) * ratio },
+      node,
+      1200,                    // slower, more visible move
     );
     // [PR explorer, 2026-05-09] click → neighborhood explorer.
     // Lights up the clicked node, animates pulses to its direct
@@ -464,6 +477,7 @@
       else if (edgeIdx.has(k2)) activePathEdges.add(k2);
     });
     refreshLabels();
+    refreshNodeHalos();   // [PR camera-glow] halo center + neighbors
 
     // Sprite pulses outward — staggered so the eye can follow flow.
     var stepMs = 0;
@@ -848,6 +862,7 @@
       });
     });
     refreshLabels();
+    refreshNodeHalos();   // [PR camera-glow] halos around path nodes
     // Replay sprite pulses for visual cue (but the lit edges persist).
     var stepMs = 0;
     var lastTgt = null;
@@ -876,6 +891,7 @@
     activePathNodes.clear();
     activeAnswerId = null;
     stopPulseLoop();
+    refreshNodeHalos();              // [PR camera-glow] kill halos
     if (!skipRefresh) {
       refreshLabels();
       if (graph) {
@@ -883,6 +899,65 @@
         graph.linkWidth(graph.linkWidth());
       }
     }
+  }
+
+  // [PR camera-glow] Sync nodeHalos with activePathNodes. Add halos
+  // for newly-active nodes, dispose for nodes that left the active set.
+  function refreshNodeHalos() {
+    if (!graph) return;
+    var scene = graph.scene && graph.scene();
+    if (!scene || typeof THREE === 'undefined') return;
+    var color = getCss('--brand-2', '#4fc3f7');
+    // Add halos for newly-active nodes.
+    activePathNodes.forEach(function (nodeId) {
+      if (nodeHalos.has(nodeId)) return;
+      var n = nodeIdx.get(nodeId);
+      if (!n) return;
+      var tex = getGlowTexture(color);
+      if (!tex) return;
+      var mat = new THREE.SpriteMaterial({
+        map:         tex,
+        color:       0xffffff,
+        transparent: true,
+        opacity:     0.55,
+        blending:    THREE.AdditiveBlending,
+        depthWrite:  false,
+      });
+      var sp = new THREE.Sprite(mat);
+      sp.scale.set(20, 20, 1);
+      sp.userData.isHalo = true;
+      sp.userData.nodeId = nodeId;
+      sp.userData.bornMs = performance.now();
+      scene.add(sp);
+      nodeHalos.set(nodeId, sp);
+    });
+    // Remove halos for nodes that left the active set.
+    nodeHalos.forEach(function (sp, nodeId) {
+      if (!activePathNodes.has(nodeId)) {
+        disposeSprite(sp);
+        nodeHalos.delete(nodeId);
+      }
+    });
+  }
+
+  // [PR camera-glow] Per-frame halo update — position-tracking + sine
+  // pulse. Called from pulseTick alongside tickLabelPositions.
+  function tickNodeHalos() {
+    if (!nodeHalos.size) return;
+    var now = performance.now();
+    nodeHalos.forEach(function (sp, nodeId) {
+      var n = nodeIdx.get(nodeId);
+      if (!n || !sp) return;
+      sp.position.set(n.x || 0, n.y || 0, n.z || 0);
+      // Per-halo phase offset (born time) so halos pulse out of sync —
+      // looks more organic than uniform breathing.
+      var t = ((now - (sp.userData.bornMs || 0)) / 1800) % 1;   // 1.8s period
+      var phase = Math.sin(t * Math.PI * 2);
+      // Scale 17..23, opacity 0.4..0.7 — gentle wrap-around feel.
+      var s = 20 + 3 * phase;
+      sp.scale.set(s, s, 1);
+      sp.material.opacity = 0.55 + 0.15 * phase;
+    });
   }
 
   // [PR mobile-loop-search] persistent pulse loop. Replays sprite
@@ -922,6 +997,40 @@
     pulseLoopEdges = [];
   }
 
+  // ─── [PR camera-glow, 2026-05-09] Soft radial-gradient texture ─
+  // Cached canvas-based gradient — used as the map for traveling
+  // pulse sprites AND for node halos. The "wraps around" feel the
+  // user requested comes from a soft falloff at the edge instead of
+  // the hard square sprite previously used.
+  var _glowTexCache = new Map();
+  function _hexToRgba(hex, a) {
+    var h = (hex || '').replace('#', '');
+    if (h.length === 3) h = h.split('').map(function(c){return c+c}).join('');
+    if (h.length !== 6) return 'rgba(79,195,247,' + a + ')';   // fallback
+    var r = parseInt(h.substr(0, 2), 16);
+    var g = parseInt(h.substr(2, 2), 16);
+    var b = parseInt(h.substr(4, 2), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+  }
+  function getGlowTexture(hexColor) {
+    if (typeof THREE === 'undefined') return null;
+    if (_glowTexCache.has(hexColor)) return _glowTexCache.get(hexColor);
+    var canvas = document.createElement('canvas');
+    canvas.width = 128; canvas.height = 128;
+    var ctx = canvas.getContext('2d');
+    var grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grad.addColorStop(0,   _hexToRgba(hexColor, 1.0));   // bright core
+    grad.addColorStop(0.3, _hexToRgba(hexColor, 0.7));
+    grad.addColorStop(0.6, _hexToRgba(hexColor, 0.25));
+    grad.addColorStop(1,   _hexToRgba(hexColor, 0));     // soft falloff
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 128, 128);
+    var tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = THREE.LinearFilter;
+    _glowTexCache.set(hexColor, tex);
+    return tex;
+  }
+
   // ─── Pulse animation ───────────────────────────────────────
   function spawnPulse(srcNode, tgtNode) {
     if (!graph || !srcNode || !tgtNode) return;
@@ -929,15 +1038,20 @@
     var scene = graph.scene();
     if (!scene) return;
 
+    // [PR camera-glow] use the soft gradient texture for a comet-like
+    // wrap-around glow instead of the hard square sprite.
+    var color = getCss('--brand-2', '#4fc3f7');
+    var tex = getGlowTexture(color);
     var spriteMat = new THREE.SpriteMaterial({
-      color:       new THREE.Color(getCss('--brand-2', '#4fc3f7')),
+      map:         tex,
+      color:       0xffffff,        // texture carries the color
       transparent: true,
       opacity:     0.95,
       blending:    THREE.AdditiveBlending,
       depthWrite:  false,
     });
     var sprite = new THREE.Sprite(spriteMat);
-    sprite.scale.set(8, 8, 1);
+    sprite.scale.set(14, 14, 1);    // was 8 — softer, more "fluid light"
     sprite.position.set(srcNode.x || 0, srcNode.y || 0, srcNode.z || 0);
     scene.add(sprite);
 
@@ -986,6 +1100,8 @@
     }
     // [#4-2 c-label/f] keep labels glued to their nodes per frame.
     tickLabelPositions();
+    // [PR camera-glow] halo position-track + sine pulse per frame.
+    tickNodeHalos();
     requestAnimationFrame(pulseTick);
   }
 
