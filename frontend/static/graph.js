@@ -56,6 +56,15 @@
   var answerHistory   = [];          // [{id, question, answer, paths, ts}]
   var historyCounter  = 0;           // monotonic id source
 
+  // [PR mobile-loop-search, 2026-05-09] persistent pulse loop.
+  // After activatePath / exploreFromNode runs, sprite pulses replay
+  // every PULSE_LOOP_MS until the next question or another node click
+  // resets the active set. User feedback: pulses dying after one
+  // pass loses the "this is the live path" signal.
+  var pulseLoopTimer  = null;
+  var pulseLoopEdges  = [];          // [{src: node, tgt: node}]
+  var PULSE_LOOP_MS   = 3200;        // re-fire interval — 1 cycle then breath
+
   // Spacing constant — radius scales with sqrt(N).
   var SPHERE_K  = 24;
   var PULSE_MS  = 650;
@@ -458,9 +467,11 @@
 
     // Sprite pulses outward — staggered so the eye can follow flow.
     var stepMs = 0;
+    var loopEdges = [];
     neighbors.forEach(function (item) {
       setTimeout(function () { spawnPulse(node, item.neighbor); }, stepMs);
       stepMs += STEP_GAP / 2;   // slightly faster than path replay
+      loopEdges.push({ src: node, tgt: item.neighbor });
     });
 
     // Re-trigger force-graph render so links re-color.
@@ -470,6 +481,10 @@
     }
 
     renderNeighborPanel(node, neighbors);
+
+    // [PR mobile-loop-search] keep the neighborhood lit — pulses re-
+    // fire every PULSE_LOOP_MS until next click clears.
+    setTimeout(function () { startPulseLoop(loopEdges); }, stepMs + 400);
   }
 
   function renderNeighborPanel(centerNode, neighbors) {
@@ -546,6 +561,102 @@
     if (!ov) return;
     ov.style.display = 'none';
     ov.innerHTML = '';
+  }
+
+  // ─── [PR mobile-loop-search] Top entity search drawer ──────────
+  // Click toggle tab → drawer slides down → input + filtered list of
+  // entity names. Click a row → camera moves to that node + neighborhood
+  // explorer fires. Phone-friendly (replaces the side aside on
+  // <720px). ESC closes the drawer.
+  window.toggleSearchDrawer = function () {
+    var drawer = document.getElementById('search-drawer');
+    if (!drawer) return;
+    var isOpen = drawer.classList.contains('tsd-open');
+    if (isOpen) hideSearchDrawer();
+    else showSearchDrawer();
+  };
+
+  function showSearchDrawer() {
+    var drawer = document.getElementById('search-drawer');
+    if (!drawer) return;
+    drawer.classList.add('tsd-open');
+    var input = document.getElementById('tsd-search');
+    if (input) {
+      input.value = '';
+      _renderSearchList('');
+      setTimeout(function () { input.focus(); }, 80);
+    }
+    var toggle = document.getElementById('tsd-toggle');
+    if (toggle) toggle.textContent = '🔎 검색 ▴';
+  }
+
+  window.hideSearchDrawer = function () {
+    var drawer = document.getElementById('search-drawer');
+    if (!drawer) return;
+    drawer.classList.remove('tsd-open');
+    var toggle = document.getElementById('tsd-toggle');
+    if (toggle) toggle.textContent = '🔎 검색 ▾';
+  };
+
+  // Render the list rows for query `q` (case-insensitive substring).
+  // Empty `q` → top 30 by degree (signal: importance).
+  function _renderSearchList(q) {
+    var listEl = document.getElementById('tsd-list');
+    if (!listEl) return;
+    var qNorm = (q || '').toLowerCase().trim();
+    var rows;
+    if (!qNorm) {
+      rows = data.nodes.slice().sort(function (a, b) {
+        return (b.degree || 0) - (a.degree || 0);
+      }).slice(0, 30);
+    } else {
+      rows = data.nodes.filter(function (n) {
+        return (n.name || '').toLowerCase().indexOf(qNorm) >= 0;
+      }).slice(0, 100);
+    }
+    if (!rows.length) {
+      listEl.innerHTML =
+        '<div class="tsd-empty">' +
+        (qNorm ? '\'' + escapeHtml(qNorm) + '\' 일치 없음' : '엔티티 없음') +
+        '</div>';
+      return;
+    }
+    listEl.innerHTML = rows.map(function (n) {
+      var idJs = JSON.stringify(n.id);
+      return '<div class="tsd-row" onclick="onSearchRowClick(' + idJs + ')">' +
+             '<span class="tsd-type">' + escapeHtml(n.type || '?') + '</span>' +
+             '<span class="tsd-name">' + escapeHtml(n.name || '?') + '</span>' +
+             '<span class="tsd-deg">' + (n.degree || 0) + '</span>' +
+             '</div>';
+    }).join('');
+  }
+
+  // Click a search row → close drawer + camera nudge + explore neighborhood.
+  window.onSearchRowClick = function (nodeId) {
+    var n = nodeIdx.get(nodeId);
+    if (!n) return;
+    hideSearchDrawer();
+    // onNodeClick already does camera move + exploreFromNode.
+    onNodeClick(n);
+  };
+
+  // Wire the search input live-filter.
+  function _bindSearchDrawerInput() {
+    var input = document.getElementById('tsd-search');
+    if (!input || input._tsdBound) return;
+    input.addEventListener('input', function (e) {
+      _renderSearchList(e.target.value);
+    });
+    input._tsdBound = true;
+    // ESC to close from anywhere.
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        var drawer = document.getElementById('search-drawer');
+        if (drawer && drawer.classList.contains('tsd-open')) {
+          hideSearchDrawer();
+        }
+      }
+    });
   }
 
   // ─── Path-string parser ────────────────────────────────────
@@ -740,10 +851,12 @@
     // Replay sprite pulses for visual cue (but the lit edges persist).
     var stepMs = 0;
     var lastTgt = null;
+    var loopEdges = [];
     hopsAll.forEach(function (resolved) {
       setTimeout(function () { spawnPulse(resolved.src, resolved.tgt); }, stepMs);
       stepMs += STEP_GAP;
       lastTgt = resolved.tgt;
+      loopEdges.push({ src: resolved.src, tgt: resolved.tgt });
     });
     if (graph) {
       graph.linkColor(graph.linkColor());
@@ -753,12 +866,16 @@
     if (lastTgt) {
       setTimeout(function () { pulseTerminalNode(lastTgt); }, stepMs + 200);
     }
+    // [PR mobile-loop-search] keep the path alive — replays pulses
+    // every PULSE_LOOP_MS until next question or node click clears.
+    setTimeout(function () { startPulseLoop(loopEdges); }, stepMs + 400);
   }
 
   function clearActivePath(skipRefresh) {
     activePathEdges.clear();
     activePathNodes.clear();
     activeAnswerId = null;
+    stopPulseLoop();
     if (!skipRefresh) {
       refreshLabels();
       if (graph) {
@@ -766,6 +883,43 @@
         graph.linkWidth(graph.linkWidth());
       }
     }
+  }
+
+  // [PR mobile-loop-search] persistent pulse loop. Replays sprite
+  // pulses on the active edges every PULSE_LOOP_MS until cleared.
+  // The visual flow stays alive so the user perceives "the path is
+  // currently lit", instead of a single one-shot firing that fades.
+  function startPulseLoop(edges) {
+    stopPulseLoop();
+    pulseLoopEdges = (edges || []).filter(function (e) {
+      return e && e.src && e.tgt;
+    });
+    if (!pulseLoopEdges.length) return;
+    var fire = function () {
+      // Snapshot current — caller may have called stopPulseLoop()
+      // between intervals.
+      var snap = pulseLoopEdges.slice();
+      var stagger = Math.min(STEP_GAP, 220);
+      snap.forEach(function (e, i) {
+        setTimeout(function () {
+          // Re-check every fire — clearActivePath may have hit between
+          // setTimeout schedule and execution.
+          if (pulseLoopEdges.indexOf(e) >= 0) {
+            spawnPulse(e.src, e.tgt);
+          }
+        }, i * stagger);
+      });
+    };
+    fire();   // immediate first pass
+    pulseLoopTimer = setInterval(fire, PULSE_LOOP_MS);
+  }
+
+  function stopPulseLoop() {
+    if (pulseLoopTimer) {
+      clearInterval(pulseLoopTimer);
+      pulseLoopTimer = null;
+    }
+    pulseLoopEdges = [];
   }
 
   // ─── Pulse animation ───────────────────────────────────────
@@ -1029,6 +1183,9 @@
     requestAnimationFrame(pulseTick);
     var src = document.getElementById('src-select');
     src.addEventListener('change', function () { loadAndRender(src.value); });
+
+    // [PR mobile-loop-search] wire the top entity search drawer.
+    _bindSearchDrawerInput();
 
     var search = document.getElementById('node-search');
     if (search) {
