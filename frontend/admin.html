@@ -295,6 +295,9 @@
       <div class="nav-item" onclick="showPage('uploads', this)">
         <span class="nav-icon">📥</span> <span data-i18n="admin.upload_history">업로드 이력</span>
       </div>
+      <div class="nav-item" onclick="showPage('files', this)">
+        <span class="nav-icon">📁</span> <span data-i18n="admin.file_mgmt">파일 관리</span>
+      </div>
     </div>
 
     <div class="nav-section nav-foldable" onclick="toggleNavSection(this)">
@@ -720,6 +723,64 @@
       </div>
       <div id="uploads-pager" style="margin-top:14px;display:flex;
            gap:10px;justify-content:center"></div>
+    </div>
+
+    <!-- 파일 관리 [item #2] -->
+    <div class="page" id="page-files">
+      <div class="page-title">
+        <span data-i18n="files.page_title">📁 파일 관리</span>
+      </div>
+      <!-- 검색/루트 선택 행 -->
+      <div style="display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+        <select id="files-root"
+                onchange="onFilesRootChange()"
+                style="background:var(--surface-2);border:1px solid var(--border);
+                       border-radius:8px;color:var(--text);font-size:13px;
+                       padding:8px 12px;cursor:pointer">
+          <option value="wiki">📚 wiki/ (entity 파일)</option>
+          <option value="uploads">📥 uploads/ (원본 업로드)</option>
+          <option value="media">🖼️ media/ (이미지/비디오)</option>
+        </select>
+        <input type="text" id="files-search"
+               placeholder="파일명 검색 (Enter, 대소문자 무시)"
+               data-i18n-placeholder="files.search_placeholder"
+               style="flex:1;min-width:200px;padding:8px 12px;
+                      background:var(--surface-2);border:1px solid var(--border);
+                      border-radius:8px;color:var(--text);font-size:13px"
+               onkeydown="if(event.key==='Enter') searchFiles()">
+        <button onclick="searchFiles()" style="padding:8px 16px;
+                background:var(--accent);color:#fff;border:0;border-radius:8px;
+                cursor:pointer;font-size:13px;font-weight:600">
+          <span data-i18n="common.search">검색</span>
+        </button>
+        <button onclick="loadFiles()" style="padding:8px 12px;
+                background:var(--surface-2);border:1px solid var(--border);
+                color:var(--muted);border-radius:8px;cursor:pointer;font-size:12px"
+                title="검색 초기화 + 트리 다시 불러오기">
+          ↻ 트리
+        </button>
+      </div>
+      <div id="files-info" style="color:var(--muted);font-size:12px;
+           margin-bottom:10px"></div>
+      <!-- 트리/검색 결과 표시 -->
+      <div id="files-content"
+           style="background:var(--surface);border:1px solid var(--border);
+                  border-radius:10px;padding:14px;min-height:300px;
+                  font-family:var(--font-mono);font-size:12px;
+                  max-height:60vh;overflow-y:auto">
+        <div class="loading" data-i18n="common.loading">로딩 중...</div>
+      </div>
+      <!-- 업로드 안내 -->
+      <div style="margin-top:14px;padding:12px;background:var(--surface-2);
+           border:1px solid var(--border);border-radius:8px;font-size:12px;
+           color:var(--muted);line-height:1.6">
+        💡 새 파일 업로드는 <a href="/" style="color:var(--accent-fg);
+           text-decoration:none">Chat 페이지</a>에서 진행됩니다.
+        업로드 직후 이 트리에 반영되며, 자세한 내역은
+        <a href="javascript:showPage('uploads', document.querySelector(
+          '.nav-item[onclick*=uploads]'))"
+          style="color:var(--accent-fg);text-decoration:none">📥 업로드 이력</a> 탭 참조.
+      </div>
     </div>
 
     <!-- 🛠️ 장비 현황 (P3-1) -->

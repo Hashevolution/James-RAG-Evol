@@ -188,6 +188,7 @@ function showPage(id, el) {
     patches:        loadPatches,
     audit:          loadAudit,
     uploads:        loadUploads,
+    files:          loadFiles,
     settings:       loadSettings,
     proposals:      loadProposals,
     'evo-reports':  loadEvoReports,
@@ -825,6 +826,179 @@ function _uploadsPrev() {
 function _uploadsNext() {
   _uploadsOffset = _uploadsOffset + _uploadsLimit;
   loadUploads(false);
+}
+
+/* ── [item #2 / 2026-05-09] 파일 관리 통합 탭 ──
+   사용자 피드백: 업로드 + 이력 + 트리 + 검색을 하나의 세션으로.
+   업로드/이력은 기존 endpoint 재사용; 이 탭의 신규 책임은 트리/검색/
+   다운로드. 트리 root는 wiki/uploads/media 중 선택 (서버 allowlist).
+   ⚠ 모든 endpoint는 admin-gated + 경로 traversal 방어. */
+let _filesCurrentRoot = 'wiki';
+
+function _humanSize(bytes) {
+  if (bytes == null) return '';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+  return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+}
+
+function _humanMtime(ts) {
+  if (!ts) return '';
+  try {
+    const d = new Date(ts * 1000);
+    return d.toISOString().slice(0, 16).replace('T', ' ');
+  } catch (_) { return ''; }
+}
+
+function onFilesRootChange() {
+  const sel = document.getElementById('files-root');
+  if (sel) {
+    _filesCurrentRoot = sel.value || 'wiki';
+    loadFiles();
+  }
+}
+
+async function loadFiles() {
+  const root = _filesCurrentRoot;
+  const container = document.getElementById('files-content');
+  const info = document.getElementById('files-info');
+  if (!container) return;
+  container.innerHTML = `<div class="loading">${t('common.loading') || '로딩 중...'}</div>`;
+  if (info) info.textContent = '';
+  // Reset search input on tree reload.
+  const sb = document.getElementById('files-search');
+  if (sb) sb.value = '';
+
+  try {
+    const data = await api(`/admin/files/tree?root=${encodeURIComponent(root)}&max_depth=3`);
+    if (!data.exists) {
+      container.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:var(--muted)">
+        '${_escHtml(root)}' 디렉토리 없음 (아직 생성 안 됨)
+      </div>`;
+      return;
+    }
+    const children = data.children || [];
+    if (children.length === 0) {
+      container.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:var(--muted)">
+        비어 있음
+      </div>`;
+      if (info) info.textContent = `root=${root} · 0 entries`;
+      return;
+    }
+    container.innerHTML = _renderTree(children, '', root);
+    if (info) info.textContent = `root=${root} · ${children.length} top-level entries`;
+  } catch (e) {
+    container.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:#c00">
+      트리 로드 실패: ${_escHtml(e.message)}
+    </div>`;
+  }
+}
+
+/* Recursive tree renderer. Folders render as collapsible <details>
+   so the user can expand/collapse selectively without the whole tree
+   collapsing on a re-render. Files have a download link (only for
+   allowlisted extensions — server enforces, but we don't render the
+   link for ones we know will 403). */
+const _DOWNLOAD_OK_EXTS = new Set([
+  'md','txt','pdf','docx','doc','xlsx','xls','pptx','ppt','csv','html','htm',
+  'json','yaml','yml','png','jpg','jpeg','gif','webp','bmp','tiff','mp4','avi',
+  'mov','mkv','webm','mp3','wav','m4a','aac','flac','hwpx','hwp',
+]);
+
+function _renderTree(nodes, parentPath, root) {
+  if (!nodes || !nodes.length) return '';
+  let html = '<ul style="list-style:none;padding-left:0;margin:0">';
+  for (const n of nodes) {
+    const fullRel = parentPath ? `${parentPath}/${n.name}` : n.name;
+    if (n.type === 'dir') {
+      const childHtml = (n.children && n.children.length)
+        ? _renderTree(n.children, fullRel, root)
+        : '<div style="padding:4px 0 4px 18px;color:var(--muted);font-size:11px">(empty)</div>';
+      html += `<li style="margin:2px 0">
+        <details style="padding-left:12px;border-left:1px dashed var(--border-2)">
+          <summary style="cursor:pointer;color:var(--accent-fg);
+                          padding:3px 6px;border-radius:4px">
+            📂 ${_escHtml(n.name)}/
+          </summary>
+          <div style="padding-left:14px;margin-top:2px">${childHtml}</div>
+        </details>
+      </li>`;
+    } else {
+      const ext = (n.name.split('.').pop() || '').toLowerCase();
+      const canDownload = _DOWNLOAD_OK_EXTS.has(ext);
+      const dlLink = canDownload
+        ? `<a href="${API}/admin/files/download?root=${encodeURIComponent(root)}&path=${encodeURIComponent(fullRel)}&api_key=${encodeURIComponent(apiKey)}"
+              target="_blank" rel="noopener"
+              style="color:var(--accent-fg);text-decoration:none;font-size:11px;
+                     margin-left:8px"
+              title="다운로드">⬇</a>`
+        : '';
+      html += `<li style="margin:2px 0;padding:3px 6px 3px 18px;
+                          border-left:1px dashed var(--border-2);
+                          display:flex;align-items:center;gap:6px">
+        <span>📄 ${_escHtml(n.name)}</span>
+        <span style="color:var(--muted);font-size:11px;flex:1">
+          ${_humanSize(n.size)} · ${_humanMtime(n.mtime)}
+        </span>${dlLink}
+      </li>`;
+    }
+  }
+  html += '</ul>';
+  return html;
+}
+
+async function searchFiles() {
+  const sb = document.getElementById('files-search');
+  const q = sb ? sb.value.trim() : '';
+  if (!q) { loadFiles(); return; }
+  const root = _filesCurrentRoot;
+  const container = document.getElementById('files-content');
+  const info = document.getElementById('files-info');
+  if (!container) return;
+  container.innerHTML = `<div class="loading">${t('common.loading') || '로딩 중...'}</div>`;
+  if (info) info.textContent = '';
+
+  try {
+    const data = await api(`/admin/files/search?root=${encodeURIComponent(root)}&q=${encodeURIComponent(q)}&limit=200`);
+    const matches = data.matches || [];
+    if (matches.length === 0) {
+      container.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:var(--muted)">
+        '${_escHtml(q)}' 일치 없음 (root=${_escHtml(root)})
+      </div>`;
+      if (info) info.textContent = `'${q}' · 0 matches`;
+      return;
+    }
+    let html = '<ul style="list-style:none;padding-left:0;margin:0">';
+    for (const m of matches) {
+      const ext = (m.name.split('.').pop() || '').toLowerCase();
+      const canDownload = _DOWNLOAD_OK_EXTS.has(ext);
+      const dlLink = canDownload
+        ? `<a href="${API}/admin/files/download?root=${encodeURIComponent(root)}&path=${encodeURIComponent(m.path)}&api_key=${encodeURIComponent(apiKey)}"
+              target="_blank" rel="noopener"
+              style="color:var(--accent-fg);text-decoration:none;font-size:11px;
+                     margin-left:8px"
+              title="다운로드">⬇</a>`
+        : '';
+      html += `<li style="margin:3px 0;padding:6px 8px;
+                          border-bottom:1px dotted var(--border-2);
+                          display:flex;align-items:center;gap:8px">
+        <span style="color:var(--muted);font-size:11px;
+                     font-family:var(--font-mono);flex-shrink:0">${_escHtml(m.path)}</span>
+        <span style="color:var(--muted);font-size:11px;flex:1;text-align:right">
+          ${_humanSize(m.size)} · ${_humanMtime(m.mtime)}
+        </span>${dlLink}
+      </li>`;
+    }
+    html += '</ul>';
+    container.innerHTML = html;
+    const truncMsg = data.truncated ? ` (limit ${matches.length}; refine query)` : '';
+    if (info) info.textContent = `'${q}' · ${matches.length} matches${truncMsg}`;
+  } catch (e) {
+    container.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:#c00">
+      검색 실패: ${_escHtml(e.message)}
+    </div>`;
+  }
 }
 
 /* ── 언어 전환 — i18n.js의 t() 사용으로 대체됨 ── */

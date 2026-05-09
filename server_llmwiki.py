@@ -2965,6 +2965,222 @@ async def admin_uploads_history(
             "limit": limit, "offset": offset, "q": qstr}
 
 
+# ────────────────────────────────────────────────────────────────────
+# [#2 file management tab, 2026-05-09] /admin/files/* endpoints —
+# unified file inspection (tree + search + download). Upload + history
+# are kept on existing endpoints (/upload/, /admin/uploads/history/).
+#
+# Trust boundary: ALL three endpoints are admin-gated AND constrain
+# every path argument to a fixed allowlist of root directories. The
+# allowlist is the *only* thing standing between an arbitrary client
+# string and `open(path)` — path traversal would expose .env, secret
+# DBs, anything on the operator's filesystem.
+# ────────────────────────────────────────────────────────────────────
+
+# Roots the file-mgmt tab is allowed to inspect. Each entry maps a
+# user-facing key to an absolute path; client requests reference the
+# key, the server resolves the path. New roots must be added here
+# explicitly — rejecting unknown root keys is part of the trust gate.
+def _file_mgmt_roots() -> dict:
+    from config import BASE_DIR, WIKI_DIR, UPLOAD_DIR
+    media = os.path.join(BASE_DIR, "media")
+    return {
+        "wiki":    os.path.abspath(WIKI_DIR),
+        "uploads": os.path.abspath(UPLOAD_DIR),
+        "media":   os.path.abspath(media),
+    }
+
+# Filename allowlist for downloads. We never expose source code, env
+# files, secret DBs, etc. — even if path traversal were somehow bypassed,
+# this extension gate is a second line of defense.
+_FILE_DOWNLOAD_ALLOWED_EXTS = (
+    ".md", ".txt", ".pdf", ".docx", ".doc", ".xlsx", ".xls",
+    ".pptx", ".ppt", ".csv", ".html", ".htm", ".json", ".yaml", ".yml",
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff",
+    ".mp4", ".avi", ".mov", ".mkv", ".webm",
+    ".mp3", ".wav", ".m4a", ".aac", ".flac",
+    ".hwpx", ".hwp",
+)
+
+
+def _resolve_under_root(root_key: str, rel_path: str) -> str:
+    """Validate (root_key, rel_path) → safe absolute path.
+
+    Returns the absolute path or raises HTTPException 400 on:
+      - unknown root_key
+      - rel_path that escapes the root (.. traversal, drive letters,
+        UNC paths, symlinks pointing outside)
+
+    `os.path.realpath` follows symlinks, so a malicious symlink under
+    the root that points to /etc/passwd is caught.
+    """
+    roots = _file_mgmt_roots()
+    if root_key not in roots:
+        raise HTTPException(status_code=400, detail="invalid root")
+    root = roots[root_key]
+    if not os.path.isdir(root):
+        # Not yet created (e.g. media/) — return root anyway, callers
+        # will produce empty listings.
+        return root if not (rel_path or "").strip() else None
+    rel = (rel_path or "").lstrip("/\\").strip()
+    candidate = os.path.realpath(os.path.join(root, rel))
+    # Final containment check.
+    if not candidate.startswith(root + os.sep) and candidate != root:
+        raise HTTPException(status_code=400, detail="path escapes root")
+    return candidate
+
+
+@app.get("/admin/files/tree", summary="파일 트리 조회 [item #2]")
+async def admin_files_tree(
+    api_key:    str,
+    root:       str = "wiki",
+    path:       str = "",
+    max_depth:  int = 3,
+    role:       str = Depends(get_role_from_request),
+):
+    """Read-only directory listing rooted at one of the allowed roots.
+
+    `max_depth` clamped to [1, 5] — a 5-level recursive listing on a
+    big wiki could be slow and produce a fat JSON, but we don't need
+    deeper. `1` lists immediate children only.
+    """
+    _require_admin(api_key, role)
+    max_depth = max(1, min(int(max_depth or 3), 5))
+    base = _resolve_under_root(root, path)
+    if not base or not os.path.isdir(base):
+        return {"root": root, "path": path, "children": [],
+                "exists": False}
+
+    def walk(dir_abs: str, depth: int) -> list:
+        try:
+            entries = sorted(os.listdir(dir_abs))
+        except OSError:
+            return []
+        out = []
+        for name in entries:
+            if name.startswith("."):       # hide dotfiles (.git, .env shadows)
+                continue
+            full = os.path.join(dir_abs, name)
+            try:
+                st = os.stat(full)
+            except OSError:
+                continue
+            if os.path.isdir(full):
+                node = {
+                    "name":     name,
+                    "type":     "dir",
+                    "mtime":    int(st.st_mtime),
+                    "children": walk(full, depth - 1) if depth > 1 else [],
+                }
+            else:
+                node = {
+                    "name":  name,
+                    "type":  "file",
+                    "size":  st.st_size,
+                    "mtime": int(st.st_mtime),
+                }
+            out.append(node)
+        return out
+
+    return {
+        "root":     root,
+        "path":     path,
+        "exists":   True,
+        "children": walk(base, max_depth),
+    }
+
+
+@app.get("/admin/files/search", summary="파일명 검색 [item #2]")
+async def admin_files_search(
+    api_key: str,
+    q:       str,
+    root:    str = "wiki",
+    limit:   int = 100,
+    role:    str = Depends(get_role_from_request),
+):
+    """Filename substring search under one root. Case-insensitive.
+
+    Returns a flat list (not nested). Capped at `limit` matches (default
+    100, max 500) so a one-character query doesn't dump the whole tree.
+    """
+    _require_admin(api_key, role)
+    qstr  = (q or "").strip().lower()
+    if not qstr:
+        return {"q": "", "matches": [], "total": 0, "root": root}
+    limit = max(1, min(int(limit or 100), 500))
+    base  = _resolve_under_root(root, "")
+    if not base or not os.path.isdir(base):
+        return {"q": qstr, "matches": [], "total": 0, "root": root}
+
+    matches = []
+    for dirpath, dirnames, filenames in os.walk(base):
+        # Skip hidden dirs.
+        dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+        for name in filenames:
+            if name.startswith("."):
+                continue
+            if qstr in name.lower():
+                full = os.path.join(dirpath, name)
+                rel  = os.path.relpath(full, base).replace("\\", "/")
+                try:
+                    st = os.stat(full)
+                except OSError:
+                    continue
+                matches.append({
+                    "name":  name,
+                    "path":  rel,
+                    "size":  st.st_size,
+                    "mtime": int(st.st_mtime),
+                })
+                if len(matches) >= limit:
+                    return {"q": qstr, "matches": matches,
+                            "total": len(matches), "truncated": True,
+                            "root": root}
+    return {"q": qstr, "matches": matches, "total": len(matches),
+            "root": root}
+
+
+@app.get("/admin/files/download", summary="파일 다운로드 [item #2]")
+async def admin_files_download(
+    api_key: str,
+    root:    str,
+    path:    str,
+    role:    str = Depends(get_role_from_request),
+):
+    """Download a single file from an allowed root.
+
+    Defenses (in order):
+      1. admin gate (api_key + role)
+      2. _resolve_under_root rejects unknown root + path traversal
+      3. extension allowlist (no .py / .env / .db / etc.)
+      4. file must exist + be a regular file (not dir, not symlink to
+         outside — realpath already followed in step 2)
+
+    Uses FileResponse — FastAPI streams the file, doesn't load it into
+    memory. Audit log records every download.
+    """
+    _require_admin(api_key, role)
+    if not (path or "").strip():
+        raise HTTPException(status_code=400, detail="path required")
+    full = _resolve_under_root(root, path)
+    if not full or not os.path.isfile(full):
+        raise HTTPException(status_code=404, detail="not found")
+    ext = os.path.splitext(full)[1].lower()
+    if ext not in _FILE_DOWNLOAD_ALLOWED_EXTS:
+        raise HTTPException(
+            status_code=403,
+            detail=f"extension {ext} not allowed for download",
+        )
+    _write_audit(role, "/admin/files/download/",
+                 query=os.path.basename(full), elapsed_sec=0)
+    from fastapi.responses import FileResponse
+    return FileResponse(
+        path=full,
+        filename=os.path.basename(full),
+        media_type="application/octet-stream",
+    )
+
+
 @app.get("/admin/settings", summary="설정 조회 [P7]")
 async def admin_settings_get(api_key: str, role: str = Depends(get_role_from_request)):
     _require_admin(api_key, role)
