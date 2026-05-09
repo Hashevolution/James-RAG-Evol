@@ -1,0 +1,13 @@
+d15bf66ab41fab2c92c8b805e7ca23d8b9f4fc75 2026-05-05 10:01:59 +0900 feat: initial release v0.1.0-alpha
+c71799a4f1eebc24d44bb60dde302b4737ed8d03 2026-05-05 14:24:55 +0900 fix: remove all hardcoded paths and exposed usernames
+c9c604ed6580c00b2dee9886475740071a4f09dd 2026-05-05 17:14:42 +0900 feat: STEP 7 - automatic entity extraction + 161 entity validation
+7ac52efa2d292794eebcd07a29610542664f51eb 2026-05-05 17:20:41 +0900 chore: STEP 7 - GitHub issue templates and posting script
+6891070d98f2c15bd97e089bdab9765409c1cebd 2026-05-05 17:49:25 +0900 chore: gitignore user PDF entities; remove pre-STEP-7 seed data
+0922e25441b1299a8228d76ad5f1d6d6aaa0c493 2026-05-05 17:49:36 +0900 chore: add Python issue poster (more robust than PS5.1 version)
+bcdce3202cde5f0185907641530eb6e8ec29caf4 2026-05-05 18:04:29 +0900 chore(deps): drop unused PyPDF2; bump cryptography 46.0.6→47.0.0 (#9)
+dd71b88a87575ab298eba4e4d8c3f5a6d888f1de 2026-05-05 18:12:30 +0900 fix(graph): expand entity aliases on creation; backfill existing entities (#10)
+a8aaa1f5edb2dbe440b6088c0374fe4dee817d4b 2026-05-05 18:47:24 +0900 chore(logging): silence pdfminer FontBBox warnings on PDF upload (#12)
+8da2e30be4c3ccc3e8ad9da4d214742e855c6959 2026-05-05 19:12:46 +0900 fix(graph): bidirectional entity relations — graph utilization 33%→75% (#16)
+858e2e53c4963aae4e4a9dc98933d4db9e6348d6 2026-05-05 19:29:48 +0900 fix(llm): route entity-extraction & classification through llm/router (#17)
+20a527a1d6fa6f62bb2ca24d95e44a49eeff6b3d 2026-05-05 19:33:50 +0900 fix(llm): route ALL LLM calls through RouterWrapper (closes #13) (#18)
+93f4aae56163e9365aadc0621ff88cdaaf85d88c 2026-05-05 21:10:09 +0900 fix(graph): wiki/synonyms.yaml synonym table → bidirectional alias index (#19)
