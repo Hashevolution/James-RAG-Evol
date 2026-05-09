@@ -404,6 +404,148 @@
       { x: (node.x || 0) * ratio, y: (node.y || 0) * ratio, z: (node.z || 0) * ratio },
       node, 700,
     );
+    // [PR explorer, 2026-05-09] click → neighborhood explorer.
+    // Lights up the clicked node, animates pulses to its direct
+    // neighbors, opens a side panel with their names. Clicking a name
+    // in the panel recurs the same animation from that neighbor.
+    exploreFromNode(node);
+  }
+
+  // ─── [PR explorer] Neighborhood explorer ────────────────────────
+  // 1) compute direct neighbors of the clicked node
+  // 2) activate edges + nodes for visual highlight (uses #4-2 path
+  //    persistence machinery — same Set semantics)
+  // 3) replay sprite pulses from center → each neighbor (staggered)
+  // 4) render a side panel with neighbor names; click → recurse
+  function getNeighbors(node) {
+    if (!node) return [];
+    var nodeId = node.id;
+    var out = [];
+    var seenIds = new Set();
+    data.links.forEach(function (l) {
+      var sId = linkSrc(l);
+      var tId = linkTgt(l);
+      if (sId === nodeId && !seenIds.has(tId)) {
+        var n = nodeIdx.get(tId);
+        if (n) { out.push({ neighbor: n, edge: l, direction: 'out' });
+                 seenIds.add(tId); }
+      } else if (tId === nodeId && !seenIds.has(sId)) {
+        var n2 = nodeIdx.get(sId);
+        if (n2) { out.push({ neighbor: n2, edge: l, direction: 'in' });
+                  seenIds.add(sId); }
+      }
+    });
+    return out;
+  }
+
+  function exploreFromNode(node) {
+    if (!node) return;
+    var neighbors = getNeighbors(node);
+
+    // Reset prior path lighting (neighborhood explorer takes over).
+    clearActivePath(/*skipRefresh*/true);
+    activePathNodes.add(node.id);
+    neighbors.forEach(function (item) {
+      activePathNodes.add(item.neighbor.id);
+      // Edge key direction-aware — we store edges as (src,tgt) per
+      // edgeIdx; pick the matching direction.
+      var k1 = edgeKey(node.id, item.neighbor.id);
+      var k2 = edgeKey(item.neighbor.id, node.id);
+      if (edgeIdx.has(k1)) activePathEdges.add(k1);
+      else if (edgeIdx.has(k2)) activePathEdges.add(k2);
+    });
+    refreshLabels();
+
+    // Sprite pulses outward — staggered so the eye can follow flow.
+    var stepMs = 0;
+    neighbors.forEach(function (item) {
+      setTimeout(function () { spawnPulse(node, item.neighbor); }, stepMs);
+      stepMs += STEP_GAP / 2;   // slightly faster than path replay
+    });
+
+    // Re-trigger force-graph render so links re-color.
+    if (graph) {
+      graph.linkColor(graph.linkColor());
+      graph.linkWidth(graph.linkWidth());
+    }
+
+    renderNeighborPanel(node, neighbors);
+  }
+
+  function renderNeighborPanel(centerNode, neighbors) {
+    var panel = document.getElementById('neighbor-panel');
+    if (!panel) return;
+    panel.style.display = 'block';
+    var rows = neighbors.slice(0, 50).map(function (item) {
+      var rel = (item.edge && item.edge.type) || 'RELATED_TO';
+      var arrow = item.direction === 'out' ? '→' : '←';
+      // Pre-compute the safe id for inline onclick (id is system-generated
+      // hex, but use JSON.stringify defense regardless).
+      var idJs = JSON.stringify(item.neighbor.id);
+      return '<div class="np-item" onclick="onNeighborClick(' + idJs + ')">' +
+             '<span class="np-arrow">' + arrow + '</span>' +
+             '<span class="np-name">' + escapeHtml(item.neighbor.name || '?') + '</span>' +
+             '<span class="np-rel">' + escapeHtml(rel) + '</span>' +
+             '</div>';
+    }).join('');
+    if (neighbors.length === 0) {
+      rows = '<div class="np-empty">연결된 이웃 없음</div>';
+    }
+    panel.innerHTML =
+      '<button class="np-close" onclick="closeNeighborPanel()" ' +
+      'title="닫기">×</button>' +
+      '<div class="np-title">🔗 ' + escapeHtml(centerNode.name || '?') + '</div>' +
+      '<div class="np-meta">' + neighbors.length + '개 직접 연결' +
+      (neighbors.length > 50 ? ' (50개까지 표시)' : '') + '</div>' +
+      '<div class="np-list">' + rows + '</div>';
+  }
+
+  window.onNeighborClick = function (neighborId) {
+    var n = nodeIdx.get(neighborId);
+    if (!n) return;
+    // Camera move + recursive explore.
+    onNodeClick(n);
+  };
+
+  window.closeNeighborPanel = function () {
+    var panel = document.getElementById('neighbor-panel');
+    if (panel) panel.style.display = 'none';
+    clearActivePath();
+  };
+
+  // ─── [PR explorer] Query reasoning overlay ──────────────────────
+  // Same vibe as the chat page brain animation, simplified — no
+  // /trace/poll polling, just a steady "추론 중" pulse during the
+  // /query/ inflight wait. Once paths arrive, activatePath takes
+  // over with sprite pulses on graph edges (already wired).
+  function showReasoningOverlay() {
+    var ov = document.getElementById('query-reasoning-overlay');
+    if (!ov) return;
+    ov.innerHTML =
+      '<span class="qr-brain" aria-hidden="true">' +
+      '<svg viewBox="0 0 24 24" width="22" height="22">' +
+      '<path d="M5 7 Q5 4 8 4 L16 4 Q19 4 19 7 L19 16 Q19 19 16 19 ' +
+      'L8 19 Q5 19 5 16 Z" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.4"/>' +
+      '<line x1="12" y1="2" x2="12" y2="4" stroke="currentColor" ' +
+      'stroke-width="1.4"/>' +
+      '<circle cx="12" cy="2" r="1" fill="currentColor"/>' +
+      '<circle class="qr-neuron qr-n1" cx="8.5"  cy="8"  r="1.6" ' +
+      'fill="currentColor"/>' +
+      '<circle class="qr-neuron qr-n2" cx="15.5" cy="8"  r="1.6" ' +
+      'fill="currentColor"/>' +
+      '<circle class="qr-neuron qr-n3" cx="12"   cy="14" r="1.6" ' +
+      'fill="currentColor"/>' +
+      '</svg></span>' +
+      '<span class="qr-text">JAMES 추론 중</span>';
+    ov.style.display = 'inline-flex';
+  }
+
+  function hideReasoningOverlay() {
+    var ov = document.getElementById('query-reasoning-overlay');
+    if (!ov) return;
+    ov.style.display = 'none';
+    ov.innerHTML = '';
   }
 
   // ─── Path-string parser ────────────────────────────────────
@@ -745,6 +887,10 @@
     clearActivePath();
     btn.disabled = true;
     btn.textContent = '...';
+    // [PR explorer] reasoning overlay during the inflight wait —
+    // mirrors the brain-pulse vibe of the chat page so the user knows
+    // JAMES is thinking, not stuck.
+    showReasoningOverlay();
     try {
       var r = await fetch(API + '/query/', {
         method:  'POST',
@@ -768,6 +914,7 @@
       var errEntry = recordAnswer(q, String(e), []);
       renderAnswerCard(errEntry);
     } finally {
+      hideReasoningOverlay();
       btn.disabled = false;
       btn.textContent = t('graph.ask') || 'Ask';
       box.value = '';                     // clear input for next question

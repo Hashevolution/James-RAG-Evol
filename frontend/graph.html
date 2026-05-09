@@ -210,6 +210,102 @@
   .answer-card.ac-collapsed .ac-paths,
   .answer-card.ac-collapsed .ac-history { display: none; }
   .answer-card.ac-collapsed { padding: 8px 14px; }
+  /* [PR explorer, 2026-05-09] Neighborhood panel — slides from left
+     so it doesn't clash with the answer card on the right. */
+  .neighbor-panel {
+    position: absolute; left: 16px; top: 60px;
+    width: min(280px, calc(100% - 280px - 32px));
+    max-height: calc(100% - 100px);
+    background: rgba(20,22,26,.95);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px;
+    font-size: 13px; color: var(--text);
+    overflow-y: auto;
+    display: none;
+    z-index: 25;
+  }
+  .neighbor-panel .np-close {
+    position: absolute; top: 8px; right: 10px;
+    background: transparent; border: none; color: var(--muted);
+    font-size: 18px; cursor: pointer; padding: 0; line-height: 1;
+  }
+  .neighbor-panel .np-title {
+    font-size: 14px; font-weight: 600; color: var(--accent-fg);
+    margin-bottom: 4px; padding-right: 24px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .neighbor-panel .np-meta {
+    font-size: 11px; color: var(--muted);
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-2);
+  }
+  .neighbor-panel .np-list { display: flex; flex-direction: column; gap: 1px; }
+  .neighbor-panel .np-item {
+    padding: 7px 8px; border-radius: 5px;
+    cursor: pointer; display: flex; align-items: center; gap: 8px;
+    transition: background .12s, color .12s;
+    font-size: 12px;
+  }
+  .neighbor-panel .np-item:hover {
+    background: rgba(99,102,241,.12);
+    color: var(--accent-fg);
+  }
+  .neighbor-panel .np-arrow {
+    color: var(--muted); font-family: var(--font-mono); flex-shrink: 0;
+  }
+  .neighbor-panel .np-name {
+    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .neighbor-panel .np-rel {
+    font-size: 10px; color: var(--muted-2);
+    font-family: var(--font-mono); flex-shrink: 0;
+  }
+  .neighbor-panel .np-empty {
+    padding: 20px; text-align: center; color: var(--muted); font-size: 12px;
+  }
+
+  /* [PR explorer] Reasoning overlay during query — small inline
+     widget above the query bar. */
+  .query-reasoning-overlay {
+    position: absolute;
+    bottom: 64px; left: 50%; transform: translateX(-50%);
+    background: rgba(20,22,26,.95);
+    border: 1px solid var(--accent);
+    border-radius: 18px;
+    padding: 6px 14px;
+    font-size: 12px; color: var(--accent-fg);
+    display: none;             /* shown by JS */
+    align-items: center; gap: 8px;
+    z-index: 30;
+    box-shadow: 0 8px 32px rgba(99,102,241,.18);
+    animation: qr-fade-in .18s ease-out;
+  }
+  @keyframes qr-fade-in {
+    from { opacity: 0; transform: translate(-50%, 6px); }
+    to   { opacity: 1; transform: translate(-50%, 0); }
+  }
+  .qr-brain { display: inline-block; line-height: 0; }
+  .qr-neuron { animation: qr-blink 1.0s infinite; opacity: .9; }
+  .qr-neuron.qr-n2 { animation-delay: .3s; }
+  .qr-neuron.qr-n3 { animation-delay: .6s; }
+  @keyframes qr-blink {
+    0%, 100% { opacity: .35; }
+    50%      { opacity: 1; }
+  }
+  .qr-text {
+    font-weight: 500; letter-spacing: .2px;
+    background: linear-gradient(90deg, var(--accent-fg), #fff, var(--accent-fg));
+    background-size: 200% 100%;
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent; -webkit-text-fill-color: transparent;
+    animation: qr-shimmer 1.2s linear infinite;
+  }
+  @keyframes qr-shimmer {
+    from { background-position: 0% 0; }
+    to   { background-position: -200% 0; }
+  }
+
   /* [#4-2 h/i] history list — clickable rows under the current answer. */
   .answer-card .ac-history {
     margin-top: 12px; padding-top: 10px;
@@ -326,6 +422,14 @@
     <div class="overlay tr" id="overlay-counts"></div>
     <div class="overlay bl" data-i18n="graph.hint">Ask a question below — the path the answer travels will pulse on the graph.</div>
     <div class="tooltip" id="hover-tip"></div>
+
+    <!-- [PR explorer] Neighborhood explorer panel — left side, slides
+         in on node click. -->
+    <div class="neighbor-panel" id="neighbor-panel"></div>
+
+    <!-- [PR explorer] Query reasoning overlay — inline widget above
+         the query bar during /query/ inflight wait. -->
+    <div class="query-reasoning-overlay" id="query-reasoning-overlay"></div>
 
     <div class="answer-card" id="answer-card">
       <button class="ac-close" onclick="closeAnswer()" title="닫기 + 그래프 기본 모드로 복귀">×</button>
