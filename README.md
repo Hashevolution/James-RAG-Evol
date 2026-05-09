@@ -4,14 +4,18 @@
 > with explicit reasoning paths and self-evolution scaffolding.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-v0.1.0--alpha-orange.svg)]()
+[![Status](https://img.shields.io/badge/Status-v0.1.4--alpha-orange.svg)]()
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
+[![Last Commit](https://img.shields.io/github/last-commit/Hashevolution/James-RAG-Evol)](https://github.com/Hashevolution/James-RAG-Evol/commits/main)
+[![GitHub Stars](https://img.shields.io/github/stars/Hashevolution/James-RAG-Evol?style=social)](https://github.com/Hashevolution/James-RAG-Evol)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+[![OpenSSF Best Practices](https://img.shields.io/badge/OpenSSF-pending-lightgrey.svg)](https://www.bestpractices.dev/)
 
 [한국어 README](README.ko.md) · [🚀 처음 시작하시는 분 (10살도 따라할 수 있어요)](README.beginner.ko.md)
 
 ---
 
-## Project Status: v0.1.0 (alpha / research stage)
+## Project Status: v0.1.4 (alpha / research stage)
 
 This is an **early-stage, actively-researched project**.
 The core engine works, but:
@@ -20,6 +24,8 @@ The core engine works, but:
 - **NOT production-ready** — see [SECURITY.md](SECURITY.md)
 - Many features are scaffolded — real-data testing in progress
 - Open to collaboration and feedback
+
+Current cycle: **v0.2 Foundation Hardening** (eval/test/docs maturity, no new domains). See [ROADMAP.md](ROADMAP.md) and [docs/PLATFORM_READINESS.md](docs/PLATFORM_READINESS.md).
 
 ---
 
@@ -159,21 +165,33 @@ JAMES treats security as a **design principle, not a feature**:
 
 See [ROADMAP.md](ROADMAP.md). Summary:
 
-- **v0.1** (current): Core engine + scaffolding
-- **v0.2**: Real-data validation + polish
-- **v0.3**: Multi-agent + Neo4j option
-- **v1.0**: Production hardening
+- **v0.1** (done): Core engine + scaffolding
+- **v0.2** (current cycle, months 0–4): Foundation Hardening — eval/test/docs maturity, Axes 1–6
+- **v0.3** (months 4–10): Platform Skeleton — plugin API + general reference pack
+- **v0.4** (months 10–22): First Pilot — first non-general domain pack + customer PoC
+- **v1.0** (months 22+): Mother Complete — operational discipline + multi-domain readiness
+
+The 6-axis readiness gates are tracked in [docs/PLATFORM_READINESS.md](docs/PLATFORM_READINESS.md). The current-cycle handover lives at [docs/handovers/v0.2.0-platform-track.md](docs/handovers/v0.2.0-platform-track.md).
 
 ---
 
 ## Contributing
 
-Welcome! See [CONTRIBUTING.md](CONTRIBUTING.md).
+Welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for cycle constraints (no new domains until v1.0; no customer-specific features during v0.2–v0.4).
 
 Priority areas:
 - Documentation, examples, translations
 - Bug fixes, test coverage
 - New tool integrations and LLM provider support
+
+---
+
+## Stay in touch
+
+- ⭐ Star this repo if you find it useful — it helps reach others working on similar problems
+- 💬 Open a [Discussion](https://github.com/Hashevolution/James-RAG-Evol/discussions) for questions
+- 🐛 [File an issue](https://github.com/Hashevolution/James-RAG-Evol/issues/new/choose) for bugs
+- 🔒 [Private security advisory](https://github.com/Hashevolution/James-RAG-Evol/security/advisories/new) for vulnerabilities
 
 ---
 
