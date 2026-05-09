@@ -1,0 +1,68 @@
+name: Feature request
+description: Suggest a new capability for JAMES
+title: "[Feature] "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. JAMES is a **mother platform** — not all
+        features fit. Please read `docs/ARCHITECTURE.md` non-goals and the
+        cycle constraints in `CONTRIBUTING.md` before submitting.
+
+        Domain-specific features (legal, food, retail, travel, government)
+        are deferred until v1.0 per `docs/handovers/v0.2.1-business-track.md` §3.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem would this feature solve? Who experiences it?
+      placeholder: |
+        When users do X, they currently have to Y, which is painful because Z.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What should JAMES do?
+      placeholder: |
+        Add a new flag/endpoint/module that does ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other approaches did you consider? Why not those?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: cycle
+    attributes:
+      label: Cycle alignment (best guess)
+      description: Which JAMES cycle does this fit? See `ROADMAP.md`.
+      options:
+        - v0.2 Foundation Hardening (now)
+        - v0.3 Platform Skeleton (4-10 months)
+        - v0.4 First Pilot (10-22 months)
+        - v1.0 Mother Complete (22+ months)
+        - unsure / let maintainers decide
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: discipline
+    attributes:
+      label: Discipline checks
+      options:
+        - label: This feature is **domain-agnostic** (no legal / food / retail / travel / government coupling)
+          required: true
+        - label: I read `CONTRIBUTING.md` cycle constraints
+          required: true
+        - label: I searched existing issues and did not find a duplicate
+          required: true

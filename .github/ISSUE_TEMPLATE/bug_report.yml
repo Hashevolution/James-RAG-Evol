@@ -1,0 +1,99 @@
+name: Bug report
+description: Report a defect in JAMES (NOT a security vulnerability — use the security advisory link instead)
+title: "[Bug] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+
+        ⚠️ **Security vulnerabilities**: please do NOT open a public issue.
+        Use the [private security advisory](https://github.com/Hashevolution/James-RAG-Evol/security/advisories/new) instead. See `SECURITY.md`.
+
+        Before filing, please check `CONTRIBUTING.md` and search existing issues.
+
+  - type: input
+    id: version
+    attributes:
+      label: JAMES version
+      description: "Output of `git rev-parse --short HEAD` or release tag (e.g. v0.1.4)"
+      placeholder: "v0.1.4 / commit abc1234"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which area is affected?
+      options:
+        - core (RAG pipeline)
+        - core (Graph-RAG / ontology)
+        - core (RBAC / ABAC / Audit)
+        - core (Self-evolution / Eval)
+        - frontend (UI)
+        - llm (provider integration)
+        - processors (ingestion)
+        - tests / eval harness
+        - docs
+        - build / install
+        - other / unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug description
+      description: What is the bug? What did you expect, what did you see?
+      placeholder: |
+        When I do X, JAMES does Y. I expected Z.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Smallest reproducible example. Include any sample input.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python, Ollama / LLM backend, hardware
+      placeholder: |
+        OS: Ubuntu 22.04
+        Python: 3.11.7
+        LLM backend: Ollama 0.6.x with llama3.1:8b
+        Hardware: RTX 4090 / 32GB RAM
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / traceback
+      description: Paste relevant log output. Redact any sensitive content first.
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: prereqs
+    attributes:
+      label: Pre-flight checks
+      options:
+        - label: I read `SECURITY.md` and confirmed this is NOT a security vulnerability
+          required: true
+        - label: I searched existing issues and did not find a duplicate
+          required: true
+        - label: I am running the latest commit on `main`, or I noted my version above
+          required: true
