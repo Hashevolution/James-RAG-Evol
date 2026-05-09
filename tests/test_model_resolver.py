@@ -226,8 +226,10 @@ class GemmaClientIntegrationTests(unittest.TestCase):
     def test_warning_logged_to_stdout(self):
         # When a fallback happens, [MODEL_RESOLVE] message must surface
         # so the operator can see what's actually being used.
+        # Window enlarged to 1500 chars — PR plan-4 added defensive
+        # resolution comments, pushing the print() further down.
         idx = self.src.index("if model:")
-        body = self.src[idx:idx + 800]
+        body = self.src[idx:idx + 1500]
         self.assertIn("[MODEL_RESOLVE]", body)
 
 

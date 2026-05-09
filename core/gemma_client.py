@@ -172,11 +172,22 @@ class GemmaClient:
             "ollama pull X" 안내 메시지로 RuntimeError 발생.
         """
         if model:
-            # Caller specified a tag — trust them (already validated
-            # by selected_model resolver in core.model_catalog if it
-            # came from picker; direct internal callers know what
-            # they're asking for).
-            actual_model = model
+            # Caller specified a tag — verify it's installed before
+            # hitting Ollama. If not installed, the resolver falls
+            # through to the preference list (defense for picker
+            # selecting a not-yet-pulled model).
+            # [PR plan-4, 2026-05-09] gracefully handles "user picked
+            # gemma3:12b in dropdown but only gemma3:4b is installed".
+            from core.model_resolver import installed_models, resolve_for_mode
+            if model in installed_models():
+                actual_model = model
+            else:
+                resolved = resolve_for_mode("chat", requested=model)
+                if not resolved.tag:
+                    raise RuntimeError(resolved.warning)
+                actual_model = resolved.tag
+                if resolved.warning:
+                    print(f"[MODEL_RESOLVE] {resolved.warning}")
         else:
             from core.model_resolver import resolve_chat
             resolved = resolve_chat()
