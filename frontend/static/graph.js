@@ -505,28 +505,48 @@
     var panel = document.getElementById('neighbor-panel');
     if (!panel) return;
     panel.style.display = 'block';
-    var rows = neighbors.slice(0, 50).map(function (item) {
-      var rel = (item.edge && item.edge.type) || 'RELATED_TO';
-      var arrow = item.direction === 'out' ? '→' : '←';
-      // Pre-compute the safe id for inline onclick (id is system-generated
-      // hex, but use JSON.stringify defense regardless).
-      var idJs = JSON.stringify(item.neighbor.id);
-      return '<div class="np-item" onclick="onNeighborClick(' + idJs + ')">' +
-             '<span class="np-arrow">' + arrow + '</span>' +
-             '<span class="np-name">' + escapeHtml(item.neighbor.name || '?') + '</span>' +
-             '<span class="np-rel">' + escapeHtml(rel) + '</span>' +
-             '</div>';
-    }).join('');
+    // [PR click-fix, 2026-05-09] use data-id + addEventListener instead
+    // of inline onclick. The previous inline form interpolated
+    // JSON.stringify(id) (which produces "double-quoted" output) into
+    // a double-quoted HTML attribute → attribute parser broke at the
+    // first inner ", onclick handler never registered. Direct 3D
+    // node click worked because force-graph registers via callback,
+    // not HTML attribute. Bug surfaced as "panel click does nothing".
+    var rowsHtml;
     if (neighbors.length === 0) {
-      rows = '<div class="np-empty">연결된 이웃 없음</div>';
+      rowsHtml = '<div class="np-empty">연결된 이웃 없음</div>';
+    } else {
+      rowsHtml = neighbors.slice(0, 50).map(function (item) {
+        var rel = (item.edge && item.edge.type) || 'RELATED_TO';
+        var arrow = item.direction === 'out' ? '→' : '←';
+        return '<div class="np-item" data-neighbor-id="' +
+               escapeHtml(item.neighbor.id) + '">' +
+               '<span class="np-arrow">' + arrow + '</span>' +
+               '<span class="np-name">' + escapeHtml(item.neighbor.name || '?') + '</span>' +
+               '<span class="np-rel">' + escapeHtml(rel) + '</span>' +
+               '</div>';
+      }).join('');
     }
     panel.innerHTML =
-      '<button class="np-close" onclick="closeNeighborPanel()" ' +
+      '<button class="np-close" data-action="close-neighbor" ' +
       'title="닫기">×</button>' +
       '<div class="np-title">🔗 ' + escapeHtml(centerNode.name || '?') + '</div>' +
       '<div class="np-meta">' + neighbors.length + '개 직접 연결' +
       (neighbors.length > 50 ? ' (50개까지 표시)' : '') + '</div>' +
-      '<div class="np-list">' + rows + '</div>';
+      '<div class="np-list">' + rowsHtml + '</div>';
+
+    // Wire programmatic click handlers — bypass HTML-attribute
+    // quoting issues (and works identically across mouse/touch).
+    var closeBtn = panel.querySelector('[data-action="close-neighbor"]');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function () { closeNeighborPanel(); });
+    }
+    panel.querySelectorAll('[data-neighbor-id]').forEach(function (row) {
+      row.addEventListener('click', function () {
+        var id = row.getAttribute('data-neighbor-id');
+        if (id) onNeighborClick(id);
+      });
+    });
   }
 
   window.onNeighborClick = function (neighborId) {
@@ -635,14 +655,24 @@
         '</div>';
       return;
     }
+    // [PR click-fix, 2026-05-09] data-id + addEventListener instead
+    // of inline onclick (same JSON.stringify-into-double-quoted-attr
+    // bug as renderNeighborPanel — see that fn's comment).
     listEl.innerHTML = rows.map(function (n) {
-      var idJs = JSON.stringify(n.id);
-      return '<div class="tsd-row" onclick="onSearchRowClick(' + idJs + ')">' +
+      return '<div class="tsd-row" data-search-id="' +
+             escapeHtml(n.id) + '">' +
              '<span class="tsd-type">' + escapeHtml(n.type || '?') + '</span>' +
              '<span class="tsd-name">' + escapeHtml(n.name || '?') + '</span>' +
              '<span class="tsd-deg">' + (n.degree || 0) + '</span>' +
              '</div>';
     }).join('');
+    // Wire click handlers programmatically.
+    listEl.querySelectorAll('[data-search-id]').forEach(function (row) {
+      row.addEventListener('click', function () {
+        var id = row.getAttribute('data-search-id');
+        if (id) onSearchRowClick(id);
+      });
+    });
   }
 
   // Click a search row → close drawer + camera nudge + explore neighborhood.

@@ -204,14 +204,29 @@ class SearchDrawerJsTests(unittest.TestCase):
         self.assertGreaterEqual(body.count("escapeHtml"), 2,
             "name + type fields must both go through escapeHtml")
 
-    def test_click_handler_uses_json_stringify(self):
-        # Inline onclick interpolates node.id — defense-in-depth via
-        # JSON.stringify (same pattern as neighbor panel #4-2).
+    def test_search_row_uses_data_attr_and_listener(self):
+        # [PR click-fix, 2026-05-09] earlier versions interpolated
+        # JSON.stringify(id) into an inline onclick attribute. JSON's
+        # double quotes collided with HTML attribute's double quotes →
+        # onclick syntax error → click did nothing. Now we use
+        # data-search-id + addEventListener (same pattern as the
+        # always-working direct 3D node click).
         idx = self.js.index("function _renderSearchList")
-        body = self.js[idx:idx + 2000]
-        self.assertIn("JSON.stringify", body,
-            "node.id interpolated into inline onclick must use "
-            "JSON.stringify for defense-in-depth")
+        body = self.js[idx:idx + 2500]
+        self.assertIn('data-search-id', body,
+            "search row must carry data-search-id, not inline onclick "
+            "with interpolated id (HTML-attr quoting bug)")
+        self.assertIn("addEventListener('click'", body,
+            "click handler must be programmatic — matches direct-3D "
+            "click which always worked")
+        # Negative regression guard — must not regress to the broken
+        # inline-onclick pattern.
+        self.assertNotRegex(
+            body,
+            r"onclick=\"onSearchRowClick\(.*?\+\s*idJs",
+            "must not interpolate raw JSON-stringified id into inline "
+            "onclick — that's the bug we just fixed",
+        )
 
     def test_click_routes_through_onNodeClick(self):
         # window.onSearchRowClick must call onNodeClick so the

@@ -152,16 +152,35 @@ class NeighborPanelTests(unittest.TestCase):
     def test_close_panel_handler_global(self):
         self.assertIn("window.closeNeighborPanel", self.js)
 
-    def test_neighbor_click_uses_json_stringify(self):
-        # The id is interpolated into an inline onclick string. Even if
-        # the system-generated id format is safe, defense-in-depth is
-        # JSON.stringify (quoting + escaping).
+    def test_neighbor_click_uses_data_attr_and_listener(self):
+        # [PR click-fix, 2026-05-09] earlier versions interpolated
+        # JSON.stringify(id) into an inline onclick attribute, but
+        # JSON's double quotes collided with the HTML attribute's
+        # double quotes → onclick was never registered → click did
+        # nothing. Now we use data-neighbor-id + addEventListener.
+        # Same pattern as direct 3D node click (force-graph callback).
         idx = self.js.index("function renderNeighborPanel")
-        nxt = self.js.index("\n  window.", idx + 100)
-        body = self.js[idx:nxt]
-        self.assertIn("JSON.stringify", body,
-            "id interpolation into inline onclick must use JSON.stringify "
-            "for defense-in-depth")
+        # Bound at first non-comment statement using either old or new
+        # pattern's exit point.
+        end = self.js.index("\n  window.onNeighborClick", idx + 100)
+        body = self.js[idx:end]
+        # Must use data-neighbor-id attribute (not inline onclick with
+        # interpolated id) — the active "click works" contract.
+        self.assertIn('data-neighbor-id', body,
+            "neighbor row must carry data-neighbor-id (not inline onclick "
+            "with interpolated id) to dodge HTML-attribute quoting bugs")
+        # And must wire addEventListener — that's how the click actually
+        # reaches the handler.
+        self.assertIn("addEventListener('click'", body,
+            "click handler must be programmatic (addEventListener), "
+            "matching the direct-3D-click code path that always worked")
+        # Negative regression guard: must NOT use the broken pattern.
+        self.assertNotRegex(
+            body,
+            r"onclick=\"onNeighborClick\(.*?\+\s*idJs",
+            "must not interpolate raw JSON-stringified id into inline "
+            "onclick — that's the bug we just fixed",
+        )
 
 
 class OnNodeClickIntegrationTests(unittest.TestCase):
