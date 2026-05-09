@@ -1293,19 +1293,15 @@ async function loadSettings() {
     // 보호 파일 체크박스
     buildProtectedCheckboxes(data.protected || '');
 
-    // persona 로드
+    // [P3 unified UX 2026-05-10] persona 자유텍스트(style / custom) 제거.
+    // name 입력은 character 페이지(Identity 섹션)로 이전 — 여기서는 언어만.
     const p = data.persona || {};
-    if (p.name)   document.getElementById('set-name').value   = p.name;
-    if (p.style)  document.getElementById('set-style').value  = p.style;
-    if (p.custom) document.getElementById('set-custom').value = p.custom;
-
     const lang    = p.language || 'Korean';
     const langSel = document.getElementById('set-language');
     if (langSel) {
       const opt = Array.from(langSel.options).find(o => o.value === lang);
       if (opt) langSel.value = lang;
     }
-    updatePersonaPreview(p);
   } catch (e) {
     console.error('loadSettings:', e);
     // 체크박스는 기본값으로 초기화
@@ -1315,53 +1311,57 @@ async function loadSettings() {
   try { loadWebSearchConfig(); } catch (e) { console.warn(e); }
 }
 
-function updatePersonaPreview(p) {
-  const el = document.getElementById('persona-preview');
-  if (!el) return;
-  const name = p.name || t('app.name');
-  const style = p.style || '';
-  const lang = p.language || 'Korean';
-  el.textContent = `→ LLM: "Your name is ${name}. ${style ? `You are ${style}. ` : ''}Always answer in ${lang}요."`;
-}
+// [P3 unified UX 2026-05-10] savePersona / updatePersonaPreview 제거.
+// 자유 텍스트 페르소나(성향/역할 + 추가 지시)는 radar 와 충돌 → 완전 제거.
+// 이름 저장은 character 페이지의 saveIdentity 가 담당.
 
-async function savePersona() {
-  const name     = document.getElementById('set-name').value.trim();
-  const style    = document.getElementById('set-style').value.trim();
-  const language = document.getElementById('set-language').value.trim();
-  const custom   = document.getElementById('set-custom').value.trim();
-
-  if (!name && !style && !language) {
-    alert(t('set.persona_required'));
+async function saveIdentity() {
+  const nameEl = document.getElementById('set-name');
+  if (!nameEl) return;
+  const name = nameEl.value.trim();
+  if (!name) {
+    toast(t('char.identity_required') || '이름을 입력하세요', 'warn');
     return;
   }
-
-  const body = { api_key: apiKey, name, style, language, custom };
-
+  // Persona endpoint는 backward-compat 유지 — name 만 보내고 나머지는
+  // 빈 문자열 (서버가 truthy 검사로 무시).
   try {
     const r = await fetch(`${API}/admin/persona`, {
-      method:  'POST',
+      method: 'POST',
       headers: {
         'Content-Type':  'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        api_key:  apiKey,
+        name:     name,
+        style:    '',
+        language: '',
+        custom:   '',
+      }),
     });
-
     const data = await r.json();
-
-    if (!r.ok) {
-      alert(`❌ Save failed (${r.status})\n${data.detail || JSON.stringify(data)}`);
+    if (!r.ok || !data.success) {
+      toast(t('char.identity_save_fail') || '이름 저장 실패', 'warn');
       return;
     }
-
-    if (data.success) {
-      alert(`${t('set.persona_saved')}\n${JSON.stringify(data.saved||{})}`);
-      updatePersonaPreview(data.persona || body);
-    } else {
-      alert(`Save failed: ${JSON.stringify(data)}`);
-    }
+    toast(t('char.identity_saved') || '이름 저장 완료', 'success');
   } catch (e) {
-    alert(`❌ Network error: ${e.message}\nCheck that the server is running.`);
+    toast(t('char.identity_save_fail') || '이름 저장 실패: ' + e.message, 'warn');
+  }
+}
+
+window.saveIdentity = saveIdentity;
+
+// 캐릭터 페이지 진입 시 이름 입력 prefill — loadCharacter 안에서 호출.
+async function loadIdentity() {
+  try {
+    const data = await api('/admin/persona');
+    const p = data.persona || {};
+    const nameEl = document.getElementById('set-name');
+    if (nameEl && p.name) nameEl.value = p.name;
+  } catch (e) {
+    console.warn('[IDENTITY] load failed:', e.message);
   }
 }
 
@@ -1923,6 +1923,8 @@ async function loadCharacter() {
     renderInteractiveRadar();
     renderTraitSliders(_traits);
     renderConnectionsPanel(null);
+    // [P3 unified UX 2026-05-10] character 페이지의 Identity 섹션 prefill.
+    loadIdentity();
   } catch (e) {
     console.error('[CHARACTER]', e.message);
   }

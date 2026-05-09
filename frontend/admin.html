@@ -687,8 +687,29 @@
     <!-- 성향 캐릭터 [P2 unified UX 2026-05-10] -->
     <!-- Interactive radar with drag-to-adjust + correlation ripple. -->
     <!-- Sliders kept as a secondary numeric input (good for fine tuning). -->
+    <!-- [P3 unified UX 2026-05-10] Identity 섹션 추가 — 이전에는 ⚙️ 설정의
+         '페르소나' 영역에 있던 이름 입력을 이리로 이동. -->
     <div class="page" id="page-character">
       <div class="page-title"><span data-i18n="char.page_title">🎭 성향 캐릭터</span></div>
+
+      <!-- Identity 섹션 -->
+      <div class="section-title"><span data-i18n="char.identity">▸ Identity</span></div>
+      <div class="table-wrap" style="padding: 8px 20px; margin-bottom: 20px;">
+        <div class="setting-row">
+          <div>
+            <div class="setting-label" data-i18n="char.identity_name">이름</div>
+            <div class="setting-sub" data-i18n="char.identity_name_desc">JAMES가 자신을 소개할 이름</div>
+          </div>
+          <input class="setting-value" type="text" id="set-name"
+                 placeholder="JAMES" data-i18n-placeholder="app.name">
+        </div>
+        <div style="padding: 12px 0; display:flex; justify-content:flex-end;">
+          <button class="btn btn-primary" onclick="saveIdentity()"
+                  data-i18n="char.identity_save">💾 이름 저장</button>
+        </div>
+      </div>
+
+      <div class="section-title"><span data-i18n="char.radar">▸ 성향 레이더</span></div>
 
       <!-- 안내문 -->
       <div class="char-intro" data-i18n="char.intro">
@@ -1008,16 +1029,12 @@
     <div class="page" id="page-settings">
       <div class="page-title"><span data-i18n="set.page_title">⚙️ 설정</span></div>
 
-      <div class="section-title">▸ <span data-i18n="set.persona_title">JAMES 페르소나 설정</span></div>
+      <!-- [P3 unified UX 2026-05-10] 페르소나 자유텍스트 섹션 제거 —
+           '성향/역할' 과 '추가 지시' 자유 텍스트는 🎭 성향 캐릭터 페이지의
+           radar UI 와 충돌하여 사용자 혼란 유발. 이름은 character 페이지의
+           Identity 섹션으로 이전, 답변 언어만 본 페이지에 단독 섹션으로 유지. -->
+      <div class="section-title"><span data-i18n="set.lang_title">▸ 답변 언어</span></div>
       <div class="table-wrap" style="padding: 8px 20px; margin-bottom: 20px;">
-        <div class="setting-row">
-          <div><div class="setting-label" data-i18n="set.persona_name">이름</div><div class="setting-sub" data-i18n="set.persona_name_desc">JAMES가 자신을 소개할 이름</div></div>
-          <input class="setting-value" type="text" id="set-name" placeholder="JAMES" data-i18n-placeholder="app.name">
-        </div>
-        <div class="setting-row">
-          <div><div class="setting-label" data-i18n="set.persona_role">성향/역할</div><div class="setting-sub" data-i18n="set.persona_role_desc">JAMES의 성격과 역할 설명</div></div>
-          <input class="setting-value" type="text" id="set-style" placeholder="A helpful and security-focused AI assistant" data-i18n-placeholder="set.persona_role_placeholder">
-        </div>
         <div class="setting-row">
           <div><div class="setting-label" data-i18n="set.answer_lang">Response Language</div>
                <div class="setting-sub" data-i18n="set.answer_lang_desc">Default response language (includes UI)</div></div>
@@ -1029,14 +1046,6 @@
             <option value="영어" data-i18n="set.lang_en">🇺🇸 English</option>
           </select>
         </div>
-        <div class="setting-row">
-          <div><div class="setting-label" data-i18n="set.persona_extra">추가 지시</div><div class="setting-sub" data-i18n="set.persona_extra_desc">Additional instructions (free text)</div></div>
-          <input class="setting-value" type="text" id="set-custom" placeholder="e.g., Always respond concisely." data-i18n-placeholder="set.persona_extra_placeholder">
-        </div>
-        <div style="padding: 16px 0; display:flex; justify-content:flex-end;">
-          <button class="btn btn-primary" onclick="savePersona()" style="margin-right:10px" data-i18n="set.save_persona">Save Persona</button>
-        </div>
-        <div id="persona-preview" style="padding:12px;background:var(--bg);border-radius:8px;font-size:12px;font-family:var(--font-mono);color:var(--muted);margin-bottom:12px;"></div>
       </div>
 
       <div class="section-title"><span data-i18n="set.server_title">▸ Server Settings</span></div>
