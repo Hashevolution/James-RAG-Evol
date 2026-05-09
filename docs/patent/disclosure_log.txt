@@ -11,3 +11,23 @@ a8aaa1f5edb2dbe440b6088c0374fe4dee817d4b 2026-05-05 18:47:24 +0900 chore(logging
 858e2e53c4963aae4e4a9dc98933d4db9e6348d6 2026-05-05 19:29:48 +0900 fix(llm): route entity-extraction & classification through llm/router (#17)
 20a527a1d6fa6f62bb2ca24d95e44a49eeff6b3d 2026-05-05 19:33:50 +0900 fix(llm): route ALL LLM calls through RouterWrapper (closes #13) (#18)
 93f4aae56163e9365aadc0621ff88cdaaf85d88c 2026-05-05 21:10:09 +0900 fix(graph): wiki/synonyms.yaml synonym table → bidirectional alias index (#19)
+
+# === 신규 후보 (2026-05-10 추가) — STAGE 1A/1B/4A/4B ===
+
+# 후보 A — Doc-source 출처 게이트 (PR #139, A5-D)
+# Grace period 만료: 2027-05-08
+371838c69d23f0845f706daad8d9fbae0124b107 2026-05-09 fix(graph): doc→entity hop respects target sources field (item #A5-D) (#139)
+
+# 후보 B — Provenance Cascade + Log-sum (v0.3 design memo)
+# Grace period 만료: 2027-05-08
+66bf9294575cd2efaa06490b677700f70a4b9888 2026-05-09 docs(design): v0.3 knowledge cascade outline (relation provenance + cascade + graph editor) (#145)
+
+# 후보 C — Bench-gated Self-Evolution + Byte-Identical Rollback
+# 핵심 PR: #69 (opt-in flag), #77 (eval gate), #78 (rollback), #79 (audit endpoint)
+# Grace period 만료: 2027-05-03 (PR #69 기준)
+# [TODO: 정확한 commit hash 확인 후 기재]
+
+# 후보 D — End-to-End Trace Correlation via ContextVar
+# 핵심 PR: #67 (ContextVar 인프라), #97 (real reasoning stream)
+# Grace period 만료: PR #67/#97 commit 일자 확인 후 기재
+# [TODO: 정확한 commit hash 확인 후 기재]
