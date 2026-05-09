@@ -99,45 +99,70 @@ cd James-RAG-Evol-v010
 
 ---
 
-## 🔑 3단계: 비밀 키 만들기 (.env 파일)
+## 🔑 3단계: 비밀 키 만들기 + 어떤 AI 모델 쓸지 정하기 (.env 파일)
 
-JAMES는 보안을 위해 두 가지 비밀번호가 필요해요. **자동으로 만들어보겠습니다.**
+JAMES는 보안을 위해 두 가지 비밀번호가 필요해요. 그리고 **어떤 AI 모델을 쓸지도 여기서 정해요**.
+
+### 어떤 모델을 쓸지 먼저 결정 (RAM에 따라)
+
+| 내 컴퓨터 RAM | 추천 모델 | 다운 크기 |
+|---|---|---|
+| 16GB (최소) | `gemma3:4b` | 약 3GB |
+| 32GB+ | `gemma3:12b` | 약 7GB |
+| 8GB (작은 컴퓨터) | `gemma3:1b` | 약 1GB |
+
+> 💡 잘 모르겠으면 **`gemma3:4b`**. 5단계에서 이걸 설치할 거예요.
 
 ### Windows (PowerShell 사용)
 
-검은 창에서:
+아래는 **`gemma3:4b`** 쓰는 경우. 다른 모델 쓰면 `$llmModel` 줄만 바꾸세요.
 
 ```powershell
 # 1) 비밀번호 자동 생성
 $apiKey = -join ((48..57) + (97..122) | Get-Random -Count 24 | ForEach-Object {[char]$_})
 $jwtSecret = -join ((48..57) + (97..122) + (65..90) | Get-Random -Count 40 | ForEach-Object {[char]$_})
 
-# 2) .env 파일에 자동 기록
+# 2) 사용할 모델 이름 (5단계에서 설치할 모델과 반드시 동일해야 함!)
+$llmModel = "gemma3:4b"
+
+# 3) .env 파일에 자동 기록
 @"
 JAMES_API_KEY=$apiKey
 JAMES_JWT_SECRET=$jwtSecret
+JAMES_LLM_MODEL=$llmModel
 "@ | Out-File -FilePath .env -Encoding utf8
 
-# 3) 만든 API 키 보기 (이거 기억해두세요!)
+# 4) 만든 API 키 보기 (이거 기억해두세요!)
 Write-Host "내 API 키: $apiKey"
+Write-Host "사용할 모델: $llmModel"
 ```
 
 ### macOS / Linux
 
+아래는 `gemma3:4b` 쓰는 경우. 다른 모델 쓰면 `LLM_MODEL=` 줄만 바꾸세요.
+
 ```bash
-# 1) 비밀번호 자동 생성 + .env 작성
+# 1) 비밀번호 자동 생성 + 모델 이름 정하기
 API_KEY=$(openssl rand -hex 12)
 JWT_SECRET=$(openssl rand -base64 32 | tr -d '\n')
+LLM_MODEL="gemma3:4b"
+
+# 2) .env 작성
 cat > .env <<EOF
 JAMES_API_KEY=$API_KEY
 JAMES_JWT_SECRET=$JWT_SECRET
+JAMES_LLM_MODEL=$LLM_MODEL
 EOF
 
-# 2) 만든 API 키 보기
+# 3) 확인
 echo "내 API 키: $API_KEY"
+echo "사용할 모델: $LLM_MODEL"
 ```
 
 > ⚠️ 보여진 **API 키는 종이에 적어두세요!** 나중에 로그인할 때 필요해요.
+>
+> ⚠️ **`.env`의 `JAMES_LLM_MODEL`과 5단계에서 `ollama pull`로 받는 모델 이름이 반드시 같아야 해요!**
+> 다르면 답변이 안 나오고 에러가 나요. (이게 가장 흔한 실수)
 
 ---
 
@@ -158,14 +183,26 @@ pip install -r requirements.txt
 
 ## 🤖 5단계: AI 모델 다운로드
 
+⚠️ **3단계 `.env`에 적은 `JAMES_LLM_MODEL`과 같은 이름**으로 받아야 해요!
+
+3단계에서 `gemma3:4b`라고 적었으면:
+
 ```powershell
 ollama pull gemma3:4b
 ```
 
-> ⏳ 모델 크기는 약 3GB. 인터넷 속도에 따라 5~30분.
-> 진행률 (10%, 50%, 100%) 이 보여요.
+3단계에서 `gemma3:1b`라고 적었으면 그것을 받고, `gemma3:12b`라고 적었으면 그것을. **이름이 정확히 일치**해야 합니다.
+
+> ⏳ 모델 크기에 따라 5~30분 (1b≈1GB, 4b≈3GB, 12b≈7GB).
+> 진행률 (10%, 50%, 100%)이 보여요.
 
 **잘 됐는지 확인:** `success` 글자가 나오면 OK! ✅
+
+**더 확인:** 받은 모델이 정말 `.env`와 같은지 확인:
+```powershell
+ollama list
+```
+출력에 `gemma3:4b`(또는 본인이 받은 모델)가 보여야 해요.
 
 ---
 
@@ -275,18 +312,22 @@ JAMES가 PDF 안의 정보들이 서로 어떻게 연결돼 있는지 그림으�
 
 ### 6. 답변이 너무 느려요 (1분 넘게 걸림)
 → 컴퓨터가 모델보다 작아서 그래요.
-   해결: 더 작은 모델로 바꿔보세요. 검은 창에서:
-   ```powershell
-   ollama pull gemma3:1b
-   ```
-   그리고 `.env` 파일에 한 줄 추가:
-   ```
-   JAMES_LLM_MODEL=gemma3:1b
-   ```
-   서버 재시작.
+   해결: 더 작은 모델로 바꿔보세요.
+   1) 검은 창에서: `ollama pull gemma3:1b`
+   2) `.env` 파일을 메모장으로 열기
+   3) `JAMES_LLM_MODEL=gemma3:4b` 줄을 찾아서 → `JAMES_LLM_MODEL=gemma3:1b`로 수정
+   4) 저장 후 서버 재시작 (Ctrl+C → `python server_llmwiki.py`)
 
 ### 7. 답변이 이상해요 (말이 안 맞아요)
 → 1b 같은 작은 모델은 한국어가 약해요. 가능하면 4b 이상 사용.
+
+### 7-1. "model 'XXX' not found" 같은 에러
+→ **`.env`의 `JAMES_LLM_MODEL`과 `ollama pull`로 받은 모델 이름이 다를 때** 나오는 흔한 에러.
+   해결:
+   1) 검은 창에서 `ollama list` → 받아진 모델 이름 확인 (예: `gemma3:4b`)
+   2) `.env` 메모장으로 열기
+   3) `JAMES_LLM_MODEL=` 뒤에 정확히 같은 이름 적기 (대소문자, 콜론, 숫자 모두)
+   4) 저장 후 서버 재시작.
 
 ### 8. 브라우저에서 `http://localhost:8000`이 열리지 않아요
 → 6단계 검은 창에 `Uvicorn running on...` 메시지가 진짜 나왔는지 확인.
@@ -309,9 +350,10 @@ JAMES가 PDF 안의 정보들이 서로 어떻게 연결돼 있는지 그림으�
 - [ ] Ollama 설치 + `ollama --version` 확인  
 - [ ] Git 설치 + `git --version` 확인
 - [ ] JAMES 다운로드 (`git clone` 끝남)
-- [ ] `.env` 파일 만들기 (API 키 적어둠)
+- [ ] `.env` 파일 만들기 (API 키 적어둠 + `JAMES_LLM_MODEL` 줄 들어있음)
 - [ ] `pip install -r requirements.txt` 끝남
-- [ ] `ollama pull gemma3:4b` 끝남
+- [ ] `ollama pull <모델>` 끝남 (`.env`의 `JAMES_LLM_MODEL`과 동일 이름!)
+- [ ] `ollama list`로 받아진 모델 확인
 - [ ] `python server_llmwiki.py` → `Uvicorn running` 보임
 
 브라우저 사용:
