@@ -244,14 +244,20 @@ class ReasoningOverlayTests(unittest.TestCase):
             "knows the system is working, not stuck")
 
     def test_askQuestion_calls_show(self):
-        idx = self.js.index("window.askQuestion")
+        # Anchor on the function definition itself, not just the
+        # symbol — other code may now CALL window.askQuestion (e.g.,
+        # the suggested-questions chip click handler).
+        idx = self.js.index("window.askQuestion = async function")
         nxt = self.js.index("\n  function ", idx + 1)
         body = self.js[idx:nxt]
         self.assertIn("showReasoningOverlay()", body,
             "askQuestion must show overlay before /query/ POST")
 
     def test_askQuestion_hides_in_finally(self):
-        idx = self.js.index("window.askQuestion")
+        # Anchor on the function definition itself, not just the
+        # symbol — other code may now CALL window.askQuestion (e.g.,
+        # the suggested-questions chip click handler).
+        idx = self.js.index("window.askQuestion = async function")
         nxt = self.js.index("\n  function ", idx + 1)
         body = self.js[idx:nxt]
         # finally block ensures hide even on error path

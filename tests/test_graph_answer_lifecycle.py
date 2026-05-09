@@ -99,7 +99,9 @@ class PathPersistenceTests(unittest.TestCase):
 
     def test_ask_question_clears_path_first(self):
         # [#4-2 j] new question must reset before firing.
-        idx = self.js.index("window.askQuestion")
+        # Anchor on the function definition (not just the symbol —
+        # other code calls window.askQuestion now too).
+        idx = self.js.index("window.askQuestion = async function")
         body = self.js[idx:idx + 1500]
         self.assertIn("clearActivePath()", body,
             "askQuestion must clearActivePath() before firing — old path "

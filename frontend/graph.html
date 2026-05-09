@@ -328,6 +328,54 @@
     background: rgba(99,102,241,.12); color: var(--accent-fg);
   }
 
+  /* [PR suggested-q, 2026-05-09] auto-suggested questions strip
+     above the query bar. Shown after a node click; cleared on
+     submit / panel close. */
+  .suggested-questions {
+    position: absolute;
+    bottom: 64px;
+    left: 16px; right: 16px;
+    display: none;
+    flex-wrap: wrap;
+    gap: 6px;
+    z-index: 28;
+    pointer-events: auto;
+    justify-content: center;
+  }
+  .sq-chip {
+    background: rgba(20,22,26,.92);
+    border: 1px solid var(--accent);
+    border-radius: 16px;
+    padding: 6px 12px;
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: min(360px, 100%);
+    overflow: hidden;
+    transition: background .15s, transform .1s;
+    font-family: var(--font-ui);
+    line-height: 1.3;
+  }
+  .sq-chip:hover {
+    background: rgba(99,102,241,.20);
+    transform: translateY(-1px);
+  }
+  .sq-chip:active {
+    transform: translateY(0);
+  }
+  .sq-chip .sq-icon {
+    flex-shrink: 0;
+    color: var(--accent-fg);
+  }
+  .sq-chip .sq-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   /* [PR mobile-loop-search, 2026-05-09] top entity search drawer.
      Slides down from the top edge. Toggle button always visible (acts
      as floating tab when collapsed). Universally available — phone
@@ -506,6 +554,17 @@
       font-size: 11px;
       padding: 5px 12px;
     }
+    /* [PR suggested-q] chips wrap on phone, slightly smaller. */
+    .suggested-questions {
+      bottom: 60px;
+      left: 8px; right: 8px;
+      gap: 4px;
+    }
+    .sq-chip {
+      font-size: 11px;
+      padding: 5px 10px;
+      max-width: 100%;
+    }
     .overlay.bl { display: none; }          /* hint text — too crowded on phone */
   }
   @media (max-width: 480px) {
@@ -604,6 +663,11 @@
     <!-- [PR explorer] Query reasoning overlay — inline widget above
          the query bar during /query/ inflight wait. -->
     <div class="query-reasoning-overlay" id="query-reasoning-overlay"></div>
+
+    <!-- [PR suggested-q, 2026-05-09] auto-suggested questions chips.
+         Populated by renderSuggestedQuestions after a node click;
+         cleared on submit / panel close. -->
+    <div class="suggested-questions" id="suggested-questions"></div>
 
     <div class="answer-card" id="answer-card">
       <button class="ac-close" onclick="closeAnswer()" title="닫기 + 그래프 기본 모드로 복귀">×</button>

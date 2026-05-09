@@ -496,6 +496,11 @@
 
     renderNeighborPanel(node, neighbors);
 
+    // [PR suggested-q, 2026-05-09] auto-suggest 3 questions related
+    // to the clicked node + its top neighbors. User can click one to
+    // fire the query immediately, or just type their own.
+    renderSuggestedQuestions(generateSuggestedQuestions(node, neighbors));
+
     // [PR mobile-loop-search] keep the neighborhood lit — pulses re-
     // fire every PULSE_LOOP_MS until next click clears.
     setTimeout(function () { startPulseLoop(loopEdges); }, stepMs + 400);
@@ -560,6 +565,8 @@
     var panel = document.getElementById('neighbor-panel');
     if (panel) panel.style.display = 'none';
     clearActivePath();
+    // [PR suggested-q] chips are tied to the active node — hide too.
+    clearSuggestedQuestions();
   };
 
   // ─── [PR explorer] Query reasoning overlay ──────────────────────
@@ -595,6 +602,122 @@
     if (!ov) return;
     ov.style.display = 'none';
     ov.innerHTML = '';
+  }
+
+  // ─── [PR suggested-q, 2026-05-09] Auto-suggested questions ─────
+  // After clicking a node, generate 3 questions from (node + top
+  // neighbors) and offer them above the query bar. Click a chip →
+  // fills query box + submits. Pure client-side templates so there's
+  // no server roundtrip; user can always type their own.
+  //
+  // Korean particle handling: helper picks the right form
+  // (은/는, 이/가, 과/와, 을/를) based on whether the entity name
+  // ends with a 받침 (jongseong). Falls back to consonant/vowel
+  // heuristic for English names.
+  function _hasJongseong(s) {
+    if (!s) return false;
+    var c = s.slice(-1);
+    var code = c.charCodeAt(0);
+    if (code >= 0xAC00 && code <= 0xD7A3) {
+      return ((code - 0xAC00) % 28) !== 0;
+    }
+    if (/[a-z]/i.test(c)) {
+      return !/[aeiou]/i.test(c);
+    }
+    return false;
+  }
+  function _ko_p(name, withJong, withoutJong) {
+    return _hasJongseong(name) ? withJong : withoutJong;
+  }
+
+  function generateSuggestedQuestions(node, neighbors) {
+    if (!node) return [];
+    var name = node.name || '?';
+    var type = (node.type || 'concept').toLowerCase();
+    var sortedNs = (neighbors || []).slice().sort(function (a, b) {
+      var bw = (b.edge && b.edge.weight) || 0;
+      var aw = (a.edge && a.edge.weight) || 0;
+      return bw - aw;
+    });
+    var top1 = sortedNs[0] && sortedNs[0].neighbor && sortedNs[0].neighbor.name;
+    var top2 = sortedNs[1] && sortedNs[1].neighbor && sortedNs[1].neighbor.name;
+
+    var questions = [];
+
+    // Q1 — about the node itself (entity-type aware)
+    var p_eun = _ko_p(name, '은', '는');
+    var p_i = _ko_p(name, '이', '가');
+    if (type === 'person') {
+      questions.push(name + p_eun + ' 누구이고, 어떤 활동을 했어?');
+    } else if (type === 'org') {
+      questions.push(name + p_eun + ' 어떤 조직이고 주요 활동은 뭐야?');
+    } else if (type === 'document') {
+      questions.push(name + ' 문서의 핵심 내용은?');
+    } else {
+      questions.push(name + p_i + ' 무엇인지 설명해줘');
+    }
+
+    // Q2 — relationship with the highest-weight neighbor
+    if (top1) {
+      var p_gwa = _ko_p(name, '과', '와');
+      questions.push(name + p_gwa + ' ' + top1 + '의 관계를 설명해줘');
+    }
+
+    // Q3 — comparison/summary across top 2 neighbors, or single
+    // summary fallback when there's only one neighbor.
+    if (top1 && top2) {
+      var p_eul = _ko_p(name, '을', '를');
+      questions.push(name + p_eul + ' 중심으로 ' + top1 +
+                     ', ' + top2 + '의 연결 흐름을 정리해줘');
+    } else if (top1) {
+      var p_e = _ko_p(name, '과', '와');
+      questions.push(name + p_e + ' 관련된 다른 엔티티들도 정리해줘');
+    } else {
+      questions.push(name + '의 주요 특징을 알려줘');
+    }
+
+    return questions.slice(0, 3);
+  }
+
+  function renderSuggestedQuestions(questions) {
+    var box = document.getElementById('suggested-questions');
+    if (!box) return;
+    if (!questions || !questions.length) {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      return;
+    }
+    box.innerHTML = questions.map(function (q) {
+      return '<button class="sq-chip" data-sq-question="' +
+             escapeHtml(q) + '" title="' + escapeHtml(q) + '">' +
+             '<span class="sq-icon">💬</span>' +
+             '<span class="sq-text">' + escapeHtml(q) + '</span>' +
+             '</button>';
+    }).join('');
+    box.style.display = 'flex';
+    // Programmatic listeners (same data-attr + addEventListener pattern
+    // used elsewhere in this file — see PR #157 for the inline-onclick
+    // quoting bug we're avoiding).
+    box.querySelectorAll('[data-sq-question]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var q = btn.getAttribute('data-sq-question');
+        if (!q) return;
+        var input = document.getElementById('qbox');
+        if (input) {
+          input.value = q;
+          if (typeof window.askQuestion === 'function') {
+            window.askQuestion();
+          }
+        }
+      });
+    });
+  }
+
+  function clearSuggestedQuestions() {
+    var box = document.getElementById('suggested-questions');
+    if (!box) return;
+    box.style.display = 'none';
+    box.innerHTML = '';
   }
 
   // ─── [PR mobile-loop-search] Top entity search drawer ──────────
@@ -1185,6 +1308,9 @@
     if (!q) return;
     // [#4-2 j] new question → clear current path before new one fires.
     clearActivePath();
+    // [PR suggested-q] hide chips once the user committed to a query
+    // (clicking a chip OR typing their own — both submit through here).
+    clearSuggestedQuestions();
     btn.disabled = true;
     btn.textContent = '...';
     // [PR explorer] reasoning overlay during the inflight wait —
