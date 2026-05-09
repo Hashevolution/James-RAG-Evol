@@ -4,15 +4,19 @@
 > 명시적 추론 경로와 자기진화 스캐폴딩 포함
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-v0.1.0--alpha-orange.svg)]()
+[![Status](https://img.shields.io/badge/Status-v0.1.4--alpha-orange.svg)]()
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
+[![Last Commit](https://img.shields.io/github/last-commit/Hashevolution/James-RAG-Evol)](https://github.com/Hashevolution/James-RAG-Evol/commits/main)
+[![GitHub Stars](https://img.shields.io/github/stars/Hashevolution/James-RAG-Evol?style=social)](https://github.com/Hashevolution/James-RAG-Evol)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+[![OpenSSF Best Practices](https://img.shields.io/badge/OpenSSF-pending-lightgrey.svg)](https://www.bestpractices.dev/)
 
 > **🚀 처음 시작하시는 분?** 컴퓨터 잘 모르셔도 따라하실 수 있는
 > [**비기너 가이드**](README.beginner.ko.md) 를 먼저 보세요.
 
 ---
 
-## 프로젝트 상태: v0.1.0 (알파 / 연구 단계)
+## 프로젝트 상태: v0.1.4 (알파 / 연구 단계)
 
 현재 **활발한 연구 프로젝트** 초기 단계입니다.
 핵심 엔진은 작동하지만:
@@ -21,6 +25,8 @@
 - **프로덕션 준비 안 됨** — [SECURITY.md](SECURITY.md) 참조
 - 많은 기능이 스캐폴딩 상태 — 실데이터 테스트 진행 예정
 - 협업과 피드백 환영
+
+현재 사이클: **v0.2 Foundation Hardening** (eval/test/docs 성숙도, 새 도메인 없음). [ROADMAP.md](ROADMAP.md) · [docs/PLATFORM_READINESS.md](docs/PLATFORM_READINESS.md) 참조.
 
 ---
 
@@ -160,21 +166,33 @@ JAMES는 보안을 **기능이 아닌 설계 원칙**으로 다룹니다:
 
 [ROADMAP.md](ROADMAP.md) 참조. 요약:
 
-- **v0.1** (현재): 핵심 엔진 + 스캐폴딩
-- **v0.2**: 실데이터 검증 + 완성도 향상
-- **v0.3**: 멀티에이전트 + Neo4j 옵션
-- **v1.0**: 프로덕션 강화
+- **v0.1** (완료): 핵심 엔진 + 스캐폴딩
+- **v0.2** (현 사이클, 0–4개월): Foundation Hardening — eval/test/docs 성숙도, Axes 1–6
+- **v0.3** (4–10개월): Platform Skeleton — plugin API + 일반 reference pack
+- **v0.4** (10–22개월): First Pilot — 첫 비-일반 도메인 팩 + 고객 PoC
+- **v1.0** (22+개월): Mother Complete — 운영 규율 + 다중 도메인 준비
+
+6축 readiness 게이트는 [docs/PLATFORM_READINESS.md](docs/PLATFORM_READINESS.md)에서 추적합니다. 현 사이클 핸드오버는 [docs/handovers/v0.2.0-platform-track.md](docs/handovers/v0.2.0-platform-track.md)에 있습니다.
 
 ---
 
 ## 기여
 
-환영합니다! [CONTRIBUTING.md](CONTRIBUTING.md) 참조.
+환영합니다! [CONTRIBUTING.md](CONTRIBUTING.md) 참조 (사이클 제약: v1.0 전까지 새 도메인 추가 금지, v0.2–v0.4 기간 고객 특정 기능 금지).
 
 우선 영역:
 - 문서, 예시, 번역
 - 버그 수정, 테스트 커버리지
 - 새 툴 및 LLM 제공자 통합
+
+---
+
+## 함께하기
+
+- ⭐ 이 저장소가 유용하다면 Star를 눌러주세요 — 비슷한 문제를 풀고 있는 다른 개발자에게 닿는 가장 강한 신호입니다
+- 💬 질문은 [Discussions](https://github.com/Hashevolution/James-RAG-Evol/discussions)에서
+- 🐛 버그는 [Issue 등록](https://github.com/Hashevolution/James-RAG-Evol/issues/new/choose)
+- 🔒 보안 취약점은 [비공개 보안 권고](https://github.com/Hashevolution/James-RAG-Evol/security/advisories/new)로
 
 ---
 
