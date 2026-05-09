@@ -252,6 +252,24 @@ class ReasoningEngine:
                 self._log("query_router", e, user_role)
                 mode = "retrieval"   # fallback → 기존 Loop
 
+        # ── [Bug fix, 2026-05-09] force_web_search forces retrieval ──
+        # The chip click sends force_web_search=True. Only the retrieval
+        # pipeline (run_retrieval_pipeline) honors this flag — chat /
+        # meta / wiki_edit / etc. silently drop it, which surfaces as:
+        # user clicks the "🌐 웹으로 더 조사" chip → server takes the
+        # chat path again → memory_context (prior turns including the
+        # last inference-only answer) is mixed back into the prompt →
+        # new answer looks identical to the previous → user concludes
+        # "the search must be based on James's earlier answer".
+        #
+        # Reality: no web search ran. Force-route to retrieval so the
+        # web search actually fires with the original user question.
+        if kwargs.get("force_web_search") and mode != "retrieval":
+            print(f"[ROUTER] force_web_search=True overrides mode "
+                  f"{mode!r} → retrieval (web search needs the "
+                  f"retrieval pipeline)")
+            mode = "retrieval"
+
         # ── [#A2 phase 2] selected_model validation ────────────
         # The user's secondary-picker choice arrives untrusted. Reject
         # anything not in the catalog for the resolved mode — silent
