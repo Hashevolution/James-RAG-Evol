@@ -1929,6 +1929,26 @@ async def set_character(data: TraitUpdateRequest,
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# [P1 unified UX, 2026-05-10] correlation graph + damping factor.
+# Frontend renders this as edges between trait vertices on the radar
+# chart and uses damping for ripple-animation magnitude — the same
+# value the backend applies in set_trait, so the visual matches the
+# saved data exactly.
+@app.get("/admin/character/correlations",
+         summary="성향 상관관계 그래프 [P1 unified UX]")
+async def get_character_correlations(api_key: str,
+                                      role: str = Depends(get_role_from_request)):
+    _require_admin(api_key, role)
+    try:
+        from core.character_profile import CharacterProfile
+        return {
+            "correlations": CharacterProfile.get_correlations(),
+            "damping":      CharacterProfile.get_damping(),
+        }
+    except Exception as e:
+        return {"correlations": [], "damping": 0.0, "error": str(e)}
+
+
 
 # ── P7-EVO-E: 능력 성장 API ─────────────────────────────────────
 
