@@ -66,9 +66,15 @@ wiki/entity/prod/**/*.md
 # defense — entity/ 없이 prod 직속에 데이터를 넣는 경로도 차단
 # (구조 의도와 별개로 누수 가능 경로 막음).
 wiki/prod/
+# media (audio/video) 추출 산출물 — entity 와 동일한 사용자 데이터
+wiki/media/prod/
 # 메타 파일은 명시적으로 추적 — 카테고리 인덱스 / 폴더 보존용 .gitkeep
 !wiki/entity/prod/**/index.md
 !wiki/entity/prod/**/.gitkeep
+
+# 운영자 튜닝 가능한 런타임 설정 (web search role/threshold 등).
+# 코드 안에 안전한 기본값 존재 — 운영자별 오버라이드는 로컬에만.
+web_search_config.json
 
 # ── ML 모델 / 임베딩 캐시 ──────────────────────────────────────
 models/
