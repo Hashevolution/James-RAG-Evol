@@ -483,11 +483,26 @@ async def upload(
     # [P7] api_key 검증 통과 시 업로드 허용 (JWT 없는 웹 UI 지원)
     # admin 전용 정책은 유지하되 api_key 인증은 통과 처리
 
+    # [video-reject 2026-05-10, W1 진단 §3-C Option C] 영상 파일은 현재
+    # extract_video 가 stub (file_processor.py) — silent failure 로 ChromaDB
+    # 에 노이즈 인덱스를 만들기 때문에 422 로 즉시 거부. 후속 video-asr PR
+    # 에서 ffmpeg + Whisper + frame caption 합성 도입 예정.
+    VIDEO_EXTENSIONS = (".mp4", ".avi", ".mov", ".mkv")
+    if any(file.filename.lower().endswith(ext) for ext in VIDEO_EXTENSIONS):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "현재 영상 파일은 미지원입니다. "
+                "음성만 추출(.mp3/.wav/.m4a/.ogg)하거나 키프레임 이미지로 "
+                "변환 후 업로드해 주세요."
+            ),
+        )
+
     allowed_ext = (
         ".pdf",".png",".jpg",".jpeg",".bmp",".tiff",".webp",
         ".txt",".md",".csv",".html",".htm",
         ".docx",".doc",".xlsx",".xls",".pptx",".ppt",
-        ".hwpx",".hwp",".mp4",".avi",".mov",".mkv",
+        ".hwpx",".hwp",
         ".mp3",".wav",".m4a",".ogg",
     )
     if not any(file.filename.lower().endswith(ext) for ext in allowed_ext):

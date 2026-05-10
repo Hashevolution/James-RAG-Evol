@@ -883,7 +883,10 @@
     </div>
 
     <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-      <input type="file" id="file-input" multiple accept="image/*,video/*,audio/*,.pdf,.txt,.md,.json">
+      <!-- [video-reject 2026-05-10] video/* 제거 — 현재 영상 처리 stub.
+           audio 만 허용. 후속 video-asr PR 에서 video/* 재추가 예정. -->
+      <input type="file" id="file-input" multiple
+             accept="image/*,audio/*,.pdf,.txt,.md,.json,.docx,.xlsx,.pptx,.hwp,.hwpx">
       <!-- item #8: 폴더 통째 선택용 hidden input. webkitdirectory 사용 시
            accept 무시되고 디렉토리 picker가 뜸. -->
       <input type="file" id="folder-input" multiple webkitdirectory directory
@@ -891,7 +894,7 @@
       <div class="drop-icon">📂</div>
       <div class="drop-label">
         <span data-i18n="upload.drag_label">클릭하거나 드래그하여 파일 추가</span><br>
-        <span class="drop-types"><span data-i18n="upload.types">이미지 · 영상 · 오디오 · PDF · 문서</span></span><br>
+        <span class="drop-types"><span data-i18n="upload.types">이미지 · 오디오 · PDF · 문서</span></span><br>
         <span class="drop-types" style="margin-top:4px;display:inline-block">
           폴더 통째로 드래그도 가능
         </span>
