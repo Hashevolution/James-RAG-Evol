@@ -110,3 +110,7 @@ docs/internal/
 james_backup_*/
 backup_*.zip
 *.old
+
+# ── Sales deck rendering artifacts ─────────────────────────────
+# pitch-deck.pdf is committed; intermediate PNG previews are not
+docs/sales/preview/
