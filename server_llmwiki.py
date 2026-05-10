@@ -35,7 +35,10 @@ from typing import Optional
 from config import UPLOAD_DIR, WIKI_DIR, CHROMA_DIR, API_KEY, MAX_UPLOAD_BYTES
 from core.graph_rag_engine import RAGEngine
 from core.feedback_engine import FeedbackEngine
-from core.auth import authenticate, get_role_from_token, add_user, ALLOWED_ROLES, DEV_MODE
+from core.auth import (
+    authenticate, get_role_from_token, add_user, ALLOWED_ROLES, DEV_MODE,
+    signup as _auth_signup, SignupResult,
+)
 from core.policy_engine import default_engine
 from processors.file_processor import FileProcessor
 
@@ -349,6 +352,18 @@ class LoginResponse(BaseModel):
     role:         str
     username:     str
 
+# W4 P1-B — self-service signup.
+class SignupRequest(BaseModel):
+    username: str
+    password: str
+
+class SignupResponse(BaseModel):
+    ok:      bool
+    # Identical message for success and duplicate (enumeration defense).
+    # Policy-violation responses populate this with the specific reason
+    # and return HTTP 400 instead of 200.
+    message: str
+
 class QueryRequest(BaseModel):
     api_key:          str
     question:         str
@@ -440,8 +455,9 @@ async def rate_limit_middleware(request: Request, call_next):
     ip = get_client_ip(request)
     endpoint = request.url.path
 
-    # 체크 필요한 엔드포인트만
-    if endpoint in ("/query/", "/upload/", "/login/"):
+    # 체크 필요한 엔드포인트만. /signup/ 도 unauthenticated 표적이라
+    # 같은 IP-window 로 brute-force 시도를 차단한다.
+    if endpoint in ("/query/", "/upload/", "/login/", "/signup/"):
         if not _rate_limiter.check(ip, endpoint):
             remaining = _rate_limiter.remaining(ip)
             _write_audit(
@@ -475,6 +491,44 @@ async def login(data: LoginRequest, request: Request):
     # access_token 필드 추가 (프론트엔드 호환)
     result["access_token"] = result.get("token", "")
     return result
+
+
+# W4 P1-B — self-service signup. Creates a pending (active=0,
+# role=external) row. An admin must approve and assign a role before
+# the account can log in. The endpoint never reveals whether a username
+# already exists: success and duplicate share one response body and
+# both return 200. Only policy violations get a distinct 400.
+_SIGNUP_ACCEPTED_MSG = "가입 요청이 접수되었습니다. 관리자 승인 후 사용 가능합니다."
+
+@app.post("/signup/", response_model=SignupResponse,
+          summary="회원가입 신청 (관리자 승인 후 활성화)")
+async def signup(data: SignupRequest, request: Request):
+    ip     = get_client_ip(request)
+    result = _auth_signup(data.username, data.password)
+
+    if result.status == "policy":
+        _write_audit(
+            "anonymous", "/signup/", query=data.username,
+            security_event=f"signup_rejected_policy: {result.error}",
+            ip_address=ip,
+        )
+        # Policy reasons are deliberately public — the rule itself does
+        # not leak account existence, only the rule.
+        raise HTTPException(status_code=400, detail=result.error)
+
+    if result.status == "duplicate":
+        # Audit log distinguishes; the response intentionally does not.
+        _write_audit(
+            "anonymous", "/signup/", query=data.username,
+            security_event="signup_rejected_duplicate", ip_address=ip,
+        )
+    else:  # "ok"
+        _write_audit(
+            "anonymous", "/signup/", query=data.username,
+            security_event="signup_pending", ip_address=ip,
+        )
+
+    return SignupResponse(ok=True, message=_SIGNUP_ACCEPTED_MSG)
 
 
 @app.post("/upload/", response_model=UploadResponse, summary="파일 업로드 (admin 전용)")

@@ -112,6 +112,37 @@ another's internals.
 Anything labeled **low** must pass `extract_data_only()` before
 joining the LLM context.
 
+### 5.1 Account states (W4 P1-B, 2026-05-11)
+
+Authentication has three identity states. A request's role only
+materializes once it reaches **authenticated**; the earlier states
+exist so that account creation and admin review have explicit,
+auditable transitions.
+
+```
+anonymous (no token)
+   │  POST /signup/ — public, rate-limited
+   ▼
+pending (DB row, active=0, role=external)
+   │  admin approval + role assignment (W4 P2, upcoming)
+   ▼
+authenticated (active=1, role ∈ {admin, manager, employee, external})
+```
+
+Invariants:
+
+- `authenticate()` returns `None` for any row with `active=0`. A
+  pending account cannot be probed by repeated login attempts to
+  learn whether the username exists — `/login/` returns 401 in either
+  case (no row vs. row-but-pending).
+- `/signup/` collapses success and duplicate into the same 200 body.
+  An anonymous caller cannot enumerate usernames through it.
+- Password policy violations bypass that collapse and return 400 —
+  the rule text itself is public and leaks nothing about accounts.
+- Pending rows always hold `role=external` regardless of what the
+  signer requested. Role assignment happens in the admin approval
+  flow, never at signup time.
+
 ---
 
 ## 5.5 PolicyEngine (single source of policy decisions)

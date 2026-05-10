@@ -19,6 +19,7 @@ W4 P1-A 변경 (2026-05-11):
 """
 
 import os
+import re
 import sqlite3
 import hashlib
 import hmac
@@ -26,7 +27,8 @@ import json
 import time
 import base64
 import bcrypt
-from typing import Optional, Dict
+from dataclasses import dataclass
+from typing import Optional, Dict, Tuple
 from pathlib import Path
 
 # .env 자동 로드 보장 (config 모듈이 import 시점에 .env 파싱하여
@@ -204,6 +206,116 @@ def deactivate_user(username: str) -> bool:
         conn.execute("UPDATE users SET active = 0 WHERE username = ?", (username,))
         conn.commit()
         return conn.total_changes > 0
+    finally:
+        conn.close()
+
+
+# ─── W4 P1-B: self-service signup + policy validation ─────────
+
+# Hard upper bound chosen to match bcrypt's native 72-byte input window.
+# Above that, bcrypt silently truncates — two distinct longer passwords
+# would hash to the same value. Rejecting >72 keeps the verifier
+# semantically honest. Lower bound 8 mirrors OWASP minimum and the
+# reset_password CLI's pre-existing policy.
+PASSWORD_MIN_LEN = 8
+PASSWORD_MAX_LEN = 72
+USERNAME_MIN_LEN = 3
+USERNAME_MAX_LEN = 32
+USERNAME_PATTERN = re.compile(r"^[a-z0-9_-]+$")
+
+
+def validate_password_policy(pw: str) -> Optional[str]:
+    """Return None if the password is acceptable, else a user-visible
+    Korean error message. Policy is deliberately public — the error
+    text can be shown to anonymous callers without leaking anything.
+
+    Rules:
+      - 8..72 characters (72 = bcrypt input window, see constant above)
+      - must contain at least one letter and at least one digit
+        (case + symbols not required, sacrificing some entropy for
+        usability and Korean-keyboard reality)
+    """
+    if not isinstance(pw, str):
+        return "비밀번호는 문자열이어야 합니다."
+    if len(pw) < PASSWORD_MIN_LEN:
+        return f"비밀번호는 최소 {PASSWORD_MIN_LEN}자 이상이어야 합니다."
+    if len(pw) > PASSWORD_MAX_LEN:
+        return f"비밀번호는 최대 {PASSWORD_MAX_LEN}자까지 허용됩니다."
+    has_alpha = any(c.isalpha() for c in pw)
+    has_digit = any(c.isdigit() for c in pw)
+    if not (has_alpha and has_digit):
+        return "비밀번호는 영문과 숫자를 각각 한 글자 이상 포함해야 합니다."
+    return None
+
+
+def validate_username(name: str) -> Optional[str]:
+    """Return None if the username is acceptable, else a Korean message.
+
+    Lowercase is enforced (not just preferred) so ``Admin`` and ``admin``
+    can never coexist — the schema has no case-insensitive PK and we'd
+    rather fail at signup than discover the collision at login.
+    """
+    if not isinstance(name, str):
+        return "사용자명은 문자열이어야 합니다."
+    if len(name) < USERNAME_MIN_LEN or len(name) > USERNAME_MAX_LEN:
+        return f"사용자명은 {USERNAME_MIN_LEN}~{USERNAME_MAX_LEN}자여야 합니다."
+    if not USERNAME_PATTERN.match(name):
+        return ("사용자명은 영문 소문자·숫자·하이픈(-)·언더스코어(_) "
+                "만 사용할 수 있습니다.")
+    return None
+
+
+@dataclass(frozen=True)
+class SignupResult:
+    """Outcome of a signup attempt.
+
+    The server collapses ``ok`` and ``duplicate`` into the same response
+    body so an anonymous caller cannot probe which usernames exist.
+    The status field exists for audit logging, not for the response.
+    """
+    status: str                # "ok" | "duplicate" | "policy"
+    error:  Optional[str] = None   # populated only when status == "policy"
+
+
+def signup(username: str, password: str) -> SignupResult:
+    """Create a pending user row (active=0, role=external).
+
+    - Validates username + password against the public policy.
+    - Refuses duplicates by silently leaving the existing row alone
+      (the caller will report success either way — see SignupResult).
+    - Never raises; DB failures are logged and reported as policy errors
+      so the endpoint can return a 400, not a 500.
+    """
+    pw_err = validate_password_policy(password)
+    if pw_err is not None:
+        return SignupResult(status="policy", error=pw_err)
+    name_err = validate_username(username)
+    if name_err is not None:
+        return SignupResult(status="policy", error=name_err)
+
+    conn = _get_conn()
+    try:
+        existing = conn.execute(
+            "SELECT 1 FROM users WHERE username = ?", (username,)
+        ).fetchone()
+        if existing:
+            return SignupResult(status="duplicate")
+
+        conn.execute(
+            "INSERT INTO users (username, password_hash, role, active) "
+            "VALUES (?, ?, ?, 0)",
+            (username, hash_password(password), "external"),
+        )
+        conn.commit()
+        return SignupResult(status="ok")
+    except sqlite3.IntegrityError:
+        # Race: another request inserted the same username between the
+        # SELECT and the INSERT. Treat as duplicate (the safe answer).
+        return SignupResult(status="duplicate")
+    except Exception as e:
+        print(f"[AUTH] signup DB 오류: {e}")
+        return SignupResult(status="policy",
+                            error="가입 처리 중 오류가 발생했습니다.")
     finally:
         conn.close()
 

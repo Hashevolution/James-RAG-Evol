@@ -50,8 +50,30 @@ JAMES implements defense-in-depth across the RAG pipeline.
 
 - JWT tokens with HS256 signing
 - 8-hour expiration (configurable via `JWT_EXPIRE` in `core/auth.py`)
-- Rate limiting: 30 requests / 60 seconds per user
+- Passwords stored as **bcrypt** (W4 P1-A, 2026-05-11) with an
+  algorithm envelope (`bcrypt$...`). Pre-W4 unsalted SHA256 hex
+  digests are accepted on input only and rewritten to bcrypt on the
+  next successful login (transparent migration).
+- Rate limiting: 30 requests / 60 seconds per IP across
+  `/query/`, `/upload/`, `/login/`, `/signup/`
 - Full audit log in SQLite (every request, decision, denial)
+
+### Account creation (W4 P1-B)
+
+- `POST /signup/` is public and creates a row with `active=0`,
+  `role=external`. The account cannot log in until an admin approves
+  and assigns a role.
+- Success and duplicate produce the same 200 response body — an
+  anonymous caller cannot enumerate existing usernames through this
+  endpoint. The audit log distinguishes (`signup_pending` vs
+  `signup_rejected_duplicate`) for operator review.
+- Password policy: 8..72 characters (72 = bcrypt input window),
+  must contain at least one letter and one digit. Korean and other
+  unicode letters count. The 72-char ceiling is a hard reject rather
+  than silent truncation so two long passwords cannot ever collide.
+- Username policy: 3..32 characters, lowercase + digits + `_-` only.
+  Case-folding collisions (`Admin` vs `admin`) are blocked at signup,
+  not at login.
 
 ---
 
