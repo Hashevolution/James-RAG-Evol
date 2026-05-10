@@ -163,11 +163,12 @@ class SetTraitBehaviorTests(unittest.TestCase):
     def test_ripple_applied_to_correlated_targets(self):
         # boldness → risk_tolerance (+0.5). Pushing boldness up should
         # nudge risk_tolerance up by delta * weight * damping.
+        # [W3b 2026-05-10] damping 0.3 → 0.6 — nudge 도 비례하여 2x.
         p = self._fresh()
         old_rt = p._values["risk_tolerance"]
         out = p.set_trait("boldness", 0.8)
-        # delta = 0.8 - 0.3 = 0.5; nudge = 0.5 * 0.5 * 0.3 = 0.075
-        expected = round(min(1.0, old_rt + 0.075), 3)
+        # delta = 0.8 - 0.3 = 0.5; nudge = 0.5 * 0.5 * 0.6 = 0.15
+        expected = round(min(1.0, old_rt + 0.15), 3)
         self.assertAlmostEqual(p._values["risk_tolerance"], expected, places=2)
         # And must be reported in the ripples list.
         rt_ripples = [r for r in out["ripples"] if r["trait"] == "risk_tolerance"]

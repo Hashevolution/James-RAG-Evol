@@ -77,8 +77,11 @@ _OPPONENTS = {
 # 짝(opposing pair)은 이미 _OPPONENTS로 100% flip 처리되므로 여기에
 # 중복 등재 X. 이 그래프는 "짝 외에 약한 영향" 만 표현.
 #
-# 사람이 직관적으로 동의할 만한 관계만 등재 (15 edges).
+# [W3b 2026-05-10, W1 진단 §1-C] 28 edges (이전 15) — 사용자 체감 영향력
+# 강화. P1 미반영 5 trait (focus/intuitive/independent/collaborative/
+# boldness) 가 모두 incoming edge 를 받도록 incoming 보강.
 CORRELATIONS: List[tuple] = [
+    # ── 원본 15 (P1) ─────────────────────────────────────────────
     # 인지(A,C) → 창의/직관 cluster
     ("curiosity",      "creativity",     +0.30),
     ("intuitive",      "creativity",     +0.20),
@@ -103,6 +106,33 @@ CORRELATIONS: List[tuple] = [
     # 정서 cluster
     ("creativity",     "optimism",       +0.20),
     ("patience",       "empathy",        +0.20),
+
+    # ── W3b 추가 13 — 미반영 5 trait 의 incoming 보강 ────────────
+    # focus 의 incoming (이전엔 outgoing 만 있었음 — 슬라이더 변경
+    # 시 다른 trait 변화에 따라 자동 조정되도록).
+    ("analytical",     "focus",          +0.40),  # 분석 ↑ → 집중 ↑
+    ("patience",       "focus",          +0.30),  # 인내 ↑ → 집중 ↑
+    ("caution",        "focus",          +0.20),  # 신중 ↑ → 집중 ↑
+    ("conciseness",    "focus",          +0.20),  # 간결 ↑ → 집중 ↑
+
+    # intuitive 의 incoming
+    ("creativity",     "intuitive",      +0.30),  # 창의 ↑ → 직관 ↑
+    ("empathy",        "intuitive",      +0.20),  # 공감 ↑ → 직관 ↑
+
+    # boldness 의 incoming (이전엔 outgoing 만)
+    ("risk_tolerance", "boldness",       +0.40),  # 위험감수 ↑ → 과감 ↑
+    ("creativity",     "boldness",       +0.20),  # 창의 ↑ → 과감 ↑
+    ("optimism",       "boldness",       +0.20),  # 낙관 ↑ → 과감 ↑
+
+    # collaborative 의 incoming (empathy 외 추가)
+    ("patience",       "collaborative",  +0.30),  # 인내 ↑ → 협력 ↑
+
+    # independent 의 incoming
+    ("analytical",     "independent",    +0.30),  # 분석 ↑ → 독립 ↑
+
+    # 추가 cluster 강화 — 표현 스타일 양방향
+    ("directness",     "conciseness",    +0.20),  # 직설 ↑ → 간결 ↑
+    ("security",       "caution",        +0.30),  # 보안의식 ↑ → 신중 ↑
 ]
 
 # 효율적인 이웃 lookup용 인덱스 (set_trait이 매 호출마다 재계산하지
@@ -111,8 +141,10 @@ _CORR_INDEX: Dict[str, List[tuple]] = {}
 for _src, _tgt, _w in CORRELATIONS:
     _CORR_INDEX.setdefault(_src, []).append((_tgt, _w))
 
-# Ripple damping — cascade 폭주 방지. 0.3 = 짝(1.0) 대비 30% 영향.
-_RIPPLE_DAMPING = 0.3
+# [W3b 2026-05-10] damping 0.3 → 0.6. W1 진단: 0.3 으로는 ripple 변화량이
+# 0.05 미만이라 사용자 눈에 거의 안 보였음. 0.6 으로 올려도 cascade 폭주는
+# set_trait 가 1-level (no recursion) 이므로 안전.
+_RIPPLE_DAMPING = 0.6
 
 
 class CharacterProfile:
@@ -204,9 +236,16 @@ class CharacterProfile:
     def get_prompt_modifiers(self) -> str:
         """reasoning_engine 프롬프트에 주입할 성향 지시문.
 
-        규칙:
+        구성:
+          1. [캐릭터 페르소나] 블록 — build_summary 결과 (P5d, W3b 추가)
+          2. [응답 지시] 블록 — trait 임계값 기반 directive
+
+        directive 규칙:
           - 0.7 이상 → 강하게 반영 (해당 trait 관련 directive 추가)
-          - 0.3 이하 → 반대 방향 directive 추가 (있는 경우)
+          - 0.3 이하 → 반대 방향 directive 추가
+          - W3b: focus/intuitive/independent/collaborative/boldness 5개도
+            directive 발화 (이전엔 누락되어 슬라이더 변경이 LLM 응답에
+            영향 X 였음 — W1 §1-C 권고)
         """
         p = self._values
         lines: List[str] = []
@@ -235,6 +274,17 @@ class CharacterProfile:
             lines.append("리스크 있는 옵션도 검토 가치가 있다면 제안하라.")
         if p.get("patience",       0.5) > 0.7:
             lines.append("단계적이고 차분한 설명으로 답하라.")
+        # ─── W3b 추가: 미반영 5 trait directives ───────────────────
+        if p.get("focus",          0.5) > 0.7:
+            lines.append("핵심 주제에 집중하고 곁가지 설명을 줄여라.")
+        if p.get("intuitive",      0.5) > 0.7:
+            lines.append("직관적 통찰과 비유로 빠르게 핵심을 전달하라.")
+        if p.get("independent",    0.5) > 0.7:
+            lines.append("독자적 판단으로 명확한 결론을 단정 제시하라.")
+        if p.get("collaborative",  0.5) > 0.7:
+            lines.append("사용자와의 합의를 통해 함께 답을 도출하는 톤을 유지하라.")
+        if p.get("boldness",       0.5) > 0.7:
+            lines.append("불확실해도 가장 가능성 높은 답을 적극적으로 제시하라.")
 
         # ─── 0.3 이하 (반대 방향) ─────────────────────────────────
         if p.get("caution",        0.5) < 0.3:
@@ -249,8 +299,35 @@ class CharacterProfile:
             lines.append("핵심 결론을 빠르게 전달하라.")
         if p.get("directness",     0.5) < 0.3:
             lines.append("우회적이고 부드러운 표현을 사용하라.")
+        # ─── W3b 추가: 미반영 5 trait 의 low-side directives ───────
+        if p.get("focus",          0.5) < 0.3:
+            lines.append("관련 주제로 자유롭게 확장하고 다양한 측면을 다뤄라.")
+        if p.get("intuitive",      0.5) < 0.3:
+            lines.append("근거 데이터와 단계적 추론에 기반해 답하라.")
+        if p.get("independent",    0.5) < 0.3:
+            lines.append("여러 출처와 관점을 종합해서 답하라.")
+        if p.get("collaborative",  0.5) < 0.3:
+            lines.append("자신의 결론을 우선 명시한 뒤 부연하라.")
+        if p.get("boldness",       0.5) < 0.3:
+            lines.append("확실한 부분만 단정하고 나머지는 가능성으로 제시하라.")
 
-        return " ".join(lines)
+        directives = " ".join(lines)
+
+        # ─── [W3b/P5d] 캐릭터 페르소나 블록 prepend ────────────────
+        # build_summary 의 3-line 자연어 요약을 system prompt 앞에 둔다 —
+        # LLM 이 응답 톤/스타일/가치관을 일관되게 유지하도록 identity 정보
+        # 부여. 룰 기반이라 빠르고 결정적.
+        summary = self.build_summary(p)
+        persona_block = (
+            "[캐릭터 페르소나] "
+            f"{summary['core']}. "
+            f"{summary['values']}. "
+            f"{summary['style']}."
+        )
+
+        if directives:
+            return f"{persona_block} [응답 지시] {directives}"
+        return persona_block
 
     # ─── 자연어 요약 (P5c, 2026-05-10) ─────────────────────────────
     # build_summary 는 16 trait 수치를 한국어 3-line 자연어 요약으로
