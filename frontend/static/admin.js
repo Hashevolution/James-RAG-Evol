@@ -622,9 +622,19 @@ async function loadUsers() {
       //   - the caller's own row (self-deactivation also rejected
       //     server-side; this is the UX nudge)
       //   - pending rows (use reject from the pending section)
-      const showDeactivate = u.active && u.username !== selfUser;
-      const action = showDeactivate
+      // Two per-row actions on an active account:
+      //   - issue a reset token (W4 P2-B-2) — admin hands the
+      //     plaintext to the user out-of-band
+      //   - deactivate (hidden on caller's own row, server enforces
+      //     anyway with a 400)
+      const tokenBtn = u.active
+        ? `<button onclick="issueResetTokenFor('${u.username}')" style="padding:4px 10px;margin-right:4px;background:#1e5a7a;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.issue_token')}</button>`
+        : '';
+      const deactivateBtn = (u.active && u.username !== selfUser)
         ? `<button onclick="deactivateUser('${u.username}')" style="padding:4px 10px;background:#444;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.deactivate')}</button>`
+        : '';
+      const action = (tokenBtn || deactivateBtn)
+        ? `${tokenBtn}${deactivateBtn}`
         : '<span style="color:var(--muted)">—</span>';
       return `
         <tr>
@@ -675,6 +685,137 @@ async function deactivateUser(username) {
     await loadUsers();
   } catch (e) {
     alert(`${t('users.action_failed')}: ${e.message}`);
+  }
+}
+
+/* ── W4 P2-B-2: password change + admin reset-token issuance ── */
+
+async function changeMyPassword() {
+  const oldEl = document.getElementById('mypw-old');
+  const newEl = document.getElementById('mypw-new');
+  const msg   = document.getElementById('mypw-msg');
+  const oldPw = oldEl.value || '';
+  const newPw = newEl.value || '';
+  if (!oldPw || !newPw) {
+    msg.textContent = t('users.mypw_empty');
+    msg.style.color = 'var(--danger)';
+    return;
+  }
+  msg.textContent = '';
+  try {
+    await api('/password/change', 'POST', {
+      old_password: oldPw, new_password: newPw,
+    });
+    msg.textContent = t('users.mypw_ok');
+    msg.style.color = '#1e7a3e';
+    oldEl.value = '';
+    newEl.value = '';
+  } catch (e) {
+    // api() helper raises a generic "401 Unauthorized"; show server
+    // text when available so policy violations (400) surface their
+    // rule. The helper doesn't expose body — for now, show the
+    // status line.
+    msg.textContent = `${t('users.action_failed')}: ${e.message}`;
+    msg.style.color = 'var(--danger)';
+  }
+}
+
+// State for the token-display modal — kept here so closeResetTokenModal
+// can return focus and copyResetToken has a single source of truth.
+let _lastIssuedResetToken = '';
+
+async function issueResetTokenFor(username) {
+  try {
+    const data = await api('/admin/users/issue-reset-token', 'POST', { username });
+    _lastIssuedResetToken = data.token || '';
+    document.getElementById('token-display-username').textContent = username;
+    document.getElementById('token-display-value').textContent    = data.token || '';
+    const ttlMin = Math.round((data.expires_in_seconds || 0) / 60);
+    document.getElementById('token-display-ttl').textContent =
+      `expires in ${ttlMin} min`;
+    document.getElementById('reset-token-display-modal').style.display = 'flex';
+  } catch (e) {
+    alert(`${t('users.action_failed')}: ${e.message}`);
+  }
+}
+
+function closeResetTokenModal() {
+  document.getElementById('reset-token-display-modal').style.display = 'none';
+  // Wipe in-memory plaintext so it does not linger in JS heap.
+  _lastIssuedResetToken = '';
+  document.getElementById('token-display-value').textContent = '';
+}
+
+async function copyResetToken() {
+  const tok = _lastIssuedResetToken;
+  if (!tok) return;
+  try {
+    await navigator.clipboard.writeText(tok);
+    // Tiny visual confirmation in-place — no alert.
+    const v = document.getElementById('token-display-value');
+    const orig = v.textContent;
+    v.textContent = t('users.token_copied');
+    setTimeout(() => { v.textContent = orig; }, 900);
+  } catch (_e) {
+    // Fall back to legacy selection if clipboard API blocked.
+    const v = document.getElementById('token-display-value');
+    const range = document.createRange();
+    range.selectNodeContents(v);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+}
+
+// Forgot-password flow (anonymous — fired from the login modal).
+function openForgotPasswordModal() {
+  document.getElementById('admin-login-modal').style.display = 'none';
+  const m = document.getElementById('forgot-password-modal');
+  m.style.display = 'flex';
+  document.getElementById('reset-error').textContent = '';
+  document.getElementById('reset-username').focus();
+}
+
+function closeForgotPasswordModal() {
+  document.getElementById('forgot-password-modal').style.display = 'none';
+  // Wipe inputs so a screen-share moment doesn't leak the values.
+  for (const id of ['reset-username', 'reset-token', 'reset-new-pw']) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  }
+  // Return user to the login modal — they still need to log in once
+  // the reset completes.
+  document.getElementById('admin-login-modal').style.display = 'flex';
+}
+
+async function submitPasswordReset() {
+  const username = document.getElementById('reset-username').value.trim();
+  const token    = document.getElementById('reset-token').value.trim();
+  const newPw    = document.getElementById('reset-new-pw').value;
+  const errEl    = document.getElementById('reset-error');
+  errEl.textContent = '';
+  if (!username || !token || !newPw) {
+    errEl.textContent = t('auth.reset_fill_all');
+    return;
+  }
+  try {
+    // Bare fetch — no Bearer header (anonymous flow), no api_key
+    // query (the endpoint is public). The api() helper assumes both.
+    const r = await fetch(`${API}/password/reset/confirm`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ username, token, new_password: newPw }),
+    });
+    if (r.ok) {
+      alert(t('auth.reset_success'));
+      closeForgotPasswordModal();
+      return;
+    }
+    let detail = `${r.status}`;
+    try { detail = (await r.json()).detail || detail; } catch (_e) {}
+    errEl.textContent = detail;
+  } catch (e) {
+    errEl.textContent = e.message;
   }
 }
 

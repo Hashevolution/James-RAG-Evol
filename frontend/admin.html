@@ -581,6 +581,23 @@
     <div class="page" id="page-users">
       <div class="page-title"><span data-i18n="users.page_title">👥 사용자 관리</span></div>
 
+      <!-- W4 P2-B-2: my own password change -->
+      <div class="section-title">▸ <span data-i18n="users.my_password_title">내 비밀번호 변경</span></div>
+      <div class="table-wrap" style="padding:16px 20px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <input id="mypw-old" type="password"
+               data-i18n-placeholder="users.mypw_old_ph" placeholder="현재 비밀번호"
+               autocomplete="current-password"
+               style="flex:1;min-width:160px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--fg);font-size:13px">
+        <input id="mypw-new" type="password"
+               data-i18n-placeholder="users.mypw_new_ph" placeholder="새 비밀번호 (8~72자, 영문+숫자)"
+               autocomplete="new-password"
+               style="flex:2;min-width:200px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--fg);font-size:13px">
+        <button onclick="changeMyPassword()"
+                style="padding:8px 14px;background:#1e7a3e;color:#fff;border:0;border-radius:6px;cursor:pointer;font-size:13px"
+                data-i18n="users.mypw_submit">변경</button>
+        <div id="mypw-msg" style="flex-basis:100%;font-size:12px;color:var(--muted);font-family:var(--font-mono);min-height:16px"></div>
+      </div>
+
       <!-- W4 P2-A: pending signups (active=0) -->
       <div class="section-title">▸ <span data-i18n="users.pending_title">가입 신청 대기</span> <span style="font-size:11px;color:var(--muted);margin-left:8px" id="users-pending-count"></span></div>
       <div class="table-wrap" style="margin-bottom:16px">
@@ -1362,6 +1379,87 @@
             data-i18n="auth.login">
       Login
     </button>
+    <!-- W4 P2-B-2: forgot-password link -->
+    <div style="margin-top:14px;text-align:center;">
+      <a href="javascript:openForgotPasswordModal()"
+         style="font-size:12px;color:var(--muted);text-decoration:underline;cursor:pointer"
+         data-i18n="auth.forgot_password">비밀번호를 잊으셨나요?</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── W4 P2-B-2: 비밀번호 찾기 모달 ─────────────────────────────
+     User-facing form for redeeming an admin-issued reset token.
+     Admin hands the token to the user out-of-band; user pastes it
+     here with their username and new password. Server matches the
+     pattern of /password/reset/confirm — unified 401 on token error,
+     400 only on policy violation.
+-->
+<div id="forgot-password-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;z-index:320">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;width:380px;max-width:92vw;box-shadow:0 24px 80px rgba(0,0,0,.7)">
+    <div style="font-size:15px;font-weight:600;color:var(--accent-fg);margin-bottom:6px;letter-spacing:.5px"
+         data-i18n="auth.reset_password_title">▸ 비밀번호 재설정</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:18px;line-height:1.5"
+         data-i18n="auth.reset_password_hint">
+      관리자가 발급한 일회용 토큰을 입력하세요. (1시간 유효)
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px">USERNAME</div>
+      <input id="reset-username" type="text" autocomplete="username"
+             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;outline:none">
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px">RESET TOKEN</div>
+      <input id="reset-token" type="text" autocomplete="off" spellcheck="false"
+             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:12px;outline:none;font-family:var(--font-mono)">
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px">NEW PASSWORD</div>
+      <input id="reset-new-pw" type="password" autocomplete="new-password"
+             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;outline:none">
+    </div>
+    <div id="reset-error" style="font-size:12px;color:var(--danger);min-height:18px;margin-bottom:10px;font-family:var(--font-mono)"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="closeForgotPasswordModal()"
+              style="flex:1;padding:10px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:13px;cursor:pointer"
+              data-i18n="common.cancel">취소</button>
+      <button onclick="submitPasswordReset()"
+              style="flex:2;padding:10px;background:#1e7a3e;border:0;border-radius:7px;color:#fff;font-size:13px;font-weight:600;cursor:pointer"
+              data-i18n="auth.reset_submit">재설정</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── W4 P2-B-2: 토큰 발급 결과 모달 ────────────────────────────
+     Plaintext token is returned exactly once — show it large, allow
+     copy, and remind admin to relay it out-of-band. Closing without
+     copying is a real risk so we keep the modal modal (no outside-
+     click dismiss) and the close button restates the warning.
+-->
+<div id="reset-token-display-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;z-index:320">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;width:480px;max-width:92vw;box-shadow:0 24px 80px rgba(0,0,0,.7)">
+    <div style="font-size:14px;font-weight:600;color:var(--accent-fg);margin-bottom:6px"
+         data-i18n="users.token_issued_title">🔑 비밀번호 재설정 토큰 발급</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5"
+         data-i18n="users.token_issued_hint">
+      이 토큰은 한 번만 표시됩니다. 사용자에게 전달 후 화면을 떠나세요.
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-family:var(--font-mono)">FOR:
+      <span id="token-display-username" style="color:var(--text);font-weight:600"></span></div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:12px;font-family:var(--font-mono);font-size:12px;word-break:break-all;color:var(--text)"
+         id="token-display-value"></div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;font-family:var(--font-mono)"
+         id="token-display-ttl"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="copyResetToken()"
+              style="flex:2;padding:9px;background:#1e7a3e;border:0;border-radius:7px;color:#fff;font-size:13px;cursor:pointer"
+              data-i18n="users.token_copy">토큰 복사</button>
+      <button onclick="closeResetTokenModal()"
+              style="flex:1;padding:9px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:13px;cursor:pointer"
+              data-i18n="common.close">닫기</button>
+    </div>
   </div>
 </div>
 
