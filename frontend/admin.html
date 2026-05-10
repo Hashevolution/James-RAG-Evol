@@ -372,14 +372,45 @@
   .char-connections-empty { color: var(--muted); font-size: 11px; line-height: 1.5; }
   .char-conn-row {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 4px 0;
+    padding: 5px 0; gap: 8px;
     border-bottom: 1px dashed var(--border);
   }
   .char-conn-row:last-child { border-bottom: none; }
-  .char-conn-label { color: var(--text); font-size: 12px; }
-  .char-conn-weight { font-family: var(--font-mono); font-size: 11px; }
+  .char-conn-label  { color: var(--text); font-size: 12px; line-height: 1.45; flex: 1; }
+  .char-conn-label b { color: var(--accent); font-weight: 600; }
+  .char-conn-weight { font-family: var(--font-mono); font-size: 11px; white-space: nowrap; }
   .char-conn-weight.pos { color: #22c55e; }
   .char-conn-weight.neg { color: #ef4444; }
+  /* P5b — 자연어 영향력 패널 섹션 */
+  .char-conn-section {
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .char-conn-section:last-child { border-bottom: none; margin-bottom: 0; }
+  .char-conn-section-title {
+    font-size: 10px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    letter-spacing: .8px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .char-conn-explain {
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.5;
+    padding: 4px 0;
+  }
+  .char-conn-explain b { color: var(--accent); font-weight: 600; }
+  .char-conn-header {
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
 
   /* 하단 정밀 슬라이더 — 그룹별 묶음 */
   .char-sliders {
