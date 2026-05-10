@@ -184,6 +184,14 @@ async def serve_index():
     return HTMLResponse("<h1>PROJECT JAMES</h1><p>frontend/index.html 없음</p>")
 
 
+# [2026-05-10] readiness probe — k8s/docker/uptime monitor 표준 경로.
+# 인증 X (operational endpoint). DB / vector store / LLM 의 실 가용성은
+# /status/ 가 보고하므로 여기는 process-alive 만 확인한다.
+@app.get("/healthz", include_in_schema=False)
+async def healthz():
+    return {"status": "ok"}
+
+
 @app.get("/admin", response_class=HTMLResponse, include_in_schema=False)
 async def serve_admin():
     admin = os.path.join(FRONTEND_DIR, "admin.html")
