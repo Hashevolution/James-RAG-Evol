@@ -8,7 +8,8 @@ Coverage:
   - extract_image → trust="low" on every path. source="vision" when
     vision tiling succeeds, otherwise "ocr".
   - extract_audio → ("asr", "low").
-  - extract_video → ("asr", "low") (current stub).
+  - extract_video → REMOVED (video-reject, 2026-05-10). 영상 파일은 dispatch
+    에서 unsupported placeholder 로 처리되며 업로드 단계는 422 거부.
   - process_file → forwards inner extractor's source/trust + prepends
     `# 파일: {name}` header. Unsupported extensions and exception paths
     fall back to ("doc", "medium") placeholders.
@@ -155,13 +156,19 @@ class FileProcessorTrustedContentTests(unittest.TestCase):
         self.assertEqual(tc.trust, "low")
         self.assertIn("hello voice", tc.text)
 
-    # ─── extract_video → ("asr", "low") stub ────────────────────
+    # ─── video-reject (2026-05-10) — extract_video 제거 ──────────
+    # 정상 경로: server_llmwiki.py /upload/ 가 422 거부.
+    # Defense-in-depth: process_file 가 unsupported placeholder 반환
+    # (아래 ProcessFileDispatchTests.test_process_file_video_rejected).
 
     @_silent
-    def test_extract_video_returns_asr_low(self):
-        tc = self.fp.extract_video("dummy.mp4")
-        self.assertEqual(tc.source, "asr")
-        self.assertEqual(tc.trust, "low")
+    def test_extract_video_method_removed(self):
+        # 명시적 stub 제거를 영구히 보장하는 회귀 테스트.
+        self.assertFalse(
+            hasattr(self.fp, "extract_video"),
+            "extract_video 가 다시 추가되었다면 video-reject (W1 §3-C) 의 "
+            "silent failure 차단 의도와 충돌 — video-asr PR 에서만 부활시켜야 함.",
+        )
 
 
 class ProcessFileDispatchTests(unittest.TestCase):
@@ -216,6 +223,20 @@ class ProcessFileDispatchTests(unittest.TestCase):
         self.assertEqual(tc.source, "doc")
         self.assertEqual(tc.trust, "medium")
         self.assertIn("[지원하지 않는 형식]", tc.text)
+
+    # ─── video-reject (2026-05-10) — defense-in-depth dispatch ──
+    @_silent
+    def test_process_file_video_rejected_no_silent_stub(self):
+        # 영상 확장자는 정상 경로에서는 /upload/ 가 422 거부하지만, 직접
+        # process_file 호출이 들어와도 (스크립트/마이그레이션 등) 더 이상
+        # silent stub 텍스트 ("[영상 분석 결과 - 샘플링 기반]") 로 인덱스를
+        # 오염시키지 않는다.
+        for ext in ("mp4", "avi", "mov", "mkv"):
+            tc = self.fp.process_file(f"/tmp/x.{ext}", f"x.{ext}")
+            self.assertEqual(tc.source, "doc")
+            self.assertEqual(tc.trust, "medium")
+            self.assertIn("지원하지 않는 형식", tc.text)
+            self.assertNotIn("샘플링 기반", tc.text)
 
     @_silent
     def test_process_file_extractor_exception_is_doc_medium(self):

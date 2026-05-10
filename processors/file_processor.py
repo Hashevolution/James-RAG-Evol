@@ -179,13 +179,12 @@ class FileProcessor:
             trust="low",
         )
 
-    def extract_video(self, filepath) -> TrustedContent:
-        # Stub — 향후 frame ASR + vision caption 합성. 둘 다 low-trust.
-        return TrustedContent(
-            text="[영상 분석 결과 - 샘플링 기반]",
-            source="asr",
-            trust="low",
-        )
+    # [video-reject 2026-05-10] extract_video 는 W1 진단 §3-C 권고에 따라
+    # 제거됨. 이전 stub 은 silent failure 를 만들어 ChromaDB 에 노이즈
+    # 인덱스를 추가했음. 영상 파일은 server_llmwiki.py /upload/ 단계에서
+    # 422 로 거부되며, defense-in-depth 로 process_file 도 unsupported
+    # placeholder 를 돌려준다 (아래 dispatch 참조).
+    # 후속 video-asr PR 에서 ffmpeg + Whisper + frame caption 합성을 추가.
 
     # ─────────────────────────────────────
     # Fix 3+4: sensitivity 강제 override
@@ -244,7 +243,14 @@ class FileProcessor:
             elif ext in ["mp3", "wav", "m4a", "ogg"]:
                 inner = self.extract_audio(filepath)
             elif ext in ["mp4", "avi", "mov", "mkv"]:
-                inner = self.extract_video(filepath)
+                # [video-reject 2026-05-10] 정상 경로는 server_llmwiki.py
+                # /upload/ 가 422 거부하지만, 직접 process_file 호출에 대한
+                # defense-in-depth — silent stub 대신 명시적 unsupported.
+                print(f"[WARN] 영상 파일 미지원 (현재 stub 제거됨): {ext}")
+                inner = TrustedContent(
+                    text="[지원하지 않는 형식 — 영상 파일은 음성으로 변환 후 업로드]",
+                    source="doc", trust="medium",
+                )
             elif ext in ["docx", "doc", "xlsx", "xls", "pptx", "ppt", "hwp", "hwpx"]:
                 inner = self.extract_office(filepath)
             else:
