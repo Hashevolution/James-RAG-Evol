@@ -1957,12 +1957,23 @@ function renderInteractiveRadar() {
 
   let inner = '';
 
-  // ─── 1) 격자 (4 단계) ────────────────────────────────────────
-  [0.25, 0.5, 0.75, 1.0].forEach(r => {
+  // ─── 1) 그룹별 동심원 ring (6 layer 입체 시각화) ────────────
+  // A=가장 안쪽(인지), F=가장 바깥(표현스타일). 색은 CSS .group-X 가 결정.
+  // value 비교성 유지를 위해 vertex 위치는 기존대로 base R × value 에 그대로.
+  // ring 들은 시각적 layer 표시만 — vertex 위치 계산과는 독립.
+  const _GROUP_RING_FACTORS = [
+    { group: 'a', factor: 0.20 },
+    { group: 'b', factor: 0.36 },
+    { group: 'c', factor: 0.52 },
+    { group: 'd', factor: 0.68 },
+    { group: 'e', factor: 0.84 },
+    { group: 'f', factor: 1.00 },
+  ];
+  _GROUP_RING_FACTORS.forEach(ring => {
     const pts = angles.map((a) =>
-      `${(cx + Math.cos(a)*R*r).toFixed(1)},${(cy + Math.sin(a)*R*r).toFixed(1)}`
+      `${(cx + Math.cos(a)*R*ring.factor).toFixed(1)},${(cy + Math.sin(a)*R*ring.factor).toFixed(1)}`
     ).join(' ');
-    inner += `<polygon class="radar-grid" points="${pts}"/>`;
+    inner += `<polygon class="radar-grid group-${ring.group}" points="${pts}"/>`;
   });
 
   // ─── 2) 축 + 라벨 ────────────────────────────────────────────
@@ -2029,11 +2040,12 @@ function renderInteractiveRadar() {
   }).join(' ');
   inner += `<polygon class="radar-fill" points="${polyPts}"/>`;
 
-  // ─── 6) Vertex (드래그 가능) ─────────────────────────────────
+  // ─── 6) Vertex (드래그 가능) — 자기 group 색으로 ring 매칭 ──
   _traits.forEach((tr, i) => {
     const p = pt(i, tr.value);
     const sel = (tr.id === _selected_trait_id) ? ' selected' : '';
-    inner += `<circle class="radar-vertex${sel}"
+    const grpCls = tr.group ? ` group-${String(tr.group).toLowerCase()}` : '';
+    inner += `<circle class="radar-vertex${grpCls}${sel}"
                       cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="6"
                       data-trait-id="${escapeHtml(tr.id)}"
                       data-axis-index="${i}">

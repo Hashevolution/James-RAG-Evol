@@ -261,6 +261,9 @@
     flex: 1 1 480px;
     min-width: 320px;
     position: relative;
+    /* 입체감 — 살짝 기울여서 layer 깊이감. 모바일에선 무시. */
+    perspective: 1400px;
+    perspective-origin: 50% 35%;
   }
   .char-radar {
     width: 100%;
@@ -279,34 +282,66 @@
     font-family: var(--font-mono);
   }
   /* radar SVG 내부 클래스 — JS가 부여 */
-  .char-radar .radar-grid       { fill: none; stroke: var(--border); stroke-width: 1; opacity: .35; }
-  .char-radar .radar-axis       { stroke: var(--border); stroke-width: 1; opacity: .35; }
-  .char-radar .radar-fill       { fill: var(--accent); fill-opacity: .15; stroke: var(--accent); stroke-width: 2; }
+  /* 베이스 격자 (라벨/축 — group ring 과 별개) */
+  .char-radar .radar-axis       { stroke: var(--border); stroke-width: 1; opacity: .25; }
+  .char-radar .radar-fill       { fill: var(--accent); fill-opacity: .12; stroke: var(--accent); stroke-width: 2;
+                                  filter: drop-shadow(0 0 6px var(--accent)); }
   .char-radar .radar-label      { font-size: 11px; fill: var(--text-soft); font-family: var(--font-ui); pointer-events: none; }
   .char-radar .radar-icon       { font-size: 14px; pointer-events: none; }
-  .char-radar .radar-vertex     { fill: var(--accent); cursor: grab; transition: r .15s, fill .25s; }
-  .char-radar .radar-vertex:hover { fill: #fff; r: 8; }
-  .char-radar .radar-vertex.dragging { cursor: grabbing; r: 9; fill: #fff; }
-  .char-radar .radar-vertex.selected { stroke: #fff; stroke-width: 2; }
-  .char-radar .radar-vertex.ripple-pos { animation: char-ripple-pos .8s ease-out; }
-  .char-radar .radar-vertex.ripple-neg { animation: char-ripple-neg .8s ease-out; }
-  .char-radar .corr-edge        { fill: none; stroke-width: 1; opacity: .25; pointer-events: none;
-                                  stroke-dasharray: 4 3; transition: opacity .25s, stroke-width .25s; }
+
+  /* 그룹별 동심원 ring (입체 layer 시각화 — A=내, F=외) */
+  .char-radar .radar-grid       { fill: none; stroke-width: 1.2; opacity: .55;
+                                  filter: drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
+  .char-radar .radar-grid.group-a { stroke: hsl(195, 70%, 60%); }   /* 인지   */
+  .char-radar .radar-grid.group-b { stroke: hsl(155, 60%, 55%); }   /* 신중성 */
+  .char-radar .radar-grid.group-c { stroke: hsl(115, 55%, 55%); }   /* 사고   */
+  .char-radar .radar-grid.group-d { stroke: hsl(45,  78%, 58%); }   /* 사회성 */
+  .char-radar .radar-grid.group-e { stroke: hsl(15,  78%, 62%); }   /* 핵심가치 */
+  .char-radar .radar-grid.group-f { stroke: hsl(325, 65%, 65%); stroke-width: 1.6; opacity: .70; } /* 표현스타일(외곽) */
+
+  /* vertex — 자기 group 색으로 구분 (ring 색과 매칭) */
+  .char-radar .radar-vertex            { fill: var(--accent); cursor: grab;
+                                          transition: r .15s, fill .25s, filter .25s;
+                                          filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+  .char-radar .radar-vertex.group-a    { fill: hsl(195, 70%, 55%); }
+  .char-radar .radar-vertex.group-b    { fill: hsl(155, 60%, 50%); }
+  .char-radar .radar-vertex.group-c    { fill: hsl(115, 55%, 50%); }
+  .char-radar .radar-vertex.group-d    { fill: hsl(45,  78%, 55%); }
+  .char-radar .radar-vertex.group-e    { fill: hsl(15,  78%, 58%); }
+  .char-radar .radar-vertex.group-f    { fill: hsl(325, 65%, 60%); }
+  .char-radar .radar-vertex:hover      { fill: #fff; r: 9; filter: drop-shadow(0 0 8px #fff); }
+  .char-radar .radar-vertex.dragging   { cursor: grabbing; r: 10; fill: #fff;
+                                          filter: drop-shadow(0 0 12px #fff); }
+  .char-radar .radar-vertex.selected   { stroke: #fff; stroke-width: 2.5;
+                                          filter: drop-shadow(0 0 10px var(--accent)); }
+  .char-radar .radar-vertex.ripple-pos { animation: char-ripple-pos 1.2s ease-out; }
+  .char-radar .radar-vertex.ripple-neg { animation: char-ripple-neg 1.2s ease-out; }
+
+  /* 상관관계 edge — 점선 더 굵고 진하게 + glow */
+  .char-radar .corr-edge        { fill: none; stroke-width: 2; opacity: .55; pointer-events: none;
+                                  stroke-dasharray: 6 4;
+                                  transition: opacity .25s, stroke-width .25s, filter .25s; }
   .char-radar .corr-edge.pos    { stroke: #22c55e; }    /* 양 상관 — 녹색 */
   .char-radar .corr-edge.neg    { stroke: #ef4444; }    /* 음 상관 — 빨강 */
-  .char-radar .corr-edge.active { opacity: .85; stroke-width: 2.2; stroke-dasharray: none; }
-  .char-radar .pair-edge        { stroke: var(--muted); stroke-width: 1; opacity: .15;
-                                  stroke-dasharray: 2 4; pointer-events: none; }
+  .char-radar .corr-edge.active { opacity: 1; stroke-width: 3.4; stroke-dasharray: none;
+                                  filter: drop-shadow(0 0 6px currentColor); }
 
+  /* 짝(opposing) edge — 좀 더 보이게 (sum=1.0 시각화) */
+  .char-radar .pair-edge        { stroke: var(--muted); stroke-width: 1.5; opacity: .40;
+                                  stroke-dasharray: 3 5; pointer-events: none; }
+
+  /* Pulse — 더 강하게 + glow halo */
   @keyframes char-ripple-pos {
-    0%   { fill: var(--accent); r: 6; }
-    30%  { fill: #22c55e;       r: 11; }
-    100% { fill: var(--accent); r: 6; }
+    0%   { fill: var(--accent); r: 6;  filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+    25%  { fill: #22c55e;       r: 14; filter: drop-shadow(0 0 14px #22c55e); }
+    65%  { fill: #22c55e;       r: 9;  filter: drop-shadow(0 0 6px #22c55e); }
+    100% { fill: var(--accent); r: 6;  filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
   }
   @keyframes char-ripple-neg {
-    0%   { fill: var(--accent); r: 6; }
-    30%  { fill: #ef4444;       r: 11; }
-    100% { fill: var(--accent); r: 6; }
+    0%   { fill: var(--accent); r: 6;  filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+    25%  { fill: #ef4444;       r: 14; filter: drop-shadow(0 0 14px #ef4444); }
+    65%  { fill: #ef4444;       r: 9;  filter: drop-shadow(0 0 6px #ef4444); }
+    100% { fill: var(--accent); r: 6;  filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
   }
 
   /* 우측 사이드 (범례 + 영향력 패널) */
