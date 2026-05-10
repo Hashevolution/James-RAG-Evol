@@ -1,16 +1,18 @@
 """tools/admin/reset_password.py — unit tests + auth.py compatibility.
 
 Coverage:
-  - `hash_password` produces byte-identical output to
-    `core.auth._hash_password` (so a reset row will authenticate
-    correctly via the existing `authenticate()` flow).
-  - `reset_password()` updates an existing row in a temp DB.
-  - `reset_password()` refuses to create a new user (the silent-mint
+  - The script's hash format is *verifier-compatible* with
+    ``core.auth.verify_password`` (W4 P1-A: bcrypt salts every output,
+    so byte equality is no longer meaningful — round-trip through the
+    verifier is).
+  - ``reset_password()`` updates an existing row in a temp DB and the
+    new password authenticates through ``core.auth.verify_password``.
+  - ``reset_password()`` refuses to create a new user (the silent-mint
     footgun the script's docstring promises to avoid).
-  - `main()` returns the documented exit codes:
+  - ``main()`` returns the documented exit codes:
       0 success / 1 generic / 2 no-such-user / 3 cancelled
   - End-to-end: reset password via main() then verify via the same
-    sha256 the auth path uses.
+    path the auth module uses.
 
 Run:
   python -m unittest tests.test_reset_password
@@ -70,19 +72,32 @@ def _row(path: str, username: str) -> dict | None:
 
 
 class HashCompatibilityTests(unittest.TestCase):
-    """The script-side hash MUST match what authenticate() expects.
-    A drift here would silently lock the user out — fail loudly."""
+    """The script's hash MUST authenticate through core.auth.verify_password.
+    bcrypt salts every output, so we round-trip rather than compare bytes —
+    a drift in *format* (prefix, encoding, algorithm) would silently lock
+    the user out. Fail loudly on that."""
 
-    def test_hash_byte_identical_to_auth_module(self):
+    def test_script_hash_verifies_via_auth_module(self):
         from tools.admin.reset_password import hash_password
-        from core.auth import _hash_password as auth_hash
-        for pw in ("simple", "한글비밀번호", "abc!@#$%^&*()_+",
-                   "long" * 200, ""):
-            self.assertEqual(
-                hash_password(pw), auth_hash(pw),
-                f"hash mismatch for password {pw[:20]!r}; resetting "
+        from core.auth import verify_password
+        # 한글 + emoji + symbols + boundary lengths. Empty string is
+        # excluded — the script's CLI rejects it (and bcrypt accepts it
+        # in principle, but the policy is "non-empty").
+        for pw in ("simple", "한글비밀번호", "abc!@#$%^&*()_+", "long" * 17):
+            h = hash_password(pw)
+            self.assertTrue(h.startswith("bcrypt$"),
+                            f"expected bcrypt$ prefix, got {h[:20]!r}")
+            self.assertTrue(
+                verify_password(pw, h),
+                f"reset hash for {pw[:20]!r} did not verify — resetting "
                 f"would lock the user out of the real authenticate() path",
             )
+
+    def test_script_hash_rejects_wrong_password(self):
+        from tools.admin.reset_password import hash_password
+        from core.auth import verify_password
+        h = hash_password("right_password_42")
+        self.assertFalse(verify_password("wrong_password_42", h))
 
 
 class ResetPasswordCoreTests(unittest.TestCase):
@@ -96,12 +111,17 @@ class ResetPasswordCoreTests(unittest.TestCase):
         Path(self.path).unlink(missing_ok=True)
 
     def test_existing_user_password_updated(self):
-        from tools.admin.reset_password import reset_password, hash_password
+        from tools.admin.reset_password import reset_password
+        from core.auth import verify_password
         ok = reset_password(self.path, "admin", "new_secret_pw_42")
         self.assertTrue(ok)
         row = _row(self.path, "admin")
-        self.assertEqual(row["password_hash"], hash_password("new_secret_pw_42"),
-                         "row hash must match the new password")
+        # bcrypt: salt-randomized → can't compare bytes. Verify instead.
+        self.assertTrue(row["password_hash"].startswith("bcrypt$"))
+        self.assertTrue(
+            verify_password("new_secret_pw_42", row["password_hash"]),
+            "post-reset hash must verify against the new password",
+        )
 
     def test_nonexistent_user_refused(self):
         from tools.admin.reset_password import reset_password
@@ -199,17 +219,23 @@ class EndToEndAuthCompatTests(unittest.TestCase):
 
     def test_reset_then_authenticate_with_new_pw_succeeds(self):
         from tools.admin.reset_password import reset_password
-        from core.auth import _hash_password as auth_hash
+        from core.auth import verify_password
 
         new_pw = "fresh_password_42"
         self.assertTrue(reset_password(self.path, "admin", new_pw))
 
-        # Simulate the comparison core.auth.authenticate makes:
-        #   hmac.compare_digest(_hash_password(input), row.password_hash)
+        # Mirror what core.auth.authenticate does internally:
+        #   verify_password(input, row.password_hash)
         row = _row(self.path, "admin")
-        self.assertEqual(auth_hash(new_pw), row["password_hash"],
-                         "post-reset hash must match auth.authenticate's "
-                         "comparison; otherwise the user is still locked out")
+        self.assertTrue(
+            verify_password(new_pw, row["password_hash"]),
+            "post-reset hash must verify against auth.authenticate's "
+            "comparison; otherwise the user is still locked out",
+        )
+        # And the previous (legacy SHA256 of "oldpw") seed no longer
+        # passes — proving the row was actually rewritten, not just
+        # double-written.
+        self.assertFalse(verify_password("oldpw", row["password_hash"]))
 
 
 if __name__ == "__main__":

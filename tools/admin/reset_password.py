@@ -32,9 +32,11 @@ Usage
 
 Hash compatibility
 ------------------
-The hash is `sha256(pw.encode()).hexdigest()` — identical to
-`core.auth._hash_password`. A regression test asserts byte-for-byte
-parity (see `tests/test_reset_password.py::HashCompatibilityTests`).
+The hash format is ``bcrypt$<bcrypt-output>``, identical to
+``core.auth.hash_password`` (W4 P1-A, 2026-05-11). bcrypt salts every
+output, so the regression test asserts *verification* parity (a hash
+produced here authenticates through ``core.auth.verify_password``),
+not byte-for-byte equality.
 
 Exit codes:
   0  — password updated successfully
@@ -46,11 +48,12 @@ from __future__ import annotations
 
 import argparse
 import getpass
-import hashlib
 import os
 import sqlite3
 import sys
 from pathlib import Path
+
+import bcrypt
 
 # Korean prints below; cp949 default Windows consoles crash on emoji
 # without this. Same helper PR #36 wires into the server.
@@ -63,13 +66,14 @@ except Exception:
 
 
 def hash_password(pw: str) -> str:
-    """Identical algorithm to core.auth._hash_password.
+    """Identical format to core.auth.hash_password (W4 P1-A).
 
     Replicated here (not imported) so this script stays standalone —
-    importing core.auth triggers `_init_db()` as a side effect, which
+    importing core.auth triggers ``_init_db()`` as a side effect, which
     is undesirable for a one-shot maintenance tool.
     """
-    return hashlib.sha256(pw.encode()).hexdigest()
+    h = bcrypt.hashpw(pw.encode("utf-8"), bcrypt.gensalt())
+    return "bcrypt$" + h.decode("utf-8")
 
 
 def _default_db_path() -> str:

@@ -1,5 +1,5 @@
 """
-PROJECT JAMES - JWT 인증 모듈 (Phase 4)
+PROJECT JAMES - JWT 인증 모듈 (Phase 4 + W4 P1-A)
 
 Phase 4 변경:
   [P4-AUTH-1] USER_DB → SQLite 영구화
@@ -9,6 +9,13 @@ Phase 4 변경:
   [P4-AUTH-2] X-Role 개발용 헤더 → 운영 모드에서 비활성화 설정 추가
 
 JWT_SECRET는 Phase 3.5에서 이미 환경변수화 완료 (os.environ.get)
+
+W4 P1-A 변경 (2026-05-11):
+  비밀번호 해시 SHA256(salt 없음, rainbow-table 취약) → bcrypt.
+  password_hash 컬럼에 알고리즘 prefix(`bcrypt$...`)를 두고, prefix 가
+  없는 64-char hex 는 legacy SHA256 으로 인식한다. 로그인 성공 시점에
+  legacy → bcrypt 로 transparent rehash 가 일어나므로 운영 중단 없이
+  점진 마이그레이션 된다. signup endpoint 와 비번 정책은 별도 PR(P1-B).
 """
 
 import os
@@ -18,6 +25,7 @@ import hmac
 import json
 import time
 import base64
+import bcrypt
 from typing import Optional, Dict
 from pathlib import Path
 
@@ -60,8 +68,54 @@ try:
 except ImportError:
     _DB_PATH = "james_users.db"
 
-def _hash_password(pw: str) -> str:
+def _hash_sha256_legacy(pw: str) -> str:
+    """[LEGACY, W4 P1-A] Pre-W4 unsalted SHA256 hex digest.
+
+    Kept only so verify_password() can authenticate accounts created
+    before bcrypt migration. New hashes always go through hash_password().
+    Do not call this from new code.
+    """
     return hashlib.sha256(pw.encode()).hexdigest()
+
+
+def hash_password(pw: str) -> str:
+    """bcrypt with algorithm prefix.
+
+    Format: ``bcrypt$<bcrypt-output>``. The prefix lets verify_password()
+    distinguish from pre-W4 SHA256 hex (no prefix, 64-char) and from any
+    future algorithm without ambiguity.
+    """
+    h = bcrypt.hashpw(pw.encode("utf-8"), bcrypt.gensalt())
+    return "bcrypt$" + h.decode("utf-8")
+
+
+def verify_password(pw: str, stored: str) -> bool:
+    """Verify a password against a stored hash.
+
+    Handles both the new ``bcrypt$...`` form and the legacy unsalted
+    SHA256 hex (exactly 64 hex chars, no prefix). Returns False on any
+    parse error rather than raising — callers treat that as
+    authentication failure.
+    """
+    if not stored:
+        return False
+    if stored.startswith("bcrypt$"):
+        try:
+            return bcrypt.checkpw(pw.encode("utf-8"), stored[7:].encode("utf-8"))
+        except Exception:
+            return False
+    if len(stored) == 64 and all(c in "0123456789abcdef" for c in stored):
+        return hmac.compare_digest(_hash_sha256_legacy(pw), stored)
+    return False
+
+
+# Backward-compat alias. External callers (and existing tests) imported
+# `_hash_password`; the name is preserved but now produces a bcrypt hash.
+# Anyone comparing the return value byte-for-byte against another call
+# will break (bcrypt salts every output); they should switch to
+# verify_password(). Tracked for cleanup once those callers migrate.
+_hash_password = hash_password
+
 
 def _get_conn() -> sqlite3.Connection:
     conn = sqlite3.connect(_DB_PATH, check_same_thread=False)
@@ -206,6 +260,29 @@ def verify_token(token: str) -> Optional[Dict]:
 
 # ─── 인증 ────────────────────────────────────────────────────
 
+def _rehash_to_bcrypt(username: str, password: str) -> None:
+    """Replace a legacy SHA256 hash with bcrypt on a verified login.
+
+    Best-effort: any DB error is logged but does not block the login
+    (the user has already authenticated successfully). Re-running this
+    on subsequent logins is harmless — verify_password() will see the
+    bcrypt prefix and skip migration entirely.
+    """
+    new_hash = hash_password(password)
+    conn = _get_conn()
+    try:
+        conn.execute(
+            "UPDATE users SET password_hash = ? WHERE username = ?",
+            (new_hash, username),
+        )
+        conn.commit()
+        print(f"[AUTH] legacy SHA256 → bcrypt rehashed: {username}")
+    except Exception as e:
+        print(f"[AUTH] bcrypt 마이그레이션 실패 (로그인은 성공): {e}")
+    finally:
+        conn.close()
+
+
 def authenticate(username: str, password: str) -> Optional[Dict]:
     """로그인 → SQLite 조회 → token 반환"""
     user = _get_user(username)
@@ -216,10 +293,13 @@ def authenticate(username: str, password: str) -> Optional[Dict]:
         print(f"[AUTH] 비활성 계정: {username}")
         return None
 
-    pw_hash = _hash_password(password)
-    if not hmac.compare_digest(pw_hash, user["password_hash"]):
+    stored = user["password_hash"]
+    if not verify_password(password, stored):
         print(f"[AUTH] 비밀번호 불일치: {username}")
         return None
+
+    if not stored.startswith("bcrypt$"):
+        _rehash_to_bcrypt(username, password)
 
     role  = user["role"]
     token = create_token(username, role)
