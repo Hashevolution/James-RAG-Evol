@@ -143,6 +143,30 @@ Invariants:
   signer requested. Role assignment happens in the admin approval
   flow, never at signup time.
 
+### 5.2 Credential change paths (W4 P2-B, 2026-05-11)
+
+Once a user is authenticated, two credential-rotation paths exist.
+Both run through `core/auth_reset.py` (a sibling of `core/auth.py`
+kept separate only to honor the 20 KB module-size gate):
+
+- **Self-service change** (`POST /password/change`): the caller
+  supplies the old password plus a new one; the username is read
+  from the JWT subject claim, never from the request body. A body
+  `username` field, if smuggled in, is ignored — the JWT is the only
+  source of identity here.
+- **Admin-issued reset** (`POST /admin/users/issue-reset-token`):
+  the admin requests a one-shot token for a target user. The
+  plaintext token is returned exactly once; the database stores only
+  SHA256(token). Tokens expire after 1 hour and are revoked
+  automatically if a new token is issued for the same username.
+  The user redeems via `POST /password/reset/confirm` with the
+  token, their username, and a new password — replay is rejected by
+  a `used_at` column updated in the same transaction as the password
+  UPDATE.
+
+Both paths apply `validate_password_policy()` from W4 P1-B and
+re-hash through `hash_password()` (bcrypt) from W4 P1-A.
+
 ---
 
 ## 5.5 PolicyEngine (single source of policy decisions)

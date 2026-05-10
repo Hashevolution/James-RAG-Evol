@@ -55,7 +55,8 @@ JAMES implements defense-in-depth across the RAG pipeline.
   digests are accepted on input only and rewritten to bcrypt on the
   next successful login (transparent migration).
 - Rate limiting: 30 requests / 60 seconds per IP across
-  `/query/`, `/upload/`, `/login/`, `/signup/`
+  `/query/`, `/upload/`, `/login/`, `/signup/`,
+  `/password/reset/confirm`
 - Full audit log in SQLite (every request, decision, denial)
 
 ### Account creation (W4 P1-B)
@@ -74,6 +75,21 @@ JAMES implements defense-in-depth across the RAG pipeline.
 - Username policy: 3..32 characters, lowercase + digits + `_-` only.
   Case-folding collisions (`Admin` vs `admin`) are blocked at signup,
   not at login.
+
+### Credential rotation (W4 P2-B)
+
+- `POST /password/change` lets a logged-in user rotate their own
+  password. Identity comes from the JWT subject claim — the request
+  body never names a user.
+- `POST /admin/users/issue-reset-token` lets an admin mint a one-shot
+  reset token for a target user. The plaintext token is returned
+  once; only SHA256(token) is persisted. 1-hour TTL. Issuing a new
+  token revokes any prior unused token for the same user.
+- `POST /password/reset/confirm` accepts `{username, token,
+  new_password}`. Replay is blocked by a `used_at` flag written in
+  the same transaction as the password UPDATE. Token-validity
+  errors (unknown / expired / wrong username / already used) all
+  collapse to a single 401 so anonymous callers cannot enumerate.
 
 ---
 

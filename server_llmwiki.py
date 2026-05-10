@@ -42,6 +42,13 @@ from core.auth import (
     approve_user as _auth_approve_user,
     reject_user as _auth_reject_user,
     deactivate_user as _auth_deactivate_user,
+    verify_token as _auth_verify_token,
+)
+from core.auth_reset import (
+    change_password    as _auth_change_password,
+    issue_reset_token  as _auth_issue_reset_token,
+    consume_reset_token as _auth_consume_reset_token,
+    RESET_TOKEN_TTL_SEC,
 )
 from core.policy_engine import default_engine
 from processors.file_processor import FileProcessor
@@ -459,9 +466,10 @@ async def rate_limit_middleware(request: Request, call_next):
     ip = get_client_ip(request)
     endpoint = request.url.path
 
-    # 체크 필요한 엔드포인트만. /signup/ 도 unauthenticated 표적이라
-    # 같은 IP-window 로 brute-force 시도를 차단한다.
-    if endpoint in ("/query/", "/upload/", "/login/", "/signup/"):
+    # 체크 필요한 엔드포인트만. /signup/ + /password/reset/confirm 도
+    # unauthenticated 표적이라 같은 IP-window 로 brute-force 차단.
+    if endpoint in ("/query/", "/upload/", "/login/", "/signup/",
+                    "/password/reset/confirm"):
         if not _rate_limiter.check(ip, endpoint):
             remaining = _rate_limiter.remaining(ip)
             _write_audit(
@@ -2615,6 +2623,157 @@ async def admin_users_deactivate(
     _write_audit(role, "/admin/users/deactivate", query=data.username,
                  security_event="deactivated", ip_address=ip)
     return {"ok": True, "username": data.username}
+
+
+# ─── W4 P2-B: password change + reset-token workflow ────────────
+
+def _bearer_username(request: Request) -> Optional[str]:
+    """Pull `sub` (username) out of the Bearer JWT, or None.
+
+    The endpoints below need the caller's username to scope the
+    operation to their own account. We use the JWT subject claim
+    rather than a body field so the client cannot self-impersonate.
+    """
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None
+    payload = _auth_verify_token(auth_header[7:].strip())
+    return (payload or {}).get("sub") if payload else None
+
+
+class PasswordChangeRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+@app.post("/password/change",
+          summary="비밀번호 변경 (로그인된 사용자 — W4 P2-B)")
+async def password_change(data: PasswordChangeRequest, request: Request):
+    """Self-service password change. JWT-authenticated; the request
+    body MUST NOT include username — the subject is taken from the
+    JWT so an attacker holding only a stolen body can't pivot.
+
+    Response codes:
+      200 — password updated
+      400 — new password fails the policy (rule shown verbatim)
+      401 — JWT missing/invalid OR old_password didn't verify
+            (same status so an attacker can't distinguish the two
+             after the JWT slot is filled)
+    """
+    ip = get_client_ip(request)
+    username = _bearer_username(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+
+    result = _auth_change_password(username, data.old_password, data.new_password)
+    if result == "ok":
+        _write_audit("authenticated", "/password/change", query=username,
+                     security_event="password_change_success", ip_address=ip)
+        return {"ok": True}
+    if result.startswith("policy:"):
+        msg = result.split(":", 1)[1]
+        _write_audit("authenticated", "/password/change", query=username,
+                     security_event=f"password_change_rejected_policy",
+                     ip_address=ip)
+        raise HTTPException(status_code=400, detail=msg)
+    # invalid_old / no_user → collapse to 401. The audit log still
+    # distinguishes for the operator.
+    _write_audit("authenticated", "/password/change", query=username,
+                 security_event=f"password_change_failed_{result}",
+                 ip_address=ip)
+    raise HTTPException(
+        status_code=401,
+        detail="현재 비밀번호가 일치하지 않거나 계정이 비활성 상태입니다.",
+    )
+
+
+class AdminIssueResetTokenRequest(BaseModel):
+    username: str
+
+@app.post("/admin/users/issue-reset-token",
+          summary="비밀번호 재설정 토큰 발급 (admin 전용 — W4 P2-B)")
+async def admin_issue_reset_token(
+    data:    AdminIssueResetTokenRequest,
+    request: Request,
+    api_key: str = "",
+    role:    str = Depends(get_role_from_request),
+):
+    """Admin issues a one-shot reset token. Token is returned in
+    plaintext exactly once — admin must relay it out-of-band (phone,
+    in-person, internal chat). Server only stores SHA256(token).
+
+    Returns 404 if the user is unknown or inactive — admins should not
+    issue resets for pending or removed accounts (use approve/reject).
+    """
+    _require_admin(api_key, role)
+    ip = get_client_ip(request)
+
+    token = _auth_issue_reset_token(data.username)
+    if token is None:
+        _write_audit(role, "/admin/users/issue-reset-token",
+                     query=data.username,
+                     security_event="reset_token_issue_failed (unknown or inactive)",
+                     ip_address=ip)
+        raise HTTPException(
+            status_code=404,
+            detail="활성 사용자가 아닙니다.",
+        )
+    _write_audit(role, "/admin/users/issue-reset-token",
+                 query=data.username,
+                 security_event="reset_token_issued",
+                 ip_address=ip)
+    return {
+        "ok": True,
+        "username":           data.username,
+        "token":              token,
+        "expires_in_seconds": RESET_TOKEN_TTL_SEC,
+    }
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    username:     str
+    token:        str
+    new_password: str
+
+@app.post("/password/reset/confirm",
+          summary="비밀번호 재설정 (토큰 + 새 비번 — W4 P2-B)")
+async def password_reset_confirm(
+    data:    PasswordResetConfirmRequest,
+    request: Request,
+):
+    """Public endpoint — the caller is anonymous and presents an
+    admin-issued token. Rate-limited at the IP layer to keep token
+    brute-force bounded.
+
+    Response codes:
+      200 — password reset
+      400 — new_password fails the policy (rule shown verbatim)
+      401 — token invalid / expired / already used / no such user
+            (one unified message; the audit log distinguishes for
+            the operator)
+    """
+    ip = get_client_ip(request)
+    result = _auth_consume_reset_token(data.username, data.token,
+                                       data.new_password)
+    if result == "ok":
+        _write_audit("anonymous", "/password/reset/confirm",
+                     query=data.username,
+                     security_event="password_reset_completed",
+                     ip_address=ip)
+        return {"ok": True}
+    if result.startswith("policy:"):
+        _write_audit("anonymous", "/password/reset/confirm",
+                     query=data.username,
+                     security_event="password_reset_rejected_policy",
+                     ip_address=ip)
+        raise HTTPException(status_code=400, detail=result.split(":", 1)[1])
+    _write_audit("anonymous", "/password/reset/confirm",
+                 query=data.username,
+                 security_event=f"password_reset_failed_{result}",
+                 ip_address=ip)
+    raise HTTPException(
+        status_code=401,
+        detail="토큰이 유효하지 않거나 만료되었습니다.",
+    )
 
 
 @app.get("/admin/entities", summary="Entity 현황 — search + paging [item #1]")

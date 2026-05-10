@@ -277,6 +277,16 @@ def reject_user(username: str) -> bool:
         conn.close()
 
 
+# W4 P2-B password change + admin reset-token workflow lives in a
+# sibling module, ``core/auth_reset.py``. It needs the SQLite-helpers
+# below (``_get_conn``, ``_get_user``, ``hash_password``,
+# ``verify_password``, ``validate_password_policy``) which are why it
+# is a sibling and not a separate package — keeping the cyclic-risk
+# surface to one well-known direction (auth → auth_reset, never back).
+# Splitting was forced by the 20 KB module-size gate in CLAUDE.md
+# rule 5; consolidating here would push auth.py over the line.
+
+
 # ─── W4 P1-B: self-service signup + policy validation ─────────
 
 # Hard upper bound chosen to match bcrypt's native 72-byte input window.
