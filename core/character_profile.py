@@ -252,6 +252,79 @@ class CharacterProfile:
 
         return " ".join(lines)
 
+    # ─── 자연어 요약 (P5c, 2026-05-10) ─────────────────────────────
+    # build_summary 는 16 trait 수치를 한국어 3-line 자연어 요약으로
+    # 변환한다. 룰 기반(LLM 호출 X) — 결정적이고 빠르며 admin.js 의
+    # 동일 함수와 1:1 미러된다.
+    #
+    # 반환 키:
+    #   core   — Group A~D 4 쌍에서 우세한 사이드 모음
+    #   values — Group E (security/creativity/empathy) 강·약 설명
+    #   style  — Group F (conciseness/directness/optimism/risk/patience)
+    #
+    # 임계값:
+    #   ≥ 0.65 → "강함" (high 라벨 채택)
+    #   ≤ 0.35 → "약함" (low 라벨 채택)
+    #   pair (A~D) 차이가 0.10 미만이면 "균형" 으로 간주, 핵심에서 생략.
+    @staticmethod
+    def build_summary(values: Dict[str, float]) -> Dict[str, str]:
+        p = values or {}
+
+        # ── 핵심 (Group A~D 우세 사이드) ────────────────────────────
+        pair_dominants: List[str] = []
+        pairs = [
+            ("curiosity",   "focus"),
+            ("caution",     "boldness"),
+            ("analytical",  "intuitive"),
+            ("independent", "collaborative"),
+        ]
+        for a, b in pairs:
+            va, vb = p.get(a, 0.5), p.get(b, 0.5)
+            if abs(va - vb) >= 0.10:
+                tid = a if va > vb else b
+                pair_dominants.append(TRAITS[tid]["label_ko"])
+
+        if pair_dominants:
+            core = "·".join(pair_dominants) + "이 두드러진 성격"
+        else:
+            core = "여러 성향이 균형을 이룬 성격"
+
+        # ── 가치 (Group E) ──────────────────────────────────────────
+        e_rules = [
+            ("security",   "보안에 매우 민감함",   "보안의식이 약함"),
+            ("creativity", "창의성이 풍부함",      "창의성은 보통 이하"),
+            ("empathy",    "공감능력이 높음",      "공감 표현이 절제됨"),
+        ]
+        value_parts: List[str] = []
+        for tid, hi, lo in e_rules:
+            v = p.get(tid, 0.5)
+            if v >= 0.65:
+                value_parts.append(hi)
+            elif v <= 0.35:
+                value_parts.append(lo)
+        vals = (", ".join(value_parts)
+                if value_parts else "특정 가치 편향이 두드러지지 않음")
+
+        # ── 스타일 (Group F) ────────────────────────────────────────
+        f_rules = [
+            ("conciseness",    "간결한",          "설명이 풍부한"),
+            ("directness",     "직설적인",        "우회적인"),
+            ("optimism",       "낙관적인",        "신중한 톤의"),
+            ("risk_tolerance", "위험을 감수하는", "안전 우선의"),
+            ("patience",       "인내심 있는",     "결론이 빠른"),
+        ]
+        style_parts: List[str] = []
+        for tid, hi, lo in f_rules:
+            v = p.get(tid, 0.5)
+            if v >= 0.65:
+                style_parts.append(hi)
+            elif v <= 0.35:
+                style_parts.append(lo)
+        style = (", ".join(style_parts) + " 표현 스타일"
+                 if style_parts else "균형 잡힌 표현 스타일")
+
+        return {"core": core, "values": vals, "style": style}
+
     # ─── 영속화 (preferences DB의 trait:* 키) ──────────────────────
     def _load(self):
         try:

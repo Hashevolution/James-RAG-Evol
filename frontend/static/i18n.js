@@ -293,6 +293,7 @@ const TRANSLATIONS = {
     'evo.result':                'Result',
     'evo.elapsed':               'Elapsed',
     'char.radar':                '▸ Personality Radar',
+    'char.summary':              '▸ Character Summary',
     'char.adjust':               '▸ Personality Adjust',
     'char.save':                 'Save Character',
     /* [P2 unified UX 2026-05-10] interactive radar additions */
@@ -669,6 +670,7 @@ const TRANSLATIONS = {
     'evo.result':                '결과',
     'evo.elapsed':               '소요',
     'char.radar':                '▸ 성향 레이더',
+    'char.summary':              '▸ 캐릭터 요약',
     'char.adjust':               '▸ 성향 조절',
     'char.save':                 '성향 저장',
     /* [P2 unified UX 2026-05-10] interactive radar additions */

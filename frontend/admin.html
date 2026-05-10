@@ -251,6 +251,37 @@
     margin-bottom: 16px;
     line-height: 1.5;
   }
+
+  /* [P5c 2026-05-10] 캐릭터 자연어 요약 카드 — radar drag 시 live 갱신 */
+  .char-summary-card {
+    background: linear-gradient(135deg,
+                  rgba(76, 175, 125, 0.08) 0%,
+                  rgba(76, 175, 125, 0.02) 100%);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    line-height: 1.7;
+  }
+  .char-summary-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 13.5px;
+  }
+  .char-summary-row + .char-summary-row { margin-top: 4px; }
+  .char-summary-label {
+    flex: 0 0 56px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding-top: 3px;
+  }
+  .char-summary-text { flex: 1; color: var(--text); }
+  .char-summary-text b { color: var(--accent); font-weight: 600; }
   .char-layout {
     display: flex;
     gap: 24px;
@@ -772,6 +803,24 @@
         <div style="padding: 12px 0; display:flex; justify-content:flex-end;">
           <button class="btn btn-primary" onclick="saveIdentity()"
                   data-i18n="char.identity_save">💾 이름 저장</button>
+        </div>
+      </div>
+
+      <!-- [P5c 2026-05-10] 자연어 요약 카드 — 16 trait 수치를 핵심/가치/스타일
+           3 라인으로 자동 요약. 사용자가 drag/slider 로 trait 변경 시 즉시 갱신. -->
+      <div class="section-title"><span data-i18n="char.summary">▸ 캐릭터 요약</span></div>
+      <div id="char-summary" class="char-summary-card">
+        <div class="char-summary-row">
+          <span class="char-summary-label">CORE</span>
+          <span class="char-summary-text" id="char-summary-core">—</span>
+        </div>
+        <div class="char-summary-row">
+          <span class="char-summary-label">VALUES</span>
+          <span class="char-summary-text" id="char-summary-values">—</span>
+        </div>
+        <div class="char-summary-row">
+          <span class="char-summary-label">STYLE</span>
+          <span class="char-summary-text" id="char-summary-style">—</span>
         </div>
       </div>
 

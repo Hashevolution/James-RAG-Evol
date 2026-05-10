@@ -1956,6 +1956,7 @@ async function loadCharacter() {
     renderInteractiveRadar();
     renderTraitSliders(_traits);
     renderConnectionsPanel(null);
+    renderCharacterSummary();
     // [P3 unified UX 2026-05-10] character 페이지의 Identity 섹션 prefill.
     loadIdentity();
   } catch (e) {
@@ -2200,6 +2201,7 @@ function applyTraitChangeLocally(traitId, newValue, animate=true) {
   // SVG + 슬라이더 UI 동기화.
   renderInteractiveRadar();
   syncSlidersToTraits();
+  renderCharacterSummary();
   if (animate) {
     // (드래그 중에는 매 프레임 호출되므로 끄고, 종료 시 한번만 발화)
     animateRippleFor(traitId);
@@ -2228,6 +2230,88 @@ function animateRippleFor(sourceTid /*, _droppedValue */) {
       setTimeout(() => row.classList.remove(cls), 800);
     }
   });
+}
+
+// ─── 자연어 요약 카드 (P5c, 2026-05-10) ───────────────────────────
+// 16 trait → 핵심/가치/스타일 3-line 자연어 요약. 룰 기반 — Python
+// CharacterProfile.build_summary 와 1:1 미러. 드래그/슬라이더 변경 시
+// 즉시 갱신되어 사용자가 "지금 캐릭터가 어떤 성격인지" 즉각 체감.
+function buildCharacterSummary(traits) {
+  // traits → {id: value} 맵.
+  const v = {};
+  (traits || []).forEach(tr => { v[tr.id] = tr.value; });
+  const get = (id, fb=0.5) => (id in v ? v[id] : fb);
+
+  // label 미러 — Python TRAITS[*].label_ko 와 동일 어휘.
+  const KO = {
+    curiosity: '탐구심', focus: '집중력',
+    caution:   '신중함', boldness: '과감함',
+    analytical:'분석력', intuitive: '직관력',
+    independent:'독립성', collaborative: '협력성',
+  };
+
+  // ── 핵심 (Group A~D 우세 사이드) ─────────────────────────
+  const pairs = [
+    ['curiosity', 'focus'], ['caution', 'boldness'],
+    ['analytical','intuitive'], ['independent','collaborative'],
+  ];
+  const dominants = [];
+  pairs.forEach(([a, b]) => {
+    const va = get(a), vb = get(b);
+    if (Math.abs(va - vb) >= 0.10) dominants.push(KO[va > vb ? a : b]);
+  });
+  const core = dominants.length
+    ? dominants.join('·') + '이 두드러진 성격'
+    : '여러 성향이 균형을 이룬 성격';
+
+  // ── 가치 (Group E) ────────────────────────────────────────
+  const eRules = [
+    ['security',  '보안에 매우 민감함', '보안의식이 약함'],
+    ['creativity','창의성이 풍부함',    '창의성은 보통 이하'],
+    ['empathy',   '공감능력이 높음',    '공감 표현이 절제됨'],
+  ];
+  const valueParts = [];
+  eRules.forEach(([id, hi, lo]) => {
+    const x = get(id);
+    if      (x >= 0.65) valueParts.push(hi);
+    else if (x <= 0.35) valueParts.push(lo);
+  });
+  const values = valueParts.length
+    ? valueParts.join(', ')
+    : '특정 가치 편향이 두드러지지 않음';
+
+  // ── 스타일 (Group F) ──────────────────────────────────────
+  const fRules = [
+    ['conciseness',    '간결한',          '설명이 풍부한'],
+    ['directness',     '직설적인',        '우회적인'],
+    ['optimism',       '낙관적인',        '신중한 톤의'],
+    ['risk_tolerance', '위험을 감수하는', '안전 우선의'],
+    ['patience',       '인내심 있는',     '결론이 빠른'],
+  ];
+  const styleParts = [];
+  fRules.forEach(([id, hi, lo]) => {
+    const x = get(id);
+    if      (x >= 0.65) styleParts.push(hi);
+    else if (x <= 0.35) styleParts.push(lo);
+  });
+  const style = styleParts.length
+    ? styleParts.join(', ') + ' 표현 스타일'
+    : '균형 잡힌 표현 스타일';
+
+  return { core, values, style };
+}
+
+function renderCharacterSummary() {
+  const card = document.getElementById('char-summary');
+  if (!card) return;
+  const s = buildCharacterSummary(_traits);
+  const setText = (id, txt) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = txt;
+  };
+  setText('char-summary-core',   s.core);
+  setText('char-summary-values', s.values);
+  setText('char-summary-style',  s.style);
 }
 
 // ─── 우측 패널: 선택한 trait의 영향력 (P5b 자연어화) ─────────────
@@ -2445,6 +2529,7 @@ function resetCharacter() {
   renderInteractiveRadar();
   renderTraitSliders(_traits);
   renderConnectionsPanel(null);
+  renderCharacterSummary();
 }
 
 // 글로벌 export — 인라인 onclick (HTML의 saveCharacter / resetCharacter).

@@ -1905,8 +1905,16 @@ async def get_feedback_stats_api(
 async def get_character(api_key: str, role: str = Depends(get_role_from_request)):
     _require_admin(api_key, role)
     try:
-        from core.character_profile import get_profile
-        return {"traits": get_profile().get_with_meta()}
+        # [P5c 2026-05-10] summary 필드 추가 — 16 trait 자연어 요약
+        # (핵심/가치/스타일 3 라인). 프론트는 동일 룰의 JS 미러를 가지므로
+        # 이 필드는 chat 등 다른 페이지가 같은 요약을 재사용할 수 있게
+        # 노출하는 server-side 단일 소스 역할.
+        from core.character_profile import get_profile, CharacterProfile
+        profile = get_profile()
+        return {
+            "traits":  profile.get_with_meta(),
+            "summary": CharacterProfile.build_summary(profile.get()),
+        }
     except Exception as e:
         return {"traits": [], "error": str(e)}
 
