@@ -543,21 +543,138 @@ async function loadDashboard() {
   }
 }
 
-/* ── 사용자 ── */
-async function loadUsers() {
+/* ── 사용자 (W4 P2-A) ──
+   Two sections:
+   - Pending signups (active=0) → approve / reject
+   - All users → deactivate active accounts (self-deactivation blocked
+     server-side; we hide the button client-side as a UX nudge).
+*/
+const ALLOWED_ROLES_FOR_APPROVAL = ['admin', 'manager', 'employee', 'external'];
+
+function _userActionEscape(name) {
+  // Usernames pass validate_username (lowercase + [a-z0-9_-]), but the
+  // approval role-select id includes the username — encode defensively
+  // before injecting into HTML attributes/ids.
+  return String(name).replace(/[^a-z0-9_-]/g, '');
+}
+
+function _selfUsernameFromToken() {
+  // We don't persist the logged-in username in localStorage today —
+  // pull it out of the JWT payload (`sub` claim) for the UX nudge
+  // that hides the "deactivate" button on the caller's own row.
+  const tok = localStorage.getItem('james_token') || '';
+  if (!tok) return '';
   try {
-    const data = await api('/admin/users');
+    const parts = tok.split('.');
+    if (parts.length !== 3) return '';
+    let b = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    b += '='.repeat((4 - b.length % 4) % 4);
+    return (JSON.parse(atob(b)).sub) || '';
+  } catch (_e) {
+    return '';
+  }
+}
+
+async function loadUsers() {
+  // Two endpoints in parallel — the server-side filter avoids loading
+  // the full table twice.
+  try {
+    const [allData, pendingData] = await Promise.all([
+      api('/admin/users'),
+      api('/admin/users?pending=true'),
+    ]);
+
+    // ── pending section ─────────────────────────────────────────
+    const pendingBody = document.getElementById('users-pending-body');
+    const pendingCount = document.getElementById('users-pending-count');
+    const pending = pendingData.users || [];
+    if (pendingCount) {
+      pendingCount.textContent = pending.length ? `(${pending.length})` : '';
+    }
+    if (pendingBody) {
+      pendingBody.innerHTML = pending.map(u => {
+        const safeName = _userActionEscape(u.username);
+        const opts = ALLOWED_ROLES_FOR_APPROVAL.map(r =>
+          `<option value="${r}"${r === 'employee' ? ' selected' : ''}>${r}</option>`
+        ).join('');
+        return `
+          <tr>
+            <td class="mono">${u.username}</td>
+            <td class="mono">${u.created_at?.slice(0,10) || '-'}</td>
+            <td><select id="approve-role-${safeName}" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--fg)">${opts}</select></td>
+            <td>
+              <button onclick="approveUser('${u.username}')" style="padding:4px 10px;margin-right:4px;background:#1e7a3e;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.approve')}</button>
+              <button onclick="rejectUser('${u.username}')" style="padding:4px 10px;background:#7a1e1e;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.reject')}</button>
+            </td>
+          </tr>`;
+      }).join('') || `<tr><td colspan='4' class='empty'>${t('users.empty_pending')}</td></tr>`;
+    }
+
+    // ── all-users section ───────────────────────────────────────
     const tbody = document.getElementById('users-body');
-    tbody.innerHTML = (data.users || []).map(u => `
-      <tr>
-        <td>${u.username}</td>
-        <td><span class="badge-role role-${u.role}">${u.role}</span></td>
-        <td class="mono">${u.created_at?.slice(0,10) || '-'}</td>
-        <td class="mono">${u.last_login?.slice(0,16) || '-'}</td>
-      </tr>
-    `).join('') || `<tr><td colspan='4' class='empty'>${t('users.empty')}</td></tr>`;
+    const selfUser = _selfUsernameFromToken();
+    const all = allData.users || [];
+    tbody.innerHTML = all.map(u => {
+      const status = u.active
+        ? `<span class="badge" style="background:#1e7a3e;color:#fff">${t('users.status_active')}</span>`
+        : `<span class="badge" style="background:#7a6b1e;color:#fff">${t('users.status_pending')}</span>`;
+      // Hide deactivate on:
+      //   - the caller's own row (self-deactivation also rejected
+      //     server-side; this is the UX nudge)
+      //   - pending rows (use reject from the pending section)
+      const showDeactivate = u.active && u.username !== selfUser;
+      const action = showDeactivate
+        ? `<button onclick="deactivateUser('${u.username}')" style="padding:4px 10px;background:#444;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.deactivate')}</button>`
+        : '<span style="color:var(--muted)">—</span>';
+      return `
+        <tr>
+          <td class="mono">${u.username}</td>
+          <td><span class="badge-role role-${u.role}">${u.role}</span></td>
+          <td>${status}</td>
+          <td class="mono">${u.created_at?.slice(0,10) || '-'}</td>
+          <td>${action}</td>
+        </tr>`;
+    }).join('') || `<tr><td colspan='5' class='empty'>${t('users.empty')}</td></tr>`;
   } catch (e) {
-    document.getElementById('users-body').innerHTML = `<tr><td colspan="4" class="empty">${e.message}</td></tr>`;
+    document.getElementById('users-body').innerHTML = `<tr><td colspan="5" class="empty">${e.message}</td></tr>`;
+    const pb = document.getElementById('users-pending-body');
+    if (pb) pb.innerHTML = `<tr><td colspan="4" class="empty">${e.message}</td></tr>`;
+  }
+}
+
+async function approveUser(username) {
+  const safe = _userActionEscape(username);
+  const sel  = document.getElementById(`approve-role-${safe}`);
+  const role = sel ? sel.value : 'employee';
+  try {
+    await api('/admin/users/approve', 'POST', { username, role });
+    await loadUsers();
+  } catch (e) {
+    alert(`${t('users.action_failed')}: ${e.message}`);
+  }
+}
+
+async function rejectUser(username) {
+  if (!confirm(t('users.confirm_reject'))) return;
+  try {
+    await api('/admin/users/reject', 'POST', { username });
+    await loadUsers();
+  } catch (e) {
+    alert(`${t('users.action_failed')}: ${e.message}`);
+  }
+}
+
+async function deactivateUser(username) {
+  if (username === _selfUsernameFromToken()) {
+    alert(t('users.self_deactivate_blocked'));
+    return;
+  }
+  if (!confirm(t('users.confirm_deactivate'))) return;
+  try {
+    await api('/admin/users/deactivate', 'POST', { username });
+    await loadUsers();
+  } catch (e) {
+    alert(`${t('users.action_failed')}: ${e.message}`);
   }
 }
 

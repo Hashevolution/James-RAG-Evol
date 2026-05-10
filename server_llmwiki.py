@@ -38,6 +38,10 @@ from core.feedback_engine import FeedbackEngine
 from core.auth import (
     authenticate, get_role_from_token, add_user, ALLOWED_ROLES, DEV_MODE,
     signup as _auth_signup, SignupResult,
+    list_users as _auth_list_users,
+    approve_user as _auth_approve_user,
+    reject_user as _auth_reject_user,
+    deactivate_user as _auth_deactivate_user,
 )
 from core.policy_engine import default_engine
 from processors.file_processor import FileProcessor
@@ -2487,13 +2491,130 @@ async def admin_dashboard(api_key: str, role: str = Depends(get_role_from_reques
     }
 
 
-@app.get("/admin/users", summary="사용자 목록 [P7]")
-async def admin_users(api_key: str, role: str = Depends(get_role_from_request)):
+@app.get("/admin/users", summary="사용자 목록 (W4 P2-A: real implementation)")
+async def admin_users(
+    api_key: str,
+    pending: bool = False,
+    role:    str  = Depends(get_role_from_request),
+):
+    """Return every user row, password hash omitted.
+
+    Query params:
+      pending — when truthy, restrict to active=0 rows so the admin UI
+                can show a focused "approvals queue" without a second
+                round-trip. Defaults to False (full list).
+
+    Pre-W4 this endpoint silently returned an empty list because
+    ``core.auth.list_users`` did not exist; the swallow-and-return shape
+    is replaced with a real implementation. Any exception now surfaces
+    as a 500 — better than masking schema drift behind an empty UI.
+    """
     _require_admin(api_key, role)
+    return {"users": _auth_list_users(only_pending=bool(pending))}
+
+
+# W4 P2-A — admin approves a pending signup (active=0 → active=1 + role).
+# api_key arrives as a query param to match the frontend `api()` helper,
+# which auto-appends ?api_key=... to every admin call. Body holds only
+# the operation-specific fields.
+class AdminUserApproveRequest(BaseModel):
+    username: str
+    role:     str
+
+@app.post("/admin/users/approve", summary="사용자 가입 승인 (W4 P2-A)")
+async def admin_users_approve(
+    data:    AdminUserApproveRequest,
+    request: Request,
+    api_key: str = "",
+    role:    str = Depends(get_role_from_request),
+):
+    _require_admin(api_key, role)
+    if data.role not in ALLOWED_ROLES:
+        raise HTTPException(status_code=400, detail=f"invalid role: {data.role}")
+
+    ok = _auth_approve_user(data.username, data.role)
+    ip = get_client_ip(request)
+    if not ok:
+        _write_audit(role, "/admin/users/approve", query=data.username,
+                     security_event="approve_failed (not pending or unknown)",
+                     ip_address=ip)
+        raise HTTPException(
+            status_code=404,
+            detail="pending 상태의 사용자가 아닙니다. (이미 활성 또는 미존재)",
+        )
+    _write_audit(role, "/admin/users/approve", query=data.username,
+                 security_event=f"approved role={data.role}", ip_address=ip)
+    return {"ok": True, "username": data.username, "role": data.role}
+
+
+# W4 P2-A — admin rejects a pending signup (DELETE the row).
+class AdminUserRejectRequest(BaseModel):
+    username: str
+
+@app.post("/admin/users/reject", summary="사용자 가입 거부 (W4 P2-A)")
+async def admin_users_reject(
+    data:    AdminUserRejectRequest,
+    request: Request,
+    api_key: str = "",
+    role:    str = Depends(get_role_from_request),
+):
+    _require_admin(api_key, role)
+    ok = _auth_reject_user(data.username)
+    ip = get_client_ip(request)
+    if not ok:
+        _write_audit(role, "/admin/users/reject", query=data.username,
+                     security_event="reject_failed (not pending or unknown)",
+                     ip_address=ip)
+        raise HTTPException(
+            status_code=404,
+            detail="pending 상태의 사용자가 아닙니다. (활성 사용자는 비활성화를 사용하세요)",
+        )
+    _write_audit(role, "/admin/users/reject", query=data.username,
+                 security_event="rejected (row deleted)", ip_address=ip)
+    return {"ok": True, "username": data.username}
+
+
+# W4 P2-A — admin deactivates an active user (active=1 → active=0).
+class AdminUserDeactivateRequest(BaseModel):
+    username: str
+
+@app.post("/admin/users/deactivate", summary="사용자 비활성화 (W4 P2-A)")
+async def admin_users_deactivate(
+    data:    AdminUserDeactivateRequest,
+    request: Request,
+    api_key: str = "",
+    role:    str = Depends(get_role_from_request),
+):
+    _require_admin(api_key, role)
+    # Admin cannot deactivate themselves — that would be an instant
+    # lockout. The role check above has already confirmed the caller's
+    # role is admin; we read the JWT subject to recover the username.
     try:
-        from core.auth import list_users
-        return {"users": list_users()}
-    except: return {"users": []}
+        from core.auth import verify_token
+        caller_payload = None
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            caller_payload = verify_token(auth_header[7:].strip())
+        caller_username = (caller_payload or {}).get("sub")
+    except Exception:
+        caller_username = None
+    if caller_username and caller_username == data.username:
+        raise HTTPException(
+            status_code=400,
+            detail="자기 자신을 비활성화할 수 없습니다.",
+        )
+
+    ok = _auth_deactivate_user(data.username)
+    ip = get_client_ip(request)
+    if not ok:
+        _write_audit(role, "/admin/users/deactivate", query=data.username,
+                     security_event="deactivate_failed (unknown user)",
+                     ip_address=ip)
+        raise HTTPException(status_code=404,
+                            detail="존재하지 않는 사용자입니다.")
+    _write_audit(role, "/admin/users/deactivate", query=data.username,
+                 security_event="deactivated", ip_address=ip)
+    return {"ok": True, "username": data.username}
 
 
 @app.get("/admin/entities", summary="Entity 현황 — search + paging [item #1]")

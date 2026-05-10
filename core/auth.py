@@ -210,6 +210,73 @@ def deactivate_user(username: str) -> bool:
         conn.close()
 
 
+# ─── W4 P2-A: admin user-management helpers ────────────────────
+
+def list_users(only_pending: bool = False) -> list:
+    """Return every user row as a list of dicts, password hash omitted.
+
+    The password column is excluded by name (not by post-filter) so that
+    a future schema change adding another sensitive column has to be
+    opted into explicitly. Sort is (active desc, username asc) so
+    pending rows surface together for admin review.
+    """
+    conn = _get_conn()
+    try:
+        sql = (
+            "SELECT username, role, active, created_at FROM users"
+        )
+        if only_pending:
+            sql += " WHERE active = 0"
+        sql += " ORDER BY active ASC, username ASC"
+        rows = conn.execute(sql).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def approve_user(username: str, role: str) -> bool:
+    """Activate a pending user and assign a role.
+
+    Only operates on rows with ``active=0``. Calling on an already-active
+    row returns False — admins should use ``change_role`` for that case
+    (deliberately scoped: approval is an audit-significant event and
+    must not be silently re-fired).
+    """
+    if role not in ALLOWED_ROLES:
+        return False
+    conn = _get_conn()
+    try:
+        cur = conn.execute(
+            "UPDATE users SET active = 1, role = ? "
+            "WHERE username = ? AND active = 0",
+            (role, username),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def reject_user(username: str) -> bool:
+    """Delete a pending user row.
+
+    Only operates on ``active=0``. Refusing to delete active users
+    prevents a misclick from wiping a real account; the active-account
+    workflow is ``deactivate_user`` instead. DELETE (not flag) is used
+    so the same username can be retried as a fresh signup.
+    """
+    conn = _get_conn()
+    try:
+        cur = conn.execute(
+            "DELETE FROM users WHERE username = ? AND active = 0",
+            (username,),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
 # ─── W4 P1-B: self-service signup + policy validation ─────────
 
 # Hard upper bound chosen to match bcrypt's native 72-byte input window.

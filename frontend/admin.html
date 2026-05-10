@@ -580,10 +580,33 @@
     <!-- 사용자 -->
     <div class="page" id="page-users">
       <div class="page-title"><span data-i18n="users.page_title">👥 사용자 관리</span></div>
+
+      <!-- W4 P2-A: pending signups (active=0) -->
+      <div class="section-title">▸ <span data-i18n="users.pending_title">가입 신청 대기</span> <span style="font-size:11px;color:var(--muted);margin-left:8px" id="users-pending-count"></span></div>
+      <div class="table-wrap" style="margin-bottom:16px">
+        <table>
+          <thead><tr>
+            <th data-i18n="users.username">사용자</th>
+            <th data-i18n="users.created">생성일</th>
+            <th data-i18n="users.approve_as">승인 역할</th>
+            <th data-i18n="users.actions">액션</th>
+          </tr></thead>
+          <tbody id="users-pending-body"><tr><td colspan="4" class="loading" data-i18n="common.loading">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+
+      <!-- W4 P2-A: active users -->
+      <div class="section-title">▸ <span data-i18n="users.all_title">전체 사용자</span></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th data-i18n="users.username">사용자</th><th data-i18n="users.role">ROLE</th><th data-i18n="users.created">생성일</th><th data-i18n="users.last_login">마지막 로그인</th></tr></thead>
-          <tbody id="users-body"><tr><td colspan="4" class="loading" data-i18n="common.loading">로딩 중...</td></tr></tbody>
+          <thead><tr>
+            <th data-i18n="users.username">사용자</th>
+            <th data-i18n="users.role">ROLE</th>
+            <th data-i18n="users.status">상태</th>
+            <th data-i18n="users.created">생성일</th>
+            <th data-i18n="users.actions">액션</th>
+          </tr></thead>
+          <tbody id="users-body"><tr><td colspan="5" class="loading" data-i18n="common.loading">로딩 중...</td></tr></tbody>
         </table>
       </div>
     </div>
