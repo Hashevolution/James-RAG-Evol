@@ -307,6 +307,67 @@ Don't be discouraged by review feedback — it's how we build a quality codebase
 
 ---
 
+## DCO (Signed-off-by)
+
+All contributions to this repository must be certified under the
+[Developer Certificate of Origin (DCO) v1.1](https://developercertificate.org).
+This is enforced automatically — every commit in every pull request
+must include a `Signed-off-by:` trailer, or the `DCO` check will fail
+and the PR cannot be merged.
+
+### How to sign off
+
+The simplest way: pass `-s` to every commit.
+
+```bash
+git commit -s -m "fix: example change"
+```
+
+Git will automatically append a line like:
+
+```
+Signed-off-by: Your Real Name <you@example.com>
+```
+
+Use the same name and email as your GitHub account.
+
+### Already committed without `-s`?
+
+If your PR fails the `DCO` check, fix all commits at once:
+
+```bash
+git rebase --signoff main
+git push --force-with-lease
+```
+
+The `DCO` check will re-run on push and turn green.
+
+### What you are certifying
+
+By signing off, you are stating that **you wrote the code yourself**
+(or have the right to submit it under the project's license — MIT)
+and that you understand the contribution will be public and may be
+redistributed under the same license. Read the full text at
+<https://developercertificate.org>.
+
+### Why DCO and not a CLA?
+
+DCO is lightweight (one git command), legally sufficient for an
+MIT-licensed project at this scale, and matches the model used by
+the Linux kernel, Docker, GitLab, and many other large projects.
+We may revisit this at v1.0 — see
+[`docs/handovers/session-2026-05-09-license-infrastructure.md`](docs/handovers/session-2026-05-09-license-infrastructure.md)
+§3 for the rationale.
+
+### 한국어 요약
+
+모든 PR의 모든 커밋은 `Signed-off-by:` 라인을 포함해야 합니다 (DCO).
+가장 쉬운 방법: `git commit -s`로 커밋. 누락된 PR은 `git rebase
+--signoff main && git push --force-with-lease`로 일괄 수정. CLA 봇·
+서명 동의서는 사용하지 않습니다.
+
+---
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).

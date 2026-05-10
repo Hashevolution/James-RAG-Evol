@@ -1,0 +1,92 @@
+name: DCO
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  dco-check:
+    name: DCO
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Verify Signed-off-by on every commit
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          # Make sure the base ref is reachable for the range below.
+          git fetch --no-tags --depth=200 origin "$BASE_SHA" || true
+
+          commits=$(git log --no-merges --format=%H "$BASE_SHA".."$HEAD_SHA")
+
+          if [ -z "$commits" ]; then
+            echo "::notice::No non-merge commits to check."
+            exit 0
+          fi
+
+          missing=()
+          malformed=()
+
+          for sha in $commits; do
+            # Pull author identity for the expected sign-off line.
+            author_name=$(git log -1 --format=%an "$sha")
+            author_email=$(git log -1 --format=%ae "$sha")
+            expected="Signed-off-by: ${author_name} <${author_email}>"
+
+            body=$(git log -1 --format=%B "$sha")
+
+            # Any Signed-off-by trailer at all?
+            if ! grep -qE '^Signed-off-by: .+ <.+@.+>$' <<< "$body"; then
+              missing+=("$sha")
+              continue
+            fi
+
+            # Author-matching trailer specifically?
+            if ! grep -Fqx "$expected" <<< "$body"; then
+              malformed+=("$sha (expected: $expected)")
+            fi
+          done
+
+          if [ ${#missing[@]} -eq 0 ] && [ ${#malformed[@]} -eq 0 ]; then
+            echo "All commits carry a valid Signed-off-by trailer."
+            exit 0
+          fi
+
+          {
+            echo "## DCO check failed"
+            echo
+            echo "All commits in this pull request must include a"
+            echo '`Signed-off-by:` trailer per the Developer Certificate'
+            echo "of Origin. See CONTRIBUTING.md → DCO."
+            echo
+            if [ ${#missing[@]} -gt 0 ]; then
+              echo "### Commits missing Signed-off-by"
+              for c in "${missing[@]}"; do echo "- $c"; done
+              echo
+            fi
+            if [ ${#malformed[@]} -gt 0 ]; then
+              echo "### Commits whose Signed-off-by does not match the author"
+              for c in "${malformed[@]}"; do echo "- $c"; done
+              echo
+            fi
+            echo "### How to fix"
+            echo
+            echo '```bash'
+            echo "git rebase --signoff main"
+            echo "git push --force-with-lease"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+          exit 1

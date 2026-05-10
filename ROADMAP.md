@@ -164,30 +164,61 @@ domain packs will be built against.
 
 ### Deliverables
 
-- [ ] `core/plugins/base.py` — typed interfaces for 4 plugin types:
+> Sequential breakdown — see
+> [`docs/handovers/session-2026-05-09-license-infrastructure.md`](docs/handovers/session-2026-05-09-license-infrastructure.md)
+> §5 for the full dependency rationale and per-PR effort estimates.
+> Each item below = one PR. Order: **D1 → D2 → D3 → D4 → D5 → D7**,
+> with D6 orthogonal.
+
+#### Plugin API track (D1–D7)
+
+- [ ] **D1** — `docs/VERSIONING.md`: SemVer + 12-month deprecation
+      policy + plugin-API-version vs JAMES-version mapping.
+      *Blocks D2 — interfaces need a stability promise.*
+- [ ] **D2** — `core/plugins/base.py`: typed interfaces for 4 plugin
+      types (no implementations, just `Protocol` / `ABC` definitions
+      and docstring contracts):
   - `OntologyPack` (entity types, relations, hierarchies)
   - `PromptPack` (system prompts, few-shot examples per task)
   - `UIPanel` (server-rendered admin/user widgets)
   - `Scorer` (custom retrieval/answer scoring overrides)
-- [ ] `core/plugins/loader.py` — `JAMES_PLUGINS=general,reference`
-      env-driven dynamic loader; signed manifest; SemVer enforcement
-- [ ] `packs/general/` — JAMES's default behavior extracted as a
-      pack (dogfood gate: removing it disables JAMES; swapping changes
-      domain)
-- [ ] `docs/PLUGIN_AUTHORING.md` — author guide
-- [ ] `JAMES_WORKSPACE=` env var for multi-instance hosting (same
-      code, different data root)
-- [ ] SemVer + 12-month deprecation policy committed to
-      `docs/VERSIONING.md`
+- [ ] **D3** — `core/plugins/manifest.py`: `pack.toml` schema (name,
+      version, JAMES API range, manifest hash, entry points).
+- [ ] **D4** — `core/plugins/loader.py`:
+      `JAMES_PLUGINS=general,reference` env-driven dynamic loader;
+      SemVer enforcement against `JAMES_API_VERSION`; refuses
+      unsigned-manifest packs.
+- [ ] **D5** — `packs/general/`: JAMES's default behavior extracted
+      as the dogfood pack. Removing it must break the server with a
+      clear error; reinstalled it must produce byte-identical STEP 7
+      results vs v0.2 main.
+- [ ] **D6** — `JAMES_WORKSPACE=` env var for multi-instance hosting
+      (same code, different data root). *Independent of D1–D5; can
+      land in any slot.*
+- [ ] **D7** — `docs/PLUGIN_AUTHORING.md`: end-to-end author guide,
+      written so a new contributor can build a no-op pack in < 1 day.
+      *Land last — content depends on D1–D5 being shippable.*
 - [ ] Eval contract: every pack passes RAGAS + STEP-N before merge
+      (mechanism added in D4 loader; documented in D7).
+
+#### Knowledge cascade track (parallel to plugin API)
+
 - [ ] **Knowledge cascade** — relation provenance + delete/modify
-      cascade + graph editor.
-      Replaces the v0.2 single-`confidence` field with `sources:
-      [{doc_id, weight, role, ts}]` so file delete/modify can
-      surgically update only the affected derived knowledge without
-      losing other docs' contributions. Outline + 5-phase plan in
+      cascade + graph editor. Replaces the v0.2 single-`confidence`
+      field with `sources: [{doc_id, weight, role, ts}]` so file
+      delete/modify can surgically update only the affected derived
+      knowledge without losing other docs' contributions. Outline +
+      5-phase plan in
       [`docs/design/v0.3-knowledge-cascade.md`](docs/design/v0.3-knowledge-cascade.md).
       May slip to v0.3.x patch — calibrate expectations.
+
+#### Contributor infrastructure (landed 2026-05-09)
+
+- [x] License decision recorded — **MIT retained**; re-evaluation
+      triggers documented. See handover §2.
+- [x] DCO (`Signed-off-by`) verification via
+      `.github/workflows/dco.yml`; CONTRIBUTING.md DCO section added.
+      No CLA bot. See handover §3.
 
 ### Done when
 
