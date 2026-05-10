@@ -298,24 +298,20 @@ class FrontendArtifactTests(unittest.TestCase):
         self.assertIn("3d-force-graph", self.html,
                       "graph.html must load the 3d-force-graph library")
 
-    def test_html_has_query_box(self):
-        self.assertIn('id="qbox"', self.html)
-        self.assertIn('onclick="askQuestion()"', self.html)
+    # [W2 2026-05-10] qbox / askQuestion 제거 — graph 페이지에서 질문
+    # 인터페이스 사라짐 (/chat 으로 이관). parsePath / animatePaths 도
+    # 질문 답변 path 시각화 전용 → 동시 제거. spawnPulse 는 exploreFromNode
+    # 에서 여전히 사용되므로 별도 검증.
 
     def test_html_has_canvas_and_legend(self):
         self.assertIn('id="graph-canvas"', self.html)
         self.assertIn('class="legend"', self.html)
         self.assertIn('data-i18n="graph.legend.person"', self.html)
 
-    def test_js_has_path_parser_and_pulse(self):
-        # The path-string parser is the source of the animation; if it
-        # silently breaks the pulse won't fire, so guard it explicitly.
-        self.assertIn("function parsePath", self.js,
-                      "graph.js must parse the graph_paths string format")
+    def test_js_has_pulse_spawner(self):
+        # spawnPulse 는 exploreFromNode (이웃 시각화) 에서 사용되므로 유지.
         self.assertIn("spawnPulse", self.js,
                       "graph.js must define a sprite pulse spawner")
-        self.assertIn("animatePaths", self.js,
-                      "graph.js must drive the animation from /query/ output")
 
     def test_js_uses_admin_snapshot_endpoint(self):
         self.assertIn("/admin/graph/snapshot", self.js,

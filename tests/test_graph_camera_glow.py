@@ -188,12 +188,8 @@ class NodeHaloTests(unittest.TestCase):
         self.assertIn("tickNodeHalos", body,
             "tickNodeHalos must run every frame from pulseTick")
 
-    def test_refresh_called_from_activate_path(self):
-        # When a path activates, halos should appear on the path nodes.
-        idx = self.js.index("function activatePath")
-        body = self.js[idx:idx + 3500]
-        self.assertIn("refreshNodeHalos", body,
-            "activatePath must refresh halos to show on path nodes")
+    # [W2 2026-05-10] activatePath 제거 — 질문-답변 path 시각화가 사라졌음.
+    # exploreFromNode 가 유일한 path activator → halos 도 거기서만 갱신.
 
     def test_refresh_called_from_explore(self):
         idx = self.js.index("function exploreFromNode")

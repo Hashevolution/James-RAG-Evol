@@ -34,27 +34,19 @@
   var nameIdx = new Map();         // normalized name → [node refs]
   var edgeIdx = new Map();         // 's|t' → link ref
   var pulses  = [];                // active sprites being tweened
-  var afterGlow = new Map();       // legacy time-based glow (briefly used by re-fire)
   var hoverEl = null;
 
-  // [#4-2 e/j, 2026-05-09] path persistence — replaces the old time-based
-  // afterGlow expiry. Once a question's path is shown it stays lit until
-  // (a) another question is asked, (b) user clicks a history entry to
-  // switch, or (c) closeAnswer() resets to default mode. No 4.2s timer.
+  // [#4-2 e/j, 2026-05-09] path persistence — once a path is shown it
+  // stays lit until (a) another node is clicked or (b) clearActivePath
+  // resets to default. [W2 2026-05-10] question-driven paths 제거 —
+  // exploreFromNode (이웃 lighting) 가 유일한 path activator.
   var activePathEdges = new Set();   // edge keys currently lit
   var activePathNodes = new Set();   // node ids currently labeled (path-traversed)
-  var activeAnswerId  = null;        // which entry in answerHistory is active
 
   // [#4-2 c-label/f] always-visible name labels. Hubs are always shown.
   // Path-traversed nodes are shown while the path is active. Both share
   // the same Sprite-text mechanism so nothing duplicates.
   var labelSprites    = new Map();   // node id → THREE.Sprite (or null)
-
-  // [#4-2 h/i] in-memory question history. Decision C-3 — session-volatile,
-  // never persisted (page refresh on /admin/graph is uncommon and the
-  // history is observability scaffolding, not a save target).
-  var answerHistory   = [];          // [{id, question, answer, paths, ts}]
-  var historyCounter  = 0;           // monotonic id source
 
   // [PR mobile-loop-search, 2026-05-09] persistent pulse loop.
   // After activatePath / exploreFromNode runs, sprite pulses replay
@@ -74,7 +66,6 @@
   // Spacing constant — radius scales with sqrt(N).
   var SPHERE_K  = 24;
   var PULSE_MS  = 650;
-  var GLOW_MS   = 4200;
   var STEP_GAP  = 220;             // gap between consecutive edge pulses
 
   // [#4-1, 2026-05-09] Hub detection — top 10% by degree AND degree ≥ 5.
@@ -244,15 +235,12 @@
         return isHub(n) ? base * 1.7 : base;
       })
       // [#4-1 a / #4-2 e] base link visibility + persistent path lit.
-      // activePathEdges (no expiry) is the primary "lit" state.
-      // afterGlow (time-based) is preserved as a brief visual "echo" on
-      // a fresh re-fire so the user sees animation, but the path stays
-      // visually lit afterward via activePathEdges.
+      // activePathEdges (no expiry) is the "lit" state — set by
+      // exploreFromNode after a node click, cleared on closeNeighborPanel.
       // [#4-1 d] hub-touching links carry slightly more presence.
       .linkColor(function (l) {
         var k = edgeKey(linkSrc(l), linkTgt(l));
-        if (activePathEdges.has(k) ||
-            (afterGlow.has(k) && afterGlow.get(k) > performance.now())) {
+        if (activePathEdges.has(k)) {
           return getCss('--accent', '#6366f1');
         }
         var hubTouch = isHub(l.source) || isHub(l.target);
@@ -263,8 +251,7 @@
       .linkOpacity(0.7)
       .linkWidth(function (l) {
         var k = edgeKey(linkSrc(l), linkTgt(l));
-        if (activePathEdges.has(k) ||
-            (afterGlow.has(k) && afterGlow.get(k) > performance.now())) {
+        if (activePathEdges.has(k)) {
           return 1.4;                       // slightly bolder for active
         }
         var hubTouch = isHub(l.source) || isHub(l.target);
@@ -496,10 +483,11 @@
 
     renderNeighborPanel(node, neighbors);
 
-    // [PR suggested-q, 2026-05-09] auto-suggest 3 questions related
-    // to the clicked node + its top neighbors. User can click one to
-    // fire the query immediately, or just type their own.
-    renderSuggestedQuestions(generateSuggestedQuestions(node, neighbors));
+    // [W2 2026-05-10] 노드 요약 패널 — neighbor-panel 상단에 엔티티
+    // 본문 발췌·메타 표시. 질문 입력 (askQuestion) + 자동 질문
+    // (suggested-questions) 은 모두 제거됨 — graph 페이지를 순수 탐색기
+    // 로 단순화. 질문은 /chat 페이지에서.
+    fetchAndRenderEntitySummary(node);
 
     // [PR mobile-loop-search] keep the neighborhood lit — pulses re-
     // fire every PULSE_LOOP_MS until next click clears.
@@ -565,159 +553,118 @@
     var panel = document.getElementById('neighbor-panel');
     if (panel) panel.style.display = 'none';
     clearActivePath();
-    // [PR suggested-q] chips are tied to the active node — hide too.
-    clearSuggestedQuestions();
   };
 
-  // ─── [PR explorer] Query reasoning overlay ──────────────────────
-  // Same vibe as the chat page brain animation, simplified — no
-  // /trace/poll polling, just a steady "추론 중" pulse during the
-  // /query/ inflight wait. Once paths arrive, activatePath takes
-  // over with sprite pulses on graph edges (already wired).
-  function showReasoningOverlay() {
-    var ov = document.getElementById('query-reasoning-overlay');
-    if (!ov) return;
-    ov.innerHTML =
-      '<span class="qr-brain" aria-hidden="true">' +
-      '<svg viewBox="0 0 24 24" width="22" height="22">' +
-      '<path d="M5 7 Q5 4 8 4 L16 4 Q19 4 19 7 L19 16 Q19 19 16 19 ' +
-      'L8 19 Q5 19 5 16 Z" fill="none" stroke="currentColor" ' +
-      'stroke-width="1.4"/>' +
-      '<line x1="12" y1="2" x2="12" y2="4" stroke="currentColor" ' +
-      'stroke-width="1.4"/>' +
-      '<circle cx="12" cy="2" r="1" fill="currentColor"/>' +
-      '<circle class="qr-neuron qr-n1" cx="8.5"  cy="8"  r="1.6" ' +
-      'fill="currentColor"/>' +
-      '<circle class="qr-neuron qr-n2" cx="15.5" cy="8"  r="1.6" ' +
-      'fill="currentColor"/>' +
-      '<circle class="qr-neuron qr-n3" cx="12"   cy="14" r="1.6" ' +
-      'fill="currentColor"/>' +
-      '</svg></span>' +
-      '<span class="qr-text">JAMES 추론 중</span>';
-    ov.style.display = 'inline-flex';
-  }
-
-  function hideReasoningOverlay() {
-    var ov = document.getElementById('query-reasoning-overlay');
-    if (!ov) return;
-    ov.style.display = 'none';
-    ov.innerHTML = '';
-  }
-
-  // ─── [PR suggested-q, 2026-05-09] Auto-suggested questions ─────
-  // After clicking a node, generate 3 questions from (node + top
-  // neighbors) and offer them above the query bar. Click a chip →
-  // fills query box + submits. Pure client-side templates so there's
-  // no server roundtrip; user can always type their own.
+  // ─── [W2 2026-05-10] 노드 요약 패널 ────────────────────────────
+  // 사용자가 그래프 노드를 클릭하면 /admin/entities/<id> 를 호출해서
+  // 엔티티 본문 발췌·타입·sensitivity 를 neighbor-panel 상단에 표시.
+  // 이전엔 자동 질문 chip 을 띄웠지만 W2 에서 graph 페이지를 순수
+  // 탐색기로 단순화 — 질문 입력은 /chat 으로 이관.
   //
-  // Korean particle handling: helper picks the right form
-  // (은/는, 이/가, 과/와, 을/를) based on whether the entity name
-  // ends with a 받침 (jongseong). Falls back to consonant/vowel
-  // heuristic for English names.
-  function _hasJongseong(s) {
-    if (!s) return false;
-    var c = s.slice(-1);
-    var code = c.charCodeAt(0);
-    if (code >= 0xAC00 && code <= 0xD7A3) {
-      return ((code - 0xAC00) % 28) !== 0;
-    }
-    if (/[a-z]/i.test(c)) {
-      return !/[aeiou]/i.test(c);
-    }
-    return false;
-  }
-  function _ko_p(name, withJong, withoutJong) {
-    return _hasJongseong(name) ? withJong : withoutJong;
-  }
+  // 동시에 여러 노드 클릭이 들어오면 마지막 요청만 반영 (race 방지).
+  var _summaryReqSeq = 0;
 
-  function generateSuggestedQuestions(node, neighbors) {
-    if (!node) return [];
-    var name = node.name || '?';
-    var type = (node.type || 'concept').toLowerCase();
-    var sortedNs = (neighbors || []).slice().sort(function (a, b) {
-      var bw = (b.edge && b.edge.weight) || 0;
-      var aw = (a.edge && a.edge.weight) || 0;
-      return bw - aw;
-    });
-    var top1 = sortedNs[0] && sortedNs[0].neighbor && sortedNs[0].neighbor.name;
-    var top2 = sortedNs[1] && sortedNs[1].neighbor && sortedNs[1].neighbor.name;
-
-    var questions = [];
-
-    // Q1 — about the node itself (entity-type aware)
-    var p_eun = _ko_p(name, '은', '는');
-    var p_i = _ko_p(name, '이', '가');
-    if (type === 'person') {
-      questions.push(name + p_eun + ' 누구이고, 어떤 활동을 했어?');
-    } else if (type === 'org') {
-      questions.push(name + p_eun + ' 어떤 조직이고 주요 활동은 뭐야?');
-    } else if (type === 'document') {
-      questions.push(name + ' 문서의 핵심 내용은?');
-    } else {
-      questions.push(name + p_i + ' 무엇인지 설명해줘');
-    }
-
-    // Q2 — relationship with the highest-weight neighbor
-    if (top1) {
-      var p_gwa = _ko_p(name, '과', '와');
-      questions.push(name + p_gwa + ' ' + top1 + '의 관계를 설명해줘');
-    }
-
-    // Q3 — comparison/summary across top 2 neighbors, or single
-    // summary fallback when there's only one neighbor.
-    if (top1 && top2) {
-      var p_eul = _ko_p(name, '을', '를');
-      questions.push(name + p_eul + ' 중심으로 ' + top1 +
-                     ', ' + top2 + '의 연결 흐름을 정리해줘');
-    } else if (top1) {
-      var p_e = _ko_p(name, '과', '와');
-      questions.push(name + p_e + ' 관련된 다른 엔티티들도 정리해줘');
-    } else {
-      questions.push(name + '의 주요 특징을 알려줘');
-    }
-
-    return questions.slice(0, 3);
-  }
-
-  function renderSuggestedQuestions(questions) {
-    var box = document.getElementById('suggested-questions');
-    if (!box) return;
-    if (!questions || !questions.length) {
-      box.style.display = 'none';
-      box.innerHTML = '';
-      return;
-    }
-    box.innerHTML = questions.map(function (q) {
-      return '<button class="sq-chip" data-sq-question="' +
-             escapeHtml(q) + '" title="' + escapeHtml(q) + '">' +
-             '<span class="sq-icon">💬</span>' +
-             '<span class="sq-text">' + escapeHtml(q) + '</span>' +
-             '</button>';
-    }).join('');
-    box.style.display = 'flex';
-    // Programmatic listeners (same data-attr + addEventListener pattern
-    // used elsewhere in this file — see PR #157 for the inline-onclick
-    // quoting bug we're avoiding).
-    box.querySelectorAll('[data-sq-question]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var q = btn.getAttribute('data-sq-question');
-        if (!q) return;
-        var input = document.getElementById('qbox');
-        if (input) {
-          input.value = q;
-          if (typeof window.askQuestion === 'function') {
-            window.askQuestion();
-          }
-        }
+  function fetchAndRenderEntitySummary(node) {
+    var box = document.getElementById('neighbor-panel');
+    if (!box || !node || !node.id) return;
+    // 즉시 로딩 표시 — 패널이 그려지자마자 사용자가 응답을 기다리는
+    // 중임을 알 수 있게.
+    renderEntitySummaryPlaceholder(node);
+    var seq = ++_summaryReqSeq;
+    var key = encodeURIComponent(apiKey || '');
+    var url = API + '/admin/entities/' + encodeURIComponent(node.id) +
+              '?api_key=' + key;
+    fetch(url, { credentials: 'same-origin' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        if (seq !== _summaryReqSeq) return;   // outdated — drop
+        renderEntitySummary(data);
+      })
+      .catch(function (e) {
+        if (seq !== _summaryReqSeq) return;
+        renderEntitySummaryError(node, e);
       });
-    });
   }
 
-  function clearSuggestedQuestions() {
-    var box = document.getElementById('suggested-questions');
-    if (!box) return;
-    box.style.display = 'none';
-    box.innerHTML = '';
+  function _summaryHostEl() {
+    // neighbor-panel 안의 .np-summary 엘리먼트를 prepend/replace.
+    var panel = document.getElementById('neighbor-panel');
+    if (!panel) return null;
+    var host = panel.querySelector('.np-summary');
+    if (!host) {
+      host = document.createElement('div');
+      host.className = 'np-summary';
+      // np-title 다음에 삽입 — neighbor-panel 의 헤더는 close 버튼 +
+      // np-title + np-meta + np-list 순서로 그려지므로 np-meta 전에 넣기.
+      var meta = panel.querySelector('.np-meta');
+      if (meta && meta.parentNode === panel) {
+        panel.insertBefore(host, meta);
+      } else {
+        panel.appendChild(host);
+      }
+    }
+    return host;
+  }
+
+  function renderEntitySummaryPlaceholder(node) {
+    var host = _summaryHostEl();
+    if (!host) return;
+    host.innerHTML =
+      '<div class="np-summary-meta">' +
+        '<span class="np-summary-type">' +
+        escapeHtml((node.type || 'unknown').toUpperCase()) +
+        '</span>' +
+      '</div>' +
+      '<div class="np-summary-loading">▸ 요약 불러오는 중…</div>';
+  }
+
+  function renderEntitySummaryError(node, err) {
+    var host = _summaryHostEl();
+    if (!host) return;
+    host.innerHTML =
+      '<div class="np-summary-meta">' +
+        '<span class="np-summary-type">' +
+        escapeHtml((node.type || 'unknown').toUpperCase()) +
+        '</span>' +
+      '</div>' +
+      '<div class="np-summary-body np-empty-body">' +
+        '요약을 불러오지 못했습니다 — ' + escapeHtml(String(err)) +
+      '</div>';
+  }
+
+  function renderEntitySummary(data) {
+    var host = _summaryHostEl();
+    if (!host || !data) return;
+    var etype = data.entity_type || 'unknown';
+    var sens  = data.sensitivity || 'internal';
+    var body  = (data.body || '').trim();
+
+    // 본문 발췌 — 너무 길면 첫 ~360자 + 말줄임. body 가 frontmatter 없는
+    // 순수 문서 텍스트라 그대로 잘라도 안전.
+    var excerpt;
+    if (body.length === 0) {
+      excerpt = '<div class="np-summary-body np-empty-body">' +
+                '본문 비어있음 (메타데이터만 존재)</div>';
+    } else {
+      var trimmed = body.length > 360
+        ? body.slice(0, 360).trimEnd() + '…'
+        : body;
+      excerpt = '<div class="np-summary-body">' +
+                escapeHtml(trimmed) +
+                '</div>';
+    }
+
+    host.innerHTML =
+      '<div class="np-summary-meta">' +
+        '<span class="np-summary-type">' + escapeHtml(etype.toUpperCase()) + '</span>' +
+        '<span class="np-summary-sens sens-' + escapeHtml(sens) + '">' +
+          escapeHtml(sens.toUpperCase()) +
+        '</span>' +
+      '</div>' +
+      excerpt;
   }
 
   // ─── [PR mobile-loop-search] Top entity search drawer ──────────
@@ -826,79 +773,10 @@
     });
   }
 
-  // ─── Path-string parser ────────────────────────────────────
-  // Format produced by core/graph_engine.py:expand_dynamic:
-  //   "Name1 -[REL_TYPE(w=0.8)]→ Name2 -[REL_TYPE(w=0.6)]→ Name3"
-  // We extract consecutive (src, rel, tgt) hops, in order.
-  function parsePath(pathStr) {
-    if (!pathStr || typeof pathStr !== 'string') return [];
-    var hops = [];
-    // Normalize the arrow — split on "→".
-    var tokens = pathStr.split('→');
-    if (tokens.length < 2) return [];
-
-    // For each gap, the left side ends with " -[REL(w=W)]" and the
-    // right side starts with " <Name>". The first token is " <Source>".
-    var leftName = stripBracket(tokens[0]).trim();
-    for (var i = 1; i < tokens.length; i++) {
-      var seg = tokens[i];
-      // Right side: name up to next " -[" (or end).
-      var nextBracket = seg.indexOf('-[');
-      var rightName, restAfter;
-      if (nextBracket >= 0) {
-        rightName = seg.slice(0, nextBracket).trim();
-        restAfter = seg.slice(nextBracket);
-      } else {
-        rightName = seg.trim();
-        restAfter = '';
-      }
-      // The relation that produced this hop is on the LEFT of the arrow,
-      // i.e. embedded in tokens[i-1] (or in the previous restAfter).
-      var prevSeg = i === 1 ? tokens[0] : tokens[i - 1];
-      var rel = extractRelation(prevSeg);
-      if (leftName && rightName) {
-        hops.push({
-          srcName: leftName,
-          tgtName: rightName,
-          rel:     rel.type,
-          weight:  rel.weight,
-        });
-      }
-      // Next hop's left-name = current right-name.
-      leftName = rightName;
-    }
-    return hops;
-  }
-
-  function stripBracket(s) {
-    // Drop a trailing " -[REL(w=W)]" suffix if present.
-    var idx = s.lastIndexOf('-[');
-    if (idx < 0) return s;
-    return s.slice(0, idx);
-  }
-  function extractRelation(seg) {
-    // Find the LAST -[REL(w=W)] in this segment (since the arrow follows it).
-    var m = /-\[\s*([A-Z_]+)\s*\(\s*w\s*=\s*([\d.]+)\s*\)\s*\]\s*$/.exec(seg.trim());
-    if (m) return { type: m[1], weight: parseFloat(m[2]) || 0 };
-    return { type: 'RELATED_TO', weight: 0.7 };
-  }
-
-  // Resolve a hop's name pair → node ids using the snapshot index.
-  function resolveHop(hop) {
-    var s = nameIdx.get(normalizeName(hop.srcName)) || [];
-    var t = nameIdx.get(normalizeName(hop.tgtName)) || [];
-    if (!s.length || !t.length) return null;
-    // If multiple matches, prefer the pair that has a registered edge.
-    for (var i = 0; i < s.length; i++) {
-      for (var j = 0; j < t.length; j++) {
-        if (edgeIdx.has(edgeKey(s[i].id, t[j].id))) {
-          return { src: s[i], tgt: t[j], hasEdge: true };
-        }
-      }
-    }
-    // Otherwise return the first pair (sprite still flies, edge isn't lit).
-    return { src: s[0], tgt: t[0], hasEdge: false };
-  }
+  // [W2 2026-05-10] parsePath / resolveHop / animatePaths 등 path-string
+  // 파서 인프라는 askQuestion 답변의 graph_paths 시각화 전용이었음.
+  // 질문 인터페이스 제거와 함께 dead code → 제거. 후속 PR 에서 chat 페이지
+  // 답변을 graph 페이지에 띄우는 기능이 필요하면 복원.
 
   // ─── [#4-2 c-label/f] Sprite text labels ───────────────────────
   // Canvas-rendered text → Three.Sprite. Cheap (one canvas per node,
@@ -992,57 +870,13 @@
     });
   }
 
-  // ─── [#4-2 e/j] Path activation & reset ─────────────────────────
-  // activate(answerEntry) lights the entry's edges + collects nodes for
-  // labeling. Replays the sprite pulse animation. Persists until
-  // another activate() or clearActivePath().
-  function activatePath(entry) {
-    if (!entry) return;
-    clearActivePath(/*skipRefresh*/true);
-    activeAnswerId = entry.id;
-    var hopsAll = [];
-    (entry.paths || []).forEach(function (p) {
-      var hops = parsePath(p);
-      hops.forEach(function (h) {
-        var resolved = resolveHop(h);
-        if (!resolved) return;
-        hopsAll.push(resolved);
-        if (resolved.hasEdge) {
-          activePathEdges.add(edgeKey(resolved.src.id, resolved.tgt.id));
-        }
-        activePathNodes.add(resolved.src.id);
-        activePathNodes.add(resolved.tgt.id);
-      });
-    });
-    refreshLabels();
-    refreshNodeHalos();   // [PR camera-glow] halos around path nodes
-    // Replay sprite pulses for visual cue (but the lit edges persist).
-    var stepMs = 0;
-    var lastTgt = null;
-    var loopEdges = [];
-    hopsAll.forEach(function (resolved) {
-      setTimeout(function () { spawnPulse(resolved.src, resolved.tgt); }, stepMs);
-      stepMs += STEP_GAP;
-      lastTgt = resolved.tgt;
-      loopEdges.push({ src: resolved.src, tgt: resolved.tgt });
-    });
-    if (graph) {
-      graph.linkColor(graph.linkColor());
-      graph.linkWidth(graph.linkWidth());
-    }
-    // Camera nudge to terminal node so the user sees where the path ends.
-    if (lastTgt) {
-      setTimeout(function () { pulseTerminalNode(lastTgt); }, stepMs + 200);
-    }
-    // [PR mobile-loop-search] keep the path alive — replays pulses
-    // every PULSE_LOOP_MS until next question or node click clears.
-    setTimeout(function () { startPulseLoop(loopEdges); }, stepMs + 400);
-  }
+  // [W2 2026-05-10] activatePath (질문 답변 경로 활성화) 제거. 이제
+  // exploreFromNode (이웃 lighting) 만이 active path 를 사용한다.
+  // clearActivePath 는 closeNeighborPanel/exploreFromNode 가 호출.
 
   function clearActivePath(skipRefresh) {
     activePathEdges.clear();
     activePathNodes.clear();
-    activeAnswerId = null;
     stopPulseLoop();
     refreshNodeHalos();              // [PR camera-glow] kill halos
     if (!skipRefresh) {
@@ -1240,17 +1074,6 @@
     }
     pulses = live;
 
-    // Drop expired afterglow keys so links re-render in their idle color.
-    if (afterGlow.size) {
-      var dirty = false;
-      afterGlow.forEach(function (until, key) {
-        if (until <= now) { afterGlow.delete(key); dirty = true; }
-      });
-      if (dirty && graph) {
-        // Cheap re-trigger so linkColor/linkWidth re-evaluate.
-        graph.linkColor(graph.linkColor());
-      }
-    }
     // [#4-2 c-label/f] keep labels glued to their nodes per frame.
     tickLabelPositions();
     // [PR camera-glow] halo position-track + sine pulse per frame.
@@ -1258,183 +1081,11 @@
     requestAnimationFrame(pulseTick);
   }
 
-  function pulseTerminalNode(node) {
-    if (!node || !graph || typeof THREE === 'undefined') return;
-    // No-op if node is invisible / pre-layout. The sprite at the node
-    // location is already implicit via the existing graph render; we
-    // settle for a brief camera focus hint.
-    onNodeClick(node);
-  }
-
-  function animatePaths(paths) {
-    if (!Array.isArray(paths) || !paths.length) return;
-    var allHops = [];
-    var lastTgt = null;
-    paths.forEach(function (p) {
-      var hops = parsePath(p);
-      hops.forEach(function (h) { allHops.push(h); });
-      if (hops.length) lastTgt = hops[hops.length - 1].tgtName;
-    });
-
-    var stepMs = 0;
-    allHops.forEach(function (h) {
-      var resolved = resolveHop(h);
-      if (!resolved) return;
-      var key = edgeKey(resolved.src.id, resolved.tgt.id);
-      setTimeout(function () {
-        spawnPulse(resolved.src, resolved.tgt);
-        if (resolved.hasEdge) {
-          afterGlow.set(key, performance.now() + GLOW_MS);
-          if (graph) graph.linkColor(graph.linkColor());
-        }
-      }, stepMs);
-      stepMs += STEP_GAP;
-    });
-
-    // Camera nudge to the terminal entity so the user sees the endpoint.
-    if (lastTgt) {
-      var nodes = nameIdx.get(normalizeName(lastTgt));
-      if (nodes && nodes.length) {
-        setTimeout(function () { pulseTerminalNode(nodes[0]); }, stepMs + 200);
-      }
-    }
-  }
-
-  // ─── Query ─────────────────────────────────────────────────
-  window.askQuestion = async function () {
-    var box = document.getElementById('qbox');
-    var btn = document.getElementById('ask-btn');
-    var q = (box.value || '').trim();
-    if (!q) return;
-    // [#4-2 j] new question → clear current path before new one fires.
-    clearActivePath();
-    // [PR suggested-q] hide chips once the user committed to a query
-    // (clicking a chip OR typing their own — both submit through here).
-    clearSuggestedQuestions();
-    btn.disabled = true;
-    btn.textContent = '...';
-    // [PR explorer] reasoning overlay during the inflight wait —
-    // mirrors the brain-pulse vibe of the chat page so the user knows
-    // JAMES is thinking, not stuck.
-    showReasoningOverlay();
-    try {
-      var r = await fetch(API + '/query/', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          api_key:     apiKey,
-          question:    q,
-          session_id:  'graph-viz',
-        }),
-      });
-      var j = await r.json();
-      var entry;
-      if (!r.ok) {
-        entry = recordAnswer(q, '[' + r.status + '] ' + (j.detail || 'error'), []);
-      } else {
-        entry = recordAnswer(q, j.answer || '(empty)', j.graph_paths || []);
-      }
-      renderAnswerCard(entry);
-      activatePath(entry);
-    } catch (e) {
-      var errEntry = recordAnswer(q, String(e), []);
-      renderAnswerCard(errEntry);
-    } finally {
-      hideReasoningOverlay();
-      btn.disabled = false;
-      btn.textContent = t('graph.ask') || 'Ask';
-      box.value = '';                     // clear input for next question
-    }
-  };
-
-  // [#4-2 h] push a new entry into in-memory history. Returns the entry.
-  function recordAnswer(q, a, paths) {
-    historyCounter += 1;
-    var entry = {
-      id:       'h' + historyCounter,
-      question: q,
-      answer:   a,
-      paths:    Array.isArray(paths) ? paths.slice() : [],
-      ts:       Date.now(),
-    };
-    answerHistory.unshift(entry);          // newest first
-    return entry;
-  }
-
-  // [#4-2 g] render the current answer in the card body. Card has a
-  // collapse toggle (g) and a history list (h). The list items are
-  // clickable (i).
-  function renderAnswerCard(entry) {
-    var card = document.getElementById('answer-card');
-    if (!card) return;
-    card.style.display = 'block';
-    card.classList.remove('ac-collapsed');   // expand on every new answer
-    document.getElementById('ac-q').textContent = entry.question || '';
-    document.getElementById('ac-a').textContent = entry.answer  || '';
-    var pathsEl = document.getElementById('ac-paths');
-    if (pathsEl) {
-      pathsEl.innerHTML = '';
-      (entry.paths || []).slice(0, 8).forEach(function (p) {
-        var d = document.createElement('div');
-        d.textContent = '• ' + p;
-        pathsEl.appendChild(d);
-      });
-    }
-    renderHistoryList();
-  }
-
-  // [#4-2 h/i] history list rendering. Each item shows the question
-  // preview + a click handler that re-activates the entry.
-  function renderHistoryList() {
-    var listEl = document.getElementById('ac-history');
-    if (!listEl) return;
-    listEl.innerHTML = '';
-    if (answerHistory.length <= 1) return;
-    var hdr = document.createElement('div');
-    hdr.className = 'ac-history-hdr';
-    hdr.textContent = '이전 질문 (' + (answerHistory.length - 1) + ')';
-    listEl.appendChild(hdr);
-    answerHistory.slice(1).forEach(function (e) {   // skip [0] (current)
-      var row = document.createElement('div');
-      row.className = 'ac-history-row';
-      row.dataset.id = e.id;
-      if (activeAnswerId === e.id) row.classList.add('active');
-      row.title = e.question + '\n\n' + (e.answer || '').slice(0, 140);
-      row.textContent = '▸ ' + (e.question.length > 38
-        ? e.question.slice(0, 38) + '...'
-        : e.question);
-      row.addEventListener('click', function () { onHistoryClick(e.id); });
-      listEl.appendChild(row);
-    });
-  }
-
-  // [#4-2 i] history item click → swap card content + re-fire path.
-  function onHistoryClick(entryId) {
-    var entry = answerHistory.find(function (e) { return e.id === entryId; });
-    if (!entry) return;
-    // Move clicked entry to top so renderHistoryList shows current state.
-    answerHistory = answerHistory.filter(function (e) { return e.id !== entryId; });
-    answerHistory.unshift(entry);
-    renderAnswerCard(entry);
-    activatePath(entry);
-  }
-
-  // [#4-2 g] collapse/expand toggle. CSS rule on .ac-collapsed hides
-  // body sections; the title row stays visible.
-  window.toggleAnswerCard = function () {
-    var card = document.getElementById('answer-card');
-    if (!card) return;
-    card.classList.toggle('ac-collapsed');
-    var btn = document.getElementById('ac-toggle');
-    if (btn) btn.textContent = card.classList.contains('ac-collapsed') ? '▲' : '▼';
-  };
-
-  // [#4-2 j] close the card AND reset to default graph mode (no lit
-  // path). History is preserved — close just hides the card.
-  window.closeAnswer = function () {
-    document.getElementById('answer-card').style.display = 'none';
-    clearActivePath();
-  };
+  // [W2 2026-05-10] askQuestion / answer-card / history / activatePath /
+  // animatePaths / pulseTerminalNode 등 질문-답변 인프라는 모두 제거.
+  // graph 페이지는 순수 탐색기 — 질문은 /chat 페이지에서.
+  // activePathEdges/activePathNodes/clearActivePath 는 exploreFromNode 가
+  // 사용하므로 유지.
 
   // ─── Misc ──────────────────────────────────────────────────
   function escapeHtml(s) {

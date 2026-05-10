@@ -57,16 +57,8 @@ class MobileResponsiveTests(unittest.TestCase):
         self.assertIn(".neighbor-panel", block,
             "neighbor-panel must have phone-specific layout rule")
 
-    def test_query_bar_phone_layout(self):
-        idx = self.html.index("@media (max-width: 720px)")
-        end = self.html.index("@media (max-width: 480px)", idx)
-        block = self.html[idx:end]
-        self.assertIn(".query-bar", block,
-            "query-bar must have phone-specific position/sizing")
-        # iOS zoom-on-focus prevention — input font-size ≥ 16px.
-        self.assertRegex(block, r"\.query-bar\s+input[^{]*\{[^}]*font-size:\s*16px",
-            "query-bar input font-size must be 16px+ on phone "
-            "to prevent iOS auto-zoom-on-focus")
+    # [W2 2026-05-10] query-bar 자체가 graph 페이지에서 제거됐으므로 phone
+    # layout 검증도 무관 — 질문 인터페이스는 /chat 페이지에서.
 
     def test_touch_targets_enlarged(self):
         idx = self.html.index("@media (max-width: 720px)")
@@ -122,14 +114,8 @@ class PulseLoopTests(unittest.TestCase):
             "clearActivePath must also stop the pulse loop so the next "
             "interaction starts from a clean state")
 
-    def test_activate_path_starts_loop(self):
-        idx = self.js.index("function activatePath")
-        # bound at next function — activatePath includes inner forEach
-        # callbacks, search wider window.
-        body = self.js[idx:idx + 3000]
-        self.assertIn("startPulseLoop", body,
-            "activatePath must kick off the pulse loop after the initial "
-            "sprite cascade")
+    # [W2 2026-05-10] activatePath 제거 — 질문 답변 path 시각화가 사라졌음.
+    # exploreFromNode 가 유일한 path activator → pulse loop 도 거기서만 시작.
 
     def test_explore_starts_loop(self):
         idx = self.js.index("function exploreFromNode")
