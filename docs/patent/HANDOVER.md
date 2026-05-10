@@ -3,8 +3,8 @@
 > 본 문서는 James-RAG-Evol의 한국 특허 출원 작업에 대한 전체 진행 상황 핸드오버입니다.
 > 새 대화 세션에서 본 파일 한 개만 읽으면 작업을 이어갈 수 있도록 설계되었습니다.
 >
-> **작성일**: 2026-05-09 (초판) / 2026-05-10 (2차 보강) / 2026-05-10 (skeleton 완성)
-> **마지막 업데이트**: 8개 임시명세서 skeleton 작성 완료 후
+> **작성일**: 2026-05-09 (초판) / 2026-05-10 (2차 보강) / 2026-05-10 (skeleton 완성) / 2026-05-09 (메인 정합 정정)
+> **마지막 업데이트**: 메인 브랜치 vs skeleton 정합성 점검 후 5곳 정정 (STAGE 1, 1A, 3, 4B + 본 핸드오버)
 
 ---
 
@@ -60,7 +60,7 @@ James-RAG-Evol(MIT, GitHub Public)의 핵심 기술 8건에 대해 한국 특허
 
 ### 우선순위 권고 사유
 
-- **1순위 STAGE 1B (Cascade)**: 미구현이지만 명세 완성. v0.3 본 구현이 GitHub에서 진행 중 → 자연 누설 위험으로 가장 빠르게 출원해 우선일 확보
+- **1순위 STAGE 1B (Cascade)**: 디자인 메모만 PR #145로 공개됨 (현재 상태 "outline / feasibility study"). 본 구현은 v0.3에서 예정 → 자연 누설 위험으로 가장 빠르게 출원해 우선일 확보. 디자인 메모 자체가 공개 disclosure이므로 grace 만료 2027-05-08 카운트다운 시작.
 - **2순위 STAGE 1**: 가장 강한 단위 발명 + 시스템 청구
 - **3순위 STAGE 1A**: STAGE 1과 동시 진행 가능
 - **4순위 STAGE 4A**: Grace 가장 빠른 만료 (2027-05-03) — 일정 여유 있되 잊지 말 것
@@ -85,14 +85,14 @@ STAGE 1 + STAGE 1B 두 건만 출원 = **약 4~12만원, 92% 가치 확보**.
 
 | Stage | 파일 | 줄 수 | 점수 | 주요 인용 코드 |
 |-------|------|------|------|---------------|
-| 1 | `stage1-spec-skeleton.md` | 446 | 4/5 ⭐ | `core/memory_loom.py:80-149`, jepa_adapter, graph_engine, ontology |
-| 1A | `stage1a-docsource-gate-spec-skeleton.md` | 173 | 3/5 ⭐ | `core/graph_engine.py:_doc_outgoing_hop_valid` (PR #139, 미머지) |
+| 1 | `stage1-spec-skeleton.md` | 446 | 4/5 ⭐ | `core/memory/loom.py:80-149` (구 `core/memory_loom.py`), `core/query_expander.py` (구 `core/jepa_adapter.py`), graph_engine, ontology |
+| 1A | `stage1a-docsource-gate-spec-skeleton.md` | 173 | 3/5 ⭐ | `core/graph_engine.py:_doc_outgoing_hop_valid` (**PR #139, 머지 완료** `371838c`) |
 | 1B | `stage1b-cascade-spec-skeleton.md` | 327 | 4/5 ⭐⭐ | `docs/design/v0.3-knowledge-cascade.md` (~430줄, 미구현) |
 | 2 | `stage2-feedback-shadow-spec-skeleton.md` | 213 | 2/5 | `core/feedback_engine.py:35-151` (구현 완료) |
-| 3 | `stage3-security-spec-skeleton.md` | 245 | 2/5 | `core/security_layer.py:169-389` (구현 완료) |
+| 3 | `stage3-security-spec-skeleton.md` | 245 | 2/5 | `core/security_layer.py` (구현 완료, 본 분기 169-389 / **메인 라인 시프트** ≈ 249-450) |
 | 4 | `stage4-trait-pair-spec-skeleton.md` | 268 | 2/5 | `core/character_profile.py:17-97` (구현 완료) |
 | 4A | `stage4a-self-evolution-spec-skeleton.md` | 269 | 3/5 ⭐ | `tools/patch/patch_validator.py` (구현 완료), PR #69/77/78/79 |
-| 4B | `stage4b-trace-correlation-spec-skeleton.md` | 305 | 2/5 | `core/observability.py` (미구현, PR #67/97) |
+| 4B | `stage4b-trace-correlation-spec-skeleton.md` | 305 | 2/5 | `core/observability.py` (**Phase 1 구현 완료**, PR #67/97/138 머지) |
 
 각 skeleton 공통 구성:
 - 발명의 명칭 (한·영)
@@ -226,7 +226,7 @@ git push origin --delete docs/patent-additional-candidates
 
 ## 8. 핵심 기술 참조 (코드 인용 사실 검증용)
 
-### Memory Loom 5-gate (`core/memory_loom.py:80-149`)
+### Memory Loom 5-gate (메인 기준 `core/memory/loom.py:80-149`, 본 분기 시점에는 `core/memory_loom.py`)
 
 ```python
 MAX_WRITES_PER_SESSION   = 3       # Gate 3 한도
@@ -237,14 +237,16 @@ CONFLICT_CONFIDENCE_DIFF = 0.3     # Gate 5 confidence 차이 임계값
 
 게이트 순서: confidence → ontology_valid → write_rate → dedup → conflict.
 
-### JEPA-Lite (`core/jepa_adapter.py`)
+### 키워드 동의어 기반 질의 확장기 (메인 기준 `core/query_expander.py`, 구 `core/jepa_adapter.py`)
+
+> ⚠️ **명칭 정정 (2026-05-09)**: 본 모듈은 v0.2 정합성 정정에서 `jepa_adapter` → `query_expander`로 리네임됨. 사유는 LeCun JEPA(Joint-Embedding Predictive Architecture)와 무관한 순수 키워드 동의어 사전 lookup + 한국어 stopword 필터 구현이기 때문. **특허 명세서에 "JEPA"라는 용어 절대 사용 금지** — 청구·실시예 모두 "키워드 동의어 사전 기반 질의 확장"으로 한정 기재.
 
 ```python
-JEPA_TOKEN_HARD_LIMIT = 50     # 확장 후 token 최대
-JEPA_TIMEOUT_SEC      = 3.0    # 이 안에 못 끝내면 bypass
+TOKEN_HARD_LIMIT = 50     # 확장 후 token 최대 (구 JEPA_TOKEN_HARD_LIMIT 별칭은 v0.2까지 호환)
+TIMEOUT_SEC      = 3.0    # 이 안에 못 끝내면 bypass (구 JEPA_TIMEOUT_SEC 별칭 동일)
 ```
 
-LLM 호출 0회, `_SYNONYM_MAP` 17개 표제어, `_STOPWORDS` 한국어 조사 사전.
+LLM 호출 0회, 임베딩 미사용, 그래프 미접근. `_SYNONYM_MAP` 17개 표제어, `_STOPWORDS` 한국어 조사 사전.
 
 ### Graph DFS (`core/graph_engine.py:220-307`)
 
@@ -271,12 +273,14 @@ WEAKEN_TH    = -2.0
 DECAY        = 0.9
 ```
 
-### Security Layer (`core/security_layer.py:169-389`)
+### Security Layer (`core/security_layer.py`)
 
-- `pre_check()` (라인 323-362): validate → detect_attack → extract_data_only → sanitize
-- `mask_sensitive()` (라인 253-275): 10개 PII 정규식
-- `filter_answer_by_role()` (라인 277-316): graph + wiki person entity 마스킹
-- `cross_stage_abac_verify()` (라인 169-224): Vector / Graph / Output 3단계 일관성
+라인 시프트 매핑 (본 분기 → 메인):
+
+- `pre_check()`: validate → detect_attack → extract_data_only → sanitize (본 분기 323-362 / **메인 ≈ 409**)
+- `mask_sensitive()`: 10개 PII 정규식 (본 분기 253-275 / **메인 ≈ 339**)
+- `filter_answer_by_role()`: graph + wiki person entity 마스킹 (본 분기 277-316 / **메인 ≈ 363**)
+- `cross_stage_abac_verify()`: Vector / Graph / Output 3단계 일관성 (본 분기 169-224 / **메인 ≈ 249**)
 
 ### Character Profile (`core/character_profile.py:17-97`)
 

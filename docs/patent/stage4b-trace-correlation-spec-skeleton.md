@@ -6,7 +6,7 @@
 >
 > ⚠️ 점수 2/5 — 비용 압박 시 가장 먼저 생략 검토 후보. STAGE 1/1B 종속항 흡수도 가능.
 >
-> **참고 자료**: PR #67 (ContextVar 인프라), PR #97 (real reasoning stream), `core/observability.py:start_trace, log_stage`, `frontend/static/chat.js:1346-1542`, `server_llmwiki.py /trace/poll/{trace_id}`.
+> **참고 자료**: PR #67 (ContextVar 인프라), PR #97 (real reasoning stream), PR #138 (3D reasoning-graph visualizer). `core/observability.py` (**Phase 1 구현 완료** — uuid7 trace_id 발급, contextvars 기반 전파, 245줄, 메인 머지 완료), `frontend/static/chat.js:1346-1542`, `server_llmwiki.py /trace/poll/{trace_id}`.
 
 ---
 
@@ -248,7 +248,7 @@ LLM 기반 채팅 시스템으로서,
 ### 8.1 서버 측 (Python)
 
 ```python
-# core/observability.py (구현 예정 — PR #67)
+# core/observability.py (Phase 1 구현 완료 — PR #67/97/138 머지, 메인 ≈ 245줄)
 import contextvars
 from datetime import datetime
 from typing import Dict, List

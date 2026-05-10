@@ -4,7 +4,7 @@
 > 특허로(patent.go.kr) 전자출원 시 본 문서를 기반으로 PDF·hwp로 전환하여 첨부하십시오.
 > 작성 시 [TODO] 마커를 모두 제거·채워주세요.
 >
-> **참고 자료**: `core/security_layer.py:169-389` (구현 완료).
+> **참고 자료**: `core/security_layer.py` (구현 완료). 본 분기 시점 라인번호는 169-389 범위였으나 v0.2 후속 PR로 라인이 시프트됨 — 메인 기준 `cross_stage_abac_verify` ≈ 249, `mask_sensitive` ≈ 339, `filter_answer_by_role` ≈ 363, `pre_check` ≈ 409. 출원 직전 메인 기준 라인번호 재확인 필요.
 >
 > ⚠️ "graph traversal per-hop role gating"은 미구현이므로 청구 제외 (포함 시 무효 위험).
 
@@ -56,7 +56,7 @@
 
 ## 4. 과제의 해결 수단
 
-### 4.1 Stage 1 — 입력 Pre-check (`core/security_layer.py:323-362`)
+### 4.1 Stage 1 — 입력 Pre-check (`core/security_layer.py:pre_check()`, 본 분기 라인 323-362, 메인 라인 ≈ 409)
 
 ```python
 class SecurityLayer:
@@ -86,7 +86,7 @@ class SecurityLayer:
         return text[:500]
 ```
 
-### 4.2 Stage 2 — 출력 Post-check (`core/security_layer.py:253-316`)
+### 4.2 Stage 2 — 출력 Post-check (`mask_sensitive()` + `filter_answer_by_role()`, 본 분기 라인 253-316, 메인 라인 ≈ 339-389)
 
 10개 PII 정규식 + 역할별 차단 키워드 + person entity 마스킹:
 
@@ -119,7 +119,7 @@ SENSITIVE_ENTITY_TYPES_BY_ROLE = {
 
 `mask_sensitive()` 는 키워드 + 뒤따르는 값까지 함께 마스킹 (예: "급여: 5000만원" → "[REDACTED]"), `filter_answer_by_role()` 는 graph context의 person entity 이름 + wiki person names 를 모두 마스킹.
 
-### 4.3 Cross-stage ABAC 일관성 검증 (`core/security_layer.py:169-224`)
+### 4.3 Cross-stage ABAC 일관성 검증 (`cross_stage_abac_verify()`, 본 분기 라인 169-224, 메인 라인 ≈ 249-310)
 
 ```python
 def cross_stage_abac_verify(
@@ -232,11 +232,20 @@ LLM 기반 응답 시스템으로서,
 
 ## 8. 실시예 (Working Example)
 
-`core/security_layer.py:169-389` 전체 — 본 명세서에 부속서로 첨부.
+`core/security_layer.py` 전체 — 본 명세서에 부속서로 첨부.
+
+라인 범위는 출원 직전 메인 기준으로 재확인 필요. 본 분기 시점 → 메인 기준 라인 시프트 매핑:
+
+| 함수 | 본 분기 라인 | 메인 라인 (참고) |
+|---|---|---|
+| `cross_stage_abac_verify()` | 169-224 | ≈ 249-310 |
+| `mask_sensitive()` | 253-275 | ≈ 339-361 |
+| `filter_answer_by_role()` | 277-316 | ≈ 363-389 |
+| `pre_check()` | 323-362 | ≈ 409-450 |
 
 특히 다음 함수들이 핵심:
-- `pre_check()` (라인 323-362)
-- `mask_sensitive()` (라인 253-275)
+- `pre_check()` (본 분기 323-362 / 메인 ≈ 409)
+- `mask_sensitive()` (본 분기 253-275 / 메인 ≈ 339)
 - `filter_answer_by_role()` (라인 277-316)
 - `cross_stage_abac_verify()` (라인 169-224)
 - `SecurityLayer` 클래스 (라인 320-394)

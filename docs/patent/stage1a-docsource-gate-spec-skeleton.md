@@ -4,7 +4,7 @@
 > 특허로(patent.go.kr) 전자출원 시 본 문서를 기반으로 PDF·hwp로 전환하여 첨부하십시오.
 > 작성 시 [TODO] 마커를 모두 제거·채워주세요.
 >
-> **참고 자료**: PR #139 (`core/graph_engine.py:_doc_outgoing_hop_valid`), `tests/test_a5d_doc_source_gate.py` (14 unit tests).
+> **참고 자료**: PR #139 (`core/graph_engine.py:_doc_outgoing_hop_valid`, **2026-05-XX 메인 머지 완료** — 머지 커밋 `371838c`), `tests/test_a5d_doc_source_gate.py` (14 unit tests).
 
 ---
 
@@ -193,7 +193,7 @@ def expand_dynamic(self, entity_ids, source_type_filter=None):
             target_id = rel.get("target_id", "")
             target_entity = self.load_entity(target_id) or {}
 
-            # [PR #139 신규 게이트]
+            # [PR #139 게이트 — 2026-05-XX 머지 완료, 메인 graph_engine.py:46-105]
             if entity.get("entity_type") == "document":
                 if not _doc_outgoing_hop_valid(eid, target_entity):
                     continue
@@ -218,7 +218,7 @@ def expand_dynamic(self, entity_ids, source_type_filter=None):
 - [ ] 발명자/출원인 정보 기재
 - [ ] 도면 1~4 작성 (`assets/patent/stage1a-figs/` 권장)
 - [ ] §6 청구항 한국어 법률 용어 검수
-- [ ] §8 실시예에 PR #139 머지 시 실제 코드로 보강
+- [x] §8 실시예 코드는 PR #139 머지 후 메인의 `core/graph_engine.py:46-105` 구현과 동일 (출원 직전 라인번호 재확인 필요)
 - [ ] 공지예외 적용 신청서 별도 첨부
 - [ ] 출원료 6만원 (개인 감면 시 1.8만원) 납부
 

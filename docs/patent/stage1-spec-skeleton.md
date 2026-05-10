@@ -56,9 +56,9 @@
 ```
 [사용자 질의]
    ↓
-(1) 엔티티 추출 모듈 (JEPA-Lite)
-    - 사전 + 토큰화 기반 키워드 확장
-    - LLM 호출 금지
+(1) 키워드 동의어 기반 질의 확장기
+    - 동의어 사전 + 한국어 stopword 토큰화
+    - LLM 호출 금지 / 임베딩 미사용 / 그래프 미접근
     - 50 토큰 hard cap
     - 3 초 timeout
    ↓
@@ -100,7 +100,7 @@
 
 5개 게이트를 모두 통과한 사실만 그래프에 기록되며, 각 거부는 audit log로 보존된다.
 
-상세 구현 (`core/memory_loom.py:80-149` 발췌):
+상세 구현 (메인 기준 `core/memory/loom.py:80-149` 발췌. 본 브랜치 분기 시점에는 단일 파일 `core/memory_loom.py`였으나 v0.2에서 `core/memory/` 패키지로 리팩터링되었음 — 게이트 로직·상수·동작은 동일):
 
 ```python
 def store(self, result: Dict) -> Tuple[bool, str]:
@@ -209,7 +209,7 @@ def store(self, result: Dict) -> Tuple[bool, str]:
 
 ```mermaid
 flowchart TD
-    Q[100. 사용자 질의] --> E[110. 엔티티 추출 모듈<br/>JEPA-Lite<br/>50토큰 cap, 3초 timeout]
+    Q[100. 사용자 질의] --> E[110. 키워드 질의 확장기<br/>동의어 사전 + stopword<br/>50토큰 cap, 3초 timeout]
     E --> H[120. Hybrid 검색 모듈<br/>Vector 60% + BM25 20% + Keyword 20%]
     H --> G[130. Ontology 가중<br/>그래프 DFS 모듈<br/>depth ≤ 4]
     G --> M[140. Memory Loom<br/>5-Gate 검증 모듈]
@@ -257,7 +257,7 @@ flowchart TD
 | 부호 | 명칭 |
 |------|------|
 | 100 | 사용자 질의 입력부 |
-| 110 | 엔티티 추출 모듈 (JEPA-Lite) |
+| 110 | 키워드 동의어 기반 질의 확장 모듈 |
 | 111 | 동의어/확장 사전 저장소 |
 | 120 | Hybrid 검색 모듈 |
 | 130 | Ontology 가중 그래프 traversal 모듈 |
@@ -286,37 +286,39 @@ flowchart TD
 
 ## 9. 발명을 실시하기 위한 구체적인 내용
 
-### 9.1 모듈 (a) — JEPA-Lite 엔티티 추출 (`core/jepa_adapter.py`)
+### 9.1 모듈 (a) — 키워드 동의어 기반 질의 확장기 (`core/query_expander.py`)
+
+> **명칭 정정 (2026-05-09)**: 본 모듈은 본 분기 시점에는 `core/jepa_adapter.py` 명칭을 사용했으나, 이후 v0.2 정합성 정정에서 `core/query_expander.py`로 리네임되었음. 사유는 본 모듈이 LeCun의 JEPA(Joint-Embedding Predictive Architecture)와 무관한 **순수 키워드 동의어 사전 lookup + 한국어 stopword 필터** 구현이기 때문이며, 모듈명에서 임베딩·예측 아키텍처를 연상시키지 않도록 정정함. 본 명세서의 청구항 또한 "동의어 사전 기반 키워드 확장 + 한국어 stopword 제거 + 토큰/타임아웃 hard limit"으로 한정 기재함. (구 jepa_adapter.py는 메인 브랜치에서 deprecation shim으로 보존됨.)
 
 **상수**:
-- `JEPA_TOKEN_HARD_LIMIT = 50` — 확장 후 token 최대 개수
-- `JEPA_TIMEOUT_SEC = 3.0` — 이 안에 못 끝내면 원본 query 반환
+- `TOKEN_HARD_LIMIT = 50` — 확장 후 token 최대 개수 (구 `JEPA_TOKEN_HARD_LIMIT` 별칭은 v0.2까지 호환 유지)
+- `TIMEOUT_SEC = 3.0` — 이 안에 못 끝내면 원본 query 반환 (구 `JEPA_TIMEOUT_SEC` 별칭 동일)
 
 **핵심 흐름**:
 ```python
 def expand(query: str) -> str:
     t_start = time.time()
     tokens = _tokenize_simple(query)         # 1단계: 사전 + 정규식 토크나이징
-    if time.time() - t_start > JEPA_TIMEOUT_SEC:
+    if time.time() - t_start > TIMEOUT_SEC:
         return query                          # timeout 시 bypass
 
-    expanded_tokens = _expand_keywords(tokens)  # 2단계: 동의어 사전 확장 (LLM 없음)
-    if time.time() - t_start > JEPA_TIMEOUT_SEC:
+    expanded_tokens = _expand_keywords(tokens)  # 2단계: 동의어 사전 확장 (LLM 호출 없음)
+    if time.time() - t_start > TIMEOUT_SEC:
         return query
 
-    truncated = _hard_truncate(expanded_tokens, JEPA_TOKEN_HARD_LIMIT)  # 3단계: hard cap
+    truncated = _hard_truncate(expanded_tokens, TOKEN_HARD_LIMIT)  # 3단계: hard cap
     final_tokens = _tokenize_simple(query + " " + " ".join(truncated[:10]))
-    if len(final_tokens) > JEPA_TOKEN_HARD_LIMIT:
-        return " ".join(final_tokens[:JEPA_TOKEN_HARD_LIMIT])  # 4단계: 최종 cap 재적용
+    if len(final_tokens) > TOKEN_HARD_LIMIT:
+        return " ".join(final_tokens[:TOKEN_HARD_LIMIT])  # 4단계: 최종 cap 재적용
     return expanded_query
 ```
 
 **핵심 차별점**:
-- `_SYNONYM_MAP` (`core/jepa_adapter.py:28-47`): 학문/조직/관계/일반 4그룹의 한국어 동의어 사전. 약 17개 표제어, 각 2~3개 확장어. LLM 호출 0회.
-- `_STOPWORDS` (`core/jepa_adapter.py:49-53`): 한국어 조사·어미 제거.
+- `_SYNONYM_MAP` (`core/query_expander.py:28-47`): 학문/조직/관계/일반 4그룹의 한국어 동의어 사전. 약 17개 표제어, 각 2~3개 확장어. **LLM 호출 0회, 임베딩 미사용, 그래프 미접근.**
+- `_STOPWORDS` (`core/query_expander.py:49-53`): 한국어 조사·어미 제거.
 - 4단계 모든 곳에서 **2회의 timeout 검사** + **2회의 hard truncate 검사** = 어떠한 입력에도 3초 이내 / 50 토큰 이내 보장.
 
-### 9.2 모듈 (d) — Memory Loom (`core/memory_loom.py:80-149`)
+### 9.2 모듈 (d) — Memory Loom (`core/memory/loom.py:80-149`)
 
 §4.2 참조. 핵심 상수는 다음과 같다:
 
@@ -327,9 +329,11 @@ MEMORY_DEDUP_WINDOW      = 100     # Gate 4 윈도우
 CONFLICT_CONFIDENCE_DIFF = 0.3     # Gate 5 confidence 차이 임계값
 ```
 
-`_triple_key()` 는 `entity_id::relation_type::tail_id` 합성 키이며, 누락 필드는 `text[:100]` 의 MD5 hash로 fallback (`core/memory_loom.py:44-58`). `_conflict_base_key()` 는 tail_id를 제외한 `entity_id::relation_type` 키로 충돌 판정 인덱스에 사용된다 (`core/memory_loom.py:61-63`).
+`_triple_key()` 는 `entity_id::relation_type::tail_id` 합성 키이며, 누락 필드는 `text[:100]` 의 MD5 hash로 fallback (`core/memory/loom.py:44-58`). `_conflict_base_key()` 는 tail_id를 제외한 `entity_id::relation_type` 키로 충돌 판정 인덱스에 사용된다 (`core/memory/loom.py:61-63`).
 
-자가 검증 테스트 (`core/memory_loom.py:200-267`)는 5개 게이트 각각 + 정상 저장 경로를 모두 커버한다.
+자가 검증 테스트 (`core/memory/loom.py:200-267`)는 5개 게이트 각각 + 정상 저장 경로를 모두 커버한다.
+
+> **경로 정정 주석**: 본 분기 시점에는 단일 파일 `core/memory_loom.py`였으나 v0.2 리팩터링에서 `core/memory/` 패키지로 이동(`extractor.py`, `loom.py`, `store.py`, `trust.py`로 분리). 본 청구의 대상인 5-Gate 검증 로직·상수·실행 순서는 동일하게 보존됨.
 
 ### 9.3 모듈 (b) — Hybrid 검색
 
