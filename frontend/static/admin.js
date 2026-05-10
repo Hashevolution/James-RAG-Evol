@@ -1910,6 +1910,43 @@ const _OPPONENTS = {
   independent:'collaborative', collaborative:'independent',
 };
 
+// ─── Radar 시각 layout (짝이 180° 반대편) ─────────────────────────
+// 16 슬롯 × 22.5° 간격. 짝쌍 4개가 (0,8) (2,10) (4,12) (6,14) 위치.
+// 사이 8 슬롯에 독립 trait (E/F) 분산.
+// backend TRAITS 순서와 무관 — 시각화 매핑만.
+const _RADAR_LAYOUT = [
+  'curiosity',      // 0  — 12:00     (A 짝 ↔ 8)
+  'optimism',       // 1  — 12-1:30   (F 독립)
+  'caution',        // 2  — 1:30      (B 짝 ↔ 10)
+  'creativity',     // 3  — 1:30-3시  (E 독립)
+  'analytical',     // 4  — 3:00      (C 짝 ↔ 12)
+  'directness',     // 5  — 3-4:30시  (F 독립)
+  'independent',    // 6  — 4:30      (D 짝 ↔ 14)
+  'empathy',        // 7  — 4:30-6시  (E 독립)
+  'focus',          // 8  — 6:00      (A 짝)
+  'conciseness',    // 9  — 6-7:30시  (F 독립)
+  'boldness',       // 10 — 7:30      (B 짝)
+  'security',       // 11 — 7:30-9시  (E 독립)
+  'intuitive',      // 12 — 9:00      (C 짝)
+  'patience',       // 13 — 9-10:30시 (F 독립)
+  'collaborative',  // 14 — 10:30     (D 짝)
+  'risk_tolerance', // 15 — 10:30-12시 (F 독립)
+];
+
+function _layoutForRadar(traits) {
+  // backend trait 들을 _RADAR_LAYOUT 순서로 재정렬.
+  // layout 에 없는 trait (forward-compat) 은 끝에 append.
+  const byId = {};
+  traits.forEach(t => { byId[t.id] = t; });
+  const ordered = [];
+  const seen = new Set();
+  _RADAR_LAYOUT.forEach(id => {
+    if (byId[id]) { ordered.push(byId[id]); seen.add(id); }
+  });
+  traits.forEach(t => { if (!seen.has(t.id)) ordered.push(t); });
+  return ordered;
+}
+
 async function loadCharacter() {
   try {
     // 두 API 병렬 호출 — traits + correlations.
@@ -1939,13 +1976,16 @@ function renderInteractiveRadar() {
   const cx = W/2, cy = H/2;
   const R  = Math.min(W, H)/2 - 80;          // 라벨 공간 확보
 
-  const n = _traits.length;
+  // 짝(opposing pair) 이 180° 반대편에 배치되도록 layouted 순서.
+  // backend _traits 는 ID-keyed 함수에서 그대로 사용 (영향 X).
+  const traits = _layoutForRadar(_traits);
+  const n = traits.length;
   if (!n) { svg.innerHTML = ''; return; }
 
   // 각 trait의 angle (위쪽 12시 방향이 첫 trait, 시계방향).
-  const angles = _traits.map((_, i) => (i / n) * Math.PI * 2 - Math.PI/2);
+  const angles = traits.map((_, i) => (i / n) * Math.PI * 2 - Math.PI/2);
   const angleMap = {};
-  _traits.forEach((tr, i) => { angleMap[tr.id] = angles[i]; });
+  traits.forEach((tr, i) => { angleMap[tr.id] = angles[i]; });
 
   // 좌표 변환 — value(0..1) → (x, y).
   function pt(idx, v) {
@@ -1984,7 +2024,7 @@ function renderInteractiveRadar() {
     // 라벨 (icon + 한글명) — 외곽
     const lx = cx + Math.cos(a) * (R + 30);
     const ly = cy + Math.sin(a) * (R + 30);
-    const tr = _traits[i];
+    const tr = traits[i];
     const labelText = (tr.label_ko || tr.label);
     inner += `
       <text class="radar-icon" x="${lx.toFixed(1)}" y="${(ly-8).toFixed(1)}"
@@ -1993,30 +2033,30 @@ function renderInteractiveRadar() {
             text-anchor="middle">${escapeHtml(labelText)}</text>`;
   });
 
-  // ─── 3) 짝(opposing) 연결선 — 매우 흐리게 ────────────────────
+  // ─── 3) 짝(opposing) 연결선 — 정확히 중심 통과 (180° 반대편) ──
   // 시각적으로 "두 trait이 1.0 sum 짝" 임을 알려줌.
   const drawnPairs = new Set();
-  _traits.forEach((tr, i) => {
+  traits.forEach((tr, i) => {
     const opp = _OPPONENTS[tr.id];
     if (!opp) return;
     const key = [tr.id, opp].sort().join('|');
     if (drawnPairs.has(key)) return;
     drawnPairs.add(key);
-    const j = _traits.findIndex(x => x.id === opp);
+    const j = traits.findIndex(x => x.id === opp);
     if (j < 0) return;
-    const p1 = pt(i, _traits[i].value);
-    const p2 = pt(j, _traits[j].value);
+    const p1 = pt(i, traits[i].value);
+    const p2 = pt(j, traits[j].value);
     inner += `<line class="pair-edge" x1="${p1.x.toFixed(1)}" y1="${p1.y.toFixed(1)}"
                     x2="${p2.x.toFixed(1)}" y2="${p2.y.toFixed(1)}"/>`;
   });
 
   // ─── 4) 상관관계 edges (선택된 trait 강조) ───────────────────
   _correlations.forEach((corr) => {
-    const i = _traits.findIndex(x => x.id === corr.from);
-    const j = _traits.findIndex(x => x.id === corr.to);
+    const i = traits.findIndex(x => x.id === corr.from);
+    const j = traits.findIndex(x => x.id === corr.to);
     if (i < 0 || j < 0) return;
-    const p1 = pt(i, _traits[i].value);
-    const p2 = pt(j, _traits[j].value);
+    const p1 = pt(i, traits[i].value);
+    const p2 = pt(j, traits[j].value);
     const sign = corr.weight >= 0 ? 'pos' : 'neg';
     const isActive = _selected_trait_id &&
                      (corr.from === _selected_trait_id || corr.to === _selected_trait_id);
@@ -2034,14 +2074,14 @@ function renderInteractiveRadar() {
   });
 
   // ─── 5) 데이터 폴리곤 (값 영역) ──────────────────────────────
-  const polyPts = _traits.map((tr, i) => {
+  const polyPts = traits.map((tr, i) => {
     const p = pt(i, tr.value);
     return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
   }).join(' ');
   inner += `<polygon class="radar-fill" points="${polyPts}"/>`;
 
   // ─── 6) Vertex (드래그 가능) — 자기 group 색으로 ring 매칭 ──
-  _traits.forEach((tr, i) => {
+  traits.forEach((tr, i) => {
     const p = pt(i, tr.value);
     const sel = (tr.id === _selected_trait_id) ? ' selected' : '';
     const grpCls = tr.group ? ` group-${String(tr.group).toLowerCase()}` : '';
