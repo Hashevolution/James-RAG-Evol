@@ -1,0 +1,60 @@
+/* JAMES — Web UI design tokens (single source of truth).
+ *
+ * Linked from index.html, admin.html, workspace.html, graph.html.
+ * Replaces four duplicated :root blocks that had drifted into
+ * three slightly-different palettes.
+ *
+ * Standardised on the [#A8-9] "report-system" polish originally
+ * shipped in index.html: deeper navy-black background, slate-tinted
+ * surfaces, deeper-indigo accent, plus an intelligence-cyan brand-2
+ * for status badges / dividers and a shadow-card recipe for elevated
+ * surfaces. Graph-page only tokens (entity-type colours) stay inline
+ * in graph.html.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* ── surfaces ── */
+  --bg:           #0a0c11;       /* deeper navy-black */
+  --surface:      #131620;       /* slate-tinted surface */
+  --surface-2:    #181c26;
+  --border:       #262a36;
+  --border-2:     #1d212c;
+
+  /* ── primary brand (deeper indigo, less playful) ── */
+  --accent:       #5258e6;
+  --accent-soft:  rgba(82,88,230,.13);
+  --accent-fg:    #a7afff;
+
+  /* ── secondary brand — "intelligence cyan", used for status
+       badges + section dividers to suggest a knowledge OS. ── */
+  --brand-2:      #4fc3f7;
+  --brand-2-soft: rgba(79,195,247,.10);
+
+  /* ── text ── */
+  --text:         #ececf1;
+  --text-soft:    #c4c6cf;
+  --muted:        #8a8d99;
+  --muted-2:      #5d616c;       /* AA-borderline on --bg; labels only */
+
+  /* ── status ── */
+  --success:      #22c55e;
+  --danger:       #ef4444;
+  --warn:         #f59e0b;
+
+  /* ── shape ── */
+  --radius:       8px;
+  --radius-lg:    10px;
+
+  /* ── elevation — for "report card" surfaces (answer bubbles,
+       settings rows). Sits one notch above flat. ── */
+  --shadow-card:  0 1px 0 rgba(255,255,255,.02) inset,
+                  0 8px 24px rgba(0,0,0,.18);
+
+  /* ── type ── */
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  --font-ui:      'Inter', 'Pretendard', system-ui, -apple-system, sans-serif;
+}

@@ -3,46 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#0c0d10">
+<meta name="theme-color" content="#0a0c11">
 <title>PROJECT JAMES</title>
+<link rel="stylesheet" href="/static/tokens.css">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
-  /* ── 리셋 & 변수 ──
-     [#A8-9 2026-05-09] palette polish — 보고서 관리 시스템 분위기.
-     surface tone slightly cooler (slate ↔ navy mix) for a more
-     enterprise/intelligence look. Accent stays indigo but a touch
-     deeper. New --report-bg for "report card" backgrounds. */
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg:        #0a0c11;       /* deeper navy-black */
-    --surface:   #131620;       /* slate-tinted surface */
-    --surface-2: #181c26;
-    --border:    #262a36;
-    --border-2:  #1d212c;
-    --accent:    #5258e6;       /* deeper indigo, less playful */
-    --accent-soft: rgba(82,88,230,.13);
-    --accent-fg: #a7afff;
-    /* [#A8-9] secondary brand mark — "intelligence cyan" — used for
-       status badges + section dividers to suggest a knowledge OS. */
-    --brand-2:   #4fc3f7;
-    --brand-2-soft: rgba(79,195,247,.10);
-    --text:      #ececf1;
-    --text-soft: #c4c6cf;
-    --muted:     #8a8d99;
-    --muted-2:   #5d616c;
-    --success:   #22c55e;
-    --danger:    #ef4444;
-    --warn:      #f59e0b;
-    --radius:    8px;
-    --radius-lg: 10px;
-    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-    --font-ui:   'Inter', 'Pretendard', system-ui, -apple-system, sans-serif;
-    /* [#A8-9] subtle elevation for "report card" surfaces — answer
-       bubbles, settings rows, etc. Sits one notch above flat. */
-    --shadow-card: 0 1px 0 rgba(255,255,255,.02) inset,
-                   0 8px 24px rgba(0,0,0,.18);
-  }
 
   /* [#A8-9] thin top accent rail — gives every page a subtle "system
      header" stripe like enterprise dashboards. Doesn't move with
