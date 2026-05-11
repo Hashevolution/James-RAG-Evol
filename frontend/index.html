@@ -900,11 +900,14 @@
     </div>
     <!-- [STEP 5-A] 언어 토글 -->
     <button class="nav-btn" data-lang-toggle onclick="toggleLang()" title="Language / 언어"
+            aria-label="언어 전환 / Toggle language"
             style="font-size:11px;font-weight:700;padding:4px 8px"></button>
-    <button class="nav-btn" onclick="clearHistory()" data-i18n-title="chat.clear_history" data-i18n-title="chat.clear_history" title="대화 초기화">🗑</button>
+    <button class="nav-btn" onclick="clearHistory()" data-i18n-title="chat.clear_history" title="대화 초기화"
+            aria-label="대화 기록 삭제">🗑</button>
     <!-- [P3-4] 세션 선택 버튼 -->
-    <button class="nav-btn" onclick="toggleSessionPanel()" data-i18n-title="chat.session_open" data-i18n-title="chat.session_open" title="이전 대화 불러오기"
-            id="session-btn" style="position:relative">
+    <button class="nav-btn" onclick="toggleSessionPanel()" data-i18n-title="chat.session_open" title="이전 대화 불러오기"
+            id="session-btn" aria-label="세션 패널 열기"
+            style="position:relative">
       💬
       <span id="session-count-badge"
             style="display:none;position:absolute;top:-2px;right:-2px;
@@ -939,6 +942,7 @@
         <span data-i18n="chat.new_session">+ 새 대화</span>
       </button>
       <button onclick="toggleSessionPanel()"
+              aria-label="세션 패널 닫기"
               style="background:none;border:none;color:var(--muted);
                      cursor:pointer;font-size:16px;padding:0 4px">✕</button>
     </div>
@@ -953,7 +957,8 @@
 
 <main style="position:relative">
   <button class="sidebar-open-btn" id="sidebar-open-btn"
-          onclick="toggleSidebar()" data-i18n-title="upload.open" title="업로드 열기">▶</button>
+          onclick="toggleSidebar()" data-i18n-title="upload.open" title="업로드 열기"
+          aria-label="사이드바 열기">▶</button>
   <!-- ── 사이드바 (W5: rail + panel split) ── -->
   <aside class="sidebar" id="sidebar">
     <!-- Left rail — mode icons. switchSidebarMode(id) flips both
@@ -980,7 +985,8 @@
     <div class="sidebar-panel">
       <div class="sidebar-header">
         <div class="sidebar-title" id="sidebar-title">▸ <span data-i18n="upload.title">파일 업로드</span></div>
-        <button class="sidebar-toggle" onclick="toggleSidebar()" data-i18n-title="common.close" title="닫기">◀</button>
+        <button class="sidebar-toggle" onclick="toggleSidebar()" data-i18n-title="common.close" title="닫기"
+                aria-label="사이드바 닫기">◀</button>
       </div>
 
       <!-- Mode: 파일 업로드 (default) -->
@@ -1107,6 +1113,7 @@
         </span>
         <button id="mode-install-btn"
                 onclick="triggerModelInstall()"
+                aria-label="LLM 모델 설치"
                 style="display:none;background:var(--accent-soft);
                        border:1px solid var(--accent);color:var(--accent-fg);
                        padding:4px 10px;border-radius:6px;font-size:11px;
@@ -1150,7 +1157,8 @@
                   data-i18n-placeholder="chat.placeholder" rows="1"
           oninput="autoResize(this)" onkeydown="handleKey(event)"
           onpaste="handleChatPaste(event)"></textarea>
-        <button class="send-btn" id="send-btn" onclick="sendMessage()">▲</button>
+        <button class="send-btn" id="send-btn" onclick="sendMessage()"
+                aria-label="메시지 전송">▲</button>
       </div>
     </div>
   </section>

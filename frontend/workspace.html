@@ -249,7 +249,9 @@
       <span class="who" id="role-who"></span>
       <span id="role-name"></span>
     </span>
-    <button class="header-btn" data-lang-toggle onclick="toggleLang()" style="font-weight:700"></button>
+    <button class="header-btn" data-lang-toggle onclick="toggleLang()"
+            aria-label="언어 전환 / Toggle language"
+            style="font-weight:700"></button>
     <a href="/" class="header-btn" style="text-decoration:none" data-i18n="workspace.back_chat">챗</a>
     <button class="header-btn" id="login-btn"
             onclick="showLogin()" data-i18n="auth.login">로그인</button>
@@ -394,7 +396,7 @@
 
 <!-- Artifact detail panel -->
 <div class="detail-panel" id="detail-panel">
-  <button class="close" onclick="closeDetail()">×</button>
+  <button class="close" onclick="closeDetail()" aria-label="상세 패널 닫기">×</button>
   <h3 id="detail-title">—</h3>
   <div class="detail-row"><div class="label">ARTIFACT ID</div><div class="value" id="d-id"></div></div>
   <div class="detail-row"><div class="label">PATH</div><div class="value" id="d-path"></div></div>
