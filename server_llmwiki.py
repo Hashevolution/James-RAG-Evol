@@ -3559,6 +3559,119 @@ async def admin_uploads_history(
             "limit": limit, "offset": offset, "q": qstr}
 
 
+# ─── W4 P6: audit log browser ──────────────────────────────────
+# The legacy /admin/dashboard "최근 쿼리 로그" widget filters on
+# endpoint='/query/', so every user-management / password / api-key
+# event (which all write rows correctly via _write_audit) is
+# invisible in the UI. This endpoint exposes the full audit_log with
+# a category coarse filter + free-text search so admins can review
+# privileged actions without dropping to sqlite3.
+#
+# Categories map to endpoint prefixes:
+#   user_mgmt  →  /admin/users/...
+#   password   →  /password/...  + /signup/
+#   api_keys   →  /api-keys/...
+#   auth       →  /login/
+#   query      →  /query/  + /upload/  (user-driven content events)
+#   all        →  no endpoint filter
+_AUDIT_CATEGORIES = {
+    "user_mgmt": ("/admin/users/",),
+    "password":  ("/password/", "/signup/"),
+    "api_keys":  ("/api-keys/",),
+    "auth":      ("/login/",),
+    "query":     ("/query/", "/upload/"),
+}
+
+@app.get("/admin/audit/list", summary="감사 로그 조회 (W4 P6)")
+async def admin_audit_list(
+    api_key:  str,
+    category: str = "all",
+    q:        str = "",
+    limit:    int = 100,
+    offset:   int = 0,
+    role:     str = Depends(get_role_from_request),
+):
+    """Read audit_log rows with category + free-text filter.
+
+    Query params:
+      category — "user_mgmt" | "password" | "api_keys" | "auth" |
+                 "query" | "all" (default). Unknown values collapse
+                 to "all" to avoid a 400 on a UI typo.
+      q        — substring on (query OR security_event), case-insensitive
+                 via LIKE.
+      limit    — hard cap 500, default 100.
+      offset   — default 0.
+
+    Response shape (per row): id, timestamp, endpoint, user_role,
+    ip_address, query (= filename for /upload/, username for
+    /signup/ etc.), security_event, blocked.
+
+    Admin-gated. The audit_log table has no per-row ACL — anyone with
+    admin can see every row, including security_event strings that
+    may carry sensitive context (rejected passwords are NOT logged
+    verbatim by _write_audit; only the rule name surfaces).
+    """
+    _require_admin(api_key, role)
+    limit  = max(1, min(int(limit or 100), 500))
+    offset = max(0, int(offset or 0))
+    qstr   = (q or "").strip()
+    cat    = category if category in _AUDIT_CATEGORIES else "all"
+
+    where_parts: list = []
+    params:      list = []
+    if cat != "all":
+        prefixes = _AUDIT_CATEGORIES[cat]
+        # one LIKE per prefix joined with OR — the table is small enough
+        # (audit_log is the only event surface) that a UNION is overkill.
+        where_parts.append(
+            "(" + " OR ".join("endpoint LIKE ?" for _ in prefixes) + ")"
+        )
+        params.extend(p + "%" for p in prefixes)
+    if qstr:
+        where_parts.append(
+            "(query LIKE ? OR security_event LIKE ?)"
+        )
+        like = f"%{qstr}%"
+        params.extend([like, like])
+
+    where = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
+
+    items: list = []
+    total: int  = 0
+    try:
+        conn = sqlite3.connect(_AUDIT_DB, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        total = int(conn.execute(
+            f"SELECT COUNT(*) AS c FROM audit_log{where}", params,
+        ).fetchone()["c"])
+        rows = conn.execute(
+            f"SELECT id, timestamp, endpoint, user_role, ip_address, "
+            f"query, security_event, blocked FROM audit_log{where} "
+            f"ORDER BY id DESC LIMIT ? OFFSET ?",
+            (*params, limit, offset),
+        ).fetchall()
+        for r in rows:
+            items.append({
+                "id":             r["id"],
+                "timestamp":      r["timestamp"],
+                "endpoint":       r["endpoint"],
+                "user_role":      r["user_role"],
+                "ip_address":     r["ip_address"],
+                "query":          (r["query"] or "")[:120],
+                "security_event": r["security_event"] or "",
+                "blocked":        bool(r["blocked"]),
+            })
+        conn.close()
+    except Exception as e:
+        return {"items": [], "total": 0, "error": str(e),
+                "category": cat, "q": qstr,
+                "limit": limit, "offset": offset}
+
+    return {"items": items, "total": total,
+            "category": cat, "q": qstr,
+            "limit": limit, "offset": offset}
+
+
 # ────────────────────────────────────────────────────────────────────
 # [#2 file management tab, 2026-05-09] /admin/files/* endpoints —
 # unified file inspection (tree + search + download). Upload + history

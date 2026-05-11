@@ -1054,10 +1054,55 @@
       </div>
     </div>
 
-    <!-- 감사 로그 -->
+    <!-- 감사 로그 (W4 P6: rich filter + paged table) -->
     <div class="page" id="page-audit">
       <div class="page-title"><span data-i18n="audit.page_title">📋 감사 로그</span></div>
-      <div class="log-box" id="audit-log"><div class="loading" data-i18n="common.loading">로딩 중...</div></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5"
+           data-i18n="audit.page_hint">
+        모든 인증/사용자 관리/비밀번호/API 키 이벤트가 audit_log 에 기록됩니다. 카테고리 필터로 좁히거나 이벤트·사용자명·키 prefix 로 검색할 수 있습니다.
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+        <select id="audit-category"
+                onchange="audit_reload()"
+                style="padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--fg);font-size:12px">
+          <option value="all"        data-i18n="audit.cat_all">전체</option>
+          <option value="user_mgmt"  data-i18n="audit.cat_user_mgmt">사용자 관리</option>
+          <option value="password"   data-i18n="audit.cat_password">비밀번호/가입</option>
+          <option value="api_keys"   data-i18n="audit.cat_api_keys">API 키</option>
+          <option value="auth"       data-i18n="audit.cat_auth">로그인</option>
+          <option value="query"      data-i18n="audit.cat_query">질의/업로드</option>
+        </select>
+        <input id="audit-q" type="text"
+               data-i18n-placeholder="audit.search_ph"
+               placeholder="이벤트 / username / 키 prefix 검색"
+               oninput="audit_searchInput()"
+               style="flex:1;min-width:200px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--fg);font-size:12px">
+        <span id="audit-counter"
+              style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th data-i18n="audit.col_time">시각</th>
+            <th data-i18n="audit.col_endpoint">엔드포인트</th>
+            <th data-i18n="audit.col_role">role</th>
+            <th data-i18n="audit.col_event">이벤트</th>
+            <th data-i18n="audit.col_query">대상</th>
+            <th data-i18n="audit.col_ip">IP</th>
+          </tr></thead>
+          <tbody id="audit-body"><tr><td colspan="6" class="loading" data-i18n="common.loading">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+        <button onclick="audit_page(-1)"
+                id="audit-prev"
+                style="padding:6px 14px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--fg);cursor:pointer">← 이전</button>
+        <span id="audit-page-label"
+              style="align-self:center;font-size:12px;color:var(--muted);font-family:var(--font-mono)">page 1</span>
+        <button onclick="audit_page(1)"
+                id="audit-next"
+                style="padding:6px 14px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--fg);cursor:pointer">다음 →</button>
+      </div>
     </div>
 
     <!-- 업로드 이력 [#7-C] -->

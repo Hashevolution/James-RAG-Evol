@@ -1321,27 +1321,97 @@ async function patchAction(patchId, action) {
 }
 
 /* ── 감사 로그 ── */
-async function loadAudit() {
-  try {
-    const data = await api('/admin/audit');
-    const logs = data.logs || [];
-    const el   = document.getElementById('audit-log');
-    el.innerHTML = logs.length
-      ? logs.map(l => renderLogEntry(l)).join('')
-      : `<div class='empty'>${t('dash.no_logs')}</div>`;
-  } catch (e) {
-    document.getElementById('audit-log').innerHTML = `<div class="empty">${e.message}</div>`;
-  }
+/* ── W4 P6: 감사 로그 — category filter + free-text search + paging ──
+   Replaces the legacy single-stream renderer that read /admin/audit
+   (JSONL tail) and showed every event in a flat box. The new
+   /admin/audit/list endpoint queries audit_log directly so user-
+   management / password / api-key events appear here instead of
+   being invisible because the dashboard widget filtered to /query/.
+*/
+const AUDIT_PAGE_SIZE = 50;
+let _auditOffset = 0;
+let _auditTotal  = 0;
+let _auditSearchTimer = null;
+
+function audit_searchInput() {
+  if (_auditSearchTimer) clearTimeout(_auditSearchTimer);
+  _auditSearchTimer = setTimeout(() => {
+    _auditOffset = 0;
+    loadAudit();
+  }, 250);
 }
 
-function renderLogEntry(l) {
-  const blocked  = l.blocked || l.event?.includes('BLOCK') || l.event?.includes('REJECT');
-  const override = l.admin_override;
-  const cls = override ? 'log-override' : (blocked ? 'log-blocked' : 'log-allowed');
-  return `<div class="log-entry ${cls}">
-    <span class="log-time">${(l.time||l.timestamp||'').slice(11,19)}</span>
-    <span>[${l.event||l.action||'EVENT'}] ${l.detail||l.query||''}</span>
-  </div>`;
+function audit_reload() {
+  _auditOffset = 0;
+  loadAudit();
+}
+
+function audit_page(delta) {
+  const next = _auditOffset + delta * AUDIT_PAGE_SIZE;
+  if (next < 0) return;
+  if (next >= _auditTotal && delta > 0) return;
+  _auditOffset = next;
+  loadAudit();
+}
+
+function _auditEscapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function loadAudit() {
+  const cat = document.getElementById('audit-category')?.value || 'all';
+  const q   = (document.getElementById('audit-q')?.value || '').trim();
+  const body = document.getElementById('audit-body');
+  if (body) body.innerHTML = `<tr><td colspan="6" class="loading">${t('common.loading')}</td></tr>`;
+
+  const params = new URLSearchParams({
+    category: cat,
+    limit: String(AUDIT_PAGE_SIZE),
+    offset: String(_auditOffset),
+  });
+  if (q) params.set('q', q);
+
+  try {
+    const data = await api(`/admin/audit/list?${params.toString()}`);
+    _auditTotal = data.total || 0;
+
+    const counter = document.getElementById('audit-counter');
+    if (counter) {
+      const from = _auditTotal ? _auditOffset + 1 : 0;
+      const to   = Math.min(_auditOffset + AUDIT_PAGE_SIZE, _auditTotal);
+      counter.textContent = `${from}–${to} / ${_auditTotal}`;
+    }
+    const pageLabel = document.getElementById('audit-page-label');
+    if (pageLabel) {
+      pageLabel.textContent = `page ${Math.floor(_auditOffset / AUDIT_PAGE_SIZE) + 1}`;
+    }
+
+    if (!body) return;
+    body.innerHTML = (data.items || []).map(it => {
+      // Highlight rows that represent a security event — failed
+      // login / rejected signup / blocked query etc.
+      const ev = it.security_event || '';
+      const isBlock = it.blocked
+        || /fail|rejected|blocked|denied|invalid/i.test(ev);
+      const evCell = ev
+        ? `<span style="${isBlock ? 'color:#d97a7a' : 'color:var(--fg)'}">${_auditEscapeHtml(ev)}</span>`
+        : '<span style="color:var(--muted)">—</span>';
+      return `
+        <tr>
+          <td class="mono" style="font-size:11px;white-space:nowrap">${_auditEscapeHtml((it.timestamp || '').slice(0, 19))}</td>
+          <td class="mono" style="font-size:11px">${_auditEscapeHtml(it.endpoint || '')}</td>
+          <td><span class="badge-role role-${_auditEscapeHtml(it.user_role || '')}">${_auditEscapeHtml(it.user_role || '')}</span></td>
+          <td>${evCell}</td>
+          <td class="mono" style="font-size:11px">${_auditEscapeHtml(it.query || '')}</td>
+          <td class="mono" style="font-size:11px;color:var(--muted)">${_auditEscapeHtml(it.ip_address || '')}</td>
+        </tr>`;
+    }).join('') || `<tr><td colspan='6' class='empty'>${t('audit.empty')}</td></tr>`;
+  } catch (e) {
+    if (body) body.innerHTML = `<tr><td colspan="6" class="empty">${e.message}</td></tr>`;
+  }
 }
 
 /* ── 업로드 파일 이력 [#7-C] ── */
