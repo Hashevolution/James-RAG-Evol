@@ -1081,11 +1081,58 @@
       <button class="modal-btn cancel" onclick="closeLogin()" data-i18n="common.cancel">취소</button>
       <button class="modal-btn primary" onclick="doLogin()" data-i18n="auth.login">로그인</button>
     </div>
-    <!-- W4 P4: signup link beneath login -->
+    <!-- W4 P5: forgot-password link -->
     <div style="margin-top:14px;text-align:center;font-size:12px">
+      <a href="javascript:openForgotPasswordModal()"
+         style="color:var(--muted);text-decoration:underline;cursor:pointer"
+         data-i18n="auth.forgot_password">비밀번호를 잊으셨나요?</a>
+    </div>
+    <!-- W4 P4: signup link beneath login -->
+    <div style="margin-top:8px;text-align:center;font-size:12px">
       <a href="javascript:openSignupModal()"
          style="color:var(--muted);text-decoration:underline;cursor:pointer"
          data-i18n="auth.signup_link">계정이 없으신가요? 회원가입</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── W4 P5: 챗 페이지 비밀번호 찾기 모달 ─────────────────────────
+     Same flow as admin.html: admin issues a one-shot token out-of-band,
+     user pastes it here with their username and new password. Public
+     endpoint /password/reset/confirm — bare fetch, no Bearer, no
+     api_key query. The token-error response is a unified 401 by
+     design (enumeration defense — see ARCHITECTURE.md §5.2).
+-->
+<div class="modal-overlay hidden" id="forgot-password-modal" onclick="closeForgotPasswordOutside(event)">
+  <div class="modal">
+    <div class="modal-title">▸ <span data-i18n="auth.reset_password_title">비밀번호 재설정</span></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5"
+         data-i18n="auth.reset_password_hint">
+      관리자가 발급한 일회용 토큰을 입력하세요. (1시간 유효)
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:6px"
+         data-i18n="auth.reset_admin_hint">
+      💡 토큰이 없다면 관리자에게 "비밀번호 재설정 토큰을 발급해 주세요" 라고 요청하세요.
+      관리자가 사용자 관리 페이지에서 토큰을 발급해 안전한 경로(메신저·전화 등)로 전달합니다.
+    </div>
+    <div class="modal-field">
+      <label data-i18n="auth.username">아이디</label>
+      <input type="text" id="reset-username" autocomplete="username" spellcheck="false">
+    </div>
+    <div class="modal-field">
+      <label>RESET TOKEN</label>
+      <input type="text" id="reset-token" autocomplete="off" spellcheck="false"
+             style="font-family:var(--font-mono);font-size:12px">
+    </div>
+    <div class="modal-field">
+      <label data-i18n="auth.password">새 비밀번호</label>
+      <input type="password" id="reset-new-pw" autocomplete="new-password"
+             onkeydown="if(event.key==='Enter') submitPasswordReset()">
+    </div>
+    <div class="modal-error" id="reset-error"></div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeForgotPasswordModal()" data-i18n="common.cancel">취소</button>
+      <button class="modal-btn primary" onclick="submitPasswordReset()" data-i18n="auth.reset_submit">재설정</button>
     </div>
   </div>
 </div>

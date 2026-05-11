@@ -661,6 +661,70 @@ function closeSignupOutside(e) {
   if (e.target === document.getElementById('signup-modal')) closeSignup();
 }
 
+/* ── W4 P5: forgot-password (chat-page anonymous flow) ──
+   Mirror of admin.html's forgot-password modal. Public
+   POST /password/reset/confirm — bare fetch, no Bearer, no
+   api_key query. Token-error responses collapse to 401 by
+   design (enumeration defense).
+*/
+function openForgotPasswordModal() {
+  closeLogin();
+  const m = document.getElementById('forgot-password-modal');
+  if (!m) return;
+  m.classList.remove('hidden');
+  document.getElementById('reset-error').textContent = '';
+  document.getElementById('reset-username').focus();
+}
+
+function closeForgotPasswordModal() {
+  const m = document.getElementById('forgot-password-modal');
+  if (!m) return;
+  m.classList.add('hidden');
+  // Wipe — a screen-share moment after a reset shouldn't leak values.
+  for (const id of ['reset-username', 'reset-token', 'reset-new-pw']) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  }
+  // Return user to the login modal — they still need to log in once
+  // the reset completes.
+  showLogin();
+}
+
+function closeForgotPasswordOutside(e) {
+  if (e.target === document.getElementById('forgot-password-modal')) {
+    closeForgotPasswordModal();
+  }
+}
+
+async function submitPasswordReset() {
+  const username = document.getElementById('reset-username').value.trim();
+  const token    = document.getElementById('reset-token').value.trim();
+  const newPw    = document.getElementById('reset-new-pw').value;
+  const errEl    = document.getElementById('reset-error');
+  errEl.textContent = '';
+  if (!username || !token || !newPw) {
+    errEl.textContent = '아이디, 토큰, 새 비밀번호를 모두 입력하세요.';
+    return;
+  }
+  try {
+    const r = await fetch(`${API}/password/reset/confirm`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ username, token, new_password: newPw }),
+    });
+    if (r.ok) {
+      toast('✅ 비밀번호가 재설정되었습니다. 새 비밀번호로 로그인하세요.', 'success');
+      closeForgotPasswordModal();
+      return;
+    }
+    let detail = `${r.status}`;
+    try { detail = (await r.json()).detail || detail; } catch (_e) {}
+    errEl.textContent = detail;
+  } catch (e) {
+    errEl.textContent = `서버 오류: ${e.message}`;
+  }
+}
+
 async function doSignup() {
   const username = document.getElementById('signup-id').value.trim();
   const password = document.getElementById('signup-pw').value;
