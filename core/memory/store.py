@@ -214,17 +214,12 @@ class MemoryStore:
 
         return "\n".join(lines) if lines else ""
 
-    def get_stats(self) -> dict:
-        try:
-            with _connect() as conn:
-                return {
-                    "preferences": conn.execute("SELECT COUNT(*) FROM preferences").fetchone()[0],
-                    "patterns":    conn.execute("SELECT COUNT(*) FROM patterns").fetchone()[0],
-                    "goals":       conn.execute("SELECT COUNT(*) FROM goals").fetchone()[0],
-                    "db_path":     DB_PATH,
-                }
-        except Exception:
-            return {"preferences": 0, "patterns": 0, "goals": 0}
+    # [F811 dedup 2026-05-11] First-pass ``get_stats`` (preferences /
+    # patterns / goals / db_path only) lived here. The second-pass
+    # definition further down adds conversations + session_summaries
+    # and was already shadowing this one — Python ignored this
+    # version at runtime. Removed for clarity; the live response
+    # shape does not change.
 
     def clear(self):
         """테스트용 전체 초기화"""

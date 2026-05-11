@@ -521,81 +521,15 @@ def should_promote_to_longterm(query: str) -> bool:
     return _search_history.get(key, 0) >= REPEAT_TH
 
 
-def save_as_longterm(
-    query: str,
-    results: List[Dict],
-    summary: str,
-    user_role: str = "admin",
-) -> Optional[str]:
-    """
-    [경로 A 장기 전환 / 경로 B 직접 저장]
-    웹 검색 결과 → wiki entity 생성 → vector 인덱싱.
-    반환: 생성된 wiki 파일 경로 (실패 시 None)
-    """
-    if not results or not summary:
-        return None
-
-    try:
-        try:
-            from core.graph_rag_engine import RAGEngine
-        except ModuleNotFoundError:
-            from graph_rag_engine import RAGEngine
-
-        engine   = RAGEngine(default_role=user_role)
-        wg       = engine.wiki_generator
-
-        # entity 정보 구성
-        topic    = _topic_key(query)
-        sources  = [r["url"] for r in results if r.get("url")]
-        "\n".join(f"- {u}" for u in sources[:3])
-        now      = datetime.now().isoformat()
-
-        entity = {
-            "name":        topic,
-            "entity_type": "concept",
-            "sensitivity": "internal",
-            "source_type": "prod",
-            "description": summary,
-            "attributes": {
-                "web_sources":   sources,
-                "learned_at":    now,
-                "learn_method":  "web_search",
-            },
-            "relations": [],
-        }
-
-        # wiki .md 파일 생성
-        path = wg.create_entity_file(
-            entity,
-            filename=f"web_{topic[:20]}_{int(time.time())}.md",
-            chunk_ids=[],
-            user_role=user_role,
-        )
-
-        # vector 인덱싱
-        content = Path(path).read_text(encoding="utf-8")
-        try:
-            from core.tokenizer import split_chunks
-        except ImportError:
-            def split_chunks(text, **kw):
-                return [text[i:i+500] for i in range(0, len(text), 500)]
-
-        chunks = split_chunks(content)
-        engine.vector_store.add_documents_with_meta(
-            texts=chunks,
-            source=Path(path).name,
-            metadata={"sensitivity": "internal", "source_type": "prod", "owner": "system"},
-        )
-
-        # entity_id_index 갱신
-        wg.refresh_entity_map()
-
-        print(f"[WEB→WIKI] 장기 저장 완료: {Path(path).name} ({len(chunks)} chunks)")
-        return path
-
-    except Exception as e:
-        print(f"[WEB→WIKI] 장기 저장 실패: {e}")
-        return None
+# [F811 dedup 2026-05-11] An older save_as_longterm without the
+# ``domain`` parameter lived here. Because Python honours the last
+# definition, this older version was the one actually executing —
+# the U-1 improved version at line 401 had no effect at runtime, and
+# the /admin/proposals/approve flow's ``domain=domain`` kwarg silently
+# raised TypeError that the caller's try/except swallowed (line 2072
+# in server_llmwiki.upload, around the /admin/proposals/* approval).
+# Removing this shadow restores the U-1 version + makes the
+# ``domain`` argument live.
 
 
 # ── KnowledgeTracker 연동 ─────────────────────────────────────────

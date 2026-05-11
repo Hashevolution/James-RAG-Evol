@@ -56,104 +56,16 @@ def repeated_pattern(query: str) -> bool:
     return list(_query_history).count(key) >= 2
 
 
-# ─── preference 파싱 (Step 1) ────────────────────────────────
-
-def _parse_preference(query: str) -> Optional[dict]:
-    rules = [
-        (r"(코드|code).*(상세|자세|간단|짧게|길게)", "code_detail_level"),
-        (r"(언어|language).*(한국어|영어|english)",   "response_language"),
-        (r"(답변|응답).*(짧게|간결|상세|자세)",        "response_style"),
-        (r"(먼저|first|우선).*(구조|architecture|설계)", "explain_style"),
-    ]
-    q = query.strip()
-    for pattern, key in rules:
-        if re.search(pattern, q, re.IGNORECASE):
-            return {"type":"preference","key":key,"value":q[:100],
-                    "raw":q,"confidence":0.85,"source":"trusted"}
-    return {"type":"preference","key":"general","value":q[:100],
-            "raw":q,"confidence":0.82,"source":"trusted"}
+# [F811 dedup 2026-05-11] First-pass definitions of _parse_preference /
+# _detect_pattern / _detect_goal / extract_memory / validate_memory
+# lived here. They were shadowed by the second-pass set below (lines
+# starting with the live ``_parse_preference``) and never executed.
+# Removed for clarity. The live behaviour is exactly what was already
+# running — Python uses the most recent definition, so the surviving
+# set produces byte-identical output to before this change.
 
 
-# ─── pattern 감지 (Step 2) ───────────────────────────────────
-
-def _detect_pattern(query: str) -> dict:
-    """
-    Step 2: 반복 행동 또는 명시적 패턴 선언.
-    예: "주로 아키텍처 설계부터 시작해"
-        "보통 코드 리뷰 먼저 요청함"
-    """
-    q = query.strip()
-
-    # 패턴 키워드 기반 파싱
-    rules = [
-        (r"(아키텍처|설계|구조).*(먼저|우선|시작)", "prefers_architecture_first"),
-        (r"(코드|code).*(리뷰|review)",             "prefers_code_review"),
-        (r"(테스트|test).*(먼저|우선)",              "prefers_test_first"),
-        (r"(요약|정리).*(먼저|우선|짧게)",           "prefers_summary_first"),
-    ]
-    for pattern, label in rules:
-        if re.search(pattern, q, re.IGNORECASE):
-            return {"type":"pattern","pattern":label,"raw":q,
-                    "confidence":0.82,"source":"trusted"}
-
-    return {"type":"pattern","pattern":q[:100],"raw":q,
-            "confidence":0.80,"source":"trusted"}
-
-
-# ─── goal 감지 (Step 3) ──────────────────────────────────────
-
-def _detect_goal(query: str) -> dict:
-    """
-    Step 3: 명시적 목표/계획 선언.
-    예: "보안이 강한 RAG 시스템 완성이 목표야"
-        "로컬 AI 엔진 구축하고 싶다"
-    """
-    q = query.strip()
-    return {"type":"goal","goal":q[:200],"raw":q,
-            "confidence":0.80,"source":"trusted"}
-
-
-# ─── 메인 API ────────────────────────────────────────────────
-
-def extract_memory(query: str, response: str) -> Optional[dict]:
-    """
-    질문에서 저장할 Memory 후보 추출.
-    Step 1(preference) → Step 2(pattern) → Step 3(goal) 순서.
-    """
-    if not query or not query.strip():
-        return None
-    q = query.strip()
-
-    # 너무 짧은 잡담 제외
-    if len(q) < 8:
-        return None
-
-    # Step 1: preference trigger
-    if any(k in q for k in TRIGGER_KEYWORDS):
-        return _parse_preference(q)
-
-    # Step 2: pattern trigger 또는 반복
-    if any(k in q for k in PATTERN_KEYWORDS):
-        return _detect_pattern(q)
-    if repeated_pattern(q):
-        return _detect_pattern(q)
-
-    # Step 3: goal trigger
-    if any(k in q for k in GOAL_KEYWORDS):
-        return _detect_goal(q)
-
-    return None
-
-
-def validate_memory(candidate: Optional[dict]) -> bool:
-    """추출된 후보 검증."""
-    if not candidate:
-        return False
-    if candidate.get("source") != "trusted":
-        return False
-    if float(candidate.get("confidence", 0)) < 0.8:
-        return False
-    return True
+# ─── preference 파싱 ─────────────────────────────────────────
 
 def _parse_preference(query: str) -> Optional[dict]:
     """
