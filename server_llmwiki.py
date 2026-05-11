@@ -220,6 +220,21 @@ async def serve_admin():
     return HTMLResponse("<h1>Admin</h1><p>frontend/admin.html 없음</p>")
 
 
+@app.get("/workspace", response_class=HTMLResponse, include_in_schema=False)
+async def serve_workspace():
+    """[W7-B] Standalone workspace page — data explorer + (W8) jobs.
+
+    Public route by design — the HTML is reachable without admin auth so
+    employees can log in here directly. The data endpoints behind it
+    (``/artifacts/mine/*`` and admin-only ``/admin/artifacts/*``) gate
+    on the matrix; this HTML doesn't carry secrets.
+    """
+    page = os.path.join(FRONTEND_DIR, "workspace.html")
+    if os.path.exists(page):
+        return FileResponse(page)
+    return HTMLResponse("<h1>Workspace</h1><p>frontend/workspace.html 없음</p>")
+
+
 @app.get("/admin/graph", response_class=HTMLResponse, include_in_schema=False)
 async def serve_admin_graph():
     """v0.2 Axis 3 — 3D reasoning-graph observability page.
