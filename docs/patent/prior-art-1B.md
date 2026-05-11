@@ -113,15 +113,62 @@ STAGE 1B의 결합 발명:
 - STAGE 1B와의 차이:
 - 위험 등급: 🟢/🟡/🟠/🔴
 
-### 3.2 Google Patents 결과 (Claude 자동 검색)
+### 3.2 Google Patents 결과 (Claude 자동 검색, 2026-05-11 완료)
 
-> Claude가 자동 검색한 결과를 여기에 정리. (검색 진행 중)
+#### 🟠 후보 G-1: US20180060733A1
+- 출원인: IBM (추정)
+- 출원일: 2016-08-31 / 공개: 2018-03-01
+- 제목: Techniques for assigning confidence scores to relationship entries in a knowledge graph
+- 핵심 청구항 요약: 지식그래프 n-튜플 관계에 초기 confidence 할당 + feature vector·학습된 weight로 후속 confidence 산출
+- STAGE 1B와의 차이:
+  - 겹침: 요소 ① (다중 소스 가능) + 요소 ② (가중치 기반 신뢰도)
+  - 차이: **학습 기반 weight** (feature vector + ML) — 우리는 **폐쇄식 `c=1−Π(1−w_i)`**. 삭제 cascade·manual 면역·triple diff 청구 없음.
+- 위험 등급: 🟠 (상당 겹침, 요소 1·2 부분)
+- Mitigation: 청구항 1을 "각 관계가 `{doc_id, weight, role, timestamp}` 튜플 배열을 보유하고, 신뢰도가 `c=1−Π(1−w_i)`로 산출되며, 소스 문서 삭제 시 cascade하는 단계"로 한정. **학습 기반이 아닌 폐쇄식 결합** 명시 필수.
 
-#### 후보 G-1: [TBD]
+#### 🟠 후보 G-2: US8682913B1
+- 출원인: Google
+- 출원일: 2005-03-31 / 등록: 2014-03-25
+- 제목: Corroborating facts extracted from multiple sources
+- 핵심 청구항 요약: 동일 subject의 attribute-value 쌍을 여러 소스에서 추출해 corroborate. "소스 수·importance 메트릭" 기반 confidence
+- STAGE 1B와의 차이:
+  - 겹침: 요소 ① + 일부 ②
+  - 차이: **확률 OR 폐쇄식 명시 없음**, **삭제 cascade 없음**, **manual 면역 없음**, **triple diff 없음**
+- 위험 등급: 🟠 (상당 겹침, 요소 1·일부 2)
+- Mitigation: 청구항에 "noisy-OR closed-form `c=1−Π(1−w_i)`" + "doc_id 기반 삭제 cascade (sources 배열에서 doc_id 제거 → confidence 재계산 → orphan drop → 고립 엔티티 삭제)" + "`role='manual' & doc_id=null` cascade 면역" 종속항 추가.
+
+#### 🟡 후보 G-3~G-6 (일부 겹침)
+- G-3: US8825471B2 — Unsupervised extraction of facts (Google, 2014-09-02)
+- G-4: US9424524B2 — Extracting facts from unstructured text (2016-08-23)
+- G-5: WO2017058584A1 — Extracting facts from unstructured information (2017-04-06)
+- G-6: US20040249871A1 — Auto-removal of documents from knowledge repository (2004-12-09)
+  - 시간 기반 deletion이며 KG cascade 아님. 도메인 다름.
+
+#### 🟢 후보 G-7~G-14 (무관)
+- US20160239500A1, US20110022598A1, US20180144252A1, US20220147835A1, US20240086732,
+  US11409698/US11216456 (Oxford Semantic), US9547823B2, US11645095B2
+
+#### 학술 선행자료 (특허는 아니나 진보성 평가 영향)
+- 🟠 Efthymiou et al., ScienceDirect 2023 — Online maintenance of evolving KG with why-provenance, RDFS saturation, **삭제 처리 명시**. 단 noisy-OR/manual 면역 없음.
+- 🟡 arXiv 2108.07758 (2021) — Provenance of query result probabilities in uncertain KGs
+- 🟡 HUKA (Gaur et al., CIKM 2020) — How-provenance under updates to KGs
+- 🟡 Knowledge Vault (Dong et al., 2014) — Probabilistic knowledge fusion (다중 추출기, noisy-OR 가능성 있음)
 
 ### 3.3 Google Patents 결과 (사용자 직접 검색)
 
 > 사용자가 직접 검색 후 의심 건 여기에 추가.
+
+### 3.4 Claude 검색의 한계 (보완 필수)
+
+1. **patents.google.com 직접 접근 HTTP 403 차단** — 청구항 원문 미확인. 위 분석은 검색엔진 요약 + Justia·SEObytheSea 등 서드파티 설명 기반.
+2. **KIPRIS·CNIPA·J-PlatPat 미검색** — Google Patents가 일부 KR/CN 패밀리를 포함하나 별도 확인 권장.
+3. **IBM·Google의 KR/EP/CN 패밀리** 미확인 — 동일 발명의 한국 출원 여부 확인 필수.
+
+추가 검색 권장:
+1. KIPRIS: "지식그래프 신뢰도 캐스케이드", "노이지-OR 지식그래프", "출처 가중치 트리플"
+2. CNIPA: "知识图谱 置信度 级联 删除"
+3. EPO Espacenet: US20180060733A1, US8682913B1 패밀리 트리
+4. Lens.org: IPC `G06N5/02` + "provenance" + "cascade"
 
 ---
 
@@ -136,16 +183,64 @@ STAGE 1B의 결합 발명:
 
 ---
 
-## 5. 최종 결론
+## 5. 최종 결론 (Claude 검색 단독, KIPRIS 보완 대기)
 
-- 위험 등급 🟠 이상: __건
-- 위험 등급 🔴: __건
+- 위험 등급 🟠 이상: **2건** (US20180060733A1, US8682913B1)
+- 위험 등급 🔴: **0건**
 - **출원 진행 가부**:
   - [ ] ✅ 진행 (위험 없음)
-  - [ ] ⚠️ 청구항 수정 후 진행
+  - [x] ⚠️ **청구항 수정 후 진행** ← **현재 권고**
   - [ ] ❌ 보류 (변리사 자문 필요)
 
+### 청구항 수정 권고 (Mitigation)
+
+기존 skeleton §6 청구항 1을 다음 한정으로 강화:
+
+```
+청구항 1 (수정안):
+지식 그래프 시스템에서 관계의 신뢰도를 도출하는 방법으로서,
+(a) 상기 관계에 대해 출처 가중치 집합 sources = {(doc_id_i, w_i, role_i, ts_i)
+    : i = 1..n} 을 유지하는 단계 — 여기서 각 항목은 학습 가중치가 아닌
+    추출 시점의 LLM 출력 score 또는 정책 기반 weight를 그대로 사용함;
+(b) 상기 관계의 신뢰도 confidence를 폐쇄식 (closed-form)
+    confidence = 1 - Π(1 - w_i) for i in sources 에 의해 도출하는 단계
+    — 학습 모델 추론을 거치지 않음;
+(c) 상기 도출된 신뢰도를 retrieval, scoring, 또는 reasoning 단계에서
+    사용하는 단계
+를 포함하는, 신뢰도 도출 방법.
+```
+
+추가 강화 종속항:
+
+```
+청구항 4 (수정안 — manual 면역, 가장 강한 신규성):
+청구항 2에 있어서, 상기 sources 배열의 각 항목은 role 필드와 doc_id 필드를
+가지며, role 값이 "manual"이고 doc_id 값이 null인 항목은 (b)~(e) 단계의
+어떤 cascade 동작에서도 제거되지 않고 보존되는 것을 특징으로 하는 방법.
+
+청구항 5 (수정안 — triple diff):
+청구항 2에 있어서, 출처 문서가 수정될 때:
+(a) 직전 추출 결과를 (subject, predicate, object) 트리플 집합으로
+    보존하는 단계 — 청구항 1의 sources 배열과 별도로 sidecar 파일로 저장;
+(b) 새 내용에서 동일 트리플 집합을 LLM으로 추출하는 단계;
+(c) 두 집합의 차집합 removed = old - new, added = new - old,
+    교집합 kept = old ∩ new를 산출하는 단계;
+(d) removed에 대해서만 청구항 2의 (b)~(e)를 수행하고, added에 대해서만
+    source 추가를 수행하며, kept에 대해서는 source의 timestamp·weight·role
+    필드를 유지하는 단계
+를 추가로 포함하는 방법.
+```
+
+### 우리의 강한 신규성 (검색 결과 0건)
+
+1. ✅ 폐쇄식 `c = 1 − Π(1 − w_i)` (학습 기반 fusion과 명확 구분)
+2. ✅ `role='manual' & doc_id=null` cascade 면역 — **가장 강한 신규성**
+3. ✅ (s, p, o) 트리플 단위 diff cascade — 학술·특허 0건
+4. ✅ 단조성 수학적 보장 청구
+
 **비고**:
+- KIPRIS 사용자 직접 검색 완료 후 §3.1 추가 → 최종 결론 재확정 필요.
+- IBM US20180060733A1의 KR 패밀리 존재 여부는 KIPRIS에서 출원인 "International Business Machines" 또는 "IBM" 검색으로 별도 확인 권장.
 
 ---
 
