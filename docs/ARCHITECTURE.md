@@ -167,6 +167,33 @@ kept separate only to honor the 20 KB module-size gate):
 Both paths apply `validate_password_policy()` from W4 P1-B and
 re-hash through `hash_password()` (bcrypt) from W4 P1-A.
 
+### 5.3 User API keys (W4 P3-1, 2026-05-11)
+
+Long-lived credentials for external integrations (CI scripts,
+internal tooling). Distinct from the system-wide `JAMES_API_KEY`
+env var, which remains the operator's bootstrap secret.
+
+- `core/api_keys.py` (separate module to honor the 20 KB module-size
+  gate) issues `jms_<43-char-urlsafe>` tokens. Only SHA256(token) is
+  persisted in the `api_keys` table; the plaintext is returned
+  exactly once from `POST /api-keys/issue`.
+- The first 12 characters (`jms_` + 8 random) form the public
+  **prefix** — visible to the owner via `GET /api-keys/list` and
+  used as the handle for `POST /api-keys/revoke`. The prefix never
+  reveals the body and is not a credential.
+- `verify_api_key(plain)` returns the current `(username, role)` —
+  the role is read from the users table at call time, so a role
+  change on the user row takes effect on the next verify (keys do
+  not pin a stale role).
+- Revocation is one-way: a revoked key cannot be unrevoked. Issuing
+  a fresh key is the rotation path. The `username = ?` filter in
+  `revoke_api_key` prevents a caller from revoking another user's
+  key via guessed prefix.
+
+**Wiring into request authentication** lands separately in W4 P3-2.
+P3-1 only stands up storage + management; the endpoints below use
+JWT auth to reach the key-management surface itself.
+
 ---
 
 ## 5.5 PolicyEngine (single source of policy decisions)

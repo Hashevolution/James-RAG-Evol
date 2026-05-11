@@ -50,6 +50,11 @@ from core.auth_reset import (
     consume_reset_token as _auth_consume_reset_token,
     RESET_TOKEN_TTL_SEC,
 )
+from core.api_keys import (
+    issue_api_key  as _api_key_issue,
+    revoke_api_key as _api_key_revoke,
+    list_api_keys  as _api_key_list,
+)
 from core.policy_engine import default_engine
 from processors.file_processor import FileProcessor
 
@@ -2774,6 +2779,94 @@ async def password_reset_confirm(
         status_code=401,
         detail="토큰이 유효하지 않거나 만료되었습니다.",
     )
+
+
+# ─── W4 P3-1: user API keys (issue / list / revoke) ─────────────
+
+class ApiKeyIssueRequest(BaseModel):
+    # Optional operator-supplied note ("ci-deploy", "laptop-2026-05"
+    # etc.) so a leaked key can be tied to a context. Plain string —
+    # rendered as text in the admin UI.
+    label: Optional[str] = None
+
+@app.post("/api-keys/issue",
+          summary="API 키 발급 (로그인된 사용자 자신용 — W4 P3-1)")
+async def api_keys_issue(data: ApiKeyIssueRequest, request: Request):
+    """Issue a new long-lived API key for the JWT-authenticated user.
+
+    The plaintext is returned **exactly once**. Only SHA256(token) is
+    persisted, so the value cannot be recovered later — the user must
+    capture it now. A revoked key cannot be unrevoked; issue a fresh
+    one instead.
+
+    Response codes:
+      200 — {token, prefix, label?}
+      401 — JWT missing/invalid
+      404 — JWT subject does not correspond to an active user (race
+            between token mint and account deactivation)
+    """
+    ip = get_client_ip(request)
+    username = _bearer_username(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+
+    pair = _api_key_issue(username, data.label)
+    if pair is None:
+        _write_audit("authenticated", "/api-keys/issue", query=username,
+                     security_event="api_key_issue_failed (inactive)",
+                     ip_address=ip)
+        raise HTTPException(status_code=404, detail="활성 사용자가 아닙니다.")
+    plain, prefix = pair
+    _write_audit("authenticated", "/api-keys/issue", query=username,
+                 security_event=f"api_key_issued prefix={prefix}",
+                 ip_address=ip)
+    return {"ok": True, "token": plain, "prefix": prefix,
+            "label": data.label}
+
+
+@app.get("/api-keys/list", summary="내 API 키 목록 (W4 P3-1)")
+async def api_keys_list(request: Request):
+    """List the caller's keys (active + revoked).
+
+    Plaintext is never returned. Each entry exposes the prefix (which
+    is the revocation handle), label, timestamps, and a ``revoked``
+    boolean. Sort: active first, then by created_at DESC.
+    """
+    username = _bearer_username(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+    return {"keys": _api_key_list(username)}
+
+
+class ApiKeyRevokeRequest(BaseModel):
+    key_prefix: str
+
+@app.post("/api-keys/revoke",
+          summary="API 키 회수 (로그인된 사용자 — 본인 키만 회수 가능, W4 P3-1)")
+async def api_keys_revoke(data: ApiKeyRevokeRequest, request: Request):
+    """Revoke one of the caller's keys by its prefix.
+
+    Scope is enforced in core.api_keys.revoke_api_key by the
+    ``username = ?`` filter — a caller cannot revoke another user's
+    key by guessing their prefix. Re-revoking an already-revoked key
+    returns 404 (rowcount=0) rather than re-stamping the timestamp.
+    """
+    ip = get_client_ip(request)
+    username = _bearer_username(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+
+    ok = _api_key_revoke(username, data.key_prefix)
+    if not ok:
+        _write_audit("authenticated", "/api-keys/revoke", query=username,
+                     security_event=f"api_key_revoke_failed prefix={data.key_prefix}",
+                     ip_address=ip)
+        raise HTTPException(status_code=404,
+                            detail="해당 키가 없거나 이미 회수되었습니다.")
+    _write_audit("authenticated", "/api-keys/revoke", query=username,
+                 security_event=f"api_key_revoked prefix={data.key_prefix}",
+                 ip_address=ip)
+    return {"ok": True, "prefix": data.key_prefix}
 
 
 @app.get("/admin/entities", summary="Entity 현황 — search + paging [item #1]")

@@ -76,6 +76,19 @@ JAMES implements defense-in-depth across the RAG pipeline.
   Case-folding collisions (`Admin` vs `admin`) are blocked at signup,
   not at login.
 
+### User API keys (W4 P3-1)
+
+- `POST /api-keys/issue` mints a long-lived `jms_<token>` for the
+  JWT-authenticated user. Plaintext is returned exactly once; only
+  `SHA256(token)` is persisted.
+- `GET /api-keys/list` returns the caller's keys by prefix, label,
+  timestamps, and revocation flag. Plaintext is never returned.
+- `POST /api-keys/revoke` revokes a key by its 12-character prefix.
+  Scope is enforced by the owning user — a caller cannot revoke
+  another user's key.
+- Revocation is one-way (no unrevoke). Rotation = revoke + issue.
+- Wiring into request authentication is W4 P3-2 (separate PR).
+
 ### Credential rotation (W4 P2-B)
 
 - `POST /password/change` lets a logged-in user rotate their own
