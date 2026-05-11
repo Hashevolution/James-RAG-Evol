@@ -658,23 +658,18 @@ async def upload(
     ip = get_client_ip(request)
 
     # [video-reject 2026-05-10, W1 진단 §3-C Option C] 영상 파일은 현재
-    # extract_video 가 stub (file_processor.py) — silent failure 로 ChromaDB
-    # 에 노이즈 인덱스를 만들기 때문에 422 로 즉시 거부. 후속 video-asr PR
-    # 에서 ffmpeg + Whisper + frame caption 합성 도입 예정.
-    VIDEO_EXTENSIONS = (".mp4", ".avi", ".mov", ".mkv")
-    if any(file.filename.lower().endswith(ext) for ext in VIDEO_EXTENSIONS):
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                "현재 영상 파일은 미지원입니다. "
-                "음성만 추출(.mp3/.wav/.m4a/.ogg)하거나 키프레임 이미지로 "
-                "변환 후 업로드해 주세요."
-            ),
-        )
+    # [video-asr 2026-05-11] 영상은 ffmpeg → Whisper ASR 으로 처리.
+    # 실제 ffmpeg 호출 + 음성 추출 + STT 는 processors/file_processor.py
+    # ::extract_video. 운영자 환경에 ffmpeg 가 없으면 그쪽에서 명시적
+    # RuntimeError → process_file 의 try/except 가 "[처리 오류]"
+    # placeholder 로 변환 → 업로드 자체는 진행 (vector 인덱스에 한 줄
+    # 오류 메시지만 들어감, silent failure 아님).
 
     allowed_ext = (
         ".pdf",".png",".jpg",".jpeg",".bmp",".tiff",".webp",
         ".txt",".md",".csv",".html",".htm",
+        ".mp4",".avi",".mov",".mkv",".webm",      # video-asr
+
         ".docx",".doc",".xlsx",".xls",".pptx",".ppt",
         ".hwpx",".hwp",
         ".mp3",".wav",".m4a",".ogg",

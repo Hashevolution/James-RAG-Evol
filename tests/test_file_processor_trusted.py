@@ -162,12 +162,14 @@ class FileProcessorTrustedContentTests(unittest.TestCase):
     # (아래 ProcessFileDispatchTests.test_process_file_video_rejected).
 
     @_silent
-    def test_extract_video_method_removed(self):
-        # 명시적 stub 제거를 영구히 보장하는 회귀 테스트.
-        self.assertFalse(
+    def test_extract_video_method_present(self):
+        # [video-asr 2026-05-11] W1 §3-C Option C 의 일시 거부 단계가
+        # 끝나고 정식 ffmpeg+Whisper 경로가 활성화됨. extract_video 가
+        # 다시 시그니처를 갖되, 실제 추출 → ASR 까지 수행한다. silent
+        # stub 으로의 회귀는 별도 test_video_asr 가 차단.
+        self.assertTrue(
             hasattr(self.fp, "extract_video"),
-            "extract_video 가 다시 추가되었다면 video-reject (W1 §3-C) 의 "
-            "silent failure 차단 의도와 충돌 — video-asr PR 에서만 부활시켜야 함.",
+            "extract_video 가 없으면 video-asr 의 ffmpeg 경로가 사라진 것",
         )
 
 
@@ -226,17 +228,23 @@ class ProcessFileDispatchTests(unittest.TestCase):
 
     # ─── video-reject (2026-05-10) — defense-in-depth dispatch ──
     @_silent
-    def test_process_file_video_rejected_no_silent_stub(self):
-        # 영상 확장자는 정상 경로에서는 /upload/ 가 422 거부하지만, 직접
-        # process_file 호출이 들어와도 (스크립트/마이그레이션 등) 더 이상
-        # silent stub 텍스트 ("[영상 분석 결과 - 샘플링 기반]") 로 인덱스를
-        # 오염시키지 않는다.
-        for ext in ("mp4", "avi", "mov", "mkv"):
-            tc = self.fp.process_file(f"/tmp/x.{ext}", f"x.{ext}")
-            self.assertEqual(tc.source, "doc")
-            self.assertEqual(tc.trust, "medium")
-            self.assertIn("지원하지 않는 형식", tc.text)
-            self.assertNotIn("샘플링 기반", tc.text)
+    def test_process_file_video_routes_to_extract_video(self):
+        # [video-asr 2026-05-11] 영상 확장자가 dispatch 에서 실제
+        # extract_video 로 라우팅된다. 실제 ffmpeg 호출은 일어나지
+        # 않도록 extract_video 를 monkey-patch 해서 stub TrustedContent
+        # 를 반환시킨다.
+        from core.policy_engine import TrustedContent
+        sentinel = TrustedContent(
+            text="[stubbed extract_video]", source="asr", trust="low",
+        )
+        with patch.object(self.fp, "extract_video", return_value=sentinel) as m:
+            for ext in ("mp4", "avi", "mov", "mkv", "webm"):
+                tc = self.fp.process_file(f"/tmp/x.{ext}", f"x.{ext}")
+                self.assertEqual(tc.source, "asr")
+                self.assertEqual(tc.trust, "low")
+                self.assertIn("[stubbed extract_video]", tc.text)
+            self.assertEqual(m.call_count, 5,
+                             "all five video extensions should route to extract_video")
 
     @_silent
     def test_process_file_extractor_exception_is_doc_medium(self):
