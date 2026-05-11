@@ -273,8 +273,11 @@
 
   /* ─────────────── chat 페이지 ─────────────── */
 
-  /* 사이드바 — 모바일에선 화면 가득, 닫혔을 때 0 */
-  .sidebar {
+  /* 사이드바 — 모바일에선 화면 가득, 닫혔을 때 0.
+   * Scoped to ``aside.sidebar`` so it doesn't clobber workspace.html's
+   * ``nav.sidebar`` (which is a flow-positioned 200/56px rail with
+   * its own inline @media at 700px). */
+  aside.sidebar {
     position: fixed;
     z-index: 50;
     inset: 0 auto 0 0;          /* top:0 right:auto bottom:0 left:0 */
@@ -282,7 +285,7 @@
     max-width: 360px;
     box-shadow: 4px 0 16px rgba(0, 0, 0, 0.4);
   }
-  .sidebar.collapsed { width: 0; box-shadow: none; }
+  aside.sidebar.collapsed { width: 0; box-shadow: none; }
   .sidebar-open-btn {
     width: 44px;
     height: 44px;
