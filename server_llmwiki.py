@@ -2477,34 +2477,58 @@ async def code_surface(
     api_key: str,
     role: str = Depends(get_role_from_request),
 ):
+    """[Phase 4b-1] SQLite audit_log 기반 attack-surface 집계.
+
+    이전: james_audit_tool.jsonl 을 통째로 읽어 4가지 event_type
+    (SANDBOX_BLOCK / PATH_VIOLATION / ATTACK_SURFACE_SCAN /
+    PROTECTED_FILE_BLOCK) 만 필터. 파일 누적 시 O(file size).
+    이제: Phase 1 mirror 가 audit_log.security_event 에 동일 값을
+    기록하므로 ``security_event IN (...)`` 단일 쿼리로 끝남. 응답
+    스키마는 그대로 유지 (total_events / events / summary).
+    """
     verify_api_key(api_key)
     if role != "admin":
         raise HTTPException(status_code=403, detail="admin 전용")
 
-    events = []
+    _SURFACE_EVENTS = (
+        "SANDBOX_BLOCK", "PATH_VIOLATION",
+        "ATTACK_SURFACE_SCAN", "PROTECTED_FILE_BLOCK",
+    )
+    events: list = []
     try:
-        with open("james_audit_tool.jsonl", encoding="utf-8") as f:
-            for line in f:
-                try:
-                    entry = json.loads(line)
-                    if entry.get("event") in (
-                        "SANDBOX_BLOCK", "PATH_VIOLATION",
-                        "ATTACK_SURFACE_SCAN", "PROTECTED_FILE_BLOCK"
-                    ):
-                        events.append(entry)
-                except Exception:
-                    pass
-    except FileNotFoundError:
+        conn = sqlite3.connect(_AUDIT_DB, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        placeholders = ",".join("?" for _ in _SURFACE_EVENTS)
+        rows = conn.execute(
+            f"SELECT timestamp, user_role, endpoint, query, "
+            f"       security_event, blocked "
+            f"FROM audit_log "
+            f"WHERE security_event IN ({placeholders}) "
+            f"ORDER BY id ASC",
+            _SURFACE_EVENTS,
+        ).fetchall()
+        conn.close()
+        for r in rows:
+            events.append({
+                "time":    r["timestamp"],
+                "event":   r["security_event"],
+                "role":    r["user_role"],
+                "detail":  (r["query"] or "")[:300],
+                "blocked": bool(r["blocked"]),
+            })
+    except Exception:
+        # audit_log unavailable → empty surface rather than 500
+        # (matches the pre-migration behaviour of missing JSONL).
         pass
 
     return {
         "total_events": len(events),
         "events":       events[-50:],   # 최근 50개
         "summary": {
-            "sandbox_blocks":    sum(1 for e in events if e.get("event")=="SANDBOX_BLOCK"),
-            "path_violations":   sum(1 for e in events if e.get("event")=="PATH_VIOLATION"),
-            "surface_scans":     sum(1 for e in events if e.get("event")=="ATTACK_SURFACE_SCAN"),
-            "protected_blocks":  sum(1 for e in events if e.get("event")=="PROTECTED_FILE_BLOCK"),
+            "sandbox_blocks":   sum(1 for e in events if e["event"] == "SANDBOX_BLOCK"),
+            "path_violations":  sum(1 for e in events if e["event"] == "PATH_VIOLATION"),
+            "surface_scans":    sum(1 for e in events if e["event"] == "ATTACK_SURFACE_SCAN"),
+            "protected_blocks": sum(1 for e in events if e["event"] == "PROTECTED_FILE_BLOCK"),
         }
     }
 
