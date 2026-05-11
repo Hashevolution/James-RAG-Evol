@@ -302,6 +302,56 @@ change required to grant or revoke a feature for a role mid-flight.
 **W4-Q3** ships the admin matrix UI (feature × role checkbox grid
 + "기본값 복원").
 
+---
+
+## 6. Data Lifecycle (W7-A, 2026-05-11)
+
+Every file uploaded through `/upload/` gets a tracking row in the
+new `data_artifacts` table (in a separate `james_data.db`). The
+artifact moves through a small explicit lifecycle:
+
+```
+uploaded   ← /upload/ saves bytes to disk + register_artifact()
+   ↓
+extracted  ← (optional, set when a long-running pipeline pulls text)
+   ↓
+indexed    ← vector + entity steps succeeded → /upload/ returns 200
+   ↓                                              (or)
+failed     ← any step in /upload/ raised
+```
+
+A second table `wiki_links (artifact_id, entity_id)` records which
+wiki entities were derived from which upload — the relationship was
+previously implicit in the filename UUID prefix and not queryable.
+
+**Authority model — own vs all**
+
+Two surfaces consult the matrix:
+- `admin.data` (admin only by default) gates `/admin/artifacts/list`
+  and `/admin/artifacts/{id}` — sees every uploader's rows.
+- `data.view_own` (all four roles by default) gates
+  `/artifacts/mine/list` and `/artifacts/mine/{id}` — scoped to the
+  JWT subject. The SQL `WHERE uploaded_by = ?` filter runs in the
+  helper, so a non-owner attempting another user's id receives a
+  404 (not 403 — 403 would leak existence).
+
+System api_key callers without a JWT cannot reach `/artifacts/mine/*`
+(401: there's no "own" to bind). Operators must log in.
+
+**First-boot backfill**
+
+`core.data_artifacts.backfill_from_uploads_dir(UPLOAD_DIR)` runs in
+the startup hook. Any file in `uploads/` without a matching row is
+inserted with `uploaded_by="legacy"` and `status="indexed"` — the
+file is already in the corpus; the row just makes it queryable.
+Idempotent on subsequent boots.
+
+**W7-B** ships a standalone `frontend/workspace.html` (not folded
+into admin.html — employees can reach it without admin auth) that
+renders this layer as a data explorer.
+**W8** layers `jobs` + a small scheduler on top so users can run
+Excel/document/export jobs against their artifacts.
+
 **TrustedContent** is the wrapper every multimodal extractor (OCR,
 ASR, vision, web) returns instead of a raw string. Carries
 `(text, source, trust)` so the reasoning pipeline knows whether to run

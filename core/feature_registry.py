@@ -183,16 +183,29 @@ FEATURES: Dict[str, Feature] = {
         "관리자 도구 (화면 캡처 분석 등)",
         "admin",
     ),
-    # ── workspace (W8 후속, 카탈로그 슬롯만 미리 등록) ─────────
+    # ── workspace + 데이터 (W7/W8 트랙) ────────────────────────
+    # external 은 의도적으로 차단 — 외부 사용자가 시스템 리소스 소비
+    # (Excel/문서 합성 등) 하는 건 위험. admin 매트릭스에서 override
+    # 가능하지만 default 는 internal-staff 만.
+    "workspace.view": _f(
+        "workspace.view",
+        "워크스페이스 페이지 진입 (데이터 explorer + job 트리거)",
+        "admin,manager,employee",
+    ),
     "workspace.run_jobs": _f(
         "workspace.run_jobs",
-        "(W8) 워크스페이스 job 실행",
-        "admin,manager",
+        "워크스페이스 job 실행 (Excel/문서/Export)",
+        "admin,manager,employee",
     ),
     "workspace.schedule": _f(
         "workspace.schedule",
-        "(W8) 워크스페이스 job 예약 (cron)",
+        "워크스페이스 job 예약 (cron) — 시스템 영향 큼",
         "admin",
+    ),
+    "data.view_own": _f(
+        "data.view_own",
+        "자기 업로드 파일 / job 결과 조회",
+        "admin,manager,employee,external",
     ),
 }
 

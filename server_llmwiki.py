@@ -265,6 +265,18 @@ async def on_startup():
         # Housekeeping must never block server startup.
         print(f"[STARTUP] trace prune skipped: {e}")
 
+    # [W7-A 2026-05-11] Backfill data_artifacts for any pre-W7 files
+    # already sitting in uploads/. Idempotent — only inserts rows that
+    # don't already have an origin_path match with uploaded_by='legacy'.
+    # Fail-safe: any error is logged and skipped, never blocks startup.
+    try:
+        from core.data_artifacts import backfill_from_uploads_dir
+        n = backfill_from_uploads_dir(UPLOAD_DIR)
+        if n > 0:
+            print(f"[DATA] backfilled {n} legacy artifact row(s) from {UPLOAD_DIR}")
+    except Exception as e:
+        print(f"[STARTUP] data-artifact backfill skipped: {e}")
+
     # [PR plan-3, 2026-05-09] LLM readiness check + friendly install
     # guidance. If Ollama has 0 models, every /query/ would fail. We
     # emit a clear console banner pointing operators to the admin
@@ -659,6 +671,31 @@ async def upload(
         if os.path.exists(filepath): os.remove(filepath)
         raise HTTPException(status_code=500, detail=f"파일 저장 실패: {e}")
 
+    # [W7-A 2026-05-11] Register the artifact as soon as the bytes land
+    # on disk. Status moves to 'indexed' after successful processing or
+    # 'failed' if any step raises. The JWT subject (preferred) or
+    # 'system' (system api_key only) becomes uploaded_by — the latter
+    # surfaces in the audit log so a leaked-key upload is still
+    # attributable to "the operator".
+    from core.data_artifacts import (
+        register_artifact as _da_register,
+        update_status     as _da_update_status,
+    )
+    rel_path = os.path.join("uploads", unique_name).replace("\\", "/")
+    artifact_uploader = _bearer_username(request) or "system"
+    try:
+        artifact_id = _da_register(
+            origin_path=rel_path,
+            origin_name=file.filename,
+            origin_size=total_size,
+            uploaded_by=artifact_uploader,
+            status="uploaded",
+        )
+    except Exception as _e:
+        # Never block the upload on a tracking-row failure.
+        print(f"[UPLOAD] data_artifacts register skipped: {_e}")
+        artifact_id = None
+
     try:
         # #44 phase 4-B: process_file 가 TrustedContent 반환.
         # #44 phase 4-C: ingestion 검역은 PolicyEngine 단일 chokepoint
@@ -795,6 +832,13 @@ async def upload(
         except Exception:
             pass
 
+        # [W7-A] mark indexed only after vector + entity steps succeeded.
+        if artifact_id:
+            try:
+                _da_update_status(artifact_id, "indexed")
+            except Exception as _e:
+                print(f"[UPLOAD] status update skipped: {_e}")
+
         result_data = {
             "status":      "ok",
             "filename":    unique_name,
@@ -802,12 +846,21 @@ async def upload(
             "summary":     meta.get("summary",""),
             "keywords":    meta.get("keywords",[]),
             "sensitivity": meta.get("sensitivity","internal"),
+            "artifact_id": artifact_id,   # [W7-A]
         }
         _write_audit(role, "/upload/", query=file.filename, ip_address=ip)
         return result_data
     except HTTPException:
+        # [W7-A] HTTPException propagation — surface but mark failed
+        # so the operator can find it via /admin/artifacts/list.
+        if artifact_id:
+            try: _da_update_status(artifact_id, "failed")
+            except Exception: pass
         raise
     except Exception as e:
+        if artifact_id:
+            try: _da_update_status(artifact_id, "failed")
+            except Exception: pass
         raise HTTPException(status_code=500, detail=f"분석 실패: {e}")
 
 
@@ -3745,6 +3798,107 @@ async def admin_audit_list(
     return {"items": items, "total": total,
             "category": cat, "q": qstr,
             "limit": limit, "offset": offset}
+
+
+# ─── W7-A: data artifacts (per-upload lifecycle tracking) ──────
+# Two surfaces:
+#   /admin/artifacts/*  — admin.data feature, sees every user's rows
+#   /artifacts/mine/*   — data.view_own feature, scoped to JWT subject
+
+@app.get("/admin/artifacts/list", summary="데이터 아티팩트 — 관리자 전체 조회 (W7-A)")
+async def admin_artifacts_list(
+    api_key: str,
+    status:  str = "",
+    q:       str = "",
+    limit:   int = 50,
+    offset:  int = 0,
+    role:    str = Depends(get_role_from_request),
+):
+    """All artifacts (every uploader). admin.data feature."""
+    _require_feature(api_key, role, "admin.data")
+    from core.data_artifacts import list_artifacts, count_artifacts
+    s = status.strip() or None
+    qstr = q.strip() or None
+    return {
+        "items":  list_artifacts(status=s, q=qstr, limit=limit, offset=offset),
+        "total":  count_artifacts(status=s, q=qstr),
+        "status": s or "",
+        "q":      qstr or "",
+        "limit":  limit,
+        "offset": offset,
+    }
+
+
+@app.get("/admin/artifacts/{artifact_id}", summary="아티팩트 상세 — 관리자 (W7-A)")
+async def admin_artifacts_detail(
+    artifact_id: str,
+    api_key:     str,
+    role:        str = Depends(get_role_from_request),
+):
+    """Admin view — owner ignored, returns the row regardless."""
+    _require_feature(api_key, role, "admin.data")
+    from core.data_artifacts import get_artifact
+    row = get_artifact(artifact_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="artifact not found")
+    return row
+
+
+@app.get("/artifacts/mine/list", summary="내 데이터 아티팩트 (W7-A)")
+async def mine_artifacts_list(
+    request: Request,
+    status:  str = "",
+    q:       str = "",
+    limit:   int = 50,
+    offset:  int = 0,
+    role:    str = Depends(get_role_from_request),
+):
+    """User self-view. JWT subject is the scope — non-JWT callers
+    (system api_key only) are denied because there's no "own" to
+    bind. data.view_own feature gates the role (every role allowed
+    by default; admin can revoke per role)."""
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "data.view_own").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (data.view_own)")
+    username = _bearer_username(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+    from core.data_artifacts import list_artifacts, count_artifacts
+    s = status.strip() or None
+    qstr = q.strip() or None
+    return {
+        "items":  list_artifacts(username=username, status=s, q=qstr,
+                                 limit=limit, offset=offset),
+        "total":  count_artifacts(username=username, status=s, q=qstr),
+        "status": s or "",
+        "q":      qstr or "",
+        "limit":  limit,
+        "offset": offset,
+    }
+
+
+@app.get("/artifacts/mine/{artifact_id}", summary="내 아티팩트 상세 (W7-A)")
+async def mine_artifacts_detail(
+    artifact_id: str,
+    request:     Request,
+    role:        str = Depends(get_role_from_request),
+):
+    """Self-view. ``get_artifact(requester_username=...)`` returns None
+    when the row belongs to someone else — surfaces as 404 here so a
+    caller can't probe other users' artifact ids."""
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "data.view_own").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (data.view_own)")
+    username = _bearer_username(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+    from core.data_artifacts import get_artifact
+    row = get_artifact(artifact_id, requester_username=username)
+    if row is None:
+        raise HTTPException(status_code=404, detail="artifact not found")
+    return row
 
 
 # ─── W4-Q1: feature capability matrix ──────────────────────────
