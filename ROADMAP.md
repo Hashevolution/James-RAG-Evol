@@ -153,6 +153,31 @@ The following moved to v0.3 to keep v0.2 focused:
 - Performance profiling → after Axis 1 (premature otherwise)
 - Tutorial documentation → after Axis 1 stabilizes
 
+### Deferred follow-ups (recheck before v0.3)
+
+- **Audit Phase 4b-2 — remove 16 JSONL writer sites.** The
+  JSONL → SQLite migration completed every reader path
+  (PRs #206 / #207 / #208 / #210 / #211): the legacy `/admin/audit`
+  endpoint, `/admin/dashboard`, `/code/surface/` all query
+  `audit_log` directly, and the new `/admin/audit/list` categories
+  (`tools` / `attack` / `system`) surface the mirrored rows in the
+  admin UI. **JSONL writers remain in place** as a belt-and-suspenders
+  safety net because `core/audit_bridge.mirror_to_audit_db` is
+  best-effort (`try/except`), so a silent SQLite write failure would
+  otherwise be unrecoverable.
+  - Re-entry criteria: 2–4 weeks of production use with no
+    SQLite mirror gaps observed (compare `audit_log` row count
+    vs JSONL line count weekly), then drop the writers.
+  - Alternative if mirror reliability is uncertain: gate JSONL
+    writers behind an env var (`JAMES_AUDIT_JSONL=1`, default off)
+    before deletion.
+  - Touch points: `core/security_layer.log_attack` + `log_system_event`;
+    9 module-local `_log_system` copies (llm/router, gemma_client,
+    graph_engine, query_expander, orchestrator, retrieval_engine,
+    memory/loom, memory/trust, reasoning/engine); 5 tool writers
+    (tools/router, tools/code/{sandbox,code_reader,code_analyzer,
+    code_editor}).
+
 ---
 
 ## v0.3.0 — Platform Skeleton (~6 months after v0.2)
