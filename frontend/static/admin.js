@@ -254,7 +254,7 @@ function _firstRunRow(r, primary) {
       </div>
     </div>
     <button onclick="firstRunInstall('${tag.replace(/'/g, "\\'")}')"
-            style="padding:7px 14px;background:var(--accent);color:#fff;
+            style="padding:7px 14px;background:var(--accent);color:var(--on-accent);
                    border:0;border-radius:6px;cursor:pointer;font-size:12px;
                    font-weight:600;flex-shrink:0">
       📦 설치
@@ -2408,7 +2408,7 @@ async function webLearnTopic() {
         .join('<br>');
 
       const domainBadge = r.domain
-        ? `<span style="background:var(--accent);color:#fff;border-radius:4px;
+        ? `<span style="background:var(--accent);color:var(--on-accent);border-radius:4px;
                         padding:2px 8px;font-size:10px">${r.domain}</span>`
         : '';
 

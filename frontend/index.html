@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#0a0c11">
+<meta name="theme-color" content="#04060a">
 <title>Secure Enterprise Knowledge Operating System</title>
 <link rel="stylesheet" href="/static/tokens.css">
 <style>
@@ -41,16 +41,18 @@
     align-items: center;
     gap: 10px;
   }
-  /* [#A8-9] logo mark — gradient now blends accent (indigo) into
-     brand-2 (intelligence cyan) for a knowledge/security feel. Thin
-     inner shine via box-shadow inset adds depth without ostentation. */
+  /* [#A8-9] logo mark — gradient over the mono mint-cyan accent.
+     Pre-Task-#22 this blended indigo→cyan; the mono migration
+     unifies both stops on --accent so the gradient is a tonal
+     wash rather than a hue shift. Thin inner shine via box-shadow
+     inset adds depth without ostentation. */
   .logo::before {
     content: '';
     width: 22px; height: 22px;
     border-radius: 6px;
     background: linear-gradient(135deg, var(--accent) 0%, var(--brand-2) 100%);
     box-shadow: 0 0 0 1px rgba(255,255,255,.04) inset,
-                0 2px 6px rgba(82,88,230,.30);
+                0 2px 6px rgba(107,231,208,.30);
   }
   /* [#A8-9] tagline shim — "지식·보안 인텔리전스" appears beside the
      logo on wide screens, hides on phones. Tells visitors what JAMES
@@ -195,8 +197,8 @@
     font-weight: 500; cursor: pointer;
     transition: all .15s;
   }
-  .modal-btn.primary { background: var(--accent); color: #fff; }
-  .modal-btn.primary:hover { background: #5258e6; }
+  .modal-btn.primary { background: var(--accent); color: var(--on-accent); }
+  .modal-btn.primary:hover { background: var(--accent-hover); }
   .modal-btn.cancel  { background: transparent; border: 1px solid var(--border); color: var(--text-soft); }
   .modal-btn.cancel:hover { background: var(--surface-2); color: var(--text); }
 
@@ -563,7 +565,7 @@
     cursor: pointer;
     transition: background .15s;
   }
-  .upload-btn:hover { background: #5258e6; }
+  .upload-btn:hover { background: var(--accent-hover); }
   .upload-btn:disabled { background: var(--surface-2); color: var(--muted); cursor: default; }
 
   /* ── 챗 영역 ── */
@@ -814,7 +816,7 @@
     flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
   }
-  .send-btn:hover { background: #5258e6; }
+  .send-btn:hover { background: var(--accent-hover); }
   .send-btn:disabled { background: var(--surface-2); color: var(--muted); cursor: default; }
 
   /* ── 그래프 경로 ── */
@@ -898,7 +900,7 @@
       💬
       <span id="session-count-badge"
             style="display:none;position:absolute;top:-2px;right:-2px;
-                   background:var(--accent);color:#fff;border-radius:9px;
+                   background:var(--accent);color:var(--on-accent);border-radius:9px;
                    font-size:10px;padding:1px 6px;font-weight:600;line-height:1.4">
       </span>
     </button>
@@ -924,7 +926,7 @@
     <div style="font-weight:600;font-size:13px;color:var(--text)"><span data-i18n="chat.previous">이전 대화</span></div>
     <div style="display:flex;gap:6px">
       <button onclick="newSession()"
-              style="background:var(--accent);color:#fff;border:none;
+              style="background:var(--accent);color:var(--on-accent);border:none;
                      border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:500">
         <span data-i18n="chat.new_session">+ 새 대화</span>
       </button>

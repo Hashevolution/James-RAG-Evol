@@ -1,17 +1,18 @@
 """WCAG AA contrast contract on the dark-UI design tokens.
 
-HANDOVER_WEB_UI.md priority #4 subset 4c. The audit found
-``--muted-2`` was #5d616c which gave only ~3.16:1 on --bg (#0a0c11)
-— **below the WCAG AA 4.5:1 threshold** for normal-sized body text.
-4 small-text use sites (10-12 px) inherited that failure.
+HANDOVER_WEB_UI.md priority #4 subset 4c. The original audit caught
+``--muted-2`` at #5d616c giving only ~3.16:1 on --bg — below the
+WCAG AA 4.5:1 threshold for normal-sized body text. 4 small-text
+use sites (10-12 px) inherited that failure.
 
 This test parses tokens.css, extracts the colour tokens, and computes
 the relative-luminance contrast ratio between every text colour and
 ``--bg``. Each must pass the appropriate WCAG AA threshold (4.5:1 for
 normal text, 3:1 for large/decorative).
 
-If a future change darkens ``--muted-2`` (or any text token) below
-threshold, this test fails loudly so the regression doesn't ship.
+The palette migrated to the mono-cyber palette in Task #22 (deeper
+``--bg #04060a``, single mint-cyan ``--accent``); contrast ratios were
+re-verified at that point and all current text tokens still pass.
 """
 from __future__ import annotations
 
@@ -101,9 +102,10 @@ class WcagAaContrastTests(unittest.TestCase):
         self._assert_ratio("--muted", 4.5, "normal text")
 
     def test_muted_2_passes_aa_normal(self):
-        # --muted-2 is the borderline secondary muted. Pre-fix value
-        # was #5d616c at 3.16:1 — failed AA. Post-fix #787c84 sits
-        # at ~4.67:1, just above threshold.
+        # --muted-2 is the borderline secondary muted. Original pre-4c
+        # value was #5d616c at 3.16:1 — failed AA. Post-4c #787c84
+        # sat at ~4.67:1 on --bg #0a0c11; on the new mono-cyber
+        # --bg #04060a it lands at ~4.83:1 — still above threshold.
         self._assert_ratio("--muted-2", 4.5, "normal text")
 
     def test_accent_fg_passes_aa_normal(self):
@@ -113,9 +115,11 @@ class WcagAaContrastTests(unittest.TestCase):
         self._assert_ratio("--accent-fg", 4.5, "normal text")
 
     def test_brand_2_passes_aa_large(self):
-        # --brand-2 (intelligence cyan) is reserved for divider lines
-        # / status dots / large badges — large-text/UI threshold
-        # applies (3:1).
+        # --brand-2 was originally a distinct "intelligence cyan"
+        # paired with the indigo accent. Post Task #22 mono migration
+        # it is an *alias* of --accent (same mint-cyan), still
+        # reserved for divider lines / status dots / large badges.
+        # Large-text/UI threshold applies (3:1).
         self._assert_ratio("--brand-2", 3.0, "large text / UI")
 
 

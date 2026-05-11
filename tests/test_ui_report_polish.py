@@ -56,16 +56,15 @@ class PaletteTests(unittest.TestCase):
             "shadow should include a dark rgba layer")
 
     def test_palette_cooler_tones(self):
-        # The base bg should still be near-black but slightly tinted
-        # toward navy/slate. Specifically: NOT pure black (#000) and
-        # NOT the prior neutral #0c0d10 — should land on something
-        # cooler like #0a0c11.
+        # The base bg should be a tinted near-black (slate / cyber)
+        # rather than pure black or the legacy neutral #0c0d10.
+        # Post Task #22 mono migration lands on #04060a (deeper) —
+        # earlier passes used #0a0c11. Both are acceptable here.
         m = re.search(r"--bg:\s*(#[0-9a-fA-F]{6})", self.tokens)
         self.assertIsNotNone(m)
         bg = m.group(1).lower()
         self.assertNotEqual(bg, "#000000",
             "pure black is too aggressive — keep slight tint")
-        # New value should be different from the prior #0c0d10 baseline.
         self.assertNotEqual(bg, "#0c0d10",
             "palette polish should refresh the bg tint")
 

@@ -94,7 +94,7 @@ indigo accent, intelligence-cyan brand-2, shadow-card)를 가지고
    직접 "JAMES" 라고 쓰지 말 것.
 3. **i18n**: `app.name` 은 풀 문구. 좁은 영역(placeholder 등)에 풀
    문구가 들어가지 않도록 신규 키를 만들 것 — `app.name` 재사용 금지.
-4. **theme-color**: `#0a0c11` 으로 통일.
+4. **theme-color**: `#04060a` 으로 통일 (Task #22 mono-cyber bg).
 5. **반응형 분기**: `.brand` 가 900px → 11px, 640px → 자동 줄바꿈.
    이 규칙이 부족하면 `tokens.css` 의 `@media` 두 블록만 수정.
 6. ~~**legacy 미정의 토큰**: `admin.html` 에 `var(--accent2 / --bg2 /
@@ -180,7 +180,7 @@ git log --oneline -3   # e686844, 508f880 두 커밋이 보여야 함
    바인딩이 잘못된 것)
 8. 화면 폭 < 900px — `.brand` 가 11px 로 줄어드는지
 9. 화면 폭 < 640px — `.brand` 가 줄바꿈되는지
-10. theme-color — 브라우저 탭 상단 색이 #0a0c11 (살짝 푸른 검정) 인지
+10. theme-color — 브라우저 탭 상단 색이 #04060a (mono cyber bg) 인지
 ```
 
 ---

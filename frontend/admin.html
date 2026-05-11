@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#0a0c11">
+<meta name="theme-color" content="#04060a">
 <title>Secure Enterprise Knowledge Operating System — Admin</title>
 <link rel="stylesheet" href="/static/tokens.css">
 <style>
@@ -165,8 +165,8 @@
   .btn-approve:hover { background: rgba(34,197,94,.2); }
   .btn-reject  { background: rgba(239,68,68,.12); color: var(--danger); border: 1px solid rgba(239,68,68,.3); }
   .btn-reject:hover { background: rgba(239,68,68,.2); }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: #5258e6; }
+  .btn-primary { background: var(--accent); color: var(--on-accent); }
+  .btn-primary:hover { background: var(--accent-hover); }
 
   /* ── 로그 영역 ── */
   .log-box {
@@ -1134,7 +1134,7 @@
                       border-radius:8px;color:var(--text);font-size:13px"
                onkeydown="if(event.key==='Enter') loadUploads()">
         <button onclick="loadUploads()" style="padding:8px 16px;
-                background:var(--accent);color:#fff;border:0;border-radius:8px;
+                background:var(--accent);color:var(--on-accent);border:0;border-radius:8px;
                 cursor:pointer;font-size:13px;font-weight:600">
           <span data-i18n="common.search">검색</span>
         </button>
@@ -1175,7 +1175,7 @@
                       border-radius:8px;color:var(--text);font-size:13px"
                onkeydown="if(event.key==='Enter') searchFiles()">
         <button onclick="searchFiles()" style="padding:8px 16px;
-                background:var(--accent);color:#fff;border:0;border-radius:8px;
+                background:var(--accent);color:var(--on-accent);border:0;border-radius:8px;
                 cursor:pointer;font-size:13px;font-weight:600">
           <span data-i18n="common.search">검색</span>
         </button>
