@@ -1,228 +1,239 @@
-# Web UI 디자인 — 작업 인수인계 (PC 세션 이전용)
+# Web UI — Dark Concept Refresh 핸드오버
 
-**작성일**: 2026-05-06
-**브랜치**: `claude/design-web-ui-6NQaQ`
-**작성 환경**: Claude Code on the web (Opus 4.7)
-**대상**: PC 로컬 세션의 Claude (또는 본인)
-**상태**: 평가 완료, 구현 미착수
-
----
-
-## 1. 작업 목적
-
-현재 `frontend/index.html` (779줄) + `frontend/admin.html` (700줄) 구조의
-Web UI를 평가하고, 개선 방향을 정하기 위한 사전 검토 단계.
-
-브랜치 이름이 `design-web-ui`이지만, 사용자 의도는 **전면 재설계가 아닌
-"평가 후 우선순위 결정"**. 사용자가 "평가가 어때?"라고 물어 평가만
-수행한 상태로 PC 이전.
+**최종 업데이트**: 2026-05-11
+**브랜치**: `claude/review-dark-ui-concept-Aydvd`
+**원격**: `origin/claude/review-dark-ui-concept-Aydvd` (push 완료)
+**커밋**: `e686844` (토큰 통합), `508f880` (브랜드 라벨 교체)
+**대상**: 다른 세션에서 작업을 이어갈 Claude (또는 본인)
 
 ---
 
-## 2. 현재 UI 구조 (요약)
+## 0. TL;DR
 
-```
-frontend/
-├── index.html      779줄 — 채팅 메인 (인라인 <style> 615줄까지)
-├── admin.html      700줄 — 어드민 대시보드 (인라인 <style>)
-└── static/
-    ├── chat.js     채팅 로직 + 세션 패널 + 로그인
-    ├── admin.js    어드민 동적 텍스트 t() 적용
-    ├── upload.js   드래그앤드롭 업로드
-    └── i18n.js     286 키 × en/ko
-```
-
-### 디자인 토큰 (양 파일 중복)
-
-```css
---bg:        #0a0a0f
---surface:   #111118
---border:    #1e1e2e
---accent:    #7c6af7   (보라)
---accent2:   #4fc3f7   (시안)
---text:      #e8e8f0
---muted:     #555570
---success:   #4caf7d
---danger:    #f06292
---font-mono: 'JetBrains Mono', 'Fira Code'
---font-ui:   'Sora', 'Pretendard'
-```
-
-### 갖춰진 기능
-
-- 접이식 사이드바 (드래그앤드롭 업로드)
-- 챗 영역 + 자동 리사이즈 textarea + 타이핑 인디케이터
-- 메시지별 메타 (`mode-badge`, `graph-badge`)
-- 그래프 경로 표시 영역 (`.graph-paths`, 좌측 보더 강조)
-- 세션 선택 패널 (이전 대화 불러오기)
-- 로그인 모달 + 역할 배지 (RBAC 표시)
-- PROD/TEST 소스 토글
-- 언어 토글 (한/영) + i18n 286 키
-- 환영 칩 (예제 쿼리 4개)
+- v0.1 시절의 dark 컨셉을 점검하고, **공통 디자인 토큰 단일화** + **UI 브랜드 라벨 교체** 두 PR을 한 브랜치에 쌓았다.
+- 코드네임 **JAMES는 내부에만 존속**하고, UI 표면은 모두
+  **"Secure Enterprise Knowledge Intelligence, Operating System"** 으로 표시한다.
+- 아직 main으로 머지되지 않았다. 머지 전 시각 검증 필요.
 
 ---
 
-## 3. 평가 결과
+## 1. 이번 브랜치에서 끝난 일
 
-### 좋은 점
+### 1-1. 커밋 `e686844` — `refactor(frontend): unify dark-UI tokens into static/tokens.css`
 
-- 비주얼 정체성이 일관됨 (보안 + 추론 엔진 컨셉에 맞음)
-- 주요 기능 모두 자리잡음 (업로드/세션/로그인/i18n/소스토글)
-- 디테일 양호 (드래그앤드롭, 자동 리사이즈, 사이드바 접이)
-- Admin: 카드 + 테이블 + RBAC 배지 색 구분 깔끔
+배경: `index.html` 만 최신 `#A8-9` 폴리시(deeper navy bg, deeper
+indigo accent, intelligence-cyan brand-2, shadow-card)를 가지고
+있었고 `admin / workspace / graph` 는 옛 neutral-dark 팔레트에
+멈춰 있어서 페이지 이동 시 톤이 미세하게 흔들렸다.
 
-### 약점 (우선순위 높은 순)
+변경:
 
-1. **CSS 인라인** — `index.html` 615줄까지 `<style>` 박혀 있음.
-   `admin.html`도 동일 변수 중복 정의. → `static/styles.css`로 추출 필요.
-2. **반응형 부재** — 미디어 쿼리 0개. 모바일에서 사이드바 280px가
-   화면 점유. → 768px 이하 브레이크포인트 + 사이드바 오버레이 모드.
-3. **접근성 약함** — `aria-label` 없음, 모달에 `role="dialog"` /
-   focus trap 없음, `--muted #555570` on `--bg #0a0a0f` 대비 WCAG AA
-   미달 가능. 키보드 내비게이션 미검증.
-4. **인라인 핸들러 다수** — `onclick="..."` 다수. CSP 강화 시 깨짐.
-   보안 중심 프로젝트로서 이벤트 위임으로 전환 권장.
-5. **Graph-RAG 강점이 안 드러남** — `.graph-paths`는 작은 좌측
-   보더 표시뿐. 추론 단계(retrieve→expand→verify), 신뢰도, 출처 노드를
-   더 시각적으로 보여줄 패널이 없음.
-6. **i18n 누락 placeholder 혼재** — `placeholder="e.g., Save to 2026
-   reports folder"` 같은 영문 하드코딩 + 한국어 title 혼재.
-7. **welcome chips 하드코딩** — 동적 추천 (최근/인기) 없음.
+- 신규 파일 `frontend/static/tokens.css` — 디자인 토큰 단일 출처
+  - Google Fonts `@import`, 유니버설 box-sizing 리셋, `:root` 토큰
+  - 통합 팔레트(`#A8-9` 기반): `--bg #0a0c11`, `--surface #131620`,
+    `--accent #5258e6`, `--brand-2 #4fc3f7`, `--shadow-card …` 외
+- 4개 HTML(`index / admin / workspace / graph`)의 인라인 `:root`
+  블록 제거, `<link rel="stylesheet" href="/static/tokens.css">` 연결
+- `<meta name="theme-color">` 4페이지 모두 `#0a0c11` 통일
+- `graph.html` 은 그래프 전용 `--t-person / --t-org / --t-concept /
+  --t-document` 4개 토큰만 인라인으로 보존(도메인-중립이라 두어도 됨)
+- 순변경: **+69 / −112** 라인
+
+### 1-2. 커밋 `508f880` — `refactor(brand): replace UI "JAMES" labels with full positioning line`
+
+배경: 사용자 지시 — UI 표면에서 "제임스"를 빼고
+"Secure Enterprise Knowledge Intelligence, Operating System" 을
+표시한다.
+
+변경:
+
+- 4페이지 `<title>` — 풀 문구 + 페이지명 접미사
+  (`— Admin / — Workspace / — Reasoning Graph`)
+- 4페이지 `.logo` 헤더 — `tokens.css` 에 `.brand` 컴포넌트 추가
+  (메인 라인 + muted 톤 "Operating System" tail, 900/640px 반응형)
+- 챗 환영 타이틀(`welcome-title`)
+- admin / graph 로그인 모달 상단의 `▸ JAMES ADMIN` / `▸ JAMES GRAPH`
+  배너 → 풀 문구로 교체
+- i18n 키 갱신
+  - `app.name` → 풀 문구 (en / ko 양쪽)
+  - `chat.title` → "Secure …, Operating System — Security Reasoning Engine"
+  - `auth.login_title` → `Login` / `로그인`
+  - `auth.signup_title` → `▸ Signup` / `▸ 회원가입`
+- admin 페르소나 이름 입력의 `data-i18n-placeholder="app.name"` 제거
+  (그대로 두면 이름 필드 placeholder 에 풀 문구가 들어가 깨짐).
+  static `placeholder="JAMES"` 만 남겨 페르소나 기본값 보존.
 
 ---
 
-## 4. 사용자에게 제시한 우선순위
+## 2. 의도적으로 그대로 둔 JAMES 참조
 
-```
-1. CSS 추출 + 공통 토큰 파일                    (1~2시간, 위험 낮음)
-2. 반응형 (모바일 ≤768px) + 사이드바 오버레이
-3. 추론 패널 강화 — 메시지 클릭 시 우측에
-   retrieve → expand → verify 단계 + 인용 노드 펼치기
-4. 접근성 패스 — aria, 대비, 키보드
-5. 인라인 핸들러 → 이벤트 위임 (CSP 대비)
-```
+다음은 **브랜드 라벨이 아닌** 영역이라 손대지 않았다. 다른 세션이
+"덜 지운 거 아닌가?" 싶을 때 이걸 보면 된다.
 
-**사용자 응답 대기 중**: 어디부터 손댈지 미결정.
+| 항목 | 이유 |
+|---|---|
+| `JAMES_API_KEY` env-var + `auth.api_key_hint/prompt` | 환경변수명 |
+| `placeholder="JAMES"` (admin 페르소나 이름) | 에이전트 자기소개 기본값 |
+| `set.persona_*`, `char.identity_name_desc` | 페르소나(별개 개념) |
+| `hw.description` ("Hardware running JAMES intelligence") | 시스템 설명 |
+| `msg.summary_failed / done` ("[JAMES] …") | 시스템 메시지 prefix |
+| `graph.query.ph` ("Ask JAMES…") | 챗 에이전트 호칭 |
+| HTML 주석, 코드 식별자, 파일명 | 코드베이스 정체성은 JAMES 그대로 |
+
+> CLAUDE.md 원칙: **저장소 코드네임은 JAMES, 공개 UI 라벨만 교체.**
 
 ---
 
-## 5. 다음 세션 (PC) 시작 시 해야 할 일
+## 3. 결정사항 / 디자인 규칙 메모
+
+1. **단일 토큰 출처**: 새 디자인 토큰은 `frontend/static/tokens.css`
+   에만 정의한다. 페이지별 인라인 `:root` 재정의 금지. 페이지 전용
+   토큰은 `graph.html` 의 `--t-*` 처럼 그 페이지에 인라인 augment.
+2. **브랜드 표기**: `.brand` 컴포넌트(`Operating System` tail muted 톤)
+   사용. 새 화면을 만들 때는 같은 클래스 재사용. 새 텍스트 추가 시
+   직접 "JAMES" 라고 쓰지 말 것.
+3. **i18n**: `app.name` 은 풀 문구. 좁은 영역(placeholder 등)에 풀
+   문구가 들어가지 않도록 신규 키를 만들 것 — `app.name` 재사용 금지.
+4. **theme-color**: `#0a0c11` 으로 통일.
+5. **반응형 분기**: `.brand` 가 900px → 11px, 640px → 자동 줄바꿈.
+   이 규칙이 부족하면 `tokens.css` 의 `@media` 두 블록만 수정.
+6. **legacy 미정의 토큰**: `admin.html` 에 `var(--accent2 / --bg2 /
+   --card / --fg)` 호출이 남아 있다. **이번 PR 이전부터 깨져 있던**
+   참조이므로 이 PR 의 범위 밖. 별도 클린업 PR 에서 정리.
+
+---
+
+## 4. 다음에 할 일 (우선순위)
+
+이번 브랜치 머지 후 같은 브랜치 또는 별도 브랜치에서 이어갈 수 있는 항목.
+`HANDOVER_WEB_UI.md` 이전 버전의 5-우선순위 중 1번이 끝났고, 나머지가 남았다.
+
+| # | 작업 | 예상 | 비고 |
+|---|---|---|---|
+| 1 | ~~CSS 추출 + 공통 토큰~~ | — | **DONE** (커밋 `e686844`) |
+| 2 | 반응형 — `admin / workspace / graph` 용 mobile.css 확장 | 2~3h | 현재 `mobile.css` 는 chat 페이지 전용 |
+| 3 | 추론 패널 강화 — retrieve → expand → verify timeline + 인용 노드 + 신뢰도 bar + sensitivity 배지 | 4~6h | Graph-RAG 차별점 시각화 |
+| 4 | 접근성 패스 — modal `role="dialog"` + focus trap + ESC, `aria-label`, `--muted-2` 대비 감사 (AA ~3.4:1 미달 가능) | 2h | |
+| 5 | 인라인 핸들러(`onclick=…`) → 이벤트 위임 + `data-action` | 3h | CSP 강화 대비 |
+| 6 | `admin.html` legacy 미정의 토큰(`--accent2 / --bg2 / --card / --fg`) 정리 | 30분 | tokens.css 에 별칭 추가 또는 호출 측 치환 |
+| 7 | 상단 그라데이션 레일(`body::before`)을 4페이지 공통화 | 30분 | 현재 index 만 있음. tokens.css 또는 별도 global.css 로 이동 |
+| 8 | 인라인 `<style>` 블록 완전 분리 — `static/styles.css` | 4h | `index.html` 615줄 / `admin.html` 530줄까지 인라인 |
+
+추천 다음 단계: **#6 (legacy 토큰 클린업)** 또는 **#7 (그라데이션 레일 공통화)**
+— 둘 다 작고 안전하며 토큰 통합 PR 의 흐름 안에 들어간다.
+
+---
+
+## 5. 다음 세션이 시작할 때 해야 할 일
 
 ### 5-1. 컨텍스트 복원
 
-```
-1. 이 문서 (frontend/HANDOVER_WEB_UI.md) 읽기
-2. HANDOVER.md 4-2 폴더 구조 확인 (frontend 부분)
-3. frontend/index.html + admin.html 훑어보기
-4. 현재 브랜치 확인:
-   git branch --show-current
-   → claude/design-web-ui-6NQaQ 이어야 함
+```bash
+git fetch origin claude/review-dark-ui-concept-Aydvd
+git checkout claude/review-dark-ui-concept-Aydvd
+git log --oneline -3   # e686844, 508f880 두 커밋이 보여야 함
 ```
 
-### 5-2. 사용자에게 확인할 첫 질문
+그리고 이 문서(`frontend/HANDOVER_WEB_UI.md`) 와 `CLAUDE.md` 를 읽는다.
+
+### 5-2. 첫 질문 템플릿
 
 ```
-"웹 세션에서 평가까지 마쳤습니다. 5가지 우선순위 중 어디부터
-시작할까요?
+"`claude/review-dark-ui-concept-Aydvd` 브랜치를 이어받았습니다.
 
-  1. CSS 추출 (가장 안전, 빠름)
-  2. 반응형 (사용성 큼)
-  3. 추론 패널 강화 (Graph-RAG 차별점 부각)
-  4. 접근성 (보안 프로젝트 기본기)
-  5. 인라인 핸들러 제거 (CSP 대비)
+지금까지 끝난 것:
+  - 토큰 단일화 (e686844)
+  - UI 브랜드 라벨 → "Secure Enterprise Knowledge
+    Intelligence, Operating System" 교체 (508f880)
 
-또는 다른 방향이 있으면 알려주세요."
+다음 우선순위 (HANDOVER_WEB_UI.md §4):
+  2. 반응형 확장 (admin/workspace/graph 용 mobile.css)
+  3. 추론 패널 강화
+  4. 접근성 패스
+  5. 인라인 핸들러 → 이벤트 위임
+  6. legacy 미정의 토큰 정리
+  7. 상단 그라데이션 레일 공통화
+  8. 인라인 <style> 완전 분리
+
+또는 main 으로 머지하시겠습니까? 머지 전 브라우저로
+시각 검증을 권장합니다."
 ```
 
-### 5-3. 작업 원칙 (HANDOVER.md 9-3, 9-4 재확인)
+### 5-3. 머지 전 시각 검증 체크리스트
+
+웹 세션에서는 브라우저로 못 보므로, 사용자에게 다음을 부탁:
 
 ```
-- 보안 영향 먼저 검토
-- fallback 항상 구현
-- 절대경로/하드코딩 회피
-- 변경사항 CHANGELOG.md에 기록
-- 사용자 환경 (Windows + PowerShell) 고려
-- 단계별 진행, 각 단계 확인 후 다음
-- 한국어 소통, 코드 주석은 영어 OK
-- 반응형 / 추론 패널 작업 시 i18n.js 키 신규 추가 가능성 → 검토
-```
-
-### 5-4. 추론 패널 강화 시 참고
-
-```
-관련 백엔드:
-  - core/reasoning_engine.py    추론 루프 (retrieve→expand→verify)
-  - core/graph_engine.py        Graph DFS
-  - core/retrieval_engine.py    하이브리드 검색
-
-서버 응답에 이미 포함된 메타:
-  - mode (chat / coding / retrieval / web_search)
-  - graph paths
-  - confidence
-  - sensitivity
-
-UI에서 표시할 것:
-  - 단계별 timeline (3단계 스피너 — 이미 STEP 4-A에 있음)
-  - 인용된 entity 노드 (클릭 시 위키로)
-  - 신뢰도 bar
-  - sensitivity 배지 (public/internal/confidential/secret)
+1. /         (chat)        — 헤더에 풀 문구 + Operating System tail 회색
+2. /admin    (admin)       — "· Admin Console" 접미사 함께 보이는지
+3. /workspace               — "Workspace · 데이터 + 작업" 함께
+4. /graph                   — "Reasoning Graph" 함께
+5. 모달 — 로그인/회원가입 타이틀이 "로그인 / 회원가입" 으로만 나오는지
+6. 환영 화면 — "Welcome to Secure Enterprise Knowledge
+   Intelligence, Operating System"
+7. admin → 캐릭터 → Identity 이름 입력 placeholder 가
+   풀 문구가 아니라 "JAMES" 인지 (이게 풀 문구면 페르소나 기본값
+   바인딩이 잘못된 것)
+8. 화면 폭 < 900px — `.brand` 가 11px 로 줄어드는지
+9. 화면 폭 < 640px — `.brand` 가 줄바꿈되는지
+10. theme-color — 브라우저 탭 상단 색이 #0a0c11 (살짝 푸른 검정) 인지
 ```
 
 ---
 
-## 6. 주의사항
+## 6. 주의사항 (Gotchas)
 
-```
-⚠️ 인라인 핸들러 제거 시:
-   - chat.js / admin.js / upload.js 의 함수 export 검토
-   - window.func = func 패턴이 많을 수 있음
-   - 이벤트 위임 시 data-action 속성 도입 권장
-
-⚠️ CSS 추출 시:
-   - index.html / admin.html 양쪽 변수 중복 → :root 한 곳에 통합
-   - 기존 클래스명 그대로 보존 (chat.js 의존성)
-   - @import url(...) 위치 주의 (CSS 파일 최상단으로)
-
-⚠️ 반응형 시:
-   - 사이드바 280px → 모바일에서 overlay 전환
-   - 챗 입력창이 모바일 하단 고정 시 keyboard 가림 방지
-   - 메시지 max-width: 800px 모바일에서 100% 조정
-
-⚠️ 접근성 시:
-   - --muted 색을 어둠 배경에서 끌어올리거나 별도 변수 분리
-   - 모달 focus trap (login-modal)
-   - 키보드 ESC 닫기 추가
-```
+- `tokens.css` 는 단일 출처. 새 토큰 추가 시 여기에만. 페이지에
+  중복 정의하지 말 것.
+- `.brand` 컴포넌트는 `tokens.css` 안에 있다 — "tokens" 라는
+  이름과 살짝 안 맞지만, 브랜드 컴포넌트도 시스템-와이드 primitive
+  로 취급. 나중에 `static/brand.css` 로 분리해도 됨.
+- 브랜치는 `main` 머지 시 PR description 에 **벤치 숫자**는 필요
+  없다(`core/retrieval`, `core/graph`, `core/reasoning` 미수정 — CLAUDE.md §2).
+- `Closes #N` 은 PR body 에만 쓰고 commit message 에는 쓰지 말 것
+  (CLAUDE.md 운영 규칙).
+- 자동 머지 금지(브랜드/UI 변경은 trust boundary 가 아니라서 기술적
+  으로는 가능하지만, 시각 검증 전엔 수동 머지 권장).
 
 ---
 
-## 7. 핵심 정보 요약 카드
+## 7. 빠른 요약 카드
 
 ```
-┌─────────────────────────────────────────────────┐
-│  Web UI Design — Quick Resume Card              │
-├─────────────────────────────────────────────────┤
-│                                                  │
-│  Branch:       claude/design-web-ui-6NQaQ       │
-│  Status:       평가 완료, 구현 미착수           │
-│                                                  │
-│  Files:                                          │
-│    frontend/index.html      779줄               │
-│    frontend/admin.html      700줄               │
-│    frontend/static/*.js     i18n + chat + admin │
-│                                                  │
-│  다음 단계:                                      │
-│    사용자에게 우선순위 1~5 중 선택 받기         │
-│                                                  │
-│  추천 시작점:                                    │
-│    1번 (CSS 추출) — 안전, 빠름, 후속 작업 기반  │
-│                                                  │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  Web UI — Dark Concept Refresh                          │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  Branch:   claude/review-dark-ui-concept-Aydvd          │
+│  Status:   Pushed, awaiting visual verification & merge │
+│                                                          │
+│  Commits:                                                │
+│    e686844  refactor(frontend): unify dark-UI tokens    │
+│    508f880  refactor(brand): replace UI "JAMES" labels  │
+│                                                          │
+│  Brand line (UI only):                                   │
+│    "Secure Enterprise Knowledge Intelligence,           │
+│     Operating System"                                    │
+│  Codename JAMES — kept in env vars / persona / code.    │
+│                                                          │
+│  Files touched:                                          │
+│    frontend/static/tokens.css   (new, 86줄)             │
+│    frontend/static/i18n.js                              │
+│    frontend/index.html                                   │
+│    frontend/admin.html                                   │
+│    frontend/workspace.html                               │
+│    frontend/graph.html                                   │
+│                                                          │
+│  Next step (recommended):                                │
+│    legacy 미정의 토큰 정리 (admin.html) — 30분          │
+│    또는 상단 그라데이션 레일 공통화 — 30분             │
+│                                                          │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 **문서 끝**
 
-PC 세션 시작 시 첫 메시지에 이 문서를 첨부하거나
-"frontend/HANDOVER_WEB_UI.md 읽고 이어가자" 라고 지시하면 됩니다.
+다른 세션 시작 시: 이 파일 경로(`frontend/HANDOVER_WEB_UI.md`) 만
+넘기면 컨텍스트가 복원된다.
