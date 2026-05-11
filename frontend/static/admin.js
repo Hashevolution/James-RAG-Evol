@@ -396,6 +396,7 @@ function showPage(id, el) {
   const loaders = {
     dashboard:      loadDashboard,
     users:          loadUsers,
+    policy:         loadPolicy,
     entities:       loadEntities,
     memory:         loadMemory,
     patches:        loadPatches,
@@ -750,6 +751,112 @@ async function revokeMyApiKey(prefix) {
     await loadUsers();
   } catch (e) {
     alert(`${t('users.action_failed')}: ${e.message}`);
+  }
+}
+
+/* ── W4-Q3: 권한 매트릭스 UI ──
+   Renders the feature × role checkbox grid from
+   /admin/features/list. Each cell:
+     - checked  = role allowed for this feature
+     - styled differently when source === 'override' so the operator
+       sees at a glance which cells differ from the catalog default
+     - click → POST /admin/features/override immediately. No "save"
+       button — the matrix is the source of truth.
+   Per-row [기본값 복원] removes every override row for that feature
+   so the cell colours fall back to default.
+*/
+function _policyToast(msg, kind = 'info') {
+  const el = document.getElementById('policy-toast');
+  if (!el) return;
+  const color = kind === 'error' ? 'var(--danger)'
+              : kind === 'ok'    ? '#1e7a3e'
+              : 'var(--muted)';
+  el.style.color = color;
+  el.textContent = msg;
+  setTimeout(() => {
+    if (el.textContent === msg) el.textContent = '';
+  }, 2200);
+}
+
+async function loadPolicy() {
+  const body  = document.getElementById('policy-body');
+  const thead = document.getElementById('policy-thead');
+  if (!body || !thead) return;
+  body.innerHTML = `<tr><td colspan="6" class="loading">${t('common.loading')}</td></tr>`;
+
+  try {
+    const data = await api('/admin/features/list');
+    const roles    = data.roles || [];
+    const features = data.features || [];
+
+    // Header — first cell is "기능", followed by one column per role,
+    // last cell is the "기본값 복원" action.
+    thead.innerHTML = `<th data-i18n="policy.col_feature">기능</th>` +
+      roles.map(r => `<th class="mono" style="text-align:center">${r}</th>`).join('') +
+      `<th style="text-align:center">${t('policy.col_action')}</th>`;
+
+    body.innerHTML = features.map(f => {
+      const cells = roles.map(r => {
+        const eff = (f.effective || {})[r] || {allowed: false, source: 'default'};
+        const isOverride = eff.source === 'override';
+        // Border / dot indicates an override. Default cells render plain.
+        const dot = isOverride
+          ? `<span title="${t('policy.override_label')}" style="display:inline-block;width:6px;height:6px;background:#f0a050;border-radius:50%;margin-left:5px;vertical-align:middle"></span>`
+          : '';
+        return `<td style="text-align:center">
+          <label style="display:inline-flex;align-items:center;gap:2px;cursor:pointer">
+            <input type="checkbox" ${eff.allowed ? 'checked' : ''}
+                   onchange="onPolicyToggle(this, '${f.id}', '${r}')"
+                   style="cursor:pointer;width:16px;height:16px;accent-color:#1e7a3e">
+            ${dot}
+          </label>
+        </td>`;
+      }).join('');
+      return `<tr>
+        <td>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${f.id}</div>
+          <div style="font-size:12px;color:var(--text);margin-top:1px">${f.description || ''}</div>
+        </td>
+        ${cells}
+        <td style="text-align:center">
+          <button onclick="resetPolicyFeature('${f.id}')"
+                  style="padding:4px 8px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:11px;cursor:pointer">
+            ${t('policy.reset_default')}
+          </button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="6" class="empty">${e.message}</td></tr>`;
+  }
+}
+
+async function onPolicyToggle(checkbox, featureId, role) {
+  const allowed = !!checkbox.checked;
+  try {
+    await api('/admin/features/override', 'POST', {
+      feature_id: featureId,
+      role:       role,
+      allowed:    allowed,
+    });
+    _policyToast(`✅ ${featureId} / ${role} = ${allowed ? 'allow' : 'deny'}`, 'ok');
+    // Re-render so the override dot appears immediately.
+    loadPolicy();
+  } catch (e) {
+    // Roll back the checkbox so UI matches server state.
+    checkbox.checked = !allowed;
+    _policyToast(`❌ ${e.message}`, 'error');
+  }
+}
+
+async function resetPolicyFeature(featureId) {
+  if (!confirm(t('policy.confirm_reset').replace('{feature}', featureId))) return;
+  try {
+    const r = await api('/admin/features/reset', 'POST', { feature_id: featureId });
+    _policyToast(t('policy.reset_done').replace('{n}', r.deleted || 0), 'ok');
+    loadPolicy();
+  } catch (e) {
+    _policyToast(`❌ ${e.message}`, 'error');
   }
 }
 

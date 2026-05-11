@@ -496,6 +496,9 @@
       <div class="nav-item" onclick="showPage('users', this)">
         <span class="nav-icon">👥</span> <span data-i18n="admin.users">사용자</span>
       </div>
+      <div class="nav-item" onclick="showPage('policy', this)">
+        <span class="nav-icon">🛡️</span> <span data-i18n="admin.policy">권한 매트릭스</span>
+      </div>
       <div class="nav-item" onclick="showPage('entities', this)">
         <span class="nav-icon">🕸</span> Entity
       </div>
@@ -650,6 +653,28 @@
             <th data-i18n="users.actions">액션</th>
           </tr></thead>
           <tbody id="users-body"><tr><td colspan="5" class="loading" data-i18n="common.loading">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- W4-Q3: 권한 매트릭스 (feature × role checkbox grid) -->
+    <div class="page" id="page-policy">
+      <div class="page-title"><span data-i18n="policy.page_title">🛡️ 권한 매트릭스</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5"
+           data-i18n="policy.page_hint">
+        각 기능을 어느 role 이 사용할 수 있는지 설정합니다. 체크 = 허용. 변경하면 즉시 반영. "기본값 복원" 으로 해당 기능의 모든 override 를 제거합니다.
+      </div>
+      <div id="policy-toast"
+           style="font-size:11px;font-family:var(--font-mono);color:var(--muted);min-height:16px;margin-bottom:8px"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr id="policy-thead">
+            <th data-i18n="policy.col_feature">기능</th>
+            <!-- role columns rendered dynamically from /admin/features/list -->
+          </tr></thead>
+          <tbody id="policy-body">
+            <tr><td colspan="6" class="loading" data-i18n="common.loading">로딩 중...</td></tr>
+          </tbody>
         </table>
       </div>
     </div>
