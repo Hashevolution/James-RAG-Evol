@@ -61,25 +61,33 @@
 
 /* ── Brand mark ──
  * Long-form product name shown in headers, modals, welcome screens.
- * The first line carries the primary positioning; the trailing
- * "Operating System" sits one weight/colour notch below so the
- * compound reads as a system identity rather than a sentence.
- * Used inside .logo, .modal-title, .welcome-title etc. */
+ * The first line ("Secure Enterprise Knowledge") carries the primary
+ * positioning; the trailing "Operating System" sits one weight notch
+ * below but on the same colour band so the full compound stays
+ * readable at a glance. Both halves use --text-soft or stronger —
+ * --muted is intentionally avoided here because the brand line is
+ * load-bearing identity, not metadata.
+ * Used inside .logo, .modal-title, .welcome-title etc.
+ *
+ * Visibility tuning (2026-05-12):
+ *   - 12px → 14px : header readable without leaning in
+ *   - brand-tail --muted → --text-soft (5.92:1 → 11.48:1 on --bg)
+ *   - weight 500 → 550 on tail for slight emphasis lift */
 .brand {
   font-weight: 600;
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: .25px;
   line-height: 1.25;
   white-space: nowrap;
   color: var(--text);
 }
 .brand .brand-tail {
-  font-weight: 500;
-  color: var(--muted);
-  margin-left: 3px;
+  font-weight: 550;
+  color: var(--text-soft);
+  margin-left: 4px;
 }
 @media (max-width: 900px) {
-  .brand { font-size: 11px; letter-spacing: .15px; }
+  .brand { font-size: 12px; letter-spacing: .15px; }
 }
 @media (max-width: 640px) {
   .brand { white-space: normal; }

@@ -12,7 +12,7 @@
 
 - v0.1 시절의 dark 컨셉을 점검하고, **공통 디자인 토큰 단일화** + **UI 브랜드 라벨 교체** 두 PR을 한 브랜치에 쌓았다.
 - 코드네임 **JAMES는 내부에만 존속**하고, UI 표면은 모두
-  **"Secure Enterprise Knowledge Intelligence, Operating System"** 으로 표시한다.
+  **"Secure Enterprise Knowledge Operating System"** 으로 표시한다.
 - 아직 main으로 머지되지 않았다. 머지 전 시각 검증 필요.
 
 ---
@@ -42,7 +42,7 @@ indigo accent, intelligence-cyan brand-2, shadow-card)를 가지고
 ### 1-2. 커밋 `508f880` — `refactor(brand): replace UI "JAMES" labels with full positioning line`
 
 배경: 사용자 지시 — UI 표면에서 "제임스"를 빼고
-"Secure Enterprise Knowledge Intelligence, Operating System" 을
+"Secure Enterprise Knowledge Operating System" 을
 표시한다.
 
 변경:
@@ -144,7 +144,7 @@ git log --oneline -3   # e686844, 508f880 두 커밋이 보여야 함
 지금까지 끝난 것:
   - 토큰 단일화 (e686844)
   - UI 브랜드 라벨 → "Secure Enterprise Knowledge
-    Intelligence, Operating System" 교체 (508f880)
+    Operating System" 교체 (508f880, 이후 "Intelligence," 제거 단축)
 
 다음 우선순위 (HANDOVER_WEB_UI.md §4):
   2. 반응형 확장 (admin/workspace/graph 용 mobile.css)
@@ -170,7 +170,7 @@ git log --oneline -3   # e686844, 508f880 두 커밋이 보여야 함
 4. /graph                   — "Reasoning Graph" 함께
 5. 모달 — 로그인/회원가입 타이틀이 "로그인 / 회원가입" 으로만 나오는지
 6. 환영 화면 — "Welcome to Secure Enterprise Knowledge
-   Intelligence, Operating System"
+   Operating System"
 7. admin → 캐릭터 → Identity 이름 입력 placeholder 가
    풀 문구가 아니라 "JAMES" 인지 (이게 풀 문구면 페르소나 기본값
    바인딩이 잘못된 것)
@@ -212,8 +212,7 @@ git log --oneline -3   # e686844, 508f880 두 커밋이 보여야 함
 │    508f880  refactor(brand): replace UI "JAMES" labels  │
 │                                                          │
 │  Brand line (UI only):                                   │
-│    "Secure Enterprise Knowledge Intelligence,           │
-│     Operating System"                                    │
+│    "Secure Enterprise Knowledge Operating System"        │
 │  Codename JAMES — kept in env vars / persona / code.    │
 │                                                          │
 │  Files touched:                                          │

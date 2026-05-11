@@ -5,7 +5,7 @@
 
 const TRANSLATIONS = {
   en: {
-    'app.name':              'Secure Enterprise Knowledge Intelligence, Operating System',
+    'app.name':              'Secure Enterprise Knowledge Operating System',
     'app.subtitle':          'Security-focused Graph-RAG knowledge engine',
     'app.welcome':           'Ask me anything',
     'app.admin':             'ADMIN',
@@ -40,7 +40,7 @@ const TRANSLATIONS = {
     'common.start':          'Start',
     'common.last':           'Last',
 
-    'chat.title':            'Secure Enterprise Knowledge Intelligence, Operating System — Security Reasoning Engine',
+    'chat.title':            'Secure Enterprise Knowledge Operating System — Security Reasoning Engine',
     'chat.placeholder':      'Type a message (Shift+Enter for new line)',
     'chat.example1':         'What is economics?',
     'chat.example2':         'Find documents about John Smith',
@@ -517,7 +517,7 @@ const TRANSLATIONS = {
   },
 
   ko: {
-    'app.name':              'Secure Enterprise Knowledge Intelligence, Operating System',
+    'app.name':              'Secure Enterprise Knowledge Operating System',
     'app.subtitle':          '보안 중심 Graph-RAG 지식 추론 엔진',
     'app.welcome':           '무엇이든 물어보세요',
     'app.admin':             '관리자',
@@ -552,7 +552,7 @@ const TRANSLATIONS = {
     'common.start':          '시작',
     'common.last':           '마지막',
 
-    'chat.title':            'Secure Enterprise Knowledge Intelligence, Operating System — 보안 추론 엔진',
+    'chat.title':            'Secure Enterprise Knowledge Operating System — 보안 추론 엔진',
     'chat.placeholder':      '메시지를 입력하세요 (Shift+Enter: 줄바꿈)',
     'chat.example1':         '경제학이란 무엇인가?',
     'chat.example2':         '김철수 관련 자료 찾아줘',
