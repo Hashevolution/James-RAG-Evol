@@ -25,6 +25,10 @@ rank-bm25>=0.2.2
 # ── Numerical / Data ───────────────────────────────────────────
 numpy>=1.24.0
 PyYAML>=6.0
+# Excel output for workspace jobs (W8-A excel_build handler).
+# Read-side openpyxl is already imported by file_processor for .xlsx
+# ingestion; W8 makes it an explicit declared dep.
+openpyxl>=3.1.0
 
 # ── Hardware Monitoring (auto-recommendation) ──────────────────
 psutil>=5.9.0

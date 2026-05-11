@@ -352,6 +352,41 @@ renders this layer as a data explorer.
 **W8** layers `jobs` + a small scheduler on top so users can run
 Excel/document/export jobs against their artifacts.
 
+### 6.1 Jobs (W8-A, 2026-05-11)
+
+`core/workspace.py` adds a `jobs` table (same `james_data.db`) and a
+small handler registry. Three generic job types ship with v0.2:
+
+| job_type | what it produces | input_refs |
+|---|---|---|
+| `excel_build` | `.xlsx` with entity rows (id / name / type / sensitivity / summary) | list of `entity_id` |
+| `doc_combine` | single `.md` concatenating entity bodies | list of `entity_id` |
+| `entity_export` | `.json` dump of all (or selected category) entities | list of category names; empty = all |
+
+Adding a domain pack's job type is a one-line entry in `HANDLERS` plus
+a `run(input_refs, output_dir, options) -> filename` implementation —
+Rule #1 keeps that surface intentionally small until v1.0.
+
+**Execution model** — synchronous. `/jobs/run` blocks until the row
+reaches `done` or `failed`. Handler runtimes against typical wiki
+sizes are well under HTTP timeouts; a real queue + cron scheduler
+arrives with W8-A2 once the surface stabilizes.
+
+**Endpoints** (all gate through the matrix):
+
+| endpoint | feature | scope |
+|---|---|---|
+| `POST /jobs/run` | `workspace.run_jobs` | JWT subject = owner |
+| `GET  /jobs/list` | `workspace.view` | own jobs only |
+| `GET  /jobs/{id}` | `workspace.view` | own (cross-owner → 404) |
+| `GET  /jobs/{id}/download` | `workspace.view` | own |
+| `GET  /admin/jobs/list` | `admin.data` | every owner |
+| `GET  /admin/jobs/{id}` | `admin.data` | every owner |
+
+Result files land in `workspace/results/<job_id>/<filename>`. The
+download endpoint streams via `FileResponse`; the row stores only
+the relative path so a future relocation is a no-op DB migration.
+
 **TrustedContent** is the wrapper every multimodal extractor (OCR,
 ASR, vision, web) returns instead of a raw string. Carries
 `(text, source, trust)` so the reasoning pipeline knows whether to run

@@ -3916,6 +3916,164 @@ async def mine_artifacts_detail(
     return row
 
 
+# ─── W8-A: workspace jobs (run / list / detail / download) ─────
+# Sync execution — the handlers complete in seconds for typical wiki
+# sizes. /jobs/run blocks until the row reaches done/failed. Scheduler
+# (cron-driven) is W8-A2; this PR is pure on-demand execution.
+
+class JobRunRequest(BaseModel):
+    job_type:   str
+    input_refs: list = []
+    options:    Optional[dict] = None
+
+
+@app.post("/jobs/run", summary="워크스페이스 job 실행 (W8-A)")
+async def jobs_run(
+    data:    JobRunRequest,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
+    """workspace.run_jobs feature gate. Owner is the JWT subject
+    (no JWT → 401 — anonymous can't run jobs). Body has no owner
+    field; the server is the source of truth."""
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "workspace.run_jobs").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (workspace.run_jobs)")
+    owner = _bearer_username(request)
+    if not owner:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+
+    from core.workspace import register_job, execute_job, HANDLERS
+    if data.job_type not in HANDLERS:
+        raise HTTPException(status_code=400,
+                            detail=f"unknown job_type: {data.job_type}")
+    job_id = register_job(data.job_type, data.input_refs or [],
+                          owner=owner, options=data.options)
+    ip = get_client_ip(request)
+    _write_audit(role, "/jobs/run", query=f"{data.job_type}/{job_id}",
+                 security_event="job_started", ip_address=ip)
+    row = execute_job(job_id)
+    final_event = "job_done" if row["status"] == "done" else f"job_{row['status']}"
+    _write_audit(role, "/jobs/run", query=f"{data.job_type}/{job_id}",
+                 security_event=final_event, ip_address=ip)
+    return row
+
+
+@app.get("/jobs/list", summary="내 job 목록 (W8-A)")
+async def jobs_list(
+    request: Request,
+    status:  str = "",
+    limit:   int = 50,
+    offset:  int = 0,
+    role:    str = Depends(get_role_from_request),
+):
+    """Self-view — gated by workspace.view (lower bar than
+    run_jobs; reading your own queue is universally useful)."""
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "workspace.view").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (workspace.view)")
+    owner = _bearer_username(request)
+    if not owner:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+    from core.workspace import list_jobs, count_jobs
+    s = status.strip() or None
+    return {
+        "items":  list_jobs(owner=owner, status=s, limit=limit, offset=offset),
+        "total":  count_jobs(owner=owner, status=s),
+        "status": s or "",
+        "limit":  limit,
+        "offset": offset,
+    }
+
+
+@app.get("/jobs/{job_id}", summary="내 job 상세 (W8-A)")
+async def jobs_detail(
+    job_id:  str,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "workspace.view").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (workspace.view)")
+    owner = _bearer_username(request)
+    if not owner:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+    from core.workspace import get_job
+    row = get_job(job_id, requester_username=owner)
+    if row is None:
+        raise HTTPException(status_code=404, detail="job not found")
+    return row
+
+
+@app.get("/jobs/{job_id}/download", summary="job 결과 다운로드 (W8-A)")
+async def jobs_download(
+    job_id:  str,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
+    """Stream the produced file. Cross-owner access surfaces as 404
+    (the row lookup returns None for non-owners; we don't leak the
+    job_id space)."""
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "workspace.view").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (workspace.view)")
+    owner = _bearer_username(request)
+    if not owner:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+    from core.workspace import get_job
+    row = get_job(job_id, requester_username=owner)
+    if row is None or not row.get("output_path"):
+        raise HTTPException(status_code=404, detail="job result not found")
+    try:
+        from config import BASE_DIR
+        full = os.path.join(BASE_DIR, row["output_path"])
+    except ImportError:
+        full = row["output_path"]
+    if not os.path.exists(full):
+        raise HTTPException(status_code=404, detail="output file missing on disk")
+    return FileResponse(full, filename=os.path.basename(full))
+
+
+# ── admin-side mirrors (admin.data feature, sees every owner) ──
+
+@app.get("/admin/jobs/list", summary="모든 job 목록 — admin (W8-A)")
+async def admin_jobs_list(
+    api_key: str,
+    status:  str = "",
+    limit:   int = 50,
+    offset:  int = 0,
+    role:    str = Depends(get_role_from_request),
+):
+    _require_feature(api_key, role, "admin.data")
+    from core.workspace import list_jobs, count_jobs
+    s = status.strip() or None
+    return {
+        "items":  list_jobs(status=s, limit=limit, offset=offset),
+        "total":  count_jobs(status=s),
+        "status": s or "",
+        "limit":  limit,
+        "offset": offset,
+    }
+
+
+@app.get("/admin/jobs/{job_id}", summary="job 상세 — admin (W8-A)")
+async def admin_jobs_detail(
+    job_id:  str,
+    api_key: str,
+    role:    str = Depends(get_role_from_request),
+):
+    _require_feature(api_key, role, "admin.data")
+    from core.workspace import get_job
+    row = get_job(job_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="job not found")
+    return row
+
+
 # ─── W4-Q1: feature capability matrix ──────────────────────────
 # Admin-only surface to inspect + adjust the per-role feature gate
 # (core/feature_registry.py + PolicyEngine.can_use_feature).
