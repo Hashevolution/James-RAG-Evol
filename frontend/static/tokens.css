@@ -38,7 +38,7 @@
   --text:         #ececf1;
   --text-soft:    #c4c6cf;
   --muted:        #8a8d99;
-  --muted-2:      #5d616c;       /* AA-borderline on --bg; labels only */
+  --muted-2:      #787c84;       /* 4.67:1 on --bg — WCAG AA pass */
 
   /* ── status ── */
   --success:      #22c55e;
