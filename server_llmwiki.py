@@ -656,13 +656,11 @@ async def upload(
     _require_feature(api_key, role, "upload.file")
     ip = get_client_ip(request)
 
-    # [video-reject 2026-05-10, W1 진단 §3-C Option C] 영상 파일은 현재
-    # [video-asr 2026-05-11] 영상은 ffmpeg → Whisper ASR 으로 처리.
-    # 실제 ffmpeg 호출 + 음성 추출 + STT 는 processors/file_processor.py
-    # ::extract_video. 운영자 환경에 ffmpeg 가 없으면 그쪽에서 명시적
-    # RuntimeError → process_file 의 try/except 가 "[처리 오류]"
-    # placeholder 로 변환 → 업로드 자체는 진행 (vector 인덱스에 한 줄
-    # 오류 메시지만 들어감, silent failure 아님).
+    # 영상은 ffmpeg → Whisper ASR 으로 처리. 실제 ffmpeg 호출 + 음성
+    # 추출 + STT 는 processors/file_processor.py::extract_video. 운영자
+    # 환경에 ffmpeg 가 없으면 그쪽에서 명시적 RuntimeError → process_file
+    # 의 try/except 가 "[처리 오류]" placeholder 로 변환 → 업로드 자체는
+    # 진행 (vector 인덱스에 한 줄 오류 메시지만 들어감, silent failure 아님).
 
     allowed_ext = (
         ".pdf",".png",".jpg",".jpeg",".bmp",".tiff",".webp",

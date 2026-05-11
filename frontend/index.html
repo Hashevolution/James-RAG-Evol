@@ -1024,8 +1024,6 @@
       <!-- Mode: 파일 업로드 (default) -->
       <div class="sidebar-panel-mode active" data-mode="upload">
         <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-          <!-- [video-reject 2026-05-10] video/* 제거 — 현재 영상 처리 stub.
-               audio 만 허용. 후속 video-asr PR 에서 video/* 재추가 예정. -->
           <input type="file" id="file-input" multiple
                  accept="image/*,audio/*,video/*,.pdf,.txt,.md,.json,.docx,.xlsx,.pptx,.hwp,.hwpx">
           <!-- item #8: 폴더 통째 선택용 hidden input. webkitdirectory 사용 시
