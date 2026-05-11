@@ -48,6 +48,12 @@ def _log_analysis(path: str, analysis_type: str, elapsed: float, success: bool):
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
     except Exception:
         pass
+    # Phase 1: mirror to SQLite (see core/audit_bridge.py).
+    try:
+        from core.audit_bridge import mirror_to_audit_db
+        mirror_to_audit_db(entry)
+    except Exception:
+        pass
 
 
 class CodeAnalyzer:

@@ -92,6 +92,15 @@ def _log_tool_event(
     except Exception:
         pass
 
+    # Phase 1: mirror to SQLite audit_log so /admin/audit/list can
+    # surface tool events alongside HTTP audit rows. Best-effort —
+    # bridge never raises.
+    try:
+        from core.audit_bridge import mirror_to_audit_db
+        mirror_to_audit_db(entry)
+    except Exception:
+        pass
+
     if blocked:
         reason = (
             "CAPABILITY"  if cap_denied      else

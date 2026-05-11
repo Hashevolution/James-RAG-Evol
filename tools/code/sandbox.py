@@ -85,6 +85,12 @@ def log_security_event(
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         except Exception:
             pass
+    # Phase 1: mirror to SQLite (see core/audit_bridge.py).
+    try:
+        from core.audit_bridge import mirror_to_audit_db
+        mirror_to_audit_db(entry)
+    except Exception:
+        pass
     flag = "🚫 BLOCKED" if blocked else ("⚠️ ADMIN_OVERRIDE" if admin_override else "✅ ALLOWED")
     print(f"[SANDBOX] {flag} [{role}] {event_type}: {detail[:60]}")
 
