@@ -32,11 +32,17 @@ CONFLICT_CONFIDENCE_DIFF = 0.3     # confidence 차이 이 이상이면 conflict
 
 
 def _log(step: str, detail: str, level: str = "INFO"):
+    entry = {"time": datetime.now().isoformat(), "level": level,
+             "step": f"memory_loom.{step}", "detail": detail[:300]}
     try:
-        entry = {"time": datetime.now().isoformat(), "level": level,
-                 "step": f"memory_loom.{step}", "detail": detail[:300]}
         with open(SYSTEM_LOG_PATH, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+    # Phase 2: mirror to SQLite (see core/audit_bridge.py).
+    try:
+        from core.audit_bridge import mirror_system_event
+        mirror_system_event(entry)
     except Exception:
         pass
 

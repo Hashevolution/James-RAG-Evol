@@ -52,6 +52,12 @@ class RetrievalEngine:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         except Exception:
             pass
+        # Phase 2: mirror to SQLite (see core/audit_bridge.py).
+        try:
+            from core.audit_bridge import mirror_system_event
+            mirror_system_event(entry)
+        except Exception:
+            pass
 
     # ─── BM25 정규화 ─────────────────────────────────────────
 

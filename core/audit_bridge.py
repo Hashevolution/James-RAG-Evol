@@ -62,6 +62,8 @@ _RESERVED_KEYS = {
     # Identifier-ish fields are folded into ``query`` so the audit list
     # UI's free-text search hits them directly.
     "tool_used", "target_file", "path", "target",
+    # Explicit endpoint override (Phase 2 — attack/system streams).
+    "endpoint",
 }
 
 
@@ -87,11 +89,20 @@ def _resolve_query(entry: Dict[str, Any]) -> str:
 def _resolve_endpoint(entry: Dict[str, Any]) -> str:
     """Synthesise a category-friendly endpoint.
 
-    ``tool:<layer>:<event>`` — e.g. ``tool:router:TOOL_EXECUTED``,
-    ``tool:code_reader:FILE_READ``. Phase 3 of the migration adds a
-    category ``tools`` to ``/admin/audit/list`` that filters on
-    ``endpoint LIKE 'tool:%'``; this prefix is the join point.
+    Phase 1 (tool stream) auto-synthesises ``tool:<layer>:<event>`` —
+    e.g. ``tool:router:TOOL_EXECUTED``, ``tool:code_reader:FILE_READ``.
+
+    Phase 2 (attack/system streams) needs different prefixes
+    (``attack:``, ``system:``) so Phase 3 can route them to separate
+    /admin/audit/list categories. A writer signals the stream by
+    setting ``entry["endpoint"]`` explicitly; the bridge respects it.
+
+    Length-capped to 200 chars to avoid pathological writers from
+    bloating the column.
     """
+    explicit = entry.get("endpoint")
+    if explicit:
+        return str(explicit)[:200]
     layer = entry.get("layer") or "tool"
     event = entry.get("event") or "EVENT"
     return f"tool:{layer}:{event}"
@@ -161,3 +172,45 @@ def mirror_to_audit_db(entry: Dict[str, Any],
         return True
     except Exception:
         return False
+
+
+# ─── Phase 2 stream-specific helpers ────────────────────────────
+#
+# Wrap mirror_to_audit_db with the right ``endpoint`` prefix so the
+# 12 attack/system writer sites can call us with 1 line. Phase 3 will
+# filter on these prefixes — ``LIKE 'attack:%'`` and ``LIKE 'system:%'``.
+
+def mirror_attack_event(entry: Dict[str, Any],
+                        attack_type: str = "injection") -> bool:
+    """Mirror a ``log_attack`` JSONL entry to SQLite.
+
+    Attack events are inherently blocked (the system caught them before
+    serving), so ``blocked=True`` is forced regardless of the entry.
+    """
+    if not isinstance(entry, dict):
+        return False
+    return mirror_to_audit_db({
+        **entry,
+        "endpoint": f"attack:{attack_type}",
+        "event":    attack_type,
+        "blocked":  True,
+    })
+
+
+def mirror_system_event(entry: Dict[str, Any]) -> bool:
+    """Mirror a ``log_system_event`` JSONL entry to SQLite.
+
+    The legacy JSONL writers stamp their entries with ``level`` +
+    ``step`` (e.g. ``orchestrator.startup``). We use those for the
+    endpoint prefix: ``system:<level>:<step>``. Phase 3's category
+    ``system`` filters on ``LIKE 'system:%'``.
+    """
+    if not isinstance(entry, dict):
+        return False
+    level = entry.get("level") or "INFO"
+    step  = entry.get("step")  or "system"
+    return mirror_to_audit_db({
+        **entry,
+        "endpoint": f"system:{level}:{step}",
+        "event":    step,
+    })

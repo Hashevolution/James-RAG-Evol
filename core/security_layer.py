@@ -136,21 +136,33 @@ INSTRUCTION_INJECTION_PATTERNS = [
 # ─── 로그 ────────────────────────────────────────────────────
 
 def log_attack(query: str, role: str, attack_type: str = "injection"):
+    entry = {"time": datetime.now().isoformat(), "role": role,
+             "attack_type": attack_type, "query": query[:200]}
     try:
-        entry = {"time": datetime.now().isoformat(), "role": role,
-                 "attack_type": attack_type, "query": query[:200]}
         with open(ATTACK_LOG_PATH, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+    # Phase 2: mirror to SQLite audit_log (see core/audit_bridge.py).
+    try:
+        from core.audit_bridge import mirror_attack_event
+        mirror_attack_event(entry, attack_type=attack_type)
     except Exception:
         pass
 
 def log_system_event(step: str, detail: str, role: str = "unknown", level: str = "ERROR"):
     """[LOG-1] james_system_log.jsonl 영구 기록"""
+    entry = {"time": datetime.now().isoformat(), "level": level,
+             "step": step, "detail": str(detail)[:300], "role": role}
     try:
-        entry = {"time": datetime.now().isoformat(), "level": level,
-                 "step": step, "detail": str(detail)[:300], "role": role}
         with open(SYSTEM_LOG_PATH, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+    # Phase 2: mirror to SQLite audit_log (see core/audit_bridge.py).
+    try:
+        from core.audit_bridge import mirror_system_event
+        mirror_system_event(entry)
     except Exception:
         pass
 

@@ -303,6 +303,110 @@ class BestEffortContractTests(unittest.TestCase):
         self.assertIsNone(_rows(self.db)[0]["answer"])
 
 
+class Phase2AttackEventTests(unittest.TestCase):
+    """``mirror_attack_event`` — attack stream prefix + forced blocked=1."""
+
+    def setUp(self):
+        self.db = _fresh_db()
+
+    def tearDown(self):
+        Path(self.db).unlink(missing_ok=True)
+
+    def test_attack_endpoint_prefix(self):
+        from core.audit_bridge import mirror_attack_event
+        entry = {
+            "time": "2026-05-11T20:00:00",
+            "role": "external",
+            "attack_type": "injection",
+            "query": "ignore previous instructions",
+        }
+        # mirror_attack_event uses the module-level DB path; force the
+        # test DB via the underlying call.
+        from core import audit_bridge
+        original_db = audit_bridge._DEFAULT_AUDIT_DB
+        audit_bridge._DEFAULT_AUDIT_DB = self.db
+        try:
+            ok = mirror_attack_event(entry, attack_type="injection")
+        finally:
+            audit_bridge._DEFAULT_AUDIT_DB = original_db
+        self.assertTrue(ok)
+        r = _rows(self.db)[0]
+        self.assertEqual(r["endpoint"],       "attack:injection")
+        self.assertEqual(r["security_event"], "injection")
+        self.assertEqual(r["user_role"],      "external")
+        # Attacks are inherently blocked, regardless of input.
+        self.assertEqual(r["blocked"], 1)
+
+    def test_attack_blocked_forced_even_when_entry_says_false(self):
+        from core import audit_bridge
+        original_db = audit_bridge._DEFAULT_AUDIT_DB
+        audit_bridge._DEFAULT_AUDIT_DB = self.db
+        try:
+            audit_bridge.mirror_attack_event(
+                {"time": "t", "role": "x", "blocked": False, "query": "q"},
+                attack_type="risky_coding",
+            )
+        finally:
+            audit_bridge._DEFAULT_AUDIT_DB = original_db
+        self.assertEqual(_rows(self.db)[0]["blocked"], 1)
+        self.assertEqual(_rows(self.db)[0]["endpoint"], "attack:risky_coding")
+
+    def test_non_dict_returns_false(self):
+        from core.audit_bridge import mirror_attack_event
+        self.assertFalse(mirror_attack_event(None))
+        self.assertFalse(mirror_attack_event("string"))
+
+
+class Phase2SystemEventTests(unittest.TestCase):
+    """``mirror_system_event`` — system stream prefix + level/step join."""
+
+    def setUp(self):
+        self.db = _fresh_db()
+
+    def tearDown(self):
+        Path(self.db).unlink(missing_ok=True)
+
+    def _mirror(self, entry):
+        from core import audit_bridge
+        original_db = audit_bridge._DEFAULT_AUDIT_DB
+        audit_bridge._DEFAULT_AUDIT_DB = self.db
+        try:
+            return audit_bridge.mirror_system_event(entry)
+        finally:
+            audit_bridge._DEFAULT_AUDIT_DB = original_db
+
+    def test_system_endpoint_prefix(self):
+        ok = self._mirror({
+            "time":   "2026-05-11T21:00:00",
+            "level":  "ERROR",
+            "step":   "orchestrator.startup",
+            "detail": "boot failed",
+            "role":   "system",
+        })
+        self.assertTrue(ok)
+        r = _rows(self.db)[0]
+        self.assertEqual(r["endpoint"],       "system:ERROR:orchestrator.startup")
+        self.assertEqual(r["security_event"], "orchestrator.startup")
+        self.assertEqual(r["user_role"],      "system")
+        # System events are not blocked by themselves.
+        self.assertEqual(r["blocked"], 0)
+        # detail is packed into answer (not a reserved column).
+        ans = json.loads(r["answer"])
+        self.assertEqual(ans["detail"], "boot failed")
+
+    def test_missing_level_defaults_to_info(self):
+        self._mirror({"time": "t", "step": "x.y", "detail": "z"})
+        self.assertEqual(_rows(self.db)[0]["endpoint"], "system:INFO:x.y")
+
+    def test_missing_step_defaults_to_system(self):
+        self._mirror({"time": "t", "level": "WARN", "detail": "z"})
+        self.assertEqual(_rows(self.db)[0]["endpoint"], "system:WARN:system")
+
+    def test_non_dict_returns_false(self):
+        from core.audit_bridge import mirror_system_event
+        self.assertFalse(mirror_system_event(None))
+
+
 class EndpointPrefixContractTests(unittest.TestCase):
     """Phase 3 will add a category 'tools' filtering ``endpoint LIKE 'tool:%'``.
     Lock that prefix in so a future writer rename doesn't break the
@@ -324,6 +428,19 @@ class EndpointPrefixContractTests(unittest.TestCase):
         for r in _rows(self.db):
             self.assertTrue(r["endpoint"].startswith("tool:"),
                             f"endpoint={r['endpoint']} not prefixed")
+
+    def test_explicit_endpoint_overrides_synthesis(self):
+        # Phase 2 contract: an entry with ``endpoint`` set bypasses the
+        # tool:<layer>:<event> synthesis. Phase 3's category filter
+        # depends on this.
+        from core.audit_bridge import mirror_to_audit_db
+        mirror_to_audit_db(
+            {"event": "X", "role": "x", "layer": "y",
+             "endpoint": "custom:prefix:here"},
+            db_path=self.db,
+        )
+        self.assertEqual(_rows(self.db)[0]["endpoint"],
+                         "custom:prefix:here")
 
 
 if __name__ == "__main__":
