@@ -15,7 +15,7 @@ PROJECT JAMES - Graph-RAG Engine (Phase 4.5 - Thin Wrapper)
 import numpy as np
 from typing import Dict, Any, Optional, List
 
-from core.reasoning_engine import ReasoningEngine
+from core.reasoning import ReasoningEngine
 
 
 class RAGEngine:

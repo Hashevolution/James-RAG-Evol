@@ -13,6 +13,10 @@ Phase 5.5 통과 기준:
   [P55-6] 감사 로그   — tool_used + protected_block + admin_override 기록
   [P55-7] 보안 유지   — Core Engine 무수정 + 기존 보안 100% 유지
 """
+# Reconfigure stdout to UTF-8 before any top-level prints (this script emits
+# Korean banners + emoji on import). See utils/console.py for rationale.
+from utils.console import ensure_utf8_console
+ensure_utf8_console()
 
 import sys
 import os
@@ -173,12 +177,19 @@ def run_tool_system_tests():
         return not missing, f"필수 보호파일 포함 | 누락={missing}"
 
     def t_router_user_blocked():
-        """user role → PROTECTED_FILES 접근 차단"""
+        """user role → PROTECTED_FILES 접근 차단
+
+        Phase 3-2 (#44): "user" is unknown to ROLE_LEVEL, so the
+        capability gate fires first → CAPABILITY_DENIED is now an
+        accepted (and strictly stronger) block reason.
+        """
         from tools.router import execute_tool
         action  = {"name":"read_file","input":{"path":"core/security_layer.py"}}
         context = {"user_role":"user"}
         result  = execute_tool(action, context)
-        ok = result.get("error") in ("PROTECTED", "DENIED", "UNKNOWN_TOOL")
+        ok = result.get("error") in (
+            "PROTECTED", "DENIED", "UNKNOWN_TOOL", "CAPABILITY_DENIED",
+        )
         return ok, f"user PROTECTED 차단: {result.get('error')}"
 
     def t_router_admin_override():
@@ -227,7 +238,11 @@ def run_read_file_tests():
     print("="*55)
 
     os.makedirs("./workspace", exist_ok=True)
-    with open("./workspace/_diag_test.py", "w") as f:
+    # encoding="utf-8" required: on Windows the default is cp949, which
+    # would silently corrupt the Korean comment. ReadFileTool then reads
+    # with utf-8 + errors="replace" and emits � replacement chars in
+    # the test report (visible in older james_phase55_report.json runs).
+    with open("./workspace/_diag_test.py", "w", encoding="utf-8") as f:
         f.write("# 진단 테스트 파일\nprint('hello')\nx = 1 + 2\n")
 
     def t_read_tool_exists():
@@ -238,16 +253,18 @@ def run_read_file_tests():
                f"name={tool.name} sandbox={tool.requires_sandbox}"
 
     def t_read_normal():
+        # Phase 3-3 (#44): "user" is not in ROLE_LEVEL — use "employee"
+        # (the canonical non-admin internal role) to test the success path.
         from tools.code.read_file import ReadFileTool
         tool   = ReadFileTool()
-        result = tool.execute({"path":"./workspace/_diag_test.py","role":"user"})
+        result = tool.execute({"path":"./workspace/_diag_test.py","role":"employee"})
         ok = result.get("success") and "hello" in str(result.get("result",""))
         return ok, f"정상 읽기={ok} | {str(result.get('result',''))[:40]}"
 
     def t_read_path_escape():
         from tools.code.read_file import ReadFileTool
         tool   = ReadFileTool()
-        result = tool.execute({"path":"../secret.py","role":"user"})
+        result = tool.execute({"path":"../secret.py","role":"employee"})
         return not result.get("success"), f"경로 탈출 차단={not result.get('success')}"
 
     def t_read_authorize_employee():
@@ -266,7 +283,7 @@ def run_read_file_tests():
         from tools.code.read_file import ReadFileTool
         tool   = ReadFileTool()
         result = tool.execute({"path":"./workspace/_diag_test.py",
-                                "start_line":2,"end_line":2,"role":"user"})
+                                "start_line":2,"end_line":2,"role":"employee"})
         ok = result.get("success") and "hello" in str(result.get("result",""))
         return ok, f"라인 범위 읽기={ok}"
 
@@ -355,7 +372,7 @@ def run_reasoning_connection_tests():
 
     def t_execute_tool_connected():
         import inspect
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine.query)
         ok = "execute_tool" in src and "pending_actions" in src
         return ok, f"execute_tool 연결={ok} | pending_actions 조건부={ok}"
@@ -363,7 +380,7 @@ def run_reasoning_connection_tests():
     def t_tool_conditional_only():
         """actions 없으면 Tool 미실행 — 조건부"""
         import inspect
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine.query)
         # actions 있을 때만 실행하는 조건 확인
         ok = ("pending_actions" in src and
@@ -376,7 +393,7 @@ def run_reasoning_connection_tests():
         protected = [
             "core.graph_engine",
             "core.security_layer",
-            "core.memory_loom",
+            "core.memory.loom",
             "core.ontology",
         ]
         for module_name in protected:
@@ -392,7 +409,7 @@ def run_reasoning_connection_tests():
     def t_security_still_first():
         """보안이 Tool보다 먼저 실행"""
         import inspect
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine.query)
         pre_idx  = src.find("pre_check")
         tool_idx = src.find("execute_tool")
@@ -401,7 +418,7 @@ def run_reasoning_connection_tests():
 
     def t_max_loop_unchanged():
         """MAX_LOOP=2 변경 없음"""
-        from core.reasoning_engine import MAX_LOOP
+        from core.reasoning import MAX_LOOP
         return MAX_LOOP == 2, f"MAX_LOOP={MAX_LOOP} (변경 없음)"
 
     for name, fn in [

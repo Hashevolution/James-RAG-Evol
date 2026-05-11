@@ -22,7 +22,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from tools.code.sandbox import validate_path
+from tools.code.sandbox import policy_validate_path
 from tools.router import _is_protected
 
 PATCH_LOG_PATH = "james_patch_log.jsonl"
@@ -95,8 +95,8 @@ def generate_patch(
                 "error": f"FORBIDDEN: {target} (보안/핵심 파일)",
             }
 
-    # 3. 경로 검증 (workspace 내 또는 admin 우회)
-    path_ok, reason = validate_path(target, user_role)
+    # 3. PolicyEngine + 경로 검증 (#44 phase 3-3) — fs.write (admin only)
+    path_ok, reason = policy_validate_path(target, user_role, "fs.write")
     if not path_ok:
         _log_patch("BLOCKED_PATH", patch_id, reason)
         return {"patch_id": patch_id, "status": "BLOCKED", "error": reason}

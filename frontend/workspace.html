@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0c0d10">
+<title>JAMES Workspace</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:        #0c0d10;
+    --surface:   #14161a;
+    --surface-2: #1a1d22;
+    --border:    #25282f;
+    --border-2:  #1c1f25;
+    --accent:    #6366f1;
+    --accent-fg: #a5b4fc;
+    --text:      #ececf1;
+    --text-soft: #c4c6cf;
+    --muted:     #8a8d99;
+    --muted-2:   #5d616c;
+    --success:   #22c55e;
+    --danger:    #ef4444;
+    --warn:      #f59e0b;
+    --radius:    8px;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    --font-ui:   'Inter', 'Pretendard', system-ui, -apple-system, sans-serif;
+  }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--font-ui); font-size: 14px;
+    min-height: 100dvh; display: flex; flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border-2);
+    background: var(--surface);
+  }
+  .logo { font-size: 14px; font-weight: 600; }
+  .logo span.tagline {
+    font-size: 11px; color: var(--muted); margin-left: 8px;
+    font-family: var(--font-mono);
+  }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .header-btn {
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-soft); cursor: pointer; padding: 6px 10px;
+    font-size: 12px;
+  }
+  .header-btn:hover { background: var(--surface-2); color: var(--text); }
+  .role-badge {
+    font-size: 11px; padding: 4px 10px;
+    border: 1px solid var(--border); border-radius: 6px;
+    font-family: var(--font-mono); color: var(--muted);
+  }
+  .role-badge .who { color: var(--text); margin-right: 4px; }
+
+  main { display: flex; flex: 1; overflow: hidden; }
+  nav.sidebar {
+    width: 200px; flex-shrink: 0;
+    background: var(--surface); border-right: 1px solid var(--border-2);
+    padding: 16px 8px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .nav-item {
+    padding: 8px 12px; border-radius: 6px;
+    color: var(--muted); cursor: pointer; font-size: 13px;
+    display: flex; align-items: center; gap: 10px;
+    transition: background .15s, color .15s;
+  }
+  .nav-item:hover { background: var(--surface-2); color: var(--text-soft); }
+  .nav-item.active {
+    background: var(--surface-2); color: var(--text);
+    border-left: 2px solid var(--accent);
+  }
+
+  section.content {
+    flex: 1; padding: 20px 28px; overflow-y: auto; min-width: 0;
+  }
+  .page-title {
+    font-size: 18px; font-weight: 600; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .page-title .badge {
+    font-size: 10px; padding: 2px 8px; border-radius: 4px;
+    background: var(--accent); color: #fff; font-weight: 600;
+    letter-spacing: 1px;
+  }
+  .hint {
+    font-size: 11px; color: var(--muted); line-height: 1.5;
+    margin-bottom: 14px;
+  }
+  .toolbar {
+    display: flex; gap: 8px; align-items: center;
+    margin-bottom: 12px; flex-wrap: wrap;
+  }
+  .toolbar input, .toolbar select {
+    padding: 7px 10px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); font-size: 12px;
+    font-family: var(--font-ui);
+  }
+  .toolbar input { flex: 1; min-width: 180px; }
+  .counter {
+    font-size: 11px; color: var(--muted); font-family: var(--font-mono);
+  }
+  table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden;
+  }
+  th, td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--border-2);
+    font-size: 12px;
+  }
+  th { color: var(--muted); font-weight: 500; font-size: 11px; letter-spacing: .5px; }
+  tbody tr { cursor: pointer; transition: background .12s; }
+  tbody tr:hover { background: var(--surface-2); }
+  tbody tr.selected { background: rgba(99,102,241,.12); }
+  td.mono { font-family: var(--font-mono); font-size: 11px; }
+  .status-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 10px; font-family: var(--font-mono);
+  }
+  .status-uploaded { background: #3a3a5a; color: #c4c6cf; }
+  .status-extracted { background: #3a4a5a; color: #a5d6e7; }
+  .status-indexed { background: #1e7a3e; color: #fff; }
+  .status-failed { background: #7a1e1e; color: #fff; }
+  .empty { color: var(--muted); text-align: center; padding: 24px; }
+  .pager { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
+  .pager button {
+    padding: 6px 14px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); cursor: pointer; font-size: 12px;
+  }
+  .pager button:hover:not(:disabled) { background: var(--surface-2); }
+  .pager button:disabled { opacity: .4; cursor: not-allowed; }
+  .pager .pageinfo {
+    align-self: center; font-size: 12px; color: var(--muted);
+    font-family: var(--font-mono);
+  }
+
+  /* Detail side panel — slides in from right */
+  .detail-panel {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: 420px; max-width: 90vw;
+    background: var(--surface); border-left: 1px solid var(--border);
+    padding: 20px 24px; overflow-y: auto;
+    transform: translateX(100%); transition: transform .25s ease;
+    z-index: 50;
+    box-shadow: -8px 0 24px rgba(0,0,0,.4);
+  }
+  .detail-panel.open { transform: translateX(0); }
+  .detail-panel .close {
+    float: right; background: none; border: 0;
+    color: var(--muted); cursor: pointer; font-size: 18px;
+  }
+  .detail-panel h3 { font-size: 14px; margin-bottom: 12px; }
+  .detail-row {
+    margin-bottom: 10px;
+    font-size: 12px;
+  }
+  .detail-row .label {
+    color: var(--muted); font-size: 10px;
+    letter-spacing: .5px; margin-bottom: 3px;
+    font-family: var(--font-mono);
+  }
+  .detail-row .value {
+    color: var(--text); word-break: break-all;
+    font-family: var(--font-mono); font-size: 12px;
+  }
+  .detail-entities {
+    margin-top: 10px;
+    display: flex; flex-wrap: wrap; gap: 4px;
+  }
+  .detail-entities .chip {
+    padding: 3px 8px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 4px; font-family: var(--font-mono); font-size: 11px;
+    color: var(--text-soft);
+  }
+
+  /* Login modal — chat-page pattern */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.85);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 300;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 32px; width: 360px; max-width: 92vw;
+    box-shadow: 0 24px 80px rgba(0,0,0,.7);
+  }
+  .modal-title { font-size: 14px; font-weight: 600; margin-bottom: 18px;
+                  color: var(--accent-fg); letter-spacing: .3px; }
+  .modal-field { margin-bottom: 12px; }
+  .modal-field label {
+    display: block; font-size: 10px; color: var(--muted);
+    letter-spacing: 1px; font-family: var(--font-mono); margin-bottom: 5px;
+  }
+  .modal-field input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 9px 12px; color: var(--text);
+    font-size: 13px; outline: none;
+  }
+  .modal-error { color: var(--danger); font-size: 12px; min-height: 18px;
+                  margin-bottom: 8px; font-family: var(--font-mono); }
+  .modal-actions { display: flex; gap: 8px; }
+  .modal-btn {
+    flex: 1; padding: 10px;
+    border-radius: 7px; font-size: 13px; cursor: pointer;
+    border: 0;
+  }
+  .modal-btn.cancel {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .modal-btn.primary {
+    background: var(--accent); color: #fff; font-weight: 600;
+  }
+  .modal-link {
+    text-align: center; margin-top: 14px; font-size: 12px;
+  }
+  .modal-link a {
+    color: var(--muted); text-decoration: underline; cursor: pointer;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    padding: 10px 16px; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 8px;
+    font-size: 12px; color: var(--text);
+    z-index: 200; opacity: 0; transition: opacity .2s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  .toast.error { border-color: var(--danger); color: var(--danger); }
+  .toast.success { border-color: var(--success); color: var(--success); }
+
+  @media (max-width: 700px) {
+    nav.sidebar { width: 56px; padding: 12px 4px; }
+    .nav-item span:not(.nav-icon) { display: none; }
+    section.content { padding: 12px 16px; }
+    .detail-panel { width: 100vw; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    JAMES <span class="tagline" data-i18n="workspace.tagline">Workspace · 데이터 + 작업</span>
+  </div>
+  <div class="header-right">
+    <span class="role-badge" id="role-badge" style="display:none">
+      <span class="who" id="role-who"></span>
+      <span id="role-name"></span>
+    </span>
+    <button class="header-btn" data-lang-toggle onclick="toggleLang()" style="font-weight:700"></button>
+    <a href="/" class="header-btn" style="text-decoration:none" data-i18n="workspace.back_chat">챗</a>
+    <button class="header-btn" id="login-btn"
+            onclick="showLogin()" data-i18n="auth.login">로그인</button>
+    <button class="header-btn" id="logout-btn"
+            onclick="doLogout()" style="display:none" data-i18n="auth.logout">로그아웃</button>
+  </div>
+</header>
+
+<main>
+  <nav class="sidebar">
+    <div class="nav-item active" data-tab="data" onclick="selectTab('data')">
+      <span class="nav-icon">📦</span>
+      <span data-i18n="workspace.tab_data">내 데이터</span>
+    </div>
+    <div class="nav-item" data-tab="jobs" onclick="selectTab('jobs')">
+      <span class="nav-icon">🛠</span>
+      <span data-i18n="workspace.tab_jobs">작업</span>
+    </div>
+    <div class="nav-item" data-tab="search" onclick="selectTab('search')">
+      <span class="nav-icon">🔍</span>
+      <span data-i18n="workspace.tab_search">검색</span>
+    </div>
+  </nav>
+
+  <section class="content">
+    <!-- Data tab -->
+    <div id="tab-data">
+      <div class="page-title">
+        <span data-i18n="workspace.data_title">📦 데이터</span>
+        <span class="badge" id="data-scope-badge" style="display:none">ADMIN</span>
+      </div>
+      <div class="hint" data-i18n="workspace.data_hint">
+        업로드한 파일과 처리 상태를 조회합니다. admin role 은 모든 사용자의 파일을, 그 외는 본인 업로드만 표시합니다.
+      </div>
+      <div class="toolbar">
+        <input id="data-q" type="text"
+               data-i18n-placeholder="workspace.search_ph"
+               placeholder="파일명 검색"
+               oninput="onDataSearchInput()">
+        <select id="data-status" onchange="reloadData()">
+          <option value="" data-i18n="workspace.status_all">전체 상태</option>
+          <option value="uploaded">uploaded</option>
+          <option value="extracted">extracted</option>
+          <option value="indexed">indexed</option>
+          <option value="failed">failed</option>
+        </select>
+        <span class="counter" id="data-counter"></span>
+      </div>
+      <table>
+        <thead><tr>
+          <th data-i18n="workspace.col_name">파일명</th>
+          <th data-i18n="workspace.col_uploader" id="th-uploader">업로더</th>
+          <th data-i18n="workspace.col_uploaded_at">업로드 시각</th>
+          <th data-i18n="workspace.col_status">상태</th>
+          <th data-i18n="workspace.col_entities">엔터티</th>
+        </tr></thead>
+        <tbody id="data-body">
+          <tr><td colspan="5" class="empty" data-i18n="common.loading">로딩 중...</td></tr>
+        </tbody>
+      </table>
+      <div class="pager">
+        <button id="data-prev" onclick="dataPage(-1)" data-i18n="common.prev">← 이전</button>
+        <span class="pageinfo" id="data-pageinfo">page 1</span>
+        <button id="data-next" onclick="dataPage(1)" data-i18n="common.next">다음 →</button>
+      </div>
+    </div>
+
+    <!-- Jobs tab (W8-B: trigger + queue) -->
+    <div id="tab-jobs" style="display:none">
+      <div class="page-title">
+        🛠 <span data-i18n="workspace.jobs_title">작업</span>
+        <span class="badge" id="jobs-scope-badge" style="display:none">ADMIN</span>
+      </div>
+      <div class="hint" data-i18n="workspace.jobs_hint">
+        엔티티를 Excel/문서/JSON 으로 합성하는 generic 작업을 실행합니다. 결과물은 본인만 다운로드 가능합니다.
+      </div>
+
+      <!-- Trigger form -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:end">
+          <div>
+            <label style="font-size:10px;color:var(--muted);letter-spacing:.5px;font-family:var(--font-mono);display:block;margin-bottom:4px">JOB TYPE</label>
+            <select id="job-type" onchange="onJobTypeChange()" style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+              <option value="excel_build" data-i18n="workspace.jt_excel">excel_build · 엔티티 → .xlsx</option>
+              <option value="doc_combine" data-i18n="workspace.jt_doc">doc_combine · 엔티티 → .md</option>
+              <option value="entity_export" data-i18n="workspace.jt_export">entity_export · 카테고리 → .json</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:10px;color:var(--muted);letter-spacing:.5px;font-family:var(--font-mono);display:block;margin-bottom:4px">
+              <span id="job-input-label">INPUT REFS</span>
+            </label>
+            <input id="job-input-refs" type="text"
+                   data-i18n-placeholder="workspace.refs_ph"
+                   placeholder="쉼표로 구분된 entity_id (또는 카테고리)"
+                   style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:var(--font-mono)">
+          </div>
+          <div>
+            <button onclick="runJob()" id="run-job-btn"
+                    style="padding:9px 16px;background:var(--accent);color:#fff;border:0;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600"
+                    data-i18n="workspace.run">실행</button>
+          </div>
+        </div>
+        <div id="job-input-hint"
+             style="font-size:11px;color:var(--muted);margin-top:8px;font-family:var(--font-mono)"
+             data-i18n="workspace.refs_hint_excel">
+          예: ent_001, ent_042 · 빈 항목은 자동으로 생략됩니다.
+        </div>
+      </div>
+
+      <!-- Toolbar + table -->
+      <div class="toolbar">
+        <span class="counter" id="jobs-counter"></span>
+        <button class="header-btn" onclick="reloadJobs()" style="margin-left:auto"
+                data-i18n="workspace.refresh">새로고침</button>
+      </div>
+      <table>
+        <thead><tr>
+          <th data-i18n="workspace.col_job_type">타입</th>
+          <th data-i18n="workspace.col_created">생성</th>
+          <th data-i18n="workspace.col_status">상태</th>
+          <th data-i18n="workspace.col_owner" id="th-job-owner" style="display:none">소유자</th>
+          <th data-i18n="workspace.col_result">결과</th>
+          <th data-i18n="workspace.col_actions">액션</th>
+        </tr></thead>
+        <tbody id="jobs-body">
+          <tr><td colspan="6" class="empty" data-i18n="common.loading">로딩 중...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Search tab (placeholder) -->
+    <div id="tab-search" style="display:none">
+      <div class="page-title">🔍 <span data-i18n="workspace.search_title">전역 검색</span></div>
+      <div class="hint" style="margin-top:60px;text-align:center;font-size:13px;line-height:1.7"
+           data-i18n="workspace.search_placeholder">
+        업로드한 파일 · 위키 entity · 과거 대화 통합 검색이 후속 사이클에서 활성화됩니다.
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Artifact detail panel -->
+<div class="detail-panel" id="detail-panel">
+  <button class="close" onclick="closeDetail()">×</button>
+  <h3 id="detail-title">—</h3>
+  <div class="detail-row"><div class="label">ARTIFACT ID</div><div class="value" id="d-id"></div></div>
+  <div class="detail-row"><div class="label">PATH</div><div class="value" id="d-path"></div></div>
+  <div class="detail-row"><div class="label">SIZE</div><div class="value" id="d-size"></div></div>
+  <div class="detail-row"><div class="label">UPLOADER</div><div class="value" id="d-uploader"></div></div>
+  <div class="detail-row"><div class="label">UPLOADED AT</div><div class="value" id="d-time"></div></div>
+  <div class="detail-row"><div class="label">STATUS</div><div class="value" id="d-status"></div></div>
+  <div class="detail-row">
+    <div class="label" data-i18n="workspace.linked_entities">LINKED ENTITIES</div>
+    <div id="d-entities" class="detail-entities"></div>
+  </div>
+</div>
+
+<!-- Login modal -->
+<div class="modal-overlay hidden" id="login-modal">
+  <div class="modal">
+    <div class="modal-title">▸ <span data-i18n="auth.login_title">JAMES 로그인</span></div>
+    <div class="modal-field">
+      <label data-i18n="auth.username">USERNAME</label>
+      <input type="text" id="login-id" autocomplete="username" spellcheck="false">
+    </div>
+    <div class="modal-field">
+      <label data-i18n="auth.password">PASSWORD</label>
+      <input type="password" id="login-pw" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <div class="modal-field">
+      <label data-i18n="auth.api_key">API KEY</label>
+      <input type="password" id="login-apikey" autocomplete="off"
+             onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <div class="modal-error" id="login-error"></div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeLogin()" data-i18n="common.cancel">취소</button>
+      <button class="modal-btn primary" onclick="doLogin()" data-i18n="auth.login">로그인</button>
+    </div>
+    <div class="modal-link">
+      <a href="javascript:openForgot()" data-i18n="auth.forgot_password">비밀번호를 잊으셨나요?</a>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/static/i18n.js"></script>
+<script src="/static/workspace.js"></script>
+</body>
+</html>

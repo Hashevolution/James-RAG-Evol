@@ -1,0 +1,33 @@
+{
+  "version": "v0.2-bootstrap",
+  "description": "Initial RAGAS fixture — 3 simple factual Q&A pairs. Pre-baked retrieved_contexts + reference answers (public-knowledge facts) so the harness can be exercised end-to-end before live JAMES integration. Replace / extend with real domain data once #45 (STEP 7 lock) lands and the bench.py runner can drive /query/.",
+  "rows": [
+    {
+      "user_input": "What does RAG stand for in the context of AI?",
+      "retrieved_contexts": [
+        "Retrieval-Augmented Generation (RAG) is an AI framework that combines a retriever (which finds relevant documents) with a generator (typically a large language model) to produce answers grounded in the retrieved context.",
+        "RAG was introduced by Lewis et al. in 2020 to reduce hallucination in language models by giving them access to an external knowledge store at inference time."
+      ],
+      "response": "RAG stands for Retrieval-Augmented Generation, an AI framework combining a document retriever with a language model.",
+      "reference": "RAG stands for Retrieval-Augmented Generation."
+    },
+    {
+      "user_input": "What is Anthropic?",
+      "retrieved_contexts": [
+        "Anthropic is an AI safety company founded in 2021 by Dario Amodei and Daniela Amodei, former OpenAI researchers.",
+        "Anthropic is the maker of the Claude family of large language models, including Claude 3 Opus, Sonnet, and Haiku."
+      ],
+      "response": "Anthropic is an AI safety company founded in 2021 by Dario and Daniela Amodei. It produces the Claude family of large language models.",
+      "reference": "Anthropic is an AI safety company founded in 2021 that produces the Claude language models."
+    },
+    {
+      "user_input": "What is the relationship between BlackRock and Bitcoin ETFs?",
+      "retrieved_contexts": [
+        "In January 2024, BlackRock launched the iShares Bitcoin Trust (IBIT), one of the first spot Bitcoin ETFs approved in the United States.",
+        "BlackRock's IBIT became one of the fastest-growing ETFs in history, attracting billions in inflows within weeks of launch."
+      ],
+      "response": "BlackRock launched the iShares Bitcoin Trust (IBIT), one of the first U.S.-approved spot Bitcoin ETFs, in January 2024.",
+      "reference": "BlackRock issued one of the first approved U.S. spot Bitcoin ETFs (IBIT) in January 2024."
+    }
+  ]
+}

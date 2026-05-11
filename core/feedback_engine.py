@@ -155,8 +155,8 @@ class FeedbackEngine:
     def _apply_reinforce(self, direction_id: str, score: float):
         """강화 → preferences에 저장."""
         try:
-            from core.memory_store import MemoryStore
-            from core.memory_extractor import validate_memory
+            from core.memory import MemoryStore
+            from core.memory import validate_memory
             store = MemoryStore()
             key   = f"feedback_reinforce:{direction_id[:30]}"
             store._save_preference(key, f"강화됨(score={score:.2f})")

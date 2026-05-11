@@ -56,8 +56,20 @@ def _get_ram() -> Dict:
 
 
 def _get_gpu() -> Dict:
-    """GPU 정보 측정 (nvidia-smi 또는 다른 방법)."""
-    info = {"name": "Unknown", "vram_gb": 0, "found": False}
+    """GPU 정보 측정 (pynvml → nvidia-smi → wmic 3-단계 fallback).
+
+    Each fallback's failure reason is recorded in `info["debug"]` so a
+    "GPU Unknown 0GB" outcome can be diagnosed without re-running the
+    whole stack. The user-facing fields (`name` / `vram_gb` / `found`)
+    are unchanged. Set `JAMES_HW_DEBUG=1` to also print to stdout.
+    """
+    info = {"name": "Unknown", "vram_gb": 0, "found": False, "debug": []}
+
+    def _trace(msg: str) -> None:
+        info["debug"].append(msg)
+        if os.environ.get("JAMES_HW_DEBUG", "").strip() in ("1", "true", "yes"):
+            print(f"[HW_GPU] {msg}", flush=True)
+
     # 방법 1: pynvml
     try:
         import pynvml
@@ -69,52 +81,80 @@ def _get_gpu() -> Dict:
         info["vram_gb"] = round(mem.total / 1024**3, 1)
         info["used_gb"] = round(mem.used  / 1024**3, 1)
         info["found"]   = True
+        _trace(f"pynvml OK: {info['name']} {info['vram_gb']}GB")
         return info
-    except Exception:
-        pass
+    except ImportError as e:
+        _trace(f"pynvml not installed ({e}); falling back to nvidia-smi")
+    except Exception as e:
+        _trace(f"pynvml failed ({type(e).__name__}: {e}); falling back to nvidia-smi")
+
     # 방법 2: nvidia-smi subprocess
     try:
         import subprocess
         result = subprocess.run(
             ["nvidia-smi", "--query-gpu=name,memory.total",
              "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, timeout=5
+            capture_output=True, text=True, timeout=5,
+            encoding="utf-8", errors="replace",
         )
         if result.returncode == 0:
             lines = result.stdout.strip().split('\n')
-            if lines:
+            if lines and lines[0]:
                 parts = lines[0].split(',')
                 if len(parts) >= 2:
                     info["name"]    = parts[0].strip()
                     info["vram_gb"] = round(int(parts[1].strip()) / 1024, 1)
                     info["found"]   = True
-    except Exception:
-        pass
-    # 방법 3: Windows WMI (GPU 이름만)
-    if not info["found"]:
-        try:
-            import subprocess
-            result = subprocess.run(
-                ["wmic", "path", "win32_VideoController",
-                 "get", "name,AdapterRAM", "/format:csv"],
-                capture_output=True, text=True, timeout=5
-            )
-            if result.returncode == 0:
-                for line in result.stdout.splitlines():
-                    parts = line.strip().split(',')
-                    if len(parts) >= 3 and parts[2].strip():
-                        name = parts[2].strip()
-                        if name and name != "Name":
-                            info["name"]  = name
-                            info["found"] = True
-                            try:
-                                vram = int(parts[1].strip())
-                                info["vram_gb"] = round(vram / 1024**3, 1)
-                            except Exception:
-                                pass
-                            break
-        except Exception:
-            pass
+                    _trace(f"nvidia-smi OK: {info['name']} {info['vram_gb']}GB")
+                    return info
+                _trace(f"nvidia-smi parse failed: parts={parts!r}")
+            else:
+                _trace(f"nvidia-smi returned empty stdout")
+        else:
+            _trace(f"nvidia-smi exit={result.returncode} "
+                   f"stderr={(result.stderr or '')[:120]!r}")
+    except FileNotFoundError:
+        _trace("nvidia-smi not found in PATH; falling back to wmic")
+    except subprocess.TimeoutExpired:
+        _trace("nvidia-smi timeout (>5s); falling back to wmic")
+    except Exception as e:
+        _trace(f"nvidia-smi failed ({type(e).__name__}: {e}); falling back to wmic")
+
+    # 방법 3: Windows WMI (GPU 이름만 — VRAM은 4GB 이상에서 부정확)
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["wmic", "path", "win32_VideoController",
+             "get", "name,AdapterRAM", "/format:csv"],
+            capture_output=True, text=True, timeout=5,
+            encoding="utf-8", errors="replace",
+        )
+        if result.returncode == 0:
+            for line in result.stdout.splitlines():
+                parts = line.strip().split(',')
+                if len(parts) >= 3 and parts[2].strip():
+                    name = parts[2].strip()
+                    if name and name != "Name":
+                        info["name"]  = name
+                        info["found"] = True
+                        try:
+                            vram = int(parts[1].strip())
+                            info["vram_gb"] = round(vram / 1024**3, 1)
+                        except Exception:
+                            pass
+                        _trace(f"wmic OK: {info['name']} {info['vram_gb']}GB")
+                        return info
+            _trace(f"wmic returned no usable rows: stdout={result.stdout[:200]!r}")
+        else:
+            _trace(f"wmic exit={result.returncode}")
+    except FileNotFoundError:
+        _trace("wmic not found in PATH (Windows 11 24H2+ removed it)")
+    except subprocess.TimeoutExpired:
+        _trace("wmic timeout (>5s)")
+    except Exception as e:
+        _trace(f"wmic failed ({type(e).__name__}: {e})")
+
+    _trace("ALL fallbacks exhausted; GPU info unavailable")
     return info
 
 
@@ -194,84 +234,90 @@ def _disk_level(free_gb: float) -> int:
     return 10
 
 
-# ─── 무기 메타데이터 ─────────────────────────────────────────
+# ─── 인프라 등급 메타데이터 (item #2: 게임 → 기술/비즈니스 컨셉) ─
 
 def _weapon_meta(component: str, level: int) -> Dict:
-    """컴포넌트 + 레벨 → 무기 정보."""
+    """컴포넌트 + 레벨 → 인프라 등급(tier) 정보.
+
+    기존 RPG 무기 컨셉(Magic Sword / Wizard Staff 등)을 기술 인프라
+    티어 컨셉으로 교체. 운영 컨텍스트에 맞고 영업/도입 보고서에서도
+    그대로 인용 가능. 함수명 _weapon_meta는 호환을 위해 유지 — 반환
+    딕트의 키(icon/name/role/desc)도 동일.
+    """
     weapons = {
         "cpu": {
-            "icon": "⚔️",
+            "icon": "🧮",
             "name_map": {
-                (1, 3): "Wooden Sword",
-                (4, 5): "Iron Sword",
-                (6, 7): "Silver Blade",
-                (8, 9): "Magic Sword",
-                (10, 10): "Legendary Holy Sword",
+                (1, 3):  "Entry CPU",
+                (4, 5):  "Mainstream CPU",
+                (6, 7):  "Workstation CPU",
+                (8, 9):  "High-Performance CPU",
+                (10, 10):"Server-Grade CPU",
             },
-            "role": "Computing Power",
+            "role": "Compute",
             "desc_map": {
-                (1, 3): "Basic computation",
-                (4, 5): "General inference",
-                (6, 7): "Fast parallel processing",
-                (8, 9): "High-speed reasoning engine",
-                (10, 10): "Peak performance computing",
-            }
+                (1, 3):  "Basic compute — interactive workload",
+                (4, 5):  "Mainstream inference",
+                (6, 7):  "Multi-thread parallel workload",
+                (8, 9):  "Heavy reasoning + concurrent sessions",
+                (10, 10):"Server-class throughput",
+            },
         },
         "ram": {
-            "icon": "🛡️",
+            "icon": "💾",
             "name_map": {
-                (1, 3): "Leather Shield",
-                (4, 5): "Iron Shield",
-                (6, 7): "Reinforced Shield",
-                (8, 9): "Magic Shield",
-                (10, 10): "Immortal Shield",
+                (1, 3):  "Light Memory",
+                (4, 5):  "Standard Memory",
+                (6, 7):  "Wide Context Memory",
+                (8, 9):  "Large-Batch Memory",
+                (10, 10):"Workstation Memory",
             },
             "role": "Memory",
             "desc_map": {
-                (1, 3): "Small context handling",
-                (4, 5): "General session management",
-                (6, 7): "Wide context retention",
-                (8, 9): "Large-scale batch processing",
-                (10, 10): "Unlimited memory operations",
-            }
+                (1, 3):  "Single short session",
+                (4, 5):  "Multi-session general use",
+                (6, 7):  "Long-context retention",
+                (8, 9):  "Multi-document batch",
+                (10, 10):"Enterprise-scale concurrency",
+            },
         },
         "gpu": {
-            "icon": "🪄",
+            "icon": "⚡",
             "name_map": {
-                (0, 0): "(none)",
-                (1, 3): "Apprentice Staff",
-                (4, 5): "Wizard Staff",
-                (6, 7): "Sage Staff",
-                (8, 9): "Grand Wizard Staff",
-                (10, 10): "Divine Wand",
+                (0, 0):  "CPU-only",
+                (1, 3):  "Entry Accelerator",
+                (4, 5):  "Inference-Capable GPU",
+                (6, 7):  "Production GPU",
+                (8, 9):  "High-Throughput GPU",
+                (10, 10):"Datacenter GPU",
             },
-            "role": "GPU Inference",
+            "role": "AI Acceleration",
             "desc_map": {
-                (0, 0): "CPU-only inference",
-                (1, 3): "Basic GPU acceleration",
-                (4, 5): "LLM inference capable",
-                (6, 7): "Fast LLM processing",
-                (8, 9): "Ultra-fast inference",
-                (10, 10): "Maximum AI acceleration",
-            }
+                (0, 0):  "CPU-only inference (slow on large models)",
+                (1, 3):  "Basic GPU acceleration",
+                (4, 5):  "LLM inference capable",
+                (6, 7):  "Production-grade LLM throughput",
+                (8, 9):  "Multi-model concurrent inference",
+                (10, 10):"Datacenter-class AI throughput",
+            },
         },
         "disk": {
-            "icon": "🎒",
+            "icon": "🗄️",
             "name_map": {
-                (1, 3): "Small Pouch",
-                (4, 5): "Travel Bag",
-                (6, 7): "Large Backpack",
-                (8, 9): "Magic Space Bag",
-                (10, 10): "Infinite Warehouse",
+                (1, 3):  "Personal Storage",
+                (4, 5):  "Team Storage",
+                (6, 7):  "Department Storage",
+                (8, 9):  "Enterprise Storage",
+                (10, 10):"Archive-Tier Storage",
             },
             "role": "Storage",
             "desc_map": {
-                (1, 3): "Small-scale wiki storage",
-                (4, 5): "Medium-scale data",
-                (6, 7): "Large knowledge base",
-                (8, 9): "Massive data management",
-                (10, 10): "Unlimited knowledge storage",
-            }
+                (1, 3):  "Small wiki / personal corpus",
+                (4, 5):  "Mid-size knowledge base",
+                (6, 7):  "Department-wide corpus",
+                (8, 9):  "Enterprise-scale knowledge base",
+                (10, 10):"Long-term archive + audit retention",
+            },
         },
     }
 
@@ -330,12 +376,13 @@ def get_hardware_specs() -> Dict[str, Any]:
         disk_lv * 0.10
     )
 
+    # System tier — 비즈니스/기술 도입 컨텍스트에 맞는 분류 (item #2)
     rank_map = [
-        (9, "Legendary Wizard"),
-        (7, "Grand Wizard"),
-        (5, "Wizard"),
-        (3, "Apprentice Wizard"),
-        (0, "Trainee"),
+        (9, "Datacenter Tier"),
+        (7, "Enterprise Tier"),
+        (5, "Production Tier"),
+        (3, "Workstation Tier"),
+        (0, "Personal Tier"),
     ]
     rank = next(r for (th, r) in rank_map if overall >= th)
 
@@ -369,35 +416,41 @@ if __name__ == "__main__":
 
 # ── [4-B] 하드웨어 기반 LLM 추천 매트릭스 ─────────────────────
 
-LLM_CATALOG = [
-    # name, tag, min_vram_gb, min_ram_gb, desc, purpose, size_gb
-    {"name":"gemma4:e4b",         "tag":"gemma4:e4b",         "min_vram":4,  "min_ram":8,
-     "desc":"가장 빠른 일상 대화",     "purpose":["chat","general"],    "size_gb":4.0},
-    {"name":"gemma3:12b",         "tag":"gemma3:12b",         "min_vram":8,  "min_ram":16,
-     "desc":"균형형 고성능 추론",       "purpose":["chat","retrieval"],  "size_gb":7.5},
-    {"name":"gemma3:27b",         "tag":"gemma3:27b",         "min_vram":16, "min_ram":32,
-     "desc":"최고 품질 추론",          "purpose":["chat","retrieval"],  "size_gb":16.0},
-    {"name":"deepseek-coder:6.7b","tag":"deepseek-coder:6.7b","min_vram":4,  "min_ram":8,
-     "desc":"코딩 특화 경량",          "purpose":["coding"],            "size_gb":4.1},
-    {"name":"deepseek-coder:33b", "tag":"deepseek-coder:33b", "min_vram":16, "min_ram":32,
-     "desc":"코딩 특화 최고성능",       "purpose":["coding"],            "size_gb":19.0},
-    {"name":"llava:13b",          "tag":"llava:13b",          "min_vram":8,  "min_ram":16,
-     "desc":"이미지+텍스트 분석",       "purpose":["multimodal"],        "size_gb":8.0},
-    {"name":"llava:34b",          "tag":"llava:34b",          "min_vram":16, "min_ram":32,
-     "desc":"고성능 멀티모달",          "purpose":["multimodal"],        "size_gb":20.0},
-    {"name":"mistral:7b",         "tag":"mistral:7b",         "min_vram":4,  "min_ram":8,
-     "desc":"빠른 유럽어 지원",         "purpose":["chat"],              "size_gb":4.1},
-    {"name":"qwen2.5:14b",        "tag":"qwen2.5:14b",        "min_vram":10, "min_ram":16,
-     "desc":"한국어+중국어 강화",        "purpose":["chat","retrieval"],  "size_gb":9.0},
-    {"name":"phi4:14b",           "tag":"phi4:14b",           "min_vram":8,  "min_ram":16,
-     "desc":"Microsoft 소형 고성능",    "purpose":["chat","coding"],     "size_gb":8.5},
-]
+# [PR plan-2, 2026-05-09] LLM_CATALOG now derives from core.llm_catalog
+# (single source of truth). The local format is mapped from the central
+# schema for backward compat with downstream callers (admin UI etc.):
+#   central        local
+#   tag         →  name + tag (both = tag)
+#   description →  desc
+#   min_vram_gb →  min_vram
+#   min_ram_gb  →  min_ram
+def _build_local_catalog():
+    try:
+        from core.llm_catalog import CATALOG as _CENTRAL
+    except Exception:
+        return []
+    out = []
+    for e in _CENTRAL:
+        out.append({
+            "name":     e["tag"],
+            "tag":      e["tag"],
+            "min_vram": e.get("min_vram_gb", 0),
+            "min_ram":  e.get("min_ram_gb", 0),
+            "desc":     e.get("description", ""),
+            "purpose":  e.get("purpose", []),
+            "size_gb":  e.get("size_gb", 0),
+        })
+    return out
+
+
+LLM_CATALOG = _build_local_catalog()
 
 
 def get_llm_recommendations(specs: dict) -> list:
     """
     [4-B] 하드웨어 스펙 기반 LLM 모델 추천.
-    반환: 설치 가능 모델 목록 + 추천 이유
+    [PR plan-2] 내부적으로 core.llm_catalog 사용. 외부 응답 shape
+    (feasible, reasons, reason_fail) 유지.
     """
     gpu    = specs.get("gpu", {})
     ram    = specs.get("ram", {})
@@ -408,7 +461,6 @@ def get_llm_recommendations(specs: dict) -> list:
     for m in LLM_CATALOG:
         if vram >= m["min_vram"] and ram_gb >= m["min_ram"]:
             rec = {**m}
-            # 추천 이유
             reasons = []
             if vram >= m["min_vram"] * 1.5:
                 reasons.append("VRAM 여유 충분")
@@ -424,7 +476,6 @@ def get_llm_recommendations(specs: dict) -> list:
                       "reason_fail": f"VRAM {m['min_vram']}GB 필요 (현재 {vram:.0f}GB)"}
             recommended.append(m_copy)
 
-    # 추천 순서: purpose별 best 먼저
     feasible = [m for m in recommended if m["feasible"]]
     infeasible = [m for m in recommended if not m["feasible"]]
     return feasible + infeasible

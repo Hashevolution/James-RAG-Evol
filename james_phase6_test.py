@@ -17,6 +17,10 @@ Phase 6 통과 기준:
   [P6-8] Query Router 분기 동작    ← 신규
   [P6-9] Memory Step 1 동작        ← 신규
 """
+# Reconfigure stdout to UTF-8 before any top-level prints (this script emits
+# Korean banners + emoji on import). See utils/console.py for rationale.
+from utils.console import ensure_utf8_console
+ensure_utf8_console()
 
 import sys
 import os
@@ -105,19 +109,19 @@ def run_latency_checks():
 
     def t_timing_target_code():
         """코드에 30초 목표 설정 존재"""
-        import inspect, core.reasoning_engine as re_mod
+        import inspect, core.reasoning.engine as re_mod
         src = inspect.getsource(re_mod)
         ok = "TIMING_TARGET_SEC" in src or "30" in src
         return ok, f"30초 목표 코드 존재={ok}"
 
     def t_loop_timeout():
-        from core.reasoning_engine import LOOP_TIMEOUT, MAX_LOOP
+        from core.reasoning import LOOP_TIMEOUT, MAX_LOOP
         ok = LOOP_TIMEOUT <= 30 and MAX_LOOP == 2
         return ok, f"LOOP_TIMEOUT={LOOP_TIMEOUT}s MAX_LOOP={MAX_LOOP}"
 
     def t_context_limit():
         import inspect
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine._generate_answer)
         ok = "800" in src or "[:800]" in src
         return ok, f"context[:800] 제한={ok}"
@@ -292,7 +296,9 @@ def run_patch_flow_checks():
 
     os.makedirs("./workspace/patches", exist_ok=True)
     os.makedirs("./workspace", exist_ok=True)
-    with open("./workspace/_patch_test.py", "w") as f:
+    # encoding="utf-8" required: Windows default is cp949 → Korean
+    # comment would be saved in cp949 and corrupt downstream utf-8 reads.
+    with open("./workspace/_patch_test.py", "w", encoding="utf-8") as f:
         f.write("# 테스트 파일\nx = 1\n")
 
     def t_generator_exists():
@@ -486,7 +492,7 @@ def run_security_regression():
         """수정 금지 파일에 Phase 6 코드 없음"""
         import inspect
         protected = ["core.graph_engine","core.security_layer",
-                     "core.memory_loom","core.ontology"]
+                     "core.memory.loom","core.ontology"]
         for m in protected:
             try:
                 mod = __import__(m, fromlist=[""])
@@ -543,7 +549,7 @@ def run_diagnostic_regression():
                f"STUDIES 허용={ok_valid} | UNKNOWN 차단={not ok_invalid}"
 
     def t_memory_loom_gates():
-        from core.memory_loom import MemoryLoom, MAX_WRITES_PER_SESSION
+        from core.memory import MemoryLoom, MAX_WRITES_PER_SESSION
         loom = MemoryLoom()
         # Gate1
         ok1, _ = loom.store({"confidence":0.3,"ontology_valid":True})
@@ -716,7 +722,7 @@ def run_query_router_checks():
     def t_reasoning_engine_connected():
         """reasoning_engine에 QueryRouter 연결"""
         import inspect
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine.query)
         ok = "QueryRouter" in src and "mode" in src
         return ok, f"QueryRouter 연결={ok}"
@@ -724,7 +730,7 @@ def run_query_router_checks():
     def t_security_before_router():
         """보안이 Router보다 먼저"""
         import inspect
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine.query)
         ok = src.index("pre_check") < src.index("QueryRouter")
         return ok, f"pre_check(먼저) < QueryRouter"
@@ -751,11 +757,11 @@ def run_memory_checks():
     print("="*55)
 
     def t_extractor_exists():
-        from core.memory_extractor import extract_memory, validate_memory
+        from core.memory import extract_memory, validate_memory
         return True, "extract_memory / validate_memory 존재"
 
     def t_store_exists():
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         store = MemoryStore()
         stats = store.get_stats()
         return isinstance(stats, dict) and "preferences" in stats, \
@@ -763,7 +769,7 @@ def run_memory_checks():
 
     def t_trigger_saves():
         """trigger 키워드 → preference 저장"""
-        from core.memory_extractor import extract_memory, validate_memory
+        from core.memory import extract_memory, validate_memory
         cases = [
             ("앞으로 코드는 상세하게 설명해줘", True),
             ("항상 한국어로 답변해줘",          True),
@@ -778,13 +784,14 @@ def run_memory_checks():
 
     def t_short_blocked():
         """8자 미만 잡담 차단"""
-        from core.memory_extractor import extract_memory, validate_memory
+        from core.memory import extract_memory, validate_memory
         c = extract_memory("안녕", "")
         return not validate_memory(c), "8자 미만 차단"
 
     def t_repeated_pattern():
         """2회 반복 → pattern 저장"""
-        from core.memory_extractor import extract_memory, validate_memory, _query_history
+        from core.memory import extract_memory, validate_memory
+        from core.memory.extractor import _query_history
         _query_history.clear()
         q = "경제학이란 무엇인가고유패턴테스트"
         extract_memory(q, "")   # 1회
@@ -795,15 +802,15 @@ def run_memory_checks():
     def t_no_sensitive_gate():
         """로컬 전용 — 민감 정보 차단 없음"""
         import inspect
-        from core.memory_extractor import extract_memory
+        from core.memory import extract_memory
         src = inspect.getsource(extract_memory)
         ok = "SENSITIVE" not in src and "_contains_sensitive" not in src
         return ok, f"민감 정보 gate 제거={ok} (로컬 전용)"
 
     def t_save_to_db():
         """DB 저장 동작"""
-        from core.memory_extractor import extract_memory, validate_memory
-        from core.memory_store import MemoryStore
+        from core.memory import extract_memory, validate_memory
+        from core.memory import MemoryStore
         store = MemoryStore()
         c = extract_memory("앞으로 답변은 간결하게 해줘", "")
         if not validate_memory(c): return False, "유효하지 않은 후보"
@@ -812,21 +819,21 @@ def run_memory_checks():
 
     def t_get_context():
         """저장 후 context 조회"""
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         store = MemoryStore()
         ctx = store.get_context("admin")
         return isinstance(ctx, str), f"context 조회={isinstance(ctx, str)} | {len(ctx)}자"
 
     def t_rag_separated():
         """RAG DB와 완전 분리 확인"""
-        from core.memory_store import DB_PATH
+        from core.memory import DB_PATH
         ok = "james_memory.db" in DB_PATH and "chroma" not in DB_PATH.lower()
         return ok, f"분리된 DB: {DB_PATH}"
 
     def t_reasoning_engine_memory():
         """reasoning_engine에 Memory 연결"""
         import inspect
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine.query)
         ok = "MemoryStore" in src and "extract_memory" in src
         return ok, f"MemoryStore+extract_memory 연결={ok}"

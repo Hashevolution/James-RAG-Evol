@@ -13,6 +13,16 @@ PROJECT JAMES — 시드 데이터 (테스트/검증용 기본 entity 8개)
   - frontmatter 표준 준수
 """
 
+# Issue #2: cp949 콘솔에서 box-drawing 문자 크래시 방지.
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.dirname(
+    _os.path.abspath(__file__)))))
+try:
+    from utils.console import ensure_utf8_console
+    ensure_utf8_console()
+except ImportError:
+    pass
+
 from pathlib import Path
 from datetime import datetime
 

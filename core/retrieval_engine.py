@@ -21,7 +21,8 @@ from rank_bm25 import BM25Okapi
 
 from core.vector_store import VectorStore
 from core.gemma_client import GemmaClient
-from core.security_layer import check_access, log_system_event
+from core.security_layer import log_system_event
+from core.policy_engine import default_engine as _policy
 from utils.tokenizer import tokenize
 
 SYSTEM_LOG_PATH = "james_system_log.jsonl"
@@ -98,10 +99,13 @@ class RetrievalEngine:
                 if r.get("metadata", {}).get("source_type", "prod") == source_type
             ]
 
-        # ABAC 필터
+        # ABAC 필터 — #44 phase 2-A: routed through PolicyEngine.can_retrieve
+        # so future policy changes touch one file (core/policy_engine.py) instead
+        # of every retrieval call site. PolicyEngine.can_retrieve currently
+        # delegates to security_layer.check_access bit-for-bit (#50).
         vec_results = [
             r for r in vec_results
-            if check_access(user_role, r.get("metadata", {"sensitivity": "internal"}))
+            if _policy.can_retrieve(user_role, r.get("metadata", {"sensitivity": "internal"})).allowed
         ]
 
         if not vec_results:
@@ -263,6 +267,17 @@ class RetrievalEngine:
 
     @staticmethod
     def calculate_confidence(r: Dict) -> float:
+        """답변 신뢰도 점수 (0~1).
+
+        ``hybrid_search`` ranking 가중치(``0.6/0.2/0.1/0.1``)와는 별도
+        분포(``0.5/0.2/0.2/0.1``). vector 영향력을 약간 낮추고
+        keyword/name (표면 형태가 정확히 일치하는 신호)에 더 높은
+        confidence를 부여한다 — 검색 ranking은 의미 거리가 핵심이지만,
+        답변 confidence는 사용자 질의에 명시된 단어가 실제로 문서에
+        있다는 사실에 더 의존하는 게 자연스럽다는 판단.
+
+        합 = 1.0. ``round(..., 3)`` 후 ``[0, 1]`` 범위 강제.
+        """
         return max(0.0, min(1.0, round(
             r.get("vector_score", 0) * 0.5 +
             r.get("bm25_score", 0) * 0.2 +

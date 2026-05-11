@@ -28,14 +28,29 @@ for _noisy in ("pdfminer", "pdfminer.pdffont", "pdfminer.pdfinterp"):
 _env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
 if os.path.exists(_env_file):
     try:
-        with open(_env_file, encoding="utf-8") as _f:
+        # `utf-8-sig` strips the BOM that Notepad / VS Code with default
+        # settings adds when saving as "UTF-8". Without this, the FIRST
+        # key parsed becomes '﻿JAMES_API_KEY' (instead of plain
+        # 'JAMES_API_KEY'), every consumer reads back empty, and the
+        # server fails fast with the unhelpful "must be set" error.
+        # Confirmed on a real user's machine 2026-05-08.
+        with open(_env_file, encoding="utf-8-sig") as _f:
             for _line in _f:
                 _line = _line.strip()
                 if not _line or _line.startswith("#") or "=" not in _line:
                     continue
                 _k, _v = _line.split("=", 1)
                 _k, _v = _k.strip(), _v.strip().strip('"').strip("'")
-                if _k and _v and _k not in os.environ:
+                # Defense-in-depth: also strip the BOM character per-key
+                # in case some other tool emits it mid-file.
+                _k = _k.lstrip("﻿")
+                # Empty env values must NOT block .env loading. If a
+                # parent process exported the var with empty string,
+                # `_k in os.environ` is True but the value is "" — the
+                # old check would skip the .env line and the empty env
+                # value would propagate as the API key. We only respect
+                # a pre-existing env value if it's non-empty.
+                if _k and _v and not os.environ.get(_k):
                     os.environ[_k] = _v
         print(f"[CONFIG] .env loaded: {_env_file}")
     except Exception as _e:
@@ -122,7 +137,12 @@ POPPLER_PATH = _detect_poppler()
 # Ollama runs as a service — usually no need to specify binary path.
 # If you need to start it from JAMES, set OLLAMA_PATH env var.
 OLLAMA_PATH    = os.environ.get("OLLAMA_PATH", "")  # blank = use system 'ollama' on PATH
-GEMMA_MODEL    = os.environ.get("JAMES_LLM_MODEL", "gemma2:2b")
+GEMMA_MODEL    = os.environ.get("JAMES_LLM_MODEL", "gemma4:e4b")
+# Coding-specialised model. Used by handle_coding via llm.router →
+# QwenCoderClient. Operators can swap to a smaller/faster model
+# (e.g. gemma4:e4b) if the 32B coder is too heavy for their tunnel
+# / reverse proxy timeout.
+CODING_MODEL   = os.environ.get("JAMES_CODING_MODEL", "qwen2.5-coder:32b")
 OLLAMA_API_URL = os.environ.get("OLLAMA_API_URL", "http://127.0.0.1:11434/api/generate")
 
 # ────────────────────────────────────────────────────────────────
@@ -139,9 +159,15 @@ CHROMA_COLLECTION = "james_prototype"
 #   Bash/Zsh:     export JAMES_API_KEY=your_key
 API_KEY = os.environ.get("JAMES_API_KEY", "")
 if not API_KEY:
-    print("[CONFIG] WARNING: JAMES_API_KEY not set — using dev fallback")
-    print("[CONFIG]          For production: set JAMES_API_KEY in .env or environment")
-    API_KEY = "dev_only_change_me"
+    # P0 보안 (v0.1.3.1 handover Item C) — fail-fast.
+    # 이전엔 "dev_only_change_me" hardcode fallback. WARNING 한 줄만 출력하고
+    # 그대로 운영 진입 가능했고, 그 secret으로 인증 통과한 client는 admin
+    # 권한까지 받음. 더이상 silent.
+    raise RuntimeError(
+        "JAMES_API_KEY must be set in .env or environment before starting "
+        "the server. Generate one with:\n"
+        "    python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+    )
 
 # ────────────────────────────────────────────────────────────────
 #  Upload limits
@@ -157,11 +183,33 @@ UPLOAD_FOLDER    = UPLOAD_DIR  # alias
 TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
 
 # ────────────────────────────────────────────────────────────────
+#  Self-evolution gate (#48, Axis 5)
+# ────────────────────────────────────────────────────────────────
+# Default off. Operators must opt in by setting JAMES_ENABLE_EVOLUTION=1.
+# `/admin/patch/approve` returns 403 unless this is true.
+EVOLUTION_ENABLED = os.environ.get("JAMES_ENABLE_EVOLUTION", "0") == "1"
+
+# Role required to approve patches. Defaults to "admin".
+APPROVER_ROLE = os.environ.get("JAMES_EVOLUTION_APPROVER_ROLE", "admin").strip().lower()
+
+# Auto-approval. Tests / dev only — both flags must be true AND
+# JAMES_DEV_MODE must be 1, otherwise the server refuses to start.
+# This is the "fail-closed in production" guarantee from #48.
+AUTO_APPROVE = os.environ.get("JAMES_AUTO_APPROVE", "0") == "1"
+_DEV_MODE_AT_IMPORT = os.environ.get("JAMES_DEV_MODE", "1") == "1"
+if AUTO_APPROVE and not _DEV_MODE_AT_IMPORT:
+    raise RuntimeError(
+        "JAMES_AUTO_APPROVE=1 requires JAMES_DEV_MODE=1 — auto-approval is "
+        "not allowed in non-dev environments. Either unset JAMES_AUTO_APPROVE "
+        "or set JAMES_DEV_MODE=1 explicitly. Refusing to start."
+    )
+
+# ────────────────────────────────────────────────────────────────
 #  Startup messages
 # ────────────────────────────────────────────────────────────────
 print(f"[CONFIG] PROJECT JAMES ready")
 print(f"[CONFIG] BASE_DIR: {BASE_DIR}")
-print(f"[CONFIG] API_KEY source: {'env:JAMES_API_KEY' if os.environ.get('JAMES_API_KEY') else 'dev fallback'}")
+print("[CONFIG] API_KEY source: env:JAMES_API_KEY")
 
 if TESSERACT_PATH:
     print(f"[CONFIG] Tesseract: {TESSERACT_PATH}")
@@ -175,3 +223,10 @@ if TAVILY_API_KEY:
     print(f"[CONFIG] Tavily search enabled (key: {TAVILY_API_KEY[:8]}...)")
 else:
     print(f"[CONFIG] Tavily key not set → using DuckDuckGo fallback")
+
+# Evolution-gate banner — operator must see this on boot.
+if EVOLUTION_ENABLED:
+    print(f"[CONFIG] ⚙️  Self-evolution ENABLED (approver role: {APPROVER_ROLE})"
+          + (f" — AUTO_APPROVE on (DEV_MODE={_DEV_MODE_AT_IMPORT})" if AUTO_APPROVE else ""))
+else:
+    print(f"[CONFIG] Self-evolution disabled (set JAMES_ENABLE_EVOLUTION=1 to enable)")

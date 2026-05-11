@@ -3,6 +3,9 @@
 > **Note**: This roadmap describes intended directions, not commitments.
 > Priorities will shift based on user feedback and real-world testing.
 
+For the underlying readiness framework (6 dimensions, gate criteria,
+branching forms), see [`docs/PLATFORM_READINESS.md`](docs/PLATFORM_READINESS.md).
+
 ---
 
 ## v0.1.0 — Foundation (current, alpha)
@@ -29,110 +32,263 @@
 
 ---
 
-## v0.2.0 — Real-Data Validation (next, ~2-3 months)
+## v0.2.0 — Foundation Hardening (released 2026-05-08)
 
-**Theme**: Replace synthetic data with real data; harden weak points.
+**Theme**: Make the v0.1 capabilities trustworthy enough to recommend
+to a second user. Six axes, all of them P0/P1. **Five axes engineering-
+complete.** Axis 6 ongoing — gated on second-user adoption rather than
+code, which is now in self-feedback + recruitment phase.
 
-### Priorities
+### Axis 1 — Architecture Separation (P0) ✅
 
-- **Real-data testing**
-  - 30+ real entities across diverse domains
-  - User-tested query patterns
-  - Edge case discovery and fixing
+Goal: no single file owns more than one responsibility.
 
-- **Multimodal completion**
-  - Full LLaVA integration for image understanding
-  - Whisper integration for audio transcription
-  - PDF table extraction improvements
+- [x] Split `core/reasoning_engine.py` into `core/reasoning/`
+      package: `engine.py` (orchestration), `pipeline.py` (loop),
+      `modes.py` (mode dispatch). PRs #37 / #38 / #39.
+- [x] Consolidate `memory_*` into `core/memory/` package with
+      documented public API. PR #35.
+- [x] Public typed interfaces for: `Retriever`, `GraphEngine`,
+      `PolicyEngine`, `Reasoner`, `OutputFilter`. PR #50.
+- [ ] `tools/self/` sub-process boundary — deferred to v0.3 (no
+      observed need at v0.2 scale; in-proc access is contained).
 
-- **Self-evolution proof**
-  - Demonstrate end-to-end: feedback → proposal → patch → deploy
-  - Quality metrics for evolved patches
-  - Rollback mechanism testing
+**Done when**: ✅ `import` graph is acyclic and each module has < 20 KB.
 
-- **Performance**
-  - Profile and optimize hot paths
-  - Reduce p50/p99 response time
-  - Embedding cache improvements
+### Axis 2 — Evaluation Harness (P0) ✅
 
-- **Documentation**
-  - Tutorial: building a custom domain
-  - Tutorial: extending the ontology
-  - Architecture deep-dive
-  - Video walkthrough
+Goal: every change is measured against the same yardsticks.
+
+- [x] STEP 7 13-query suite locked as committed regression baseline
+      (`eval/regression/step7_*.json`, `scripts/bench.py`). PR #52.
+- [x] **RAGAS** integrated for retrieval / faithfulness / answer
+      relevance. Live `/query/` integration. PRs #51 / #64 / #66.
+- [x] `scripts/bench.py` with `--check` / `--update-baseline`. PR #52.
+- [x] PR-contract: `core/{retrieval,graph,reasoning}` PRs paste
+      bench numbers. CLAUDE.md rule 2 + CONTRIBUTING. PR #43.
+- [ ] LegalBench subset — intentionally deferred (domain-coupled;
+      contradicts the "no parallel domains" mother-platform rule
+      until v1.0).
+
+**Done when**: ✅ a PR cannot land without bench numbers attached.
+
+### Axis 3 — Observability / Tracing (P1) ✅
+
+Goal: any answer can be debugged without re-running it.
+
+- [x] `trace_id` ContextVar end-to-end + structured stage logs
+      (`auth → retrieve → rerank → graph → tool → answer →
+      complete`). PR #67.
+- [x] `JAMES_TRACE_STDOUT` console mirror (default ON for the
+      single-user operator workflow). PRs #71 / #75.
+- [x] `GET /admin/trace/{trace_id}` full pipeline replay. PR #82.
+- [x] Per-stage `p50 / p90 / p99 / max` latency histograms in
+      `GET /admin/metrics?window_hours=24`. PR #83.
+- [x] 7-day auto-prune (`JAMES_TRACE_RETENTION_DAYS` env, default 7).
+      PR #84.
+
+**Done when**: ✅ a hallucination report can be diagnosed by trace_id alone.
+
+### Axis 4 — Security Boundary (P1) ✅
+
+Goal: policy is a layer, not a sprinkle.
+
+- [x] `core/policy_engine.py` — single point of role/sensitivity
+      decisions. Wired into retrieval / graph / output / tools.
+      10 PRs (#50, #53, #54, #56, #57, #58, #59, #60, #61, #63).
+- [x] Capability tokens for tool access (no direct fs path strings).
+      PRs #57 / #58 / #59.
+- [x] Multimodal inputs flagged + quarantined before joining LLM
+      context. PRs #60 / #61 / #63.
+- [x] Risky-coding hard-refuse policy at `pre_check`. PR #70.
+- [ ] External red-team pass on prompt injection — deferred to v0.4
+      (per ROADMAP — needs an external partner, not internal work).
+
+**Done when**: ✅ removing the policy engine breaks 6+ modules.
+
+### Axis 5 — Controlled Evolution (P1) ✅
+
+Goal: self-evolution cannot deploy without a human.
+
+- [x] Opt-in env flag `JAMES_ENABLE_EVOLUTION=0` (default off) +
+      `JAMES_AUTO_APPROVE` safety check (refuses to start without
+      `JAMES_DEV_MODE`). PR #69.
+- [x] feedback → candidate → eval → **human approval** → deploy →
+      rollback pipeline.
+- [x] Eval gate via `scripts/bench.py --check` subprocess on every
+      `/admin/patch/approve` deploy. PR #77.
+- [x] Audit log records `approver_username` / `approver_role` /
+      `approved_at` / `approval_method` / `before_metrics` /
+      `after_metrics`. Lifecycle JSONL `james_patch_log.jsonl`.
+      PRs #69 / #77.
+- [x] Auto-rollback on bench regression + lifecycle log records the
+      `ROLLED_BACK` event. Tested for byte-identical recovery
+      under simulated mid-write crash. PR #78.
+- [x] `GET /admin/patch/audit?since=&approver=&outcome=&limit=`
+      operator-facing query endpoint. PR #79.
+
+**Done when**: ✅ any deployed patch has an `approver_username` field
+in the audit DB, and deploy without it is rejected.
+
+### Axis 6 — Real-Data Validation (carries forward from v0.1) 🟡
+
+Goal: numbers from real data, not just synthetic.
+
+- [x] Wiki corpus to 161 entities (concept 62 / org 57 / person 11
+      / document 31, hard-deduped via PR #28).
+- [x] STEP 7 13-query suite includes negative / dedup / lang-mix /
+      security / meta categories.
+- [x] Multimodal pipeline integration (image / video / audio,
+      OCR-poison quarantine). PRs #60 / #61 / #63.
+- [x] Edge case discovery: #5 / #6 / #7 / #8 / #11 / #14 / #20
+      all closed via real-data feedback loops.
+- [ ] **Second-user end-to-end bench run**: pending. This is the
+      v0.2 → v0.3 gate; not a code task but a recruitment task.
+
+### Known cuts from earlier v0.2 plan
+
+The following moved to v0.3 to keep v0.2 focused:
+
+- Self-evolution end-to-end demonstration → folded into Axis 5
+- Performance profiling → after Axis 1 (premature otherwise)
+- Tutorial documentation → after Axis 1 stabilizes
 
 ---
 
-## v0.3.0 — Multi-Agent + Graph DB (~6 months)
+## v0.3.0 — Platform Skeleton (~6 months after v0.2)
 
-**Theme**: Scale beyond single-user, optional graph DB backend.
+**Theme**: define and freeze the extension contract that all future
+domain packs will be built against.
 
-### Priorities
+**Required for**: any domain pack work (forbidden until this gate passes).
 
-- **Optional Neo4j backend**
-  - Migrate from markdown wiki to graph DB
-  - Cypher query support
-  - Backward compatibility with markdown
+### Deliverables
 
-- **Multi-agent system**
-  - Specialist agents (researcher, coder, security)
-  - Agent-to-agent communication
-  - Task decomposition + delegation
+- [ ] `core/plugins/base.py` — typed interfaces for 4 plugin types:
+  - `OntologyPack` (entity types, relations, hierarchies)
+  - `PromptPack` (system prompts, few-shot examples per task)
+  - `UIPanel` (server-rendered admin/user widgets)
+  - `Scorer` (custom retrieval/answer scoring overrides)
+- [ ] `core/plugins/loader.py` — `JAMES_PLUGINS=general,reference`
+      env-driven dynamic loader; signed manifest; SemVer enforcement
+- [ ] `packs/general/` — JAMES's default behavior extracted as a
+      pack (dogfood gate: removing it disables JAMES; swapping changes
+      domain)
+- [ ] `docs/PLUGIN_AUTHORING.md` — author guide
+- [ ] `JAMES_WORKSPACE=` env var for multi-instance hosting (same
+      code, different data root)
+- [ ] SemVer + 12-month deprecation policy committed to
+      `docs/VERSIONING.md`
+- [ ] Eval contract: every pack passes RAGAS + STEP-N before merge
+- [ ] **Knowledge cascade** — relation provenance + delete/modify
+      cascade + graph editor.
+      Replaces the v0.2 single-`confidence` field with `sources:
+      [{doc_id, weight, role, ts}]` so file delete/modify can
+      surgically update only the affected derived knowledge without
+      losing other docs' contributions. Outline + 5-phase plan in
+      [`docs/design/v0.3-knowledge-cascade.md`](docs/design/v0.3-knowledge-cascade.md).
+      May slip to v0.3.x patch — calibrate expectations.
 
-- **Better evaluation**
-  - Automated benchmarking
-  - Comparison with other RAG systems
-  - Domain-specific accuracy tests
+### Done when
 
-- **API improvements**
-  - OpenAI-compatible API for drop-in replacement
-  - Streaming responses
-  - Webhook support
+- A new contributor can build a no-op pack from `docs/PLUGIN_AUTHORING.md`
+  alone in < 1 day, load it, and observe its effect.
+- The dogfood test passes: `packs/general/` produces byte-identical
+  STEP 7 results to v0.2 main; deleting the pack breaks the server
+  cleanly with a clear "no pack loaded" error.
+
+### Out of scope (deferred to v0.4)
+
+- Any domain-specific pack (legal, food, retail)
+- External plugin marketplace
+- Plugin signing infrastructure beyond manifest hash
 
 ---
 
-## v1.0.0 — Production Hardening (~12 months)
+## v0.4.0 — First Domain Pilot (~6 months after v0.3)
 
-**Theme**: Enterprise-ready features.
+**Theme**: prove the platform contract by running ONE real domain
+in production for 6 months with one external customer.
 
-### Priorities
+**Required for**: a second domain pack (forbidden until this gate passes).
 
-- **Multi-tenancy**
-  - Per-tenant data isolation
-  - Per-tenant model selection
-  - Quota management
+### Deliverables
 
-- **HTTPS + Production deployment**
-  - Default TLS configuration
-  - Docker deployment guide
-  - Kubernetes Helm charts
+- [ ] **One** domain pack chosen from informal candidates
+      (likely `packs/legal/` or `packs/food/`)
+      — selection criteria: signed PoC interest + clear legal
+      liability boundary
+- [ ] Customer onboarding playbook (`docs/CUSTOMER_ONBOARDING.md`)
+- [ ] External red-team pass on prompt injection
+      (replaces pattern-only defense with ML guard + patterns)
+- [ ] Public eval results in `eval/RESULTS.md` (mother + first pack)
+- [ ] 6-month no-core-regression production track record
 
-- **Compliance preparation**
-  - GDPR data deletion support
-  - SOC 2 audit log requirements
-  - Data residency options
+### Done when
 
-- **Advanced security**
-  - Rate limit per role / per endpoint
-  - Anomaly detection on audit log
-  - Optional 2FA
+- One paying or formal-PoC customer has run the deployment for
+  6 months with no core code change attributable to their domain
+  needs (only pack-level changes).
 
-- **Operational tooling**
-  - Backup / restore CLI
-  - Migration scripts
-  - Health check endpoint
-  - Prometheus metrics
+### Out of scope
+
+- A second domain pack
+- Vertical Product packaging
+- Public marketplace
+
+---
+
+## v1.0.0 — Production-Grade Mother (~6 months after v0.4)
+
+**Theme**: make domain branching safe for outsiders. After this gate,
+external developers can publish their own packs.
+
+### Deliverables
+
+- [ ] HTTPS / SSO / SAML / LDAP — production defaults
+- [ ] Multi-tenancy (per-tenant data isolation, per-tenant pack
+      selection, quota management)
+- [ ] SOC 2 or ISO 27001 readiness assessment
+- [ ] Backup / restore / rollback CLI tested under simulated failure
+- [ ] Prometheus + OpenTelemetry exporters
+- [ ] Public SDK and plugin author guide finalized
+- [ ] Bus factor ≥ 2 (one non-maintainer with full commit/review history)
+- [ ] Annual external red-team schedule established
+
+### Done when
+
+- A third party (not a customer) builds and publishes a pack against
+  the v1.0 SDK without contacting maintainers.
+- The platform survives a single-maintainer 30-day absence with no
+  customer-visible regressions.
+
+### Out of scope
+
+- Vertical Products (separate business decision per domain after v1.0)
+- Federation across multiple JAMES instances (Beyond v1.0 section)
 
 ---
 
 ## Beyond v1.0 — Speculative
 
-Things being considered, no commitment:
+After v1.0, growth is by domain accumulation, not core feature
+addition. See `docs/PLATFORM_READINESS.md` §4 for the three branching
+forms (Pack / Distribution / Vertical Product) and selection criteria.
 
+Long-considered, no commitment:
+
+- **Optional Neo4j backend** — migrate from markdown wiki to graph DB,
+  Cypher query support, backward compatibility with markdown
+  (was tentatively v0.3; reframed as post-v1.0 optimization)
+- **Multi-agent system** — specialist agents (researcher, coder,
+  security), agent-to-agent communication, task decomposition
+  (was tentatively v0.3; reframed as post-v1.0 capability)
+- **OpenAI-compatible API** for drop-in replacement
+- **Streaming responses + Webhook support**
 - **Federation**: connect multiple JAMES instances
 - **On-device fine-tuning**: LoRA adapters per user
 - **Edge deployment**: smaller models for embedded use
-- **Plugin marketplace**: community-contributed tools
+- **Plugin marketplace**: community-contributed packs
 - **Visual graph editor**: web UI for ontology editing
 - **Voice interface**: ASR + TTS pipeline
 
@@ -150,6 +306,10 @@ We prioritize based on:
 3. Strategic alignment with the project's direction
 4. Community contribution (volunteer-friendly tasks first)
 
+Domain-specific feature requests during v0.2 — v0.4 are out of scope.
+See `docs/handovers/v0.2.1-business-track.md` §3 for the rationale
+and the "no parallel domains" rule.
+
 ---
 
 ## Versioning
@@ -159,7 +319,12 @@ We follow [Semantic Versioning](https://semver.org/):
 - `MAJOR.MINOR.PATCH-PRERELEASE`
 - `0.x.y` versions may contain breaking changes
 - `1.0.0` and beyond will follow strict semver
+- After v1.0 ships, plugin API gets its own SemVer track with a
+  12-month deprecation guarantee (see `docs/PLATFORM_READINESS.md`
+  Gate v0.3 criteria)
 
 ---
 
-**Last updated**: v0.1.0 release
+**Last updated**: v0.2.0 release (2026-05-08) — five axes engineering-
+complete; Axis 6 second-user gate now in self-feedback + recruitment
+phase. Open issues: 0. Total PRs since v0.1.4: 44.

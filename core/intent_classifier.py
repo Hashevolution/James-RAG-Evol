@@ -7,6 +7,7 @@ LLM이 사용자 의도를 파악해서 실행 모드를 결정.
 지원 모드:
   chat        — 일상 대화, 인사, 자기소개
   retrieval   — 지식 검색, 정보 조회
+  meta        — 내부 자료 인벤토리 ("어떤 자료가 있어?", "wiki 목록")
   coding      — 코드 작성, 버그 수정, 프로그래밍
   wiki_edit   — 지식 수정, 삭제, 추가 (admin 전용)
   agent       — 자동화, 반복 작업, 멀티스텝 실행 (확장 예정)
@@ -29,6 +30,7 @@ from typing import Optional, Tuple
 ACTIVE_MODES = {
     "chat",
     "retrieval",
+    "meta",          # 내부 wiki 인벤토리 질의 — "어떤 자료가 있어?" 류
     "coding",
     "wiki_edit",
     "self_evolve",   # [P7] 자기 인식/진화 활성화
@@ -43,9 +45,13 @@ FUTURE_MODES = {
 # role별 허용 모드
 ROLE_ALLOWED = {
     "admin":    ACTIVE_MODES | FUTURE_MODES,
-    "manager":  {"chat", "retrieval", "coding"},
-    "employee": {"chat", "retrieval", "coding"},
-    "external": {"chat", "retrieval"},
+    "manager":  {"chat", "retrieval", "meta", "coding"},
+    "employee": {"chat", "retrieval", "meta", "coding"},
+    # external sees meta too — listing entity *names* leaks no
+    # ABAC-protected content (the read still goes through retrieval +
+    # role filter). The list itself is the kind of inventory question
+    # a new external user typically asks first.
+    "external": {"chat", "retrieval", "meta"},
 }
 
 
@@ -92,6 +98,34 @@ class IntentClassifier:
             r"(로|으로)\s*(수정|변경|바꿔|고쳐)",
             r"(잘못|틀렸|틀렸어|잘못됐)",
         ],
+        # Meta / inventory queries — "what do you have?", "list everything",
+        # "wiki 목록", "내부 자료 보여줘". These previously fell through to
+        # `retrieval` and produced hallucinated answers because the wiki
+        # file *list* is not in any vector chunk. Now routed to handle_meta
+        # which calls tools/wiki/wiki_editor.py::list_entities() directly.
+        #
+        # Patterns must combine an inventory verb (목록 / 보여 / 알려 / 뭐
+        # / 있는지 / list / show / what ... do you have) with a wiki/data
+        # noun (wiki / 자료 / 문서 / 데이터 / entity / knowledge). This
+        # keeps "BlackRock 목록 알려줘" (specific topic) out of meta.
+        "meta": [
+            # 캐논 형식: "wiki 목록", "내부 자료 보여줘"
+            r"(wiki|위키|내부\s*자료|보유\s*자료|가지고\s*있는)\s*(목록|리스트|보여)",
+            r"(어떤|무슨)\s*(자료|문서|wiki|위키|entity|엔티티).{0,15}(있|가지)",
+            r"^(자료|문서|entity|엔티티)\s*(목록|리스트)\s*[?\.!]?$",
+            # 캐주얼 한국어: "데이터 뭐 있는지", "문서 뭐가 있어"
+            r"(데이터|자료|문서|wiki|위키|entity|엔티티|knowledge)\s*(뭐|무슨|어떤)",
+            r"(뭐|무슨|어떤)\s*(자료|문서|데이터|wiki|entity)\s*(있|가지|보유)",
+            # 캐주얼 한국어: "저장된 데이터", "갖고 있는 자료", "보유 자료"
+            r"(저장된|보유|갖고\s*있는|가지고\s*있는|아는)\s*\S{0,5}\s*(데이터|자료|문서|정보|내용|것|거)",
+            # 캐주얼 한국어: "아는거 뭐 있어", "알고 있는 거 뭐"
+            r"(아는|알고\s*있는)\s*(거|것).{0,8}(뭐|무슨|어떤)",
+            r"내부\s*에?\s*(무슨|뭐|어떤)\s*(자료|문서|데이터|것|거)",
+            # 영어 — 더 유연하게 (PR #73 패턴은 'what do you' 만 잡음)
+            r"(list|show)\s+(all\s+|me\s+)?(your\s+)?(entities|wiki|documents|files|data|knowledge)",
+            r"^what\s+(\S+\s+){0,3}do\s+you\s+(have|know)",
+            r"(your|the)\s+(knowledge\s*base|data\s*set|wiki|files|documents)\b",
+        ],
     }
 
     # LLM 분류 프롬프트
@@ -100,7 +134,9 @@ class IntentClassifier:
 
 [모드 정의]
 - chat:        일상 대화, 인사, 자기소개 질문
-- retrieval:   정보 검색, 지식 조회
+- retrieval:   정보 검색, 지식 조회 (특정 주제에 대한 사실)
+- meta:        보유한 내부 자료 *목록* 자체에 대한 질의
+               ("어떤 자료가 있어?", "wiki 목록 보여줘", "내부 데이터 리스트")
 - coding:      코드 작성/수정/분석/버그 수정
 - wiki_edit:   지식 수정/추가/삭제 ("틀렸어", "수정해", "삭제해", "추가해", "바꿔", "고쳐")
 - self_evolve: 자메스 자신의 코드/구조 분석, 자기 인식, 자기 개선
@@ -110,19 +146,24 @@ class IntentClassifier:
 - app_dev:     앱/서비스 개발 설계 (미구현)
 
 [판단 기준]
+- 보유 자료 인벤토리 질의 → meta (내용 X, 목록 자체 O)
 - 수정/변경/삭제/추가 의도 → wiki_edit
 - "틀렸어", "잘못됐어", "다시 써", "바꿔", "고쳐" → wiki_edit
 - 코드/프로그래밍 관련 → coding
 - 자메스 자신(코드, 구조, 파일, 기능)에 대한 분석 → self_evolve
-- 정보 요청 → retrieval
+- 특정 주제에 대한 정보 요청 → retrieval
 - 대화 → chat
+
+[meta vs retrieval 구분]
+- "BlackRock 정보 알려줘" → retrieval (특정 주제)
+- "어떤 회사 정보가 있어?" → meta (목록 자체)
 
 [사용자 발화]
 {query}
 
 [출력 규칙]
 반드시 아래 중 하나만 출력 (다른 말 금지):
-chat / retrieval / coding / wiki_edit / self_evolve / agent / app_dev"""
+chat / retrieval / meta / coding / wiki_edit / self_evolve / agent / app_dev"""
 
     def __init__(self, llm_client=None):
         self._llm = llm_client   # GemmaClient 인스턴스 (lazy)
@@ -136,14 +177,67 @@ chat / retrieval / coding / wiki_edit / self_evolve / agent / app_dev"""
                 pass
         return self._llm
 
+    # ─── Specific-topic guard (item #5, 2026-05-08) ───────────────
+    # User reported "팔란티어에 대해 어떤 자료가 있지?" routes to
+    # meta (full wiki list) when they actually wanted retrieval
+    # (Palantir-specific content). The meta patterns catch any
+    # query with "어떤 자료" / "어떤 정보" / "내부 자료" type phrasings.
+    # When a specific topic prefix is present (X에 대해 / X 관련 /
+    # X의 자료), meta routing is wrong — fall through to retrieval.
+    #
+    # Generic data nouns (wiki / 자료 / 데이터 / 내부 / entity / etc.)
+    # don't count as specific topics — those still route to meta.
+    _GENERIC_DATA_NOUNS = {
+        "wiki", "위키", "자료", "문서", "데이터", "내부",
+        "entity", "엔티티", "knowledge", "정보", "것", "거",
+        "내용", "기록", "보유", "저장된", "전체", "모든",
+        "data", "info", "files", "documents",
+    }
+
+    def _has_specific_topic_prefix(self, q: str) -> bool:
+        """True if the query has a specific-topic prefix that should
+        override meta routing.
+
+        Patterns recognised:
+          - "X에 대해" / "X에 관해" / "X에 관한" / "X에서"
+          - "X 관련" / "X관련"
+          - "X의 (자료|문서|데이터|정보|내용)" — genitive + data noun
+          - Topic noun X must NOT be in _GENERIC_DATA_NOUNS — a
+            "wiki에 대해 어떤 자료" still routes to meta.
+        """
+        m = re.search(
+            r"(\S+?)\s*("
+            r"에\s*(대해|관해|관한|에서)"           # X에 대해/관해/...
+            r"|관련(된)?"                            # X 관련(된)
+            r"|의\s+(자료|문서|데이터|정보|내용|기록)"  # X의 자료/정보/...
+            r")",
+            q,
+        )
+        if not m:
+            return False
+        topic = m.group(1).strip().lower()
+        # Strip Korean particles attached to the noun.
+        topic = re.sub(r"(은|는|이|가|을|를|의|와|과)$", "", topic)
+        if not topic:
+            return False
+        # Generic-data nouns don't count — those queries are still meta.
+        return topic not in self._GENERIC_DATA_NOUNS
+
     def classify_fast(self, query: str) -> Optional[str]:
         """
         명확한 패턴은 LLM 없이 즉시 분류.
         불명확하면 None 반환 → classify_llm으로 위임.
+
+        item #5: meta 패턴은 specific-topic 사전 검사 통과시에만
+        매칭. "팔란티어에 대해 어떤 자료" 같은 specific-topic 질의는
+        meta가 아닌 retrieval로 보내야 함.
         """
         q = query.lower().strip()
+        skip_meta = self._has_specific_topic_prefix(q)
 
         for mode, patterns in self.FAST_PATTERNS.items():
+            if skip_meta and mode == "meta":
+                continue   # specific-topic 질의는 meta 우회
             for pat in patterns:
                 if re.search(pat, q, re.IGNORECASE):
                     return mode

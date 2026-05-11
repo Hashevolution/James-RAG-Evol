@@ -49,9 +49,65 @@ JAMES implements defense-in-depth across the RAG pipeline.
 ### Authentication
 
 - JWT tokens with HS256 signing
-- 24-hour expiration (configurable)
-- Rate limiting: 30 requests / 60 seconds per user
+- 8-hour expiration (configurable via `JWT_EXPIRE` in `core/auth.py`)
+- Passwords stored as **bcrypt** (W4 P1-A, 2026-05-11) with an
+  algorithm envelope (`bcrypt$...`). Pre-W4 unsalted SHA256 hex
+  digests are accepted on input only and rewritten to bcrypt on the
+  next successful login (transparent migration).
+- Rate limiting: 30 requests / 60 seconds per IP across
+  `/query/`, `/upload/`, `/login/`, `/signup/`,
+  `/password/reset/confirm`
 - Full audit log in SQLite (every request, decision, denial)
+
+### Account creation (W4 P1-B)
+
+- `POST /signup/` is public and creates a row with `active=0`,
+  `role=external`. The account cannot log in until an admin approves
+  and assigns a role.
+- Success and duplicate produce the same 200 response body — an
+  anonymous caller cannot enumerate existing usernames through this
+  endpoint. The audit log distinguishes (`signup_pending` vs
+  `signup_rejected_duplicate`) for operator review.
+- Password policy: 8..72 characters (72 = bcrypt input window),
+  must contain at least one letter and one digit. Korean and other
+  unicode letters count. The 72-char ceiling is a hard reject rather
+  than silent truncation so two long passwords cannot ever collide.
+- Username policy: 3..32 characters, lowercase + digits + `_-` only.
+  Case-folding collisions (`Admin` vs `admin`) are blocked at signup,
+  not at login.
+
+### User API keys (W4 P3-1)
+
+- `POST /api-keys/issue` mints a long-lived `jms_<token>` for the
+  JWT-authenticated user. Plaintext is returned exactly once; only
+  `SHA256(token)` is persisted.
+- `GET /api-keys/list` returns the caller's keys by prefix, label,
+  timestamps, and revocation flag. Plaintext is never returned.
+- `POST /api-keys/revoke` revokes a key by its 12-character prefix.
+  Scope is enforced by the owning user — a caller cannot revoke
+  another user's key.
+- Revocation is one-way (no unrevoke). Rotation = revoke + issue.
+- Request authentication (W4 P3-2): the server accepts a user key
+  via `X-API-Key` header or `?api_key=` query. Resolved role comes
+  from the owning user — an admin user's key passes admin gates; an
+  employee's does not. JWT still wins when both are present. The
+  legacy system `JAMES_API_KEY` does NOT self-elevate to admin —
+  admin endpoints require pairing with an admin JWT.
+
+### Credential rotation (W4 P2-B)
+
+- `POST /password/change` lets a logged-in user rotate their own
+  password. Identity comes from the JWT subject claim — the request
+  body never names a user.
+- `POST /admin/users/issue-reset-token` lets an admin mint a one-shot
+  reset token for a target user. The plaintext token is returned
+  once; only SHA256(token) is persisted. 1-hour TTL. Issuing a new
+  token revokes any prior unused token for the same user.
+- `POST /password/reset/confirm` accepts `{username, token,
+  new_password}`. Replay is blocked by a `used_at` flag written in
+  the same transaction as the password UPDATE. Token-validity
+  errors (unknown / expired / wrong username / already used) all
+  collapse to a single 401 so anonymous callers cannot enumerate.
 
 ---
 
@@ -65,12 +121,47 @@ JAMES implements defense-in-depth across the RAG pipeline.
 - **Brute force**: Rate limiting + audit logging
 - **Hardcoded secrets**: All keys via environment variables
 - **Replay attacks**: JWT expiration + signature verification
+- **Risky-coding requests** (#8 v0.2): hard-refuse policy for queries asking the model to produce destructive shell / SQL / git / file commands — see §2.4 below
 
 ### Partially Defended
 
 - **Tool abuse**: Sandboxed Python execution, but advanced sandbox escape attacks may succeed
 - **Memory poisoning**: Source-tagged memory with role-based writes, but adversarial entries can pollute long-term store
 - **Web search injection**: Tavily/DDG content is treated as untrusted, but malicious content could still affect downstream LLM responses
+
+### 2.4 Risky-coding policy (v0.2, #8)
+
+JAMES applies a **hard-refuse** policy to queries that ask the assistant to produce a clearly destructive command. The trigger fires *before* the LLM is called — no command is ever generated, no warnings-then-answer pattern is shown.
+
+**What is blocked**
+
+| Family | Examples |
+|---|---|
+| Filesystem-wide deletion | `rm -rf /`, `del /f /s /q`, `dd if=`, `shred`, `mkfs.*`, `format c:` |
+| SQL drop / truncate | `drop database`, `drop table`, `truncate table` |
+| Destructive git | `git reset --hard`, `git push --force`, `git clean -fdx` |
+| Process kill | `kill -9`, `killall` |
+| Scope-wide deletion (English) | `delete all files in /home`, `wipe every database` |
+| Scope-wide deletion (Korean) | `wiki 폴더의 모든 파일을 삭제하는 명령어`, `데이터베이스 초기화 명령` |
+
+The matched query receives the same `자료에 없음. 보안 정책에 의해 차단되었습니다.` response as a prompt-injection block — the two are byte-identical so an audit consumer cannot distinguish them externally. Patterns live in `core/security_layer.py::RISKY_CODING_REGEX`.
+
+**What is NOT blocked**
+
+The matcher is intentionally narrow. A documentation question about how a destructive command works is generally fine — only its *use* against a target is blocked:
+
+- "rm 명령의 옵션 종류" → allowed (no `-rf` token + no scope marker)
+- "git push가 무엇인가요?" → allowed
+- "이메일 삭제하는 단축키" → allowed (no `전체` / `모든` scope marker before 삭제)
+
+If a legitimate request is blocked, the operator can:
+
+1. Rephrase without the destructive verb + scope-marker pair (most common fix)
+2. Disable the gate temporarily by removing the call site in `core/security_layer.py::pre_check` (admin-only operation, requires git push by the maintainer — this is intentional friction)
+
+**Why hard-refuse instead of warn-and-answer**
+
+The earlier behavior (`mode=coding` answering with a 🚨 prefix) shipped commands paired with warnings. This violates the principle that the assistant should not produce output an operator wouldn't paste from a vendor manual. The block message names the policy; the user can ask again with a non-destructive framing.
 
 ### Out of Scope
 

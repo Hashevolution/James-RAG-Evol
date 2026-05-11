@@ -77,7 +77,12 @@ def _resync_vector(name: str, content: str, source_type: str = "prod"):
                 from graph_rag_engine import RAGEngine    # 루트 fallback
             except ModuleNotFoundError:
                 import sys
-                sys.path.insert(0, str(BASE_PATH) if "BASE_PATH" in dir() else ".")
+                # [F821 fix 2026-05-11] previously referenced an
+                # undefined ``BASE_PATH``; the in-dir() guard made it
+                # silently fall through to ".". Use the module-level
+                # ``BASE_DIR`` imported at the top of this file —
+                # that's the intent.
+                sys.path.insert(0, str(BASE_DIR))
                 from core.graph_rag_engine import RAGEngine
         engine = RAGEngine(default_role="admin")
 
@@ -115,7 +120,12 @@ def _refresh_index():
                 from graph_rag_engine import RAGEngine    # 루트 fallback
             except ModuleNotFoundError:
                 import sys
-                sys.path.insert(0, str(BASE_PATH) if "BASE_PATH" in dir() else ".")
+                # [F821 fix 2026-05-11] previously referenced an
+                # undefined ``BASE_PATH``; the in-dir() guard made it
+                # silently fall through to ".". Use the module-level
+                # ``BASE_DIR`` imported at the top of this file —
+                # that's the intent.
+                sys.path.insert(0, str(BASE_DIR))
                 from core.graph_rag_engine import RAGEngine
         engine = RAGEngine(default_role="admin")
         engine.wiki_generator.refresh_entity_map()
@@ -259,7 +269,12 @@ def delete_entity(name: str, user_role: str = "admin") -> Tuple[bool, str]:
                 from graph_rag_engine import RAGEngine    # 루트 fallback
             except ModuleNotFoundError:
                 import sys
-                sys.path.insert(0, str(BASE_PATH) if "BASE_PATH" in dir() else ".")
+                # [F821 fix 2026-05-11] previously referenced an
+                # undefined ``BASE_PATH``; the in-dir() guard made it
+                # silently fall through to ".". Use the module-level
+                # ``BASE_DIR`` imported at the top of this file —
+                # that's the intent.
+                sys.path.insert(0, str(BASE_DIR))
                 from core.graph_rag_engine import RAGEngine
         RAGEngine(default_role="admin").vector_store.delete_by_source(path.name)
     except Exception:

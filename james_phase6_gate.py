@@ -18,6 +18,10 @@ Phase 6 진입 체크리스트:
   A등급 (≥90%) → 실패 항목 수정 후 재검증
   B등급 이하   → Phase 6 진입 금지
 """
+# Reconfigure stdout to UTF-8 before any top-level prints (this script emits
+# Korean banners + emoji on import). See utils/console.py for rationale.
+from utils.console import ensure_utf8_console
+ensure_utf8_console()
 
 import sys
 import time
@@ -65,7 +69,7 @@ def run_e2e_stability():
 
     def t_empty_context_fallback():
         """빈 컨텍스트 → '자료에 없음' 즉시 반환 (LLM 호출 없음)"""
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         engine = ReasoningEngine()
         answer = engine._generate_answer("테스트", "")
         ok = "자료에 없음" in answer and len(answer) > 0
@@ -73,7 +77,7 @@ def run_e2e_stability():
 
     def t_short_context_fallback():
         """50자 미만 컨텍스트 → fallback"""
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         engine = ReasoningEngine()
         answer = engine._generate_answer("테스트", "짧음")
         ok = "자료에 없음" in answer
@@ -81,7 +85,7 @@ def run_e2e_stability():
 
     def t_llm_error_fallback():
         """LLM 에러 prefix → 의미 있는 fallback 반환"""
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         engine = ReasoningEngine()
         # _LLM_ERROR_PREFIXES 존재 확인
         has_prefix = hasattr(engine, "_LLM_ERROR_PREFIXES")
@@ -91,7 +95,7 @@ def run_e2e_stability():
 
     def t_blocked_result_structure():
         """보안 차단 결과 구조 완전성"""
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         result = ReasoningEngine._blocked_result("보안 차단 테스트")
         required = {"answer","blocked","graph_paths","graph_used","sources","timing_sec"}
         has_all  = all(k in result for k in required)
@@ -109,13 +113,13 @@ def run_e2e_stability():
 
     def t_loop_injection_defense():
         """MAX_LOOP=2 고정 — loop 주입 불가"""
-        from core.reasoning_engine import MAX_LOOP
+        from core.reasoning import MAX_LOOP
         ok = MAX_LOOP == 2
         return ok, f"MAX_LOOP={MAX_LOOP} (고정값=2 필수)"
 
     def t_loop_timeout_exists():
         """LOOP_TIMEOUT 설정 존재"""
-        from core.reasoning_engine import LOOP_TIMEOUT
+        from core.reasoning import LOOP_TIMEOUT
         ok = 0 < LOOP_TIMEOUT <= 60
         return ok, f"LOOP_TIMEOUT={LOOP_TIMEOUT}s"
 
@@ -356,7 +360,7 @@ def run_memory_safety():
 
     def t_contamination_blocked():
         """오염 데이터 저장 시도 → Gate 차단"""
-        from core.memory_loom import MemoryLoom
+        from core.memory import MemoryLoom
         loom = MemoryLoom()
         # 오염 시나리오: low confidence + ontology_valid=False
         poisoned = {
@@ -372,7 +376,7 @@ def run_memory_safety():
 
     def t_conflict_no_accumulation():
         """conflict 발생 시 양쪽 모두 저장 안 됨 → 누적 방지"""
-        from core.memory_loom import MemoryLoom
+        from core.memory import MemoryLoom
         loom = MemoryLoom()
         base = {"confidence":0.9,"ontology_valid":True,"entity_id":"eC",
                 "relation_type":"IS_A","tail_id":"tC_original","text":"원본"}
@@ -387,7 +391,7 @@ def run_memory_safety():
 
     def t_write_rate_hard_limit():
         """세션당 MAX_WRITES=3 절대 초과 불가"""
-        from core.memory_loom import MemoryLoom, MAX_WRITES_PER_SESSION
+        from core.memory import MemoryLoom, MAX_WRITES_PER_SESSION
         loom = MemoryLoom()
         stored = 0
         for i in range(MAX_WRITES_PER_SESSION + 5):
@@ -400,7 +404,7 @@ def run_memory_safety():
 
     def t_write_log_traceable():
         """write log로 저장 내역 추적 가능"""
-        from core.memory_loom import MemoryLoom
+        from core.memory import MemoryLoom
         loom = MemoryLoom()
         loom.store({"confidence":0.9,"ontology_valid":True,
                     "entity_id":"eL","relation_type":"IS_A",
@@ -411,7 +415,7 @@ def run_memory_safety():
 
     def t_dedup_window_prevents_repeat():
         """DEDUP_WINDOW 내 동일 triple 반복 저장 불가"""
-        from core.memory_loom import MemoryLoom
+        from core.memory import MemoryLoom
         loom = MemoryLoom()
         entry = {"confidence":0.9,"ontology_valid":True,
                  "entity_id":"eD","relation_type":"IS_A","tail_id":"tD","text":"D"}
@@ -423,7 +427,7 @@ def run_memory_safety():
 
     def t_memory_trust_gate():
         """Memory Trust Score — threshold 미달 시 write 거부"""
-        from core.memory_trust import verify_before_write
+        from core.memory import verify_before_write
         # external role → trust=0.1 → score<0.5 → 거부
         entity = {"name":"테스트","type":"concept","relations":[]}
         ok_b, reason, score = verify_before_write(entity, "external", wiki_dir=None)
@@ -467,8 +471,8 @@ def run_performance():
 
     def t_loop_count_enforced():
         """Loop 횟수 MAX_LOOP=2 코드 레벨 강제"""
-        from core.reasoning_engine import MAX_LOOP
-        import inspect, core.reasoning_engine as re_mod
+        from core.reasoning import MAX_LOOP
+        import inspect, core.reasoning.engine as re_mod
         src  = inspect.getsource(re_mod)
         # range(MAX_LOOP + 1) 패턴으로 3번까지 (0,1,2)
         uses_max_loop = "range(MAX_LOOP + 1)" in src or "range(MAX_LOOP+1)" in src
@@ -477,7 +481,7 @@ def run_performance():
 
     def t_context_size_limited():
         """Context 크기 제한 — 800자 이상 LLM에 전달 안 됨"""
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         import inspect
         src = inspect.getsource(ReasoningEngine._generate_answer)
         has_limit = "800" in src or "[:800]" in src
@@ -514,7 +518,7 @@ def run_performance():
 
     def t_latency_target_code_exists():
         """latency 목표값 코드 존재 확인"""
-        import inspect, core.reasoning_engine as rm
+        import inspect, core.reasoning.engine as rm
         src = inspect.getsource(rm)
         has_target = "TIMING_TARGET_SEC" in src or "30" in src
         return has_target, f"latency 목표 코드 존재={has_target}"

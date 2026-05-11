@@ -7,7 +7,7 @@
 [![Status](https://img.shields.io/badge/Status-v0.1.0--alpha-orange.svg)]()
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
 
-[한국어 README](README.ko.md)
+[한국어 README](README.ko.md) · [🚀 처음 시작하시는 분 (10살도 따라할 수 있어요)](README.beginner.ko.md)
 
 ---
 
@@ -80,7 +80,7 @@ Open `http://localhost:8000`
      ↓
 [Query Router]         ← chat / coding / retrieval / web_search
      ↓
-[Hybrid Search]        ← Vector(60%) + BM25(20%) + keyword(20%)
+[Hybrid Search]        ← Vector(60%) + BM25(20%) + keyword(10%) + name(10%)
      ↓
 [Graph Engine]         ← DFS + confidence + sensitivity gating
      ↓

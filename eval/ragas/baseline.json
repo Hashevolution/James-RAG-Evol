@@ -1,0 +1,50 @@
+{
+  "version": "ragas-v1",
+  "description": "Initial v0.2 RAGAS baseline from representative-hardware runs on 2026-05-07 (samples=2, 1× plain run + 1× --update-baseline run, ~3.5min total). Band endpoints will widen as additional runs accumulate via `python eval/ragas/run_ragas.py --update-baseline`. Tolerance bands compensate for LLM-judge nondeterminism (answer_relevancy / faithfulness) — see `--check` semantics in run_ragas.py.",
+  "fixture": "fixture_v0.2.json",
+  "samples": 2,
+  "tolerance": {
+    "embedding_metric_abs": 0.1,
+    "judge_metric_abs": 0.15
+  },
+  "metrics": {
+    "context_precision": {
+      "min": 1.0,
+      "max": 1.0,
+      "judge_based": false
+    },
+    "context_recall": {
+      "min": 1.0,
+      "max": 1.0,
+      "judge_based": false
+    },
+    "faithfulness": {
+      "min": 1.0,
+      "max": 1.0,
+      "judge_based": true
+    },
+    "answer_relevancy": {
+      "min": 0.649,
+      "max": 0.7572,
+      "judge_based": true
+    }
+  },
+  "totals": {
+    "elapsed_min": 93.5,
+    "elapsed_max": 95.5,
+    "elapsed_mean": 94.5
+  },
+  "fingerprint": {
+    "os": "Windows 11 Home 10.0.26200",
+    "cpu": "AMD Ryzen 7 7700 8-Core",
+    "ram_gb": 32,
+    "gpu": "NVIDIA GeForce RTX 4070 SUPER (12 GB VRAM)",
+    "ollama_model": "gemma4:e4b",
+    "embedding_model": "paraphrase-multilingual-MiniLM-L12-v2"
+  },
+  "invariants": [
+    "Embedding-based metrics (context_precision, context_recall) tighten over runs — tolerance 0.10 is the upper bound for noise.",
+    "Judge-based metrics (faithfulness, answer_relevancy) drift more — tolerance 0.15 covers Ollama gemma4:e4b judge variance observed across PR #51 (0.678) and PR #64 (0.649).",
+    "elapsed_seconds is informational only — not gated by --check (depends on machine + concurrent ollama load)."
+  ]
+}

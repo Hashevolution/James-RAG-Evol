@@ -2,30 +2,42 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0c0d10">
 <title>JAMES Admin</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg:      #0a0a0f;
-    --surface: #111118;
-    --border:  #1e1e2e;
-    --accent:  #7c6af7;
-    --accent2: #4fc3f7;
-    --text:    #e8e8f0;
-    --muted:   #555570;
-    --success: #4caf7d;
-    --danger:  #f06292;
-    --warn:    #ffb74d;
-    --font-mono: 'JetBrains Mono', monospace;
-    --font-ui:   'Sora', sans-serif;
+    --bg:        #0c0d10;
+    --surface:   #14161a;
+    --surface-2: #1a1d22;
+    --border:    #25282f;
+    --border-2:  #1c1f25;
+    --accent:    #6366f1;
+    --accent-soft: rgba(99,102,241,.12);
+    --accent-fg: #a5b4fc;
+    --text:      #ececf1;
+    --text-soft: #c4c6cf;
+    --muted:     #8a8d99;
+    --muted-2:   #5d616c;
+    --success:   #22c55e;
+    --danger:    #ef4444;
+    --warn:      #f59e0b;
+    --radius:    8px;
+    --radius-lg: 10px;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    --font-ui:   'Inter', 'Pretendard', system-ui, -apple-system, sans-serif;
   }
-  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
   body {
     background: var(--bg);
     color: var(--text);
     font-family: var(--font-ui);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     min-height: 100dvh;
     display: flex;
     flex-direction: column;
@@ -35,129 +47,159 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 28px;
-    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border-2);
     background: var(--surface);
   }
-  .logo { font-size: 14px; font-weight: 600; letter-spacing: 2px; color: var(--accent); font-family: var(--font-mono); }
-  .logo span { color: var(--danger); }
-  .header-right { display: flex; gap: 12px; }
-  .nav-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border);
-             background: none; color: var(--muted); font-size: 12px; cursor: pointer;
-             text-decoration: none; transition: all .2s; font-family: var(--font-ui); }
-  .nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .logo {
+    font-size: 14px; font-weight: 600;
+    color: var(--text); font-family: var(--font-ui);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .logo::before {
+    content: '';
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, var(--accent), #818cf8);
+  }
+  .logo span { color: var(--muted); font-weight: 500; }
+  .header-right { display: flex; gap: 8px; }
+  .nav-btn { padding: 6px 12px; border-radius: var(--radius); border: 1px solid transparent;
+             background: none; color: var(--muted); font-size: 13px; cursor: pointer;
+             text-decoration: none; transition: all .15s; font-family: var(--font-ui); }
+  .nav-btn:hover { background: var(--surface-2); color: var(--text); }
 
   .admin-layout { display: flex; flex: 1; }
 
   /* ── 사이드 메뉴 ── */
   nav {
-    width: 200px;
-    border-right: 1px solid var(--border);
+    width: 220px;
+    border-right: 1px solid var(--border-2);
     background: var(--surface);
-    padding: 20px 0;
+    padding: 18px 0;
     flex-shrink: 0;
   }
-  .nav-section { padding: 6px 20px 4px; font-size: 9px; color: var(--muted);
-                 letter-spacing: 1.5px; font-family: var(--font-mono); }
+  .nav-section {
+    padding: 14px 20px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: .3px;
+    text-transform: uppercase;
+  }
+  .nav-section:first-child { padding-top: 6px; }
   .nav-item {
     display: flex; align-items: center; gap: 10px;
-    padding: 9px 20px;
+    padding: 8px 20px;
+    margin: 2px 8px;
+    border-radius: 6px;
     font-size: 13px;
-    color: var(--muted);
+    color: var(--text-soft);
     cursor: pointer;
     transition: all .15s;
-    border-left: 2px solid transparent;
   }
-  .nav-item:hover { color: var(--text); background: rgba(255,255,255,.03); }
-  .nav-item.active { color: var(--accent); border-left-color: var(--accent);
-                     background: rgba(124,106,247,.06); }
-  .nav-icon { font-size: 15px; }
+  .nav-item:hover { color: var(--text); background: var(--surface-2); }
+  .nav-item.active {
+    color: var(--text);
+    background: var(--accent-soft);
+  }
+  .nav-icon { font-size: 14px; opacity: .85; }
 
   /* ── 콘텐츠 ── */
-  .content { flex: 1; overflow-y: auto; padding: 28px; }
+  .content { flex: 1; overflow-y: auto; padding: 32px; background: var(--bg); }
   .page { display: none; }
   .page.active { display: block; }
 
   .page-title {
-    font-size: 18px; font-weight: 600;
+    font-size: 20px; font-weight: 600;
     margin-bottom: 24px;
     display: flex; align-items: center; gap: 10px;
+    letter-spacing: -.2px;
   }
   .page-title .badge {
-    font-size: 11px; font-family: var(--font-mono);
+    font-size: 11px; font-weight: 500;
     padding: 3px 8px; border-radius: 4px;
-    background: rgba(124,106,247,.12); color: var(--accent);
+    background: var(--accent-soft); color: var(--accent-fg);
   }
 
   /* ── 대시보드 카드 ── */
-  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 32px; }
   .card {
     background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
+    border: 1px solid var(--border-2);
+    border-radius: var(--radius-lg);
     padding: 20px;
-    transition: border-color .2s;
+    transition: border-color .15s;
   }
-  .card:hover { border-color: var(--accent); }
-  .card-label { font-size: 10px; color: var(--muted); letter-spacing: 1px;
-                font-family: var(--font-mono); margin-bottom: 10px; }
-  .card-value { font-size: 28px; font-weight: 600; font-family: var(--font-mono); }
-  .card-value.accent  { color: var(--accent); }
+  .card:hover { border-color: var(--border); }
+  .card-label {
+    font-size: 12px; color: var(--muted);
+    font-weight: 500;
+    margin-bottom: 10px;
+  }
+  .card-value { font-size: 26px; font-weight: 600; font-family: var(--font-ui); letter-spacing: -.5px; color: var(--text); }
+  .card-value.accent  { color: var(--accent-fg); }
   .card-value.success { color: var(--success); }
   .card-value.warn    { color: var(--warn); }
   .card-value.danger  { color: var(--danger); }
-  .card-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .card-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
 
   /* ── 테이블 ── */
-  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .table-wrap { background: var(--surface); border: 1px solid var(--border-2); border-radius: var(--radius-lg); overflow: hidden; }
   table { width: 100%; border-collapse: collapse; }
   th {
     text-align: left; padding: 12px 16px;
-    font-size: 10px; letter-spacing: 1px; font-family: var(--font-mono);
-    color: var(--muted); border-bottom: 1px solid var(--border);
-    background: rgba(255,255,255,.02);
+    font-size: 11px; font-weight: 600;
+    color: var(--muted); border-bottom: 1px solid var(--border-2);
+    background: var(--surface-2);
+    letter-spacing: .2px;
+    text-transform: uppercase;
   }
-  td { padding: 11px 16px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid var(--border-2); vertical-align: middle; color: var(--text); }
   tr:last-child td { border-bottom: none; }
-  tr:hover td { background: rgba(255,255,255,.015); }
-  .mono { font-family: var(--font-mono); font-size: 11px; }
+  tr:hover td { background: var(--surface-2); }
+  .mono { font-family: var(--font-mono); font-size: 12px; color: var(--text-soft); }
 
   /* ── 배지 ── */
-  .badge-role { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-family: var(--font-mono); }
-  .role-admin    { background: rgba(240,98,146,.12); color: var(--danger); }
-  .role-manager  { background: rgba(255,183,77,.12);  color: var(--warn); }
-  .role-employee { background: rgba(124,106,247,.12); color: var(--accent); }
-  .role-external { background: rgba(85,85,112,.12);   color: var(--muted); }
+  .badge-role { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+  .role-admin    { background: rgba(239,68,68,.12);  color: var(--danger); }
+  .role-manager  { background: rgba(245,158,11,.12); color: var(--warn); }
+  .role-employee { background: var(--accent-soft);   color: var(--accent-fg); }
+  .role-external { background: var(--surface-2);    color: var(--muted); }
 
-  .badge-status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-family: var(--font-mono); }
-  .status-pending  { background: rgba(255,183,77,.12);  color: var(--warn); }
-  .status-approved { background: rgba(76,175,125,.12);  color: var(--success); }
-  .status-rejected { background: rgba(240,98,146,.12);  color: var(--danger); }
+  .badge-status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+  .status-pending  { background: rgba(245,158,11,.12); color: var(--warn); }
+  .status-approved { background: rgba(34,197,94,.12);  color: var(--success); }
+  .status-rejected { background: rgba(239,68,68,.12);  color: var(--danger); }
 
   /* ── 섹션 제목 ── */
   .section-title {
-    font-size: 11px; letter-spacing: 1.5px; font-family: var(--font-mono);
-    color: var(--muted); margin-bottom: 14px; margin-top: 28px;
+    font-size: 12px; font-weight: 600;
+    color: var(--text-soft); margin-bottom: 12px; margin-top: 28px;
+    letter-spacing: 0;
   }
   .section-title:first-child { margin-top: 0; }
 
   /* ── 버튼 ── */
-  .btn { padding: 6px 14px; border-radius: 6px; border: none; font-size: 12px;
-         cursor: pointer; font-family: var(--font-ui); transition: opacity .2s; }
-  .btn:hover { opacity: .8; }
-  .btn-approve { background: rgba(76,175,125,.15); color: var(--success); border: 1px solid var(--success); }
-  .btn-reject  { background: rgba(240,98,146,.12); color: var(--danger);  border: 1px solid var(--danger);  }
+  .btn { padding: 6px 12px; border-radius: var(--radius); border: none; font-size: 12px;
+         font-weight: 500;
+         cursor: pointer; font-family: var(--font-ui); transition: all .15s; }
+  .btn-approve { background: rgba(34,197,94,.12); color: var(--success); border: 1px solid rgba(34,197,94,.3); }
+  .btn-approve:hover { background: rgba(34,197,94,.2); }
+  .btn-reject  { background: rgba(239,68,68,.12); color: var(--danger); border: 1px solid rgba(239,68,68,.3); }
+  .btn-reject:hover { background: rgba(239,68,68,.2); }
   .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #5258e6; }
 
   /* ── 로그 영역 ── */
   .log-box {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border-2);
+    border-radius: var(--radius-lg);
     padding: 16px;
     font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--muted);
+    font-size: 12px;
+    color: var(--text-soft);
     max-height: 400px;
     overflow-y: auto;
     line-height: 1.7;
@@ -172,87 +214,354 @@
   /* ── 설정 ── */
   .setting-row {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 0; border-bottom: 1px solid var(--border);
+    padding: 16px 0; border-bottom: 1px solid var(--border-2);
   }
   .setting-row:last-child { border-bottom: none; }
-  .setting-label { font-size: 14px; }
-  .setting-sub   { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .setting-label { font-size: 14px; color: var(--text); }
+  .setting-sub   { font-size: 12px; color: var(--muted); margin-top: 4px; }
   .setting-value {
-    font-family: var(--font-mono); font-size: 12px;
+    font-family: var(--font-ui); font-size: 13px;
     background: var(--bg); border: 1px solid var(--border);
-    border-radius: 6px; padding: 6px 12px; color: var(--text);
-    outline: none; width: 200px;
+    border-radius: var(--radius); padding: 7px 12px; color: var(--text);
+    outline: none; width: 220px;
+    transition: border-color .15s, box-shadow .15s;
   }
-  .setting-value:focus { border-color: var(--accent); }
+  .setting-value:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
 
   /* ── 스크롤바 ── */
-  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted-2); }
 
-  .loading { color: var(--muted); font-family: var(--font-mono); font-size: 12px; padding: 20px; }
+  .loading { color: var(--muted); font-size: 13px; padding: 20px; }
   .empty   { color: var(--muted); font-size: 13px; padding: 32px; text-align: center; }
+
+  /* ── [P2 unified UX 2026-05-10] 성향 캐릭터 인터랙티브 레이더 ── */
+  .char-intro {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--text-soft);
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  /* [P5c 2026-05-10] 캐릭터 자연어 요약 카드 — radar drag 시 live 갱신 */
+  .char-summary-card {
+    background: linear-gradient(135deg,
+                  rgba(76, 175, 125, 0.08) 0%,
+                  rgba(76, 175, 125, 0.02) 100%);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    line-height: 1.7;
+  }
+  .char-summary-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 13.5px;
+  }
+  .char-summary-row + .char-summary-row { margin-top: 4px; }
+  .char-summary-label {
+    flex: 0 0 56px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding-top: 3px;
+  }
+  .char-summary-text { flex: 1; color: var(--text); }
+  .char-summary-text b { color: var(--accent); font-weight: 600; }
+  .char-layout {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .char-radar-wrap {
+    flex: 1 1 480px;
+    min-width: 320px;
+    position: relative;
+    /* 입체감 — 살짝 기울여서 layer 깊이감. 모바일에선 무시. */
+    perspective: 1400px;
+    perspective-origin: 50% 35%;
+  }
+  .char-radar {
+    width: 100%;
+    height: auto;
+    max-width: 600px;
+    display: block;
+    margin: 0 auto;
+    touch-action: none;        /* 드래그 시 모바일 스크롤 방지 */
+    user-select: none;
+  }
+  .char-radar-hint {
+    text-align: center;
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+  /* radar SVG 내부 클래스 — JS가 부여 */
+  /* 베이스 격자 (라벨/축 — group ring 과 별개) */
+  .char-radar .radar-axis       { stroke: var(--border); stroke-width: 1; opacity: .25; }
+  .char-radar .radar-fill       { fill: var(--accent); fill-opacity: .12; stroke: var(--accent); stroke-width: 2;
+                                  filter: drop-shadow(0 0 6px var(--accent)); }
+  .char-radar .radar-label      { font-size: 11px; fill: var(--text-soft); font-family: var(--font-ui); pointer-events: none; }
+  .char-radar .radar-icon       { font-size: 14px; pointer-events: none; }
+
+  /* 그룹별 동심원 ring (입체 layer 시각화 — A=내, F=외) */
+  .char-radar .radar-grid       { fill: none; stroke-width: 1.2; opacity: .55;
+                                  filter: drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
+  .char-radar .radar-grid.group-a { stroke: hsl(195, 70%, 60%); }   /* 인지   */
+  .char-radar .radar-grid.group-b { stroke: hsl(155, 60%, 55%); }   /* 신중성 */
+  .char-radar .radar-grid.group-c { stroke: hsl(115, 55%, 55%); }   /* 사고   */
+  .char-radar .radar-grid.group-d { stroke: hsl(45,  78%, 58%); }   /* 사회성 */
+  .char-radar .radar-grid.group-e { stroke: hsl(15,  78%, 62%); }   /* 핵심가치 */
+  .char-radar .radar-grid.group-f { stroke: hsl(325, 65%, 65%); stroke-width: 1.6; opacity: .70; } /* 표현스타일(외곽) */
+
+  /* vertex — 자기 group 색으로 구분 (ring 색과 매칭) */
+  .char-radar .radar-vertex            { fill: var(--accent); cursor: grab;
+                                          transition: r .15s, fill .25s, filter .25s;
+                                          filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+  .char-radar .radar-vertex.group-a    { fill: hsl(195, 70%, 55%); }
+  .char-radar .radar-vertex.group-b    { fill: hsl(155, 60%, 50%); }
+  .char-radar .radar-vertex.group-c    { fill: hsl(115, 55%, 50%); }
+  .char-radar .radar-vertex.group-d    { fill: hsl(45,  78%, 55%); }
+  .char-radar .radar-vertex.group-e    { fill: hsl(15,  78%, 58%); }
+  .char-radar .radar-vertex.group-f    { fill: hsl(325, 65%, 60%); }
+  .char-radar .radar-vertex:hover      { fill: #fff; r: 9; filter: drop-shadow(0 0 8px #fff); }
+  .char-radar .radar-vertex.dragging   { cursor: grabbing; r: 10; fill: #fff;
+                                          filter: drop-shadow(0 0 12px #fff); }
+  .char-radar .radar-vertex.selected   { stroke: #fff; stroke-width: 2.5;
+                                          filter: drop-shadow(0 0 10px var(--accent)); }
+  .char-radar .radar-vertex.ripple-pos { animation: char-ripple-pos 1.2s ease-out; }
+  .char-radar .radar-vertex.ripple-neg { animation: char-ripple-neg 1.2s ease-out; }
+
+  /* 상관관계 edge — 점선 더 굵고 진하게 + glow */
+  .char-radar .corr-edge        { fill: none; stroke-width: 2; opacity: .55; pointer-events: none;
+                                  stroke-dasharray: 6 4;
+                                  transition: opacity .25s, stroke-width .25s, filter .25s; }
+  .char-radar .corr-edge.pos    { stroke: #22c55e; }    /* 양 상관 — 녹색 */
+  .char-radar .corr-edge.neg    { stroke: #ef4444; }    /* 음 상관 — 빨강 */
+  .char-radar .corr-edge.active { opacity: 1; stroke-width: 3.4; stroke-dasharray: none;
+                                  filter: drop-shadow(0 0 6px currentColor); }
+
+  /* 짝(opposing) edge — 좀 더 보이게 (sum=1.0 시각화) */
+  .char-radar .pair-edge        { stroke: var(--muted); stroke-width: 1.5; opacity: .40;
+                                  stroke-dasharray: 3 5; pointer-events: none; }
+
+  /* Pulse — 더 강하게 + glow halo */
+  @keyframes char-ripple-pos {
+    0%   { fill: var(--accent); r: 6;  filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+    25%  { fill: #22c55e;       r: 14; filter: drop-shadow(0 0 14px #22c55e); }
+    65%  { fill: #22c55e;       r: 9;  filter: drop-shadow(0 0 6px #22c55e); }
+    100% { fill: var(--accent); r: 6;  filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+  }
+  @keyframes char-ripple-neg {
+    0%   { fill: var(--accent); r: 6;  filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+    25%  { fill: #ef4444;       r: 14; filter: drop-shadow(0 0 14px #ef4444); }
+    65%  { fill: #ef4444;       r: 9;  filter: drop-shadow(0 0 6px #ef4444); }
+    100% { fill: var(--accent); r: 6;  filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+  }
+
+  /* 우측 사이드 (범례 + 영향력 패널) */
+  .char-side {
+    flex: 0 0 280px;
+    min-width: 240px;
+  }
+  .char-legend { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--text-soft); }
+  .char-legend-row { display: flex; align-items: center; gap: 8px; }
+  .char-legend-edge {
+    display: inline-block; width: 22px; height: 0;
+    border-top: 2px dashed currentColor;
+  }
+  .char-legend-edge-pos { color: #22c55e; }
+  .char-legend-edge-neg { color: #ef4444; }
+  .char-legend-pair {
+    display: inline-block; width: 22px; height: 0;
+    border-top: 1px dashed var(--muted); opacity: .5;
+  }
+  .char-connections {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font-size: 12px;
+    min-height: 80px;
+  }
+  .char-connections-empty { color: var(--muted); font-size: 11px; line-height: 1.5; }
+  .char-conn-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 0; gap: 8px;
+    border-bottom: 1px dashed var(--border);
+  }
+  .char-conn-row:last-child { border-bottom: none; }
+  .char-conn-label  { color: var(--text); font-size: 12px; line-height: 1.45; flex: 1; }
+  .char-conn-label b { color: var(--accent); font-weight: 600; }
+  .char-conn-weight { font-family: var(--font-mono); font-size: 11px; white-space: nowrap; }
+  .char-conn-weight.pos { color: #22c55e; }
+  .char-conn-weight.neg { color: #ef4444; }
+  /* P5b — 자연어 영향력 패널 섹션 */
+  .char-conn-section {
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .char-conn-section:last-child { border-bottom: none; margin-bottom: 0; }
+  .char-conn-section-title {
+    font-size: 10px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    letter-spacing: .8px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .char-conn-explain {
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.5;
+    padding: 4px 0;
+  }
+  .char-conn-explain b { color: var(--accent); font-weight: 600; }
+  .char-conn-header {
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* 하단 정밀 슬라이더 — 그룹별 묶음 */
+  .char-sliders {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 8px 24px;
+  }
+  /* 슬라이더 ripple 강조 — JS가 .ripple 클래스 토글 */
+  .char-sliders .trait-row.ripple-pos .trait-pct { color: #22c55e; transition: color .8s; }
+  .char-sliders .trait-row.ripple-neg .trait-pct { color: #ef4444; transition: color .8s; }
 </style>
+<!-- mobile-responsive overrides — kept after inline styles so @media
+     rules win at narrow viewports without !important on every line -->
+<link rel="stylesheet" href="/static/mobile.css">
 </head>
 <body>
 <header>
-  <div class="logo">PROJECT <span>JAMES</span> — ADMIN</div>
+  <div class="logo">JAMES <span>· Admin Console</span></div>
   <div class="header-right">
     <!-- [STEP 5-A] 언어 토글 -->
     <button class="nav-btn" data-lang-toggle onclick="toggleLang()" title="Language / 언어"
-            style="font-size:11px;font-weight:700;background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;color:var(--text)"></button>
+            style="font-size:12px;font-weight:600;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;color:var(--text-soft)"></button>
     <a href="/" class="nav-btn" data-i18n="admin.chat_link">← 챗으로</a>
   </div>
 </header>
 
 <div class="admin-layout">
-  <!-- ── 사이드 메뉴 ── -->
-  <nav>
-    <div class="nav-section">OVERVIEW</div>
-    <div class="nav-item active" onclick="showPage('dashboard', this)">
-      <span class="nav-icon">📊</span> <span data-i18n="admin.dashboard">대시보드</span>
+  <!-- 모바일에서 사이드메뉴 토글 — item #2 -->
+  <button id="admin-nav-toggle"
+          onclick="toggleAdminNav()"
+          aria-label="메뉴 토글"
+          style="display:none;position:fixed;top:8px;left:8px;z-index:60;
+                 width:44px;height:44px;border:1px solid var(--border);
+                 background:var(--surface);color:var(--text);border-radius:8px;
+                 font-size:20px;cursor:pointer">☰</button>
+
+  <!-- ── 사이드 메뉴 (폴더블 섹션) ── -->
+  <nav id="admin-nav">
+    <div class="nav-section nav-foldable" onclick="toggleNavSection(this)">
+      <span class="nav-fold-icon">▾</span> OVERVIEW
     </div>
-    <div class="nav-section" data-i18n="admin.section_manage">관리</div>
-    <div class="nav-item" onclick="showPage('users', this)">
-      <span class="nav-icon">👥</span> <span data-i18n="admin.users">사용자</span>
+    <div class="nav-group">
+      <div class="nav-item active" onclick="showPage('dashboard', this)">
+        <span class="nav-icon">📊</span> <span data-i18n="admin.dashboard">대시보드</span>
+      </div>
     </div>
-    <div class="nav-item" onclick="showPage('entities', this)">
-      <span class="nav-icon">🕸</span> Entity
+
+    <div class="nav-section nav-foldable" onclick="toggleNavSection(this)">
+      <span class="nav-fold-icon">▾</span> <span data-i18n="admin.section_manage">관리</span>
     </div>
-    <div class="nav-item" onclick="showPage('memory', this)">
-      <span class="nav-icon">🧠</span> Memory
+    <div class="nav-group">
+      <div class="nav-item" onclick="showPage('users', this)">
+        <span class="nav-icon">👥</span> <span data-i18n="admin.users">사용자</span>
+      </div>
+      <div class="nav-item" onclick="showPage('policy', this)">
+        <span class="nav-icon">🛡️</span> <span data-i18n="admin.policy">권한 매트릭스</span>
+      </div>
+      <div class="nav-item" onclick="showPage('entities', this)">
+        <span class="nav-icon">🕸</span> Entity
+      </div>
+      <div class="nav-item" onclick="showPage('memory', this)">
+        <span class="nav-icon">🧠</span> Memory
+      </div>
+      <div class="nav-item" onclick="showPage('patches', this)">
+        <span class="nav-icon">🔧</span> Patches
+      </div>
+      <div class="nav-item" onclick="showPage('uploads', this)">
+        <span class="nav-icon">📥</span> <span data-i18n="admin.upload_history">업로드 이력</span>
+      </div>
+      <div class="nav-item" onclick="showPage('files', this)">
+        <span class="nav-icon">📁</span> <span data-i18n="admin.file_mgmt">파일 관리</span>
+      </div>
     </div>
-    <div class="nav-item" onclick="showPage('patches', this)">
-      <span class="nav-icon">🔧</span> Patches
+
+    <div class="nav-section nav-foldable" onclick="toggleNavSection(this)">
+      <span class="nav-fold-icon">▾</span> <span data-i18n="admin.section_security">보안</span>
     </div>
-    <div class="nav-section" data-i18n="admin.section_security">보안</div>
-    <div class="nav-item" onclick="showPage('audit', this)">
-      <span class="nav-icon">📋</span> <span data-i18n="admin.audit_log">감사 로그</span>
+    <div class="nav-group">
+      <div class="nav-item" onclick="showPage('audit', this)">
+        <span class="nav-icon">📋</span> <span data-i18n="admin.audit_log">감사 로그</span>
+      </div>
+      <a class="nav-item" href="/admin/graph" style="text-decoration:none">
+        <span class="nav-icon">🌐</span> <span data-i18n="graph.title">Reasoning Graph</span>
+      </a>
     </div>
-    <div class="nav-section" data-i18n="admin.section_evolution">자기진화</div>
-    <div class="nav-item" onclick="showPage('proposals', this)">
-      <span class="nav-icon">🧬</span> <span data-i18n="admin.proposal_review">제안 검토</span>
+
+    <div class="nav-section nav-foldable" onclick="toggleNavSection(this)">
+      <span class="nav-fold-icon">▾</span> <span data-i18n="admin.section_evolution">자기진화</span>
     </div>
-    <div class="nav-item" onclick="showPage('evo-reports', this)">
-      <span class="nav-icon">📈</span> <span data-i18n="admin.evo_report">진화 보고서</span>
+    <div class="nav-group">
+      <div class="nav-item" onclick="showPage('proposals', this)">
+        <span class="nav-icon">🧬</span> <span data-i18n="admin.proposal_review">제안 검토</span>
+      </div>
+      <div class="nav-item" onclick="showPage('evo-reports', this)">
+        <span class="nav-icon">📈</span> <span data-i18n="admin.evo_report">진화 보고서</span>
+      </div>
+      <div class="nav-item" onclick="showPage('character', this)">
+        <span class="nav-icon">🎭</span> <span data-i18n="admin.character">성향 캐릭터</span>
+      </div>
+      <div class="nav-item" onclick="showPage('knowledge', this)">
+        <span class="nav-icon">🏆</span> <span data-i18n="admin.growth">능력 성장</span>
+      </div>
+      <div class="nav-item" onclick="showPage('performance', this)">
+        <span class="nav-icon">📊</span> <span data-i18n="admin.performance">성능 평가</span>
+      </div>
+      <div class="nav-item" onclick="showPage('learning', this)">
+        <span class="nav-icon">🎓</span> <span data-i18n="admin.learning">자기학습</span>
+      </div>
     </div>
-    <div class="nav-item" onclick="showPage('character', this)">
-      <span class="nav-icon">🎭</span> <span data-i18n="admin.character">성향 캐릭터</span>
+
+    <div class="nav-section nav-foldable" onclick="toggleNavSection(this)">
+      <span class="nav-fold-icon">▾</span> <span data-i18n="admin.section_system">시스템</span>
     </div>
-    <div class="nav-item" onclick="showPage('knowledge', this)">
-      <span class="nav-icon">🏆</span> <span data-i18n="admin.growth">능력 성장</span>
-    </div>
-    <div class="nav-item" onclick="showPage('performance', this)">
-      <span class="nav-icon">📊</span> <span data-i18n="admin.performance">성능 평가</span>
-    </div>
-    <div class="nav-item" onclick="showPage('learning', this)">
-      <span class="nav-icon">🎓</span> <span data-i18n="admin.learning">자기학습</span>
-    </div>
-    <div class="nav-item" onclick="showPage('hardware', this)">
-      <span class="nav-icon">🛠️</span> <span data-i18n="admin.hardware">장비 현황</span>
-    </div>
-    <div class="nav-item" onclick="showPage('settings', this)">
-      <span class="nav-icon">⚙️</span> <span data-i18n="admin.settings">설정</span>
+    <div class="nav-group">
+      <div class="nav-item" onclick="showPage('hardware', this)">
+        <span class="nav-icon">🛠️</span> <span data-i18n="admin.hardware">장비 현황</span>
+      </div>
+      <div class="nav-item" onclick="showPage('settings', this)">
+        <span class="nav-icon">⚙️</span> <span data-i18n="admin.settings">설정</span>
+      </div>
     </div>
   </nav>
 
@@ -274,10 +583,98 @@
     <!-- 사용자 -->
     <div class="page" id="page-users">
       <div class="page-title"><span data-i18n="users.page_title">👥 사용자 관리</span></div>
+
+      <!-- W4 P2-B-2: my own password change -->
+      <div class="section-title">▸ <span data-i18n="users.my_password_title">내 비밀번호 변경</span></div>
+      <div class="table-wrap" style="padding:16px 20px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <input id="mypw-old" type="password"
+               data-i18n-placeholder="users.mypw_old_ph" placeholder="현재 비밀번호"
+               autocomplete="current-password"
+               style="flex:1;min-width:160px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--fg);font-size:13px">
+        <input id="mypw-new" type="password"
+               data-i18n-placeholder="users.mypw_new_ph" placeholder="새 비밀번호 (8~72자, 영문+숫자)"
+               autocomplete="new-password"
+               style="flex:2;min-width:200px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--fg);font-size:13px">
+        <button onclick="changeMyPassword()"
+                style="padding:8px 14px;background:#1e7a3e;color:#fff;border:0;border-radius:6px;cursor:pointer;font-size:13px"
+                data-i18n="users.mypw_submit">변경</button>
+        <div id="mypw-msg" style="flex-basis:100%;font-size:12px;color:var(--muted);font-family:var(--font-mono);min-height:16px"></div>
+      </div>
+
+      <!-- W4 P3-3: my API keys -->
+      <div class="section-title">▸ <span data-i18n="users.my_keys_title">내 API 키</span></div>
+      <div class="table-wrap" style="padding:12px 20px;margin-bottom:16px">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+          <input id="mykey-label" type="text"
+                 data-i18n-placeholder="users.mykey_label_ph"
+                 placeholder="라벨 (선택, 예: ci-deploy)"
+                 maxlength="64"
+                 style="flex:1;min-width:160px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--fg);font-size:12px">
+          <button onclick="issueMyApiKey()"
+                  style="padding:7px 12px;background:#1e5a7a;color:#fff;border:0;border-radius:6px;cursor:pointer;font-size:12px"
+                  data-i18n="users.mykey_issue">키 발급</button>
+        </div>
+        <table style="margin-top:6px">
+          <thead><tr>
+            <th data-i18n="users.mykey_prefix">PREFIX</th>
+            <th data-i18n="users.mykey_label">라벨</th>
+            <th data-i18n="users.created">생성일</th>
+            <th data-i18n="users.mykey_last_used">최근 사용</th>
+            <th data-i18n="users.status">상태</th>
+            <th data-i18n="users.actions">액션</th>
+          </tr></thead>
+          <tbody id="my-api-keys-body"><tr><td colspan="6" class="loading" data-i18n="common.loading">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+
+      <!-- W4 P2-A: pending signups (active=0) -->
+      <div class="section-title">▸ <span data-i18n="users.pending_title">가입 신청 대기</span> <span style="font-size:11px;color:var(--muted);margin-left:8px" id="users-pending-count"></span></div>
+      <div class="table-wrap" style="margin-bottom:16px">
+        <table>
+          <thead><tr>
+            <th data-i18n="users.username">사용자</th>
+            <th data-i18n="users.created">생성일</th>
+            <th data-i18n="users.approve_as">승인 역할</th>
+            <th data-i18n="users.actions">액션</th>
+          </tr></thead>
+          <tbody id="users-pending-body"><tr><td colspan="4" class="loading" data-i18n="common.loading">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+
+      <!-- W4 P2-A: active users -->
+      <div class="section-title">▸ <span data-i18n="users.all_title">전체 사용자</span></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th data-i18n="users.username">사용자</th><th data-i18n="users.role">ROLE</th><th data-i18n="users.created">생성일</th><th data-i18n="users.last_login">마지막 로그인</th></tr></thead>
-          <tbody id="users-body"><tr><td colspan="4" class="loading" data-i18n="common.loading">로딩 중...</td></tr></tbody>
+          <thead><tr>
+            <th data-i18n="users.username">사용자</th>
+            <th data-i18n="users.role">ROLE</th>
+            <th data-i18n="users.status">상태</th>
+            <th data-i18n="users.created">생성일</th>
+            <th data-i18n="users.actions">액션</th>
+          </tr></thead>
+          <tbody id="users-body"><tr><td colspan="5" class="loading" data-i18n="common.loading">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- W4-Q3: 권한 매트릭스 (feature × role checkbox grid) -->
+    <div class="page" id="page-policy">
+      <div class="page-title"><span data-i18n="policy.page_title">🛡️ 권한 매트릭스</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5"
+           data-i18n="policy.page_hint">
+        각 기능을 어느 role 이 사용할 수 있는지 설정합니다. 체크 = 허용. 변경하면 즉시 반영. "기본값 복원" 으로 해당 기능의 모든 override 를 제거합니다.
+      </div>
+      <div id="policy-toast"
+           style="font-size:11px;font-family:var(--font-mono);color:var(--muted);min-height:16px;margin-bottom:8px"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr id="policy-thead">
+            <th data-i18n="policy.col_feature">기능</th>
+            <!-- role columns rendered dynamically from /admin/features/list -->
+          </tr></thead>
+          <tbody id="policy-body">
+            <tr><td colspan="6" class="loading" data-i18n="common.loading">로딩 중...</td></tr>
+          </tbody>
         </table>
       </div>
     </div>
@@ -286,12 +683,76 @@
     <div class="page" id="page-entities">
       <div class="page-title"><span data-i18n="entity.page_title">🕸 Entity 현황</span></div>
       <div class="cards" id="entity-cards"></div>
-      <div class="section-title">▸ <span data-i18n="entity.list_title">Entity 목록</span></div>
+
+      <!-- item #1: search + paging controls -->
+      <div style="display:flex;gap:8px;align-items:center;margin:8px 0 12px;flex-wrap:wrap">
+        <input id="entities-search" type="text"
+               placeholder="이름 / id 검색 (substring)"
+               style="flex:1;min-width:200px;padding:8px 12px;
+                      background:var(--bg);border:1px solid var(--border);
+                      border-radius:6px;color:var(--fg);font-size:13px"
+               oninput="onEntitiesSearchInput()">
+        <select id="entities-etype-filter"
+                onchange="loadEntities()"
+                style="padding:8px 12px;background:var(--bg);
+                       border:1px solid var(--border);border-radius:6px;
+                       color:var(--fg);font-size:13px">
+          <option value="">모든 타입</option>
+        </select>
+        <span id="entities-counter"
+              style="font-size:12px;color:var(--muted);font-family:var(--font-mono)"></span>
+      </div>
+
+      <div class="section-title">▸ <span data-i18n="entity.list_title">Entity 목록</span> <span style="font-size:11px;color:var(--muted);margin-left:8px">(행 클릭 → 상세)</span></div>
       <div class="table-wrap">
         <table>
           <thead><tr><th data-i18n="common.name">이름</th><th data-i18n="common.type">타입</th><th data-i18n="entity.sensitivity">민감도</th><th data-i18n="entity.relations">Relations</th></tr></thead>
           <tbody id="entities-body"><tr><td colspan="4" class="loading" data-i18n="common.loading">로딩 중...</td></tr></tbody>
         </table>
+      </div>
+
+      <!-- Paging buttons -->
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+        <button onclick="entitiesPage(-1)" id="entities-prev"
+                style="padding:6px 14px;background:var(--bg);
+                       border:1px solid var(--border);border-radius:6px;
+                       color:var(--fg);cursor:pointer">← 이전</button>
+        <span id="entities-page-label"
+              style="align-self:center;font-size:12px;color:var(--muted);font-family:var(--font-mono)">page 1</span>
+        <button onclick="entitiesPage(1)" id="entities-next"
+                style="padding:6px 14px;background:var(--bg);
+                       border:1px solid var(--border);border-radius:6px;
+                       color:var(--fg);cursor:pointer">다음 →</button>
+      </div>
+
+      <!-- Detail modal -->
+      <div id="entity-detail-modal"
+           style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
+                  z-index:9999;align-items:flex-start;justify-content:center;
+                  overflow-y:auto;padding:40px 16px"
+           onclick="closeEntityDetail(event)">
+        <div style="background:var(--card,#1e1e2e);border:1px solid var(--border);
+                    border-radius:8px;padding:20px;max-width:720px;width:100%;
+                    max-height:85vh;overflow-y:auto" onclick="event.stopPropagation()">
+          <div style="display:flex;justify-content:space-between;align-items:center;
+                      margin-bottom:12px;border-bottom:1px solid var(--border);
+                      padding-bottom:8px">
+            <div id="entity-detail-title"
+                 style="font-size:16px;font-weight:600"></div>
+            <button onclick="closeEntityDetail()"
+                    style="background:transparent;border:0;color:var(--muted);
+                           cursor:pointer;font-size:20px">×</button>
+          </div>
+          <div id="entity-detail-meta"
+               style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:12px"></div>
+          <div id="entity-detail-relations"
+               style="margin-bottom:12px"></div>
+          <div class="section-title">▸ 본문</div>
+          <pre id="entity-detail-body"
+               style="white-space:pre-wrap;font-family:var(--font-mono);
+                      font-size:12px;background:var(--bg);padding:12px;
+                      border-radius:4px;max-height:50vh;overflow-y:auto"></pre>
+        </div>
       </div>
     </div>
 
@@ -300,7 +761,7 @@
       <div class="page-title"><span data-i18n="memory.page_title">🧠 Memory 현황</span></div>
       <div class="cards" id="memory-cards"></div>
 
-      <div class="section-title">▸ <span data-i18n="memory.longterm_title">장기 기억 (세션 요약)</span></div>
+      <div class="section-title">▸ <span data-i18n="memory.longterm_title">장기 기억 (세션 요약)</span> <span style="font-size:11px;color:var(--muted);margin-left:8px">(행 클릭 → 원본 대화 펼침)</span></div>
       <div class="table-wrap">
         <table>
           <thead><tr><th data-i18n="common.date">날짜</th><th data-i18n="common.topic">주제</th><th data-i18n="common.summary">요약</th><th data-i18n="common.actions">액션</th></tr></thead>
@@ -308,12 +769,36 @@
         </table>
       </div>
 
-      <div class="section-title">▸ <span data-i18n="memory.session_list">세션 목록</span></div>
+      <div class="section-title">▸ <span data-i18n="memory.session_list">세션 목록</span> <span style="font-size:11px;color:var(--muted);margin-left:8px">(행 클릭 → 원본 대화 펼침)</span></div>
       <div class="table-wrap">
         <table>
           <thead><tr><th data-i18n="session.id">세션 ID</th><th data-i18n="session.turns">대화 수</th><th data-i18n="common.start">시작</th><th data-i18n="common.last">마지막</th><th data-i18n="common.actions">액션</th></tr></thead>
           <tbody id="sessions-body"><tr><td colspan="5" class="loading" data-i18n="common.loading">로딩 중...</td></tr></tbody>
         </table>
+      </div>
+
+      <!-- item #3-b: session original-turns expand modal -->
+      <div id="session-turns-modal"
+           style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
+                  z-index:9999;align-items:flex-start;justify-content:center;
+                  overflow-y:auto;padding:40px 16px"
+           onclick="closeSessionTurns(event)">
+        <div style="background:var(--card,#1e1e2e);border:1px solid var(--border);
+                    border-radius:8px;padding:20px;max-width:820px;width:100%;
+                    max-height:85vh;overflow-y:auto" onclick="event.stopPropagation()">
+          <div style="display:flex;justify-content:space-between;align-items:center;
+                      margin-bottom:12px;border-bottom:1px solid var(--border);
+                      padding-bottom:8px">
+            <div id="session-turns-title"
+                 style="font-size:16px;font-weight:600">세션 원본 대화</div>
+            <button onclick="closeSessionTurns()"
+                    style="background:transparent;border:0;color:var(--muted);
+                           cursor:pointer;font-size:20px">×</button>
+          </div>
+          <div id="session-turns-meta"
+               style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:12px"></div>
+          <div id="session-turns-body" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
       </div>
 
       <div class="section-title">▸ Preferences</div>
@@ -387,29 +872,116 @@
       </div>
     </div>
 
-    <!-- 성향 캐릭터 -->
+    <!-- 성향 캐릭터 [P2 unified UX 2026-05-10] -->
+    <!-- Interactive radar with drag-to-adjust + correlation ripple. -->
+    <!-- Sliders kept as a secondary numeric input (good for fine tuning). -->
+    <!-- [P3 unified UX 2026-05-10] Identity 섹션 추가 — 이전에는 ⚙️ 설정의
+         '페르소나' 영역에 있던 이름 입력을 이리로 이동. -->
     <div class="page" id="page-character">
       <div class="page-title"><span data-i18n="char.page_title">🎭 성향 캐릭터</span></div>
-      <div style="display:flex;gap:24px;flex-wrap:wrap">
-        <!-- 레이더 차트 -->
-        <div style="flex:0 0 320px">
-          <div class="section-title"><span data-i18n="char.radar">▸ Personality Radar</span></div>
-          <canvas id="radar-chart" width="300" height="300"
-            style="display:block;margin:0 auto"></canvas>
+
+      <!-- Identity 섹션 -->
+      <div class="section-title"><span data-i18n="char.identity">▸ Identity</span></div>
+      <div class="table-wrap" style="padding: 8px 20px; margin-bottom: 20px;">
+        <div class="setting-row">
+          <div>
+            <div class="setting-label" data-i18n="char.identity_name">이름</div>
+            <div class="setting-sub" data-i18n="char.identity_name_desc">JAMES가 자신을 소개할 이름</div>
+          </div>
+          <input class="setting-value" type="text" id="set-name"
+                 placeholder="JAMES" data-i18n-placeholder="app.name">
         </div>
-        <!-- 슬라이더 컨트롤 -->
-        <div style="flex:1;min-width:280px">
-          <div class="section-title"><span data-i18n="char.adjust">▸ Personality Adjust</span></div>
-          <div id="trait-sliders"></div>
-          <div style="margin-top:16px;display:flex;gap:8px">
-            <button class="btn btn-primary" onclick="saveCharacter()" data-i18n="char.save">💾 Save Character</button>
+        <div style="padding: 12px 0; display:flex; justify-content:flex-end;">
+          <button class="btn btn-primary" onclick="saveIdentity()"
+                  data-i18n="char.identity_save">💾 이름 저장</button>
+        </div>
+      </div>
+
+      <!-- [P5c 2026-05-10] 자연어 요약 카드 — 16 trait 수치를 핵심/가치/스타일
+           3 라인으로 자동 요약. 사용자가 drag/slider 로 trait 변경 시 즉시 갱신. -->
+      <div class="section-title"><span data-i18n="char.summary">▸ 캐릭터 요약</span></div>
+      <div id="char-summary" class="char-summary-card">
+        <div class="char-summary-row">
+          <span class="char-summary-label">CORE</span>
+          <span class="char-summary-text" id="char-summary-core">—</span>
+        </div>
+        <div class="char-summary-row">
+          <span class="char-summary-label">VALUES</span>
+          <span class="char-summary-text" id="char-summary-values">—</span>
+        </div>
+        <div class="char-summary-row">
+          <span class="char-summary-label">STYLE</span>
+          <span class="char-summary-text" id="char-summary-style">—</span>
+        </div>
+      </div>
+
+      <div class="section-title"><span data-i18n="char.radar">▸ 성향 레이더</span></div>
+
+      <!-- 안내문 -->
+      <div class="char-intro" data-i18n="char.intro">
+        레이더 위 점을 드래그해서 직관적으로 성향을 조절하세요. 점선으로 연결된 성향들은 서로 영향을 줍니다.
+      </div>
+
+      <div class="char-layout">
+        <!-- 좌: 인터랙티브 SVG 레이더 -->
+        <div class="char-radar-wrap">
+          <svg id="char-radar" class="char-radar"
+               viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet"
+               role="img" aria-label="Personality Radar">
+            <!-- 동적 렌더링 — admin.js renderInteractiveRadar -->
+          </svg>
+          <div class="char-radar-hint" data-i18n="char.drag_hint">
+            ✋ 점을 안쪽/바깥쪽으로 드래그
+          </div>
+        </div>
+
+        <!-- 우: 범례 + 액션 + 연결 정보 -->
+        <div class="char-side">
+          <div class="section-title"><span data-i18n="char.legend">▸ 범례</span></div>
+          <div class="char-legend">
+            <div class="char-legend-row">
+              <span class="char-legend-edge char-legend-edge-pos"></span>
+              <span data-i18n="char.legend_pos">함께 증가하는 성향</span>
+            </div>
+            <div class="char-legend-row">
+              <span class="char-legend-edge char-legend-edge-neg"></span>
+              <span data-i18n="char.legend_neg">한쪽이 증가하면 다른쪽 감소</span>
+            </div>
+            <div class="char-legend-row">
+              <span class="char-legend-pair"></span>
+              <span data-i18n="char.legend_pair">짝(상충): 자동 1.0-합 유지</span>
+            </div>
+          </div>
+
+          <div class="section-title" style="margin-top:20px">
+            <span data-i18n="char.connections">▸ 선택한 성향의 영향력</span>
+          </div>
+          <div id="char-connections" class="char-connections">
+            <div class="char-connections-empty" data-i18n="char.connections_empty">
+              레이더의 점을 클릭하면 그 성향과 연결된 다른 성향들이 표시됩니다.
+            </div>
+          </div>
+
+          <div style="margin-top:20px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="saveCharacter()"
+                    data-i18n="char.save">💾 저장</button>
             <button class="btn" style="background:var(--surface);border:1px solid var(--border);color:var(--muted)"
-              onclick="resetCharacter()"><span data-i18n="set.reset_default">↩ 기본값</span></button>
-          </div>
-          <div style="margin-top:12px;font-size:11px;color:var(--muted);font-family:var(--font-mono)">
-            * Groups A~D: Opposing traits (sum=1.0 auto-adjusted)
+                    onclick="resetCharacter()">
+              <span data-i18n="set.reset_default">↩ 기본값</span>
+            </button>
           </div>
         </div>
+      </div>
+
+      <!-- 하단: 성향 그룹별 상세값 + 슬라이더 (보조 입력) -->
+      <div class="section-title" style="margin-top:24px">
+        <span data-i18n="char.fine_tune">▸ 정밀 조정</span>
+      </div>
+      <div id="trait-sliders" class="char-sliders"></div>
+      <div style="margin-top:8px;font-size:11px;color:var(--muted);font-family:var(--font-mono)">
+        <span data-i18n="char.note_pair">* Groups A~D: 상충 (합=1.0 자동조정)</span>
+        &nbsp;·&nbsp;
+        <span data-i18n="char.note_corr">* 점선 = 상관관계 (damping 0.3로 부드럽게 영향)</span>
       </div>
     </div>
 
@@ -507,10 +1079,144 @@
       </div>
     </div>
 
-    <!-- 감사 로그 -->
+    <!-- 감사 로그 (W4 P6: rich filter + paged table) -->
     <div class="page" id="page-audit">
       <div class="page-title"><span data-i18n="audit.page_title">📋 감사 로그</span></div>
-      <div class="log-box" id="audit-log"><div class="loading" data-i18n="common.loading">로딩 중...</div></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5"
+           data-i18n="audit.page_hint">
+        모든 인증/사용자 관리/비밀번호/API 키 이벤트가 audit_log 에 기록됩니다. 카테고리 필터로 좁히거나 이벤트·사용자명·키 prefix 로 검색할 수 있습니다.
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+        <select id="audit-category"
+                onchange="audit_reload()"
+                style="padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--fg);font-size:12px">
+          <option value="all"        data-i18n="audit.cat_all">전체</option>
+          <option value="user_mgmt"  data-i18n="audit.cat_user_mgmt">사용자 관리</option>
+          <option value="password"   data-i18n="audit.cat_password">비밀번호/가입</option>
+          <option value="api_keys"   data-i18n="audit.cat_api_keys">API 키</option>
+          <option value="auth"       data-i18n="audit.cat_auth">로그인</option>
+          <option value="query"      data-i18n="audit.cat_query">질의/업로드</option>
+        </select>
+        <input id="audit-q" type="text"
+               data-i18n-placeholder="audit.search_ph"
+               placeholder="이벤트 / username / 키 prefix 검색"
+               oninput="audit_searchInput()"
+               style="flex:1;min-width:200px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--fg);font-size:12px">
+        <span id="audit-counter"
+              style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th data-i18n="audit.col_time">시각</th>
+            <th data-i18n="audit.col_endpoint">엔드포인트</th>
+            <th data-i18n="audit.col_role">role</th>
+            <th data-i18n="audit.col_event">이벤트</th>
+            <th data-i18n="audit.col_query">대상</th>
+            <th data-i18n="audit.col_ip">IP</th>
+          </tr></thead>
+          <tbody id="audit-body"><tr><td colspan="6" class="loading" data-i18n="common.loading">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+        <button onclick="audit_page(-1)"
+                id="audit-prev"
+                style="padding:6px 14px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--fg);cursor:pointer">← 이전</button>
+        <span id="audit-page-label"
+              style="align-self:center;font-size:12px;color:var(--muted);font-family:var(--font-mono)">page 1</span>
+        <button onclick="audit_page(1)"
+                id="audit-next"
+                style="padding:6px 14px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--fg);cursor:pointer">다음 →</button>
+      </div>
+    </div>
+
+    <!-- 업로드 이력 [#7-C] -->
+    <div class="page" id="page-uploads">
+      <div class="page-title">
+        <span data-i18n="uploads.page_title">📥 업로드 파일 이력</span>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+        <input type="text" id="uploads-search"
+               placeholder="파일명 검색 (Enter)"
+               data-i18n-placeholder="uploads.search_placeholder"
+               style="flex:1;min-width:200px;padding:8px 12px;
+                      background:var(--surface-2);border:1px solid var(--border);
+                      border-radius:8px;color:var(--text);font-size:13px"
+               onkeydown="if(event.key==='Enter') loadUploads()">
+        <button onclick="loadUploads()" style="padding:8px 16px;
+                background:var(--accent);color:#fff;border:0;border-radius:8px;
+                cursor:pointer;font-size:13px;font-weight:600">
+          <span data-i18n="common.search">검색</span>
+        </button>
+        <span id="uploads-meta" style="color:var(--muted);font-size:12px"></span>
+      </div>
+      <div id="uploads-table-wrap"
+           style="background:var(--surface);border:1px solid var(--border);
+                  border-radius:10px;overflow:hidden">
+        <div id="uploads-tbody" style="padding:20px">
+          <div class="loading" data-i18n="common.loading">로딩 중...</div>
+        </div>
+      </div>
+      <div id="uploads-pager" style="margin-top:14px;display:flex;
+           gap:10px;justify-content:center"></div>
+    </div>
+
+    <!-- 파일 관리 [item #2] -->
+    <div class="page" id="page-files">
+      <div class="page-title">
+        <span data-i18n="files.page_title">📁 파일 관리</span>
+      </div>
+      <!-- 검색/루트 선택 행 -->
+      <div style="display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+        <select id="files-root"
+                onchange="onFilesRootChange()"
+                style="background:var(--surface-2);border:1px solid var(--border);
+                       border-radius:8px;color:var(--text);font-size:13px;
+                       padding:8px 12px;cursor:pointer">
+          <option value="wiki">📚 wiki/ (entity 파일)</option>
+          <option value="uploads">📥 uploads/ (원본 업로드)</option>
+          <option value="media">🖼️ media/ (이미지/비디오)</option>
+        </select>
+        <input type="text" id="files-search"
+               placeholder="파일명 검색 (Enter, 대소문자 무시)"
+               data-i18n-placeholder="files.search_placeholder"
+               style="flex:1;min-width:200px;padding:8px 12px;
+                      background:var(--surface-2);border:1px solid var(--border);
+                      border-radius:8px;color:var(--text);font-size:13px"
+               onkeydown="if(event.key==='Enter') searchFiles()">
+        <button onclick="searchFiles()" style="padding:8px 16px;
+                background:var(--accent);color:#fff;border:0;border-radius:8px;
+                cursor:pointer;font-size:13px;font-weight:600">
+          <span data-i18n="common.search">검색</span>
+        </button>
+        <button onclick="loadFiles()" style="padding:8px 12px;
+                background:var(--surface-2);border:1px solid var(--border);
+                color:var(--muted);border-radius:8px;cursor:pointer;font-size:12px"
+                title="검색 초기화 + 트리 다시 불러오기">
+          ↻ 트리
+        </button>
+      </div>
+      <div id="files-info" style="color:var(--muted);font-size:12px;
+           margin-bottom:10px"></div>
+      <!-- 트리/검색 결과 표시 -->
+      <div id="files-content"
+           style="background:var(--surface);border:1px solid var(--border);
+                  border-radius:10px;padding:14px;min-height:300px;
+                  font-family:var(--font-mono);font-size:12px;
+                  max-height:60vh;overflow-y:auto">
+        <div class="loading" data-i18n="common.loading">로딩 중...</div>
+      </div>
+      <!-- 업로드 안내 -->
+      <div style="margin-top:14px;padding:12px;background:var(--surface-2);
+           border:1px solid var(--border);border-radius:8px;font-size:12px;
+           color:var(--muted);line-height:1.6">
+        💡 새 파일 업로드는 <a href="/" style="color:var(--accent-fg);
+           text-decoration:none">Chat 페이지</a>에서 진행됩니다.
+        업로드 직후 이 트리에 반영되며, 자세한 내역은
+        <a href="javascript:showPage('uploads', document.querySelector(
+          '.nav-item[onclick*=uploads]'))"
+          style="color:var(--accent-fg);text-decoration:none">📥 업로드 이력</a> 탭 참조.
+      </div>
     </div>
 
     <!-- 🛠️ 장비 현황 (P3-1) -->
@@ -574,16 +1280,12 @@
     <div class="page" id="page-settings">
       <div class="page-title"><span data-i18n="set.page_title">⚙️ 설정</span></div>
 
-      <div class="section-title">▸ <span data-i18n="set.persona_title">JAMES 페르소나 설정</span></div>
+      <!-- [P3 unified UX 2026-05-10] 페르소나 자유텍스트 섹션 제거 —
+           '성향/역할' 과 '추가 지시' 자유 텍스트는 🎭 성향 캐릭터 페이지의
+           radar UI 와 충돌하여 사용자 혼란 유발. 이름은 character 페이지의
+           Identity 섹션으로 이전, 답변 언어만 본 페이지에 단독 섹션으로 유지. -->
+      <div class="section-title"><span data-i18n="set.lang_title">▸ 답변 언어</span></div>
       <div class="table-wrap" style="padding: 8px 20px; margin-bottom: 20px;">
-        <div class="setting-row">
-          <div><div class="setting-label" data-i18n="set.persona_name">이름</div><div class="setting-sub" data-i18n="set.persona_name_desc">JAMES가 자신을 소개할 이름</div></div>
-          <input class="setting-value" type="text" id="set-name" placeholder="JAMES" data-i18n-placeholder="app.name">
-        </div>
-        <div class="setting-row">
-          <div><div class="setting-label" data-i18n="set.persona_role">성향/역할</div><div class="setting-sub" data-i18n="set.persona_role_desc">JAMES의 성격과 역할 설명</div></div>
-          <input class="setting-value" type="text" id="set-style" placeholder="A helpful and security-focused AI assistant" data-i18n-placeholder="set.persona_role_placeholder">
-        </div>
         <div class="setting-row">
           <div><div class="setting-label" data-i18n="set.answer_lang">Response Language</div>
                <div class="setting-sub" data-i18n="set.answer_lang_desc">Default response language (includes UI)</div></div>
@@ -595,14 +1297,6 @@
             <option value="영어" data-i18n="set.lang_en">🇺🇸 English</option>
           </select>
         </div>
-        <div class="setting-row">
-          <div><div class="setting-label" data-i18n="set.persona_extra">추가 지시</div><div class="setting-sub" data-i18n="set.persona_extra_desc">Additional instructions (free text)</div></div>
-          <input class="setting-value" type="text" id="set-custom" placeholder="e.g., Always respond concisely." data-i18n-placeholder="set.persona_extra_placeholder">
-        </div>
-        <div style="padding: 16px 0; display:flex; justify-content:flex-end;">
-          <button class="btn btn-primary" onclick="savePersona()" style="margin-right:10px" data-i18n="set.save_persona">Save Persona</button>
-        </div>
-        <div id="persona-preview" style="padding:12px;background:var(--bg);border-radius:8px;font-size:12px;font-family:var(--font-mono);color:var(--muted);margin-bottom:12px;"></div>
       </div>
 
       <div class="section-title"><span data-i18n="set.server_title">▸ Server Settings</span></div>
@@ -662,6 +1356,81 @@
           <button class="btn btn-primary" onclick="saveSettings()" data-i18n="set.save_server">Save Server Settings</button>
         </div>
       </div>
+
+      <!-- [#A6-1] Web Search Settings — admin-tunable role permission +
+           threshold + live engine status. Loaded by loadWebSearchConfig()
+           on page mount. -->
+      <div class="section-title">▸ <span data-i18n="set.web_search_title">🌐 Web Search</span></div>
+      <div class="table-wrap" style="padding: 8px 20px;">
+        <div class="setting-row" style="align-items:flex-start">
+          <div>
+            <div class="setting-label">Engine Status</div>
+            <div class="setting-sub">현재 활성 검색 엔진 + 키 설정 상태 (실시간)</div>
+          </div>
+          <div id="web-search-status-display"
+               style="font-family:var(--font-mono);font-size:12px;
+                      min-width:260px;color:var(--muted)">
+            checking...
+          </div>
+        </div>
+        <div class="setting-row" style="align-items:flex-start">
+          <div>
+            <div class="setting-label">Allowed Roles</div>
+            <div class="setting-sub">웹 검색을 트리거할 수 있는 role.
+              비어있으면 안됨 (web search 비활성화는 .env에서 TAVILY_API_KEY 제거).
+            </div>
+          </div>
+          <div id="web-search-roles"
+               style="display:flex;flex-direction:column;gap:6px;min-width:260px">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px">
+              <input type="checkbox" value="admin"    class="ws-role-cb" checked> admin
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px">
+              <input type="checkbox" value="manager"  class="ws-role-cb"> manager
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px">
+              <input type="checkbox" value="employee" class="ws-role-cb"> employee
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px">
+              <input type="checkbox" value="external" class="ws-role-cb"> external
+            </label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Relevance Threshold
+              <!-- [#A8-2] 숫자 옆에 직관적 라벨 — 강력/적극/보통/소극/안함.
+                   admin.js applyWsThresholdLabel()가 슬라이더 값 → 라벨 매핑. -->
+              <span style="font-weight:600;color:var(--accent)">
+                (Current: <span id="ws-threshold-val">0.30</span>
+                <span id="ws-threshold-label"
+                      style="margin-left:6px;padding:1px 8px;border-radius:4px;
+                             font-size:11px;background:var(--accent-soft);
+                             color:var(--accent-fg)">보통</span>)
+              </span>
+            </div>
+            <div class="setting-sub">unified_score 가 이 값 미만이면 웹 검색 트리거.
+              <strong>높이면 (강력)</strong> 자료 부족해도 자주 웹 검색,
+              <strong>낮추면 (안함)</strong> 자료 풍부할 때만 웹 검색.
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;min-width:260px">
+            <input type="range" id="ws-threshold" min="0.05" max="0.80" step="0.05"
+                   value="0.30"
+                   style="flex:1;accent-color:var(--accent)"
+                   oninput="applyWsThresholdLabel(this.value)">
+            <div style="display:flex;gap:4px">
+              <span style="font-size:11px;padding:2px 7px;border-radius:4px;
+                           background:var(--bg2);color:var(--muted)">안함</span>
+              <span style="font-size:11px;padding:2px 7px;border-radius:4px;
+                           background:var(--bg2);color:var(--muted)">강력</span>
+            </div>
+          </div>
+        </div>
+        <div style="padding: 16px 0; display:flex; justify-content:flex-end;">
+          <button class="btn btn-primary" onclick="saveWebSearchConfig()">Save Web Search Settings</button>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -683,10 +1452,22 @@
     </div>
     <div style="margin-bottom:14px;">
       <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px;">PASSWORD</div>
-      <input id="admin-login-pw" type="password" placeholder="••••••••"
-             autocomplete="new-password"
-             onkeydown="if(event.key==='Enter') doAdminLogin()"
-             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 14px;color:var(--text);font-size:14px;outline:none;">
+      <!-- [#A8-3] password 옆에 👁️ toggle — chat 페이지와 동일 패턴 -->
+      <div style="position:relative">
+        <input id="admin-login-pw" type="password" placeholder="••••••••"
+               autocomplete="new-password"
+               onkeydown="if(event.key==='Enter') doAdminLogin()"
+               style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 40px 10px 14px;color:var(--text);font-size:14px;outline:none;">
+        <button type="button"
+                id="admin-login-pw-toggle"
+                onclick="toggleAdminPwVisibility()"
+                aria-label="show/hide password"
+                title="비밀번호 보기/숨기기"
+                style="position:absolute;right:8px;top:50%;
+                       transform:translateY(-50%);background:none;
+                       border:none;cursor:pointer;color:var(--muted);
+                       font-size:14px;padding:4px 6px">👁️</button>
+      </div>
     </div>
     <div id="admin-login-error" style="font-size:12px;color:var(--danger);min-height:18px;margin-bottom:12px;font-family:var(--font-mono);"></div>
     <button onclick="doAdminLogin()"
@@ -694,7 +1475,242 @@
             data-i18n="auth.login">
       Login
     </button>
+    <!-- W4 P2-B-2: forgot-password link -->
+    <div style="margin-top:14px;text-align:center;">
+      <a href="javascript:openForgotPasswordModal()"
+         style="font-size:12px;color:var(--muted);text-decoration:underline;cursor:pointer"
+         data-i18n="auth.forgot_password">비밀번호를 잊으셨나요?</a>
+    </div>
+    <!-- W4 P4: signup link -->
+    <div style="margin-top:8px;text-align:center;">
+      <a href="javascript:openSignupModal()"
+         style="font-size:12px;color:var(--muted);text-decoration:underline;cursor:pointer"
+         data-i18n="auth.signup_link">계정이 없으신가요? 회원가입</a>
+    </div>
   </div>
 </div>
+
+<!-- ── W4 P4: 회원가입 모달 (admin 페이지에서도 가입 가능) ──────
+     Same flow as the chat-page signup: public POST /signup/, server
+     creates active=0 row, admin approves later via 사용자 관리. The
+     submitter cannot log in until that happens — admin's existing
+     session is unaffected.
+-->
+<div id="signup-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;z-index:320">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;width:360px;max-width:92vw;box-shadow:0 24px 80px rgba(0,0,0,.7)">
+    <div style="font-size:15px;font-weight:600;color:var(--accent-fg);margin-bottom:6px"
+         data-i18n="auth.signup_title">▸ JAMES 회원가입</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:18px;line-height:1.5"
+         data-i18n="auth.signup_hint">
+      가입 신청 후 관리자 승인을 거쳐야 로그인할 수 있습니다.
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px">USERNAME</div>
+      <input id="signup-id" type="text" autocomplete="username" spellcheck="false"
+             data-i18n-placeholder="auth.signup_username_ph"
+             placeholder="영문 소문자/숫자/_- (3~32자)"
+             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;outline:none">
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px">PASSWORD</div>
+      <input id="signup-pw" type="password" autocomplete="new-password"
+             data-i18n-placeholder="auth.signup_password_ph"
+             placeholder="8~72자, 영문 + 숫자"
+             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;outline:none">
+    </div>
+    <div id="signup-error" style="font-size:12px;color:var(--danger);min-height:18px;margin-bottom:6px;font-family:var(--font-mono)"></div>
+    <div id="signup-success" style="display:none;font-size:12px;color:#1e7a3e;margin-bottom:10px;line-height:1.5"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="closeSignupModal()"
+              style="flex:1;padding:10px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:13px;cursor:pointer"
+              data-i18n="common.cancel">취소</button>
+      <button onclick="submitSignup()"
+              style="flex:2;padding:10px;background:#1e5a7a;border:0;border-radius:7px;color:#fff;font-size:13px;font-weight:600;cursor:pointer"
+              data-i18n="auth.signup_submit">가입 신청</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── W4 P2-B-2: 비밀번호 찾기 모달 ─────────────────────────────
+     User-facing form for redeeming an admin-issued reset token.
+     Admin hands the token to the user out-of-band; user pastes it
+     here with their username and new password. Server matches the
+     pattern of /password/reset/confirm — unified 401 on token error,
+     400 only on policy violation.
+-->
+<div id="forgot-password-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;z-index:320">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;width:380px;max-width:92vw;box-shadow:0 24px 80px rgba(0,0,0,.7)">
+    <div style="font-size:15px;font-weight:600;color:var(--accent-fg);margin-bottom:6px;letter-spacing:.5px"
+         data-i18n="auth.reset_password_title">▸ 비밀번호 재설정</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:18px;line-height:1.5"
+         data-i18n="auth.reset_password_hint">
+      관리자가 발급한 일회용 토큰을 입력하세요. (1시간 유효)
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px">USERNAME</div>
+      <input id="reset-username" type="text" autocomplete="username"
+             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;outline:none">
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px">RESET TOKEN</div>
+      <input id="reset-token" type="text" autocomplete="off" spellcheck="false"
+             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:12px;outline:none;font-family:var(--font-mono)">
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px">NEW PASSWORD</div>
+      <input id="reset-new-pw" type="password" autocomplete="new-password"
+             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;outline:none">
+    </div>
+    <div id="reset-error" style="font-size:12px;color:var(--danger);min-height:18px;margin-bottom:10px;font-family:var(--font-mono)"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="closeForgotPasswordModal()"
+              style="flex:1;padding:10px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:13px;cursor:pointer"
+              data-i18n="common.cancel">취소</button>
+      <button onclick="submitPasswordReset()"
+              style="flex:2;padding:10px;background:#1e7a3e;border:0;border-radius:7px;color:#fff;font-size:13px;font-weight:600;cursor:pointer"
+              data-i18n="auth.reset_submit">재설정</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── W4 P3-3: API 키 발급 결과 모달 ─────────────────────────────
+     Plaintext API key returned exactly once. Same pattern as the
+     reset-token modal — large mono token, copy, no outside-click
+     dismiss, plaintext wiped on close.
+-->
+<div id="api-key-display-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;z-index:320">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;width:520px;max-width:92vw;box-shadow:0 24px 80px rgba(0,0,0,.7)">
+    <div style="font-size:14px;font-weight:600;color:var(--accent-fg);margin-bottom:6px"
+         data-i18n="users.mykey_issued_title">🔑 API 키 발급 완료</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5"
+         data-i18n="users.mykey_issued_hint">
+      이 키는 한 번만 표시됩니다. 안전한 곳에 보관하세요. 분실 시 새로 발급 필요.
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-family:var(--font-mono)">LABEL:
+      <span id="mykey-display-label" style="color:var(--text);font-weight:600"></span></div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:12px;font-family:var(--font-mono);font-size:12px;word-break:break-all;color:var(--text)"
+         id="mykey-display-value"></div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;font-family:var(--font-mono)"
+         id="mykey-display-prefix"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="copyMyApiKey()"
+              style="flex:2;padding:9px;background:#1e7a3e;border:0;border-radius:7px;color:#fff;font-size:13px;cursor:pointer"
+              data-i18n="users.mykey_copy">키 복사</button>
+      <button onclick="closeMyApiKeyModal()"
+              style="flex:1;padding:9px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:13px;cursor:pointer"
+              data-i18n="common.close">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── W4 P2-B-2: 토큰 발급 결과 모달 ────────────────────────────
+     Plaintext token is returned exactly once — show it large, allow
+     copy, and remind admin to relay it out-of-band. Closing without
+     copying is a real risk so we keep the modal modal (no outside-
+     click dismiss) and the close button restates the warning.
+-->
+<div id="reset-token-display-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;z-index:320">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;width:480px;max-width:92vw;box-shadow:0 24px 80px rgba(0,0,0,.7)">
+    <div style="font-size:14px;font-weight:600;color:var(--accent-fg);margin-bottom:6px"
+         data-i18n="users.token_issued_title">🔑 비밀번호 재설정 토큰 발급</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5"
+         data-i18n="users.token_issued_hint">
+      이 토큰은 한 번만 표시됩니다. 사용자에게 전달 후 화면을 떠나세요.
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-family:var(--font-mono)">FOR:
+      <span id="token-display-username" style="color:var(--text);font-weight:600"></span></div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:12px;font-family:var(--font-mono);font-size:12px;word-break:break-all;color:var(--text)"
+         id="token-display-value"></div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;font-family:var(--font-mono)"
+         id="token-display-ttl"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="copyResetToken()"
+              style="flex:2;padding:9px;background:#1e7a3e;border:0;border-radius:7px;color:#fff;font-size:13px;cursor:pointer"
+              data-i18n="users.token_copy">토큰 복사</button>
+      <button onclick="closeResetTokenModal()"
+              style="flex:1;padding:9px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:13px;cursor:pointer"
+              data-i18n="common.close">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── First-run wizard 모달 [PR plan-3, 2026-05-09] ──────────────
+     트리거: admin 진입 시 /admin/llm/resolution.installed가 비었거나
+            chat resolver source=="none"이면 자동 표시.
+     역할:   하드웨어 측정 결과 + 추천 모델 + 원클릭 설치.
+     닫힘:   "나중에" 버튼으로 dismiss (sessionStorage에 기록 — 재진입
+            시 다시 안 띄움). 설치 완료 시 자동 닫힘. -->
+<div class="modal-overlay" id="firstrun-wizard-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);
+            align-items:center;justify-content:center;z-index:400;">
+  <div style="background:var(--surface);border:1px solid var(--border);
+              border-radius:14px;padding:36px;width:560px;max-width:92vw;
+              box-shadow:0 24px 80px rgba(0,0,0,.8);max-height:88vh;overflow-y:auto;">
+    <div style="font-size:18px;font-weight:600;color:var(--accent-fg);
+                margin-bottom:8px;letter-spacing:.3px;">
+      🎯 처음 실행 — LLM 모델 설치 필요
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6;">
+      Ollama에 설치된 모델이 없어서 답변을 만들 수 없습니다.
+      이 PC의 사양에 맞는 모델을 자동 추천해드립니다.
+    </div>
+
+    <div id="firstrun-hw-summary"
+         style="background:var(--surface-2);border:1px solid var(--border);
+                border-radius:8px;padding:12px 14px;margin-bottom:16px;
+                font-size:12px;color:var(--text-soft);line-height:1.5;">
+      <div class="loading">하드웨어 측정 중...</div>
+    </div>
+
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;
+                letter-spacing:.4px;margin-bottom:8px;">
+      🤖 권장 모델 (이 PC에서 작동 가능한 것 중 우선순위)
+    </div>
+    <div id="firstrun-recommendations"
+         style="background:var(--bg);border:1px solid var(--border);
+                border-radius:8px;padding:8px;margin-bottom:14px;
+                max-height:280px;overflow-y:auto;">
+      <div class="loading" style="padding:20px;text-align:center;color:var(--muted)">
+        추천 계산 중...
+      </div>
+    </div>
+
+    <!-- 진행률 표시 (설치 시작 후 활성화) -->
+    <div id="firstrun-progress" style="display:none;background:var(--surface-2);
+         border:1px solid var(--accent);border-radius:8px;padding:12px;
+         margin-bottom:14px;font-size:12px">
+      <div id="firstrun-progress-text"
+           style="color:var(--accent-fg);margin-bottom:6px">설치 시작 중...</div>
+      <div style="background:var(--bg);height:6px;border-radius:3px;overflow:hidden">
+        <div id="firstrun-progress-bar"
+             style="background:var(--accent);height:100%;width:0%;
+                    transition:width .3s"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:18px">
+      <button id="firstrun-later-btn"
+              onclick="firstRunDismiss()"
+              style="flex:1;padding:11px;background:var(--surface-2);
+                     border:1px solid var(--border);border-radius:8px;
+                     color:var(--muted);font-size:13px;cursor:pointer;">
+        나중에 (이 세션 동안 다시 안 띄움)
+      </button>
+      <button id="firstrun-refresh-btn"
+              onclick="firstRunCheck()"
+              style="padding:11px 16px;background:var(--surface-2);
+                     border:1px solid var(--border);border-radius:8px;
+                     color:var(--muted);font-size:13px;cursor:pointer;"
+              title="모델 설치 후 다시 확인">
+        ↻ 새로고침
+      </button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

@@ -269,7 +269,7 @@ class WikiGenerator:
         """
         # ── Memory Trust 검증 ──────────────────────────────
         try:
-            from core.memory_trust import verify_before_write
+            from core.memory import verify_before_write
             ok, reason, score = verify_before_write(
                 entity    = entity,
                 user_role = user_role,
@@ -668,22 +668,49 @@ class WikiGenerator:
         # generate_metadata 와 같은 형식으로 통일 (그쪽이 안정적으로 동작 검증됨)
         text = (content or "")[:2000]
 
+        # Issue #5: products/tools (Claude Code, Aider, GPT-4) were misclassified
+        # as `org`. Issue #6: 91% of relations defaulted to 관련 (RELATED_TO),
+        # leaving the 11 ontology-specific labels under-used. Both addressed by
+        # tightening this single prompt with explicit type rules + label hints
+        # by entity-type pair + "use 관련 only when nothing else fits".
         prompt = (
-            "You must output ONLY a JSON object. "
-            "No explanation, no thinking, no markdown. Just raw JSON.\n\n"
-            "Output format:\n"
-            '{"entities": [{"name": "X", "type": "person|org|concept", "description": "한줄설명"}], '
-            '"relations": [{"source": "X", "target": "Y", "label": "관련", "confidence": 0.7}]}\n\n'
-            f"Allowed relation labels (Korean only): {_ONTOLOGY_LABELS_KO}\n"
-            "Max 6 entities and 6 relations. "
-            "Extract only entities EXPLICITLY named in the document below. No inference.\n\n"
+            "Output ONLY raw JSON. No explanation, no markdown.\n"
+            "Format: {\"entities\": [{\"name\":\"X\",\"type\":\"person|org|concept\","
+            "\"description\":\"한줄\"}], \"relations\": [{\"source\":\"X\","
+            "\"target\":\"Y\",\"label\":\"관련\",\"confidence\":0.7}]}\n\n"
+
+            "TYPES (3 only):\n"
+            "  person  = individual (Sam Altman, 이재명)\n"
+            "  org     = company/institution (Anthropic, 삼성전자, 한국은행)\n"
+            "  concept = idea, method, tech, AND products/tools/services\n"
+            "            (RAG, GPT-4, Claude Code, Aider, 비트코인, 갤럭시)\n"
+            "RULE: a product/tool is CONCEPT, the maker is ORG.\n"
+            "  e.g. Anthropic=org, Claude Code=concept (Anthropic 'produces' Claude Code).\n"
+            "  Same name must NEVER appear as both org and concept.\n\n"
+
+            f"RELATION LABELS (Korean, pick from): {_ONTOLOGY_LABELS_KO}\n"
+            "Prefer specific label by type pair, NOT 관련:\n"
+            "  person→org     => 근무 / 소속\n"
+            "  person→concept => 연구 / 공부\n"
+            "  org→person     => 설립됨\n"
+            "  org→concept    => 생산 / 분야\n"
+            "  concept→concept=> 분류 / 구성\n"
+            "Use 관련 ONLY when none of the above fits.\n\n"
+
+            "Max 6 entities, 6 relations. Extract only entities EXPLICITLY named below.\n\n"
             "Document:\n"
             + text
             + "\n\nJSON:"
         )
         try:
             from llm.router import call_router
-            response = call_router(prompt, task_type="extract", use_cache=False)
+            # max_tokens=1500: original prompt was short and default 0 (unlimited)
+            # was fine; the longer enriched prompt above pushed total context high
+            # enough that the model began truncating its JSON response (~700 chars
+            # in). Explicit budget keeps a complete 6-entity / 6-relation JSON in.
+            response = call_router(
+                prompt, task_type="extract", use_cache=False, max_tokens=1500,
+            )
         except Exception as e:
             print(f"[ENTITY-EXTRACT] LLM call FAIL: {e}")
             return {"entities": [], "relations": []}

@@ -9,13 +9,22 @@ Phase 4 변경:
   [P4-SRV-5] Instruction Isolation 문서 업로드 시 적용
 """
 
+# Reconfigure stdout/stderr to UTF-8 BEFORE any imports that print (config.py
+# emits banner lines on import). Otherwise non-ASCII chars in any TIMING /
+# diagnostic print path crash with UnicodeEncodeError on Windows cp949 console
+# and propagate up to FastAPI as HTTP 400. Same helper used by admin scripts (#2/#24).
+from utils.console import ensure_utf8_console
+ensure_utf8_console()
+
 import os
+import re
 import sqlite3
 import uuid
 import time
 import json
 from datetime import datetime
 from collections import defaultdict
+from urllib.parse import quote
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Header, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
@@ -26,8 +35,28 @@ from typing import Optional
 from config import UPLOAD_DIR, WIKI_DIR, CHROMA_DIR, API_KEY, MAX_UPLOAD_BYTES
 from core.graph_rag_engine import RAGEngine
 from core.feedback_engine import FeedbackEngine
-from core.auth import authenticate, get_role_from_token, add_user, ALLOWED_ROLES, DEV_MODE
-from core.security_layer import sanitize_document_content
+from core.auth import (
+    authenticate, get_role_from_token, add_user, ALLOWED_ROLES, DEV_MODE,
+    signup as _auth_signup, SignupResult,
+    list_users as _auth_list_users,
+    approve_user as _auth_approve_user,
+    reject_user as _auth_reject_user,
+    deactivate_user as _auth_deactivate_user,
+    verify_token as _auth_verify_token,
+)
+from core.auth_reset import (
+    change_password    as _auth_change_password,
+    issue_reset_token  as _auth_issue_reset_token,
+    consume_reset_token as _auth_consume_reset_token,
+    RESET_TOKEN_TTL_SEC,
+)
+from core.api_keys import (
+    issue_api_key  as _api_key_issue,
+    revoke_api_key as _api_key_revoke,
+    list_api_keys  as _api_key_list,
+    verify_api_key as _api_key_verify,
+)
+from core.policy_engine import default_engine
 from processors.file_processor import FileProcessor
 
 try:
@@ -175,12 +204,49 @@ async def serve_index():
     return HTMLResponse("<h1>PROJECT JAMES</h1><p>frontend/index.html 없음</p>")
 
 
+# [2026-05-10] readiness probe — k8s/docker/uptime monitor 표준 경로.
+# 인증 X (operational endpoint). DB / vector store / LLM 의 실 가용성은
+# /status/ 가 보고하므로 여기는 process-alive 만 확인한다.
+@app.get("/healthz", include_in_schema=False)
+async def healthz():
+    return {"status": "ok"}
+
+
 @app.get("/admin", response_class=HTMLResponse, include_in_schema=False)
 async def serve_admin():
     admin = os.path.join(FRONTEND_DIR, "admin.html")
     if os.path.exists(admin):
         return FileResponse(admin)
     return HTMLResponse("<h1>Admin</h1><p>frontend/admin.html 없음</p>")
+
+
+@app.get("/workspace", response_class=HTMLResponse, include_in_schema=False)
+async def serve_workspace():
+    """[W7-B] Standalone workspace page — data explorer + (W8) jobs.
+
+    Public route by design — the HTML is reachable without admin auth so
+    employees can log in here directly. The data endpoints behind it
+    (``/artifacts/mine/*`` and admin-only ``/admin/artifacts/*``) gate
+    on the matrix; this HTML doesn't carry secrets.
+    """
+    page = os.path.join(FRONTEND_DIR, "workspace.html")
+    if os.path.exists(page):
+        return FileResponse(page)
+    return HTMLResponse("<h1>Workspace</h1><p>frontend/workspace.html 없음</p>")
+
+
+@app.get("/admin/graph", response_class=HTMLResponse, include_in_schema=False)
+async def serve_admin_graph():
+    """v0.2 Axis 3 — 3D reasoning-graph observability page.
+
+    The HTML itself is public (the user is gated client-side by a login
+    flow before any API call); the data endpoint /admin/graph/snapshot
+    is admin-only via _require_admin().
+    """
+    page = os.path.join(FRONTEND_DIR, "graph.html")
+    if os.path.exists(page):
+        return FileResponse(page)
+    return HTMLResponse("<h1>Reasoning Graph</h1><p>frontend/graph.html 없음</p>")
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(WIKI_DIR,   exist_ok=True)
@@ -195,6 +261,65 @@ bearer_scheme  = HTTPBearer(auto_error=False)
 async def on_startup():
     """서버 시작 시 자동 실행."""
     import asyncio
+
+    # #81 phase 3-C: prune trace files older than the retention window
+    # so reports/trace/ doesn't grow unbounded over weeks of usage.
+    # One-shot per process restart — operators wanting more frequent
+    # housekeeping run a cron / scheduled task. Default 7 days; env
+    # override clamped to [1, 365].
+    try:
+        from core.observability import prune_old_traces
+        keep = int(os.environ.get("JAMES_TRACE_RETENTION_DAYS", "7"))
+        result = prune_old_traces(keep_days=keep)
+        if result["removed_days"]:
+            print(f"[OBSERVABILITY] trace prune: removed {len(result['removed_days'])} day-dir(s) "
+                  f"older than {keep}d ({', '.join(result['removed_days'])})")
+        if result["errors"]:
+            print(f"[OBSERVABILITY] trace prune errors: {result['errors']}")
+    except Exception as e:
+        # Housekeeping must never block server startup.
+        print(f"[STARTUP] trace prune skipped: {e}")
+
+    # [W7-A 2026-05-11] Backfill data_artifacts for any pre-W7 files
+    # already sitting in uploads/. Idempotent — only inserts rows that
+    # don't already have an origin_path match with uploaded_by='legacy'.
+    # Fail-safe: any error is logged and skipped, never blocks startup.
+    try:
+        from core.data_artifacts import backfill_from_uploads_dir
+        n = backfill_from_uploads_dir(UPLOAD_DIR)
+        if n > 0:
+            print(f"[DATA] backfilled {n} legacy artifact row(s) from {UPLOAD_DIR}")
+    except Exception as e:
+        print(f"[STARTUP] data-artifact backfill skipped: {e}")
+
+    # [PR plan-3, 2026-05-09] LLM readiness check + friendly install
+    # guidance. If Ollama has 0 models, every /query/ would fail. We
+    # emit a clear console banner pointing operators to the admin
+    # first-run wizard so they don't waste time debugging "[Gemma 응답
+    # 없음]" mysteries. Resolver gracefully degrades — no crash, just
+    # a clear next-step.
+    try:
+        from core.model_resolver import resolution_snapshot
+        snap = resolution_snapshot()
+        installed = snap.get("installed", [])
+        if not installed:
+            chat_warn = snap.get("chat", {}).get("warning", "")
+            print("=" * 60)
+            print("[STARTUP] ⚠️  Ollama에 설치된 모델이 0개입니다.")
+            print("[STARTUP]   → /query/ 호출 시 실패하거나 RuntimeError 발생.")
+            print("[STARTUP]   → 다음 중 하나로 모델을 설치하세요:")
+            print("[STARTUP]      a) admin 페이지(/admin) 접속 → 자동 추천 wizard")
+            print("[STARTUP]      b) 터미널에서: ollama pull gemma3:4b")
+            if chat_warn:
+                print(f"[STARTUP]   resolver 메시지: {chat_warn}")
+            print("=" * 60)
+        else:
+            chat_tag = snap.get("chat", {}).get("tag", "")
+            chat_src = snap.get("chat", {}).get("source", "")
+            print(f"[STARTUP] LLM 준비됨 — chat 모델: {chat_tag} (source: {chat_src}, "
+                  f"설치된 모델 {len(installed)}개)")
+    except Exception as e:
+        print(f"[STARTUP] LLM readiness check skipped: {e}")
 
     async def _index():
         await asyncio.sleep(3)
@@ -225,22 +350,71 @@ async def on_startup():
 # ─── 인증 헬퍼 ───────────────────────────────────────────────
 
 def verify_api_key(api_key: str):
-    if api_key != API_KEY:
-        raise HTTPException(status_code=403, detail="API Key 오류")
+    """Accept either the system API_KEY or a per-user ``jms_...`` key.
+
+    Raises 403 if neither matches. This function only validates the
+    credential; role-based authorization continues to consult
+    ``get_role_from_request`` (so a bare system key still gets the
+    employee role, and a user key gets the owner's actual role).
+    """
+    if api_key and api_key.startswith("jms_"):
+        if _api_key_verify(api_key) is not None:
+            return
+    elif api_key == API_KEY:
+        return
+    raise HTTPException(status_code=403, detail="API Key 오류")
+
+
+def resolve_api_key_principal(api_key: str) -> Optional[dict]:
+    """Non-raising counterpart to ``verify_api_key``.
+
+    Returns ``{"source", "username", "role"}`` or None. Used by
+    ``get_role_from_request`` to map a user key to the owner's role
+    without raising on miss (the caller decides whether absence is
+    an error).
+    """
+    if not api_key:
+        return None
+    if api_key.startswith("jms_"):
+        out = _api_key_verify(api_key)
+        if out is not None:
+            return {"source": "user", **out}
+        return None
+    if api_key == API_KEY:
+        # System key intentionally does NOT carry admin authority by
+        # itself — pairing it with an admin JWT is still required for
+        # admin endpoints. Returning "employee" here keeps the
+        # pre-P3-2 behaviour identical for system-only callers.
+        return {"source": "system", "username": "system", "role": "employee"}
+    return None
+
 
 def get_role_from_request(
     request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
     x_role: Optional[str] = Header(None, alias="X-Role"),
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
 ) -> str:
-    """
-    JWT 토큰 → role 추출.
-    [P7] api_key만 있는 경우 employee로 처리 (로컬 전용 시스템)
+    """JWT > user API key > X-Role (dev) > default employee.
+
+    [W4 P3-2] User API keys (``jms_...``) now surface the owner's
+    role to authorization gates. The system key remains employee
+    so a leaked .env value cannot self-elevate to admin.
     """
     if credentials and credentials.credentials:
         role = get_role_from_token(credentials.credentials)
         print(f"[AUTH] JWT role: {role}")
         return role
+
+    # W4 P3-2: X-API-Key header takes precedence over ?api_key= so
+    # clients on shared proxies (where logs may capture the URL) can
+    # move the credential out of the URL line.
+    key = (x_api_key or "").strip() or request.query_params.get("api_key", "")
+    if key:
+        principal = resolve_api_key_principal(key)
+        if principal and principal["source"] == "user":
+            print(f"[AUTH] user API key: {principal['username']} (role={principal['role']})")
+            return principal["role"]
 
     if x_role and x_role in ALLOWED_ROLES:
         if DEV_MODE:
@@ -249,7 +423,6 @@ def get_role_from_request(
 
     # [P7-FIX] JWT 없어도 api_key 검증은 엔드포인트에서 수행됨
     # 로컬 전용 시스템: api_key 통과 = 신뢰 사용자 → employee 수준 부여
-    # (인물명 마스킹 해제 목적)
     return "employee"
 
 def get_client_ip(request: Request) -> str:
@@ -271,12 +444,59 @@ class LoginResponse(BaseModel):
     role:         str
     username:     str
 
+# W4 P1-B — self-service signup.
+class SignupRequest(BaseModel):
+    username: str
+    password: str
+
+class SignupResponse(BaseModel):
+    ok:      bool
+    # Identical message for success and duplicate (enumeration defense).
+    # Policy-violation responses populate this with the specific reason
+    # and return HTTP 400 instead of 200.
+    message: str
+
 class QueryRequest(BaseModel):
     api_key:          str
     question:         str
     source_type:      str = "prod"
     session_id:       str = "default"   # 대화 세션 구분
     session_language: str = ""          # [STEP2-A] 세션 언어 (빈 문자열=기본)
+    # [#65 phase 3] admin-only debug field. When True AND the resolved
+    # role is "admin", the response carries `retrieved_contexts` (the
+    # actual chunk texts that fed the LLM). Used by `eval/ragas/run_ragas.py
+    # --live` to drive RAGAS evaluation against the live retrieval path.
+    # Non-admin callers see no behavior change — the field is silently
+    # dropped from the response shape.
+    include_contexts: bool = False
+    # Response shape control — brief / standard / detailed. Empty
+    # string falls through to JAMES_RESPONSE_STYLE env then `standard`.
+    # See core/response_style.py for the resolver and preset defs.
+    response_style:   str  = ""
+    # Client-supplied trace_id (item: real reasoning stream). When set,
+    # the server uses this id instead of generating a new one — letting
+    # the client poll /trace/poll/{trace_id} for stage events as they
+    # arrive (real reasoning stream, replacing the fake 2.5s timer
+    # placeholder). Empty → server generates uuid7 as before.
+    trace_id:         str  = ""
+    # item #6: client-side mode picker. When non-empty + recognised +
+    # role-allowed, bypasses the QueryRouter intent classifier and
+    # routes straight to that mode handler. Permitted values:
+    # chat / retrieval / meta / coding / wiki_edit / self_evolve.
+    mode_override:    str  = ""
+    # [#A8-6] User explicitly asked for additional web exploration.
+    # When True AND role is in web_search_config.allowed_roles, pipeline's
+    # `low_relevance` gate is bypassed — web search runs regardless of
+    # `unified_score < threshold`. Chat UI surfaces this via a
+    # "🌐 웹으로 더 조사" chip on low-confidence answers; click re-issues
+    # the same question with this flag set.
+    force_web_search: bool = False
+    # [#A2 phase 2] User-selected LLM tag from the secondary picker.
+    # Validated server-side against core.model_catalog before being passed
+    # to call_gemma. Empty string OR a tag not in the per-mode catalog
+    # silently falls back to the mode default (security: client cannot
+    # request arbitrary Ollama tags).
+    selected_model:   str  = ""
 
 class QueryResponse(BaseModel):
     question:       str
@@ -290,6 +510,18 @@ class QueryResponse(BaseModel):
     mode:           str   = ""
     session_id:     str   = ""
     direction_id:   str   = ""
+    # [#65 phase 3] populated only when request.include_contexts AND role==admin.
+    retrieved_contexts: Optional[list] = None
+    # [#47 phase 1] end-to-end trace correlation. Always populated; users
+    # quote this on bug reports so we can read back the per-stage trace.
+    trace_id:       str   = ""
+    # [#A6-2] 웹 검색 사용 여부 + 출처 URL — 답변 bubble의 "🌐 웹 검색
+    # 사용됨" 배지 + 출처 리스트. internal-only 답변엔 둘 다 빈/false.
+    web_used:       bool  = False
+    web_sources:    list  = []
+    # [#A8-7] chat-side "📥 위키 저장" chip이 approve API에 보낼 proposal id.
+    # 빈 문자열이면 chip 숨김. web_used=true일 때만 채워진다.
+    pending_save_proposal_id: str = ""
 
 class UploadResponse(BaseModel):
     status:      str
@@ -315,8 +547,10 @@ async def rate_limit_middleware(request: Request, call_next):
     ip = get_client_ip(request)
     endpoint = request.url.path
 
-    # 체크 필요한 엔드포인트만
-    if endpoint in ("/query/", "/upload/", "/login/"):
+    # 체크 필요한 엔드포인트만. /signup/ + /password/reset/confirm 도
+    # unauthenticated 표적이라 같은 IP-window 로 brute-force 차단.
+    if endpoint in ("/query/", "/upload/", "/login/", "/signup/",
+                    "/password/reset/confirm"):
         if not _rate_limiter.check(ip, endpoint):
             remaining = _rate_limiter.remaining(ip)
             _write_audit(
@@ -352,6 +586,44 @@ async def login(data: LoginRequest, request: Request):
     return result
 
 
+# W4 P1-B — self-service signup. Creates a pending (active=0,
+# role=external) row. An admin must approve and assign a role before
+# the account can log in. The endpoint never reveals whether a username
+# already exists: success and duplicate share one response body and
+# both return 200. Only policy violations get a distinct 400.
+_SIGNUP_ACCEPTED_MSG = "가입 요청이 접수되었습니다. 관리자 승인 후 사용 가능합니다."
+
+@app.post("/signup/", response_model=SignupResponse,
+          summary="회원가입 신청 (관리자 승인 후 활성화)")
+async def signup(data: SignupRequest, request: Request):
+    ip     = get_client_ip(request)
+    result = _auth_signup(data.username, data.password)
+
+    if result.status == "policy":
+        _write_audit(
+            "anonymous", "/signup/", query=data.username,
+            security_event=f"signup_rejected_policy: {result.error}",
+            ip_address=ip,
+        )
+        # Policy reasons are deliberately public — the rule itself does
+        # not leak account existence, only the rule.
+        raise HTTPException(status_code=400, detail=result.error)
+
+    if result.status == "duplicate":
+        # Audit log distinguishes; the response intentionally does not.
+        _write_audit(
+            "anonymous", "/signup/", query=data.username,
+            security_event="signup_rejected_duplicate", ip_address=ip,
+        )
+    else:  # "ok"
+        _write_audit(
+            "anonymous", "/signup/", query=data.username,
+            security_event="signup_pending", ip_address=ip,
+        )
+
+    return SignupResponse(ok=True, message=_SIGNUP_ACCEPTED_MSG)
+
+
 @app.post("/upload/", response_model=UploadResponse, summary="파일 업로드 (admin 전용)")
 async def upload(
     request:     Request,
@@ -361,16 +633,34 @@ async def upload(
     instruction: str        = Form(""),     # 챗 저장 지시 (선택)
     role:        str        = Depends(get_role_from_request),
 ):
-    verify_api_key(api_key)   # api_key 검증 통과 = 신뢰된 사용자
+    # [W4-Q2-c] api_key + role-level feature gate. Default matrix
+    # allows upload.file for admin + manager (catalog Q1) — system
+    # api_key alone (role=employee) is denied, so a leaked .env value
+    # no longer suffices to ingest documents. Operators can override
+    # for specific roles via /admin/features/override.
+    _require_feature(api_key, role, "upload.file")
     ip = get_client_ip(request)
-    # [P7] api_key 검증 통과 시 업로드 허용 (JWT 없는 웹 UI 지원)
-    # admin 전용 정책은 유지하되 api_key 인증은 통과 처리
+
+    # [video-reject 2026-05-10, W1 진단 §3-C Option C] 영상 파일은 현재
+    # extract_video 가 stub (file_processor.py) — silent failure 로 ChromaDB
+    # 에 노이즈 인덱스를 만들기 때문에 422 로 즉시 거부. 후속 video-asr PR
+    # 에서 ffmpeg + Whisper + frame caption 합성 도입 예정.
+    VIDEO_EXTENSIONS = (".mp4", ".avi", ".mov", ".mkv")
+    if any(file.filename.lower().endswith(ext) for ext in VIDEO_EXTENSIONS):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "현재 영상 파일은 미지원입니다. "
+                "음성만 추출(.mp3/.wav/.m4a/.ogg)하거나 키프레임 이미지로 "
+                "변환 후 업로드해 주세요."
+            ),
+        )
 
     allowed_ext = (
         ".pdf",".png",".jpg",".jpeg",".bmp",".tiff",".webp",
         ".txt",".md",".csv",".html",".htm",
         ".docx",".doc",".xlsx",".xls",".pptx",".ppt",
-        ".hwpx",".hwp",".mp4",".avi",".mov",".mkv",
+        ".hwpx",".hwp",
         ".mp3",".wav",".m4a",".ogg",
     )
     if not any(file.filename.lower().endswith(ext) for ext in allowed_ext):
@@ -396,11 +686,45 @@ async def upload(
         if os.path.exists(filepath): os.remove(filepath)
         raise HTTPException(status_code=500, detail=f"파일 저장 실패: {e}")
 
+    # [W7-A 2026-05-11] Register the artifact as soon as the bytes land
+    # on disk. Status moves to 'indexed' after successful processing or
+    # 'failed' if any step raises. The JWT subject (preferred) or
+    # 'system' (system api_key only) becomes uploaded_by — the latter
+    # surfaces in the audit log so a leaked-key upload is still
+    # attributable to "the operator".
+    from core.data_artifacts import (
+        register_artifact as _da_register,
+        update_status     as _da_update_status,
+    )
+    rel_path = os.path.join("uploads", unique_name).replace("\\", "/")
+    artifact_uploader = _bearer_username(request) or "system"
     try:
-        raw_content = file_processor.process_file(filepath, file.filename)
+        artifact_id = _da_register(
+            origin_path=rel_path,
+            origin_name=file.filename,
+            origin_size=total_size,
+            uploaded_by=artifact_uploader,
+            status="uploaded",
+        )
+    except Exception as _e:
+        # Never block the upload on a tracking-row failure.
+        print(f"[UPLOAD] data_artifacts register skipped: {_e}")
+        artifact_id = None
 
-        # [P4-SRV-5] Instruction Isolation
-        raw_content = sanitize_document_content(raw_content, source=file.filename)
+    try:
+        # #44 phase 4-B: process_file 가 TrustedContent 반환.
+        # #44 phase 4-C: ingestion 검역은 PolicyEngine 단일 chokepoint
+        # (`default_engine.sanitize_for_ingestion`) 로 라우팅. 기존
+        # `sanitize_document_content` 는 backwards-compat shim 으로 유지되며
+        # 동일한 코드 경로(extract_data_only + log_attack) 를 사용한다.
+        tc = file_processor.process_file(filepath, file.filename)
+        print(f"[UPLOAD] provenance source={tc.source} trust={tc.trust} "
+              f"file={file.filename}")
+
+        # [P4-SRV-5] Instruction Isolation — PolicyEngine ingestion gate
+        raw_content, _sanitize_decision = default_engine.sanitize_for_ingestion(
+            tc, source=file.filename,
+        )
 
         meta   = file_processor.generate_file_metadata(raw_content)
         from utils.tokenizer import split_chunks
@@ -419,17 +743,27 @@ async def upload(
                 "source_type": "prod",
             },
         )
+        # [W8-C 2026-05-11] capture entity_ids so we can write
+        # wiki_links rows after the entity files are on disk. The
+        # process_document_for_entities return type was unused before;
+        # we now consume it to make the artifact ↔ entity relation
+        # queryable from /admin/artifacts/<id> + the workspace UI.
+        created_entity_ids: list = []
         try:
-            rag_engine.wiki_generator.process_document_for_entities(
-                file.filename, raw_content, [],
-                user_role="admin",
-                metadata=meta,
+            created_entity_ids = list(
+                rag_engine.wiki_generator.process_document_for_entities(
+                    file.filename, raw_content, [],
+                    user_role="admin",
+                    metadata=meta,
+                ) or []
             )
         except TypeError:
             # 구버전 시그니처 fallback (metadata/user_role 미지원)
             try:
-                rag_engine.wiki_generator.process_document_for_entities(
-                    file.filename, raw_content, []
+                created_entity_ids = list(
+                    rag_engine.wiki_generator.process_document_for_entities(
+                        file.filename, raw_content, []
+                    ) or []
                 )
             except AttributeError:
                 pass
@@ -448,13 +782,34 @@ async def upload(
                     "sensitivity": meta.get("sensitivity", "internal"),
                     "source_type": "prod",
                 }
-                rag_engine.wiki_generator.create_entity_file(
+                created_path = rag_engine.wiki_generator.create_entity_file(
                     doc_entity, file.filename, []
                 )
+                # create_entity_file returns the .md file path.
+                # The entity_id matches the stem (no extension).
+                if created_path:
+                    from pathlib import Path as _PathW8C
+                    created_entity_ids.append(_PathW8C(created_path).stem)
             except Exception as wiki_err:
                 print(f"[UPLOAD] wiki entity 생성 skip: {wiki_err}")
         except Exception as e:
             print(f"[UPLOAD] entity 처리 skip: {e}")
+
+        # [W8-C 2026-05-11] write wiki_links rows. Best-effort — a
+        # failure here does NOT roll back the upload (the bytes are on
+        # disk and the vector store / wiki .md files exist). It only
+        # means the artifact ↔ entity relation isn't queryable for
+        # this upload; subsequent uploads continue to track.
+        if artifact_id and created_entity_ids:
+            try:
+                from core.data_artifacts import link_entity
+                for eid in created_entity_ids:
+                    if eid:
+                        link_entity(artifact_id, eid)
+                print(f"[UPLOAD] linked {len(created_entity_ids)} entities "
+                      f"to artifact {artifact_id}")
+            except Exception as _e:
+                print(f"[UPLOAD] link_entity skipped: {_e}")
 
         # ── [P7] Media Store — 이미지/영상/오디오 날짜별 폴더 보관 ──
         MEDIA_EXTS = {
@@ -523,6 +878,13 @@ async def upload(
         except Exception:
             pass
 
+        # [W7-A] mark indexed only after vector + entity steps succeeded.
+        if artifact_id:
+            try:
+                _da_update_status(artifact_id, "indexed")
+            except Exception as _e:
+                print(f"[UPLOAD] status update skipped: {_e}")
+
         result_data = {
             "status":      "ok",
             "filename":    unique_name,
@@ -530,12 +892,21 @@ async def upload(
             "summary":     meta.get("summary",""),
             "keywords":    meta.get("keywords",[]),
             "sensitivity": meta.get("sensitivity","internal"),
+            "artifact_id": artifact_id,   # [W7-A]
         }
         _write_audit(role, "/upload/", query=file.filename, ip_address=ip)
         return result_data
     except HTTPException:
+        # [W7-A] HTTPException propagation — surface but mark failed
+        # so the operator can find it via /admin/artifacts/list.
+        if artifact_id:
+            try: _da_update_status(artifact_id, "failed")
+            except Exception: pass
         raise
     except Exception as e:
+        if artifact_id:
+            try: _da_update_status(artifact_id, "failed")
+            except Exception: pass
         raise HTTPException(status_code=500, detail=f"분석 실패: {e}")
 
 
@@ -545,13 +916,39 @@ async def query(
     request: Request,
     role:    str = Depends(get_role_from_request),
 ):
-    verify_api_key(data.api_key)
+    # [W4-Q2-c] api_key + feature gate. query.basic defaults to ALL
+    # roles (admin/manager/employee/external) so default behaviour is
+    # unchanged — anyone with a valid api_key still hits the engine.
+    # Operators who want to revoke query access for a specific role
+    # (e.g. lock down external during incident response) now have a
+    # matrix knob without revoking the user's api_key.
+    _require_feature(data.api_key, role, "query.basic")
     ip = get_client_ip(request)
+
+    # [#47 phase 1] start a trace at the API edge. Stage logs from any
+    # downstream module reading `current_trace_id` correlate to this id.
+    # Client-supplied trace_id takes precedence (real-reasoning-stream
+    # feature) — lets the client poll /trace/poll/{trace_id} the moment
+    # it sends the request, before /query/ has returned a response.
+    # Sanity-check the supplied id (alphanumeric + hyphens only, 8-64
+    # chars) to keep filesystem path-safety guarantees from
+    # observability._trace_file_for.
+    from core.observability import start_trace, log_stage
+    import re as _re
+    client_tid = (data.trace_id or "").strip()
+    if client_tid and _re.fullmatch(r"[A-Za-z0-9_\-]{8,64}", client_tid):
+        trace_id = start_trace(client_tid)
+    else:
+        trace_id = start_trace()
 
     question   = data.question.strip()
     session_id = data.session_id or "default"
     if not question:
+        log_stage("auth", role=role, allowed=False, reason="empty_question")
         raise HTTPException(status_code=400, detail="질문이 비어 있습니다.")
+
+    log_stage("auth", role=role, allowed=True, session_id=session_id,
+              question_len=len(question), include_contexts=data.include_contexts)
 
     t_start = time.time()
     result  = rag_engine.query(
@@ -559,8 +956,18 @@ async def query(
         user_role        = role,
         session_id       = session_id,
         session_language = data.session_language,  # [STEP2-A] 세션 언어
+        response_style   = data.response_style,    # brief/standard/detailed
+        mode_override    = data.mode_override,     # item #6: chat 페이지 모드 picker
+        force_web_search = data.force_web_search,  # [#A8-6] explicit web exploration
+        selected_model   = data.selected_model,    # [#A2 phase 2] user-picked LLM tag
     )
     elapsed = time.time() - t_start
+
+    log_stage("complete", elapsed_ms=int(elapsed * 1000),
+              blocked=bool(result.get("blocked", False)),
+              answer_len=len(result.get("answer", "") or ""),
+              graph_paths=len(result.get("graph_paths") or []),
+              mode=result.get("mode", ""))
 
     answer = result.get("answer", "")
 
@@ -580,7 +987,7 @@ async def query(
     # [P7] 대화 히스토리 자동 저장
     if not result.get("blocked") and answer:
         try:
-            from core.memory_store import MemoryStore
+            from core.memory import MemoryStore
             MemoryStore().save_turn(
                 session_id = session_id,
                 question   = question,
@@ -625,7 +1032,7 @@ async def query(
     except Exception:
         pass
 
-    return {
+    response = {
         "question":      question,
         "answer":        answer,
         "sources":       result.get("sources", []),
@@ -639,7 +1046,21 @@ async def query(
         "direction_id":  FeedbackEngine.make_direction_id(
             result.get("mode",""), question
         ) if not result.get("blocked") else "",
+        # [#47 phase 1] correlate response to per-stage trace file.
+        "trace_id":      trace_id,
+        # [#A6-2] 웹 검색 사용됨 배지 + 출처 URL (자료 부족 fallback 시).
+        "web_used":      bool(result.get("web_used", False)),
+        "web_sources":   result.get("web_sources", []),
+        # [#A8-7] chat-side 위키 저장 chip용 proposal id
+        "pending_save_proposal_id": result.get("pending_save_proposal_id", ""),
     }
+    # [#65 phase 3] admin-only RAGAS evaluation hook. The chunk texts that
+    # fed the LLM are surfaced only when (a) caller opted in via
+    # `include_contexts=true` AND (b) resolved role is "admin". Other
+    # roles see the same response shape as before.
+    if data.include_contexts and role == "admin":
+        response["retrieved_contexts"] = result.get("retrieved_contexts", [])
+    return response
 
 
 @app.get("/status/", response_model=StatusResponse, summary="서버 상태")
@@ -659,10 +1080,292 @@ async def status(api_key: str):
 
 # ── [4-B] Ollama + LLM 추천 API ──────────────────────────────────
 
+# item #A2: 모드별 선택 가능한 모델 카탈로그.
+#   - chat/retrieval/wiki_edit/self_evolve: 일반 대화/추론 (gemma 계열)
+#     무게: light (e4b) → medium (12b) → heavy (27b)
+#   - coding: 코딩 특화 (qwen-coder 계열) + gemma fallback
+# 사용자가 mode 선택 시 두 번째 dropdown으로 후보 중 골라 사용.
+# 설치되지 않은 후보는 그대로 노출하되 [⚠️ 미설치] 마커 + 설치 버튼.
+# weight 분류는 어림짐작 (실제 파라미터 수가 아닌 *체감* 무게):
+#   light  ≤ 4B  — 빠른 일상 대화
+#   medium ≤ 13B — 균형, 분석 가능
+#   heavy  ≥ 20B — 상세 분석/추론, 응답 느림
+def _model_catalog():
+    """Mode → ordered list of (tag, weight) candidates.
+
+    [#A2 phase 2] Implementation moved to `core.model_catalog` so the
+    reasoning engine can validate `selected_model` without importing
+    server_llmwiki (circular dep). Public name kept for back-compat
+    with `tests/test_model_catalog_per_mode.py:test_catalog_function_exists`.
+    """
+    from core.model_catalog import model_catalog
+    return model_catalog()
+
+# /llm/install/ allowlist auto-derived from catalog so adding a candidate
+# above does NOT also require remembering to update the install gate.
+def _allowed_install_models():
+    out = set()
+    for cands in _model_catalog().values():
+        for tag, _ in cands:
+            if tag:
+                out.add(tag)
+    return out
+
+
+@app.get("/llm/modes/", summary="챗 페이지 모드 picker 옵션 [item #6 + #A2]")
+async def llm_modes(api_key: str, role: str = Depends(get_role_from_request)):
+    """Mode picker가 채울 옵션 목록 + 모델 후보 카탈로그.
+
+    api_key만 검증 (admin 아님). role-allowed 모드만 반환해서 클라이언트
+    가 권한 없는 모드를 보지 않도록 한다.
+
+    각 옵션:
+      key:         서버에 보낼 mode_override 값
+      label:       사용자 노출 라벨
+      desc:        한 줄 설명
+      keywords:    자동 추천에 사용 (클라이언트 측 keyword match)
+      model:       기본(default) 모델 태그 — backward compat
+      installed:   기본 모델 설치 상태 — backward compat
+      models:      [item #A2] 후보 리스트 — 두 번째 dropdown용
+                   각 원소: {"tag": str, "weight": "light|medium|heavy",
+                            "installed": bool, "default": bool}
+    """
+    verify_api_key(api_key)
+    from core.intent_classifier import ROLE_ALLOWED
+    from config import GEMMA_MODEL, CODING_MODEL
+    allowed = ROLE_ALLOWED.get(role, {"chat", "retrieval"})
+
+    # 설치된 모델 set 한 번에 조회 (Ollama API).
+    installed_set = set()
+    try:
+        import urllib.request
+        with urllib.request.urlopen(
+            "http://localhost:11434/api/tags", timeout=2,
+        ) as r:
+            data = json.loads(r.read())
+        for m in data.get("models", []):
+            installed_set.add(m.get("name", ""))
+    except Exception:
+        pass   # Ollama 미실행 — installed=False로 모두 표시됨
+
+    def _mark(model: str) -> bool:
+        """Ollama list와 매칭. 정확 일치 OR 태그 prefix (e.g.
+        gemma4:e4b ≈ gemma4)."""
+        if not model:
+            return True   # meta 같이 LLM 안 쓰는 모드는 항상 'installed'
+        if model in installed_set:
+            return True
+        prefix = model.split(":", 1)[0]
+        return any(name.startswith(prefix + ":") or name == prefix
+                   for name in installed_set)
+
+    catalog = _model_catalog()
+
+    def _models_for(mode_key: str, default_tag: str) -> list:
+        """Build the candidate list dict for a mode."""
+        cands = catalog.get(mode_key, [])
+        out = []
+        for tag, weight in cands:
+            out.append({
+                "tag":       tag,
+                "weight":    weight,
+                "installed": _mark(tag),
+                "default":   tag == default_tag,
+            })
+        return out
+
+    options = [
+        {"key": "auto",     "label": "🤖 자동",
+         "desc": "질문 의도를 자동 분류 (기본)",
+         "keywords": [],
+         "model": "", "installed": True, "models": []},
+        {"key": "chat",     "label": "💬 일상 대화",
+         "desc": "검색 없이 LLM 직답",
+         "keywords": ["안녕", "고마워", "hi", "hello"],
+         "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL),
+         "models": _models_for("chat", GEMMA_MODEL)},
+        {"key": "retrieval","label": "🔍 자료 검색",
+         "desc": "내부 wiki + 그래프 추론",
+         "keywords": ["뭐야", "무엇", "설명", "알려줘", "what is"],
+         "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL),
+         "models": _models_for("retrieval", GEMMA_MODEL)},
+        {"key": "meta",     "label": "📚 자료 목록",
+         "desc": "보유 wiki 인벤토리 (LLM 미사용)",
+         "keywords": ["목록", "리스트", "어떤 자료", "list"],
+         "model": "", "installed": True, "models": []},
+        {"key": "coding",   "label": "💻 코딩",
+         "desc": f"코딩 특화 모델",
+         "keywords": ["코드", "함수", "버그", "python", "def ",
+                      "javascript", "code", "function"],
+         "model": CODING_MODEL, "installed": _mark(CODING_MODEL),
+         "models": _models_for("coding", CODING_MODEL)},
+        {"key": "wiki_edit","label": "✏️ Wiki 편집 (admin)",
+         "desc": "지식 추가/수정/삭제",
+         "keywords": ["수정해", "추가해", "삭제해"],
+         "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL),
+         "models": _models_for("wiki_edit", GEMMA_MODEL)},
+        {"key": "self_evolve","label": "🧬 자기진화 (admin)",
+         "desc": "코드 분석 / 자기 개선",
+         "keywords": ["네 코드", "구조 분석", "스스로"],
+         "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL),
+         "models": _models_for("self_evolve", GEMMA_MODEL)},
+    ]
+    # auto는 항상 허용. 나머지는 role 권한 확인.
+    filtered = [o for o in options if o["key"] == "auto" or o["key"] in allowed]
+    return {"modes": filtered, "role": role}
+
+
+# [#A8-8] In-memory install progress tracker. Keyed by model tag.
+# Populated by the background thread that streams Ollama's pull API.
+# Frontend polls /admin/llm/install-progress?model=... every 2s.
+# Survives single server lifetime — restart wipes (operator can re-pull
+# if needed; partial Ollama downloads resume on retry).
+_install_progress: dict = {}   # model -> {status, percent, completed, total, error}
+_install_lock     = None       # set lazily — threading import deferred
+
+
+def _start_install_with_progress(model: str) -> None:
+    """Background thread: stream Ollama's POST /api/pull and write
+    progress to _install_progress[model]. Ollama returns NDJSON like:
+        {"status": "pulling manifest"}
+        {"status": "downloading", "digest": "...", "total": N, "completed": N}
+        {"status": "verifying sha256"}
+        {"status": "success"}
+    We compute percent = completed / total when both fields present.
+    """
+    import threading, urllib.request, json as _json
+    global _install_lock
+    if _install_lock is None:
+        _install_lock = threading.Lock()
+
+    def _runner():
+        try:
+            req = urllib.request.Request(
+                "http://localhost:11434/api/pull",
+                data=_json.dumps({"name": model, "stream": True}).encode(),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=3600) as r:
+                for raw in r:   # NDJSON line stream
+                    line = raw.decode("utf-8", errors="ignore").strip()
+                    if not line:
+                        continue
+                    try:
+                        evt = _json.loads(line)
+                    except Exception:
+                        continue
+                    status    = evt.get("status", "")
+                    completed = evt.get("completed")
+                    total     = evt.get("total")
+                    percent   = None
+                    if isinstance(completed, (int, float)) and isinstance(total, (int, float)) and total > 0:
+                        percent = round((completed / total) * 100, 1)
+                    with _install_lock:
+                        _install_progress[model] = {
+                            "status":    status,
+                            "completed": completed,
+                            "total":     total,
+                            "percent":   percent,
+                            "error":     "",
+                            "done":      status == "success",
+                        }
+                    if status == "success":
+                        # [PR plan-1] resolver cache invalidation so
+                        # the freshly-installed model is selectable
+                        # immediately on the next /query/ without
+                        # waiting 60s TTL.
+                        try:
+                            from core.model_resolver import invalidate_cache
+                            invalidate_cache()
+                        except Exception:
+                            pass
+                        break
+        except Exception as e:
+            with _install_lock:
+                _install_progress[model] = {
+                    "status":    "error",
+                    "completed": None,
+                    "total":     None,
+                    "percent":   None,
+                    "error":     f"{type(e).__name__}: {e}",
+                    "done":      True,
+                }
+
+    t = threading.Thread(target=_runner, daemon=True, name=f"ollama-pull-{model}")
+    t.start()
+
+
+@app.post("/llm/install/", summary="Ollama 모델 설치 (admin) [item #6 + #A8-8]")
+async def llm_install(api_key: str, model: str,
+                      role: str = Depends(get_role_from_request)):
+    """Trigger `ollama pull <model>` via Ollama's HTTP streaming API
+    in a background thread. Returns immediately so the admin page can
+    show a progress bar while the multi-GB download runs.
+
+    Admin-gated. Model name validated against catalog allowlist.
+
+    [#A8-8 2026-05-09] Replaced subprocess.Popen with HTTP streaming —
+    the CLI fire-and-forget had no progress visibility. Now the
+    background thread parses Ollama's NDJSON pull stream and writes
+    {percent, completed, total, status} to _install_progress[model],
+    which the admin UI polls.
+    """
+    _require_feature(api_key, role, "admin.settings")
+    ALLOWED_MODELS = _allowed_install_models() | {"llava:13b"}
+    if model not in ALLOWED_MODELS:
+        raise HTTPException(
+            status_code=400,
+            detail="model not in allowlist. Use admin /admin/llm/install for arbitrary models.",
+        )
+    # Reset any prior progress entry so the polling client gets fresh state.
+    _install_progress[model] = {
+        "status":    "starting",
+        "completed": None,
+        "total":     None,
+        "percent":   0.0,
+        "error":     "",
+        "done":      False,
+    }
+    try:
+        _start_install_with_progress(model)
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=503,
+            detail="ollama API에 접근할 수 없습니다 (localhost:11434). ollama 서비스가 실행 중인지 확인.",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500,
+                            detail=f"install 시작 실패: {type(e).__name__}: {e}")
+    return {"ok": True, "model": model,
+            "message": f"{model} 설치 시작됨. 진행 상황은 admin 페이지 또는 "
+                       f"GET /admin/llm/install-progress?model={model} 로 확인."}
+
+
+@app.get("/admin/llm/install-progress", summary="모델 설치 진행률 [item #A8-8]")
+async def llm_install_progress(api_key: str, model: str,
+                                role: str = Depends(get_role_from_request)):
+    """Frontend polls this every 2-3s while the install button is in
+    progress mode. Returns the latest snapshot of the background
+    thread's progress dict, or {status: 'idle'} if no install is/was
+    running for this model.
+
+    Response shape:
+      {status, percent, completed, total, done, error, model}
+    """
+    _require_feature(api_key, role, "admin.settings")
+    snap = _install_progress.get(model)
+    if not snap:
+        return {"model": model, "status": "idle",
+                "percent": None, "completed": None, "total": None,
+                "done": False, "error": ""}
+    return {"model": model, **snap}
+
+
 @app.get("/admin/llm/installed", summary="설치된 Ollama 모델 목록 [4-B]")
 async def llm_installed(api_key: str, role: str = Depends(get_role_from_request)):
     """현재 Ollama에 설치된 모델 목록."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.settings")
     try:
         import urllib.request, json as _json
         with urllib.request.urlopen("http://localhost:11434/api/tags", timeout=5) as r:
@@ -681,10 +1384,32 @@ async def llm_installed(api_key: str, role: str = Depends(get_role_from_request)
                 "hint": "Ollama가 실행 중인지 확인하세요 (ollama serve)"}
 
 
+@app.get("/admin/llm/resolution",
+         summary="현재 모델 resolution 상태 [PR plan-1, 2026-05-09]")
+async def llm_resolution(api_key: str, role: str = Depends(get_role_from_request)):
+    """[PR plan-1] 운영자 가시성 — call_gemma(model=None)이 어떤 모델을
+    실제 사용하는지 + 폴백 사유.
+
+    설치된 모델이 config의 default와 다를 때 어디로 fallback 됐는지
+    감지하기 위함. resolver는 silent하게 동작하지만 결정 사유는 여기서
+    조회 가능.
+
+    Returned shape:
+      {chat: {tag, source, warning, fallback_chain},
+       coding: {tag, source, warning, fallback_chain},
+       installed: [...],
+       preference: {chat: [...], coding: [...]},
+       ttl_s: 60}
+    """
+    _require_feature(api_key, role, "admin.settings")
+    from core.model_resolver import resolution_snapshot
+    return resolution_snapshot()
+
+
 @app.get("/admin/llm/recommend", summary="하드웨어 기반 LLM 추천 [4-B]")
 async def llm_recommend(api_key: str, role: str = Depends(get_role_from_request)):
     """현재 하드웨어 스펙에 맞는 LLM 모델 추천."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.settings")
     try:
         from tools.system.hardware_inspector import get_hardware_specs, get_llm_recommendations
         specs = get_hardware_specs()
@@ -709,7 +1434,7 @@ async def llm_pull(
     role: str = Depends(get_role_from_request),
 ):
     """Ollama 모델 pull (다운로드). 시간이 걸릴 수 있음."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.settings")
     if not model or len(model) > 60:
         raise HTTPException(status_code=400, detail="model명 오류")
     # 보안: 허용 모델만
@@ -741,7 +1466,7 @@ async def llm_delete(
     role: str = Depends(get_role_from_request),
 ):
     """Ollama 모델 삭제."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.settings")
     try:
         import urllib.request, json as _json
         body = _json.dumps({"name": model}).encode()
@@ -752,10 +1477,135 @@ async def llm_delete(
             method="DELETE",
         )
         urllib.request.urlopen(req, timeout=10)
+        # [PR plan-1] resolver cache invalidation — deleted model must
+        # not be used on the next /query/.
+        try:
+            from core.model_resolver import invalidate_cache
+            invalidate_cache()
+        except Exception:
+            pass
         _write_audit(role, "/admin/llm/delete", query=model, elapsed_sec=0)
         return {"ok": True, "model": model, "deleted": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── [#A6-1] Web search admin config — role permission + threshold ───
+
+@app.get("/admin/web-search-config/", summary="웹 검색 설정 조회 [#A6-1]")
+async def get_web_search_config(api_key: str,
+                                 role: str = Depends(get_role_from_request)):
+    """[#A6-1] Admin reads:
+       - allowed_roles: which roles can trigger web search
+       - threshold: unified_score below which web fallback fires
+       - engine_status: live key/installed/exhausted state from
+                        get_search_engine_status() so the admin UI
+                        can render the right toast (TAVILY missing,
+                        DDG fallback active, both missing, etc.)
+    """
+    _require_feature(api_key, role, "admin.settings")
+    from core.web_search_config import load
+    from tools.web.web_searcher import get_search_engine_status
+    cfg = load()
+    return {
+        **cfg,
+        "engine_status": get_search_engine_status(),
+    }
+
+
+class WebSearchConfigUpdate(BaseModel):
+    api_key:        str
+    allowed_roles:  list
+    threshold:      float
+
+
+@app.post("/admin/web-search-config/", summary="웹 검색 설정 갱신 [#A6-1]")
+async def set_web_search_config(data: WebSearchConfigUpdate,
+                                 role: str = Depends(get_role_from_request)):
+    """Persist web-search settings. Validates role names against
+    core.web_search_config.VALID_ROLES and threshold ∈ [0.0, 1.0].
+    Empty allowed_roles is rejected — silently disabling web search
+    is rarely the intent and harder to debug later (operator can
+    clear TAVILY_API_KEY instead if they really want it off)."""
+    _require_feature(data.api_key, role, "admin.settings")
+    from core.web_search_config import save, validate_update
+    clean_roles, clean_threshold, err = validate_update(
+        data.allowed_roles, data.threshold,
+    )
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+    cfg = save(clean_roles, clean_threshold)
+    _write_audit(role, "/admin/web-search-config/",
+                 query=f"roles={clean_roles} threshold={clean_threshold}")
+    return {"ok": True, **cfg}
+
+
+# ─── Issue #15: per-task model selection persistence ───────────
+
+def _list_installed_ollama_models() -> set:
+    """ollama list 결과에서 설치된 모델 이름 set 반환. 실패 시 빈 set."""
+    try:
+        import urllib.request, json as _json
+        req = urllib.request.Request("http://localhost:11434/api/tags")
+        with urllib.request.urlopen(req, timeout=5) as r:
+            data = _json.loads(r.read())
+        return {m.get("name", "") for m in data.get("models", []) if m.get("name")}
+    except Exception:
+        return set()
+
+
+@app.get("/admin/llm/selections", summary="task별 LLM 매핑 조회 [#15]")
+async def llm_selections_get(
+    api_key: str,
+    role: str = Depends(get_role_from_request),
+):
+    """현재 ``llm.selection`` 의 ``task_type → model`` 매핑 전체 반환."""
+    _require_feature(api_key, role, "admin.settings")
+    from llm.selection import get_all_selections
+    return {"selections": get_all_selections()}
+
+
+@app.post("/admin/llm/select", summary="task별 LLM 매핑 저장 [#15]")
+async def llm_select_set(
+    api_key:   str,
+    task_type: str,
+    model:     str,
+    role: str = Depends(get_role_from_request),
+):
+    """``task_type`` 의 추론에 사용할 model을 지정. ollama에 설치된 model만 허용."""
+    _require_feature(api_key, role, "admin.settings")
+    task_type = (task_type or "").strip()
+    model     = (model or "").strip()
+    if not task_type or len(task_type) > 32:
+        raise HTTPException(status_code=400, detail="task_type 필수 (1-32자)")
+    if not model or len(model) > 80:
+        raise HTTPException(status_code=400, detail="model 필수 (1-80자)")
+
+    installed = _list_installed_ollama_models()
+    if installed and model not in installed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"'{model}' 미설치 (ollama list 기준). /admin/llm/installed 확인.",
+        )
+
+    from llm.selection import set_model_for_task
+    set_model_for_task(task_type, model)
+    _write_audit(role, "/admin/llm/select", query=f"{task_type}={model}", elapsed_sec=0)
+    return {"ok": True, "task_type": task_type, "model": model}
+
+
+@app.delete("/admin/llm/select", summary="task별 LLM 매핑 제거 [#15]")
+async def llm_select_remove(
+    api_key:   str,
+    task_type: str,
+    role: str = Depends(get_role_from_request),
+):
+    """``task_type`` 매핑 제거. 기본 model로 fallback."""
+    _require_feature(api_key, role, "admin.settings")
+    from llm.selection import remove_model_for_task
+    removed = remove_model_for_task(task_type)
+    _write_audit(role, "/admin/llm/select#delete", query=task_type, elapsed_sec=0)
+    return {"ok": True, "task_type": task_type, "removed": removed}
 
 
 async def web_search_status(api_key: str):
@@ -803,20 +1653,25 @@ async def hardware_info(
         specs = get_hardware_specs()
         return {"ok": True, "specs": specs}
     except Exception as e:
-        # psutil 없는 환경 — 기본값 반환
+        # psutil 없는 환경 — 기본값 반환. [F821 fix 2026-05-11]
+        # ``platform`` was referenced without import; before this fix
+        # the fallback path raised NameError → 500 instead of the
+        # friendly default specs. Imported locally so the happy path
+        # is not taxed with an unused module load.
+        import platform
         return {
             "ok": False,
             "specs": {
                 "cpu":  {"name": platform.processor(), "cores": os.cpu_count(),
-                         "level": 5, "weapon": {"icon":"⚔️","name":"강철 검","role":"연산력","desc":"일반 추론 처리"}},
+                         "level": 5, "weapon": {"icon":"🧮","name":"Mainstream CPU","role":"Compute","desc":"Mainstream inference"}},
                 "ram":  {"total_gb": 0, "level": 5,
-                         "weapon": {"icon":"🛡️","name":"철제 방패","role":"메모리","desc":"일반 세션 운용"}},
+                         "weapon": {"icon":"💾","name":"Standard Memory","role":"Memory","desc":"Multi-session general use"}},
                 "gpu":  {"name": "Unknown", "level": 0, "found": False,
-                         "weapon": {"icon":"🪄","name":"(없음)","role":"GPU 추론","desc":"CPU 전용 추론"}},
+                         "weapon": {"icon":"⚡","name":"CPU-only","role":"AI Acceleration","desc":"CPU-only inference (slow on large models)"}},
                 "disk": {"total_gb": 0, "level": 5,
-                         "weapon": {"icon":"🎒","name":"여행 가방","role":"저장 공간","desc":"중간 규모 데이터"}},
+                         "weapon": {"icon":"🗄️","name":"Team Storage","role":"Storage","desc":"Mid-size knowledge base"}},
                 "overall_level": 5,
-                "james_rank": "마법사",
+                "james_rank": "Production Tier",
             },
             "error": str(e),
         }
@@ -831,7 +1686,7 @@ async def get_history(
 ):
     verify_api_key(api_key)
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         turns = MemoryStore().get_recent_turns(session_id, limit)
         return {"session_id": session_id, "turns": turns, "count": len(turns)}
     except Exception as e:
@@ -845,7 +1700,7 @@ async def get_sessions(
 ):
     verify_api_key(api_key)
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         return {"sessions": MemoryStore().get_all_sessions()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -865,7 +1720,7 @@ async def rename_session(
     if len(name) > 60:
         raise HTTPException(status_code=400, detail="이름은 60자 이내")
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         ok = MemoryStore().set_session_name(session_id, name.strip())
         return {"success": ok, "session_id": session_id, "name": name}
     except Exception as e:
@@ -880,7 +1735,7 @@ async def delete_history(
 ):
     verify_api_key(api_key)
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         ok = MemoryStore().delete_session(session_id)
         return {"success": ok, "session_id": session_id}
     except Exception as e:
@@ -899,7 +1754,7 @@ async def summarize_session(
     """
     verify_api_key(api_key)
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         store = MemoryStore()
 
         # 해당 세션 대화 조회
@@ -954,7 +1809,7 @@ async def get_long_term(
     """이전 세션 요약 목록 조회."""
     verify_api_key(api_key)
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         summaries = MemoryStore().get_session_summaries(limit)
         return {"summaries": summaries, "count": len(summaries)}
     except Exception as e:
@@ -970,7 +1825,7 @@ async def list_proposals(
     role:    str = Depends(get_role_from_request),
 ):
     """admin 검토 대기 중인 자기진화 제안 목록."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from tools.self.evo_analyzer import list_proposals as _list
         return {"proposals": _list(status), "status_filter": status}
@@ -989,7 +1844,7 @@ async def approve_proposal(
     admin이 제안을 승인하면 즉시 자동 실행 + 결과 보고.
     실행 결과를 응답으로 반환.
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from tools.self.evo_analyzer import approve_and_execute
         report = approve_and_execute(proposal_id)
@@ -1010,7 +1865,7 @@ async def reject_proposal_api(
     role:        str = Depends(get_role_from_request),
 ):
     """[4-C] 제안 거부 + 사유 장기기억 저장."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from tools.self.evo_analyzer import reject_proposal
         ok = reject_proposal(proposal_id, reason)
@@ -1031,9 +1886,9 @@ async def save_rejection_memory(
     role:    str = Depends(get_role_from_request),
 ):
     """[4-C] 거부 사유 → memory_store 장기기억 저장."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         ms  = MemoryStore()
         key = f"rejection:{data.proposal_id[:12]}"
         ms.save_preference({
@@ -1055,7 +1910,7 @@ async def get_evo_reports(
     role:    str = Depends(get_role_from_request),
 ):
     """자기진화 실행 결과 보고서 목록."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from tools.self.evo_analyzer import list_reports
         return {"reports": list_reports(limit)}
@@ -1068,7 +1923,7 @@ async def get_evo_reports(
 async def generate_proposals(
     api_key: str, role: str = Depends(get_role_from_request),
 ):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from tools.self.evo_analyzer import generate_proposals_from_signals
         from llm.router import RouterWrapper
@@ -1087,7 +1942,7 @@ async def generate_proposals(
 async def get_perf_metrics(
     api_key: str, role: str = Depends(get_role_from_request),
 ):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.metrics")
     try:
         from tools.self.performance_evaluator import get_current_metrics
         from tools.self.importance_scorer import get_scorer_stats
@@ -1101,7 +1956,7 @@ async def get_perf_metrics(
 async def manual_evaluate(
     api_key: str, role: str = Depends(get_role_from_request),
 ):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from tools.self.performance_evaluator import run_evaluation
         return run_evaluation()
@@ -1114,7 +1969,7 @@ async def get_perf_history(
     api_key: str, limit: int = 20,
     role: str = Depends(get_role_from_request),
 ):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from tools.self.performance_evaluator import get_eval_history
         return {"history": get_eval_history(limit)}
@@ -1139,7 +1994,7 @@ async def learn_topic_api(
       4. wiki entity 저장 + vector 인덱싱
       5. domain 태그 자동 분류 + 지식 레벨 +5점
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.knowledge")
     if not topic:
         raise HTTPException(status_code=400, detail="topic 파라미터 필요")
     try:
@@ -1241,7 +2096,7 @@ async def learn_topic_api(
 async def learn_from_errors_api(
     api_key: str, role: str = Depends(get_role_from_request),
 ):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.knowledge")
     try:
         from tools.self.self_learner import learn_from_errors
         results = learn_from_errors()
@@ -1257,7 +2112,7 @@ async def get_error_queries(
     api_key: str, min_count: int = 2,
     role: str = Depends(get_role_from_request),
 ):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from tools.self.importance_scorer import get_repeated_errors
         return {"error_queries": get_repeated_errors(min_count)}
@@ -1291,7 +2146,7 @@ async def submit_feedback(
 async def get_feedback_stats_api(
     api_key: str, role: str = Depends(get_role_from_request),
 ):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from core.feedback_engine import get_feedback_stats
         return get_feedback_stats()
@@ -1304,10 +2159,18 @@ async def get_feedback_stats_api(
 
 @app.get("/admin/character/", summary="성향 조회 [P7-EVO-D]")
 async def get_character(api_key: str, role: str = Depends(get_role_from_request)):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.character")
     try:
-        from core.character_profile import get_profile
-        return {"traits": get_profile().get_with_meta()}
+        # [P5c 2026-05-10] summary 필드 추가 — 16 trait 자연어 요약
+        # (핵심/가치/스타일 3 라인). 프론트는 동일 룰의 JS 미러를 가지므로
+        # 이 필드는 chat 등 다른 페이지가 같은 요약을 재사용할 수 있게
+        # 노출하는 server-side 단일 소스 역할.
+        from core.character_profile import get_profile, CharacterProfile
+        profile = get_profile()
+        return {
+            "traits":  profile.get_with_meta(),
+            "summary": CharacterProfile.build_summary(profile.get()),
+        }
     except Exception as e:
         return {"traits": [], "error": str(e)}
 
@@ -1319,7 +2182,7 @@ class TraitUpdateRequest(BaseModel):
 @app.post("/admin/character/", summary="성향 설정 [P7-EVO-D]")
 async def set_character(data: TraitUpdateRequest,
                          role: str = Depends(get_role_from_request)):
-    _require_admin(data.api_key, role)
+    _require_feature(data.api_key, role, "admin.character")
     try:
         from core.character_profile import get_profile
         result = get_profile().set_trait(data.trait_id, data.value)
@@ -1330,12 +2193,32 @@ async def set_character(data: TraitUpdateRequest,
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# [P1 unified UX, 2026-05-10] correlation graph + damping factor.
+# Frontend renders this as edges between trait vertices on the radar
+# chart and uses damping for ripple-animation magnitude — the same
+# value the backend applies in set_trait, so the visual matches the
+# saved data exactly.
+@app.get("/admin/character/correlations",
+         summary="성향 상관관계 그래프 [P1 unified UX]")
+async def get_character_correlations(api_key: str,
+                                      role: str = Depends(get_role_from_request)):
+    _require_feature(api_key, role, "admin.character")
+    try:
+        from core.character_profile import CharacterProfile
+        return {
+            "correlations": CharacterProfile.get_correlations(),
+            "damping":      CharacterProfile.get_damping(),
+        }
+    except Exception as e:
+        return {"correlations": [], "damping": 0.0, "error": str(e)}
+
+
 
 # ── P7-EVO-E: 능력 성장 API ─────────────────────────────────────
 
 @app.get("/admin/knowledge/", summary="능력 성장 현황 [P7-EVO-E]")
 async def get_knowledge(api_key: str, role: str = Depends(get_role_from_request)):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.knowledge")
     try:
         from core.knowledge_tracker import get_tracker
         t = get_tracker()
@@ -1445,7 +2328,7 @@ async def screen_analyze(
     role: str = Depends(get_role_from_request),
 ):
     """화면 캡처 → OCR → LLM 분석. admin 전용."""
-    _require_admin(data.api_key, role)
+    _require_feature(data.api_key, role, "admin.tools")
     try:
         from tools.screen.screen_agent import run_screen_analysis
         region = tuple(data.region) if data.region else None
@@ -1631,9 +2514,86 @@ def _require_admin(api_key: str, role: str):
                             detail="admin 권한 필요 — admin 계정으로 로그인하세요")
 
 
+def _require_feature(api_key: str, role: str, feature_id: str):
+    """[W4-Q2] Validate api_key + consult PolicyEngine.can_use_feature.
+
+    Same shape as _require_admin but consults the per-feature gate
+    from W4-Q1 instead of the hardcoded ``role != "admin"`` check.
+    For features whose default_allowed set is ``{"admin"}`` (every
+    admin.* feature in the Q1 catalog), behaviour is identical to
+    _require_admin — that equivalence is the safety net for Q2-a's
+    rewrite of existing endpoints.
+
+    Q2-b will add new admin.* features for the remaining endpoints
+    (settings/llm/persona/...) and replace their _require_admin
+    calls similarly.
+    """
+    verify_api_key(api_key)
+    from core.policy_engine import default_engine
+    d = default_engine.can_use_feature(role, feature_id)
+    if not d.allowed:
+        raise HTTPException(
+            status_code=403,
+            detail=f"권한이 부족합니다. ({feature_id})",
+        )
+
+
+def _read_jsonl_tail(path: str, max_lines: int = 200) -> list[dict]:
+    """[#2-A] Read only the last `max_lines` rows of a JSONL log.
+
+    The /admin/dashboard endpoint used to read the entire log file
+    line-by-line then slice [-20:]. On a year-old install with 100MB+
+    of audit logs this dominated dashboard load time (seconds → tens
+    of seconds).
+
+    Strategy: seek from the end of the file in 8KB chunks until we have
+    `max_lines + 1` newlines (one extra so we don't cut off the first
+    of the captured lines mid-record). Decode the chunk, split on \\n,
+    keep the last N. Each line is JSON-parsed; bad lines silently
+    skipped (preserves the prior fault tolerance).
+
+    Returns: list of dicts, oldest-first (matches prior caller's
+    ordering expectation).
+    """
+    try:
+        size = os.path.getsize(path)
+    except OSError:
+        return []
+    if size == 0:
+        return []
+    out_lines: list[bytes] = []
+    chunk_size = 8192
+    pos = size
+    buf = b""
+    with open(path, "rb") as f:
+        while pos > 0 and len(out_lines) <= max_lines:
+            read_size = min(chunk_size, pos)
+            pos -= read_size
+            f.seek(pos)
+            buf = f.read(read_size) + buf
+            # Count newlines we have so far. Stop when ≥ max_lines+1
+            # so the first split element is a complete line.
+            if buf.count(b"\n") >= max_lines + 1:
+                out_lines = buf.split(b"\n")[-max_lines - 1:]
+                break
+        else:
+            # Whole file fit in `max_lines` worth of data — use as-is.
+            out_lines = buf.split(b"\n")
+    rows: list[dict] = []
+    for line in out_lines:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rows.append(json.loads(line.decode("utf-8", errors="ignore")))
+        except Exception:
+            pass
+    return rows[-max_lines:]
+
+
 @app.get("/admin/dashboard", summary="관리자 대시보드 [P7]")
 async def admin_dashboard(api_key: str, role: str = Depends(get_role_from_request)):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.metrics")
 
     # ── 기본 카운트 ──────────────────────────────────────────
     try:    entity_count = len(rag_engine.wiki_generator.entity_id_index)
@@ -1643,23 +2603,23 @@ async def admin_dashboard(api_key: str, role: str = Depends(get_role_from_reques
         user_count = len(list_users())
     except: user_count = 0
 
+    # [#2-A] tail-only JSONL 읽기 — 전체 파일 → 마지막 200행만.
+    # 사용자 보고: "어드민 페이지로 이동할때 시간이 다소 딜레이". 가장
+    # 큰 원인은 audit log가 누적되면서 dashboard load가 O(file size)로
+    # 느려진 것. 마지막 N개만 필요하므로 EOF에서 역방향 chunked read.
     security_events, recent_logs = 0, []
     for lf in ["james_attack_log.jsonl","james_audit_tool.jsonl"]:
-        try:
-            with open(lf, encoding="utf-8") as f:
-                for line in f:
-                    try:
-                        e = json.loads(line); recent_logs.append(e)
-                        if e.get("blocked") or "BLOCK" in e.get("event",""): security_events += 1
-                    except: pass
-        except: pass
+        for e in _read_jsonl_tail(lf, max_lines=200):
+            recent_logs.append(e)
+            if e.get("blocked") or "BLOCK" in e.get("event",""):
+                security_events += 1
 
     try:
         from tools.patch.patch_generator import list_patches
         pending_patches = len(list_patches("PENDING_APPROVAL"))
     except: pending_patches = 0
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         stats = MemoryStore().get_stats()
         memory_count = sum(v for v in stats.values() if isinstance(v, int))
     except: memory_count = 0
@@ -1730,39 +2690,575 @@ async def admin_dashboard(api_key: str, role: str = Depends(get_role_from_reques
     }
 
 
-@app.get("/admin/users", summary="사용자 목록 [P7]")
-async def admin_users(api_key: str, role: str = Depends(get_role_from_request)):
-    _require_admin(api_key, role)
+@app.get("/admin/users", summary="사용자 목록 (W4 P2-A: real implementation)")
+async def admin_users(
+    api_key: str,
+    pending: bool = False,
+    role:    str  = Depends(get_role_from_request),
+):
+    """Return every user row, password hash omitted.
+
+    Query params:
+      pending — when truthy, restrict to active=0 rows so the admin UI
+                can show a focused "approvals queue" without a second
+                round-trip. Defaults to False (full list).
+
+    Pre-W4 this endpoint silently returned an empty list because
+    ``core.auth.list_users`` did not exist; the swallow-and-return shape
+    is replaced with a real implementation. Any exception now surfaces
+    as a 500 — better than masking schema drift behind an empty UI.
+    """
+    _require_feature(api_key, role, "admin.users")
+    return {"users": _auth_list_users(only_pending=bool(pending))}
+
+
+# W4 P2-A — admin approves a pending signup (active=0 → active=1 + role).
+# api_key arrives as a query param to match the frontend `api()` helper,
+# which auto-appends ?api_key=... to every admin call. Body holds only
+# the operation-specific fields.
+class AdminUserApproveRequest(BaseModel):
+    username: str
+    role:     str
+
+@app.post("/admin/users/approve", summary="사용자 가입 승인 (W4 P2-A)")
+async def admin_users_approve(
+    data:    AdminUserApproveRequest,
+    request: Request,
+    api_key: str = "",
+    role:    str = Depends(get_role_from_request),
+):
+    _require_feature(api_key, role, "admin.users")
+    if data.role not in ALLOWED_ROLES:
+        raise HTTPException(status_code=400, detail=f"invalid role: {data.role}")
+
+    ok = _auth_approve_user(data.username, data.role)
+    ip = get_client_ip(request)
+    if not ok:
+        _write_audit(role, "/admin/users/approve", query=data.username,
+                     security_event="approve_failed (not pending or unknown)",
+                     ip_address=ip)
+        raise HTTPException(
+            status_code=404,
+            detail="pending 상태의 사용자가 아닙니다. (이미 활성 또는 미존재)",
+        )
+    _write_audit(role, "/admin/users/approve", query=data.username,
+                 security_event=f"approved role={data.role}", ip_address=ip)
+    return {"ok": True, "username": data.username, "role": data.role}
+
+
+# W4 P2-A — admin rejects a pending signup (DELETE the row).
+class AdminUserRejectRequest(BaseModel):
+    username: str
+
+@app.post("/admin/users/reject", summary="사용자 가입 거부 (W4 P2-A)")
+async def admin_users_reject(
+    data:    AdminUserRejectRequest,
+    request: Request,
+    api_key: str = "",
+    role:    str = Depends(get_role_from_request),
+):
+    _require_feature(api_key, role, "admin.users")
+    ok = _auth_reject_user(data.username)
+    ip = get_client_ip(request)
+    if not ok:
+        _write_audit(role, "/admin/users/reject", query=data.username,
+                     security_event="reject_failed (not pending or unknown)",
+                     ip_address=ip)
+        raise HTTPException(
+            status_code=404,
+            detail="pending 상태의 사용자가 아닙니다. (활성 사용자는 비활성화를 사용하세요)",
+        )
+    _write_audit(role, "/admin/users/reject", query=data.username,
+                 security_event="rejected (row deleted)", ip_address=ip)
+    return {"ok": True, "username": data.username}
+
+
+# W4 P2-A — admin deactivates an active user (active=1 → active=0).
+class AdminUserDeactivateRequest(BaseModel):
+    username: str
+
+@app.post("/admin/users/deactivate", summary="사용자 비활성화 (W4 P2-A)")
+async def admin_users_deactivate(
+    data:    AdminUserDeactivateRequest,
+    request: Request,
+    api_key: str = "",
+    role:    str = Depends(get_role_from_request),
+):
+    _require_feature(api_key, role, "admin.users")
+    # Admin cannot deactivate themselves — that would be an instant
+    # lockout. The feature gate above has already confirmed the caller
+    # holds admin.users; we read the JWT subject to recover the username.
     try:
-        from core.auth import list_users
-        return {"users": list_users()}
-    except: return {"users": []}
+        from core.auth import verify_token
+        caller_payload = None
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            caller_payload = verify_token(auth_header[7:].strip())
+        caller_username = (caller_payload or {}).get("sub")
+    except Exception:
+        caller_username = None
+    if caller_username and caller_username == data.username:
+        raise HTTPException(
+            status_code=400,
+            detail="자기 자신을 비활성화할 수 없습니다.",
+        )
+
+    ok = _auth_deactivate_user(data.username)
+    ip = get_client_ip(request)
+    if not ok:
+        _write_audit(role, "/admin/users/deactivate", query=data.username,
+                     security_event="deactivate_failed (unknown user)",
+                     ip_address=ip)
+        raise HTTPException(status_code=404,
+                            detail="존재하지 않는 사용자입니다.")
+    _write_audit(role, "/admin/users/deactivate", query=data.username,
+                 security_event="deactivated", ip_address=ip)
+    return {"ok": True, "username": data.username}
 
 
-@app.get("/admin/entities", summary="Entity 현황 [P7]")
-async def admin_entities(api_key: str, role: str = Depends(get_role_from_request)):
-    _require_admin(api_key, role)
+# ─── W4 P2-B: password change + reset-token workflow ────────────
+
+def _bearer_username(request: Request) -> Optional[str]:
+    """Pull `sub` (username) out of the Bearer JWT, or None.
+
+    The endpoints below need the caller's username to scope the
+    operation to their own account. We use the JWT subject claim
+    rather than a body field so the client cannot self-impersonate.
+    """
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None
+    payload = _auth_verify_token(auth_header[7:].strip())
+    return (payload or {}).get("sub") if payload else None
+
+
+class PasswordChangeRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+@app.post("/password/change",
+          summary="비밀번호 변경 (로그인된 사용자 — W4 P2-B)")
+async def password_change(
+    data:    PasswordChangeRequest,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
+    """Self-service password change. JWT-authenticated; the request
+    body MUST NOT include username — the subject is taken from the
+    JWT so an attacker holding only a stolen body can't pivot.
+
+    Response codes:
+      200 — password updated
+      400 — new password fails the policy (rule shown verbatim)
+      401 — JWT missing/invalid OR old_password didn't verify
+            (same status so an attacker can't distinguish the two
+             after the JWT slot is filled)
+    """
+    ip = get_client_ip(request)
+    username = _bearer_username(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+
+    # [W4-Q2-c] role-level feature gate. Default matrix allows
+    # password.change_self for every role (admin/manager/employee/
+    # external). Admins can revoke this on a per-role basis via
+    # the matrix without disabling the entire endpoint.
+    from core.policy_engine import default_engine as _pe
+    _d = _pe.can_use_feature(role, "password.change_self")
+    if not _d.allowed:
+        raise HTTPException(
+            status_code=403,
+            detail="권한이 부족합니다. (password.change_self)",
+        )
+
+    result = _auth_change_password(username, data.old_password, data.new_password)
+    if result == "ok":
+        _write_audit("authenticated", "/password/change", query=username,
+                     security_event="password_change_success", ip_address=ip)
+        return {"ok": True}
+    if result.startswith("policy:"):
+        msg = result.split(":", 1)[1]
+        _write_audit("authenticated", "/password/change", query=username,
+                     security_event=f"password_change_rejected_policy",
+                     ip_address=ip)
+        raise HTTPException(status_code=400, detail=msg)
+    # invalid_old / no_user → collapse to 401. The audit log still
+    # distinguishes for the operator.
+    _write_audit("authenticated", "/password/change", query=username,
+                 security_event=f"password_change_failed_{result}",
+                 ip_address=ip)
+    raise HTTPException(
+        status_code=401,
+        detail="현재 비밀번호가 일치하지 않거나 계정이 비활성 상태입니다.",
+    )
+
+
+class AdminIssueResetTokenRequest(BaseModel):
+    username: str
+
+@app.post("/admin/users/issue-reset-token",
+          summary="비밀번호 재설정 토큰 발급 (admin 전용 — W4 P2-B)")
+async def admin_issue_reset_token(
+    data:    AdminIssueResetTokenRequest,
+    request: Request,
+    api_key: str = "",
+    role:    str = Depends(get_role_from_request),
+):
+    """Admin issues a one-shot reset token. Token is returned in
+    plaintext exactly once — admin must relay it out-of-band (phone,
+    in-person, internal chat). Server only stores SHA256(token).
+
+    Returns 404 if the user is unknown or inactive — admins should not
+    issue resets for pending or removed accounts (use approve/reject).
+    """
+    _require_feature(api_key, role, "admin.users")
+    ip = get_client_ip(request)
+
+    token = _auth_issue_reset_token(data.username)
+    if token is None:
+        _write_audit(role, "/admin/users/issue-reset-token",
+                     query=data.username,
+                     security_event="reset_token_issue_failed (unknown or inactive)",
+                     ip_address=ip)
+        raise HTTPException(
+            status_code=404,
+            detail="활성 사용자가 아닙니다.",
+        )
+    _write_audit(role, "/admin/users/issue-reset-token",
+                 query=data.username,
+                 security_event="reset_token_issued",
+                 ip_address=ip)
+    return {
+        "ok": True,
+        "username":           data.username,
+        "token":              token,
+        "expires_in_seconds": RESET_TOKEN_TTL_SEC,
+    }
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    username:     str
+    token:        str
+    new_password: str
+
+@app.post("/password/reset/confirm",
+          summary="비밀번호 재설정 (토큰 + 새 비번 — W4 P2-B)")
+async def password_reset_confirm(
+    data:    PasswordResetConfirmRequest,
+    request: Request,
+):
+    """Public endpoint — the caller is anonymous and presents an
+    admin-issued token. Rate-limited at the IP layer to keep token
+    brute-force bounded.
+
+    Response codes:
+      200 — password reset
+      400 — new_password fails the policy (rule shown verbatim)
+      401 — token invalid / expired / already used / no such user
+            (one unified message; the audit log distinguishes for
+            the operator)
+    """
+    ip = get_client_ip(request)
+    result = _auth_consume_reset_token(data.username, data.token,
+                                       data.new_password)
+    if result == "ok":
+        _write_audit("anonymous", "/password/reset/confirm",
+                     query=data.username,
+                     security_event="password_reset_completed",
+                     ip_address=ip)
+        return {"ok": True}
+    if result.startswith("policy:"):
+        _write_audit("anonymous", "/password/reset/confirm",
+                     query=data.username,
+                     security_event="password_reset_rejected_policy",
+                     ip_address=ip)
+        raise HTTPException(status_code=400, detail=result.split(":", 1)[1])
+    _write_audit("anonymous", "/password/reset/confirm",
+                 query=data.username,
+                 security_event=f"password_reset_failed_{result}",
+                 ip_address=ip)
+    raise HTTPException(
+        status_code=401,
+        detail="토큰이 유효하지 않거나 만료되었습니다.",
+    )
+
+
+# ─── W4 P3-1: user API keys (issue / list / revoke) ─────────────
+
+class ApiKeyIssueRequest(BaseModel):
+    # Optional operator-supplied note ("ci-deploy", "laptop-2026-05"
+    # etc.) so a leaked key can be tied to a context. Plain string —
+    # rendered as text in the admin UI.
+    label: Optional[str] = None
+
+@app.post("/api-keys/issue",
+          summary="API 키 발급 (로그인된 사용자 자신용 — W4 P3-1)")
+async def api_keys_issue(
+    data:    ApiKeyIssueRequest,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
+    """Issue a new long-lived API key for the JWT-authenticated user.
+
+    The plaintext is returned **exactly once**. Only SHA256(token) is
+    persisted, so the value cannot be recovered later — the user must
+    capture it now. A revoked key cannot be unrevoked; issue a fresh
+    one instead.
+
+    Response codes:
+      200 — {token, prefix, label?}
+      401 — JWT missing/invalid
+      404 — JWT subject does not correspond to an active user (race
+            between token mint and account deactivation)
+    """
+    ip = get_client_ip(request)
+    username = _bearer_username(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+    # [W4-Q2-c] api_keys.issue_self default = admin/manager/employee
+    # (external denied). The check applies to /list and /revoke too —
+    # losing 'issue' implicitly revokes the operator's own key mgmt UI.
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "api_keys.issue_self").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (api_keys.issue_self)")
+
+    pair = _api_key_issue(username, data.label)
+    if pair is None:
+        _write_audit("authenticated", "/api-keys/issue", query=username,
+                     security_event="api_key_issue_failed (inactive)",
+                     ip_address=ip)
+        raise HTTPException(status_code=404, detail="활성 사용자가 아닙니다.")
+    plain, prefix = pair
+    _write_audit("authenticated", "/api-keys/issue", query=username,
+                 security_event=f"api_key_issued prefix={prefix}",
+                 ip_address=ip)
+    return {"ok": True, "token": plain, "prefix": prefix,
+            "label": data.label}
+
+
+@app.get("/api-keys/list", summary="내 API 키 목록 (W4 P3-1)")
+async def api_keys_list(
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
+    """List the caller's keys (active + revoked).
+
+    Plaintext is never returned. Each entry exposes the prefix (which
+    is the revocation handle), label, timestamps, and a ``revoked``
+    boolean. Sort: active first, then by created_at DESC.
+    """
+    username = _bearer_username(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "api_keys.issue_self").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (api_keys.issue_self)")
+    return {"keys": _api_key_list(username)}
+
+
+class ApiKeyRevokeRequest(BaseModel):
+    key_prefix: str
+
+@app.post("/api-keys/revoke",
+          summary="API 키 회수 (로그인된 사용자 — 본인 키만 회수 가능, W4 P3-1)")
+async def api_keys_revoke(
+    data:    ApiKeyRevokeRequest,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
+    """Revoke one of the caller's keys by its prefix.
+
+    Scope is enforced in core.api_keys.revoke_api_key by the
+    ``username = ?`` filter — a caller cannot revoke another user's
+    key by guessing their prefix. Re-revoking an already-revoked key
+    returns 404 (rowcount=0) rather than re-stamping the timestamp.
+    """
+    ip = get_client_ip(request)
+    username = _bearer_username(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "api_keys.issue_self").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (api_keys.issue_self)")
+
+    ok = _api_key_revoke(username, data.key_prefix)
+    if not ok:
+        _write_audit("authenticated", "/api-keys/revoke", query=username,
+                     security_event=f"api_key_revoke_failed prefix={data.key_prefix}",
+                     ip_address=ip)
+        raise HTTPException(status_code=404,
+                            detail="해당 키가 없거나 이미 회수되었습니다.")
+    _write_audit("authenticated", "/api-keys/revoke", query=username,
+                 security_event=f"api_key_revoked prefix={data.key_prefix}",
+                 ip_address=ip)
+    return {"ok": True, "prefix": data.key_prefix}
+
+
+@app.get("/admin/entities", summary="Entity 현황 — search + paging [item #1]")
+async def admin_entities(
+    api_key: str,
+    q:       str = "",
+    etype:   str = "",
+    limit:   int = 100,
+    offset:  int = 0,
+    role:    str = Depends(get_role_from_request),
+):
+    """Entity inventory list.
+
+    Query params (all optional):
+      q       — substring filter on name + entity_id (case-insensitive)
+      etype   — exact match on entity_type (e.g. concept / org / person)
+      limit   — max rows returned (default 100, hard cap 500)
+      offset  — paging offset (default 0)
+
+    `type_counts` is computed over the FULL index (not the filtered slice)
+    so the operator always sees corpus-wide totals. `total` is the count
+    AFTER filters are applied; `total_all` is the unfiltered count.
+    """
+    _require_feature(api_key, role, "admin.data")
     from pathlib import Path
+
+    # Clamp limit defensively — 500 covers any realistic v0.2 wiki.
+    limit  = max(1, min(int(limit or 100), 500))
+    offset = max(0, int(offset or 0))
+    q_norm = (q or "").strip().lower()
+    et_norm = (etype or "").strip().lower()
+
     entity_index = rag_engine.wiki_generator.entity_id_index
-    entities, type_counts = [], {}
-    for eid, fpath in list(entity_index.items())[:100]:
+    type_counts: dict[str, int] = {}
+    matched: list[dict] = []
+
+    for eid, fpath in entity_index.items():
         try:
             fm = rag_engine.wiki_generator._read_frontmatter(Path(fpath))
-            if not fm: continue
-            etype = fm.get("entity_type", fm.get("type","unknown"))
-            type_counts[etype] = type_counts.get(etype, 0) + 1
-            entities.append({"entity_id":eid,"name":fm.get("name",""),
-                              "entity_type":etype,"sensitivity":fm.get("sensitivity","internal"),
-                              "relation_count":len(fm.get("relations",[]))})
-        except: pass
-    return {"entities": entities, "type_counts": type_counts, "total": len(entity_index)}
+            if not fm:
+                continue
+            etype_v = fm.get("entity_type", fm.get("type", "unknown"))
+            type_counts[etype_v] = type_counts.get(etype_v, 0) + 1
+
+            # Apply filters AFTER counting (counts reflect the full corpus).
+            if et_norm and etype_v.lower() != et_norm:
+                continue
+            name = fm.get("name", "") or ""
+            if q_norm and q_norm not in name.lower() and q_norm not in eid.lower():
+                continue
+
+            matched.append({
+                "entity_id":      eid,
+                "name":           name,
+                "entity_type":    etype_v,
+                "sensitivity":    fm.get("sensitivity", "internal"),
+                "relation_count": len(fm.get("relations", [])),
+            })
+        except Exception:
+            pass
+
+    # Newest-name-first sort for stable paging UX.
+    matched.sort(key=lambda e: (e["name"] or "").lower())
+    sliced = matched[offset:offset + limit]
+
+    return {
+        "entities":   sliced,
+        "type_counts": type_counts,
+        "total":      len(matched),         # post-filter count
+        "total_all":  len(entity_index),    # corpus-wide
+        "limit":      limit,
+        "offset":     offset,
+        "filters":    {"q": q, "etype": etype},
+    }
+
+
+@app.get("/admin/entities/{entity_id}", summary="Entity 상세 [item #1]")
+async def admin_entity_detail(
+    entity_id: str,
+    api_key:   str,
+    role:      str = Depends(get_role_from_request),
+):
+    """One entity's full frontmatter + body + neighbor names.
+
+    Used by the admin entities page click-to-expand modal so the
+    operator can audit a wiki row without leaving the admin UI.
+    """
+    _require_feature(api_key, role, "admin.data")
+    from pathlib import Path
+
+    fpath = rag_engine.wiki_generator.entity_id_index.get(entity_id)
+    if not fpath:
+        raise HTTPException(status_code=404,
+                            detail=f"entity not found: {entity_id}")
+
+    p = Path(fpath)
+    if not p.exists():
+        raise HTTPException(status_code=404,
+                            detail=f"entity file missing on disk: {fpath}")
+
+    fm = rag_engine.wiki_generator._read_frontmatter(p) or {}
+    raw = p.read_text(encoding="utf-8", errors="replace")
+    # Body = everything after the second `---` frontmatter delimiter.
+    parts = raw.split("---", 2)
+    body = parts[2].strip() if len(parts) >= 3 else raw
+
+    return {
+        "entity_id":   entity_id,
+        "name":        fm.get("name", ""),
+        "entity_type": fm.get("entity_type", fm.get("type", "unknown")),
+        "sensitivity": fm.get("sensitivity", "internal"),
+        "frontmatter": fm,
+        "relations":   fm.get("relations", []),
+        "body":        body[:10000],   # safety cap on rendering
+        "path":        str(p),
+    }
+
+
+@app.get("/admin/graph/snapshot", summary="Reasoning graph snapshot — nodes + edges [v0.2 Axis 3]")
+async def admin_graph_snapshot(
+    api_key:           str,
+    source_type:       str  = "prod",
+    include_sensitive: int  = 0,
+    role:              str  = Depends(get_role_from_request),
+):
+    """Read-only enumeration of every wiki entity + ontology edge for
+    the /admin/graph 3D visualizer. Admin-only; sensitive nodes/edges
+    are dropped by default and require an explicit elevated role to
+    surface (which v0.2 doesn't yet have — kept off for now).
+    """
+    _require_feature(api_key, role, "admin.data")
+    from core.graph_snapshot import build_snapshot
+
+    src = (source_type or "prod").strip().lower()
+    if src not in ("prod", "test"):
+        src = "prod"
+
+    # v0.2: even admin cannot opt into sensitive — locked off until a
+    # dedicated elevated role lands. Re-enable here when that role exists.
+    include_sens = False
+    _ = include_sensitive  # acknowledged but ignored at this gate
+
+    # The shared engine's WikiGenerator is bound to its own source_type
+    # at construction, so for cross-source viewing we instantiate a
+    # fresh, scoped generator on demand.
+    if src == rag_engine.wiki_generator.source_type:
+        gen = rag_engine.wiki_generator
+    else:
+        from core.wiki_generator import WikiGenerator
+        gen = WikiGenerator(source_type=src)
+
+    return build_snapshot(
+        wiki_generator    = gen,
+        source_type       = src,
+        include_sensitive = include_sens,
+    )
 
 
 @app.get("/admin/memory", summary="Memory 현황 [P7]")
 async def admin_memory(api_key: str, role: str = Depends(get_role_from_request)):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.data")
     try:
-        from core.memory_store import MemoryStore, _connect
+        from core.memory import MemoryStore
+        from core.memory.store import _connect
         stats = MemoryStore().get_stats()
         with _connect() as conn:
             prefs = [dict(r) for r in conn.execute(
@@ -1776,7 +3272,7 @@ async def admin_memory(api_key: str, role: str = Depends(get_role_from_request))
 @app.get("/admin/patches", summary="Patch 이력 [P7]")
 async def admin_patches(api_key: str, status: str = "all",
                         role: str = Depends(get_role_from_request)):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from tools.patch.patch_generator import list_patches
         return {"patches": list_patches(status)}
@@ -1784,29 +3280,168 @@ async def admin_patches(api_key: str, status: str = "all",
         return {"patches": [], "error": str(e)}
 
 
-@app.post("/admin/patch/approve", summary="Patch 승인 [P7]")
+@app.post("/admin/patch/approve", summary="Patch 승인 [#48 phase 1]")
 async def admin_patch_approve(request: Request, role: str = Depends(get_role_from_request)):
+    """Approve + deploy a pending patch.
+
+    #48 phase 1 contract:
+      - 403 unless `JAMES_ENABLE_EVOLUTION=1` (operator opt-in).
+      - Caller must include `approver_username` in the JSON body —
+        the audit log records WHO approved each deployed patch.
+      - Caller's resolved role must equal `JAMES_EVOLUTION_APPROVER_ROLE`
+        (default "admin"). Other admin endpoints already enforce
+        admin via `_require_admin`; this gate adds the explicit
+        "approver-role" check so the env var stays load-bearing.
+      - On success the patch JSON is updated in place with
+        `approver_username` / `approver_role` / `approved_at` /
+        `approval_method`, and the lifecycle is recorded in
+        `james_patch_log.jsonl` (visible via /admin/audit).
+    """
     body = await request.json()
-    _require_admin(body.get("api_key",""), role)
-    patch_id = body.get("patch_id","")
+    _require_feature(body.get("api_key",""), role, "admin.evolution")
+
+    # #48 phase 1 — opt-in gate.
+    from config import EVOLUTION_ENABLED, APPROVER_ROLE
+    if not EVOLUTION_ENABLED:
+        raise HTTPException(
+            status_code=403,
+            detail="evolution_disabled: set JAMES_ENABLE_EVOLUTION=1 to enable",
+        )
+    if role != APPROVER_ROLE:
+        raise HTTPException(
+            status_code=403,
+            detail=f"approver_role_mismatch: required {APPROVER_ROLE!r}, got {role!r}",
+        )
+
+    patch_id          = body.get("patch_id", "").strip()
+    approver_username = (body.get("approver_username") or "").strip()
+    approval_method   = (body.get("approval_method") or "api").strip()
+
+    if not patch_id:
+        raise HTTPException(status_code=400, detail="patch_id required")
+    if not approver_username:
+        raise HTTPException(status_code=400, detail="approver_username required (#48 audit)")
+
     try:
         from tools.patch.patch_generator import load_patch
         from tools.patch.patch_validator import validate_patch
         from tools.patch.patch_applier   import apply as patch_apply
+        from tools.patch.approval        import record_approval, record_outcome
+
         patch = load_patch(patch_id)
-        if not patch: raise HTTPException(status_code=404, detail="Patch 없음")
+        if not patch:
+            raise HTTPException(status_code=404, detail="Patch 없음")
+
         passed, failures = validate_patch(patch)
-        if not passed: return {"success": False, "failures": failures}
+        if not passed:
+            return {"success": False, "failures": failures}
+
+        # Record approver BEFORE apply — if apply crashes, the audit
+        # log still shows who tried to deploy what. Restoring this
+        # ordering is the entire reason this PR exists.
+        rec_ok, rec = record_approval(
+            patch_id          = patch_id,
+            approver_username = approver_username,
+            approver_role     = role,
+            approval_method   = approval_method,
+        )
+        if not rec_ok:
+            raise HTTPException(status_code=500, detail=f"approval_record_failed: {rec.get('error')}")
+
+        # Re-load with approval fields baked in so apply() sees the
+        # final patch shape (forward-compat — applier may grow to
+        # honor approval metadata).
+        patch = rec
         ok, msg = patch_apply(patch, validated=True)
-        return {"success": ok, "message": msg}
+
+        # If apply() itself failed, no bench gate to run — record and exit.
+        if not ok:
+            record_outcome(patch_id, "rolled_back", detail=f"apply failed: {msg}")
+            return {
+                "success":           False,
+                "message":           msg,
+                "outcome":           "rolled_back",
+                "patch_id":          patch_id,
+                "approver_username": approver_username,
+                "approver_role":     role,
+                "approval_method":   approval_method,
+            }
+
+        # #68 phase 2-A: bench eval gate. Re-runs STEP 7 against the
+        # live server in a subprocess (asyncio.to_thread so the event
+        # loop can serve the bench's incoming /query/ requests). On
+        # regression, the gate auto-rolls-back inside run_bench_gate
+        # and returns outcome_label='rolled_back'.
+        from tools.patch.bench_gate import run_bench_gate
+        gate = await run_bench_gate(patch_id, patch.get("target", ""))
+
+        record_outcome(
+            patch_id, gate.outcome_label,
+            detail=gate.detail,
+            before_metrics=gate.before_metrics,
+            after_metrics=gate.after_metrics,
+        )
+        return {
+            "success":           gate.passed,
+            "message":           msg,
+            "outcome":           gate.outcome_label,
+            "before_metrics":    gate.before_metrics,
+            "after_metrics":     gate.after_metrics,
+            "patch_id":          patch_id,
+            "approver_username": approver_username,
+            "approver_role":     role,
+            "approval_method":   approval_method,
+        }
     except HTTPException: raise
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/admin/patch/audit", summary="Patch 라이프사이클 감사 조회 [#68 phase 2-C]")
+async def admin_patch_audit(
+    api_key:  str,
+    since:    str = "",
+    approver: str = "",
+    outcome:  str = "",
+    limit:    int = 200,
+    role:     str = Depends(get_role_from_request),
+):
+    """Filtered, newest-first slice of `james_patch_log.jsonl`.
+
+    Filters (all optional; combine for AND semantics):
+      since:    ISO 8601 lower bound (e.g. "2026-05-08" or full datetime)
+      approver: case-insensitive exact `approver_username` match
+      outcome:  case-insensitive `outcome` match — `deployed` /
+                `rolled_back` / `deployed_gate_skipped`
+      limit:    max entries returned (default 200, hard cap 1000)
+
+    See `tools/patch/audit_query.py` for filter semantics + rationale.
+    Composes with `/admin/audit` (the broader, multi-source feed) —
+    this endpoint is the patch-specific view.
+    """
+    _require_feature(api_key, role, "admin.evolution")
+    from tools.patch.audit_query import query_patch_audit
+    rows = query_patch_audit(
+        since=since or None,
+        approver=approver or None,
+        outcome=outcome or None,
+        limit=limit,
+    )
+    return {
+        "filters": {
+            "since":    since,
+            "approver": approver,
+            "outcome":  outcome,
+            "limit":    limit,
+        },
+        "count": len(rows),
+        "events": rows,
+    }
 
 
 @app.post("/admin/patch/reject", summary="Patch 거부 [P7]")
 async def admin_patch_reject(request: Request, role: str = Depends(get_role_from_request)):
     body = await request.json()
-    _require_admin(body.get("api_key",""), role)
+    _require_feature(body.get("api_key",""), role, "admin.evolution")
     patch_id = body.get("patch_id","")
     from pathlib import Path
     pf = Path(f"./workspace/patches/{patch_id}.json")
@@ -1817,10 +3452,203 @@ async def admin_patch_reject(request: Request, role: str = Depends(get_role_from
     return {"success": True, "patch_id": patch_id, "status": "REJECTED"}
 
 
+@app.get("/trace/poll/{trace_id}", summary="실시간 추론 단계 polling [real-reasoning-stream]")
+async def trace_poll(
+    trace_id: str,
+    api_key:  str,
+    after_ns: int = 0,
+    role:     str = Depends(get_role_from_request),
+):
+    """Stream real reasoning stages as they arrive in the JSONL file.
+
+    Client flow:
+      1. Generate a uuid hex on the client (e.g. crypto.randomUUID).
+      2. Submit POST /query/ with the trace_id field in the body.
+      3. Immediately start polling this endpoint every ~200ms with
+         after_ns increasing each call (last seen ts_ns) — minimises
+         duplicate transfer.
+      4. Render each new event in the chat bubble (retrieve / graph /
+         answer / complete with their actual fields).
+      5. Stop polling when the response arrives OR an event with
+         stage='complete' is in the returned list.
+
+    Auth: api_key only (no admin requirement). The trace_id itself
+    acts as a capability — uuid hex is unguessable, so a different
+    user cannot poll someone else's trace. Same trust model as
+    /query/.
+
+    Path arg sanitization: only alphanumerics + hyphen + underscore
+    (8-64 chars). Keeps `core.observability._trace_file_for` from
+    looking outside `reports/trace/<day>/`.
+    """
+    verify_api_key(api_key)
+
+    # Path traversal guard — same regex as /query/'s client_tid check.
+    import re as _re
+    if not _re.fullmatch(r"[A-Za-z0-9_\-]{8,64}", trace_id):
+        raise HTTPException(status_code=400,
+                            detail="invalid trace_id format")
+
+    from core.observability import read_trace
+    rows = read_trace(trace_id)
+    # Only return events newer than the last seen timestamp.
+    new_rows = [r for r in rows if int(r.get("ts_ns") or 0) > int(after_ns or 0)]
+    is_complete = any(r.get("stage") == "complete" for r in rows)
+
+    return {
+        "trace_id":  trace_id,
+        "events":    new_rows,
+        "complete":  is_complete,
+        "total":     len(rows),
+    }
+
+
+@app.get("/admin/trace/{trace_id}", summary="단일 trace 재생 [#81 phase 3-A]")
+async def admin_trace_get(
+    trace_id: str,
+    api_key:  str,
+    day:      str = "",
+    role:     str = Depends(get_role_from_request),
+):
+    """Read back the per-stage JSONL entries for one `trace_id`.
+
+    Path:
+      trace_id: uuid7 hex (the value the /query/ response carries
+                under `trace_id`).
+
+    Query:
+      day: YYYY-MM-DD lookup. Defaults to today. The trace files are
+           date-partitioned, so this hint avoids a directory scan.
+
+    Response:
+      {"trace_id": "...", "day": "...", "count": N,
+       "stages": [{"stage": "auth", "ts_ns": ..., ...}, ...]}
+
+    404 when no trace file exists for the (trace_id, day) pair.
+    Stages are returned in the order they were written (chronological).
+    """
+    _require_feature(api_key, role, "admin.metrics")
+    from core.observability import read_trace
+    # Normalize the day arg: empty/whitespace → today (read_trace default).
+    day_arg = (day or "").strip() or None
+    stages = read_trace(trace_id, day=day_arg)
+    if not stages:
+        raise HTTPException(
+            status_code=404,
+            detail=f"trace not found: trace_id={trace_id} day={day_arg or 'today'}",
+        )
+    from datetime import datetime
+    return {
+        "trace_id": trace_id,
+        "day":      day_arg or datetime.now().strftime("%Y-%m-%d"),
+        "count":    len(stages),
+        "stages":   stages,
+    }
+
+
+@app.get("/admin/metrics", summary="Per-stage 레이턴시 히스토그램 [#81 phase 3-B]")
+async def admin_metrics_get(
+    api_key:      str,
+    window_hours: int  = 24,
+    stage:        str  = "",
+    role:         str  = Depends(get_role_from_request),
+):
+    """Per-stage latency stats over recent traces.
+
+    Walks `reports/trace/` for the window and computes per-stage
+    p50/p90/p99/max + sample count from consecutive `ts_ns` deltas.
+
+    Query:
+      window_hours: lookback window (default 24, clamped to [1, 168]).
+      stage:        optional single-stage filter (e.g. `retrieve`).
+
+    Response:
+      {"window_hours": N, "stage_filter": "...",
+       "stages": {"retrieve": {count, p50_ms, p90_ms, p99_ms, max_ms},
+                  "graph":    {...}, ...}}
+
+    See `core/trace_metrics.py::aggregate_metrics` for the latency
+    derivation rationale (per-trace ts_ns deltas vs explicit fields).
+    """
+    _require_feature(api_key, role, "admin.metrics")
+    from core.trace_metrics import aggregate_metrics
+    stage_filter = (stage or "").strip() or None
+    stats = aggregate_metrics(window_hours=window_hours,
+                              stage_filter=stage_filter)
+    return {
+        "window_hours": max(1, min(int(window_hours or 24), 168)),
+        "stage_filter": stage_filter or "",
+        "stages":       stats,
+    }
+
+
+@app.post("/export/", summary="답변 문서 export [item #4]")
+async def export_answer(request: Request, role: str = Depends(get_role_from_request)):
+    """Export an answer (or arbitrary content) to .md / .txt / .docx.
+
+    Body:
+      content:   text to export (typically a JAMES answer the user
+                 wants to save).
+      format:    "md" / "txt" / "docx" (default "md"). "pdf" is
+                 documented as v0.3+ and silently downgrades to "md"
+                 with `fallback_reason` set in the response headers.
+      filename:  optional stem (no extension). Sanitized server-side.
+      api_key:   required (matches the rest of the API contract).
+
+    Returns: file bytes with proper MIME + Content-Disposition.
+
+    Why a POST instead of GET: the answer content may be hundreds of
+    KB. URL length limits would bite a GET. Also keeps the answer
+    text out of access logs.
+
+    Auth: api_key check only (no admin requirement). Any logged-in
+    user may export their own answers — same trust model as the
+    chat /query/ endpoint.
+    """
+    from fastapi.responses import Response
+    body = await request.json()
+    api_key  = body.get("api_key", "")
+    content  = body.get("content", "") or ""
+    fmt      = body.get("format", "md")
+    filename = body.get("filename", "")
+
+    verify_api_key(api_key)
+    if not isinstance(content, str):
+        raise HTTPException(status_code=400, detail="content must be a string")
+    # Sanity cap — 1MB of text is more than enough for an answer.
+    if len(content.encode("utf-8")) > 1_000_000:
+        raise HTTPException(
+            status_code=413,
+            detail="content too large (>1MB); split into multiple exports",
+        )
+
+    from tools.export.document_exporter import export_document
+    result = export_document(content, format=fmt, filename=filename)
+
+    # ASCII-encode the filename for the header. Browsers handle utf-8
+    # via the filename* RFC 5987 form when present, but the plain
+    # `filename=` must stay ASCII-safe.
+    ascii_name = re.sub(r"[^\w.\-]+", "_", result.filename)
+    headers = {
+        "Content-Disposition":
+            f'attachment; filename="{ascii_name}"; '
+            f"filename*=UTF-8''{quote(result.filename)}",
+        "X-James-Export-Format": result.actual_format,
+    }
+    if result.fallback_reason:
+        headers["X-James-Export-Fallback"] = result.fallback_reason[:256]
+
+    return Response(
+        content=result.data,
+        media_type=result.mime,
+        headers=headers,
+    )
+
+
 @app.get("/admin/audit", summary="감사 로그 [P7]")
 async def admin_audit(api_key: str, limit: int = 100,
                       role: str = Depends(get_role_from_request)):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.audit_log")
     logs = []
     for lf in ["james_audit_db.jsonl","james_audit_tool.jsonl",
                "james_attack_log.jsonl","james_system_log.jsonl"]:
@@ -1834,12 +3662,801 @@ async def admin_audit(api_key: str, limit: int = 100,
     return {"logs": logs[:limit], "total": len(logs)}
 
 
+@app.get("/admin/uploads/history/",
+         summary="업로드 파일 이력 [item #7-C]")
+async def admin_uploads_history(
+    api_key: str,
+    limit:   int = 50,
+    offset:  int = 0,
+    q:       str = "",
+    role:    str = Depends(get_role_from_request),
+):
+    """[#7-C] Read /upload/ rows from the audit_log SQLite table.
+
+    Returned shape (per row): timestamp, filename (= audit `query`
+    field — `_write_audit` for /upload/ stores file.filename here),
+    user_role, ip_address, blocked, security_event.
+
+    Pagination via limit/offset (default 50 / 0). Optional `q` does a
+    case-sensitive LIKE %...% on filename. Both bound as parameters —
+    SQLite parameterisation is the trust boundary for the search box.
+
+    Admin-gated; unrelated audit endpoints already exist for the wider
+    log surface.
+    """
+    _require_feature(api_key, role, "admin.data")
+    # Hard cap to keep the JSON payload bounded and avoid the
+    # browser locking up if an operator passes ?limit=999999.
+    limit  = max(1, min(int(limit or 50), 500))
+    offset = max(0, int(offset or 0))
+    qstr   = (q or "").strip()
+
+    items: list = []
+    total: int  = 0
+    try:
+        conn = sqlite3.connect(_AUDIT_DB, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        if qstr:
+            cnt = conn.execute(
+                "SELECT COUNT(*) AS c FROM audit_log "
+                "WHERE endpoint='/upload/' AND query LIKE ?",
+                (f"%{qstr}%",),
+            ).fetchone()
+            rows = conn.execute(
+                "SELECT * FROM audit_log "
+                "WHERE endpoint='/upload/' AND query LIKE ? "
+                "ORDER BY id DESC LIMIT ? OFFSET ?",
+                (f"%{qstr}%", limit, offset),
+            ).fetchall()
+        else:
+            cnt = conn.execute(
+                "SELECT COUNT(*) AS c FROM audit_log "
+                "WHERE endpoint='/upload/'"
+            ).fetchone()
+            rows = conn.execute(
+                "SELECT * FROM audit_log "
+                "WHERE endpoint='/upload/' "
+                "ORDER BY id DESC LIMIT ? OFFSET ?",
+                (limit, offset),
+            ).fetchall()
+        total = int(cnt["c"]) if cnt else 0
+        for r in rows:
+            items.append({
+                "timestamp":      r["timestamp"] or "",
+                "filename":       r["query"] or "",
+                "user_role":      r["user_role"] or "",
+                "ip_address":     r["ip_address"] or "",
+                "blocked":        bool(r["blocked"]),
+                "security_event": r["security_event"] or "",
+            })
+        conn.close()
+    except Exception as e:
+        return {"items": [], "total": 0, "error": str(e),
+                "limit": limit, "offset": offset, "q": qstr}
+
+    return {"items": items, "total": total,
+            "limit": limit, "offset": offset, "q": qstr}
+
+
+# ─── W4 P6: audit log browser ──────────────────────────────────
+# The legacy /admin/dashboard "최근 쿼리 로그" widget filters on
+# endpoint='/query/', so every user-management / password / api-key
+# event (which all write rows correctly via _write_audit) is
+# invisible in the UI. This endpoint exposes the full audit_log with
+# a category coarse filter + free-text search so admins can review
+# privileged actions without dropping to sqlite3.
+#
+# Categories map to endpoint prefixes:
+#   user_mgmt  →  /admin/users/...
+#   password   →  /password/...  + /signup/
+#   api_keys   →  /api-keys/...
+#   auth       →  /login/
+#   query      →  /query/  + /upload/  (user-driven content events)
+#   all        →  no endpoint filter
+_AUDIT_CATEGORIES = {
+    "user_mgmt": ("/admin/users/",),
+    "password":  ("/password/", "/signup/"),
+    "api_keys":  ("/api-keys/",),
+    "auth":      ("/login/",),
+    "query":     ("/query/", "/upload/"),
+}
+
+@app.get("/admin/audit/list", summary="감사 로그 조회 (W4 P6)")
+async def admin_audit_list(
+    api_key:  str,
+    category: str = "all",
+    q:        str = "",
+    limit:    int = 100,
+    offset:   int = 0,
+    role:     str = Depends(get_role_from_request),
+):
+    """Read audit_log rows with category + free-text filter.
+
+    Query params:
+      category — "user_mgmt" | "password" | "api_keys" | "auth" |
+                 "query" | "all" (default). Unknown values collapse
+                 to "all" to avoid a 400 on a UI typo.
+      q        — substring on (query OR security_event), case-insensitive
+                 via LIKE.
+      limit    — hard cap 500, default 100.
+      offset   — default 0.
+
+    Response shape (per row): id, timestamp, endpoint, user_role,
+    ip_address, query (= filename for /upload/, username for
+    /signup/ etc.), security_event, blocked.
+
+    Admin-gated. The audit_log table has no per-row ACL — anyone with
+    admin can see every row, including security_event strings that
+    may carry sensitive context (rejected passwords are NOT logged
+    verbatim by _write_audit; only the rule name surfaces).
+    """
+    _require_feature(api_key, role, "admin.audit_log")
+    limit  = max(1, min(int(limit or 100), 500))
+    offset = max(0, int(offset or 0))
+    qstr   = (q or "").strip()
+    cat    = category if category in _AUDIT_CATEGORIES else "all"
+
+    where_parts: list = []
+    params:      list = []
+    if cat != "all":
+        prefixes = _AUDIT_CATEGORIES[cat]
+        # one LIKE per prefix joined with OR — the table is small enough
+        # (audit_log is the only event surface) that a UNION is overkill.
+        where_parts.append(
+            "(" + " OR ".join("endpoint LIKE ?" for _ in prefixes) + ")"
+        )
+        params.extend(p + "%" for p in prefixes)
+    if qstr:
+        where_parts.append(
+            "(query LIKE ? OR security_event LIKE ?)"
+        )
+        like = f"%{qstr}%"
+        params.extend([like, like])
+
+    where = (" WHERE " + " AND ".join(where_parts)) if where_parts else ""
+
+    items: list = []
+    total: int  = 0
+    try:
+        conn = sqlite3.connect(_AUDIT_DB, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        total = int(conn.execute(
+            f"SELECT COUNT(*) AS c FROM audit_log{where}", params,
+        ).fetchone()["c"])
+        rows = conn.execute(
+            f"SELECT id, timestamp, endpoint, user_role, ip_address, "
+            f"query, security_event, blocked FROM audit_log{where} "
+            f"ORDER BY id DESC LIMIT ? OFFSET ?",
+            (*params, limit, offset),
+        ).fetchall()
+        for r in rows:
+            items.append({
+                "id":             r["id"],
+                "timestamp":      r["timestamp"],
+                "endpoint":       r["endpoint"],
+                "user_role":      r["user_role"],
+                "ip_address":     r["ip_address"],
+                "query":          (r["query"] or "")[:120],
+                "security_event": r["security_event"] or "",
+                "blocked":        bool(r["blocked"]),
+            })
+        conn.close()
+    except Exception as e:
+        return {"items": [], "total": 0, "error": str(e),
+                "category": cat, "q": qstr,
+                "limit": limit, "offset": offset}
+
+    return {"items": items, "total": total,
+            "category": cat, "q": qstr,
+            "limit": limit, "offset": offset}
+
+
+# ─── W7-A: data artifacts (per-upload lifecycle tracking) ──────
+# Two surfaces:
+#   /admin/artifacts/*  — admin.data feature, sees every user's rows
+#   /artifacts/mine/*   — data.view_own feature, scoped to JWT subject
+
+@app.get("/admin/artifacts/list", summary="데이터 아티팩트 — 관리자 전체 조회 (W7-A)")
+async def admin_artifacts_list(
+    api_key: str,
+    status:  str = "",
+    q:       str = "",
+    limit:   int = 50,
+    offset:  int = 0,
+    role:    str = Depends(get_role_from_request),
+):
+    """All artifacts (every uploader). admin.data feature."""
+    _require_feature(api_key, role, "admin.data")
+    from core.data_artifacts import list_artifacts, count_artifacts
+    s = status.strip() or None
+    qstr = q.strip() or None
+    return {
+        "items":  list_artifacts(status=s, q=qstr, limit=limit, offset=offset),
+        "total":  count_artifacts(status=s, q=qstr),
+        "status": s or "",
+        "q":      qstr or "",
+        "limit":  limit,
+        "offset": offset,
+    }
+
+
+@app.get("/admin/artifacts/{artifact_id}", summary="아티팩트 상세 — 관리자 (W7-A)")
+async def admin_artifacts_detail(
+    artifact_id: str,
+    api_key:     str,
+    role:        str = Depends(get_role_from_request),
+):
+    """Admin view — owner ignored, returns the row regardless."""
+    _require_feature(api_key, role, "admin.data")
+    from core.data_artifacts import get_artifact
+    row = get_artifact(artifact_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="artifact not found")
+    return row
+
+
+@app.get("/artifacts/mine/list", summary="내 데이터 아티팩트 (W7-A)")
+async def mine_artifacts_list(
+    request: Request,
+    status:  str = "",
+    q:       str = "",
+    limit:   int = 50,
+    offset:  int = 0,
+    role:    str = Depends(get_role_from_request),
+):
+    """User self-view. JWT subject is the scope — non-JWT callers
+    (system api_key only) are denied because there's no "own" to
+    bind. data.view_own feature gates the role (every role allowed
+    by default; admin can revoke per role)."""
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "data.view_own").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (data.view_own)")
+    username = _bearer_username(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+    from core.data_artifacts import list_artifacts, count_artifacts
+    s = status.strip() or None
+    qstr = q.strip() or None
+    return {
+        "items":  list_artifacts(username=username, status=s, q=qstr,
+                                 limit=limit, offset=offset),
+        "total":  count_artifacts(username=username, status=s, q=qstr),
+        "status": s or "",
+        "q":      qstr or "",
+        "limit":  limit,
+        "offset": offset,
+    }
+
+
+@app.get("/artifacts/mine/{artifact_id}", summary="내 아티팩트 상세 (W7-A)")
+async def mine_artifacts_detail(
+    artifact_id: str,
+    request:     Request,
+    role:        str = Depends(get_role_from_request),
+):
+    """Self-view. ``get_artifact(requester_username=...)`` returns None
+    when the row belongs to someone else — surfaces as 404 here so a
+    caller can't probe other users' artifact ids."""
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "data.view_own").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (data.view_own)")
+    username = _bearer_username(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+    from core.data_artifacts import get_artifact
+    row = get_artifact(artifact_id, requester_username=username)
+    if row is None:
+        raise HTTPException(status_code=404, detail="artifact not found")
+    return row
+
+
+# ─── W8-A: workspace jobs (run / list / detail / download) ─────
+# Sync execution — the handlers complete in seconds for typical wiki
+# sizes. /jobs/run blocks until the row reaches done/failed. Scheduler
+# (cron-driven) is W8-A2; this PR is pure on-demand execution.
+
+class JobRunRequest(BaseModel):
+    job_type:   str
+    input_refs: list = []
+    options:    Optional[dict] = None
+
+
+@app.post("/jobs/run", summary="워크스페이스 job 실행 (W8-A)")
+async def jobs_run(
+    data:    JobRunRequest,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
+    """workspace.run_jobs feature gate. Owner is the JWT subject
+    (no JWT → 401 — anonymous can't run jobs). Body has no owner
+    field; the server is the source of truth."""
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "workspace.run_jobs").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (workspace.run_jobs)")
+    owner = _bearer_username(request)
+    if not owner:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+
+    from core.workspace import register_job, execute_job, HANDLERS
+    if data.job_type not in HANDLERS:
+        raise HTTPException(status_code=400,
+                            detail=f"unknown job_type: {data.job_type}")
+    job_id = register_job(data.job_type, data.input_refs or [],
+                          owner=owner, options=data.options)
+    ip = get_client_ip(request)
+    _write_audit(role, "/jobs/run", query=f"{data.job_type}/{job_id}",
+                 security_event="job_started", ip_address=ip)
+    row = execute_job(job_id)
+    final_event = "job_done" if row["status"] == "done" else f"job_{row['status']}"
+    _write_audit(role, "/jobs/run", query=f"{data.job_type}/{job_id}",
+                 security_event=final_event, ip_address=ip)
+    return row
+
+
+@app.get("/jobs/list", summary="내 job 목록 (W8-A)")
+async def jobs_list(
+    request: Request,
+    status:  str = "",
+    limit:   int = 50,
+    offset:  int = 0,
+    role:    str = Depends(get_role_from_request),
+):
+    """Self-view — gated by workspace.view (lower bar than
+    run_jobs; reading your own queue is universally useful)."""
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "workspace.view").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (workspace.view)")
+    owner = _bearer_username(request)
+    if not owner:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+    from core.workspace import list_jobs, count_jobs
+    s = status.strip() or None
+    return {
+        "items":  list_jobs(owner=owner, status=s, limit=limit, offset=offset),
+        "total":  count_jobs(owner=owner, status=s),
+        "status": s or "",
+        "limit":  limit,
+        "offset": offset,
+    }
+
+
+@app.get("/jobs/{job_id}", summary="내 job 상세 (W8-A)")
+async def jobs_detail(
+    job_id:  str,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "workspace.view").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (workspace.view)")
+    owner = _bearer_username(request)
+    if not owner:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+    from core.workspace import get_job
+    row = get_job(job_id, requester_username=owner)
+    if row is None:
+        raise HTTPException(status_code=404, detail="job not found")
+    return row
+
+
+@app.get("/jobs/{job_id}/download", summary="job 결과 다운로드 (W8-A)")
+async def jobs_download(
+    job_id:  str,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
+    """Stream the produced file. Cross-owner access surfaces as 404
+    (the row lookup returns None for non-owners; we don't leak the
+    job_id space)."""
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "workspace.view").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (workspace.view)")
+    owner = _bearer_username(request)
+    if not owner:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+    from core.workspace import get_job
+    row = get_job(job_id, requester_username=owner)
+    if row is None or not row.get("output_path"):
+        raise HTTPException(status_code=404, detail="job result not found")
+    try:
+        from config import BASE_DIR
+        full = os.path.join(BASE_DIR, row["output_path"])
+    except ImportError:
+        full = row["output_path"]
+    if not os.path.exists(full):
+        raise HTTPException(status_code=404, detail="output file missing on disk")
+    return FileResponse(full, filename=os.path.basename(full))
+
+
+# ── admin-side mirrors (admin.data feature, sees every owner) ──
+
+@app.get("/admin/jobs/list", summary="모든 job 목록 — admin (W8-A)")
+async def admin_jobs_list(
+    api_key: str,
+    status:  str = "",
+    limit:   int = 50,
+    offset:  int = 0,
+    role:    str = Depends(get_role_from_request),
+):
+    _require_feature(api_key, role, "admin.data")
+    from core.workspace import list_jobs, count_jobs
+    s = status.strip() or None
+    return {
+        "items":  list_jobs(status=s, limit=limit, offset=offset),
+        "total":  count_jobs(status=s),
+        "status": s or "",
+        "limit":  limit,
+        "offset": offset,
+    }
+
+
+@app.get("/admin/jobs/{job_id}", summary="job 상세 — admin (W8-A)")
+async def admin_jobs_detail(
+    job_id:  str,
+    api_key: str,
+    role:    str = Depends(get_role_from_request),
+):
+    _require_feature(api_key, role, "admin.data")
+    from core.workspace import get_job
+    row = get_job(job_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="job not found")
+    return row
+
+
+# ─── W4-Q1: feature capability matrix ──────────────────────────
+# Admin-only surface to inspect + adjust the per-role feature gate
+# (core/feature_registry.py + PolicyEngine.can_use_feature).
+# Q2 wires the runtime checks into existing endpoints; Q3 ships
+# the admin matrix UI. Q1 stands up only the management surface.
+
+@app.get("/admin/features/list", summary="권한 매트릭스 조회 (W4-Q1)")
+async def admin_features_list(
+    api_key: str,
+    role:    str = Depends(get_role_from_request),
+):
+    """Catalog + currently-effective allowed set per role.
+
+    Response shape:
+      {
+        "roles":    ["admin", "manager", "employee", "external"],
+        "features": [ {id, description, default_allowed, effective}, ... ]
+      }
+
+    The ``effective`` map per feature is keyed by role and carries
+    ``{allowed, source}`` where ``source ∈ {"default","override"}``
+    so the UI can render override rows distinctly.
+    """
+    _require_feature(api_key, role, "admin.policy_matrix")
+    from core.feature_registry import list_effective
+    return {
+        "roles":    sorted(ALLOWED_ROLES),
+        "features": list_effective(),
+    }
+
+
+class FeatureOverrideRequest(BaseModel):
+    feature_id: str
+    role:       str
+    allowed:    bool
+
+@app.post("/admin/features/override",
+          summary="권한 매트릭스 override 설정 (W4-Q1)")
+async def admin_features_override(
+    data:    FeatureOverrideRequest,
+    request: Request,
+    api_key: str = "",
+    role:    str = Depends(get_role_from_request),
+):
+    """Set one (feature_id, role) override.
+
+    Validation lives inside ``set_override`` — unknown feature_id or
+    role returns False, surfaced here as 400. Idempotent: re-setting
+    the same value just updates the timestamp + updated_by.
+    """
+    _require_feature(api_key, role, "admin.policy_matrix")
+    from core.feature_registry import set_override
+
+    # Read caller username from the JWT subject for audit-log
+    # attribution. Optional — if missing (DEV_MODE / X-Role), we
+    # still write the row but updated_by is None.
+    try:
+        from core.auth import verify_token
+        caller = None
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            caller = (verify_token(auth_header[7:].strip()) or {}).get("sub")
+    except Exception:
+        caller = None
+
+    ok = set_override(data.feature_id, data.role, data.allowed,
+                      updated_by=caller)
+    ip = get_client_ip(request)
+    if not ok:
+        _write_audit(role, "/admin/features/override",
+                     query=f"{data.feature_id}/{data.role}",
+                     security_event="override_failed (unknown feature or role)",
+                     ip_address=ip)
+        raise HTTPException(
+            status_code=400,
+            detail="알 수 없는 feature_id 또는 role 입니다.",
+        )
+    _write_audit(role, "/admin/features/override",
+                 query=f"{data.feature_id}/{data.role}",
+                 security_event=f"override_set allowed={data.allowed}",
+                 ip_address=ip)
+    return {"ok": True, "feature_id": data.feature_id,
+            "role": data.role, "allowed": data.allowed}
+
+
+class FeatureResetRequest(BaseModel):
+    feature_id: str
+    # role 이 명시되면 그 한 행만 reset, 비어있으면 feature 전체 reset
+    role:       Optional[str] = None
+
+@app.post("/admin/features/reset",
+          summary="권한 매트릭스 override 제거 → 기본값 복원 (W4-Q1)")
+async def admin_features_reset(
+    data:    FeatureResetRequest,
+    request: Request,
+    api_key: str = "",
+    role:    str = Depends(get_role_from_request),
+):
+    """Remove overrides for a feature.
+
+    Two modes:
+      - role specified  → delete that single override row.
+      - role omitted/empty → delete every override for the feature
+                              (full reset to default).
+
+    Returns the number of rows actually deleted, so the UI can show
+    "0개 reset" when the feature already used the defaults.
+    """
+    _require_feature(api_key, role, "admin.policy_matrix")
+    from core.feature_registry import clear_override, clear_all_overrides_for
+
+    ip = get_client_ip(request)
+    if data.role:
+        deleted = 1 if clear_override(data.feature_id, data.role) else 0
+        scope_label = f"{data.feature_id}/{data.role}"
+    else:
+        deleted = clear_all_overrides_for(data.feature_id)
+        scope_label = data.feature_id
+    _write_audit(role, "/admin/features/reset",
+                 query=scope_label,
+                 security_event=f"override_cleared count={deleted}",
+                 ip_address=ip)
+    return {"ok": True, "deleted": deleted, "scope": scope_label}
+
+
+# ────────────────────────────────────────────────────────────────────
+# [#2 file management tab, 2026-05-09] /admin/files/* endpoints —
+# unified file inspection (tree + search + download). Upload + history
+# are kept on existing endpoints (/upload/, /admin/uploads/history/).
+#
+# Trust boundary: ALL three endpoints are admin-gated AND constrain
+# every path argument to a fixed allowlist of root directories. The
+# allowlist is the *only* thing standing between an arbitrary client
+# string and `open(path)` — path traversal would expose .env, secret
+# DBs, anything on the operator's filesystem.
+# ────────────────────────────────────────────────────────────────────
+
+# Roots the file-mgmt tab is allowed to inspect. Each entry maps a
+# user-facing key to an absolute path; client requests reference the
+# key, the server resolves the path. New roots must be added here
+# explicitly — rejecting unknown root keys is part of the trust gate.
+def _file_mgmt_roots() -> dict:
+    from config import BASE_DIR, WIKI_DIR, UPLOAD_DIR
+    media = os.path.join(BASE_DIR, "media")
+    return {
+        "wiki":    os.path.abspath(WIKI_DIR),
+        "uploads": os.path.abspath(UPLOAD_DIR),
+        "media":   os.path.abspath(media),
+    }
+
+# Filename allowlist for downloads. We never expose source code, env
+# files, secret DBs, etc. — even if path traversal were somehow bypassed,
+# this extension gate is a second line of defense.
+_FILE_DOWNLOAD_ALLOWED_EXTS = (
+    ".md", ".txt", ".pdf", ".docx", ".doc", ".xlsx", ".xls",
+    ".pptx", ".ppt", ".csv", ".html", ".htm", ".json", ".yaml", ".yml",
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff",
+    ".mp4", ".avi", ".mov", ".mkv", ".webm",
+    ".mp3", ".wav", ".m4a", ".aac", ".flac",
+    ".hwpx", ".hwp",
+)
+
+
+def _resolve_under_root(root_key: str, rel_path: str) -> str:
+    """Validate (root_key, rel_path) → safe absolute path.
+
+    Returns the absolute path or raises HTTPException 400 on:
+      - unknown root_key
+      - rel_path that escapes the root (.. traversal, drive letters,
+        UNC paths, symlinks pointing outside)
+
+    `os.path.realpath` follows symlinks, so a malicious symlink under
+    the root that points to /etc/passwd is caught.
+    """
+    roots = _file_mgmt_roots()
+    if root_key not in roots:
+        raise HTTPException(status_code=400, detail="invalid root")
+    root = roots[root_key]
+    if not os.path.isdir(root):
+        # Not yet created (e.g. media/) — return root anyway, callers
+        # will produce empty listings.
+        return root if not (rel_path or "").strip() else None
+    rel = (rel_path or "").lstrip("/\\").strip()
+    candidate = os.path.realpath(os.path.join(root, rel))
+    # Final containment check.
+    if not candidate.startswith(root + os.sep) and candidate != root:
+        raise HTTPException(status_code=400, detail="path escapes root")
+    return candidate
+
+
+@app.get("/admin/files/tree", summary="파일 트리 조회 [item #2]")
+async def admin_files_tree(
+    api_key:    str,
+    root:       str = "wiki",
+    path:       str = "",
+    max_depth:  int = 3,
+    role:       str = Depends(get_role_from_request),
+):
+    """Read-only directory listing rooted at one of the allowed roots.
+
+    `max_depth` clamped to [1, 5] — a 5-level recursive listing on a
+    big wiki could be slow and produce a fat JSON, but we don't need
+    deeper. `1` lists immediate children only.
+    """
+    _require_feature(api_key, role, "admin.data")
+    max_depth = max(1, min(int(max_depth or 3), 5))
+    base = _resolve_under_root(root, path)
+    if not base or not os.path.isdir(base):
+        return {"root": root, "path": path, "children": [],
+                "exists": False}
+
+    def walk(dir_abs: str, depth: int) -> list:
+        try:
+            entries = sorted(os.listdir(dir_abs))
+        except OSError:
+            return []
+        out = []
+        for name in entries:
+            if name.startswith("."):       # hide dotfiles (.git, .env shadows)
+                continue
+            full = os.path.join(dir_abs, name)
+            try:
+                st = os.stat(full)
+            except OSError:
+                continue
+            if os.path.isdir(full):
+                node = {
+                    "name":     name,
+                    "type":     "dir",
+                    "mtime":    int(st.st_mtime),
+                    "children": walk(full, depth - 1) if depth > 1 else [],
+                }
+            else:
+                node = {
+                    "name":  name,
+                    "type":  "file",
+                    "size":  st.st_size,
+                    "mtime": int(st.st_mtime),
+                }
+            out.append(node)
+        return out
+
+    return {
+        "root":     root,
+        "path":     path,
+        "exists":   True,
+        "children": walk(base, max_depth),
+    }
+
+
+@app.get("/admin/files/search", summary="파일명 검색 [item #2]")
+async def admin_files_search(
+    api_key: str,
+    q:       str,
+    root:    str = "wiki",
+    limit:   int = 100,
+    role:    str = Depends(get_role_from_request),
+):
+    """Filename substring search under one root. Case-insensitive.
+
+    Returns a flat list (not nested). Capped at `limit` matches (default
+    100, max 500) so a one-character query doesn't dump the whole tree.
+    """
+    _require_feature(api_key, role, "admin.data")
+    qstr  = (q or "").strip().lower()
+    if not qstr:
+        return {"q": "", "matches": [], "total": 0, "root": root}
+    limit = max(1, min(int(limit or 100), 500))
+    base  = _resolve_under_root(root, "")
+    if not base or not os.path.isdir(base):
+        return {"q": qstr, "matches": [], "total": 0, "root": root}
+
+    matches = []
+    for dirpath, dirnames, filenames in os.walk(base):
+        # Skip hidden dirs.
+        dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+        for name in filenames:
+            if name.startswith("."):
+                continue
+            if qstr in name.lower():
+                full = os.path.join(dirpath, name)
+                rel  = os.path.relpath(full, base).replace("\\", "/")
+                try:
+                    st = os.stat(full)
+                except OSError:
+                    continue
+                matches.append({
+                    "name":  name,
+                    "path":  rel,
+                    "size":  st.st_size,
+                    "mtime": int(st.st_mtime),
+                })
+                if len(matches) >= limit:
+                    return {"q": qstr, "matches": matches,
+                            "total": len(matches), "truncated": True,
+                            "root": root}
+    return {"q": qstr, "matches": matches, "total": len(matches),
+            "root": root}
+
+
+@app.get("/admin/files/download", summary="파일 다운로드 [item #2]")
+async def admin_files_download(
+    api_key: str,
+    root:    str,
+    path:    str,
+    role:    str = Depends(get_role_from_request),
+):
+    """Download a single file from an allowed root.
+
+    Defenses (in order):
+      1. admin gate (api_key + role)
+      2. _resolve_under_root rejects unknown root + path traversal
+      3. extension allowlist (no .py / .env / .db / etc.)
+      4. file must exist + be a regular file (not dir, not symlink to
+         outside — realpath already followed in step 2)
+
+    Uses FileResponse — FastAPI streams the file, doesn't load it into
+    memory. Audit log records every download.
+    """
+    _require_feature(api_key, role, "admin.data")
+    if not (path or "").strip():
+        raise HTTPException(status_code=400, detail="path required")
+    full = _resolve_under_root(root, path)
+    if not full or not os.path.isfile(full):
+        raise HTTPException(status_code=404, detail="not found")
+    ext = os.path.splitext(full)[1].lower()
+    if ext not in _FILE_DOWNLOAD_ALLOWED_EXTS:
+        raise HTTPException(
+            status_code=403,
+            detail=f"extension {ext} not allowed for download",
+        )
+    _write_audit(role, "/admin/files/download/",
+                 query=os.path.basename(full), elapsed_sec=0)
+    from fastapi.responses import FileResponse
+    return FileResponse(
+        path=full,
+        filename=os.path.basename(full),
+        media_type="application/octet-stream",
+    )
+
+
 @app.get("/admin/settings", summary="설정 조회 [P7]")
 async def admin_settings_get(api_key: str, role: str = Depends(get_role_from_request)):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.settings")
     from config import GEMMA_MODEL
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         persona = MemoryStore().get_persona()
     except Exception:
         persona = {}
@@ -1852,7 +4469,7 @@ async def admin_settings_get(api_key: str, role: str = Depends(get_role_from_req
 async def admin_persona_get(api_key: str, role: str = Depends(get_role_from_request)):
     verify_api_key(api_key)   # api_key만 검증 (role 무관)
     try:
-        from core.memory_store import MemoryStore
+        from core.memory import MemoryStore
         return {"persona": MemoryStore().get_persona()}
     except Exception as e:
         return {"persona": {}, "error": str(e)}
@@ -1871,7 +4488,8 @@ async def admin_persona_set(data: PersonaRequest,
                              role: str = Depends(get_role_from_request)):
     verify_api_key(data.api_key)   # api_key만 검증 (role 무관)
     try:
-        from core.memory_store import MemoryStore, _connect
+        from core.memory import MemoryStore
+        from core.memory.store import _connect
         # persona 테이블 없으면 자동 생성
         with _connect() as conn:
             conn.execute("""
@@ -1906,7 +4524,7 @@ class AdminSettingsRequest(BaseModel):
 
 @app.post("/admin/settings", summary="설정 변경 [P7]")
 async def admin_settings_post(data: AdminSettingsRequest, role: str = Depends(get_role_from_request)):
-    _require_admin(data.api_key, role)
+    _require_feature(data.api_key, role, "admin.settings")
     if data.protected_files:
         os.environ["JAMES_PROTECTED_FILES"] = data.protected_files
     _write_audit(role, "/admin/settings", query=f"model={data.model}")

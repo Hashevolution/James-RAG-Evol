@@ -25,20 +25,33 @@ rank-bm25>=0.2.2
 # ── Numerical / Data ───────────────────────────────────────────
 numpy>=1.24.0
 PyYAML>=6.0
+# Excel output for workspace jobs (W8-A excel_build handler).
+# Read-side openpyxl is already imported by file_processor for .xlsx
+# ingestion; W8 makes it an explicit declared dep.
+openpyxl>=3.1.0
 
 # ── Hardware Monitoring (auto-recommendation) ──────────────────
 psutil>=5.9.0
-# pynvml: optional, only for NVIDIA GPU detection
+# pynvml: strongly recommended on NVIDIA systems. Without it the
+# admin /hardware/ endpoint falls back to nvidia-smi subprocess
+# (slower, requires nvidia-smi in PATH) or wmic (Windows only,
+# removed in Win11 24H2+). pynvml works cross-platform on any
+# system with NVIDIA drivers installed.
 pynvml>=11.5.0
 
 # ── Web Search (Tavily primary, DDG fallback) ──────────────────
 tavily-python>=0.3.0
 duckduckgo-search>=5.0.0
 
-# ── Document Parsing ───────────────────────────────────────────
+# ── Document Parsing + Export ──────────────────────────────────
 markdown2>=2.4.0
 markitdown[pdf,docx,xlsx,pptx]>=0.1.5
 pdf2image>=1.17.0
+# python-docx powers the .docx answer-export feature in chat
+# (PR #93 / item #4). Without it /export/ silently degrades to
+# .md with a fallback_reason header — still works but loses Word
+# formatting.
+python-docx>=1.1.0
 
 # ── OCR (Image text extraction) ────────────────────────────────
 pytesseract>=0.3.10
@@ -52,13 +65,24 @@ opencv-python>=4.9.0
 ffmpeg-python>=0.2.0
 openai-whisper>=20231117
 
+# ── Evaluation Harness (Issue #46, Axis 2-B) ───────────────────
+# RAGAS pulls scikit-network which needs MSVC build tools on Windows
+# unless wheels are available. If install fails on Windows, run:
+#   pip install ragas --only-binary=:all:
+ragas>=0.4.0
+
 # ═══════════════════════════════════════════════════════════════
 #  System Requirements (install separately, not via pip)
 # ═══════════════════════════════════════════════════════════════
 #
 #  • Ollama (LLM runtime)
 #      https://ollama.ai
-#      ollama pull gemma2:2b   # or any supported model
+#      ollama pull gemma4:e4b           # default (config.GEMMA_MODEL)
+#      ollama pull qwen2.5-coder:32b    # coding mode (config.CODING_MODEL)
+#      ollama pull llava:13b            # vision mode (optional)
+#      Override defaults via .env:
+#        JAMES_LLM_MODEL=...
+#        JAMES_CODING_MODEL=...
 #
 #  • Tesseract OCR (for pytesseract)
 #      Windows: https://github.com/UB-Mannheim/tesseract/wiki

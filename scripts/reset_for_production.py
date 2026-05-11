@@ -27,6 +27,14 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime
 
+# Issue #2: cp949 콘솔에서 box-drawing 문자 크래시 방지.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    from utils.console import ensure_utf8_console
+    ensure_utf8_console()
+except ImportError:
+    pass
+
 # ── 경로 설정 ──────────────────────────────────────────────────
 try:
     from config import BASE_DIR, WIKI_DIR, CHROMA_DIR, UPLOAD_DIR

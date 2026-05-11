@@ -15,6 +15,10 @@ Phase 5 통과 기준:
   [P5-7] 기존 DFS node 3~5 유지
   [P5-8] 기존 GraphRAG 응답 품질 저하 없음
 """
+# Reconfigure stdout to UTF-8 before any top-level prints (this script emits
+# Korean banners + emoji on import). See utils/console.py for rationale.
+from utils.console import ensure_utf8_console
+ensure_utf8_console()
 
 import sys
 import time
@@ -226,12 +230,7 @@ def run_memory_loom_tests():
     print("="*55)
 
     try:
-        from core.memory_loom import (
-            MemoryLoom,
-            MAX_WRITES_PER_SESSION,
-            MEMORY_CONFIDENCE_TH,
-            MEMORY_DEDUP_WINDOW,
-        )
+        from core.memory import MemoryLoom, MAX_WRITES_PER_SESSION, MEMORY_CONFIDENCE_TH, MEMORY_DEDUP_WINDOW
     except ImportError as e:
         print(f"  ⚠️  import 실패: {e}"); return
 
@@ -348,7 +347,7 @@ def run_security_regression():
 
     try:
         from core.security_layer import SecurityLayer, detect_attack, check_access
-        from core.memory_loom import MemoryLoom
+        from core.memory import MemoryLoom
     except ImportError as e:
         print(f"  ⚠️  import 실패: {e}"); return
 
@@ -365,7 +364,7 @@ def run_security_regression():
     def t_security_before_jepa():
         """security pre_check가 JEPA보다 먼저 실행되는지 코드 확인"""
         import inspect
-        from core.reasoning_engine import ReasoningEngine
+        from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine.query)
         pre_idx  = src.find("pre_check")
         jepa_idx = src.find("jepa_expand")

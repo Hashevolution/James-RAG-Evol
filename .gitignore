@@ -46,18 +46,35 @@ james_users.db
 james_audit.db
 james_sessions.db
 chroma_db/
-memory/
+/memory/
 workspace/
 uploads/
 backups/
 
+# RAGAS run outputs (Issue #46) — committed baseline lives in eval/ragas/
+reports/ragas_*.json
+# bench.py per-run reports (Issue #45) — committed baseline lives in eval/regression/
+reports/bench_*.json
+# Per-trace observability files (Issue #47) — one JSONL per request, kept locally
+reports/trace/
+
 # 사용자 PDF에서 추출된 wiki entity (개인 데이터, repo에 푸시 X)
-# 폴더 구조는 유지 (wiki_generator/wiki_reset가 자동 재생성)
-wiki/entity/prod/concept/*.md
-wiki/entity/prod/org/*.md
-wiki/entity/prod/person/*.md
-wiki/entity/prod/document/*.md
-wiki/entity/prod/system_internal/*.md
+# [W7-hotfix 2026-05-10, W1 진단 §2-C] 이전엔 5 카테고리 한정 패턴이라
+# food/event/relation 등 신규 카테고리 추가 시 자동으로 ignored 되지 않아
+# 누수 위험. wildcard 로 모든 카테고리 커버 + 미래 카테고리도 자동 보호.
+wiki/entity/prod/**/*.md
+# defense — entity/ 없이 prod 직속에 데이터를 넣는 경로도 차단
+# (구조 의도와 별개로 누수 가능 경로 막음).
+wiki/prod/
+# media (audio/video) 추출 산출물 — entity 와 동일한 사용자 데이터
+wiki/media/prod/
+# 메타 파일은 명시적으로 추적 — 카테고리 인덱스 / 폴더 보존용 .gitkeep
+!wiki/entity/prod/**/index.md
+!wiki/entity/prod/**/.gitkeep
+
+# 운영자 튜닝 가능한 런타임 설정 (web search role/threshold 등).
+# 코드 안에 안전한 기본값 존재 — 운영자별 오버라이드는 로컬에만.
+web_search_config.json
 
 # ── ML 모델 / 임베딩 캐시 ──────────────────────────────────────
 models/

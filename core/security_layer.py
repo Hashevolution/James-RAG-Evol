@@ -59,6 +59,69 @@ ATTACK_REGEX = [
     r"pretend\s+(you|to)",
 ]
 
+# ─── #8 Risky-coding policy (Axis 6) ────────────────────────
+# Hard-refuse policy: requests that *ask the model to produce a
+# destructive shell/SQL/file command* are blocked at pre_check, before
+# the LLM is called. The user gets the same "차단되었습니다" reason as
+# prompt-injection blocks (q11) — byte-identical 26-char response.
+#
+# This is distinct from prompt-injection (ATTACK_PATTERNS): those try
+# to subvert the system prompt. Risky-coding is a borderline case — the
+# user is asking a legitimate-looking question whose *answer* would
+# enable destructive action.
+#
+# Patterns are intentionally narrow: the trigger requires both a
+# destructive verb AND a scope marker ("all/every/모든/전체/wiki 폴더의"
+# etc.) so a documentation question like "rm -rf 옵션 설명해줘" is NOT
+# blocked unless paired with a target scope. See SECURITY.md §2.4 for
+# the policy decision and the "if blocked legitimately" escape hatch.
+RISKY_CODING_REGEX = [
+    # Explicit destructive shell commands (highest signal)
+    r"\brm\s+-rf\b",
+    r"\bdd\s+if=",
+    r"\bshred\s+",
+    r"\bmkfs\.",
+    r"\bdel\s+/[fsq]\s",
+    r"\brmdir\s+/s\s",
+    r"format\s+[a-z]:",
+    # SQL drop / truncate
+    r"\bdrop\s+(database|table|schema|index)\b",
+    r"\btruncate\s+table\b",
+    # Destructive git
+    r"\bgit\s+reset\s+--hard\b",
+    r"\bgit\s+push\s+(-f\b|--force\b)",
+    r"\bgit\s+clean\s+-[fdx]",
+    # Process kill
+    r"\bkill\s+-9\b",
+    r"\bkillall\s+",
+    # All-files / scope-wide deletion (English)
+    r"(delete|remove|wipe|erase)\s+(all|every|the entire|whole)\s+\S{0,15}\s*(files?|data|directory|folder)",
+    # All-files / scope-wide deletion (Korean) — q12 signature
+    r"(전체|모든|모든 파일|전부)\s*\S{0,20}\s*(삭제|지우|제거|초기화|포맷)",
+    r"(폴더|디렉토리|directory)\s*\S{0,15}\s*(통째로|모두|전부)\s*(삭제|지우)",
+    r"(데이터베이스|database|DB)\s*\S{0,10}\s*(삭제|drop|초기화|reset)",
+    r"(강제|force)\s*(푸시|push|reset|초기화)",
+]
+
+
+def detect_risky_coding(query: str) -> bool:
+    """[#8] True if `query` is asking the assistant to produce a
+    clearly-destructive shell/SQL/git/file command.
+
+    Distinct from `detect_attack` (prompt-injection). The match set is
+    deliberately narrow — see RISKY_CODING_REGEX comment. Block reason
+    is identical to the prompt-injection block so q11 / q12 are
+    indistinguishable to a downstream caller (one byte-identical
+    "차단되었습니다" response across all hard-refuse paths).
+    """
+    if not query:
+        return False
+    for pattern in RISKY_CODING_REGEX:
+        if re.search(pattern, query, flags=re.IGNORECASE):
+            return True
+    return False
+
+
 # [P4-SEC-1] Instruction Isolation 패턴
 INSTRUCTION_INJECTION_PATTERNS = [
     r"(당신은|너는|you are|you're)\s+.{0,30}(assistant|helper|agent|bot|ai)",
@@ -149,10 +212,22 @@ def extract_data_only(raw_input: str) -> Tuple[str, bool]:
     return text.strip(), modified
 
 def sanitize_document_content(content: str, source: str = "unknown") -> str:
-    """[P4-SEC-1] 문서 저장 전 정제 — poisoned embedding 방지"""
-    clean, was_modified = extract_data_only(content)
-    if was_modified:
-        log_attack(content[:100], "system", attack_type=f"doc_injection:{source}")
+    """[P4-SEC-1] 문서 저장 전 정제 — poisoned embedding 방지.
+
+    #44 phase 4-C: backwards-compat shim. Delegates to
+    `PolicyEngine.sanitize_for_ingestion` so `core/policy_engine.py` is
+    the single ingestion-time decision point. Callers passing a raw `str`
+    (legacy code path) get wrapped as `TrustedContent(source="doc",
+    trust="medium")` — the canonical ingestion default; new callers
+    should construct their own `TrustedContent` and call
+    `default_engine.sanitize_for_ingestion(tc, source=...)` directly.
+
+    Lazy import avoids a module-load cycle (`policy_engine` lazily
+    imports `extract_data_only` / `log_attack` from this module).
+    """
+    from core.policy_engine import default_engine, TrustedContent
+    tc = TrustedContent(text=content, source="doc", trust="medium")
+    clean, _ = default_engine.sanitize_for_ingestion(tc, source=source)
     return clean
 
 # ─── ABAC ────────────────────────────────────────────────────
@@ -162,7 +237,12 @@ def check_access(user_role: str, entity: dict) -> bool:
     return ROLE_LEVEL.get(user_role, 0) >= SENSITIVITY_LEVEL.get(sensitivity, 0)
 
 def filter_graph_by_abac(graph_context: list, user_role: str) -> list:
-    return [e for e in graph_context if check_access(user_role, e)]
+    # #44 phase 2-B: graph ABAC routes through PolicyEngine.can_walk so future
+    # graph-specific policy (depth caps, relation-type guards) lands in one
+    # place. PolicyEngine.can_walk currently delegates back to check_access
+    # bit-for-bit (#50). Lazy import avoids module-load cycle.
+    from core.policy_engine import default_engine as _policy
+    return [e for e in graph_context if _policy.can_walk(user_role, e).allowed]
 
 # ─── [P4-SEC-2] ABAC 3단계 일관성 검증 ─────────────────────
 
@@ -175,14 +255,20 @@ def cross_stage_abac_verify(
     """
     [P4-SEC-2] Vector → Graph → Output 3단계 동일 ABAC 정책 검증.
     external이 confidential을 어느 단계에서도 볼 수 없도록 보장.
+
+    #44 phase 2-C: Stage 1/2 route through PolicyEngine so the cross-stage
+    invariant is checked against the same source of policy as live retrieval
+    and graph traversal. Lazy import avoids module-load cycle.
     """
+    from core.policy_engine import default_engine as _policy
+
     violations, stage_results = [], {}
 
     # Stage 1: Vector
     v_pass = v_fail = 0
     for doc in vector_docs:
         meta = doc.get("metadata", {"sensitivity": "public"})
-        if check_access(user_role, meta):
+        if _policy.can_retrieve(user_role, meta).allowed:
             v_pass += 1
         else:
             v_fail += 1
@@ -194,7 +280,7 @@ def cross_stage_abac_verify(
     # Stage 2: Graph
     g_pass = g_fail = 0
     for entity in graph_entities:
-        if check_access(user_role, entity):
+        if _policy.can_walk(user_role, entity).allowed:
             g_pass += 1
         else:
             g_fail += 1
@@ -342,6 +428,25 @@ class SecurityLayer:
                         "query": query}
         except Exception as e:
             log_system_event("pre_check.detect", str(e), role=user_role)
+            return {"allowed": False, "reason": "보안 검사 실패", "query": query}
+
+        # 2.5. Risky-coding policy [#8 Axis 6] — hard-refuse for queries
+        # that ask the model to produce a clearly-destructive command.
+        # Distinct from prompt-injection (above): the user isn't trying
+        # to subvert the system, but answering would still enable harm.
+        # Same block reason as detect_attack so the response is
+        # byte-identical for both classes (audit / bench invariants).
+        try:
+            if detect_risky_coding(query):
+                log_attack(query, user_role, attack_type="risky_coding")
+                log_system_event("risky_coding_blocked", f"query={query[:80]}",
+                                 role=user_role, level="WARN")
+                print(f"[SECURITY] 🚨 위험 코딩 요청 차단 (role={user_role})")
+                return {"allowed": False,
+                        "reason": "자료에 없음. 보안 정책에 의해 차단되었습니다.",
+                        "query": query}
+        except Exception as e:
+            log_system_event("pre_check.risky_coding", str(e), role=user_role)
             return {"allowed": False, "reason": "보안 검사 실패", "query": query}
 
         # 3. Instruction Isolation [P4-SEC-1]

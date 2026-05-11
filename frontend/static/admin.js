@@ -1,7 +1,20 @@
 /* PROJECT JAMES — Admin JS */
 
-const API  = 'http://127.0.0.1:8000';
-let token  = sessionStorage.getItem('james_token') || '';
+// Same-origin: works on PC (http://127.0.0.1:8000), phone via
+// Tailscale Serve (https://james.xxx.ts.net), or any future reverse
+// proxy. Avoids the mixed-content block when the page is loaded
+// over https but the API was hardcoded to http.
+const API  = window.location.origin;
+// [#A8-4] SSO — token + role을 localStorage에서 읽어 챗 페이지와 공유.
+// 이전 sessionStorage 값이 있으면 1회 마이그레이션 (사용자가 새로 로그인
+// 하지 않아도 즉시 어드민 페이지 진입 가능).
+(function _migrateAdminSessionToLocal() {
+  for (const k of ['james_token', 'james_role']) {
+    const sess = sessionStorage.getItem(k);
+    if (sess && !localStorage.getItem(k)) localStorage.setItem(k, sess);
+  }
+})();
+let token  = localStorage.getItem('james_token') || '';
 let apiKey = localStorage.getItem('james_api_key') || '';
 
 /* ── [STEP 5-A] 언어 토글 ── */
@@ -27,11 +40,34 @@ window.addEventListener('DOMContentLoaded', async () => {
     apiKey = prompt('JAMES API Key:') || '';
     localStorage.setItem('james_api_key', apiKey);
   }
-  const storedRole = sessionStorage.getItem('james_role') || '';
+  // [#A8-4] localStorage에서 role 읽음 — chat에서 admin으로 로그인했다면
+  // 자동으로 dashboard 진입. 비-admin role이거나 token 없으면 modal.
+  const storedRole = localStorage.getItem('james_role') || '';
   if (!token || storedRole !== 'admin') {
     showAdminLoginModal();
   } else {
     loadDashboard();
+  }
+});
+
+/* [#A8-4] cross-tab sync — 다른 탭(chat 페이지)에서 로그인/로그아웃 →
+   이 어드민 탭의 token/role 즉시 동기화. admin role 잃으면 모달 자동
+   띄움. localStorage storage 이벤트는 *다른* 탭의 변경만 받으므로 본
+   탭이 자체 변경한 상태와 충돌 안 함. */
+window.addEventListener('storage', (e) => {
+  if (e.key !== 'james_token' && e.key !== 'james_role') return;
+  token = localStorage.getItem('james_token') || '';
+  const role = localStorage.getItem('james_role') || '';
+  if (!token || role !== 'admin') {
+    // admin 권한 잃음 → modal 띄워 재로그인 유도
+    showAdminLoginModal();
+  } else {
+    // admin 권한 회복 → modal 닫고 dashboard
+    const modal = document.getElementById('admin-login-modal');
+    if (modal) modal.style.display = 'none';
+    try { loadDashboard(); } catch (_) {}
+    // [PR plan-3] cross-tab login 후에도 first-run wizard 체크
+    setTimeout(() => { try { firstRunCheck(); } catch (_) {} }, 600);
   }
 });
 
@@ -41,6 +77,21 @@ function showAdminLoginModal() {
   if (modal) {
     modal.style.display = 'flex';
     setTimeout(() => document.getElementById('admin-login-pw')?.focus(), 150);
+  }
+}
+
+/* [#A8-3] admin password 보기/숨기기 토글. chat 페이지와 동일 패턴 —
+   input.type 'password' ↔ 'text' swap + emoji 변경. */
+function toggleAdminPwVisibility() {
+  const input = document.getElementById('admin-login-pw');
+  const btn   = document.getElementById('admin-login-pw-toggle');
+  if (!input) return;
+  if (input.type === 'password') {
+    input.type = 'text';
+    if (btn) btn.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    if (btn) btn.textContent = '👁️';
   }
 }
 
@@ -73,18 +124,260 @@ async function doAdminLogin() {
     if (role !== 'admin'){ if(errEl) errEl.textContent = `Admin role required (role: ${role})`; return; }
 
     token = tok;
-    sessionStorage.setItem('james_token', token);
-    sessionStorage.setItem('james_role',  role);
+    // [#A8-4] localStorage — chat 페이지와 공유. 다른 탭의 storage 이벤트로
+    // chat 페이지 role-badge 자동 갱신.
+    localStorage.setItem('james_token', token);
+    localStorage.setItem('james_role',  role);
 
     const modal = document.getElementById('admin-login-modal');
     if (modal) modal.style.display = 'none';
     loadDashboard();
+    // [PR plan-3] 로그인 후 LLM 모델 readiness 체크. 0개면 wizard 노출.
+    setTimeout(() => { try { firstRunCheck(); } catch (_) {} }, 600);
 
   } catch (e) {
     if(errEl) errEl.textContent = `Server error: ${e.message}`;
   }
 }
 
+/* ── [PR plan-3, 2026-05-09] First-run wizard ───────────────────
+   처음 admin 진입 시 (또는 ollama list가 비었을 때) 모달 띄움.
+   하드웨어 측정 → 추천 모델 → 원클릭 설치 흐름.
+   sessionStorage('james_firstrun_dismissed')에 dismiss 기록 — 재진입
+   시 안 띄움. 그러나 firstRunCheck()는 항상 호출되며 dismiss 됐어도
+   ↻ 새로고침 버튼이 강제 표시 가능. */
+
+let _firstRunInstallPoll = null;
+
+async function firstRunCheck() {
+  // 이번 세션에서 이미 dismiss됐고 모델이 ≥1개면 wizard 안 띄움.
+  // 강제 표시는 firstRunShow() 직접 호출.
+  try {
+    const data = await api('/admin/llm/resolution');
+    const installed = data.installed || [];
+    const dismissed = sessionStorage.getItem('james_firstrun_dismissed') === '1';
+    if (installed.length === 0) {
+      // 모델 0개면 dismiss 무시하고 강제 표시 (실제로 답변이 안 됨)
+      firstRunShow(data);
+    } else if (!dismissed) {
+      // 모델 ≥1개여도 chat resolver가 fallback 상태면 알림 (정보 차원)
+      const chatWarn = (data.chat || {}).warning || '';
+      if (chatWarn && chatWarn.includes('not installed')) {
+        // toast — modal까지는 띄우지 않음
+        if (typeof toast === 'function') {
+          toast(`ℹ️ ${chatWarn}`, 'info');
+        }
+      }
+    }
+    // hide wizard if it was shown but now we have models
+    if (installed.length > 0) {
+      const m = document.getElementById('firstrun-wizard-modal');
+      if (m) m.style.display = 'none';
+    }
+  } catch (e) {
+    console.warn('[firstrun] resolution check failed:', e.message);
+  }
+}
+
+async function firstRunShow(resolutionData) {
+  const modal = document.getElementById('firstrun-wizard-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+
+  // 1) 하드웨어 측정 + 추천
+  const hwBox = document.getElementById('firstrun-hw-summary');
+  const recBox = document.getElementById('firstrun-recommendations');
+  if (hwBox) hwBox.innerHTML = '<div class="loading">측정 중...</div>';
+  if (recBox) recBox.innerHTML = '<div class="loading" style="padding:20px;text-align:center">로딩...</div>';
+
+  try {
+    const recData = await api('/admin/llm/recommend');
+    if (!recData.ok) throw new Error(recData.error || 'recommend failed');
+    const summary = recData.specs_summary || {};
+    if (hwBox) {
+      hwBox.innerHTML = `
+        <div><strong>🖥️ 이 PC 사양</strong></div>
+        <div>GPU: ${_escHtml(summary.gpu || '?')}</div>
+        <div>RAM: ${_escHtml(summary.ram || '?')}</div>
+        <div>전체 등급: <strong style="color:var(--accent-fg)">Level ${summary.level || '?'}</strong></div>
+      `;
+    }
+    // 우선 첫 번째 chat-feasible 모델을 강조, 나머지는 sub list.
+    const recs = recData.recommendations || [];
+    const chatFeasible = recs.filter(r => r.feasible &&
+                                          (r.purpose || []).includes('chat'));
+    const codingFeasible = recs.filter(r => r.feasible &&
+                                            (r.purpose || []).includes('coding'));
+    if (recBox) {
+      let html = '';
+      if (chatFeasible.length === 0) {
+        html += `<div style="padding:14px;color:var(--warn);font-size:12px">
+          ⚠️ 이 PC 사양에 적합한 chat 모델이 없습니다. 가장 가벼운 모델 (gemma3:1b)을 시도해보세요.
+        </div>`;
+        // Force-show gemma3:1b as fallback.
+        html += _firstRunRow({tag:'gemma3:1b', desc:'초경량 (CPU-only OK)',
+                              size_gb:1.0, purpose:['chat']}, true);
+      } else {
+        // Top chat candidate gets star + 강조
+        html += '<div style="font-size:11px;color:var(--muted);padding:6px 10px;text-transform:uppercase;letter-spacing:.3px">💬 일상 대화</div>';
+        chatFeasible.slice(0, 3).forEach((r, i) => {
+          html += _firstRunRow(r, i === 0);
+        });
+        if (codingFeasible.length > 0) {
+          html += '<div style="font-size:11px;color:var(--muted);padding:6px 10px;margin-top:8px;text-transform:uppercase;letter-spacing:.3px">💻 코딩</div>';
+          codingFeasible.slice(0, 2).forEach(r => {
+            html += _firstRunRow(r, false);
+          });
+        }
+      }
+      recBox.innerHTML = html;
+    }
+  } catch (e) {
+    if (hwBox) hwBox.innerHTML = `<div style="color:#c00">측정 실패: ${_escHtml(e.message)}</div>`;
+    if (recBox) recBox.innerHTML = `<div style="padding:20px;text-align:center;color:#c00">추천 로드 실패: ${_escHtml(e.message)}</div>`;
+  }
+}
+
+function _firstRunRow(r, primary) {
+  const sizeGB = (r.size_gb != null) ? `${r.size_gb}GB` : '';
+  const desc = _escHtml(r.desc || r.description || '');
+  const tag = _escHtml(r.tag || r.name || '');
+  const stars = primary ? '⭐ ' : '   ';
+  const bg = primary ? 'rgba(99,102,241,.10)' : 'transparent';
+  const border = primary ? 'border:1px solid var(--accent);' : 'border:1px solid var(--border);';
+  return `<div style="${border}background:${bg};border-radius:7px;padding:10px 12px;margin:4px 6px;
+                       display:flex;align-items:center;gap:10px;font-size:13px">
+    <div style="flex:1;min-width:0">
+      <div style="${primary?'color:var(--accent-fg);font-weight:600':''}">${stars}${tag}</div>
+      <div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        ${desc}${sizeGB ? ' · ' + sizeGB : ''}
+      </div>
+    </div>
+    <button onclick="firstRunInstall('${tag.replace(/'/g, "\\'")}')"
+            style="padding:7px 14px;background:var(--accent);color:#fff;
+                   border:0;border-radius:6px;cursor:pointer;font-size:12px;
+                   font-weight:600;flex-shrink:0">
+      📦 설치
+    </button>
+  </div>`;
+}
+
+async function firstRunInstall(model) {
+  if (!model) return;
+  const progressBox = document.getElementById('firstrun-progress');
+  const progressText = document.getElementById('firstrun-progress-text');
+  const progressBar = document.getElementById('firstrun-progress-bar');
+  if (progressBox) progressBox.style.display = 'block';
+  if (progressText) progressText.textContent = `${model} 설치 시작 중...`;
+
+  try {
+    const r = await fetch(
+      `${API}/llm/install/?api_key=${encodeURIComponent(apiKey)}&model=${encodeURIComponent(model)}`,
+      {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      },
+    );
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    // 진행률 폴링
+    if (_firstRunInstallPoll) clearInterval(_firstRunInstallPoll);
+    _firstRunInstallPoll = setInterval(() => _firstRunPollProgress(model), 2500);
+    _firstRunPollProgress(model);   // 즉시 1회
+  } catch (e) {
+    if (progressText) progressText.textContent = `❌ 설치 실패: ${e.message}`;
+  }
+}
+
+async function _firstRunPollProgress(model) {
+  try {
+    const r = await fetch(
+      `${API}/admin/llm/install-progress?api_key=${encodeURIComponent(apiKey)}&model=${encodeURIComponent(model)}`,
+      { headers: { 'Authorization': `Bearer ${token}` } },
+    );
+    if (!r.ok) {
+      if (r.status === 401) {
+        // 세션 만료 — 폴링 중단 + localStorage 정리 (chat tab role
+        // badge도 같이 업데이트되도록 SSO 일관성 유지).
+        clearInterval(_firstRunInstallPoll);
+        _firstRunInstallPoll = null;
+        try {
+          localStorage.removeItem('james_token');
+          localStorage.removeItem('james_role');
+        } catch (_) {}
+      }
+      return;
+    }
+    const p = await r.json();
+    const progressText = document.getElementById('firstrun-progress-text');
+    const progressBar = document.getElementById('firstrun-progress-bar');
+    if (p.error) {
+      if (progressText) progressText.textContent = `❌ ${model} 실패: ${p.error}`;
+      clearInterval(_firstRunInstallPoll);
+      _firstRunInstallPoll = null;
+      return;
+    }
+    if (p.done) {
+      if (progressText) progressText.textContent = `✅ ${model} 설치 완료! 이제 답변할 수 있습니다.`;
+      if (progressBar) progressBar.style.width = '100%';
+      clearInterval(_firstRunInstallPoll);
+      _firstRunInstallPoll = null;
+      // 자동 닫기 (3초 후)
+      setTimeout(() => {
+        const modal = document.getElementById('firstrun-wizard-modal');
+        if (modal) modal.style.display = 'none';
+      }, 3000);
+      return;
+    }
+    if (progressText) {
+      const pctStr = (p.percent != null) ? `${p.percent}%` : (p.status || '진행 중');
+      progressText.textContent = `⏳ ${model}: ${pctStr}`;
+    }
+    if (progressBar && p.percent != null) {
+      progressBar.style.width = `${p.percent}%`;
+    }
+  } catch (e) {
+    console.warn('[firstrun-poll]', e);
+  }
+}
+
+function firstRunDismiss() {
+  sessionStorage.setItem('james_firstrun_dismissed', '1');
+  const modal = document.getElementById('firstrun-wizard-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+
+/* ── 사이드 nav 토글 (item #2) ──
+   모바일: 햄버거 버튼 → 사이드 드로워 슬라이드 인/아웃
+   섹션 fold: 각 nav-section 클릭 → 다음 .nav-group collapse 토글
+*/
+function toggleAdminNav() {
+  const nav = document.getElementById('admin-nav');
+  if (!nav) return;
+  let backdrop = document.getElementById('admin-nav-backdrop');
+  if (!backdrop) {
+    backdrop = document.createElement('div');
+    backdrop.id = 'admin-nav-backdrop';
+    backdrop.onclick = () => toggleAdminNav();
+    document.body.appendChild(backdrop);
+  }
+  const isOpen = nav.classList.toggle('admin-nav-open');
+  backdrop.classList.toggle('show', isOpen);
+}
+
+function toggleNavSection(sectionEl) {
+  // 섹션 다음 형제(.nav-group) 만 토글. 섹션 자체엔 nav-collapsed로
+  // 회전 화살표 표시.
+  if (!sectionEl) return;
+  const group = sectionEl.nextElementSibling;
+  sectionEl.classList.toggle('nav-collapsed');
+  if (group && group.classList.contains('nav-group')) {
+    group.classList.toggle('nav-group-collapsed');
+  }
+}
 
 /* ── 페이지 전환 ── */
 function showPage(id, el) {
@@ -93,13 +386,23 @@ function showPage(id, el) {
   document.getElementById(`page-${id}`).classList.add('active');
   el.classList.add('active');
 
+  // 모바일에서 페이지 선택 후 자동으로 nav 닫기 (UX)
+  const nav = document.getElementById('admin-nav');
+  if (nav && nav.classList.contains('admin-nav-open')
+      && window.matchMedia('(max-width: 768px)').matches) {
+    toggleAdminNav();
+  }
+
   const loaders = {
     dashboard:      loadDashboard,
     users:          loadUsers,
+    policy:         loadPolicy,
     entities:       loadEntities,
     memory:         loadMemory,
     patches:        loadPatches,
     audit:          loadAudit,
+    uploads:        loadUploads,
+    files:          loadFiles,
     settings:       loadSettings,
     proposals:      loadProposals,
     'evo-reports':  loadEvoReports,
@@ -126,7 +429,9 @@ async function api(path, method='GET', body=null) {
   const r   = await fetch(`${API}${path}${sep}api_key=${apiKey}`, opts);
   if (r.status === 401) {
     token = '';
-    sessionStorage.removeItem('james_token');
+    // [#A8-4] localStorage 전환 — 401 시 chat 페이지 role-badge도 자동 갱신.
+    localStorage.removeItem('james_token');
+    localStorage.removeItem('james_role');
     alert(t('auth.expired_refresh'));
     location.reload();
     return {};
@@ -239,28 +544,575 @@ async function loadDashboard() {
   }
 }
 
-/* ── 사용자 ── */
-async function loadUsers() {
+/* ── 사용자 (W4 P2-A) ──
+   Two sections:
+   - Pending signups (active=0) → approve / reject
+   - All users → deactivate active accounts (self-deactivation blocked
+     server-side; we hide the button client-side as a UX nudge).
+*/
+const ALLOWED_ROLES_FOR_APPROVAL = ['admin', 'manager', 'employee', 'external'];
+
+function _userActionEscape(name) {
+  // Usernames pass validate_username (lowercase + [a-z0-9_-]), but the
+  // approval role-select id includes the username — encode defensively
+  // before injecting into HTML attributes/ids.
+  return String(name).replace(/[^a-z0-9_-]/g, '');
+}
+
+function _selfUsernameFromToken() {
+  // We don't persist the logged-in username in localStorage today —
+  // pull it out of the JWT payload (`sub` claim) for the UX nudge
+  // that hides the "deactivate" button on the caller's own row.
+  const tok = localStorage.getItem('james_token') || '';
+  if (!tok) return '';
   try {
-    const data = await api('/admin/users');
-    const tbody = document.getElementById('users-body');
-    tbody.innerHTML = (data.users || []).map(u => `
-      <tr>
-        <td>${u.username}</td>
-        <td><span class="badge-role role-${u.role}">${u.role}</span></td>
-        <td class="mono">${u.created_at?.slice(0,10) || '-'}</td>
-        <td class="mono">${u.last_login?.slice(0,16) || '-'}</td>
-      </tr>
-    `).join('') || `<tr><td colspan='4' class='empty'>${t('users.empty')}</td></tr>`;
-  } catch (e) {
-    document.getElementById('users-body').innerHTML = `<tr><td colspan="4" class="empty">${e.message}</td></tr>`;
+    const parts = tok.split('.');
+    if (parts.length !== 3) return '';
+    let b = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    b += '='.repeat((4 - b.length % 4) % 4);
+    return (JSON.parse(atob(b)).sub) || '';
+  } catch (_e) {
+    return '';
   }
 }
 
-/* ── Entity ── */
+async function loadUsers() {
+  // Three sections fetched in parallel: all users, pending subset,
+  // and the caller's own API keys (W4 P3-3). Promise.all keeps a
+  // page enter from triple-round-tripping serially.
+  try {
+    const [allData, pendingData, myKeysData] = await Promise.all([
+      api('/admin/users'),
+      api('/admin/users?pending=true'),
+      api('/api-keys/list'),
+    ]);
+    _renderMyApiKeys(myKeysData.keys || []);
+
+    // ── pending section ─────────────────────────────────────────
+    const pendingBody = document.getElementById('users-pending-body');
+    const pendingCount = document.getElementById('users-pending-count');
+    const pending = pendingData.users || [];
+    if (pendingCount) {
+      pendingCount.textContent = pending.length ? `(${pending.length})` : '';
+    }
+    if (pendingBody) {
+      pendingBody.innerHTML = pending.map(u => {
+        const safeName = _userActionEscape(u.username);
+        const opts = ALLOWED_ROLES_FOR_APPROVAL.map(r =>
+          `<option value="${r}"${r === 'employee' ? ' selected' : ''}>${r}</option>`
+        ).join('');
+        return `
+          <tr>
+            <td class="mono">${u.username}</td>
+            <td class="mono">${u.created_at?.slice(0,10) || '-'}</td>
+            <td><select id="approve-role-${safeName}" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--fg)">${opts}</select></td>
+            <td>
+              <button onclick="approveUser('${u.username}')" style="padding:4px 10px;margin-right:4px;background:#1e7a3e;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.approve')}</button>
+              <button onclick="rejectUser('${u.username}')" style="padding:4px 10px;background:#7a1e1e;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.reject')}</button>
+            </td>
+          </tr>`;
+      }).join('') || `<tr><td colspan='4' class='empty'>${t('users.empty_pending')}</td></tr>`;
+    }
+
+    // ── all-users section ───────────────────────────────────────
+    const tbody = document.getElementById('users-body');
+    const selfUser = _selfUsernameFromToken();
+    const all = allData.users || [];
+    tbody.innerHTML = all.map(u => {
+      const status = u.active
+        ? `<span class="badge" style="background:#1e7a3e;color:#fff">${t('users.status_active')}</span>`
+        : `<span class="badge" style="background:#7a6b1e;color:#fff">${t('users.status_pending')}</span>`;
+      // Hide deactivate on:
+      //   - the caller's own row (self-deactivation also rejected
+      //     server-side; this is the UX nudge)
+      //   - pending rows (use reject from the pending section)
+      // Two per-row actions on an active account:
+      //   - issue a reset token (W4 P2-B-2) — admin hands the
+      //     plaintext to the user out-of-band
+      //   - deactivate (hidden on caller's own row, server enforces
+      //     anyway with a 400)
+      const tokenBtn = u.active
+        ? `<button onclick="issueResetTokenFor('${u.username}')" style="padding:4px 10px;margin-right:4px;background:#1e5a7a;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.issue_token')}</button>`
+        : '';
+      const deactivateBtn = (u.active && u.username !== selfUser)
+        ? `<button onclick="deactivateUser('${u.username}')" style="padding:4px 10px;background:#444;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.deactivate')}</button>`
+        : '';
+      const action = (tokenBtn || deactivateBtn)
+        ? `${tokenBtn}${deactivateBtn}`
+        : '<span style="color:var(--muted)">—</span>';
+      return `
+        <tr>
+          <td class="mono">${u.username}</td>
+          <td><span class="badge-role role-${u.role}">${u.role}</span></td>
+          <td>${status}</td>
+          <td class="mono">${u.created_at?.slice(0,10) || '-'}</td>
+          <td>${action}</td>
+        </tr>`;
+    }).join('') || `<tr><td colspan='5' class='empty'>${t('users.empty')}</td></tr>`;
+  } catch (e) {
+    document.getElementById('users-body').innerHTML = `<tr><td colspan="5" class="empty">${e.message}</td></tr>`;
+    const pb = document.getElementById('users-pending-body');
+    if (pb) pb.innerHTML = `<tr><td colspan="4" class="empty">${e.message}</td></tr>`;
+    const kb = document.getElementById('my-api-keys-body');
+    if (kb) kb.innerHTML = `<tr><td colspan="6" class="empty">${e.message}</td></tr>`;
+  }
+}
+
+/* ── W4 P3-3: my API keys ── */
+
+function _fmtKeyTs(unixSec) {
+  if (!unixSec) return '-';
+  try {
+    const d = new Date(unixSec * 1000);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch (_) { return '-'; }
+}
+
+function _renderMyApiKeys(keys) {
+  const body = document.getElementById('my-api-keys-body');
+  if (!body) return;
+  if (!keys.length) {
+    body.innerHTML = `<tr><td colspan='6' class='empty'>${t('users.mykey_empty')}</td></tr>`;
+    return;
+  }
+  body.innerHTML = keys.map(k => {
+    const status = k.revoked
+      ? `<span class="badge" style="background:#7a1e1e;color:#fff">${t('users.mykey_revoked')}</span>`
+      : `<span class="badge" style="background:#1e7a3e;color:#fff">${t('users.status_active')}</span>`;
+    const action = k.revoked
+      ? '<span style="color:var(--muted)">—</span>'
+      : `<button onclick="revokeMyApiKey('${k.key_prefix}')" style="padding:4px 10px;background:#7a1e1e;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.mykey_revoke')}</button>`;
+    return `
+      <tr>
+        <td class="mono">${k.key_prefix}…</td>
+        <td>${k.label || '<span style="color:var(--muted)">—</span>'}</td>
+        <td class="mono">${_fmtKeyTs(k.created_at)}</td>
+        <td class="mono">${_fmtKeyTs(k.last_used_at)}</td>
+        <td>${status}</td>
+        <td>${action}</td>
+      </tr>`;
+  }).join('');
+}
+
+// Holds the plaintext for the lifetime of the display modal.
+let _lastIssuedApiKey = '';
+
+async function issueMyApiKey() {
+  const labelEl = document.getElementById('mykey-label');
+  const label   = (labelEl.value || '').trim();
+  try {
+    const data = await api('/api-keys/issue', 'POST', { label: label || null });
+    _lastIssuedApiKey = data.token || '';
+    document.getElementById('mykey-display-label').textContent = label || '-';
+    document.getElementById('mykey-display-value').textContent = data.token || '';
+    document.getElementById('mykey-display-prefix').textContent =
+      `prefix: ${data.prefix || ''}`;
+    document.getElementById('api-key-display-modal').style.display = 'flex';
+    labelEl.value = '';
+    // Refresh the list in the background so the new key (revoked=false)
+    // appears as soon as the user closes the modal.
+    loadUsers();
+  } catch (e) {
+    alert(`${t('users.action_failed')}: ${e.message}`);
+  }
+}
+
+function closeMyApiKeyModal() {
+  document.getElementById('api-key-display-modal').style.display = 'none';
+  // Wipe plaintext from module state and DOM.
+  _lastIssuedApiKey = '';
+  document.getElementById('mykey-display-value').textContent = '';
+}
+
+async function copyMyApiKey() {
+  const tok = _lastIssuedApiKey;
+  if (!tok) return;
+  try {
+    await navigator.clipboard.writeText(tok);
+    const v = document.getElementById('mykey-display-value');
+    const orig = v.textContent;
+    v.textContent = t('users.token_copied');
+    setTimeout(() => { v.textContent = orig; }, 900);
+  } catch (_e) {
+    const v = document.getElementById('mykey-display-value');
+    const range = document.createRange();
+    range.selectNodeContents(v);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+}
+
+async function revokeMyApiKey(prefix) {
+  if (!confirm(t('users.mykey_confirm_revoke'))) return;
+  try {
+    await api('/api-keys/revoke', 'POST', { key_prefix: prefix });
+    await loadUsers();
+  } catch (e) {
+    alert(`${t('users.action_failed')}: ${e.message}`);
+  }
+}
+
+/* ── W4-Q3: 권한 매트릭스 UI ──
+   Renders the feature × role checkbox grid from
+   /admin/features/list. Each cell:
+     - checked  = role allowed for this feature
+     - styled differently when source === 'override' so the operator
+       sees at a glance which cells differ from the catalog default
+     - click → POST /admin/features/override immediately. No "save"
+       button — the matrix is the source of truth.
+   Per-row [기본값 복원] removes every override row for that feature
+   so the cell colours fall back to default.
+*/
+function _policyToast(msg, kind = 'info') {
+  const el = document.getElementById('policy-toast');
+  if (!el) return;
+  const color = kind === 'error' ? 'var(--danger)'
+              : kind === 'ok'    ? '#1e7a3e'
+              : 'var(--muted)';
+  el.style.color = color;
+  el.textContent = msg;
+  setTimeout(() => {
+    if (el.textContent === msg) el.textContent = '';
+  }, 2200);
+}
+
+async function loadPolicy() {
+  const body  = document.getElementById('policy-body');
+  const thead = document.getElementById('policy-thead');
+  if (!body || !thead) return;
+  body.innerHTML = `<tr><td colspan="6" class="loading">${t('common.loading')}</td></tr>`;
+
+  try {
+    const data = await api('/admin/features/list');
+    const roles    = data.roles || [];
+    const features = data.features || [];
+
+    // Header — first cell is "기능", followed by one column per role,
+    // last cell is the "기본값 복원" action.
+    thead.innerHTML = `<th data-i18n="policy.col_feature">기능</th>` +
+      roles.map(r => `<th class="mono" style="text-align:center">${r}</th>`).join('') +
+      `<th style="text-align:center">${t('policy.col_action')}</th>`;
+
+    body.innerHTML = features.map(f => {
+      const cells = roles.map(r => {
+        const eff = (f.effective || {})[r] || {allowed: false, source: 'default'};
+        const isOverride = eff.source === 'override';
+        // Border / dot indicates an override. Default cells render plain.
+        const dot = isOverride
+          ? `<span title="${t('policy.override_label')}" style="display:inline-block;width:6px;height:6px;background:#f0a050;border-radius:50%;margin-left:5px;vertical-align:middle"></span>`
+          : '';
+        return `<td style="text-align:center">
+          <label style="display:inline-flex;align-items:center;gap:2px;cursor:pointer">
+            <input type="checkbox" ${eff.allowed ? 'checked' : ''}
+                   onchange="onPolicyToggle(this, '${f.id}', '${r}')"
+                   style="cursor:pointer;width:16px;height:16px;accent-color:#1e7a3e">
+            ${dot}
+          </label>
+        </td>`;
+      }).join('');
+      return `<tr>
+        <td>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${f.id}</div>
+          <div style="font-size:12px;color:var(--text);margin-top:1px">${f.description || ''}</div>
+        </td>
+        ${cells}
+        <td style="text-align:center">
+          <button onclick="resetPolicyFeature('${f.id}')"
+                  style="padding:4px 8px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:11px;cursor:pointer">
+            ${t('policy.reset_default')}
+          </button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="6" class="empty">${e.message}</td></tr>`;
+  }
+}
+
+async function onPolicyToggle(checkbox, featureId, role) {
+  const allowed = !!checkbox.checked;
+  try {
+    await api('/admin/features/override', 'POST', {
+      feature_id: featureId,
+      role:       role,
+      allowed:    allowed,
+    });
+    _policyToast(`✅ ${featureId} / ${role} = ${allowed ? 'allow' : 'deny'}`, 'ok');
+    // Re-render so the override dot appears immediately.
+    loadPolicy();
+  } catch (e) {
+    // Roll back the checkbox so UI matches server state.
+    checkbox.checked = !allowed;
+    _policyToast(`❌ ${e.message}`, 'error');
+  }
+}
+
+async function resetPolicyFeature(featureId) {
+  if (!confirm(t('policy.confirm_reset').replace('{feature}', featureId))) return;
+  try {
+    const r = await api('/admin/features/reset', 'POST', { feature_id: featureId });
+    _policyToast(t('policy.reset_done').replace('{n}', r.deleted || 0), 'ok');
+    loadPolicy();
+  } catch (e) {
+    _policyToast(`❌ ${e.message}`, 'error');
+  }
+}
+
+async function approveUser(username) {
+  const safe = _userActionEscape(username);
+  const sel  = document.getElementById(`approve-role-${safe}`);
+  const role = sel ? sel.value : 'employee';
+  try {
+    await api('/admin/users/approve', 'POST', { username, role });
+    await loadUsers();
+  } catch (e) {
+    alert(`${t('users.action_failed')}: ${e.message}`);
+  }
+}
+
+async function rejectUser(username) {
+  if (!confirm(t('users.confirm_reject'))) return;
+  try {
+    await api('/admin/users/reject', 'POST', { username });
+    await loadUsers();
+  } catch (e) {
+    alert(`${t('users.action_failed')}: ${e.message}`);
+  }
+}
+
+async function deactivateUser(username) {
+  if (username === _selfUsernameFromToken()) {
+    alert(t('users.self_deactivate_blocked'));
+    return;
+  }
+  if (!confirm(t('users.confirm_deactivate'))) return;
+  try {
+    await api('/admin/users/deactivate', 'POST', { username });
+    await loadUsers();
+  } catch (e) {
+    alert(`${t('users.action_failed')}: ${e.message}`);
+  }
+}
+
+/* ── W4 P2-B-2: password change + admin reset-token issuance ── */
+
+async function changeMyPassword() {
+  const oldEl = document.getElementById('mypw-old');
+  const newEl = document.getElementById('mypw-new');
+  const msg   = document.getElementById('mypw-msg');
+  const oldPw = oldEl.value || '';
+  const newPw = newEl.value || '';
+  if (!oldPw || !newPw) {
+    msg.textContent = t('users.mypw_empty');
+    msg.style.color = 'var(--danger)';
+    return;
+  }
+  msg.textContent = '';
+  try {
+    await api('/password/change', 'POST', {
+      old_password: oldPw, new_password: newPw,
+    });
+    msg.textContent = t('users.mypw_ok');
+    msg.style.color = '#1e7a3e';
+    oldEl.value = '';
+    newEl.value = '';
+  } catch (e) {
+    // api() helper raises a generic "401 Unauthorized"; show server
+    // text when available so policy violations (400) surface their
+    // rule. The helper doesn't expose body — for now, show the
+    // status line.
+    msg.textContent = `${t('users.action_failed')}: ${e.message}`;
+    msg.style.color = 'var(--danger)';
+  }
+}
+
+// State for the token-display modal — kept here so closeResetTokenModal
+// can return focus and copyResetToken has a single source of truth.
+let _lastIssuedResetToken = '';
+
+async function issueResetTokenFor(username) {
+  try {
+    const data = await api('/admin/users/issue-reset-token', 'POST', { username });
+    _lastIssuedResetToken = data.token || '';
+    document.getElementById('token-display-username').textContent = username;
+    document.getElementById('token-display-value').textContent    = data.token || '';
+    const ttlMin = Math.round((data.expires_in_seconds || 0) / 60);
+    document.getElementById('token-display-ttl').textContent =
+      `expires in ${ttlMin} min`;
+    document.getElementById('reset-token-display-modal').style.display = 'flex';
+  } catch (e) {
+    alert(`${t('users.action_failed')}: ${e.message}`);
+  }
+}
+
+function closeResetTokenModal() {
+  document.getElementById('reset-token-display-modal').style.display = 'none';
+  // Wipe in-memory plaintext so it does not linger in JS heap.
+  _lastIssuedResetToken = '';
+  document.getElementById('token-display-value').textContent = '';
+}
+
+async function copyResetToken() {
+  const tok = _lastIssuedResetToken;
+  if (!tok) return;
+  try {
+    await navigator.clipboard.writeText(tok);
+    // Tiny visual confirmation in-place — no alert.
+    const v = document.getElementById('token-display-value');
+    const orig = v.textContent;
+    v.textContent = t('users.token_copied');
+    setTimeout(() => { v.textContent = orig; }, 900);
+  } catch (_e) {
+    // Fall back to legacy selection if clipboard API blocked.
+    const v = document.getElementById('token-display-value');
+    const range = document.createRange();
+    range.selectNodeContents(v);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+}
+
+// Forgot-password flow (anonymous — fired from the login modal).
+function openForgotPasswordModal() {
+  document.getElementById('admin-login-modal').style.display = 'none';
+  const m = document.getElementById('forgot-password-modal');
+  m.style.display = 'flex';
+  document.getElementById('reset-error').textContent = '';
+  document.getElementById('reset-username').focus();
+}
+
+function closeForgotPasswordModal() {
+  document.getElementById('forgot-password-modal').style.display = 'none';
+  // Wipe inputs so a screen-share moment doesn't leak the values.
+  for (const id of ['reset-username', 'reset-token', 'reset-new-pw']) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  }
+  // Return user to the login modal — they still need to log in once
+  // the reset completes.
+  document.getElementById('admin-login-modal').style.display = 'flex';
+}
+
+/* ── W4 P4: signup (anonymous) ── */
+
+function openSignupModal() {
+  document.getElementById('admin-login-modal').style.display = 'none';
+  const m = document.getElementById('signup-modal');
+  m.style.display = 'flex';
+  document.getElementById('signup-error').textContent     = '';
+  const ok = document.getElementById('signup-success');
+  ok.style.display   = 'none';
+  ok.textContent     = '';
+  document.getElementById('signup-id').focus();
+}
+
+function closeSignupModal() {
+  document.getElementById('signup-modal').style.display = 'none';
+  for (const id of ['signup-id', 'signup-pw']) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  }
+  // Return to login modal — the user still needs to log in (or wait
+  // for admin approval) before reaching the admin panel.
+  document.getElementById('admin-login-modal').style.display = 'flex';
+}
+
+async function submitSignup() {
+  const username = document.getElementById('signup-id').value.trim();
+  const password = document.getElementById('signup-pw').value;
+  const errEl    = document.getElementById('signup-error');
+  const okEl     = document.getElementById('signup-success');
+  errEl.textContent  = '';
+  okEl.style.display = 'none';
+
+  if (!username || !password) {
+    errEl.textContent = '아이디와 비밀번호를 입력하세요.';
+    return;
+  }
+  try {
+    const r = await fetch(`${API}/signup/`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ username, password }),
+    });
+    if (r.ok) {
+      const data = await r.json();
+      okEl.textContent  = data.message ||
+        '가입 신청이 접수되었습니다. 관리자 승인 후 사용 가능합니다.';
+      okEl.style.display = 'block';
+      document.getElementById('signup-pw').value = '';
+      return;
+    }
+    let detail = `${r.status}`;
+    try { detail = (await r.json()).detail || detail; } catch (_e) {}
+    errEl.textContent = detail;
+  } catch (e) {
+    errEl.textContent = `서버 오류: ${e.message}`;
+  }
+}
+
+async function submitPasswordReset() {
+  const username = document.getElementById('reset-username').value.trim();
+  const token    = document.getElementById('reset-token').value.trim();
+  const newPw    = document.getElementById('reset-new-pw').value;
+  const errEl    = document.getElementById('reset-error');
+  errEl.textContent = '';
+  if (!username || !token || !newPw) {
+    errEl.textContent = t('auth.reset_fill_all');
+    return;
+  }
+  try {
+    // Bare fetch — no Bearer header (anonymous flow), no api_key
+    // query (the endpoint is public). The api() helper assumes both.
+    const r = await fetch(`${API}/password/reset/confirm`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ username, token, new_password: newPw }),
+    });
+    if (r.ok) {
+      alert(t('auth.reset_success'));
+      closeForgotPasswordModal();
+      return;
+    }
+    let detail = `${r.status}`;
+    try { detail = (await r.json()).detail || detail; } catch (_e) {}
+    errEl.textContent = detail;
+  } catch (e) {
+    errEl.textContent = e.message;
+  }
+}
+
+/* ── Entity (item #1: search + paging + detail modal) ── */
+const ENTITIES_PAGE_SIZE = 50;
+let entitiesOffset = 0;
+let entitiesSearchTimer = null;
+
+function onEntitiesSearchInput() {
+  // debounce 250ms — substring 검색이라 keystroke마다 fetch 안 띄움
+  if (entitiesSearchTimer) clearTimeout(entitiesSearchTimer);
+  entitiesSearchTimer = setTimeout(() => {
+    entitiesOffset = 0;
+    loadEntities();
+  }, 250);
+}
+
+function entitiesPage(delta) {
+  entitiesOffset = Math.max(0, entitiesOffset + delta * ENTITIES_PAGE_SIZE);
+  loadEntities();
+}
+
 async function loadEntities() {
   try {
-    const data = await api('/admin/entities');
+    const q     = document.getElementById('entities-search')?.value.trim() || '';
+    const etype = document.getElementById('entities-etype-filter')?.value || '';
+    const qs    = `q=${encodeURIComponent(q)}&etype=${encodeURIComponent(etype)}`
+                + `&limit=${ENTITIES_PAGE_SIZE}&offset=${entitiesOffset}`;
+    const data  = await api(`/admin/entities?${qs}`);
+
+    // 카드 - corpus 전체 카운트
     const cards = document.getElementById('entity-cards');
     const counts = data.type_counts || {};
     cards.innerHTML = Object.entries(counts).map(([type, cnt]) => `
@@ -270,18 +1122,105 @@ async function loadEntities() {
       </div>
     `).join('') || '';
 
+    // 타입 필터 셀렉트 — 첫 로드 시 옵션 채움 (모든 타입)
+    const sel = document.getElementById('entities-etype-filter');
+    if (sel && sel.options.length <= 1) {
+      Object.keys(counts).sort().forEach(type => {
+        const opt = document.createElement('option');
+        opt.value = type;
+        opt.textContent = type;
+        sel.appendChild(opt);
+      });
+    }
+
+    // 카운터: filtered / total_all
+    const counter = document.getElementById('entities-counter');
+    if (counter) {
+      counter.textContent = q || etype
+        ? `${data.total} / ${data.total_all} (필터됨)`
+        : `${data.total_all} 전체`;
+    }
+
+    // 테이블 — 행 클릭 → 상세
     const tbody = document.getElementById('entities-body');
-    tbody.innerHTML = (data.entities || []).slice(0, 50).map(e => `
-      <tr>
-        <td>${e.name}</td>
+    tbody.innerHTML = (data.entities || []).map(e => `
+      <tr style="cursor:pointer" onclick="openEntityDetail('${e.entity_id}')">
+        <td>${escapeHtml(e.name) || `<em style="color:var(--muted)">${e.entity_id}</em>`}</td>
         <td class="mono">${e.entity_type}</td>
         <td><span class="badge-status">${e.sensitivity || '-'}</span></td>
         <td class="mono">${e.relation_count ?? 0}</td>
       </tr>
     `).join('') || `<tr><td colspan='4' class='empty'>${t('entity.no_entity')}</td></tr>`;
+
+    // 페이지 라벨
+    const pageNo = Math.floor(entitiesOffset / ENTITIES_PAGE_SIZE) + 1;
+    const pageLabel = document.getElementById('entities-page-label');
+    if (pageLabel) pageLabel.textContent = `page ${pageNo} (${entitiesOffset + 1}-${Math.min(entitiesOffset + ENTITIES_PAGE_SIZE, data.total)})`;
+
+    const prevBtn = document.getElementById('entities-prev');
+    const nextBtn = document.getElementById('entities-next');
+    if (prevBtn) prevBtn.disabled = entitiesOffset === 0;
+    if (nextBtn) nextBtn.disabled = entitiesOffset + ENTITIES_PAGE_SIZE >= data.total;
   } catch (e) {
     document.getElementById('entities-body').innerHTML = `<tr><td colspan="4" class="empty">${e.message}</td></tr>`;
   }
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+async function openEntityDetail(entityId) {
+  const modal = document.getElementById('entity-detail-modal');
+  const titleEl = document.getElementById('entity-detail-title');
+  const metaEl  = document.getElementById('entity-detail-meta');
+  const relEl   = document.getElementById('entity-detail-relations');
+  const bodyEl  = document.getElementById('entity-detail-body');
+
+  if (titleEl) titleEl.textContent = '로딩 중...';
+  if (metaEl)  metaEl.textContent  = '';
+  if (relEl)   relEl.innerHTML     = '';
+  if (bodyEl)  bodyEl.textContent  = '';
+  modal.style.display = 'flex';
+
+  try {
+    const data = await api(`/admin/entities/${encodeURIComponent(entityId)}`);
+    if (titleEl) titleEl.textContent = data.name || data.entity_id;
+    if (metaEl) {
+      metaEl.textContent =
+        `id=${data.entity_id} · type=${data.entity_type} · ` +
+        `sensitivity=${data.sensitivity} · relations=${(data.relations||[]).length}`;
+    }
+    if (relEl) {
+      const rels = data.relations || [];
+      if (rels.length === 0) {
+        relEl.innerHTML = `<div style="font-size:11px;color:var(--muted)">관계 정보 없음</div>`;
+      } else {
+        relEl.innerHTML = `
+          <div class="section-title">▸ 관계 (${rels.length})</div>
+          <div style="font-size:12px;font-family:var(--font-mono);
+                      max-height:120px;overflow-y:auto;background:var(--bg);
+                      padding:8px;border-radius:4px">
+            ${rels.slice(0, 30).map(r =>
+              `${escapeHtml(r.predicate || r.type || '?')} → ${escapeHtml(r.target || r.target_name || '?')}`
+            ).join('<br>')}
+            ${rels.length > 30 ? `<br><em>... +${rels.length - 30}개 더</em>` : ''}
+          </div>
+        `;
+      }
+    }
+    if (bodyEl) bodyEl.textContent = data.body || '(본문 없음)';
+  } catch (e) {
+    if (titleEl) titleEl.textContent = '로드 실패';
+    if (bodyEl)  bodyEl.textContent  = e.message;
+  }
+}
+
+function closeEntityDetail(e) {
+  if (e && e.target.id !== 'entity-detail-modal') return;
+  document.getElementById('entity-detail-modal').style.display = 'none';
 }
 
 /* ── Memory ── */
@@ -322,14 +1261,24 @@ async function loadLongTerm() {
   try {
     const data = await api('/history/long-term/?limit=10');
     const tbody = document.getElementById('long-term-body');
-    tbody.innerHTML = (data.summaries || []).map(s => `
-      <tr>
-        <td class="mono">${s.saved_at?.slice(0,10) || '-'}</td>
-        <td>${s.topic || '-'}</td>
-        <td style="max-width:400px;font-size:12px">${s.summary?.slice(0,120) || '-'}</td>
-        <td>-</td>
-      </tr>
-    `).join('') || `<tr><td colspan='4' class='empty'>${t('mem.no_longterm')}</td></tr>`;
+    tbody.innerHTML = (data.summaries || []).map(s => {
+      // item #3-b: row click → original turns modal. session_id is
+      // present in the API response (memory/store.py:492).
+      const sid = s.session_id || '';
+      const onclick = sid
+        ? `onclick="openSessionTurns('${escapeHtml(sid)}', '${escapeHtml((s.topic || '').slice(0, 40))}')"`
+        : '';
+      const cursor = sid ? 'cursor:pointer' : '';
+      const hint   = sid ? '' : ' <em style="color:var(--muted);font-size:10px">(no session_id)</em>';
+      return `
+        <tr style="${cursor}" ${onclick}>
+          <td class="mono">${s.saved_at?.slice(0,10) || '-'}</td>
+          <td>${escapeHtml(s.topic || '-')}${hint}</td>
+          <td style="max-width:400px;font-size:12px">${escapeHtml((s.summary || '').slice(0,120) || '-')}</td>
+          <td>${sid ? '🔍 펼침' : '-'}</td>
+        </tr>
+      `;
+    }).join('') || `<tr><td colspan='4' class='empty'>${t('mem.no_longterm')}</td></tr>`;
   } catch (e) {
     document.getElementById('long-term-body').innerHTML =
       `<tr><td colspan="4" class="empty">${e.message}</td></tr>`;
@@ -340,22 +1289,81 @@ async function loadSessions() {
   try {
     const data = await api('/history/sessions/');
     const tbody = document.getElementById('sessions-body');
-    tbody.innerHTML = (data.sessions || []).map(s => `
-      <tr>
-        <td class="mono" style="font-size:10px">${s.session_id?.slice(0,20) || '-'}</td>
-        <td class="mono">${s.turn_count ?? 0} turns</td>
-        <td class="mono">${s.started?.slice(0,16) || '-'}</td>
-        <td class="mono">${s.last?.slice(0,16) || '-'}</td>
-        <td>
-          <button class="btn btn-approve" style="font-size:10px"
-            onclick="summarizeAndDelete('${s.session_id}')" data-i18n='mem.summarize_delete'>Summarize & Delete</button>
-        </td>
-      </tr>
-    `).join('') || `<tr><td colspan='5' class='empty'>${t('mem.no_sessions')}</td></tr>`;
+    tbody.innerHTML = (data.sessions || []).map(s => {
+      const sid = s.session_id || '';
+      // item #3-b: session_id 셀 + turn_count 셀 클릭 → 원본 펼침
+      // (액션 버튼은 그대로 두고 행 일부만 클릭 가능하게 — 실수로
+      // summarize&delete 버튼 누르는 사고 방지)
+      const expandable = sid
+        ? `onclick="openSessionTurns('${escapeHtml(sid)}', '${escapeHtml(sid.slice(0,20))}')" style="cursor:pointer"`
+        : '';
+      return `
+        <tr>
+          <td class="mono" style="font-size:10px" ${expandable}>${escapeHtml(sid.slice(0,20)) || '-'}</td>
+          <td class="mono" ${expandable}>${s.turn_count ?? 0} turns</td>
+          <td class="mono">${s.started?.slice(0,16) || '-'}</td>
+          <td class="mono">${s.last?.slice(0,16) || '-'}</td>
+          <td>
+            <button class="btn btn-approve" style="font-size:10px"
+              onclick="summarizeAndDelete('${escapeHtml(sid)}')" data-i18n='mem.summarize_delete'>Summarize & Delete</button>
+          </td>
+        </tr>
+      `;
+    }).join('') || `<tr><td colspan='5' class='empty'>${t('mem.no_sessions')}</td></tr>`;
   } catch (e) {
     document.getElementById('sessions-body').innerHTML =
       `<tr><td colspan="5" class="empty">${e.message}</td></tr>`;
   }
+}
+
+/* ── item #3-b: 세션 원본 대화 펼침 modal ── */
+async function openSessionTurns(sessionId, label) {
+  const modal = document.getElementById('session-turns-modal');
+  const titleEl = document.getElementById('session-turns-title');
+  const metaEl  = document.getElementById('session-turns-meta');
+  const bodyEl  = document.getElementById('session-turns-body');
+
+  if (titleEl) titleEl.textContent = `세션 원본 대화 — ${label || sessionId}`;
+  if (metaEl)  metaEl.textContent  = `로딩 중... (session_id=${sessionId})`;
+  if (bodyEl)  bodyEl.innerHTML    = '';
+  modal.style.display = 'flex';
+
+  try {
+    const data = await api(`/history/?session_id=${encodeURIComponent(sessionId)}&limit=200`);
+    const turns = data.turns || [];
+    if (metaEl) metaEl.textContent = `session_id=${sessionId} · ${turns.length} 턴`;
+    if (turns.length === 0) {
+      bodyEl.innerHTML = `<div style="color:var(--muted);text-align:center;padding:20px">이 세션에 저장된 턴이 없습니다.</div>`;
+      return;
+    }
+    bodyEl.innerHTML = turns.map(turn => {
+      const isUser = (turn.role || turn.speaker || '').toLowerCase().includes('user');
+      const text   = turn.content || turn.text || turn.answer || '';
+      const ts     = turn.created_at || turn.time || turn.timestamp || '';
+      const tsShort = (ts || '').slice(0, 19).replace('T', ' ');
+      return `
+        <div style="display:flex;flex-direction:column;gap:4px;
+                    background:${isUser ? 'rgba(124,106,247,.10)' : 'var(--bg)'};
+                    border-left:3px solid ${isUser ? '#7c6af7' : '#3da78a'};
+                    padding:10px 12px;border-radius:4px">
+          <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono);
+                      display:flex;justify-content:space-between">
+            <span>${isUser ? '🗨️ user' : '🤖 james'}${turn.mode ? ' · mode=' + escapeHtml(turn.mode) : ''}</span>
+            <span>${escapeHtml(tsShort)}</span>
+          </div>
+          <div style="white-space:pre-wrap;font-size:13px">${escapeHtml(text)}</div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    if (metaEl) metaEl.textContent = '';
+    bodyEl.innerHTML = `<div style="color:var(--red,#f06292);text-align:center;padding:20px">로드 실패: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function closeSessionTurns(e) {
+  if (e && e.target.id !== 'session-turns-modal') return;
+  document.getElementById('session-turns-modal').style.display = 'none';
 }
 
 async function summarizeAndDelete(sessionId) {
@@ -420,27 +1428,384 @@ async function patchAction(patchId, action) {
 }
 
 /* ── 감사 로그 ── */
+/* ── W4 P6: 감사 로그 — category filter + free-text search + paging ──
+   Replaces the legacy single-stream renderer that read /admin/audit
+   (JSONL tail) and showed every event in a flat box. The new
+   /admin/audit/list endpoint queries audit_log directly so user-
+   management / password / api-key events appear here instead of
+   being invisible because the dashboard widget filtered to /query/.
+*/
+const AUDIT_PAGE_SIZE = 50;
+let _auditOffset = 0;
+let _auditTotal  = 0;
+let _auditSearchTimer = null;
+
+function audit_searchInput() {
+  if (_auditSearchTimer) clearTimeout(_auditSearchTimer);
+  _auditSearchTimer = setTimeout(() => {
+    _auditOffset = 0;
+    loadAudit();
+  }, 250);
+}
+
+function audit_reload() {
+  _auditOffset = 0;
+  loadAudit();
+}
+
+function audit_page(delta) {
+  const next = _auditOffset + delta * AUDIT_PAGE_SIZE;
+  if (next < 0) return;
+  if (next >= _auditTotal && delta > 0) return;
+  _auditOffset = next;
+  loadAudit();
+}
+
+function _auditEscapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 async function loadAudit() {
+  const cat = document.getElementById('audit-category')?.value || 'all';
+  const q   = (document.getElementById('audit-q')?.value || '').trim();
+  const body = document.getElementById('audit-body');
+  if (body) body.innerHTML = `<tr><td colspan="6" class="loading">${t('common.loading')}</td></tr>`;
+
+  const params = new URLSearchParams({
+    category: cat,
+    limit: String(AUDIT_PAGE_SIZE),
+    offset: String(_auditOffset),
+  });
+  if (q) params.set('q', q);
+
   try {
-    const data = await api('/admin/audit');
-    const logs = data.logs || [];
-    const el   = document.getElementById('audit-log');
-    el.innerHTML = logs.length
-      ? logs.map(l => renderLogEntry(l)).join('')
-      : `<div class='empty'>${t('dash.no_logs')}</div>`;
+    const data = await api(`/admin/audit/list?${params.toString()}`);
+    _auditTotal = data.total || 0;
+
+    const counter = document.getElementById('audit-counter');
+    if (counter) {
+      const from = _auditTotal ? _auditOffset + 1 : 0;
+      const to   = Math.min(_auditOffset + AUDIT_PAGE_SIZE, _auditTotal);
+      counter.textContent = `${from}–${to} / ${_auditTotal}`;
+    }
+    const pageLabel = document.getElementById('audit-page-label');
+    if (pageLabel) {
+      pageLabel.textContent = `page ${Math.floor(_auditOffset / AUDIT_PAGE_SIZE) + 1}`;
+    }
+
+    if (!body) return;
+    body.innerHTML = (data.items || []).map(it => {
+      // Highlight rows that represent a security event — failed
+      // login / rejected signup / blocked query etc.
+      const ev = it.security_event || '';
+      const isBlock = it.blocked
+        || /fail|rejected|blocked|denied|invalid/i.test(ev);
+      const evCell = ev
+        ? `<span style="${isBlock ? 'color:#d97a7a' : 'color:var(--fg)'}">${_auditEscapeHtml(ev)}</span>`
+        : '<span style="color:var(--muted)">—</span>';
+      return `
+        <tr>
+          <td class="mono" style="font-size:11px;white-space:nowrap">${_auditEscapeHtml((it.timestamp || '').slice(0, 19))}</td>
+          <td class="mono" style="font-size:11px">${_auditEscapeHtml(it.endpoint || '')}</td>
+          <td><span class="badge-role role-${_auditEscapeHtml(it.user_role || '')}">${_auditEscapeHtml(it.user_role || '')}</span></td>
+          <td>${evCell}</td>
+          <td class="mono" style="font-size:11px">${_auditEscapeHtml(it.query || '')}</td>
+          <td class="mono" style="font-size:11px;color:var(--muted)">${_auditEscapeHtml(it.ip_address || '')}</td>
+        </tr>`;
+    }).join('') || `<tr><td colspan='6' class='empty'>${t('audit.empty')}</td></tr>`;
   } catch (e) {
-    document.getElementById('audit-log').innerHTML = `<div class="empty">${e.message}</div>`;
+    if (body) body.innerHTML = `<tr><td colspan="6" class="empty">${e.message}</td></tr>`;
   }
 }
 
-function renderLogEntry(l) {
-  const blocked  = l.blocked || l.event?.includes('BLOCK') || l.event?.includes('REJECT');
-  const override = l.admin_override;
-  const cls = override ? 'log-override' : (blocked ? 'log-blocked' : 'log-allowed');
-  return `<div class="log-entry ${cls}">
-    <span class="log-time">${(l.time||l.timestamp||'').slice(11,19)}</span>
-    <span>[${l.event||l.action||'EVENT'}] ${l.detail||l.query||''}</span>
-  </div>`;
+/* ── 업로드 파일 이력 [#7-C] ── */
+let _uploadsOffset = 0;
+const _uploadsLimit = 50;
+
+function _escHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function loadUploads(resetOffset = true) {
+  if (resetOffset) _uploadsOffset = 0;
+  const qInput = document.getElementById('uploads-search');
+  const q = qInput ? qInput.value.trim() : '';
+  const tbody = document.getElementById('uploads-tbody');
+  const meta  = document.getElementById('uploads-meta');
+  const pager = document.getElementById('uploads-pager');
+  if (!tbody) return;
+  tbody.innerHTML = `<div class="loading">${t('common.loading') || '로딩 중...'}</div>`;
+  if (meta)  meta.textContent = '';
+  if (pager) pager.innerHTML  = '';
+
+  try {
+    const path = `/admin/uploads/history/?limit=${_uploadsLimit}` +
+                 `&offset=${_uploadsOffset}` +
+                 (q ? `&q=${encodeURIComponent(q)}` : '');
+    const data = await api(path);
+    const items = data.items || [];
+    const total = data.total || 0;
+
+    if (items.length === 0) {
+      tbody.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:var(--muted)">
+        ${q ? `'${_escHtml(q)}' 검색 결과 없음` : '업로드 이력 없음'}
+      </div>`;
+    } else {
+      tbody.innerHTML = `
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="background:var(--surface-2);text-align:left">
+              <th style="padding:10px 14px;color:var(--muted);font-weight:600">시간</th>
+              <th style="padding:10px 14px;color:var(--muted);font-weight:600">파일명</th>
+              <th style="padding:10px 14px;color:var(--muted);font-weight:600">역할</th>
+              <th style="padding:10px 14px;color:var(--muted);font-weight:600">IP</th>
+              <th style="padding:10px 14px;color:var(--muted);font-weight:600">상태</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map(it => {
+              const ts = (it.timestamp || '').slice(0, 19).replace('T', ' ');
+              const blocked = it.blocked;
+              const statusBadge = blocked
+                ? `<span style="background:#fee;color:#c00;padding:2px 8px;
+                    border-radius:4px;font-size:11px;font-weight:600">차단</span>`
+                : `<span style="background:#efe;color:#080;padding:2px 8px;
+                    border-radius:4px;font-size:11px;font-weight:600">성공</span>`;
+              const sevTitle = it.security_event
+                ? ` title="${_escHtml(it.security_event)}"` : '';
+              return `<tr style="border-top:1px solid var(--border)"${sevTitle}>
+                <td style="padding:10px 14px;font-family:var(--font-mono);
+                           font-size:11px;color:var(--muted)">${_escHtml(ts)}</td>
+                <td style="padding:10px 14px">${_escHtml(it.filename)}</td>
+                <td style="padding:10px 14px;font-size:12px">${_escHtml(it.user_role)}</td>
+                <td style="padding:10px 14px;font-family:var(--font-mono);
+                           font-size:11px;color:var(--muted)">${_escHtml(it.ip_address)}</td>
+                <td style="padding:10px 14px">${statusBadge}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    if (meta) {
+      const showStart = total === 0 ? 0 : (_uploadsOffset + 1);
+      const showEnd   = Math.min(_uploadsOffset + items.length, total);
+      meta.textContent = `${showStart}–${showEnd} / 전체 ${total}건${q ? ` ('${q}' 필터)` : ''}`;
+    }
+
+    if (pager) {
+      const hasPrev = _uploadsOffset > 0;
+      const hasNext = (_uploadsOffset + items.length) < total;
+      pager.innerHTML = `
+        <button onclick="_uploadsPrev()" ${hasPrev ? '' : 'disabled'}
+                style="padding:6px 14px;background:var(--surface-2);
+                       border:1px solid var(--border);border-radius:6px;
+                       color:var(--text);cursor:${hasPrev ? 'pointer' : 'not-allowed'};
+                       opacity:${hasPrev ? '1' : '0.4'};font-size:12px">
+          ‹ 이전
+        </button>
+        <button onclick="_uploadsNext()" ${hasNext ? '' : 'disabled'}
+                style="padding:6px 14px;background:var(--surface-2);
+                       border:1px solid var(--border);border-radius:6px;
+                       color:var(--text);cursor:${hasNext ? 'pointer' : 'not-allowed'};
+                       opacity:${hasNext ? '1' : '0.4'};font-size:12px">
+          다음 ›
+        </button>`;
+    }
+  } catch (e) {
+    tbody.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:#c00">
+      로딩 실패: ${_escHtml(e.message)}
+    </div>`;
+  }
+}
+
+function _uploadsPrev() {
+  _uploadsOffset = Math.max(0, _uploadsOffset - _uploadsLimit);
+  loadUploads(false);
+}
+
+function _uploadsNext() {
+  _uploadsOffset = _uploadsOffset + _uploadsLimit;
+  loadUploads(false);
+}
+
+/* ── [item #2 / 2026-05-09] 파일 관리 통합 탭 ──
+   사용자 피드백: 업로드 + 이력 + 트리 + 검색을 하나의 세션으로.
+   업로드/이력은 기존 endpoint 재사용; 이 탭의 신규 책임은 트리/검색/
+   다운로드. 트리 root는 wiki/uploads/media 중 선택 (서버 allowlist).
+   ⚠ 모든 endpoint는 admin-gated + 경로 traversal 방어. */
+let _filesCurrentRoot = 'wiki';
+
+function _humanSize(bytes) {
+  if (bytes == null) return '';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+  return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+}
+
+function _humanMtime(ts) {
+  if (!ts) return '';
+  try {
+    const d = new Date(ts * 1000);
+    return d.toISOString().slice(0, 16).replace('T', ' ');
+  } catch (_) { return ''; }
+}
+
+function onFilesRootChange() {
+  const sel = document.getElementById('files-root');
+  if (sel) {
+    _filesCurrentRoot = sel.value || 'wiki';
+    loadFiles();
+  }
+}
+
+async function loadFiles() {
+  const root = _filesCurrentRoot;
+  const container = document.getElementById('files-content');
+  const info = document.getElementById('files-info');
+  if (!container) return;
+  container.innerHTML = `<div class="loading">${t('common.loading') || '로딩 중...'}</div>`;
+  if (info) info.textContent = '';
+  // Reset search input on tree reload.
+  const sb = document.getElementById('files-search');
+  if (sb) sb.value = '';
+
+  try {
+    const data = await api(`/admin/files/tree?root=${encodeURIComponent(root)}&max_depth=3`);
+    if (!data.exists) {
+      container.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:var(--muted)">
+        '${_escHtml(root)}' 디렉토리 없음 (아직 생성 안 됨)
+      </div>`;
+      return;
+    }
+    const children = data.children || [];
+    if (children.length === 0) {
+      container.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:var(--muted)">
+        비어 있음
+      </div>`;
+      if (info) info.textContent = `root=${root} · 0 entries`;
+      return;
+    }
+    container.innerHTML = _renderTree(children, '', root);
+    if (info) info.textContent = `root=${root} · ${children.length} top-level entries`;
+  } catch (e) {
+    container.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:#c00">
+      트리 로드 실패: ${_escHtml(e.message)}
+    </div>`;
+  }
+}
+
+/* Recursive tree renderer. Folders render as collapsible <details>
+   so the user can expand/collapse selectively without the whole tree
+   collapsing on a re-render. Files have a download link (only for
+   allowlisted extensions — server enforces, but we don't render the
+   link for ones we know will 403). */
+const _DOWNLOAD_OK_EXTS = new Set([
+  'md','txt','pdf','docx','doc','xlsx','xls','pptx','ppt','csv','html','htm',
+  'json','yaml','yml','png','jpg','jpeg','gif','webp','bmp','tiff','mp4','avi',
+  'mov','mkv','webm','mp3','wav','m4a','aac','flac','hwpx','hwp',
+]);
+
+function _renderTree(nodes, parentPath, root) {
+  if (!nodes || !nodes.length) return '';
+  let html = '<ul style="list-style:none;padding-left:0;margin:0">';
+  for (const n of nodes) {
+    const fullRel = parentPath ? `${parentPath}/${n.name}` : n.name;
+    if (n.type === 'dir') {
+      const childHtml = (n.children && n.children.length)
+        ? _renderTree(n.children, fullRel, root)
+        : '<div style="padding:4px 0 4px 18px;color:var(--muted);font-size:11px">(empty)</div>';
+      html += `<li style="margin:2px 0">
+        <details style="padding-left:12px;border-left:1px dashed var(--border-2)">
+          <summary style="cursor:pointer;color:var(--accent-fg);
+                          padding:3px 6px;border-radius:4px">
+            📂 ${_escHtml(n.name)}/
+          </summary>
+          <div style="padding-left:14px;margin-top:2px">${childHtml}</div>
+        </details>
+      </li>`;
+    } else {
+      const ext = (n.name.split('.').pop() || '').toLowerCase();
+      const canDownload = _DOWNLOAD_OK_EXTS.has(ext);
+      const dlLink = canDownload
+        ? `<a href="${API}/admin/files/download?root=${encodeURIComponent(root)}&path=${encodeURIComponent(fullRel)}&api_key=${encodeURIComponent(apiKey)}"
+              target="_blank" rel="noopener"
+              style="color:var(--accent-fg);text-decoration:none;font-size:11px;
+                     margin-left:8px"
+              title="다운로드">⬇</a>`
+        : '';
+      html += `<li style="margin:2px 0;padding:3px 6px 3px 18px;
+                          border-left:1px dashed var(--border-2);
+                          display:flex;align-items:center;gap:6px">
+        <span>📄 ${_escHtml(n.name)}</span>
+        <span style="color:var(--muted);font-size:11px;flex:1">
+          ${_humanSize(n.size)} · ${_humanMtime(n.mtime)}
+        </span>${dlLink}
+      </li>`;
+    }
+  }
+  html += '</ul>';
+  return html;
+}
+
+async function searchFiles() {
+  const sb = document.getElementById('files-search');
+  const q = sb ? sb.value.trim() : '';
+  if (!q) { loadFiles(); return; }
+  const root = _filesCurrentRoot;
+  const container = document.getElementById('files-content');
+  const info = document.getElementById('files-info');
+  if (!container) return;
+  container.innerHTML = `<div class="loading">${t('common.loading') || '로딩 중...'}</div>`;
+  if (info) info.textContent = '';
+
+  try {
+    const data = await api(`/admin/files/search?root=${encodeURIComponent(root)}&q=${encodeURIComponent(q)}&limit=200`);
+    const matches = data.matches || [];
+    if (matches.length === 0) {
+      container.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:var(--muted)">
+        '${_escHtml(q)}' 일치 없음 (root=${_escHtml(root)})
+      </div>`;
+      if (info) info.textContent = `'${q}' · 0 matches`;
+      return;
+    }
+    let html = '<ul style="list-style:none;padding-left:0;margin:0">';
+    for (const m of matches) {
+      const ext = (m.name.split('.').pop() || '').toLowerCase();
+      const canDownload = _DOWNLOAD_OK_EXTS.has(ext);
+      const dlLink = canDownload
+        ? `<a href="${API}/admin/files/download?root=${encodeURIComponent(root)}&path=${encodeURIComponent(m.path)}&api_key=${encodeURIComponent(apiKey)}"
+              target="_blank" rel="noopener"
+              style="color:var(--accent-fg);text-decoration:none;font-size:11px;
+                     margin-left:8px"
+              title="다운로드">⬇</a>`
+        : '';
+      html += `<li style="margin:3px 0;padding:6px 8px;
+                          border-bottom:1px dotted var(--border-2);
+                          display:flex;align-items:center;gap:8px">
+        <span style="color:var(--muted);font-size:11px;
+                     font-family:var(--font-mono);flex-shrink:0">${_escHtml(m.path)}</span>
+        <span style="color:var(--muted);font-size:11px;flex:1;text-align:right">
+          ${_humanSize(m.size)} · ${_humanMtime(m.mtime)}
+        </span>${dlLink}
+      </li>`;
+    }
+    html += '</ul>';
+    container.innerHTML = html;
+    const truncMsg = data.truncated ? ` (limit ${matches.length}; refine query)` : '';
+    if (info) info.textContent = `'${q}' · ${matches.length} matches${truncMsg}`;
+  } catch (e) {
+    container.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:#c00">
+      검색 실패: ${_escHtml(e.message)}
+    </div>`;
+  }
 }
 
 /* ── 언어 전환 — i18n.js의 t() 사용으로 대체됨 ── */
@@ -522,73 +1887,75 @@ async function loadSettings() {
     // 보호 파일 체크박스
     buildProtectedCheckboxes(data.protected || '');
 
-    // persona 로드
+    // [P3 unified UX 2026-05-10] persona 자유텍스트(style / custom) 제거.
+    // name 입력은 character 페이지(Identity 섹션)로 이전 — 여기서는 언어만.
     const p = data.persona || {};
-    if (p.name)   document.getElementById('set-name').value   = p.name;
-    if (p.style)  document.getElementById('set-style').value  = p.style;
-    if (p.custom) document.getElementById('set-custom').value = p.custom;
-
     const lang    = p.language || 'Korean';
     const langSel = document.getElementById('set-language');
     if (langSel) {
       const opt = Array.from(langSel.options).find(o => o.value === lang);
       if (opt) langSel.value = lang;
     }
-    updatePersonaPreview(p);
   } catch (e) {
     console.error('loadSettings:', e);
     // 체크박스는 기본값으로 초기화
     buildProtectedCheckboxes('');
   }
+  // [#A6-1] settings 진입 시 웹 검색 설정도 함께 로드
+  try { loadWebSearchConfig(); } catch (e) { console.warn(e); }
 }
 
-function updatePersonaPreview(p) {
-  const el = document.getElementById('persona-preview');
-  if (!el) return;
-  const name = p.name || t('app.name');
-  const style = p.style || '';
-  const lang = p.language || 'Korean';
-  el.textContent = `→ LLM: "Your name is ${name}. ${style ? `You are ${style}. ` : ''}Always answer in ${lang}요."`;
-}
+// [P3 unified UX 2026-05-10] savePersona / updatePersonaPreview 제거.
+// 자유 텍스트 페르소나(성향/역할 + 추가 지시)는 radar 와 충돌 → 완전 제거.
+// 이름 저장은 character 페이지의 saveIdentity 가 담당.
 
-async function savePersona() {
-  const name     = document.getElementById('set-name').value.trim();
-  const style    = document.getElementById('set-style').value.trim();
-  const language = document.getElementById('set-language').value.trim();
-  const custom   = document.getElementById('set-custom').value.trim();
-
-  if (!name && !style && !language) {
-    alert(t('set.persona_required'));
+async function saveIdentity() {
+  const nameEl = document.getElementById('set-name');
+  if (!nameEl) return;
+  const name = nameEl.value.trim();
+  if (!name) {
+    toast(t('char.identity_required') || '이름을 입력하세요', 'warn');
     return;
   }
-
-  const body = { api_key: apiKey, name, style, language, custom };
-
+  // Persona endpoint는 backward-compat 유지 — name 만 보내고 나머지는
+  // 빈 문자열 (서버가 truthy 검사로 무시).
   try {
     const r = await fetch(`${API}/admin/persona`, {
-      method:  'POST',
+      method: 'POST',
       headers: {
         'Content-Type':  'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        api_key:  apiKey,
+        name:     name,
+        style:    '',
+        language: '',
+        custom:   '',
+      }),
     });
-
     const data = await r.json();
-
-    if (!r.ok) {
-      alert(`❌ Save failed (${r.status})\n${data.detail || JSON.stringify(data)}`);
+    if (!r.ok || !data.success) {
+      toast(t('char.identity_save_fail') || '이름 저장 실패', 'warn');
       return;
     }
-
-    if (data.success) {
-      alert(`${t('set.persona_saved')}\n${JSON.stringify(data.saved||{})}`);
-      updatePersonaPreview(data.persona || body);
-    } else {
-      alert(`Save failed: ${JSON.stringify(data)}`);
-    }
+    toast(t('char.identity_saved') || '이름 저장 완료', 'success');
   } catch (e) {
-    alert(`❌ Network error: ${e.message}\nCheck that the server is running.`);
+    toast(t('char.identity_save_fail') || '이름 저장 실패: ' + e.message, 'warn');
+  }
+}
+
+window.saveIdentity = saveIdentity;
+
+// 캐릭터 페이지 진입 시 이름 입력 prefill — loadCharacter 안에서 호출.
+async function loadIdentity() {
+  try {
+    const data = await api('/admin/persona');
+    const p = data.persona || {};
+    const nameEl = document.getElementById('set-name');
+    if (nameEl && p.name) nameEl.value = p.name;
+  } catch (e) {
+    console.warn('[IDENTITY] load failed:', e.message);
   }
 }
 
@@ -605,6 +1972,111 @@ async function saveSettings() {
     const badge = document.getElementById('model-current-badge');
     if (badge) badge.textContent = `${t('set.model_checking').replace('checking...','').trim()} ${body.model}`;
     alert(t('set.server_saved'));
+  } catch (e) {
+    alert(`Failed: ${e.message}`);
+  }
+}
+
+/* ── [#A6-1] Web Search 설정 — role 권한 + threshold 조정 + 엔진 상태 ──
+   admin 페이지 settings 섹션에서 사용. loadSettings에서 같이 호출되어
+   체크박스/슬라이더 채움. saveWebSearchConfig는 별도 버튼 (다른 설정과
+   충돌 없이 독립 저장 — TAVILY 키 변경/엔진 전환 시 별도 reload 가능). */
+async function loadWebSearchConfig() {
+  try {
+    const data = await api('/admin/web-search-config/');
+    // 엔진 상태 표시 (engine_status: tavily/duckduckgo/none)
+    const statusEl = document.getElementById('web-search-status-display');
+    if (statusEl) {
+      const s = data.engine_status || {};
+      const active = s.active_engine || 'none';
+      const lines = [];
+      if (active === 'tavily') {
+        lines.push(`✅ Tavily 활성화 (key set, advanced 모드)`);
+      } else if (active === 'duckduckgo') {
+        lines.push(`🦆 DuckDuckGo fallback`);
+        if (!s.tavily_key) lines.push(`⚠️ TAVILY_API_KEY 미설정`);
+        if (s.tavily_exhausted) lines.push(`⚠️ Tavily 할당량 소진`);
+      } else {
+        lines.push(`❌ 검색 엔진 없음`);
+        if (!s.tavily_installed) lines.push(`pip install tavily-python`);
+        if (!s.ddg_installed) lines.push(`pip install duckduckgo-search`);
+      }
+      statusEl.innerHTML = lines.map(l => `<div>${l}</div>`).join('');
+
+      // [#A6-1 (b)] TAVILY_API_KEY 미설정 + DDG가 active이면 토스트 경고.
+      // 운영자는 .env에 키 추가하면 advanced 검색 + raw_content 본문까지
+      // 무료 1000회/월 사용 가능. 어드민 페이지 진입 1회만 alert.
+      if (!s.tavily_key && active === 'duckduckgo' && !window._toastedTavily) {
+        window._toastedTavily = true;
+        if (typeof toast === 'function') {
+          toast('⚠️ TAVILY_API_KEY 미설정 — DDG fallback 동작 중. .env에 추가 추천 (free 1000/월).', 'warn');
+        }
+      }
+    }
+    // 체크박스 채움
+    const allowed = new Set(data.allowed_roles || ['admin']);
+    document.querySelectorAll('.ws-role-cb').forEach(cb => {
+      cb.checked = allowed.has(cb.value);
+    });
+    // threshold slider
+    const slider = document.getElementById('ws-threshold');
+    const val    = document.getElementById('ws-threshold-val');
+    if (slider && data.threshold != null) {
+      slider.value = data.threshold;
+      if (val) val.textContent = Number(data.threshold).toFixed(2);
+      applyWsThresholdLabel(data.threshold);
+    }
+  } catch (e) {
+    console.warn('[admin] /admin/web-search-config/ load 실패:', e);
+  }
+}
+
+/* [#A8-2] threshold 슬라이더 값 → 직관적 라벨 매핑.
+   pipeline.py 의 `unified_score < threshold` 트리거 조건상,
+   threshold 가 *높을수록* 더 많은 쿼리가 웹 검색으로 넘어간다.
+     0.05~0.20  안함    — 거의 모든 쿼리가 internal-only
+     0.20~0.35  소극    — 자료 빈약할 때만 웹
+     0.35~0.50  보통    — default (0.30) 근처, 균형
+     0.50~0.65  적극    — 자료 풍부해도 자주 웹으로 보강
+     0.65~0.80  강력    — 거의 모든 쿼리에 웹 검색 (Tavily 할당량 빠르게 소진)
+   라벨별 색상도 다르게 — 시각적 강약 표현. */
+function applyWsThresholdLabel(value) {
+  const v = parseFloat(value);
+  const valEl   = document.getElementById('ws-threshold-val');
+  const labelEl = document.getElementById('ws-threshold-label');
+  if (valEl)   valEl.textContent = v.toFixed(2);
+  if (!labelEl) return;
+  let label, bg, fg;
+  if (v < 0.20)      { label = '안함';  bg = 'rgba(138,141,153,.18)'; fg = '#8a8d99'; }
+  else if (v < 0.35) { label = '소극';  bg = 'rgba(79,195,247,.18)';  fg = '#4fc3f7'; }
+  else if (v < 0.50) { label = '보통';  bg = 'rgba(99,102,241,.18)';  fg = '#a5b4fc'; }
+  else if (v < 0.65) { label = '적극';  bg = 'rgba(255,183,77,.20)';  fg = '#ffb74d'; }
+  else               { label = '강력';  bg = 'rgba(240,98,146,.22)';  fg = '#f06292'; }
+  labelEl.textContent       = label;
+  labelEl.style.background  = bg;
+  labelEl.style.color       = fg;
+}
+
+async function saveWebSearchConfig() {
+  const roles = Array.from(document.querySelectorAll('.ws-role-cb'))
+                     .filter(cb => cb.checked)
+                     .map(cb => cb.value);
+  if (roles.length === 0) {
+    alert('Allowed Roles는 최소 1개 필요. (전부 비활성화하려면 .env에서 TAVILY_API_KEY 제거)');
+    return;
+  }
+  const threshold = parseFloat(document.getElementById('ws-threshold').value);
+  try {
+    await api('/admin/web-search-config/', 'POST', {
+      api_key:       apiKey,
+      allowed_roles: roles,
+      threshold,
+    });
+    if (typeof toast === 'function') {
+      toast(`✅ 웹 검색 설정 저장됨 (roles=${roles.join(',')}, threshold=${threshold})`, 'success');
+    } else {
+      alert('Web search settings saved.');
+    }
   } catch (e) {
     alert(`Failed: ${e.message}`);
   }
@@ -1010,180 +2482,653 @@ async function learnFromErrors() {
 }
 
 /* ════════════════════════════════
-   P7-EVO-D: 성향 캐릭터 UI
+   [P2 unified UX 2026-05-10]
+   성향 캐릭터 UI — Interactive radar with correlation ripple
+   - SVG radar (드래그로 vertex 직접 이동)
+   - 점선 edges = 상관관계 (녹/적색 = 양/음 weight)
+   - vertex 이동 시 backend ripple 모방 → 영향받는 vertex 펄스
+   - 하단 슬라이더는 보조 정밀 입력 (양방향 동기화)
 ════════════════════════════════ */
 
-let _traits = [];
-let _radar  = null;
+let _traits = [];                  // [{id, label, label_ko, group, value, default, icon}]
+let _correlations = [];            // [{from, to, weight}]
+let _ripple_damping = 0.3;
+let _selected_trait_id = null;     // 마지막으로 클릭/드래그한 vertex
+let _drag_state = null;            // {tid, pointerId, cx, cy, R, angle}
+
+// Group A~D 짝(opposing) — 백엔드 _OPPONENTS와 정확히 일치해야 함.
+const _OPPONENTS = {
+  curiosity:'focus',     focus:'curiosity',
+  caution:'boldness',    boldness:'caution',
+  analytical:'intuitive', intuitive:'analytical',
+  independent:'collaborative', collaborative:'independent',
+};
+
+// ─── Radar 시각 layout (그룹 클러스터링) ─────────────────────────
+// 16 슬롯 × 22.5° 간격. 그룹별 인접 배치 → 그룹 ring 색과 시각 일치.
+// 짝(A~D)은 같은 그룹 안에 있어 자연히 인접. 균형 우선.
+// backend TRAITS 순서와 동일 — 명시 layout 으로 backend 의존성 제거.
+const _RADAR_LAYOUT = [
+  // Group A — 인지 (12시 시작, 시계방향)
+  'curiosity', 'focus',
+  // Group B — 신중성
+  'caution', 'boldness',
+  // Group C — 사고
+  'analytical', 'intuitive',
+  // Group D — 사회성
+  'independent', 'collaborative',
+  // Group E — 핵심 가치 (3개)
+  'security', 'creativity', 'empathy',
+  // Group F — 표현 스타일 (5개, 외곽 ring 핑크색과 매칭)
+  'conciseness', 'directness', 'optimism', 'risk_tolerance', 'patience',
+];
+
+function _layoutForRadar(traits) {
+  // backend trait 들을 _RADAR_LAYOUT 순서로 재정렬.
+  // layout 에 없는 trait (forward-compat) 은 끝에 append.
+  const byId = {};
+  traits.forEach(t => { byId[t.id] = t; });
+  const ordered = [];
+  const seen = new Set();
+  _RADAR_LAYOUT.forEach(id => {
+    if (byId[id]) { ordered.push(byId[id]); seen.add(id); }
+  });
+  traits.forEach(t => { if (!seen.has(t.id)) ordered.push(t); });
+  return ordered;
+}
 
 async function loadCharacter() {
   try {
-    const data = await api('/admin/character/');
-    _traits = data.traits || [];
+    // 두 API 병렬 호출 — traits + correlations.
+    const [data, corrData] = await Promise.all([
+      api('/admin/character/'),
+      api('/admin/character/correlations').catch(() => ({correlations: [], damping: 0.3})),
+    ]);
+    _traits          = data.traits || [];
+    _correlations    = corrData.correlations || [];
+    _ripple_damping  = corrData.damping ?? 0.3;
+    renderInteractiveRadar();
     renderTraitSliders(_traits);
-    renderRadarChart(_traits);
+    renderConnectionsPanel(null);
+    renderCharacterSummary();
+    // [P3 unified UX 2026-05-10] character 페이지의 Identity 섹션 prefill.
+    loadIdentity();
   } catch (e) {
     console.error('[CHARACTER]', e.message);
   }
 }
 
+// ─── 인터랙티브 SVG 레이더 ───────────────────────────────────────
+function renderInteractiveRadar() {
+  const svg = document.getElementById('char-radar');
+  if (!svg) return;
+
+  const W = 600, H = 600;
+  const cx = W/2, cy = H/2;
+  const R  = Math.min(W, H)/2 - 80;          // 라벨 공간 확보
+
+  // 짝(opposing pair) 이 180° 반대편에 배치되도록 layouted 순서.
+  // backend _traits 는 ID-keyed 함수에서 그대로 사용 (영향 X).
+  const traits = _layoutForRadar(_traits);
+  const n = traits.length;
+  if (!n) { svg.innerHTML = ''; return; }
+
+  // 각 trait의 angle (위쪽 12시 방향이 첫 trait, 시계방향).
+  const angles = traits.map((_, i) => (i / n) * Math.PI * 2 - Math.PI/2);
+  const angleMap = {};
+  traits.forEach((tr, i) => { angleMap[tr.id] = angles[i]; });
+
+  // 좌표 변환 — value(0..1) → (x, y).
+  function pt(idx, v) {
+    return {
+      x: cx + Math.cos(angles[idx]) * R * v,
+      y: cy + Math.sin(angles[idx]) * R * v,
+    };
+  }
+
+  let inner = '';
+
+  // ─── 1) 그룹별 동심원 ring (6 layer 입체 시각화) ────────────
+  // A=가장 안쪽(인지), F=가장 바깥(표현스타일). 색은 CSS .group-X 가 결정.
+  // value 비교성 유지를 위해 vertex 위치는 기존대로 base R × value 에 그대로.
+  // ring 들은 시각적 layer 표시만 — vertex 위치 계산과는 독립.
+  const _GROUP_RING_FACTORS = [
+    { group: 'a', factor: 0.20 },
+    { group: 'b', factor: 0.36 },
+    { group: 'c', factor: 0.52 },
+    { group: 'd', factor: 0.68 },
+    { group: 'e', factor: 0.84 },
+    { group: 'f', factor: 1.00 },
+  ];
+  _GROUP_RING_FACTORS.forEach(ring => {
+    const pts = angles.map((a) =>
+      `${(cx + Math.cos(a)*R*ring.factor).toFixed(1)},${(cy + Math.sin(a)*R*ring.factor).toFixed(1)}`
+    ).join(' ');
+    inner += `<polygon class="radar-grid group-${ring.group}" points="${pts}"/>`;
+  });
+
+  // ─── 2) 축 + 라벨 ────────────────────────────────────────────
+  angles.forEach((a, i) => {
+    const x2 = cx + Math.cos(a) * R;
+    const y2 = cy + Math.sin(a) * R;
+    inner += `<line class="radar-axis" x1="${cx}" y1="${cy}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/>`;
+    // 라벨 (icon + 한글명) — 외곽
+    const lx = cx + Math.cos(a) * (R + 30);
+    const ly = cy + Math.sin(a) * (R + 30);
+    const tr = traits[i];
+    const labelText = (tr.label_ko || tr.label);
+    inner += `
+      <text class="radar-icon" x="${lx.toFixed(1)}" y="${(ly-8).toFixed(1)}"
+            text-anchor="middle">${escapeHtml(tr.icon)}</text>
+      <text class="radar-label" x="${lx.toFixed(1)}" y="${(ly+8).toFixed(1)}"
+            text-anchor="middle">${escapeHtml(labelText)}</text>`;
+  });
+
+  // ─── 3) 짝(opposing) 연결선 — 인접 trait 짧은 dashed line ────
+  // 시각적으로 "두 trait이 1.0 sum 짝" 임을 알려줌.
+  // Group 클러스터링 layout 이라 짝은 같은 그룹 안 인접 위치 (22.5°).
+  const drawnPairs = new Set();
+  traits.forEach((tr, i) => {
+    const opp = _OPPONENTS[tr.id];
+    if (!opp) return;
+    const key = [tr.id, opp].sort().join('|');
+    if (drawnPairs.has(key)) return;
+    drawnPairs.add(key);
+    const j = traits.findIndex(x => x.id === opp);
+    if (j < 0) return;
+    const p1 = pt(i, traits[i].value);
+    const p2 = pt(j, traits[j].value);
+    inner += `<line class="pair-edge" x1="${p1.x.toFixed(1)}" y1="${p1.y.toFixed(1)}"
+                    x2="${p2.x.toFixed(1)}" y2="${p2.y.toFixed(1)}"/>`;
+  });
+
+  // ─── 4) 상관관계 edges (선택된 trait 강조) ───────────────────
+  _correlations.forEach((corr) => {
+    const i = traits.findIndex(x => x.id === corr.from);
+    const j = traits.findIndex(x => x.id === corr.to);
+    if (i < 0 || j < 0) return;
+    const p1 = pt(i, traits[i].value);
+    const p2 = pt(j, traits[j].value);
+    const sign = corr.weight >= 0 ? 'pos' : 'neg';
+    const isActive = _selected_trait_id &&
+                     (corr.from === _selected_trait_id || corr.to === _selected_trait_id);
+    const cls = `corr-edge ${sign}` + (isActive ? ' active' : '');
+    // 약한 곡선 (Q control point는 중심 쪽으로)
+    const mx = (p1.x + p2.x)/2;
+    const my = (p1.y + p2.y)/2;
+    const tx = cx + (mx - cx) * 0.6;
+    const ty = cy + (my - cy) * 0.6;
+    const sw = (1 + Math.abs(corr.weight) * 1.5).toFixed(2);
+    inner += `<path class="${cls}" d="M${p1.x.toFixed(1)},${p1.y.toFixed(1)}
+                                       Q${tx.toFixed(1)},${ty.toFixed(1)}
+                                       ${p2.x.toFixed(1)},${p2.y.toFixed(1)}"
+                    style="stroke-width:${sw}"/>`;
+  });
+
+  // ─── 5) 데이터 폴리곤 (값 영역) ──────────────────────────────
+  const polyPts = traits.map((tr, i) => {
+    const p = pt(i, tr.value);
+    return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+  }).join(' ');
+  inner += `<polygon class="radar-fill" points="${polyPts}"/>`;
+
+  // ─── 6) Vertex (드래그 가능) — 자기 group 색으로 ring 매칭 ──
+  traits.forEach((tr, i) => {
+    const p = pt(i, tr.value);
+    const sel = (tr.id === _selected_trait_id) ? ' selected' : '';
+    const grpCls = tr.group ? ` group-${String(tr.group).toLowerCase()}` : '';
+    inner += `<circle class="radar-vertex${grpCls}${sel}"
+                      cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="6"
+                      data-trait-id="${escapeHtml(tr.id)}"
+                      data-axis-index="${i}">
+                <title>${escapeHtml(tr.label_ko || tr.label)}: ${Math.round(tr.value*100)}%</title>
+              </circle>`;
+  });
+
+  svg.innerHTML = inner;
+
+  // ─── 7) Pointer events on vertices ───────────────────────────
+  // [PR #157 패턴 준수] inline onclick 없이 addEventListener 로만.
+  svg.querySelectorAll('.radar-vertex').forEach(circle => {
+    circle.addEventListener('pointerdown', onVertexPointerDown);
+  });
+}
+
+function onVertexPointerDown(ev) {
+  ev.preventDefault();
+  const circle = ev.currentTarget;
+  const tid = circle.getAttribute('data-trait-id');
+  const idx = parseInt(circle.getAttribute('data-axis-index'), 10);
+  if (!tid || isNaN(idx)) return;
+
+  _selected_trait_id = tid;
+  circle.classList.add('dragging');
+  circle.setPointerCapture(ev.pointerId);
+
+  // SVG 내부 좌표 시스템 — viewBox 600x600 기준이지만 화면 픽셀 크기는
+  // 다를 수 있음. CTM(currentTransformationMatrix)을 사용해서 변환.
+  const svg = document.getElementById('char-radar');
+  const n = _traits.length;
+  const angle = (idx / n) * Math.PI * 2 - Math.PI/2;
+  const cx = 300, cy = 300, R = 220;       // viewBox 600x600 기준
+
+  _drag_state = { tid, idx, pointerId: ev.pointerId, cx, cy, R, angle, svg };
+
+  svg.addEventListener('pointermove', onVertexPointerMove);
+  svg.addEventListener('pointerup',   onVertexPointerUp);
+  svg.addEventListener('pointercancel', onVertexPointerUp);
+
+  // 첫 드래그 직전 상태 — selected 강조 + 영향력 패널 갱신.
+  renderConnectionsPanel(tid);
+}
+
+function _svgPointToViewBox(svg, ev) {
+  const pt = svg.createSVGPoint();
+  pt.x = ev.clientX; pt.y = ev.clientY;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return null;
+  return pt.matrixTransform(ctm.inverse());
+}
+
+function onVertexPointerMove(ev) {
+  if (!_drag_state) return;
+  const { tid, idx, cx, cy, R, angle, svg } = _drag_state;
+  const p = _svgPointToViewBox(svg, ev);
+  if (!p) return;
+  // 드래그한 좌표를 해당 axis 위 길이로 사영(projection).
+  const dx = p.x - cx, dy = p.y - cy;
+  const proj = dx * Math.cos(angle) + dy * Math.sin(angle);   // axis 위 스칼라
+  let v = proj / R;
+  v = Math.max(0, Math.min(1, v));
+  v = Math.round(v * 100) / 100;                              // 1% 단위로 snap
+  applyTraitChangeLocally(tid, v, /*animate*/ false);
+}
+
+function onVertexPointerUp(ev) {
+  if (!_drag_state) return;
+  const { tid, svg } = _drag_state;
+  svg.removeEventListener('pointermove', onVertexPointerMove);
+  svg.removeEventListener('pointerup',   onVertexPointerUp);
+  svg.removeEventListener('pointercancel', onVertexPointerUp);
+  // 드래그 종료 시점 기준으로 ripple animation 시각화.
+  const tr = _traits.find(x => x.id === tid);
+  if (tr) animateRippleFor(tid, tr.value);
+  _drag_state = null;
+  // dragging 클래스 제거 (재렌더링이 처리하지만 명시).
+  svg.querySelectorAll('.radar-vertex.dragging').forEach(c => c.classList.remove('dragging'));
+  renderInteractiveRadar();
+  renderConnectionsPanel(tid);
+}
+
+// vertex 드래그 / 슬라이더 둘 다 호출 — 백엔드 ripple 로직 미러링.
+function applyTraitChangeLocally(traitId, newValue, animate=true) {
+  const idx = _traits.findIndex(x => x.id === traitId);
+  if (idx < 0) return;
+  const old = _traits[idx].value;
+  const delta = newValue - old;
+  _traits[idx].value = newValue;
+
+  // 짝 즉시 flip.
+  const opp = _OPPONENTS[traitId];
+  const skip = new Set([traitId]);
+  if (opp) {
+    const oi = _traits.findIndex(x => x.id === opp);
+    if (oi >= 0) {
+      _traits[oi].value = Math.round((1 - newValue) * 1000) / 1000;
+      skip.add(opp);
+    }
+  }
+
+  // 상관 trait ripple — backend와 동일 식.
+  _correlations.forEach(corr => {
+    if (corr.from !== traitId) return;
+    if (skip.has(corr.to)) return;
+    const ti = _traits.findIndex(x => x.id === corr.to);
+    if (ti < 0) return;
+    const oldVal = _traits[ti].value;
+    const nudge = delta * corr.weight * _ripple_damping;
+    let nv = Math.max(0, Math.min(1, oldVal + nudge));
+    nv = Math.round(nv * 1000) / 1000;
+    _traits[ti].value = nv;
+  });
+
+  // SVG + 슬라이더 UI 동기화.
+  renderInteractiveRadar();
+  syncSlidersToTraits();
+  renderCharacterSummary();
+  if (animate) {
+    // (드래그 중에는 매 프레임 호출되므로 끄고, 종료 시 한번만 발화)
+    animateRippleFor(traitId);
+  }
+}
+
+function animateRippleFor(sourceTid /*, _droppedValue */) {
+  // 드래그 종료 후 한 번만: ripple 클래스를 영향받은 vertex에 부여.
+  const svg = document.getElementById('char-radar');
+  if (!svg) return;
+  _correlations.forEach(corr => {
+    if (corr.from !== sourceTid) return;
+    const targetCircle = svg.querySelector(`.radar-vertex[data-trait-id="${corr.to}"]`);
+    if (!targetCircle) return;
+    const cls = corr.weight >= 0 ? 'ripple-pos' : 'ripple-neg';
+    targetCircle.classList.remove('ripple-pos', 'ripple-neg');
+    // force reflow → re-trigger animation
+    void targetCircle.getBoundingClientRect();
+    targetCircle.classList.add(cls);
+    // 슬라이더에도 동일 강조
+    const row = document.querySelector(`.trait-row[data-trait-id="${corr.to}"]`);
+    if (row) {
+      row.classList.remove('ripple-pos', 'ripple-neg');
+      void row.getBoundingClientRect();
+      row.classList.add(cls);
+      setTimeout(() => row.classList.remove(cls), 800);
+    }
+  });
+}
+
+// ─── 자연어 요약 카드 (P5c, 2026-05-10) ───────────────────────────
+// 16 trait → 핵심/가치/스타일 3-line 자연어 요약. 룰 기반 — Python
+// CharacterProfile.build_summary 와 1:1 미러. 드래그/슬라이더 변경 시
+// 즉시 갱신되어 사용자가 "지금 캐릭터가 어떤 성격인지" 즉각 체감.
+function buildCharacterSummary(traits) {
+  // traits → {id: value} 맵.
+  const v = {};
+  (traits || []).forEach(tr => { v[tr.id] = tr.value; });
+  const get = (id, fb=0.5) => (id in v ? v[id] : fb);
+
+  // label 미러 — Python TRAITS[*].label_ko 와 동일 어휘.
+  const KO = {
+    curiosity: '탐구심', focus: '집중력',
+    caution:   '신중함', boldness: '과감함',
+    analytical:'분석력', intuitive: '직관력',
+    independent:'독립성', collaborative: '협력성',
+  };
+
+  // ── 핵심 (Group A~D 우세 사이드) ─────────────────────────
+  const pairs = [
+    ['curiosity', 'focus'], ['caution', 'boldness'],
+    ['analytical','intuitive'], ['independent','collaborative'],
+  ];
+  const dominants = [];
+  pairs.forEach(([a, b]) => {
+    const va = get(a), vb = get(b);
+    if (Math.abs(va - vb) >= 0.10) dominants.push(KO[va > vb ? a : b]);
+  });
+  const core = dominants.length
+    ? dominants.join('·') + '이 두드러진 성격'
+    : '여러 성향이 균형을 이룬 성격';
+
+  // ── 가치 (Group E) ────────────────────────────────────────
+  const eRules = [
+    ['security',  '보안에 매우 민감함', '보안의식이 약함'],
+    ['creativity','창의성이 풍부함',    '창의성은 보통 이하'],
+    ['empathy',   '공감능력이 높음',    '공감 표현이 절제됨'],
+  ];
+  const valueParts = [];
+  eRules.forEach(([id, hi, lo]) => {
+    const x = get(id);
+    if      (x >= 0.65) valueParts.push(hi);
+    else if (x <= 0.35) valueParts.push(lo);
+  });
+  const values = valueParts.length
+    ? valueParts.join(', ')
+    : '특정 가치 편향이 두드러지지 않음';
+
+  // ── 스타일 (Group F) ──────────────────────────────────────
+  const fRules = [
+    ['conciseness',    '간결한',          '설명이 풍부한'],
+    ['directness',     '직설적인',        '우회적인'],
+    ['optimism',       '낙관적인',        '신중한 톤의'],
+    ['risk_tolerance', '위험을 감수하는', '안전 우선의'],
+    ['patience',       '인내심 있는',     '결론이 빠른'],
+  ];
+  const styleParts = [];
+  fRules.forEach(([id, hi, lo]) => {
+    const x = get(id);
+    if      (x >= 0.65) styleParts.push(hi);
+    else if (x <= 0.35) styleParts.push(lo);
+  });
+  const style = styleParts.length
+    ? styleParts.join(', ') + ' 표현 스타일'
+    : '균형 잡힌 표현 스타일';
+
+  return { core, values, style };
+}
+
+function renderCharacterSummary() {
+  const card = document.getElementById('char-summary');
+  if (!card) return;
+  const s = buildCharacterSummary(_traits);
+  const setText = (id, txt) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = txt;
+  };
+  setText('char-summary-core',   s.core);
+  setText('char-summary-values', s.values);
+  setText('char-summary-style',  s.style);
+}
+
+// ─── 우측 패널: 선택한 trait의 영향력 (P5b 자연어화) ─────────────
+// 사용자 요구: trait id + raw weight 가 아닌 "쉽게 알아보고 이해" 가능한
+// 자연어 설명. 3 섹션:
+//   ① 짝 (Group A~D) — sum=1.0 자동 flip
+//   ② 이 성향이 강해지면 영향받는 것 (outgoing edges)
+//   ③ 이 성향에 영향을 주는 것 (incoming edges)
+function renderConnectionsPanel(tid) {
+  const el = document.getElementById('char-connections');
+  if (!el) return;
+  if (!tid) {
+    el.innerHTML = `<div class="char-connections-empty">${
+      escapeHtml(t('char.connections_empty') || '레이더의 점을 클릭하면 그 성향과 연결된 다른 성향들이 표시됩니다.')
+    }</div>`;
+    return;
+  }
+  const tr = _traits.find(x => x.id === tid);
+  if (!tr) { el.innerHTML = ''; return; }
+  const traitName = tr.label_ko || tr.label;
+
+  // 강도 라벨 — |weight| 절대값 기준. damping 적용 후도 함께 표기.
+  const strengthLabel = (w) => {
+    const a = Math.abs(w);
+    if (a >= 0.40) return '강하게';
+    if (a >= 0.25) return '중간 정도로';
+    return '약하게';
+  };
+
+  // 짝 (Group A~D 만 존재)
+  const oppId = _OPPONENTS[tid];
+  const oppTr = oppId ? _traits.find(x => x.id === oppId) : null;
+
+  // outgoing — 이 성향이 변할 때 영향받는 것
+  const outEdges = _correlations
+    .filter(c => c.from === tid)
+    .map(c => ({ tr: _traits.find(x => x.id === c.to), weight: c.weight }))
+    .filter(r => r.tr);
+
+  // incoming — 이 성향에 영향을 주는 것
+  const inEdges = _correlations
+    .filter(c => c.to === tid)
+    .map(c => ({ tr: _traits.find(x => x.id === c.from), weight: c.weight }))
+    .filter(r => r.tr);
+
+  let html = `<div class="char-conn-header">
+                ${escapeHtml(tr.icon)} ${escapeHtml(traitName)}
+                <span style="color:var(--muted);font-size:11px;font-weight:400">
+                  · ${Math.round(tr.value*100)}%</span>
+              </div>`;
+
+  // ─── 짝 섹션 ────────────────────────────────────────────────
+  if (oppTr) {
+    html += `<div class="char-conn-section">
+               <div class="char-conn-section-title">↔ 짝 (자동 1.0 합)</div>
+               <div class="char-conn-explain">
+                 ${escapeHtml(oppTr.icon)} <b>${escapeHtml(oppTr.label_ko || oppTr.label)}</b>이/가
+                 <span class="char-conn-weight neg">자동으로 반대 방향</span>으로 함께 움직입니다.
+               </div>
+             </div>`;
+  }
+
+  // ─── outgoing 섹션 — "이 성향이 강해지면..." ──────────────────
+  if (outEdges.length > 0) {
+    html += `<div class="char-conn-section">
+               <div class="char-conn-section-title">↑ ${escapeHtml(traitName)} 이/가 강해지면…</div>`;
+    outEdges.forEach(r => {
+      const sign = r.weight >= 0 ? 'pos' : 'neg';
+      const verb = r.weight >= 0 ? '함께 강해집니다' : '약해집니다';
+      const arrow = r.weight >= 0 ? '↑' : '↓';
+      html += `<div class="char-conn-row">
+                 <span class="char-conn-label">
+                   ${escapeHtml(r.tr.icon)} <b>${escapeHtml(r.tr.label_ko || r.tr.label)}</b>이/가 ${verb}
+                 </span>
+                 <span class="char-conn-weight ${sign}">${arrow} ${strengthLabel(r.weight)}</span>
+               </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // ─── incoming 섹션 — "이 성향에 영향을 주는 것" ───────────────
+  if (inEdges.length > 0) {
+    html += `<div class="char-conn-section">
+               <div class="char-conn-section-title">↓ ${escapeHtml(traitName)} 에 영향을 주는 것</div>`;
+    inEdges.forEach(r => {
+      const sign = r.weight >= 0 ? 'pos' : 'neg';
+      const verb = r.weight >= 0 ? '강해지면 함께 강해집니다' : '강해지면 약해집니다';
+      const arrow = r.weight >= 0 ? '↑' : '↓';
+      html += `<div class="char-conn-row">
+                 <span class="char-conn-label">
+                   ${escapeHtml(r.tr.icon)} <b>${escapeHtml(r.tr.label_ko || r.tr.label)}</b>이/가 ${verb}
+                 </span>
+                 <span class="char-conn-weight ${sign}">${arrow} ${strengthLabel(r.weight)}</span>
+               </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // 독립 성향 (어디에도 연결 없음)
+  if (!oppTr && outEdges.length === 0 && inEdges.length === 0) {
+    html += `<div class="char-connections-empty" style="padding: 10px 0">
+               독립 성향 — 다른 성향과 연결되지 않습니다.
+             </div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+// ─── 보조 입력: 그룹별 슬라이더 (정밀 조정) ──────────────────────
 function renderTraitSliders(traits) {
   const container = document.getElementById('trait-sliders');
+  if (!container) return;
+  // Group 라벨 — i18n 미정의 시 기본값 fallback.
   const groups = {
-    A: t('char.group_a'), B: t('char.group_b'),
-    C: t('char.group_c'), D: t('char.group_d'), E: t('char.group_e')
+    A: t('char.group_a') || 'A · 인지 (탐구 ↔ 집중)',
+    B: t('char.group_b') || 'B · 신중성 (신중 ↔ 과감)',
+    C: t('char.group_c') || 'C · 사고 (분석 ↔ 직관)',
+    D: t('char.group_d') || 'D · 사회성 (독립 ↔ 협력)',
+    E: t('char.group_e') || 'E · 핵심 가치 (독립)',
+    F: t('char.group_f') || 'F · 표현 스타일 (독립)',
   };
+  // 그룹별 묶음 — Object.groupBy 사용 가능 환경이면 더 깔끔하지만 폴리필.
+  const byGroup = {};
+  traits.forEach(tr => {
+    if (!byGroup[tr.group]) byGroup[tr.group] = [];
+    byGroup[tr.group].push(tr);
+  });
+
   let html = '';
-  let currentGroup = null;
-  traits.forEach(tr => {                          // t → tr (t()함수와 충돌 방지)
-    if (tr.group !== currentGroup) {
-      if (currentGroup) html += '</div>';
-      currentGroup = tr.group;
-      html += `<div style="margin-bottom:14px">
-        <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);
-          letter-spacing:1px;margin-bottom:6px">
-          GROUP ${tr.group} — ${groups[tr.group]||''}
-        </div>`;
-    }
-    const pct = Math.round(tr.value * 100);
-    const opp = { curiosity:'focus', focus:'curiosity', caution:'boldness',
-                  boldness:'caution', analytical:'intuitive', intuitive:'analytical',
-                  independent:'collaborative', collaborative:'independent' };
-    html += `
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <span style="width:22px;text-align:center">${tr.icon}</span>
-        <span style="width:80px;font-size:12px;color:var(--text)">${tr.label}</span>
-        <input type="range" min="0" max="100" value="${pct}"
-          id="trait-${tr.id}"
-          style="flex:1;accent-color:var(--accent)"
-          oninput="onTraitChange('${tr.id}', this.value, '${opp[tr.id]||''}')">
-        <span style="width:32px;font-size:11px;font-family:var(--font-mono);
-          color:var(--accent);text-align:right" id="val-${tr.id}">${pct}%</span>
+  Object.keys(byGroup).sort().forEach(g => {
+    html += `<div class="trait-group">
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);
+                  letter-spacing:1px;margin:6px 0">
+        GROUP ${g} — ${escapeHtml(groups[g])}
       </div>`;
-  });
-  if (currentGroup) html += '</div>';
-  container.innerHTML = html;
-}
-
-function onTraitChange(traitId, pct, opponent) {
-  const val = parseInt(pct);
-  document.getElementById(`val-${traitId}`).textContent = val + '%';
-  // 상충 성향 자동 조정
-  if (opponent) {
-    const oppVal = 100 - val;
-    const oppEl = document.getElementById(`trait-${opponent}`);
-    const oppLbl = document.getElementById(`val-${opponent}`);
-    if (oppEl) oppEl.value = oppVal;
-    if (oppLbl) oppLbl.textContent = oppVal + '%';
-  }
-  // 레이더 갱신
-  const idx = _traits.findIndex(t => t.id === traitId);
-  if (idx >= 0) {
-    _traits[idx].value = val / 100;
-    if (opponent) {
-      const oppIdx = _traits.findIndex(t => t.id === opponent);
-      if (oppIdx >= 0) _traits[oppIdx].value = (100 - val) / 100;
-    }
-    renderRadarChart(_traits);
-  }
-}
-
-function renderRadarChart(traits) {
-  const canvas = document.getElementById('radar-chart');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-  const cx = W/2, cy = H/2, R = Math.min(W,H)/2 - 30;
-
-  ctx.clearRect(0, 0, W, H);
-
-  const n = traits.length;
-  const angles = traits.map((_, i) => (i / n) * Math.PI * 2 - Math.PI/2);
-
-  // 배경 격자
-  const style = getComputedStyle(document.documentElement);
-  const border = style.getPropertyValue('--border').trim() || '#333';
-  const muted  = style.getPropertyValue('--muted').trim()  || '#666';
-  const accent = style.getPropertyValue('--accent').trim() || '#7c6af7';
-
-  [0.25, 0.5, 0.75, 1.0].forEach(r => {
-    ctx.beginPath();
-    angles.forEach((a, i) => {
-      const x = cx + Math.cos(a) * R * r;
-      const y = cy + Math.sin(a) * R * r;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    byGroup[g].forEach(tr => {
+      const pct = Math.round(tr.value * 100);
+      html += `
+        <div class="trait-row" data-trait-id="${escapeHtml(tr.id)}"
+             style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <span style="width:22px;text-align:center">${escapeHtml(tr.icon)}</span>
+          <span style="width:90px;font-size:12px;color:var(--text)">${escapeHtml(tr.label_ko || tr.label)}</span>
+          <input type="range" min="0" max="100" value="${pct}"
+                 data-slider-id="${escapeHtml(tr.id)}"
+                 style="flex:1;accent-color:var(--accent)">
+          <span class="trait-pct" data-pct-id="${escapeHtml(tr.id)}"
+                style="width:36px;font-size:11px;font-family:var(--font-mono);
+                       color:var(--accent);text-align:right">${pct}%</span>
+        </div>`;
     });
-    ctx.closePath();
-    ctx.strokeStyle = border;
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    html += `</div>`;
   });
+  container.innerHTML = html;
 
-  // 축
-  angles.forEach((a, i) => {
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R);
-    ctx.strokeStyle = border;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    // 라벨
-    const lx = cx + Math.cos(a) * (R + 18);
-    const ly = cy + Math.sin(a) * (R + 18);
-    ctx.fillStyle = muted;
-    ctx.font = '10px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(traits[i].icon + ' ' + traits[i].label, lx, ly);
-  });
-
-  // 데이터 영역
-  ctx.beginPath();
-  angles.forEach((a, i) => {
-    const v = traits[i].value;
-    const x = cx + Math.cos(a) * R * v;
-    const y = cy + Math.sin(a) * R * v;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.closePath();
-  ctx.fillStyle = `${accent}33`;
-  ctx.fill();
-  ctx.strokeStyle = accent;
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // 데이터 포인트
-  angles.forEach((a, i) => {
-    const v = traits[i].value;
-    ctx.beginPath();
-    ctx.arc(cx + Math.cos(a)*R*v, cy + Math.sin(a)*R*v, 4, 0, Math.PI*2);
-    ctx.fillStyle = accent;
-    ctx.fill();
+  // [PR #157 패턴] data-attr + addEventListener — inline oninput X.
+  container.querySelectorAll('input[type="range"][data-slider-id]').forEach(input => {
+    input.addEventListener('input', onSliderInput);
+    input.addEventListener('change', onSliderChangeCommit);
   });
 }
 
+function onSliderInput(ev) {
+  const tid = ev.currentTarget.getAttribute('data-slider-id');
+  const v = parseInt(ev.currentTarget.value, 10) / 100;
+  _selected_trait_id = tid;
+  applyTraitChangeLocally(tid, v, /*animate*/ false);
+  renderConnectionsPanel(tid);
+}
+
+function onSliderChangeCommit(ev) {
+  const tid = ev.currentTarget.getAttribute('data-slider-id');
+  animateRippleFor(tid);
+}
+
+function syncSlidersToTraits() {
+  _traits.forEach(tr => {
+    const slider = document.querySelector(`input[data-slider-id="${tr.id}"]`);
+    const pct = document.querySelector(`[data-pct-id="${tr.id}"]`);
+    const newPct = Math.round(tr.value * 100);
+    if (slider && parseInt(slider.value, 10) !== newPct) slider.value = newPct;
+    if (pct) pct.textContent = newPct + '%';
+  });
+}
+
+// ─── Save / Reset ────────────────────────────────────────────────
 async function saveCharacter() {
   let ok = true;
+  // 백엔드 set_trait는 짝/ripple를 자동 적용하므로 — 중복 적용 방지를
+  // 위해 "변경된 trait의 source 만" 보내도 되지만, 안전하게는 전부
+  // POST. 서버가 멱등(idempotent)이라 같은 값 다시 보내도 문제 없음.
   for (const tr of _traits) {
-    const el = document.getElementById(`trait-${tr.id}`);
-    if (!el) continue;
-    const val = parseInt(el.value) / 100;
     try {
       await api('/admin/character/', 'POST',
-        { api_key: apiKey, trait_id: tr.id, value: val });
+        { api_key: apiKey, trait_id: tr.id, value: tr.value });
     } catch { ok = false; }
   }
-  toast(ok ? t('char.save_ok') : t('char.save_warn'), ok ? 'success' : 'warn');
+  toast(
+    ok ? (t('char.save_ok') || '성향 저장 완료')
+       : (t('char.save_warn') || '일부 성향 저장 실패'),
+    ok ? 'success' : 'warn'
+  );
 }
 
 function resetCharacter() {
-  const defaults = { curiosity:.5, focus:.5, caution:.7, boldness:.3,
+  // 백엔드 TRAITS의 default 값과 매치 — 16 traits.
+  const defaults = {
+    curiosity:.5, focus:.5, caution:.7, boldness:.3,
     analytical:.6, intuitive:.4, independent:.5, collaborative:.5,
-    security:.9, creativity:.5, empathy:.5 };
-  _traits.forEach(tr => { tr.value = defaults[tr.id] ?? 0.5; });
+    security:.9, creativity:.5, empathy:.5,
+    conciseness:.5, directness:.5, optimism:.5,
+    risk_tolerance:.4, patience:.6,
+  };
+  _traits.forEach(tr => { tr.value = defaults[tr.id] ?? tr.default ?? 0.5; });
+  _selected_trait_id = null;
+  renderInteractiveRadar();
   renderTraitSliders(_traits);
-  renderRadarChart(_traits);
+  renderConnectionsPanel(null);
+  renderCharacterSummary();
 }
+
+// 글로벌 export — 인라인 onclick (HTML의 saveCharacter / resetCharacter).
+window.saveCharacter  = saveCharacter;
+window.resetCharacter = resetCharacter;
 
 /* ════════════════════════════════
    P7-EVO-E: 능력 성장 UI
@@ -1220,33 +3165,67 @@ function renderCapabilities(caps) {
     </div>`).join('');
 }
 
+/* [#2-C] 도메인별 도넛 차트.
+   linear bar 대신 SVG ring으로 표시 — 진행도(tier_pct)가 호의 길이로
+   한눈에 보이고, level cap 제거(#2-B)로 두 자리 레벨도 자연스럽게
+   중앙에 표기. ring의 stroke-dasharray로 진행도를 그려 transition 적용.
+   각 도메인 색을 stage-color로 전달해 도넛 stroke + glow에 inject. */
+function _domainDonut(d) {
+  const r = 32;                // 반지름
+  const cx = 40, cy = 40;
+  const circ = 2 * Math.PI * r;
+  const tierPct = (d.tier_pct != null ? d.tier_pct : (d.pct ?? 0));
+  const filled = circ * (tierPct / 100);
+  return `
+    <svg viewBox="0 0 80 80" width="80" height="80" aria-label="domain progress">
+      <!-- 배경 트랙 -->
+      <circle cx="${cx}" cy="${cy}" r="${r}"
+              fill="none" stroke="var(--border, #2a2d33)" stroke-width="6"/>
+      <!-- 진행 호 -->
+      <circle cx="${cx}" cy="${cy}" r="${r}"
+              fill="none" stroke="${d.color}" stroke-width="6"
+              stroke-linecap="round"
+              transform="rotate(-90 ${cx} ${cy})"
+              stroke-dasharray="${filled} ${circ}"
+              style="filter:drop-shadow(0 0 4px ${d.color}88);
+                     transition:stroke-dasharray .6s ease"/>
+      <!-- 중앙 레벨 숫자 -->
+      <text x="${cx}" y="${cy + 1}" text-anchor="middle"
+            dominant-baseline="middle"
+            style="font-size:20px;font-weight:900;fill:${d.color};
+                   font-family:var(--font-mono, ui-monospace, monospace);
+                   letter-spacing:-1px">${d.level}</text>
+      <!-- "Lv" 레이블 -->
+      <text x="${cx}" y="${cy - 13}" text-anchor="middle"
+            style="font-size:8px;fill:var(--muted, #888);
+                   font-family:var(--font-mono, ui-monospace, monospace);
+                   letter-spacing:1px">LV</text>
+    </svg>
+  `;
+}
+
 function renderDomains(domains) {
   const el = document.getElementById('domain-levels');
   if (!el) return;
+  // [#2-C] 도넛 차트 그리드. 카드별 좌측 도넛 + 우측 메타데이터.
+  // [#2-B] level cap 제거 — "/10" 표기 삭제. 큰 숫자는 도넛 중앙에서
+  // 자동 fit (font-size 20px가 두 자리도 안전).
   el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">` +
     domains.map(d => `
       <div style="background:var(--surface);border:1px solid var(--border);
-        border-radius:8px;padding:14px">
-        <div style="display:flex;justify-content:space-between;
-                    align-items:center;margin-bottom:8px">
-          <span style="font-size:13px">${d.icon} <strong>${d.label}</strong></span>
-          <!-- [P2-11] 레벨 숫자: 굵고 크게 표시 -->
-          <span style="font-size:22px;font-weight:900;font-family:var(--font-mono);
-            color:${d.color};line-height:1;letter-spacing:-1px">
-            ${d.level}
-            <span style="font-size:11px;font-weight:400;color:var(--muted)">/ 10</span>
-          </span>
-        </div>
-        <div style="background:var(--bg);border-radius:4px;height:8px;overflow:hidden;margin-bottom:6px">
-          <div style="width:${d.pct}%;height:100%;
-            background:${d.color};border-radius:4px;
-            transition:width .6s ease;box-shadow:0 0 6px ${d.color}55"></div>
-        </div>
-        <!-- [P2-11] 실측 근거 표시 -->
-        <div style="display:flex;justify-content:space-between;
-                    font-size:10px;color:var(--muted);font-family:var(--font-mono)">
-          <span>📄 ${d.wiki_count ?? 0} wiki(s)</span>
-          <span>score ${d.score ?? 0}</span>
+        border-radius:8px;padding:14px;display:flex;align-items:center;gap:14px">
+        <!-- 좌: 도넛 -->
+        <div style="flex-shrink:0">${_domainDonut(d)}</div>
+        <!-- 우: 메타 -->
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;margin-bottom:6px">
+            ${d.icon} <strong>${d.label}</strong>
+          </div>
+          <div style="font-size:10px;color:var(--muted);
+                      font-family:var(--font-mono);line-height:1.6">
+            <div>다음까지 <strong style="color:${d.color}">${d.tier_pct ?? d.pct}%</strong></div>
+            <div>📄 ${d.wiki_count ?? 0} wiki · score ${d.score ?? 0}</div>
+          </div>
         </div>
       </div>`).join('') + '</div>';
 }

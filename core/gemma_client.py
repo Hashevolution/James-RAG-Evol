@@ -150,13 +150,54 @@ class GemmaClient:
 
     # ─── 메인 LLM 호출 ───────────────────────────────────────
 
-    def call_gemma(self, prompt: str, timeout: int = 90, use_cache: bool = True, max_tokens: int = 0) -> str:
+    def call_gemma(
+        self,
+        prompt: str,
+        timeout: int = 90,
+        use_cache: bool = True,
+        max_tokens: int = 0,
+        model: str = None,
+    ) -> str:
         """
         Gemma 모델 호출.
         [CACHE-BUG-FIX] 에러 응답 캐시 금지
         [C2-FIX]        <think> 블록 3단계 복구
         [CACHE-STAT]    hit/miss 카운터 업데이트
+        [#15]           model override (None이면 config.GEMMA_MODEL 기본)
+        [PR plan-1, 2026-05-09] model=None일 때 core.model_resolver로
+            폴백. 운영자 PC에 config의 default 모델이 설치돼 있으면
+            그것을 그대로 사용 (behavior unchanged). 미설치면 preference
+            list에서 첫 설치된 것으로 자동 fallback. 결정은 [MODEL_RESOLVE]
+            print로 로깅돼 운영자가 보임. 하나도 설치 안 된 경우 명확한
+            "ollama pull X" 안내 메시지로 RuntimeError 발생.
         """
+        if model:
+            # Caller specified a tag — verify it's installed before
+            # hitting Ollama. If not installed, the resolver falls
+            # through to the preference list (defense for picker
+            # selecting a not-yet-pulled model).
+            # [PR plan-4, 2026-05-09] gracefully handles "user picked
+            # gemma3:12b in dropdown but only gemma3:4b is installed".
+            from core.model_resolver import installed_models, resolve_for_mode
+            if model in installed_models():
+                actual_model = model
+            else:
+                resolved = resolve_for_mode("chat", requested=model)
+                if not resolved.tag:
+                    raise RuntimeError(resolved.warning)
+                actual_model = resolved.tag
+                if resolved.warning:
+                    print(f"[MODEL_RESOLVE] {resolved.warning}")
+        else:
+            from core.model_resolver import resolve_chat
+            resolved = resolve_chat()
+            if not resolved.tag:
+                # No models at all in Ollama — surface the install
+                # command rather than 404'ing through call_ollama.
+                raise RuntimeError(resolved.warning)
+            actual_model = resolved.tag
+            if resolved.warning:
+                print(f"[MODEL_RESOLVE] {resolved.warning}")
         self._total_calls += 1
         cache_key = self._generate_cache_key(prompt)
 
@@ -191,13 +232,20 @@ class GemmaClient:
                 resp = requests.post(
                     OLLAMA_API_URL,
                     json={
-                        "model":  GEMMA_MODEL,
+                        "model":  actual_model,
                         "prompt": prompt,
                         "stream": False,
                         "options": {
-                            "num_predict": max_tokens if max_tokens > 0 else 2000,
+                            # [#A8-5 2026-05-09] num_predict 기본값 2000 → 8192.
+                            # 사용자 보고: "대화 글자수가 중간에 짤리지 않고
+                            # 최대한 다 나올수 있도록". 이전 2000 토큰 ≈ 한국어
+                            # 1500자 — 보고서 양식 답변 잘림. 8192는 gemma 8K
+                            # 컨텍스트도 안전, 더 큰 모델은 자체 컨텍스트로
+                            # 더 길게 가능. -1 (무제한)도 옵션이지만 runaway
+                            # LLM 방어 위해 hard ceiling 유지.
+                            "num_predict": max_tokens if max_tokens > 0 else 8192,
                             "temperature": 0.2,    # 결정성 강화
-                            "num_ctx":     4096,   # 컨텍스트 확장
+                            "num_ctx":     8192,   # [#A8-5] 4096 → 8192 (긴 답변 토큰까지 수용)
                         },
                     },
                     timeout=timeout,

@@ -7,6 +7,9 @@
 [![Status](https://img.shields.io/badge/Status-v0.1.0--alpha-orange.svg)]()
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
 
+> **🚀 처음 시작하시는 분?** 컴퓨터 잘 모르셔도 따라하실 수 있는
+> [**비기너 가이드**](README.beginner.ko.md) 를 먼저 보세요.
+
 ---
 
 ## 프로젝트 상태: v0.1.0 (알파 / 연구 단계)

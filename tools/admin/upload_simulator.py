@@ -23,6 +23,10 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))))
 
+# Issue #2: cp949 콘솔에서 box-drawing 문자 크래시 방지.
+from utils.console import ensure_utf8_console
+ensure_utf8_console()
+
 G = "\033[92m"; R = "\033[91m"; Y = "\033[93m"; C = "\033[96m"
 B = "\033[1m";  E = "\033[0m"
 
@@ -107,7 +111,7 @@ def main():
     # ─── 5. Memory Trust 검증 ────────────────────────────
     print(f"\n{C}[5] Memory Trust 신뢰도 검증{E}")
     try:
-        from core.memory_trust import verify_before_write
+        from core.memory import verify_before_write
         ok, reason, score = verify_before_write(
             entity    = TEST_ENTITY,
             user_role = "admin",
