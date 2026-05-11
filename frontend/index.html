@@ -1174,10 +1174,18 @@
     </div>
 
     <div class="input-area">
+      <!-- W6: 챗 input 위 미니썸네일 row.
+           uploadQueue 가 비어있으면 display:none. 클릭 → 사이드바
+           업로드 모드 자동 전환 + expand. dragenter 단계에서도 미리
+           표시될 수 있게 chat.js 가 갱신한다. -->
+      <div id="chat-attachment-row"
+           style="display:none;flex-wrap:wrap;gap:6px;padding:6px 16px;
+                  border-bottom:1px solid var(--border-2);"></div>
       <div class="input-wrap">
         <textarea id="chat-input" placeholder="Type a message (Shift+Enter for new line)"
                   data-i18n-placeholder="chat.placeholder" rows="1"
-          oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
+          oninput="autoResize(this)" onkeydown="handleKey(event)"
+          onpaste="handleChatPaste(event)"></textarea>
         <button class="send-btn" id="send-btn" onclick="sendMessage()">▲</button>
       </div>
     </div>

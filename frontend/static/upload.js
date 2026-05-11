@@ -182,7 +182,15 @@ dropZone.addEventListener('drop', async e => {
     if (!e.dataTransfer.types.includes('Files')) return;
     e.preventDefault();
     dragDepth++;
-    if (dragDepth === 1) showOverlay();
+    if (dragDepth === 1) {
+      showOverlay();
+      // W6: switch sidebar to upload mode so the user sees the drop
+      // target before they release. switchSidebarMode 는 W5 의 공개
+      // entry point. 사이드바가 collapsed 상태면 expand 도 함께.
+      if (typeof switchSidebarMode === 'function') {
+        switchSidebarMode('upload');
+      }
+    }
   });
 
   window.addEventListener('dragover', e => {
@@ -209,15 +217,15 @@ dropZone.addEventListener('drop', async e => {
     if (files.length === 0) return;
 
     addFiles(files);
-    // 사이드바 자동 열기 — 큐 / 진행률 보이도록
-    if (typeof toggleSidebar === 'function') {
+    // W6: switchSidebarMode 가 expand 까지 처리 — 명시적으로 보장.
+    if (typeof switchSidebarMode === 'function') {
+      switchSidebarMode('upload');
+    } else if (typeof toggleSidebar === 'function') {
+      // Fallback for any host without W5 (e.g. older cached page).
       const sb = document.getElementById('sidebar');
-      if (sb && sb.classList.contains('collapsed')) {
-        toggleSidebar();
-      }
+      if (sb && sb.classList.contains('collapsed')) toggleSidebar();
     }
     if (typeof toast === 'function') {
-      // 폴더 드롭이면 내부 파일 다 펼쳐진 합계가 보임
       const folderHint = files.some(f => f.relPath && f.relPath.includes('/'))
                         ? ' (폴더 포함)' : '';
       toast(`파일 ${files.length}개 추가됨${folderHint}`, 'success');
@@ -262,7 +270,115 @@ function addFiles(files) {
     toast(msg, 'warn');
   }
   updateUploadBtn();
+  // W6: refresh the chat-input mini-thumbnails row.
+  if (typeof renderChatAttachmentRow === 'function') {
+    renderChatAttachmentRow();
+  }
 }
+
+
+/* ── W6: 챗 input 위 미니썸네일 row ──
+   사이드바 file-list 와 같은 uploadQueue 를 mirror 표시. 이미지는
+   FileReader 로 readAsDataURL 해서 base64 thumb, 그 외는 getFileIcon
+   이모지. 클릭 → 사이드바 업로드 모드 전환 + expand. 빈 큐 = 숨김.
+*/
+const _thumbDataCache = new Map(); // id → dataURL (이미지만)
+
+function _maybeLoadThumb(item) {
+  if (!item || !item.file) return;
+  if (_thumbDataCache.has(item.id)) return;
+  if (!/^image\//.test(item.file.type || '')) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    _thumbDataCache.set(item.id, reader.result);
+    // Re-render to swap the icon for the loaded thumb. Cheap — the
+    // row is only N items, and renderChatAttachmentRow is O(N).
+    renderChatAttachmentRow();
+  };
+  // No onerror handler — failure leaves the icon fallback in place.
+  try { reader.readAsDataURL(item.file); } catch (_) {}
+}
+
+function renderChatAttachmentRow() {
+  const row = document.getElementById('chat-attachment-row');
+  if (!row) return;
+  const queue = (typeof uploadQueue !== 'undefined') ? uploadQueue : [];
+  if (!queue.length) {
+    row.style.display = 'none';
+    row.innerHTML = '';
+    return;
+  }
+  row.style.display = 'flex';
+  row.innerHTML = queue.map(it => {
+    _maybeLoadThumb(it);
+    const isImg  = /^image\//.test(it.file.type || '');
+    const thumb  = isImg && _thumbDataCache.has(it.id)
+      ? `<img src="${_thumbDataCache.get(it.id)}" alt=""
+              style="width:100%;height:100%;object-fit:cover;border-radius:5px">`
+      : `<span style="font-size:18px">${
+          (typeof getFileIcon === 'function') ? getFileIcon(it.file.name) : '📄'
+        }</span>`;
+    const status = it.status === 'upload' ? '⬆️'
+                 : it.status === 'done'   ? '✅'
+                 : it.status === 'error'  ? '❌'
+                 : '';
+    // Truncate the display name — 16 chars + ext keeps the chip narrow.
+    const name = it.file.name.length > 22
+      ? it.file.name.slice(0, 16) + '…' + it.file.name.slice(-5)
+      : it.file.name;
+    return `
+      <div onclick="_chatAttachClick()"
+           title="${it.file.name.replace(/"/g, '&quot;')}"
+           style="display:flex;align-items:center;gap:6px;padding:4px 8px 4px 4px;
+                  background:var(--surface-2);border:1px solid var(--border);
+                  border-radius:8px;cursor:pointer;font-size:11px;color:var(--text-soft);
+                  max-width:200px;font-family:var(--font-ui)">
+        <span style="width:24px;height:24px;display:flex;align-items:center;
+                     justify-content:center;background:var(--bg);border-radius:5px;
+                     overflow:hidden;flex-shrink:0">${thumb}</span>
+        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+          ${name}
+        </span>
+        ${status ? `<span style="flex-shrink:0">${status}</span>` : ''}
+      </div>`;
+  }).join('');
+}
+
+// Single click target for the whole row — opens sidebar on the
+// upload mode so the user can inspect / remove / start the upload.
+window._chatAttachClick = function () {
+  if (typeof switchSidebarMode === 'function') {
+    switchSidebarMode('upload');
+  } else if (typeof toggleSidebar === 'function') {
+    const sb = document.getElementById('sidebar');
+    if (sb && sb.classList.contains('collapsed')) toggleSidebar();
+  }
+};
+
+
+/* ── W6: 챗 input 에 paste — 클립보드의 파일/이미지를 큐에 추가 ──
+   브라우저에서 이미지를 복사하면 ClipboardItem 으로 File-like 객체가
+   넘어옴. 텍스트 paste 는 무시하고 textarea 의 기본 동작 유지.
+*/
+window.handleChatPaste = function (e) {
+  if (!e.clipboardData || !e.clipboardData.items) return;
+  const files = [];
+  for (const item of e.clipboardData.items) {
+    if (item.kind === 'file') {
+      const f = item.getAsFile();
+      if (f) files.push(f);
+    }
+  }
+  if (!files.length) return;   // 일반 텍스트 paste 는 그대로
+  e.preventDefault();
+  addFiles(files);
+  if (typeof switchSidebarMode === 'function') {
+    switchSidebarMode('upload');
+  }
+  if (typeof toast === 'function') {
+    toast(`클립보드에서 파일 ${files.length}개 추가됨`, 'success');
+  }
+};
 
 /* ── 파일 제거 또는 진행 중 취소 ──
  *  Issue #14: when upload is in flight (item.status === 'upload' and xhr
@@ -280,6 +396,11 @@ function removeOrCancel(id) {
   const el = document.getElementById(`file-${id}`);
   if (el) el.remove();
   updateUploadBtn();
+  // W6: keep the chat-input mini-thumbnail row in sync.
+  if (typeof renderChatAttachmentRow === 'function') {
+    _thumbDataCache.delete(id);
+    renderChatAttachmentRow();
+  }
 }
 // Backwards-compat alias for any inline onclick that still calls removeFile
 function removeFile(id) { removeOrCancel(id); }
@@ -365,6 +486,11 @@ function setStatus(id, status, label) {
   // Per-file progress bar visible only during upload.
   const prog = document.getElementById(`progress-${id}`);
   if (prog) prog.style.display = (status === 'upload') ? '' : 'none';
+  // W6: keep the chat-input mini-thumbnail status indicator in sync
+  // (⬆️ / ✅ / ❌).
+  if (typeof renderChatAttachmentRow === 'function') {
+    renderChatAttachmentRow();
+  }
 }
 
 function setProgress(id, pct) {
