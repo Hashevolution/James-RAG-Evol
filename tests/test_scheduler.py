@@ -377,5 +377,204 @@ class ScheduleEndpointTests(_SchedulerFixture):
         self.assertIn(r.status_code, (401, 403))
 
 
+# ─── W8-D follow-up: unschedule + status ─────────────────────────
+
+class UnscheduleJobTests(_SchedulerFixture):
+    """``unschedule_job`` direct-call coverage — DB-only, no HTTP."""
+
+    def test_unschedule_converts_scheduled_to_one_shot(self):
+        from core.workspace import register_job, get_job
+        from core.scheduler import unschedule_job
+        jid = register_job("excel_build", [], owner="alice",
+                           schedule_cron="every:60",
+                           next_run_at=1_000_000)
+        self.assertTrue(unschedule_job(jid))
+        row = get_job(jid)
+        self.assertIsNone(row["schedule_cron"])
+        self.assertIsNone(row["next_run_at"])
+
+    def test_unschedule_returns_false_for_one_shot(self):
+        from core.workspace import register_job
+        from core.scheduler import unschedule_job
+        jid = register_job("excel_build", [], owner="alice")
+        self.assertFalse(unschedule_job(jid))
+
+    def test_unschedule_returns_false_for_unknown_job(self):
+        from core.scheduler import unschedule_job
+        self.assertFalse(unschedule_job("does-not-exist"))
+
+    def test_unscheduled_row_not_reclaimed(self):
+        # The contract that matters: once unscheduled, the scheduler
+        # must never pick the row up again.
+        from core.workspace import register_job
+        from core.scheduler import (
+            unschedule_job, claim_due_scheduled_jobs,
+        )
+        jid = register_job("excel_build", [], owner="alice",
+                           schedule_cron="every:60",
+                           next_run_at=1_000_000)
+        self.assertEqual(len(claim_due_scheduled_jobs(now=2_000_000)), 1)
+        unschedule_job(jid)
+        self.assertEqual(claim_due_scheduled_jobs(now=2_000_000), [])
+
+
+class ListUpcomingScheduledTests(_SchedulerFixture):
+    def test_orders_by_next_run_at_ascending(self):
+        from core.workspace import register_job
+        from core.scheduler import list_upcoming_scheduled
+        a = register_job("excel_build", [], owner="alice",
+                         schedule_cron="every:60", next_run_at=3_000_000)
+        b = register_job("excel_build", [], owner="alice",
+                         schedule_cron="every:60", next_run_at=1_000_000)
+        c = register_job("excel_build", [], owner="alice",
+                         schedule_cron="every:60", next_run_at=2_000_000)
+        rows = list_upcoming_scheduled(limit=20)
+        # NULL-first rule doesn't fire here — all three have integers.
+        ids = [r["job_id"] for r in rows if r["job_id"] in (a, b, c)]
+        self.assertEqual(ids, [b, c, a])
+
+    def test_skips_one_shot_rows(self):
+        from core.workspace import register_job
+        from core.scheduler import list_upcoming_scheduled
+        register_job("excel_build", [], owner="alice")  # one-shot
+        register_job("excel_build", [], owner="alice",
+                     schedule_cron="every:60", next_run_at=1_000_000)
+        rows = list_upcoming_scheduled(limit=20)
+        # Only the scheduled row should be present.
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["schedule_cron"], "every:60")
+
+    def test_limit_is_honored(self):
+        from core.workspace import register_job
+        from core.scheduler import list_upcoming_scheduled
+        for i in range(5):
+            register_job("excel_build", [], owner="alice",
+                         schedule_cron="every:60",
+                         next_run_at=1_000_000 + i)
+        rows = list_upcoming_scheduled(limit=3)
+        self.assertEqual(len(rows), 3)
+
+
+class UnscheduleEndpointTests(_SchedulerFixture):
+    @classmethod
+    def setUpClass(cls):
+        cls._api_key = _api_key()
+
+    def setUp(self):
+        if not self._api_key:
+            self.skipTest("JAMES_API_KEY missing")
+        super().setUp()
+
+    def _client(self):
+        from fastapi.testclient import TestClient
+        import server_llmwiki as srv
+        return TestClient(srv.app)
+
+    def _hdr(self, role: str):
+        from core.auth import create_token
+        return {"Authorization": f"Bearer {create_token('test-'+role, role)}"}
+
+    def _new_scheduled(self) -> str:
+        from core.workspace import register_job
+        return register_job("excel_build", [], owner="alice",
+                            schedule_cron="every:60",
+                            next_run_at=1_000_000)
+
+    def test_employee_blocked(self):
+        # workspace.schedule is admin-only by default — mirrors
+        # /jobs/schedule's gate.
+        jid = self._new_scheduled()
+        r = self._client().post(
+            "/jobs/unschedule",
+            params={"api_key": self._api_key},
+            json={"job_id": jid},
+            headers=self._hdr("employee"),
+        )
+        self.assertEqual(r.status_code, 403)
+
+    def test_admin_happy_path(self):
+        from core.workspace import get_job
+        jid = self._new_scheduled()
+        r = self._client().post(
+            "/jobs/unschedule",
+            params={"api_key": self._api_key},
+            json={"job_id": jid},
+            headers=self._hdr("admin"),
+        )
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertTrue(r.json()["ok"])
+        row = get_job(jid)
+        self.assertIsNone(row["schedule_cron"])
+
+    def test_one_shot_returns_404(self):
+        from core.workspace import register_job
+        jid = register_job("excel_build", [], owner="alice")
+        r = self._client().post(
+            "/jobs/unschedule",
+            params={"api_key": self._api_key},
+            json={"job_id": jid},
+            headers=self._hdr("admin"),
+        )
+        self.assertEqual(r.status_code, 404)
+
+    def test_unknown_job_returns_404(self):
+        r = self._client().post(
+            "/jobs/unschedule",
+            params={"api_key": self._api_key},
+            json={"job_id": "ghost-job"},
+            headers=self._hdr("admin"),
+        )
+        self.assertEqual(r.status_code, 404)
+
+
+class SchedulerStatusEndpointTests(_SchedulerFixture):
+    @classmethod
+    def setUpClass(cls):
+        cls._api_key = _api_key()
+
+    def setUp(self):
+        if not self._api_key:
+            self.skipTest("JAMES_API_KEY missing")
+        super().setUp()
+
+    def _client(self):
+        from fastapi.testclient import TestClient
+        import server_llmwiki as srv
+        return TestClient(srv.app)
+
+    def _hdr(self, role: str):
+        from core.auth import create_token
+        return {"Authorization": f"Bearer {create_token('test-'+role, role)}"}
+
+    def test_employee_blocked(self):
+        # admin.metrics is admin-only — employee → 403.
+        r = self._client().get(
+            "/admin/scheduler/status",
+            params={"api_key": self._api_key},
+            headers=self._hdr("employee"),
+        )
+        self.assertEqual(r.status_code, 403)
+
+    def test_admin_status_shape(self):
+        from core.workspace import register_job
+        register_job("excel_build", [], owner="alice",
+                     schedule_cron="every:60",
+                     next_run_at=1_000_000)
+        r = self._client().get(
+            "/admin/scheduler/status",
+            params={"api_key": self._api_key, "limit": 10},
+            headers=self._hdr("admin"),
+        )
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        for key in ("is_running", "poll_interval_sec", "retention_days",
+                    "last_retention_at", "now", "upcoming"):
+            self.assertIn(key, body)
+        self.assertIsInstance(body["upcoming"], list)
+        self.assertGreaterEqual(len(body["upcoming"]), 1)
+        # JAMES_DISABLE_SCHEDULER=1 in this test module → no thread.
+        self.assertFalse(body["is_running"])
+
+
 if __name__ == "__main__":
     unittest.main()

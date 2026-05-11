@@ -4070,6 +4070,73 @@ async def jobs_schedule(
     }
 
 
+# ─── W8-D follow-up: unschedule + scheduler status ─────────────
+
+class JobUnscheduleRequest(BaseModel):
+    job_id: str
+
+
+@app.post("/jobs/unschedule",
+          summary="정기 실행 해제 (W8-D follow-up)")
+async def jobs_unschedule(
+    data:    JobUnscheduleRequest,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
+    """Converts a scheduled row back into a one-shot. Mirror of
+    /jobs/schedule's authority surface — workspace.schedule
+    (admin-only default). 404 when the job doesn't exist or is
+    already a one-shot."""
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "workspace.schedule").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (workspace.schedule)")
+    from core.scheduler import unschedule_job
+    ok = unschedule_job(data.job_id)
+    ip = get_client_ip(request)
+    if not ok:
+        _write_audit(role, "/jobs/unschedule", query=data.job_id,
+                     security_event="unschedule_failed (unknown or one-shot)",
+                     ip_address=ip)
+        raise HTTPException(
+            status_code=404,
+            detail="해당 job 이 없거나 이미 정기실행이 아닙니다.",
+        )
+    _write_audit(role, "/jobs/unschedule", query=data.job_id,
+                 security_event="unscheduled", ip_address=ip)
+    return {"ok": True, "job_id": data.job_id}
+
+
+@app.get("/admin/scheduler/status",
+         summary="스케줄러 상태 + 다음 firing 목록 (W8-D follow-up)")
+async def admin_scheduler_status(
+    api_key: str,
+    limit:   int = 20,
+    role:    str = Depends(get_role_from_request),
+):
+    """Scheduler health snapshot.
+
+    Returns the live ``default_scheduler`` state (is_running,
+    poll_interval_sec, retention_days, last_retention) plus the next
+    N scheduled rows sorted by ``next_run_at``. Operator can spot
+    "scheduler stopped" (is_running=False), "retention never ran"
+    (last_retention=0), or "this job is stuck" (next_run_at in the
+    past) at a glance.
+
+    Gated by admin.metrics (matches /admin/metrics / dashboard).
+    """
+    _require_feature(api_key, role, "admin.metrics")
+    from core.scheduler import default_scheduler, list_upcoming_scheduled
+    return {
+        "is_running":         default_scheduler.is_running(),
+        "poll_interval_sec":  default_scheduler.poll_interval_sec,
+        "retention_days":     default_scheduler.retention_days,
+        "last_retention_at":  default_scheduler._last_retention,
+        "now":                int(time.time()),
+        "upcoming":           list_upcoming_scheduled(limit=limit),
+    }
+
+
 @app.get("/jobs/list", summary="내 job 목록 (W8-A)")
 async def jobs_list(
     request: Request,

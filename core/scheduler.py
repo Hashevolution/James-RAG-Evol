@@ -186,6 +186,50 @@ def update_schedule(job_id: str, next_run_at: Optional[int]) -> bool:
         conn.close()
 
 
+def unschedule_job(job_id: str) -> bool:
+    """Convert a scheduled job back into a one-shot (W8-D follow-up).
+
+    Clears both ``schedule_cron`` and ``next_run_at`` so the row no
+    longer reappears in ``claim_due_scheduled_jobs``. The historical
+    output_path and status are preserved — the operator can still
+    inspect what the last firing produced.
+
+    Returns False if the row doesn't exist or was already a one-shot.
+    """
+    conn = _get_conn()
+    try:
+        cur = conn.execute(
+            "UPDATE jobs SET schedule_cron = NULL, next_run_at = NULL "
+            "WHERE job_id = ? AND schedule_cron IS NOT NULL",
+            (job_id,),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def list_upcoming_scheduled(limit: int = 20) -> List[Dict]:
+    """Scheduled rows ordered by ``next_run_at`` ASC.
+
+    Used by /admin/scheduler/status to show what fires next. Returns
+    a slim shape (job_id / job_type / owner / schedule_cron /
+    next_run_at) — the full row is available via /admin/jobs/{id}.
+    """
+    conn = _get_conn()
+    try:
+        rows = conn.execute(
+            "SELECT job_id, job_type, owner, schedule_cron, next_run_at "
+            "FROM jobs WHERE schedule_cron IS NOT NULL "
+            "ORDER BY (next_run_at IS NULL) DESC, next_run_at ASC "
+            "LIMIT ?",
+            (max(1, min(int(limit), 200)),),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
 # ───────────────────────────────────────────────────────────────
 # Retention sweep
 # ───────────────────────────────────────────────────────────────
