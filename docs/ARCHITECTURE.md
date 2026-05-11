@@ -396,6 +396,47 @@ Result files land in `workspace/results/<job_id>/<filename>`. The
 download endpoint streams via `FileResponse`; the row stores only
 the relative path so a future relocation is a no-op DB migration.
 
+### 6.2 Scheduler + retention (W8-D, 2026-05-11)
+
+`core/scheduler.py` adds a polling background thread that re-fires
+jobs whose `schedule_cron` column is set, plus a daily sweep of
+`workspace/results/` to bound disk usage. No external dependency —
+the cron grammar is a small DSL rather than the full crontab format.
+
+**Cron DSL**:
+
+| spec | semantics |
+|---|---|
+| `every:N` | every N seconds (1 ≤ N ≤ 86400) |
+| `hourly` | top of each hour |
+| `daily:HH:MM` | every day at HH:MM local time |
+| `weekly:DOW:HH:MM` | DOW ∈ mon/tue/wed/thu/fri/sat/sun |
+
+Unknown / malformed spec → `compute_next_run` returns None; the
+scheduler pauses the row by setting `next_run_at = NULL`. An
+operator typo therefore costs one missed firing, not a runaway loop.
+
+**Endpoint**:
+
+| endpoint | feature | semantics |
+|---|---|---|
+| `POST /jobs/schedule` | `workspace.schedule` | inserts a row with the chosen spec + first `next_run_at`. Admin-only by default (cron touches shared resources). |
+
+**Loop**: every `poll_interval_sec` (default 60s) the scheduler
+selects rows with `schedule_cron IS NOT NULL AND (next_run_at IS
+NULL OR next_run_at <= now)`, runs `execute_job` for each, and
+writes the recomputed `next_run_at`. Daemon thread; per-tick errors
+are logged, never propagate.
+
+**Retention**: `workspace/results/<job_id>/` directories whose
+owning job's `finished_at` is older than `RESULT_RETENTION_DAYS`
+(default 90) are removed daily. Pending/running jobs are skipped.
+Legacy directories with no matching row fall back to filesystem
+mtime.
+
+**Disabling**: `JAMES_DISABLE_SCHEDULER=1` keeps the singleton
+dormant — useful for one-shot CLI tools and tests.
+
 **TrustedContent** is the wrapper every multimodal extractor (OCR,
 ASR, vision, web) returns instead of a raw string. Carries
 `(text, source, trust)` so the reasoning pipeline knows whether to run

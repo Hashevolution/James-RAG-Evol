@@ -227,7 +227,7 @@ class SelfLearner:
         """EvoAnalyzer 제안 생성."""
         try:
             from tools.self.evo_analyzer import _make_proposal, save_proposal
-            normalized = re.sub(r'[^\w가-힣]', '_', topic).strip('_')
+            re.sub(r'[^\w가-힣]', '_', topic).strip('_')
             p = _make_proposal(
                 prop_type   = "wiki_add",
                 title       = f"[자기학습] {topic}",

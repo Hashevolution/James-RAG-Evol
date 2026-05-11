@@ -26,9 +26,9 @@ PROTECTED_FILES 관리:
 import os
 import json
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Optional
 
-from core.policy_engine import default_engine, Capability
+from core.policy_engine import default_engine
 
 AUDIT_LOG_PATH = "james_audit_tool.jsonl"
 

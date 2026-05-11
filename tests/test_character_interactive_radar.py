@@ -315,7 +315,7 @@ class JsSliderTests(unittest.TestCase):
 
     def test_resetCharacter_includes_new_traits(self):
         idx = self.js.index("function resetCharacter")
-        nxt = self.js.index("\n", idx + 1)
+        self.js.index("\n", idx + 1)
         # Reset block has all defaults inline; expand to the closing brace.
         end = self.js.index("\n}", idx)
         body = self.js[idx:end]

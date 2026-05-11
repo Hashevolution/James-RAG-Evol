@@ -28,8 +28,7 @@ import time
 import base64
 import bcrypt
 from dataclasses import dataclass
-from typing import Optional, Dict, Tuple
-from pathlib import Path
+from typing import Optional, Dict
 
 # .env 자동 로드 보장 (config 모듈이 import 시점에 .env 파싱하여
 # os.environ에 주입). server_llmwiki는 config을 명시 import하지만,

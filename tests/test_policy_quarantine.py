@@ -21,7 +21,6 @@ import os
 import sys
 import unittest
 from contextlib import redirect_stdout
-from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

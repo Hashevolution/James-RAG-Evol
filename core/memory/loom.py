@@ -206,7 +206,6 @@ if __name__ == "__main__":
 
     def chk(name, ok, detail=""):
         global passed
-        passed_local = ok
         print(f"  {'✅' if ok else '❌'} {name}" + (f" → {detail}" if detail else ""))
         return ok
 
@@ -264,4 +263,4 @@ if __name__ == "__main__":
     chk("Gate5 confidence 충돌 (diff>0.3)", not ok5, r[:60])
 
     print(f"\n  통계: {loom.get_stats()}")
-    print(f"\n✅ Memory Loom 자가 테스트 완료")
+    print("\n✅ Memory Loom 자가 테스트 완료")

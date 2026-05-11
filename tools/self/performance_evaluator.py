@@ -18,7 +18,6 @@ PROJECT JAMES — Performance Evaluator (Phase 8, P8-EVAL-1)
 """
 
 import json
-import time
 from collections import deque
 from datetime import datetime
 from pathlib import Path
@@ -215,9 +214,9 @@ class PerformanceEvaluator:
                         f"등급: {grade} ({eval_result['total_score']}/100)\n\n"
                         f"### 문제점\n" +
                         "\n".join(f"- {i}" for i in issues) +
-                        f"\n\n### 권장 조치\n"
-                        f"- 응답 속도 개선: 캐시 전략 검토\n"
-                        f"- 지식 베이스 보강 권장"
+                        "\n\n### 권장 조치\n"
+                        "- 응답 속도 개선: 캐시 전략 검토\n"
+                        "- 지식 베이스 보강 권장"
                     ),
                     metadata    = {
                         "auto_eval": True,

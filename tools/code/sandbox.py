@@ -33,7 +33,7 @@ import json
 import time
 import subprocess
 from datetime import datetime
-from typing import Tuple, Optional
+from typing import Tuple
 
 # ─── 상수 ────────────────────────────────────────────────────
 

@@ -25,7 +25,7 @@ PROJECT JAMES — Web Searcher (3-E)
 import os
 import re
 import time
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 from datetime import datetime
 from pathlib import Path
 
@@ -127,7 +127,7 @@ def search_web(query: str, max_results: int = MAX_RESULTS) -> List[Dict]:
             # 할당량 초과 → 이후 DuckDuckGo로 고정
             if any(k in err_str for k in ["quota", "limit", "429", "rate", "exceeded"]):
                 _tavily_exhausted = True
-                print(f"[WEB] Tavily 할당량 초과 → DuckDuckGo fallback 전환")
+                print("[WEB] Tavily 할당량 초과 → DuckDuckGo fallback 전환")
             else:
                 print(f"[WEB] Tavily 오류: {e} → DuckDuckGo fallback")
 
@@ -142,7 +142,7 @@ def search_web(query: str, max_results: int = MAX_RESULTS) -> List[Dict]:
         print(f"[WEB] DuckDuckGo 오류: {e}")
 
     # ── 실패 ──────────────────────────────────────────────────
-    print(f"[WEB] 모든 검색 엔진 실패 — pip install tavily-python duckduckgo-search")
+    print("[WEB] 모든 검색 엔진 실패 — pip install tavily-python duckduckgo-search")
     return []
 
 
@@ -154,11 +154,11 @@ def get_search_engine_status() -> Dict:
     # ── Tavily 설치 감지: TavilyClient import로 확인 (최상위 패키지 대신) ──
     tavily_installed = False
     try:
-        from tavily import TavilyClient  # 실제 사용하는 클래스로 감지
+        from tavily import TavilyClient  # 실제 사용하는 클래스로 감지  # noqa: F401
         tavily_installed = True
     except ImportError:
         try:
-            import tavily  # fallback
+            import tavily  # fallback  # noqa: F401
             tavily_installed = True
         except ImportError:
             tavily_installed = False
@@ -166,11 +166,11 @@ def get_search_engine_status() -> Dict:
     # ── DDG 설치 감지: DDGS 클래스로 확인 ──
     ddg_installed = False
     try:
-        from duckduckgo_search import DDGS  # 실제 사용하는 클래스로 감지
+        from duckduckgo_search import DDGS  # 실제 사용하는 클래스로 감지  # noqa: F401
         ddg_installed = True
     except ImportError:
         try:
-            import duckduckgo_search
+            import duckduckgo_search  # noqa: F401
             ddg_installed = True
         except ImportError:
             ddg_installed = False
@@ -547,7 +547,7 @@ def save_as_longterm(
         # entity 정보 구성
         topic    = _topic_key(query)
         sources  = [r["url"] for r in results if r.get("url")]
-        source_str = "\n".join(f"- {u}" for u in sources[:3])
+        "\n".join(f"- {u}" for u in sources[:3])
         now      = datetime.now().isoformat()
 
         entity = {
@@ -608,7 +608,6 @@ def update_knowledge_level(query: str, is_longterm: bool = False):
     try:
         from core.knowledge_tracker import KnowledgeTracker
         kt = KnowledgeTracker()
-        signal = "web_longterm" if is_longterm else "web_shortterm"
         domain = kt.classify_domain(query) if hasattr(kt, 'classify_domain') else "general"
         delta  = 5.0 if is_longterm else 2.0
 

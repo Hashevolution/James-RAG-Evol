@@ -1,19 +1,28 @@
 # JAMES — ruff config
 #
-# Phase 1 (this commit, 2026-05-11): enforce F821 (undefined names) only.
-# Phase 2 (next cycle):   apply --fix for F401 (unused-import) and
-#                          F541 (f-string-missing-placeholders).
-#                          Both auto-fixable + safe.
-# Phase 3:                 address F841 (unused-variable) + F811
-#                          (redefined-while-unused) — manual review.
-# Phase 4:                 extend to E (pycodestyle), W, I (isort).
+# Phase 1 (2026-05-11): enforce F821 (undefined names) only.
+# Phase 2 (2026-05-11): auto-fix F541 (96 cleared, ENFORCED).
+#                       F401 partially auto-fixed (164 of 206).
+# Phase 3 (2026-05-11, this commit):
+#   - Remaining 42 F401 marked with ``# noqa: F401`` — all sites are
+#     intentional try-import availability checks or __init__.py
+#     re-exports. F401 now ENFORCED so new unused imports get caught.
+#   - F841 unused-variable: 28 → 0. Auto-fix handled 2 safely; 24
+#     unsafe-fixes applied + verified by full test suite; the final
+#     pair (g_, b_) in test_graph_visual_rendering.py rewritten to
+#     ``_, _, _, a_`` (tuple unpacking). ENFORCED.
+#   - F811 redefined-while-unused: still 4 (all in
+#     core/memory/extractor.py — duplicate def blocks). Deferred to
+#     a focused PR; the dead first definitions need a deliberate
+#     deletion + behavioural test, not a one-liner.
+# Phase 4: extend to E (pycodestyle), W, I (isort).
 #
-# Current Pyflakes inventory (snapshot at 2026-05-11):
-#   F821 — 0  ← enforced (was 4: server_llmwiki.py + 3× wiki_editor.py)
-#   F401 — 205 (auto-fixable)
-#   F541 — 96  (auto-fixable)
-#   F841 — 28  (auto-fixable)
-#   F811 — 4   (manual)
+# Current Pyflakes inventory (post-Phase 3):
+#   F821 — 0  ← enforced (Phase 1)
+#   F541 — 0  ← enforced (Phase 2)
+#   F401 — 0  ← enforced (Phase 3, intentional sites noqa-marked)
+#   F841 — 0  ← enforced (Phase 3)
+#   F811 — 4  (deferred — core/memory/extractor.py)
 #
 # Why F821 first
 # --------------
@@ -58,4 +67,5 @@ exclude = [
 ]
 
 [lint]
-select = ["F821"]
+# Phase 1-3 selectors. F811 deferred (see preamble Phase 3 notes).
+select = ["F821", "F541", "F401", "F841"]

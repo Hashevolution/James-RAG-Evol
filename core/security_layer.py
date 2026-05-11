@@ -15,7 +15,7 @@ Phase 4 신규:
 import re
 import json
 from datetime import datetime
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Set, Tuple
 
 # ─── 정책 ────────────────────────────────────────────────────
 

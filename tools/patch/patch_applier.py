@@ -105,7 +105,7 @@ def apply(patch: dict, validated: bool = False) -> Tuple[bool, str]:
                 return False, msg
         else:
             # 코드 블록 직접 쓰기
-            existing = p.read_text(encoding="utf-8") if p.exists() else ""
+            p.read_text(encoding="utf-8") if p.exists() else ""
             p.write_text(code, encoding="utf-8")
 
     except Exception as e:

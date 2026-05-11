@@ -16,7 +16,6 @@ PROJECT JAMES — Feedback Engine (P7-EVO-C)
 """
 
 import json
-import re
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -156,7 +155,6 @@ class FeedbackEngine:
         """강화 → preferences에 저장."""
         try:
             from core.memory import MemoryStore
-            from core.memory import validate_memory
             store = MemoryStore()
             key   = f"feedback_reinforce:{direction_id[:30]}"
             store._save_preference(key, f"강화됨(score={score:.2f})")
@@ -193,9 +191,9 @@ class FeedbackEngine:
                 prop_type   = "knowledge_update",
                 title       = f"[지식보강] 웹 검색으로 '{topic_key}' 지식 업그레이드",
                 description = (
-                    f"부정 피드백이 누적됐습니다. "
-                    f"이 주제에 대한 내부 지식이 부족할 수 있습니다.\n"
-                    f"웹 검색으로 최신 정보를 수집하여 장기 지식으로 저장하겠습니다."
+                    "부정 피드백이 누적됐습니다. "
+                    "이 주제에 대한 내부 지식이 부족할 수 있습니다.\n"
+                    "웹 검색으로 최신 정보를 수집하여 장기 지식으로 저장하겠습니다."
                 ),
                 content     = (
                     f"자동 실행 내용:\n"

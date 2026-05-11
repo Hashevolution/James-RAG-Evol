@@ -25,7 +25,6 @@ import sys
 import shutil
 import sqlite3
 from pathlib import Path
-from datetime import datetime
 
 # Issue #2: cp949 콘솔에서 box-drawing 문자 크래시 방지.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -185,11 +184,11 @@ def main():
     print()
     print("=" * 58)
     if DRY_RUN:
-        print(f"  [DRY-RUN 완료] 실제 삭제된 것 없음")
-        print(f"  실제 리셋: python reset_for_production.py")
+        print("  [DRY-RUN 완료] 실제 삭제된 것 없음")
+        print("  실제 리셋: python reset_for_production.py")
     else:
-        print(f"  ✅ 리셋 완료")
-        print(f"  이제 실제 데이터를 투입할 수 있습니다.")
+        print("  ✅ 리셋 완료")
+        print("  이제 실제 데이터를 투입할 수 있습니다.")
         print()
         print("  다음 단계:")
         print("  1. python server_llmwiki.py  (서버 재시작)")

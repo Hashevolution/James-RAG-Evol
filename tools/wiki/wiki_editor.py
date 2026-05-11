@@ -129,7 +129,7 @@ def _refresh_index():
                 from core.graph_rag_engine import RAGEngine
         engine = RAGEngine(default_role="admin")
         engine.wiki_generator.refresh_entity_map()
-        print(f"[WIKI_EDIT] entity_id_index 갱신 완료")
+        print("[WIKI_EDIT] entity_id_index 갱신 완료")
     except Exception as e:
         print(f"[WIKI_EDIT] entity_id_index 갱신 실패: {e}")
 
@@ -167,7 +167,7 @@ def find_entity_file(name: str) -> Optional[Path]:
 def list_entities(entity_type: str = "", limit: int = 50) -> list:
     """entity 목록 반환"""
     results = []
-    pattern = f"**/*.md"
+    pattern = "**/*.md"
     for md in list(WIKI_PATH.rglob(pattern))[:limit]:
         if not _in_wiki_dir(md): continue
         results.append({
@@ -255,7 +255,7 @@ def delete_entity(name: str, user_role: str = "admin") -> Tuple[bool, str]:
         return False, "WIKI_DIR 범위 외 파일 접근 차단"
 
     backup = _backup(path)
-    content = path.read_text(encoding="utf-8")
+    path.read_text(encoding="utf-8")
 
     path.unlink()
     _audit("DELETE", path.name, f"삭제됨 (백업: {backup.name})", user_role)

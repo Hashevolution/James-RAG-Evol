@@ -13,12 +13,9 @@ VRAM 주의:
   → is_gemma_loaded() 체크 후 교체
 """
 
-import os
-import re
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 SUPPORTED_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff"}
 RESULT_LOG     = "james_multimodal_log.jsonl"

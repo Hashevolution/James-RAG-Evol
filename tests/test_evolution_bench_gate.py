@@ -170,7 +170,6 @@ class GateOutcomeTests(unittest.TestCase):
         return asyncio.run(run_bench_gate(patch_id, target, suite=suite))
 
     def test_skipped_when_env_off(self):
-        from tools.patch.bench_gate import run_bench_gate
         os.environ["JAMES_EVOLUTION_GATE"] = "0"
         result = self._run("p1", "./workspace/dummy.py")
         self.assertTrue(result.passed)

@@ -119,7 +119,7 @@ class BucketBoundaryBehaviorTests(unittest.TestCase):
         # Default threshold 0.30 should land in 보통 — not too aggressive,
         # not silenced.
         self.assertEqual(self._label(0.30), "소극",
-            f"sanity — 0.30 is in [0.20, 0.35) bucket = 소극")
+            "sanity — 0.30 is in [0.20, 0.35) bucket = 소극")
 
     def test_005_is_off(self):
         self.assertEqual(self._label(0.05), "안함")

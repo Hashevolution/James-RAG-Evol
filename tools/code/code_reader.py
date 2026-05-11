@@ -17,7 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from tools.code.sandbox import policy_validate_path, log_security_event, ALLOWED_PATHS
+from tools.code.sandbox import policy_validate_path, log_security_event
 
 AUDIT_LOG_PATH = "james_audit_tool.jsonl"
 
@@ -168,7 +168,7 @@ class CodeReader:
                         "size_kb":   round(f.stat().st_size / 1024, 2),
                         "lines":     None,   # 빠른 목록은 라인 수 생략
                     })
-        except Exception as e:
+        except Exception:
             return False, []
 
         print(f"[READER] 목록: {directory} → {len(files)}개 파일")

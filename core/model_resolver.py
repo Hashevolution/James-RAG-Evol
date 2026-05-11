@@ -34,7 +34,7 @@ import json
 import os
 import time
 import urllib.request
-from typing import List, NamedTuple, Optional, Set
+from typing import List, NamedTuple, Set
 
 
 # ─── Default preference lists ──────────────────────────────────────

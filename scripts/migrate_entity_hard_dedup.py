@@ -177,7 +177,7 @@ def main() -> int:
 
     groups = yaml.safe_load(SYNONYMS_FILE.read_text(encoding="utf-8")) or []
     if not isinstance(groups, list):
-        print(f"[FATAL] synonyms.yaml is not a list of groups")
+        print("[FATAL] synonyms.yaml is not a list of groups")
         return 2
 
     files = sorted(WIKI_BASE.rglob("*.md"))
@@ -352,7 +352,7 @@ def main() -> int:
         canon_fm["updated_at"]     = datetime.now(timezone.utc).isoformat()
         entries[canonical_path] = (canon_fm, canon_body)
 
-        added = [r for r in merged_relations
+        [r for r in merged_relations
                  if r not in (canon_fm.get("relations") or [])]
         print(f"    → relations: {len(merged_relations)}, "
               f"aliases: {len(merged_aliases)}, sources: {len(merged_sources)}")
@@ -396,15 +396,15 @@ def main() -> int:
     # Phase 5 — apply ----------------------------------------------------
     summary_groups = len(plan)
     summary_drops  = sum(len(d) for _, d in plan)
-    print(f"\n--- summary ---")
+    print("\n--- summary ---")
     print(f"groups merged:     {summary_groups}")
     print(f"entities dropped:  {summary_drops}")
     print(f"entities rewritten (incoming): {rewritten_count}")
     if skipped:
         print(f"groups skipped (conflict): {len(skipped)} → {skipped}")
-    print(f"ChromaDB:          no action needed — chunk metadata does "
-          f"not carry entity_id; entity resolution is .md-driven at "
-          f"query time.")
+    print("ChromaDB:          no action needed — chunk metadata does "
+          "not carry entity_id; entity resolution is .md-driven at "
+          "query time.")
 
     if not args.apply:
         print("\nRe-run with --apply to write changes.")

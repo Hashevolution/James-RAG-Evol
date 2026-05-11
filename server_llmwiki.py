@@ -36,9 +36,8 @@ from config import UPLOAD_DIR, WIKI_DIR, CHROMA_DIR, API_KEY, MAX_UPLOAD_BYTES
 from core.graph_rag_engine import RAGEngine
 from core.feedback_engine import FeedbackEngine
 from core.auth import (
-    authenticate, get_role_from_token, add_user, ALLOWED_ROLES, DEV_MODE,
-    signup as _auth_signup, SignupResult,
-    list_users as _auth_list_users,
+    authenticate, get_role_from_token, ALLOWED_ROLES, DEV_MODE,
+    signup as _auth_signup, list_users as _auth_list_users,
     approve_user as _auth_approve_user,
     reject_user as _auth_reject_user,
     deactivate_user as _auth_deactivate_user,
@@ -291,6 +290,22 @@ async def on_startup():
             print(f"[DATA] backfilled {n} legacy artifact row(s) from {UPLOAD_DIR}")
     except Exception as e:
         print(f"[STARTUP] data-artifact backfill skipped: {e}")
+
+    # [W8-D 2026-05-11] Background scheduler — re-fires scheduled
+    # jobs (``every:N`` / ``hourly`` / ``daily:HH:MM`` /
+    # ``weekly:DOW:HH:MM``) and sweeps stale workspace/results/ dirs
+    # once a day. Daemon thread; per-tick errors are logged, never
+    # propagate. Disabled via ``JAMES_DISABLE_SCHEDULER=1`` for
+    # one-shot CLI / test harness setups.
+    if os.environ.get("JAMES_DISABLE_SCHEDULER", "0") != "1":
+        try:
+            from core.scheduler import default_scheduler
+            default_scheduler.start()
+            print(f"[SCHED] background scheduler started "
+                  f"(poll={default_scheduler.poll_interval_sec}s, "
+                  f"retention={default_scheduler.retention_days}d)")
+        except Exception as e:
+            print(f"[STARTUP] scheduler start skipped: {e}")
 
     # [PR plan-3, 2026-05-09] LLM readiness check + friendly install
     # guidance. If Ollama has 0 models, every /query/ would fail. We
@@ -642,23 +657,18 @@ async def upload(
     ip = get_client_ip(request)
 
     # [video-reject 2026-05-10, W1 진단 §3-C Option C] 영상 파일은 현재
-    # extract_video 가 stub (file_processor.py) — silent failure 로 ChromaDB
-    # 에 노이즈 인덱스를 만들기 때문에 422 로 즉시 거부. 후속 video-asr PR
-    # 에서 ffmpeg + Whisper + frame caption 합성 도입 예정.
-    VIDEO_EXTENSIONS = (".mp4", ".avi", ".mov", ".mkv")
-    if any(file.filename.lower().endswith(ext) for ext in VIDEO_EXTENSIONS):
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                "현재 영상 파일은 미지원입니다. "
-                "음성만 추출(.mp3/.wav/.m4a/.ogg)하거나 키프레임 이미지로 "
-                "변환 후 업로드해 주세요."
-            ),
-        )
+    # [video-asr 2026-05-11] 영상은 ffmpeg → Whisper ASR 으로 처리.
+    # 실제 ffmpeg 호출 + 음성 추출 + STT 는 processors/file_processor.py
+    # ::extract_video. 운영자 환경에 ffmpeg 가 없으면 그쪽에서 명시적
+    # RuntimeError → process_file 의 try/except 가 "[처리 오류]"
+    # placeholder 로 변환 → 업로드 자체는 진행 (vector 인덱스에 한 줄
+    # 오류 메시지만 들어감, silent failure 아님).
 
     allowed_ext = (
         ".pdf",".png",".jpg",".jpeg",".bmp",".tiff",".webp",
         ".txt",".md",".csv",".html",".htm",
+        ".mp4",".avi",".mov",".mkv",".webm",      # video-asr
+
         ".docx",".doc",".xlsx",".xls",".pptx",".ppt",
         ".hwpx",".hwp",
         ".mp3",".wav",".m4a",".ogg",
@@ -1194,7 +1204,7 @@ async def llm_modes(api_key: str, role: str = Depends(get_role_from_request)):
          "keywords": ["목록", "리스트", "어떤 자료", "list"],
          "model": "", "installed": True, "models": []},
         {"key": "coding",   "label": "💻 코딩",
-         "desc": f"코딩 특화 모델",
+         "desc": "코딩 특화 모델",
          "keywords": ["코드", "함수", "버그", "python", "def ",
                       "javascript", "code", "function"],
          "model": CODING_MODEL, "installed": _mark(CODING_MODEL),
@@ -2001,7 +2011,7 @@ async def learn_topic_api(
         if use_web:
             from tools.web.web_searcher import (
                 search_web, enrich_results_with_content,
-                format_search_results, save_as_longterm,
+                save_as_longterm,
                 update_knowledge_level, classify_domain,
             )
 
@@ -2042,7 +2052,7 @@ async def learn_topic_api(
 
             # ⑤ LLM 0자 → snippet 기반 fallback
             if not knowledge or len(knowledge.strip()) < 10:
-                print(f"[LEARN] LLM 0자 → fallback 사용")
+                print("[LEARN] LLM 0자 → fallback 사용")
                 parts = []
                 for r in results[:3]:
                     title = r.get('title', '')
@@ -2627,10 +2637,7 @@ async def admin_dashboard(api_key: str, role: str = Depends(get_role_from_reques
     # ── [3-A] audit_log 기반 실시간 통계 ────────────────────
     today_queries   = 0
     avg_elapsed     = 0.0
-    cache_hits      = 0
     blocked_count   = 0
-    score_sum       = 0.0
-    score_count     = 0
     elapsed_list    = []   # 응답 시간 그래프용
     recent_queries  = []   # 최근 쿼리 목록용
 
@@ -2879,7 +2886,7 @@ async def password_change(
     if result.startswith("policy:"):
         msg = result.split(":", 1)[1]
         _write_audit("authenticated", "/password/change", query=username,
-                     security_event=f"password_change_rejected_policy",
+                     security_event="password_change_rejected_policy",
                      ip_address=ip)
         raise HTTPException(status_code=400, detail=msg)
     # invalid_old / no_user → collapse to 401. The audit log still
@@ -3994,6 +4001,73 @@ async def jobs_run(
     _write_audit(role, "/jobs/run", query=f"{data.job_type}/{job_id}",
                  security_event=final_event, ip_address=ip)
     return row
+
+
+# ─── W8-D: schedule a recurring job ────────────────────────────
+
+class JobScheduleRequest(BaseModel):
+    job_type:      str
+    input_refs:    list = []
+    options:       Optional[dict] = None
+    schedule_cron: str   # "hourly" | "every:N" | "daily:HH:MM" | "weekly:DOW:HH:MM"
+
+
+@app.post("/jobs/schedule",
+          summary="워크스페이스 job 예약 (정기 실행, W8-D)")
+async def jobs_schedule(
+    data:    JobScheduleRequest,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
+    """Insert a scheduled job. ``workspace.schedule`` feature gate
+    (admin only by default — cron-driven jobs touch shared resources
+    so the grant is intentionally narrow).
+
+    The DSL is validated up front: an unrecognised spec returns 400
+    rather than persisting a row that the scheduler would silently
+    ignore. The first ``next_run_at`` is computed from the spec; the
+    Scheduler updates it after each successful tick.
+    """
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "workspace.schedule").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (workspace.schedule)")
+    owner = _bearer_username(request)
+    if not owner:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+
+    from core.workspace import register_job, HANDLERS
+    from core.scheduler import compute_next_run
+    if data.job_type not in HANDLERS:
+        raise HTTPException(status_code=400,
+                            detail=f"unknown job_type: {data.job_type}")
+
+    now = int(time.time())
+    next_at = compute_next_run(data.schedule_cron, now)
+    if next_at is None:
+        raise HTTPException(
+            status_code=400,
+            detail=(f"unknown schedule spec: {data.schedule_cron!r}. "
+                    "Use 'hourly' / 'every:N' / 'daily:HH:MM' / "
+                    "'weekly:DOW:HH:MM'."),
+        )
+
+    job_id = register_job(
+        data.job_type, data.input_refs or [],
+        owner=owner, options=data.options,
+        schedule_cron=data.schedule_cron, next_run_at=next_at,
+    )
+    ip = get_client_ip(request)
+    _write_audit(role, "/jobs/schedule",
+                 query=f"{data.job_type}/{job_id}",
+                 security_event=f"scheduled cron={data.schedule_cron}",
+                 ip_address=ip)
+    return {
+        "ok":            True,
+        "job_id":        job_id,
+        "schedule_cron": data.schedule_cron,
+        "next_run_at":   next_at,
+    }
 
 
 @app.get("/jobs/list", summary="내 job 목록 (W8-A)")

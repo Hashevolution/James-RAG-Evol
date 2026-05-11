@@ -137,7 +137,7 @@ class NeighborPanelTests(unittest.TestCase):
 
     def test_render_function_uses_escapehtml(self):
         idx = self.js.index("function renderNeighborPanel")
-        nxt = self.js.index("\n  ", idx + 100)   # bound at next top-level
+        self.js.index("\n  ", idx + 100)   # bound at next top-level
         # Find a stable end: the closing of the function
         end = self.js.index("\n  window.onNeighborClick", idx)
         body = self.js[idx:end]

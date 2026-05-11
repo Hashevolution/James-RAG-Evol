@@ -234,23 +234,12 @@ dropZone.addEventListener('drop', async e => {
 })();
 
 /* ── 파일 추가 ──
-   [video-reject 2026-05-10, W1 진단 §3-C] 영상 파일은 현재 backend stub
-   이라 ChromaDB 에 노이즈 인덱스를 만든다 → frontend 에서 미리 필터 +
-   toast 안내. 후속 video-asr PR 에서 frame ASR + caption 합성 도입 예정.
-   서버 /upload/ 도 422 로 재차 거부 — defense-in-depth.
+   [video-asr 2026-05-11] 영상 파일은 server 가 ffmpeg+Whisper 로
+   처리하므로 frontend 필터 제거. 운영자 환경에 ffmpeg 가 없으면
+   서버가 친절한 에러 메시지를 돌려준다.
 */
-const VIDEO_EXTS = ['mp4','avi','mov','mkv','webm'];
-function _isVideoFile(f) {
-  const name = (f && f.name) || '';
-  const ext = name.split('.').pop().toLowerCase();
-  if (VIDEO_EXTS.includes(ext)) return true;
-  // MIME type fallback — 사파리 등 ext 없는 capture 케이스.
-  return !!(f && f.type && f.type.startsWith('video/'));
-}
 function addFiles(files) {
-  const rejected = [];
   files.forEach(f => {
-    if (_isVideoFile(f)) { rejected.push(f.name); return; }
     const dup = uploadQueue.find(q => q.file.name === f.name && q.file.size === f.size);
     if (dup) return;
     const item = {
@@ -263,12 +252,6 @@ function addFiles(files) {
     uploadQueue.push(item);
     renderFileItem(item);
   });
-  if (rejected.length > 0 && typeof toast === 'function') {
-    const tFn = (typeof t === 'function') ? t : (k => null);
-    const msg = tFn('upload.video_unsupported')
-      || `영상 파일은 미지원입니다 (${rejected.length}개 제외). 음성만 추출(.mp3/.wav/.m4a)하거나 키프레임 이미지로 변환 후 업로드하세요.`;
-    toast(msg, 'warn');
-  }
   updateUploadBtn();
   // W6: refresh the chat-input mini-thumbnails row.
   if (typeof renderChatAttachmentRow === 'function') {

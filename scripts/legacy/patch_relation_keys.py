@@ -175,7 +175,7 @@ def process_file(filepath: Path, apply: bool) -> dict:
 
         elif info["case"] == "both":
             # label 제거
-            issues.append(f"type+label 동시 존재 → label 제거")
+            issues.append("type+label 동시 존재 → label 제거")
             fixed_item  = re.sub(r"[ \t]+label\s*:.*\n", "", item)
             new_rel_lines.append(fixed_item)
             fixed.append("label 키 제거")
@@ -285,16 +285,16 @@ def run():
 
     # 리포트
     print("\n" + "="*60)
-    print(f"  📊 결과 요약")
+    print("  📊 결과 요약")
     print(f"  전체 파일:   {len(md_files)}개")
     print(f"  entity 파일: {entity_files}개 (frontmatter 있음)")
     print(f"  skip 파일:   {total_skipped}개 (일반 마크다운, 정상)")
     print(f"  문제 발견:   {total_issues}개")
     print(f"  수정 {'완료' if APPLY else '예정'}:   {total_changed}개 파일")
     if total_issues == 0:
-        print(f"\n  ✅ 모든 entity 파일의 relation key 정상")
+        print("\n  ✅ 모든 entity 파일의 relation key 정상")
     elif not APPLY and total_changed > 0:
-        print(f"\n  💡 실제 적용: python patch_relation_keys.py --apply")
+        print("\n  💡 실제 적용: python patch_relation_keys.py --apply")
     print("="*60)
 
     report = {

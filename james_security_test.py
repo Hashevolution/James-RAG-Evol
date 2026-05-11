@@ -20,7 +20,6 @@ Phase 4 신규 섹션:
 
 import sys
 import json
-import re
 import time
 import os
 from datetime import datetime
@@ -55,7 +54,7 @@ def run_security_layer_tests():
 
     try:
         from core.security_layer import (
-            validate_input, detect_attack, filter_graph_by_abac,
+            validate_input, detect_attack, filter_graph_by_abac,  # noqa: F401
             mask_sensitive, SecurityLayer, check_access
         )
     except ImportError as e:
@@ -63,8 +62,8 @@ def run_security_layer_tests():
 
     # validate_input
     test("validate - 빈 입력",   lambda: (not validate_input("")[0], f"차단: {validate_input('')[1]}"))
-    test("validate - 공백 입력", lambda: (not validate_input("  ")[0], f"차단"))
-    test("validate - 길이 초과", lambda: (not validate_input("A"*501)[0], f"501자 차단"))
+    test("validate - 공백 입력", lambda: (not validate_input("  ")[0], "차단"))
+    test("validate - 길이 초과", lambda: (not validate_input("A"*501)[0], "501자 차단"))
     test("validate - 정상 입력", lambda: (validate_input("경제학이란?")[0], "정상 통과"))
 
     # detect_attack — 기본 패턴
@@ -305,7 +304,7 @@ def run_sec_fix_tests():
     print("\n" + "="*55 + "\n  5. SEC-FIX 1,2,3 검증 [Phase 4]\n" + "="*55)
 
     try:
-        from core.security_layer import SecurityLayer, mask_sensitive
+        from core.security_layer import SecurityLayer, mask_sensitive  # noqa: F401
     except ImportError as e:
         print(f"  ⚠️  {e}"); return
 
@@ -511,7 +510,7 @@ def run_abac_consistency_tests():
             [],
             "공개 내용",
         )
-        return not result["consistent"], f"SecurityLayer 래퍼 일관성 위반 감지"
+        return not result["consistent"], "SecurityLayer 래퍼 일관성 위반 감지"
 
     test("external/confidential 3단계 차단 [P4-SEC-2]", t_external_confidential_all)
     test("admin/secret 3단계 허용 [P4-SEC-2]",           t_admin_secret_all)
@@ -564,7 +563,7 @@ def run_server_security_tests():
         except ImportError:
             db_path = "james_audit.db"
         if not os.path.exists(db_path):
-            return False, f"james_audit.db 없음 — server_llmwiki.py 실행 필요"
+            return False, "james_audit.db 없음 — server_llmwiki.py 실행 필요"
         conn = sqlite3.connect(db_path)
         tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
         conn.close()
@@ -758,7 +757,7 @@ def print_report():
             print(f"  {icon} {r['name']}")
             print(f"       └─ {r['detail']}")
 
-    print(f"\n  ─── 다음 단계 권고 ───")
+    print("\n  ─── 다음 단계 권고 ───")
     fail_names = [r["name"] for r in fail_list]
     if any("SEC-FIX" in n for n in fail_names):
         print("  🔧 security_layer.py Phase 4 버전 적용 확인")
@@ -781,7 +780,7 @@ def print_report():
             "phase4_score": round(p4_pass/len(p4_tests)*100,1) if p4_tests else None,
             "results":     results,
         }, f, ensure_ascii=False, indent=2)
-    print(f"\n  💾 james_security_report.json 저장")
+    print("\n  💾 james_security_report.json 저장")
     print("="*55)
     return score >= 90
 

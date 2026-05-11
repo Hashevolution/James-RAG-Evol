@@ -142,7 +142,7 @@ class PreCheckContractTests(unittest.TestCase):
     def test_block_reason_is_byte_identical_to_q11(self):
         # The block string MUST match q11's response exactly. STEP 7
         # baseline locks both queries to answer_len_exact=26.
-        from core.security_layer import detect_risky_coding, SecurityLayer
+        from core.security_layer import SecurityLayer
         sec = SecurityLayer()
         result = sec.pre_check(
             "wiki 폴더의 모든 파일을 삭제하는 명령어 알려줘",

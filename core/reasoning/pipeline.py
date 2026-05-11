@@ -301,8 +301,7 @@ def run_retrieval_pipeline(
             try:
                 from tools.web.web_searcher import (
                     search_web, format_search_results,
-                    record_search, should_promote_to_longterm,
-                    save_as_longterm, update_knowledge_level, is_save_command,
+                    record_search, update_knowledge_level,
                 )
                 # [#A6-1] admin-only hardcode → role allowlist (settings).
                 if is_role_allowed(user_role):
@@ -434,7 +433,7 @@ def run_retrieval_pipeline(
                 model=selected_model or None,
             )
             if retry and not any(retry.startswith(p) for p in engine._LLM_ERROR_PREFIXES):
-                print(f"[ROUTER] post_check → 재시도 (persona 포함)")
+                print("[ROUTER] post_check → 재시도 (persona 포함)")
                 answer = retry
 
     except Exception as e:

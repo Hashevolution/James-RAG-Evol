@@ -34,7 +34,7 @@ PROJECT JAMES — E2E 통합 테스트 (Phase 1~7 유기적 연결 검증)
 from utils.console import ensure_utf8_console
 ensure_utf8_console()
 
-import sys, os, json, re, time, traceback
+import sys, json, time
 from pathlib import Path
 from datetime import datetime
 
@@ -52,7 +52,7 @@ SERVER = "--server" in sys.argv  # 실제 서버 연동
 sys.path.insert(0, str(BASE))
 
 print(f"\n{'='*65}")
-print(f"  PROJECT JAMES — E2E 통합 테스트 (Phase 1~7)")
+print("  PROJECT JAMES — E2E 통합 테스트 (Phase 1~7)")
 print(f"  BASE: {BASE}")
 print(f"  모드: {'QUICK (LLM 생략)' if QUICK else 'FULL'}"
       f"{' + SERVER' if SERVER else ''}")
@@ -835,7 +835,6 @@ except Exception as e:
 # 8-3. P2-9: 폴더 분석 (reasoning_engine self_evolve 분기)
 t0 = time.time()
 try:
-    import re as _re
     re_src = open(BASE / "core" / "reasoning_engine.py",
                   encoding="utf-8", errors="replace").read()
     has_folder = ("폴더|디렉토리|folder" in re_src and
@@ -867,7 +866,7 @@ except Exception as e:
 # 8-5. P3-1: 하드웨어 측정 모듈
 t0 = time.time()
 try:
-    from tools.system.hardware_inspector import get_hardware_specs, _weapon_meta
+    from tools.system.hardware_inspector import get_hardware_specs
     specs = get_hardware_specs()
     has_all = all(k in specs for k in ["cpu","ram","gpu","disk","overall_level","james_rank"])
     weapon_ok = all("weapon" in specs[k] for k in ["cpu","ram","gpu","disk"])
@@ -980,7 +979,7 @@ report = {
 try:
     with open(BASE / "workspace" / "e2e_report.json", "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
-    print(f"  📄 보고서 저장: workspace/e2e_report.json")
+    print("  📄 보고서 저장: workspace/e2e_report.json")
 except Exception:
     pass
 

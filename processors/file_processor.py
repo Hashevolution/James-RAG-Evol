@@ -15,14 +15,13 @@ PROJECT JAMES - File Processor Module
            - 이미지 vision tiling 성공              → ("vision", "low")
            - 이미지 EasyOCR / Tesseract             → ("ocr",    "low")
            - 음성 (Whisper ASR)                     → ("asr",    "low")
-           - 영상 (현재 stub, 향후 ASR+vision)       → ("asr",    "low")
+           - 영상 (ffmpeg → Whisper ASR; v0.3에 frame caption) → ("asr", "low")
            - 지원하지 않는 형식 / 처리 오류 placeholder → ("doc",    "medium")
          호출자(server_llmwiki.py 업로드 핸들러)는 `tc.text` 를 받아
          기존 sanitize_document_content 를 통해 ingestion-time 검역 유지.
          후속 phase 가 단일 quarantine chokepoint 로 통일 예정.
 """
 import os
-import re
 import cv2
 import numpy as np
 from PIL import Image
@@ -30,8 +29,7 @@ import pytesseract
 import whisper
 from pdf2image import convert_from_path
 
-from config import UPLOAD_FOLDER, POPPLER_PATH, TESSERACT_PATH
-from core.gemma_client import GemmaClient
+from config import POPPLER_PATH, TESSERACT_PATH
 from core.policy_engine import TrustedContent
 from utils.metadata import MetadataGenerator
 
@@ -179,12 +177,55 @@ class FileProcessor:
             trust="low",
         )
 
-    # [video-reject 2026-05-10] extract_video 는 W1 진단 §3-C 권고에 따라
-    # 제거됨. 이전 stub 은 silent failure 를 만들어 ChromaDB 에 노이즈
-    # 인덱스를 추가했음. 영상 파일은 server_llmwiki.py /upload/ 단계에서
-    # 422 로 거부되며, defense-in-depth 로 process_file 도 unsupported
-    # placeholder 를 돌려준다 (아래 dispatch 참조).
-    # 후속 video-asr PR 에서 ffmpeg + Whisper + frame caption 합성을 추가.
+    # [video-asr 2026-05-11] extract_video — ffmpeg 로 오디오 트랙
+    # 추출 후 기존 Whisper 경로로 통과시킨다. ffmpeg 가 PATH 에 없으면
+    # 명시적 RuntimeError — server_llmwiki.upload 가 그 메시지를
+    # 422 detail 로 surface 한다 (silent failure 패턴 회피, W1 진단
+    # §3-C 의 핵심 권고).
+    #
+    # frame caption 합성은 의도적으로 보류 (v0.3 multimodal 트랙) —
+    # ASR 만으로 회의록·인터뷰·강의 영상 같은 일반 사례 cover.
+    def extract_video(self, filepath: str) -> TrustedContent:
+        import shutil as _shutil
+        import subprocess as _sub
+        import tempfile as _tmpfile
+        import os as _os
+
+        ffmpeg = _shutil.which("ffmpeg")
+        if not ffmpeg:
+            raise RuntimeError(
+                "ffmpeg 가 PATH 에 없습니다. 운영자가 사전 설치 필요 — "
+                "Windows: winget install Gyan.FFmpeg / "
+                "macOS: brew install ffmpeg / Linux: apt install ffmpeg"
+            )
+
+        # Audio 만 추출 → 임시 wav. 16kHz mono — Whisper 의 기본 입력.
+        # -y overwrite, -vn disable video, -loglevel error 로 시끄러운
+        # 진행 로그 차단 (subprocess.run 가 stderr 캡처).
+        tmp = _tmpfile.NamedTemporaryFile(suffix=".wav", delete=False)
+        tmp.close()
+        try:
+            cmd = [ffmpeg, "-y", "-i", filepath,
+                   "-vn", "-acodec", "pcm_s16le",
+                   "-ar", "16000", "-ac", "1",
+                   "-loglevel", "error", tmp.name]
+            r = _sub.run(cmd, capture_output=True, timeout=600)
+            if r.returncode != 0:
+                err = (r.stderr or b"").decode("utf-8", errors="replace")[:400]
+                raise RuntimeError(f"ffmpeg 추출 실패: {err.strip() or 'unknown'}")
+            if _os.path.getsize(tmp.name) < 1000:
+                raise RuntimeError(
+                    "영상에서 오디오 트랙을 찾지 못했거나 너무 짧습니다."
+                )
+            audio = self.extract_audio(tmp.name)
+            return TrustedContent(
+                text=f"[영상 음성 변환]\n{audio.text.removeprefix('[음성 변환]').lstrip()}",
+                source="asr",
+                trust="low",
+            )
+        finally:
+            try: _os.unlink(tmp.name)
+            except OSError: pass
 
     # ─────────────────────────────────────
     # Fix 3+4: sensitivity 강제 override
@@ -242,15 +283,12 @@ class FileProcessor:
                 inner = self.extract_image(filepath)
             elif ext in ["mp3", "wav", "m4a", "ogg"]:
                 inner = self.extract_audio(filepath)
-            elif ext in ["mp4", "avi", "mov", "mkv"]:
-                # [video-reject 2026-05-10] 정상 경로는 server_llmwiki.py
-                # /upload/ 가 422 거부하지만, 직접 process_file 호출에 대한
-                # defense-in-depth — silent stub 대신 명시적 unsupported.
-                print(f"[WARN] 영상 파일 미지원 (현재 stub 제거됨): {ext}")
-                inner = TrustedContent(
-                    text="[지원하지 않는 형식 — 영상 파일은 음성으로 변환 후 업로드]",
-                    source="doc", trust="medium",
-                )
+            elif ext in ["mp4", "avi", "mov", "mkv", "webm"]:
+                # [video-asr 2026-05-11] ffmpeg → audio → Whisper.
+                # Errors surface as RuntimeError from extract_video;
+                # the outer try/except in this method catches them and
+                # the upload returns 422 with a friendly message.
+                inner = self.extract_video(filepath)
             elif ext in ["docx", "doc", "xlsx", "xls", "pptx", "ppt", "hwp", "hwpx"]:
                 inner = self.extract_office(filepath)
             else:

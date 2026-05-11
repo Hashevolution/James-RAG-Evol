@@ -10,7 +10,6 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 try:
     from config import BASE_DIR

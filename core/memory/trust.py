@@ -20,13 +20,12 @@ PROJECT JAMES - Memory Trust Scoring (Phase 4.5)
 import math
 import json
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 from pathlib import Path
 
 from core.ontology import (
     normalize_relation,
     RELATION_TYPES,
-    is_sensitive_relation,
 )
 from core.security_layer import log_system_event
 

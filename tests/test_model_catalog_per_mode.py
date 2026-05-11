@@ -70,7 +70,7 @@ class ModelCatalogTests(unittest.TestCase):
         # entry (default) is light for chat, heavy for coding.
         cat = self.srv._model_catalog()
         chat0 = cat["chat"][0]   # (tag, weight)
-        code0 = cat["coding"][0]
+        cat["coding"][0]
         # chat's default may be light or medium (env override possible)
         self.assertIn(chat0[1], ("light", "medium"),
             f"chat default should be light/medium, got {chat0[1]}")

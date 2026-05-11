@@ -153,7 +153,8 @@ class LinkRenderingTests(unittest.TestCase):
         self.assertGreater(len(m), 0, "expected at least one rgba literal")
         # The non-hub baseline is the LAST rgba in the function body.
         baseline = m[-1]
-        r_, g_, b_, a_ = int(baseline[0]), int(baseline[1]), int(baseline[2]), float(baseline[3])
+        # G/B channels are not asserted on; only R + alpha gate visibility.
+        r_, _, _, a_ = int(baseline[0]), int(baseline[1]), int(baseline[2]), float(baseline[3])
         self.assertGreaterEqual(r_, 160,
             f"baseline R={r_} should be ≥160 for visibility (was 150)")
         self.assertGreaterEqual(a_, 0.35,

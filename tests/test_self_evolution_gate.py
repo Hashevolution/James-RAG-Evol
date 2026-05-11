@@ -29,7 +29,6 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch as _patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

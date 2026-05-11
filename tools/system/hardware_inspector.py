@@ -16,7 +16,6 @@ PC 하드웨어 성능을 자동 측정해서 "무기/장비" 형식으로 반�
 
 import os
 import platform
-import sys
 from typing import Dict, Any
 
 # ─── 측정 함수 ─────────────────────────────────────────────────
@@ -109,7 +108,7 @@ def _get_gpu() -> Dict:
                     return info
                 _trace(f"nvidia-smi parse failed: parts={parts!r}")
             else:
-                _trace(f"nvidia-smi returned empty stdout")
+                _trace("nvidia-smi returned empty stdout")
         else:
             _trace(f"nvidia-smi exit={result.returncode} "
                    f"stderr={(result.stderr or '')[:120]!r}")
@@ -402,7 +401,6 @@ def get_hardware_specs() -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    import json
     specs = get_hardware_specs()
     print("\n🧠 자메스 장비 현황\n" + "═" * 40)
     for comp in ["cpu", "ram", "gpu", "disk"]:

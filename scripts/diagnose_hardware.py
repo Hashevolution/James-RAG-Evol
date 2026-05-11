@@ -70,7 +70,7 @@ def _probe_pynvml() -> None:
             print(f"  nvml init/query failed: {type(e).__name__}: {e}")
     except ImportError as e:
         print(f"  pynvml NOT installed ({e})")
-        print(f"  -> install with: pip install pynvml")
+        print("  -> install with: pip install pynvml")
     except Exception as e:
         print(f"  pynvml failed unexpectedly: {type(e).__name__}: {e}")
 
@@ -123,11 +123,11 @@ def _probe_inspector() -> dict:
     from tools.system.hardware_inspector import _get_gpu
     result = _get_gpu()
     print()
-    print(f"  RESULT:")
+    print("  RESULT:")
     print(f"    name:    {result.get('name')!r}")
     print(f"    vram_gb: {result.get('vram_gb')}")
     print(f"    found:   {result.get('found')}")
-    print(f"  debug trail:")
+    print("  debug trail:")
     for line in result.get("debug", []):
         print(f"    - {line}")
     return result
@@ -157,7 +157,7 @@ def _probe_live_endpoint() -> dict | None:
 
     try:
         r = requests.get(
-            f"http://127.0.0.1:8000/hardware/",
+            "http://127.0.0.1:8000/hardware/",
             params={"api_key": api_key},
             timeout=5,
         )
@@ -209,7 +209,7 @@ def main() -> int:
         print(f"  ✅ Live endpoint matches: {live['name']} {live.get('vram_gb')}GB")
         return 0
 
-    print(f"  ⚠️  Live endpoint disagrees:")
+    print("  ⚠️  Live endpoint disagrees:")
     print(f"      in-process: name={in_proc['name']!r} found={in_proc['found']}")
     print(f"      live:       name={live.get('name')!r} found={live.get('found')}")
     print()

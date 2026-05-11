@@ -19,10 +19,8 @@ PROJECT JAMES — Wiki/DB 안전 리셋 도구
 import os
 import sys
 import shutil
-import json
 import sqlite3
 from pathlib import Path
-from datetime import datetime
 
 # config 경로 로드
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(
@@ -266,7 +264,7 @@ def create_seed_data():
     print(f"\n{C}  📦 시드 데이터 생성 중...{E}")
 
     try:
-        from tools.admin.seed_data import SEED_ENTITIES, write_seed_files
+        from tools.admin.seed_data import SEED_ENTITIES, write_seed_files  # noqa: F401
         count = write_seed_files()
         print(f"  {G}✅{E} 시드 entity {count}개 생성 완료")
     except ImportError:
@@ -370,8 +368,8 @@ def reindex_seeds():
 
         if indexed == 0:
             print(f"  {R}❌{E} 인덱싱된 entity 0개 — 다음 확인:")
-            print(f"     1) wiki/prod/entity/ 아래 .md 파일 존재 여부")
-            print(f"     2) 서버를 끄고 실행했는지 (실행 중이면 lock)")
+            print("     1) wiki/prod/entity/ 아래 .md 파일 존재 여부")
+            print("     2) 서버를 끄고 실행했는지 (실행 중이면 lock)")
 
     except Exception as e:
         print(f"  {R}❌{E} 인덱싱 실패: {e}")
@@ -392,10 +390,10 @@ def main():
 
     if not (dry_run or confirmed or seed_only):
         print(f"\n{Y}사용법:{E}")
-        print(f"  python wiki_reset.py --dry-run     # 영향 범위 확인")
-        print(f"  python wiki_reset.py --confirm     # 리셋 + 시드 생성")
-        print(f"  python wiki_reset.py --confirm --no-seed  # 리셋만")
-        print(f"  python wiki_reset.py --seed-only   # 시드만 추가\n")
+        print("  python wiki_reset.py --dry-run     # 영향 범위 확인")
+        print("  python wiki_reset.py --confirm     # 리셋 + 시드 생성")
+        print("  python wiki_reset.py --confirm --no-seed  # 리셋만")
+        print("  python wiki_reset.py --seed-only   # 시드만 추가\n")
         return
 
     # ─── dry-run 모드 ───
@@ -450,10 +448,10 @@ def main():
 
     print(f"\n{B}{G}  🎉 모든 작업 완료{E}")
     print(f"\n{C}  다음 단계:{E}")
-    print(f"  1. 서버 재시작:  python server_llmwiki.py")
-    print(f"     → [INDEX] 8 entities loaded 가 보여야 정상")
-    print(f"  2. 챗 확인:      http://localhost:8000")
-    print(f"  3. 데이터 확인:  '김민준은 누구야?' 같은 질문\n")
+    print("  1. 서버 재시작:  python server_llmwiki.py")
+    print("     → [INDEX] 8 entities loaded 가 보여야 정상")
+    print("  2. 챗 확인:      http://localhost:8000")
+    print("  3. 데이터 확인:  '김민준은 누구야?' 같은 질문\n")
 
 
 if __name__ == "__main__":

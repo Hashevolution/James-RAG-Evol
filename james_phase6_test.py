@@ -24,7 +24,6 @@ ensure_utf8_console()
 
 import sys
 import os
-import re
 import json
 import time
 from datetime import datetime
@@ -226,7 +225,6 @@ def run_router_checks():
     print("="*55)
 
     def t_router_exists():
-        from llm.router import classify_task, get_llm, route
         return True, "classify_task / get_llm / route 존재"
 
     def t_classify_coding():
@@ -302,7 +300,6 @@ def run_patch_flow_checks():
         f.write("# 테스트 파일\nx = 1\n")
 
     def t_generator_exists():
-        from tools.patch.patch_generator import generate_patch, load_patch, list_patches
         return True, "generate_patch / load_patch / list_patches 존재"
 
     def t_always_pending():
@@ -377,7 +374,6 @@ def run_validator_checks():
     print("="*55)
 
     def t_validator_exists():
-        from tools.patch.patch_validator import PatchValidator, validate_patch
         return True, "PatchValidator / validate_patch 존재"
 
     def t_gate1_eval_blocked():
@@ -549,7 +545,7 @@ def run_diagnostic_regression():
                f"STUDIES 허용={ok_valid} | UNKNOWN 차단={not ok_invalid}"
 
     def t_memory_loom_gates():
-        from core.memory import MemoryLoom, MAX_WRITES_PER_SESSION
+        from core.memory import MemoryLoom
         loom = MemoryLoom()
         # Gate1
         ok1, _ = loom.store({"confidence":0.3,"ontology_valid":True})
@@ -612,7 +608,7 @@ def print_report():
             ("patch_flow","P6-4 Patch흐름"),("validator","P6-5 Validator"),
             ("security","P6-6 보안"),("diagnostic","P6-7 진단"),
             ("query_router","P6-8 QueryRouter"),("memory","P6-9 Memory")]
-    print(f"\n  ─── 섹션별 ───")
+    print("\n  ─── 섹션별 ───")
     for tag, label in tags:
         tr = [r for r in RESULTS if r.get("tag")==tag]
         if not tr: continue
@@ -627,7 +623,7 @@ def print_report():
         if tr:
             tag_scores[tag] = sum(1 for r in tr if r["status"]=="PASS") / len(tr) * 100
 
-    print(f"\n  ─── Phase 6 통과 체크리스트 ───")
+    print("\n  ─── Phase 6 통과 체크리스트 ───")
     checklist = [
         ("GPU 100% 확인",            tag_scores.get("gpu",0) >= 100),
         ("E2E 30초 이하",            tag_scores.get("latency",0) >= 80),
@@ -661,7 +657,7 @@ def print_report():
                    "score":round(score,1),"grade":grade,
                    "total":total,"passed":passed,"failed":failed,
                    "results":RESULTS}, f, ensure_ascii=False, indent=2)
-    print(f"\n  💾 james_phase6_report.json 저장")
+    print("\n  💾 james_phase6_report.json 저장")
     print("="*55)
 
 
@@ -733,7 +729,7 @@ def run_query_router_checks():
         from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine.query)
         ok = src.index("pre_check") < src.index("QueryRouter")
-        return ok, f"pre_check(먼저) < QueryRouter"
+        return ok, "pre_check(먼저) < QueryRouter"
 
     for name, fn in [
         ("QueryRouter 존재 [P6-8]",          t_router_exists),
@@ -757,7 +753,6 @@ def run_memory_checks():
     print("="*55)
 
     def t_extractor_exists():
-        from core.memory import extract_memory, validate_memory
         return True, "extract_memory / validate_memory 존재"
 
     def t_store_exists():

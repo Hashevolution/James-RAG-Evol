@@ -173,7 +173,7 @@ class NodeHaloTests(unittest.TestCase):
 
     def test_tick_uses_sine_pulse(self):
         idx = self.js.index("function tickNodeHalos")
-        nxt = self.js.index("\n  ", idx + 100)
+        self.js.index("\n  ", idx + 100)
         body = self.js[idx:idx + 1500]
         self.assertIn("Math.sin", body,
             "halo must pulse via sine for organic breathing feel")

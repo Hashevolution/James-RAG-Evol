@@ -20,8 +20,6 @@ from typing import List, Dict, Any, Optional
 from rank_bm25 import BM25Okapi
 
 from core.vector_store import VectorStore
-from core.gemma_client import GemmaClient
-from core.security_layer import log_system_event
 from core.policy_engine import default_engine as _policy
 from utils.tokenizer import tokenize
 

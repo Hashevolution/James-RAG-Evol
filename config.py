@@ -9,7 +9,6 @@ No hardcoded user paths — works on any machine after install.
 import logging
 import os
 import sys
-from pathlib import Path
 
 # ────────────────────────────────────────────────────────────────
 #  pdfminer 노이즈 차단
@@ -207,14 +206,14 @@ if AUTO_APPROVE and not _DEV_MODE_AT_IMPORT:
 # ────────────────────────────────────────────────────────────────
 #  Startup messages
 # ────────────────────────────────────────────────────────────────
-print(f"[CONFIG] PROJECT JAMES ready")
+print("[CONFIG] PROJECT JAMES ready")
 print(f"[CONFIG] BASE_DIR: {BASE_DIR}")
 print("[CONFIG] API_KEY source: env:JAMES_API_KEY")
 
 if TESSERACT_PATH:
     print(f"[CONFIG] Tesseract: {TESSERACT_PATH}")
 else:
-    print(f"[CONFIG] Tesseract: not found (OCR will fail until installed)")
+    print("[CONFIG] Tesseract: not found (OCR will fail until installed)")
 
 if POPPLER_PATH:
     print(f"[CONFIG] Poppler: {POPPLER_PATH}")
@@ -222,11 +221,11 @@ if POPPLER_PATH:
 if TAVILY_API_KEY:
     print(f"[CONFIG] Tavily search enabled (key: {TAVILY_API_KEY[:8]}...)")
 else:
-    print(f"[CONFIG] Tavily key not set → using DuckDuckGo fallback")
+    print("[CONFIG] Tavily key not set → using DuckDuckGo fallback")
 
 # Evolution-gate banner — operator must see this on boot.
 if EVOLUTION_ENABLED:
     print(f"[CONFIG] ⚙️  Self-evolution ENABLED (approver role: {APPROVER_ROLE})"
           + (f" — AUTO_APPROVE on (DEV_MODE={_DEV_MODE_AT_IMPORT})" if AUTO_APPROVE else ""))
 else:
-    print(f"[CONFIG] Self-evolution disabled (set JAMES_ENABLE_EVOLUTION=1 to enable)")
+    print("[CONFIG] Self-evolution disabled (set JAMES_ENABLE_EVOLUTION=1 to enable)")
