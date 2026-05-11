@@ -1,0 +1,61 @@
+# JAMES — ruff config
+#
+# Phase 1 (this commit, 2026-05-11): enforce F821 (undefined names) only.
+# Phase 2 (next cycle):   apply --fix for F401 (unused-import) and
+#                          F541 (f-string-missing-placeholders).
+#                          Both auto-fixable + safe.
+# Phase 3:                 address F841 (unused-variable) + F811
+#                          (redefined-while-unused) — manual review.
+# Phase 4:                 extend to E (pycodestyle), W, I (isort).
+#
+# Current Pyflakes inventory (snapshot at 2026-05-11):
+#   F821 — 0  ← enforced (was 4: server_llmwiki.py + 3× wiki_editor.py)
+#   F401 — 205 (auto-fixable)
+#   F541 — 96  (auto-fixable)
+#   F841 — 28  (auto-fixable)
+#   F811 — 4   (manual)
+#
+# Why F821 first
+# --------------
+# F821 catches genuine NameErrors — code that will raise at runtime as
+# soon as the affected branch executes. Before this commit, GET
+# /hardware/ in psutil-less environments raised NameError on the
+# fallback path (platform was used without import); after the fix the
+# default specs render. Style rules (E/W) and import hygiene (F401)
+# are cleanups, not correctness bugs — they wait until F-class is
+# clean.
+#
+# How to run
+# ----------
+#   ruff check .              # respects this file's [lint.select]
+#   ruff check --select F .   # full Pyflakes inventory (333 errors today)
+#   ruff check --fix .        # apply auto-fixable rules
+target-version = "py311"
+
+# Generated / vendored / runtime-data — never linted. ``exclude`` is
+# a top-level setting, not part of [lint].
+exclude = [
+    "venv/",
+    ".venv/",
+    "env/",
+    "ENV/",
+    "build/",
+    "dist/",
+    "models/",
+    "chroma_db/",
+    "wiki/",
+    "workspace/",
+    "uploads/",
+    "backups/",
+    "memory/",
+    "reports/",
+    "frontend/",       # JS/HTML/CSS, not Python
+    ".cache/",
+    "tmp/",
+    "temp/",
+    "*.pyc",
+    "__pycache__/",
+]
+
+[lint]
+select = ["F821"]

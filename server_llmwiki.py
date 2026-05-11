@@ -1622,7 +1622,12 @@ async def hardware_info(
         specs = get_hardware_specs()
         return {"ok": True, "specs": specs}
     except Exception as e:
-        # psutil 없는 환경 — 기본값 반환
+        # psutil 없는 환경 — 기본값 반환. [F821 fix 2026-05-11]
+        # ``platform`` was referenced without import; before this fix
+        # the fallback path raised NameError → 500 instead of the
+        # friendly default specs. Imported locally so the happy path
+        # is not taxed with an unused module load.
+        import platform
         return {
             "ok": False,
             "specs": {
