@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] — v0.2 Foundation Hardening
 
+### Security
+
+- **`python-multipart` spec floor raised to `>=0.0.18`** (GHSA-59g5-xgcq-4qw3
+  — Denial of Service via unbounded multipart part headers). The pinned
+  install (`requirements_pinned.txt`) was already on 0.0.26, so no
+  upgrade-side risk; this change aligns `requirements.txt`'s spec with
+  the safe minimum and closes Dependabot alerts #5 and #6 (both High).
+
 ### Added
 
 #### Reasoning Graph Visualizer (Axis 3 Observability/Explainability)
