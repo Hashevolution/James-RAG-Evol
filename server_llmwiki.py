@@ -1712,7 +1712,7 @@ async def list_proposals(
     role:    str = Depends(get_role_from_request),
 ):
     """admin 검토 대기 중인 자기진화 제안 목록."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from tools.self.evo_analyzer import list_proposals as _list
         return {"proposals": _list(status), "status_filter": status}
@@ -1731,7 +1731,7 @@ async def approve_proposal(
     admin이 제안을 승인하면 즉시 자동 실행 + 결과 보고.
     실행 결과를 응답으로 반환.
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from tools.self.evo_analyzer import approve_and_execute
         report = approve_and_execute(proposal_id)
@@ -1752,7 +1752,7 @@ async def reject_proposal_api(
     role:        str = Depends(get_role_from_request),
 ):
     """[4-C] 제안 거부 + 사유 장기기억 저장."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from tools.self.evo_analyzer import reject_proposal
         ok = reject_proposal(proposal_id, reason)
@@ -1773,7 +1773,7 @@ async def save_rejection_memory(
     role:    str = Depends(get_role_from_request),
 ):
     """[4-C] 거부 사유 → memory_store 장기기억 저장."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from core.memory import MemoryStore
         ms  = MemoryStore()
@@ -1797,7 +1797,7 @@ async def get_evo_reports(
     role:    str = Depends(get_role_from_request),
 ):
     """자기진화 실행 결과 보고서 목록."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from tools.self.evo_analyzer import list_reports
         return {"reports": list_reports(limit)}
@@ -1810,7 +1810,7 @@ async def get_evo_reports(
 async def generate_proposals(
     api_key: str, role: str = Depends(get_role_from_request),
 ):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from tools.self.evo_analyzer import generate_proposals_from_signals
         from llm.router import RouterWrapper
@@ -2401,6 +2401,30 @@ def _require_admin(api_key: str, role: str):
                             detail="admin 권한 필요 — admin 계정으로 로그인하세요")
 
 
+def _require_feature(api_key: str, role: str, feature_id: str):
+    """[W4-Q2] Validate api_key + consult PolicyEngine.can_use_feature.
+
+    Same shape as _require_admin but consults the per-feature gate
+    from W4-Q1 instead of the hardcoded ``role != "admin"`` check.
+    For features whose default_allowed set is ``{"admin"}`` (every
+    admin.* feature in the Q1 catalog), behaviour is identical to
+    _require_admin — that equivalence is the safety net for Q2-a's
+    rewrite of existing endpoints.
+
+    Q2-b will add new admin.* features for the remaining endpoints
+    (settings/llm/persona/...) and replace their _require_admin
+    calls similarly.
+    """
+    verify_api_key(api_key)
+    from core.policy_engine import default_engine
+    d = default_engine.can_use_feature(role, feature_id)
+    if not d.allowed:
+        raise HTTPException(
+            status_code=403,
+            detail=f"권한이 부족합니다. ({feature_id})",
+        )
+
+
 def _read_jsonl_tail(path: str, max_lines: int = 200) -> list[dict]:
     """[#2-A] Read only the last `max_lines` rows of a JSONL log.
 
@@ -2571,7 +2595,7 @@ async def admin_users(
     is replaced with a real implementation. Any exception now surfaces
     as a 500 — better than masking schema drift behind an empty UI.
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.users")
     return {"users": _auth_list_users(only_pending=bool(pending))}
 
 
@@ -2590,7 +2614,7 @@ async def admin_users_approve(
     api_key: str = "",
     role:    str = Depends(get_role_from_request),
 ):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.users")
     if data.role not in ALLOWED_ROLES:
         raise HTTPException(status_code=400, detail=f"invalid role: {data.role}")
 
@@ -2620,7 +2644,7 @@ async def admin_users_reject(
     api_key: str = "",
     role:    str = Depends(get_role_from_request),
 ):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.users")
     ok = _auth_reject_user(data.username)
     ip = get_client_ip(request)
     if not ok:
@@ -2647,10 +2671,10 @@ async def admin_users_deactivate(
     api_key: str = "",
     role:    str = Depends(get_role_from_request),
 ):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.users")
     # Admin cannot deactivate themselves — that would be an instant
-    # lockout. The role check above has already confirmed the caller's
-    # role is admin; we read the JWT subject to recover the username.
+    # lockout. The feature gate above has already confirmed the caller
+    # holds admin.users; we read the JWT subject to recover the username.
     try:
         from core.auth import verify_token
         caller_payload = None
@@ -2758,7 +2782,7 @@ async def admin_issue_reset_token(
     Returns 404 if the user is unknown or inactive — admins should not
     issue resets for pending or removed accounts (use approve/reject).
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.users")
     ip = get_client_ip(request)
 
     token = _auth_issue_reset_token(data.username)
@@ -3093,7 +3117,7 @@ async def admin_memory(api_key: str, role: str = Depends(get_role_from_request))
 @app.get("/admin/patches", summary="Patch 이력 [P7]")
 async def admin_patches(api_key: str, status: str = "all",
                         role: str = Depends(get_role_from_request)):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from tools.patch.patch_generator import list_patches
         return {"patches": list_patches(status)}
@@ -3239,7 +3263,7 @@ async def admin_patch_audit(
     Composes with `/admin/audit` (the broader, multi-source feed) —
     this endpoint is the patch-specific view.
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     from tools.patch.audit_query import query_patch_audit
     rows = query_patch_audit(
         since=since or None,
@@ -3611,7 +3635,7 @@ async def admin_audit_list(
     may carry sensitive context (rejected passwords are NOT logged
     verbatim by _write_audit; only the rule name surfaces).
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.audit_log")
     limit  = max(1, min(int(limit or 100), 500))
     offset = max(0, int(offset or 0))
     qstr   = (q or "").strip()
@@ -3695,7 +3719,7 @@ async def admin_features_list(
     ``{allowed, source}`` where ``source ∈ {"default","override"}``
     so the UI can render override rows distinctly.
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.policy_matrix")
     from core.feature_registry import list_effective
     return {
         "roles":    sorted(ALLOWED_ROLES),
@@ -3722,7 +3746,7 @@ async def admin_features_override(
     role returns False, surfaced here as 400. Idempotent: re-setting
     the same value just updates the timestamp + updated_by.
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.policy_matrix")
     from core.feature_registry import set_override
 
     # Read caller username from the JWT subject for audit-log
@@ -3780,7 +3804,7 @@ async def admin_features_reset(
     Returns the number of rows actually deleted, so the UI can show
     "0개 reset" when the feature already used the defaults.
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.policy_matrix")
     from core.feature_registry import clear_override, clear_all_overrides_for
 
     ip = get_client_ip(request)

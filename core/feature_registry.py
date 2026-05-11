@@ -193,7 +193,15 @@ _init_feature_overrides_table()
 
 def get_override(feature_id: str, role: str) -> Optional[bool]:
     """Return ``True``/``False`` if an override exists for this pair,
-    else ``None`` (caller falls back to default)."""
+    else ``None`` (caller falls back to default).
+
+    A missing ``feature_overrides`` table is treated as "no overrides".
+    The table is created on module import for the live DB, but tests
+    that monkey-patch ``_DB_PATH`` to a fresh file would otherwise
+    crash with OperationalError; we'd rather fall through to defaults
+    in that case than fail-closed on a runtime exception.
+    """
+    import sqlite3 as _sqlite3
     conn = _get_conn()
     try:
         row = conn.execute(
@@ -204,6 +212,8 @@ def get_override(feature_id: str, role: str) -> Optional[bool]:
         if row is None:
             return None
         return bool(row["allowed"])
+    except _sqlite3.OperationalError:
+        return None
     finally:
         conn.close()
 
@@ -295,12 +305,16 @@ def list_effective(roles: Optional[List[str]] = None) -> List[Dict]:
     roles = roles or list(ALLOWED_ROLES)
 
     # One scan of feature_overrides; building a {(fid,role): allowed}
-    # dict keeps the per-feature lookup O(1).
+    # dict keeps the per-feature lookup O(1). Missing table → empty
+    # overrides (defaults apply across the board).
+    import sqlite3 as _sqlite3
     conn = _get_conn()
     try:
         rows = conn.execute(
             "SELECT feature_id, role, allowed FROM feature_overrides"
         ).fetchall()
+    except _sqlite3.OperationalError:
+        rows = []
     finally:
         conn.close()
     overrides = {(r["feature_id"], r["role"]): bool(r["allowed"]) for r in rows}

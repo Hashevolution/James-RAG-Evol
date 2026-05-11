@@ -243,13 +243,19 @@ class EndpointContractTests(unittest.TestCase):
         self.assertIn("from tools.patch.audit_query import query_patch_audit", src,
                       "audit endpoint must import query_patch_audit")
         # Admin gating — same pattern as the rest of /admin/* handlers.
-        # The handler invokes _require_admin(api_key, role).
-        # We grep for the call inside the handler body region.
+        # Either the legacy _require_admin(api_key, role) call or the
+        # W4-Q2 _require_feature(api_key, role, "admin.evolution") call
+        # gates this endpoint; both enforce admin authority for the
+        # admin.evolution feature.
         idx = src.index('@app.get("/admin/patch/audit"')
         # Window: 1500 chars after the decorator covers the handler body.
         window = src[idx:idx + 1500]
-        self.assertIn("_require_admin(api_key, role)", window,
-                      "audit endpoint must call _require_admin")
+        self.assertTrue(
+            "_require_admin(api_key, role)" in window
+            or '_require_feature(api_key, role, "admin.evolution")' in window,
+            "audit endpoint must call _require_admin or "
+            "_require_feature for admin.evolution",
+        )
         self.assertIn("query_patch_audit(", window,
                       "audit endpoint must call query_patch_audit")
         # Response shape contract.
