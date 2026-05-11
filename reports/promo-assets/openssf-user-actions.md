@@ -5,7 +5,10 @@
 
 ---
 
-## 작업 1. GitHub Private Vulnerability Reporting 활성화
+## 작업 1. GitHub Private Vulnerability Reporting 활성화 ✅ 완료
+
+> 2026-05-11: 사용자가 GitHub 리포 Settings → Code security and analysis에서 활성화 확인.
+> SECURITY.md의 1순위 링크가 동작합니다.
 
 SECURITY.md에 안내한 1순위 채널이 실제로 동작하려면 리포 설정에서 한 번 켜야 합니다.
 
@@ -28,22 +31,12 @@ SECURITY.md에 안내한 1순위 채널이 실제로 동작하려면 리포 설�
 
 ---
 
-## 작업 2. 백업 이메일 채워 넣기
+## 작업 2. 백업 이메일 채워 넣기 ✅ 완료
 
-`SECURITY.md` 본문에 placeholder가 들어 있습니다:
+> 2026-05-11: `karu-7@hanmail.net` 으로 확정. SECURITY.md에 반영.
 
-```
-email `<security@TODO-replace-me>` with:
-```
-
-사용 가능한 이메일이 정해지면 알려주세요. 본 세션에서 한 줄 치환해 커밋하겠습니다.
-권장 옵션:
-
-- (a) `security@<your-domain>` — 도메인이 있다면 가장 깔끔
-- (b) 본인 GitHub 계정 메일 (Profile → Email)
-- (c) 별도 익명 메일 (예: ProtonMail) — 스팸 부담↓
-
-> 어느 쪽이든 GitHub Security Advisories와 함께 적어 두면 OpenSSF passing 평가자가 만점을 줍니다.
+GitHub PVR 장애·외부인 신고 시 이메일이 백업 채널 역할을 합니다.
+스팸 부담이 생기면 (b) GitHub 메일 또는 (c) 도메인 메일로 추후 교체 가능.
 
 ---
 

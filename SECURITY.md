@@ -132,7 +132,7 @@ and (when applicable) CVE assignment.
 
 ### 2. Backup email
 
-If you cannot use GitHub PVR, email `<security@TODO-replace-me>` with:
+If you cannot use GitHub PVR, email **karu-7@hanmail.net** with:
 
 - Steps to reproduce
 - Affected component / version
