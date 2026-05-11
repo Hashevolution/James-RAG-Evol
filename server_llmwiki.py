@@ -2546,59 +2546,6 @@ def _require_feature(api_key: str, role: str, feature_id: str):
         )
 
 
-def _read_jsonl_tail(path: str, max_lines: int = 200) -> list[dict]:
-    """[#2-A] Read only the last `max_lines` rows of a JSONL log.
-
-    The /admin/dashboard endpoint used to read the entire log file
-    line-by-line then slice [-20:]. On a year-old install with 100MB+
-    of audit logs this dominated dashboard load time (seconds → tens
-    of seconds).
-
-    Strategy: seek from the end of the file in 8KB chunks until we have
-    `max_lines + 1` newlines (one extra so we don't cut off the first
-    of the captured lines mid-record). Decode the chunk, split on \\n,
-    keep the last N. Each line is JSON-parsed; bad lines silently
-    skipped (preserves the prior fault tolerance).
-
-    Returns: list of dicts, oldest-first (matches prior caller's
-    ordering expectation).
-    """
-    try:
-        size = os.path.getsize(path)
-    except OSError:
-        return []
-    if size == 0:
-        return []
-    out_lines: list[bytes] = []
-    chunk_size = 8192
-    pos = size
-    buf = b""
-    with open(path, "rb") as f:
-        while pos > 0 and len(out_lines) <= max_lines:
-            read_size = min(chunk_size, pos)
-            pos -= read_size
-            f.seek(pos)
-            buf = f.read(read_size) + buf
-            # Count newlines we have so far. Stop when ≥ max_lines+1
-            # so the first split element is a complete line.
-            if buf.count(b"\n") >= max_lines + 1:
-                out_lines = buf.split(b"\n")[-max_lines - 1:]
-                break
-        else:
-            # Whole file fit in `max_lines` worth of data — use as-is.
-            out_lines = buf.split(b"\n")
-    rows: list[dict] = []
-    for line in out_lines:
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            rows.append(json.loads(line.decode("utf-8", errors="ignore")))
-        except Exception:
-            pass
-    return rows[-max_lines:]
-
-
 @app.get("/admin/dashboard", summary="관리자 대시보드 [P7]")
 async def admin_dashboard(api_key: str, role: str = Depends(get_role_from_request)):
     _require_feature(api_key, role, "admin.metrics")
@@ -2611,16 +2558,40 @@ async def admin_dashboard(api_key: str, role: str = Depends(get_role_from_reques
         user_count = len(list_users())
     except: user_count = 0
 
-    # [#2-A] tail-only JSONL 읽기 — 전체 파일 → 마지막 200행만.
-    # 사용자 보고: "어드민 페이지로 이동할때 시간이 다소 딜레이". 가장
-    # 큰 원인은 audit log가 누적되면서 dashboard load가 O(file size)로
-    # 느려진 것. 마지막 N개만 필요하므로 EOF에서 역방향 chunked read.
+    # [Phase 4a] tool / attack 스트림 → SQLite audit_log 직접 조회.
+    # 이전: james_attack_log.jsonl + james_audit_tool.jsonl 의 tail
+    # 200줄을 8KB 청크 역방향 read 로 합쳤음. Phase 1+2 의 mirror 가
+    # audit_log 에 tool:* / attack:* prefix 로 동일 데이터를 갖고 있어
+    # ORDER BY id DESC LIMIT 200 한 번이면 됨. 인덱스 없는 단일 SELECT
+    # 라도 SQLite 가 JSONL 역방향 청크보다 일관되게 빠름.
     security_events, recent_logs = 0, []
-    for lf in ["james_attack_log.jsonl","james_audit_tool.jsonl"]:
-        for e in _read_jsonl_tail(lf, max_lines=200):
-            recent_logs.append(e)
-            if e.get("blocked") or "BLOCK" in e.get("event",""):
+    try:
+        conn = sqlite3.connect(_AUDIT_DB, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            "SELECT timestamp, endpoint, user_role, query, "
+            " security_event, blocked "
+            "FROM audit_log "
+            "WHERE endpoint LIKE 'tool:%' OR endpoint LIKE 'attack:%' "
+            "ORDER BY id DESC LIMIT 200"
+        ).fetchall()
+        conn.close()
+        for r in rows:
+            ev = r["security_event"] or ""
+            recent_logs.append({
+                "time":    r["timestamp"],
+                "event":   ev,
+                "role":    r["user_role"],
+                "blocked": bool(r["blocked"]),
+                "detail":  (r["query"] or "")[:200],
+            })
+            if r["blocked"] or "BLOCK" in ev:
                 security_events += 1
+        # Match prior oldest-first ordering for the dashboard widget.
+        recent_logs.reverse()
+    except Exception:
+        # audit_log 읽기 실패 시 dashboard 자체는 계속 동작.
+        pass
 
     try:
         from tools.patch.patch_generator import list_patches
@@ -2673,7 +2644,7 @@ async def admin_dashboard(api_key: str, role: str = Depends(get_role_from_reques
         # 응답 시간 그래프: 최근 20회 (시간순)
         elapsed_chart = list(reversed(elapsed_list[:20]))
 
-    except Exception as e:
+    except Exception:
         elapsed_chart = []
 
     return {
@@ -3648,23 +3619,6 @@ async def export_answer(request: Request, role: str = Depends(get_role_from_requ
         media_type=result.mime,
         headers=headers,
     )
-
-
-@app.get("/admin/audit", summary="감사 로그 [P7]")
-async def admin_audit(api_key: str, limit: int = 100,
-                      role: str = Depends(get_role_from_request)):
-    _require_feature(api_key, role, "admin.audit_log")
-    logs = []
-    for lf in ["james_audit_db.jsonl","james_audit_tool.jsonl",
-               "james_attack_log.jsonl","james_system_log.jsonl"]:
-        try:
-            with open(lf, encoding="utf-8") as f:
-                for line in f:
-                    try: logs.append(json.loads(line))
-                    except: pass
-        except: pass
-    logs.sort(key=lambda x: x.get("time",""), reverse=True)
-    return {"logs": logs[:limit], "total": len(logs)}
 
 
 @app.get("/admin/uploads/history/",

@@ -1428,13 +1428,9 @@ async function patchAction(patchId, action) {
 }
 
 /* ── 감사 로그 ── */
-/* ── W4 P6: 감사 로그 — category filter + free-text search + paging ──
-   Replaces the legacy single-stream renderer that read /admin/audit
-   (JSONL tail) and showed every event in a flat box. The new
-   /admin/audit/list endpoint queries audit_log directly so user-
-   management / password / api-key events appear here instead of
-   being invisible because the dashboard widget filtered to /query/.
-*/
+/* W4 P6: category filter + free-text search + paging. /admin/audit/list
+   reads audit_log directly so user-management / password / api-key /
+   tool / attack / system events all surface here. */
 const AUDIT_PAGE_SIZE = 50;
 let _auditOffset = 0;
 let _auditTotal  = 0;
