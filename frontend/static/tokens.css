@@ -58,3 +58,29 @@
   --font-mono:    'JetBrains Mono', ui-monospace, monospace;
   --font-ui:      'Inter', 'Pretendard', system-ui, -apple-system, sans-serif;
 }
+
+/* ── Brand mark ──
+ * Long-form product name shown in headers, modals, welcome screens.
+ * The first line carries the primary positioning; the trailing
+ * "Operating System" sits one weight/colour notch below so the
+ * compound reads as a system identity rather than a sentence.
+ * Used inside .logo, .modal-title, .welcome-title etc. */
+.brand {
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: .25px;
+  line-height: 1.25;
+  white-space: nowrap;
+  color: var(--text);
+}
+.brand .brand-tail {
+  font-weight: 500;
+  color: var(--muted);
+  margin-left: 3px;
+}
+@media (max-width: 900px) {
+  .brand { font-size: 11px; letter-spacing: .15px; }
+}
+@media (max-width: 640px) {
+  .brand { white-space: normal; }
+}

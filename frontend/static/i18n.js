@@ -5,7 +5,7 @@
 
 const TRANSLATIONS = {
   en: {
-    'app.name':              'JAMES',
+    'app.name':              'Secure Enterprise Knowledge Intelligence, Operating System',
     'app.subtitle':          'Security-focused Graph-RAG knowledge engine',
     'app.welcome':           'Ask me anything',
     'app.admin':             'ADMIN',
@@ -40,7 +40,7 @@ const TRANSLATIONS = {
     'common.start':          'Start',
     'common.last':           'Last',
 
-    'chat.title':            'JAMES — Security Reasoning Engine',
+    'chat.title':            'Secure Enterprise Knowledge Intelligence, Operating System — Security Reasoning Engine',
     'chat.placeholder':      'Type a message (Shift+Enter for new line)',
     'chat.example1':         'What is economics?',
     'chat.example2':         'Find documents about John Smith',
@@ -81,7 +81,7 @@ const TRANSLATIONS = {
     'auth.password':         'Password',
     'auth.api_key':          'API Key',
     'auth.api_key_hint':     "From server's .env JAMES_API_KEY. Leave blank to reuse stored value.",
-    'auth.login_title':      'JAMES Login',
+    'auth.login_title':      'Login',
     'auth.api_key_prompt':   'Enter your JAMES API Key:',
     'auth.login_success':    '{username} ({role}) logged in',
     'auth.session_expired':  'Session expired. Click to log in again.',
@@ -406,7 +406,7 @@ const TRANSLATIONS = {
     'auth.admin_required':       'Admin login required',
     'auth.login':                'Login',
     'auth.signup_link':          'No account? Sign up',
-    'auth.signup_title':         '▸ JAMES signup',
+    'auth.signup_title':         '▸ Signup',
     'auth.signup_hint':          'After submitting, an admin must approve your account before you can log in.',
     'auth.signup_username_ph':   'lowercase letters/digits/_- (3-32 chars)',
     'auth.signup_password_ph':   '8-72 chars, letter + digit',
@@ -517,7 +517,7 @@ const TRANSLATIONS = {
   },
 
   ko: {
-    'app.name':              'JAMES',
+    'app.name':              'Secure Enterprise Knowledge Intelligence, Operating System',
     'app.subtitle':          '보안 중심 Graph-RAG 지식 추론 엔진',
     'app.welcome':           '무엇이든 물어보세요',
     'app.admin':             '관리자',
@@ -552,7 +552,7 @@ const TRANSLATIONS = {
     'common.start':          '시작',
     'common.last':           '마지막',
 
-    'chat.title':            'JAMES — 보안 추론 엔진',
+    'chat.title':            'Secure Enterprise Knowledge Intelligence, Operating System — 보안 추론 엔진',
     'chat.placeholder':      '메시지를 입력하세요 (Shift+Enter: 줄바꿈)',
     'chat.example1':         '경제학이란 무엇인가?',
     'chat.example2':         '김철수 관련 자료 찾아줘',
@@ -593,7 +593,7 @@ const TRANSLATIONS = {
     'auth.password':         '비밀번호',
     'auth.api_key':          'API Key',
     'auth.api_key_hint':     '서버 .env의 JAMES_API_KEY 값. 비워두면 저장된 값 그대로 사용.',
-    'auth.login_title':      'JAMES 로그인',
+    'auth.login_title':      '로그인',
     'auth.api_key_prompt':   'JAMES API Key를 입력하세요:',
     'auth.login_success':    '{username} ({role}) 로그인 완료',
     'auth.session_expired':  '로그인 세션이 만료됐습니다. 클릭하면 재로그인합니다.',
@@ -918,7 +918,7 @@ const TRANSLATIONS = {
     'auth.admin_required':       '관리자 로그인이 필요합니다',
     'auth.login':                '로그인',
     'auth.signup_link':          '계정이 없으신가요? 회원가입',
-    'auth.signup_title':         '▸ JAMES 회원가입',
+    'auth.signup_title':         '▸ 회원가입',
     'auth.signup_hint':          '가입 신청 후 관리자 승인을 거쳐야 로그인할 수 있습니다.',
     'auth.signup_username_ph':   '영문 소문자/숫자/_- (3~32자)',
     'auth.signup_password_ph':   '8~72자, 영문 + 숫자',
