@@ -97,8 +97,9 @@ class AuditListEndpointTests(unittest.TestCase):
         Path(self.db).unlink(missing_ok=True)
 
     def _fixture(self) -> list[dict]:
-        # 8 rows covering every category, plus a near-duplicate to
-        # exercise the q substring filter.
+        # 13 rows covering every category, plus a near-duplicate to
+        # exercise the q substring filter. Phase 3 added 5 rows for
+        # the new tools / attack / system endpoint prefixes.
         return [
             {"timestamp": "2026-05-11T01:00:00", "user_role": "admin",
              "endpoint": "/admin/users/approve", "query": "alice",
@@ -124,6 +125,29 @@ class AuditListEndpointTests(unittest.TestCase):
             {"timestamp": "2026-05-11T01:07:00", "user_role": "admin",
              "endpoint": "/query/",              "query": "what is X",
              "security_event": ""},
+            # Phase 1 mirror — tool stream
+            {"timestamp": "2026-05-11T01:08:00", "user_role": "admin",
+             "endpoint": "tool:router:TOOL_EXECUTED",
+             "query": "read_file: workspace/foo.py",
+             "security_event": "TOOL_EXECUTED"},
+            {"timestamp": "2026-05-11T01:09:00", "user_role": "external",
+             "endpoint": "tool:sandbox:SANDBOX_BLOCK",
+             "query": "../escape",
+             "security_event": "SANDBOX_BLOCK", "blocked": 1},
+            # Phase 2 mirror — attack stream
+            {"timestamp": "2026-05-11T01:10:00", "user_role": "external",
+             "endpoint": "attack:injection",
+             "query": "ignore previous",
+             "security_event": "injection", "blocked": 1},
+            # Phase 2 mirror — system stream
+            {"timestamp": "2026-05-11T01:11:00", "user_role": "system",
+             "endpoint": "system:ERROR:orchestrator.startup",
+             "query": "",
+             "security_event": "orchestrator.startup"},
+            {"timestamp": "2026-05-11T01:12:00", "user_role": "system",
+             "endpoint": "system:INFO:llm_router.fallback",
+             "query": "",
+             "security_event": "llm_router.fallback"},
         ]
 
     def _client(self):
@@ -158,9 +182,10 @@ class AuditListEndpointTests(unittest.TestCase):
         self.assertEqual(r.status_code, 200, r.text)
         body = r.json()
         self.assertEqual(body["category"], "all")
-        self.assertEqual(body["total"], 8)
-        # Default sort: id DESC. Newest fixture row is /query/.
-        self.assertEqual(body["items"][0]["endpoint"], "/query/")
+        self.assertEqual(body["total"], 13)
+        # Default sort: id DESC. Newest fixture row is system:INFO:...
+        self.assertEqual(body["items"][0]["endpoint"],
+                         "system:INFO:llm_router.fallback")
 
     # ── category filters ────────────────────────────────────────
     def test_category_user_mgmt(self):
@@ -271,8 +296,47 @@ class AuditListEndpointTests(unittest.TestCase):
             headers=self._admin_hdr(),
         )
         body = r.json()
-        self.assertEqual(body["total"], 8)
+        self.assertEqual(body["total"], 13)
         self.assertEqual(len(body["items"]), 2)
+
+    # ── Phase 3 categories: tools / attack / system ─────────────
+    def test_category_tools(self):
+        r = self._client().get(
+            "/admin/audit/list",
+            params={"api_key": self._api_key, "category": "tools"},
+            headers=self._admin_hdr(),
+        )
+        body = r.json()
+        # Two fixture rows: tool:router:... and tool:sandbox:...
+        self.assertEqual(body["total"], 2)
+        for it in body["items"]:
+            self.assertTrue(it["endpoint"].startswith("tool:"),
+                            f"unexpected endpoint: {it['endpoint']}")
+
+    def test_category_attack(self):
+        r = self._client().get(
+            "/admin/audit/list",
+            params={"api_key": self._api_key, "category": "attack"},
+            headers=self._admin_hdr(),
+        )
+        body = r.json()
+        self.assertEqual(body["total"], 1)
+        self.assertEqual(body["items"][0]["endpoint"], "attack:injection")
+        # Attack rows are blocked.
+        self.assertTrue(body["items"][0]["blocked"])
+
+    def test_category_system(self):
+        r = self._client().get(
+            "/admin/audit/list",
+            params={"api_key": self._api_key, "category": "system"},
+            headers=self._admin_hdr(),
+        )
+        body = r.json()
+        # Two fixture rows: system:ERROR:... and system:INFO:...
+        self.assertEqual(body["total"], 2)
+        for it in body["items"]:
+            self.assertTrue(it["endpoint"].startswith("system:"),
+                            f"unexpected endpoint: {it['endpoint']}")
 
     def test_query_field_truncated_to_120(self):
         # Insert a long query and verify the trim.

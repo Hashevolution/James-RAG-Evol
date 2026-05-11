@@ -3759,6 +3759,9 @@ async def admin_uploads_history(
 #   api_keys   →  /api-keys/...
 #   auth       →  /login/
 #   query      →  /query/  + /upload/  (user-driven content events)
+#   tools      →  tool:...          (Phase 1 — router + tools/code/*)
+#   attack     →  attack:...        (Phase 2 — security_layer.log_attack)
+#   system     →  system:...        (Phase 2 — 11 *system* log writers)
 #   all        →  no endpoint filter
 _AUDIT_CATEGORIES = {
     "user_mgmt": ("/admin/users/",),
@@ -3766,6 +3769,9 @@ _AUDIT_CATEGORIES = {
     "api_keys":  ("/api-keys/",),
     "auth":      ("/login/",),
     "query":     ("/query/", "/upload/"),
+    "tools":     ("tool:",),
+    "attack":    ("attack:",),
+    "system":    ("system:",),
 }
 
 @app.get("/admin/audit/list", summary="감사 로그 조회 (W4 P6)")
