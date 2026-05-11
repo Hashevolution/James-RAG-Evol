@@ -87,6 +87,14 @@ const TRANSLATIONS = {
     'auth.session_expired':  'Session expired. Click to log in again.',
     'auth.auth_expired':     'Authentication expired. Please log in again.',
 
+    'sidebar.mode_upload':   'File upload',
+    'sidebar.mode_recent':   'Recent chats',
+    'sidebar.mode_search':   'Search',
+    'sidebar.recent_title':  'Recent conversations',
+    'sidebar.recent_hint':   'Recent chat sessions will appear here.\n(Activated after W7 data integration.)',
+    'sidebar.search_title':  'Global search',
+    'sidebar.search_hint':   'Search across uploaded files · wiki · past conversations.\n(Activated in a follow-up cycle.)',
+
     'upload.title':          'File Upload',
     'upload.drag':           'drag',
     'upload.drag_label':     'Click or drag to add files',
@@ -534,6 +542,14 @@ const TRANSLATIONS = {
     'auth.login_success':    '{username} ({role}) 로그인 완료',
     'auth.session_expired':  '로그인 세션이 만료됐습니다. 클릭하면 재로그인합니다.',
     'auth.auth_expired':     '인증이 만료됐습니다. 다시 로그인해주세요.',
+
+    'sidebar.mode_upload':   '파일 업로드',
+    'sidebar.mode_recent':   '최근 챗',
+    'sidebar.mode_search':   '검색',
+    'sidebar.recent_title':  '최근 챗 기록',
+    'sidebar.recent_hint':   '세션별 최근 대화가 여기 표시됩니다.\n(W7 데이터 통합 후 활성화)',
+    'sidebar.search_title':  '전역 검색',
+    'sidebar.search_hint':   '업로드한 파일·위키·과거 대화 통합 검색.\n(후속 사이클에서 활성화)',
 
     'upload.title':          '파일 업로드',
     'upload.drag':           '드래그',

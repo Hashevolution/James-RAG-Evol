@@ -252,18 +252,133 @@
   /* ── 메인 레이아웃 ── */
   main { display: flex; flex: 1; overflow: hidden; }
 
-  /* ── 사이드바 접이식 ── */
+  /* ── 사이드바 접이식 ──
+     W5 (2026-05-11): rail + panel 2-column split. The narrow left
+     rail holds mode icons (📂 upload, 🕘 recent, 🔍 search). The
+     wider panel renders the currently selected mode's contents.
+     Total width unchanged externally (340 = 56 rail + 284 panel)
+     so the chat area layout is preserved. W6 will use
+     ``switchSidebarMode('upload')`` on drag-enter. */
   .sidebar {
-    width: 280px;
+    width: 340px;
     border-right: 1px solid var(--border-2);
     background: var(--surface);
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     flex-shrink: 0;
     overflow: hidden;
     transition: width .2s ease;
   }
   .sidebar.collapsed { width: 0; border-right: none; }
+
+  .sidebar-rail {
+    width: 56px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border-2);
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 0;
+    gap: 6px;
+    overflow: hidden;
+  }
+  .sidebar-rail-item {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 18px;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    position: relative;
+  }
+  .sidebar-rail-item:hover {
+    background: var(--surface-2);
+    color: var(--text-soft);
+  }
+  .sidebar-rail-item.active {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+  .sidebar-rail-item.active::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: var(--accent-fg, var(--text));
+    border-radius: 0 2px 2px 0;
+  }
+  .sidebar-rail-tip {
+    position: absolute;
+    left: 52px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: var(--font-ui);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity .12s, transform .12s;
+    z-index: 5;
+  }
+  .sidebar-rail-item:hover .sidebar-rail-tip {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .sidebar-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .sidebar-panel-mode {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .sidebar-panel-mode.active {
+    display: flex;
+  }
+  .sidebar-placeholder {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 20px;
+    text-align: center;
+    color: var(--muted);
+  }
+  .sidebar-placeholder .icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+    opacity: .5;
+  }
+  .sidebar-placeholder .title {
+    font-size: 13px;
+    color: var(--text-soft);
+    margin-bottom: 6px;
+  }
+  .sidebar-placeholder .hint {
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--muted);
+  }
 
   .sidebar-header {
     display: flex;
@@ -875,59 +990,107 @@
 <main style="position:relative">
   <button class="sidebar-open-btn" id="sidebar-open-btn"
           onclick="toggleSidebar()" data-i18n-title="upload.open" title="업로드 열기">▶</button>
-  <!-- ── 사이드바 ── -->
+  <!-- ── 사이드바 (W5: rail + panel split) ── -->
   <aside class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-      <div class="sidebar-title">▸ <span data-i18n="upload.title">파일 업로드</span></div>
-      <button class="sidebar-toggle" onclick="toggleSidebar()" data-i18n-title="common.close" title="닫기">◀</button>
-    </div>
-
-    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-      <!-- [video-reject 2026-05-10] video/* 제거 — 현재 영상 처리 stub.
-           audio 만 허용. 후속 video-asr PR 에서 video/* 재추가 예정. -->
-      <input type="file" id="file-input" multiple
-             accept="image/*,audio/*,.pdf,.txt,.md,.json,.docx,.xlsx,.pptx,.hwp,.hwpx">
-      <!-- item #8: 폴더 통째 선택용 hidden input. webkitdirectory 사용 시
-           accept 무시되고 디렉토리 picker가 뜸. -->
-      <input type="file" id="folder-input" multiple webkitdirectory directory
-             style="display:none">
-      <div class="drop-icon">📂</div>
-      <div class="drop-label">
-        <span data-i18n="upload.drag_label">클릭하거나 드래그하여 파일 추가</span><br>
-        <span class="drop-types"><span data-i18n="upload.types">이미지 · 오디오 · PDF · 문서</span></span><br>
-        <span class="drop-types" style="margin-top:4px;display:inline-block">
-          폴더 통째로 드래그도 가능
-        </span>
+    <!-- Left rail — mode icons. switchSidebarMode(id) flips both
+         .active on the matching rail item and the matching panel. -->
+    <div class="sidebar-rail">
+      <div class="sidebar-rail-item active" data-mode="upload"
+           onclick="switchSidebarMode('upload')">
+        📂
+        <span class="sidebar-rail-tip" data-i18n="sidebar.mode_upload">파일 업로드</span>
+      </div>
+      <div class="sidebar-rail-item" data-mode="recent"
+           onclick="switchSidebarMode('recent')">
+        🕘
+        <span class="sidebar-rail-tip" data-i18n="sidebar.mode_recent">최근 챗</span>
+      </div>
+      <div class="sidebar-rail-item" data-mode="search"
+           onclick="switchSidebarMode('search')">
+        🔍
+        <span class="sidebar-rail-tip" data-i18n="sidebar.mode_search">검색</span>
       </div>
     </div>
-    <!-- item #8: 폴더 선택 버튼 (드래그 외 클릭 경로) -->
-    <button type="button"
-            onclick="event.stopPropagation(); document.getElementById('folder-input').click()"
-            style="margin-top:6px;width:100%;padding:8px;
-                   background:var(--surface-2);border:1px solid var(--border);
-                   border-radius:6px;color:var(--text-soft);font-size:12px;
-                   cursor:pointer;font-family:var(--font-ui)">
-      📁 폴더 선택
-    </button>
 
-    <div class="instruction-box">
-      <label><span data-i18n="upload.common_label">💬 공통 저장 지시 (폴더 미지정 파일에 적용)</span></label>
-      <input type="text" id="save-instruction"
-             placeholder="e.g., Save to 2026 reports folder"
-             data-i18n-placeholder="upload.folder_example">
+    <!-- Right panel — only one .sidebar-panel-mode is .active at a time. -->
+    <div class="sidebar-panel">
+      <div class="sidebar-header">
+        <div class="sidebar-title" id="sidebar-title">▸ <span data-i18n="upload.title">파일 업로드</span></div>
+        <button class="sidebar-toggle" onclick="toggleSidebar()" data-i18n-title="common.close" title="닫기">◀</button>
+      </div>
+
+      <!-- Mode: 파일 업로드 (default) -->
+      <div class="sidebar-panel-mode active" data-mode="upload">
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+          <!-- [video-reject 2026-05-10] video/* 제거 — 현재 영상 처리 stub.
+               audio 만 허용. 후속 video-asr PR 에서 video/* 재추가 예정. -->
+          <input type="file" id="file-input" multiple
+                 accept="image/*,audio/*,.pdf,.txt,.md,.json,.docx,.xlsx,.pptx,.hwp,.hwpx">
+          <!-- item #8: 폴더 통째 선택용 hidden input. webkitdirectory 사용 시
+               accept 무시되고 디렉토리 picker가 뜸. -->
+          <input type="file" id="folder-input" multiple webkitdirectory directory
+                 style="display:none">
+          <div class="drop-icon">📂</div>
+          <div class="drop-label">
+            <span data-i18n="upload.drag_label">클릭하거나 드래그하여 파일 추가</span><br>
+            <span class="drop-types"><span data-i18n="upload.types">이미지 · 오디오 · PDF · 문서</span></span><br>
+            <span class="drop-types" style="margin-top:4px;display:inline-block">
+              폴더 통째로 드래그도 가능
+            </span>
+          </div>
+        </div>
+        <!-- item #8: 폴더 선택 버튼 (드래그 외 클릭 경로) -->
+        <button type="button"
+                onclick="event.stopPropagation(); document.getElementById('folder-input').click()"
+                style="margin:0 12px;padding:8px;
+                       background:var(--surface-2);border:1px solid var(--border);
+                       border-radius:6px;color:var(--text-soft);font-size:12px;
+                       cursor:pointer;font-family:var(--font-ui)">
+          📁 폴더 선택
+        </button>
+
+        <div class="instruction-box">
+          <label><span data-i18n="upload.common_label">💬 공통 저장 지시 (폴더 미지정 파일에 적용)</span></label>
+          <input type="text" id="save-instruction"
+                 placeholder="e.g., Save to 2026 reports folder"
+                 data-i18n-placeholder="upload.folder_example">
+        </div>
+
+        <div class="file-list" id="file-list"></div>
+
+        <!-- 큐 진행 표시 (Issue #14) — 다중 파일 업로드 동안 표시 -->
+        <div class="queue-progress" id="queue-progress" style="display:none;">
+          <div class="queue-progress-text" id="queue-progress-text"></div>
+          <div class="queue-progress-bar"><div class="queue-progress-fill" id="queue-progress-fill"></div></div>
+        </div>
+
+        <button class="upload-btn" id="upload-btn" onclick="uploadFiles()" disabled>
+          <span data-i18n="upload.btn_default">업로드 및 분석</span>
+        </button>
+      </div>
+
+      <!-- Mode: 최근 챗 (placeholder — W7-A 데이터 통합 시 실제 컨텐츠) -->
+      <div class="sidebar-panel-mode" data-mode="recent">
+        <div class="sidebar-placeholder">
+          <div class="icon">🕘</div>
+          <div class="title" data-i18n="sidebar.recent_title">최근 챗 기록</div>
+          <div class="hint" data-i18n="sidebar.recent_hint">
+            세션별 최근 대화가 여기 표시됩니다.<br>(W7 데이터 통합 후 활성화)
+          </div>
+        </div>
+      </div>
+
+      <!-- Mode: 검색 (placeholder — 전역 검색은 후속) -->
+      <div class="sidebar-panel-mode" data-mode="search">
+        <div class="sidebar-placeholder">
+          <div class="icon">🔍</div>
+          <div class="title" data-i18n="sidebar.search_title">전역 검색</div>
+          <div class="hint" data-i18n="sidebar.search_hint">
+            업로드한 파일·위키·과거 대화 통합 검색.<br>(후속 사이클에서 활성화)
+          </div>
+        </div>
+      </div>
     </div>
-
-    <div class="file-list" id="file-list"></div>
-
-    <!-- 큐 진행 표시 (Issue #14) — 다중 파일 업로드 동안 표시 -->
-    <div class="queue-progress" id="queue-progress" style="display:none;">
-      <div class="queue-progress-text" id="queue-progress-text"></div>
-      <div class="queue-progress-bar"><div class="queue-progress-fill" id="queue-progress-fill"></div></div>
-    </div>
-
-    <button class="upload-btn" id="upload-btn" onclick="uploadFiles()" disabled>
-      <span data-i18n="upload.btn_default">업로드 및 분석</span>
-    </button>
   </aside>
 
   <!-- ── 챗 영역 ── -->
@@ -1025,7 +1188,14 @@
 <script src="/static/chat.js"></script>
 <script src="/static/upload.js"></script>
 <script>
-  window.addEventListener('DOMContentLoaded', () => { restoreHistory(); });
+  window.addEventListener('DOMContentLoaded', () => {
+    restoreHistory();
+    // W5: restore last-selected sidebar mode (default = upload).
+    try {
+      const saved = localStorage.getItem('james_sidebar_mode');
+      if (saved && saved !== 'upload') switchSidebarMode(saved);
+    } catch (_) {}
+  });
 
   function toggleSidebar() {
     const sb  = document.getElementById('sidebar');
@@ -1034,6 +1204,44 @@
     const collapsed = sb.classList.toggle('collapsed');
     btn.classList.toggle('visible', collapsed);
     if (tog) tog.textContent = collapsed ? '▶' : '◀';
+  }
+
+  /* W5: sidebar rail mode switcher.
+     Public entry point — W6 will call this on drag-enter to flip the
+     panel to "upload" so the user sees the drop zone even if they
+     were browsing the recent / search modes.
+     Selection persists across reloads via localStorage. */
+  function switchSidebarMode(modeId) {
+    if (!modeId) return;
+    const rail   = document.querySelectorAll('.sidebar-rail-item');
+    const panels = document.querySelectorAll('.sidebar-panel-mode');
+    let matched = false;
+    rail.forEach(el => {
+      const on = el.dataset.mode === modeId;
+      el.classList.toggle('active', on);
+      if (on) matched = true;
+    });
+    if (!matched) return;  // unknown mode → ignore
+    panels.forEach(el => {
+      el.classList.toggle('active', el.dataset.mode === modeId);
+    });
+    // Update the panel header title from the matching rail tip so
+    // i18n stays in one place.
+    const titleEl = document.getElementById('sidebar-title');
+    const ral = document.querySelector(
+      `.sidebar-rail-item[data-mode="${modeId}"] .sidebar-rail-tip`
+    );
+    if (titleEl && ral) {
+      titleEl.innerHTML = '▸ <span>' + ral.textContent.trim() + '</span>';
+    }
+    // If collapsed, opening the rail also expands the sidebar so the
+    // user sees the new mode's content — otherwise the click feels
+    // dead.
+    const sb = document.getElementById('sidebar');
+    if (sb.classList.contains('collapsed')) {
+      toggleSidebar();
+    }
+    try { localStorage.setItem('james_sidebar_mode', modeId); } catch (_) {}
   }
 </script>
 
