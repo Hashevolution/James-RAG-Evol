@@ -54,6 +54,7 @@ from core.api_keys import (
     issue_api_key  as _api_key_issue,
     revoke_api_key as _api_key_revoke,
     list_api_keys  as _api_key_list,
+    verify_api_key as _api_key_verify,
 )
 from core.policy_engine import default_engine
 from processors.file_processor import FileProcessor
@@ -322,22 +323,71 @@ async def on_startup():
 # ─── 인증 헬퍼 ───────────────────────────────────────────────
 
 def verify_api_key(api_key: str):
-    if api_key != API_KEY:
-        raise HTTPException(status_code=403, detail="API Key 오류")
+    """Accept either the system API_KEY or a per-user ``jms_...`` key.
+
+    Raises 403 if neither matches. This function only validates the
+    credential; role-based authorization continues to consult
+    ``get_role_from_request`` (so a bare system key still gets the
+    employee role, and a user key gets the owner's actual role).
+    """
+    if api_key and api_key.startswith("jms_"):
+        if _api_key_verify(api_key) is not None:
+            return
+    elif api_key == API_KEY:
+        return
+    raise HTTPException(status_code=403, detail="API Key 오류")
+
+
+def resolve_api_key_principal(api_key: str) -> Optional[dict]:
+    """Non-raising counterpart to ``verify_api_key``.
+
+    Returns ``{"source", "username", "role"}`` or None. Used by
+    ``get_role_from_request`` to map a user key to the owner's role
+    without raising on miss (the caller decides whether absence is
+    an error).
+    """
+    if not api_key:
+        return None
+    if api_key.startswith("jms_"):
+        out = _api_key_verify(api_key)
+        if out is not None:
+            return {"source": "user", **out}
+        return None
+    if api_key == API_KEY:
+        # System key intentionally does NOT carry admin authority by
+        # itself — pairing it with an admin JWT is still required for
+        # admin endpoints. Returning "employee" here keeps the
+        # pre-P3-2 behaviour identical for system-only callers.
+        return {"source": "system", "username": "system", "role": "employee"}
+    return None
+
 
 def get_role_from_request(
     request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
     x_role: Optional[str] = Header(None, alias="X-Role"),
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
 ) -> str:
-    """
-    JWT 토큰 → role 추출.
-    [P7] api_key만 있는 경우 employee로 처리 (로컬 전용 시스템)
+    """JWT > user API key > X-Role (dev) > default employee.
+
+    [W4 P3-2] User API keys (``jms_...``) now surface the owner's
+    role to authorization gates. The system key remains employee
+    so a leaked .env value cannot self-elevate to admin.
     """
     if credentials and credentials.credentials:
         role = get_role_from_token(credentials.credentials)
         print(f"[AUTH] JWT role: {role}")
         return role
+
+    # W4 P3-2: X-API-Key header takes precedence over ?api_key= so
+    # clients on shared proxies (where logs may capture the URL) can
+    # move the credential out of the URL line.
+    key = (x_api_key or "").strip() or request.query_params.get("api_key", "")
+    if key:
+        principal = resolve_api_key_principal(key)
+        if principal and principal["source"] == "user":
+            print(f"[AUTH] user API key: {principal['username']} (role={principal['role']})")
+            return principal["role"]
 
     if x_role and x_role in ALLOWED_ROLES:
         if DEV_MODE:
@@ -346,7 +396,6 @@ def get_role_from_request(
 
     # [P7-FIX] JWT 없어도 api_key 검증은 엔드포인트에서 수행됨
     # 로컬 전용 시스템: api_key 통과 = 신뢰 사용자 → employee 수준 부여
-    # (인물명 마스킹 해제 목적)
     return "employee"
 
 def get_client_ip(request: Request) -> str:

@@ -87,7 +87,12 @@ JAMES implements defense-in-depth across the RAG pipeline.
   Scope is enforced by the owning user — a caller cannot revoke
   another user's key.
 - Revocation is one-way (no unrevoke). Rotation = revoke + issue.
-- Wiring into request authentication is W4 P3-2 (separate PR).
+- Request authentication (W4 P3-2): the server accepts a user key
+  via `X-API-Key` header or `?api_key=` query. Resolved role comes
+  from the owning user — an admin user's key passes admin gates; an
+  employee's does not. JWT still wins when both are present. The
+  legacy system `JAMES_API_KEY` does NOT self-elevate to admin —
+  admin endpoints require pairing with an admin JWT.
 
 ### Credential rotation (W4 P2-B)
 

@@ -190,9 +190,21 @@ env var, which remains the operator's bootstrap secret.
   `revoke_api_key` prevents a caller from revoking another user's
   key via guessed prefix.
 
-**Wiring into request authentication** lands separately in W4 P3-2.
-P3-1 only stands up storage + management; the endpoints below use
-JWT auth to reach the key-management surface itself.
+**Request-authentication wiring (W4 P3-2)** — the server now
+accepts a user API key in two places per request:
+
+- `X-API-Key: jms_...` header (preferred — keeps the credential out
+  of URL logs on proxies)
+- `?api_key=jms_...` query parameter (back-compat with the legacy
+  call shape used by the admin UI and existing scripts)
+
+JWT still wins when both are present. With only a user key, the
+caller's role comes from the owning user's row — so a key issued to
+an `admin` user passes the `_require_admin` gate, and a key issued
+to an `employee` does not. The system `JAMES_API_KEY` is
+**deliberately not granted admin authority** by itself — pairing it
+with an admin JWT remains required for admin endpoints. A leaked
+`.env` value alone cannot self-elevate.
 
 ---
 
