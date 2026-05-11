@@ -576,13 +576,16 @@ function _selfUsernameFromToken() {
 }
 
 async function loadUsers() {
-  // Two endpoints in parallel — the server-side filter avoids loading
-  // the full table twice.
+  // Three sections fetched in parallel: all users, pending subset,
+  // and the caller's own API keys (W4 P3-3). Promise.all keeps a
+  // page enter from triple-round-tripping serially.
   try {
-    const [allData, pendingData] = await Promise.all([
+    const [allData, pendingData, myKeysData] = await Promise.all([
       api('/admin/users'),
       api('/admin/users?pending=true'),
+      api('/api-keys/list'),
     ]);
+    _renderMyApiKeys(myKeysData.keys || []);
 
     // ── pending section ─────────────────────────────────────────
     const pendingBody = document.getElementById('users-pending-body');
@@ -649,6 +652,104 @@ async function loadUsers() {
     document.getElementById('users-body').innerHTML = `<tr><td colspan="5" class="empty">${e.message}</td></tr>`;
     const pb = document.getElementById('users-pending-body');
     if (pb) pb.innerHTML = `<tr><td colspan="4" class="empty">${e.message}</td></tr>`;
+    const kb = document.getElementById('my-api-keys-body');
+    if (kb) kb.innerHTML = `<tr><td colspan="6" class="empty">${e.message}</td></tr>`;
+  }
+}
+
+/* ── W4 P3-3: my API keys ── */
+
+function _fmtKeyTs(unixSec) {
+  if (!unixSec) return '-';
+  try {
+    const d = new Date(unixSec * 1000);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch (_) { return '-'; }
+}
+
+function _renderMyApiKeys(keys) {
+  const body = document.getElementById('my-api-keys-body');
+  if (!body) return;
+  if (!keys.length) {
+    body.innerHTML = `<tr><td colspan='6' class='empty'>${t('users.mykey_empty')}</td></tr>`;
+    return;
+  }
+  body.innerHTML = keys.map(k => {
+    const status = k.revoked
+      ? `<span class="badge" style="background:#7a1e1e;color:#fff">${t('users.mykey_revoked')}</span>`
+      : `<span class="badge" style="background:#1e7a3e;color:#fff">${t('users.status_active')}</span>`;
+    const action = k.revoked
+      ? '<span style="color:var(--muted)">—</span>'
+      : `<button onclick="revokeMyApiKey('${k.key_prefix}')" style="padding:4px 10px;background:#7a1e1e;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.mykey_revoke')}</button>`;
+    return `
+      <tr>
+        <td class="mono">${k.key_prefix}…</td>
+        <td>${k.label || '<span style="color:var(--muted)">—</span>'}</td>
+        <td class="mono">${_fmtKeyTs(k.created_at)}</td>
+        <td class="mono">${_fmtKeyTs(k.last_used_at)}</td>
+        <td>${status}</td>
+        <td>${action}</td>
+      </tr>`;
+  }).join('');
+}
+
+// Holds the plaintext for the lifetime of the display modal.
+let _lastIssuedApiKey = '';
+
+async function issueMyApiKey() {
+  const labelEl = document.getElementById('mykey-label');
+  const label   = (labelEl.value || '').trim();
+  try {
+    const data = await api('/api-keys/issue', 'POST', { label: label || null });
+    _lastIssuedApiKey = data.token || '';
+    document.getElementById('mykey-display-label').textContent = label || '-';
+    document.getElementById('mykey-display-value').textContent = data.token || '';
+    document.getElementById('mykey-display-prefix').textContent =
+      `prefix: ${data.prefix || ''}`;
+    document.getElementById('api-key-display-modal').style.display = 'flex';
+    labelEl.value = '';
+    // Refresh the list in the background so the new key (revoked=false)
+    // appears as soon as the user closes the modal.
+    loadUsers();
+  } catch (e) {
+    alert(`${t('users.action_failed')}: ${e.message}`);
+  }
+}
+
+function closeMyApiKeyModal() {
+  document.getElementById('api-key-display-modal').style.display = 'none';
+  // Wipe plaintext from module state and DOM.
+  _lastIssuedApiKey = '';
+  document.getElementById('mykey-display-value').textContent = '';
+}
+
+async function copyMyApiKey() {
+  const tok = _lastIssuedApiKey;
+  if (!tok) return;
+  try {
+    await navigator.clipboard.writeText(tok);
+    const v = document.getElementById('mykey-display-value');
+    const orig = v.textContent;
+    v.textContent = t('users.token_copied');
+    setTimeout(() => { v.textContent = orig; }, 900);
+  } catch (_e) {
+    const v = document.getElementById('mykey-display-value');
+    const range = document.createRange();
+    range.selectNodeContents(v);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+}
+
+async function revokeMyApiKey(prefix) {
+  if (!confirm(t('users.mykey_confirm_revoke'))) return;
+  try {
+    await api('/api-keys/revoke', 'POST', { key_prefix: prefix });
+    await loadUsers();
+  } catch (e) {
+    alert(`${t('users.action_failed')}: ${e.message}`);
   }
 }
 

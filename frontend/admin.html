@@ -598,6 +598,32 @@
         <div id="mypw-msg" style="flex-basis:100%;font-size:12px;color:var(--muted);font-family:var(--font-mono);min-height:16px"></div>
       </div>
 
+      <!-- W4 P3-3: my API keys -->
+      <div class="section-title">▸ <span data-i18n="users.my_keys_title">내 API 키</span></div>
+      <div class="table-wrap" style="padding:12px 20px;margin-bottom:16px">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+          <input id="mykey-label" type="text"
+                 data-i18n-placeholder="users.mykey_label_ph"
+                 placeholder="라벨 (선택, 예: ci-deploy)"
+                 maxlength="64"
+                 style="flex:1;min-width:160px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--fg);font-size:12px">
+          <button onclick="issueMyApiKey()"
+                  style="padding:7px 12px;background:#1e5a7a;color:#fff;border:0;border-radius:6px;cursor:pointer;font-size:12px"
+                  data-i18n="users.mykey_issue">키 발급</button>
+        </div>
+        <table style="margin-top:6px">
+          <thead><tr>
+            <th data-i18n="users.mykey_prefix">PREFIX</th>
+            <th data-i18n="users.mykey_label">라벨</th>
+            <th data-i18n="users.created">생성일</th>
+            <th data-i18n="users.mykey_last_used">최근 사용</th>
+            <th data-i18n="users.status">상태</th>
+            <th data-i18n="users.actions">액션</th>
+          </tr></thead>
+          <tbody id="my-api-keys-body"><tr><td colspan="6" class="loading" data-i18n="common.loading">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+
       <!-- W4 P2-A: pending signups (active=0) -->
       <div class="section-title">▸ <span data-i18n="users.pending_title">가입 신청 대기</span> <span style="font-size:11px;color:var(--muted);margin-left:8px" id="users-pending-count"></span></div>
       <div class="table-wrap" style="margin-bottom:16px">
@@ -1427,6 +1453,37 @@
       <button onclick="submitPasswordReset()"
               style="flex:2;padding:10px;background:#1e7a3e;border:0;border-radius:7px;color:#fff;font-size:13px;font-weight:600;cursor:pointer"
               data-i18n="auth.reset_submit">재설정</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── W4 P3-3: API 키 발급 결과 모달 ─────────────────────────────
+     Plaintext API key returned exactly once. Same pattern as the
+     reset-token modal — large mono token, copy, no outside-click
+     dismiss, plaintext wiped on close.
+-->
+<div id="api-key-display-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;z-index:320">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;width:520px;max-width:92vw;box-shadow:0 24px 80px rgba(0,0,0,.7)">
+    <div style="font-size:14px;font-weight:600;color:var(--accent-fg);margin-bottom:6px"
+         data-i18n="users.mykey_issued_title">🔑 API 키 발급 완료</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5"
+         data-i18n="users.mykey_issued_hint">
+      이 키는 한 번만 표시됩니다. 안전한 곳에 보관하세요. 분실 시 새로 발급 필요.
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-family:var(--font-mono)">LABEL:
+      <span id="mykey-display-label" style="color:var(--text);font-weight:600"></span></div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:12px;font-family:var(--font-mono);font-size:12px;word-break:break-all;color:var(--text)"
+         id="mykey-display-value"></div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;font-family:var(--font-mono)"
+         id="mykey-display-prefix"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="copyMyApiKey()"
+              style="flex:2;padding:9px;background:#1e7a3e;border:0;border-radius:7px;color:#fff;font-size:13px;cursor:pointer"
+              data-i18n="users.mykey_copy">키 복사</button>
+      <button onclick="closeMyApiKeyModal()"
+              style="flex:1;padding:9px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:13px;cursor:pointer"
+              data-i18n="common.close">닫기</button>
     </div>
   </div>
 </div>
