@@ -28,26 +28,29 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 ROOT = Path(__file__).resolve().parent.parent
 HTML = ROOT / "frontend" / "index.html"
+# Design tokens were extracted from inline :root blocks into a single
+# stylesheet; palette assertions now resolve there instead of index.html.
+TOKENS = ROOT / "frontend" / "static" / "tokens.css"
 
 
 class PaletteTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.html = HTML.read_text(encoding="utf-8")
+        cls.tokens = TOKENS.read_text(encoding="utf-8")
 
     def test_brand_2_var_added(self):
         # Secondary brand colour for "intelligence cyan" — used by
         # status badges / dividers.
-        self.assertIn("--brand-2:", self.html,
+        self.assertIn("--brand-2:", self.tokens,
             "must declare --brand-2 secondary brand colour for the polish")
-        self.assertIn("--brand-2-soft:", self.html,
+        self.assertIn("--brand-2-soft:", self.tokens,
             "soft variant for tinted backgrounds")
 
     def test_shadow_card_var_added(self):
         # Custom elevation token for "report card" surfaces.
-        self.assertIn("--shadow-card:", self.html,
+        self.assertIn("--shadow-card:", self.tokens,
             "must declare --shadow-card token for elevation")
-        m = re.search(r"--shadow-card:\s*([^;]+);", self.html)
+        m = re.search(r"--shadow-card:\s*([^;]+);", self.tokens, re.DOTALL)
         self.assertIsNotNone(m)
         self.assertIn("rgba(0,0,0", m.group(1),
             "shadow should include a dark rgba layer")
@@ -57,7 +60,7 @@ class PaletteTests(unittest.TestCase):
         # toward navy/slate. Specifically: NOT pure black (#000) and
         # NOT the prior neutral #0c0d10 — should land on something
         # cooler like #0a0c11.
-        m = re.search(r"--bg:\s*(#[0-9a-fA-F]{6})", self.html)
+        m = re.search(r"--bg:\s*(#[0-9a-fA-F]{6})", self.tokens)
         self.assertIsNotNone(m)
         bg = m.group(1).lower()
         self.assertNotEqual(bg, "#000000",
@@ -98,26 +101,45 @@ class TopAccentRailTests(unittest.TestCase):
 
 
 class LogoTaglineTests(unittest.TestCase):
+    """The original brand framing lived in a single ``.tagline`` element.
+    The brand refactor split it: the logo carries the product name via
+    ``class="brand"`` + ``class="brand-tail"`` (positioning line),
+    and the knowledge/security/report framing lives in ``.welcome-sub``
+    (asserted by WelcomeReframeTests). These tests now check the new
+    structure rather than the removed ``.tagline`` element."""
+
     @classmethod
     def setUpClass(cls):
         cls.html = HTML.read_text(encoding="utf-8")
 
-    def test_tagline_class_in_html(self):
-        self.assertIn('class="tagline"', self.html,
-            "must include a tagline span for the logo")
+    def test_logo_uses_brand_class(self):
+        # The logo span carries the unified brand label.
+        m = re.search(r'<div class="logo">(.+?)</div>',
+                      self.html, re.DOTALL)
+        self.assertIsNotNone(m, "logo container must exist")
+        logo = m.group(1)
+        self.assertIn('class="brand"', logo,
+            "logo must use the unified .brand class introduced with "
+            "the positioning-line refactor")
+        self.assertIn('class="brand-tail"', logo,
+            "brand must include the .brand-tail span for the trailing "
+            "positioning words")
 
-    def test_tagline_copy_mentions_security_and_reporting(self):
-        # The tagline frames JAMES as more than chat — knowledge/
-        # security/reporting suite.
-        m = re.search(r'class="tagline"[^>]*>([^<]+)<', self.html)
-        self.assertIsNotNone(m)
-        copy = m.group(1)
-        # Must mention 보안 (security) and either 지식 (knowledge) or
-        # 보고서 (reporting).
-        self.assertIn("보안", copy,
-            "tagline must mention 보안 (security) for the brand framing")
-        self.assertTrue("지식" in copy or "보고서" in copy,
-            f"tagline must mention 지식 or 보고서; got {copy!r}")
+    def test_brand_positioning_line_present(self):
+        # The brand label should be the full positioning string —
+        # not just "JAMES". Specifically, the trailing "Operating
+        # System" tail must appear inside the .brand element so the
+        # compound reads as a system identity.
+        m = re.search(
+            r'<span class="brand">(.+?)</span>\s*</div>',
+            self.html, re.DOTALL,
+        )
+        self.assertIsNotNone(m,
+            "could not locate the .brand span inside the logo")
+        brand = m.group(1)
+        self.assertIn("Operating System", brand,
+            "brand label must end on the 'Operating System' positioning "
+            "tail; got: " + brand[:120])
 
     def test_logo_mark_uses_brand_2(self):
         # The square mark should blend accent → brand-2 for the
