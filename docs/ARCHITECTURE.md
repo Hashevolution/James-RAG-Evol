@@ -270,22 +270,34 @@ LIKE pattern.
 management endpoints (`/admin/features/list`, `/admin/features/override`,
 `/admin/features/reset`).
 
-**W4-Q2 status (2026-05-11)** — runtime wiring completed in two slices:
+**W4-Q2 status (2026-05-11)** — runtime wiring completed in three
+slices:
 - **Q2-a** rewired 17 admin endpoints whose features Q1 already
   covered (admin.users / admin.audit_log / admin.policy_matrix /
   admin.evolution).
 - **Q2-b** extended the catalog with 6 admin.* features
   (admin.settings, admin.data, admin.metrics, admin.character,
   admin.knowledge, admin.tools) and rewired the remaining 38
-  `_require_admin` call sites onto `_require_feature`. The
-  hardcoded `_require_admin` helper is preserved as a backward-
-  compat alias for any external caller, but no in-repo endpoint
-  uses it anymore.
+  `_require_admin` call sites onto `_require_feature`.
+- **Q2-c** added feature gates on the user-facing endpoints that
+  had previously relied on `verify_api_key` alone:
+  - `/query/` → `query.basic` (default: all four roles)
+  - `/upload/` → `upload.file` (default: admin + manager only)
+  - `/password/change` → `password.change_self` (default: all roles)
+  - `/api-keys/issue` + `/list` + `/revoke` → `api_keys.issue_self`
+    (default: admin + manager + employee)
 
-After Q2-b, the runtime consults the matrix on every admin endpoint.
-Setting `feature_overrides` rows in the DB (or via the admin UI in
-Q3) is the operator's only knob — no code change required to grant
-or revoke a feature for a role mid-flight.
+  **Behavioural change worth noting**: `/upload/` previously allowed
+  anyone holding a valid `api_key` (system key included) to ingest
+  documents. With Q2-c, callers in the `employee` / `external` roles
+  are denied by default, and a leaked `JAMES_API_KEY` on its own
+  (resolved to `employee` per P3-2) no longer suffices. Admins who
+  want to permit employee uploads add an override row through Q3.
+
+After Q2-c, every endpoint with role-distinguishable behaviour
+consults the matrix. Setting `feature_overrides` rows in the DB (or
+via the admin UI in Q3) is the operator's only knob — no code
+change required to grant or revoke a feature for a role mid-flight.
 
 **W4-Q3** ships the admin matrix UI (feature × role checkbox grid
 + "기본값 복원").

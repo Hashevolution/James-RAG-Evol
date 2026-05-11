@@ -606,10 +606,13 @@ async def upload(
     instruction: str        = Form(""),     # 챗 저장 지시 (선택)
     role:        str        = Depends(get_role_from_request),
 ):
-    verify_api_key(api_key)   # api_key 검증 통과 = 신뢰된 사용자
+    # [W4-Q2-c] api_key + role-level feature gate. Default matrix
+    # allows upload.file for admin + manager (catalog Q1) — system
+    # api_key alone (role=employee) is denied, so a leaked .env value
+    # no longer suffices to ingest documents. Operators can override
+    # for specific roles via /admin/features/override.
+    _require_feature(api_key, role, "upload.file")
     ip = get_client_ip(request)
-    # [P7] api_key 검증 통과 시 업로드 허용 (JWT 없는 웹 UI 지원)
-    # admin 전용 정책은 유지하되 api_key 인증은 통과 처리
 
     # [video-reject 2026-05-10, W1 진단 §3-C Option C] 영상 파일은 현재
     # extract_video 가 stub (file_processor.py) — silent failure 로 ChromaDB
@@ -814,7 +817,13 @@ async def query(
     request: Request,
     role:    str = Depends(get_role_from_request),
 ):
-    verify_api_key(data.api_key)
+    # [W4-Q2-c] api_key + feature gate. query.basic defaults to ALL
+    # roles (admin/manager/employee/external) so default behaviour is
+    # unchanged — anyone with a valid api_key still hits the engine.
+    # Operators who want to revoke query access for a specific role
+    # (e.g. lock down external during incident response) now have a
+    # matrix knob without revoking the user's api_key.
+    _require_feature(data.api_key, role, "query.basic")
     ip = get_client_ip(request)
 
     # [#47 phase 1] start a trace at the API edge. Stage logs from any
@@ -2725,7 +2734,11 @@ class PasswordChangeRequest(BaseModel):
 
 @app.post("/password/change",
           summary="비밀번호 변경 (로그인된 사용자 — W4 P2-B)")
-async def password_change(data: PasswordChangeRequest, request: Request):
+async def password_change(
+    data:    PasswordChangeRequest,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
     """Self-service password change. JWT-authenticated; the request
     body MUST NOT include username — the subject is taken from the
     JWT so an attacker holding only a stolen body can't pivot.
@@ -2741,6 +2754,18 @@ async def password_change(data: PasswordChangeRequest, request: Request):
     username = _bearer_username(request)
     if not username:
         raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+
+    # [W4-Q2-c] role-level feature gate. Default matrix allows
+    # password.change_self for every role (admin/manager/employee/
+    # external). Admins can revoke this on a per-role basis via
+    # the matrix without disabling the entire endpoint.
+    from core.policy_engine import default_engine as _pe
+    _d = _pe.can_use_feature(role, "password.change_self")
+    if not _d.allowed:
+        raise HTTPException(
+            status_code=403,
+            detail="권한이 부족합니다. (password.change_self)",
+        )
 
     result = _auth_change_password(username, data.old_password, data.new_password)
     if result == "ok":
@@ -2864,7 +2889,11 @@ class ApiKeyIssueRequest(BaseModel):
 
 @app.post("/api-keys/issue",
           summary="API 키 발급 (로그인된 사용자 자신용 — W4 P3-1)")
-async def api_keys_issue(data: ApiKeyIssueRequest, request: Request):
+async def api_keys_issue(
+    data:    ApiKeyIssueRequest,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
     """Issue a new long-lived API key for the JWT-authenticated user.
 
     The plaintext is returned **exactly once**. Only SHA256(token) is
@@ -2882,6 +2911,13 @@ async def api_keys_issue(data: ApiKeyIssueRequest, request: Request):
     username = _bearer_username(request)
     if not username:
         raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+    # [W4-Q2-c] api_keys.issue_self default = admin/manager/employee
+    # (external denied). The check applies to /list and /revoke too —
+    # losing 'issue' implicitly revokes the operator's own key mgmt UI.
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "api_keys.issue_self").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (api_keys.issue_self)")
 
     pair = _api_key_issue(username, data.label)
     if pair is None:
@@ -2898,7 +2934,10 @@ async def api_keys_issue(data: ApiKeyIssueRequest, request: Request):
 
 
 @app.get("/api-keys/list", summary="내 API 키 목록 (W4 P3-1)")
-async def api_keys_list(request: Request):
+async def api_keys_list(
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
     """List the caller's keys (active + revoked).
 
     Plaintext is never returned. Each entry exposes the prefix (which
@@ -2908,6 +2947,10 @@ async def api_keys_list(request: Request):
     username = _bearer_username(request)
     if not username:
         raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "api_keys.issue_self").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (api_keys.issue_self)")
     return {"keys": _api_key_list(username)}
 
 
@@ -2916,7 +2959,11 @@ class ApiKeyRevokeRequest(BaseModel):
 
 @app.post("/api-keys/revoke",
           summary="API 키 회수 (로그인된 사용자 — 본인 키만 회수 가능, W4 P3-1)")
-async def api_keys_revoke(data: ApiKeyRevokeRequest, request: Request):
+async def api_keys_revoke(
+    data:    ApiKeyRevokeRequest,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
     """Revoke one of the caller's keys by its prefix.
 
     Scope is enforced in core.api_keys.revoke_api_key by the
@@ -2928,6 +2975,10 @@ async def api_keys_revoke(data: ApiKeyRevokeRequest, request: Request):
     username = _bearer_username(request)
     if not username:
         raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "api_keys.issue_self").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (api_keys.issue_self)")
 
     ok = _api_key_revoke(username, data.key_prefix)
     if not ok:
