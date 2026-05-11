@@ -889,6 +889,64 @@ function closeForgotPasswordModal() {
   document.getElementById('admin-login-modal').style.display = 'flex';
 }
 
+/* ── W4 P4: signup (anonymous) ── */
+
+function openSignupModal() {
+  document.getElementById('admin-login-modal').style.display = 'none';
+  const m = document.getElementById('signup-modal');
+  m.style.display = 'flex';
+  document.getElementById('signup-error').textContent     = '';
+  const ok = document.getElementById('signup-success');
+  ok.style.display   = 'none';
+  ok.textContent     = '';
+  document.getElementById('signup-id').focus();
+}
+
+function closeSignupModal() {
+  document.getElementById('signup-modal').style.display = 'none';
+  for (const id of ['signup-id', 'signup-pw']) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  }
+  // Return to login modal — the user still needs to log in (or wait
+  // for admin approval) before reaching the admin panel.
+  document.getElementById('admin-login-modal').style.display = 'flex';
+}
+
+async function submitSignup() {
+  const username = document.getElementById('signup-id').value.trim();
+  const password = document.getElementById('signup-pw').value;
+  const errEl    = document.getElementById('signup-error');
+  const okEl     = document.getElementById('signup-success');
+  errEl.textContent  = '';
+  okEl.style.display = 'none';
+
+  if (!username || !password) {
+    errEl.textContent = '아이디와 비밀번호를 입력하세요.';
+    return;
+  }
+  try {
+    const r = await fetch(`${API}/signup/`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ username, password }),
+    });
+    if (r.ok) {
+      const data = await r.json();
+      okEl.textContent  = data.message ||
+        '가입 신청이 접수되었습니다. 관리자 승인 후 사용 가능합니다.';
+      okEl.style.display = 'block';
+      document.getElementById('signup-pw').value = '';
+      return;
+    }
+    let detail = `${r.status}`;
+    try { detail = (await r.json()).detail || detail; } catch (_e) {}
+    errEl.textContent = detail;
+  } catch (e) {
+    errEl.textContent = `서버 오류: ${e.message}`;
+  }
+}
+
 async function submitPasswordReset() {
   const username = document.getElementById('reset-username').value.trim();
   const token    = document.getElementById('reset-token').value.trim();

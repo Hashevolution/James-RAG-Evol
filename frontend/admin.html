@@ -1411,6 +1411,54 @@
          style="font-size:12px;color:var(--muted);text-decoration:underline;cursor:pointer"
          data-i18n="auth.forgot_password">비밀번호를 잊으셨나요?</a>
     </div>
+    <!-- W4 P4: signup link -->
+    <div style="margin-top:8px;text-align:center;">
+      <a href="javascript:openSignupModal()"
+         style="font-size:12px;color:var(--muted);text-decoration:underline;cursor:pointer"
+         data-i18n="auth.signup_link">계정이 없으신가요? 회원가입</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── W4 P4: 회원가입 모달 (admin 페이지에서도 가입 가능) ──────
+     Same flow as the chat-page signup: public POST /signup/, server
+     creates active=0 row, admin approves later via 사용자 관리. The
+     submitter cannot log in until that happens — admin's existing
+     session is unaffected.
+-->
+<div id="signup-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;z-index:320">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;width:360px;max-width:92vw;box-shadow:0 24px 80px rgba(0,0,0,.7)">
+    <div style="font-size:15px;font-weight:600;color:var(--accent-fg);margin-bottom:6px"
+         data-i18n="auth.signup_title">▸ JAMES 회원가입</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:18px;line-height:1.5"
+         data-i18n="auth.signup_hint">
+      가입 신청 후 관리자 승인을 거쳐야 로그인할 수 있습니다.
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px">USERNAME</div>
+      <input id="signup-id" type="text" autocomplete="username" spellcheck="false"
+             data-i18n-placeholder="auth.signup_username_ph"
+             placeholder="영문 소문자/숫자/_- (3~32자)"
+             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;outline:none">
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px">PASSWORD</div>
+      <input id="signup-pw" type="password" autocomplete="new-password"
+             data-i18n-placeholder="auth.signup_password_ph"
+             placeholder="8~72자, 영문 + 숫자"
+             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;outline:none">
+    </div>
+    <div id="signup-error" style="font-size:12px;color:var(--danger);min-height:18px;margin-bottom:6px;font-family:var(--font-mono)"></div>
+    <div id="signup-success" style="display:none;font-size:12px;color:#1e7a3e;margin-bottom:10px;line-height:1.5"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="closeSignupModal()"
+              style="flex:1;padding:10px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:13px;cursor:pointer"
+              data-i18n="common.cancel">취소</button>
+      <button onclick="submitSignup()"
+              style="flex:2;padding:10px;background:#1e5a7a;border:0;border-radius:7px;color:#fff;font-size:13px;font-weight:600;cursor:pointer"
+              data-i18n="auth.signup_submit">가입 신청</button>
+    </div>
   </div>
 </div>
 

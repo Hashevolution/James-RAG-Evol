@@ -629,6 +629,75 @@ function logout() {
   toast('로그아웃 완료', 'success');
 }
 
+/* ── W4 P4: signup modal ──
+   Public POST /signup/ from anonymous user. Success and duplicate
+   share one server response (enumeration defense) so the modal
+   shows a single "submitted" confirmation in either case. The
+   account stays pending until an admin approves via the admin
+   panel (W4 P2-A).
+*/
+function openSignupModal() {
+  closeLogin();
+  const m = document.getElementById('signup-modal');
+  if (!m) return;
+  m.classList.remove('hidden');
+  document.getElementById('signup-error').textContent   = '';
+  document.getElementById('signup-success').style.display = 'none';
+  document.getElementById('signup-id').focus();
+}
+
+function closeSignup() {
+  const m = document.getElementById('signup-modal');
+  if (!m) return;
+  m.classList.add('hidden');
+  // Wipe inputs — anonymous form values shouldn't linger after close.
+  for (const id of ['signup-id', 'signup-pw']) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  }
+}
+
+function closeSignupOutside(e) {
+  if (e.target === document.getElementById('signup-modal')) closeSignup();
+}
+
+async function doSignup() {
+  const username = document.getElementById('signup-id').value.trim();
+  const password = document.getElementById('signup-pw').value;
+  const errEl    = document.getElementById('signup-error');
+  const okEl     = document.getElementById('signup-success');
+  errEl.textContent   = '';
+  okEl.style.display  = 'none';
+
+  if (!username || !password) {
+    errEl.textContent = '아이디와 비밀번호를 입력하세요.';
+    return;
+  }
+  try {
+    const r = await fetch(`${API}/signup/`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ username, password }),
+    });
+    if (r.ok) {
+      const data = await r.json();
+      okEl.textContent  = data.message ||
+        '가입 신청이 접수되었습니다. 관리자 승인 후 사용 가능합니다.';
+      okEl.style.display = 'block';
+      // Wipe password — username can stay so the user remembers what
+      // they signed up as.
+      document.getElementById('signup-pw').value = '';
+      return;
+    }
+    // Policy rejection surfaces a 400 with a verbatim rule message.
+    let detail = `${r.status}`;
+    try { detail = (await r.json()).detail || detail; } catch (_e) {}
+    errEl.textContent = detail;
+  } catch (e) {
+    errEl.textContent = `서버 오류: ${e.message}`;
+  }
+}
+
 /* [#A8-4] cross-tab sync — 다른 탭(어드민 페이지 등)에서 로그인/로그아웃
    하면 즉시 이 탭에도 반영. localStorage의 storage 이벤트는 *다른* 탭의
    변경만 받음 (자기 자신 변경 제외) — chat에서 로그인하고 어드민 새 탭
