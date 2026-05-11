@@ -158,7 +158,7 @@ v0.x allows breaking changes, but please:
 
 1. **Fork** the repository
 2. **Branch** from `main`
-3. **Implement** your changes with tests
+3. **Implement** your changes — new features and bug fixes are expected to include or update tests under `test/` or the `james_*_test.py` suites
 4. **Run** the test suite — all must pass
 5. **Commit** with clear messages (see below)
 6. **Push** to your fork

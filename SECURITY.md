@@ -119,15 +119,27 @@ Synthetic-data testing **does not equal** production security. Before any sensit
 ## Reporting a Vulnerability
 
 If you discover a security vulnerability, please **do not** open a public GitHub issue.
+Use one of the private channels below.
 
-Instead:
+### 1. GitHub Private Vulnerability Reporting (preferred)
 
-1. Email the maintainer directly (see GitHub profile)
-2. Provide:
-   - Steps to reproduce
-   - Affected component
-   - Suggested severity (per CVSS if possible)
-   - Suggested mitigation (if any)
+1. Open https://github.com/Hashevolution/James-RAG-Evol/security/advisories/new
+2. Fill in the form: title, description, affected versions, severity, optional patch
+3. Submit — only repository maintainers will see the report
+
+This channel is preferred because it integrates with GitHub Security Advisories
+and (when applicable) CVE assignment.
+
+### 2. Backup email
+
+If you cannot use GitHub PVR, email `<security@TODO-replace-me>` with:
+
+- Steps to reproduce
+- Affected component / version
+- Suggested severity (per CVSS if possible)
+- Suggested mitigation (if any)
+
+### Response timeline
 
 We aim to:
 - Acknowledge within 7 days
