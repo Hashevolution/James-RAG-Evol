@@ -3672,6 +3672,131 @@ async def admin_audit_list(
             "limit": limit, "offset": offset}
 
 
+# ─── W4-Q1: feature capability matrix ──────────────────────────
+# Admin-only surface to inspect + adjust the per-role feature gate
+# (core/feature_registry.py + PolicyEngine.can_use_feature).
+# Q2 wires the runtime checks into existing endpoints; Q3 ships
+# the admin matrix UI. Q1 stands up only the management surface.
+
+@app.get("/admin/features/list", summary="권한 매트릭스 조회 (W4-Q1)")
+async def admin_features_list(
+    api_key: str,
+    role:    str = Depends(get_role_from_request),
+):
+    """Catalog + currently-effective allowed set per role.
+
+    Response shape:
+      {
+        "roles":    ["admin", "manager", "employee", "external"],
+        "features": [ {id, description, default_allowed, effective}, ... ]
+      }
+
+    The ``effective`` map per feature is keyed by role and carries
+    ``{allowed, source}`` where ``source ∈ {"default","override"}``
+    so the UI can render override rows distinctly.
+    """
+    _require_admin(api_key, role)
+    from core.feature_registry import list_effective
+    return {
+        "roles":    sorted(ALLOWED_ROLES),
+        "features": list_effective(),
+    }
+
+
+class FeatureOverrideRequest(BaseModel):
+    feature_id: str
+    role:       str
+    allowed:    bool
+
+@app.post("/admin/features/override",
+          summary="권한 매트릭스 override 설정 (W4-Q1)")
+async def admin_features_override(
+    data:    FeatureOverrideRequest,
+    request: Request,
+    api_key: str = "",
+    role:    str = Depends(get_role_from_request),
+):
+    """Set one (feature_id, role) override.
+
+    Validation lives inside ``set_override`` — unknown feature_id or
+    role returns False, surfaced here as 400. Idempotent: re-setting
+    the same value just updates the timestamp + updated_by.
+    """
+    _require_admin(api_key, role)
+    from core.feature_registry import set_override
+
+    # Read caller username from the JWT subject for audit-log
+    # attribution. Optional — if missing (DEV_MODE / X-Role), we
+    # still write the row but updated_by is None.
+    try:
+        from core.auth import verify_token
+        caller = None
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            caller = (verify_token(auth_header[7:].strip()) or {}).get("sub")
+    except Exception:
+        caller = None
+
+    ok = set_override(data.feature_id, data.role, data.allowed,
+                      updated_by=caller)
+    ip = get_client_ip(request)
+    if not ok:
+        _write_audit(role, "/admin/features/override",
+                     query=f"{data.feature_id}/{data.role}",
+                     security_event="override_failed (unknown feature or role)",
+                     ip_address=ip)
+        raise HTTPException(
+            status_code=400,
+            detail="알 수 없는 feature_id 또는 role 입니다.",
+        )
+    _write_audit(role, "/admin/features/override",
+                 query=f"{data.feature_id}/{data.role}",
+                 security_event=f"override_set allowed={data.allowed}",
+                 ip_address=ip)
+    return {"ok": True, "feature_id": data.feature_id,
+            "role": data.role, "allowed": data.allowed}
+
+
+class FeatureResetRequest(BaseModel):
+    feature_id: str
+    # role 이 명시되면 그 한 행만 reset, 비어있으면 feature 전체 reset
+    role:       Optional[str] = None
+
+@app.post("/admin/features/reset",
+          summary="권한 매트릭스 override 제거 → 기본값 복원 (W4-Q1)")
+async def admin_features_reset(
+    data:    FeatureResetRequest,
+    request: Request,
+    api_key: str = "",
+    role:    str = Depends(get_role_from_request),
+):
+    """Remove overrides for a feature.
+
+    Two modes:
+      - role specified  → delete that single override row.
+      - role omitted/empty → delete every override for the feature
+                              (full reset to default).
+
+    Returns the number of rows actually deleted, so the UI can show
+    "0개 reset" when the feature already used the defaults.
+    """
+    _require_admin(api_key, role)
+    from core.feature_registry import clear_override, clear_all_overrides_for
+
+    ip = get_client_ip(request)
+    if data.role:
+        deleted = 1 if clear_override(data.feature_id, data.role) else 0
+        scope_label = f"{data.feature_id}/{data.role}"
+    else:
+        deleted = clear_all_overrides_for(data.feature_id)
+        scope_label = data.feature_id
+    _write_audit(role, "/admin/features/reset",
+                 query=scope_label,
+                 security_event=f"override_cleared count={deleted}",
+                 ip_address=ip)
+    return {"ok": True, "deleted": deleted, "scope": scope_label}
+
+
 # ────────────────────────────────────────────────────────────────────
 # [#2 file management tab, 2026-05-09] /admin/files/* endpoints —
 # unified file inspection (tree + search + download). Upload + history

@@ -221,10 +221,57 @@ and asks one of four typed methods:
 | `can_walk(role, entity) -> Decision`        | Graph DFS: may this role traverse to this entity? |
 | `can_call_tool(role, tool, args) -> Decision` | Tool execution: may this role invoke this tool? |
 | `can_emit(role, content) -> Decision`       | Output gate: may this role receive this content? |
+| `can_use_feature(role, feature_id) -> Decision` | Endpoint-level feature gate (W4-Q1, 2026-05-11). Catalog in `core/feature_registry.py`; admin overrides in `feature_overrides` table. |
 
 `Decision` is `(allowed: bool, reason: str, applied_rule: str)` —
 frozen dataclass; `applied_rule` is the canonical id used in audit-log
 correlation, e.g. `policy.retrieve.abac` or `policy.tool.admin_only`.
+
+### 5.5.1 Feature capability registry (W4-Q1, 2026-05-11)
+
+`core/feature_registry.py` is the catalog of all endpoint-level
+capability names the runtime knows about (`upload.file`,
+`admin.users`, `query.web_search`, etc.). Adding a feature is a
+**code change on purpose** — the operator UI only exposes feature
+ids the catalog knows about, so a typo can never silently authorize
+anything.
+
+Each `Feature` carries `id`, `description` (Korean label for the UI),
+and `default_allowed` (a frozenset of role names). The catalog is
+the source of truth at install time; admins override it through the
+small `feature_overrides` table:
+
+```
+feature_overrides (
+  feature_id  TEXT,
+  role        TEXT,
+  allowed     INTEGER 0|1,
+  updated_at  INTEGER,
+  updated_by  TEXT,
+  PRIMARY KEY (feature_id, role)
+)
+```
+
+Empty table ⇒ the entire system runs on the catalog's defaults, which
+is the pre-Q1 baseline.
+
+`PolicyEngine.can_use_feature(role, feature_id)` resolves a check as:
+1. **Unknown feature_id ⇒ deny** (fail-closed; a typo at a call site
+   should fail loudly, not silently authorize).
+2. **Override row present ⇒ honor it** (`reason="override.allow"` or
+   `"override.deny"`).
+3. **Otherwise** ⇒ allow iff `role ∈ feature.default_allowed`.
+
+The `applied_rule` of every decision is `policy.feature.<feature_id>`
+so audit-log search can find all checks of one feature with a single
+LIKE pattern.
+
+**W4-Q1 scope (this section)** — storage layer + the can_use_feature
+method + admin management endpoints (`/admin/features/list`,
+`/admin/features/override`, `/admin/features/reset`). The runtime
+*does not yet* consult these decisions on existing endpoints — that
+wiring is **W4-Q2** (separate PR; carries higher regression risk and
+warrants focused review). The admin UI is **W4-Q3**.
 
 **TrustedContent** is the wrapper every multimodal extractor (OCR,
 ASR, vision, web) returns instead of a raw string. Carries

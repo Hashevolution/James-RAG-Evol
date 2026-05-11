@@ -317,6 +317,51 @@ class PolicyEngine:
             applied_rule="policy.emit.passthrough",
         )
 
+    def can_use_feature(self, role: str, feature_id: str) -> Decision:
+        """[W4-Q1] Endpoint-level feature gate.
+
+        Consults ``core.feature_registry``:
+          1. If the feature_id is unknown, deny (fail-closed — a typo
+             at a call site should fail loudly, not silently authorize).
+          2. If ``feature_overrides`` has a row for (feature_id, role),
+             honor it. The override is explicit operator intent and
+             takes precedence over the catalog's default_allowed.
+          3. Otherwise, allow iff ``role`` is in the feature's
+             ``default_allowed`` set.
+
+        The ``applied_rule`` of every returned Decision is
+        ``policy.feature.<feature_id>`` so audit-log search can find
+        "every check of this feature" with a single LIKE pattern.
+
+        Q1 ships this method; Q2 wires it into endpoints in place of
+        ad-hoc role comparisons; Q3 ships the admin matrix UI.
+        """
+        from core.feature_registry import FEATURES, get_override
+        feat = FEATURES.get(feature_id)
+        if feat is None:
+            return Decision(
+                allowed=False,
+                reason="unknown_feature",
+                applied_rule=f"policy.feature.{feature_id}",
+            )
+        override = get_override(feature_id, role)
+        if override is not None:
+            return Decision(
+                allowed=override,
+                reason=(
+                    "override.allow" if override else "override.deny"
+                ),
+                applied_rule=f"policy.feature.{feature_id}",
+            )
+        in_default = role in feat.default_allowed
+        return Decision(
+            allowed=in_default,
+            reason=(
+                "default.allow" if in_default else "default.deny"
+            ),
+            applied_rule=f"policy.feature.{feature_id}",
+        )
+
     def sanitize_for_ingestion(
         self,
         content: TrustedContent,
