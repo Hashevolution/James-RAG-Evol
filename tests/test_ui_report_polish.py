@@ -221,6 +221,56 @@ class WelcomeReframeTests(unittest.TestCase):
             "Knowledge + Security for enterprise framing")
 
 
+class CyberGlowTests(unittest.TestCase):
+    """Cyber 6b — single-accent glow halos. tokens.css adds an
+    always-on mint-cyan `box-shadow` to elements that fill with the
+    accent (primary buttons, status badge). Disabled primary buttons
+    must drop the glow so they don't read as active. Semantic
+    `.btn-approve` / `.btn-reject` are intentionally untouched —
+    green / red cues stay distinct from the mint halo."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tokens = TOKENS.read_text(encoding="utf-8")
+
+    def _block_after(self, marker: str) -> str:
+        # Return the rule body that follows `marker` (a selector list)
+        # up to the next closing brace.
+        idx = self.tokens.find(marker)
+        self.assertGreaterEqual(idx, 0, f"expected selector `{marker}`")
+        close = self.tokens.find("}", idx)
+        self.assertGreater(close, idx)
+        return self.tokens[idx:close]
+
+    def test_primary_buttons_get_strong_glow(self):
+        # Selectors must list both .btn-primary (admin) and .send-btn
+        # (index) so admin save / issue and chat send all halo.
+        block = self._block_after(".btn-primary,")
+        self.assertIn(".send-btn", block,
+            "primary glow rule must list both .btn-primary and .send-btn")
+        self.assertIn("box-shadow", block)
+        # Mint-cyan rgba (107,231,208) at strong opacity (~.30 / .32).
+        self.assertIn("rgba(107,231,208,.30)", block)
+        self.assertIn("rgba(107,231,208,.32)", block)
+
+    def test_disabled_primaries_drop_glow(self):
+        # `:disabled` primaries must override to `box-shadow: none` —
+        # otherwise a greyed-out send-btn would still halo as if active.
+        block = self._block_after(".btn-primary:disabled,")
+        self.assertIn(".send-btn:disabled", block,
+            "disabled override must cover both primary classes")
+        self.assertIn("box-shadow: none", block)
+
+    def test_role_badge_gets_subtle_glow(self):
+        # Login-state badge wraps in a soft ring. The inner .dot keeps
+        # its grey / --success colour without an explicit halo.
+        block = self._block_after(".role-badge {")
+        self.assertIn("box-shadow", block,
+            ".role-badge must carry the subtle perimeter glow")
+        # Subtle ~.18 opacity, single 14px blur.
+        self.assertIn("rgba(107,231,208,.18)", block)
+
+
 class CyberBackgroundTextureTests(unittest.TestCase):
     """Cyber 6a — body background carries a mint-cyan grid + radial
     overlay so the four app surfaces share a subtle "system" backdrop.

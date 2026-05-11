@@ -135,6 +135,35 @@ body {
   background-attachment: fixed;
 }
 
+/* ── Cyber 6b — single-accent glow on primary surfaces ──
+ * Adds a soft mint-cyan halo to the elements that fill with --accent
+ * or carry mint-cyan branding (primary action buttons + status
+ * badge). Same opacity envelope as preview-cyber.html §6b, always-on
+ * (no toggle class — the look is the default now).
+ *
+ * Targets only the live call sites that actually paint with --accent
+ * — generic / semantic-coloured buttons (`.btn-approve`, `.btn-reject`,
+ * neutral `.btn`) are left alone so red/green/neutral cues stay
+ * distinct from the mint accent halo.
+ *
+ * Disabled primary buttons drop the glow so they don't read as
+ * "active". The `.role-badge .dot` keeps its semantic colour
+ * (grey / --success) without a halo — only the badge perimeter
+ * gets the soft ring. */
+.btn-primary,
+.send-btn {
+  box-shadow:
+    0 0 0 1px rgba(107,231,208,.30),
+    0 0 22px rgba(107,231,208,.32);
+}
+.btn-primary:disabled,
+.send-btn:disabled {
+  box-shadow: none;
+}
+.role-badge {
+  box-shadow: 0 0 14px rgba(107,231,208,.18);
+}
+
 /* ── Top accent rail ──
  * Thin 2px stripe along the very top of every page — gives the app
  * a subtle "system header" feel like enterprise dashboards. Fixed
