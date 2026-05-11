@@ -201,6 +201,7 @@ function selectTab(tab) {
     if (el) el.style.display = id === `tab-${tab}` ? '' : 'none';
   }
   if (tab === 'data') reloadData();
+  if (tab === 'jobs') reloadJobs();
 }
 
 function onDataSearchInput() {
@@ -333,6 +334,172 @@ async function openDetail(artifactId) {
 
 function closeDetail() {
   document.getElementById('detail-panel').classList.remove('open');
+}
+
+/* ── W8-B: jobs tab ── */
+
+function onJobTypeChange() {
+  const t = document.getElementById('job-type').value;
+  const hintEl = document.getElementById('job-input-hint');
+  const labelEl = document.getElementById('job-input-label');
+  const refsEl  = document.getElementById('job-input-refs');
+  if (t === 'entity_export') {
+    labelEl.textContent = 'CATEGORIES';
+    if (hintEl) hintEl.textContent = (window.t && window.t('workspace.refs_hint_export'))
+      || '예: concept, document · 빈 칸이면 모든 카테고리를 내보냅니다.';
+    refsEl.placeholder = '예: concept, document  (비워두면 전체)';
+  } else if (t === 'doc_combine') {
+    labelEl.textContent = 'ENTITY IDS';
+    if (hintEl) hintEl.textContent = (window.t && window.t('workspace.refs_hint_doc'))
+      || '예: ent_001, ent_042 · 각 entity 의 markdown 본문이 연결됩니다.';
+    refsEl.placeholder = '예: ent_001, ent_042';
+  } else {
+    labelEl.textContent = 'ENTITY IDS';
+    if (hintEl) hintEl.textContent = (window.t && window.t('workspace.refs_hint_excel'))
+      || '예: ent_001, ent_042 · 빈 항목은 자동으로 생략됩니다.';
+    refsEl.placeholder = '예: ent_001, ent_042';
+  }
+}
+
+async function runJob() {
+  const btn = document.getElementById('run-job-btn');
+  const job_type = document.getElementById('job-type').value;
+  const rawRefs  = document.getElementById('job-input-refs').value || '';
+  const input_refs = rawRefs.split(',').map(s => s.trim()).filter(Boolean);
+
+  btn.disabled = true;
+  const origText = btn.textContent;
+  btn.textContent = '⏳';
+  try {
+    const r = await fetch(`${API}/jobs/run?api_key=${encodeURIComponent(_apiKey || '')}`, {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(_token ? { Authorization: `Bearer ${_token}` } : {}),
+      },
+      body: JSON.stringify({ job_type, input_refs }),
+    });
+    if (r.status === 401) {
+      _clearStored(); updateRoleBadge(); showLogin();
+      throw new Error('인증 만료 — 재로그인 필요');
+    }
+    if (!r.ok) {
+      let detail = `${r.status}`;
+      try { detail = (await r.json()).detail || detail; } catch (_) {}
+      throw new Error(detail);
+    }
+    const row = await r.json();
+    if (row.status === 'done') {
+      toast(`✅ ${job_type} 완료`, 'success');
+    } else {
+      toast(`❌ ${job_type}: ${row.status}`, 'error');
+    }
+    document.getElementById('job-input-refs').value = '';
+    reloadJobs();
+  } catch (e) {
+    toast(`❌ ${e.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origText;
+  }
+}
+
+async function reloadJobs() {
+  const body = document.getElementById('jobs-body');
+  if (!_token) {
+    body.innerHTML = `<tr><td colspan="6" class="empty">${t('workspace.login_to_view')}</td></tr>`;
+    return;
+  }
+  body.innerHTML = `<tr><td colspan="6" class="empty">${t('common.loading')}</td></tr>`;
+  const adminPath = _isAdmin();
+  const root = adminPath ? '/admin/jobs/list' : '/jobs/list';
+
+  const scopeBadge = document.getElementById('jobs-scope-badge');
+  scopeBadge.style.display = adminPath ? 'inline-block' : 'none';
+  scopeBadge.textContent   = adminPath ? 'ADMIN (전체 사용자)' : '';
+
+  // Owner column visible only in admin view.
+  const ownerTh = document.getElementById('th-job-owner');
+  if (ownerTh) ownerTh.style.display = adminPath ? '' : 'none';
+
+  try {
+    const data = await _apiFetch(`${root}?limit=50`);
+    const counter = document.getElementById('jobs-counter');
+    counter.textContent = `${(data.items || []).length} / ${data.total || 0}`;
+    if (!(data.items || []).length) {
+      body.innerHTML = `<tr><td colspan="6" class="empty">${t('workspace.no_jobs')}</td></tr>`;
+      return;
+    }
+    body.innerHTML = data.items.map(j => {
+      const status = j.status || 'pending';
+      const ownerCell = adminPath
+        ? `<td class="mono">${_esc(j.owner || '-')}</td>` : '';
+      const resultCell = j.output_path
+        ? `<span class="mono" style="font-size:10px;color:var(--muted)">${_esc(j.output_path.split('/').pop())}</span>`
+        : '<span style="color:var(--muted)">—</span>';
+      const dlBtn = (j.status === 'done' && j.output_path)
+        ? `<button onclick="downloadJob('${j.job_id}', ${adminPath ? 'true' : 'false'})"
+                   style="padding:4px 10px;background:#1e7a3e;color:#fff;border:0;border-radius:4px;cursor:pointer;font-size:11px">다운로드</button>`
+        : (j.status === 'failed'
+            ? `<button onclick="showJobError('${j.job_id}', ${adminPath ? 'true' : 'false'})"
+                       style="padding:4px 10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:4px;cursor:pointer;font-size:11px">에러 보기</button>`
+            : '<span style="color:var(--muted)">—</span>');
+      return `<tr>
+        <td class="mono">${_esc(j.job_type)}</td>
+        <td class="mono">${_fmtTs(j.created_at)}</td>
+        <td><span class="status-badge status-${status}">${status}</span></td>
+        ${ownerCell}
+        <td>${resultCell}</td>
+        <td>${dlBtn}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="6" class="empty">${_esc(e.message)}</td></tr>`;
+  }
+}
+
+async function downloadJob(jobId, isAdminView) {
+  // Admin's view can't reuse the user's /jobs/{id}/download — that
+  // endpoint requires owner match. For admin diagnosis we just hit
+  // the /admin/jobs/{id} detail and rely on the row's output_path,
+  // served back by /jobs/{id}/download when the admin owns it, OR
+  // by navigating to /workspace/results/... if we expose a static
+  // mount. For now: admin uses the same /jobs/{id}/download path —
+  // they get 404 if not owner (matrix override grants explicit
+  // cross-owner read). Operators can still inspect via /admin/jobs/{id}.
+  const path = `/jobs/${encodeURIComponent(jobId)}/download` +
+               `?api_key=${encodeURIComponent(_apiKey || '')}`;
+  try {
+    const r = await fetch(path, {
+      headers: _token ? { Authorization: `Bearer ${_token}` } : {},
+    });
+    if (!r.ok) {
+      let detail = `${r.status}`;
+      try { detail = (await r.json()).detail || detail; } catch (_) {}
+      throw new Error(detail);
+    }
+    const blob = await r.blob();
+    const cd = r.headers.get('Content-Disposition') || '';
+    const m  = /filename="?([^"]+)"?/.exec(cd);
+    const name = m ? m[1] : `job-${jobId}.bin`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    toast(`❌ ${e.message}`, 'error');
+  }
+}
+
+async function showJobError(jobId, isAdminView) {
+  const root = isAdminView ? '/admin/jobs' : '/jobs';
+  try {
+    const row = await _apiFetch(`${root}/${encodeURIComponent(jobId)}`);
+    alert(`Job ${jobId}\n\nstatus: ${row.status}\n\n${row.error || '(no detail)'}`);
+  } catch (e) {
+    toast(`❌ ${e.message}`, 'error');
+  }
 }
 
 /* ── lang toggle (chat.js pattern) ── */

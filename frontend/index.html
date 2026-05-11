@@ -1071,15 +1071,17 @@
         </button>
       </div>
 
-      <!-- Mode: 최근 챗 (placeholder — W7-A 데이터 통합 시 실제 컨텐츠) -->
+      <!-- Mode: 내 자료 (W8-B: artifacts/mine 으로 채움) -->
       <div class="sidebar-panel-mode" data-mode="recent">
-        <div class="sidebar-placeholder">
-          <div class="icon">🕘</div>
-          <div class="title" data-i18n="sidebar.recent_title">최근 챗 기록</div>
-          <div class="hint" data-i18n="sidebar.recent_hint">
-            세션별 최근 대화가 여기 표시됩니다.<br>(W7 데이터 통합 후 활성화)
-          </div>
+        <div style="padding:10px 12px;font-size:11px;color:var(--muted);
+                    border-bottom:1px solid var(--border-2);display:flex;
+                    justify-content:space-between;align-items:center">
+          <span data-i18n="sidebar.mine_title">내 자료 (최근 업로드)</span>
+          <a href="/workspace" style="font-size:10px;color:var(--accent-fg);text-decoration:none"
+             data-i18n="sidebar.open_workspace">Workspace ↗</a>
         </div>
+        <div id="sidebar-mine-list"
+             style="flex:1;overflow-y:auto;padding:8px 12px"></div>
       </div>
 
       <!-- Mode: 검색 (placeholder — 전역 검색은 후속) -->
@@ -1235,6 +1237,10 @@
     panels.forEach(el => {
       el.classList.toggle('active', el.dataset.mode === modeId);
     });
+    // W8-B: lazy-load the "내 자료" list when switching into recent.
+    if (modeId === 'recent' && typeof loadMineSidebar === 'function') {
+      loadMineSidebar();
+    }
     // Update the panel header title from the matching rail tip so
     // i18n stays in one place.
     const titleEl = document.getElementById('sidebar-title');

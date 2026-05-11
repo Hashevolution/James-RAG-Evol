@@ -629,6 +629,66 @@ function logout() {
   toast('로그아웃 완료', 'success');
 }
 
+/* ── W8-B: 사이드바 "내 자료" 모드 ──
+   W5 의 placeholder 를 /artifacts/mine 데이터로 채움. 사용자가 rail
+   의 🕘 아이콘 클릭 시 switchSidebarMode('recent') 가 이 함수를
+   호출 (index.html 의 switchSidebarMode 안 wire). JWT 없으면
+   안내 메시지만 보여줌.
+*/
+function loadMineSidebar() {
+  const target = document.getElementById('sidebar-mine-list');
+  if (!target) return;
+  if (!token) {
+    target.innerHTML = `<div style="color:var(--muted);font-size:11px;padding:16px;text-align:center;line-height:1.5">
+      로그인하면<br>본인 업로드가 표시됩니다.
+    </div>`;
+    return;
+  }
+  target.innerHTML = `<div style="color:var(--muted);font-size:11px;padding:8px;text-align:center">로딩 중...</div>`;
+  const ak = getApiKey();
+  fetch(`${API}/artifacts/mine/list?limit=20&api_key=${encodeURIComponent(ak || '')}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  }).then(r => {
+    if (r.status === 401) {
+      token = '';
+      localStorage.removeItem('james_token');
+      updateRoleBadge();
+      throw new Error('인증이 만료되었습니다.');
+    }
+    if (!r.ok) throw new Error(`${r.status}`);
+    return r.json();
+  }).then(data => {
+    const items = data.items || [];
+    if (!items.length) {
+      target.innerHTML = `<div style="color:var(--muted);font-size:11px;padding:16px;text-align:center;line-height:1.5">
+        업로드한 파일이 아직 없습니다.<br>(왼쪽 📂 모드에서 추가)
+      </div>`;
+      return;
+    }
+    target.innerHTML = items.map(it => {
+      const status = it.status || 'unknown';
+      const time = it.uploaded_at
+        ? new Date(it.uploaded_at * 1000).toLocaleString('ko-KR', {
+            month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+          })
+        : '-';
+      const statusColor = status === 'indexed' ? '#1e7a3e'
+                        : status === 'failed'  ? '#7a1e1e'
+                        : 'var(--muted)';
+      return `<div style="padding:8px 10px;border-bottom:1px solid var(--border-2);font-size:11px">
+        <div style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+             title="${(it.origin_name || '').replace(/"/g,'&quot;')}">${it.origin_name || ''}</div>
+        <div style="display:flex;justify-content:space-between;margin-top:3px">
+          <span style="color:var(--muted);font-family:var(--font-mono);font-size:10px">${time}</span>
+          <span style="color:${statusColor};font-family:var(--font-mono);font-size:10px">${status}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }).catch(e => {
+    target.innerHTML = `<div style="color:var(--danger);font-size:11px;padding:8px;text-align:center">${e.message}</div>`;
+  });
+}
+
 /* ── W4 P4: signup modal ──
    Public POST /signup/ from anonymous user. Success and duplicate
    share one server response (enumeration defense) so the modal

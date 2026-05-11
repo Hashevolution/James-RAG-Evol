@@ -331,14 +331,68 @@
       </div>
     </div>
 
-    <!-- Jobs tab (placeholder until W8-B) -->
+    <!-- Jobs tab (W8-B: trigger + queue) -->
     <div id="tab-jobs" style="display:none">
-      <div class="page-title">🛠 <span data-i18n="workspace.jobs_title">작업</span></div>
-      <div class="hint" style="margin-top:60px;text-align:center;font-size:13px;line-height:1.7"
-           data-i18n="workspace.jobs_placeholder">
-        Excel 합성 · 문서 합성 · entity export 같은 generic 작업 트리거가 곧 이 영역에서 동작합니다.<br>
-        (W8 사이클에서 활성화)
+      <div class="page-title">
+        🛠 <span data-i18n="workspace.jobs_title">작업</span>
+        <span class="badge" id="jobs-scope-badge" style="display:none">ADMIN</span>
       </div>
+      <div class="hint" data-i18n="workspace.jobs_hint">
+        엔티티를 Excel/문서/JSON 으로 합성하는 generic 작업을 실행합니다. 결과물은 본인만 다운로드 가능합니다.
+      </div>
+
+      <!-- Trigger form -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:end">
+          <div>
+            <label style="font-size:10px;color:var(--muted);letter-spacing:.5px;font-family:var(--font-mono);display:block;margin-bottom:4px">JOB TYPE</label>
+            <select id="job-type" onchange="onJobTypeChange()" style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+              <option value="excel_build" data-i18n="workspace.jt_excel">excel_build · 엔티티 → .xlsx</option>
+              <option value="doc_combine" data-i18n="workspace.jt_doc">doc_combine · 엔티티 → .md</option>
+              <option value="entity_export" data-i18n="workspace.jt_export">entity_export · 카테고리 → .json</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:10px;color:var(--muted);letter-spacing:.5px;font-family:var(--font-mono);display:block;margin-bottom:4px">
+              <span id="job-input-label">INPUT REFS</span>
+            </label>
+            <input id="job-input-refs" type="text"
+                   data-i18n-placeholder="workspace.refs_ph"
+                   placeholder="쉼표로 구분된 entity_id (또는 카테고리)"
+                   style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:var(--font-mono)">
+          </div>
+          <div>
+            <button onclick="runJob()" id="run-job-btn"
+                    style="padding:9px 16px;background:var(--accent);color:#fff;border:0;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600"
+                    data-i18n="workspace.run">실행</button>
+          </div>
+        </div>
+        <div id="job-input-hint"
+             style="font-size:11px;color:var(--muted);margin-top:8px;font-family:var(--font-mono)"
+             data-i18n="workspace.refs_hint_excel">
+          예: ent_001, ent_042 · 빈 항목은 자동으로 생략됩니다.
+        </div>
+      </div>
+
+      <!-- Toolbar + table -->
+      <div class="toolbar">
+        <span class="counter" id="jobs-counter"></span>
+        <button class="header-btn" onclick="reloadJobs()" style="margin-left:auto"
+                data-i18n="workspace.refresh">새로고침</button>
+      </div>
+      <table>
+        <thead><tr>
+          <th data-i18n="workspace.col_job_type">타입</th>
+          <th data-i18n="workspace.col_created">생성</th>
+          <th data-i18n="workspace.col_status">상태</th>
+          <th data-i18n="workspace.col_owner" id="th-job-owner" style="display:none">소유자</th>
+          <th data-i18n="workspace.col_result">결과</th>
+          <th data-i18n="workspace.col_actions">액션</th>
+        </tr></thead>
+        <tbody id="jobs-body">
+          <tr><td colspan="6" class="empty" data-i18n="common.loading">로딩 중...</td></tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- Search tab (placeholder) -->
