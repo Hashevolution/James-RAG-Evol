@@ -605,7 +605,7 @@ async function loadUsers() {
           <tr>
             <td class="mono">${u.username}</td>
             <td class="mono">${u.created_at?.slice(0,10) || '-'}</td>
-            <td><select id="approve-role-${safeName}" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--fg)">${opts}</select></td>
+            <td><select id="approve-role-${safeName}" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text)">${opts}</select></td>
             <td>
               <button onclick="approveUser('${u.username}')" style="padding:4px 10px;margin-right:4px;background:#1e7a3e;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.approve')}</button>
               <button onclick="rejectUser('${u.username}')" style="padding:4px 10px;background:#7a1e1e;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.reject')}</button>
@@ -1500,7 +1500,7 @@ async function loadAudit() {
       const isBlock = it.blocked
         || /fail|rejected|blocked|denied|invalid/i.test(ev);
       const evCell = ev
-        ? `<span style="${isBlock ? 'color:#d97a7a' : 'color:var(--fg)'}">${_auditEscapeHtml(ev)}</span>`
+        ? `<span style="${isBlock ? 'color:#d97a7a' : 'color:var(--text)'}">${_auditEscapeHtml(ev)}</span>`
         : '<span style="color:var(--muted)">—</span>';
       return `
         <tr>
@@ -2276,7 +2276,7 @@ async function loadPerformance() {
     const perf = data.performance || {};
     const imp  = data.importance  || {};
 
-    const gradeColor = { A:'var(--success)', B:'var(--accent2)',
+    const gradeColor = { A:'var(--success)', B:'var(--brand-2)',
                          C:'var(--warn)', D:'var(--danger)', 'N/A':'var(--muted)' };
     const last = await api('/admin/performance/history/?limit=1');
     const lastGrade = last.history?.[0]?.grade || 'N/A';
@@ -2307,7 +2307,7 @@ async function loadPerfHistory() {
   try {
     const data  = await api('/admin/performance/history/?limit=10');
     const tbody = document.getElementById('perf-history-body');
-    const gradeColor = { A:'var(--success)', B:'var(--accent2)',
+    const gradeColor = { A:'var(--success)', B:'var(--brand-2)',
                          C:'var(--warn)', D:'var(--danger)' };
     tbody.innerHTML = (data.history || []).map(h => `
       <tr>

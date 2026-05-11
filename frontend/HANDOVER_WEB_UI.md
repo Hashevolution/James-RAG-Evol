@@ -97,9 +97,11 @@ indigo accent, intelligence-cyan brand-2, shadow-card)를 가지고
 4. **theme-color**: `#0a0c11` 으로 통일.
 5. **반응형 분기**: `.brand` 가 900px → 11px, 640px → 자동 줄바꿈.
    이 규칙이 부족하면 `tokens.css` 의 `@media` 두 블록만 수정.
-6. **legacy 미정의 토큰**: `admin.html` 에 `var(--accent2 / --bg2 /
-   --card / --fg)` 호출이 남아 있다. **이번 PR 이전부터 깨져 있던**
-   참조이므로 이 PR 의 범위 밖. 별도 클린업 PR 에서 정리.
+6. ~~**legacy 미정의 토큰**: `admin.html` 에 `var(--accent2 / --bg2 /
+   --card / --fg)` 호출이 남아 있다.~~ **DONE** (브랜치
+   `chore/v0.2-legacy-tokens` 에서 `--accent2 → --brand-2`,
+   `--fg → --text`, `--bg2 → --surface-2`, `--card → --surface-2`
+   로 일괄 치환).
 
 ---
 
@@ -115,12 +117,12 @@ indigo accent, intelligence-cyan brand-2, shadow-card)를 가지고
 | 3 | 추론 패널 강화 — retrieve → expand → verify timeline + 인용 노드 + 신뢰도 bar + sensitivity 배지 | 4~6h | Graph-RAG 차별점 시각화 |
 | 4 | 접근성 패스 — modal `role="dialog"` + focus trap + ESC, `aria-label`, `--muted-2` 대비 감사 (AA ~3.4:1 미달 가능) | 2h | |
 | 5 | 인라인 핸들러(`onclick=…`) → 이벤트 위임 + `data-action` | 3h | CSP 강화 대비 |
-| 6 | `admin.html` legacy 미정의 토큰(`--accent2 / --bg2 / --card / --fg`) 정리 | 30분 | tokens.css 에 별칭 추가 또는 호출 측 치환 |
+| 6 | ~~`admin.html` legacy 미정의 토큰(`--accent2 / --bg2 / --card / --fg`) 정리~~ | — | **DONE** (브랜치 `chore/v0.2-legacy-tokens`) |
 | 7 | 상단 그라데이션 레일(`body::before`)을 4페이지 공통화 | 30분 | 현재 index 만 있음. tokens.css 또는 별도 global.css 로 이동 |
 | 8 | 인라인 `<style>` 블록 완전 분리 — `static/styles.css` | 4h | `index.html` 615줄 / `admin.html` 530줄까지 인라인 |
 
-추천 다음 단계: **#6 (legacy 토큰 클린업)** 또는 **#7 (그라데이션 레일 공통화)**
-— 둘 다 작고 안전하며 토큰 통합 PR 의 흐름 안에 들어간다.
+추천 다음 단계: **#7 (그라데이션 레일 공통화)** —
+작고 안전하며 토큰 통합 PR 의 흐름 안에 들어간다.
 
 ---
 

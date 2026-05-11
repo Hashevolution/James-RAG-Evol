@@ -1822,7 +1822,7 @@ function formatAnswer(text) {
     return `\x00CODE${idx}\x00`;
   });
   text = escHtml(text);
-  text = text.replace(/^###\s+(.+)$/gm, '<strong style="font-size:13px;color:var(--accent2)">$1</strong>');
+  text = text.replace(/^###\s+(.+)$/gm, '<strong style="font-size:13px;color:var(--brand-2)">$1</strong>');
   text = text.replace(/^##\s+(.+)$/gm,  '<strong style="font-size:14px;color:var(--accent)">$1</strong>');
   text = text.replace(/^#\s+(.+)$/gm,   '<strong style="font-size:15px;color:var(--accent)">$1</strong>');
   text = text.replace(/^---+$/gm, '<hr style="border:none;border-top:1px solid var(--border);margin:6px 0">');
