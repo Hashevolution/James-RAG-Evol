@@ -71,15 +71,21 @@ class PaletteTests(unittest.TestCase):
 
 
 class TopAccentRailTests(unittest.TestCase):
+    """Top stripe was lifted from inline index.html style into tokens.css
+    so admin/workspace/graph inherit the same rail. Assertions now resolve
+    in the tokens file; index.html must NOT redeclare it."""
+
     @classmethod
     def setUpClass(cls):
-        cls.html = HTML.read_text(encoding="utf-8")
+        cls.tokens = TOKENS.read_text(encoding="utf-8")
+        cls.index_html = HTML.read_text(encoding="utf-8")
 
     def test_body_before_pseudo_present(self):
         # Subtle "system header" stripe at the top of every page.
-        self.assertIn("body::before", self.html,
-            "must add ::before stripe on body for system-header look")
-        m = re.search(r"body::before\s*\{([^}]+)\}", self.html)
+        self.assertIn("body::before", self.tokens,
+            "tokens.css must declare ::before stripe on body so all 4 "
+            "pages inherit the system-header look")
+        m = re.search(r"body::before\s*\{([^}]+)\}", self.tokens)
         self.assertIsNotNone(m)
         block = m.group(1)
         self.assertIn("position: fixed", block,
@@ -93,11 +99,18 @@ class TopAccentRailTests(unittest.TestCase):
 
     def test_stripe_is_thin(self):
         # Should be visually subtle — 1-3px tall, not a thick band.
-        m = re.search(r"body::before\s*\{[^}]*height:\s*(\d+)px", self.html)
+        m = re.search(r"body::before\s*\{[^}]*height:\s*(\d+)px", self.tokens)
         self.assertIsNotNone(m, "couldn't extract stripe height")
         height = int(m.group(1))
         self.assertLessEqual(height, 4,
             f"stripe height {height}px too thick — must be ≤ 4px")
+
+    def test_index_html_does_not_redeclare_rail(self):
+        # Guard against drift back to inline declaration — the rule
+        # belongs to tokens.css from now on.
+        self.assertNotIn("body::before", self.index_html,
+            "index.html must not redeclare body::before — it now lives "
+            "in tokens.css for all 4 pages")
 
 
 class LogoTaglineTests(unittest.TestCase):

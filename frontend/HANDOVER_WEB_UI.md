@@ -118,11 +118,13 @@ indigo accent, intelligence-cyan brand-2, shadow-card)를 가지고
 | 4 | 접근성 패스 — modal `role="dialog"` + focus trap + ESC, `aria-label`, `--muted-2` 대비 감사 (AA ~3.4:1 미달 가능) | 2h | |
 | 5 | 인라인 핸들러(`onclick=…`) → 이벤트 위임 + `data-action` | 3h | CSP 강화 대비 |
 | 6 | ~~`admin.html` legacy 미정의 토큰(`--accent2 / --bg2 / --card / --fg`) 정리~~ | — | **DONE** (브랜치 `chore/v0.2-legacy-tokens`) |
-| 7 | 상단 그라데이션 레일(`body::before`)을 4페이지 공통화 | 30분 | 현재 index 만 있음. tokens.css 또는 별도 global.css 로 이동 |
+| 7 | ~~상단 그라데이션 레일(`body::before`)을 4페이지 공통화~~ | — | **DONE** (브랜치 `feat/v0.2-gradient-rail-common`) |
 | 8 | 인라인 `<style>` 블록 완전 분리 — `static/styles.css` | 4h | `index.html` 615줄 / `admin.html` 530줄까지 인라인 |
 
-추천 다음 단계: **#7 (그라데이션 레일 공통화)** —
-작고 안전하며 토큰 통합 PR 의 흐름 안에 들어간다.
+추천 다음 단계: **#3 (추론 패널 강화)** 또는
+**#5 (인라인 onclick 제거)** — 둘 다 mid-risk, 4~6h.
+가벼운 작업이 더 필요하면 **#8 (인라인 `<style>` 블록 분리)**
+부분 착수.
 
 ---
 

@@ -8,19 +8,6 @@
 <link rel="stylesheet" href="/static/tokens.css">
 <style>
 
-  /* [#A8-9] thin top accent rail — gives every page a subtle "system
-     header" stripe like enterprise dashboards. Doesn't move with
-     scroll, doesn't intrude on layout (1px high). */
-  body::before {
-    content: '';
-    position: fixed; top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--accent) 0%, var(--brand-2) 100%);
-    opacity: .9;
-    z-index: 999;
-    pointer-events: none;
-  }
-
   body {
     background: var(--bg);
     color: var(--text);

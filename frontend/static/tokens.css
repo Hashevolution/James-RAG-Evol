@@ -92,3 +92,19 @@
 @media (max-width: 640px) {
   .brand { white-space: normal; }
 }
+
+/* ── Top accent rail ──
+ * Thin 2px stripe along the very top of every page — gives the app
+ * a subtle "system header" feel like enterprise dashboards. Fixed
+ * position so it survives scroll, pointer-events:none so it never
+ * blocks clicks. Originally inline in index.html only; lifted here
+ * so admin/workspace/graph inherit the same rail. */
+body::before {
+  content: '';
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--brand-2) 100%);
+  opacity: .9;
+  z-index: 999;
+  pointer-events: none;
+}
