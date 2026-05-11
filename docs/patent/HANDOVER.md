@@ -79,7 +79,8 @@ STAGE 1 + STAGE 1B 두 건만 출원 = **약 4~12만원, 92% 가치 확보**.
 |------|------|------|------|
 | `strategy.md` | 281 | DIY 출원 전체 전략, 후보 평가, stage 일정, 비용 | ✅ 완성 (사이트명 정정 완료) |
 | `disclosure_log.txt` | — | 공지예외 증빙 (git log 덤프 + A/B PR commit hash) | ⚠️ C/D commit hash TODO 남음 |
-| `HANDOVER.md` | (본 파일) | 핸드오버 문서 | — |
+| `HANDOVER.md` | (본 파일) | 핸드오버 문서 (절차·일정·인벤토리) | — |
+| `REVIEW-NOTES.md` | ~280 | 검색·검토 결과 (선행기술·법규·청구 분석) | ✅ 완성 |
 
 ### 8개 임시명세서 skeleton
 
