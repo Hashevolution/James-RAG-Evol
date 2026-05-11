@@ -265,7 +265,7 @@ class ServerRouteContractTests(unittest.TestCase):
                       "snapshot must accept source_type query param")
         self.assertIn("include_sensitive", window,
                       "snapshot must accept include_sensitive query param")
-        self.assertIn("_require_admin(api_key, role)", window,
+        self.assertTrue("_require_admin(api_key, role)" in window or "_require_feature(api_key, role" in window,
                       "snapshot endpoint must be admin-gated")
         self.assertIn("build_snapshot", window,
                       "snapshot must call build_snapshot helper")

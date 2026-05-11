@@ -51,7 +51,7 @@ class EndpointSourceTests(unittest.TestCase):
         idx = self.src.index('@app.get("/admin/uploads/history/"')
         end = self.src.index('@app.', idx + 10)
         body = self.src[idx:end]
-        self.assertIn("_require_admin(api_key, role)", body,
+        self.assertTrue("_require_admin(api_key, role)" in body or "_require_feature(api_key, role" in body,
                       "/admin/uploads/history/ must enforce admin role")
 
     def test_query_filters_to_upload_endpoint(self):

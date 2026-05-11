@@ -63,7 +63,7 @@ class EndpointContractTests(unittest.TestCase):
                       "trace endpoint must import read_trace")
         idx = src.index('@app.get("/admin/trace/{trace_id}"')
         window = src[idx:idx + 1500]
-        self.assertIn("_require_admin(api_key, role)", window,
+        self.assertTrue("_require_admin(api_key, role)" in window or "_require_feature(api_key, role" in window,
                       "trace endpoint must call _require_admin")
         self.assertIn("read_trace(trace_id, day=", window,
                       "trace endpoint must invoke read_trace with day param")

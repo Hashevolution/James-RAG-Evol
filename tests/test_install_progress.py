@@ -128,7 +128,7 @@ class ProgressEndpointTests(unittest.TestCase):
         m = re.search(r"\n@app\.", rest)
         end = idx + 1 + m.start() if m else idx + 3000
         body = self.src[idx:end]
-        self.assertIn("_require_admin", body,
+        self.assertTrue("_require_admin" in body or "_require_feature" in body,
             "progress endpoint must be admin-gated")
 
     def test_endpoint_returns_idle_for_unknown_model(self):

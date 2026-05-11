@@ -194,7 +194,7 @@ class AdminEndpointTests(unittest.TestCase):
         )
         self.assertIsNotNone(m)
         body = m.group(0)
-        self.assertIn("_require_admin", body,
+        self.assertTrue("_require_admin" in body or "_require_feature" in body,
             "POST must call _require_admin")
 
     def test_post_validates_via_helper(self):

@@ -266,12 +266,29 @@ The `applied_rule` of every decision is `policy.feature.<feature_id>`
 so audit-log search can find all checks of one feature with a single
 LIKE pattern.
 
-**W4-Q1 scope (this section)** — storage layer + the can_use_feature
-method + admin management endpoints (`/admin/features/list`,
-`/admin/features/override`, `/admin/features/reset`). The runtime
-*does not yet* consult these decisions on existing endpoints — that
-wiring is **W4-Q2** (separate PR; carries higher regression risk and
-warrants focused review). The admin UI is **W4-Q3**.
+**W4-Q1 scope** — storage layer + the can_use_feature method + admin
+management endpoints (`/admin/features/list`, `/admin/features/override`,
+`/admin/features/reset`).
+
+**W4-Q2 status (2026-05-11)** — runtime wiring completed in two slices:
+- **Q2-a** rewired 17 admin endpoints whose features Q1 already
+  covered (admin.users / admin.audit_log / admin.policy_matrix /
+  admin.evolution).
+- **Q2-b** extended the catalog with 6 admin.* features
+  (admin.settings, admin.data, admin.metrics, admin.character,
+  admin.knowledge, admin.tools) and rewired the remaining 38
+  `_require_admin` call sites onto `_require_feature`. The
+  hardcoded `_require_admin` helper is preserved as a backward-
+  compat alias for any external caller, but no in-repo endpoint
+  uses it anymore.
+
+After Q2-b, the runtime consults the matrix on every admin endpoint.
+Setting `feature_overrides` rows in the DB (or via the admin UI in
+Q3) is the operator's only knob — no code change required to grant
+or revoke a feature for a role mid-flight.
+
+**W4-Q3** ships the admin matrix UI (feature × role checkbox grid
++ "기본값 복원").
 
 **TrustedContent** is the wrapper every multimodal extractor (OCR,
 ASR, vision, web) returns instead of a raw string. Carries

@@ -1203,7 +1203,7 @@ async def llm_install(api_key: str, model: str,
     {percent, completed, total, status} to _install_progress[model],
     which the admin UI polls.
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.settings")
     ALLOWED_MODELS = _allowed_install_models() | {"llava:13b"}
     if model not in ALLOWED_MODELS:
         raise HTTPException(
@@ -1245,7 +1245,7 @@ async def llm_install_progress(api_key: str, model: str,
     Response shape:
       {status, percent, completed, total, done, error, model}
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.settings")
     snap = _install_progress.get(model)
     if not snap:
         return {"model": model, "status": "idle",
@@ -1257,7 +1257,7 @@ async def llm_install_progress(api_key: str, model: str,
 @app.get("/admin/llm/installed", summary="설치된 Ollama 모델 목록 [4-B]")
 async def llm_installed(api_key: str, role: str = Depends(get_role_from_request)):
     """현재 Ollama에 설치된 모델 목록."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.settings")
     try:
         import urllib.request, json as _json
         with urllib.request.urlopen("http://localhost:11434/api/tags", timeout=5) as r:
@@ -1293,7 +1293,7 @@ async def llm_resolution(api_key: str, role: str = Depends(get_role_from_request
        preference: {chat: [...], coding: [...]},
        ttl_s: 60}
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.settings")
     from core.model_resolver import resolution_snapshot
     return resolution_snapshot()
 
@@ -1301,7 +1301,7 @@ async def llm_resolution(api_key: str, role: str = Depends(get_role_from_request
 @app.get("/admin/llm/recommend", summary="하드웨어 기반 LLM 추천 [4-B]")
 async def llm_recommend(api_key: str, role: str = Depends(get_role_from_request)):
     """현재 하드웨어 스펙에 맞는 LLM 모델 추천."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.settings")
     try:
         from tools.system.hardware_inspector import get_hardware_specs, get_llm_recommendations
         specs = get_hardware_specs()
@@ -1326,7 +1326,7 @@ async def llm_pull(
     role: str = Depends(get_role_from_request),
 ):
     """Ollama 모델 pull (다운로드). 시간이 걸릴 수 있음."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.settings")
     if not model or len(model) > 60:
         raise HTTPException(status_code=400, detail="model명 오류")
     # 보안: 허용 모델만
@@ -1358,7 +1358,7 @@ async def llm_delete(
     role: str = Depends(get_role_from_request),
 ):
     """Ollama 모델 삭제."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.settings")
     try:
         import urllib.request, json as _json
         body = _json.dumps({"name": model}).encode()
@@ -1395,7 +1395,7 @@ async def get_web_search_config(api_key: str,
                         can render the right toast (TAVILY missing,
                         DDG fallback active, both missing, etc.)
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.settings")
     from core.web_search_config import load
     from tools.web.web_searcher import get_search_engine_status
     cfg = load()
@@ -1419,7 +1419,7 @@ async def set_web_search_config(data: WebSearchConfigUpdate,
     Empty allowed_roles is rejected — silently disabling web search
     is rarely the intent and harder to debug later (operator can
     clear TAVILY_API_KEY instead if they really want it off)."""
-    _require_admin(data.api_key, role)
+    _require_feature(data.api_key, role, "admin.settings")
     from core.web_search_config import save, validate_update
     clean_roles, clean_threshold, err = validate_update(
         data.allowed_roles, data.threshold,
@@ -1452,7 +1452,7 @@ async def llm_selections_get(
     role: str = Depends(get_role_from_request),
 ):
     """현재 ``llm.selection`` 의 ``task_type → model`` 매핑 전체 반환."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.settings")
     from llm.selection import get_all_selections
     return {"selections": get_all_selections()}
 
@@ -1465,7 +1465,7 @@ async def llm_select_set(
     role: str = Depends(get_role_from_request),
 ):
     """``task_type`` 의 추론에 사용할 model을 지정. ollama에 설치된 model만 허용."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.settings")
     task_type = (task_type or "").strip()
     model     = (model or "").strip()
     if not task_type or len(task_type) > 32:
@@ -1493,7 +1493,7 @@ async def llm_select_remove(
     role: str = Depends(get_role_from_request),
 ):
     """``task_type`` 매핑 제거. 기본 model로 fallback."""
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.settings")
     from llm.selection import remove_model_for_task
     removed = remove_model_for_task(task_type)
     _write_audit(role, "/admin/llm/select#delete", query=task_type, elapsed_sec=0)
@@ -1829,7 +1829,7 @@ async def generate_proposals(
 async def get_perf_metrics(
     api_key: str, role: str = Depends(get_role_from_request),
 ):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.metrics")
     try:
         from tools.self.performance_evaluator import get_current_metrics
         from tools.self.importance_scorer import get_scorer_stats
@@ -1843,7 +1843,7 @@ async def get_perf_metrics(
 async def manual_evaluate(
     api_key: str, role: str = Depends(get_role_from_request),
 ):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from tools.self.performance_evaluator import run_evaluation
         return run_evaluation()
@@ -1856,7 +1856,7 @@ async def get_perf_history(
     api_key: str, limit: int = 20,
     role: str = Depends(get_role_from_request),
 ):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from tools.self.performance_evaluator import get_eval_history
         return {"history": get_eval_history(limit)}
@@ -1881,7 +1881,7 @@ async def learn_topic_api(
       4. wiki entity 저장 + vector 인덱싱
       5. domain 태그 자동 분류 + 지식 레벨 +5점
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.knowledge")
     if not topic:
         raise HTTPException(status_code=400, detail="topic 파라미터 필요")
     try:
@@ -1983,7 +1983,7 @@ async def learn_topic_api(
 async def learn_from_errors_api(
     api_key: str, role: str = Depends(get_role_from_request),
 ):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.knowledge")
     try:
         from tools.self.self_learner import learn_from_errors
         results = learn_from_errors()
@@ -1999,7 +1999,7 @@ async def get_error_queries(
     api_key: str, min_count: int = 2,
     role: str = Depends(get_role_from_request),
 ):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from tools.self.importance_scorer import get_repeated_errors
         return {"error_queries": get_repeated_errors(min_count)}
@@ -2033,7 +2033,7 @@ async def submit_feedback(
 async def get_feedback_stats_api(
     api_key: str, role: str = Depends(get_role_from_request),
 ):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.evolution")
     try:
         from core.feedback_engine import get_feedback_stats
         return get_feedback_stats()
@@ -2046,7 +2046,7 @@ async def get_feedback_stats_api(
 
 @app.get("/admin/character/", summary="성향 조회 [P7-EVO-D]")
 async def get_character(api_key: str, role: str = Depends(get_role_from_request)):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.character")
     try:
         # [P5c 2026-05-10] summary 필드 추가 — 16 trait 자연어 요약
         # (핵심/가치/스타일 3 라인). 프론트는 동일 룰의 JS 미러를 가지므로
@@ -2069,7 +2069,7 @@ class TraitUpdateRequest(BaseModel):
 @app.post("/admin/character/", summary="성향 설정 [P7-EVO-D]")
 async def set_character(data: TraitUpdateRequest,
                          role: str = Depends(get_role_from_request)):
-    _require_admin(data.api_key, role)
+    _require_feature(data.api_key, role, "admin.character")
     try:
         from core.character_profile import get_profile
         result = get_profile().set_trait(data.trait_id, data.value)
@@ -2089,7 +2089,7 @@ async def set_character(data: TraitUpdateRequest,
          summary="성향 상관관계 그래프 [P1 unified UX]")
 async def get_character_correlations(api_key: str,
                                       role: str = Depends(get_role_from_request)):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.character")
     try:
         from core.character_profile import CharacterProfile
         return {
@@ -2105,7 +2105,7 @@ async def get_character_correlations(api_key: str,
 
 @app.get("/admin/knowledge/", summary="능력 성장 현황 [P7-EVO-E]")
 async def get_knowledge(api_key: str, role: str = Depends(get_role_from_request)):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.knowledge")
     try:
         from core.knowledge_tracker import get_tracker
         t = get_tracker()
@@ -2215,7 +2215,7 @@ async def screen_analyze(
     role: str = Depends(get_role_from_request),
 ):
     """화면 캡처 → OCR → LLM 분석. admin 전용."""
-    _require_admin(data.api_key, role)
+    _require_feature(data.api_key, role, "admin.tools")
     try:
         from tools.screen.screen_agent import run_screen_analysis
         region = tuple(data.region) if data.region else None
@@ -2480,7 +2480,7 @@ def _read_jsonl_tail(path: str, max_lines: int = 200) -> list[dict]:
 
 @app.get("/admin/dashboard", summary="관리자 대시보드 [P7]")
 async def admin_dashboard(api_key: str, role: str = Depends(get_role_from_request)):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.metrics")
 
     # ── 기본 카운트 ──────────────────────────────────────────
     try:    entity_count = len(rag_engine.wiki_generator.entity_id_index)
@@ -2963,7 +2963,7 @@ async def admin_entities(
     so the operator always sees corpus-wide totals. `total` is the count
     AFTER filters are applied; `total_all` is the unfiltered count.
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.data")
     from pathlib import Path
 
     # Clamp limit defensively — 500 covers any realistic v0.2 wiki.
@@ -3027,7 +3027,7 @@ async def admin_entity_detail(
     Used by the admin entities page click-to-expand modal so the
     operator can audit a wiki row without leaving the admin UI.
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.data")
     from pathlib import Path
 
     fpath = rag_engine.wiki_generator.entity_id_index.get(entity_id)
@@ -3070,7 +3070,7 @@ async def admin_graph_snapshot(
     are dropped by default and require an explicit elevated role to
     surface (which v0.2 doesn't yet have — kept off for now).
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.data")
     from core.graph_snapshot import build_snapshot
 
     src = (source_type or "prod").strip().lower()
@@ -3100,7 +3100,7 @@ async def admin_graph_snapshot(
 
 @app.get("/admin/memory", summary="Memory 현황 [P7]")
 async def admin_memory(api_key: str, role: str = Depends(get_role_from_request)):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.data")
     try:
         from core.memory import MemoryStore
         from core.memory.store import _connect
@@ -3143,7 +3143,7 @@ async def admin_patch_approve(request: Request, role: str = Depends(get_role_fro
         `james_patch_log.jsonl` (visible via /admin/audit).
     """
     body = await request.json()
-    _require_admin(body.get("api_key",""), role)
+    _require_feature(body.get("api_key",""), role, "admin.evolution")
 
     # #48 phase 1 — opt-in gate.
     from config import EVOLUTION_ENABLED, APPROVER_ROLE
@@ -3286,7 +3286,7 @@ async def admin_patch_audit(
 @app.post("/admin/patch/reject", summary="Patch 거부 [P7]")
 async def admin_patch_reject(request: Request, role: str = Depends(get_role_from_request)):
     body = await request.json()
-    _require_admin(body.get("api_key",""), role)
+    _require_feature(body.get("api_key",""), role, "admin.evolution")
     patch_id = body.get("patch_id","")
     from pathlib import Path
     pf = Path(f"./workspace/patches/{patch_id}.json")
@@ -3372,7 +3372,7 @@ async def admin_trace_get(
     404 when no trace file exists for the (trace_id, day) pair.
     Stages are returned in the order they were written (chronological).
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.metrics")
     from core.observability import read_trace
     # Normalize the day arg: empty/whitespace → today (read_trace default).
     day_arg = (day or "").strip() or None
@@ -3415,7 +3415,7 @@ async def admin_metrics_get(
     See `core/trace_metrics.py::aggregate_metrics` for the latency
     derivation rationale (per-trace ts_ns deltas vs explicit fields).
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.metrics")
     from core.trace_metrics import aggregate_metrics
     stage_filter = (stage or "").strip() or None
     stats = aggregate_metrics(window_hours=window_hours,
@@ -3493,7 +3493,7 @@ async def export_answer(request: Request, role: str = Depends(get_role_from_requ
 @app.get("/admin/audit", summary="감사 로그 [P7]")
 async def admin_audit(api_key: str, limit: int = 100,
                       role: str = Depends(get_role_from_request)):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.audit_log")
     logs = []
     for lf in ["james_audit_db.jsonl","james_audit_tool.jsonl",
                "james_attack_log.jsonl","james_system_log.jsonl"]:
@@ -3529,7 +3529,7 @@ async def admin_uploads_history(
     Admin-gated; unrelated audit endpoints already exist for the wider
     log surface.
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.data")
     # Hard cap to keep the JSON payload bounded and avoid the
     # browser locking up if an operator passes ?limit=999999.
     limit  = max(1, min(int(limit or 50), 500))
@@ -3900,7 +3900,7 @@ async def admin_files_tree(
     big wiki could be slow and produce a fat JSON, but we don't need
     deeper. `1` lists immediate children only.
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.data")
     max_depth = max(1, min(int(max_depth or 3), 5))
     base = _resolve_under_root(root, path)
     if not base or not os.path.isdir(base):
@@ -3959,7 +3959,7 @@ async def admin_files_search(
     Returns a flat list (not nested). Capped at `limit` matches (default
     100, max 500) so a one-character query doesn't dump the whole tree.
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.data")
     qstr  = (q or "").strip().lower()
     if not qstr:
         return {"q": "", "matches": [], "total": 0, "root": root}
@@ -4015,7 +4015,7 @@ async def admin_files_download(
     Uses FileResponse — FastAPI streams the file, doesn't load it into
     memory. Audit log records every download.
     """
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.data")
     if not (path or "").strip():
         raise HTTPException(status_code=400, detail="path required")
     full = _resolve_under_root(root, path)
@@ -4039,7 +4039,7 @@ async def admin_files_download(
 
 @app.get("/admin/settings", summary="설정 조회 [P7]")
 async def admin_settings_get(api_key: str, role: str = Depends(get_role_from_request)):
-    _require_admin(api_key, role)
+    _require_feature(api_key, role, "admin.settings")
     from config import GEMMA_MODEL
     try:
         from core.memory import MemoryStore
@@ -4110,7 +4110,7 @@ class AdminSettingsRequest(BaseModel):
 
 @app.post("/admin/settings", summary="설정 변경 [P7]")
 async def admin_settings_post(data: AdminSettingsRequest, role: str = Depends(get_role_from_request)):
-    _require_admin(data.api_key, role)
+    _require_feature(data.api_key, role, "admin.settings")
     if data.protected_files:
         os.environ["JAMES_PROTECTED_FILES"] = data.protected_files
     _write_audit(role, "/admin/settings", query=f"model={data.model}")

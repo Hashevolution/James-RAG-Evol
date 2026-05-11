@@ -149,6 +149,40 @@ FEATURES: Dict[str, Feature] = {
         "권한 매트릭스 관리 (이 화면 자체)",
         "admin",
     ),
+    # Added in W4-Q2-b — features that cover the remaining admin
+    # endpoints. All admin-only by default; admins can grant subsets
+    # to manager (e.g. "manager can read metrics but not change LLM
+    # selection") via the matrix UI in W4-Q3.
+    "admin.settings": _f(
+        "admin.settings",
+        "시스템 설정 (LLM 모델 / persona / 웹 검색 / model selection)",
+        "admin",
+    ),
+    "admin.data": _f(
+        "admin.data",
+        "데이터 인스펙션 (entity / memory / files / 업로드 이력)",
+        "admin",
+    ),
+    "admin.metrics": _f(
+        "admin.metrics",
+        "메트릭·대시보드·trace 조회",
+        "admin",
+    ),
+    "admin.character": _f(
+        "admin.character",
+        "성향(character) 조회·설정",
+        "admin",
+    ),
+    "admin.knowledge": _f(
+        "admin.knowledge",
+        "능력 성장(knowledge) 조회·학습",
+        "admin",
+    ),
+    "admin.tools": _f(
+        "admin.tools",
+        "관리자 도구 (화면 캡처 분석 등)",
+        "admin",
+    ),
     # ── workspace (W8 후속, 카탈로그 슬롯만 미리 등록) ─────────
     "workspace.run_jobs": _f(
         "workspace.run_jobs",

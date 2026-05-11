@@ -45,7 +45,7 @@ class BackendEndpointContractTests(unittest.TestCase):
             self.assertIn(kw, window,
                           f"/admin/entities must accept {kw} query param")
         # Admin-gated.
-        self.assertIn("_require_admin(api_key, role)", window)
+        self.assertTrue("_require_admin(api_key, role)" in window or "_require_feature(api_key, role" in window)
         # Response shape contract — these keys must appear in the return dict.
         for shape_key in ('"entities"', '"type_counts"', '"total"',
                           '"total_all"', '"limit"', '"offset"', '"filters"'):
@@ -77,7 +77,7 @@ class BackendEndpointContractTests(unittest.TestCase):
         self.assertGreater(idx, 0,
                            "/admin/entities/{entity_id} detail endpoint missing")
         window = self.src[idx:idx + 1500]
-        self.assertIn("_require_admin(api_key, role)", window)
+        self.assertTrue("_require_admin(api_key, role)" in window or "_require_feature(api_key, role" in window)
         # Must 404 on missing entity (no silent empty response).
         self.assertIn("status_code=404", window,
                       "detail endpoint must 404 on missing entity")

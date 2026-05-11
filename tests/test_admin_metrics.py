@@ -271,7 +271,7 @@ class AdminMetricsEndpointTests(unittest.TestCase):
         self.assertIn("from core.trace_metrics import aggregate_metrics", src)
         idx = src.index('@app.get("/admin/metrics"')
         window = src[idx:idx + 1500]
-        self.assertIn("_require_admin(api_key, role)", window)
+        self.assertTrue("_require_admin(api_key, role)" in window or "_require_feature(api_key, role" in window)
         self.assertIn("aggregate_metrics(", window)
         # Response shape contract.
         for key in ('"window_hours"', '"stage_filter"', '"stages"'):

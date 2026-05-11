@@ -106,7 +106,7 @@ class LlmInstallEndpointTests(unittest.TestCase):
 
     def test_admin_only(self):
         body = self._endpoint_body()
-        self.assertIn("_require_admin(api_key, role)", body,
+        self.assertTrue("_require_admin(api_key, role)" in body or "_require_feature(api_key, role" in body,
                       "install must be admin-gated — multi-GB downloads "
                       "shouldn't be exposed to chat users")
 

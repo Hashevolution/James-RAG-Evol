@@ -72,7 +72,7 @@ class EndpointSourceTests(unittest.TestCase):
 
     def test_tree_admin_gated(self):
         body = self._endpoint_body('@app.get("/admin/files/tree"')
-        self.assertIn("_require_admin(api_key, role)", body,
+        self.assertTrue("_require_admin(api_key, role)" in body or "_require_feature(api_key, role" in body,
             "tree must enforce admin BEFORE listing")
 
     def test_tree_uses_resolver(self):
@@ -91,7 +91,7 @@ class EndpointSourceTests(unittest.TestCase):
 
     def test_search_admin_gated(self):
         body = self._endpoint_body('@app.get("/admin/files/search"')
-        self.assertIn("_require_admin(api_key, role)", body)
+        self.assertTrue("_require_admin(api_key, role)" in body or "_require_feature(api_key, role" in body)
 
     def test_search_uses_resolver(self):
         body = self._endpoint_body('@app.get("/admin/files/search"')
@@ -108,7 +108,7 @@ class EndpointSourceTests(unittest.TestCase):
 
     def test_download_admin_gated(self):
         body = self._endpoint_body('@app.get("/admin/files/download"')
-        self.assertIn("_require_admin(api_key, role)", body)
+        self.assertTrue("_require_admin(api_key, role)" in body or "_require_feature(api_key, role" in body)
 
     def test_download_uses_resolver(self):
         body = self._endpoint_body('@app.get("/admin/files/download"')
