@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### OpenSSF Best Practices passing badge
+- Achieved the **OpenSSF Best Practices passing badge** (2026-05-11,
+  Tiered 111%). Badge is now displayed in `README.md` and
+  `README.ko.md`. Project page:
+  https://www.bestpractices.dev/projects/12806
+- The submission documents the project's posture on bug-reporting,
+  vulnerability disclosure (GitHub PVR + backup email), licensing
+  (MIT), versioning (SemVer + 7 GitHub Releases), test suite
+  (`james_*_test.py` and `tests/`), bcrypt password storage
+  (PR #173, W4 P1-A), and static analysis baseline
+  (PR #196 — ruff F821 enforcement with phased plan).
+
 #### Reasoning Graph Visualizer (Axis 3 Observability/Explainability)
 - **`/admin/graph`** — new admin-only 3D page that renders every wiki
   entity as a point in a soft-ball sphere and every ontology relation

@@ -6,6 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-v0.1.0--alpha-orange.svg)]()
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12806/badge)](https://www.bestpractices.dev/projects/12806)
 
 > **🚀 처음 시작하시는 분?** 컴퓨터 잘 모르셔도 따라하실 수 있는
 > [**비기너 가이드**](README.beginner.ko.md) 를 먼저 보세요.
