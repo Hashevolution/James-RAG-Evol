@@ -221,5 +221,61 @@ class WelcomeReframeTests(unittest.TestCase):
             "Knowledge + Security for enterprise framing")
 
 
+class CyberBackgroundTextureTests(unittest.TestCase):
+    """Cyber 6a — body background carries a mint-cyan grid + radial
+    overlay so the four app surfaces share a subtle "system" backdrop.
+    Layered as background-image on body in tokens.css. Pages must use
+    `background-color: var(--bg)` (NOT the `background:` shorthand,
+    which would reset background-image and erase the texture)."""
+
+    PAGES = ("index.html", "admin.html", "workspace.html", "graph.html")
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tokens = TOKENS.read_text(encoding="utf-8")
+        cls.pages = {
+            name: (ROOT / "frontend" / name).read_text(encoding="utf-8")
+            for name in cls.PAGES
+        }
+
+    def _body_block(self, css: str) -> str | None:
+        # Match top-level `body { ... }` rules, skipping `body::before`
+        # and other selectors. Returns the first body-only block found.
+        for m in re.finditer(r"(^|\n)\s*body\s*\{([^}]+)\}", css):
+            return m.group(2)
+        return None
+
+    def test_tokens_declares_cyber_texture(self):
+        body = self._body_block(self.tokens)
+        self.assertIsNotNone(body, "tokens.css must declare a body rule "
+            "for the cyber 6a texture")
+        self.assertIn("background-image", body,
+            "body rule must carry a background-image with the 6a layers")
+        # Mint-cyan rgba — same family as --accent #6be7d0.
+        self.assertIn("rgba(107,231,208", body,
+            "texture should use the mint-cyan accent (107,231,208)")
+        # Two radial corner glows + two repeating-linear grids.
+        self.assertGreaterEqual(body.count("radial-gradient("), 2,
+            "expected two corner radial glows in the 6a texture")
+        self.assertGreaterEqual(body.count("repeating-linear-gradient("), 2,
+            "expected horizontal + vertical grid lines (2 layers)")
+        self.assertIn("background-attachment: fixed", body,
+            "texture must be viewport-anchored so it doesn't scroll")
+
+    def test_pages_use_background_color_not_shorthand(self):
+        # The `background:` shorthand resets background-image to none —
+        # which would erase the texture layered in tokens.css. Each page
+        # must use `background-color: var(--bg)` instead.
+        for name, html in self.pages.items():
+            body = self._body_block(html)
+            self.assertIsNotNone(body, f"{name}: body rule must exist")
+            self.assertNotRegex(body, r"\bbackground:\s*var\(--bg\)",
+                f"{name}: body must use `background-color: var(--bg)` "
+                "(the shorthand resets background-image and erases "
+                "the cyber 6a texture from tokens.css)")
+            self.assertIn("background-color: var(--bg)", body,
+                f"{name}: body must declare `background-color: var(--bg)`")
+
+
 if __name__ == "__main__":
     unittest.main()

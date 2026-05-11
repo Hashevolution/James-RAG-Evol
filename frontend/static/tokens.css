@@ -110,6 +110,31 @@
   .brand { white-space: normal; }
 }
 
+/* ── Cyber background texture (Task #22 — 6a) ──
+ * Two soft mint-cyan radials anchored to top-right and bottom-left
+ * viewport corners + a 36px square grid at .02 opacity. Layered as
+ * the body's background-image so it sits behind all content without
+ * touching the stacking context. background-attachment:fixed keeps
+ * the radials viewport-anchored across scroll.
+ *
+ * Pages must declare `background-color: var(--bg);` (NOT the
+ * `background:` shorthand, which would reset background-image to
+ * none and erase the texture). */
+body {
+  background-image:
+    radial-gradient(70vw 55vh at 92% 0%,
+                    rgba(107,231,208,.05), transparent 60%),
+    radial-gradient(55vw 45vh at 8% 100%,
+                    rgba(107,231,208,.04), transparent 65%),
+    repeating-linear-gradient(0deg,
+                              rgba(107,231,208,.020) 0 1px,
+                              transparent 1px 36px),
+    repeating-linear-gradient(90deg,
+                              rgba(107,231,208,.020) 0 1px,
+                              transparent 1px 36px);
+  background-attachment: fixed;
+}
+
 /* ── Top accent rail ──
  * Thin 2px stripe along the very top of every page — gives the app
  * a subtle "system header" feel like enterprise dashboards. Fixed
