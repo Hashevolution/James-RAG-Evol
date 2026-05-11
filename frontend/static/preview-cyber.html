@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#04060a">
+<title>Cyber concept preview — JAMES (minimal mono)</title>
+<style>
+/* ── Minimal-mono cyber palette ────────────────────────────────
+ * 단일 액센트(민트-시안)만으로 모든 인터랙티브 / 상태 표현을 처리.
+ * indigo / green / multi-color status 는 의도적으로 제거.
+ * 빨강은 오류 경고에만 한정 (semantic distinct).
+ */
+:root {
+  /* 깊은 검정 — 모니터 사진의 톤에 맞춘 #04060a (현재 --bg #0a0c11 보다 한 단계 더 진함) */
+  --bg:           #04060a;
+  --surface:      #07090e;        /* 거의 bg 와 동일 — 카드는 outline 으로만 구분 */
+  --surface-2:    #0b0e14;
+
+  /* 단일 액센트 — 민트-시안 */
+  --accent:       #6be7d0;
+  --accent-soft:  rgba(107,231,208,.10);
+  --accent-dim:   rgba(107,231,208,.35);
+  --accent-line:  rgba(107,231,208,.55);
+
+  /* 텍스트는 흰색 / 흐린 흰색 / 액센트색 3단계만 */
+  --text:         #f1f5f3;
+  --text-soft:    #b9c2bf;
+  --muted:        #6a716e;
+
+  /* 경고 빨강만 보존 — 의미 구분 위해 */
+  --danger:       #ef4444;
+
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  --font-ui:      'Inter', 'Pretendard', system-ui, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  min-height: 100vh;
+  padding: 32px 24px 96px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ── 6a: 배경 분위기 — 그리드 + 단색 라디얼 (cyan 하나만) ── */
+body.bg-on::before {
+  content: "";
+  position: fixed; inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(70vw 55vh at 92% 0%,
+                    rgba(107,231,208,.05), transparent 60%),
+    radial-gradient(55vw 45vh at 8% 100%,
+                    rgba(107,231,208,.04), transparent 65%),
+    repeating-linear-gradient(0deg,
+                              rgba(107,231,208,.020) 0 1px,
+                              transparent 1px 36px),
+    repeating-linear-gradient(90deg,
+                              rgba(107,231,208,.020) 0 1px,
+                              transparent 1px 36px);
+  z-index: 0;
+}
+.wrap { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; }
+
+h1 {
+  font-size: 18px; font-weight: 600; letter-spacing: .3px;
+}
+.sub {
+  color: var(--muted); font-family: var(--font-mono);
+  font-size: 11px; margin: 4px 0 24px;
+}
+.toggle-bar {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 28px; padding: 12px;
+  background: transparent;
+  border: 1px solid var(--accent-dim);
+  border-radius: 8px;
+}
+.toggle-bar label {
+  font-size: 12px; cursor: pointer;
+  padding: 5px 10px; border-radius: 6px;
+  background: transparent;
+  border: 1px solid var(--accent-dim);
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--text-soft);
+  user-select: none;
+}
+.toggle-bar input { accent-color: var(--accent); }
+
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 800px) { .row { grid-template-columns: 1fr; } }
+
+.demo {
+  background: transparent;
+  border: 1px solid var(--accent-dim);
+  border-radius: 10px;
+  padding: 20px;
+  position: relative;
+}
+.demo h3 {
+  font-size: 13px; font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+.demo .tag {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--accent); margin-bottom: 16px;
+  letter-spacing: .5px;
+}
+.demo p { font-size: 12px; color: var(--text-soft); line-height: 1.55; margin-bottom: 14px; }
+.demo .row-btn { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+/* ── 6b: 단색 outline 버튼 + glow ───────────────────────────── */
+.btn {
+  background: transparent;
+  border: 1px solid var(--accent-line);
+  color: var(--text); padding: 7px 16px;
+  border-radius: 7px; font-size: 12px;
+  font-family: var(--font-ui); cursor: pointer;
+  transition: box-shadow .25s ease, color .2s, border-color .2s;
+  letter-spacing: .3px;
+}
+.btn:hover { color: var(--accent); }
+.btn.primary {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+body.glow-on .btn {
+  box-shadow:
+    0 0 0 1px rgba(107,231,208,.10),
+    0 0 14px rgba(107,231,208,.18);
+}
+body.glow-on .btn.primary {
+  box-shadow:
+    0 0 0 1px rgba(107,231,208,.30),
+    0 0 22px rgba(107,231,208,.32);
+}
+.icon-btn {
+  width: 32px; height: 32px;
+  border: 1px solid var(--accent-line);
+  background: transparent;
+  border-radius: 7px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--accent);
+  cursor: pointer;
+}
+body.glow-on .icon-btn {
+  box-shadow:
+    0 0 0 1px rgba(107,231,208,.15),
+    0 0 14px rgba(107,231,208,.20);
+}
+
+/* 단색 role badge — dot 도 cyan, 글자도 cyan */
+.role-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 11px;
+  padding: 6px 12px; border-radius: 6px;
+  background: transparent; border: 1px solid var(--accent-line);
+  color: var(--accent);
+  letter-spacing: .5px;
+}
+.role-badge .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent);
+}
+body.glow-on .role-badge {
+  box-shadow: 0 0 14px rgba(107,231,208,.18);
+}
+body.glow-on .role-badge .dot {
+  box-shadow: 0 0 6px var(--accent);
+}
+
+/* ── 6c: 단색 glassmorphism ────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.55);
+}
+body.glass-on .modal-overlay {
+  background: rgba(4,6,10,.35);
+  backdrop-filter: blur(12px) saturate(125%);
+  -webkit-backdrop-filter: blur(12px) saturate(125%);
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: rgba(7,9,14,.92);
+  border: 1px solid var(--accent-dim);
+  border-radius: 12px;
+  padding: 28px;
+  width: 360px; max-width: 92vw;
+}
+body.glass-on .modal {
+  background: rgba(7,9,14,.55);
+  backdrop-filter: blur(20px) saturate(135%);
+  -webkit-backdrop-filter: blur(20px) saturate(135%);
+  border: 1px solid var(--accent-line);
+  box-shadow:
+    0 0 0 1px rgba(107,231,208,.06) inset,
+    0 24px 80px rgba(0,0,0,.6),
+    0 0 28px rgba(107,231,208,.12);
+}
+.modal h3 { font-size: 14px; margin-bottom: 10px; color: var(--accent); letter-spacing: .3px; }
+.modal p  { font-size: 12px; color: var(--text-soft); margin-bottom: 18px; line-height: 1.55; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* ── 6d: 단색 live indicator ───────────────────────────────── */
+@keyframes cyber-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(107,231,208,.55); }
+  60%      { box-shadow: 0 0 0 8px rgba(107,231,208,0); }
+}
+.live-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent); display: inline-block;
+}
+body.live-on .live-dot {
+  animation: cyber-pulse 1.6s ease-out infinite;
+}
+.live-label {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--accent); letter-spacing: 1.5px;
+}
+
+.src-toggle {
+  display: inline-flex; border: 1px solid var(--accent-line);
+  border-radius: 7px; overflow: hidden;
+}
+.src-toggle button {
+  background: transparent; border: 0; color: var(--muted);
+  padding: 6px 14px; cursor: pointer; font-size: 11px;
+  font-family: var(--font-mono); position: relative;
+  letter-spacing: .5px;
+}
+.src-toggle button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+body.live-on .src-toggle button.active::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: scan 1.8s linear infinite;
+}
+@keyframes scan {
+  0%   { transform: translateX(-100%); opacity: .2; }
+  50%  { opacity: 1; }
+  100% { transform: translateX(100%); opacity: .2; }
+}
+
+/* ── Top-bar replica — 첨부 이미지 그대로 재현 ──────────────── */
+.topbar {
+  display: flex; gap: 12px; align-items: center;
+  padding: 16px 12px;
+  margin: 28px 0;
+  border: 1px solid var(--accent-dim);
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+.topbar-label {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--accent); letter-spacing: .5px;
+  flex-basis: 100%;
+  margin-bottom: 4px;
+}
+.tb-btn {
+  background: transparent;
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  padding: 8px 18px;
+  border-radius: 9px;
+  font-family: var(--font-mono); font-size: 13px;
+  letter-spacing: .5px;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+body.glow-on .tb-btn {
+  box-shadow:
+    0 0 0 1px rgba(107,231,208,.12),
+    0 0 16px rgba(107,231,208,.18);
+}
+.tb-btn .pipe { color: var(--text-soft); }
+.tb-icon { width: 14px; height: 14px; }
+
+footer.note {
+  margin-top: 24px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+  line-height: 1.7;
+  border-top: 1px solid var(--accent-dim); padding-top: 12px;
+}
+footer.note code { color: var(--accent); }
+</style>
+</head>
+<body class="bg-on glow-on glass-on live-on">
+
+<div class="wrap">
+  <h1>Cyber concept preview — minimal mono</h1>
+  <div class="sub">SINGLE ACCENT · #6BE7D0 MINT-CYAN · NO INDIGO / GREEN / MULTI-COLOR STATUS</div>
+
+  <div class="toggle-bar">
+    <label><input type="checkbox" id="t6a" checked> 6a 배경 텍스처</label>
+    <label><input type="checkbox" id="t6b" checked> 6b Glow</label>
+    <label><input type="checkbox" id="t6c" checked> 6c Glassmorphism</label>
+    <label><input type="checkbox" id="t6d" checked> 6d Live indicator</label>
+  </div>
+
+  <!-- 첨부 이미지의 상단 바 그대로 재현 -->
+  <div class="topbar">
+    <div class="topbar-label">▸ TOP BAR — replica of reference image</div>
+    <button class="tb-btn"><span class="pipe">|</span>EN</button>
+    <button class="tb-btn" aria-label="삭제">
+      <svg class="tb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+    </button>
+    <button class="tb-btn" aria-label="채팅">
+      <svg class="tb-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2z"/></svg>
+    </button>
+    <button class="tb-btn">ADMIN ×</button>
+    <button class="tb-btn">
+      <svg class="tb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4v5h16V7zM4 12v8a1 1 0 0 0 1 1h6V12M20 12v8a1 1 0 0 1-1 1h-6V12M12 7V3M12 7a3 3 0 1 1-3-3M12 7a3 3 0 1 0 3-3"/></svg>
+      Workspace
+    </button>
+  </div>
+
+  <div class="row">
+
+    <!-- 6a -->
+    <div class="demo">
+      <h3>6a — 배경 분위기</h3>
+      <div class="tag">SUBTLE TEXTURE · MONO</div>
+      <p>그리드도 라디얼 글로우도 <strong>액센트 한 색조</strong>로만 (이전: cyan + indigo 두 색조). 노이즈 한계 5% 이하. 화면 전체에 반영됨 — 체크박스로 끄고 비교.</p>
+    </div>
+
+    <!-- 6b -->
+    <div class="demo">
+      <h3>6b — Outline + glow</h3>
+      <div class="tag">SINGLE ACCENT</div>
+      <p>모든 버튼이 동일 outline + 동일 glow. \"채워진 버튼\" 없음 — 첨부 이미지와 동일.</p>
+      <div class="row-btn">
+        <button class="btn primary">분석 실행</button>
+        <button class="btn">취소</button>
+        <button class="icon-btn">★</button>
+      </div>
+      <div style="margin-top:14px">
+        <span class="role-badge"><span class="dot"></span> ADMIN@JAMES</span>
+      </div>
+    </div>
+
+    <!-- 6c -->
+    <div class="demo">
+      <h3>6c — Glassmorphism</h3>
+      <div class="tag">backdrop-filter · MONO border</div>
+      <p>모달 배경 frosted + 액센트 한 색조의 outline + 미세 glow. \"공간에 떠있는 단색 유리 패널\".</p>
+      <div class="row-btn">
+        <button class="btn primary" onclick="document.getElementById('demo-modal').classList.add('open')">모달 열기</button>
+      </div>
+    </div>
+
+    <!-- 6d -->
+    <div class="demo">
+      <h3>6d — Live indicators</h3>
+      <div class="tag">PULSE · SCAN · MONO</div>
+      <p>상태 색이 cyan 하나 — green/yellow/red 다색 라이브 LED 제거. 빨강은 오류 시만 등장.</p>
+      <div class="row-btn">
+        <span class="live-label"><span class="live-dot"></span> LIVE</span>
+        <div class="src-toggle">
+          <button class="active">PROD</button>
+          <button>TEST</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="note">
+    팔레트 단일화: <code>--accent #6be7d0</code> (민트-시안) 만으로 outline / icon / status dot / live pulse / scan line 모두 처리.<br>
+    검정 한 단계 더 진한 <code>--bg #04060a</code>. 인디고/그린/멀티컬러 상태 제거. 빨강 <code>--danger</code> 은 오류 표시에만 한정.<br>
+    상단 체크박스로 4 효과 끄고 비교. 첨부 이미지의 상단 바 6 버튼을 재현했습니다.
+  </footer>
+</div>
+
+<div class="modal-overlay" id="demo-modal" onclick="if(event.target.id==='demo-modal') this.classList.remove('open')">
+  <div class="modal">
+    <h3>▸ MONO PREVIEW</h3>
+    <p>단색 액센트 outline · backdrop blur · 미세 glow. 6c 토글을 끄면 평면 dim 비교 가능.</p>
+    <div class="modal-actions">
+      <button class="btn" onclick="document.getElementById('demo-modal').classList.remove('open')">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const map = { t6a: 'bg-on', t6b: 'glow-on', t6c: 'glass-on', t6d: 'live-on' };
+for (const id of Object.keys(map)) {
+  document.getElementById(id).addEventListener('change', (e) => {
+    document.body.classList.toggle(map[id], e.target.checked);
+  });
+}
+</script>
+</body>
+</html>
