@@ -26,25 +26,26 @@ https://github.com/Hashevolution/James-RAG-Evol
 추론 경로(Reasoning Path)와 자가진화 스캐폴드(Patch Pipeline)가 노출돼 있습니다.
 
 - GitHub: https://github.com/Hashevolution/James-RAG-Evol
-- 현재 버전: v0.1.0 (alpha, research stage)
+- 현재 버전: v0.2.0 (Foundation Hardening 5/6 axes engineering-complete, 2026-05-08)
 - 라이선스: MIT
+- 외부 검증: [OpenSSF Best Practices **passing** 뱃지](https://www.bestpractices.dev/projects/12806) (Tiered 111%, 2026-05-11)
 
 ## 무엇이 다른가 (다섯 가지가 한 곳에)
 1. **Graph-RAG + ontology**: 12종 관계 타입으로 임베딩 너머의 의미를 표현
-2. **3-stage 보안**: RBAC + ABAC + Instruction Isolation (벡터 → 그래프 → 출력)
+2. **3-stage 보안**: RBAC + ABAC + Instruction Isolation (벡터 → 그래프 → 출력), 모든 패치는 `approver_username` 감사 로그
 3. **자가진화 스캐폴드**: 피드백 → 패치 제안 → 4-Gate 검증 → 적용
 4. **Personality 11 traits**: 응답 톤이 가변
 5. **100% 로컬**: Ollama 기반, GPU 없으면 gemma2:2b로 시작 가능
 
 ## 솔직한 한계 (alpha 단계)
-- 아직 합성 데이터 위주 검증, 실데이터 검증은 v0.2 목표
-- 멀티모달은 훅만 들어가 있음 (LLaVA/Whisper 통합 진행 중)
-- 자가진화는 스케일 검증 안 됨
+- 실데이터 검증의 **두 번째 사용자 corpus**가 v0.2 → v0.3 게이트, 현재 모집 단계
+- 멀티모달은 LLaVA·Whisper·ffmpeg까지 와이어드됨 (image/video ASR working prototype). 멀티모달 retrieval 통합은 v0.3
+- 자가진화는 단일 사용자 환경에서 검증됨, 다중 사용자·대규모는 미검증
 
 ## 어디에 쓸 수 있나
 - 사내 위키/문서를 로컬에서만 다루고 싶을 때
 - 추론 경로가 보여야 하는 RAG 데모/연구
-- 보안 RAG 패턴 레퍼런스
+- 보안 RAG 패턴 레퍼런스 (PR #173 bcrypt 마이그레이션, PR #196 ruff baseline 등 보안 위생도 같이 공개)
 
 ## 시작하기
 git clone, .env 설정, `pip install -r requirements.txt`, `ollama pull gemma2:2b`,
