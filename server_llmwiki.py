@@ -743,17 +743,27 @@ async def upload(
                 "source_type": "prod",
             },
         )
+        # [W8-C 2026-05-11] capture entity_ids so we can write
+        # wiki_links rows after the entity files are on disk. The
+        # process_document_for_entities return type was unused before;
+        # we now consume it to make the artifact ↔ entity relation
+        # queryable from /admin/artifacts/<id> + the workspace UI.
+        created_entity_ids: list = []
         try:
-            rag_engine.wiki_generator.process_document_for_entities(
-                file.filename, raw_content, [],
-                user_role="admin",
-                metadata=meta,
+            created_entity_ids = list(
+                rag_engine.wiki_generator.process_document_for_entities(
+                    file.filename, raw_content, [],
+                    user_role="admin",
+                    metadata=meta,
+                ) or []
             )
         except TypeError:
             # 구버전 시그니처 fallback (metadata/user_role 미지원)
             try:
-                rag_engine.wiki_generator.process_document_for_entities(
-                    file.filename, raw_content, []
+                created_entity_ids = list(
+                    rag_engine.wiki_generator.process_document_for_entities(
+                        file.filename, raw_content, []
+                    ) or []
                 )
             except AttributeError:
                 pass
@@ -772,13 +782,34 @@ async def upload(
                     "sensitivity": meta.get("sensitivity", "internal"),
                     "source_type": "prod",
                 }
-                rag_engine.wiki_generator.create_entity_file(
+                created_path = rag_engine.wiki_generator.create_entity_file(
                     doc_entity, file.filename, []
                 )
+                # create_entity_file returns the .md file path.
+                # The entity_id matches the stem (no extension).
+                if created_path:
+                    from pathlib import Path as _PathW8C
+                    created_entity_ids.append(_PathW8C(created_path).stem)
             except Exception as wiki_err:
                 print(f"[UPLOAD] wiki entity 생성 skip: {wiki_err}")
         except Exception as e:
             print(f"[UPLOAD] entity 처리 skip: {e}")
+
+        # [W8-C 2026-05-11] write wiki_links rows. Best-effort — a
+        # failure here does NOT roll back the upload (the bytes are on
+        # disk and the vector store / wiki .md files exist). It only
+        # means the artifact ↔ entity relation isn't queryable for
+        # this upload; subsequent uploads continue to track.
+        if artifact_id and created_entity_ids:
+            try:
+                from core.data_artifacts import link_entity
+                for eid in created_entity_ids:
+                    if eid:
+                        link_entity(artifact_id, eid)
+                print(f"[UPLOAD] linked {len(created_entity_ids)} entities "
+                      f"to artifact {artifact_id}")
+            except Exception as _e:
+                print(f"[UPLOAD] link_entity skipped: {_e}")
 
         # ── [P7] Media Store — 이미지/영상/오디오 날짜별 폴더 보관 ──
         MEDIA_EXTS = {

@@ -324,6 +324,15 @@ A second table `wiki_links (artifact_id, entity_id)` records which
 wiki entities were derived from which upload — the relationship was
 previously implicit in the filename UUID prefix and not queryable.
 
+**Population (W8-C, 2026-05-11)** — `/upload/` captures the
+`entity_id` list returned by `wiki_generator.process_document_for_entities`
+(or the single id from the `create_entity_file` fallback) and calls
+`core.data_artifacts.link_entity` for each. Best-effort write — a
+failure leaves the upload itself intact (bytes on disk, vector +
+wiki .md files all present) but the artifact ↔ entity relation is
+not queryable for that specific upload. Subsequent uploads continue
+to populate.
+
 **Authority model — own vs all**
 
 Two surfaces consult the matrix:
