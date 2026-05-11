@@ -21,7 +21,7 @@ import json
 import threading
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Optional, Tuple
 
 from core.wiki_generator import WikiGenerator
 from core.ontology import (
@@ -31,10 +31,8 @@ from core.ontology import (
     is_sensitive_relation,
     compute_graph_score,
     is_valid_relation_triple,
-    validate_relation,
     RELATION_TYPES,
 )
-from core.security_layer import log_system_event
 
 SYSTEM_LOG_PATH      = "james_system_log.jsonl"
 CONFIDENCE_THRESHOLD = 0.6

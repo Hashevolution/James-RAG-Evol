@@ -1,19 +1,23 @@
 # JAMES — ruff config
 #
-# Phase 1 (this commit, 2026-05-11): enforce F821 (undefined names) only.
-# Phase 2 (next cycle):   apply --fix for F401 (unused-import) and
-#                          F541 (f-string-missing-placeholders).
-#                          Both auto-fixable + safe.
-# Phase 3:                 address F841 (unused-variable) + F811
-#                          (redefined-while-unused) — manual review.
+# Phase 1 (2026-05-11): enforce F821 (undefined names) only.
+# Phase 2 (2026-05-11, this commit): auto-fix F541 (empty f-strings,
+#                          96 cleared, ENFORCED). F401 partially
+#                          auto-fixed (164 of 206 cleared); 42
+#                          remaining are intentional try-import
+#                          availability checks — Phase 3 will mark
+#                          them ``# noqa: F401`` and then enforce.
+# Phase 3:                 noqa-mark remaining F401, fix F841
+#                          unused-variable + F811 redefined-while-unused.
 # Phase 4:                 extend to E (pycodestyle), W, I (isort).
 #
-# Current Pyflakes inventory (snapshot at 2026-05-11):
-#   F821 — 0  ← enforced (was 4: server_llmwiki.py + 3× wiki_editor.py)
-#   F401 — 205 (auto-fixable)
-#   F541 — 96  (auto-fixable)
-#   F841 — 28  (auto-fixable)
-#   F811 — 4   (manual)
+# Current Pyflakes inventory (snapshot at 2026-05-11, post-Phase 2):
+#   F821 — 0   ← enforced (Phase 1)
+#   F541 — 0   ← enforced (Phase 2, was 96)
+#   F401 — 42  ← intentional try-import availability checks; Phase 3
+#                will noqa-mark + enforce. Was 206 before Phase 2.
+#   F841 — 28  (auto-fixable, Phase 3)
+#   F811 — 4   (manual, Phase 3)
 #
 # Why F821 first
 # --------------
@@ -58,4 +62,5 @@ exclude = [
 ]
 
 [lint]
-select = ["F821"]
+# Phase 1 + Phase 2 selectors.
+select = ["F821", "F541"]

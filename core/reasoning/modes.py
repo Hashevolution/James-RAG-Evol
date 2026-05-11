@@ -279,8 +279,8 @@ def handle_wiki_edit(
 
         else:
             answer = (
-                f"❌ 편집 의도를 파악하지 못했습니다.\n"
-                f"예시: '김철수 파일에 삼성전자 퇴직 추가해줘'"
+                "❌ 편집 의도를 파악하지 못했습니다.\n"
+                "예시: '김철수 파일에 삼성전자 퇴직 추가해줘'"
             )
 
     except Exception as e:
@@ -318,7 +318,7 @@ def handle_self_evolve(
 
     t_self = time.time()
     try:
-        from tools.self.file_scanner import scan_and_report, get_file_content
+        from tools.self.file_scanner import get_file_content
 
         q_lower = safe_query.lower()
 

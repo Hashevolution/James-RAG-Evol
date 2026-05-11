@@ -4,7 +4,6 @@ PROJECT JAMES - Metadata Utilities
 """
 import re
 import json
-from core.gemma_client import GemmaClient   # type/fallback retained
 from llm.router import RouterWrapper
 
 # Issue #4: LLM 호출이 실패하면 GemmaClient는 "[Gemma 오류] 404 …",

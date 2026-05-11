@@ -16,7 +16,7 @@ PROJECT JAMES — Phase 7 통합 테스트 스위트
   - 프로젝트 루트 상위 폴더도 탐색 (core/, tools/ 구조)
 """
 
-import os, sys, ast, json, re, time
+import sys, ast, re
 from pathlib import Path
 
 # ── 경로 탐색 ─────────────────────────────────────────────────────

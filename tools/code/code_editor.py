@@ -14,13 +14,12 @@ PROJECT JAMES - Code Editor (Phase 5.5)
 """
 
 import os
-import re
 import json
 import shutil
 import difflib
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Optional, Tuple
 
 from tools.code.sandbox import policy_validate_path, validate_command, log_security_event
 

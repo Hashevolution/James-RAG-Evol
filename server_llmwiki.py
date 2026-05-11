@@ -36,9 +36,8 @@ from config import UPLOAD_DIR, WIKI_DIR, CHROMA_DIR, API_KEY, MAX_UPLOAD_BYTES
 from core.graph_rag_engine import RAGEngine
 from core.feedback_engine import FeedbackEngine
 from core.auth import (
-    authenticate, get_role_from_token, add_user, ALLOWED_ROLES, DEV_MODE,
-    signup as _auth_signup, SignupResult,
-    list_users as _auth_list_users,
+    authenticate, get_role_from_token, ALLOWED_ROLES, DEV_MODE,
+    signup as _auth_signup, list_users as _auth_list_users,
     approve_user as _auth_approve_user,
     reject_user as _auth_reject_user,
     deactivate_user as _auth_deactivate_user,
@@ -1205,7 +1204,7 @@ async def llm_modes(api_key: str, role: str = Depends(get_role_from_request)):
          "keywords": ["목록", "리스트", "어떤 자료", "list"],
          "model": "", "installed": True, "models": []},
         {"key": "coding",   "label": "💻 코딩",
-         "desc": f"코딩 특화 모델",
+         "desc": "코딩 특화 모델",
          "keywords": ["코드", "함수", "버그", "python", "def ",
                       "javascript", "code", "function"],
          "model": CODING_MODEL, "installed": _mark(CODING_MODEL),
@@ -2012,7 +2011,7 @@ async def learn_topic_api(
         if use_web:
             from tools.web.web_searcher import (
                 search_web, enrich_results_with_content,
-                format_search_results, save_as_longterm,
+                save_as_longterm,
                 update_knowledge_level, classify_domain,
             )
 
@@ -2053,7 +2052,7 @@ async def learn_topic_api(
 
             # ⑤ LLM 0자 → snippet 기반 fallback
             if not knowledge or len(knowledge.strip()) < 10:
-                print(f"[LEARN] LLM 0자 → fallback 사용")
+                print("[LEARN] LLM 0자 → fallback 사용")
                 parts = []
                 for r in results[:3]:
                     title = r.get('title', '')
@@ -2890,7 +2889,7 @@ async def password_change(
     if result.startswith("policy:"):
         msg = result.split(":", 1)[1]
         _write_audit("authenticated", "/password/change", query=username,
-                     security_event=f"password_change_rejected_policy",
+                     security_event="password_change_rejected_policy",
                      ip_address=ip)
         raise HTTPException(status_code=400, detail=msg)
     # invalid_old / no_user → collapse to 401. The audit log still

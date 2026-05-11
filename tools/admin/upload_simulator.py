@@ -160,7 +160,7 @@ def main():
             # 정리
             print(f"\n{Y}  💡 테스트 entity 정리:{E}")
             print(f"     del \"{result_path}\"")
-            print(f"     python tools\\admin\\wiki_reset.py --confirm")
+            print("     python tools\\admin\\wiki_reset.py --confirm")
 
         except Exception as e:
             print(f"  {R}❌{E} 생성 실패: {e}")
@@ -175,15 +175,15 @@ def main():
     print(f"{B}{C}{'═'*60}{E}")
     if valid_format:
         print(f"  {G}{B}✅ 업로드 흐름 정상{E}")
-        print(f"  • entity_id 표준 형식 ✅")
-        print(f"  • 폴더 경로 자메스 표준 ✅")
-        print(f"  • Ontology + Trust 검증 활성 ✅")
-        print(f"\n  📤 실제 파일 업로드 시 자동으로 정확히 작성됩니다.")
+        print("  • entity_id 표준 형식 ✅")
+        print("  • 폴더 경로 자메스 표준 ✅")
+        print("  • Ontology + Trust 검증 활성 ✅")
+        print("\n  📤 실제 파일 업로드 시 자동으로 정확히 작성됩니다.")
     else:
         print(f"  {R}{B}❌ 비정상 — 시스템 점검 필요{E}")
 
     print(f"\n  {C}실제 적용 테스트:{E}")
-    print(f"  python tools\\admin\\upload_simulator.py --apply\n")
+    print("  python tools\\admin\\upload_simulator.py --apply\n")
 
 
 if __name__ == "__main__":

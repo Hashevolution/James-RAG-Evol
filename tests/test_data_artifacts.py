@@ -9,7 +9,6 @@ Three layers:
 from __future__ import annotations
 
 import os
-import sqlite3
 import sys
 import tempfile
 import time

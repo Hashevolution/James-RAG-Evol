@@ -5,9 +5,7 @@ BaseTool 기반 파일 읽기 전용 Tool.
 Sandbox 검증 통과 후 workspace 내 파일 읽기.
 """
 
-import os
 from pathlib import Path
-from typing import Optional
 
 from tools.base_tool import BaseTool
 from tools.code.sandbox import policy_validate_path, log_security_event

@@ -15,7 +15,6 @@ PROJECT JAMES - Patch Generator (Phase 6)
   ❌ security_layer / memory_loom / ontology 수정 제안
 """
 
-import re
 import json
 import hashlib
 from datetime import datetime

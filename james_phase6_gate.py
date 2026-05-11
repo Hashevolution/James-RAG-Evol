@@ -27,10 +27,7 @@ import sys
 import time
 import json
 import re
-import math
 from datetime import datetime
-from typing import List, Dict, Tuple, Optional
-from collections import defaultdict
 
 RESULTS = []
 E2E_MODE = "--e2e" in sys.argv
@@ -149,7 +146,7 @@ def run_retrieval_reliability():
         multi-query가 single보다 결과를 악화시키지 않음.
         Orchestrator의 dedup 후 결과 수 ≥ single 결과 수.
         """
-        from core.orchestrator import retrieve, deduplicate
+        from core.orchestrator import retrieve
         call_results = []
         def mock_search(q, **kwargs):
             return [
@@ -508,7 +505,7 @@ def run_performance():
 
     def t_error_response_not_cached():
         """에러 응답 캐시 저장 금지 — 재호출 유도"""
-        from core.gemma_client import GemmaClient, is_cacheable_response
+        from core.gemma_client import GemmaClient
         client = GemmaClient()
         key = client._generate_cache_key("에러 테스트")
         client._set_cache(key, "[Gemma 응답 없음]")  # 저장 시도
@@ -709,7 +706,7 @@ def print_report():
         ("security",       "🔒 보안 유지"),
         ("e2e_real",       "🌐 E2E 실측"),
     ]
-    print(f"\n  ─── 섹션별 ───")
+    print("\n  ─── 섹션별 ───")
     for tag, label in tags:
         tr = [r for r in RESULTS if r.get("tag")==tag]
         if not tr: continue
@@ -726,7 +723,7 @@ def print_report():
             tp = sum(1 for r in tr if r["status"]=="PASS")
             section_scores[label] = tp / len(tr) * 100
 
-    print(f"\n  ─── Phase 6 진입 체크리스트 ───")
+    print("\n  ─── Phase 6 진입 체크리스트 ───")
     checklist = [
         ("E2E PASS 95% 이상",         section_scores.get("1. E2E 안정성",0) >= 95),
         ("보안 100% 유지",             section_scores.get("🔒 보안 유지",0) >= 100),
@@ -777,7 +774,7 @@ def print_report():
     }
     with open("james_phase6_gate_report.json","w",encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
-    print(f"\n  💾 james_phase6_gate_report.json 저장")
+    print("\n  💾 james_phase6_gate_report.json 저장")
     print("═"*60)
     return all_passed and w_score >= 95
 

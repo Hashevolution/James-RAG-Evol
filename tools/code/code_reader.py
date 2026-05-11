@@ -17,7 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from tools.code.sandbox import policy_validate_path, log_security_event, ALLOWED_PATHS
+from tools.code.sandbox import policy_validate_path, log_security_event
 
 AUDIT_LOG_PATH = "james_audit_tool.jsonl"
 

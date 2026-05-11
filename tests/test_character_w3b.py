@@ -20,7 +20,7 @@ from unittest import mock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.character_profile import (
-    CORRELATIONS, CharacterProfile, _CORR_INDEX, _RIPPLE_DAMPING,
+    CORRELATIONS, CharacterProfile, _RIPPLE_DAMPING,
 )
 
 

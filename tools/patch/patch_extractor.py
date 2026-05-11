@@ -12,7 +12,6 @@ trigger 키워드 없으면 추출 안 함.
 import re
 import json
 from datetime import datetime
-from pathlib import Path
 from typing import Optional
 
 PATCH_LOG_PATH = "james_patch_log.jsonl"

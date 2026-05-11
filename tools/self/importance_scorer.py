@@ -20,7 +20,7 @@ import json
 import time
 from collections import defaultdict, deque
 from datetime import datetime
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List
 from pathlib import Path
 
 try:

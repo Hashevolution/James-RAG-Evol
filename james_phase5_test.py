@@ -25,7 +25,6 @@ import time
 import json
 import re
 from datetime import datetime
-from typing import List, Dict
 
 RESULTS = []
 
@@ -542,7 +541,7 @@ def print_report():
     tags = [("jepa","P5-1 JEPA"),("orch","P5-2 Orchestrator"),
             ("loom","P5-3,4,5 Memory"),("security","P5-6 보안"),
             ("graph","P5-7 Graph"),("e2e","P5-8 E2E")]
-    print(f"\n  ─── 섹션별 ───")
+    print("\n  ─── 섹션별 ───")
     for tag, label in tags:
         tr = [r for r in RESULTS if r.get("tag")==tag]
         if tr:
@@ -569,7 +568,7 @@ def print_report():
                    "score":round(score,1),"grade":grade,
                    "total":total,"passed":passed,"failed":failed,
                    "results":RESULTS}, f, ensure_ascii=False, indent=2)
-    print(f"\n  💾 james_phase5_report.json 저장")
+    print("\n  💾 james_phase5_report.json 저장")
     print("="*55)
 
 

@@ -9,7 +9,6 @@ from __future__ import annotations
 import os
 import sys
 import unittest
-from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

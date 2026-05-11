@@ -12,7 +12,6 @@ import base64
 import re
 import json
 from pathlib import Path
-from typing import Optional
 
 from llm.base import BaseLLM
 

@@ -21,11 +21,9 @@ from __future__ import annotations
 
 import inspect
 import os
-import re
 import sys
 import unittest
 from pathlib import Path
-from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

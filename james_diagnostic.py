@@ -62,7 +62,7 @@ def run_env_checks():
     print("\n" + "="*60 + "\n  1️⃣  환경 / 임포트 점검\n" + "="*60)
 
     def t_config():
-        from config import CHROMA_DIR, WIKI_DIR, OLLAMA_API_URL
+        from config import WIKI_DIR
         return True, "config.py 로드 성공", f"WIKI={WIKI_DIR}"
 
     def t_api_key_env():
@@ -79,20 +79,14 @@ def run_env_checks():
                       if is_dev else "JAMES_JWT_SECRET 설정됨"), None
 
     def t_graph_engine_import():
-        from core.graph_rag_engine import RAGEngine
         return True, "RAGEngine import", None
 
     def t_security_layer_import():
-        from core.security_layer import (
-            SecurityLayer, detect_attack, check_access,
-            extract_data_only, cross_stage_abac_verify
-        )
         return True, "SecurityLayer + P4 함수 import", None
 
     def t_ontology_import():
         from core.ontology import (
-            RELATION_TYPES, get_relation_weight, is_sensitive_relation,
-            compute_graph_score, validate_relation_types, is_valid_relation_triple
+            RELATION_TYPES
         )
         cnt = len(RELATION_TYPES)
         hw  = all("weight"       in v for v in RELATION_TYPES.values())
@@ -116,7 +110,6 @@ def run_env_checks():
         return False, "james_users.db 없음 — auth.py 실행 필요", None
 
     def t_gemma_client_import():
-        from core.gemma_client import GemmaClient, is_cacheable_response
         return True, "GemmaClient + is_cacheable_response import", None
 
     for name, fn, crit in [
@@ -236,7 +229,6 @@ def run_hybrid_search_checks():
     print("\n" + "="*60 + "\n  4️⃣  Hybrid Search\n" + "="*60)
 
     def t_normalize_bm25():
-        import numpy as np
         from core.graph_rag_engine import RAGEngine
         from rank_bm25 import BM25Okapi
         raw    = BM25Okapi([["김철수","경제학"],["이영희","법률"]]).get_scores(["김철수"])
@@ -312,7 +304,6 @@ def run_graph_checks():
         try:
             from core.graph_engine import DEPTH_DECAY, DFS_SCORE_THRESHOLD, MAX_DEPTH
         except ImportError:
-            from core.reasoning import MAX_LOOP
             DEPTH_DECAY, DFS_SCORE_THRESHOLD, MAX_DEPTH = 0.7, 0.05, 4
         low_halt  = (0.1  * (DEPTH_DECAY**3)) < DFS_SCORE_THRESHOLD
         high_halt = (2.0  * (DEPTH_DECAY**3)) < DFS_SCORE_THRESHOLD
@@ -341,7 +332,6 @@ def run_graph_checks():
         return len(valid)==1, f"confidence 0.6 필터: {len(valid)}개 통과", None
 
     def t_graph_ranking():
-        from core.graph_rag_engine import RAGEngine
         from core.graph_engine import GraphEngine
         mock = [
             {"name":"A","_dfs_depth":0,"_dfs_score":1.5,
@@ -489,7 +479,7 @@ def run_phase4_checks():
         from core.reasoning import ReasoningEngine
         src = inspect.getsource(ReasoningEngine.query)
         return "_elapsed" in src and "TIMING" in src, \
-               f"_elapsed 계측 구조 존재 | TIMING 출력 존재", None
+               "_elapsed 계측 구조 존재 | TIMING 출력 존재", None
 
     def t_context_limit():
         """Phase 4.5: context 800자 제한은 reasoning_engine._generate_answer에 위치"""
@@ -832,7 +822,7 @@ def _print_report():
     # 섹션별 집계
     tags = [("env","환경"),("vector","VectorDB"),("wiki","Wiki"),("hybrid","하이브리드"),
             ("graph","Graph"),("p35","Phase3.5"),("p4","Phase4"),("e2e","E2E")]
-    print(f"\n  ─── 섹션별 ───")
+    print("\n  ─── 섹션별 ───")
     for tag, label in tags:
         tr = [r for r in RESULTS if r.get("tag")==tag]
         if tr:
@@ -869,7 +859,7 @@ def _print_report():
             if r.get("info") and r["status"]=="ERROR":
                 for l in str(r["info"]).strip().split("\n")[-3:]: print(f"       {l}")
 
-    print(f"\n  ─── 수정 권고 ───")
+    print("\n  ─── 수정 권고 ───")
     fail_names = [r["name"] for r in fail_list]
     if any("VectorStore" in n or "임베딩" in n for n in fail_names):
         print("  🔧 vector_store.py 임베딩 모델 확인")
@@ -887,7 +877,7 @@ def _print_report():
     }
     with open("james_diagnostic_report.json","w",encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
-    print(f"\n  💾 james_diagnostic_report.json 저장")
+    print("\n  💾 james_diagnostic_report.json 저장")
     print("="*60)
 
 

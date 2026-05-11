@@ -35,7 +35,6 @@ import inspect
 import os
 import sys
 import unittest
-from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -65,7 +64,6 @@ class RuleTextSourceMentionTests(unittest.TestCase):
         # No spurious mention when context has no source list.
         # Korean adjacent-string concatenation can introduce extra
         # whitespace between words — use regex \s+ to be tolerant.
-        import re
         self.assertRegex(
             self.ko,
             r"자료\s+목록이\s+없으면\s+이\s+단계\s+생략",

@@ -16,10 +16,8 @@ from __future__ import annotations
 
 import json
 import os
-import sqlite3
 import sys
 import tempfile
-import time
 import unittest
 from pathlib import Path
 
@@ -110,7 +108,7 @@ class HelperTests(_JobsFixture):
         self.assertEqual(owners, {"alice"})
 
     def test_list_status_filter(self):
-        from core.workspace import register_job, list_jobs, count_jobs
+        from core.workspace import register_job, count_jobs
         register_job("excel_build", [], owner="alice")
         register_job("excel_build", [], owner="alice")
         self.assertEqual(count_jobs(status="pending"), 2)
@@ -242,7 +240,7 @@ class HandlerTests(_JobsFixture):
     def test_handler_failure_marks_row_failed(self):
         """Force an exception inside a handler and verify the row
         transitions to failed with an ``error`` set."""
-        from core.workspace import register_job, execute_job, get_job, HANDLERS
+        from core.workspace import register_job, execute_job, HANDLERS
         # Inject a broken handler temporarily.
         HANDLERS["broken"] = lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("boom"))
         try:

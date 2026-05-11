@@ -20,7 +20,7 @@ def test_ollama():
     # 1. 서버 연결 확인
     try:
         r = requests.get("http://127.0.0.1:11434", timeout=5)
-        print(f"  ✅ Ollama 서버 연결 OK")
+        print("  ✅ Ollama 서버 연결 OK")
     except Exception as e:
         print(f"  ❌ Ollama 연결 실패: {e}")
         return
@@ -60,7 +60,7 @@ def test_ollama():
             print(f"     ❌ 오류: {e}")
 
     # 3. 모델 로드 상태 확인
-    print(f"\n  [모델 로드 확인]")
+    print("\n  [모델 로드 확인]")
     try:
         r = requests.get("http://127.0.0.1:11434/api/tags", timeout=5)
         if r.status_code == 200:

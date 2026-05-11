@@ -22,11 +22,10 @@ PROJECT JAMES - Media Store (Phase 7)
 
 import os
 import re
-import json
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff"}
 VIDEO_EXTS = {".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv", ".wmv"}
@@ -285,7 +284,7 @@ def _make_md(analysis: dict, media_type: str) -> str:
         f"name:        {name}",
         f"date:        {analysis.get('date', '')}",
         f"analyzed_at: {analysis.get('analyzed_at', now)}",
-        f"source_type: prod",
+        "source_type: prod",
         "```", "", "## 분석 결과", "",
     ]
     if analysis.get("custom_folder"):
@@ -377,7 +376,7 @@ def store_with_instruction(
 
     if not parsed["full_path"]:
         # 폴더 지정 없으면 자동 분류 fallback
-        print(f"[MEDIA_STORE] 폴더 미지정 — 자동 분류")
+        print("[MEDIA_STORE] 폴더 미지정 — 자동 분류")
         return store_media(src_path, analysis or {}, source_type, move)
 
     # 날짜 prefix (YYYY-MM-DD_)

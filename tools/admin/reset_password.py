@@ -48,7 +48,6 @@ from __future__ import annotations
 
 import argparse
 import getpass
-import os
 import sqlite3
 import sys
 from pathlib import Path
@@ -110,8 +109,8 @@ def reset_password(db_path: str, username: str, new_password: str) -> bool:
         return False
     if _get_user(db_path, username) is None:
         print(f"[ERROR] user does not exist: {username!r}")
-        print(f"[ERROR] this tool refuses to create new accounts. "
-              f"Use core.auth.add_user() for that.")
+        print("[ERROR] this tool refuses to create new accounts. "
+              "Use core.auth.add_user() for that.")
         return False
 
     conn = sqlite3.connect(db_path)
@@ -176,12 +175,12 @@ def main(argv: list[str] | None = None) -> int:
     user = _get_user(args.db, args.username)
     if user is None:
         print(f"[ERROR] user does not exist: {args.username!r}")
-        print(f"[ERROR] this tool refuses to create new accounts. "
-              f"Use core.auth.add_user() for that.")
+        print("[ERROR] this tool refuses to create new accounts. "
+              "Use core.auth.add_user() for that.")
         return 2
 
     if not args.yes:
-        print(f"\nAbout to update password for:")
+        print("\nAbout to update password for:")
         print(f"  username: {user['username']}")
         print(f"  role:     {user['role']}")
         print(f"  active:   {bool(user['active'])}")

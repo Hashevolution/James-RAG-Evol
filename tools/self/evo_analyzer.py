@@ -13,14 +13,13 @@ PROJECT JAMES — Evolution Analyzer (Phase 7, Self-Evolution)
   config_update: 설정 최적화 → persona/config 변경
 """
 
-import os
 import json
 import time
 import uuid
 import re
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict
 
 try:
     from config import BASE_DIR
@@ -203,7 +202,7 @@ class EvoAnalyzer:
         return _make_proposal(
             prop_type   = "code_patch",
             title       = f"[코드 개선] LLM 오류 패턴 ({len(errors)}회 발생)",
-            description = f"반복 LLM 오류 감지 — 코드 개선 필요",
+            description = "반복 LLM 오류 감지 — 코드 개선 필요",
             content     = analysis or "",
             metadata    = {"errors": errors, "count": len(errors)}
         )

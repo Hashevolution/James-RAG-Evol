@@ -305,7 +305,7 @@ def analyze_video(video_path: str, role: str = "admin") -> dict:
         if tmp_dir and os.path.exists(tmp_dir):
             try:
                 shutil.rmtree(tmp_dir)
-                print(f"[VIDEO] 임시 파일 삭제 완료")
+                print("[VIDEO] 임시 파일 삭제 완료")
             except Exception:
                 pass
 

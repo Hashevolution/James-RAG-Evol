@@ -58,7 +58,6 @@ except Exception:
 
 def _build_llm():
     """Wire Ollama's OpenAI-compatible endpoint as the RAGAS judge LLM."""
-    from openai import OpenAI
     from langchain_openai import ChatOpenAI
     from ragas.llms import LangchainLLMWrapper
     from config import GEMMA_MODEL

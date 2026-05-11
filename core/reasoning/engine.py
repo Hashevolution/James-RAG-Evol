@@ -14,20 +14,15 @@ PROJECT JAMES - Reasoning Engine (Phase 4.5)
 """
 
 import json
-import re
 import time
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, Optional
 
 from core.graph_engine      import GraphEngine
 from core.retrieval_engine  import RetrievalEngine
-from core.gemma_client      import GemmaClient
 from core.security_layer    import (
     SecurityLayer,
-    filter_answer_by_role,
-    log_system_event,
 )
-from core.ontology import get_ancestors, get_relation_weight, is_sensitive_relation
 from core.reasoning.modes import (
     handle_chat,
     handle_meta,
@@ -361,7 +356,6 @@ class ReasoningEngine:
         sys_block = f"{system_prompt}\n\n" if system_prompt else ""
 
         # [P7-I18N] 언어 감지 — 영어 비율로 판단
-        import re as _re
         en_chars = sum(1 for c in question if c.isascii() and c.isalpha())
         is_en    = en_chars > len(question) * 0.5 and len(question) > 3
 

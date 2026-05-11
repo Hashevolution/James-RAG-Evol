@@ -23,7 +23,6 @@ import hashlib
 import re
 from pathlib import Path
 from datetime import datetime
-from typing import Optional
 
 try:
     from config import BASE_DIR, WIKI_DIR
@@ -365,7 +364,7 @@ def index_to_vector(content: str, name: str = "자메스_코드구조.md",
                     if s.strip() and len(s.strip()) > 50]
 
         if not chunks:
-            print(f"[SCANNER] ⚠️ 인덱싱할 청크 없음")
+            print("[SCANNER] ⚠️ 인덱싱할 청크 없음")
             return 0
 
         # 방법 1: 서버가 직접 vector_store 전달 (최우선)
@@ -441,7 +440,7 @@ def auto_index_on_startup():
         content = build_wiki_content(result)
         save_to_wiki(content)
         index_to_vector(content)
-        print(f"[SCANNER] ✅ 자기 인식 인덱싱 완료")
+        print("[SCANNER] ✅ 자기 인식 인덱싱 완료")
 
     except Exception as e:
         print(f"[SCANNER] 시작 시 인덱싱 실패: {e}")

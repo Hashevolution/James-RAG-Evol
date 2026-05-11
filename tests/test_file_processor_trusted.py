@@ -107,7 +107,6 @@ class FileProcessorTrustedContentTests(unittest.TestCase):
 
     @_silent
     def test_extract_pdf_markitdown_path_is_doc_medium(self):
-        from core.policy_engine import TrustedContent
         long_text = "lorem ipsum " * 100  # > 100 chars → no fallback
         with patch.object(self.fp, "_extract_with_markitdown",
                           return_value=long_text):
@@ -117,7 +116,6 @@ class FileProcessorTrustedContentTests(unittest.TestCase):
 
     @_silent
     def test_extract_pdf_ocr_fallback_is_ocr_low(self):
-        from core.policy_engine import TrustedContent
         with patch.object(self.fp, "_extract_with_markitdown", return_value=""), \
              patch.object(self.fp, "_extract_scanned_pdf",
                           return_value="ocr scanned text"):

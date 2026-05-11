@@ -25,7 +25,7 @@ PROJECT JAMES — Web Searcher (3-E)
 import os
 import re
 import time
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 from datetime import datetime
 from pathlib import Path
 
@@ -127,7 +127,7 @@ def search_web(query: str, max_results: int = MAX_RESULTS) -> List[Dict]:
             # 할당량 초과 → 이후 DuckDuckGo로 고정
             if any(k in err_str for k in ["quota", "limit", "429", "rate", "exceeded"]):
                 _tavily_exhausted = True
-                print(f"[WEB] Tavily 할당량 초과 → DuckDuckGo fallback 전환")
+                print("[WEB] Tavily 할당량 초과 → DuckDuckGo fallback 전환")
             else:
                 print(f"[WEB] Tavily 오류: {e} → DuckDuckGo fallback")
 
@@ -142,7 +142,7 @@ def search_web(query: str, max_results: int = MAX_RESULTS) -> List[Dict]:
         print(f"[WEB] DuckDuckGo 오류: {e}")
 
     # ── 실패 ──────────────────────────────────────────────────
-    print(f"[WEB] 모든 검색 엔진 실패 — pip install tavily-python duckduckgo-search")
+    print("[WEB] 모든 검색 엔진 실패 — pip install tavily-python duckduckgo-search")
     return []
 
 

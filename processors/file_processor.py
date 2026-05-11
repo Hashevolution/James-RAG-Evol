@@ -22,7 +22,6 @@ PROJECT JAMES - File Processor Module
          후속 phase 가 단일 quarantine chokepoint 로 통일 예정.
 """
 import os
-import re
 import cv2
 import numpy as np
 from PIL import Image
@@ -30,8 +29,7 @@ import pytesseract
 import whisper
 from pdf2image import convert_from_path
 
-from config import UPLOAD_FOLDER, POPPLER_PATH, TESSERACT_PATH
-from core.gemma_client import GemmaClient
+from config import POPPLER_PATH, TESSERACT_PATH
 from core.policy_engine import TrustedContent
 from utils.metadata import MetadataGenerator
 

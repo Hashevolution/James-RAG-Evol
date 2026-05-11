@@ -135,7 +135,7 @@ class RunRagasLiveModeTests(unittest.TestCase):
         # Stub `requests.post` to capture the payload the runner sends to
         # /query/. Asserts include_contexts=True and api_key threaded.
         from eval.ragas import run_ragas
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import patch
 
         captured = {}
 

@@ -210,7 +210,7 @@ class LimitClampTests(unittest.TestCase):
         self.assertEqual(rows[1]["time"], "2026-05-08T10:05:00")
 
     def test_limit_clamped_to_max(self):
-        from tools.patch.audit_query import query_patch_audit, MAX_LIMIT
+        from tools.patch.audit_query import query_patch_audit
         # Even an absurdly large limit is clamped — but with only 5
         # entries we just see all 5. The clamp logic still runs.
         rows = query_patch_audit(limit=999999, log_path=str(self.path))
@@ -224,7 +224,7 @@ class LimitClampTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
 
     def test_limit_garbage_falls_back_to_default(self):
-        from tools.patch.audit_query import query_patch_audit, DEFAULT_LIMIT
+        from tools.patch.audit_query import query_patch_audit
         rows = query_patch_audit(limit="not-a-number", log_path=str(self.path))
         # 5 entries < DEFAULT_LIMIT → all returned.
         self.assertEqual(len(rows), 5)

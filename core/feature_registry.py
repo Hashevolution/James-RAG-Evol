@@ -40,7 +40,7 @@ endpoints, and Q3 ships the admin matrix UI.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, Optional, FrozenSet, List
 
 from core.auth import _get_conn, ALLOWED_ROLES

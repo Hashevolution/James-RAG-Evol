@@ -411,5 +411,5 @@ if __name__ == "__main__":
     print(f"  {'✅' if ok else '❌'} 정상 응답 캐시 저장: {result}")
 
     # 통계
-    print(f"\n--- Cache Stats ---")
+    print("\n--- Cache Stats ---")
     print(f"  {client.get_cache_stats()}")

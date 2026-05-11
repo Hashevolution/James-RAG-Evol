@@ -140,11 +140,11 @@ def print_result(result: dict, dry_run: bool):
     print(f"  {mode}")
     print(f"  패치: {result['patched']}개 | 스킵: {result['skipped']}개 | 오류: {result['errors']}개")
     if result["fields_added"]:
-        print(f"\n  추가 필드 통계:")
+        print("\n  추가 필드 통계:")
         for field, count in sorted(result["fields_added"].items()):
             print(f"    {field:30s}: {count}개")
     if dry_run:
-        print(f"\n  ※ 실제 적용: python patch_abac_fields.py")
+        print("\n  ※ 실제 적용: python patch_abac_fields.py")
     print(f"{'='*50}")
 
 
