@@ -292,6 +292,22 @@ async def on_startup():
     except Exception as e:
         print(f"[STARTUP] data-artifact backfill skipped: {e}")
 
+    # [W8-D 2026-05-11] Background scheduler — re-fires scheduled
+    # jobs (``every:N`` / ``hourly`` / ``daily:HH:MM`` /
+    # ``weekly:DOW:HH:MM``) and sweeps stale workspace/results/ dirs
+    # once a day. Daemon thread; per-tick errors are logged, never
+    # propagate. Disabled via ``JAMES_DISABLE_SCHEDULER=1`` for
+    # one-shot CLI / test harness setups.
+    if os.environ.get("JAMES_DISABLE_SCHEDULER", "0") != "1":
+        try:
+            from core.scheduler import default_scheduler
+            default_scheduler.start()
+            print(f"[SCHED] background scheduler started "
+                  f"(poll={default_scheduler.poll_interval_sec}s, "
+                  f"retention={default_scheduler.retention_days}d)")
+        except Exception as e:
+            print(f"[STARTUP] scheduler start skipped: {e}")
+
     # [PR plan-3, 2026-05-09] LLM readiness check + friendly install
     # guidance. If Ollama has 0 models, every /query/ would fail. We
     # emit a clear console banner pointing operators to the admin
@@ -3994,6 +4010,73 @@ async def jobs_run(
     _write_audit(role, "/jobs/run", query=f"{data.job_type}/{job_id}",
                  security_event=final_event, ip_address=ip)
     return row
+
+
+# ─── W8-D: schedule a recurring job ────────────────────────────
+
+class JobScheduleRequest(BaseModel):
+    job_type:      str
+    input_refs:    list = []
+    options:       Optional[dict] = None
+    schedule_cron: str   # "hourly" | "every:N" | "daily:HH:MM" | "weekly:DOW:HH:MM"
+
+
+@app.post("/jobs/schedule",
+          summary="워크스페이스 job 예약 (정기 실행, W8-D)")
+async def jobs_schedule(
+    data:    JobScheduleRequest,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
+    """Insert a scheduled job. ``workspace.schedule`` feature gate
+    (admin only by default — cron-driven jobs touch shared resources
+    so the grant is intentionally narrow).
+
+    The DSL is validated up front: an unrecognised spec returns 400
+    rather than persisting a row that the scheduler would silently
+    ignore. The first ``next_run_at`` is computed from the spec; the
+    Scheduler updates it after each successful tick.
+    """
+    from core.policy_engine import default_engine as _pe
+    if not _pe.can_use_feature(role, "workspace.schedule").allowed:
+        raise HTTPException(status_code=403,
+                            detail="권한이 부족합니다. (workspace.schedule)")
+    owner = _bearer_username(request)
+    if not owner:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+
+    from core.workspace import register_job, HANDLERS
+    from core.scheduler import compute_next_run
+    if data.job_type not in HANDLERS:
+        raise HTTPException(status_code=400,
+                            detail=f"unknown job_type: {data.job_type}")
+
+    now = int(time.time())
+    next_at = compute_next_run(data.schedule_cron, now)
+    if next_at is None:
+        raise HTTPException(
+            status_code=400,
+            detail=(f"unknown schedule spec: {data.schedule_cron!r}. "
+                    "Use 'hourly' / 'every:N' / 'daily:HH:MM' / "
+                    "'weekly:DOW:HH:MM'."),
+        )
+
+    job_id = register_job(
+        data.job_type, data.input_refs or [],
+        owner=owner, options=data.options,
+        schedule_cron=data.schedule_cron, next_run_at=next_at,
+    )
+    ip = get_client_ip(request)
+    _write_audit(role, "/jobs/schedule",
+                 query=f"{data.job_type}/{job_id}",
+                 security_event=f"scheduled cron={data.schedule_cron}",
+                 ip_address=ip)
+    return {
+        "ok":            True,
+        "job_id":        job_id,
+        "schedule_cron": data.schedule_cron,
+        "next_run_at":   next_at,
+    }
 
 
 @app.get("/jobs/list", summary="내 job 목록 (W8-A)")

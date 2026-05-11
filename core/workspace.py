@@ -89,27 +89,53 @@ def _get_conn() -> sqlite3.Connection:
 
 
 def _init_db() -> None:
-    """Idempotent — create ``jobs`` table + indexes."""
+    """Idempotent — create ``jobs`` table + indexes.
+
+    W8-D (2026-05-11) added two optional columns:
+      schedule_cron — NULL for one-shot jobs (W8-A behaviour). When
+                      set, the scheduler re-executes the row whenever
+                      next_run_at <= now.
+      next_run_at   — unix epoch; updated by the scheduler after each
+                      successful tick.
+
+    Existing DBs picked up via ``ALTER TABLE ... ADD COLUMN`` guarded
+    by a column-existence check; sqlite has no IF NOT EXISTS on
+    column adds.
+    """
     conn = _get_conn()
     try:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS jobs (
-                job_id       TEXT PRIMARY KEY,
-                job_type     TEXT NOT NULL,
-                status       TEXT NOT NULL,
-                input_refs   TEXT NOT NULL,
-                output_path  TEXT,
-                owner        TEXT,
-                created_at   INTEGER NOT NULL,
-                finished_at  INTEGER,
-                error        TEXT,
-                options      TEXT
+                job_id        TEXT PRIMARY KEY,
+                job_type      TEXT NOT NULL,
+                status        TEXT NOT NULL,
+                input_refs    TEXT NOT NULL,
+                output_path   TEXT,
+                owner         TEXT,
+                created_at    INTEGER NOT NULL,
+                finished_at   INTEGER,
+                error         TEXT,
+                options       TEXT,
+                schedule_cron TEXT,
+                next_run_at   INTEGER
             )
         """)
+        # ALTER for pre-W8-D DBs.
+        existing_cols = {r["name"] for r in conn.execute(
+            "PRAGMA table_info(jobs)"
+        ).fetchall()}
+        if "schedule_cron" not in existing_cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN schedule_cron TEXT")
+        if "next_run_at" not in existing_cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN next_run_at INTEGER")
+
         conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_owner "
                      "ON jobs (owner, created_at DESC)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status "
                      "ON jobs (status, created_at DESC)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_next_run "
+                     "ON jobs (next_run_at) "
+                     "WHERE schedule_cron IS NOT NULL")
         conn.commit()
     finally:
         conn.close()
@@ -273,8 +299,16 @@ HANDLERS: Dict[str, Callable[..., str]] = {
 
 def register_job(job_type: str, input_refs: List[str],
                  owner: Optional[str] = None,
-                 options: Optional[Dict] = None) -> str:
-    """Insert a pending row. Caller then calls ``execute_job(id)``."""
+                 options: Optional[Dict] = None,
+                 schedule_cron: Optional[str] = None,
+                 next_run_at: Optional[int] = None) -> str:
+    """Insert a pending row. Caller then calls ``execute_job(id)``.
+
+    For one-shot jobs (W8-A), leave ``schedule_cron`` and
+    ``next_run_at`` as None. For scheduled jobs (W8-D), pass the
+    cron-style spec + the computed next-run timestamp; the scheduler
+    re-fires the row whenever next_run_at <= now.
+    """
     if job_type not in HANDLERS:
         raise ValueError(f"unknown job_type: {job_type!r}")
     if not isinstance(input_refs, list):
@@ -285,11 +319,13 @@ def register_job(job_type: str, input_refs: List[str],
     try:
         conn.execute(
             "INSERT INTO jobs "
-            "(job_id, job_type, status, input_refs, owner, created_at, options) "
-            "VALUES (?, ?, 'pending', ?, ?, ?, ?)",
+            "(job_id, job_type, status, input_refs, owner, created_at, "
+            "options, schedule_cron, next_run_at) "
+            "VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?)",
             (job_id, job_type, json.dumps(input_refs),
              owner, now,
-             json.dumps(options) if options else None),
+             json.dumps(options) if options else None,
+             schedule_cron, next_run_at),
         )
         conn.commit()
         return job_id
@@ -462,3 +498,10 @@ def count_jobs(owner: Optional[str] = None,
         ).fetchone()["c"])
     finally:
         conn.close()
+
+
+# Schedule + retention helpers live in core/scheduler.py — kept
+# separate to honor the 20 KB module-size gate (workspace.py reaches
+# that ceiling with the three handlers alone). The sibling module
+# imports _get_conn / _RESULT_DIR / execute_job from here; the
+# dependency stays unidirectional (scheduler → workspace, never back).
