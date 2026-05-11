@@ -409,9 +409,11 @@
 </div>
 
 <!-- Login modal -->
-<div class="modal-overlay hidden" id="login-modal">
+<div class="modal-overlay hidden" id="login-modal"
+     role="dialog" aria-modal="true"
+     aria-labelledby="login-modal-title">
   <div class="modal">
-    <div class="modal-title">▸ <span data-i18n="auth.login_title">로그인</span></div>
+    <div class="modal-title" id="login-modal-title">▸ <span data-i18n="auth.login_title">로그인</span></div>
     <div class="modal-field">
       <label data-i18n="auth.username">USERNAME</label>
       <input type="text" id="login-id" autocomplete="username" spellcheck="false">
@@ -441,5 +443,6 @@
 
 <script src="/static/i18n.js"></script>
 <script src="/static/workspace.js"></script>
+<script src="/static/a11y-modal.js" defer></script>
 </body>
 </html>

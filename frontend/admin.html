@@ -707,6 +707,8 @@
 
       <!-- Detail modal -->
       <div id="entity-detail-modal"
+           role="dialog" aria-modal="true"
+           aria-labelledby="entity-detail-title"
            style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
                   z-index:9999;align-items:flex-start;justify-content:center;
                   overflow-y:auto;padding:40px 16px"
@@ -720,6 +722,7 @@
             <div id="entity-detail-title"
                  style="font-size:16px;font-weight:600"></div>
             <button onclick="closeEntityDetail()"
+                    aria-label="닫기"
                     style="background:transparent;border:0;color:var(--muted);
                            cursor:pointer;font-size:20px">×</button>
           </div>
@@ -759,6 +762,8 @@
 
       <!-- item #3-b: session original-turns expand modal -->
       <div id="session-turns-modal"
+           role="dialog" aria-modal="true"
+           aria-labelledby="session-turns-title"
            style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
                   z-index:9999;align-items:flex-start;justify-content:center;
                   overflow-y:auto;padding:40px 16px"
@@ -772,6 +777,7 @@
             <div id="session-turns-title"
                  style="font-size:16px;font-weight:600">세션 원본 대화</div>
             <button onclick="closeSessionTurns()"
+                    aria-label="닫기"
                     style="background:transparent;border:0;color:var(--muted);
                            cursor:pointer;font-size:20px">×</button>
           </div>
@@ -1421,11 +1427,15 @@
 
 <script src="/static/i18n.js"></script>
 <script src="/static/admin.js"></script>
+<script src="/static/a11y-modal.js" defer></script>
 
 <!-- ── Admin 로그인 모달 ── -->
-<div class="modal-overlay" id="admin-login-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:300;">
+<div class="modal-overlay" id="admin-login-modal"
+     role="dialog" aria-modal="true"
+     aria-labelledby="admin-login-modal-title"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:300;">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:36px;width:340px;box-shadow:0 24px 80px rgba(0,0,0,.7);">
-    <div style="font-size:13px;font-weight:600;font-family:var(--font-mono);color:var(--danger);margin-bottom:8px;letter-spacing:.5px;">▸ Secure Enterprise Knowledge Intelligence, Operating System · Admin</div>
+    <div id="admin-login-modal-title" style="font-size:13px;font-weight:600;font-family:var(--font-mono);color:var(--danger);margin-bottom:8px;letter-spacing:.5px;">▸ Secure Enterprise Knowledge Intelligence, Operating System · Admin</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:24px;" data-i18n="auth.admin_required">Admin login required</div>
     <div style="margin-bottom:14px;">
       <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px;">ADMIN ID</div>
@@ -1480,9 +1490,11 @@
      session is unaffected.
 -->
 <div id="signup-modal"
+     role="dialog" aria-modal="true"
+     aria-labelledby="signup-modal-title"
      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;z-index:320">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;width:360px;max-width:92vw;box-shadow:0 24px 80px rgba(0,0,0,.7)">
-    <div style="font-size:15px;font-weight:600;color:var(--accent-fg);margin-bottom:6px"
+    <div id="signup-modal-title" style="font-size:15px;font-weight:600;color:var(--accent-fg);margin-bottom:6px"
          data-i18n="auth.signup_title">▸ 회원가입</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:18px;line-height:1.5"
          data-i18n="auth.signup_hint">
@@ -1523,9 +1535,11 @@
      400 only on policy violation.
 -->
 <div id="forgot-password-modal"
+     role="dialog" aria-modal="true"
+     aria-labelledby="forgot-password-modal-title"
      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;z-index:320">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;width:380px;max-width:92vw;box-shadow:0 24px 80px rgba(0,0,0,.7)">
-    <div style="font-size:15px;font-weight:600;color:var(--accent-fg);margin-bottom:6px;letter-spacing:.5px"
+    <div id="forgot-password-modal-title" style="font-size:15px;font-weight:600;color:var(--accent-fg);margin-bottom:6px;letter-spacing:.5px"
          data-i18n="auth.reset_password_title">▸ 비밀번호 재설정</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:18px;line-height:1.5"
          data-i18n="auth.reset_password_hint">
@@ -1564,9 +1578,11 @@
      dismiss, plaintext wiped on close.
 -->
 <div id="api-key-display-modal"
+     role="dialog" aria-modal="true"
+     aria-labelledby="api-key-display-modal-title"
      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;z-index:320">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;width:520px;max-width:92vw;box-shadow:0 24px 80px rgba(0,0,0,.7)">
-    <div style="font-size:14px;font-weight:600;color:var(--accent-fg);margin-bottom:6px"
+    <div id="api-key-display-modal-title" style="font-size:14px;font-weight:600;color:var(--accent-fg);margin-bottom:6px"
          data-i18n="users.mykey_issued_title">🔑 API 키 발급 완료</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5"
          data-i18n="users.mykey_issued_hint">
@@ -1596,9 +1612,11 @@
      click dismiss) and the close button restates the warning.
 -->
 <div id="reset-token-display-modal"
+     role="dialog" aria-modal="true"
+     aria-labelledby="reset-token-display-modal-title"
      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;z-index:320">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;width:480px;max-width:92vw;box-shadow:0 24px 80px rgba(0,0,0,.7)">
-    <div style="font-size:14px;font-weight:600;color:var(--accent-fg);margin-bottom:6px"
+    <div id="reset-token-display-modal-title" style="font-size:14px;font-weight:600;color:var(--accent-fg);margin-bottom:6px"
          data-i18n="users.token_issued_title">🔑 비밀번호 재설정 토큰 발급</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5"
          data-i18n="users.token_issued_hint">
@@ -1628,12 +1646,14 @@
      닫힘:   "나중에" 버튼으로 dismiss (sessionStorage에 기록 — 재진입
             시 다시 안 띄움). 설치 완료 시 자동 닫힘. -->
 <div class="modal-overlay" id="firstrun-wizard-modal"
+     role="dialog" aria-modal="true"
+     aria-labelledby="firstrun-wizard-modal-title"
      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);
             align-items:center;justify-content:center;z-index:400;">
   <div style="background:var(--surface);border:1px solid var(--border);
               border-radius:14px;padding:36px;width:560px;max-width:92vw;
               box-shadow:0 24px 80px rgba(0,0,0,.8);max-height:88vh;overflow-y:auto;">
-    <div style="font-size:18px;font-weight:600;color:var(--accent-fg);
+    <div id="firstrun-wizard-modal-title" style="font-size:18px;font-weight:600;color:var(--accent-fg);
                 margin-bottom:8px;letter-spacing:.3px;">
       🎯 처음 실행 — LLM 모델 설치 필요
     </div>

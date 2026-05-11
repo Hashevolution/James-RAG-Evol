@@ -1159,6 +1159,7 @@
 <script src="/static/i18n.js"></script>
 <script src="/static/chat.js"></script>
 <script src="/static/upload.js"></script>
+<script src="/static/a11y-modal.js" defer></script>
 <script>
   window.addEventListener('DOMContentLoaded', () => {
     restoreHistory();
@@ -1222,9 +1223,12 @@
 </script>
 
 <!-- ── 로그인 모달 ── -->
-<div class="modal-overlay hidden" id="login-modal" onclick="closeLoginOutside(event)">
+<div class="modal-overlay hidden" id="login-modal"
+     role="dialog" aria-modal="true"
+     aria-labelledby="login-modal-title"
+     onclick="closeLoginOutside(event)">
   <div class="modal">
-    <div class="modal-title">▸ <span data-i18n="auth.login_title">로그인</span></div>
+    <div class="modal-title" id="login-modal-title">▸ <span data-i18n="auth.login_title">로그인</span></div>
     <div class="modal-field">
       <label data-i18n="auth.username">아이디</label>
       <input type="text" id="login-id" placeholder="admin"
@@ -1287,9 +1291,12 @@
      api_key query. The token-error response is a unified 401 by
      design (enumeration defense — see ARCHITECTURE.md §5.2).
 -->
-<div class="modal-overlay hidden" id="forgot-password-modal" onclick="closeForgotPasswordOutside(event)">
+<div class="modal-overlay hidden" id="forgot-password-modal"
+     role="dialog" aria-modal="true"
+     aria-labelledby="forgot-password-modal-title"
+     onclick="closeForgotPasswordOutside(event)">
   <div class="modal">
-    <div class="modal-title">▸ <span data-i18n="auth.reset_password_title">비밀번호 재설정</span></div>
+    <div class="modal-title" id="forgot-password-modal-title">▸ <span data-i18n="auth.reset_password_title">비밀번호 재설정</span></div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5"
          data-i18n="auth.reset_password_hint">
       관리자가 발급한 일회용 토큰을 입력하세요. (1시간 유효)
@@ -1327,9 +1334,12 @@
      approves. Success and duplicate share one response, so the modal
      shows a single "submitted" message in either case.
 -->
-<div class="modal-overlay hidden" id="signup-modal" onclick="closeSignupOutside(event)">
+<div class="modal-overlay hidden" id="signup-modal"
+     role="dialog" aria-modal="true"
+     aria-labelledby="signup-modal-title"
+     onclick="closeSignupOutside(event)">
   <div class="modal">
-    <div class="modal-title">▸ <span data-i18n="auth.signup_title">회원가입</span></div>
+    <div class="modal-title" id="signup-modal-title">▸ <span data-i18n="auth.signup_title">회원가입</span></div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5"
          data-i18n="auth.signup_hint">
       가입 신청 후 관리자 승인을 거쳐야 로그인할 수 있습니다.
