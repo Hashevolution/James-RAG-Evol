@@ -255,7 +255,7 @@ def delete_entity(name: str, user_role: str = "admin") -> Tuple[bool, str]:
         return False, "WIKI_DIR 범위 외 파일 접근 차단"
 
     backup = _backup(path)
-    content = path.read_text(encoding="utf-8")
+    path.read_text(encoding="utf-8")
 
     path.unlink()
     _audit("DELETE", path.name, f"삭제됨 (백업: {backup.name})", user_role)

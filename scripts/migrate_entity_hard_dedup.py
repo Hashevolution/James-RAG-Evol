@@ -352,7 +352,7 @@ def main() -> int:
         canon_fm["updated_at"]     = datetime.now(timezone.utc).isoformat()
         entries[canonical_path] = (canon_fm, canon_body)
 
-        added = [r for r in merged_relations
+        [r for r in merged_relations
                  if r not in (canon_fm.get("relations") or [])]
         print(f"    → relations: {len(merged_relations)}, "
               f"aliases: {len(merged_aliases)}, sources: {len(merged_sources)}")

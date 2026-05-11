@@ -83,7 +83,7 @@ class TouchTargetAndIosGuardTests(unittest.TestCase):
         # iOS zooms in on focus when input font-size < 16px. The
         # mobile.css rule for textarea/input must declare ≥16px.
         # We look inside the 768px block.
-        block_match = re.search(
+        re.search(
             r"@media\s*\(\s*max-width\s*:\s*768px\s*\)\s*\{(.+?)\n\}\s*\n\s*/\*",
             self.css, re.DOTALL,
         )

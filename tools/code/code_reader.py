@@ -168,7 +168,7 @@ class CodeReader:
                         "size_kb":   round(f.stat().st_size / 1024, 2),
                         "lines":     None,   # 빠른 목록은 라인 수 생략
                     })
-        except Exception as e:
+        except Exception:
             return False, []
 
         print(f"[READER] 목록: {directory} → {len(files)}개 파일")

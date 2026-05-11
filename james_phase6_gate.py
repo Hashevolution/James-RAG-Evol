@@ -147,7 +147,6 @@ def run_retrieval_reliability():
         Orchestrator의 dedup 후 결과 수 ≥ single 결과 수.
         """
         from core.orchestrator import retrieve
-        call_results = []
         def mock_search(q, **kwargs):
             return [
                 {"text":f"관련문서:{q[:10]}","source":f"doc_{hash(q)%100}.md","score":0.85},

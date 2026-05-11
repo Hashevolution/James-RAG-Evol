@@ -94,7 +94,7 @@ class PruneBasicTests(unittest.TestCase):
         self._make_day_dir(0)   # today — within any [1, 365] window
         self._make_day_dir(2)   # 2d ago — outside keep_days=1
         # keep_days=0 must clamp to 1, NOT wipe today.
-        result = prune_old_traces(keep_days=0)
+        prune_old_traces(keep_days=0)
         today = datetime.now().strftime("%Y-%m-%d")
         self.assertTrue((self.root / today).exists(),
                         "keep_days=0 must clamp to 1; today must survive")

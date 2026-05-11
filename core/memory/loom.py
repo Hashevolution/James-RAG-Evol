@@ -206,7 +206,6 @@ if __name__ == "__main__":
 
     def chk(name, ok, detail=""):
         global passed
-        passed_local = ok
         print(f"  {'✅' if ok else '❌'} {name}" + (f" → {detail}" if detail else ""))
         return ok
 

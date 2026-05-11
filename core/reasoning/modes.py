@@ -320,7 +320,7 @@ def handle_self_evolve(
     try:
         from tools.self.file_scanner import get_file_content
 
-        q_lower = safe_query.lower()
+        safe_query.lower()
 
         # [P2-9] 폴더 지정 분석 (예: "tools 폴더", "core/ 폴더")
         folder_match = re.search(

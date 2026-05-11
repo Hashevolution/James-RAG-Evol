@@ -54,7 +54,7 @@ def run_security_layer_tests():
 
     try:
         from core.security_layer import (
-            validate_input, detect_attack, filter_graph_by_abac,
+            validate_input, detect_attack, filter_graph_by_abac,  # noqa: F401
             mask_sensitive, SecurityLayer, check_access
         )
     except ImportError as e:
@@ -304,7 +304,7 @@ def run_sec_fix_tests():
     print("\n" + "="*55 + "\n  5. SEC-FIX 1,2,3 검증 [Phase 4]\n" + "="*55)
 
     try:
-        from core.security_layer import SecurityLayer, mask_sensitive
+        from core.security_layer import SecurityLayer, mask_sensitive  # noqa: F401
     except ImportError as e:
         print(f"  ⚠️  {e}"); return
 

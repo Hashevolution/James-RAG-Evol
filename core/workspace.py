@@ -399,7 +399,7 @@ def execute_job(job_id: str) -> Dict:
         fname = handler(input_refs, out_dir, options)
         rel = os.path.join("workspace", "results", job_id, fname).replace("\\", "/")
         _set_status(job_id, "done", output_path=rel)
-    except Exception as e:
+    except Exception:
         tb = traceback.format_exc()
         _set_status(job_id, "failed", error=tb[-4000:])  # cap traceback length
         # don't re-raise — the row + tests are the contract.

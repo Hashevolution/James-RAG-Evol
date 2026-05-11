@@ -2637,10 +2637,7 @@ async def admin_dashboard(api_key: str, role: str = Depends(get_role_from_reques
     # ── [3-A] audit_log 기반 실시간 통계 ────────────────────
     today_queries   = 0
     avg_elapsed     = 0.0
-    cache_hits      = 0
     blocked_count   = 0
-    score_sum       = 0.0
-    score_count     = 0
     elapsed_list    = []   # 응답 시간 그래프용
     recent_queries  = []   # 최근 쿼리 목록용
 

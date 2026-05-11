@@ -100,7 +100,7 @@ class PulseLoopTests(unittest.TestCase):
 
     def test_stop_clears_interval(self):
         idx = self.js.index("function stopPulseLoop")
-        nxt = self.js.index("\n  ", idx + 100)
+        self.js.index("\n  ", idx + 100)
         body = self.js[idx:idx + 400]
         self.assertIn("clearInterval", body)
 
@@ -108,7 +108,7 @@ class PulseLoopTests(unittest.TestCase):
         # When the active path is cleared (new question, close panel),
         # the pulse loop must stop too.
         idx = self.js.index("function clearActivePath")
-        nxt = self.js.index("\n  ", idx + 50)
+        self.js.index("\n  ", idx + 50)
         body = self.js[idx:idx + 600]
         self.assertIn("stopPulseLoop", body,
             "clearActivePath must also stop the pulse loop so the next "
@@ -184,7 +184,7 @@ class SearchDrawerJsTests(unittest.TestCase):
 
     def test_render_uses_escapehtml(self):
         idx = self.js.index("function _renderSearchList")
-        nxt = self.js.index("\n  ", idx + 100)
+        self.js.index("\n  ", idx + 100)
         body = self.js[idx:idx + 2000]
         # Names + types come from the snapshot — XSS-escape both.
         self.assertGreaterEqual(body.count("escapeHtml"), 2,

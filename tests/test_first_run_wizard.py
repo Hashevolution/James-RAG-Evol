@@ -118,7 +118,7 @@ class FrontendJsTests(unittest.TestCase):
 
     def test_check_uses_resolution_endpoint(self):
         idx = self.js.index("async function firstRunCheck")
-        nxt = self.js.index("\n", self.js.index("}", idx + 200))
+        self.js.index("\n", self.js.index("}", idx + 200))
         body = self.js[idx:idx + 1500]
         self.assertIn("/admin/llm/resolution", body,
             "firstRunCheck must call /admin/llm/resolution")

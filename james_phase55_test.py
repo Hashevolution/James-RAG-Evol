@@ -57,7 +57,7 @@ def run_sandbox_tests():
 
     try:
         from tools.code.sandbox import (
-            validate_action, validate_path, validate_command,
+            validate_action, validate_path, validate_command,  # noqa: F401
             ALLOWED_PATHS, BLOCKED_COMMANDS, MAX_EXEC_TIME_SEC,
         )
     except ImportError as e:
@@ -343,7 +343,7 @@ def run_llm_tests():
     def t_no_multi_llm_router():
         """Multi-LLM 라우팅 없음 (GPU 전)"""
         try:
-            import llm.router
+            import llm.router  # noqa: F401
             return False, "router 존재 — Phase 6 이후 추가 예정"
         except ImportError:
             return True, "llm/router 없음 (GPU 이후 추가 예정)"
@@ -480,7 +480,6 @@ def run_audit_log_tests():
 
         # 임시 로그 파일로 테스트
         old_log = AUDIT_LOG_PATH
-        test_log = "james_audit_tool_test.jsonl"
 
         # 이벤트 발생
         validate_action("rm -rf /", "./workspace", "user")

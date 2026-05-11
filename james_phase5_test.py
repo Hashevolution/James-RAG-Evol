@@ -61,7 +61,7 @@ def run_jepa_tests():
     try:
         from core.jepa_adapter import (
             expand, JEPA_TOKEN_HARD_LIMIT, JEPA_TIMEOUT_SEC,
-            _tokenize_simple, _expand_keywords, _hard_truncate,
+            _tokenize_simple, _expand_keywords, _hard_truncate,  # noqa: F401
         )
     except ImportError as e:
         print(f"  ⚠️  import 실패: {e}"); return
@@ -345,7 +345,7 @@ def run_security_regression():
     print("="*55)
 
     try:
-        from core.security_layer import SecurityLayer, detect_attack, check_access
+        from core.security_layer import SecurityLayer, detect_attack, check_access  # noqa: F401
         from core.memory import MemoryLoom
     except ImportError as e:
         print(f"  ⚠️  import 실패: {e}"); return

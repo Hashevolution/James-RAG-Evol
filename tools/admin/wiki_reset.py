@@ -264,7 +264,7 @@ def create_seed_data():
     print(f"\n{C}  📦 시드 데이터 생성 중...{E}")
 
     try:
-        from tools.admin.seed_data import SEED_ENTITIES, write_seed_files
+        from tools.admin.seed_data import SEED_ENTITIES, write_seed_files  # noqa: F401
         count = write_seed_files()
         print(f"  {G}✅{E} 시드 entity {count}개 생성 완료")
     except ImportError:

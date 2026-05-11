@@ -229,7 +229,7 @@ class HandlerTests(_JobsFixture):
     def test_entity_export_filters_by_category(self):
         from core.workspace import register_job, execute_job, _RESULT_DIR
         jid = register_job("entity_export", ["concept"], owner="alice")
-        row = execute_job(jid)
+        execute_job(jid)
         out_full = os.path.join(_RESULT_DIR, jid)
         files = [f for f in os.listdir(out_full) if f.endswith(".json")]
         data = json.loads(Path(os.path.join(out_full, files[0]))
