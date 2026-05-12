@@ -300,7 +300,14 @@ class MemoryStore:
 
     def save_turn(self, session_id: str, question: str,
                   answer: str, mode: str = "") -> bool:
-        """대화 한 턴(질문+답변) 저장."""
+        """대화 한 턴(질문+답변) 저장.
+
+        [Axis 6 user feedback, 2026-05-12] per-turn cap widened
+        from 500 → 2000 chars. The previous cap chopped long
+        Q&A so anaphora ("위와 관련", "이것") in follow-ups lost
+        their referent. 2000 chars holds a typical 2-3 paragraph
+        response without blowing up the SQLite row size.
+        """
         now = datetime.now().isoformat()
         try:
             with _connect() as conn:
@@ -308,8 +315,8 @@ class MemoryStore:
                     "INSERT INTO conversation_history "
                     "(session_id, role, content, mode, created_at) VALUES (?,?,?,?,?)",
                     [
-                        (session_id, "user",      question[:500], mode, now),
-                        (session_id, "assistant", answer[:500],   mode, now),
+                        (session_id, "user",      question[:2000], mode, now),
+                        (session_id, "assistant", answer[:2000],   mode, now),
                     ]
                 )
             return True
@@ -340,14 +347,22 @@ class MemoryStore:
             return []
 
     def get_history_context(self, session_id: str = "", limit: int = 5) -> str:
-        """최근 대화를 LLM 주입용 텍스트로 변환."""
+        """최근 대화를 LLM 주입용 텍스트로 변환.
+
+        [Axis 6 user feedback, 2026-05-12] per-turn slice widened
+        from 200 → 800 chars. The previous slice chopped any
+        non-trivial answer, so when a user said "위와 관련" the
+        LLM only saw the first sentence of the previous reply.
+        800 chars is roughly one paragraph — enough to anchor
+        anaphora without ballooning the prompt.
+        """
         turns = self.get_recent_turns(session_id, limit)
         if not turns:
             return ""
         lines = ["[이전 대화]"]
         for t in turns:
             role = "User" if t["role"] == "user" else "자메스"
-            lines.append(f"{role}: {t['content'][:200]}")
+            lines.append(f"{role}: {t['content'][:800]}")
         return "\n".join(lines)
 
     def get_all_sessions(self) -> list:

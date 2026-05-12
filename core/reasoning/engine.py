@@ -139,9 +139,13 @@ class ReasoningEngine:
             system_prompt = store.get_system_prompt()
             pref_context  = store.get_context(user_role)
 
-            # [P7-1] 단기: 현재 세션 최근 3턴
+            # [P7-1] 단기: 현재 세션 최근 5턴
+            # [Axis 6 user feedback, 2026-05-12] limit 3 → 5. Multi-
+            # turn threads ("위 내용 + 추가로 …" 3번 이상) were losing
+            # the earliest exchange. 5 keeps roughly the last minute
+            # of conversation in context without bloating the prompt.
             session_id = kwargs.get("session_id", "default")
-            hist_ctx   = store.get_history_context(session_id, limit=3)
+            hist_ctx   = store.get_history_context(session_id, limit=5)
 
             # [P7-4] 장기: 이전 세션 요약 (최근 2개)
             long_ctx = store.get_long_term_context(

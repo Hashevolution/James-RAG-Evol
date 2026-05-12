@@ -22,6 +22,26 @@ import time
 from typing import Any, Dict
 
 
+# [Axis 6 user feedback, 2026-05-12] Prepended to the LLM prompt
+# whenever previous-turn context exists. Suppresses the canned
+# "안녕하세요. 자메스입니다." greeting that the model emits when it
+# treats every turn as a cold start, and tells it how to resolve
+# Korean / English anaphora against the immediately-preceding turn.
+CONTINUITY_DIRECTIVE_KO = (
+    "[연속 대화 규칙] 이전 대화가 이어지고 있다. "
+    "'안녕하세요', '저는 자메스입니다' 같은 인사·자기소개는 생략하라. "
+    "사용자가 '이것', '그것', '위', '위와 관련', '위에서' 같은 지시어를 "
+    "사용하면 직전 턴의 답변·질문 내용을 참조하라."
+)
+CONTINUITY_DIRECTIVE_EN = (
+    "[Continuity rule] This is a continuing conversation. "
+    "Skip greetings and self-introductions like \"Hello\" or "
+    "\"I'm JAMES\". When the user uses anaphora like \"this\", "
+    "\"that\", \"the above\", \"as mentioned\", resolve it against "
+    "the most recent turn in the conversation history above."
+)
+
+
 # ────────────────────────────────────────────────────────────────────
 # chat — direct LLM, no retrieval
 # ────────────────────────────────────────────────────────────────────
@@ -48,7 +68,18 @@ def handle_chat(
     try:
         # system_prompt + memory_context + flow guide 주입
         sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
-        mem_prefix = f"{memory_context}\n\n" if memory_context else ""
+        # [Axis 6 user feedback, 2026-05-12] When prior turns exist
+        # in memory_context, prepend a continuity directive so the
+        # model (a) skips greeting / self-introduction preambles
+        # and (b) resolves anaphora ("이것", "위와 관련", "그것")
+        # against the most recent turn instead of starting fresh.
+        # Empty memory_context ⇒ no directive ⇒ first-turn replies
+        # keep their introductory tone.
+        if memory_context:
+            continuity_rule = CONTINUITY_DIRECTIVE_KO if is_ko else CONTINUITY_DIRECTIVE_EN
+            mem_prefix = f"{continuity_rule}\n\n{memory_context}\n\n"
+        else:
+            mem_prefix = ""
         raw_answer = engine.llm.call_gemma(
             f"{sys_prefix}{mem_prefix}{rule_txt}\n질문: {safe_query}\n\n답변:",
             use_cache=True, timeout=60, max_tokens=style.max_tokens,
