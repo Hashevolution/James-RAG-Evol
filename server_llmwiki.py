@@ -4654,6 +4654,240 @@ async def admin_settings_post(data: AdminSettingsRequest, role: str = Depends(ge
     return {"success": True, "applied": {"model": data.model, "max_loop": data.max_loop}}
 
 
+# ─── PR-CR-B2: Change Request endpoints ─────────────────────────
+#
+# Six endpoints back the v0.2.x Change Request primitive
+# (docs/handovers/v0.2.x-cr-track.md, docs/ARCHITECTURE.md §5.6).
+#
+# Auth model is mixed by design:
+#   - propose / list / detail / review:  any authenticated user.
+#   - approve / reject:                  admin only.
+# The JWT subject claim is the source of identity at every write —
+# request bodies do not carry ``proposer`` / ``approver`` fields,
+# so a client holding only a body can't self-impersonate.
+
+from core import change_request as _cr_mod
+from core import change_request_apply as _cr_apply
+
+
+class _CrProposeRequest(BaseModel):
+    api_key:       str
+    target_type:   str
+    target_id:     str
+    title:         str
+    description:   str = ""
+    proposed_diff: dict   # JSON-serialisable; structure is target_type-specific
+    base_hash:     str
+    labels:        list[str] = []
+
+
+@app.post("/admin/cr/", summary="Change Request — propose (any auth user)")
+async def cr_propose(
+    data:    _CrProposeRequest,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
+    # Any authenticated caller can propose. Identity is the JWT
+    # subject — body carries no ``proposer`` field.
+    verify_api_key(data.api_key)
+    proposer = _bearer_username(request)
+    if not proposer:
+        raise HTTPException(status_code=401, detail="login required to propose")
+    try:
+        cr = _cr_mod.create_cr(
+            target_type=data.target_type,
+            target_id=data.target_id,
+            title=data.title,
+            description=data.description,
+            proposed_diff=data.proposed_diff,
+            base_hash=data.base_hash,
+            proposer=proposer,
+            labels=data.labels,
+            role=role,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"ok": True, "cr": _cr_as_dict(cr)}
+
+
+@app.get("/admin/cr/", summary="Change Request — list (auth user)")
+async def cr_list(
+    api_key:     str,
+    request:     Request,
+    status:      Optional[str] = None,
+    target_type: Optional[str] = None,
+    proposer:    Optional[str] = None,
+    limit:       int = 50,
+    offset:      int = 0,
+    role:        str = Depends(get_role_from_request),
+):
+    verify_api_key(api_key)
+    caller = _bearer_username(request)
+    if not caller:
+        raise HTTPException(status_code=401, detail="login required")
+    # Non-admins see only their own proposals — admin override
+    # passes through proposer filter unchanged.
+    if role != "admin":
+        proposer = caller
+    try:
+        rows = _cr_mod.list_crs(
+            status=status, target_type=target_type,
+            proposer=proposer, limit=limit, offset=offset,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {
+        "ok":    True,
+        "items": [_cr_as_dict(cr) for cr in rows],
+        "limit": limit, "offset": offset,
+    }
+
+
+@app.get("/admin/cr/{cr_id}", summary="Change Request — detail (auth user)")
+async def cr_detail(
+    cr_id:   str,
+    api_key: str,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
+    verify_api_key(api_key)
+    caller = _bearer_username(request)
+    if not caller:
+        raise HTTPException(status_code=401, detail="login required")
+    cr = _cr_mod.get_cr(cr_id)
+    if cr is None:
+        raise HTTPException(status_code=404, detail="cr not found")
+    # Non-admins can read a CR only if they're the proposer or have
+    # left at least one review on it. Admin sees everything.
+    if role != "admin" and cr.proposer != caller:
+        reviews = _cr_mod.list_reviews(cr_id)
+        if not any(rv.reviewer == caller for rv in reviews):
+            raise HTTPException(status_code=403,
+                detail="cr is not visible to this user")
+    return {
+        "ok":      True,
+        "cr":      _cr_as_dict(cr),
+        "reviews": [_review_as_dict(r) for r in _cr_mod.list_reviews(cr_id)],
+    }
+
+
+class _CrApproveRequest(BaseModel):
+    api_key: str
+
+
+@app.post("/admin/cr/{cr_id}/approve",
+          summary="Change Request — approve (admin only)")
+async def cr_approve(
+    cr_id:   str,
+    data:    _CrApproveRequest,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
+    _require_admin(data.api_key, role)
+    approver = _bearer_username(request)
+    if not approver:
+        raise HTTPException(status_code=401,
+            detail="admin JWT required to approve")
+    try:
+        cr = _cr_apply.merge_cr(cr_id, approver=approver, role=role)
+    except ValueError as exc:
+        # State machine refusals (self-approval, already-merged,
+        # not-found) surface as 400.
+        raise HTTPException(status_code=400, detail=str(exc))
+    except FileNotFoundError as exc:
+        # apply-side failure that doesn't change state.
+        raise HTTPException(status_code=409, detail=str(exc))
+    return {"ok": True, "cr": _cr_as_dict(cr)}
+
+
+class _CrRejectRequest(BaseModel):
+    api_key: str
+    reason:  str = ""
+
+
+@app.post("/admin/cr/{cr_id}/reject",
+          summary="Change Request — reject (admin only)")
+async def cr_reject(
+    cr_id:   str,
+    data:    _CrRejectRequest,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
+    _require_admin(data.api_key, role)
+    reviewer = _bearer_username(request)
+    if not reviewer:
+        raise HTTPException(status_code=401,
+            detail="admin JWT required to reject")
+    try:
+        cr = _cr_mod.reject_cr(
+            cr_id, reviewer=reviewer, reason=data.reason, role=role,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"ok": True, "cr": _cr_as_dict(cr)}
+
+
+class _CrReviewRequest(BaseModel):
+    api_key:  str
+    decision: str            # "approve" / "request_changes" / "comment"
+    body:     str = ""
+
+
+@app.post("/admin/cr/{cr_id}/review",
+          summary="Change Request — review/comment (any auth user)")
+async def cr_review(
+    cr_id:   str,
+    data:    _CrReviewRequest,
+    request: Request,
+    role:    str = Depends(get_role_from_request),
+):
+    verify_api_key(data.api_key)
+    reviewer = _bearer_username(request)
+    if not reviewer:
+        raise HTTPException(status_code=401, detail="login required to review")
+    try:
+        rv = _cr_mod.add_review(
+            cr_id, reviewer=reviewer, decision=data.decision,
+            body=data.body, role=role,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"ok": True, "review": _review_as_dict(rv)}
+
+
+def _cr_as_dict(cr) -> dict:
+    """Shape a ChangeRequest dataclass for JSON output. Mirrors the
+    table columns 1:1 so the UI can render without remapping."""
+    return {
+        "cr_id":         cr.cr_id,
+        "target_type":   cr.target_type,
+        "target_id":     cr.target_id,
+        "title":         cr.title,
+        "description":   cr.description,
+        "proposed_diff": cr.proposed_diff,
+        "base_hash":     cr.base_hash,
+        "proposer":      cr.proposer,
+        "status":        cr.status,
+        "labels":        cr.labels,
+        "created_at":    cr.created_at,
+        "updated_at":    cr.updated_at,
+        "merged_at":     cr.merged_at,
+        "merged_by":     cr.merged_by,
+        "reject_reason": cr.reject_reason,
+    }
+
+
+def _review_as_dict(rv) -> dict:
+    return {
+        "review_id":  rv.review_id,
+        "cr_id":      rv.cr_id,
+        "reviewer":   rv.reviewer,
+        "decision":   rv.decision,
+        "body":       rv.body,
+        "created_at": rv.created_at,
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("server_llmwiki:app", host="127.0.0.1", port=8000, reload=True)
