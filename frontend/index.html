@@ -838,6 +838,30 @@
     margin-bottom: 4px;
     font-family: var(--font-ui);
   }
+  /* HANDOVER §3 — citation nodes rendered as mint-outlined chips so
+   * the graph traversal is scannable at a glance instead of a plain
+   * "→ A → B → C" run-on. */
+  .graph-paths .path-row {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    align-items: center;
+    margin: 3px 0;
+  }
+  .graph-paths .path-node {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(107,231,208,.35);
+    background: rgba(107,231,208,.05);
+    color: var(--accent-fg);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .graph-paths .path-arrow {
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
 
   /* ── 스크롤바 ── */
   ::-webkit-scrollbar { width: 8px; height: 8px; }

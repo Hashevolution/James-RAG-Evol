@@ -1176,10 +1176,27 @@ function appendJamesMsg(data) {
   // item #5-B: graph paths는 기본 hidden — 사용자가 "그래프 보기"
   // 토글 클릭 시 펼침. 답변 가시성을 해치는 큰 paths 리스트 (최대
   // 50개)가 매번 깔리던 문제 해결.
+  //
+  // HANDOVER §3 follow-up — paths are rendered as mint-outlined
+  // node chips instead of plain "→ A → B → C" text. Each path is
+  // a string like "Entity → Entity → Entity"; split on the arrow,
+  // wrap each node in `.path-node` (chip) and each separator in
+  // `.path-arrow` (muted). Empty / malformed splits fall back to
+  // a single chip carrying the whole string so we never lose data.
+  const renderPathRow = (p) => {
+    const nodes = String(p).split('→').map(n => n.trim()).filter(Boolean);
+    if (nodes.length === 0) return '';
+    const inner = nodes.map((n, i) =>
+      (i > 0 ? '<span class="path-arrow">→</span>' : '') +
+      `<span class="path-node">${escHtml(n)}</span>`
+    ).join('');
+    return `<div class="path-row">${inner}</div>`;
+  };
+
   let pathsHtml = '';
   if (paths.length > 0) {
     const pathsId = 'gp_' + Math.random().toString(36).slice(2, 9);
-    const list = paths.map(p => `<div>→ ${escHtml(p)}</div>`).join('');
+    const list = paths.map(renderPathRow).join('');
     pathsHtml = `
       <details class="graph-paths-details" style="margin-top:6px">
         <summary class="graph-paths-toggle"

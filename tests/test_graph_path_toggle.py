@@ -82,5 +82,73 @@ class GraphPathToggleTests(unittest.TestCase):
                       "must guard rendering on non-empty paths array")
 
 
+class GraphPathChipRenderTests(unittest.TestCase):
+    """HANDOVER §3 follow-up — each graph path renders as mint-
+    outlined node chips with muted arrow separators instead of a
+    plain text run. Existing `<details>` toggle wrapper is
+    preserved (see GraphPathToggleTests above)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.js = JS.read_text(encoding="utf-8")
+        cls.index_html = (Path(__file__).resolve().parent.parent
+                          / "frontend" / "index.html").read_text(encoding="utf-8")
+
+    def test_render_helper_splits_on_arrow(self):
+        # A renderer helper must split each path string on the
+        # arrow glyph and render the segments individually — not
+        # just dump the raw `→ A → B → C` text into a div.
+        self.assertIn("renderPathRow", self.js,
+            "expected a `renderPathRow` helper that turns a path "
+            "string into chip markup")
+        # The split character must be the actual arrow glyph.
+        m = re.search(r"renderPathRow\s*=.*?\}", self.js, re.DOTALL)
+        self.assertIsNotNone(m, "renderPathRow body must be findable")
+        body = m.group(0)
+        self.assertIn("split('→')", body,
+            "renderPathRow must split path strings on the '→' glyph")
+        # Each node wrapped in .path-node, separators in .path-arrow.
+        self.assertIn('class="path-node"', body,
+            "each split segment must be wrapped in <span class=\"path-node\">")
+        self.assertIn('class="path-arrow"', body,
+            "arrow separators must be wrapped in <span class=\"path-arrow\">")
+        # Empty / malformed splits must fall back gracefully —
+        # the helper checks `nodes.length === 0` and returns ''
+        # so a bogus path doesn't render an empty `.path-row`.
+        self.assertIn("nodes.length === 0", body,
+            "renderPathRow must guard against empty splits")
+
+    def test_chip_css_in_index_html(self):
+        # `.path-node` chips must be styled with the mint accent
+        # palette so they read as Graph-RAG citations, not generic
+        # text. Look inside the `.graph-paths .path-node` rule.
+        m = re.search(
+            r"\.graph-paths\s+\.path-node\s*\{([^}]+)\}",
+            self.index_html,
+        )
+        self.assertIsNotNone(m,
+            "index.html must declare `.graph-paths .path-node` chip styling")
+        block = m.group(1)
+        self.assertIn("rgba(107,231,208", block,
+            "chip must use the mint-cyan accent rgba family")
+        self.assertIn("border", block)
+        self.assertIn("border-radius", block,
+            "chip must have rounded corners")
+
+    def test_arrow_separator_styled_muted(self):
+        # The arrow separators sit between chips and should be
+        # visually quieter so the chips are the foreground reading.
+        m = re.search(
+            r"\.graph-paths\s+\.path-arrow\s*\{([^}]+)\}",
+            self.index_html,
+        )
+        self.assertIsNotNone(m,
+            "index.html must declare `.graph-paths .path-arrow` separator styling")
+        block = m.group(1)
+        self.assertIn("var(--muted)", block,
+            "arrow separator should use --muted so chips read as the "
+            "foreground content")
+
+
 if __name__ == "__main__":
     unittest.main()
