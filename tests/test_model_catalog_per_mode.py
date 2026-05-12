@@ -166,7 +166,10 @@ class FrontendSecondaryPickerTests(unittest.TestCase):
                       "secondary <select id='model-picker'> missing")
         self.assertIn('id="model-picker-wrap"', self.html,
                       "wrapper for hide/show needed")
-        self.assertIn('onchange="onModelPickerChange()"', self.html)
+        # [§5 migration] inline onchange replaced by id-bound listener
+        # registered in _bindStableInputs (chat.js).
+        self.assertIn("onModelPickerChange", self.js,
+            "chat.js must wire onModelPickerChange via _bindStableInputs")
 
     def test_refresh_model_picker_function(self):
         self.assertIn("function refreshModelPicker", self.js,

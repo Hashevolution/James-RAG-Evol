@@ -153,8 +153,11 @@ class FrontendChipTests(unittest.TestCase):
             "must check web_used before rendering chip")
         self.assertIn("score < 0.50", body,
             "must gate on score threshold")
-        self.assertIn("askWithForceWeb(this)", body,
-            "chip onclick must call askWithForceWeb")
+        # [§5 migration] inline onclick replaced by data-action;
+        # delegate forwards the element to askWithForceWeb so dataset
+        # is still readable.
+        self.assertIn('data-action="ask-with-force-web"', body,
+            "chip must carry data-action=ask-with-force-web")
         self.assertIn("data-question", body,
             "chip must carry the question via data attribute")
         self.assertIn("${forceWebChip}", body,

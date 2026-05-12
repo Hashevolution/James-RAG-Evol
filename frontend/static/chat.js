@@ -90,6 +90,131 @@ function checkTokenExpiry() {
 // 5분마다 만료 확인
 setInterval(checkTokenExpiry, 5 * 60 * 1000);
 
+/* ── §5 인라인 핸들러 위임 (CSP-친화) ──
+ * index.html / chat.js / upload.js 에는 더 이상 ``onclick=`` /
+ * ``onkeydown=`` / ``oninput=`` 같은 인라인 핸들러가 없다. 정적
+ * 요소는 ``data-action`` 을 가지며 document 단의 click 위임이
+ * 라우팅한다. ``oninput`` 은 ``data-input-action`` 으로 분리해
+ * 별도 input 위임이 처리한다. 안정적 id 를 가진 요소
+ * (#chat-input textarea, login/forgot/signup 모달 overlay) 는
+ * DOMContentLoaded 시점에 id 로 직접 바인딩한다 — innerHTML 로
+ * 다시 그려지지 않는 요소들이기 때문. */
+function _bindFrontendEvents() {
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest && e.target.closest('[data-action]');
+    if (!t) return;
+    const action = t.getAttribute('data-action');
+    switch (action) {
+      // Header / source toggle
+      case 'set-source':                setSource(t.getAttribute('data-source'), t); break;
+      case 'toggle-lang':               toggleLang(); break;
+      case 'clear-history':             clearHistory(); break;
+      case 'toggle-session-panel':      toggleSessionPanel(); break;
+      case 'show-login':                showLogin(); break;
+      case 'new-session':               newSession(); break;
+      // Sidebar
+      case 'toggle-sidebar':            toggleSidebar(); break;
+      case 'switch-sidebar-mode':       switchSidebarMode(t.getAttribute('data-mode')); break;
+      case 'trigger-file-input':
+        document.getElementById('file-input').click();
+        break;
+      case 'trigger-folder-input':
+        e.stopPropagation();
+        document.getElementById('folder-input').click();
+        break;
+      case 'upload-files':              uploadFiles(); break;
+      // Welcome chips
+      case 'use-chip':                  useChip(t); break;
+      // Mode/model
+      case 'trigger-model-install':     triggerModelInstall(); break;
+      case 'accept-mode-recommend':     acceptModeRecommend(); break;
+      case 'copy-conversation':         copyConversation(); break;
+      // Send + login
+      case 'send-message':              sendMessage(); break;
+      case 'toggle-api-key-visibility': toggleApiKeyVisibility(); break;
+      case 'close-login':               closeLogin(); break;
+      case 'do-login':                  doLogin(); break;
+      case 'open-forgot-password-modal':
+        e.preventDefault(); openForgotPasswordModal(); break;
+      case 'close-forgot-password-modal':
+        closeForgotPasswordModal(); break;
+      case 'submit-password-reset':     submitPasswordReset(); break;
+      case 'open-signup-modal':
+        e.preventDefault(); openSignupModal(); break;
+      case 'close-signup':              closeSignup(); break;
+      case 'do-signup':                 doSignup(); break;
+      // Dynamic answer-card buttons
+      case 'logout':                    logout(); break;
+      case 'approve-wiki-save':         approveWikiSave(t); break;
+      case 'ask-with-force-web':        askWithForceWeb(t); break;
+      case 'export-answer':
+        exportAnswer(t, t.getAttribute('data-format'));
+        break;
+      case 'send-feedback':
+        sendFeedback(
+          t.getAttribute('data-dir-id'),
+          t.getAttribute('data-signal'),
+          t,
+        );
+        break;
+      case 'copy-answer-text':          copyAnswerText(t); break;
+      case 'ask-suggestion':
+        askSuggestion(parseInt(t.getAttribute('data-index'), 10), t);
+        break;
+      // Session-panel rows
+      case 'switch-session':            switchSession(t.getAttribute('data-sid')); break;
+      case 'rename-session':            renameSession(t.getAttribute('data-sid'), e); break;
+      case 'delete-session':            deleteSession(t.getAttribute('data-sid'), e); break;
+      // upload.js mini-thumbnails
+      case 'chat-attach-click':         _chatAttachClick(); break;
+      case 'remove-or-cancel':          removeOrCancel(t.getAttribute('data-item-id')); break;
+    }
+  });
+
+  // Per-input updates (upload.js folder-input rows). Registering at
+  // module load is safe — events only fire once the inputs exist.
+  document.addEventListener('input', (e) => {
+    const t = e.target.closest && e.target.closest('[data-input-action]');
+    if (!t) return;
+    if (t.getAttribute('data-input-action') === 'update-instruction') {
+      updateInstruction(t.getAttribute('data-item-id'), t.value);
+    }
+  });
+}
+
+function _bindStableInputs() {
+  const ci = document.getElementById('chat-input');
+  if (ci) {
+    ci.addEventListener('input',   () => autoResize(ci));
+    ci.addEventListener('keydown', (e) => handleKey(e));
+    ci.addEventListener('paste',   (e) => handleChatPaste(e));
+  }
+  const lpw = document.getElementById('login-pw');
+  if (lpw) lpw.addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+  const lk = document.getElementById('login-api-key');
+  if (lk)  lk.addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+  const rn = document.getElementById('reset-new-pw');
+  if (rn)  rn.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitPasswordReset(); });
+  const su = document.getElementById('signup-pw');
+  if (su)  su.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSignup(); });
+  const mp = document.getElementById('mode-picker');
+  if (mp)  mp.addEventListener('change', () => onModePickerChange());
+  const mdp = document.getElementById('model-picker');
+  if (mdp) mdp.addEventListener('change', () => onModelPickerChange());
+  // Modal-overlay click-outside → close. Each overlay's existing
+  // close*Outside fn already checks ``e.target === overlay`` so we
+  // forward the event unchanged.
+  const lm = document.getElementById('login-modal');
+  if (lm)  lm.addEventListener('click', (e) => closeLoginOutside(e));
+  const fm = document.getElementById('forgot-password-modal');
+  if (fm)  fm.addEventListener('click', (e) => closeForgotPasswordOutside(e));
+  const sm = document.getElementById('signup-modal');
+  if (sm)  sm.addEventListener('click', (e) => closeSignupOutside(e));
+}
+
+_bindFrontendEvents();
+window.addEventListener('DOMContentLoaded', _bindStableInputs);
+
 /* ── 초기화 ── */
 window.addEventListener('DOMContentLoaded', () => {
   // [#1-C] API key는 더 이상 native prompt()로 묻지 않는다 — 폰에서
@@ -855,7 +980,7 @@ function updateRoleBadge() {
 
     roleText.innerHTML = `
       <span style="color:${roleColor};font-weight:600">${userRole.toUpperCase()}</span>
-      <button class="logout-btn" onclick="logout()" title="로그아웃">✕</button>
+      <button class="logout-btn" data-action="logout" title="로그아웃">✕</button>
     `;
   } else {
     badge.classList.remove('logged-in');
@@ -1081,7 +1206,7 @@ function appendJamesMsg(data) {
     saveWikiChip = `
       <div style="margin-top:6px">
         <button class="next-action-chip save-wiki-btn"
-                onclick="approveWikiSave(this)"
+                data-action="approve-wiki-save"
                 data-proposal-id="${escHtml(data.pending_save_proposal_id)}"
                 style="text-align:left;background:rgba(76,175,125,.10);
                        border:1px solid rgba(76,175,125,.45);border-radius:8px;
@@ -1137,7 +1262,7 @@ function appendJamesMsg(data) {
       forceWebChip = `
         <div style="margin-top:8px">
           <button class="next-action-chip force-web-btn"
-                  onclick="askWithForceWeb(this)"
+                  data-action="ask-with-force-web"
                   data-question="${encodeURIComponent(q)}"
                   style="text-align:left;background:rgba(79,195,247,.10);
                          border:1px solid rgba(79,195,247,.45);border-radius:8px;
@@ -1232,27 +1357,28 @@ function appendJamesMsg(data) {
   const answerEscapedAttr = encodeURIComponent(answer);
   const _expBtnStyle = "background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;transition:all .15s";
   const pyExportBtn = hasCodeBlock ? `
-      <button class="fb-btn export-btn" onclick="exportAnswer(this, 'py')" data-content="${answerEscapedAttr}"
+      <button class="fb-btn export-btn" data-action="export-answer" data-format="py" data-content="${answerEscapedAttr}"
         style="${_expBtnStyle}" title=".py 다운로드 (코드 블록만 추출)">📥 .py</button>` : '';
   const exportButtons = showExportBtns ? `
-      <button class="fb-btn export-btn" onclick="exportAnswer(this, 'md')" data-content="${answerEscapedAttr}"
+      <button class="fb-btn export-btn" data-action="export-answer" data-format="md" data-content="${answerEscapedAttr}"
         style="${_expBtnStyle}" title=".md 다운로드">📥 .md</button>
-      <button class="fb-btn export-btn" onclick="exportAnswer(this, 'docx')" data-content="${answerEscapedAttr}"
+      <button class="fb-btn export-btn" data-action="export-answer" data-format="docx" data-content="${answerEscapedAttr}"
         style="${_expBtnStyle}" title=".docx 다운로드 (Word)">📥 .docx</button>
-      <button class="fb-btn export-btn" onclick="exportAnswer(this, 'txt')" data-content="${answerEscapedAttr}"
+      <button class="fb-btn export-btn" data-action="export-answer" data-format="txt" data-content="${answerEscapedAttr}"
         style="${_expBtnStyle}" title=".txt 다운로드 (Notepad)">📥 .txt</button>${pyExportBtn}`
     : pyExportBtn;
+  const dirIdEsc = dirId ? escHtml(dirId) : '';
   const fbHtml = dirId ? `
     <div class="feedback-btns" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
-      <button class="fb-btn" onclick="sendFeedback('${dirId}', 'explicit_positive', this)"
+      <button class="fb-btn" data-action="send-feedback" data-dir-id="${dirIdEsc}" data-signal="explicit_positive"
         style="background:none;border:1px solid var(--border);border-radius:6px;
                padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
                transition:all .15s" title="좋아요">👍</button>
-      <button class="fb-btn" onclick="sendFeedback('${dirId}', 'explicit_negative', this)"
+      <button class="fb-btn" data-action="send-feedback" data-dir-id="${dirIdEsc}" data-signal="explicit_negative"
         style="background:none;border:1px solid var(--border);border-radius:6px;
                padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
                transition:all .15s" title="별로예요">👎</button>
-      <button class="fb-btn" onclick="copyAnswerText(this)" data-content="${answerEscapedAttr}"
+      <button class="fb-btn" data-action="copy-answer-text" data-content="${answerEscapedAttr}"
         style="background:none;border:1px solid var(--border);border-radius:6px;
                padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
                transition:all .15s" title="이 답변 복사">📋 복사</button>
@@ -1270,7 +1396,8 @@ function appendJamesMsg(data) {
                                        margin-top:8px">
         ${suggestions.map((s, i) => `
           <button class="next-action-chip"
-                  onclick="askSuggestion(${i}, this)"
+                  data-action="ask-suggestion"
+                  data-index="${i}"
                   data-suggestion="${encodeURIComponent(s.text)}"
                   style="text-align:left;background:var(--surface-2);
                          border:1px solid var(--border);border-radius:8px;
@@ -1919,7 +2046,7 @@ function formatAnswerWithParagraphs(text) {
     return `<div class="paragraph">
       <div class="paragraph-content">${formatAnswer(restored)}</div>
       <button class="paragraph-copy-btn"
-              onclick="copyAnswerText(this)"
+              data-action="copy-answer-text"
               data-content="${escapedAttr}"
               title="이 문단 복사"
               aria-label="이 문단 복사">📋</button>
@@ -2011,13 +2138,14 @@ async function loadSessionList() {
       const sidEsc    = s.session_id.replace(/'/g, "\\'");
       const titleEsc  = titleText.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
+      const sidAttr = escHtml(s.session_id);
       return `
-        <div data-sid="${s.session_id}"
+        <div data-sid="${sidAttr}"
              style="padding:10px;margin-bottom:6px;border-radius:8px;
                     border:1px solid ${isCurrent ? 'var(--accent,#7c6af7)' : 'var(--border,#333)'};
                     background:${isCurrent ? 'rgba(124,106,247,.1)' : 'var(--bg,#161616)'};
                     transition:all .15s">
-          <div onclick="switchSession('${sidEsc}')" style="cursor:pointer">
+          <div data-action="switch-session" data-sid="${sidAttr}" style="cursor:pointer">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
               ${s.name ? '<span style="font-size:11px">📌</span>' : ''}
               <div style="flex:1;font-size:13px;font-weight:600;
@@ -2035,12 +2163,12 @@ async function loadSessionList() {
           <!-- [3-D] 액션 버튼 -->
           <div style="display:flex;gap:4px;margin-top:6px;
                       padding-top:6px;border-top:1px solid var(--border,#333)">
-            <button onclick="renameSession('${sidEsc}', event)"
+            <button data-action="rename-session" data-sid="${sidAttr}"
                     style="flex:1;background:none;border:1px solid var(--border,#333);
                            border-radius:4px;padding:3px 6px;font-size:10px;
                            cursor:pointer;color:var(--muted,#888)"
                     title="이름 변경">✏️ 이름</button>
-            <button onclick="deleteSession('${sidEsc}', event)"
+            <button data-action="delete-session" data-sid="${sidAttr}"
                     style="flex:1;background:none;border:1px solid var(--border,#333);
                            border-radius:4px;padding:3px 6px;font-size:10px;
                            cursor:pointer;color:#f06292"

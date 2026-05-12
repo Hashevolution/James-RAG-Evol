@@ -113,8 +113,11 @@ class FrontendChipTests(unittest.TestCase):
             "must inspect pending_save_proposal_id")
         self.assertIn("userRole === 'admin'", body,
             "chip must be admin-only (server also rejects non-admin)")
-        self.assertIn("approveWikiSave(this)", body,
-            "chip onclick must call approveWikiSave")
+        # [§5 migration] inline onclick replaced by data-action;
+        # delegate in chat.js calls approveWikiSave(button) so the
+        # function still reads dataset.proposalId from the element.
+        self.assertIn('data-action="approve-wiki-save"', body,
+            "chip must carry data-action=approve-wiki-save")
         self.assertIn("data-proposal-id", body,
             "chip must carry proposal id via data attr")
         self.assertIn("${saveWikiChip}", body,

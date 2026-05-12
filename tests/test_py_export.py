@@ -143,8 +143,14 @@ class FrontendPyButtonTests(unittest.TestCase):
         m = re.search(r"\nfunction\s+\w+\s*\(", self.js[idx + 1:])
         end = idx + 1 + m.start() if m else idx + 8000
         body = self.js[idx:end]
-        self.assertIn("exportAnswer(this, 'py')", body,
-                      ".py export button missing")
+        # [§5 migration] inline onclick replaced by
+        # ``data-action="export-answer" data-format="py"`` — the
+        # delegate calls exportAnswer(btn, 'py') from the data attr.
+        self.assertRegex(
+            body,
+            r'data-action="export-answer"[\s\S]{0,80}?data-format="py"',
+            ".py export button must carry data-action=export-answer + data-format=py",
+        )
         self.assertIn("hasCodeBlock", body,
                       "must detect code blocks before showing .py button")
         self.assertIn("```", body,

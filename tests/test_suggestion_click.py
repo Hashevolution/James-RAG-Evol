@@ -209,8 +209,12 @@ class JsContractTests(unittest.TestCase):
         body = self.js[idx:end]
         self.assertIn("next-action-chip", body,
                       "chip class missing from rendered HTML")
-        self.assertIn('onclick="askSuggestion(', body,
-                      "chip must be wired to askSuggestion")
+        # [§5 migration] inline onclick → data-action; delegate parses
+        # data-index and forwards (index, button) to askSuggestion.
+        self.assertIn('data-action="ask-suggestion"', body,
+                      "chip must carry data-action=ask-suggestion")
+        self.assertIn("data-index=", body,
+                      "chip must carry data-index for delegate to forward")
         self.assertIn("data-suggestion=", body,
                       "chip must carry data-suggestion attribute")
 

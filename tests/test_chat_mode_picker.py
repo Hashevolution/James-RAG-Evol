@@ -170,12 +170,18 @@ class FrontendChatHtmlTests(unittest.TestCase):
     def test_mode_picker_select_present(self):
         self.assertIn('id="mode-picker"', self.html,
                       "<select id='mode-picker'> missing in chat HTML")
-        self.assertIn('onchange="onModePickerChange()"', self.html)
+        # [§5 migration] inline onchange replaced by id-bound listener
+        # registered in _bindStableInputs (chat.js).
+        chat = (ROOT / "frontend" / "static" / "chat.js").read_text(
+            encoding="utf-8")
+        self.assertIn("onModePickerChange", chat,
+            "chat.js must wire onModePickerChange via _bindStableInputs")
 
     def test_recommend_badge_present(self):
         self.assertIn('id="mode-recommend"', self.html,
                       "recommendation badge element missing")
-        self.assertIn('onclick="acceptModeRecommend()"', self.html)
+        # [§5 migration] inline onclick replaced by data-action.
+        self.assertIn('data-action="accept-mode-recommend"', self.html)
 
 
 if __name__ == "__main__":

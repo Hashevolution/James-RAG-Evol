@@ -144,7 +144,8 @@ class FrontendInstallButtonTests(unittest.TestCase):
     def test_install_button_in_html(self):
         self.assertIn('id="mode-install-btn"', self.html,
                       "install button missing from index.html")
-        self.assertIn('onclick="triggerModelInstall()"', self.html)
+        # [§5 migration] inline onclick → data-action.
+        self.assertIn('data-action="trigger-model-install"', self.html)
 
     def test_picker_options_show_model_tag_and_status(self):
         # loadModePickerOptions builds option labels with model tag +

@@ -907,17 +907,17 @@
   </div>
   <div class="header-right">
     <div class="source-toggle">
-      <button class="active" onclick="setSource('prod', this)">PROD</button>
-      <button onclick="setSource('test', this)">TEST</button>
+      <button class="active" data-action="set-source" data-source="prod">PROD</button>
+      <button data-action="set-source" data-source="test">TEST</button>
     </div>
     <!-- [STEP 5-A] 언어 토글 -->
-    <button class="nav-btn" data-lang-toggle onclick="toggleLang()" title="Language / 언어"
+    <button class="nav-btn" data-lang-toggle data-action="toggle-lang" title="Language / 언어"
             aria-label="언어 전환 / Toggle language"
             style="font-size:11px;font-weight:700;padding:4px 8px"></button>
-    <button class="nav-btn" onclick="clearHistory()" data-i18n-title="chat.clear_history" title="대화 초기화"
+    <button class="nav-btn" data-action="clear-history" data-i18n-title="chat.clear_history" title="대화 초기화"
             aria-label="대화 기록 삭제">🗑</button>
     <!-- [P3-4] 세션 선택 버튼 -->
-    <button class="nav-btn" onclick="toggleSessionPanel()" data-i18n-title="chat.session_open" title="이전 대화 불러오기"
+    <button class="nav-btn" data-action="toggle-session-panel" data-i18n-title="chat.session_open" title="이전 대화 불러오기"
             id="session-btn" aria-label="세션 패널 열기"
             style="position:relative">
       💬
@@ -927,7 +927,7 @@
                    font-size:10px;padding:1px 6px;font-weight:600;line-height:1.4">
       </span>
     </button>
-    <div class="role-badge" id="role-badge" onclick="showLogin()">
+    <div class="role-badge" id="role-badge" data-action="show-login">
       <span class="dot"></span>
       <span class="role-name" id="role-name" data-i18n="auth.login">로그인</span>
     </div>
@@ -948,12 +948,12 @@
               margin-bottom:12px">
     <div style="font-weight:600;font-size:13px;color:var(--text)"><span data-i18n="chat.previous">이전 대화</span></div>
     <div style="display:flex;gap:6px">
-      <button onclick="newSession()"
+      <button data-action="new-session"
               style="background:var(--accent);color:var(--on-accent);border:none;
                      border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:500">
         <span data-i18n="chat.new_session">+ 새 대화</span>
       </button>
-      <button onclick="toggleSessionPanel()"
+      <button data-action="toggle-session-panel"
               aria-label="세션 패널 닫기"
               style="background:none;border:none;color:var(--muted);
                      cursor:pointer;font-size:16px;padding:0 4px">✕</button>
@@ -969,7 +969,7 @@
 
 <main style="position:relative">
   <button class="sidebar-open-btn" id="sidebar-open-btn"
-          onclick="toggleSidebar()" data-i18n-title="upload.open" title="업로드 열기"
+          data-action="toggle-sidebar" data-i18n-title="upload.open" title="업로드 열기"
           aria-label="사이드바 열기">▶</button>
   <!-- ── 사이드바 (W5: rail + panel split) ── -->
   <aside class="sidebar" id="sidebar">
@@ -977,17 +977,17 @@
          .active on the matching rail item and the matching panel. -->
     <div class="sidebar-rail">
       <div class="sidebar-rail-item active" data-mode="upload"
-           onclick="switchSidebarMode('upload')">
+           data-action="switch-sidebar-mode">
         📂
         <span class="sidebar-rail-tip" data-i18n="sidebar.mode_upload">파일 업로드</span>
       </div>
       <div class="sidebar-rail-item" data-mode="recent"
-           onclick="switchSidebarMode('recent')">
+           data-action="switch-sidebar-mode">
         🕘
         <span class="sidebar-rail-tip" data-i18n="sidebar.mode_recent">최근 챗</span>
       </div>
       <div class="sidebar-rail-item" data-mode="search"
-           onclick="switchSidebarMode('search')">
+           data-action="switch-sidebar-mode">
         🔍
         <span class="sidebar-rail-tip" data-i18n="sidebar.mode_search">검색</span>
       </div>
@@ -997,13 +997,13 @@
     <div class="sidebar-panel">
       <div class="sidebar-header">
         <div class="sidebar-title" id="sidebar-title">▸ <span data-i18n="upload.title">파일 업로드</span></div>
-        <button class="sidebar-toggle" onclick="toggleSidebar()" data-i18n-title="common.close" title="닫기"
+        <button class="sidebar-toggle" data-action="toggle-sidebar" data-i18n-title="common.close" title="닫기"
                 aria-label="사이드바 닫기">◀</button>
       </div>
 
       <!-- Mode: 파일 업로드 (default) -->
       <div class="sidebar-panel-mode active" data-mode="upload">
-        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="drop-zone" id="drop-zone" data-action="trigger-file-input">
           <input type="file" id="file-input" multiple
                  accept="image/*,audio/*,video/*,.pdf,.txt,.md,.json,.docx,.xlsx,.pptx,.hwp,.hwpx">
           <!-- item #8: 폴더 통째 선택용 hidden input. webkitdirectory 사용 시
@@ -1021,7 +1021,7 @@
         </div>
         <!-- item #8: 폴더 선택 버튼 (드래그 외 클릭 경로) -->
         <button type="button"
-                onclick="event.stopPropagation(); document.getElementById('folder-input').click()"
+                data-action="trigger-folder-input"
                 style="margin:0 12px;padding:8px;
                        background:var(--surface-2);border:1px solid var(--border);
                        border-radius:6px;color:var(--text-soft);font-size:12px;
@@ -1044,7 +1044,7 @@
           <div class="queue-progress-bar"><div class="queue-progress-fill" id="queue-progress-fill"></div></div>
         </div>
 
-        <button class="upload-btn" id="upload-btn" onclick="uploadFiles()" disabled>
+        <button class="upload-btn" id="upload-btn" data-action="upload-files" disabled>
           <span data-i18n="upload.btn_default">업로드 및 분석</span>
         </button>
       </div>
@@ -1094,10 +1094,10 @@
           </span>
         </div>
         <div class="welcome-chips">
-          <span class="chip" onclick="useChip(this)" data-i18n="chat.example1">경제학이란 무엇인가?</span>
-          <span class="chip" onclick="useChip(this)" data-i18n="chat.example3">업로드된 문서 요약해줘</span>
-          <span class="chip" onclick="useChip(this)" data-i18n="chat.example_code">파이썬 함수 작성해줘</span>
-          <span class="chip" onclick="useChip(this)" data-i18n="chat.example2">김철수 관련 자료 찾아줘</span>
+          <span class="chip" data-action="use-chip" data-i18n="chat.example1">경제학이란 무엇인가?</span>
+          <span class="chip" data-action="use-chip" data-i18n="chat.example3">업로드된 문서 요약해줘</span>
+          <span class="chip" data-action="use-chip" data-i18n="chat.example_code">파이썬 함수 작성해줘</span>
+          <span class="chip" data-action="use-chip" data-i18n="chat.example2">김철수 관련 자료 찾아줘</span>
         </div>
       </div>
     </div>
@@ -1108,7 +1108,6 @@
                                       padding:4px 16px;font-size:11px;flex-wrap:wrap">
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <select id="mode-picker"
-                onchange="onModePickerChange()"
                 style="background:var(--surface);border:1px solid var(--border);
                        color:var(--text);padding:4px 10px;border-radius:6px;
                        font-size:11px;cursor:pointer">
@@ -1118,13 +1117,12 @@
               style="display:none;align-items:center;gap:4px"
               title="이 모드에서 사용할 모델 선택">
           <select id="model-picker"
-                  onchange="onModelPickerChange()"
                   style="background:var(--surface);border:1px solid var(--border);
                          color:var(--text);padding:4px 10px;border-radius:6px;
                          font-size:11px;cursor:pointer"></select>
         </span>
         <button id="mode-install-btn"
-                onclick="triggerModelInstall()"
+                data-action="trigger-model-install"
                 aria-label="LLM 모델 설치"
                 style="display:none;background:var(--accent-soft);
                        border:1px solid var(--accent);color:var(--accent-fg);
@@ -1146,10 +1144,10 @@
               style="display:none;font-size:11px;color:var(--accent-fg);
                      padding:2px 8px;border:1px solid var(--accent-fg);
                      border-radius:6px;cursor:pointer"
-              onclick="acceptModeRecommend()"
+              data-action="accept-mode-recommend"
               title="권장 모드로 전환"></span>
       </div>
-      <button onclick="copyConversation()"
+      <button data-action="copy-conversation"
               style="background:none;border:1px solid var(--border);
                      border-radius:6px;padding:4px 10px;cursor:pointer;
                      color:var(--muted);font-size:11px;transition:all .15s"
@@ -1166,10 +1164,8 @@
                   border-bottom:1px solid var(--border-2);"></div>
       <div class="input-wrap">
         <textarea id="chat-input" placeholder="Type a message (Shift+Enter for new line)"
-                  data-i18n-placeholder="chat.placeholder" rows="1"
-          oninput="autoResize(this)" onkeydown="handleKey(event)"
-          onpaste="handleChatPaste(event)"></textarea>
-        <button class="send-btn" id="send-btn" onclick="sendMessage()"
+                  data-i18n-placeholder="chat.placeholder" rows="1"></textarea>
+        <button class="send-btn" id="send-btn" data-action="send-message"
                 aria-label="메시지 전송">▲</button>
       </div>
     </div>
@@ -1245,8 +1241,7 @@
 <!-- ── 로그인 모달 ── -->
 <div class="modal-overlay hidden" id="login-modal"
      role="dialog" aria-modal="true"
-     aria-labelledby="login-modal-title"
-     onclick="closeLoginOutside(event)">
+     aria-labelledby="login-modal-title">
   <div class="modal">
     <div class="modal-title" id="login-modal-title">▸ <span data-i18n="auth.login_title">로그인</span></div>
     <div class="modal-field">
@@ -1257,8 +1252,7 @@
     <div class="modal-field">
       <label data-i18n="auth.password">비밀번호</label>
       <input type="password" id="login-pw" placeholder="••••••••"
-             autocomplete="new-password"
-             onkeydown="if(event.key==='Enter') doLogin()">
+             autocomplete="new-password">
     </div>
     <!-- [#1-C] API Key — visible field instead of one-shot prompt().
          Pre-filled from localStorage on showLogin. Eye toggle reveals
@@ -1269,11 +1263,10 @@
       <div style="position:relative">
         <input type="password" id="login-api-key" placeholder="sk-..."
                autocomplete="off" spellcheck="false"
-               style="padding-right:40px"
-               onkeydown="if(event.key==='Enter') doLogin()">
+               style="padding-right:40px">
         <button type="button"
                 id="login-api-key-toggle"
-                onclick="toggleApiKeyVisibility()"
+                data-action="toggle-api-key-visibility"
                 aria-label="show/hide api key"
                 title="API Key 보기/숨기기"
                 style="position:absolute;right:8px;top:50%;
@@ -1286,18 +1279,18 @@
     </div>
     <div class="modal-error" id="login-error"></div>
     <div class="modal-actions">
-      <button class="modal-btn cancel" onclick="closeLogin()" data-i18n="common.cancel">취소</button>
-      <button class="modal-btn primary" onclick="doLogin()" data-i18n="auth.login">로그인</button>
+      <button class="modal-btn cancel" data-action="close-login" data-i18n="common.cancel">취소</button>
+      <button class="modal-btn primary" data-action="do-login" data-i18n="auth.login">로그인</button>
     </div>
     <!-- W4 P5: forgot-password link -->
     <div style="margin-top:14px;text-align:center;font-size:12px">
-      <a href="javascript:openForgotPasswordModal()"
+      <a href="#" data-action="open-forgot-password-modal"
          style="color:var(--muted);text-decoration:underline;cursor:pointer"
          data-i18n="auth.forgot_password">비밀번호를 잊으셨나요?</a>
     </div>
     <!-- W4 P4: signup link beneath login -->
     <div style="margin-top:8px;text-align:center;font-size:12px">
-      <a href="javascript:openSignupModal()"
+      <a href="#" data-action="open-signup-modal"
          style="color:var(--muted);text-decoration:underline;cursor:pointer"
          data-i18n="auth.signup_link">계정이 없으신가요? 회원가입</a>
     </div>
@@ -1313,8 +1306,7 @@
 -->
 <div class="modal-overlay hidden" id="forgot-password-modal"
      role="dialog" aria-modal="true"
-     aria-labelledby="forgot-password-modal-title"
-     onclick="closeForgotPasswordOutside(event)">
+     aria-labelledby="forgot-password-modal-title">
   <div class="modal">
     <div class="modal-title" id="forgot-password-modal-title">▸ <span data-i18n="auth.reset_password_title">비밀번호 재설정</span></div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5"
@@ -1337,13 +1329,12 @@
     </div>
     <div class="modal-field">
       <label data-i18n="auth.password">새 비밀번호</label>
-      <input type="password" id="reset-new-pw" autocomplete="new-password"
-             onkeydown="if(event.key==='Enter') submitPasswordReset()">
+      <input type="password" id="reset-new-pw" autocomplete="new-password">
     </div>
     <div class="modal-error" id="reset-error"></div>
     <div class="modal-actions">
-      <button class="modal-btn cancel" onclick="closeForgotPasswordModal()" data-i18n="common.cancel">취소</button>
-      <button class="modal-btn primary" onclick="submitPasswordReset()" data-i18n="auth.reset_submit">재설정</button>
+      <button class="modal-btn cancel" data-action="close-forgot-password-modal" data-i18n="common.cancel">취소</button>
+      <button class="modal-btn primary" data-action="submit-password-reset" data-i18n="auth.reset_submit">재설정</button>
     </div>
   </div>
 </div>
@@ -1356,8 +1347,7 @@
 -->
 <div class="modal-overlay hidden" id="signup-modal"
      role="dialog" aria-modal="true"
-     aria-labelledby="signup-modal-title"
-     onclick="closeSignupOutside(event)">
+     aria-labelledby="signup-modal-title">
   <div class="modal">
     <div class="modal-title" id="signup-modal-title">▸ <span data-i18n="auth.signup_title">회원가입</span></div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5"
@@ -1374,14 +1364,13 @@
       <label data-i18n="auth.password">비밀번호</label>
       <input type="password" id="signup-pw" autocomplete="new-password"
              data-i18n-placeholder="auth.signup_password_ph"
-             placeholder="8~72자, 영문 + 숫자"
-             onkeydown="if(event.key==='Enter') doSignup()">
+             placeholder="8~72자, 영문 + 숫자">
     </div>
     <div class="modal-error" id="signup-error"></div>
     <div class="modal-info" id="signup-success" style="display:none;color:#1e7a3e;font-size:12px;margin-bottom:8px"></div>
     <div class="modal-actions">
-      <button class="modal-btn cancel" onclick="closeSignup()" data-i18n="common.cancel">취소</button>
-      <button class="modal-btn primary" onclick="doSignup()" data-i18n="auth.signup_submit">가입 신청</button>
+      <button class="modal-btn cancel" data-action="close-signup" data-i18n="common.cancel">취소</button>
+      <button class="modal-btn primary" data-action="do-signup" data-i18n="auth.signup_submit">가입 신청</button>
     </div>
   </div>
 </div>

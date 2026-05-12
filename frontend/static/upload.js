@@ -310,7 +310,7 @@ function renderChatAttachmentRow() {
       ? it.file.name.slice(0, 16) + '…' + it.file.name.slice(-5)
       : it.file.name;
     return `
-      <div onclick="_chatAttachClick()"
+      <div data-action="chat-attach-click"
            title="${it.file.name.replace(/"/g, '&quot;')}"
            style="display:flex;align-items:center;gap:6px;padding:4px 8px 4px 4px;
                   background:var(--surface-2);border:1px solid var(--border);
@@ -428,7 +428,7 @@ function renderFileItem(item) {
         <div class="file-size">${formatSize(item.file.size)}</div>
       </div>
       <span class="file-status status-ready" id="status-${item.id}">대기</span>
-      <button class="remove-btn" id="action-${item.id}" onclick="removeOrCancel('${item.id}')" title="제거">✕</button>
+      <button class="remove-btn" id="action-${item.id}" data-action="remove-or-cancel" data-item-id="${escHtml(item.id)}" title="제거">✕</button>
     </div>
     <div class="file-progress-row" id="progress-${item.id}" style="display:none;">
       <div class="file-progress-bar"><div class="file-progress-fill" id="progress-fill-${item.id}"></div></div>
@@ -441,7 +441,8 @@ function renderFileItem(item) {
         class="folder-input"
         id="folder-${item.id}"
         placeholder="저장 폴더 (예: 김철수 폴더에 | 기본: 날짜 자동)"
-        oninput="updateInstruction('${item.id}', this.value)"
+        data-input-action="update-instruction"
+        data-item-id="${escHtml(item.id)}"
       >
     </div>
   `;

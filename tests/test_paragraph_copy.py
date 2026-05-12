@@ -92,8 +92,11 @@ class JsContractTests(unittest.TestCase):
         body = self.js[idx:idx + 2500]
         self.assertIn('class="paragraph"', body)
         self.assertIn('class="paragraph-copy-btn"', body)
-        self.assertIn('onclick="copyAnswerText(this)"', body,
-                      "must reuse copyAnswerText for paragraph copy")
+        # [§5 migration] inline onclick → data-action; delegate
+        # forwards the element to copyAnswerText so dataset.content
+        # remains the data path.
+        self.assertIn('data-action="copy-answer-text"', body,
+                      "paragraph copy button must carry data-action=copy-answer-text")
         self.assertIn("encodeURIComponent(restored)", body,
                       "paragraph content must be URI-encoded for data attr")
         self.assertIn("paragraph-content", body,

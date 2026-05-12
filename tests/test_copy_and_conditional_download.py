@@ -43,7 +43,8 @@ class FullCopyButtonTests(unittest.TestCase):
         cls.js   = JS.read_text(encoding="utf-8")
 
     def test_html_has_full_copy_button(self):
-        self.assertIn('onclick="copyConversation()"', self.html,
+        # [§5 migration] copyConversation() → data-action.
+        self.assertIn('data-action="copy-conversation"', self.html,
                       "전체 대화 복사 버튼 missing")
         self.assertIn("대화 전체 복사", self.html,
                       "user-visible label '대화 전체 복사' missing")
@@ -81,7 +82,9 @@ class PerMessageCopyTests(unittest.TestCase):
         m = re.search(r"\nfunction\s+\w+\s*\(", self.js[idx + 1:])
         end = idx + 1 + m.start() if m else idx + 8000
         body = self.js[idx:end]
-        self.assertIn('onclick="copyAnswerText(this)"', body,
+        # [§5 migration] copyAnswerText(this) → data-action; delegate
+        # passes the element to the underlying function.
+        self.assertIn('data-action="copy-answer-text"', body,
                       "appendJamesMsg must include a per-answer copy button")
         self.assertIn("📋 복사", body)
 

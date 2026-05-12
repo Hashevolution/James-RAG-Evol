@@ -59,13 +59,22 @@ class HtmlFieldTests(unittest.TestCase):
     def test_visibility_toggle_button_present(self):
         self.assertIn('id="login-api-key-toggle"', self.html,
             "missing 👁️ visibility-toggle button")
-        self.assertIn('toggleApiKeyVisibility()', self.html,
-            "toggle button must wire to toggleApiKeyVisibility()")
+        # [§5 migration] inline onclick → data-action.
+        self.assertIn('data-action="toggle-api-key-visibility"', self.html,
+            "toggle button must carry data-action=toggle-api-key-visibility")
 
     def test_enter_key_submits_login(self):
-        m = re.search(r'id="login-api-key"[^>]*', self.html)
-        self.assertIn("if(event.key==='Enter') doLogin()", m.group(0),
-            "Enter on api-key field must submit login (parity with pw field)")
+        # [§5 migration] inline onkeydown removed; chat.js
+        # _bindStableInputs binds an Enter handler to #login-api-key
+        # that calls doLogin() (parity with the password field).
+        chat = JS.read_text(encoding="utf-8")
+        self.assertIn("login-api-key", chat,
+            "chat.js must wire #login-api-key for Enter submit")
+        self.assertRegex(
+            chat,
+            r"login-api-key[\s\S]{0,400}?Enter[\s\S]{0,200}?doLogin",
+            "Enter on #login-api-key must submit login via JS-bound handler",
+        )
 
     def test_hint_text_present(self):
         # Subtle hint pointing to .env JAMES_API_KEY so users know

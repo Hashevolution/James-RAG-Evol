@@ -102,18 +102,21 @@ class IconOnlyButtonsTests(unittest.TestCase):
 
     def test_index_send_button(self):
         # The ▲ submit button on the chat input.
+        # [§5 migration] sendMessage() → data-action="send-message".
         self._assert_aria_on_button(
-            self.index, "sendMessage()", "index.html")
+            self.index, 'data-action="send-message"', "index.html")
 
     def test_index_model_install_button(self):
         # mode-install-btn — empty button shown only when LLM is missing.
+        # [§5 migration] triggerModelInstall() → data-action.
         self._assert_aria_on_button(
-            self.index, "triggerModelInstall()", "index.html")
+            self.index, 'data-action="trigger-model-install"', "index.html")
 
     def test_index_clear_history_button(self):
         # 🗑 button next to lang toggle.
+        # [§5 migration] clearHistory() → data-action="clear-history".
         self._assert_aria_on_button(
-            self.index, "clearHistory()", "index.html")
+            self.index, 'data-action="clear-history"', "index.html")
 
     def test_index_sidebar_open_button(self):
         # ▶ button shown when sidebar is collapsed (id=sidebar-open-btn).

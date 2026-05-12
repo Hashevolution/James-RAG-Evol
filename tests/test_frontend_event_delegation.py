@@ -36,7 +36,8 @@ STATIC = FRONTEND / "static"
 # add it here so the contract catches it.
 _INLINE_ATTR_RE = re.compile(
     r"\son(?:click|change|submit|input|keydown|keyup|keypress"
-    r"|focus|blur|mouseover|mouseout|mouseenter|mouseleave"
+    r"|focus|blur|paste|drag(?:start|enter|over|leave|end)?|drop"
+    r"|mouseover|mouseout|mouseenter|mouseleave"
     r"|mousedown|mouseup)\s*=",
     re.IGNORECASE,
 )
@@ -45,11 +46,11 @@ _INLINE_ATTR_RE = re.compile(
 _MIGRATED_PAGES = {
     "graph.html",
     "workspace.html",
+    "index.html",
 }
 
 # Pages still using inline handlers. Will shrink to empty by PR-D.
 _LEGACY_INLINE_PAGES = {
-    "index.html",
     "admin.html",
 }
 
@@ -243,6 +244,162 @@ class WorkspacePageDelegationTests(unittest.TestCase):
             r'<(?:tr|button)[^>]*\sonclick=',
             "no innerHTML template in workspace.js may emit inline onclick",
         )
+
+
+class ChatPageDelegationTests(unittest.TestCase):
+    """PR-C — index.html / chat.js / upload.js route every click via
+    ``data-action``; ``oninput`` is split into a separate
+    ``data-input-action`` delegate so dynamic upload-row inputs can be
+    re-rendered through innerHTML without losing wiring; stable inputs
+    (chat textarea, login/forgot/signup modals, mode/model pickers)
+    are bound by id at DOMContentLoaded."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html   = (FRONTEND / "index.html").read_text(encoding="utf-8")
+        cls.chat   = (STATIC / "chat.js").read_text(encoding="utf-8")
+        cls.upload = (STATIC / "upload.js").read_text(encoding="utf-8")
+
+    # ─── HTML — static actions ────────────────────────────────────
+    def test_html_uses_data_action_for_header(self):
+        for action in (
+            "set-source", "toggle-lang", "clear-history",
+            "toggle-session-panel", "show-login",
+        ):
+            with self.subTest(action=action):
+                self.assertIn(f'data-action="{action}"', self.html)
+
+    def test_html_uses_data_action_for_sidebar(self):
+        for action in (
+            "toggle-sidebar", "switch-sidebar-mode",
+            "trigger-file-input", "trigger-folder-input",
+            "upload-files",
+        ):
+            with self.subTest(action=action):
+                self.assertIn(f'data-action="{action}"', self.html)
+
+    def test_html_uses_data_action_for_chat_actions(self):
+        for action in (
+            "use-chip", "trigger-model-install", "accept-mode-recommend",
+            "copy-conversation", "send-message", "new-session",
+        ):
+            with self.subTest(action=action):
+                self.assertIn(f'data-action="{action}"', self.html)
+
+    def test_html_uses_data_action_for_login_modal(self):
+        for action in (
+            "toggle-api-key-visibility", "close-login", "do-login",
+            "open-forgot-password-modal", "open-signup-modal",
+        ):
+            with self.subTest(action=action):
+                self.assertIn(f'data-action="{action}"', self.html)
+
+    def test_html_drops_javascript_href(self):
+        # ``href="javascript:openForgotPasswordModal()"`` and
+        # ``href="javascript:openSignupModal()"`` replaced by
+        # ``href="#" data-action="open-…-modal"``; click delegate calls
+        # preventDefault before invoking the action.
+        self.assertNotIn('href="javascript:', self.html)
+
+    # ─── chat.js dynamic templates ────────────────────────────────
+    def test_chat_js_dynamic_buttons_use_data_action(self):
+        for action in (
+            "logout", "approve-wiki-save", "ask-with-force-web",
+            "export-answer", "send-feedback", "copy-answer-text",
+            "ask-suggestion",
+            "switch-session", "rename-session", "delete-session",
+        ):
+            with self.subTest(action=action):
+                self.assertIn(f'data-action="{action}"', self.chat)
+
+    def test_chat_js_export_buttons_carry_format_data(self):
+        # The four export buttons share one action and pass the format
+        # via ``data-format`` so the delegate only registers one entry.
+        for fmt in ("py", "md", "docx", "txt"):
+            with self.subTest(format=fmt):
+                self.assertRegex(
+                    self.chat,
+                    r'data-action="export-answer"[^`]*?data-format="' + fmt + r'"',
+                )
+
+    def test_chat_js_feedback_buttons_carry_dir_and_signal(self):
+        # sendFeedback was called as fn(dirId, signal, btn); migration
+        # encodes (dirId, signal) into data attributes so the delegate
+        # can rebuild the call.
+        for signal in ("explicit_positive", "explicit_negative"):
+            with self.subTest(signal=signal):
+                self.assertRegex(
+                    self.chat,
+                    r'data-action="send-feedback"[^`]*?data-signal="' + signal + r'"',
+                )
+        self.assertIn('data-dir-id="', self.chat,
+            "feedback button must carry data-dir-id")
+
+    def test_chat_js_session_rows_carry_sid(self):
+        # The three session-panel actions (switch/rename/delete) read
+        # the session id from data-sid (HTML-escaped via escHtml) —
+        # safer than the prior JS string-injection pattern.
+        self.assertRegex(
+            self.chat,
+            r'data-action="switch-session"\s+data-sid=',
+        )
+        self.assertRegex(
+            self.chat,
+            r'data-action="rename-session"\s+data-sid=',
+        )
+        self.assertRegex(
+            self.chat,
+            r'data-action="delete-session"\s+data-sid=',
+        )
+
+    # ─── upload.js dynamic templates ──────────────────────────────
+    def test_upload_js_uses_data_action(self):
+        self.assertIn('data-action="chat-attach-click"', self.upload)
+        self.assertIn('data-action="remove-or-cancel"', self.upload)
+        # And the folder-input per-row oninput moves to a separate
+        # input-delegate attribute so the click delegate doesn't see it.
+        self.assertIn('data-input-action="update-instruction"', self.upload)
+
+    def test_upload_js_no_inline_handlers(self):
+        hits = _INLINE_ATTR_RE.findall(self.upload)
+        self.assertEqual(
+            hits, [],
+            "upload.js innerHTML templates may not emit inline handlers",
+        )
+
+    # ─── Delegation infrastructure ────────────────────────────────
+    def test_chat_js_installs_click_delegation(self):
+        self.assertRegex(
+            self.chat,
+            r"document\.addEventListener\(\s*['\"]click['\"]",
+            "chat.js must install a document-level click delegate",
+        )
+        self.assertIn("data-action", self.chat)
+
+    def test_chat_js_installs_input_delegation(self):
+        # The folder-input oninput in upload.js routes through this
+        # separate input delegate so re-rendered rows keep working.
+        self.assertRegex(
+            self.chat,
+            r"document\.addEventListener\(\s*['\"]input['\"]",
+            "chat.js must install a document-level input delegate",
+        )
+        self.assertIn("data-input-action", self.chat)
+
+    def test_chat_js_binds_stable_inputs_on_dom_ready(self):
+        self.assertIn("_bindStableInputs", self.chat)
+        self.assertRegex(
+            self.chat,
+            r"DOMContentLoaded[\s\S]{0,80}?_bindStableInputs",
+        )
+
+    def test_chat_js_binds_modal_overlay_close(self):
+        # The three modal overlay click-outside handlers are bound by
+        # id in _bindStableInputs (closeLoginOutside / Forgot / Signup
+        # each check e.target === overlay so we forward the event).
+        self.assertIn("closeLoginOutside", self.chat)
+        self.assertIn("closeForgotPasswordOutside", self.chat)
+        self.assertIn("closeSignupOutside", self.chat)
 
 
 if __name__ == "__main__":

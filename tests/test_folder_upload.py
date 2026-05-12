@@ -122,9 +122,19 @@ class HtmlFolderInputTests(unittest.TestCase):
     def test_folder_select_button_present(self):
         # Visible "폴더 선택" button.
         self.assertIn("폴더 선택", self.html)
-        # Triggering folder-input click via JS onclick.
-        self.assertIn("folder-input').click()", self.html,
-                      "polder button must trigger folder-input.click()")
+        # [§5 migration] inline `onclick="...folder-input.click()"` is
+        # replaced by `data-action="trigger-folder-input"`. The click
+        # delegate in chat.js calls e.stopPropagation() (drop-zone
+        # parent has its own data-action="trigger-file-input") and
+        # then `document.getElementById('folder-input').click()`.
+        self.assertIn('data-action="trigger-folder-input"', self.html,
+                      "folder button must carry data-action=trigger-folder-input")
+        chat_js = (ROOT / "frontend" / "static" / "chat.js").read_text(
+            encoding="utf-8")
+        self.assertIn("folder-input", chat_js,
+                      "chat.js delegate must reference #folder-input")
+        self.assertIn("trigger-folder-input", chat_js,
+                      "chat.js delegate must register trigger-folder-input action")
 
     def test_dropzone_label_mentions_folder_support(self):
         # Affordance text — user should know folder-drop works too.
