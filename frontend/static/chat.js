@@ -1652,21 +1652,43 @@ function appendTyping(traceId) {
   const t0     = Date.now();
 
   // Stage별 메타 — 아이콘은 이모지 + spinner 클래스 분리,
-  // 색상은 CSS 변수로 라인에 inject (shimmer + spinner border 색)
+  // 색상은 CSS 변수로 라인에 inject (shimmer + spinner border 색).
+  // [§4 #3 phase grouping, 2026-05-12] phase 필드는 추론 timeline
+  // 의 세 구간 중 어디에 라인을 끼울지 결정한다:
+  //   retrieve  — 권한 게이트 + 내부 자료 검색 (소스 찾기)
+  //   expand    — 관계 그래프 / 도구 / 코딩 LLM 라우팅 (탐색)
+  //   verify    — 답변 생성 + 종료 단계 (검증/마무리)
+  // 백엔드(server_llmwiki.py · core/reasoning/modes.py)가 실제로
+  // 내보내는 stage 와 1:1 대응되며, 빈 phase 컨테이너는 lazy 생성.
   const STAGE_META = {
-    auth:        { icon: '🔐', label: '권한 확인',          color: '#999'    },
-    risky_coding_blocked: { icon: '🛑', label: '위험 명령 차단', color: '#f06292' },
-    retrieve:    { icon: '🔍', label: '내부 자료 검색',     color: '#7c6af7' },
-    rerank:      { icon: '🎯', label: '재정렬',              color: '#7c6af7' },
-    graph:       { icon: '🕸️', label: '관계 그래프 탐색',   color: '#3da78a' },
-    tool:        { icon: '🔧', label: '도구 호출',           color: '#ffb74d' },
-    coding_route: { icon: '⌨️', label: '코딩 LLM 라우팅',    color: '#ffb74d' },
-    coding_llm_pick: { icon: '⚙️', label: '모델 선택',       color: '#ffb74d' },
-    coding_done: { icon: '✓',  label: '코딩 완료',           color: '#4caf7d' },
-    coding_llm_error: { icon: '⚠️', label: '코더 LLM 오류',  color: '#f06292' },
-    coding_fallback_done: { icon: '↻', label: 'Fallback 완료', color: '#ffb74d' },
-    answer:      { icon: '🤖', label: 'LLM 답변 생성',       color: '#f06292' },
-    complete:    { icon: '✅', label: '완료',                color: '#4caf7d' },
+    auth:        { icon: '🔐', label: '권한 확인',          color: '#999',    phase: 'retrieve' },
+    risky_coding_blocked: { icon: '🛑', label: '위험 명령 차단', color: '#f06292', phase: 'retrieve' },
+    retrieve:    { icon: '🔍', label: '내부 자료 검색',     color: '#7c6af7', phase: 'retrieve' },
+    rerank:      { icon: '🎯', label: '재정렬',              color: '#7c6af7', phase: 'retrieve' },
+    graph:       { icon: '🕸️', label: '관계 그래프 탐색',   color: '#3da78a', phase: 'expand' },
+    tool:        { icon: '🔧', label: '도구 호출',           color: '#ffb74d', phase: 'expand' },
+    coding_route: { icon: '⌨️', label: '코딩 LLM 라우팅',    color: '#ffb74d', phase: 'expand' },
+    coding_llm_pick: { icon: '⚙️', label: '모델 선택',       color: '#ffb74d', phase: 'expand' },
+    coding_user_pick: { icon: '👤', label: '사용자 모델 선택', color: '#ffb74d', phase: 'expand' },
+    coding_done: { icon: '✓',  label: '코딩 완료',           color: '#4caf7d', phase: 'verify' },
+    coding_llm_error: { icon: '⚠️', label: '코더 LLM 오류',  color: '#f06292', phase: 'verify' },
+    coding_fallback_done: { icon: '↻', label: 'Fallback 완료', color: '#ffb74d', phase: 'verify' },
+    coding_fallback_error: { icon: '⚠️', label: 'Fallback 오류', color: '#f06292', phase: 'verify' },
+    coding_user_pick_done: { icon: '✓', label: '사용자 모델 완료', color: '#4caf7d', phase: 'verify' },
+    coding_user_pick_error: { icon: '⚠️', label: '사용자 모델 오류', color: '#f06292', phase: 'verify' },
+    answer:      { icon: '🤖', label: 'LLM 답변 생성',       color: '#f06292', phase: 'verify' },
+    complete:    { icon: '✅', label: '완료',                color: '#4caf7d', phase: 'verify' },
+  };
+
+  // [§4 #3] Phase 단위 메타 — 컨테이너 헤더에 표시. 순서는 timeline
+  // 진행 순서를 강제한다: RETRIEVE → EXPAND → VERIFY. 한 phase 가
+  // 생략되어도(예: graph 사용 안 한 빠른 답변) 다음 phase 가 빈
+  // 자리를 그대로 받는다 — 사용자에겐 진행이 한 칸 점프한 것처럼
+  // 보임. 비어 있는 phase 컨테이너는 절대 만들지 않는다(lazy).
+  const PHASE_META = {
+    retrieve: { icon: '🔎', label: 'RETRIEVE', order: 1 },
+    expand:   { icon: '🕸️', label: 'EXPAND',   order: 2 },
+    verify:   { icon: '🤖', label: 'VERIFY',   order: 3 },
   };
 
   // 현재 active line을 done으로 마감 (다음 stage 시작 시 호출)
@@ -1675,6 +1697,61 @@ function appendTyping(traceId) {
       activeLine.classList.remove('thinking-active');
       activeLine.classList.add('thinking-done');
       activeLine = null;
+    }
+  };
+
+  // [§4 #3 phase grouping] 한 phase 컨테이너를 가져오거나 첫 등장
+  // 시점에 만들어 timeline 순서대로 끼워 넣는다. 빈 phase 는 만들지
+  // 않으므로 graph 사용 안 한 빠른 답변은 RETRIEVE + VERIFY 두 칸
+  // 만 보임 — phase 자체가 진행 상태의 의미적 단서.
+  const getOrCreatePhase = (phaseKey) => {
+    const container = document.getElementById(`thinking-${traceId}`);
+    if (!container) return null;
+    let phase = container.querySelector(
+      `.thinking-phase[data-phase="${phaseKey}"]`);
+    if (phase) return phase;
+
+    const meta = PHASE_META[phaseKey];
+    if (!meta) return null;
+    phase = document.createElement('div');
+    phase.className = 'thinking-phase thinking-phase-active';
+    phase.setAttribute('data-phase', phaseKey);
+    phase.setAttribute('data-order', String(meta.order));
+    phase.innerHTML = `
+      <div class="thinking-phase-header">
+        <span class="thinking-phase-icon">${meta.icon}</span>
+        <span class="thinking-phase-label">${escHtml(meta.label)}</span>
+      </div>
+      <div class="thinking-phase-body"></div>
+    `;
+
+    // Insert in the canonical order (1 → 2 → 3) so a late-arriving
+    // earlier phase still sorts before later ones — defensive only;
+    // the backend emits in order, but the contract test asserts this
+    // independent of arrival sequence so render output stays stable.
+    const existing = Array.from(
+      container.querySelectorAll('.thinking-phase'));
+    const insertBefore = existing.find(p =>
+      parseInt(p.getAttribute('data-order'), 10) > meta.order);
+    if (insertBefore) {
+      container.insertBefore(phase, insertBefore);
+    } else {
+      container.appendChild(phase);
+    }
+    return phase;
+  };
+
+  // When the last active line in a phase closes, the phase itself
+  // flips to ``thinking-phase-done`` so the header stops shimmering.
+  const refreshPhaseState = (phaseEl) => {
+    if (!phaseEl) return;
+    const stillActive = phaseEl.querySelector('.thinking-line.thinking-active');
+    if (stillActive) {
+      phaseEl.classList.add('thinking-phase-active');
+      phaseEl.classList.remove('thinking-phase-done');
+    } else {
+      phaseEl.classList.remove('thinking-phase-active');
+      phaseEl.classList.add('thinking-phase-done');
     }
   };
 
@@ -1693,9 +1770,14 @@ function appendTyping(traceId) {
       seenStages.add(stage);
 
       // 새 stage 도착 → 이전 active를 done으로
+      const previousActivePhase = activeLine ? activeLine.closest(
+        '.thinking-phase') : null;
       markActiveAsDone();
+      refreshPhaseState(previousActivePhase);
 
-      const m = STAGE_META[stage] || { icon: '·', label: stage, color: '#888' };
+      const m = STAGE_META[stage] || {
+        icon: '·', label: stage, color: '#888', phase: 'verify',
+      };
       const ms = Date.now() - t0;
 
       // 의미있는 detail 필드 일부만
@@ -1721,12 +1803,26 @@ function appendTyping(traceId) {
         <span class="thinking-label thinking-shimmer-text">${escHtml(m.label)}</span>
         <span class="thinking-detail">${escHtml(detailStr)} <span class="thinking-elapsed">@${ms}ms</span></span>
       `;
-      container.appendChild(line);
+
+      // [§4 #3] Drop the line into the right phase body — falls back
+      // to the top-level container if PHASE_META is somehow missing
+      // an entry (defensive; shouldn't happen).
+      const phaseEl = getOrCreatePhase(m.phase);
+      if (phaseEl) {
+        phaseEl.querySelector('.thinking-phase-body').appendChild(line);
+      } else {
+        container.appendChild(line);
+      }
 
       if (!isFinal) {
         activeLine = line;
+        if (phaseEl) {
+          phaseEl.classList.add('thinking-phase-active');
+          phaseEl.classList.remove('thinking-phase-done');
+        }
       } else {
         activeLine = null;
+        refreshPhaseState(phaseEl);
       }
     });
     // 폴링이 complete 받으면 모든 라인 done으로

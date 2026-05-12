@@ -195,6 +195,56 @@
 }
 
 /* ─────────────────────────────────────────────────────────
+ * [§4 #3 phase grouping, 2026-05-12] Reasoning timeline phases
+ * — RETRIEVE → EXPAND → VERIFY. Each phase is a small header
+ * over a body of one or more thinking-lines. Empty phases are
+ * never rendered (chat.js creates them lazily) so an answer that
+ * skips graph still reads as a clean two-step timeline.
+ * ────────────────────────────────────────────────────────*/
+.thinking-phase {
+  margin-top: 6px;
+}
+.thinking-phase + .thinking-phase {
+  border-top: 1px dashed var(--border-2, rgba(255, 255, 255, 0.10));
+  padding-top: 6px;
+  margin-top: 8px;
+}
+.thinking-phase-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  color: var(--muted, #888);
+  /* Phase header inherits the active line's stage color via the
+     enclosing .thinking-phase-active rule below, so the header
+     visually echoes whichever stage is currently running inside. */
+  transition: color .35s ease, opacity .35s ease;
+}
+.thinking-phase-icon {
+  font-size: 11px;
+  line-height: 1;
+}
+.thinking-phase-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* Active phase — header pops to accent so the user can tell at a
+   glance which timeline phase the reasoner is in right now. */
+.thinking-phase-active .thinking-phase-header {
+  color: var(--accent-fg, var(--accent, #7c6af7));
+}
+/* Done phase — header dims to match its lines. */
+.thinking-phase-done .thinking-phase-header {
+  opacity: 0.6;
+}
+
+/* ─────────────────────────────────────────────────────────
  * Admin nav — foldable sections (item #2, 2026-05-08)
  * 데스크탑/모바일 양쪽에서 섹션별 접기/펴기 가능. 각 nav-section을
  * 클릭하면 바로 다음 .nav-group이 슬라이드 닫힘. 모바일은 추가로
