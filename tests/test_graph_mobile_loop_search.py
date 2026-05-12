@@ -139,7 +139,9 @@ class SearchDrawerHtmlTests(unittest.TestCase):
 
     def test_toggle_tab_present(self):
         self.assertIn('id="tsd-toggle"', self.html)
-        self.assertIn('onclick="toggleSearchDrawer()"', self.html)
+        # [§5 migration] inline onclick replaced by data-action +
+        # document-level click delegate in graph.js.
+        self.assertIn('data-action="toggle-search-drawer"', self.html)
 
     def test_search_input_present(self):
         self.assertIn('id="tsd-search"', self.html)
@@ -149,11 +151,19 @@ class SearchDrawerHtmlTests(unittest.TestCase):
         self.assertIn('id="tsd-list"', self.html)
 
     def test_escape_key_closes(self):
-        # Input has onkeydown="if(event.key==='Escape')" handler.
-        idx = self.html.index('id="tsd-search"')
-        body = self.html[idx:idx + 600]
-        self.assertIn("Escape", body,
-            "input must have ESC-to-close handler for keyboard users")
+        # [§5 migration] ESC-to-close handler moved from inline
+        # onkeydown on the input to a document-level keydown delegate
+        # in graph.js that routes on (e.target.id, e.key).
+        js = (ROOT / "frontend" / "static" / "graph.js").read_text(encoding="utf-8")
+        self.assertRegex(
+            js,
+            r"document\.addEventListener\(\s*['\"]keydown['\"]",
+            "graph.js must install a document-level keydown delegate",
+        )
+        self.assertIn("tsd-search", js,
+            "keydown delegate must route ESC on the search input")
+        self.assertIn("Escape", js,
+            "keydown delegate must recognise the ESC key")
 
     def test_drawer_open_class_styling(self):
         # CSS rule for .tsd-open must define max-height (slide-in).

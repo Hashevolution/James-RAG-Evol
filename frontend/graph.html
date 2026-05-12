@@ -397,7 +397,7 @@
     <span class="live-dot" aria-hidden="true" title="System live" style="margin-left:10px"></span>
   </div>
   <div class="header-right">
-    <button class="nav-btn" data-lang-toggle onclick="toggleLang()" title="Language / 언어"
+    <button class="nav-btn" data-lang-toggle data-action="toggle-lang" title="Language / 언어"
             aria-label="언어 전환 / Toggle language"
             style="font-size:12px;font-weight:600;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;color:var(--text-soft)"></button>
     <a href="/admin" class="nav-btn">← <span data-i18n="graph.back_admin">Admin</span></a>
@@ -458,7 +458,7 @@
          Replaces the side aside's node-search on phones (where aside
          is hidden) and gives desktop users a faster way to jump to
          any entity. Toggle tab is always visible. -->
-    <div class="tsd-toggle" id="tsd-toggle" onclick="toggleSearchDrawer()"
+    <div class="tsd-toggle" id="tsd-toggle" data-action="toggle-search-drawer"
          title="엔티티 검색 (Esc로 닫기)">
       🔎 검색 ▾
     </div>
@@ -468,8 +468,7 @@
                id="tsd-search"
                class="tsd-search"
                placeholder="엔티티 이름 검색…"
-               autocomplete="off"
-               onkeydown="if(event.key==='Escape') hideSearchDrawer()">
+               autocomplete="off">
         <div class="tsd-list" id="tsd-list"></div>
       </div>
     </div>
@@ -498,7 +497,6 @@
       <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px;">PASSWORD</div>
       <input id="login-pw" type="password" placeholder="••••••••"
              autocomplete="new-password"
-             onkeydown="if(event.key==='Enter') doLogin()"
              style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 14px;color:var(--text);font-size:14px;outline:none;">
     </div>
     <div style="margin-bottom:14px;">
@@ -508,11 +506,10 @@
       </div>
       <input id="login-apikey" type="password" placeholder="JAMES_API_KEY"
              autocomplete="off" spellcheck="false"
-             onkeydown="if(event.key==='Enter') doLogin()"
              style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 14px;color:var(--text);font-size:14px;outline:none;">
     </div>
     <div id="login-error" style="font-size:12px;color:var(--danger);min-height:18px;margin-bottom:12px;font-family:var(--font-mono);"></div>
-    <button onclick="doLogin()"
+    <button data-action="do-login"
             style="width:100%;padding:11px;background:var(--accent);border:none;border-radius:8px;color:var(--on-accent);font-size:14px;font-weight:600;cursor:pointer;"
             data-i18n="auth.login">
       Login

@@ -1136,7 +1136,41 @@
     loadAndRender(src.value);
   }
 
+  // ─── Inline-handler migration (CSP-friendly delegation) ───────
+  // graph.html no longer uses ``onclick=`` / ``onkeydown=`` inline
+  // attributes. Instead, buttons set ``data-action="…"`` and the
+  // routing happens here. Key shortcuts (Enter on login fields,
+  // Escape on the search drawer input) are also delegated through
+  // the document so they keep working without inline handlers.
+  function _bindFrontendEvents() {
+    document.addEventListener('click', function (e) {
+      var t = e.target.closest && e.target.closest('[data-action]');
+      if (!t) return;
+      switch (t.getAttribute('data-action')) {
+        case 'toggle-lang':
+          if (typeof window.toggleLang === 'function') window.toggleLang();
+          break;
+        case 'toggle-search-drawer':
+          if (typeof window.toggleSearchDrawer === 'function') window.toggleSearchDrawer();
+          break;
+        case 'do-login':
+          if (typeof window.doLogin === 'function') window.doLogin();
+          break;
+      }
+    });
+    document.addEventListener('keydown', function (e) {
+      var id = e.target && e.target.id;
+      if (!id) return;
+      if (e.key === 'Enter' && (id === 'login-pw' || id === 'login-apikey')) {
+        if (typeof window.doLogin === 'function') window.doLogin();
+      } else if (e.key === 'Escape' && id === 'tsd-search') {
+        if (typeof window.hideSearchDrawer === 'function') window.hideSearchDrawer();
+      }
+    });
+  }
+
   function start() {
+    _bindFrontendEvents();
     if (!apiKey || !token) { showLogin(); return; }
     // Probe with a tiny admin request to see if our token still proves admin.
     fetch(API + '/admin/graph/snapshot?source_type=prod&api_key=' +
