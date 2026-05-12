@@ -1,0 +1,367 @@
+/* PROJECT JAMES — reasoning-graph page (graph.html) styles
+ *
+ * Extracted from the inline ``<style>`` block in graph.html on
+ * 2026-05-13 (HANDOVER_WEB_UI.md §4 priority 8 — second wave,
+ * mirrors PR #246 which extracted chat + admin). Load order in
+ * graph.html:
+ *
+ *   1. tokens.css   — design tokens + brand component
+ *   2. graph.css    — this file (page-specific layout + components)
+ *   3. mobile.css   — responsive @media overrides
+ *
+ * That order matters because CSS resolves equal-specificity rules
+ * in source order — mobile.css must come last to win at narrow
+ * viewports without needing ``!important`` on every line. The
+ * ``:root`` block below adds graph-only token overrides on top of
+ * tokens.css (entity type → colour); they intentionally land in
+ * this page-specific file so the global token surface stays lean.
+ */
+
+  :root {
+    /* graph-page only: entity type → colour (domain-neutral) */
+    --t-person:   #4fc3f7;
+    --t-org:      #f59e0b;
+    --t-concept:  #a5b4fc;
+    --t-document: #94a3b8;
+  }
+
+  html, body { height: 100%; }
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border-2);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .logo { font-size: 14px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .logo::before {
+    content: ''; width: 22px; height: 22px; border-radius: 6px;
+    background: linear-gradient(135deg, var(--accent), #818cf8);
+  }
+  .logo span { color: var(--muted); font-weight: 500; }
+  .header-right { display: flex; gap: 8px; }
+  .nav-btn {
+    padding: 6px 12px; border-radius: var(--radius); border: 1px solid transparent;
+    background: none; color: var(--muted); font-size: 13px; cursor: pointer;
+    text-decoration: none; transition: all .15s; font-family: var(--font-ui);
+  }
+  .nav-btn:hover { background: var(--surface-2); color: var(--text); }
+
+  .main {
+    flex: 1; display: flex; min-height: 0;
+  }
+
+  /* Left sidebar */
+  aside {
+    width: 260px; flex-shrink: 0;
+    border-right: 1px solid var(--border-2);
+    background: var(--surface);
+    padding: 16px; display: flex; flex-direction: column; gap: 14px;
+    overflow-y: auto;
+  }
+  .panel-title {
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    letter-spacing: .3px; text-transform: uppercase;
+  }
+  .ctrl {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .ctrl label { font-size: 12px; color: var(--text-soft); }
+  .ctrl select, .ctrl input[type=text] {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 7px 10px; color: var(--text);
+    font-family: var(--font-ui); font-size: 13px; outline: none;
+  }
+  .ctrl select:focus, .ctrl input[type=text]:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .legend { display: flex; flex-direction: column; gap: 6px; }
+  .legend-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-soft); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  .stat {
+    background: var(--surface-2); border: 1px solid var(--border-2);
+    border-radius: 6px; padding: 10px; font-family: var(--font-mono);
+    font-size: 11px; color: var(--text-soft); line-height: 1.6;
+  }
+  .stat strong { color: var(--text); font-weight: 600; }
+
+  /* Main canvas */
+  .stage {
+    flex: 1; position: relative; min-width: 0;
+    background: radial-gradient(circle at 50% 50%, #0e1116 0%, #07080a 75%);
+  }
+  #graph-canvas { width: 100%; height: 100%; }
+
+  .overlay {
+    position: absolute; pointer-events: none;
+    font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+  }
+  .overlay.tl { top: 12px; left: 14px; }
+  .overlay.tr { top: 12px; right: 14px; text-align: right; }
+  .overlay.bl { bottom: 12px; left: 14px; }
+
+  .tooltip {
+    position: absolute; pointer-events: none;
+    background: rgba(20,22,26,.94);
+    border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 10px;
+    font-size: 12px; color: var(--text);
+    box-shadow: 0 8px 24px rgba(0,0,0,.5);
+    display: none; z-index: 20; max-width: 240px;
+  }
+  .tooltip .tt-name { font-weight: 600; margin-bottom: 4px; }
+  .tooltip .tt-meta { color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+
+  /* [W2 2026-05-10] graph 페이지를 순수 탐색기로 — 질문 입력은 /chat 으로
+     이관. query-bar / answer-card / query-reasoning-overlay /
+     suggested-questions 및 관련 CSS 모두 제거. */
+
+  /* [PR explorer, 2026-05-09] Neighborhood panel — slides from left.
+     [W2] panel 내부에 요약 섹션 (.np-summary*) 신규 추가. */
+  .neighbor-panel {
+    position: absolute; left: 16px; top: 60px;
+    width: min(280px, calc(100% - 280px - 32px));
+    max-height: calc(100% - 100px);
+    background: rgba(20,22,26,.95);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px;
+    font-size: 13px; color: var(--text);
+    overflow-y: auto;
+    display: none;
+    z-index: 25;
+  }
+  .neighbor-panel .np-close {
+    position: absolute; top: 8px; right: 10px;
+    background: transparent; border: none; color: var(--muted);
+    font-size: 18px; cursor: pointer; padding: 0; line-height: 1;
+  }
+  .neighbor-panel .np-title {
+    font-size: 14px; font-weight: 600; color: var(--accent-fg);
+    margin-bottom: 4px; padding-right: 24px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .neighbor-panel .np-meta {
+    font-size: 11px; color: var(--muted);
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-2);
+  }
+  .neighbor-panel .np-list { display: flex; flex-direction: column; gap: 1px; }
+  .neighbor-panel .np-item {
+    padding: 7px 8px; border-radius: 5px;
+    cursor: pointer; display: flex; align-items: center; gap: 8px;
+    transition: background .12s, color .12s;
+    font-size: 12px;
+  }
+  .neighbor-panel .np-item:hover {
+    background: rgba(99,102,241,.12);
+    color: var(--accent-fg);
+  }
+  .neighbor-panel .np-arrow {
+    color: var(--muted); font-family: var(--font-mono); flex-shrink: 0;
+  }
+  .neighbor-panel .np-name {
+    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .neighbor-panel .np-rel {
+    font-size: 10px; color: var(--muted-2);
+    font-family: var(--font-mono); flex-shrink: 0;
+  }
+  .neighbor-panel .np-empty {
+    padding: 20px; text-align: center; color: var(--muted); font-size: 12px;
+  }
+
+  /* [W2 2026-05-10] 노드 요약 섹션 — neighbor-panel 상단에 prepend.
+     /admin/entities/<id> 응답을 받아 이름·타입·sensitivity·body 발췌
+     를 표시. 사용자가 그래프 위에서 엔티티 본문을 미리 훑어볼 수 있게. */
+  .neighbor-panel .np-summary {
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-2);
+  }
+  .neighbor-panel .np-summary-meta {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    margin-bottom: 8px;
+    font-size: 10px; font-family: var(--font-mono);
+    color: var(--muted); text-transform: uppercase; letter-spacing: .4px;
+  }
+  .neighbor-panel .np-summary-type {
+    background: var(--accent-soft);
+    color: var(--accent-fg);
+    padding: 2px 8px; border-radius: 4px;
+  }
+  .neighbor-panel .np-summary-sens {
+    padding: 2px 8px; border-radius: 4px;
+    background: var(--surface-2); color: var(--text-soft);
+  }
+  .neighbor-panel .np-summary-sens.sens-confidential {
+    background: rgba(239,68,68,.12); color: var(--danger);
+  }
+  .neighbor-panel .np-summary-sens.sens-internal {
+    background: rgba(245,158,11,.10); color: var(--warn);
+  }
+  .neighbor-panel .np-summary-body {
+    font-size: 12px; color: var(--text-soft); line-height: 1.5;
+    white-space: pre-wrap; word-break: break-word;
+    max-height: 180px; overflow-y: auto;
+    padding: 6px 8px;
+    background: var(--surface-2);
+    border-radius: 6px;
+    border: 1px solid var(--border-2);
+  }
+  .neighbor-panel .np-summary-body.np-empty-body {
+    color: var(--muted); font-style: italic;
+    background: transparent; border: none; padding: 4px 0;
+  }
+  .neighbor-panel .np-summary-loading {
+    color: var(--muted); font-size: 11px;
+    font-family: var(--font-mono); padding: 4px 0;
+  }
+
+  /* [PR mobile-loop-search, 2026-05-09] top entity search drawer.
+     Slides down from the top edge. Toggle button always visible (acts
+     as floating tab when collapsed). Universally available — phone
+     users get the search even when the side aside is hidden. */
+  .top-search-drawer {
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: min(420px, calc(100% - 32px));
+    background: rgba(20,22,26,.96);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    z-index: 35;
+    transition: max-height .25s ease;
+    max-height: 0;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  }
+  .top-search-drawer.tsd-open {
+    max-height: min(60vh, 480px);
+  }
+  .top-search-drawer .tsd-body {
+    padding: 14px;
+  }
+  .top-search-drawer input.tsd-search {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+  }
+  .top-search-drawer input.tsd-search:focus {
+    border-color: var(--accent);
+  }
+  .top-search-drawer .tsd-list {
+    margin-top: 10px;
+    max-height: 360px;
+    overflow-y: auto;
+  }
+  .top-search-drawer .tsd-row {
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-soft);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background .12s, color .12s;
+  }
+  .top-search-drawer .tsd-row:hover {
+    background: rgba(99,102,241,.12);
+    color: var(--accent-fg);
+  }
+  .top-search-drawer .tsd-row .tsd-type {
+    font-size: 10px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+    text-transform: uppercase;
+  }
+  .top-search-drawer .tsd-row .tsd-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .top-search-drawer .tsd-row .tsd-deg {
+    font-size: 11px;
+    color: var(--muted-2);
+    flex-shrink: 0;
+  }
+  .top-search-drawer .tsd-empty {
+    padding: 16px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  /* The toggle tab — always visible, sits on the drawer edge. */
+  .tsd-toggle {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20,22,26,.96);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    color: var(--accent-fg);
+    font-size: 12px;
+    padding: 4px 16px;
+    cursor: pointer;
+    z-index: 36;
+    user-select: none;
+  }
+  .tsd-toggle:hover { background: var(--surface-2); }
+
+  .empty-state {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 13px; pointer-events: none;
+  }
+
+  /* Login modal — same posture as admin.html */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(4,6,10,.35);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 300;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-card {
+    background: rgba(7,9,14,.55);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px; width: 340px;
+  }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted-2); }
+
+  /* Phone-friendly layout rules (≤ 768px and ≤ 480px) now live in
+     mobile.css's graph section — see PR mobile-css-extension. The
+     original 720px / 480px breakpoints were promoted to the project-
+     standard 768px / 480px so all four pages share one boundary. */

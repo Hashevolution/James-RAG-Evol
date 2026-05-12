@@ -139,7 +139,14 @@ class SearchDrawerHtmlTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.html = HTML.read_text(encoding="utf-8")
+        # [PR-#8b, 2026-05-13] graph.html's inline ``<style>`` was
+        # extracted to static/graph.css. ``test_drawer_open_class_styling``
+        # checks for the ``.top-search-drawer.tsd-open`` CSS rule,
+        # which now lives in the sibling stylesheet — concatenate so
+        # the regex still matches.
+        css = (ROOT / "frontend" / "static" / "graph.css"
+              ).read_text(encoding="utf-8")
+        cls.html = HTML.read_text(encoding="utf-8") + "\n" + css
 
     def test_drawer_div_present(self):
         self.assertIn('id="search-drawer"', self.html)

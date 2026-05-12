@@ -38,15 +38,21 @@ STATIC = FRONTEND / "static"
 
 # Pages that completed the §4 #8 extraction. Each entry pairs the
 # HTML page with the dedicated CSS file the inline block moved to.
+# [PR-#8b, 2026-05-13] workspace + graph followed the chat/admin
+# pattern; all four page-level HTML files now link a sibling CSS
+# file instead of carrying an inline ``<style>`` block.
 _EXTRACTED = {
     "index.html": "chat.css",
     "admin.html": "admin.css",
+    "workspace.html": "workspace.css",
+    "graph.html": "graph.css",
 }
 
 # Pages that intentionally keep their inline ``<style>`` block.
-# Workspace + graph are smaller and page-specific; future PR-#8b
-# can flip them by moving names from this set into _EXTRACTED.
-_STILL_INLINE = {"workspace.html", "graph.html"}
+# Empty after PR-#8b — the rollout is complete. The set stays as a
+# named hook so any future page can declare itself opt-out by name
+# (and the rollout-complete guard below still catches drift).
+_STILL_INLINE: set[str] = set()
 
 # Cap (in bytes) on residual inline ``<style>`` content for an
 # extracted page. A bit of inline CSS is sometimes unavoidable
@@ -108,32 +114,25 @@ class CascadeOrderTests(unittest.TestCase):
             out.append((name, m.start() if m else -1))
         return out
 
-    def test_chat_page_link_order(self):
-        html = (FRONTEND / "index.html").read_text(encoding="utf-8")
-        rows = self._link_indexes(html,
-            ["tokens.css", "chat.css", "mobile.css"])
-        for name, pos in rows:
-            with self.subTest(file=name):
-                self.assertGreater(pos, 0,
-                    f"index.html must link /static/{name}")
-        # Strictly monotonic source order.
-        positions = [p for _, p in rows]
-        self.assertEqual(positions, sorted(positions),
-            f"index.html links must appear in tokens → chat → mobile "
-            f"order, got positions {positions}")
-
-    def test_admin_page_link_order(self):
-        html = (FRONTEND / "admin.html").read_text(encoding="utf-8")
-        rows = self._link_indexes(html,
-            ["tokens.css", "admin.css", "mobile.css"])
-        for name, pos in rows:
-            with self.subTest(file=name):
-                self.assertGreater(pos, 0,
-                    f"admin.html must link /static/{name}")
-        positions = [p for _, p in rows]
-        self.assertEqual(positions, sorted(positions),
-            f"admin.html links must appear in tokens → admin → mobile "
-            f"order, got positions {positions}")
+    def test_every_extracted_page_link_order(self):
+        # Drives off ``_EXTRACTED`` so adding a new page (or removing
+        # one) updates the rollout in one place. Each page must link
+        # ``tokens.css → <page>.css → mobile.css`` strictly in that
+        # source order.
+        for html_name, css_name in _EXTRACTED.items():
+            with self.subTest(page=html_name):
+                html = (FRONTEND / html_name).read_text(encoding="utf-8")
+                rows = self._link_indexes(html,
+                    ["tokens.css", css_name, "mobile.css"])
+                for fname, pos in rows:
+                    with self.subTest(file=fname):
+                        self.assertGreater(pos, 0,
+                            f"{html_name} must link /static/{fname}")
+                positions = [p for _, p in rows]
+                self.assertEqual(positions, sorted(positions),
+                    f"{html_name} links must appear in "
+                    f"tokens → {css_name} → mobile order, "
+                    f"got positions {positions}")
 
 
 class InlineResidualTests(unittest.TestCase):

@@ -124,7 +124,13 @@ class NeighborPanelTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.js = JS.read_text(encoding="utf-8")
-        cls.html = HTML.read_text(encoding="utf-8")
+        # [PR-#8b, 2026-05-13] graph.html's inline ``<style>`` was
+        # extracted to static/graph.css. ``test_panel_styled`` checks
+        # for the .neighbor-panel CSS rule, which now lives in the
+        # sibling stylesheet; concatenate so the regex still matches.
+        css = (ROOT / "frontend" / "static" / "graph.css"
+              ).read_text(encoding="utf-8")
+        cls.html = HTML.read_text(encoding="utf-8") + "\n" + css
 
     def test_panel_div_in_html(self):
         self.assertIn('id="neighbor-panel"', self.html)

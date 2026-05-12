@@ -84,7 +84,13 @@ class WorkspaceRulesConsolidatedTests(unittest.TestCase):
                     ).read_text(encoding="utf-8")
 
     def test_workspace_html_drops_inline_media(self):
-        self.assertNotIn("@media", self.html,
+        # ``@media (`` is the real CSS at-rule (a media query always
+        # comes with a parenthesised condition). The looser bare
+        # ``@media`` substring matched the word in the
+        # ``<link rel="stylesheet" href="mobile.css">`` comment that
+        # PR-#8b added — tighten the check so the contract still
+        # catches real inline @media rules.
+        self.assertNotIn("@media (", self.html,
             "workspace.html must no longer carry an inline @media — "
             "all mobile rules belong in mobile.css now")
 
@@ -130,7 +136,10 @@ class GraphRulesConsolidatedTests(unittest.TestCase):
                     ).read_text(encoding="utf-8")
 
     def test_graph_html_drops_inline_media(self):
-        self.assertNotIn("@media", self.html,
+        # See workspace counterpart — ``@media (`` matches the real
+        # CSS at-rule; the bare word now appears in the link comment
+        # PR-#8b added next to ``mobile.css``.
+        self.assertNotIn("@media (", self.html,
             "graph.html must no longer carry an inline @media — all "
             "mobile rules belong in mobile.css now")
 

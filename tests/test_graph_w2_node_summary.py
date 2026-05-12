@@ -28,7 +28,17 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 ROOT = Path(__file__).resolve().parent.parent
 HTML = ROOT / "frontend" / "graph.html"
+CSS  = ROOT / "frontend" / "static" / "graph.css"
 JS   = ROOT / "frontend" / "static" / "graph.js"
+
+
+# [PR-#8b, 2026-05-13] graph.html's inline ``<style>`` block was
+# extracted to static/graph.css. Tests that check for CSS-class
+# definitions (.np-summary*, removed legacy .query-bar etc.) must
+# now read the page + stylesheet combined — the regexes are source-
+# agnostic so concatenating them keeps the contracts intact.
+def _read_page_with_css() -> str:
+    return HTML.read_text(encoding="utf-8") + "\n" + CSS.read_text(encoding="utf-8")
 
 
 class HtmlRemovalsTests(unittest.TestCase):
@@ -36,7 +46,7 @@ class HtmlRemovalsTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.src = HTML.read_text(encoding="utf-8")
+        cls.src = _read_page_with_css()
 
     def test_no_query_bar_div(self):
         # 질문 입력창 자체가 사라져야.
@@ -84,7 +94,7 @@ class HtmlAdditionsTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.src = HTML.read_text(encoding="utf-8")
+        cls.src = _read_page_with_css()
 
     def test_summary_css_classes_defined(self):
         for cls_name in (".np-summary", ".np-summary-meta",

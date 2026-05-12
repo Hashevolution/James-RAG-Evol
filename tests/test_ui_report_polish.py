@@ -541,11 +541,15 @@ class CyberBackgroundTextureTests(unittest.TestCase):
     PAGES = ("index.html", "admin.html", "workspace.html", "graph.html")
 
     # [v0.2.x #8] chat + admin have their CSS extracted to sibling
-    # files; the body rule for those pages now lives there. Other
-    # pages keep their inline blocks.
+    # files; the body rule for those pages now lives there.
+    # [PR-#8b, 2026-05-13] workspace + graph joined the extraction —
+    # every page-level HTML now reads its body rule from a sibling
+    # stylesheet.
     _EXTRACTED = {
         "index.html": "chat.css",
         "admin.html": "admin.css",
+        "workspace.html": "workspace.css",
+        "graph.html": "graph.css",
     }
 
     @classmethod
