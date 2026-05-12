@@ -333,6 +333,80 @@ class CyberGlassmorphismTests(unittest.TestCase):
             "expected mint outer halo layer in the 3-layer box-shadow")
 
 
+class AdminModalClassExtractionTests(unittest.TestCase):
+    """HANDOVER §8 follow-up — admin modal inner cards were lifted
+    from inline `style="background:var(--surface);border:...;
+    box-shadow:..."` into `class="modal"`. With the class in place,
+    the cyber 6c glass treatment from tokens.css applies fully
+    (backdrop-filter blur + mint 3-layer box-shadow), no longer
+    just the overlay-side blur.
+
+    Per-modal dimensions (width, padding, max-height, overflow)
+    stay inline because the two modals differ — login is 340px,
+    firstrun wizard is 560px and scrollable."""
+
+    ADMIN = ROOT / "frontend" / "admin.html"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = cls.ADMIN.read_text(encoding="utf-8")
+
+    def test_modal_class_rule_declared(self):
+        # Admin must declare a base `.modal` rule so tokens.css 6c
+        # has a surface to layer on. Bg must be translucent (alpha
+        # ≤ .55) so the backdrop-filter blur is visible through it.
+        m = re.search(r"\.modal\s*\{([^}]+)\}", self.html)
+        self.assertIsNotNone(m,
+            "admin.html must declare `.modal` so the cyber 6c glass "
+            "treatment applies to its modal inner cards")
+        block = m.group(1)
+        self.assertIn("rgba(7,9,14,.55)", block,
+            "admin .modal bg must be the translucent surface "
+            "(alpha .55) so backdrop-filter blur shows through")
+        self.assertIn("border", block)
+        self.assertIn("border-radius", block)
+
+    def test_login_modal_uses_class(self):
+        # The login modal inner card must carry `class="modal"` and
+        # have shed the inline bg / border / box-shadow.
+        m = re.search(
+            r'id="admin-login-modal".+?<div\s+([^>]*)>',
+            self.html, re.DOTALL,
+        )
+        self.assertIsNotNone(m, "admin-login-modal inner div must exist")
+        inner = m.group(1)
+        self.assertIn('class="modal"', inner,
+            "admin-login-modal inner div must carry class=\"modal\"")
+        # Bg / border / box-shadow must have moved out of inline style —
+        # owned by the .modal rule + tokens.css 6c.
+        self.assertNotIn("background:var(--surface)", inner,
+            "inline `background:var(--surface)` must move to the "
+            ".modal class rule")
+        self.assertNotIn("box-shadow:", inner,
+            "inline box-shadow must drop — tokens.css 6c owns it")
+
+    def test_firstrun_modal_uses_class(self):
+        m = re.search(
+            r'id="firstrun-wizard-modal".+?<div\s+([^>]*)>',
+            self.html, re.DOTALL,
+        )
+        self.assertIsNotNone(m,
+            "firstrun-wizard-modal inner div must exist")
+        inner = m.group(1)
+        self.assertIn('class="modal"', inner,
+            "firstrun-wizard-modal inner div must carry class=\"modal\"")
+        self.assertNotIn("background:var(--surface)", inner,
+            "inline `background:var(--surface)` must move to the "
+            ".modal class rule")
+        self.assertNotIn("box-shadow:", inner,
+            "inline box-shadow must drop — tokens.css 6c owns it")
+        # Per-modal customisation stays inline — firstrun is
+        # scrollable and wider than the login modal.
+        self.assertIn("max-height:88vh", inner,
+            "firstrun wizard remains scrollable (max-height + overflow)")
+        self.assertIn("overflow-y:auto", inner)
+
+
 class CyberLiveIndicatorTests(unittest.TestCase):
     """Cyber 6d — pulsing mint `.live-dot` + 1px scan line under
     active `.source-toggle button`. Animations are wrapped in
