@@ -271,6 +271,68 @@ class CyberGlowTests(unittest.TestCase):
         self.assertIn("rgba(107,231,208,.18)", block)
 
 
+class CyberGlassmorphismTests(unittest.TestCase):
+    """Cyber 6c — `backdrop-filter: blur` on `.modal-overlay`
+    (12px) + `.modal` / `.modal-card` (20px) with a mint inset glow
+    on the modal box-shadow. Wrapped in `@supports` so unsupported
+    engines fall back to the page-controlled solid overlay + card.
+
+    Pages must declare semi-transparent overlay backgrounds (alpha
+    ≤ .55) so the blur is visible — `rgba(0,0,0,.85)` styles would
+    swallow the effect entirely."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tokens = TOKENS.read_text(encoding="utf-8")
+
+    def test_tokens_wraps_in_supports_guard(self):
+        # `@supports` guard so engines without backdrop-filter don't
+        # land in a half-applied state (overlay translucent but blur
+        # absent).
+        m = re.search(
+            r"@supports\s*\(\(?\s*backdrop-filter:\s*blur",
+            self.tokens,
+        )
+        self.assertIsNotNone(m,
+            "6c block must be wrapped in @supports (backdrop-filter: blur(...))")
+
+    def test_overlay_gets_12px_blur(self):
+        # Overlay carries the lighter (12px) blur + saturate boost.
+        m = re.search(
+            r"\.modal-overlay\s*\{[^}]*backdrop-filter:\s*blur\(12px\)\s+saturate\(125%\)",
+            self.tokens, re.DOTALL,
+        )
+        self.assertIsNotNone(m,
+            ".modal-overlay must carry backdrop-filter: blur(12px) saturate(125%)")
+        # Webkit prefix for Safari coverage.
+        m = re.search(
+            r"\.modal-overlay\s*\{[^}]*-webkit-backdrop-filter:\s*blur\(12px\)",
+            self.tokens, re.DOTALL,
+        )
+        self.assertIsNotNone(m, "-webkit- prefix required for Safari")
+
+    def test_modal_gets_20px_blur_and_mint_inset(self):
+        # Modal cards carry the heavier (20px) blur and a 3-layer
+        # box-shadow: mint inset + dark drop + mint outer halo.
+        # The rule lists `.modal` and `.modal-card` together so graph
+        # (which uses `.modal-card`) gets the same treatment.
+        m = re.search(
+            r"\.modal,\s*\.modal-card\s*\{([^}]+)\}",
+            self.tokens, re.DOTALL,
+        )
+        self.assertIsNotNone(m,
+            "expected combined `.modal, .modal-card` rule for 6c")
+        block = m.group(1)
+        self.assertIn("blur(20px)", block)
+        self.assertIn("saturate(135%)", block)
+        self.assertIn("-webkit-backdrop-filter", block)
+        # Mint inset (1px) + dark drop + mint outer halo (28px).
+        self.assertIn("rgba(107,231,208,.06) inset", block,
+            "expected mint inset layer in the 3-layer box-shadow")
+        self.assertIn("rgba(107,231,208,.12)", block,
+            "expected mint outer halo layer in the 3-layer box-shadow")
+
+
 class CyberBackgroundTextureTests(unittest.TestCase):
     """Cyber 6a — body background carries a mint-cyan grid + radial
     overlay so the four app surfaces share a subtle "system" backdrop.

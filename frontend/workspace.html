@@ -172,15 +172,14 @@
 
   /* Login modal — chat-page pattern */
   .modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,.85);
+    position: fixed; inset: 0; background: rgba(4,6,10,.35);
     display: flex; align-items: center; justify-content: center;
     z-index: 300;
   }
   .modal-overlay.hidden { display: none; }
   .modal {
-    background: var(--surface); border: 1px solid var(--border);
+    background: rgba(7,9,14,.55); border: 1px solid var(--border);
     border-radius: 12px; padding: 32px; width: 360px; max-width: 92vw;
-    box-shadow: 0 24px 80px rgba(0,0,0,.7);
   }
   .modal-title { font-size: 14px; font-weight: 600; margin-bottom: 18px;
                   color: var(--accent-fg); letter-spacing: .3px; }

@@ -164,6 +164,31 @@ body {
   box-shadow: 0 0 14px rgba(107,231,208,.18);
 }
 
+/* ── Cyber 6c — glassmorphism on modals ──
+ * Wraps every `.modal-overlay` in a backdrop blur and lifts every
+ * `.modal` / `.modal-card` with a heavier blur + mint inset glow.
+ * Pages declare semi-transparent overlay / card backgrounds (alpha
+ * ≤ .55) so the blur actually shows through.
+ *
+ * Wrapped in @supports so engines without backdrop-filter fall back
+ * cleanly to the page-controlled solid bg + the page's own card
+ * shadow (no half-applied state). */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .modal-overlay {
+    backdrop-filter: blur(12px) saturate(125%);
+    -webkit-backdrop-filter: blur(12px) saturate(125%);
+  }
+  .modal,
+  .modal-card {
+    backdrop-filter: blur(20px) saturate(135%);
+    -webkit-backdrop-filter: blur(20px) saturate(135%);
+    box-shadow:
+      0 0 0 1px rgba(107,231,208,.06) inset,
+      0 24px 80px rgba(0,0,0,.6),
+      0 0 28px rgba(107,231,208,.12);
+  }
+}
+
 /* ── Top accent rail ──
  * Thin 2px stripe along the very top of every page — gives the app
  * a subtle "system header" feel like enterprise dashboards. Fixed
