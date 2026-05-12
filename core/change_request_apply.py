@@ -42,7 +42,7 @@ from typing import Callable, Dict, Optional
 import core.change_request as _cr_mod
 from core.change_request import (
     STATUS_OPEN,
-    TARGET_WIKI_ENTITY,
+    TARGET_WIKI_ENTITY, TARGET_RUN_JOBS,
     ChangeRequest,
     compute_base_hash, get_cr, supersede_cr,
 )
@@ -193,11 +193,96 @@ def _apply_wiki_entity(cr: ChangeRequest) -> ApplyResult:
     )
 
 
+# ─── Target-specific apply: run_jobs (PR-CR-D) ──────────────────
+def _apply_run_jobs(cr: ChangeRequest) -> ApplyResult:
+    """Apply a ``run_jobs`` CR by registering and executing a
+    workspace job under the proposer's name.
+
+    Diff shape (closed for v0.2.x — same plugin-contract reasoning
+    as the wiki op enum):
+
+        {"op":         "run",
+         "job_type":   "excel_build" | "doc_combine" | "entity_export",
+         "input_refs": [ "...", ... ],
+         "options":    {...}                   # optional
+        }
+
+    Unlike ``wiki_entity``, ``run_jobs`` is a *trigger* — the CR's
+    ``base_hash`` is informational only (no current "state" of the
+    target to compare against). The proposer typically computes it
+    as ``sha256(json.dumps({job_type, input_refs}, sort_keys=True))``
+    so duplicate proposals can be spotted by id; the apply does
+    not enforce a comparison.
+
+    Returns ``ApplyResult(applied=True, new_hash=job_id)`` — the
+    job_id is the merge artifact a reviewer can trace via the
+    workspace Jobs tab.
+    """
+    # Decode + validate the diff.
+    try:
+        diff = json.loads(cr.proposed_diff)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"proposed_diff is not valid JSON: {exc}") from exc
+    if not isinstance(diff, dict):
+        raise ValueError("proposed_diff must decode to a JSON object")
+    if diff.get("op") != "run":
+        raise ValueError(f"unsupported run_jobs op: {diff.get('op')!r}")
+
+    job_type = diff.get("job_type")
+    if not isinstance(job_type, str) or not job_type:
+        raise ValueError("run_jobs requires a non-empty job_type string")
+
+    input_refs = diff.get("input_refs")
+    if not isinstance(input_refs, list):
+        raise ValueError("run_jobs requires input_refs as a list")
+    if not all(isinstance(r, str) for r in input_refs):
+        raise ValueError("run_jobs input_refs must be a list of strings")
+
+    options = diff.get("options")
+    if options is not None and not isinstance(options, dict):
+        raise ValueError("run_jobs options must be a JSON object or null")
+
+    # Import lazily so the CR module stays importable on installs
+    # without the workspace job tables (e.g., test fixtures).
+    from core import workspace as _ws
+
+    # HANDLERS is the canonical allowlist of job_types — same enum
+    # the /jobs/run endpoint consults.
+    if job_type not in _ws.HANDLERS:
+        raise ValueError(
+            f"unknown job_type: {job_type!r} "
+            f"(known: {sorted(_ws.HANDLERS.keys())})"
+        )
+
+    # Register under the proposer's name — the job becomes visible
+    # in their /jobs/list view (admin sees it in /admin/jobs/list).
+    # The approver is recorded in the CR row + audit, NOT on the
+    # job, to keep workspace.jobs schema unchanged.
+    job_id = _ws.register_job(
+        job_type=job_type,
+        input_refs=input_refs,
+        owner=cr.proposer,
+        options=options,
+    )
+    try:
+        _ws.execute_job(job_id)
+    except Exception as exc:
+        # The job row exists at this point (status='failed' or 'pending'
+        # depending on where execute_job blew up). Surface to caller so
+        # merge_cr raises and CR stays open — invariant #5.
+        raise RuntimeError(
+            f"run_jobs execution failed for job_id={job_id}: {exc}"
+        ) from exc
+
+    return ApplyResult(applied=True, new_hash=job_id)
+
+
 # ─── Dispatcher ──────────────────────────────────────────────────
-# Closed enum — ARCHITECTURE.md §5.6 explains why. ``run_jobs`` lands
-# in PR-CR-D; add it here when that PR ships, not as a plugin hook.
+# Closed enum — ARCHITECTURE.md §5.6 explains why. Plugin-style
+# external registration is the v0.3 contract surface, not now.
 _APPLY_DISPATCH: Dict[str, Callable[[ChangeRequest], ApplyResult]] = {
     TARGET_WIKI_ENTITY: _apply_wiki_entity,
+    TARGET_RUN_JOBS:    _apply_run_jobs,
 }
 
 

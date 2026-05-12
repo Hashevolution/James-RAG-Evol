@@ -395,12 +395,17 @@ class ModuleContractTests(unittest.TestCase):
         self.assertLess(size, 20 * 1024,
             f"core/change_request.py = {size}B; over the gate")
 
-    def test_apply_dispatch_contains_wiki_entity_only_for_now(self):
-        # ``run_jobs`` lands in PR-CR-D. If someone adds it here
-        # without that PR's tests they'd ship an untested write path.
+    def test_apply_dispatch_matches_valid_target_types(self):
+        # The dispatch table must cover every v0.2.x target_type
+        # the schema allows — adding a target_type without an apply
+        # handler would let proposers file CRs that can never merge.
+        # ``run_jobs`` joined in PR-CR-D; see
+        # tests/test_change_request_jobs_apply.py for that target's
+        # behaviour suite.
+        from core.change_request import VALID_TARGET_TYPES
         self.assertEqual(
             set(apply_mod._APPLY_DISPATCH.keys()),
-            {TARGET_WIKI_ENTITY},
+            set(VALID_TARGET_TYPES),
         )
 
 
