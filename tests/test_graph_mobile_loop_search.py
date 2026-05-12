@@ -31,29 +31,37 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ROOT = Path(__file__).resolve().parent.parent
 JS  = ROOT / "frontend" / "static" / "graph.js"
 HTML = ROOT / "frontend" / "graph.html"
+MOBILE_CSS = ROOT / "frontend" / "static" / "mobile.css"
 
 
 # ─── Feature 1 — Mobile responsive ───────────────────────────────
 class MobileResponsiveTests(unittest.TestCase):
-    """@media queries must cover phone (≤720px) and very small (≤480px)."""
+    """@media queries must cover phone (≤768px) and very small (≤480px).
+
+    [mobile-css-extension, 2026-05-12] The graph @media rules used to
+    live inline in graph.html at the 720px breakpoint. They moved into
+    mobile.css's graph section at the project-standard 768px boundary
+    so the four pages share one mobile contract. Tests now read the
+    consolidated stylesheet instead of the page."""
 
     @classmethod
     def setUpClass(cls):
-        cls.html = HTML.read_text(encoding="utf-8")
+        cls.css = MOBILE_CSS.read_text(encoding="utf-8")
 
-    def test_720_breakpoint_present(self):
-        self.assertIn("@media (max-width: 720px)", self.html)
+    def test_768_breakpoint_present(self):
+        self.assertIn("@media (max-width: 768px)", self.css,
+            "tablet+phone breakpoint must exist in mobile.css")
 
     def test_480_breakpoint_present(self):
-        self.assertIn("@media (max-width: 480px)", self.html,
-            "tiny-screen breakpoint must adjust further beyond 720px")
+        self.assertIn("@media (max-width: 480px)", self.css,
+            "tiny-screen breakpoint must adjust further beyond 768px")
 
     def test_neighbor_panel_responsive(self):
         # Neighbor panel default is left-aligned; on phone it should
         # stretch full-width.
-        idx = self.html.index("@media (max-width: 720px)")
-        end = self.html.index("@media (max-width: 480px)", idx)
-        block = self.html[idx:end]
+        idx = self.css.index("@media (max-width: 768px)")
+        end = self.css.index("@media (max-width: 480px)", idx)
+        block = self.css[idx:end]
         self.assertIn(".neighbor-panel", block,
             "neighbor-panel must have phone-specific layout rule")
 
@@ -61,9 +69,9 @@ class MobileResponsiveTests(unittest.TestCase):
     # layout 검증도 무관 — 질문 인터페이스는 /chat 페이지에서.
 
     def test_touch_targets_enlarged(self):
-        idx = self.html.index("@media (max-width: 720px)")
-        end = self.html.index("@media (max-width: 480px)", idx)
-        block = self.html[idx:end]
+        idx = self.css.index("@media (max-width: 768px)")
+        end = self.css.index("@media (max-width: 480px)", idx)
+        block = self.css[idx:end]
         # Buttons / clickable rows must be larger for thumb taps.
         # Look for a width/height ≥ 32px or padding ≥ 10px.
         self.assertRegex(block, r"width:\s*32px|min-(?:width|height):\s*[345]\dpx",

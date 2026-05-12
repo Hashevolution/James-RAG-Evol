@@ -470,6 +470,81 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
+
+  /* ─────────────── workspace 페이지 ───────────────
+   * Originally lived inline in workspace.html at the 700px
+   * breakpoint; consolidated here so the four pages share a
+   * single 768px mobile boundary.
+   *
+   * Workspace's left rail is ``nav.sidebar`` (NOT ``aside.sidebar``
+   * which belongs to the chat page) — selectors are scoped to that
+   * element so the chat page's full-screen drawer rules don't
+   * collide. The ``.nav-item span:not(.nav-icon)`` collapse is
+   * descended from ``nav.sidebar`` for the same reason: admin's
+   * sidebar uses ``.nav-item`` with visible labels even on mobile. */
+  nav.sidebar {
+    width: 56px;
+    padding: 12px 4px;
+  }
+  nav.sidebar .nav-item span:not(.nav-icon) {
+    display: none;
+  }
+  section.content {
+    padding: 12px 16px;
+  }
+  .detail-panel {
+    width: 100vw;
+  }
+
+  /* ─────────────── graph 페이지 ───────────────
+   * Originally inline at 720px; aligned to 768px here. Graph's
+   * left side panel is a bare ``aside`` (no class); scoped via
+   * ``.main > aside`` so it doesn't clobber chat's ``aside.sidebar``
+   * (which has its own full-screen drawer rules above) or workspace's
+   * own layout. The neighbor / search-drawer rules use
+   * graph-only class names, so no extra scoping is needed.
+   *
+   * The 480px-specific graph refinements (hide .tsd-type column,
+   * hide .np-rel column) live in the ≤ 480px block below. */
+  .main > aside {
+    display: none;
+  }
+  .neighbor-panel {
+    right: 8px;
+    left: 8px;
+    top: 56px;
+    width: auto;
+    max-height: calc(70% - 56px);
+    font-size: 12px;
+  }
+  .neighbor-panel .np-close {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+  .neighbor-panel .np-item {
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+  .top-search-drawer {
+    width: calc(100% - 16px);
+  }
+  .top-search-drawer.tsd-open {
+    max-height: min(70vh, 540px);
+  }
+  .top-search-drawer .tsd-list {
+    max-height: 60vh;
+  }
+  .top-search-drawer .tsd-row {
+    padding: 12px 10px;
+  }
+  /* The bottom-left hint overlay is too crowded on phones. */
+  .overlay.bl {
+    display: none;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -495,6 +570,18 @@
   /* 어드민 페이지 본문 */
   .page-title { font-size: 15px; }
   .section-title { font-size: 12px; }
+
+  /* ─────────────── graph 페이지 — 폰 ───────────────
+   * On the narrowest devices, free up horizontal space by hiding
+   * the type column in the search drawer and the relation column
+   * in the neighbor panel. Class names are graph-only so no
+   * additional scoping is needed. */
+  .top-search-drawer .tsd-row .tsd-type {
+    display: none;
+  }
+  .neighbor-panel .np-rel {
+    display: none;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────

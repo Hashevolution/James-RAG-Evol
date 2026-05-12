@@ -6,11 +6,11 @@
 <meta name="theme-color" content="#04060a">
 <title>Secure Enterprise Knowledge Operating System — Workspace</title>
 <link rel="stylesheet" href="/static/tokens.css">
-<!-- Shared mobile responsive overrides (touch targets, iOS font-size,
-     safe-area-inset, generic modal/table rules). Workspace-specific
-     mobile rules — sidebar collapse + detail-panel full-width — stay
-     inline below at the same 700px breakpoint. mobile.css's 768px
-     rules layer underneath. -->
+<!-- Shared mobile responsive overrides. Workspace-specific mobile
+     rules (sidebar collapse, content padding, detail-panel full-width)
+     now live in mobile.css's workspace section at the unified 768px
+     breakpoint so the single source of mobile truth doesn't drift
+     across pages. Page-local non-mobile style stays inline below. -->
 <link rel="stylesheet" href="/static/mobile.css">
 <style>
   body {
@@ -227,13 +227,6 @@
   .toast.show { opacity: 1; }
   .toast.error { border-color: var(--danger); color: var(--danger); }
   .toast.success { border-color: var(--success); color: var(--success); }
-
-  @media (max-width: 700px) {
-    nav.sidebar { width: 56px; padding: 12px 4px; }
-    .nav-item span:not(.nav-icon) { display: none; }
-    section.content { padding: 12px 16px; }
-    .detail-panel { width: 100vw; }
-  }
 </style>
 </head>
 <body>

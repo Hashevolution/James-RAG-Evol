@@ -6,6 +6,12 @@
 <meta name="theme-color" content="#04060a">
 <title>Secure Enterprise Knowledge Operating System — Reasoning Graph</title>
 <link rel="stylesheet" href="/static/tokens.css">
+<!-- Shared mobile responsive overrides. The graph page's own mobile
+     rules (aside hide, neighbor-panel reposition, top-search-drawer
+     resize) live in mobile.css's graph section so the single source
+     of mobile truth doesn't drift across pages. Page-local non-mobile
+     style stays inline below. -->
+<link rel="stylesheet" href="/static/mobile.css">
 <style>
   :root {
     /* graph-page only: entity type → colour (domain-neutral) */
@@ -351,41 +357,10 @@
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--muted-2); }
 
-  /* [PR mobile-loop-search, 2026-05-09] phone-friendly layout
-     adjustments. Targets the 720px and 480px breakpoints used
-     elsewhere (mobile.css PR #98 sets the project standard). */
-  @media (max-width: 720px) {
-    aside { display: none; }
-    .neighbor-panel { right: 8px; left: 8px; top: 56px; width: auto;
-                      max-height: calc(70% - 56px); font-size: 12px; }
-    .neighbor-panel .np-close {
-      width: 32px; height: 32px;            /* 44px*0.7 — usable thumb */
-      display: flex; align-items: center; justify-content: center;
-      font-size: 16px;
-    }
-    .neighbor-panel .np-item {
-      padding: 10px 8px;                    /* taller for thumb taps */
-      font-size: 13px;
-    }
-    .top-search-drawer {
-      width: calc(100% - 16px);
-    }
-    .top-search-drawer.tsd-open {
-      max-height: min(70vh, 540px);
-    }
-    .top-search-drawer .tsd-list {
-      max-height: 60vh;
-    }
-    .top-search-drawer .tsd-row {
-      padding: 12px 10px;                   /* taller for thumb taps */
-    }
-    .overlay.bl { display: none; }          /* hint text — too crowded on phone */
-  }
-  @media (max-width: 480px) {
-    .top-search-drawer .tsd-row .tsd-type { display: none; }
-    /* Free up horizontal space on tiny screens */
-    .neighbor-panel .np-rel { display: none; }
-  }
+  /* Phone-friendly layout rules (≤ 768px and ≤ 480px) now live in
+     mobile.css's graph section — see PR mobile-css-extension. The
+     original 720px / 480px breakpoints were promoted to the project-
+     standard 768px / 480px so all four pages share one boundary. */
 </style>
 </head>
 <body>
