@@ -494,24 +494,22 @@ class CyberLiveIndicatorTests(unittest.TestCase):
             "active toggle text colour must migrate from #fff to "
             "var(--accent) (mono-cyber outline+tint pattern)")
 
-    def test_chat_header_has_live_dot(self):
-        # Concrete placement of the live-dot utility — sits inside
-        # `.logo` next to the brand line so the system-online cue is
-        # paired with product identity.
-        m = re.search(
-            r'<div class="logo">(.+?)</div>',
-            self.index_html, re.DOTALL,
-        )
-        self.assertIsNotNone(m)
-        logo = m.group(1)
-        self.assertIn('class="live-dot"', logo,
-            "chat header .logo must include a .live-dot indicator "
-            "as the exemplar placement of the 6d utility")
+    def test_all_page_headers_have_live_dot(self):
+        # All four pages carry the live-dot inside `.logo` so the
+        # "system live" cue is consistent across the app surface.
         # aria-hidden because the dot is decorative — the system
         # status it represents isn't surfaced to screen readers
         # from this element alone.
-        self.assertIn("aria-hidden", logo,
-            "live-dot is decorative; must carry aria-hidden")
+        for name in ("index.html", "admin.html",
+                     "workspace.html", "graph.html"):
+            html = (ROOT / "frontend" / name).read_text(encoding="utf-8")
+            m = re.search(r'<div class="logo">(.+?)</div>', html, re.DOTALL)
+            self.assertIsNotNone(m, f"{name}: .logo block must exist")
+            logo = m.group(1)
+            self.assertIn('class="live-dot"', logo,
+                f"{name}: .logo must include the live-dot indicator")
+            self.assertIn('aria-hidden', logo,
+                f"{name}: live-dot must carry aria-hidden (decorative)")
 
 
 class CyberBackgroundTextureTests(unittest.TestCase):
