@@ -242,28 +242,28 @@
       <span class="who" id="role-who"></span>
       <span id="role-name"></span>
     </span>
-    <button class="header-btn" data-lang-toggle onclick="toggleLang()"
+    <button class="header-btn" data-lang-toggle data-action="toggle-lang"
             aria-label="언어 전환 / Toggle language"
             style="font-weight:700"></button>
     <a href="/" class="header-btn" style="text-decoration:none" data-i18n="workspace.back_chat">챗</a>
     <button class="header-btn" id="login-btn"
-            onclick="showLogin()" data-i18n="auth.login">로그인</button>
+            data-action="show-login" data-i18n="auth.login">로그인</button>
     <button class="header-btn" id="logout-btn"
-            onclick="doLogout()" style="display:none" data-i18n="auth.logout">로그아웃</button>
+            data-action="do-logout" style="display:none" data-i18n="auth.logout">로그아웃</button>
   </div>
 </header>
 
 <main>
   <nav class="sidebar">
-    <div class="nav-item active" data-tab="data" onclick="selectTab('data')">
+    <div class="nav-item active" data-tab="data" data-action="select-tab">
       <span class="nav-icon">📦</span>
       <span data-i18n="workspace.tab_data">내 데이터</span>
     </div>
-    <div class="nav-item" data-tab="jobs" onclick="selectTab('jobs')">
+    <div class="nav-item" data-tab="jobs" data-action="select-tab">
       <span class="nav-icon">🛠</span>
       <span data-i18n="workspace.tab_jobs">작업</span>
     </div>
-    <div class="nav-item" data-tab="search" onclick="selectTab('search')">
+    <div class="nav-item" data-tab="search" data-action="select-tab">
       <span class="nav-icon">🔍</span>
       <span data-i18n="workspace.tab_search">검색</span>
     </div>
@@ -282,9 +282,8 @@
       <div class="toolbar">
         <input id="data-q" type="text"
                data-i18n-placeholder="workspace.search_ph"
-               placeholder="파일명 검색"
-               oninput="onDataSearchInput()">
-        <select id="data-status" onchange="reloadData()">
+               placeholder="파일명 검색">
+        <select id="data-status">
           <option value="" data-i18n="workspace.status_all">전체 상태</option>
           <option value="uploaded">uploaded</option>
           <option value="extracted">extracted</option>
@@ -306,9 +305,9 @@
         </tbody>
       </table>
       <div class="pager">
-        <button id="data-prev" onclick="dataPage(-1)" data-i18n="common.prev">← 이전</button>
+        <button id="data-prev" data-action="data-page-prev" data-i18n="common.prev">← 이전</button>
         <span class="pageinfo" id="data-pageinfo">page 1</span>
-        <button id="data-next" onclick="dataPage(1)" data-i18n="common.next">다음 →</button>
+        <button id="data-next" data-action="data-page-next" data-i18n="common.next">다음 →</button>
       </div>
     </div>
 
@@ -327,7 +326,7 @@
         <div style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:end">
           <div>
             <label style="font-size:10px;color:var(--muted);letter-spacing:.5px;font-family:var(--font-mono);display:block;margin-bottom:4px">JOB TYPE</label>
-            <select id="job-type" onchange="onJobTypeChange()" style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+            <select id="job-type" style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
               <option value="excel_build" data-i18n="workspace.jt_excel">excel_build · 엔티티 → .xlsx</option>
               <option value="doc_combine" data-i18n="workspace.jt_doc">doc_combine · 엔티티 → .md</option>
               <option value="entity_export" data-i18n="workspace.jt_export">entity_export · 카테고리 → .json</option>
@@ -343,7 +342,7 @@
                    style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:var(--font-mono)">
           </div>
           <div>
-            <button onclick="runJob()" id="run-job-btn"
+            <button data-action="run-job" id="run-job-btn"
                     style="padding:9px 16px;background:var(--accent);color:var(--on-accent);border:0;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600"
                     data-i18n="workspace.run">실행</button>
           </div>
@@ -358,7 +357,7 @@
       <!-- Toolbar + table -->
       <div class="toolbar">
         <span class="counter" id="jobs-counter"></span>
-        <button class="header-btn" onclick="reloadJobs()" style="margin-left:auto"
+        <button class="header-btn" data-action="reload-jobs" style="margin-left:auto"
                 data-i18n="workspace.refresh">새로고침</button>
       </div>
       <table>
@@ -389,7 +388,7 @@
 
 <!-- Artifact detail panel -->
 <div class="detail-panel" id="detail-panel">
-  <button class="close" onclick="closeDetail()" aria-label="상세 패널 닫기">×</button>
+  <button class="close" data-action="close-detail" aria-label="상세 패널 닫기">×</button>
   <h3 id="detail-title">—</h3>
   <div class="detail-row"><div class="label">ARTIFACT ID</div><div class="value" id="d-id"></div></div>
   <div class="detail-row"><div class="label">PATH</div><div class="value" id="d-path"></div></div>
@@ -415,21 +414,19 @@
     </div>
     <div class="modal-field">
       <label data-i18n="auth.password">PASSWORD</label>
-      <input type="password" id="login-pw" autocomplete="current-password"
-             onkeydown="if(event.key==='Enter') doLogin()">
+      <input type="password" id="login-pw" autocomplete="current-password">
     </div>
     <div class="modal-field">
       <label data-i18n="auth.api_key">API KEY</label>
-      <input type="password" id="login-apikey" autocomplete="off"
-             onkeydown="if(event.key==='Enter') doLogin()">
+      <input type="password" id="login-apikey" autocomplete="off">
     </div>
     <div class="modal-error" id="login-error"></div>
     <div class="modal-actions">
-      <button class="modal-btn cancel" onclick="closeLogin()" data-i18n="common.cancel">취소</button>
-      <button class="modal-btn primary" onclick="doLogin()" data-i18n="auth.login">로그인</button>
+      <button class="modal-btn cancel" data-action="close-login" data-i18n="common.cancel">취소</button>
+      <button class="modal-btn primary" data-action="do-login" data-i18n="auth.login">로그인</button>
     </div>
     <div class="modal-link">
-      <a href="javascript:openForgot()" data-i18n="auth.forgot_password">비밀번호를 잊으셨나요?</a>
+      <a href="#" data-action="open-forgot" data-i18n="auth.forgot_password">비밀번호를 잊으셨나요?</a>
     </div>
   </div>
 </div>

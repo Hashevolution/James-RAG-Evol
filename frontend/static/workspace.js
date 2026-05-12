@@ -293,7 +293,7 @@ async function reloadData() {
       const uploaderCell = adminPath
         ? `<td class="mono">${_esc(it.uploaded_by || '-')}</td>`
         : '';
-      return `<tr onclick="openDetail('${it.artifact_id}')">
+      return `<tr data-action="open-detail" data-artifact-id="${_esc(it.artifact_id)}" style="cursor:pointer">
         <td>${_esc(it.origin_name || '')}
             <span style="color:var(--muted);font-size:10px;display:block;font-family:var(--font-mono)">${_fmtBytes(it.origin_size)}</span>
         </td>
@@ -438,10 +438,10 @@ async function reloadJobs() {
         ? `<span class="mono" style="font-size:10px;color:var(--muted)">${_esc(j.output_path.split('/').pop())}</span>`
         : '<span style="color:var(--muted)">—</span>';
       const dlBtn = (j.status === 'done' && j.output_path)
-        ? `<button onclick="downloadJob('${j.job_id}', ${adminPath ? 'true' : 'false'})"
+        ? `<button data-action="download-job" data-job-id="${_esc(j.job_id)}" data-admin="${adminPath ? 'true' : 'false'}"
                    style="padding:4px 10px;background:#1e7a3e;color:#fff;border:0;border-radius:4px;cursor:pointer;font-size:11px">다운로드</button>`
         : (j.status === 'failed'
-            ? `<button onclick="showJobError('${j.job_id}', ${adminPath ? 'true' : 'false'})"
+            ? `<button data-action="show-job-error" data-job-id="${_esc(j.job_id)}" data-admin="${adminPath ? 'true' : 'false'}"
                        style="padding:4px 10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:4px;cursor:pointer;font-size:11px">에러 보기</button>`
             : '<span style="color:var(--muted)">—</span>');
       return `<tr>
@@ -510,8 +510,70 @@ function toggleLang() {
   location.reload();
 }
 
+/* ── Inline-handler migration (CSP-friendly delegation) ──
+ * workspace.html no longer uses ``onclick=`` / ``onchange=`` /
+ * ``oninput=`` / ``onkeydown=`` / ``href="javascript:…"`` inline
+ * attributes. Static elements carry ``data-action`` and the
+ * document-level click delegate routes by name. Stable inputs
+ * (search, status select, job type select, login modal fields)
+ * are wired directly by id since they live for the lifetime of
+ * the page and don't appear in any innerHTML template. */
+function _bindFrontendEvents() {
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest && e.target.closest('[data-action]');
+    if (!t) return;
+    const action = t.getAttribute('data-action');
+    switch (action) {
+      case 'toggle-lang':      toggleLang(); break;
+      case 'show-login':       showLogin(); break;
+      case 'do-logout':        doLogout(); break;
+      case 'select-tab':       selectTab(t.getAttribute('data-tab')); break;
+      case 'data-page-prev':   dataPage(-1); break;
+      case 'data-page-next':   dataPage(1); break;
+      case 'run-job':          runJob(); break;
+      case 'reload-jobs':      reloadJobs(); break;
+      case 'close-detail':     closeDetail(); break;
+      case 'close-login':      closeLogin(); break;
+      case 'do-login':         doLogin(); break;
+      case 'open-forgot':      e.preventDefault(); openForgot(); break;
+      case 'open-detail':      openDetail(t.getAttribute('data-artifact-id')); break;
+      case 'download-job':
+        downloadJob(
+          t.getAttribute('data-job-id'),
+          t.getAttribute('data-admin') === 'true',
+        );
+        break;
+      case 'show-job-error':
+        showJobError(
+          t.getAttribute('data-job-id'),
+          t.getAttribute('data-admin') === 'true',
+        );
+        break;
+    }
+  });
+}
+
+function _bindStableInputs() {
+  const dq = document.getElementById('data-q');
+  if (dq) dq.addEventListener('input', () => onDataSearchInput());
+  const dstat = document.getElementById('data-status');
+  if (dstat) dstat.addEventListener('change', () => reloadData());
+  const jt = document.getElementById('job-type');
+  if (jt) jt.addEventListener('change', () => onJobTypeChange());
+  const lpw = document.getElementById('login-pw');
+  if (lpw) lpw.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doLogin();
+  });
+  const lkey = document.getElementById('login-apikey');
+  if (lkey) lkey.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doLogin();
+  });
+}
+
 /* ── boot ── */
 window.addEventListener('DOMContentLoaded', () => {
+  _bindFrontendEvents();
+  _bindStableInputs();
   _loadStored();
   updateRoleBadge();
   if (!_token) {
