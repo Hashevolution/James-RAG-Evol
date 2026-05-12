@@ -53,6 +53,7 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 | Business track (current cycle) | `docs/handovers/v0.2.1-business-track.md` |
 | v0.3 license / CLA / plugin API session | `docs/handovers/session-2026-05-09-license-infrastructure.md` |
 | License long-term plan + trigger monitoring | `docs/LICENSE_PLAN.md` |
+| **Change Request primitive (v0.2.x cycle)** | `docs/handovers/v0.2.x-cr-track.md` + `docs/ARCHITECTURE.md §5.6` |
 | Open issues by priority | `gh issue list --label priority:high` |
 | STEP 7 regression baseline | `eval/regression/step7_queries.json` (or `scripts/step7_query_test.py`) |
 

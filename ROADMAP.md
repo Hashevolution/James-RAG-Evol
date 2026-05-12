@@ -155,6 +155,27 @@ The following moved to v0.3 to keep v0.2 focused:
 
 ### Deferred follow-ups (recheck before v0.3)
 
+- **Change Request primitive — generalise the approver_username
+  pattern.** v0.1 hard-coded approver tracking for self-evolution
+  alone (Axis 5). Every other write — wiki edits, workspace job
+  runs, ontology patches, config saves — lands with no proposal,
+  no review, no diff, no rollback. v0.2.x adds `core/change_request.py`
+  as a single primitive owning the propose → review → merge →
+  audit cycle, with two target types (`wiki_entity` first,
+  `run_jobs` second) and the existing self-evolution gate folded
+  on top in the same cycle. Spans Axis 4 (security boundary
+  generalisation) + Axis 5 (controlled write authorisation
+  generalised beyond self-evolution).
+  - Trust zone documented in `docs/ARCHITECTURE.md §5.6`.
+  - Cycle plan + frozen schema + invariants in
+    `docs/handovers/v0.2.x-cr-track.md`.
+  - Deliberately closed enum for `target_type` — the registration
+    API surface is the v0.3 plugin contract.
+  - Multi-approver, team / project / department, external
+    notification routing → all deferred to v0.3.
+  - Done-when: every audit row carrying an `approver_username`
+    today goes through `core/change_request.py`.
+
 - **Audit Phase 4b-2 — remove 16 JSONL writer sites.** The
   JSONL → SQLite migration completed every reader path
   (PRs #206 / #207 / #208 / #210 / #211): the legacy `/admin/audit`

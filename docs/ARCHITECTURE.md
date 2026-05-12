@@ -463,6 +463,91 @@ become a regression.
 
 ---
 
+## 5.6 Change Request primitive (v0.2.x, in progress)
+
+`core/change_request.py` is the single primitive for governing
+**write actions** — wiki edits, workspace job runs, ontology
+patches, config saves. It generalises the `approver_username`
+pattern that v0.1 hard-coded for self-evolution alone: every
+write becomes a proposal first, every merge requires an approver,
+every transition writes one row to `audit_bridge`.
+
+```
+proposer (any authenticated user)
+   │ POST /admin/cr/        (target_type + target_id + proposed_diff + base_hash)
+   ▼
+change_requests row, status='open'
+   │ POST /admin/cr/{id}/review     ← any authenticated user; cr_reviews row
+   │ POST /admin/cr/{id}/approve    ← admin only
+   ▼
+apply() under SQLite transaction:
+   ├─ target-specific apply (mutates wiki / runs job / ...)
+   ├─ change_requests row → status='merged'
+   └─ audit_bridge row recording the transition
+```
+
+Three properties make this the right shape for the mother platform:
+
+1. **Domain-neutral**. The proposal / review / merge / audit cycle
+   is universal — the same object makes sense for clause edits,
+   nutrition labels, or single-operator notes. Domain coupling
+   enters only at v1.0 (CLAUDE.md rule #1, `docs/PLATFORM_READINESS`).
+2. **Append-only audit is the source of truth**. The
+   `change_requests` table itself can be reconstructed from
+   `audit_bridge` rows. The audit-bridge invariant from §4
+   (auditability over performance) extends to the CR primitive.
+3. **No external `target_type` registration before v0.3**. The
+   dispatcher is a closed enum on purpose — the registration API is
+   exactly the v0.3 plugin contract surface and locking it before
+   then would force a breaking change later.
+
+### Trust zone
+
+| Edge | Default trust | Hardening |
+|---|---|---|
+| proposer | **low** | `_require_auth` only; proposal is inert until merged |
+| reviewer (comment / request_changes) | **low** | same as proposer |
+| reviewer (approve / reject) | requires admin role | `_require_admin` at the endpoint |
+| approver ≠ proposer | invariant | enforced at merge time; no self-approval |
+
+### Invariants
+
+1. `merged_at` / `merged_by` NOT NULL ⇔ `status='merged'`.
+2. approver ≠ proposer.
+3. `base_hash` mismatch at merge → 409 + `status='superseded'`
+   (proposal is now stale; user must rebase).
+4. merge is a single SQLite transaction across (a) the row update,
+   (b) target apply, (c) the audit_bridge insert. apply() raising
+   rolls back all three.
+5. apply() failure leaves `status='open'`. A reject is an explicit
+   reviewer decision, never an apply-side accident.
+6. `target_type` unknown to the dispatcher → 400 at propose time
+   (fail closed — matches the PolicyEngine `can_use_feature` pattern
+   for typos).
+7. Every state transition writes one `audit_bridge` row.
+
+### v0.2.x scope
+
+Two target types ship: `wiki_entity` (markdown edits with
+`base_hash` conflict detection) and `run_jobs` (gating workspace
+job execution). The existing self-evolution gate is folded onto
+the same primitive in the same cycle — the `approver_username` /
+`approver_role` / `before_metrics` / `after_metrics` fields that
+v0.1 introduced for patches become per-CR fields on a CR with
+`target_type='self_evolution_patch'`. Behaviour is byte-identical;
+the storage and audit shape become uniform.
+
+**Done-when criterion**: every write that today calls
+`audit_bridge.write_event(action='approved')` with an approver
+field goes through `core/change_request.py`. The bespoke
+`/admin/proposals/...` endpoints become thin wrappers over
+`/admin/cr/...`.
+
+The full cycle plan lives in
+`docs/handovers/v0.2.x-cr-track.md`.
+
+---
+
 ## 6. Evolution Boundaries
 
 Self-evolution is **disabled by default**. To enable:
@@ -470,6 +555,13 @@ Self-evolution is **disabled by default**. To enable:
 1. Set `JAMES_ENABLE_EVOLUTION=1` (explicit opt-in)
 2. Configure `JAMES_EVOLUTION_APPROVER_ROLE` (default: `admin`)
 3. Patches flow: `feedback → candidate → 4-gate eval → approval → deploy → rollback-ready`
+
+> **v0.2.x note**: in the Change Request track (§5.6), the
+> self-evolution flow is being **wrapped** by the generalised CR
+> primitive — the approver field, the eval gate, and the audit-log
+> writes preserve byte-for-byte behaviour. CLAUDE.md rule #3
+> remains in force; the deploy step still rejects without an
+> approver.
 
 A patch reaches `deploy` only after a human with the approver role
 explicitly approves it. Auto-approval is a bug, not a feature.
