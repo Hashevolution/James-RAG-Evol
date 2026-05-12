@@ -151,8 +151,6 @@ class FrontendChipTests(unittest.TestCase):
             "chip class missing")
         self.assertIn("data.web_used", body,
             "must check web_used before rendering chip")
-        self.assertIn("score < 0.50", body,
-            "must gate on score threshold")
         # [§5 migration] inline onclick replaced by data-action;
         # delegate forwards the element to askWithForceWeb so dataset
         # is still readable.
@@ -169,6 +167,61 @@ class FrontendChipTests(unittest.TestCase):
         # Default empty + the conditional excludes web_used=true.
         self.assertIn("!data.web_used", body,
             "must skip chip when web search already happened")
+
+    # ─── Axis 6 (2026-05-12) — dual-variant chip ─────────────────
+    # The chip used to only fire on low confidence (score < 0.50).
+    # User feedback: high-confidence answers should also offer a
+    # web option — "check for newer information" — instead of
+    # silently hiding the chip when the answer is well-supported.
+    # The two thresholds split the score line into three bands:
+    #   < 0.50  → "자료 수집" framing
+    #   ≥ 0.70  → "최신 정보 보완" framing
+    #   between → no chip (deliberate quiet zone)
+    # Same data-action / data-question shape — the delegate doesn't
+    # care which variant fired.
+
+    def test_two_distinct_thresholds_declared(self):
+        idx = self.js.index("let forceWebChip")
+        body = self.js[idx:idx + 4000]
+        self.assertIn("0.70", body,
+            "HIGH-confidence threshold (0.70) missing")
+        self.assertIn("0.50", body,
+            "LOW-confidence threshold (0.50) missing")
+
+    def test_high_variant_uses_i18n_key(self):
+        idx = self.js.index("let forceWebChip")
+        body = self.js[idx:idx + 4000]
+        self.assertIn("'chat.web_chip_high'", body,
+            "high-confidence variant must source its label from "
+            "the chat.web_chip_high i18n key, not a literal string")
+
+    def test_low_variant_uses_i18n_key(self):
+        idx = self.js.index("let forceWebChip")
+        body = self.js[idx:idx + 4000]
+        self.assertIn("'chat.web_chip_low'", body,
+            "low-confidence variant must source its label from "
+            "the chat.web_chip_low i18n key")
+
+    def test_i18n_keys_present_both_locales(self):
+        i18n = (Path(__file__).resolve().parent.parent
+                / "frontend" / "static" / "i18n.js"
+                ).read_text(encoding="utf-8")
+        for key in ("chat.web_chip_low", "chat.web_chip_high"):
+            with self.subTest(key=key):
+                count = len(re.findall(
+                    r"'" + re.escape(key) + r"'\s*:", i18n))
+                self.assertGreaterEqual(count, 2,
+                    f"i18n key {key!r} must be declared in both en + ko")
+
+    def test_variants_use_distinct_classes(self):
+        # web-collect-btn (low) vs web-refresh-btn (high) so future
+        # CSS / analytics can tell the two apart without parsing copy.
+        idx = self.js.index("let forceWebChip")
+        body = self.js[idx:idx + 4000]
+        self.assertIn("web-collect-btn", body,
+            "low-confidence variant must carry the web-collect-btn class")
+        self.assertIn("web-refresh-btn", body,
+            "high-confidence variant must carry the web-refresh-btn class")
 
 
 if __name__ == "__main__":

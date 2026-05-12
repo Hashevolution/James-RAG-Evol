@@ -222,6 +222,66 @@ class JsContractTests(unittest.TestCase):
         self.assertIn("slice(-600)", self.js,
                       "extraction must restrict to answer tail (600 chars)")
 
+    # ─── Axis 6 (2026-05-12) — return-shape upgrade ──────────────
+    # The extractor used to return a plain list of suggestions; the
+    # bubble then rendered the FULL ``answer`` text alongside the
+    # chips, so users saw "(1) X (2) Y (3) Z" twice. The new
+    # contract returns {suggestions, cleanAnswer}, and the bubble
+    # renders cleanAnswer so the suggestion block appears as chips
+    # only. Tests below pin that contract.
+
+    def test_extract_returns_clean_answer_object(self):
+        # Function must return an object with both fields so the
+        # bubble can render ``cleanAnswer`` instead of the original.
+        idx = self.js.index("function extractNextActionSuggestions")
+        body = self.js[idx:idx + 2400]
+        self.assertIn("suggestions:", body,
+            "extractNextActionSuggestions must return {suggestions, …}")
+        self.assertIn("cleanAnswer", body,
+            "extractNextActionSuggestions must return {…, cleanAnswer}")
+
+    def test_extract_fallback_returns_original_answer(self):
+        # When no pattern reaches the ≥2 threshold, ``cleanAnswer``
+        # MUST be the original answer text — otherwise the bubble
+        # would render an empty string on every short reply.
+        idx = self.js.index("function extractNextActionSuggestions")
+        body = self.js[idx:idx + 2400]
+        # The early-return falls back to ``answerText`` (or empty
+        # string sentinel for missing input).
+        self.assertRegex(
+            body,
+            r"cleanAnswer:\s*answerText",
+            "fallback path must hand back the original answer text",
+        )
+
+    def test_bubble_renders_clean_answer(self):
+        # The bubble must call formatAnswerWithParagraphs on
+        # cleanAnswer (not the raw answer) so the suggestion tail
+        # is stripped from the visible prose.
+        idx = self.js.index("function appendJamesMsg")
+        m = re.search(r"\nfunction\s+\w+\s*\(", self.js[idx + 1:])
+        end = idx + 1 + m.start() if m else idx + 12000
+        body = self.js[idx:end]
+        self.assertIn(
+            "formatAnswerWithParagraphs(cleanAnswer)", body,
+            "bubble must render formatAnswerWithParagraphs(cleanAnswer) — "
+            "not the raw answer — so suggestion text doesn't duplicate",
+        )
+
+    def test_caller_destructures_both_fields(self):
+        # The one caller (appendJamesMsg) must destructure both
+        # so we don't accidentally re-introduce the list form.
+        idx = self.js.index("function appendJamesMsg")
+        m = re.search(r"\nfunction\s+\w+\s*\(", self.js[idx + 1:])
+        end = idx + 1 + m.start() if m else idx + 12000
+        body = self.js[idx:end]
+        self.assertRegex(
+            body,
+            r"\{\s*suggestions\s*,\s*cleanAnswer\s*\}\s*=\s*"
+            r"extractNextActionSuggestions",
+            "appendJamesMsg must destructure both fields",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

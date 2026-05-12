@@ -71,6 +71,10 @@ const TRANSLATIONS = {
     'badge.inference_warn':  'Insufficient internal data — answer based on LLM inference. Use as reference only.',
 
     'toast.web_augmented':   'Answer enhanced via web search',
+    // [Axis 6, 2026-05-12] Web-search chip — dual variant per
+    // confidence score. See chat.js appendJamesMsg.
+    'chat.web_chip_low':     'Search the web for more material',
+    'chat.web_chip_high':    'Check the web for newer information',
     'toast.longterm_saved':  'Saved to long-term memory',
     'toast.level_up':        'Knowledge +{delta} [{domain}]',
     'toast.no_internal':     'No internal data — inference-based answer',
@@ -627,6 +631,10 @@ const TRANSLATIONS = {
     'badge.inference_warn':  '내부 자료가 부족해 LLM 추론으로 답변. 참고용으로만 활용하세요.',
 
     'toast.web_augmented':   '웹 검색으로 보완된 답변',
+    // [Axis 6, 2026-05-12] 신뢰도 분기 chip — chat.js 참조.
+    // 아이콘은 chat.js variant.icon 으로 별도 prepend.
+    'chat.web_chip_low':     '웹 검색으로 자료 수집',
+    'chat.web_chip_high':    '최신 정보로 보완 검색해볼까요?',
     'toast.longterm_saved':  '장기 기억으로 저장됨',
     'toast.level_up':        '지식 레벨 +{delta} [{domain}]',
     'toast.no_internal':     '내부 자료 없음 — 추론 기반 답변',

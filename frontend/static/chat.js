@@ -1251,26 +1251,55 @@ function appendJamesMsg(data) {
   // [3-B] unified_score는 web chip + confidence badge 모두 참조 — 한 번만 읽기.
   const score = data.unified_score;
 
-  // [#A8-6] 자료 부족 + 웹 검색 미사용일 때 "웹으로 더 조사" chip.
-  //   - web_used=false (이미 웹 자료 받았으면 다시 보낼 필요 없음)
-  //   - unified_score < 0.50 (확신 낮은 답변 — internal-only로는 부족)
-  //   - 사용자 자체 질문은 lastUserQuestion에 보관 → 클릭 시 force flag로 재전송.
+  // [#A8-6 + Axis 6, 2026-05-12] Web-search chip — two variants
+  // keyed on confidence.
+  //   score < 0.50  → "자료 수집" framing (internal evidence is
+  //                   thin; the user needs more raw material).
+  //   score ≥ 0.70  → "최신 정보 보완" framing (answer is well-
+  //                   supported by internal sources; the user may
+  //                   still want to check for newer info on the web).
+  //   0.50 ≤ score < 0.70 → no chip (the mid band is the "neither
+  //                   convincing nor desperate" zone where a chip
+  //                   would feel like nagging).
+  // web_used=true skips the chip entirely (already pulled in web).
+  // The action is identical in both variants; copy + color differ.
   let forceWebChip = '';
-  if (!data.web_used && (score == null || score < 0.50)) {
+  if (!data.web_used) {
     const q = lastUserQuestion || '';
-    if (q.trim()) {
+    const HIGH_CONF = 0.70;
+    const LOW_CONF  = 0.50;
+    const isLow  = (score == null || score < LOW_CONF);
+    const isHigh = (score != null && score >= HIGH_CONF);
+    if (q.trim() && (isLow || isHigh)) {
+      const variant = isHigh
+        ? {
+            cls:    'force-web-btn web-refresh-btn',
+            bg:     'rgba(107,231,208,.10)',
+            border: 'rgba(107,231,208,.45)',
+            color:  '#6be7d0',
+            icon:   '✨',
+            label:  t('chat.web_chip_high'),
+          }
+        : {
+            cls:    'force-web-btn web-collect-btn',
+            bg:     'rgba(79,195,247,.10)',
+            border: 'rgba(79,195,247,.45)',
+            color:  '#4fc3f7',
+            icon:   '🌐',
+            label:  t('chat.web_chip_low'),
+          };
       forceWebChip = `
         <div style="margin-top:8px">
-          <button class="next-action-chip force-web-btn"
+          <button class="next-action-chip ${variant.cls}"
                   data-action="ask-with-force-web"
                   data-question="${encodeURIComponent(q)}"
-                  style="text-align:left;background:rgba(79,195,247,.10);
-                         border:1px solid rgba(79,195,247,.45);border-radius:8px;
+                  style="text-align:left;background:${variant.bg};
+                         border:1px solid ${variant.border};border-radius:8px;
                          padding:8px 12px;cursor:pointer;color:var(--text);
                          font-size:12px;width:100%;font-family:inherit;
                          transition:all .15s">
-            <span style="color:#4fc3f7;font-weight:600;margin-right:6px">🌐</span>
-            <span>웹 검색으로 더 자세히 조사하기</span>
+            <span style="color:${variant.color};font-weight:600;margin-right:6px">${variant.icon}</span>
+            <span>${escHtml(variant.label)}</span>
           </button>
         </div>`;
     }
@@ -1388,7 +1417,11 @@ function appendJamesMsg(data) {
   // item #1-B: 답변 끝의 "(1) ... (2) ... (3) ..." 다음-행동 제안을
   // 클릭 가능한 chip으로 변환. 클릭 → 입력창에 그 제안 텍스트 채움 +
   // 자동 전송 (사용자가 다음 차례를 한 클릭으로 진행).
-  const suggestions = extractNextActionSuggestions(answer);
+  // [Axis 6, 2026-05-12] cleanAnswer 는 본문에서 제안 블록을
+  // 잘라낸 버전 — bubble 은 cleanAnswer 만 렌더해서 같은 텍스트가
+  // chip + 본문에 두 번 보이는 문제 (실사용자 피드백) 해결.
+  const { suggestions, cleanAnswer } =
+    extractNextActionSuggestions(answer);
   let suggestionsHtml = '';
   if (suggestions.length > 0) {
     suggestionsHtml = `
@@ -1414,7 +1447,7 @@ function appendJamesMsg(data) {
   div.innerHTML = `
     <div class="avatar james">🧠</div>
     <div>
-      <div class="bubble">${formatAnswerWithParagraphs(answer)}${pathsHtml}</div>
+      <div class="bubble">${formatAnswerWithParagraphs(cleanAnswer)}${pathsHtml}</div>
       ${webBadge}
       ${saveWikiChip}
       ${confidenceBadge}
@@ -1450,15 +1483,26 @@ const SUGGESTION_PATTERNS = [
 ];
 
 function extractNextActionSuggestions(answerText) {
-  if (!answerText) return [];
+  /* [Axis 6 user feedback, 2026-05-12] — return both the parsed
+   * suggestions AND a copy of the answer with the suggestion block
+   * stripped off the tail. The bubble renders ``cleanAnswer`` so
+   * the same text doesn't appear twice (once as prose, once as
+   * chips). Falls back to the original ``answerText`` when no
+   * pattern reaches the ≥2-suggestion threshold.
+   */
+  const empty = { suggestions: [], cleanAnswer: answerText || '' };
+  if (!answerText) return empty;
   const tail = answerText.length > 600
              ? answerText.slice(-600)
              : answerText;
+  const tailStartInOriginal = answerText.length - tail.length;
   for (const re of SUGGESTION_PATTERNS) {
     re.lastIndex = 0;
     const out = [];
+    let firstMatchOffset = -1;
     let m;
     while ((m = re.exec(tail)) !== null) {
+      if (firstMatchOffset < 0) firstMatchOffset = m.index;
       const text = m[2].trim().replace(/[\.。]+$/, '');
       if (text.length >= 4 && text.length <= 200) {
         // 동일 텍스트 중복 제거 (예: "1. X" 다음 "1) X" 둘 다 매칭 방지)
@@ -1469,9 +1513,22 @@ function extractNextActionSuggestions(answerText) {
       if (out.length >= 5) break;
     }
     // 최소 2개 — 단일 매칭은 본문 잔재(예: "1단계: ...")일 가능성.
-    if (out.length >= 2) return out;
+    if (out.length >= 2) {
+      // Cut the answer at the first match offset, then drop any
+      // dangling colon-introducer line ("다음을 시도해보실 수 있습니다:")
+      // that the LLM put right before the list and that would
+      // otherwise hang at the bottom of the bubble.
+      const cutStart = tailStartInOriginal + firstMatchOffset;
+      let cleanAnswer = answerText.slice(0, cutStart)
+                                  .replace(/[\s　]+$/, '');
+      cleanAnswer = cleanAnswer.replace(
+        /(?:^|\n)[^\n]{0,80}[:：]\s*$/,
+        '',
+      ).replace(/[\s　]+$/, '');
+      return { suggestions: out, cleanAnswer };
+    }
   }
-  return [];
+  return empty;
 }
 
 /* [#A8-7] "📥 위키 저장" chip 클릭 핸들러.

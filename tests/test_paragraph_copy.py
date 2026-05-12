@@ -48,14 +48,20 @@ class JsContractTests(unittest.TestCase):
                       "must define formatAnswerWithParagraphs")
 
     def test_used_by_appendJamesMsg(self):
+        # [Axis 6, 2026-05-12] bubble now renders ``cleanAnswer``
+        # (answer with the suggestion tail stripped) instead of the
+        # raw answer, so users don't see the same (1)/(2)/(3) text
+        # both in the prose and as chips. The paragraph splitter is
+        # still applied — only the argument changed.
         idx = self.js.index("function appendJamesMsg")
         m = re.search(r"\nfunction\s+\w+\s*\(", self.js[idx + 1:])
         end = idx + 1 + m.start() if m else idx + 8000
         body = self.js[idx:end]
-        self.assertIn("formatAnswerWithParagraphs(answer)", body,
-                      "appendJamesMsg should render via the paragraph splitter")
+        self.assertIn("formatAnswerWithParagraphs(cleanAnswer)", body,
+                      "appendJamesMsg should render via the paragraph splitter "
+                      "with cleanAnswer (suggestion-stripped)")
         self.assertNotIn("formatAnswer(answer)", body.replace(
-            "formatAnswerWithParagraphs(answer)", ""),
+            "formatAnswerWithParagraphs(cleanAnswer)", ""),
             "must NOT call formatAnswer(answer) directly anymore")
 
     def test_function_handles_code_blocks(self):
