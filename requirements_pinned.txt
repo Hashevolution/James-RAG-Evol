@@ -104,7 +104,7 @@ pytesseract==0.3.13
 python-bidi==0.6.7
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
-python-multipart==0.0.26
+python-multipart==0.0.27
 PyYAML==6.0.3
 rank-bm25==0.2.2
 referencing==0.37.0
@@ -141,7 +141,7 @@ typing-inspection==0.4.2
 typing_extensions==4.15.0
 ultralytics==8.4.33
 ultralytics-thop==2.0.18
-urllib3==2.6.3
+urllib3==2.7.0
 uvicorn==0.44.0
 watchfiles==1.1.1
 websocket-client==1.9.0
