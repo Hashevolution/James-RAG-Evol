@@ -267,6 +267,11 @@
       <span class="nav-icon">🔍</span>
       <span data-i18n="workspace.tab_search">검색</span>
     </div>
+    <!-- [v0.2.x CR-C] Change Request panel — 4th tab. -->
+    <div class="nav-item" data-tab="cr" onclick="selectTab('cr')">
+      <span class="nav-icon">📝</span>
+      <span data-i18n="workspace.tab_cr">변경 요청</span>
+    </div>
   </nav>
 
   <section class="content">
@@ -381,6 +386,220 @@
       <div class="hint" style="margin-top:60px;text-align:center;font-size:13px;line-height:1.7"
            data-i18n="workspace.search_placeholder">
         업로드한 파일 · 위키 entity · 과거 대화 통합 검색이 후속 사이클에서 활성화됩니다.
+      </div>
+    </div>
+
+    <!-- [v0.2.x CR-C] Change Request tab — list / detail / propose.
+         Backend: core/change_request.py + change_request_apply.py.
+         Trust zone: docs/ARCHITECTURE.md §5.6. Auth: admin can
+         approve/reject; any auth user can propose + comment. -->
+    <div id="tab-cr" style="display:none">
+      <div class="page-title">
+        📝 <span data-i18n="workspace.cr_title">변경 요청</span>
+        <span class="badge" id="cr-scope-badge" style="display:none"
+              data-i18n="workspace.cr_scope_admin">ADMIN</span>
+      </div>
+      <div class="hint" data-i18n="workspace.cr_hint">
+        위키 엔티티 / 잡 실행 등 쓰기 작업의 제안 → 검토 → 결재 흐름입니다.
+        admin 은 모든 제안을 보고 결재할 수 있고, 그 외 사용자는 본인 제안만 보입니다.
+      </div>
+
+      <!-- Toolbar — filter + new-proposal toggle + refresh. -->
+      <div class="toolbar">
+        <select id="cr-filter-status" onchange="reloadCrs()"
+                style="padding:8px 10px;background:var(--bg);
+                       border:1px solid var(--border);border-radius:6px;
+                       color:var(--text);font-size:12px">
+          <option value="" data-i18n="workspace.cr_status_all">전체 상태</option>
+          <option value="open"       data-i18n="workspace.cr_status_open">open</option>
+          <option value="merged"     data-i18n="workspace.cr_status_merged">merged</option>
+          <option value="rejected"   data-i18n="workspace.cr_status_rejected">rejected</option>
+          <option value="superseded" data-i18n="workspace.cr_status_superseded">superseded</option>
+        </select>
+        <select id="cr-filter-target" onchange="reloadCrs()"
+                style="padding:8px 10px;background:var(--bg);
+                       border:1px solid var(--border);border-radius:6px;
+                       color:var(--text);font-size:12px">
+          <option value="" data-i18n="workspace.cr_target_all">전체 대상</option>
+          <option value="wiki_entity" data-i18n="workspace.cr_target_wiki">wiki_entity</option>
+          <option value="run_jobs"    data-i18n="workspace.cr_target_jobs">run_jobs</option>
+        </select>
+        <span class="counter" id="cr-counter"></span>
+        <button class="header-btn" onclick="toggleCrPropose()"
+                id="cr-propose-toggle"
+                style="margin-left:auto"
+                data-i18n="workspace.cr_new">+ 새 제안</button>
+        <button class="header-btn" onclick="reloadCrs()"
+                data-i18n="workspace.refresh">새로고침</button>
+      </div>
+
+      <!-- Inline propose form (collapsed by default). Manual fields
+           for v0.2.x — proposers compute base_hash client- or
+           script-side; the UI's primary value is review/approve. -->
+      <div id="cr-propose-form" style="display:none;background:var(--surface);
+           border:1px solid var(--border);border-radius:8px;
+           padding:16px;margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:10px 12px;align-items:center">
+          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"
+                 data-i18n="workspace.cr_form_target_type">TARGET TYPE</label>
+          <select id="cr-form-target-type"
+                  style="padding:7px 10px;background:var(--bg);
+                         border:1px solid var(--border);border-radius:6px;
+                         color:var(--text);font-size:12px">
+            <option value="wiki_entity">wiki_entity</option>
+            <option value="run_jobs">run_jobs</option>
+          </select>
+
+          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"
+                 data-i18n="workspace.cr_form_target_id">TARGET ID</label>
+          <input id="cr-form-target-id" type="text"
+                 data-i18n-placeholder="workspace.cr_form_target_id_ph"
+                 placeholder="entity/prod/concept/your_entity.md"
+                 style="padding:7px 10px;background:var(--bg);
+                        border:1px solid var(--border);border-radius:6px;
+                        color:var(--text);font-size:12px;font-family:var(--font-mono)">
+
+          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"
+                 data-i18n="workspace.cr_form_title">TITLE</label>
+          <input id="cr-form-title" type="text"
+                 data-i18n-placeholder="workspace.cr_form_title_ph"
+                 placeholder="짧고 명확한 변경 요약"
+                 style="padding:7px 10px;background:var(--bg);
+                        border:1px solid var(--border);border-radius:6px;
+                        color:var(--text);font-size:12px">
+
+          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);align-self:start;margin-top:6px"
+                 data-i18n="workspace.cr_form_description">DESCRIPTION</label>
+          <textarea id="cr-form-description" rows="2"
+                    data-i18n-placeholder="workspace.cr_form_description_ph"
+                    placeholder="배경 / 이유 (선택)"
+                    style="padding:7px 10px;background:var(--bg);
+                           border:1px solid var(--border);border-radius:6px;
+                           color:var(--text);font-size:12px;resize:vertical"></textarea>
+
+          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"
+                 data-i18n="workspace.cr_form_base_hash">BASE HASH</label>
+          <input id="cr-form-base-hash" type="text"
+                 placeholder="sha256 of current target state"
+                 style="padding:7px 10px;background:var(--bg);
+                        border:1px solid var(--border);border-radius:6px;
+                        color:var(--text);font-size:11px;font-family:var(--font-mono)">
+
+          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);align-self:start;margin-top:6px"
+                 data-i18n="workspace.cr_form_body">PROPOSED BODY</label>
+          <textarea id="cr-form-body" rows="8"
+                    data-i18n-placeholder="workspace.cr_form_body_ph"
+                    placeholder="새 본문 (wiki_entity → 전체 파일 내용)"
+                    style="padding:7px 10px;background:var(--bg);
+                           border:1px solid var(--border);border-radius:6px;
+                           color:var(--text);font-size:12px;font-family:var(--font-mono);
+                           resize:vertical"></textarea>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+          <button class="modal-btn cancel" onclick="cancelCrPropose()"
+                  data-i18n="common.cancel">취소</button>
+          <button class="modal-btn primary" onclick="submitCrPropose()"
+                  data-i18n="workspace.cr_submit">제안 제출</button>
+        </div>
+        <div id="cr-propose-msg"
+             style="font-size:11px;color:var(--muted);
+                    font-family:var(--font-mono);margin-top:6px;min-height:14px"></div>
+      </div>
+
+      <!-- List table. Click a row to open the detail panel below. -->
+      <table>
+        <thead><tr>
+          <th data-i18n="workspace.cr_col_status">상태</th>
+          <th data-i18n="workspace.cr_col_target">대상</th>
+          <th data-i18n="workspace.cr_col_title">제목</th>
+          <th data-i18n="workspace.cr_col_proposer">제안자</th>
+          <th data-i18n="workspace.cr_col_created">생성</th>
+        </tr></thead>
+        <tbody id="cr-body">
+          <tr><td colspan="5" class="empty" data-i18n="common.loading">로딩 중...</td></tr>
+        </tbody>
+      </table>
+
+      <!-- Detail panel — fills when a row is clicked. -->
+      <div id="cr-detail-panel" style="display:none;margin-top:14px;
+           background:var(--surface);border:1px solid var(--border);
+           border-radius:8px;padding:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    border-bottom:1px solid var(--border-2);padding-bottom:8px;
+                    margin-bottom:10px">
+          <div>
+            <span id="cr-detail-status-badge" class="badge"></span>
+            <span id="cr-detail-title"
+                  style="font-size:14px;font-weight:600;margin-left:6px"></span>
+          </div>
+          <button class="header-btn" onclick="closeCrDetail()"
+                  aria-label="닫기">×</button>
+        </div>
+
+        <div class="detail-row">
+          <div class="label">CR ID</div>
+          <div class="value" id="cr-detail-id"></div>
+        </div>
+        <div class="detail-row">
+          <div class="label" data-i18n="workspace.cr_detail_target">TARGET</div>
+          <div class="value" id="cr-detail-target"></div>
+        </div>
+        <div class="detail-row">
+          <div class="label" data-i18n="workspace.cr_detail_proposer">PROPOSER</div>
+          <div class="value" id="cr-detail-proposer"></div>
+        </div>
+        <div class="detail-row">
+          <div class="label" data-i18n="workspace.cr_detail_created">CREATED</div>
+          <div class="value" id="cr-detail-created"></div>
+        </div>
+        <div class="detail-row" id="cr-detail-merged-row" style="display:none">
+          <div class="label" data-i18n="workspace.cr_detail_merged">MERGED</div>
+          <div class="value" id="cr-detail-merged"></div>
+        </div>
+        <div class="detail-row" id="cr-detail-reject-row" style="display:none">
+          <div class="label" data-i18n="workspace.cr_detail_reject_reason">REJECT REASON</div>
+          <div class="value" id="cr-detail-reject"></div>
+        </div>
+        <div class="detail-row">
+          <div class="label" data-i18n="workspace.cr_detail_description">DESCRIPTION</div>
+          <div class="value" id="cr-detail-description"></div>
+        </div>
+        <div class="detail-row">
+          <div class="label" data-i18n="workspace.cr_detail_diff">PROPOSED DIFF</div>
+          <pre id="cr-detail-diff"
+               style="background:var(--bg);border:1px solid var(--border);
+                      border-radius:6px;padding:10px;font-size:11px;
+                      max-height:280px;overflow:auto;white-space:pre-wrap;
+                      word-break:break-word;font-family:var(--font-mono)"></pre>
+        </div>
+        <div class="detail-row">
+          <div class="label" data-i18n="workspace.cr_detail_reviews">REVIEWS</div>
+          <div id="cr-detail-reviews"
+               style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+
+        <!-- Action bar — admin can approve / reject; any auth user can comment. -->
+        <div id="cr-detail-actions"
+             style="display:flex;gap:8px;justify-content:flex-end;
+                    margin-top:14px;flex-wrap:wrap;align-items:center">
+          <input id="cr-comment-body" type="text"
+                 data-i18n-placeholder="workspace.cr_comment_ph"
+                 placeholder="코멘트 (선택)"
+                 style="flex:1;min-width:200px;padding:7px 10px;
+                        background:var(--bg);border:1px solid var(--border);
+                        border-radius:6px;color:var(--text);font-size:12px">
+          <button class="header-btn" onclick="submitCrComment()"
+                  data-i18n="workspace.cr_comment_submit">코멘트</button>
+          <button class="header-btn" id="cr-reject-btn"
+                  onclick="submitCrReject()" style="display:none"
+                  data-i18n="workspace.cr_reject">거절</button>
+          <button class="modal-btn primary" id="cr-approve-btn"
+                  onclick="submitCrApprove()" style="display:none"
+                  data-i18n="workspace.cr_approve">승인 + 적용</button>
+        </div>
+        <div id="cr-detail-msg"
+             style="font-size:11px;color:var(--muted);
+                    font-family:var(--font-mono);margin-top:6px;min-height:14px"></div>
       </div>
     </div>
   </section>

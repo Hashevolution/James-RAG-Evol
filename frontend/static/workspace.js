@@ -196,12 +196,16 @@ function selectTab(tab) {
   _currentTab = tab;
   document.querySelectorAll('nav .nav-item').forEach(el =>
     el.classList.toggle('active', el.dataset.tab === tab));
-  for (const id of ['tab-data', 'tab-jobs', 'tab-search']) {
+  // [v0.2.x CR-C] cr tab joins the rotation; keeping the id list
+  // explicit so an unknown tab doesn't silently leave another panel
+  // visible.
+  for (const id of ['tab-data', 'tab-jobs', 'tab-search', 'tab-cr']) {
     const el = document.getElementById(id);
     if (el) el.style.display = id === `tab-${tab}` ? '' : 'none';
   }
   if (tab === 'data') reloadData();
   if (tab === 'jobs') reloadJobs();
+  if (tab === 'cr')   reloadCrs();
 }
 
 function onDataSearchInput() {
@@ -500,6 +504,291 @@ async function showJobError(jobId, isAdminView) {
   } catch (e) {
     toast(`❌ ${e.message}`, 'error');
   }
+}
+
+/* ── [v0.2.x CR-C] Change Request panel ──
+ *
+ * Backend contract:
+ *   GET    /admin/cr/                  list      (auth user)
+ *   GET    /admin/cr/{cr_id}           detail    (auth user)
+ *   POST   /admin/cr/                  propose   (auth user)
+ *   POST   /admin/cr/{cr_id}/approve   merge     (admin only)
+ *   POST   /admin/cr/{cr_id}/reject    reject    (admin only)
+ *   POST   /admin/cr/{cr_id}/review    comment   (auth user)
+ *
+ * The endpoints take api_key in the query / body and the JWT in
+ * the Authorization header — same shape as the existing data /
+ * jobs endpoints (_apiFetch handles the GET pattern; POST goes
+ * through a hand-built fetch so the body can carry api_key + the
+ * payload together, matching the FastAPI route signatures).
+ */
+let _currentCrId = null;
+
+async function reloadCrs() {
+  const body = document.getElementById('cr-body');
+  if (!_token) {
+    body.innerHTML =
+      `<tr><td colspan="5" class="empty">${t('workspace.login_to_view')}</td></tr>`;
+    return;
+  }
+  body.innerHTML =
+    `<tr><td colspan="5" class="empty">${t('common.loading')}</td></tr>`;
+  const status      = document.getElementById('cr-filter-status').value;
+  const targetType  = document.getElementById('cr-filter-target').value;
+  const scopeBadge  = document.getElementById('cr-scope-badge');
+  scopeBadge.style.display = _isAdmin() ? 'inline-block' : 'none';
+
+  const qs = new URLSearchParams();
+  if (status)     qs.set('status', status);
+  if (targetType) qs.set('target_type', targetType);
+  qs.set('limit', '50');
+
+  try {
+    const data = await _apiFetch(`/admin/cr/?${qs.toString()}`);
+    const items = data.items || [];
+    document.getElementById('cr-counter').textContent = `${items.length}`;
+    if (!items.length) {
+      body.innerHTML =
+        `<tr><td colspan="5" class="empty">${t('workspace.cr_empty')}</td></tr>`;
+      return;
+    }
+    body.innerHTML = items.map(cr => {
+      const statusBadge =
+        `<span class="status-badge status-${cr.status}">${cr.status}</span>`;
+      return `<tr style="cursor:pointer" onclick="openCr('${_esc(cr.cr_id)}')">
+        <td>${statusBadge}</td>
+        <td class="mono" style="font-size:11px">${_esc(cr.target_type)}<br>
+            <span style="color:var(--muted);font-size:10px">${_esc(cr.target_id)}</span></td>
+        <td>${_esc(cr.title)}</td>
+        <td class="mono">${_esc(cr.proposer)}</td>
+        <td class="mono">${_fmtTs(cr.created_at)}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    body.innerHTML =
+      `<tr><td colspan="5" class="empty">${_esc(e.message)}</td></tr>`;
+  }
+}
+
+async function openCr(crId) {
+  _currentCrId = crId;
+  const panel = document.getElementById('cr-detail-panel');
+  const msg   = document.getElementById('cr-detail-msg');
+  panel.style.display = 'block';
+  msg.textContent = '';
+  try {
+    const data = await _apiFetch(`/admin/cr/${encodeURIComponent(crId)}`);
+    _renderCrDetail(data.cr, data.reviews || []);
+  } catch (e) {
+    msg.textContent = `❌ ${e.message}`;
+  }
+}
+
+function _renderCrDetail(cr, reviews) {
+  document.getElementById('cr-detail-status-badge').textContent = cr.status;
+  document.getElementById('cr-detail-status-badge').className =
+    `status-badge status-${cr.status}`;
+  document.getElementById('cr-detail-title').textContent  = cr.title || '—';
+  document.getElementById('cr-detail-id').textContent     = cr.cr_id;
+  document.getElementById('cr-detail-target').textContent =
+    `${cr.target_type} · ${cr.target_id}`;
+  document.getElementById('cr-detail-proposer').textContent = cr.proposer;
+  document.getElementById('cr-detail-created').textContent  =
+    _fmtTs(cr.created_at);
+
+  // Merged / reject rows are conditional — only visible when relevant.
+  const mergedRow = document.getElementById('cr-detail-merged-row');
+  if (cr.status === 'merged' && cr.merged_at) {
+    mergedRow.style.display = '';
+    document.getElementById('cr-detail-merged').textContent =
+      `${cr.merged_by || '?'} · ${_fmtTs(cr.merged_at)}`;
+  } else {
+    mergedRow.style.display = 'none';
+  }
+  const rejRow = document.getElementById('cr-detail-reject-row');
+  if (cr.reject_reason) {
+    rejRow.style.display = '';
+    document.getElementById('cr-detail-reject').textContent = cr.reject_reason;
+  } else {
+    rejRow.style.display = 'none';
+  }
+
+  document.getElementById('cr-detail-description').textContent =
+    cr.description || '(no description)';
+
+  // proposed_diff arrives as a JSON string from the backend; pretty-
+  // print when possible so reviewers don't have to read minified JSON.
+  let diffText = cr.proposed_diff || '';
+  try {
+    diffText = JSON.stringify(JSON.parse(diffText), null, 2);
+  } catch (_) { /* leave raw */ }
+  document.getElementById('cr-detail-diff').textContent = diffText;
+
+  const reviewsEl = document.getElementById('cr-detail-reviews');
+  if (!reviews.length) {
+    reviewsEl.innerHTML =
+      `<div class="empty" style="font-size:11px">${t('workspace.cr_no_reviews')}</div>`;
+  } else {
+    reviewsEl.innerHTML = reviews.map(rv => `
+      <div style="background:var(--bg);border:1px solid var(--border-2);
+                  border-radius:6px;padding:8px 10px">
+        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);
+                    display:flex;justify-content:space-between">
+          <span>${_esc(rv.reviewer)} · ${_esc(rv.decision)}</span>
+          <span>${_fmtTs(rv.created_at)}</span>
+        </div>
+        <div style="font-size:12px;margin-top:3px">${_esc(rv.body) || ''}</div>
+      </div>
+    `).join('');
+  }
+
+  // Action visibility — admin gets approve/reject on an open CR;
+  // every auth user can comment. Closed CRs hide the action row.
+  const approveBtn = document.getElementById('cr-approve-btn');
+  const rejectBtn  = document.getElementById('cr-reject-btn');
+  const isOpen     = cr.status === 'open';
+  const isAdmin    = _isAdmin();
+  approveBtn.style.display = (isOpen && isAdmin) ? 'inline-block' : 'none';
+  rejectBtn .style.display = (isOpen && isAdmin) ? 'inline-block' : 'none';
+}
+
+function closeCrDetail() {
+  _currentCrId = null;
+  document.getElementById('cr-detail-panel').style.display = 'none';
+}
+
+function toggleCrPropose() {
+  const f = document.getElementById('cr-propose-form');
+  f.style.display = (f.style.display === 'none' || !f.style.display)
+                    ? '' : 'none';
+  document.getElementById('cr-propose-msg').textContent = '';
+}
+
+function cancelCrPropose() {
+  document.getElementById('cr-propose-form').style.display = 'none';
+}
+
+async function submitCrPropose() {
+  const msg = document.getElementById('cr-propose-msg');
+  msg.textContent = '';
+  const targetType = document.getElementById('cr-form-target-type').value;
+  const targetId   = document.getElementById('cr-form-target-id').value.trim();
+  const title      = document.getElementById('cr-form-title').value.trim();
+  const description = document.getElementById('cr-form-description').value;
+  const baseHash   = document.getElementById('cr-form-base-hash').value.trim();
+  const bodyTxt    = document.getElementById('cr-form-body').value;
+  if (!targetId || !title || !baseHash) {
+    msg.textContent = '❌ target_id / title / base_hash 모두 필수';
+    return;
+  }
+  // v0.2.x only supports {"op": "replace", "body": "..."} for
+  // wiki_entity. run_jobs target lands in PR-CR-D — kept here so
+  // the UI doesn't have to fork once that PR ships.
+  const proposedDiff = (targetType === 'wiki_entity')
+    ? { op: 'replace', body: bodyTxt }
+    : { op: 'replace', body: bodyTxt };
+
+  try {
+    const r = await _crPost('/admin/cr/', {
+      target_type:   targetType,
+      target_id:     targetId,
+      title,
+      description,
+      proposed_diff: proposedDiff,
+      base_hash:     baseHash,
+      labels:        [],
+    });
+    msg.textContent = `✅ 제안 생성 — ${r.cr.cr_id}`;
+    cancelCrPropose();
+    reloadCrs();
+  } catch (e) {
+    msg.textContent = `❌ ${e.message}`;
+  }
+}
+
+async function submitCrApprove() {
+  if (!_currentCrId) return;
+  const msg = document.getElementById('cr-detail-msg');
+  msg.textContent = '';
+  if (!confirm(`승인 후 target 에 즉시 적용됩니다.\n${_currentCrId}\n계속할까요?`)) return;
+  try {
+    const r = await _crPost(
+      `/admin/cr/${encodeURIComponent(_currentCrId)}/approve`, {},
+    );
+    msg.textContent = `✅ ${r.cr.status} — by ${r.cr.merged_by || ''}`;
+    await openCr(_currentCrId);
+    reloadCrs();
+  } catch (e) {
+    msg.textContent = `❌ ${e.message}`;
+  }
+}
+
+async function submitCrReject() {
+  if (!_currentCrId) return;
+  const reason = prompt('거절 사유 (선택)') || '';
+  const msg = document.getElementById('cr-detail-msg');
+  msg.textContent = '';
+  try {
+    const r = await _crPost(
+      `/admin/cr/${encodeURIComponent(_currentCrId)}/reject`,
+      { reason },
+    );
+    msg.textContent = `✅ ${r.cr.status}`;
+    await openCr(_currentCrId);
+    reloadCrs();
+  } catch (e) {
+    msg.textContent = `❌ ${e.message}`;
+  }
+}
+
+async function submitCrComment() {
+  if (!_currentCrId) return;
+  const bodyEl = document.getElementById('cr-comment-body');
+  const body   = bodyEl.value.trim();
+  const msg    = document.getElementById('cr-detail-msg');
+  msg.textContent = '';
+  if (!body) {
+    msg.textContent = '❌ 코멘트 본문이 비었습니다';
+    return;
+  }
+  try {
+    await _crPost(
+      `/admin/cr/${encodeURIComponent(_currentCrId)}/review`,
+      { decision: 'comment', body },
+    );
+    bodyEl.value = '';
+    msg.textContent = '✅ 코멘트 등록';
+    await openCr(_currentCrId);
+  } catch (e) {
+    msg.textContent = `❌ ${e.message}`;
+  }
+}
+
+async function _crPost(path, body) {
+  // POST helper — folds api_key + payload together so the endpoint
+  // signatures (which expect api_key in the body) get exactly what
+  // they need. Mirrors how _apiFetch handles the GET case.
+  const url = path;
+  const r = await fetch(url, {
+    method:  'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      ...(_token ? { Authorization: `Bearer ${_token}` } : {}),
+    },
+    body: JSON.stringify({ api_key: _apiKey || '', ...body }),
+  });
+  if (r.status === 401) {
+    _clearStored();
+    updateRoleBadge();
+    showLogin();
+    throw new Error('인증이 만료되었습니다. 다시 로그인하세요.');
+  }
+  if (!r.ok) {
+    let detail = `${r.status}`;
+    try { detail = (await r.json()).detail || detail; } catch (_) {}
+    throw new Error(detail);
+  }
+  return r.json();
 }
 
 /* ── lang toggle (chat.js pattern) ── */
