@@ -22,6 +22,9 @@
 | 2026-05-12 | Twitter/X Korean thread | ✅ Posted |
 | 2026-05-12 | GitHub Topics + Description refresh | ✅ Applied |
 | 2026-05-12 | GeekNews account created | ✅ (D-Day lockout 7 days) |
+| 2026-05-12 | dev.to article published | ✅ Live ([URL](https://dev.to/hashevolution/building-a-mini-palantir-a-local-graph-rag-engine-with-ontology-security-and-self-evolution-1914)) |
+| 2026-05-12 | dev.to draft + launch tracker (PR #242) | ✅ Merged into main |
+| 2026-05-12 | urllib3 + python-multipart secondary advisory bumps (Dependabot #7-#10) | ✅ Merged into main (separate session — `urllib3>=2.7.0`, `python-multipart>=0.0.27`) |
 
 ---
 
@@ -50,7 +53,8 @@ Three independent curators, three independent review pipelines. One acceptance i
 | Channel | URL | Audience | Posted |
 |---|---|---|---|
 | Twitter/X (English) | https://x.com/i/status/2054094082067386690 | Global EN | 2026-05-12 |
-| Twitter/X (Korean) | _(TBD — fill after posting)_ | KR | 2026-05-12 |
+| Twitter/X (Korean) | _(URL pending — author to record)_ | KR | 2026-05-12 |
+| dev.to article | https://dev.to/hashevolution/building-a-mini-palantir-a-local-graph-rag-engine-with-ontology-security-and-self-evolution-1914 | Global EN (technical) | 2026-05-12 |
 
 Monitoring rule: respond to substantive replies within 1-2 hours during the first 24 hours; longer-form responses (e.g. quote threads) get hour-of-day discretion.
 
@@ -70,8 +74,8 @@ Applied via the About panel (⚙️) on 2026-05-12:
 
 | Channel | D-Day | Lock reason | Asset ready |
 |---|---|---|---|
+| **dev.to blog post** | ✅ Published 2026-05-12 | None | `reports/promo-assets/devto-post.md` ✅ |
 | **GeekNews** | 2026-05-19 (D+7 from account creation) | New-account post lockout | `reports/promo-assets/geeknews-post.md` ✅ |
-| **dev.to blog post** | Any time | None | `reports/promo-assets/devto-post.md` ✅ |
 | **Show HN** | 2026-05-26 (GeekNews +7) | Stagger to avoid same-week saturation | `reports/promo-assets/hackernews-show-hn.md` ✅ |
 | **r/LocalLLaMA** | 2026-06-02 (Show HN +7) | Same | `reports/promo-assets/reddit-locallama.md` ✅ |
 
@@ -120,7 +124,7 @@ This launch tracker file is considered complete when all of the following are tr
 - [ ] GeekNews post is published and URL recorded
 - [ ] Show HN post is published and URL recorded
 - [ ] r/LocalLLaMA post is published and URL recorded
-- [ ] dev.to post is published and URL recorded
+- [x] dev.to post is published and URL recorded (2026-05-12)
 - [ ] OpenSSF Tiered % updated post-merge (target ≥ 115%)
 - [ ] Second-user real-data corpus volunteer engaged (v0.2 → v0.3 gate)
 
