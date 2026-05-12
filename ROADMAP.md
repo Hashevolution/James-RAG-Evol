@@ -156,16 +156,15 @@ The following moved to v0.3 to keep v0.2 focused:
 ### Deferred follow-ups (recheck before v0.3)
 
 - **Change Request primitive — generalise the approver_username
-  pattern.** v0.1 hard-coded approver tracking for self-evolution
-  alone (Axis 5). Every other write — wiki edits, workspace job
-  runs, ontology patches, config saves — lands with no proposal,
-  no review, no diff, no rollback. v0.2.x adds `core/change_request.py`
-  as a single primitive owning the propose → review → merge →
-  audit cycle, with two target types (`wiki_entity` first,
-  `run_jobs` second) and the existing self-evolution gate folded
-  on top in the same cycle. Spans Axis 4 (security boundary
-  generalisation) + Axis 5 (controlled write authorisation
-  generalised beyond self-evolution).
+  pattern. ✅ v0.2.x landed (CR-A~D); CR-E moved to v0.3.**
+  v0.1 hard-coded approver tracking for self-evolution alone
+  (Axis 5). Every other write — wiki edits, workspace job runs,
+  ontology patches, config saves — landed with no proposal, no
+  review, no diff, no rollback. v0.2.x shipped `core/change_request.py`
+  + `core/change_request_apply.py` + 6 endpoints + workspace UI +
+  two target types (`wiki_entity` PR #243, `run_jobs` PR #240).
+  Spans Axis 4 (security boundary generalisation) + Axis 5
+  (controlled write authorisation generalised beyond self-evolution).
   - Trust zone documented in `docs/ARCHITECTURE.md §5.6`.
   - Cycle plan + frozen schema + invariants in
     `docs/handovers/v0.2.x-cr-track.md`.
@@ -173,8 +172,14 @@ The following moved to v0.3 to keep v0.2 focused:
     API surface is the v0.3 plugin contract.
   - Multi-approver, team / project / department, external
     notification routing → all deferred to v0.3.
-  - Done-when: every audit row carrying an `approver_username`
-    today goes through `core/change_request.py`.
+  - Self-evolution gate wrap (CR-E) **descoped from v0.2.x**
+    (4 locked JSONL-shape test files + eval-gate + rollback chain
+    too large for the cycle without regression risk). Moved to v0.3
+    deliverables — see v0.3 "Change Request — finish the primitive".
+  - Done-when (full): every audit row carrying an `approver_username`
+    today goes through `core/change_request.py` — achieved for
+    `wiki_entity` / `run_jobs`; self-evolution approvers still
+    bypass until CR-E.
 
 - **Audit Phase 4b-2 — remove 16 JSONL writer sites.** The
   JSONL → SQLite migration completed every reader path
@@ -208,7 +213,7 @@ domain packs will be built against.
 
 **Required for**: any domain pack work (forbidden until this gate passes).
 
-### Deliverables
+### Plugin contract — the v0.3 core
 
 - [ ] `core/plugins/base.py` — typed interfaces for 4 plugin types:
   - `OntologyPack` (entity types, relations, hierarchies)
@@ -217,6 +222,11 @@ domain packs will be built against.
   - `Scorer` (custom retrieval/answer scoring overrides)
 - [ ] `core/plugins/loader.py` — `JAMES_PLUGINS=general,reference`
       env-driven dynamic loader; signed manifest; SemVer enforcement
+- [ ] `core/plugins/manifest.py` — `pack.yaml` schema with `license:`
+      field (SPDX, allowed values `MIT` / `Apache-2.0` / `AGPL-3.0` /
+      `proprietary` — `proprietary` warns at load time, full validation
+      activates only on future license-transition trigger; see
+      [`docs/LICENSE_PLAN.md §5.2`](docs/LICENSE_PLAN.md))
 - [ ] `packs/general/` — JAMES's default behavior extracted as a
       pack (dogfood gate: removing it disables JAMES; swapping changes
       domain)
@@ -226,14 +236,59 @@ domain packs will be built against.
 - [ ] SemVer + 12-month deprecation policy committed to
       `docs/VERSIONING.md`
 - [ ] Eval contract: every pack passes RAGAS + STEP-N before merge
-- [ ] **Knowledge cascade** — relation provenance + delete/modify
-      cascade + graph editor.
-      Replaces the v0.2 single-`confidence` field with `sources:
+
+### Change Request — finish the primitive
+
+- [ ] **CR-E**: route self-evolution approvals
+      (`/admin/patch/approve`, `/admin/proposals/{id}/approve|reject`)
+      through `core/change_request.py` as a shadow row so the unified
+      audit shape becomes part of the platform contract. Deferred from
+      v0.2.x; high regression risk (4 locked JSONL-shape test files +
+      eval-gate + rollback chain), so paired with the plugin contract
+      where the contract surface changes anyway.
+      Scoping note: `docs/handovers/v0.2.x-cr-track.md §5`.
+- [ ] (Stretch) Open the `target_type` registration API to plugins —
+      today it's a closed enum on purpose; this is the surface every
+      plugin pack will hook through.
+
+### Knowledge cascade — relation provenance
+
+- [ ] Replace the v0.2 single-`confidence` field with `sources:
       [{doc_id, weight, role, ts}]` so file delete/modify can
       surgically update only the affected derived knowledge without
-      losing other docs' contributions. Outline + 5-phase plan in
+      losing other docs' contributions. 5-phase plan (A schema → B
+      ingestion → C delete → D modify → E graph editor) in
       [`docs/design/v0.3-knowledge-cascade.md`](docs/design/v0.3-knowledge-cascade.md).
+      Phase A is reversible; Phase E ships behind `JAMES_GRAPH_EDIT=1`.
       May slip to v0.3.x patch — calibrate expectations.
+
+### Governance — license / CLA / monitoring
+
+- [x] License decision for v0.3: **MIT held**. Trigger conditions
+      (T1–T5), conversion procedure, and pre-built infrastructure
+      (CLA §4-bis relicensing grant, plugin `license:` field,
+      trademark + patent tracks) committed to
+      [`docs/LICENSE_PLAN.md`](docs/LICENSE_PLAN.md) (2026-05-11).
+- [ ] CLA Assistant install + `docs/legal/CLA.md` + `.github/workflows/cla.yml`
+      — external contributors can sign before opening their first PR
+      with the relicensing grant in place. Full track in
+      [`docs/handovers/session-2026-05-09-license-infrastructure.md`](docs/handovers/session-2026-05-09-license-infrastructure.md) Track B.
+- [ ] `THIRD_PARTY_LICENSES.md` (dependency inventory; license-strength
+      independent)
+- [ ] Quarterly trigger monitoring — first measurement recorded at the
+      v0.3 release in `docs/LICENSE_PLAN.md §8`
+- [ ] Trademark + patent tracks opened (lawyer consult scheduled,
+      progress logged in `docs/LICENSE_PLAN.md §6 / §7`)
+
+### Carryover follow-ups (from v0.2.x)
+
+- [ ] **`core/memory/store.py` split** — 21 KB, 1 KB over the
+      CLAUDE.md rule #5 module-size gate. Split along algorithm
+      boundaries when blast radius is small. Tracked from
+      `docs/handovers/v0.2.0-platform-track.md §3 P3`.
+- [ ] **Audit Phase 4b-2 — remove 16 JSONL writer sites.** Re-entry
+      after 2–4 weeks of production mirror-reliability monitoring;
+      gating + alternative described in §"Deferred follow-ups" below.
 
 ### Done when
 
@@ -242,12 +297,18 @@ domain packs will be built against.
 - The dogfood test passes: `packs/general/` produces byte-identical
   STEP 7 results to v0.2 main; deleting the pack breaks the server
   cleanly with a clear "no pack loaded" error.
+- Every self-evolution approval row has a paired Change Request row
+  (CR-E acceptance).
+- CLA Assistant blocks any unsigned external PR at the workflow gate.
 
 ### Out of scope (deferred to v0.4)
 
 - Any domain-specific pack (legal, food, retail)
 - External plugin marketplace
 - Plugin signing infrastructure beyond manifest hash
+- Multi-approver workflows / team-project-department scoping on CR
+  (still v0.3 plugin contract surface; ships only if a real second
+  user needs it)
 
 ---
 
@@ -371,6 +432,10 @@ We follow [Semantic Versioning](https://semver.org/):
 
 ---
 
-**Last updated**: v0.2.0 release (2026-05-08) — five axes engineering-
-complete; Axis 6 second-user gate now in self-feedback + recruitment
-phase. Open issues: 0. Total PRs since v0.1.4: 44.
+**Last updated**: 2026-05-13 — post-v0.2.x Change Request cycle.
+Six axes engineering-complete; Axis 6 second-user gate in self-feedback
++ recruitment phase. v0.2.x added the Change Request primitive
+(`core/change_request.py` + `wiki_entity` + `run_jobs` apply paths)
+and closed dependabot 6 high-severity alerts. v0.3 prep tracks
+(license / CLA / plugin contract) and the CR-E self-evolution wrap
+moved into the v0.3 deliverables above. Open issues: 0.

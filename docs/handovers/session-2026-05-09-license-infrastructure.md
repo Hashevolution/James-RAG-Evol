@@ -62,22 +62,26 @@ grant 의 정확한 문구)이 정해진다.
 
 ### Track A — 라이선스 계획 (MIT 유지 + 사전 작업 + 모니터링)
 - [x] A-1. 라이선스 의사결정 — **MIT 유지** 확정 (2026-05-11)
-- [ ] A-2. `docs/LICENSE_PLAN.md` 신설 — 트리거 5종 + 전환 절차 영구 보존
+- [x] A-2. `docs/LICENSE_PLAN.md` 신설 — 트리거 5종 + 전환 절차 영구 보존 (2026-05-11 머지)
 - [ ] A-3. `CONTRIBUTING.md` 한 줄 추가 — "License may evolve in future
   versions; CLA grants Hashevolution the right to relicense" (기대 정렬)
+  — *CLA 본문(B-2) 확정 후 동시 PR. 현재 L312 는 "MIT 단순 동의" 한 줄.*
 - [ ] A-4. `THIRD_PARTY_LICENSES.md` 신설 (의존성 인벤토리, 라이선스
   강도와 무관하게 유효)
 - [ ] A-5. `README.md` / `README.ko.md` / `README.beginner.ko.md` 의
   라이선스 한 줄을 "**MIT licensed. Use freely.**" 로 통일 (홍보 노이즈 0)
+  — *현재 `README.md` L181-183 + `README.ko.md` L182-184 는 표준 문구 미적용,
+  `README.beginner.ko.md` 는 라이선스 줄 자체 없음.*
 - [ ] A-6. 분기별 트리거 모니터링 시작 — 최초 측정 기록을 `LICENSE_PLAN.md`
   하단 로그 섹션에 기입 (v0.3 릴리스 시점)
+  — *현재 §8 표에 `2026-Q2 (v0.3 release)` placeholder 행만 존재 (TBD).*
 - [ ] A-7. 상표 등록 트랙 개시 — 변리사 자문 일정(한국+미국 출원) 박기,
   `LICENSE_PLAN.md` §상표 섹션에 진행 상황 기록
 - [ ] A-8. 특허 출원 트랙 개시 — v0.3 부터 진행 예정, AGPL §11 정합성
   변리사 자문에 포함, `LICENSE_PLAN.md` §특허 섹션에 진행 상황 기록
 
 ### Track B — 외부 PR CLA 검증 체계
-- [ ] B-1. CLA 방식 선택 (DCO sign-off vs CLA Assistant vs Both)
+- [x] B-1. CLA 방식 선택 — **CLA Assistant 단독** (§3 B-1 표 + recommendation)
 - [ ] B-2. `docs/legal/CLA.md` 본문 초안 작성 (Apache ICLA 기반 + **§4-bis
   Relicensing Grant 절 필수 포함** — 미래 전환 기술적 전제조건)
 - [ ] B-3. CLA 저장소 / 서명 기록 위치 결정
@@ -102,8 +106,8 @@ grant 의 정확한 문구)이 정해진다.
   — `docs/design/v0.3-knowledge-cascade.md` 참조
 
 ### 횡단 — 거버넌스
-- [ ] G-1. 본 핸드오버를 `CLAUDE.md` 의 "Where to look next" 표에 추가
-- [ ] G-2. `docs/LICENSE_PLAN.md` 도 `CLAUDE.md` 표에 추가 (영구 보존 문서)
+- [x] G-1. 본 핸드오버를 `CLAUDE.md` 의 "Where to look next" 표에 추가
+- [x] G-2. `docs/LICENSE_PLAN.md` 도 `CLAUDE.md` 표에 추가 (영구 보존 문서)
 - [ ] G-3. `ROADMAP.md` v0.3 섹션에 CLA / 라이선스 모니터링 항목 반영
 - [ ] G-4. PR 라벨 `architecture`, `license`, `cla` 정의 (없으면 생성)
 - [ ] G-5. 분기 1회 트리거 모니터링 캘린더 알림 등록
