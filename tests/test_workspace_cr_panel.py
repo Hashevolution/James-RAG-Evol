@@ -53,11 +53,15 @@ class HtmlTabAndPanelTests(unittest.TestCase):
         cls.html = WORKSPACE_HTML.read_text(encoding="utf-8")
 
     def test_cr_nav_item_present(self):
-        # 4th nav-item with data-tab="cr" + selectTab('cr') click.
+        # 4th nav-item with data-tab="cr" + data-action="select-tab"
+        # so workspace.js's _bindFrontendEvents click delegate
+        # routes the tab change (§5 PR-B migrated workspace.html to
+        # the data-action pattern; CR-C adheres to that contract).
         self.assertRegex(
             self.html,
-            r'<div\s+class="nav-item"\s+data-tab="cr"[^>]*selectTab\(\s*\'cr\'\s*\)',
-            "CR tab must be wired into the workspace sidebar",
+            r'<div\s+class="nav-item"\s+data-tab="cr"[^>]*data-action="select-tab"',
+            "CR tab must be wired via data-action='select-tab' "
+            "(workspace.html graduated to delegation in §5 PR-B)",
         )
 
     def test_cr_panel_section_present(self):
@@ -124,18 +128,22 @@ class HtmlTabAndPanelTests(unittest.TestCase):
                 self.assertIn(f'id="{elem_id}"', self.html)
 
     def test_action_buttons_wired_to_handlers(self):
-        # Until §5 PR-B sweeps workspace.html, these are inline
-        # onclick. After PR-B they'd be data-action — either way the
-        # JS function name must appear so the binding lands.
-        for fn in (
-            "submitCrPropose()",  "cancelCrPropose()",
-            "submitCrApprove()",  "submitCrReject()",
-            "submitCrComment()",  "toggleCrPropose()",
-            "closeCrDetail()",    "reloadCrs()",
+        # workspace.html graduated to data-action delegation in §5
+        # PR-B, so every CR action surfaces as a data-action="cr-*"
+        # attribute. The matching switch arms live in workspace.js
+        # _bindFrontendEvents and route to the named JS function.
+        for action in (
+            "cr-submit-propose",  "cr-cancel-propose",
+            "cr-submit-approve",  "cr-submit-reject",
+            "cr-submit-comment",  "cr-toggle-propose",
+            "cr-close-detail",    "cr-reload",
         ):
-            with self.subTest(fn=fn):
-                self.assertIn(fn, self.html,
-                    f"workspace.html must wire {fn} to an action element")
+            with self.subTest(action=action):
+                self.assertIn(
+                    f'data-action="{action}"', self.html,
+                    f"workspace.html must carry data-action={action!r} "
+                    "for the click delegate to find",
+                )
 
 
 # ─── JS — selectTab knows about cr; CR functions exist ───────────

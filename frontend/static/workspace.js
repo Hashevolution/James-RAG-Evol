@@ -555,7 +555,7 @@ async function reloadCrs() {
     body.innerHTML = items.map(cr => {
       const statusBadge =
         `<span class="status-badge status-${cr.status}">${cr.status}</span>`;
-      return `<tr style="cursor:pointer" onclick="openCr('${_esc(cr.cr_id)}')">
+      return `<tr style="cursor:pointer" data-action="cr-open" data-cr-id="${_esc(cr.cr_id)}">
         <td>${statusBadge}</td>
         <td class="mono" style="font-size:11px">${_esc(cr.target_type)}<br>
             <span style="color:var(--muted);font-size:10px">${_esc(cr.target_id)}</span></td>
@@ -838,6 +838,16 @@ function _bindFrontendEvents() {
           t.getAttribute('data-admin') === 'true',
         );
         break;
+      /* ── [v0.2.x CR-C] Change Request panel actions ── */
+      case 'cr-open':            openCr(t.getAttribute('data-cr-id')); break;
+      case 'cr-close-detail':    closeCrDetail(); break;
+      case 'cr-toggle-propose':  toggleCrPropose(); break;
+      case 'cr-cancel-propose':  cancelCrPropose(); break;
+      case 'cr-submit-propose':  submitCrPropose(); break;
+      case 'cr-reload':          reloadCrs(); break;
+      case 'cr-submit-approve':  submitCrApprove(); break;
+      case 'cr-submit-reject':   submitCrReject(); break;
+      case 'cr-submit-comment':  submitCrComment(); break;
     }
   });
 }
@@ -857,6 +867,11 @@ function _bindStableInputs() {
   if (lkey) lkey.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') doLogin();
   });
+  /* [v0.2.x CR-C] CR filter selects — reload on change. */
+  const crStatus = document.getElementById('cr-filter-status');
+  if (crStatus) crStatus.addEventListener('change', () => reloadCrs());
+  const crTarget = document.getElementById('cr-filter-target');
+  if (crTarget) crTarget.addEventListener('change', () => reloadCrs());
 }
 
 /* ── boot ── */

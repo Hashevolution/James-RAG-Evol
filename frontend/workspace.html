@@ -268,7 +268,7 @@
       <span data-i18n="workspace.tab_search">검색</span>
     </div>
     <!-- [v0.2.x CR-C] Change Request panel — 4th tab. -->
-    <div class="nav-item" data-tab="cr" onclick="selectTab('cr')">
+    <div class="nav-item" data-tab="cr" data-action="select-tab">
       <span class="nav-icon">📝</span>
       <span data-i18n="workspace.tab_cr">변경 요청</span>
     </div>
@@ -406,7 +406,7 @@
 
       <!-- Toolbar — filter + new-proposal toggle + refresh. -->
       <div class="toolbar">
-        <select id="cr-filter-status" onchange="reloadCrs()"
+        <select id="cr-filter-status"
                 style="padding:8px 10px;background:var(--bg);
                        border:1px solid var(--border);border-radius:6px;
                        color:var(--text);font-size:12px">
@@ -416,7 +416,7 @@
           <option value="rejected"   data-i18n="workspace.cr_status_rejected">rejected</option>
           <option value="superseded" data-i18n="workspace.cr_status_superseded">superseded</option>
         </select>
-        <select id="cr-filter-target" onchange="reloadCrs()"
+        <select id="cr-filter-target"
                 style="padding:8px 10px;background:var(--bg);
                        border:1px solid var(--border);border-radius:6px;
                        color:var(--text);font-size:12px">
@@ -425,11 +425,11 @@
           <option value="run_jobs"    data-i18n="workspace.cr_target_jobs">run_jobs</option>
         </select>
         <span class="counter" id="cr-counter"></span>
-        <button class="header-btn" onclick="toggleCrPropose()"
+        <button class="header-btn" data-action="cr-toggle-propose"
                 id="cr-propose-toggle"
                 style="margin-left:auto"
                 data-i18n="workspace.cr_new">+ 새 제안</button>
-        <button class="header-btn" onclick="reloadCrs()"
+        <button class="header-btn" data-action="cr-reload"
                 data-i18n="workspace.refresh">새로고침</button>
       </div>
 
@@ -496,9 +496,9 @@
                            resize:vertical"></textarea>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
-          <button class="modal-btn cancel" onclick="cancelCrPropose()"
+          <button class="modal-btn cancel" data-action="cr-cancel-propose"
                   data-i18n="common.cancel">취소</button>
-          <button class="modal-btn primary" onclick="submitCrPropose()"
+          <button class="modal-btn primary" data-action="cr-submit-propose"
                   data-i18n="workspace.cr_submit">제안 제출</button>
         </div>
         <div id="cr-propose-msg"
@@ -532,7 +532,7 @@
             <span id="cr-detail-title"
                   style="font-size:14px;font-weight:600;margin-left:6px"></span>
           </div>
-          <button class="header-btn" onclick="closeCrDetail()"
+          <button class="header-btn" data-action="cr-close-detail"
                   aria-label="닫기">×</button>
         </div>
 
@@ -588,13 +588,13 @@
                  style="flex:1;min-width:200px;padding:7px 10px;
                         background:var(--bg);border:1px solid var(--border);
                         border-radius:6px;color:var(--text);font-size:12px">
-          <button class="header-btn" onclick="submitCrComment()"
+          <button class="header-btn" data-action="cr-submit-comment"
                   data-i18n="workspace.cr_comment_submit">코멘트</button>
           <button class="header-btn" id="cr-reject-btn"
-                  onclick="submitCrReject()" style="display:none"
+                  data-action="cr-submit-reject" style="display:none"
                   data-i18n="workspace.cr_reject">거절</button>
           <button class="modal-btn primary" id="cr-approve-btn"
-                  onclick="submitCrApprove()" style="display:none"
+                  data-action="cr-submit-approve" style="display:none"
                   data-i18n="workspace.cr_approve">승인 + 적용</button>
         </div>
         <div id="cr-detail-msg"

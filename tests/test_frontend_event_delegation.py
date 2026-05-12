@@ -196,13 +196,16 @@ class WorkspacePageDelegationTests(unittest.TestCase):
                 self.assertIn(f'data-action="{action}"', self.html)
 
     def test_html_uses_data_action_for_tab_nav(self):
-        # All three sidebar tabs route through one 'select-tab' action,
-        # with the tab name pulled from the existing data-tab attribute.
+        # All sidebar tabs route through one 'select-tab' action,
+        # with the tab name pulled from the existing data-tab
+        # attribute. v0.2.x CR-C added the 4th tab ("cr"); future
+        # additions extend the expected count.
         self.assertEqual(
-            self.html.count('data-action="select-tab"'), 3,
-            "all three nav-item tabs must carry data-action=select-tab",
+            self.html.count('data-action="select-tab"'), 4,
+            "all four nav-item tabs (data / jobs / search / cr) "
+            "must carry data-action=select-tab",
         )
-        for tab in ("data", "jobs", "search"):
+        for tab in ("data", "jobs", "search", "cr"):
             self.assertRegex(
                 self.html,
                 r'data-tab="' + tab + r'"[^>]*data-action="select-tab"',
