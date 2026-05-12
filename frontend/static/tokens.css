@@ -189,6 +189,52 @@ body {
   }
 }
 
+/* ── Cyber 6d — live indicators ──
+ * Pulsing mint dot (`.live-dot`) for "system live" cues and a 1px
+ * scan line under the active source-toggle button. Both animations
+ * are gated behind `prefers-reduced-motion: no-preference` — users
+ * who request reduced motion get the static surfaces (dot + bottom
+ * line) without the pulse / sweep, so the visual cue still carries
+ * without the movement.
+ *
+ * `.source-toggle button` gets `position: relative` so the scan
+ * `::after` anchors to the button's box. */
+.live-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+  vertical-align: middle;
+}
+.source-toggle button { position: relative; }
+.source-toggle button.active::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+                              transparent,
+                              var(--accent-fg),
+                              transparent);
+  opacity: .2;
+  pointer-events: none;
+}
+@keyframes cyber-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(107,231,208,.55); }
+  60%      { box-shadow: 0 0 0 8px rgba(107,231,208,0); }
+}
+@keyframes cyber-scan {
+  0%   { transform: translateX(-100%); opacity: .2; }
+  50%  { opacity: 1; }
+  100% { transform: translateX(100%); opacity: .2; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .live-dot {
+    animation: cyber-pulse 1.6s ease-out infinite;
+  }
+  .source-toggle button.active::after {
+    animation: cyber-scan 1.8s linear infinite;
+  }
+}
+
 /* ── Top accent rail ──
  * Thin 2px stripe along the very top of every page — gives the app
  * a subtle "system header" feel like enterprise dashboards. Fixed

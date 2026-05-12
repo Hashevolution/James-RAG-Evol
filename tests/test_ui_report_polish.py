@@ -333,6 +333,113 @@ class CyberGlassmorphismTests(unittest.TestCase):
             "expected mint outer halo layer in the 3-layer box-shadow")
 
 
+class CyberLiveIndicatorTests(unittest.TestCase):
+    """Cyber 6d — pulsing mint `.live-dot` + 1px scan line under
+    active `.source-toggle button`. Animations are wrapped in
+    `@media (prefers-reduced-motion: no-preference)` so reduced-
+    motion users still see the static surfaces (dot + bottom line)
+    without the pulse / sweep."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tokens = TOKENS.read_text(encoding="utf-8")
+        cls.index_html = HTML.read_text(encoding="utf-8")
+
+    def test_keyframes_defined(self):
+        # Both animations declared. Names are namespaced (`cyber-`)
+        # so they don't collide with other keyframes the app might
+        # ship later.
+        self.assertIn("@keyframes cyber-pulse", self.tokens,
+            "expected @keyframes cyber-pulse")
+        self.assertIn("@keyframes cyber-scan", self.tokens,
+            "expected @keyframes cyber-scan")
+
+    def test_animations_gated_by_reduced_motion(self):
+        # `animation:` properties must live inside
+        # `@media (prefers-reduced-motion: no-preference)` so reduced-
+        # motion users get the static dot + static bottom line.
+        m = re.search(
+            r"@media\s*\(\s*prefers-reduced-motion:\s*no-preference\s*\)\s*\{(.+?)\n\}",
+            self.tokens, re.DOTALL,
+        )
+        self.assertIsNotNone(m,
+            "6d animations must be wrapped in @media "
+            "(prefers-reduced-motion: no-preference)")
+        block = m.group(1)
+        self.assertIn("animation: cyber-pulse", block,
+            ".live-dot pulse animation must live inside the "
+            "reduced-motion guard")
+        self.assertIn("animation: cyber-scan", block,
+            ".source-toggle scan animation must live inside the "
+            "reduced-motion guard")
+
+    def test_live_dot_static_styles_outside_guard(self):
+        # Static dot styling (size, colour, shape) must apply even
+        # under reduced motion — only the animation should drop.
+        m = re.search(r"\.live-dot\s*\{([^}]+)\}", self.tokens)
+        self.assertIsNotNone(m,
+            "tokens.css must declare a base .live-dot rule outside "
+            "the reduced-motion guard")
+        block = m.group(1)
+        self.assertIn("border-radius: 50%", block)
+        self.assertIn("var(--accent)", block,
+            "dot must paint with the mint accent")
+
+    def test_scan_line_uses_accent_gradient(self):
+        # The ::after carries a transparent → accent-fg → transparent
+        # gradient so the streak shows over the soft-tinted active
+        # button bg. accent-fg (a brighter mint shade) is used here
+        # because plain --accent would blend into --accent-soft.
+        m = re.search(
+            r"\.source-toggle button\.active::after\s*\{([^}]+)\}",
+            self.tokens,
+        )
+        self.assertIsNotNone(m,
+            "tokens.css must declare the scan line ::after")
+        block = m.group(1)
+        self.assertIn("linear-gradient", block)
+        self.assertIn("var(--accent-fg)", block,
+            "scan line must use --accent-fg (brighter mint) so it "
+            "shows over the --accent-soft active background")
+
+    def test_active_toggle_uses_soft_tint(self):
+        # The active source-toggle button background was migrated
+        # from the solid `var(--accent)` fill to the soft-tinted
+        # `var(--accent-soft)` so the scan line is visible.
+        m = re.search(
+            r"\.source-toggle button\.active\s*\{([^}]+)\}",
+            self.index_html,
+        )
+        self.assertIsNotNone(m,
+            "index.html must declare .source-toggle button.active rule")
+        block = m.group(1)
+        self.assertIn("var(--accent-soft)", block,
+            "active toggle background must be --accent-soft (not solid "
+            "--accent) so the scan line shows through")
+        self.assertNotIn("color: #fff", block,
+            "active toggle text colour must migrate from #fff to "
+            "var(--accent) (mono-cyber outline+tint pattern)")
+
+    def test_chat_header_has_live_dot(self):
+        # Concrete placement of the live-dot utility — sits inside
+        # `.logo` next to the brand line so the system-online cue is
+        # paired with product identity.
+        m = re.search(
+            r'<div class="logo">(.+?)</div>',
+            self.index_html, re.DOTALL,
+        )
+        self.assertIsNotNone(m)
+        logo = m.group(1)
+        self.assertIn('class="live-dot"', logo,
+            "chat header .logo must include a .live-dot indicator "
+            "as the exemplar placement of the 6d utility")
+        # aria-hidden because the dot is decorative — the system
+        # status it represents isn't surfaced to screen readers
+        # from this element alone.
+        self.assertIn("aria-hidden", logo,
+            "live-dot is decorative; must carry aria-hidden")
+
+
 class CyberBackgroundTextureTests(unittest.TestCase):
     """Cyber 6a — body background carries a mint-cyan grid + radial
     overlay so the four app surfaces share a subtle "system" backdrop.
