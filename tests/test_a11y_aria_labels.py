@@ -141,8 +141,10 @@ class IconOnlyButtonsTests(unittest.TestCase):
             self.admin, "closeSessionTurns()", "admin.html")
 
     def test_workspace_detail_close_button(self):
+        # [§5 migration] inline onclick="closeDetail()" replaced by
+        # data-action="close-detail" — locator follows.
         self._assert_aria_on_button(
-            self.workspace, "closeDetail()", "workspace.html")
+            self.workspace, 'data-action="close-detail"', "workspace.html")
 
 
 if __name__ == "__main__":
