@@ -45,8 +45,18 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 ROOT = Path(__file__).resolve().parent.parent
 HTML = ROOT / "frontend" / "admin.html"
+CSS  = ROOT / "frontend" / "static" / "admin.css"
 JS = ROOT / "frontend" / "static" / "admin.js"
 I18N = ROOT / "frontend" / "static" / "i18n.js"
+
+
+def _combined_admin() -> str:
+    """[v0.2.x #8] admin styles moved out of admin.html into
+    admin.css. CSS-contract tests below combine the two so the
+    assertions don't care which file holds the rules."""
+    return (HTML.read_text(encoding="utf-8")
+            + "\n"
+            + CSS.read_text(encoding="utf-8"))
 
 
 # ─── 1. HTML structure ─────────────────────────────────────────────
@@ -99,7 +109,11 @@ class HtmlStructureTests(unittest.TestCase):
 class CssTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.html = HTML.read_text(encoding="utf-8")
+        # CSS rules live in admin.css (extracted from admin.html in
+        # the v0.2.x #8 cleanup); HTML still carries the data-attrs
+        # the rules key off. Combining the two keeps every existing
+        # assertion source-agnostic.
+        cls.html = _combined_admin()
 
     def test_touch_action_none_for_mobile_drag(self):
         # Without touch-action: none, dragging the radar on mobile

@@ -33,13 +33,19 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 ROOT = Path(__file__).resolve().parent.parent
 HTML = ROOT / "frontend" / "index.html"
+CSS  = ROOT / "frontend" / "static" / "chat.css"
 JS   = ROOT / "frontend" / "static" / "upload.js"
 
 
 class CompactDropzoneTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.html = HTML.read_text(encoding="utf-8")
+        # [v0.2.x #8] .drop-zone styles moved from index.html's
+        # inline <style> to static/chat.css. Combining the two keeps
+        # the regex-on-text assertions source-agnostic.
+        cls.html = (HTML.read_text(encoding="utf-8")
+                    + "\n"
+                    + CSS.read_text(encoding="utf-8"))
 
     def _drop_zone_rule(self):
         m = re.search(r"\.drop-zone\s*\{([^}]+)\}", self.html)

@@ -1,0 +1,905 @@
+/* PROJECT JAMES — chat page (index.html) styles
+ *
+ * Extracted from the inline ``<style>`` block in index.html on
+ * 2026-05-12 (HANDOVER_WEB_UI.md §4 priority 8). The page-specific
+ * rules below build on top of the shared design tokens in
+ * ``static/tokens.css`` and assume ``static/mobile.css`` will
+ * later layer narrow-viewport overrides on top.
+ *
+ * Load order in index.html:
+ *   1. tokens.css   — design tokens + brand component
+ *   2. chat.css     — this file (page-specific layout + components)
+ *   3. mobile.css   — responsive @media overrides
+ *
+ * That order matters because CSS resolves equal-specificity rules
+ * in source order — mobile.css must come last to win at narrow
+ * viewports without needing ``!important`` on every line.
+ *
+ * Nothing in this file should be domain-coupled. Selector
+ * ownership is by page, not by domain; cross-page primitives
+ * belong in tokens.css.
+ */
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── 헤더 ── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-2);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.logo {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .2px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+/* [#A8-9] logo mark — gradient over the mono mint-cyan accent.
+   Pre-Task-#22 this blended indigo→cyan; the mono migration
+   unifies both stops on --accent so the gradient is a tonal
+   wash rather than a hue shift. Thin inner shine via box-shadow
+   inset adds depth without ostentation. */
+.logo::before {
+  content: '';
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--brand-2) 100%);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.04) inset,
+              0 2px 6px rgba(107,231,208,.30);
+}
+/* [#A8-9] tagline shim — "지식·보안 인텔리전스" appears beside the
+   logo on wide screens, hides on phones. Tells visitors what JAMES
+   IS without forcing them to read welcome copy. */
+.logo .tagline {
+  color: var(--muted-2);
+  font-weight: 400;
+  font-size: 11px;
+  letter-spacing: .4px;
+  border-left: 1px solid var(--border-2);
+  padding-left: 10px;
+  margin-left: 2px;
+}
+@media (max-width: 700px) {
+  .logo .tagline { display: none; }
+}
+.logo span { color: var(--muted); font-weight: 500; }
+.header-right { display: flex; gap: 8px; align-items: center; }
+.source-toggle {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-ui);
+}
+.source-toggle button {
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+}
+.source-toggle button:hover { color: var(--text-soft); }
+.source-toggle button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.nav-btn {
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all .15s;
+  font-family: var(--font-ui);
+}
+.nav-btn:hover { background: var(--surface-2); color: var(--text); }
+
+/* ── 로그인 상태 배지 ── */
+.role-badge {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 12px;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.role-badge:hover { border-color: var(--accent); }
+.role-badge .dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.role-badge.logged-in .dot { background: var(--success); }
+.role-badge .role-name { color: var(--text-soft); }
+.role-badge .logout-btn {
+  background: none; border: none;
+  color: var(--muted); cursor: pointer;
+  font-size: 12px; padding: 0 0 0 4px;
+  transition: color .15s;
+}
+.role-badge .logout-btn:hover { color: var(--danger); }
+
+/* ── 로그인 모달 ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(4,6,10,.35);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+  animation: fadeIn .15s ease;
+}
+.modal-overlay.hidden { display: none; }
+.modal {
+  background: rgba(7,9,14,.55);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px;
+  width: 360px;
+}
+.modal-title {
+  font-size: 16px; font-weight: 600;
+  font-family: var(--font-ui);
+  color: var(--text);
+  margin-bottom: 20px;
+  letter-spacing: 0;
+}
+.modal-field { margin-bottom: 14px; }
+.modal-field label {
+  display: block;
+  font-size: 12px; color: var(--text-soft);
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.modal-field input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: var(--font-ui);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.modal-field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.modal-error {
+  font-size: 12px; color: var(--danger);
+  margin-bottom: 8px;
+  min-height: 16px;
+}
+.modal-actions { display: flex; gap: 8px; margin-top: 12px; }
+.modal-btn {
+  flex: 1; padding: 10px;
+  border-radius: var(--radius); border: none;
+  font-size: 13px; font-family: var(--font-ui);
+  font-weight: 500; cursor: pointer;
+  transition: all .15s;
+}
+.modal-btn.primary { background: var(--accent); color: var(--on-accent); }
+.modal-btn.primary:hover { background: var(--accent-hover); }
+.modal-btn.cancel  { background: transparent; border: 1px solid var(--border); color: var(--text-soft); }
+.modal-btn.cancel:hover { background: var(--surface-2); color: var(--text); }
+
+/* ── 메인 레이아웃 ── */
+main { display: flex; flex: 1; overflow: hidden; }
+
+/* ── 사이드바 접이식 ──
+   W5 (2026-05-11): rail + panel 2-column split. The narrow left
+   rail holds mode icons (📂 upload, 🕘 recent, 🔍 search). The
+   wider panel renders the currently selected mode's contents.
+   Total width unchanged externally (340 = 56 rail + 284 panel)
+   so the chat area layout is preserved. W6 will use
+   ``switchSidebarMode('upload')`` on drag-enter. */
+.sidebar {
+  width: 340px;
+  border-right: 1px solid var(--border-2);
+  background: var(--surface);
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: width .2s ease;
+}
+.sidebar.collapsed { width: 0; border-right: none; }
+
+.sidebar-rail {
+  width: 56px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-2);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0;
+  gap: 6px;
+  overflow: hidden;
+}
+.sidebar-rail-item {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  position: relative;
+}
+.sidebar-rail-item:hover {
+  background: var(--surface-2);
+  color: var(--text-soft);
+}
+.sidebar-rail-item.active {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.sidebar-rail-item.active::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--accent-fg, var(--text));
+  border-radius: 0 2px 2px 0;
+}
+.sidebar-rail-tip {
+  position: absolute;
+  left: 52px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: var(--font-ui);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity .12s, transform .12s;
+  z-index: 5;
+}
+.sidebar-rail-item:hover .sidebar-rail-tip {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.sidebar-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+.sidebar-panel-mode {
+  flex: 1;
+  display: none;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.sidebar-panel-mode.active {
+  display: flex;
+}
+.sidebar-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  text-align: center;
+  color: var(--muted);
+}
+.sidebar-placeholder .icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+  opacity: .5;
+}
+.sidebar-placeholder .title {
+  font-size: 13px;
+  color: var(--text-soft);
+  margin-bottom: 6px;
+}
+.sidebar-placeholder .hint {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-2);
+  flex-shrink: 0;
+}
+.sidebar-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-soft);
+  letter-spacing: 0;
+}
+.sidebar-toggle {
+  background: none; border: none;
+  color: var(--muted); cursor: pointer;
+  font-size: 13px; padding: 4px 8px;
+  border-radius: 6px;
+  transition: color .15s, background .15s;
+}
+.sidebar-toggle:hover { color: var(--text); background: var(--surface-2); }
+
+/* 사이드바 열기 버튼 (닫혔을 때) */
+.sidebar-open-btn {
+  position: absolute;
+  left: 0; top: 50%;
+  transform: translateY(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  padding: 12px 6px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  display: none;
+  z-index: 10;
+  transition: color .15s, background .15s;
+}
+.sidebar-open-btn:hover { color: var(--text); background: var(--surface-2); }
+.sidebar-open-btn.visible { display: block; }
+
+/* 파일 목록 스크롤 */
+.file-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 12px 8px;
+  min-height: 0;
+  max-height: 100%;
+}
+.file-list::-webkit-scrollbar { width: 3px; }
+.file-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── 드래그 앤 드롭 영역 [#7-A 2026-05-08: 컴팩트] ──
+   사용자 피드백: "dropzone이 너무 커서 큐 항목이 보이는 영역을 좁힘".
+   padding 24→14, 아이콘 24→18, 마진 16→10. 큐는 아래에서 더 넓게
+   보이도록 max-height 제한도 풀고 sidebar flex로 fill. */
+.drop-zone {
+  margin: 10px 12px 8px;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 14px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .15s;
+  position: relative;
+  background: var(--bg);
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.drop-zone input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.drop-icon { font-size: 18px; margin-bottom: 4px; opacity: .7; }
+.drop-label { font-size: 12px; color: var(--text-soft); line-height: 1.45; }
+.drop-label strong { color: var(--accent-fg); font-weight: 500; }
+.drop-types {
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* ── 챗 지시 입력 ── */
+.instruction-box {
+  margin: 0 16px 12px;
+}
+.instruction-box label {
+  font-size: 12px;
+  color: var(--text-soft);
+  font-weight: 500;
+  display: block;
+  margin-bottom: 6px;
+}
+.instruction-box input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font-ui);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.instruction-box input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.instruction-box input::placeholder { color: var(--muted); }
+
+/* ── 업로드 파일 목록 ── */
+.file-list { flex: 1; overflow-y: auto; padding: 0 16px 16px; }
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  margin-bottom: 6px;
+  font-size: 12px;
+  animation: fadeIn .2s ease;
+  transition: border-color .15s;
+}
+.file-item:hover { border-color: var(--border); }
+.file-icon { font-size: 16px; flex-shrink: 0; opacity: .8; }
+.file-info { flex: 1; min-width: 0; }
+.file-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.file-size { color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+.file-status {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.status-ready   { background: var(--surface-2);              color: var(--text-soft); }
+.status-upload  { background: var(--accent-soft);            color: var(--accent-fg); }
+.status-done    { background: rgba(34,197,94,.12);           color: var(--success);   }
+.status-error   { background: rgba(239,68,68,.12);           color: var(--danger);    }
+.remove-btn {
+  background: none; border: none; color: var(--muted);
+  cursor: pointer; font-size: 14px; padding: 2px 4px;
+  border-radius: 4px; flex-shrink: 0; line-height: 1;
+  transition: color .15s;
+}
+.remove-btn:hover { color: var(--danger); }
+
+/* ── 파일별 폴더 입력 ── */
+.file-item { flex-direction: column; align-items: stretch; gap: 0; }
+.file-item-top {
+  display: flex; align-items: center; gap: 8px;
+}
+.file-folder-row {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid var(--border-2);
+}
+.folder-icon { font-size: 11px; flex-shrink: 0; opacity: .7; }
+.folder-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--border);
+  color: var(--text-soft);
+  font-size: 12px;
+  font-family: var(--font-ui);
+  padding: 2px 4px;
+  outline: none;
+  transition: all .15s;
+}
+.folder-input:focus {
+  color: var(--accent-fg);
+  border-bottom-color: var(--accent);
+}
+.folder-input::placeholder { color: var(--muted); opacity: .8; }
+
+/* ── 진행 표시 (Issue #14) ── */
+.file-progress-row {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 4px;
+}
+.file-progress-bar {
+  flex: 1; height: 3px;
+  background: rgba(255,255,255,.06);
+  border-radius: 2px; overflow: hidden;
+}
+.file-progress-fill {
+  height: 100%; width: 0;
+  background: linear-gradient(90deg, var(--brand-2), var(--accent));
+  transition: width .15s ease;
+}
+.file-progress-pct {
+  font-size: 9px; font-family: var(--font-mono);
+  color: var(--muted); min-width: 32px; text-align: right;
+}
+.queue-progress {
+  margin: 0 16px 8px; padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 11px; font-family: var(--font-mono);
+}
+.queue-progress-text { color: var(--brand-2); margin-bottom: 4px; word-break: break-all; }
+.queue-progress-bar  {
+  height: 2px; background: rgba(255,255,255,.06);
+  border-radius: 1px; overflow: hidden;
+}
+.queue-progress-fill {
+  height: 100%; width: 0; background: var(--accent);
+  transition: width .2s ease;
+}
+
+.upload-btn {
+  margin: 0 16px 16px;
+  width: calc(100% - 32px);
+  padding: 10px 14px;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  color: #fff;
+  font-size: 13px;
+  font-family: var(--font-ui);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s;
+}
+.upload-btn:hover { background: var(--accent-hover); }
+.upload-btn:disabled { background: var(--surface-2); color: var(--muted); cursor: default; }
+
+/* ── 챗 영역 ── */
+.chat-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  scroll-behavior: smooth;
+}
+
+/* ── 웰컴 메시지 ── */
+.welcome {
+  text-align: center;
+  margin: auto;
+  padding: 40px 24px;
+  max-width: 640px;
+}
+.welcome-title {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -.5px;
+  font-family: var(--font-ui);
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.welcome-title span { color: var(--accent-fg); font-weight: 600; }
+.welcome-sub { color: var(--muted); font-size: 14px; line-height: 1.6; }
+.welcome-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 28px;
+}
+.chip {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: all .15s;
+}
+.chip:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+/* ── 메시지 버블 ── */
+.msg {
+  display: flex;
+  gap: 12px;
+  max-width: 820px;
+  animation: fadeIn .2s ease;
+}
+.msg.user { margin-left: auto; flex-direction: row-reverse; }
+.avatar {
+  width: 30px; height: 30px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.avatar.james {
+  background: linear-gradient(135deg, var(--accent), #818cf8);
+  color: #fff;
+}
+.avatar.user  {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+}
+.bubble {
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.65;
+  max-width: calc(100% - 42px);
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+/* [#A8-9] james bubble = "report card" — subtle elevation +
+   left-side accent rail to suggest a structured document. */
+.msg.james .bubble {
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-left: 2px solid var(--accent-fg);
+  box-shadow: var(--shadow-card);
+  color: var(--text);
+}
+.msg.user .bubble {
+  background: var(--accent-soft);
+  border: 1px solid rgba(99,102,241,.25);
+  color: var(--text);
+}
+.bubble code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  background: var(--bg);
+  border: 1px solid var(--border-2);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.bubble pre {
+  background: var(--bg);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin: 10px 0;
+  overflow-x: auto;
+}
+.bubble pre code { background: none; border: none; padding: 0; font-size: 12.5px; }
+
+/* ── [#A4-A] 문단별 복사 버튼 ──
+   hover 시 우상단에 작게 노출. 모바일에선 hover가 안 통하므로
+   항상 약하게(opacity .35) 보이도록 두고 tap 시 진하게.
+   :last-child의 margin-bottom 제거 — bubble padding과 시각적 충돌 방지. */
+.bubble .paragraph {
+  position: relative;
+  margin-bottom: 10px;
+}
+.bubble .paragraph:last-child { margin-bottom: 0; }
+.bubble .paragraph-content { padding-right: 26px; }
+.bubble .paragraph-copy-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 11px;
+  line-height: 1.2;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s, color .15s;
+  color: var(--muted);
+  font-family: inherit;
+}
+.bubble .paragraph:hover .paragraph-copy-btn { opacity: .85; }
+.bubble .paragraph-copy-btn:hover,
+.bubble .paragraph-copy-btn:focus { opacity: 1; color: var(--accent); }
+/* 모바일 — hover 미지원 환경. 항상 약하게 보이도록. */
+@media (hover: none) and (pointer: coarse) {
+  .bubble .paragraph-copy-btn { opacity: .35; }
+  .bubble .paragraph:active .paragraph-copy-btn { opacity: 1; }
+}
+
+.meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.meta .mode-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent-fg);
+  font-weight: 500;
+}
+.meta .graph-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  color: var(--text-soft);
+  font-weight: 500;
+}
+
+/* 타이핑 인디케이터 */
+.typing { display: flex; gap: 4px; align-items: center; padding: 14px 16px; }
+.typing span {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--muted);
+  animation: bounce .8s infinite;
+}
+.typing span:nth-child(2) { animation-delay: .15s; }
+.typing span:nth-child(3) { animation-delay: .3s; }
+
+/* ── 입력창 ── */
+.input-area {
+  border-top: 1px solid var(--border-2);
+  padding: 16px 24px 20px;
+  background: var(--bg);
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+.input-wrap {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  align-items: flex-end;
+  padding: 6px 6px 6px 14px;
+  transition: border-color .15s, box-shadow .15s;
+  gap: 6px;
+  max-width: 820px;
+  margin: 0 auto;
+  width: 100%;
+}
+.input-wrap:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+#chat-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 14px;
+  font-family: var(--font-ui);
+  resize: none;
+  max-height: 160px;
+  min-height: 36px;
+  line-height: 1.55;
+  padding: 7px 0;
+}
+#chat-input::placeholder { color: var(--muted); }
+.send-btn {
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background .15s;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.send-btn:hover { background: var(--accent-hover); }
+.send-btn:disabled { background: var(--surface-2); color: var(--muted); cursor: default; }
+
+/* ── 그래프 경로 ── */
+.graph-paths {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border-2);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-soft);
+  line-height: 1.6;
+}
+.graph-paths .path-title {
+  color: var(--accent-fg);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .2px;
+  margin-bottom: 4px;
+  font-family: var(--font-ui);
+}
+/* HANDOVER §3 — citation nodes rendered as mint-outlined chips so
+ * the graph traversal is scannable at a glance instead of a plain
+ * "→ A → B → C" run-on. */
+.graph-paths .path-row {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  align-items: center;
+  margin: 3px 0;
+}
+.graph-paths .path-node {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(107,231,208,.35);
+  background: rgba(107,231,208,.05);
+  color: var(--accent-fg);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.graph-paths .path-arrow {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* ── 스크롤바 ── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted-2); }
+
+/* ── 토스트 ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-family: var(--font-ui);
+  box-shadow: 0 8px 24px rgba(0,0,0,.3);
+  animation: slideUp .25s ease;
+  z-index: 100;
+}
+.toast.success { background: rgba(34,197,94,.12); border: 1px solid var(--success); color: var(--success); }
+.toast.error   { background: rgba(239,68,68,.12); border: 1px solid var(--danger);  color: var(--danger);  }
+
+/* ── 애니메이션 ── */
+@keyframes fadeIn  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes bounce  { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
+</content>
+</invoke>

@@ -91,8 +91,15 @@ class GraphPathChipRenderTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.js = JS.read_text(encoding="utf-8")
-        cls.index_html = (Path(__file__).resolve().parent.parent
-                          / "frontend" / "index.html").read_text(encoding="utf-8")
+        # [v0.2.x #8] CSS rules for the path chip moved from
+        # index.html's inline <style> to static/chat.css. Combine
+        # them so the assertion remains source-agnostic.
+        root = Path(__file__).resolve().parent.parent
+        cls.index_html = (
+            (root / "frontend" / "index.html").read_text(encoding="utf-8")
+            + "\n"
+            + (root / "frontend" / "static" / "chat.css").read_text(encoding="utf-8")
+        )
 
     def test_render_helper_splits_on_arrow(self):
         # A renderer helper must split each path string on the

@@ -1,0 +1,449 @@
+/* PROJECT JAMES — admin console (admin.html) styles
+ *
+ * Extracted from the inline ``<style>`` block in admin.html on
+ * 2026-05-12 (HANDOVER_WEB_UI.md §4 priority 8). Same load order
+ * + design intent as static/chat.css:
+ *
+ *   1. tokens.css   — design tokens + brand component
+ *   2. admin.css    — this file (page-specific layout + components)
+ *   3. mobile.css   — responsive @media overrides
+ *
+ * Domain-neutral by design. New rules added here should not name
+ * concepts that belong to a specific vertical (legal, food, retail,
+ * …); cross-page primitives belong in tokens.css.
+ */
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border-2);
+    background: var(--surface);
+  }
+  .logo {
+    font-size: 14px; font-weight: 600;
+    color: var(--text); font-family: var(--font-ui);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .logo::before {
+    content: '';
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, var(--accent), #818cf8);
+  }
+  .logo span { color: var(--muted); font-weight: 500; }
+  .header-right { display: flex; gap: 8px; }
+  .nav-btn { padding: 6px 12px; border-radius: var(--radius); border: 1px solid transparent;
+             background: none; color: var(--muted); font-size: 13px; cursor: pointer;
+             text-decoration: none; transition: all .15s; font-family: var(--font-ui); }
+  .nav-btn:hover { background: var(--surface-2); color: var(--text); }
+
+  .admin-layout { display: flex; flex: 1; }
+
+  /* ── 사이드 메뉴 ── */
+  nav {
+    width: 220px;
+    border-right: 1px solid var(--border-2);
+    background: var(--surface);
+    padding: 18px 0;
+    flex-shrink: 0;
+  }
+  .nav-section {
+    padding: 14px 20px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: .3px;
+    text-transform: uppercase;
+  }
+  .nav-section:first-child { padding-top: 6px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 20px;
+    margin: 2px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text-soft);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .nav-item:hover { color: var(--text); background: var(--surface-2); }
+  .nav-item.active {
+    color: var(--text);
+    background: var(--accent-soft);
+  }
+  .nav-icon { font-size: 14px; opacity: .85; }
+
+  /* ── 콘텐츠 ── */
+  .content { flex: 1; overflow-y: auto; padding: 32px; background: var(--bg); }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .page-title {
+    font-size: 20px; font-weight: 600;
+    margin-bottom: 24px;
+    display: flex; align-items: center; gap: 10px;
+    letter-spacing: -.2px;
+  }
+  .page-title .badge {
+    font-size: 11px; font-weight: 500;
+    padding: 3px 8px; border-radius: 4px;
+    background: var(--accent-soft); color: var(--accent-fg);
+  }
+
+  /* ── 대시보드 카드 ── */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 32px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border-2);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    transition: border-color .15s;
+  }
+  .card:hover { border-color: var(--border); }
+  .card-label {
+    font-size: 12px; color: var(--muted);
+    font-weight: 500;
+    margin-bottom: 10px;
+  }
+  .card-value { font-size: 26px; font-weight: 600; font-family: var(--font-ui); letter-spacing: -.5px; color: var(--text); }
+  .card-value.accent  { color: var(--accent-fg); }
+  .card-value.success { color: var(--success); }
+  .card-value.warn    { color: var(--warn); }
+  .card-value.danger  { color: var(--danger); }
+  .card-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  /* ── 테이블 ── */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border-2); border-radius: var(--radius-lg); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; padding: 12px 16px;
+    font-size: 11px; font-weight: 600;
+    color: var(--muted); border-bottom: 1px solid var(--border-2);
+    background: var(--surface-2);
+    letter-spacing: .2px;
+    text-transform: uppercase;
+  }
+  td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid var(--border-2); vertical-align: middle; color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface-2); }
+  .mono { font-family: var(--font-mono); font-size: 12px; color: var(--text-soft); }
+
+  /* ── 배지 ── */
+  .badge-role { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+  .role-admin    { background: rgba(239,68,68,.12);  color: var(--danger); }
+  .role-manager  { background: rgba(245,158,11,.12); color: var(--warn); }
+  .role-employee { background: var(--accent-soft);   color: var(--accent-fg); }
+  .role-external { background: var(--surface-2);    color: var(--muted); }
+
+  .badge-status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+  .status-pending  { background: rgba(245,158,11,.12); color: var(--warn); }
+  .status-approved { background: rgba(34,197,94,.12);  color: var(--success); }
+  .status-rejected { background: rgba(239,68,68,.12);  color: var(--danger); }
+
+  /* ── 섹션 제목 ── */
+  .section-title {
+    font-size: 12px; font-weight: 600;
+    color: var(--text-soft); margin-bottom: 12px; margin-top: 28px;
+    letter-spacing: 0;
+  }
+  .section-title:first-child { margin-top: 0; }
+
+  /* ── 버튼 ── */
+  .btn { padding: 6px 12px; border-radius: var(--radius); border: none; font-size: 12px;
+         font-weight: 500;
+         cursor: pointer; font-family: var(--font-ui); transition: all .15s; }
+  .btn-approve { background: rgba(34,197,94,.12); color: var(--success); border: 1px solid rgba(34,197,94,.3); }
+  .btn-approve:hover { background: rgba(34,197,94,.2); }
+  .btn-reject  { background: rgba(239,68,68,.12); color: var(--danger); border: 1px solid rgba(239,68,68,.3); }
+  .btn-reject:hover { background: rgba(239,68,68,.2); }
+  .btn-primary { background: var(--accent); color: var(--on-accent); }
+  .btn-primary:hover { background: var(--accent-hover); }
+
+  /* ── Modal card base ──
+   * Class-extracted from the per-modal inline styles so the cyber 6c
+   * glass treatment (backdrop-filter + mint 3-layer box-shadow in
+   * tokens.css) applies to admin modal inner cards. Per-modal
+   * dimensions (width / padding / max-height) stay inline since they
+   * vary between the login modal (340px) and the firstrun wizard
+   * (560px, scrollable). */
+  .modal {
+    background: rgba(7,9,14,.55);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+
+  /* ── 로그 영역 ── */
+  .log-box {
+    background: var(--surface);
+    border: 1px solid var(--border-2);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-soft);
+    max-height: 400px;
+    overflow-y: auto;
+    line-height: 1.7;
+  }
+  .log-entry { display: flex; gap: 12px; }
+  .log-time  { color: var(--muted); flex-shrink: 0; }
+  .log-event { }
+  .log-blocked  { color: var(--danger); }
+  .log-allowed  { color: var(--success); }
+  .log-override { color: var(--warn); }
+
+  /* ── 설정 ── */
+  .setting-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 0; border-bottom: 1px solid var(--border-2);
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-label { font-size: 14px; color: var(--text); }
+  .setting-sub   { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .setting-value {
+    font-family: var(--font-ui); font-size: 13px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 7px 12px; color: var(--text);
+    outline: none; width: 220px;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .setting-value:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  /* ── 스크롤바 ── */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted-2); }
+
+  .loading { color: var(--muted); font-size: 13px; padding: 20px; }
+  .empty   { color: var(--muted); font-size: 13px; padding: 32px; text-align: center; }
+
+  /* ── [P2 unified UX 2026-05-10] 성향 캐릭터 인터랙티브 레이더 ── */
+  .char-intro {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--text-soft);
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  /* [P5c 2026-05-10] 캐릭터 자연어 요약 카드 — radar drag 시 live 갱신 */
+  .char-summary-card {
+    background: linear-gradient(135deg,
+                  rgba(76, 175, 125, 0.08) 0%,
+                  rgba(76, 175, 125, 0.02) 100%);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    line-height: 1.7;
+  }
+  .char-summary-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 13.5px;
+  }
+  .char-summary-row + .char-summary-row { margin-top: 4px; }
+  .char-summary-label {
+    flex: 0 0 56px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding-top: 3px;
+  }
+  .char-summary-text { flex: 1; color: var(--text); }
+  .char-summary-text b { color: var(--accent); font-weight: 600; }
+  .char-layout {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .char-radar-wrap {
+    flex: 1 1 480px;
+    min-width: 320px;
+    position: relative;
+    /* 입체감 — 살짝 기울여서 layer 깊이감. 모바일에선 무시. */
+    perspective: 1400px;
+    perspective-origin: 50% 35%;
+  }
+  .char-radar {
+    width: 100%;
+    height: auto;
+    max-width: 600px;
+    display: block;
+    margin: 0 auto;
+    touch-action: none;        /* 드래그 시 모바일 스크롤 방지 */
+    user-select: none;
+  }
+  .char-radar-hint {
+    text-align: center;
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+  /* radar SVG 내부 클래스 — JS가 부여 */
+  /* 베이스 격자 (라벨/축 — group ring 과 별개) */
+  .char-radar .radar-axis       { stroke: var(--border); stroke-width: 1; opacity: .25; }
+  .char-radar .radar-fill       { fill: var(--accent); fill-opacity: .12; stroke: var(--accent); stroke-width: 2;
+                                  filter: drop-shadow(0 0 6px var(--accent)); }
+  .char-radar .radar-label      { font-size: 11px; fill: var(--text-soft); font-family: var(--font-ui); pointer-events: none; }
+  .char-radar .radar-icon       { font-size: 14px; pointer-events: none; }
+
+  /* 그룹별 동심원 ring (입체 layer 시각화 — A=내, F=외) */
+  .char-radar .radar-grid       { fill: none; stroke-width: 1.2; opacity: .55;
+                                  filter: drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
+  .char-radar .radar-grid.group-a { stroke: hsl(195, 70%, 60%); }   /* 인지   */
+  .char-radar .radar-grid.group-b { stroke: hsl(155, 60%, 55%); }   /* 신중성 */
+  .char-radar .radar-grid.group-c { stroke: hsl(115, 55%, 55%); }   /* 사고   */
+  .char-radar .radar-grid.group-d { stroke: hsl(45,  78%, 58%); }   /* 사회성 */
+  .char-radar .radar-grid.group-e { stroke: hsl(15,  78%, 62%); }   /* 핵심가치 */
+  .char-radar .radar-grid.group-f { stroke: hsl(325, 65%, 65%); stroke-width: 1.6; opacity: .70; } /* 표현스타일(외곽) */
+
+  /* vertex — 자기 group 색으로 구분 (ring 색과 매칭) */
+  .char-radar .radar-vertex            { fill: var(--accent); cursor: grab;
+                                          transition: r .15s, fill .25s, filter .25s;
+                                          filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+  .char-radar .radar-vertex.group-a    { fill: hsl(195, 70%, 55%); }
+  .char-radar .radar-vertex.group-b    { fill: hsl(155, 60%, 50%); }
+  .char-radar .radar-vertex.group-c    { fill: hsl(115, 55%, 50%); }
+  .char-radar .radar-vertex.group-d    { fill: hsl(45,  78%, 55%); }
+  .char-radar .radar-vertex.group-e    { fill: hsl(15,  78%, 58%); }
+  .char-radar .radar-vertex.group-f    { fill: hsl(325, 65%, 60%); }
+  .char-radar .radar-vertex:hover      { fill: #fff; r: 9; filter: drop-shadow(0 0 8px #fff); }
+  .char-radar .radar-vertex.dragging   { cursor: grabbing; r: 10; fill: #fff;
+                                          filter: drop-shadow(0 0 12px #fff); }
+  .char-radar .radar-vertex.selected   { stroke: #fff; stroke-width: 2.5;
+                                          filter: drop-shadow(0 0 10px var(--accent)); }
+  .char-radar .radar-vertex.ripple-pos { animation: char-ripple-pos 1.2s ease-out; }
+  .char-radar .radar-vertex.ripple-neg { animation: char-ripple-neg 1.2s ease-out; }
+
+  /* 상관관계 edge — 점선 더 굵고 진하게 + glow */
+  .char-radar .corr-edge        { fill: none; stroke-width: 2; opacity: .55; pointer-events: none;
+                                  stroke-dasharray: 6 4;
+                                  transition: opacity .25s, stroke-width .25s, filter .25s; }
+  .char-radar .corr-edge.pos    { stroke: #22c55e; }    /* 양 상관 — 녹색 */
+  .char-radar .corr-edge.neg    { stroke: #ef4444; }    /* 음 상관 — 빨강 */
+  .char-radar .corr-edge.active { opacity: 1; stroke-width: 3.4; stroke-dasharray: none;
+                                  filter: drop-shadow(0 0 6px currentColor); }
+
+  /* 짝(opposing) edge — 좀 더 보이게 (sum=1.0 시각화) */
+  .char-radar .pair-edge        { stroke: var(--muted); stroke-width: 1.5; opacity: .40;
+                                  stroke-dasharray: 3 5; pointer-events: none; }
+
+  /* Pulse — 더 강하게 + glow halo */
+  @keyframes char-ripple-pos {
+    0%   { fill: var(--accent); r: 6;  filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+    25%  { fill: #22c55e;       r: 14; filter: drop-shadow(0 0 14px #22c55e); }
+    65%  { fill: #22c55e;       r: 9;  filter: drop-shadow(0 0 6px #22c55e); }
+    100% { fill: var(--accent); r: 6;  filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+  }
+  @keyframes char-ripple-neg {
+    0%   { fill: var(--accent); r: 6;  filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+    25%  { fill: #ef4444;       r: 14; filter: drop-shadow(0 0 14px #ef4444); }
+    65%  { fill: #ef4444;       r: 9;  filter: drop-shadow(0 0 6px #ef4444); }
+    100% { fill: var(--accent); r: 6;  filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+  }
+
+  /* 우측 사이드 (범례 + 영향력 패널) */
+  .char-side {
+    flex: 0 0 280px;
+    min-width: 240px;
+  }
+  .char-legend { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--text-soft); }
+  .char-legend-row { display: flex; align-items: center; gap: 8px; }
+  .char-legend-edge {
+    display: inline-block; width: 22px; height: 0;
+    border-top: 2px dashed currentColor;
+  }
+  .char-legend-edge-pos { color: #22c55e; }
+  .char-legend-edge-neg { color: #ef4444; }
+  .char-legend-pair {
+    display: inline-block; width: 22px; height: 0;
+    border-top: 1px dashed var(--muted); opacity: .5;
+  }
+  .char-connections {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font-size: 12px;
+    min-height: 80px;
+  }
+  .char-connections-empty { color: var(--muted); font-size: 11px; line-height: 1.5; }
+  .char-conn-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 0; gap: 8px;
+    border-bottom: 1px dashed var(--border);
+  }
+  .char-conn-row:last-child { border-bottom: none; }
+  .char-conn-label  { color: var(--text); font-size: 12px; line-height: 1.45; flex: 1; }
+  .char-conn-label b { color: var(--accent); font-weight: 600; }
+  .char-conn-weight { font-family: var(--font-mono); font-size: 11px; white-space: nowrap; }
+  .char-conn-weight.pos { color: #22c55e; }
+  .char-conn-weight.neg { color: #ef4444; }
+  /* P5b — 자연어 영향력 패널 섹션 */
+  .char-conn-section {
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .char-conn-section:last-child { border-bottom: none; margin-bottom: 0; }
+  .char-conn-section-title {
+    font-size: 10px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    letter-spacing: .8px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .char-conn-explain {
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.5;
+    padding: 4px 0;
+  }
+  .char-conn-explain b { color: var(--accent); font-weight: 600; }
+  .char-conn-header {
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* 하단 정밀 슬라이더 — 그룹별 묶음 */
+  .char-sliders {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 8px 24px;
+  }
+  /* 슬라이더 ripple 강조 — JS가 .ripple 클래스 토글 */
+  .char-sliders .trait-row.ripple-pos .trait-pct { color: #22c55e; transition: color .8s; }
+  .char-sliders .trait-row.ripple-neg .trait-pct { color: #ef4444; transition: color .8s; }

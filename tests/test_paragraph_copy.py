@@ -106,7 +106,14 @@ class JsContractTests(unittest.TestCase):
 class CssContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+        # [v0.2.x #8] Paragraph styles moved from index.html's inline
+        # <style> to static/chat.css. Combine the two so the assertion
+        # is source-agnostic.
+        cls.html = (
+            (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+            + "\n"
+            + (ROOT / "frontend" / "static" / "chat.css").read_text(encoding="utf-8")
+        )
 
     def test_paragraph_styles_present(self):
         # The hover-show button needs CSS to actually hide/reveal —

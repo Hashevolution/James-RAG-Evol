@@ -28,9 +28,28 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 ROOT = Path(__file__).resolve().parent.parent
 HTML = ROOT / "frontend" / "index.html"
+# [v0.2.x #8] Page-specific styles also moved out of inline blocks
+# into static/chat.css (chat) + static/admin.css (admin). Tests that
+# read "HTML" to find CSS rules now consult both — the helpers below
+# return the concatenated text so existing substring/regex
+# assertions stay valid without per-test rewrites.
+CHAT_CSS  = ROOT / "frontend" / "static" / "chat.css"
+ADMIN_CSS = ROOT / "frontend" / "static" / "admin.css"
 # Design tokens were extracted from inline :root blocks into a single
 # stylesheet; palette assertions now resolve there instead of index.html.
 TOKENS = ROOT / "frontend" / "static" / "tokens.css"
+
+
+def _chat_html_plus_css() -> str:
+    return (HTML.read_text(encoding="utf-8")
+            + "\n"
+            + CHAT_CSS.read_text(encoding="utf-8"))
+
+
+def _admin_html_plus_css(admin_path) -> str:
+    return (admin_path.read_text(encoding="utf-8")
+            + "\n"
+            + ADMIN_CSS.read_text(encoding="utf-8"))
 
 
 class PaletteTests(unittest.TestCase):
@@ -77,7 +96,7 @@ class TopAccentRailTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tokens = TOKENS.read_text(encoding="utf-8")
-        cls.index_html = HTML.read_text(encoding="utf-8")
+        cls.index_html = _chat_html_plus_css()
 
     def test_body_before_pseudo_present(self):
         # Subtle "system header" stripe at the top of every page.
@@ -122,7 +141,7 @@ class LogoTaglineTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.html = HTML.read_text(encoding="utf-8")
+        cls.html = _chat_html_plus_css()
 
     def test_logo_uses_brand_class(self):
         # The logo span carries the unified brand label.
@@ -166,7 +185,7 @@ class LogoTaglineTests(unittest.TestCase):
 class ReportCardBubbleTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.html = HTML.read_text(encoding="utf-8")
+        cls.html = _chat_html_plus_css()
 
     def test_james_bubble_has_left_accent_rail(self):
         # The .msg.james .bubble selector should pick up a left
@@ -191,7 +210,7 @@ class ReportCardBubbleTests(unittest.TestCase):
 class WelcomeReframeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.html = HTML.read_text(encoding="utf-8")
+        cls.html = _chat_html_plus_css()
 
     def test_welcome_subtitle_mentions_security_and_reporting(self):
         # Old copy: "보안 중심 Graph-RAG 지식 추론 엔진".
@@ -349,7 +368,7 @@ class AdminModalClassExtractionTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.html = cls.ADMIN.read_text(encoding="utf-8")
+        cls.html = _admin_html_plus_css(cls.ADMIN)
 
     def test_modal_class_rule_declared(self):
         # Admin must declare a base `.modal` rule so tokens.css 6c
@@ -417,7 +436,7 @@ class CyberLiveIndicatorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tokens = TOKENS.read_text(encoding="utf-8")
-        cls.index_html = HTML.read_text(encoding="utf-8")
+        cls.index_html = _chat_html_plus_css()
 
     def test_keyframes_defined(self):
         # Both animations declared. Names are namespaced (`cyber-`)
@@ -521,13 +540,26 @@ class CyberBackgroundTextureTests(unittest.TestCase):
 
     PAGES = ("index.html", "admin.html", "workspace.html", "graph.html")
 
+    # [v0.2.x #8] chat + admin have their CSS extracted to sibling
+    # files; the body rule for those pages now lives there. Other
+    # pages keep their inline blocks.
+    _EXTRACTED = {
+        "index.html": "chat.css",
+        "admin.html": "admin.css",
+    }
+
     @classmethod
     def setUpClass(cls):
         cls.tokens = TOKENS.read_text(encoding="utf-8")
-        cls.pages = {
-            name: (ROOT / "frontend" / name).read_text(encoding="utf-8")
-            for name in cls.PAGES
-        }
+        def _read(name):
+            html = (ROOT / "frontend" / name).read_text(encoding="utf-8")
+            css_name = cls._EXTRACTED.get(name)
+            if css_name:
+                css = (ROOT / "frontend" / "static" / css_name
+                       ).read_text(encoding="utf-8")
+                return html + "\n" + css
+            return html
+        cls.pages = {name: _read(name) for name in cls.PAGES}
 
     def _body_block(self, css: str) -> str | None:
         # Match top-level `body { ... }` rules, skipping `body::before`
