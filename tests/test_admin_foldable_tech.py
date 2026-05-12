@@ -111,9 +111,12 @@ class FoldableNavHtmlTests(unittest.TestCase):
         cls.html = ADMIN_HTML.read_text(encoding="utf-8")
 
     def test_hamburger_toggle_button_present(self):
+        # [§5 PR-D] inline onclick="toggleAdminNav()" replaced by
+        # data-action="toggle-admin-nav" routed through the document
+        # click delegate.
         self.assertIn('id="admin-nav-toggle"', self.html,
                       "hamburger toggle button missing")
-        self.assertIn('onclick="toggleAdminNav()"', self.html)
+        self.assertIn('data-action="toggle-admin-nav"', self.html)
 
     def test_nav_sections_have_foldable_class(self):
         # All section headers should be foldable.

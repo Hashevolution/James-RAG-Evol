@@ -96,10 +96,14 @@ class FrontendModalTests(unittest.TestCase):
                 f"modal must contain element with id={elem_id}")
 
     def test_dismiss_button_calls_firstRunDismiss(self):
-        self.assertIn("onclick=\"firstRunDismiss()\"", self.html)
+        # [§5 PR-D] inline onclick="firstRunDismiss()" replaced by
+        # data-action="first-run-dismiss" routed through the click delegate.
+        self.assertIn('data-action="first-run-dismiss"', self.html)
 
     def test_refresh_button_calls_firstRunCheck(self):
-        self.assertIn("onclick=\"firstRunCheck()\"", self.html)
+        # [§5 PR-D] inline onclick="firstRunCheck()" replaced by
+        # data-action="first-run-check".
+        self.assertIn('data-action="first-run-check"', self.html)
 
 
 class FrontendJsTests(unittest.TestCase):

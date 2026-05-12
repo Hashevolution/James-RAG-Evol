@@ -100,17 +100,36 @@ class FrontendAdminContractTests(unittest.TestCase):
         cls.js   = (root / "static" / "admin.js").read_text(encoding="utf-8")
 
     def test_html_has_search_input(self):
+        # [§5 PR-D] inline oninput="onEntitiesSearchInput()" replaced
+        # by direct id-binding in admin.js _bindStableInputs().
         self.assertIn('id="entities-search"', self.html)
-        self.assertIn('oninput="onEntitiesSearchInput()"', self.html,
-                      "search input must wire to the debounced handler")
+        self.assertIn(
+            "document.getElementById('entities-search')", self.js,
+            "search input must be bound by id in _bindStableInputs",
+        )
+        self.assertIn("onEntitiesSearchInput", self.js,
+            "the debounced search handler must still exist")
 
     def test_html_has_etype_filter(self):
+        # [§5 PR-D] inline onchange="loadEntities()" replaced by
+        # direct id-binding in admin.js _bindStableInputs().
         self.assertIn('id="entities-etype-filter"', self.html)
-        self.assertIn('onchange="loadEntities()"', self.html)
+        self.assertIn(
+            "document.getElementById('entities-etype-filter')", self.js,
+            "etype filter must be bound by id in _bindStableInputs",
+        )
 
     def test_html_has_paging_buttons(self):
-        self.assertIn('onclick="entitiesPage(-1)"', self.html)
-        self.assertIn('onclick="entitiesPage(1)"', self.html)
+        # [§5 PR-D] inline onclick="entitiesPage(±1)" replaced by
+        # data-action="entities-page" with a signed data-delta.
+        self.assertRegex(
+            self.html,
+            r'data-action="entities-page"\s+data-delta="-1"',
+        )
+        self.assertRegex(
+            self.html,
+            r'data-action="entities-page"\s+data-delta="1"',
+        )
         self.assertIn('id="entities-page-label"', self.html)
 
     def test_html_has_detail_modal(self):

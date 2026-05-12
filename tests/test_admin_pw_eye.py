@@ -28,10 +28,13 @@ class HtmlTests(unittest.TestCase):
         cls.html = HTML.read_text(encoding="utf-8")
 
     def test_toggle_button_present(self):
+        # [§5 PR-D] inline onclick="toggleAdminPwVisibility()" replaced
+        # by data-action="toggle-admin-pw-visibility".
         self.assertIn('id="admin-login-pw-toggle"', self.html,
             "admin login pw toggle button missing")
-        self.assertIn('toggleAdminPwVisibility()', self.html,
-            "toggle button must wire to toggleAdminPwVisibility()")
+        self.assertIn('data-action="toggle-admin-pw-visibility"', self.html,
+            "toggle button must wire to toggle-admin-pw-visibility "
+            "(routed through the click delegate)")
 
     def test_default_emoji(self):
         m = re.search(

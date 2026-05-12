@@ -47,12 +47,13 @@ _MIGRATED_PAGES = {
     "graph.html",
     "workspace.html",
     "index.html",
-}
-
-# Pages still using inline handlers. Will shrink to empty by PR-D.
-_LEGACY_INLINE_PAGES = {
     "admin.html",
 }
+
+# Pages still using inline handlers. With PR-D landing, this is empty
+# and the rollout contract becomes a closed gate: any new page-level
+# HTML file added under ``frontend/`` is migrated by default.
+_LEGACY_INLINE_PAGES: set[str] = set()
 
 
 class NoInlineHandlersTests(unittest.TestCase):
@@ -81,6 +82,35 @@ class NoInlineHandlersTests(unittest.TestCase):
                     "move it from _LEGACY_INLINE_PAGES to "
                     "_MIGRATED_PAGES in this test.",
                 )
+
+    def test_no_inline_javascript_href(self):
+        # ``href="javascript:foo()"`` is CSP-hostile in the same way
+        # as inline ``onclick`` — once the four core pages graduate,
+        # they must stay clean.
+        for name in sorted(_MIGRATED_PAGES):
+            with self.subTest(page=name):
+                src = (FRONTEND / name).read_text(encoding="utf-8")
+                self.assertNotIn(
+                    'href="javascript:', src,
+                    name + " still has href=\"javascript:…\" links",
+                )
+
+    def test_rollout_complete(self):
+        # PR-D closes the migration: every page-level *.html in
+        # frontend/ must be listed in _MIGRATED_PAGES. New pages added
+        # later will trip this guard until they're added to the set
+        # (and themselves migrated). Excludes preview/static fixtures.
+        top_level = {
+            p.name for p in FRONTEND.glob("*.html")
+            if p.is_file()
+        }
+        unaccounted = top_level - _MIGRATED_PAGES - _LEGACY_INLINE_PAGES
+        self.assertEqual(
+            unaccounted, set(),
+            "new top-level page(s) in frontend/ are missing from "
+            "_MIGRATED_PAGES or _LEGACY_INLINE_PAGES: "
+            + ", ".join(sorted(unaccounted)),
+        )
 
 
 class GraphPageDelegationTests(unittest.TestCase):
@@ -400,6 +430,189 @@ class ChatPageDelegationTests(unittest.TestCase):
         self.assertIn("closeLoginOutside", self.chat)
         self.assertIn("closeForgotPasswordOutside", self.chat)
         self.assertIn("closeSignupOutside", self.chat)
+
+
+class AdminPageDelegationTests(unittest.TestCase):
+    """PR-D — admin.html + admin.js. The largest page in the bunch
+    (~62 inline HTML handlers + ~22 dynamic-template handlers, plus
+    two modal-overlay close patterns and a checkbox change handler).
+
+    Beyond the static actions, the admin page exercises three
+    delegation patterns the prior PRs didn't need:
+
+      1. ``data-overlay-action`` for the entity-detail and
+         session-turns modals — the old onclick="event.stopPropagation()"
+         on the inner content is replaced by an equality check
+         (``e.target === overlay``) in the click delegate.
+      2. A separate ``change`` delegate keyed by ``data-change-action``
+         for the policy-matrix checkboxes, which are dynamically
+         re-rendered by loadPolicy().
+      3. The proposal-detail button only carries the proposal id;
+         the title + body are looked up from a module-level
+         ``_proposalsById`` cache populated by loadProposals(). This
+         avoids round-tripping long, newline-bearing strings through
+         HTML data-* attributes (which would need extra escaping)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = (FRONTEND / "admin.html").read_text(encoding="utf-8")
+        cls.js   = (STATIC / "admin.js").read_text(encoding="utf-8")
+
+    # ─── HTML ──────────────────────────────────────────────────────
+    def test_html_uses_data_action_for_header(self):
+        for action in (
+            "toggle-lang", "toggle-admin-nav",
+        ):
+            with self.subTest(action=action):
+                self.assertIn(f'data-action="{action}"', self.html)
+
+    def test_html_uses_data_action_for_nav_sections(self):
+        # All five foldable section headers share one action.
+        self.assertGreaterEqual(
+            self.html.count('data-action="toggle-nav-section"'), 5,
+            "all nav-section headers must carry data-action=toggle-nav-section",
+        )
+
+    def test_html_uses_data_action_for_show_page(self):
+        # 17 distinct pages, each carrying data-action=show-page with
+        # the page name on data-page. The footer anchor in the files
+        # section adds one more (jumping to the uploads page).
+        for page in (
+            "dashboard", "users", "policy", "entities", "memory",
+            "patches", "uploads", "files", "audit",
+            "proposals", "evo-reports", "character", "knowledge",
+            "performance", "learning", "hardware", "settings",
+        ):
+            with self.subTest(page=page):
+                self.assertRegex(
+                    self.html,
+                    r'data-action="show-page"\s+data-page="' + page + r'"',
+                    f'nav entry for page={page} missing',
+                )
+
+    def test_html_uses_data_action_for_paging_buttons(self):
+        # Entities + audit each have prev/next pager with a signed delta.
+        self.assertRegex(
+            self.html,
+            r'data-action="entities-page"\s+data-delta="-1"',
+        )
+        self.assertRegex(
+            self.html,
+            r'data-action="entities-page"\s+data-delta="1"',
+        )
+        self.assertRegex(
+            self.html,
+            r'data-action="audit-page"\s+data-delta="-1"',
+        )
+        self.assertRegex(
+            self.html,
+            r'data-action="audit-page"\s+data-delta="1"',
+        )
+
+    def test_html_uses_data_overlay_action_for_modals(self):
+        # The two big modals (entity detail / session turns) used to
+        # rely on onclick="closeXyz(event)" on the overlay and
+        # onclick="event.stopPropagation()" on the inner content. The
+        # delegate now treats data-overlay-action as "only fires when
+        # the click target is the overlay itself".
+        self.assertIn('data-overlay-action="close-entity-detail"', self.html)
+        self.assertIn('data-overlay-action="close-session-turns"', self.html)
+
+    def test_html_uses_data_action_for_login_modal(self):
+        for action in (
+            "toggle-admin-pw-visibility", "do-admin-login",
+            "open-forgot-password-modal", "open-signup-modal",
+            "close-signup-modal", "submit-signup",
+            "close-forgot-password-modal", "submit-password-reset",
+            "copy-my-api-key", "close-my-api-key-modal",
+            "copy-reset-token", "close-reset-token-modal",
+            "first-run-dismiss", "first-run-check",
+        ):
+            with self.subTest(action=action):
+                self.assertIn(f'data-action="{action}"', self.html)
+
+    # ─── admin.js dynamic templates ────────────────────────────────
+    def test_js_dynamic_buttons_use_data_action(self):
+        for action in (
+            "first-run-install",
+            "approve-user", "reject-user",
+            "issue-reset-token-for", "deactivate-user",
+            "revoke-my-api-key", "reset-policy-feature",
+            "open-entity-detail",
+            "open-session-turns", "summarize-and-delete",
+            "patch-action",
+            "uploads-prev", "uploads-next",
+            "show-proposal-detail", "execute-web-learn-proposal",
+            "approve-proposal", "reject-proposal-by-id",
+            "learn-single-topic", "install-llm",
+        ):
+            with self.subTest(action=action):
+                self.assertIn(f'data-action="{action}"', self.js)
+
+    def test_js_policy_toggle_uses_change_action(self):
+        # The policy-matrix is re-rendered by innerHTML; per-checkbox
+        # addEventListener would lose binding on every reload, so a
+        # delegated change handler is required.
+        self.assertIn('data-change-action="policy-toggle"', self.js)
+        self.assertIn('data-feature-id', self.js)
+        self.assertIn('data-role', self.js)
+
+    def test_js_patch_action_carries_decision(self):
+        # Approve and Reject share one action; the decision is on
+        # data-decision so the delegate registers a single entry.
+        for decision in ("approve", "reject"):
+            with self.subTest(decision=decision):
+                self.assertRegex(
+                    self.js,
+                    r'data-action="patch-action"[^`]*?data-decision="' + decision + r'"',
+                )
+
+    def test_js_no_inline_handlers_in_templates(self):
+        # Mirrors the contract for upload.js: no innerHTML template
+        # may regress to emitting inline ``onclick=`` etc. JS property
+        # access (``.onclick = …``) is allowed — only the leading-
+        # whitespace HTML-attr form is flagged by _INLINE_ATTR_RE.
+        hits = _INLINE_ATTR_RE.findall(self.js)
+        self.assertEqual(
+            hits, [],
+            "admin.js innerHTML templates may not emit inline handlers",
+        )
+
+    # ─── Delegation infrastructure ────────────────────────────────
+    def test_js_installs_click_delegation(self):
+        self.assertRegex(
+            self.js,
+            r"document\.addEventListener\(\s*['\"]click['\"]",
+            "admin.js must install a document-level click delegate",
+        )
+        self.assertIn("data-action", self.js)
+
+    def test_js_installs_change_delegation(self):
+        # Used for the dynamic policy-toggle checkboxes.
+        self.assertRegex(
+            self.js,
+            r"document\.addEventListener\(\s*['\"]change['\"]",
+            "admin.js must install a document-level change delegate",
+        )
+        self.assertIn("data-change-action", self.js)
+
+    def test_js_binds_stable_inputs_on_dom_ready(self):
+        self.assertIn("_bindStableInputs", self.js)
+        self.assertRegex(
+            self.js,
+            r"DOMContentLoaded[\s\S]{0,200}?_bindStableInputs",
+        )
+
+    def test_js_proposals_cache_supports_detail(self):
+        # The Detail button only carries data-proposal-id; the
+        # delegate looks the proposal up here so long content avoids
+        # round-tripping through HTML attributes.
+        self.assertIn("_proposalsById", self.js)
+        self.assertRegex(
+            self.js,
+            r"_proposalsById\.set\(",
+            "loadProposals must populate _proposalsById",
+        )
 
 
 if __name__ == "__main__":

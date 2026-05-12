@@ -34,8 +34,227 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+/* ── §5 PR-D: inline-handler migration (CSP-friendly delegation) ──
+ * admin.html no longer carries any ``onclick=`` / ``onchange=`` /
+ * ``oninput=`` / ``onkeydown=`` attributes; admin.js innerHTML
+ * templates likewise emit ``data-action`` (+ supporting ``data-*``)
+ * instead of inline handlers. One document-level click delegate
+ * routes by ``data-action`` name; a parallel change-delegate routes
+ * the dynamic policy-toggle checkboxes; an ``data-overlay-action``
+ * fast-path handles the two modal overlays whose previous
+ * ``onclick="closeXyz(event)"`` used ``stopPropagation`` on the
+ * inner content. Stable inputs that live for the page lifetime
+ * (search boxes, sliders, login fields) wire up by id at
+ * DOMContentLoaded — they don't appear in any innerHTML template
+ * so direct binding is safe and avoids per-keystroke delegate work. */
+function _bindFrontendEvents() {
+  document.addEventListener('click', (e) => {
+    // Modal-overlay close: only the overlay itself (e.target === el)
+    // should close. Clicks on inner content bubble up but e.target
+    // is the descendant, so the equality check filters them out —
+    // this replaces the old stopPropagation-on-inner-content trick.
+    const overlay = e.target.closest && e.target.closest('[data-overlay-action]');
+    if (overlay && overlay === e.target) {
+      const oa = overlay.getAttribute('data-overlay-action');
+      if (oa === 'close-entity-detail') { closeEntityDetail(); return; }
+      if (oa === 'close-session-turns') { closeSessionTurns(); return; }
+    }
+
+    const t = e.target.closest && e.target.closest('[data-action]');
+    if (!t) return;
+    const action = t.getAttribute('data-action');
+    switch (action) {
+      /* ── header / nav (static) ────────────────────────────────── */
+      case 'toggle-lang':         toggleLang(); break;
+      case 'toggle-admin-nav':    toggleAdminNav(); break;
+      case 'toggle-nav-section':  toggleNavSection(t); break;
+      case 'show-page': {
+        // Anchor variant uses href="#" — stop the navigation.
+        if (t.tagName === 'A') e.preventDefault();
+        const page = t.getAttribute('data-page');
+        // showPage(id, el) marks `el` as active; if the click came
+        // from a non-nav-item (the in-page anchor link to "uploads"),
+        // locate the matching nav-item so the sidebar still updates.
+        const navItem = t.classList.contains('nav-item')
+          ? t
+          : document.querySelector('.nav-item[data-page="' + page + '"]');
+        showPage(page, navItem || t);
+        break;
+      }
+
+      /* ── users page (static) ──────────────────────────────────── */
+      case 'change-my-password':  changeMyPassword(); break;
+      case 'issue-my-api-key':    issueMyApiKey(); break;
+
+      /* ── entities page (static) ───────────────────────────────── */
+      case 'entities-page':
+        entitiesPage(parseInt(t.getAttribute('data-delta'), 10) || 0);
+        break;
+      case 'close-entity-detail': closeEntityDetail(); break;
+      case 'close-session-turns': closeSessionTurns(); break;
+
+      /* ── proposals / character / performance / learning ───────── */
+      case 'generate-proposals':  generateProposals(); break;
+      case 'save-identity':       saveIdentity(); break;
+      case 'save-character':      saveCharacter(); break;
+      case 'reset-character':     resetCharacter(); break;
+      case 'run-evaluation':      runEvaluation(); break;
+      case 'web-learn-topic':     webLearnTopic(); break;
+      case 'learn-topic':         learnTopic(); break;
+      case 'learn-from-errors':   learnFromErrors(); break;
+
+      /* ── audit / uploads / files / hardware / settings ────────── */
+      case 'audit-page':
+        audit_page(parseInt(t.getAttribute('data-delta'), 10) || 0);
+        break;
+      case 'load-uploads':        loadUploads(); break;
+      case 'search-files':        searchFiles(); break;
+      case 'load-files':          loadFiles(); break;
+      case 'load-hardware':       loadHardware(); break;
+      case 'save-settings':       saveSettings(); break;
+      case 'save-web-search-config': saveWebSearchConfig(); break;
+
+      /* ── login modal + signup/forgot anchors ──────────────────── */
+      case 'toggle-admin-pw-visibility': toggleAdminPwVisibility(); break;
+      case 'do-admin-login':      doAdminLogin(); break;
+      case 'open-forgot-password-modal':
+        e.preventDefault(); openForgotPasswordModal(); break;
+      case 'open-signup-modal':
+        e.preventDefault(); openSignupModal(); break;
+      case 'close-signup-modal':  closeSignupModal(); break;
+      case 'submit-signup':       submitSignup(); break;
+      case 'close-forgot-password-modal': closeForgotPasswordModal(); break;
+      case 'submit-password-reset': submitPasswordReset(); break;
+      case 'copy-my-api-key':     copyMyApiKey(); break;
+      case 'close-my-api-key-modal': closeMyApiKeyModal(); break;
+      case 'copy-reset-token':    copyResetToken(); break;
+      case 'close-reset-token-modal': closeResetTokenModal(); break;
+
+      /* ── first-run wizard ─────────────────────────────────────── */
+      case 'first-run-dismiss':   firstRunDismiss(); break;
+      case 'first-run-check':     firstRunCheck(); break;
+      case 'first-run-install':   firstRunInstall(t.getAttribute('data-tag')); break;
+
+      /* ── dynamic templates (admin.js innerHTML) ───────────────── */
+      case 'approve-user':        approveUser(t.getAttribute('data-username')); break;
+      case 'reject-user':         rejectUser(t.getAttribute('data-username')); break;
+      case 'issue-reset-token-for':
+        issueResetTokenFor(t.getAttribute('data-username')); break;
+      case 'deactivate-user':     deactivateUser(t.getAttribute('data-username')); break;
+      case 'revoke-my-api-key':   revokeMyApiKey(t.getAttribute('data-prefix')); break;
+      case 'reset-policy-feature':
+        resetPolicyFeature(t.getAttribute('data-feature-id')); break;
+      case 'open-entity-detail':
+        openEntityDetail(t.getAttribute('data-entity-id')); break;
+      case 'open-session-turns':
+        openSessionTurns(
+          t.getAttribute('data-sid'),
+          t.getAttribute('data-title') || '',
+        );
+        break;
+      case 'summarize-and-delete':
+        summarizeAndDelete(t.getAttribute('data-sid')); break;
+      case 'patch-action':
+        patchAction(
+          t.getAttribute('data-patch-id'),
+          t.getAttribute('data-decision'),
+        );
+        break;
+      case 'uploads-prev':        _uploadsPrev(); break;
+      case 'uploads-next':        _uploadsNext(); break;
+      case 'show-proposal-detail': {
+        // The Detail button used to inline-pass title + truncated body;
+        // we now look the proposal up in the loadProposals() cache so
+        // long text doesn't have to round-trip through HTML attrs.
+        const pid = t.getAttribute('data-proposal-id');
+        const p = _proposalsById.get(pid);
+        if (!p) return;
+        const title = escAdm(p.title);
+        const body  = escAdm(p.description) + '\\n\\n' + escAdm((p.content || '').slice(0, 600));
+        showProposalDetail(pid, title, body);
+        break;
+      }
+      case 'execute-web-learn-proposal':
+        executeWebLearnProposal(
+          t.getAttribute('data-proposal-id'),
+          t.getAttribute('data-topic') || '',
+          t,
+        );
+        break;
+      case 'approve-proposal':
+        approveProposal(t.getAttribute('data-proposal-id')); break;
+      case 'reject-proposal-by-id':
+        rejectProposalById(t.getAttribute('data-proposal-id')); break;
+      case 'learn-single-topic':
+        learnSingleTopic(t.getAttribute('data-query') || ''); break;
+      case 'install-llm':
+        installLLM(t.getAttribute('data-model-name'), t); break;
+    }
+  });
+
+  // Policy-matrix checkboxes are re-rendered by loadPolicy() through
+  // innerHTML, so a per-row addEventListener would lose binding on
+  // every reload. A single delegated 'change' listener keyed by
+  // data-change-action survives renders.
+  document.addEventListener('change', (e) => {
+    const t = e.target.closest && e.target.closest('[data-change-action]');
+    if (!t) return;
+    if (t.getAttribute('data-change-action') === 'policy-toggle') {
+      onPolicyToggle(t, t.getAttribute('data-feature-id'), t.getAttribute('data-role'));
+    }
+  });
+}
+
+function _bindStableInputs() {
+  // Always-present inputs that don't appear in any innerHTML template.
+  // (Anything inside a dynamically re-rendered <tbody> must use the
+  //  delegated path above instead.)
+  const ent = document.getElementById('entities-search');
+  if (ent) ent.addEventListener('input', () => onEntitiesSearchInput());
+  const eft = document.getElementById('entities-etype-filter');
+  if (eft) eft.addEventListener('change', () => loadEntities());
+
+  const ac = document.getElementById('audit-category');
+  if (ac) ac.addEventListener('change', () => audit_reload());
+  const aq = document.getElementById('audit-q');
+  if (aq) aq.addEventListener('input', () => audit_searchInput());
+
+  const us = document.getElementById('uploads-search');
+  if (us) us.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') loadUploads();
+  });
+
+  const fr = document.getElementById('files-root');
+  if (fr) fr.addEventListener('change', () => onFilesRootChange());
+  const fs = document.getElementById('files-search');
+  if (fs) fs.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') searchFiles();
+  });
+
+  const sl = document.getElementById('set-language');
+  if (sl) sl.addEventListener('change', (e) => onLanguageChange(e.target.value));
+  const loop = document.getElementById('set-loop');
+  if (loop) loop.addEventListener('input', (e) => {
+    const lv = document.getElementById('set-loop-val');
+    if (lv) lv.textContent = e.target.value;
+  });
+  const wsth = document.getElementById('ws-threshold');
+  if (wsth) wsth.addEventListener('input', (e) => applyWsThresholdLabel(e.target.value));
+
+  const wli = document.getElementById('web-learn-input');
+  if (wli) wli.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') webLearnTopic();
+  });
+  const apw = document.getElementById('admin-login-pw');
+  if (apw) apw.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doAdminLogin();
+  });
+}
+
 /* ── 초기화 ── */
 window.addEventListener('DOMContentLoaded', async () => {
+  _bindFrontendEvents();
+  _bindStableInputs();
   if (!apiKey) {
     apiKey = prompt('JAMES API Key:') || '';
     localStorage.setItem('james_api_key', apiKey);
@@ -253,7 +472,7 @@ function _firstRunRow(r, primary) {
         ${desc}${sizeGB ? ' · ' + sizeGB : ''}
       </div>
     </div>
-    <button onclick="firstRunInstall('${tag.replace(/'/g, "\\'")}')"
+    <button data-action="first-run-install" data-tag="${tag}"
             style="padding:7px 14px;background:var(--accent);color:var(--on-accent);
                    border:0;border-radius:6px;cursor:pointer;font-size:12px;
                    font-weight:600;flex-shrink:0">
@@ -607,8 +826,8 @@ async function loadUsers() {
             <td class="mono">${u.created_at?.slice(0,10) || '-'}</td>
             <td><select id="approve-role-${safeName}" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text)">${opts}</select></td>
             <td>
-              <button onclick="approveUser('${u.username}')" style="padding:4px 10px;margin-right:4px;background:#1e7a3e;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.approve')}</button>
-              <button onclick="rejectUser('${u.username}')" style="padding:4px 10px;background:#7a1e1e;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.reject')}</button>
+              <button data-action="approve-user" data-username="${u.username}" style="padding:4px 10px;margin-right:4px;background:#1e7a3e;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.approve')}</button>
+              <button data-action="reject-user" data-username="${u.username}" style="padding:4px 10px;background:#7a1e1e;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.reject')}</button>
             </td>
           </tr>`;
       }).join('') || `<tr><td colspan='4' class='empty'>${t('users.empty_pending')}</td></tr>`;
@@ -632,10 +851,10 @@ async function loadUsers() {
       //   - deactivate (hidden on caller's own row, server enforces
       //     anyway with a 400)
       const tokenBtn = u.active
-        ? `<button onclick="issueResetTokenFor('${u.username}')" style="padding:4px 10px;margin-right:4px;background:#1e5a7a;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.issue_token')}</button>`
+        ? `<button data-action="issue-reset-token-for" data-username="${u.username}" style="padding:4px 10px;margin-right:4px;background:#1e5a7a;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.issue_token')}</button>`
         : '';
       const deactivateBtn = (u.active && u.username !== selfUser)
-        ? `<button onclick="deactivateUser('${u.username}')" style="padding:4px 10px;background:#444;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.deactivate')}</button>`
+        ? `<button data-action="deactivate-user" data-username="${u.username}" style="padding:4px 10px;background:#444;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.deactivate')}</button>`
         : '';
       const action = (tokenBtn || deactivateBtn)
         ? `${tokenBtn}${deactivateBtn}`
@@ -682,7 +901,7 @@ function _renderMyApiKeys(keys) {
       : `<span class="badge" style="background:#1e7a3e;color:#fff">${t('users.status_active')}</span>`;
     const action = k.revoked
       ? '<span style="color:var(--muted)">—</span>'
-      : `<button onclick="revokeMyApiKey('${k.key_prefix}')" style="padding:4px 10px;background:#7a1e1e;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.mykey_revoke')}</button>`;
+      : `<button data-action="revoke-my-api-key" data-prefix="${k.key_prefix}" style="padding:4px 10px;background:#7a1e1e;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.mykey_revoke')}</button>`;
     return `
       <tr>
         <td class="mono">${k.key_prefix}…</td>
@@ -806,7 +1025,8 @@ async function loadPolicy() {
         return `<td style="text-align:center">
           <label style="display:inline-flex;align-items:center;gap:2px;cursor:pointer">
             <input type="checkbox" ${eff.allowed ? 'checked' : ''}
-                   onchange="onPolicyToggle(this, '${f.id}', '${r}')"
+                   data-change-action="policy-toggle"
+                   data-feature-id="${f.id}" data-role="${r}"
                    style="cursor:pointer;width:16px;height:16px;accent-color:#1e7a3e">
             ${dot}
           </label>
@@ -819,7 +1039,7 @@ async function loadPolicy() {
         </td>
         ${cells}
         <td style="text-align:center">
-          <button onclick="resetPolicyFeature('${f.id}')"
+          <button data-action="reset-policy-feature" data-feature-id="${f.id}"
                   style="padding:4px 8px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:11px;cursor:pointer">
             ${t('policy.reset_default')}
           </button>
@@ -1144,7 +1364,7 @@ async function loadEntities() {
     // 테이블 — 행 클릭 → 상세
     const tbody = document.getElementById('entities-body');
     tbody.innerHTML = (data.entities || []).map(e => `
-      <tr style="cursor:pointer" onclick="openEntityDetail('${e.entity_id}')">
+      <tr style="cursor:pointer" data-action="open-entity-detail" data-entity-id="${escapeHtml(e.entity_id)}">
         <td>${escapeHtml(e.name) || `<em style="color:var(--muted)">${e.entity_id}</em>`}</td>
         <td class="mono">${e.entity_type}</td>
         <td><span class="badge-status">${e.sensitivity || '-'}</span></td>
@@ -1265,13 +1485,12 @@ async function loadLongTerm() {
       // item #3-b: row click → original turns modal. session_id is
       // present in the API response (memory/store.py:492).
       const sid = s.session_id || '';
-      const onclick = sid
-        ? `onclick="openSessionTurns('${escapeHtml(sid)}', '${escapeHtml((s.topic || '').slice(0, 40))}')"`
+      const attrs = sid
+        ? `data-action="open-session-turns" data-sid="${escapeHtml(sid)}" data-title="${escapeHtml((s.topic || '').slice(0, 40))}" style="cursor:pointer"`
         : '';
-      const cursor = sid ? 'cursor:pointer' : '';
       const hint   = sid ? '' : ' <em style="color:var(--muted);font-size:10px">(no session_id)</em>';
       return `
-        <tr style="${cursor}" ${onclick}>
+        <tr ${attrs}>
           <td class="mono">${s.saved_at?.slice(0,10) || '-'}</td>
           <td>${escapeHtml(s.topic || '-')}${hint}</td>
           <td style="max-width:400px;font-size:12px">${escapeHtml((s.summary || '').slice(0,120) || '-')}</td>
@@ -1295,7 +1514,7 @@ async function loadSessions() {
       // (액션 버튼은 그대로 두고 행 일부만 클릭 가능하게 — 실수로
       // summarize&delete 버튼 누르는 사고 방지)
       const expandable = sid
-        ? `onclick="openSessionTurns('${escapeHtml(sid)}', '${escapeHtml(sid.slice(0,20))}')" style="cursor:pointer"`
+        ? `data-action="open-session-turns" data-sid="${escapeHtml(sid)}" data-title="${escapeHtml(sid.slice(0,20))}" style="cursor:pointer"`
         : '';
       return `
         <tr>
@@ -1305,7 +1524,7 @@ async function loadSessions() {
           <td class="mono">${s.last?.slice(0,16) || '-'}</td>
           <td>
             <button class="btn btn-approve" style="font-size:10px"
-              onclick="summarizeAndDelete('${escapeHtml(sid)}')" data-i18n='mem.summarize_delete'>Summarize & Delete</button>
+              data-action="summarize-and-delete" data-sid="${escapeHtml(sid)}" data-i18n='mem.summarize_delete'>Summarize & Delete</button>
           </td>
         </tr>
       `;
@@ -1407,8 +1626,8 @@ async function loadPatches() {
         <td class="mono">${p.confidence != null ? (p.confidence*100).toFixed(0)+'%' : '-'}</td>
         <td class="mono">${p.created_at?.slice(0,16) || '-'}</td>
         <td>${p.status === 'PENDING_APPROVAL' ? `
-          <button class="btn btn-approve" onclick="patchAction('${p.patch_id}','approve')" data-i18n='prop.approve'>Approve</button>
-          <button class="btn btn-reject"  onclick="patchAction('${p.patch_id}','reject')" data-i18n='prop.reject'>Reject</button>
+          <button class="btn btn-approve" data-action="patch-action" data-patch-id="${p.patch_id}" data-decision="approve" data-i18n='prop.approve'>Approve</button>
+          <button class="btn btn-reject"  data-action="patch-action" data-patch-id="${p.patch_id}" data-decision="reject"  data-i18n='prop.reject'>Reject</button>
         ` : '-'}</td>
       </tr>
     `).join('') || `<tr><td colspan='6' class='empty'>${t('patch.no_patches')}</td></tr>`;
@@ -1599,14 +1818,14 @@ async function loadUploads(resetOffset = true) {
       const hasPrev = _uploadsOffset > 0;
       const hasNext = (_uploadsOffset + items.length) < total;
       pager.innerHTML = `
-        <button onclick="_uploadsPrev()" ${hasPrev ? '' : 'disabled'}
+        <button data-action="uploads-prev" ${hasPrev ? '' : 'disabled'}
                 style="padding:6px 14px;background:var(--surface-2);
                        border:1px solid var(--border);border-radius:6px;
                        color:var(--text);cursor:${hasPrev ? 'pointer' : 'not-allowed'};
                        opacity:${hasPrev ? '1' : '0.4'};font-size:12px">
           ‹ 이전
         </button>
-        <button onclick="_uploadsNext()" ${hasNext ? '' : 'disabled'}
+        <button data-action="uploads-next" ${hasNext ? '' : 'disabled'}
                 style="padding:6px 14px;background:var(--surface-2);
                        border:1px solid var(--border);border-radius:6px;
                        color:var(--text);cursor:${hasNext ? 'pointer' : 'not-allowed'};
@@ -2081,12 +2300,18 @@ async function saveWebSearchConfig() {
 /* ── 자기진화 제안 ── */
 
 let _currentProposalId = null;
+// PR-D delegation: cache proposals by id so the "Detail" data-action
+// handler can rebuild the (id, title, content) tuple without packing
+// long text into HTML data-* attributes (which would need extra escape).
+const _proposalsById = new Map();
 
 async function loadProposals() {
   try {
     const data = await api('/admin/proposals/?status=pending');
     const tbody = document.getElementById('proposals-body');
     const proposals = data.proposals || [];
+    _proposalsById.clear();
+    for (const p of proposals) _proposalsById.set(p.proposal_id, p);
 
     if (!proposals.length) {
       tbody.innerHTML = `<tr><td colspan='5' class='empty'>${t('prop.no_pending')}</td></tr>`;
@@ -2100,15 +2325,16 @@ async function loadProposals() {
       const topic = p.metadata?.topic || '';
       const actionBtns = isWebLearn
         ? `<button class="btn btn-approve" style="font-size:10px;background:#4fc3f7"
-             onclick="executeWebLearnProposal('${p.proposal_id}','${topic}',this)">
+             data-action="execute-web-learn-proposal"
+             data-proposal-id="${p.proposal_id}" data-topic="${escAdm(topic)}">
              ${t('prop.web_search')}
            </button>
            <button class="btn btn-reject" style="font-size:10px"
-             onclick="rejectProposalById('${p.proposal_id}')">❌ Reject</button>`
+             data-action="reject-proposal-by-id" data-proposal-id="${p.proposal_id}">❌ Reject</button>`
         : `<button class="btn btn-approve" style="font-size:10px"
-             onclick="approveProposal('${p.proposal_id}')">✅ Approve</button>
+             data-action="approve-proposal" data-proposal-id="${p.proposal_id}">✅ Approve</button>
            <button class="btn btn-reject" style="font-size:10px"
-             onclick="rejectProposalById('${p.proposal_id}')">❌ Reject</button>`;
+             data-action="reject-proposal-by-id" data-proposal-id="${p.proposal_id}">❌ Reject</button>`;
 
       return `<tr>
         <td><span class="mono" style="font-size:10px">${p.type}</span></td>
@@ -2119,7 +2345,8 @@ async function loadProposals() {
         <td style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn" style="font-size:10px;background:var(--surface);
             border:1px solid var(--border);color:var(--text)"
-            onclick="showProposalDetail('${p.proposal_id}',\`${escAdm(p.title)}\`,\`${escAdm(p.description)}\n\n${escAdm(p.content?.slice(0,600))}\`)">
+            data-action="show-proposal-detail"
+            data-proposal-id="${p.proposal_id}">
             ${t('prop.detail')}
           </button>
           ${actionBtns}
@@ -2356,7 +2583,7 @@ async function loadLearning() {
         <td class="mono">${q.last?.slice(0,10)||'-'}</td>
         <td>
           <button class="btn btn-approve" style="font-size:10px"
-            onclick="learnSingleTopic('${(q.query||'').replace(/'/g,"\\'")}')">
+            data-action="learn-single-topic" data-query="${escapeHtml(q.query || '')}">
             Learn</button>
         </td>
       </tr>`).join('')
@@ -3335,7 +3562,7 @@ async function loadLLMRecommend() {
         <div style="font-size:11px;color:var(--muted);text-align:right;min-width:60px">
           ${m.size_gb}GB
         </div>
-        <button onclick="installLLM('${m.name}', this)"
+        <button data-action="install-llm" data-model-name="${escapeHtml(m.name)}"
                 style="border:none;border-radius:6px;padding:5px 12px;
                        font-size:11px;font-weight:600;color:#fff;
                        ${btnStyle}" ${isInstalled?'disabled':''}>

@@ -131,17 +131,21 @@ class IconOnlyButtonsTests(unittest.TestCase):
 
     def test_admin_nav_toggle_button(self):
         # ☰ hamburger on admin nav.
+        # [§5 PR-D] inline onclick="toggleAdminNav()" replaced by
+        # data-action="toggle-admin-nav".
         self._assert_aria_on_button(
-            self.admin, "toggleAdminNav()", "admin.html")
+            self.admin, 'data-action="toggle-admin-nav"', "admin.html")
 
     def test_admin_entity_detail_close_button(self):
         # × button inside the entity-detail modal header.
+        # [§5 PR-D] now identified by data-action.
         self._assert_aria_on_button(
-            self.admin, "closeEntityDetail()", "admin.html")
+            self.admin, 'data-action="close-entity-detail"', "admin.html")
 
     def test_admin_session_turns_close_button(self):
+        # [§5 PR-D] now identified by data-action.
         self._assert_aria_on_button(
-            self.admin, "closeSessionTurns()", "admin.html")
+            self.admin, 'data-action="close-session-turns"', "admin.html")
 
     def test_workspace_detail_close_button(self):
         # [§5 migration] inline onclick="closeDetail()" replaced by

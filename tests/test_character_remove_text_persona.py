@@ -132,9 +132,14 @@ class CharacterPageIdentityTests(unittest.TestCase):
             "이름 입력(set-name) 은 character 페이지로 이전되어야 함")
 
     def test_save_identity_button_present(self):
+        # [§5 PR-D] inline onclick="saveIdentity()" replaced by
+        # data-action="save-identity" routed through the click delegate.
+        # The handler must still call saveIdentity (not savePersona)
+        # — verified by the JS suite's saveIdentity-posts-only-name test.
         block = self._character_page()
-        self.assertIn("saveIdentity()", block,
-            "Identity 섹션의 저장 버튼은 saveIdentity() 호출 — savePersona X")
+        self.assertIn('data-action="save-identity"', block,
+            "Identity 섹션의 저장 버튼은 data-action='save-identity' — "
+            "save-character / save-persona 가 아님")
 
     def test_identity_label_keys(self):
         block = self._character_page()

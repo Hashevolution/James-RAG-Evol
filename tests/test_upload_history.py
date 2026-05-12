@@ -216,9 +216,14 @@ class FrontendAdminHtmlTests(unittest.TestCase):
         cls.html = (ROOT / "frontend" / "admin.html").read_text(encoding="utf-8")
 
     def test_nav_item_present(self):
-        # Sidebar must have a clickable entry that calls showPage('uploads', ...).
-        self.assertIn("showPage('uploads'", self.html,
-                      "sidebar must register a nav-item linking to uploads page")
+        # [§5 PR-D] inline onclick="showPage('uploads', this)" replaced
+        # by data-action="show-page" data-page="uploads" routed through
+        # the document click delegate.
+        self.assertRegex(
+            self.html,
+            r'data-action="show-page"\s+data-page="uploads"',
+            "sidebar must register a nav-item linking to uploads page",
+        )
         self.assertIn('admin.upload_history', self.html,
                       "i18n key admin.upload_history must be wired in")
 
@@ -233,8 +238,19 @@ class FrontendAdminHtmlTests(unittest.TestCase):
                       "pagination container must exist")
 
     def test_search_uses_enter_key(self):
-        # Ergonomic: pressing Enter triggers loadUploads.
-        self.assertIn("if(event.key==='Enter') loadUploads()", self.html)
+        # [§5 PR-D] inline onkeydown="if(event.key==='Enter') loadUploads()"
+        # replaced by direct id-binding in admin.js _bindStableInputs()
+        # — that listener watches keydown on #uploads-search.
+        js = (ROOT / "frontend" / "static" / "admin.js").read_text(encoding="utf-8")
+        self.assertIn("document.getElementById('uploads-search')", js,
+            "#uploads-search must be bound by id in _bindStableInputs")
+        bind_block = js[js.index("_bindStableInputs"):]
+        bind_block = bind_block[:3000]
+        self.assertRegex(
+            bind_block,
+            r"'uploads-search'[\s\S]*?Enter[\s\S]*?loadUploads\(\)",
+            "the uploads-search Enter handler must still call loadUploads()",
+        )
 
 
 class I18nKeysTests(unittest.TestCase):

@@ -220,8 +220,14 @@ class FrontendNavAndPageTests(unittest.TestCase):
         cls.html = (ROOT / "frontend" / "admin.html").read_text(encoding="utf-8")
 
     def test_nav_item_present(self):
-        self.assertIn("showPage('files'", self.html,
-            "sidebar must have a clickable entry for the files tab")
+        # [§5 PR-D] inline onclick="showPage('files', this)" replaced
+        # by data-action="show-page" data-page="files" routed through
+        # the document click delegate.
+        self.assertRegex(
+            self.html,
+            r'data-action="show-page"\s+data-page="files"',
+            "sidebar must have a clickable entry for the files tab",
+        )
         self.assertIn("admin.file_mgmt", self.html,
             "i18n key admin.file_mgmt must be wired in")
 
@@ -235,7 +241,21 @@ class FrontendNavAndPageTests(unittest.TestCase):
             "search input must exist")
 
     def test_search_uses_enter_key(self):
-        self.assertIn("if(event.key==='Enter') searchFiles()", self.html)
+        # [§5 PR-D] inline onkeydown="if(event.key==='Enter') searchFiles()"
+        # replaced by direct id-binding in admin.js _bindStableInputs()
+        # — that listener watches the 'keydown' event on #files-search
+        # and triggers searchFiles() when the Enter key fires.
+        js = (ROOT / "frontend" / "static" / "admin.js").read_text(encoding="utf-8")
+        self.assertIn("document.getElementById('files-search')", js,
+            "#files-search must be bound by id in _bindStableInputs")
+        # The bound listener must call searchFiles on Enter.
+        bind_block = js[js.index("_bindStableInputs"):]
+        bind_block = bind_block[:3000]
+        self.assertRegex(
+            bind_block,
+            r"'files-search'[\s\S]*?Enter[\s\S]*?searchFiles\(\)",
+            "the files-search Enter handler must still call searchFiles()",
+        )
 
     def test_root_select_options_match_backend_allowlist(self):
         # The 3 root options must match the server's _file_mgmt_roots keys.

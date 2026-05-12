@@ -45,11 +45,13 @@ class HtmlContractTests(unittest.TestCase):
                           f"modal placeholder {el} missing")
 
     def test_close_handler_present(self):
-        # Backdrop click handler + explicit X button handler both wire
-        # to closeSessionTurns.
-        self.assertIn('onclick="closeSessionTurns(event)"', self.html,
+        # [§5 PR-D] Backdrop close moves to data-overlay-action (fires
+        # only when e.target === overlay; replaces the prior
+        # onclick="closeSessionTurns(event)" + inner stopPropagation
+        # pattern). X button uses data-action="close-session-turns".
+        self.assertIn('data-overlay-action="close-session-turns"', self.html,
                       "backdrop click handler missing")
-        self.assertIn('onclick="closeSessionTurns()"', self.html,
+        self.assertIn('data-action="close-session-turns"', self.html,
                       "X button handler missing")
 
     def test_long_term_table_advertises_clickable_rows(self):
@@ -82,31 +84,40 @@ class JsContractTests(unittest.TestCase):
                       "closeSessionTurns missing")
 
     def test_long_term_row_uses_session_id_when_available(self):
+        # [§5 PR-D] The row template now emits
+        # data-action="open-session-turns" data-sid=… data-title=…
+        # instead of inline onclick="openSessionTurns(…)".
         idx = self.js.index("async function loadLongTerm")
         body = self.js[idx:idx + 1500]
-        self.assertIn("openSessionTurns(", body,
-                      "loadLongTerm rows must wire to openSessionTurns")
-        # Conditional: only attach onclick when session_id present.
+        self.assertIn('data-action="open-session-turns"', body,
+                      "loadLongTerm rows must wire to open-session-turns "
+                      "via the click delegate")
+        self.assertIn('data-sid=', body,
+                      "row must carry data-sid for the delegate to read")
+        # Conditional: only attach the action when session_id is present.
         self.assertIn("s.session_id", body,
                       "loadLongTerm must read session_id from each summary")
 
     def test_sessions_action_button_not_overridden(self):
-        # Sanity: the summarize&delete button must NOT call
-        # openSessionTurns by accident — operators expect distinct
-        # behaviors for "expand" vs "delete".
+        # Sanity: the summarize&delete button must NOT also fire the
+        # expand action by accident — operators expect distinct
+        # behaviors for "expand" vs "delete". The row's expand-on-
+        # click moved to data-action="open-session-turns" on the
+        # session-id and turn-count cells only; the action <button>
+        # cell uses data-action="summarize-and-delete".
         idx = self.js.index("async function loadSessions")
         body = self.js[idx:idx + 1800]
-        self.assertIn("summarizeAndDelete(", body,
-                      "summarize&delete button must remain functional")
-        # The button itself must not also be wired to expand.
-        # Look for the <button ... onclick="summarizeAndDelete..."> region
-        # and assert it doesn't contain openSessionTurns inside the button tag.
+        self.assertIn('data-action="summarize-and-delete"', body,
+                      "summarize&delete button must remain functional "
+                      "via the click delegate")
+        # Find the summarize button tag and assert it doesn't also
+        # carry the expand action.
         m = re.search(
-            r'<button[^>]*summarizeAndDelete[^>]*>',
+            r'<button[^>]*data-action="summarize-and-delete"[^>]*>',
             body,
         )
         self.assertIsNotNone(m, "summarize button regex missing")
-        self.assertNotIn("openSessionTurns", m.group(),
+        self.assertNotIn("open-session-turns", m.group(),
                          "the summarize button must not also be wired "
                          "to expand — operators get confused if a single "
                          "click does two things")

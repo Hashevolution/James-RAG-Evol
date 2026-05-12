@@ -39,16 +39,26 @@ class HtmlElementsTests(unittest.TestCase):
             "must add a span#ws-threshold-label that JS updates")
 
     def test_slider_oninput_uses_helper(self):
-        # The slider should call applyWsThresholdLabel(this.value),
-        # not raw textContent assignment, so the label updates too.
-        m = re.search(
-            r'<input[^>]*id="ws-threshold"[^>]*oninput="([^"]+)"',
+        # [§5 PR-D] inline oninput="applyWsThresholdLabel(this.value)"
+        # replaced by direct id-binding in admin.js _bindStableInputs().
+        # Contract: the slider input must still exist, and the helper
+        # must still be called from the live input listener.
+        self.assertRegex(
             self.html,
+            r'<input[^>]*id="ws-threshold"',
+            "couldn't locate slider element",
         )
-        self.assertIsNotNone(m, "couldn't locate slider element")
-        oninput = m.group(1)
-        self.assertIn("applyWsThresholdLabel", oninput,
-            "slider oninput must call applyWsThresholdLabel for live label")
+        js = JS.read_text(encoding="utf-8")
+        self.assertIn(
+            "document.getElementById('ws-threshold')", js,
+            "slider must be bound by id in _bindStableInputs",
+        )
+        # The binding handler invokes applyWsThresholdLabel for live label.
+        bind_block = js[js.index("_bindStableInputs"):]
+        bind_block = bind_block[:2000]
+        self.assertIn("applyWsThresholdLabel", bind_block,
+            "id-bound input listener must call applyWsThresholdLabel "
+            "for the live label")
 
     def test_track_endpoints_use_korean_labels(self):
         # Min/max badges next to slider should say 안함 / 강력 instead

@@ -456,7 +456,7 @@
   </div>
   <div class="header-right">
     <!-- [STEP 5-A] 언어 토글 -->
-    <button class="nav-btn" data-lang-toggle onclick="toggleLang()" title="Language / 언어"
+    <button class="nav-btn" data-lang-toggle data-action="toggle-lang" title="Language / 언어"
             aria-label="언어 전환 / Toggle language"
             style="font-size:12px;font-weight:600;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;color:var(--text-soft)"></button>
     <a href="/" class="nav-btn" data-i18n="admin.chat_link">← 챗으로</a>
@@ -466,7 +466,7 @@
 <div class="admin-layout">
   <!-- 모바일에서 사이드메뉴 토글 — item #2 -->
   <button id="admin-nav-toggle"
-          onclick="toggleAdminNav()"
+          data-action="toggle-admin-nav"
           aria-label="메뉴 토글"
           style="display:none;position:fixed;top:8px;left:8px;z-index:60;
                  width:44px;height:44px;border:1px solid var(--border);
@@ -475,47 +475,47 @@
 
   <!-- ── 사이드 메뉴 (폴더블 섹션) ── -->
   <nav id="admin-nav">
-    <div class="nav-section nav-foldable" onclick="toggleNavSection(this)">
+    <div class="nav-section nav-foldable" data-action="toggle-nav-section">
       <span class="nav-fold-icon">▾</span> OVERVIEW
     </div>
     <div class="nav-group">
-      <div class="nav-item active" onclick="showPage('dashboard', this)">
+      <div class="nav-item active" data-action="show-page" data-page="dashboard">
         <span class="nav-icon">📊</span> <span data-i18n="admin.dashboard">대시보드</span>
       </div>
     </div>
 
-    <div class="nav-section nav-foldable" onclick="toggleNavSection(this)">
+    <div class="nav-section nav-foldable" data-action="toggle-nav-section">
       <span class="nav-fold-icon">▾</span> <span data-i18n="admin.section_manage">관리</span>
     </div>
     <div class="nav-group">
-      <div class="nav-item" onclick="showPage('users', this)">
+      <div class="nav-item" data-action="show-page" data-page="users">
         <span class="nav-icon">👥</span> <span data-i18n="admin.users">사용자</span>
       </div>
-      <div class="nav-item" onclick="showPage('policy', this)">
+      <div class="nav-item" data-action="show-page" data-page="policy">
         <span class="nav-icon">🛡️</span> <span data-i18n="admin.policy">권한 매트릭스</span>
       </div>
-      <div class="nav-item" onclick="showPage('entities', this)">
+      <div class="nav-item" data-action="show-page" data-page="entities">
         <span class="nav-icon">🕸</span> Entity
       </div>
-      <div class="nav-item" onclick="showPage('memory', this)">
+      <div class="nav-item" data-action="show-page" data-page="memory">
         <span class="nav-icon">🧠</span> Memory
       </div>
-      <div class="nav-item" onclick="showPage('patches', this)">
+      <div class="nav-item" data-action="show-page" data-page="patches">
         <span class="nav-icon">🔧</span> Patches
       </div>
-      <div class="nav-item" onclick="showPage('uploads', this)">
+      <div class="nav-item" data-action="show-page" data-page="uploads">
         <span class="nav-icon">📥</span> <span data-i18n="admin.upload_history">업로드 이력</span>
       </div>
-      <div class="nav-item" onclick="showPage('files', this)">
+      <div class="nav-item" data-action="show-page" data-page="files">
         <span class="nav-icon">📁</span> <span data-i18n="admin.file_mgmt">파일 관리</span>
       </div>
     </div>
 
-    <div class="nav-section nav-foldable" onclick="toggleNavSection(this)">
+    <div class="nav-section nav-foldable" data-action="toggle-nav-section">
       <span class="nav-fold-icon">▾</span> <span data-i18n="admin.section_security">보안</span>
     </div>
     <div class="nav-group">
-      <div class="nav-item" onclick="showPage('audit', this)">
+      <div class="nav-item" data-action="show-page" data-page="audit">
         <span class="nav-icon">📋</span> <span data-i18n="admin.audit_log">감사 로그</span>
       </div>
       <a class="nav-item" href="/admin/graph" style="text-decoration:none">
@@ -523,38 +523,38 @@
       </a>
     </div>
 
-    <div class="nav-section nav-foldable" onclick="toggleNavSection(this)">
+    <div class="nav-section nav-foldable" data-action="toggle-nav-section">
       <span class="nav-fold-icon">▾</span> <span data-i18n="admin.section_evolution">자기진화</span>
     </div>
     <div class="nav-group">
-      <div class="nav-item" onclick="showPage('proposals', this)">
+      <div class="nav-item" data-action="show-page" data-page="proposals">
         <span class="nav-icon">🧬</span> <span data-i18n="admin.proposal_review">제안 검토</span>
       </div>
-      <div class="nav-item" onclick="showPage('evo-reports', this)">
+      <div class="nav-item" data-action="show-page" data-page="evo-reports">
         <span class="nav-icon">📈</span> <span data-i18n="admin.evo_report">진화 보고서</span>
       </div>
-      <div class="nav-item" onclick="showPage('character', this)">
+      <div class="nav-item" data-action="show-page" data-page="character">
         <span class="nav-icon">🎭</span> <span data-i18n="admin.character">성향 캐릭터</span>
       </div>
-      <div class="nav-item" onclick="showPage('knowledge', this)">
+      <div class="nav-item" data-action="show-page" data-page="knowledge">
         <span class="nav-icon">🏆</span> <span data-i18n="admin.growth">능력 성장</span>
       </div>
-      <div class="nav-item" onclick="showPage('performance', this)">
+      <div class="nav-item" data-action="show-page" data-page="performance">
         <span class="nav-icon">📊</span> <span data-i18n="admin.performance">성능 평가</span>
       </div>
-      <div class="nav-item" onclick="showPage('learning', this)">
+      <div class="nav-item" data-action="show-page" data-page="learning">
         <span class="nav-icon">🎓</span> <span data-i18n="admin.learning">자기학습</span>
       </div>
     </div>
 
-    <div class="nav-section nav-foldable" onclick="toggleNavSection(this)">
+    <div class="nav-section nav-foldable" data-action="toggle-nav-section">
       <span class="nav-fold-icon">▾</span> <span data-i18n="admin.section_system">시스템</span>
     </div>
     <div class="nav-group">
-      <div class="nav-item" onclick="showPage('hardware', this)">
+      <div class="nav-item" data-action="show-page" data-page="hardware">
         <span class="nav-icon">🛠️</span> <span data-i18n="admin.hardware">장비 현황</span>
       </div>
-      <div class="nav-item" onclick="showPage('settings', this)">
+      <div class="nav-item" data-action="show-page" data-page="settings">
         <span class="nav-icon">⚙️</span> <span data-i18n="admin.settings">설정</span>
       </div>
     </div>
@@ -590,7 +590,7 @@
                data-i18n-placeholder="users.mypw_new_ph" placeholder="새 비밀번호 (8~72자, 영문+숫자)"
                autocomplete="new-password"
                style="flex:2;min-width:200px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px">
-        <button onclick="changeMyPassword()"
+        <button data-action="change-my-password"
                 style="padding:8px 14px;background:#1e7a3e;color:#fff;border:0;border-radius:6px;cursor:pointer;font-size:13px"
                 data-i18n="users.mypw_submit">변경</button>
         <div id="mypw-msg" style="flex-basis:100%;font-size:12px;color:var(--muted);font-family:var(--font-mono);min-height:16px"></div>
@@ -605,7 +605,7 @@
                  placeholder="라벨 (선택, 예: ci-deploy)"
                  maxlength="64"
                  style="flex:1;min-width:160px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
-          <button onclick="issueMyApiKey()"
+          <button data-action="issue-my-api-key"
                   style="padding:7px 12px;background:#1e5a7a;color:#fff;border:0;border-radius:6px;cursor:pointer;font-size:12px"
                   data-i18n="users.mykey_issue">키 발급</button>
         </div>
@@ -685,10 +685,8 @@
                placeholder="이름 / id 검색 (substring)"
                style="flex:1;min-width:200px;padding:8px 12px;
                       background:var(--bg);border:1px solid var(--border);
-                      border-radius:6px;color:var(--text);font-size:13px"
-               oninput="onEntitiesSearchInput()">
+                      border-radius:6px;color:var(--text);font-size:13px">
         <select id="entities-etype-filter"
-                onchange="loadEntities()"
                 style="padding:8px 12px;background:var(--bg);
                        border:1px solid var(--border);border-radius:6px;
                        color:var(--text);font-size:13px">
@@ -708,13 +706,13 @@
 
       <!-- Paging buttons -->
       <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
-        <button onclick="entitiesPage(-1)" id="entities-prev"
+        <button data-action="entities-page" data-delta="-1" id="entities-prev"
                 style="padding:6px 14px;background:var(--bg);
                        border:1px solid var(--border);border-radius:6px;
                        color:var(--text);cursor:pointer">← 이전</button>
         <span id="entities-page-label"
               style="align-self:center;font-size:12px;color:var(--muted);font-family:var(--font-mono)">page 1</span>
-        <button onclick="entitiesPage(1)" id="entities-next"
+        <button data-action="entities-page" data-delta="1" id="entities-next"
                 style="padding:6px 14px;background:var(--bg);
                        border:1px solid var(--border);border-radius:6px;
                        color:var(--text);cursor:pointer">다음 →</button>
@@ -727,16 +725,16 @@
            style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
                   z-index:9999;align-items:flex-start;justify-content:center;
                   overflow-y:auto;padding:40px 16px"
-           onclick="closeEntityDetail(event)">
+           data-overlay-action="close-entity-detail">
         <div style="background:var(--surface-2);border:1px solid var(--border);
                     border-radius:8px;padding:20px;max-width:720px;width:100%;
-                    max-height:85vh;overflow-y:auto" onclick="event.stopPropagation()">
+                    max-height:85vh;overflow-y:auto">
           <div style="display:flex;justify-content:space-between;align-items:center;
                       margin-bottom:12px;border-bottom:1px solid var(--border);
                       padding-bottom:8px">
             <div id="entity-detail-title"
                  style="font-size:16px;font-weight:600"></div>
-            <button onclick="closeEntityDetail()"
+            <button data-action="close-entity-detail"
                     aria-label="닫기"
                     style="background:transparent;border:0;color:var(--muted);
                            cursor:pointer;font-size:20px">×</button>
@@ -782,16 +780,16 @@
            style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
                   z-index:9999;align-items:flex-start;justify-content:center;
                   overflow-y:auto;padding:40px 16px"
-           onclick="closeSessionTurns(event)">
+           data-overlay-action="close-session-turns">
         <div style="background:var(--surface-2);border:1px solid var(--border);
                     border-radius:8px;padding:20px;max-width:820px;width:100%;
-                    max-height:85vh;overflow-y:auto" onclick="event.stopPropagation()">
+                    max-height:85vh;overflow-y:auto">
           <div style="display:flex;justify-content:space-between;align-items:center;
                       margin-bottom:12px;border-bottom:1px solid var(--border);
                       padding-bottom:8px">
             <div id="session-turns-title"
                  style="font-size:16px;font-weight:600">세션 원본 대화</div>
-            <button onclick="closeSessionTurns()"
+            <button data-action="close-session-turns"
                     aria-label="닫기"
                     style="background:transparent;border:0;color:var(--muted);
                            cursor:pointer;font-size:20px">×</button>
@@ -826,7 +824,7 @@
     <div class="page" id="page-proposals">
       <div class="page-title"><span data-i18n="prop.page_title">🧬 자기진화 제안 검토</span>
         <button class="btn btn-primary" style="font-size:12px;margin-left:12px"
-          onclick="generateProposals()" data-i18n="prop.generate">📡 Analyze Signals → Generate Proposals</button>
+          data-action="generate-proposals" data-i18n="prop.generate">📡 Analyze Signals → Generate Proposals</button>
       </div>
       <div class="section-title">▸ <span data-i18n="prop.title">대기 중인 제안</span></div>
       <div class="table-wrap">
@@ -893,7 +891,7 @@
                  placeholder="JAMES">
         </div>
         <div style="padding: 12px 0; display:flex; justify-content:flex-end;">
-          <button class="btn btn-primary" onclick="saveIdentity()"
+          <button class="btn btn-primary" data-action="save-identity"
                   data-i18n="char.identity_save">💾 이름 저장</button>
         </div>
       </div>
@@ -964,10 +962,10 @@
           </div>
 
           <div style="margin-top:20px;display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-primary" onclick="saveCharacter()"
+            <button class="btn btn-primary" data-action="save-character"
                     data-i18n="char.save">💾 저장</button>
             <button class="btn" style="background:var(--surface);border:1px solid var(--border);color:var(--muted)"
-                    onclick="resetCharacter()">
+                    data-action="reset-character">
               <span data-i18n="set.reset_default">↩ 기본값</span>
             </button>
           </div>
@@ -1004,7 +1002,7 @@
     <div class="page" id="page-performance">
       <div class="page-title"><span data-i18n="perf.page_title">📊 성능 평가</span>
         <button class="btn btn-primary" style="font-size:12px;margin-left:12px"
-          onclick="runEvaluation()" data-i18n="perf.run_now">🏃 Run Evaluation</button>
+          data-action="run-evaluation" data-i18n="perf.run_now">🏃 Run Evaluation</button>
       </div>
       <div class="cards" id="perf-cards"></div>
       <div class="section-title"><span data-i18n="perf.history">▸ Evaluation History</span></div>
@@ -1045,9 +1043,8 @@
           <div style="display:flex;flex-direction:column;gap:8px;min-width:260px">
             <div style="display:flex;gap:8px">
               <input class="setting-value" type="text" id="web-learn-input"
-                     placeholder="e.g., quantum computing, generative AI" data-i18n-placeholder="learn.web_placeholder"
-                     onkeydown="if(event.key==='Enter') webLearnTopic()">
-              <button class="btn btn-primary" onclick="webLearnTopic()" data-i18n="learn.web_btn">🌐 Search &amp; Learn</button>
+                     placeholder="e.g., quantum computing, generative AI" data-i18n-placeholder="learn.web_placeholder">
+              <button class="btn btn-primary" data-action="web-learn-topic" data-i18n="learn.web_btn">🌐 Search &amp; Learn</button>
             </div>
             <div style="font-size:11px;color:var(--muted)">
               <span data-i18n="learn.web_hint">💡 Tip: Asking the same topic twice in chat triggers auto long-term conversion</span>
@@ -1069,11 +1066,11 @@
           <div style="display:flex;gap:8px">
             <input class="setting-value" type="text" id="learn-topic-input"
                    placeholder="e.g., quantum computing, blockchain" data-i18n-placeholder="learn.topic_placeholder">
-            <button class="btn btn-primary" onclick="learnTopic()" data-i18n="learn.btn">Learn</button>
+            <button class="btn btn-primary" data-action="learn-topic" data-i18n="learn.btn">Learn</button>
           </div>
         </div>
         <div style="padding:12px 0">
-          <button class="btn btn-approve" onclick="learnFromErrors()" data-i18n="learn.from_errors">🔄 Auto-learn from errors</button>
+          <button class="btn btn-approve" data-action="learn-from-errors" data-i18n="learn.from_errors">🔄 Auto-learn from errors</button>
         </div>
         <div id="learn-result" style="font-size:12px;font-family:var(--font-mono);
              color:var(--muted);min-height:20px"></div>
@@ -1089,7 +1086,6 @@
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
         <select id="audit-category"
-                onchange="audit_reload()"
                 style="padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
           <option value="all"        data-i18n="audit.cat_all">전체</option>
           <option value="user_mgmt"  data-i18n="audit.cat_user_mgmt">사용자 관리</option>
@@ -1104,7 +1100,6 @@
         <input id="audit-q" type="text"
                data-i18n-placeholder="audit.search_ph"
                placeholder="이벤트 / username / 키 prefix 검색"
-               oninput="audit_searchInput()"
                style="flex:1;min-width:200px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
         <span id="audit-counter"
               style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"></span>
@@ -1123,12 +1118,12 @@
         </table>
       </div>
       <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
-        <button onclick="audit_page(-1)"
+        <button data-action="audit-page" data-delta="-1"
                 id="audit-prev"
                 style="padding:6px 14px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer">← 이전</button>
         <span id="audit-page-label"
               style="align-self:center;font-size:12px;color:var(--muted);font-family:var(--font-mono)">page 1</span>
-        <button onclick="audit_page(1)"
+        <button data-action="audit-page" data-delta="1"
                 id="audit-next"
                 style="padding:6px 14px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer">다음 →</button>
       </div>
@@ -1145,9 +1140,8 @@
                data-i18n-placeholder="uploads.search_placeholder"
                style="flex:1;min-width:200px;padding:8px 12px;
                       background:var(--surface-2);border:1px solid var(--border);
-                      border-radius:8px;color:var(--text);font-size:13px"
-               onkeydown="if(event.key==='Enter') loadUploads()">
-        <button onclick="loadUploads()" style="padding:8px 16px;
+                      border-radius:8px;color:var(--text);font-size:13px">
+        <button data-action="load-uploads" style="padding:8px 16px;
                 background:var(--accent);color:var(--on-accent);border:0;border-radius:8px;
                 cursor:pointer;font-size:13px;font-weight:600">
           <span data-i18n="common.search">검색</span>
@@ -1173,7 +1167,6 @@
       <!-- 검색/루트 선택 행 -->
       <div style="display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
         <select id="files-root"
-                onchange="onFilesRootChange()"
                 style="background:var(--surface-2);border:1px solid var(--border);
                        border-radius:8px;color:var(--text);font-size:13px;
                        padding:8px 12px;cursor:pointer">
@@ -1186,14 +1179,13 @@
                data-i18n-placeholder="files.search_placeholder"
                style="flex:1;min-width:200px;padding:8px 12px;
                       background:var(--surface-2);border:1px solid var(--border);
-                      border-radius:8px;color:var(--text);font-size:13px"
-               onkeydown="if(event.key==='Enter') searchFiles()">
-        <button onclick="searchFiles()" style="padding:8px 16px;
+                      border-radius:8px;color:var(--text);font-size:13px">
+        <button data-action="search-files" style="padding:8px 16px;
                 background:var(--accent);color:var(--on-accent);border:0;border-radius:8px;
                 cursor:pointer;font-size:13px;font-weight:600">
           <span data-i18n="common.search">검색</span>
         </button>
-        <button onclick="loadFiles()" style="padding:8px 12px;
+        <button data-action="load-files" style="padding:8px 12px;
                 background:var(--surface-2);border:1px solid var(--border);
                 color:var(--muted);border-radius:8px;cursor:pointer;font-size:12px"
                 title="검색 초기화 + 트리 다시 불러오기">
@@ -1217,8 +1209,7 @@
         💡 새 파일 업로드는 <a href="/" style="color:var(--accent-fg);
            text-decoration:none">Chat 페이지</a>에서 진행됩니다.
         업로드 직후 이 트리에 반영되며, 자세한 내역은
-        <a href="javascript:showPage('uploads', document.querySelector(
-          '.nav-item[onclick*=uploads]'))"
+        <a href="#" data-action="show-page" data-page="uploads"
           style="color:var(--accent-fg);text-decoration:none">📥 업로드 이력</a> 탭 참조.
       </div>
     </div>
@@ -1273,7 +1264,7 @@
              data-i18n="common.loading">
           Loading...
         </div>
-        <button class="btn btn-secondary" onclick="loadHardware()"
+        <button class="btn btn-secondary" data-action="load-hardware"
                 style="margin-top:12px;font-size:12px">
           <span data-i18n="hw.remeasure">🔄 다시 측정</span>
         </button>
@@ -1294,7 +1285,6 @@
           <div><div class="setting-label" data-i18n="set.answer_lang">Response Language</div>
                <div class="setting-sub" data-i18n="set.answer_lang_desc">Default response language (includes UI)</div></div>
           <select class="setting-value" id="set-language"
-                  onchange="onLanguageChange(this.value)"
                   style="cursor:pointer">
             <option value="한국어" data-i18n="set.lang_ko">🇰🇷 Korean</option>
             <option value="한국어/영어" data-i18n="set.lang_both">🌐 Korean + English (bilingual)</option>
@@ -1332,8 +1322,7 @@
           </div>
           <div style="display:flex;align-items:center;gap:10px;min-width:220px">
             <input type="range" id="set-loop" min="1" max="5" value="2" step="1"
-                   style="flex:1;accent-color:var(--accent)"
-                   oninput="document.getElementById('set-loop-val').textContent=this.value">
+                   style="flex:1;accent-color:var(--accent)">
             <div style="display:flex;justify-content:space-between;
                         font-size:10px;color:var(--muted);width:100%;position:absolute;
                         margin-top:24px;pointer-events:none">
@@ -1357,7 +1346,7 @@
           </div>
         </div>
         <div style="padding: 16px 0; display:flex; justify-content:flex-end;">
-          <button class="btn btn-primary" onclick="saveSettings()" data-i18n="set.save_server">Save Server Settings</button>
+          <button class="btn btn-primary" data-action="save-settings" data-i18n="set.save_server">Save Server Settings</button>
         </div>
       </div>
 
@@ -1421,8 +1410,7 @@
           <div style="display:flex;align-items:center;gap:10px;min-width:260px">
             <input type="range" id="ws-threshold" min="0.05" max="0.80" step="0.05"
                    value="0.30"
-                   style="flex:1;accent-color:var(--accent)"
-                   oninput="applyWsThresholdLabel(this.value)">
+                   style="flex:1;accent-color:var(--accent)">
             <div style="display:flex;gap:4px">
               <span style="font-size:11px;padding:2px 7px;border-radius:4px;
                            background:var(--surface-2);color:var(--muted)">안함</span>
@@ -1432,7 +1420,7 @@
           </div>
         </div>
         <div style="padding: 16px 0; display:flex; justify-content:flex-end;">
-          <button class="btn btn-primary" onclick="saveWebSearchConfig()">Save Web Search Settings</button>
+          <button class="btn btn-primary" data-action="save-web-search-config">Save Web Search Settings</button>
         </div>
       </div>
     </div>
@@ -1464,11 +1452,10 @@
       <div style="position:relative">
         <input id="admin-login-pw" type="password" placeholder="••••••••"
                autocomplete="new-password"
-               onkeydown="if(event.key==='Enter') doAdminLogin()"
                style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 40px 10px 14px;color:var(--text);font-size:14px;outline:none;">
         <button type="button"
                 id="admin-login-pw-toggle"
-                onclick="toggleAdminPwVisibility()"
+                data-action="toggle-admin-pw-visibility"
                 aria-label="show/hide password"
                 title="비밀번호 보기/숨기기"
                 style="position:absolute;right:8px;top:50%;
@@ -1478,20 +1465,20 @@
       </div>
     </div>
     <div id="admin-login-error" style="font-size:12px;color:var(--danger);min-height:18px;margin-bottom:12px;font-family:var(--font-mono);"></div>
-    <button onclick="doAdminLogin()"
+    <button data-action="do-admin-login"
             style="width:100%;padding:11px;background:var(--danger);border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;"
             data-i18n="auth.login">
       Login
     </button>
     <!-- W4 P2-B-2: forgot-password link -->
     <div style="margin-top:14px;text-align:center;">
-      <a href="javascript:openForgotPasswordModal()"
+      <a href="#" data-action="open-forgot-password-modal"
          style="font-size:12px;color:var(--muted);text-decoration:underline;cursor:pointer"
          data-i18n="auth.forgot_password">비밀번호를 잊으셨나요?</a>
     </div>
     <!-- W4 P4: signup link -->
     <div style="margin-top:8px;text-align:center;">
-      <a href="javascript:openSignupModal()"
+      <a href="#" data-action="open-signup-modal"
          style="font-size:12px;color:var(--muted);text-decoration:underline;cursor:pointer"
          data-i18n="auth.signup_link">계정이 없으신가요? 회원가입</a>
     </div>
@@ -1532,10 +1519,10 @@
     <div id="signup-error" style="font-size:12px;color:var(--danger);min-height:18px;margin-bottom:6px;font-family:var(--font-mono)"></div>
     <div id="signup-success" style="display:none;font-size:12px;color:#1e7a3e;margin-bottom:10px;line-height:1.5"></div>
     <div style="display:flex;gap:8px">
-      <button onclick="closeSignupModal()"
+      <button data-action="close-signup-modal"
               style="flex:1;padding:10px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:13px;cursor:pointer"
               data-i18n="common.cancel">취소</button>
-      <button onclick="submitSignup()"
+      <button data-action="submit-signup"
               style="flex:2;padding:10px;background:#1e5a7a;border:0;border-radius:7px;color:#fff;font-size:13px;font-weight:600;cursor:pointer"
               data-i18n="auth.signup_submit">가입 신청</button>
     </div>
@@ -1577,10 +1564,10 @@
     </div>
     <div id="reset-error" style="font-size:12px;color:var(--danger);min-height:18px;margin-bottom:10px;font-family:var(--font-mono)"></div>
     <div style="display:flex;gap:8px">
-      <button onclick="closeForgotPasswordModal()"
+      <button data-action="close-forgot-password-modal"
               style="flex:1;padding:10px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:13px;cursor:pointer"
               data-i18n="common.cancel">취소</button>
-      <button onclick="submitPasswordReset()"
+      <button data-action="submit-password-reset"
               style="flex:2;padding:10px;background:#1e7a3e;border:0;border-radius:7px;color:#fff;font-size:13px;font-weight:600;cursor:pointer"
               data-i18n="auth.reset_submit">재설정</button>
     </div>
@@ -1610,10 +1597,10 @@
     <div style="font-size:11px;color:var(--muted);margin-bottom:14px;font-family:var(--font-mono)"
          id="mykey-display-prefix"></div>
     <div style="display:flex;gap:8px">
-      <button onclick="copyMyApiKey()"
+      <button data-action="copy-my-api-key"
               style="flex:2;padding:9px;background:#1e7a3e;border:0;border-radius:7px;color:#fff;font-size:13px;cursor:pointer"
               data-i18n="users.mykey_copy">키 복사</button>
-      <button onclick="closeMyApiKeyModal()"
+      <button data-action="close-my-api-key-modal"
               style="flex:1;padding:9px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:13px;cursor:pointer"
               data-i18n="common.close">닫기</button>
     </div>
@@ -1644,10 +1631,10 @@
     <div style="font-size:11px;color:var(--muted);margin-bottom:14px;font-family:var(--font-mono)"
          id="token-display-ttl"></div>
     <div style="display:flex;gap:8px">
-      <button onclick="copyResetToken()"
+      <button data-action="copy-reset-token"
               style="flex:2;padding:9px;background:#1e7a3e;border:0;border-radius:7px;color:#fff;font-size:13px;cursor:pointer"
               data-i18n="users.token_copy">토큰 복사</button>
-      <button onclick="closeResetTokenModal()"
+      <button data-action="close-reset-token-modal"
               style="flex:1;padding:9px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:13px;cursor:pointer"
               data-i18n="common.close">닫기</button>
     </div>
@@ -1711,14 +1698,14 @@
 
     <div style="display:flex;gap:10px;margin-top:18px">
       <button id="firstrun-later-btn"
-              onclick="firstRunDismiss()"
+              data-action="first-run-dismiss"
               style="flex:1;padding:11px;background:var(--surface-2);
                      border:1px solid var(--border);border-radius:8px;
                      color:var(--muted);font-size:13px;cursor:pointer;">
         나중에 (이 세션 동안 다시 안 띄움)
       </button>
       <button id="firstrun-refresh-btn"
-              onclick="firstRunCheck()"
+              data-action="first-run-check"
               style="padding:11px 16px;background:var(--surface-2);
                      border:1px solid var(--border);border-radius:8px;
                      color:var(--muted);font-size:13px;cursor:pointer;"

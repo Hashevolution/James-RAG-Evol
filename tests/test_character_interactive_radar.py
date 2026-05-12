@@ -88,8 +88,11 @@ class HtmlStructureTests(unittest.TestCase):
                 f"legend i18n key {key} must be present in HTML")
 
     def test_buttons_preserved(self):
-        self.assertIn("saveCharacter()", self.html)
-        self.assertIn("resetCharacter()", self.html)
+        # [§5 PR-D] inline onclick="saveCharacter()" / "resetCharacter()"
+        # replaced by data-action variants routed through the click
+        # delegate.
+        self.assertIn('data-action="save-character"', self.html)
+        self.assertIn('data-action="reset-character"', self.html)
 
 
 # ─── 2. CSS — radar visuals + ripple animations ───────────────────
