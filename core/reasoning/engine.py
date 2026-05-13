@@ -133,6 +133,12 @@ class ReasoningEngine:
         # ── Memory context + 대화 히스토리 주입 ─────────────
         memory_context = ""
         system_prompt  = ""
+        # [N-3 2026-05-13] hist_ctx 는 *현재* 세션의 prior turn 만 담는다.
+        # 새 세션에서는 빈 문자열 — long_ctx (다른 세션 요약) 나 prefs 가
+        # 있더라도 그것만으로 "대화 연속" 으로 취급해서는 안 된다.
+        # 모드 핸들러가 continuity directive 발동 여부를 정확히 판단할
+        # 수 있도록 try 바깥에서 미리 초기화.
+        hist_ctx = ""
         try:
             from core.memory import MemoryStore
             store         = MemoryStore()
@@ -288,7 +294,7 @@ class ReasoningEngine:
 
         # ── Mode dispatch (#29 phase 2: extracted to core/reasoning/modes.py) ──
         if mode == "chat":
-            return handle_chat(self, safe_query, system_prompt, memory_context, user_role, t_start, response_style=response_style, selected_model=picked_model)
+            return handle_chat(self, safe_query, system_prompt, memory_context, user_role, t_start, response_style=response_style, selected_model=picked_model, hist_ctx=hist_ctx)
         if mode == "meta":
             return handle_meta(self, safe_query, system_prompt, user_role, t_start)
         if mode == "wiki_edit":

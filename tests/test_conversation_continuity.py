@@ -150,19 +150,154 @@ class ContinuityDirectiveTests(unittest.TestCase):
             r"this|that|above|anaphora",
             "EN directive must name English anaphora patterns")
 
-    def test_handle_chat_injects_directive_only_when_memory_present(self):
-        # Source-level assertion: the directive prepend lives inside
-        # an ``if memory_context:`` branch so a first-turn request
-        # (empty memory) is unchanged.
+    def test_handle_chat_gates_directive_on_current_session_history(self):
+        # [N-3 2026-05-13] The directive used to gate on
+        # ``memory_context`` (long_ctx ∪ hist_ctx ∪ prefs) — but a
+        # brand-new session with prior-session summaries in long_ctx
+        # would still fire the rule and (a) suppress the greeting and
+        # (b) push the LLM to resolve "위/이것/그것" against other
+        # sessions' content. The gate now lives on ``hist_ctx`` — the
+        # *current* session's prior turns — so only an actual
+        # continuation activates the rule. New session → no directive
+        # → "안녕하세요" greeting returns + no cross-session leakage.
         chat_idx = self.src.index("def handle_chat(")
         body = self.src[chat_idx:chat_idx + 4000]
-        self.assertIn("if memory_context:", body,
-            "handle_chat must gate the directive on memory_context "
-            "presence so first-turn replies keep their introductory tone")
+        self.assertIn("if hist_ctx:", body,
+            "handle_chat must gate the directive on hist_ctx — the "
+            "current session's prior turns — not on memory_context, "
+            "which blends in cross-session summaries and prefs")
         self.assertIn("CONTINUITY_DIRECTIVE_KO", body,
             "handle_chat must consume the KO directive constant")
         self.assertIn("CONTINUITY_DIRECTIVE_EN", body,
             "handle_chat must consume the EN directive constant")
+
+    def test_handle_chat_accepts_hist_ctx_kwarg(self):
+        # The new signature must accept hist_ctx as a keyword arg with
+        # an empty-string default, so callers that haven't been
+        # updated yet (and stateless test queries) continue to behave
+        # like first-turn cold starts.
+        sig = inspect.signature(self.modes.handle_chat)
+        self.assertIn("hist_ctx", sig.parameters,
+            "handle_chat must accept hist_ctx so the engine can pass "
+            "the current-session history separately from memory_context")
+        self.assertEqual(
+            sig.parameters["hist_ctx"].default, "",
+            "hist_ctx must default to '' — cold-start callers and "
+            "stateless STEP 7 queries should not trigger the directive")
+
+    def test_directive_not_injected_when_only_longterm_memory_exists(self):
+        """[N-3 regression] On a brand-new session, ``hist_ctx`` is
+        empty but ``memory_context`` can still carry long-term session
+        summaries or stored prefs. Before this fix the directive
+        fired anyway, suppressing 'safety net' greetings and pushing
+        the LLM to resolve anaphora against other sessions' content.
+        This test captures the prompt that handle_chat actually
+        constructs and asserts the directive is absent in that case.
+        """
+        from types import SimpleNamespace
+        from core.reasoning import modes as _modes
+
+        captured = {}
+        def _fake_gemma(prompt, **_kw):
+            captured["prompt"] = prompt
+            return "안녕하세요. 자메스입니다. 무엇을 도와드릴까요?"
+
+        fake_engine = SimpleNamespace(
+            llm = SimpleNamespace(call_gemma=_fake_gemma),
+            _log = lambda *a, **kw: None,
+            _LLM_ERROR_PREFIXES = ("[Gemma",),
+            _elapsed = lambda *a, **kw: None,
+        )
+
+        # New session: long-term summary in memory_context but no
+        # current-session turns. Greeting should be allowed; the
+        # continuity directive must NOT appear in the prompt.
+        long_only_memory = "[장기 기억] 사용자는 이전 세션에서 RAG 에 대해 질문했음."
+        _modes.handle_chat(
+            engine         = fake_engine,
+            safe_query     = "안녕",
+            system_prompt  = "",
+            memory_context = long_only_memory,
+            user_role      = "external",
+            t_start        = 0.0,
+            hist_ctx       = "",  # ← new session — no current history
+        )
+        self.assertIn("prompt", captured, "handle_chat must call the LLM")
+        prompt = captured["prompt"]
+        self.assertNotIn(
+            _modes.CONTINUITY_DIRECTIVE_KO, prompt,
+            "Continuity directive must NOT fire when the only memory "
+            "is cross-session — new session greetings would otherwise "
+            "be suppressed (N-3)",
+        )
+        self.assertNotIn(
+            _modes.CONTINUITY_DIRECTIVE_EN, prompt,
+            "Continuity directive (EN) must also stay out in this case",
+        )
+        # The memory_context itself can still be included as
+        # background, but without the "this is a continuation" framing.
+        self.assertIn(long_only_memory, prompt,
+            "Long-term memory may still appear in the prompt as "
+            "background — it just must not be framed as a continuation")
+
+    def test_directive_injected_when_current_session_history_exists(self):
+        """[N-3 regression] When the user *is* mid-conversation —
+        hist_ctx non-empty — the directive must still fire so the
+        PR #249 anaphora-resolution / greeting-suppression behaviour
+        survives. This is the path the original PR #249 was designed
+        for and must keep working."""
+        from types import SimpleNamespace
+        from core.reasoning import modes as _modes
+
+        captured = {}
+        def _fake_gemma(prompt, **_kw):
+            captured["prompt"] = prompt
+            return "(continuation reply)"
+
+        fake_engine = SimpleNamespace(
+            llm = SimpleNamespace(call_gemma=_fake_gemma),
+            _log = lambda *a, **kw: None,
+            _LLM_ERROR_PREFIXES = ("[Gemma",),
+            _elapsed = lambda *a, **kw: None,
+        )
+
+        live_history = "[이전 대화] user: RAG 알려줘\nassistant: RAG 는 ..."
+        _modes.handle_chat(
+            engine         = fake_engine,
+            safe_query     = "위 내용 더 자세히",
+            system_prompt  = "",
+            memory_context = live_history,
+            user_role      = "external",
+            t_start        = 0.0,
+            hist_ctx       = live_history,
+        )
+        prompt = captured.get("prompt", "")
+        self.assertIn(
+            _modes.CONTINUITY_DIRECTIVE_KO, prompt,
+            "Continuity directive must fire when current-session "
+            "history exists — that is the original PR #249 path",
+        )
+
+    def test_engine_threads_hist_ctx_to_handle_chat(self):
+        # The engine builds hist_ctx separately from memory_context
+        # and must forward it to handle_chat by name so the gate
+        # above can see "current session has prior turns" exactly.
+        from core.reasoning import engine as _engine
+        src = inspect.getsource(_engine)
+        self.assertIn("hist_ctx=hist_ctx", src,
+            "engine.query must forward hist_ctx to handle_chat by "
+            "keyword so the new-session greeting path is restored")
+        # hist_ctx must be initialised before the memory try/except
+        # — otherwise a memory store error leaves it undefined when
+        # the dispatch tries to forward it.
+        hist_init_idx = src.find('hist_ctx = ""')
+        try_idx       = src.find("from core.memory import MemoryStore")
+        self.assertGreater(hist_init_idx, 0,
+            "engine must initialise hist_ctx = '' before the memory "
+            "try block so a memory error still yields a cold-start "
+            "greeting instead of a NameError")
+        self.assertLess(hist_init_idx, try_idx,
+            "hist_ctx init must precede the memory try block")
 
     def test_directive_uses_korean_or_english_per_query(self):
         # The is_ko flag is computed at the top of handle_chat for

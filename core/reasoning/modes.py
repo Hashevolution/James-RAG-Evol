@@ -54,6 +54,7 @@ def handle_chat(
     t_start: float,
     response_style: str = "",
     selected_model: str = "",   # [#A2 phase 2] catalog-validated user pick
+    hist_ctx: str = "",         # [N-3 2026-05-13] current-session prior turns only
 ) -> Dict[str, Any]:
     from core.response_style import resolve_style
     style = resolve_style(response_style)
@@ -68,16 +69,23 @@ def handle_chat(
     try:
         # system_prompt + memory_context + flow guide 주입
         sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
-        # [Axis 6 user feedback, 2026-05-12] When prior turns exist
-        # in memory_context, prepend a continuity directive so the
-        # model (a) skips greeting / self-introduction preambles
-        # and (b) resolves anaphora ("이것", "위와 관련", "그것")
-        # against the most recent turn instead of starting fresh.
-        # Empty memory_context ⇒ no directive ⇒ first-turn replies
-        # keep their introductory tone.
-        if memory_context:
+        # [N-3 2026-05-13] Gate the continuity directive on
+        # ``hist_ctx`` — the *current* session's prior turns — not on
+        # the union ``memory_context`` which also blends long-term
+        # session summaries and stored preferences. Previously a brand-
+        # new session with prior-session summaries would still fire
+        # the directive: greetings were suppressed and the LLM resolved
+        # "위/이것/그것" against other sessions' content, surfacing
+        # as "새 세션인데 일상 인사가 안 됨 + 이전 세션 답변이 새 세션
+        # 에서 나오는 현상" (handover §3 사이클 1 N-3).
+        # ``memory_context`` is still passed into the prompt below —
+        # long-term summaries remain useful background — but only an
+        # actual current-session continuation activates the rule.
+        if hist_ctx:
             continuity_rule = CONTINUITY_DIRECTIVE_KO if is_ko else CONTINUITY_DIRECTIVE_EN
             mem_prefix = f"{continuity_rule}\n\n{memory_context}\n\n"
+        elif memory_context:
+            mem_prefix = f"{memory_context}\n\n"
         else:
             mem_prefix = ""
         raw_answer = engine.llm.call_gemma(
