@@ -234,6 +234,80 @@ class SnapshotShapeTests(unittest.TestCase):
                             "snapshot_hash must change when mtime + content changes")
         self.assertEqual(snap2["meta"]["node_count"], 2)
 
+    def test_snapshot_picks_up_files_written_outside_index(self):
+        """Regression for the 'wiki entity added → /graph stale until
+        server restart' bug.
+
+        Root cause: `tools.web.web_searcher.save_as_longterm` (장기기억
+        promotion path) constructs its own throwaway `RAGEngine` and
+        writes new entity files via that engine's `WikiGenerator`. The
+        server's shared `rag_engine.wiki_generator` never learns about
+        those files, so its `entity_id_index` stays stale. Even though
+        `_scan_max_mtime` notices the disk change and invalidates the
+        snapshot cache, the rebuild iterates the stale index and the
+        new entities silently vanish from `/admin/graph/snapshot`.
+
+        The fix: on cache miss, ask the wiki_generator to re-scan disk
+        before rebuilding. This test simulates the bug by writing a new
+        .md to disk without registering it in `entity_id_index`, then
+        teaches the fake how `refresh_entity_map` should behave.
+        """
+        from core.graph_snapshot import build_snapshot
+        ents = {
+            "e_person_aaaaaaaa": _mk_entity(
+                "e_person_aaaaaaaa", "Alice", "person",
+            ),
+        }
+        wiki = _FakeWiki(self.root, ents)
+        snap1 = build_snapshot(wiki)
+        self.assertEqual(snap1["meta"]["node_count"], 1)
+
+        # Simulate a *different* RAGEngine instance writing a new entity
+        # file to disk. The new file exists on the filesystem; this
+        # wiki_generator's in-memory index still has only the original
+        # entity (mirrors the save_as_longterm cross-instance race).
+        new_eid  = "e_org_bbbbbbbb"
+        new_fm   = _mk_entity(new_eid, "Acme", "org")
+        new_dir  = wiki.entity_path / "org"
+        new_dir.mkdir(parents=True, exist_ok=True)
+        new_path = new_dir / (new_eid + ".md")
+        new_path.write_text(
+            "---\nentity_id: " + new_eid + "\n---\n", encoding="utf-8",
+        )
+        # Bump mtime so _scan_max_mtime sees the disk change even on
+        # filesystems with coarse timestamp precision.
+        future = time.time() + 5
+        os.utime(new_path, (future, future))
+
+        # The real WikiGenerator.refresh_entity_map re-scans disk and
+        # rebuilds the index from each frontmatter. Mirror that for the
+        # fake: discover the new file, register it in the index, and
+        # remember its frontmatter so _read_frontmatter can return it.
+        def _refresh():
+            for t in wiki.entity_types:
+                d = wiki.entity_path / t
+                if not d.exists():
+                    continue
+                for f in d.glob("*.md"):
+                    eid = f.stem
+                    if eid not in wiki.entity_id_index:
+                        wiki.entity_id_index[eid] = f
+                        if eid == new_eid:
+                            wiki._fm[eid] = new_fm
+        wiki.refresh_entity_map = _refresh
+
+        snap2 = build_snapshot(wiki)
+        self.assertEqual(
+            snap2["meta"]["node_count"], 2,
+            "snapshot must re-scan disk on cache miss and surface "
+            "entity files written by another engine instance — "
+            "without this, /admin/graph remains stale until restart",
+        )
+        names = {n["name"] for n in snap2["nodes"]}
+        self.assertIn("Acme", names,
+                      "newly-written entity must appear by name in the "
+                      "rebuilt snapshot")
+
 
 # ─────────────────────────────────────────────────────────────
 class ServerRouteContractTests(unittest.TestCase):

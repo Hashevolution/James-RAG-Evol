@@ -109,6 +109,22 @@ def build_snapshot(
         if cached and cached[0] == max_mtime:
             return cached[1]
 
+    # Cache miss → disk has been touched since the last snapshot. A
+    # *different* RAGEngine instance (e.g. the throwaway one constructed
+    # inside `tools.web.web_searcher.save_as_longterm`) may have written
+    # new entity files without updating THIS instance's in-memory
+    # `entity_id_index`. The mtime scan above catches the disk change,
+    # but rebuilding from a stale index would still skip the new files —
+    # the user saw this as "wiki entity added, /graph stale until server
+    # restart". Re-scan disk before the rebuild so newly-written entities
+    # appear on the next snapshot.
+    refresh = getattr(wiki_generator, "refresh_entity_map", None)
+    if callable(refresh):
+        try:
+            refresh()
+        except Exception:
+            pass
+
     # ── Load every entity frontmatter once. ──
     raw_entities: Dict[str, Dict[str, Any]] = {}
     for eid, fpath in wiki_generator.entity_id_index.items():
