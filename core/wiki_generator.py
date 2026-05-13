@@ -12,6 +12,11 @@ from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 from config import WIKI_DIR
+from core.relations_schema import (
+    EXTRACT_SOURCE_ROLE,
+    INVERSE_SOURCE_ROLE,
+    compute_confidence_from_sources,
+)
 from core.vector_store import VectorStore
 from llm.router import RouterWrapper
 from utils.metadata import MetadataGenerator
@@ -327,14 +332,23 @@ class WikiGenerator:
 
             target_id = self._find_existing_entity_id(target_name, target_type)
 
-            relations.append({
+            # Phase B (Knowledge Cascade): caller 가 미리 채운 sources 가 있으면
+            # 보존하고 confidence 를 그로부터 derive 해 storage 와 동기화.
+            # 없으면 confidence-only 그대로 두어 Phase A 의 legacy fallback 가
+            # 동작하도록 한다. (docs/design/v0.3-knowledge-cascade.md §4)
+            new_rel = {
                 "target":      target_name,
                 "target_id":   target_id or "UNRESOLVED",
                 "target_type": target_type,
                 "type":        std_type,
                 "label":       display_label,
                 "confidence":  confidence,
-            })
+            }
+            incoming_sources = rel.get("sources")
+            if isinstance(incoming_sources, list) and incoming_sources:
+                new_rel["sources"]    = incoming_sources
+                new_rel["confidence"] = compute_confidence_from_sources(incoming_sources)
+            relations.append(new_rel)
 
         # Ontology: IS_A 자동 추론 relation 추가
         if use_ontology:
@@ -596,6 +610,15 @@ class WikiGenerator:
         metadata  = metadata or {}
         extracted = self._llm_extract_document_entities(filename, content, metadata)
 
+        # Phase B (Knowledge Cascade): 이 ingestion 가 만들어내는 모든
+        # relation 은 같은 doc 에서 유래하므로 doc_entity_id 와 ts 를
+        # 한 번 계산해 모든 _build_entity_relations / doc_relations 호출
+        # 에 동일하게 stamp. doc entity 자체는 _generate_entity_id 가
+        # name+type 결정적 함수라 미리 계산해도 나중 create 시점과 같다.
+        ingest_ts     = datetime.now().isoformat()
+        doc_name      = os.path.splitext(filename)[0]
+        doc_entity_id = self._generate_entity_id(doc_name, "document")
+
         created_ids:   List[str]      = []
         name_to_id:    Dict[str, str] = {}
         name_to_type:  Dict[str, str] = {}
@@ -614,7 +637,8 @@ class WikiGenerator:
                 continue
 
             ent_relations = self._build_entity_relations(
-                name, extracted.get("relations", [])
+                name, extracted.get("relations", []),
+                doc_id=doc_entity_id, ts=ingest_ts,
             )
             payload = {
                 "name":        name,
@@ -639,14 +663,24 @@ class WikiGenerator:
             except Exception as e:
                 print(f"[ENTITY-EXTRACT] FAIL {name}: {e}")
 
-        # document entity (원본 보존 + 모든 추출 entity와 RELATED_TO)
-        doc_name = os.path.splitext(filename)[0]
+        # document entity (원본 보존 + 모든 추출 entity와 RELATED_TO).
+        # Phase B: doc 의 outgoing edge 도 sources 를 stamp (doc_id=self).
+        # cascade delete 시 sources[*].doc_id 가 deleted doc 이면 drop —
+        # 이 self-source 들은 doc 삭제 시 함께 사라진다 (대상 entity 의
+        # incoming sources 가 0 이 되면 relation 자체가 사라짐 = Phase C 의
+        # cascade 와 정합).
         doc_relations = [
             {
                 "target":      n,
                 "target_type": name_to_type.get(n, "concept"),
                 "label":       "관련",
                 "confidence":  0.7,
+                "sources":     [{
+                    "doc_id": doc_entity_id,
+                    "weight": 0.7,
+                    "role":   EXTRACT_SOURCE_ROLE,
+                    "ts":     ingest_ts,
+                }],
             }
             for n in name_to_id
         ]
@@ -816,15 +850,36 @@ class WikiGenerator:
         self,
         source_name:   str,
         raw_relations: List,
+        doc_id:        Optional[str] = None,
+        ts:            Optional[str] = None,
     ) -> List[Dict]:
         """이 entity가 source 또는 target인 relation을 표준 형식으로 모은다.
 
         Issue #11: 이전 구현은 source==self만 골라서 target 입장 entity의
         relations 필드가 빈 채로 끝났다. graph_paths가 비어 expand가 항상
         0을 반환했다. 이제 양방향으로 부착한다 (incoming은 inverse label).
+
+        Phase B (Knowledge Cascade): ``doc_id`` 가 주어지면 각 emitted rel
+        에 ``sources: [{doc_id, weight=conf, role, ts}]`` 를 즉시 stamp.
+        outgoing 은 ``role=extract``, inverse 는 ``role=inverse``. 이로써
+        ingestion 시점에 inverse back-fill 까지 한 번에 완료되고
+        ``migrate_inverse_relations.py`` 의 별도 sweep 가 필요 없어진다.
+        ``doc_id`` 가 없으면 (legacy 호출 경로) sources 미부착 → 기존
+        confidence-only 동작 그대로.
         """
         out: List[Dict] = []
         seen: set = set()
+
+        def _stamp(role: str, conf: float) -> Optional[List[Dict]]:
+            if not doc_id:
+                return None
+            return [{
+                "doc_id": doc_id,
+                "weight": conf,
+                "role":   role,
+                "ts":     ts,
+            }]
+
         for r in raw_relations or []:
             if not isinstance(r, dict):
                 continue
@@ -843,7 +898,11 @@ class WikiGenerator:
                 key = (tgt, label)
                 if key not in seen:
                     seen.add(key)
-                    out.append({"target": tgt, "label": label, "confidence": conf})
+                    rel_dict = {"target": tgt, "label": label, "confidence": conf}
+                    sources = _stamp(EXTRACT_SOURCE_ROLE, conf)
+                    if sources:
+                        rel_dict["sources"] = sources
+                    out.append(rel_dict)
             # Incoming: target이 self → source를 inverse label로 추가
             elif tgt == source_name and src and len(src) <= 80 \
                     and _SAFE_ENTITY_NAME_RE.match(src):
@@ -851,5 +910,9 @@ class WikiGenerator:
                 key = (src, inv_label)
                 if key not in seen:
                     seen.add(key)
-                    out.append({"target": src, "label": inv_label, "confidence": conf})
+                    rel_dict = {"target": src, "label": inv_label, "confidence": conf}
+                    sources = _stamp(INVERSE_SOURCE_ROLE, conf)
+                    if sources:
+                        rel_dict["sources"] = sources
+                    out.append(rel_dict)
         return out
