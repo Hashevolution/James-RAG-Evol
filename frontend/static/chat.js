@@ -1539,7 +1539,18 @@ async function approveWikiSave(btn) {
   if (!btn || btn.disabled) return;
   const id = btn.dataset.proposalId || '';
   if (!id) return;
-  if (!confirm('이 검색 결과를 wiki entity로 영구 저장합니다.\n저장 후 retrieval에 활용됩니다.\n계속하시겠습니까?')) return;
+  // [N-6, 2026-05-13] Native confirm() replaced with in-page modal so
+  // the prompt inherits the cyber 6c glass + mint look (tokens.css) and
+  // doesn't break the chat surface's typography on Windows / Linux
+  // where the OS dialog font diverges from the page.
+  const ok = await jamesConfirm({
+    title:       '장기 기억으로 저장',
+    message:     '이 검색 결과를 wiki entity로 영구 저장합니다.\n'
+               + '저장 후 retrieval에 활용됩니다.',
+    confirmText: '저장',
+    cancelText:  '취소',
+  });
+  if (!ok) return;
   btn.disabled = true;
   btn.style.opacity = '0.55';
   const labelEl = btn.querySelector('span:last-child');
@@ -2150,6 +2161,81 @@ function toast(msg, type = 'success') {
   t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
+}
+
+/* ── [N-6, 2026-05-13] In-page confirmation modal ──
+   Replaces native browser confirm() for long-term-save flows so the
+   prompt picks up the cyber 6c glass + mint treatment from
+   tokens.css (.modal-overlay backdrop-blur + .modal mint inset glow).
+
+   Usage:
+     const ok = await jamesConfirm({
+       title:       '위키에 저장',
+       message:     '이 검색 결과를 wiki entity로 영구 저장합니다.\n'
+                   + '저장 후 retrieval에 활용됩니다.',
+       confirmText: '저장',
+       cancelText:  '취소',
+       danger:      false,         // true → confirm button uses --danger
+     });
+     if (!ok) return;
+
+   Returns Promise<boolean> (true=confirm; false=cancel/Escape/backdrop).
+   The DOM is built lazily on first call and reused thereafter.
+   a11y-modal.js auto-traps focus + Escape-closes via the
+   .modal-btn.cancel click. */
+let _jamesConfirmEl = null;
+function _ensureJamesConfirmEl() {
+  if (_jamesConfirmEl) return _jamesConfirmEl;
+  const overlay = document.createElement('div');
+  overlay.id        = 'james-confirm-modal';
+  overlay.className = 'modal-overlay hidden';
+  overlay.setAttribute('role',            'dialog');
+  overlay.setAttribute('aria-modal',      'true');
+  overlay.setAttribute('aria-labelledby', 'james-confirm-title');
+  overlay.innerHTML = `
+    <div class="modal">
+      <div class="modal-title" id="james-confirm-title">▸ <span data-jc="title"></span></div>
+      <div data-jc="message"
+           style="font-size:13px;color:var(--text);
+                  white-space:pre-line;line-height:1.55;
+                  margin-bottom:18px"></div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel"  data-jc="cancel"></button>
+        <button class="modal-btn primary" data-jc="confirm"></button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  _jamesConfirmEl = overlay;
+  return overlay;
+}
+function jamesConfirm(opts) {
+  const o          = opts || {};
+  const overlay    = _ensureJamesConfirmEl();
+  const titleEl    = overlay.querySelector('[data-jc="title"]');
+  const msgEl      = overlay.querySelector('[data-jc="message"]');
+  const cancelBtn  = overlay.querySelector('[data-jc="cancel"]');
+  const confirmBtn = overlay.querySelector('[data-jc="confirm"]');
+  titleEl.textContent    = o.title       || '확인';
+  msgEl.textContent      = o.message     || '';
+  cancelBtn.textContent  = o.cancelText  || '취소';
+  confirmBtn.textContent = o.confirmText || '확인';
+  // Destructive confirms get the danger color on the primary button so
+  // the operator's eye registers the asymmetry before reading the label.
+  confirmBtn.style.background = o.danger ? 'var(--danger)' : '';
+  return new Promise((resolve) => {
+    const close = (val) => {
+      overlay.classList.add('hidden');
+      cancelBtn.onclick  = null;
+      confirmBtn.onclick = null;
+      overlay.onclick    = null;
+      resolve(val);
+    };
+    cancelBtn.onclick  = () => close(false);
+    confirmBtn.onclick = () => close(true);
+    // Backdrop click cancels — mirrors Escape via a11y-modal.js.
+    overlay.onclick = (e) => { if (e.target === overlay) close(false); };
+    overlay.classList.remove('hidden');
+  });
 }
 
 /* ── [P3-4] 세션 선택 ── */
