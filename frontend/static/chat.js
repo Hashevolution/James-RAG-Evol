@@ -1251,18 +1251,22 @@ function appendJamesMsg(data) {
   // [3-B] unified_score는 web chip + confidence badge 모두 참조 — 한 번만 읽기.
   const score = data.unified_score;
 
-  // [#A8-6 + Axis 6, 2026-05-12] Web-search chip — two variants
-  // keyed on confidence.
-  //   score < 0.50  → "자료 수집" framing (internal evidence is
-  //                   thin; the user needs more raw material).
-  //   score ≥ 0.70  → "최신 정보 보완" framing (answer is well-
-  //                   supported by internal sources; the user may
-  //                   still want to check for newer info on the web).
-  //   0.50 ≤ score < 0.70 → no chip (the mid band is the "neither
-  //                   convincing nor desperate" zone where a chip
-  //                   would feel like nagging).
+  // [#A8-6 + Axis 6, 2026-05-12 + N-5, 2026-05-13] Web-search chip —
+  // three variants keyed on confidence.
+  //   score < 0.50           → "자료 수집" framing (internal evidence is
+  //                            thin; the user needs more raw material).
+  //   0.50 ≤ score < 0.70    → "부분 답변 보완" framing (partial-inference
+  //                            zone — user reported the mid-band was the
+  //                            most common case where the chip was missing
+  //                            and the LLM said "검색해 볼까요?" in prose
+  //                            with no clickable button. Cycle 5 N-5 fix:
+  //                            chip now fires in this band with a softer,
+  //                            non-nagging tone).
+  //   score ≥ 0.70           → "최신 정보 보완" framing (answer is well-
+  //                            supported by internal sources; the user may
+  //                            still want to check for newer info on the web).
   // web_used=true skips the chip entirely (already pulled in web).
-  // The action is identical in both variants; copy + color differ.
+  // The action is identical in all variants; copy + color differ.
   let forceWebChip = '';
   if (!data.web_used) {
     const q = lastUserQuestion || '';
@@ -1270,24 +1274,40 @@ function appendJamesMsg(data) {
     const LOW_CONF  = 0.50;
     const isLow  = (score == null || score < LOW_CONF);
     const isHigh = (score != null && score >= HIGH_CONF);
-    if (q.trim() && (isLow || isHigh)) {
-      const variant = isHigh
-        ? {
-            cls:    'force-web-btn web-refresh-btn',
-            bg:     'rgba(107,231,208,.10)',
-            border: 'rgba(107,231,208,.45)',
-            color:  '#6be7d0',
-            icon:   '✨',
-            label:  t('chat.web_chip_high'),
-          }
-        : {
-            cls:    'force-web-btn web-collect-btn',
-            bg:     'rgba(79,195,247,.10)',
-            border: 'rgba(79,195,247,.45)',
-            color:  '#4fc3f7',
-            icon:   '🌐',
-            label:  t('chat.web_chip_low'),
-          };
+    const isMid  = (score != null && score >= LOW_CONF && score < HIGH_CONF);
+    if (q.trim() && (isLow || isMid || isHigh)) {
+      let variant;
+      if (isHigh) {
+        variant = {
+          cls:    'force-web-btn web-refresh-btn',
+          bg:     'rgba(107,231,208,.10)',
+          border: 'rgba(107,231,208,.45)',
+          color:  '#6be7d0',
+          icon:   '✨',
+          label:  t('chat.web_chip_high'),
+        };
+      } else if (isMid) {
+        // [N-5] mid-band: warm amber, distinct from low (cyan) /
+        // high (mint) so the user can read confidence from color
+        // before reading the label.
+        variant = {
+          cls:    'force-web-btn web-supplement-btn',
+          bg:     'rgba(255,183,77,.10)',
+          border: 'rgba(255,183,77,.45)',
+          color:  '#ffb74d',
+          icon:   '🔍',
+          label:  t('chat.web_chip_mid'),
+        };
+      } else {
+        variant = {
+          cls:    'force-web-btn web-collect-btn',
+          bg:     'rgba(79,195,247,.10)',
+          border: 'rgba(79,195,247,.45)',
+          color:  '#4fc3f7',
+          icon:   '🌐',
+          label:  t('chat.web_chip_low'),
+        };
+      }
       forceWebChip = `
         <div style="margin-top:8px">
           <button class="next-action-chip ${variant.cls}"
@@ -1424,16 +1444,28 @@ function appendJamesMsg(data) {
     extractNextActionSuggestions(answer);
   let suggestionsHtml = '';
   if (suggestions.length > 0) {
+    // [N-4, 2026-05-13] Cluster header — "✨ 제안" with mint accent so
+    // the user reads "these are clickable next-step suggestions" at a
+    // glance, not "more inline prose". Pre-N-4 the chips appeared bare
+    // and users reported missing them entirely on long answers.
     suggestionsHtml = `
       <div class="next-actions" style="display:flex;flex-direction:column;gap:6px;
-                                       margin-top:8px">
+                                       margin-top:10px">
+        <div class="next-actions-header"
+             style="display:flex;align-items:center;gap:6px;
+                    font-size:11px;color:var(--accent);font-weight:700;
+                    letter-spacing:.4px;text-transform:uppercase">
+          <span style="font-size:14px">✨</span>
+          <span>${escHtml(t('chat.suggestions_label'))}</span>
+        </div>
         ${suggestions.map((s, i) => `
           <button class="next-action-chip"
                   data-action="ask-suggestion"
                   data-index="${i}"
                   data-suggestion="${encodeURIComponent(s.text)}"
                   style="text-align:left;background:var(--surface-2);
-                         border:1px solid var(--border);border-radius:8px;
+                         border:1px solid var(--accent-soft, rgba(107,231,208,.30));
+                         border-radius:8px;
                          padding:8px 12px;cursor:pointer;color:var(--text);
                          font-size:13px;transition:all .15s;width:100%;
                          font-family:inherit">

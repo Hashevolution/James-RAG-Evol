@@ -71,10 +71,15 @@ const TRANSLATIONS = {
     'badge.inference_warn':  'Insufficient internal data — answer based on LLM inference. Use as reference only.',
 
     'toast.web_augmented':   'Answer enhanced via web search',
-    // [Axis 6, 2026-05-12] Web-search chip — dual variant per
-    // confidence score. See chat.js appendJamesMsg.
+    // [Axis 6, 2026-05-12 + N-5, 2026-05-13] Web-search chip —
+    // three-variant copy per confidence score. See chat.js
+    // appendJamesMsg.
     'chat.web_chip_low':     'Search the web for more material',
+    'chat.web_chip_mid':     'Partial answer — supplement from the web?',
     'chat.web_chip_high':    'Check the web for newer information',
+    // [N-4, 2026-05-13] Header above next-action suggestion chips
+    // so the cluster reads as clickable, not as inline prose.
+    'chat.suggestions_label': 'Suggestions',
     'toast.longterm_saved':  'Saved to long-term memory',
     'toast.level_up':        'Knowledge +{delta} [{domain}]',
     'toast.no_internal':     'No internal data — inference-based answer',
@@ -631,10 +636,14 @@ const TRANSLATIONS = {
     'badge.inference_warn':  '내부 자료가 부족해 LLM 추론으로 답변. 참고용으로만 활용하세요.',
 
     'toast.web_augmented':   '웹 검색으로 보완된 답변',
-    // [Axis 6, 2026-05-12] 신뢰도 분기 chip — chat.js 참조.
-    // 아이콘은 chat.js variant.icon 으로 별도 prepend.
+    // [Axis 6, 2026-05-12 + N-5, 2026-05-13] 신뢰도 3분기 chip —
+    // chat.js 참조. 아이콘은 chat.js variant.icon 으로 별도 prepend.
     'chat.web_chip_low':     '웹 검색으로 자료 수집',
+    'chat.web_chip_mid':     '부분 답변 — 웹에서 보완할까요?',
     'chat.web_chip_high':    '최신 정보로 보완 검색해볼까요?',
+    // [N-4, 2026-05-13] 다음-행동 제안 chip 클러스터의 헤더 —
+    // 본문 산문과 시각적으로 분리해서 클릭 가능 신호를 강화.
+    'chat.suggestions_label': '제안',
     'toast.longterm_saved':  '장기 기억으로 저장됨',
     'toast.level_up':        '지식 레벨 +{delta} [{domain}]',
     'toast.no_internal':     '내부 자료 없음 — 추론 기반 답변',
