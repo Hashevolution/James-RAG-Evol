@@ -181,7 +181,10 @@ JAMES는 보안을 **기능이 아닌 설계 원칙**으로 다룹니다:
 
 ## 라이선스
 
-MIT 라이선스 — [LICENSE](LICENSE) 참조
+**MIT 라이선스로 배포됩니다.** 자유롭게 사용하세요. [LICENSE](LICENSE) 참조.
+
+외부 의존성의 라이선스 전체 목록은
+[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) 참조.
 
 ---
 

@@ -180,7 +180,10 @@ Priority areas:
 
 ## License
 
-MIT License — see [LICENSE](LICENSE)
+**Licensed under the MIT License.** Use freely. See [LICENSE](LICENSE).
+
+A full inventory of third-party dependency licenses is available in
+[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
 
 ---
 
