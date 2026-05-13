@@ -3213,6 +3213,42 @@ async def admin_entity_detail(
     }
 
 
+@app.post("/admin/wiki/resolve-relations",
+          summary="Wiki UNRESOLVED relation grand sweep [v0.3 사이클 6]")
+async def admin_wiki_resolve_relations(
+    api_key:     str,
+    source_type: str = "prod",
+    role:        str = Depends(get_role_from_request),
+):
+    """Run WikiGenerator.resolve_pending_relations() across the wiki to
+    fill in any leftover ``target_id: UNRESOLVED`` rows in frontmatter
+    relations. PR #253 wires the resolver into every ingest path; this
+    endpoint exposes the same primitive as a manual grand sweep for
+    operators after migrations, bulk imports, or hand edits to wiki
+    files that introduce new entities the existing relations could now
+    point at. Returns the count of resolved relations (0 if everything
+    was already linked).
+    """
+    _require_feature(api_key, role, "admin.data")
+
+    src = (source_type or "prod").strip().lower()
+    if src not in ("prod", "test"):
+        src = "prod"
+
+    if src == rag_engine.wiki_generator.source_type:
+        gen = rag_engine.wiki_generator
+    else:
+        from core.wiki_generator import WikiGenerator
+        gen = WikiGenerator(source_type=src)
+
+    relations_fixed = gen.resolve_pending_relations()
+
+    return {
+        "resolved":    relations_fixed,
+        "source_type": src,
+    }
+
+
 @app.get("/admin/graph/snapshot", summary="Reasoning graph snapshot — nodes + edges [v0.2 Axis 3]")
 async def admin_graph_snapshot(
     api_key:           str,
