@@ -25,9 +25,11 @@ PROJECT JAMES — Web Searcher (3-E)
 import os
 import re
 import time
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 from pathlib import Path
+
+import yaml
 
 # ── 상수 ────────────────────────────────────────────────────────
 MAX_RESULTS   = 5       # 검색 결과 최대 개수
@@ -406,13 +408,14 @@ def save_as_longterm(
     domain:    str = "",        # [U-1] 도메인 명시 가능
 ) -> Optional[str]:
     """
-    [U-1 개선] 웹 검색 결과 → wiki entity 생성 → vector 인덱싱.
+    웹 검색 결과 → wiki entity 추출 → vector 인덱싱.
 
-    개선:
-      ① URL 본문 fetch된 내용을 entity에 포함
-      ② summary + body → 풍부한 wiki 본문 생성
-      ③ domain 태그 자동 분류
-      ④ entity['summary']에 LLM 요약 정확히 전달
+    [v0.3 fix] 기존에는 query 문장 자체를 단일 concept 노드로 저장하고
+    relations=[] 로 두어 그래프에 선이 안 나타났다. 이제는 PDF ingestion
+    과 동일한 LLM-triple 추출 경로(`process_document_for_entities`) 에
+    위임하여 본문에서 다중 entity + relation 을 추출하고, document
+    entity 파일에는 web 메타데이터(web_sources / learn_method 등)를
+    후처리로 보강한다.
     """
     if not results or not summary:
         return None
@@ -434,44 +437,20 @@ def save_as_longterm(
         bodies = [r.get("body","") or r.get("snippet","") for r in results]
         now    = datetime.now().isoformat()
 
-        # [U-1] 본문 내용 조합 (LLM 요약 + 검색 본문 발췌)
+        # 본문 조합 — LLM extraction 이 직접 읽는 입력
         body_excerpt = "\n\n".join([
             b[:400] for b in bodies if b
         ][:3])
 
-        # wiki 본문 내용 (## 섹션으로 구성)
         full_content = (
             f"{summary}\n\n"
             f"### 주요 내용\n{body_excerpt}\n\n"
             f"### 출처\n" + "\n".join(f"- {u}" for u in sources[:5])
         )
 
-        entity = {
-            "name":        topic,
-            "entity_type": "concept",
-            "sensitivity": "internal",
-            "source_type": "prod",
-            # [U-1] summary와 description 모두 채움
-            "summary":     summary,          # wiki .md ## 요약 섹션에 사용
-            "description": summary,          # frontmatter에 사용
-            "attributes": {
-                "domain":        domain,     # [U-1] 도메인 태그
-                "web_sources":   sources,
-                "learned_at":    now,
-                "learn_method":  "web_search",
-                "content_chars": len(body_excerpt),
-            },
-            "relations": [],
-        }
+        filename = f"web_{domain}_{topic[:20]}_{int(time.time())}.md"
 
-        path = wg.create_entity_file(
-            entity,
-            filename  = f"web_{domain}_{topic[:20]}_{int(time.time())}.md",
-            chunk_ids = [],
-            user_role = user_role,
-        )
-
-        # [U-1] full_content로 vector 인덱싱 (summary만 아닌 전체 내용)
+        # vector 인덱싱 (LLM extraction 과 독립)
         try:
             from core.tokenizer import split_chunks
         except ImportError:
@@ -481,22 +460,103 @@ def save_as_longterm(
         chunks = split_chunks(full_content)
         engine.vector_store.add_documents_with_meta(
             texts    = chunks,
-            source   = Path(path).name,
+            source   = filename,
             metadata = {
                 "sensitivity": "internal",
                 "source_type": "prod",
                 "owner":       "system",
-                "domain":      domain,       # [U-1] 도메인 메타데이터
+                "category":    domain,
+                "domain":      domain,
             },
         )
 
-        wg.refresh_entity_map()
-        print(f"[WEB→WIKI] 저장: {Path(path).name} | domain={domain} | {len(chunks)} chunks | {len(body_excerpt)}자")
-        return path
+        # LLM triple 추출 경로 — 다중 entity + relation 형성
+        created_ids = wg.process_document_for_entities(
+            filename  = filename,
+            content   = full_content,
+            chunk_ids = [],
+            user_role = user_role,
+            metadata  = {
+                "summary":     summary,
+                "category":    domain,
+                "keywords":    [query],
+                "sensitivity": "internal",
+            },
+        )
+
+        # document entity 파일에 web 메타데이터 후처리 보강
+        try:
+            _augment_doc_attributes(wg, filename, {
+                "web_sources":    sources,
+                "learn_method":   "web_search",
+                "learned_at":     now,
+                "domain":         domain,
+                "original_query": query,
+                "content_chars":  len(body_excerpt),
+            })
+        except Exception as aug_err:
+            print(f"[WEB→WIKI] doc 메타데이터 보강 실패 (무시): {aug_err}")
+
+        # 호출자에게 document entity 경로 반환
+        doc_name   = os.path.splitext(filename)[0]
+        normalized = wg._normalize_name(doc_name)
+        doc_path   = wg.entity_path / "document" / f"{normalized}.md"
+
+        print(
+            f"[WEB→WIKI] 저장: {filename} | domain={domain} | "
+            f"{len(chunks)} chunks | {len(body_excerpt)}자 | "
+            f"entities={len(created_ids)}"
+        )
+        return str(doc_path) if doc_path.exists() else None
 
     except Exception as e:
         print(f"[WEB→WIKI] 저장 실패: {e}")
         return None
+
+
+def _augment_doc_attributes(
+    wg: Any,
+    doc_filename: str,
+    extra_attrs:  Dict[str, Any],
+) -> bool:
+    """
+    process_document_for_entities 가 생성한 document entity 파일의
+    frontmatter `attributes` 에 web 학습 메타데이터를 머지하여 다시 쓴다.
+
+    Returns True if file existed and was updated, False otherwise.
+    """
+    doc_name   = os.path.splitext(doc_filename)[0]
+    normalized = wg._normalize_name(doc_name)
+    doc_path   = wg.entity_path / "document" / f"{normalized}.md"
+
+    if not doc_path.exists():
+        return False
+
+    content = doc_path.read_text(encoding="utf-8")
+    if not content.startswith("---"):
+        return False
+
+    end = content.find("---", 3)
+    if end < 0:
+        return False
+
+    fm = yaml.safe_load(content[3:end]) or {}
+    body_tail = content[end + 3:]
+
+    attrs = fm.get("attributes") or {}
+    if not isinstance(attrs, dict):
+        attrs = {}
+    attrs.update(extra_attrs)
+    fm["attributes"] = attrs
+
+    new_content = (
+        "---\n"
+        + yaml.dump(fm, allow_unicode=True, default_flow_style=False, sort_keys=True)
+        + "---"
+        + body_tail
+    )
+    doc_path.write_text(new_content, encoding="utf-8")
+    return True
 
 
 # ── 단기/장기 연동 ────────────────────────────────────────────────
