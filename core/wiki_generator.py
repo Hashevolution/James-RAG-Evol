@@ -467,12 +467,32 @@ class WikiGenerator:
         self.index_path.write_text("\n".join(lines), encoding="utf-8")
 
     # =========================
-    # RESOLVE (SAFE YAML 방식)
+    # RESOLVE — frontmatter `relations:` 의 UNRESOLVED 재매칭
     # =========================
 
-    def resolve_pending_relations(self):
+    def resolve_pending_relations(self) -> int:
+        """
+        frontmatter `relations:` 키의 `target_id == "UNRESOLVED"` 항목을
+        현재 entity 인덱스로 재매칭하여 채워준다.
 
-        resolved = 0
+        Why frontmatter only:
+          create_entity_file 이 권위로 사용하는 위치는 frontmatter
+          `relations:` 키이다. body 의 `## 관계` 섹션은 사람-읽기용
+          미러(예: `- 관련: FAA (conf=0.90)`)일 뿐 entity_id 를 노출하지
+          않으므로 매칭과 무관 — 그대로 둔다.
+
+        Why call this:
+          create_entity_file 시점에 target entity 가 아직 ingest 되지
+          않았으면 UNRESOLVED 로 남는다 (다른 PDF 가 늦게 들어오거나,
+          같은 PDF 의 다른 entity 가 뒤에서 만들어지는 케이스). 본
+          메서드를 entity_map refresh 직후 호출하면 그 시점까지 알려진
+          모든 entity 와 매칭이 완성된다.
+
+        Returns:
+            갱신된 relation 항목의 누적 개수.
+        """
+        files_changed = 0
+        relations_fixed = 0
 
         for t in self.entity_types:
             d = self.entity_path / t
@@ -480,60 +500,62 @@ class WikiGenerator:
                 continue
 
             for f in d.glob("*.md"):
-
                 content = f.read_text(encoding="utf-8")
-
-                if "UNRESOLVED" not in content:
+                if not content.startswith("---"):
+                    continue
+                end = content.find("---", 3)
+                if end < 0:
                     continue
 
-                end = content.find("---", 3)
-                fm = yaml.safe_load(content[3:end])
-                body = content[end+4:]
-
                 try:
-                    parts = body.split("## 관계")
-                    if len(parts) < 2:
-                        continue
-
-                    rel_yaml = parts[1]
-                    relations = yaml.safe_load(rel_yaml)
-
-                    changed = False
-
-                    for r in relations:
-                        if r.get("target_id") == "UNRESOLVED":
-
-                            found = self._find_existing_entity_id(
-                                r["target"],
-                                r["target_type"]
-                            )
-
-                            if not found:
-                                found = self._find_existing_entity_id(r["target"], None)
-
-                            if found:
-                                r["target_id"] = found
-                                changed = True
-
-                    if changed:
-                        new_body = "## 관계\n" + yaml.dump(relations, allow_unicode=True)
-
-                        new_content = (
-                            "---\n"
-                            + yaml.dump(fm, allow_unicode=True)
-                            + "---\n\n"
-                            + parts[0]
-                            + new_body
-                        )
-
-                        f.write_text(new_content, encoding="utf-8")
-                        resolved += 1
-
+                    fm = yaml.safe_load(content[3:end]) or {}
                 except Exception as e:
-                    print("[RESOLVE ERROR]", e)
+                    print(f"[RESOLVE] YAML parse fail {f.name}: {e}")
+                    continue
 
-        print(f"[RESOLVE] {resolved} fixed")
-        return resolved
+                body_tail = content[end + 3:]
+                relations = fm.get("relations")
+                if not isinstance(relations, list) or not relations:
+                    continue
+
+                file_changed = False
+                for r in relations:
+                    if not isinstance(r, dict):
+                        continue
+                    if r.get("target_id") != "UNRESOLVED":
+                        continue
+                    target = (r.get("target") or "").strip()
+                    if not target:
+                        continue
+                    ttype = r.get("target_type")
+                    # 정확 target_type 매칭 → 전체 타입 fallback
+                    found = (
+                        self._find_existing_entity_id(target, ttype)
+                        or self._find_existing_entity_id(target, None)
+                    )
+                    if found:
+                        r["target_id"] = found
+                        file_changed = True
+                        relations_fixed += 1
+
+                if file_changed:
+                    new_content = (
+                        "---\n"
+                        + yaml.dump(
+                            fm,
+                            allow_unicode    = True,
+                            default_flow_style = False,
+                            sort_keys        = True,
+                        )
+                        + "---"
+                        + body_tail
+                    )
+                    f.write_text(new_content, encoding="utf-8")
+                    files_changed += 1
+
+        print(f"[RESOLVE] {files_changed} files updated, "
+              f"{relations_fixed} relations resolved")
+        return relations_fixed
 
     # =========================
     # STATS
@@ -652,6 +674,14 @@ class WikiGenerator:
             self.refresh_entity_map()
         except Exception:
             self._build_entity_id_index()
+
+        # 이 ingest 로 새 entity 가 들어왔다 → 이전 ingest 가 UNRESOLVED 로
+        # 남겨둔 relation 들이 매칭될 수 있다. entity_map refresh 직후 2-pass
+        # 재매칭을 돌려 그래프 edge 가 새로 늘어나는 효과를 즉시 반영한다.
+        try:
+            self.resolve_pending_relations()
+        except Exception as e:
+            print(f"[ENTITY-EXTRACT] resolve_pending_relations fail (무시): {e}")
 
         print(f"[ENTITY-EXTRACT] {filename} -> {len(created_ids)} entities created "
               f"(extracted {len(name_to_id)} + 1 document)")
