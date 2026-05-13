@@ -72,6 +72,12 @@ wiki/media/prod/
 !wiki/entity/prod/**/index.md
 !wiki/entity/prod/**/.gitkeep
 
+# Knowledge Cascade Phase A 마이그레이션 백업 (2026-05-13) — 운영자가
+# 최종 검증 후 수동 삭제. repo 에 들어가면 wiki/ 와 같은 개인 데이터
+# 누수 위험.
+wiki.pre-v03-migration/
+wiki.rollback-trash/
+
 # 운영자 튜닝 가능한 런타임 설정 (web search role/threshold 등).
 # 코드 안에 안전한 기본값 존재 — 운영자별 오버라이드는 로컬에만.
 web_search_config.json
