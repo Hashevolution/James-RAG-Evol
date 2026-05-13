@@ -51,19 +51,25 @@ class StoreTruncationTests(unittest.TestCase):
     are now wide enough to carry a typical 1-3 paragraph reply
     without losing tail text. Asserted on source so the test
     doesn't depend on an actual SQLite round-trip (covered
-    separately by integration tests that hit the live store)."""
+    separately by integration tests that hit the live store).
+
+    [Module split, 2026-05-13] save_turn / get_history_context
+    implementations live in core.memory.conversation now; the
+    MemoryStore methods are thin delegators. Source assertions
+    here target the conversation module directly.
+    """
 
     @classmethod
     def setUpClass(cls):
-        from core.memory import store as _store
-        cls.src = inspect.getsource(_store)
+        from core.memory import conversation as _conv
+        cls.src = inspect.getsource(_conv)
 
     def test_save_turn_uses_2000_char_cap(self):
-        # Scope the assertion to the save_turn body — other helpers
-        # in store.py legitimately use [:500] for unrelated columns
-        # (preference value, pattern body, goal text).
+        # Scope the assertion to the save_turn body — neighbouring
+        # helpers legitimately use other slice widths.
         save_idx = self.src.index("def save_turn(")
-        next_def = self.src.index("\n    def ", save_idx + 1)
+        # Module-level functions start at column 0, not indented.
+        next_def = self.src.index("\ndef ", save_idx + 1)
         body = self.src[save_idx:next_def]
         self.assertIn("question[:2000]", body,
             "save_turn must cap user content at 2000 chars")
@@ -76,9 +82,10 @@ class StoreTruncationTests(unittest.TestCase):
 
     def test_get_history_context_uses_800_char_slice(self):
         # Scope to the function body — [:200] survives elsewhere
-        # (e.g., get_long_term_context summarises at [:150] / [:80]).
+        # (e.g., summaries.get_long_term_context summarises at
+        # [:150] / [:80], but that's a different module).
         idx = self.src.index("def get_history_context(")
-        next_def = self.src.index("\n    def ", idx + 1)
+        next_def = self.src.index("\ndef ", idx + 1)
         body = self.src[idx:next_def]
         self.assertIn("[:800]", body,
             "get_history_context must slice each turn at 800 chars")
@@ -320,16 +327,19 @@ class StoreRoundTripTests(unittest.TestCase):
     would fail here."""
 
     def test_long_content_round_trips_below_2000(self):
-        # Patch _DB_PATH to a temp file so we don't write to the
-        # operator's actual james_memory.db.
+        # Patch DB_PATH on the db module — that's where _connect()
+        # reads it from after the 2026-05-13 module split. (store.py
+        # re-exports it for backward compat with deep imports, but
+        # writing to store.DB_PATH wouldn't propagate.)
         import tempfile
+        from core.memory import db as _db
         from core.memory import store as _store
-        prev = _store.DB_PATH
+        prev = _db.DB_PATH
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             tmp = f.name
         try:
-            _store.DB_PATH = tmp
-            _store.init_db()
+            _db.DB_PATH = tmp
+            _db.init_db()
             ms = _store.MemoryStore()
             long_q = "Q. " + ("가" * 1500)   # ~1503 chars, under 2000
             long_a = "A. " + ("나" * 1500)
@@ -349,7 +359,7 @@ class StoreRoundTripTests(unittest.TestCase):
                     f"role={t['role']} truncated — got "
                     f"{len(t['content'])} chars; cap should be 2000")
         finally:
-            _store.DB_PATH = prev
+            _db.DB_PATH = prev
             try:
                 os.unlink(tmp)
             except OSError:
@@ -357,13 +367,14 @@ class StoreRoundTripTests(unittest.TestCase):
 
     def test_get_history_context_returns_wide_slice(self):
         import tempfile
+        from core.memory import db as _db
         from core.memory import store as _store
-        prev = _store.DB_PATH
+        prev = _db.DB_PATH
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             tmp = f.name
         try:
-            _store.DB_PATH = tmp
-            _store.init_db()
+            _db.DB_PATH = tmp
+            _db.init_db()
             ms = _store.MemoryStore()
             # 1000-char answer; the OLD 200-char slice would have
             # cut this to ~200 chars in get_history_context.
@@ -380,7 +391,7 @@ class StoreRoundTripTests(unittest.TestCase):
             # Header marker preserved so the model knows it's history.
             self.assertIn("[이전 대화]", ctx)
         finally:
-            _store.DB_PATH = prev
+            _db.DB_PATH = prev
             try:
                 os.unlink(tmp)
             except OSError:

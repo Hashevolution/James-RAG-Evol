@@ -3,97 +3,41 @@ PROJECT JAMES — Memory Store (Phase 6 Step 1~3 + Persona)
 
 SQLite 기반 선별적 Memory 저장.
 Persona: admin이 설정하는 시스템 이름/성향/방식
+
+[Module size split, 2026-05-13]
+CLAUDE.md rule #5 (20 KB) 충족을 위해 다음 헬퍼 모듈로 분리:
+  - core/memory/db.py          : DB_PATH / _connect / init_db
+  - core/memory/conversation.py: 대화 히스토리 + 세션 관리
+  - core/memory/summaries.py   : 세션 요약 + 장기기억 context
+공개 API (`MemoryStore`, `DB_PATH`, `_connect`) 는 변함없이
+이 모듈에서 re-export 되므로 호출 측 변경 불필요.
 """
 
-import sqlite3
-import json
-import os
 from datetime import datetime
-from pathlib import Path
 
-try:
-    from config import BASE_DIR
-    DB_PATH = os.path.join(BASE_DIR, "memory", "james_memory.db")
-except ImportError:
-    DB_PATH = "./memory/james_memory.db"
+from core.memory.db import (
+    DB_PATH,
+    _PERSONA_DEPRECATION_LOGGED,
+    _connect,
+    init_db,
+)
+from core.memory.conversation import (
+    delete_session as _conv_delete_session,
+    get_all_sessions as _conv_get_all_sessions,
+    get_history_context as _conv_get_history_context,
+    get_recent_turns as _conv_get_recent_turns,
+    save_turn as _conv_save_turn,
+    set_session_name as _conv_set_session_name,
+)
+from core.memory.summaries import (
+    get_long_term_context as _sum_get_long_term_context,
+    get_session_summaries as _sum_get_session_summaries,
+    save_session_summary as _sum_save_session_summary,
+)
 
-Path(os.path.dirname(DB_PATH)).mkdir(parents=True, exist_ok=True)
-
-# [P4 unified UX 2026-05-10] persona.style / persona.custom 의 LLM 주입은
-# P4 에서 끊었지만, DB 에 옛 값이 남아 있으면 사용자에게 1회 알림.
-# 매 호출마다 로깅하면 콘솔이 시끄럽기 때문에 모듈 단위 플래그 사용.
-_PERSONA_DEPRECATION_LOGGED = {"done": False}
-
-
-def _connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def init_db():
-    """DB 초기화 — 테이블 생성 (기존 DB에도 안전하게 추가)"""
-    with _connect() as conn:
-        conn.executescript("""
-            CREATE TABLE IF NOT EXISTS preferences (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                key        TEXT NOT NULL,
-                value      TEXT NOT NULL,
-                raw        TEXT,
-                confidence REAL DEFAULT 0.85,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS patterns (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                pattern    TEXT NOT NULL,
-                count      INTEGER DEFAULT 1,
-                raw        TEXT,
-                confidence REAL DEFAULT 0.80,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS goals (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                goal       TEXT NOT NULL,
-                confidence REAL DEFAULT 0.80,
-                raw        TEXT,
-                created_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS persona (
-                key        TEXT PRIMARY KEY,
-                value      TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS conversation_history (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT NOT NULL,
-                role       TEXT NOT NULL,
-                content    TEXT NOT NULL,
-                mode       TEXT DEFAULT '',
-                created_at TEXT NOT NULL
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_conv_session
-                ON conversation_history(session_id, created_at);
-        """)
-        # 기본 persona 초기화 (없을 때만)
-        defaults = [
-            ("name",    "자메스"),
-            ("style",   "친절하고 보안을 중시하는 AI 어시스턴트"),
-            ("language","한국어"),
-            ("custom",  ""),
-        ]
-        for k, v in defaults:
-            conn.execute(
-                "INSERT OR IGNORE INTO persona (key, value, updated_at) VALUES (?,?,?)",
-                (k, v, datetime.now().isoformat())
-            )
-    print(f"[MEMORY_STORE] DB 초기화: {DB_PATH}")
+# Backward-compat re-exports — call sites still do
+# `from core.memory.store import DB_PATH, _connect, init_db`.
+__all__ = ["MemoryStore", "DB_PATH", "_connect", "init_db"]
 
 
 class MemoryStore:
@@ -182,7 +126,6 @@ class MemoryStore:
         lines = []
         try:
             with _connect() as conn:
-                # Step 1: preferences
                 prefs = conn.execute(
                     "SELECT key, value FROM preferences ORDER BY updated_at DESC LIMIT 10"
                 ).fetchall()
@@ -191,7 +134,6 @@ class MemoryStore:
                     for p in prefs:
                         lines.append(f"  - {p['key']}: {p['value']}")
 
-                # Step 2: patterns (count >= 2)
                 patterns = conn.execute(
                     "SELECT pattern FROM patterns WHERE count >= 2 ORDER BY count DESC LIMIT 5"
                 ).fetchall()
@@ -200,7 +142,6 @@ class MemoryStore:
                     for p in patterns:
                         lines.append(f"  - {p['pattern']}")
 
-                # Step 3: goals (최근 3개)
                 goals = conn.execute(
                     "SELECT goal FROM goals ORDER BY created_at DESC LIMIT 3"
                 ).fetchall()
@@ -213,13 +154,6 @@ class MemoryStore:
             print(f"[MEMORY_STORE] context 조회 실패: {e}")
 
         return "\n".join(lines) if lines else ""
-
-    # [F811 dedup 2026-05-11] First-pass ``get_stats`` (preferences /
-    # patterns / goals / db_path only) lived here. The second-pass
-    # definition further down adds conversations + session_summaries
-    # and was already shadowing this one — Python ignored this
-    # version at runtime. Removed for clarity; the live response
-    # shape does not change.
 
     def clear(self):
         """테스트용 전체 초기화"""
@@ -283,8 +217,6 @@ class MemoryStore:
         if lang:
             lines.append(f"항상 {lang}로 답변하세요.")
 
-        # 옛 row 가 DB 에 남아 있으면 1회 deprecation 경고 (per-process).
-        # 빈번한 호출이므로 모듈 변수로 1회만 로깅.
         if not _PERSONA_DEPRECATION_LOGGED["done"] and (
             persona.get("style") or persona.get("custom")
         ):
@@ -296,263 +228,41 @@ class MemoryStore:
 
         return " ".join(lines)
 
-    # ─── 대화 히스토리 ──────────────────────────────────────────
+    # ─── 대화 히스토리 (위임: core.memory.conversation) ─────────
 
     def save_turn(self, session_id: str, question: str,
                   answer: str, mode: str = "") -> bool:
-        """대화 한 턴(질문+답변) 저장.
-
-        [Axis 6 user feedback, 2026-05-12] per-turn cap widened
-        from 500 → 2000 chars. The previous cap chopped long
-        Q&A so anaphora ("위와 관련", "이것") in follow-ups lost
-        their referent. 2000 chars holds a typical 2-3 paragraph
-        response without blowing up the SQLite row size.
-        """
-        now = datetime.now().isoformat()
-        try:
-            with _connect() as conn:
-                conn.executemany(
-                    "INSERT INTO conversation_history "
-                    "(session_id, role, content, mode, created_at) VALUES (?,?,?,?,?)",
-                    [
-                        (session_id, "user",      question[:2000], mode, now),
-                        (session_id, "assistant", answer[:2000],   mode, now),
-                    ]
-                )
-            return True
-        except Exception as e:
-            print(f"[MEMORY_STORE] 대화 저장 실패: {e}")
-            return False
+        return _conv_save_turn(session_id, question, answer, mode)
 
     def get_recent_turns(self, session_id: str = "", limit: int = 10) -> list:
-        """최근 대화 조회."""
-        try:
-            with _connect() as conn:
-                if session_id:
-                    rows = conn.execute(
-                        "SELECT role, content, mode, created_at "
-                        "FROM conversation_history WHERE session_id=? "
-                        "ORDER BY created_at DESC LIMIT ?",
-                        (session_id, limit * 2)
-                    ).fetchall()
-                else:
-                    rows = conn.execute(
-                        "SELECT role, content, mode, created_at "
-                        "FROM conversation_history "
-                        "ORDER BY created_at DESC LIMIT ?",
-                        (limit * 2,)
-                    ).fetchall()
-                return [dict(r) for r in reversed(rows)]
-        except Exception:
-            return []
+        return _conv_get_recent_turns(session_id, limit)
 
     def get_history_context(self, session_id: str = "", limit: int = 5) -> str:
-        """최근 대화를 LLM 주입용 텍스트로 변환.
-
-        [Axis 6 user feedback, 2026-05-12] per-turn slice widened
-        from 200 → 800 chars. The previous slice chopped any
-        non-trivial answer, so when a user said "위와 관련" the
-        LLM only saw the first sentence of the previous reply.
-        800 chars is roughly one paragraph — enough to anchor
-        anaphora without ballooning the prompt.
-        """
-        turns = self.get_recent_turns(session_id, limit)
-        if not turns:
-            return ""
-        lines = ["[이전 대화]"]
-        for t in turns:
-            role = "User" if t["role"] == "user" else "자메스"
-            lines.append(f"{role}: {t['content'][:800]}")
-        return "\n".join(lines)
+        return _conv_get_history_context(session_id, limit)
 
     def get_all_sessions(self) -> list:
-        """
-        [3-D] 세션 목록 조회 — 이름 + 첫 질문 + 마지막 질문 포함.
-        세션 이름은 preferences 테이블의 'session_name:{session_id}' 키에서 조회.
-        """
-        try:
-            with _connect() as conn:
-                # 세션 기본 정보
-                rows = conn.execute(
-                    "SELECT session_id, COUNT(*)/2 as turn_count, "
-                    "MIN(created_at) as started, MAX(created_at) as last "
-                    "FROM conversation_history "
-                    "GROUP BY session_id ORDER BY last DESC LIMIT 50"
-                ).fetchall()
-
-                sessions = []
-                for r in rows:
-                    sid = r["session_id"]
-                    info = dict(r)
-
-                    # 첫 user 질문
-                    first = conn.execute(
-                        "SELECT content FROM conversation_history "
-                        "WHERE session_id=? AND role='user' "
-                        "ORDER BY created_at ASC LIMIT 1",
-                        (sid,)
-                    ).fetchone()
-                    info["first_question"] = (
-                        first["content"][:50] if first else ""
-                    )
-
-                    # 마지막 user 질문 (현재 주제 파악용)
-                    last_q = conn.execute(
-                        "SELECT content FROM conversation_history "
-                        "WHERE session_id=? AND role='user' "
-                        "ORDER BY created_at DESC LIMIT 1",
-                        (sid,)
-                    ).fetchone()
-                    info["last_question"] = (
-                        last_q["content"][:50] if last_q else ""
-                    )
-
-                    # 사용자 지정 세션 이름
-                    name_row = conn.execute(
-                        "SELECT value FROM preferences "
-                        "WHERE key=? LIMIT 1",
-                        (f"session_name:{sid}",)
-                    ).fetchone()
-                    info["name"] = name_row["value"] if name_row else ""
-
-                    sessions.append(info)
-
-                return sessions
-        except Exception as e:
-            print(f"[MEMORY] get_all_sessions 실패: {e}")
-            return []
+        return _conv_get_all_sessions()
 
     def set_session_name(self, session_id: str, name: str) -> bool:
-        """[3-D] 세션에 사용자 지정 이름 부여."""
-        if not name or not session_id:
-            return False
-        now = datetime.now().isoformat()
-        try:
-            with _connect() as conn:
-                conn.execute(
-                    "INSERT OR REPLACE INTO preferences "
-                    "(key, value, raw, confidence, created_at, updated_at) "
-                    "VALUES (?,?,?,?,?,?)",
-                    (f"session_name:{session_id}", name[:60], "", 1.0, now, now)
-                )
-            print(f"[SESSION] 이름 설정: {session_id[:12]} → '{name[:30]}'")
-            return True
-        except Exception as e:
-            print(f"[SESSION] 이름 저장 실패: {e}")
-            return False
+        return _conv_set_session_name(session_id, name)
 
     def delete_session(self, session_id: str) -> bool:
-        """
-        [3-D] 특정 세션 삭제.
-        - conversation_history 삭제
-        - session_name 삭제
-        - session_summary 삭제
-        """
-        try:
-            with _connect() as conn:
-                # 대화 기록 삭제
-                conn.execute(
-                    "DELETE FROM conversation_history WHERE session_id=?",
-                    (session_id,)
-                )
-                # 세션 이름 삭제
-                conn.execute(
-                    "DELETE FROM preferences WHERE key=?",
-                    (f"session_name:{session_id}",)
-                )
-                # 세션 요약 삭제
-                conn.execute(
-                    "DELETE FROM preferences WHERE key LIKE ?",
-                    (f"session_summary:{session_id[:12]}%",)
-                )
-            print(f"[SESSION] 삭제 완료: {session_id[:12]}")
-            return True
-        except Exception as e:
-            print(f"[SESSION] 삭제 실패: {e}")
-            return False
+        return _conv_delete_session(session_id)
 
-    # ─── 장기 기억 (세션 요약) ──────────────────────────────────
+    # ─── 장기 기억 (위임: core.memory.summaries) ────────────────
 
     def save_session_summary(self, session_id: str,
                              summary: str, topic: str = "") -> bool:
-        """
-        세션 대화 요약 저장.
-        preferences 테이블에 session_summary:{session_id} 키로 저장.
-        → 장기 기억으로 영구 보관.
-        """
-        now = datetime.now().isoformat()
-        key = f"session_summary:{session_id[:12]}"
-        val = json.dumps(
-            {"summary": summary, "topic": topic,
-             "session_id": session_id, "saved_at": now},
-            ensure_ascii=False
-        )
-        try:
-            with _connect() as conn:
-                conn.execute(
-                    "INSERT OR REPLACE INTO preferences "
-                    "(key, value, raw, confidence, created_at, updated_at) "
-                    "VALUES (?,?,?,?,?,?)",
-                    (key, summary[:300], val, 0.9, now, now)
-                )
-            print(f"[MEMORY_STORE] 세션 요약 저장: {key}")
-            return True
-        except Exception as e:
-            print(f"[MEMORY_STORE] 요약 저장 실패: {e}")
-            return False
+        return _sum_save_session_summary(session_id, summary, topic)
 
     def get_session_summaries(self, limit: int = 5) -> list:
-        """
-        최근 세션 요약 목록 조회.
-        새 세션 시작 시 이전 대화 맥락으로 주입.
-        """
-        try:
-            with _connect() as conn:
-                rows = conn.execute(
-                    "SELECT key, value, raw, updated_at FROM preferences "
-                    "WHERE key LIKE 'session_summary:%' "
-                    "ORDER BY updated_at DESC LIMIT ?",
-                    (limit,)
-                ).fetchall()
-                results = []
-                for r in rows:
-                    try:
-                        raw = json.loads(r["raw"] or "{}")
-                    except Exception:
-                        raw = {}
-                    results.append({
-                        "key":        r["key"],
-                        "summary":    r["value"],
-                        "topic":      raw.get("topic", ""),
-                        "session_id": raw.get("session_id", ""),
-                        "saved_at":   r["updated_at"],
-                    })
-                return results
-        except Exception:
-            return []
+        return _sum_get_session_summaries(limit)
 
     def get_long_term_context(self, current_session_id: str = "",
                                limit: int = 3) -> str:
-        """
-        장기 기억 컨텍스트 생성.
-        이전 세션 요약들을 LLM 주입용 텍스트로 변환.
-        """
-        summaries = self.get_session_summaries(limit)
-        # 현재 세션 제외
-        summaries = [
-            s for s in summaries
-            if s.get("session_id", "") != current_session_id
-        ]
-        if not summaries:
-            return ""
+        return _sum_get_long_term_context(current_session_id, limit)
 
-        lines = ["[이전 대화 기억]"]
-        for s in summaries:
-            when = s["saved_at"][:10] if s.get("saved_at") else ""
-            topic = f" ({s['topic']})" if s.get("topic") else ""
-            lines.append(f"• {when}{topic}: {s['summary'][:150]}")
-
-        return "\n".join(lines)
+    # ─── 통계 ───────────────────────────────────────────────
 
     def get_stats(self) -> dict:
         try:
