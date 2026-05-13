@@ -25,6 +25,7 @@
 | 2026-05-12 | dev.to article published | ✅ Live ([URL](https://dev.to/hashevolution/building-a-mini-palantir-a-local-graph-rag-engine-with-ontology-security-and-self-evolution-1914)) |
 | 2026-05-12 | dev.to draft + launch tracker (PR #242) | ✅ Merged into main |
 | 2026-05-12 | urllib3 + python-multipart secondary advisory bumps (Dependabot #7-#10) | ✅ Merged into main (separate session — `urllib3>=2.7.0`, `python-multipart>=0.0.27`) |
+| 2026-05-12 | **Gemma 4 Challenge submission published (Build with Gemma 4 track)** | ✅ Live ([URL](https://dev.to/hashevolution/building-a-mini-palantir-on-gemma4e4b-128k-context-lets-the-graph-actually-be-graph-rag-33fk)) |
 
 ---
 
@@ -54,7 +55,8 @@ Three independent curators, three independent review pipelines. One acceptance i
 |---|---|---|---|
 | Twitter/X (English) | https://x.com/i/status/2054094082067386690 | Global EN | 2026-05-12 |
 | Twitter/X (Korean) | _(URL pending — author to record)_ | KR | 2026-05-12 |
-| dev.to article | https://dev.to/hashevolution/building-a-mini-palantir-a-local-graph-rag-engine-with-ontology-security-and-self-evolution-1914 | Global EN (technical) | 2026-05-12 |
+| dev.to article (intro) | https://dev.to/hashevolution/building-a-mini-palantir-a-local-graph-rag-engine-with-ontology-security-and-self-evolution-1914 | Global EN (technical) | 2026-05-12 |
+| dev.to article (Gemma 4 Challenge submission) | https://dev.to/hashevolution/building-a-mini-palantir-on-gemma4e4b-128k-context-lets-the-graph-actually-be-graph-rag-33fk | Global EN (Gemma 4 contestants + judges) | 2026-05-12 |
 
 Monitoring rule: respond to substantive replies within 1-2 hours during the first 24 hours; longer-form responses (e.g. quote threads) get hour-of-day discretion.
 
@@ -83,6 +85,23 @@ Recommended hours:
 - GeekNews — KST weekday 09–11 or 20–22
 - Show HN — US Pacific 06:00–09:00 (front-page algorithm window)
 - r/LocalLLaMA — US Eastern 09:00–11:00
+
+---
+
+## Active contests
+
+| Contest | Track | Submission URL | Deadline | Winners announced |
+|---|---|---|---|---|
+| [Gemma 4 Challenge](https://dev.to/challenges/google-gemma-2026-05-06) | Build with Gemma 4 ($500 × 5) | https://dev.to/hashevolution/building-a-mini-palantir-on-gemma4e4b-128k-context-lets-the-graph-actually-be-graph-rag-33fk | 2026-05-24 23:59 PDT | 2026-06-04 |
+
+Per-judge tie-break is by reaction count, so post-publication actions matter:
+
+1. Seed first comment on the article to lower comment-entry friction
+2. Quote-tweet from the English X/Twitter thread with the challenge URL
+3. Share in any Ollama / Gemma / RAG Discord servers we're already in
+4. Respond to substantive comments within 1-2 hours during the first 48 hours
+
+Asset archive: `reports/promo-assets/devto-gemma4-challenge.md`
 
 ---
 
@@ -125,7 +144,9 @@ This launch tracker file is considered complete when all of the following are tr
 - [ ] Show HN post is published and URL recorded
 - [ ] r/LocalLLaMA post is published and URL recorded
 - [x] dev.to post is published and URL recorded (2026-05-12)
+- [x] dev.to Gemma 4 Challenge submission is published (2026-05-12, deadline 2026-05-24)
 - [ ] OpenSSF Tiered % updated post-merge (target ≥ 115%)
 - [ ] Second-user real-data corpus volunteer engaged (v0.2 → v0.3 gate)
+- [ ] Gemma 4 Challenge result decided (2026-06-04)
 
 Append a final "Phase 5 outcomes" section once the above are satisfied, then archive this file under `reports/promo-assets/archive/v0.2.0-launch-tracker.md` and reset for v0.3 cycle.
