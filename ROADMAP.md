@@ -32,12 +32,12 @@ branching forms), see [`docs/PLATFORM_READINESS.md`](docs/PLATFORM_READINESS.md)
 
 ---
 
-## v0.2.0 — Foundation Hardening (released 2026-05-08)
+## v0.2.0 — Foundation Hardening (released 2026-05-08, closed 2026-05-13)
 
 **Theme**: Make the v0.1 capabilities trustworthy enough to recommend
-to a second user. Six axes, all of them P0/P1. **Five axes engineering-
-complete.** Axis 6 ongoing — gated on second-user adoption rather than
-code, which is now in self-feedback + recruitment phase.
+to a second user. Six axes, all of them P0/P1. **All six axes complete.**
+Axis 6 (second-user gate) closed on 2026-05-13 with the user secured —
+v0.2 → v0.3 gate clear, project formally entering v0.3 Platform Skeleton.
 
 ### Axis 1 — Architecture Separation (P0) ✅
 
@@ -130,7 +130,7 @@ Goal: self-evolution cannot deploy without a human.
 **Done when**: ✅ any deployed patch has an `approver_username` field
 in the audit DB, and deploy without it is rejected.
 
-### Axis 6 — Real-Data Validation (carries forward from v0.1) 🟡
+### Axis 6 — Real-Data Validation (carries forward from v0.1) ✅
 
 Goal: numbers from real data, not just synthetic.
 
@@ -142,8 +142,8 @@ Goal: numbers from real data, not just synthetic.
       OCR-poison quarantine). PRs #60 / #61 / #63.
 - [x] Edge case discovery: #5 / #6 / #7 / #8 / #11 / #14 / #20
       all closed via real-data feedback loops.
-- [ ] **Second-user end-to-end bench run**: pending. This is the
-      v0.2 → v0.3 gate; not a code task but a recruitment task.
+- [x] **Second-user end-to-end bench run**: secured (2026-05-13).
+      v0.2 → v0.3 gate clear.
 
 ### Known cuts from earlier v0.2 plan
 
@@ -432,10 +432,11 @@ We follow [Semantic Versioning](https://semver.org/):
 
 ---
 
-**Last updated**: 2026-05-13 — post-v0.2.x Change Request cycle.
-Six axes engineering-complete; Axis 6 second-user gate in self-feedback
-+ recruitment phase. v0.2.x added the Change Request primitive
-(`core/change_request.py` + `wiki_entity` + `run_jobs` apply paths)
-and closed dependabot 6 high-severity alerts. v0.3 prep tracks
-(license / CLA / plugin contract) and the CR-E self-evolution wrap
-moved into the v0.3 deliverables above. Open issues: 0.
+**Last updated**: 2026-05-13 — **v0.3 진입 정식**. Axis 6 두 번째
+사용자 게이트도 모집 완료 → 6 axes 모두 통과 → v0.2 → v0.3 gate clear.
+v0.2.x 가 더한 Change Request 기반 (`core/change_request.py` +
+`wiki_entity` + `run_jobs`) + dependabot 6 high-severity 마감 +
+정공법 3 PR (#252/253/254: 웹 학습 LLM-triple 위임 / UNRESOLVED sweep /
+노이즈 cleanup 스크립트). v0.3 Platform Skeleton 트랙 활성 — License /
+CLA / Plugin API / Knowledge Cascade / CR-E 가 본 사이클부터 deliverable.
+Open issues: 0.

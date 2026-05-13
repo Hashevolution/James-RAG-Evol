@@ -10,8 +10,11 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 ## Where we are right now
 
-- **Current version**: v0.1.4 → moving to v0.2.0
-- **Active theme**: Foundation Hardening (6 axes — see `ROADMAP.md`)
+- **Current version**: v0.2.0 closed → **v0.3.0 진입 (2026-05-13)**.
+  6 axes (Foundation Hardening) 모두 통과 — Axis 6 (real-data validation)
+  의 두 번째 사용자 게이트도 모집 완료. v0.2 → v0.3 gate clear.
+- **Active theme**: **Platform Skeleton** (`core/plugins/` 확정 + 도그푸드
+  + CLA + Knowledge Cascade). 도메인 분화는 여전히 v1.0 이후.
 - **Strategic frame**: We are not building a single product.
   We are building a **mother platform** from which domain packs
   (legal, food, retail, travel, etc.) will branch off **only at v1.0**.
@@ -49,7 +52,8 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 | Strategic vision + 6-dimension readiness | `docs/PLATFORM_READINESS.md` |
 | Architecture & non-goals | `docs/ARCHITECTURE.md` |
 | 6-axis v0.2 plan + future v0.3/v0.4/v1.0 | `ROADMAP.md` |
-| Active session brief (start here for tasks) | `docs/handovers/v0.2.0-platform-track.md` |
+| Active session brief (start here for tasks) | `docs/handovers/v0.3.0-platform-track.md` |
+| v0.2 closure (audit trail) | `docs/handovers/v0.2.0-platform-track.md` |
 | Business track (current cycle) | `docs/handovers/v0.2.1-business-track.md` |
 | v0.3 license / CLA / plugin API session | `docs/handovers/session-2026-05-09-license-infrastructure.md` |
 | License long-term plan + trigger monitoring | `docs/LICENSE_PLAN.md` |
