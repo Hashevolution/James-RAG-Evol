@@ -145,6 +145,34 @@ def _find_relation_index(
     return None
 
 
+def read_relation(
+    src_entity_id: str,
+    tgt_entity_id: str,
+    relation_type: str,
+    *,
+    wiki_generator,
+) -> Optional[Dict[str, Any]]:
+    """forward 측 entity 의 frontmatter 에서 매칭 relation dict 를 그대로
+    반환 (sources 배열 포함). 없으면 None.
+
+    UI 의 edit modal 이 edge 클릭 시 sources 를 fresh load 하기 위한
+    read path. snapshot endpoint 에 sources 를 넣지 않은 이유는 213
+    entity × N relation × N source 면 wire payload 가 폭증하기 때문 —
+    on-demand fetch 로 격리.
+    """
+    src_path, src_fm, _body = _load_entity_by_id(src_entity_id, wiki_generator)
+    _ = src_path   # unused
+    rels = src_fm.get("relations") or []
+    idx = _find_relation_index(rels, tgt_entity_id, relation_type)
+    if idx is None:
+        return None
+    rel = rels[idx]
+    # 안전한 복사본 — caller 가 변형해도 frontmatter 무영향
+    if isinstance(rel, dict):
+        return dict(rel)
+    return None
+
+
 def _validate_sources(sources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """클라이언트가 보낸 sources 배열을 정규화 + 검증.
 

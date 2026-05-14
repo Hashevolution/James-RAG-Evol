@@ -3313,6 +3313,34 @@ def _truncate_audit_blob(d: dict, cap: int = 500) -> str:
     return s if len(s) <= cap else s[:cap - 3] + "..."
 
 
+@app.get("/admin/graph/relation",
+         summary="relation 의 sources 조회 [Knowledge Cascade Phase E]")
+async def admin_graph_relation_get(
+    api_key:       str,
+    src_entity_id: str,
+    tgt_entity_id: str,
+    relation_type: str,
+    role:          str = Depends(get_role_from_request),
+):
+    """UI 의 edit modal 이 edge 클릭 시 호출. forward 측 relation 의
+    sources 배열 + 기본 메타 반환. 없으면 404.
+    Snapshot 에 sources 를 안 넣은 이유와 동기: payload 격리."""
+    _require_graph_edit_enabled()
+    _require_feature(api_key, role, "admin.data")
+
+    from core.graph_editor import read_relation
+    try:
+        rel = read_relation(
+            src_entity_id, tgt_entity_id, relation_type,
+            wiki_generator=rag_engine.wiki_generator,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    if rel is None:
+        raise HTTPException(status_code=404, detail="relation not found")
+    return {"ok": True, "relation": rel}
+
+
 @app.put("/admin/graph/relation",
          summary="relation 의 sources 전체 교체 [Knowledge Cascade Phase E]")
 async def admin_graph_relation_put(request: Request,

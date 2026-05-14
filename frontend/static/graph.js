@@ -341,6 +341,14 @@
       if (!graph) initGraph();
       graph.graphData(data);
 
+      // [Knowledge Cascade Phase E UI] graph editor 가 본 instance 에
+      // linkClick 핸들러를 attach 할 수 있게 hook. graph_editor.js 는
+      // 본 graph.js 이후에 로드되므로 window.GraphEditor 가 이미 정의돼 있다.
+      if (window.GraphEditor && typeof window.GraphEditor.onSnapshotLoaded === 'function') {
+        try { window.GraphEditor.onSnapshotLoaded(graph, data, { apiKey: apiKey, token: token }); }
+        catch (_e) { /* never block graph render */ }
+      }
+
       var meta = snap.meta || {};
       var statBox = document.getElementById('stat-box');
       if (statBox) {

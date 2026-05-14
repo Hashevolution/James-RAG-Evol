@@ -47,6 +47,7 @@ from core.graph_editor import (
     append_relation_source,
     delete_relation,
     graph_edit_enabled,
+    read_relation,
     replace_relation_sources,
 )
 from core.relations_schema import (
@@ -348,6 +349,33 @@ class GraphEditEnabledTests(unittest.TestCase):
         for v in ("0", "false", "no", "off", "", "random"):
             with patch.dict(os.environ, {"JAMES_GRAPH_EDIT": v}):
                 self.assertFalse(graph_edit_enabled(), f"value {v!r}")
+
+
+# ── 4b. read_relation (GET) ────────────────────────────────────────
+
+class ReadRelationTests(unittest.TestCase):
+    def test_returns_relation_with_sources(self):
+        _, wg, _, _, (joby_id, nv_id) = _two_entities_with_relation()
+        rel = read_relation(joby_id, nv_id, "RELATED_TO", wiki_generator=wg)
+        self.assertIsNotNone(rel)
+        self.assertEqual(rel["target_id"], nv_id)
+        self.assertEqual(len(rel["sources"]), 1)
+        self.assertEqual(rel["sources"][0]["role"], EXTRACT_SOURCE_ROLE)
+
+    def test_missing_relation_returns_none(self):
+        _, wg, _, _, (joby_id, _) = _two_entities_with_relation()
+        self.assertIsNone(read_relation(
+            joby_id, "e_org_nonexistent", "RELATED_TO",
+            wiki_generator=wg,
+        ))
+
+    def test_missing_src_entity_raises(self):
+        _, wg, _, _, (_, nv_id) = _two_entities_with_relation()
+        with self.assertRaises(ValueError):
+            read_relation(
+                "e_org_nonexistent", nv_id, "RELATED_TO",
+                wiki_generator=wg,
+            )
 
 
 # ── 5. Phase C cascade 와의 정합 ───────────────────────────────────

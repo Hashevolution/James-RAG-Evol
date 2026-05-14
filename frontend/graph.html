@@ -68,6 +68,23 @@
         <div data-i18n="graph.tip.click">click node — focus</div>
       </div>
     </div>
+
+    <!-- [Knowledge Cascade Phase E UI] admin edit-mode toggle. JS hides
+         the wrapper if not admin / server has JAMES_GRAPH_EDIT off. -->
+    <div id="graph-edit-wrap" style="display:none">
+      <div class="panel-title" style="margin-bottom:8px">Edit mode</div>
+      <button id="graph-edit-toggle" type="button"
+              style="width:100%;padding:9px 12px;background:var(--surface-2);
+                     border:1px solid var(--border);border-radius:7px;
+                     color:var(--text-soft);font-size:12px;cursor:pointer;
+                     font-family:var(--font-mono);letter-spacing:.4px">
+        🔒 Edit mode: OFF
+      </button>
+      <div id="graph-edit-hint" class="stat"
+           style="margin-top:8px;line-height:1.6;font-size:11px;display:none">
+        edit ON — click any edge to view + edit its sources
+      </div>
+    </div>
   </aside>
 
   <div class="stage">
@@ -145,8 +162,87 @@
 <script src="https://unpkg.com/3d-force-graph@1.73.4/dist/3d-force-graph.min.js"></script>
 <script src="https://unpkg.com/d3-force-3d@3.0.5/dist/d3-force-3d.min.js"></script>
 
+<!-- [Knowledge Cascade Phase E UI] edge edit modal. Hidden by default.
+     a11y-modal.js handles focus trap + Escape; the .show class toggles
+     visibility (same pattern as #login-modal above). -->
+<div class="modal-overlay" id="edge-edit-modal"
+     role="dialog" aria-modal="true"
+     aria-labelledby="edge-edit-title">
+  <div class="modal-card" style="max-width:520px;width:92%;max-height:80vh;overflow-y:auto">
+    <div id="edge-edit-title"
+         style="font-size:13px;font-weight:600;font-family:var(--font-mono);
+                color:var(--accent-fg);margin-bottom:6px;letter-spacing:.5px">
+      ▸ <span id="edge-edit-src">—</span>
+      <span style="color:var(--muted);font-weight:400"> → </span>
+      <span id="edge-edit-tgt">—</span>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;
+                font-family:var(--font-mono)">
+      <span id="edge-edit-type">—</span>
+      <span style="margin-left:10px">conf: <span id="edge-edit-conf">—</span></span>
+    </div>
+
+    <div style="font-size:10px;color:var(--muted);letter-spacing:1px;
+                font-family:var(--font-mono);margin-bottom:6px">SOURCES</div>
+    <div id="edge-edit-sources"
+         style="border:1px solid var(--border);border-radius:7px;
+                background:var(--bg);padding:8px;margin-bottom:18px;
+                font-size:12px;max-height:30vh;overflow-y:auto">
+      <!-- JS fills rows -->
+    </div>
+
+    <div style="font-size:10px;color:var(--muted);letter-spacing:1px;
+                font-family:var(--font-mono);margin-bottom:6px">
+      ADD MANUAL SOURCE
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <input id="edge-edit-weight" type="number" step="0.1" min="0" max="1"
+             value="0.8" placeholder="weight"
+             style="flex:0 0 80px;background:var(--bg);
+                    border:1px solid var(--border);border-radius:6px;
+                    padding:7px 9px;color:var(--text);font-size:12px;outline:none">
+      <input id="edge-edit-note" type="text" maxlength="300"
+             placeholder="note (optional)"
+             style="flex:1;background:var(--bg);border:1px solid var(--border);
+                    border-radius:6px;padding:7px 9px;color:var(--text);
+                    font-size:12px;outline:none">
+    </div>
+    <button id="edge-edit-append"
+            style="width:100%;padding:9px;background:var(--accent);
+                   border:none;border-radius:7px;color:var(--on-accent);
+                   font-size:12px;font-weight:600;cursor:pointer;
+                   font-family:var(--font-mono);letter-spacing:.4px;margin-bottom:18px">
+      + Add manual source
+    </button>
+
+    <div id="edge-edit-error"
+         style="font-size:11px;color:var(--danger);min-height:14px;
+                margin-bottom:8px;font-family:var(--font-mono)"></div>
+
+    <div style="display:flex;gap:8px">
+      <button id="edge-edit-delete-relation"
+              style="flex:1;padding:9px;background:transparent;
+                     border:1px solid var(--danger);border-radius:7px;
+                     color:var(--danger);font-size:11px;font-weight:600;
+                     cursor:pointer;font-family:var(--font-mono);
+                     letter-spacing:.4px">
+        Delete entire relation
+      </button>
+      <button id="edge-edit-close"
+              style="flex:1;padding:9px;background:var(--surface-2);
+                     border:1px solid var(--border);border-radius:7px;
+                     color:var(--text-soft);font-size:11px;font-weight:600;
+                     cursor:pointer;font-family:var(--font-mono);
+                     letter-spacing:.4px">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+
 <script src="/static/i18n.js"></script>
 <script src="/static/graph.js"></script>
+<script src="/static/graph_editor.js"></script>
 <script src="/static/a11y-modal.js" defer></script>
 </body>
 </html>
