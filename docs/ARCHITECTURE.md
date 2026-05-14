@@ -304,6 +304,121 @@ change required to grant or revoke a feature for a role mid-flight.
 
 ---
 
+## 5.7 Cognitive Middleware Layer (v0.3, 2026-05-14)
+
+> Lives in `core/reasoning/` (new) + `core/retrieval/` (existing,
+> expanded). Plan + rationale in
+> `docs/handovers/v0.3-cognitive-layer-track.md`.
+
+JAMES is evolving from a retrieve-then-answer pipeline into a
+deliberative reasoning system. The cognitive middleware layer sits
+**between** the existing retrieval/graph engine and the LLM synthesis
+step. The graph / ontology / memory / policy core stays exactly as it
+is — middleware is **additive**, never a replacement.
+
+```
+        ┌────────────────────────────┐
+        │   Retrieval (existing)     │
+        └─────────────┬──────────────┘
+                      │
+        ┌─────────────▼──────────────┐
+        │   Cognitive Middleware     │
+        │   (this section, new)      │
+        │                            │
+        │   Planner                  │
+        │   Query Rewriter           │
+        │   Reflection Engine        │
+        │   Verification Engine      │
+        │   Tool Router              │
+        │   Memory Manager           │
+        │   Security Reasoner        │
+        │   Context Optimizer        │
+        └─────────────┬──────────────┘
+                      │
+        ┌─────────────▼──────────────┐
+        │   LLM Synthesis            │
+        └─────────────┬──────────────┘
+                      │
+        ┌─────────────▼──────────────┐
+        │   PolicyEngine.can_emit    │  ← Output filter (unchanged)
+        └─────────────┬──────────────┘
+                      │
+                  Response
+```
+
+### 5.7.1 Components
+
+| Component | Module (planned) | Responsibility |
+|---|---|---|
+| Planner | `core/reasoning/planner.py` | Decompose a question into ordered subtasks; choose retrieval depth |
+| Query Rewriter | `core/retrieval/query_rewriter.py` | Transform user intent into retrieval-optimized queries |
+| Reranker | `core/retrieval/rerank.py` | Cross-encoder reordering of vector-retrieved top-k |
+| Reflection Engine | `core/reasoning/reflect.py` | `draft → self_critique → revised` per subtask |
+| Verification Engine | `core/reasoning/verify.py` | `generator → critic → fact_checker → security_validator → final_synthesizer`. Wraps the CR-E (§5.6) primitive — every verifier outcome is a Change Request candidate |
+| Tool Router | `core/reasoning/tool_router.py` | Select between chat / web search / wiki edit / graph editor / memory write |
+| Memory Manager | `core/memory/manager.py` (existing dir, new module) | Choose which memory layer (episodic / semantic / procedural / working / long-term graph) to consult or write |
+| Security Reasoner | `core/reasoning/security_reasoner.py` | Reasons _about the policy graph itself_: prompt injection traces, privilege escalation attempts, relationship-based exposure |
+| Context Optimizer | `core/reasoning/context.py` | Bound token budget; drop low-relevance evidence; keep audit-required citations |
+
+Each module exports a typed interface. Direct dependency goes one way
+only: cognitive middleware imports retrieval / memory / policy, never
+the reverse.
+
+### 5.7.2 Trust zone
+
+| Edge | Trust | Hardening |
+|---|---|---|
+| Cognitive middleware → LLM | medium | every reflection / verification step emits one audit row (`reason_stage` + `applied_rule`) |
+| Cognitive middleware → PolicyEngine | enforced | `Planner` and `Tool Router` must ask `can_call_tool` before dispatch; bypass is a regression |
+| Verification → CR-E | enforced | a verifier flagging a self-modifying outcome (memory write, ontology edit, evolution patch) must route through `core/change_request.py` — direct apply is a CLAUDE.md rule #3 violation |
+| Reflection state | working memory only | not persisted by default; episodic memory captures only the **final** verified answer trace |
+
+### 5.7.3 Multi-agent invariant (anti-sprawl)
+
+The middleware is allowed at most **five named agent roles**:
+
+```
+Orchestrator
+ ├─ Domain Specialist     (retrieval + synthesis for one subtask)
+ ├─ Verification Agent    (the verification engine wrapped as an agent)
+ ├─ Security Validator    (security_reasoner wrapped as an agent)
+ └─ Final Synthesizer     (writes the answer)
+```
+
+Adding a sixth agent role requires an architecture-labelled PR.
+Reasoning:
+
+- Agent count drives latency, hallucination compounding, debugging
+  surface, and token cost super-linearly. The reasoning literature
+  shows steep degradation past ~5 named roles.
+- A fixed cap forces architectural discipline. "We need another
+  agent" is almost always a hint to split a subtask or refactor an
+  existing role.
+- Domain-specific specialists (legal / food / retail / travel) are
+  still gated by **CLAUDE.md rule #1**: they are pack-level concerns
+  for the post-v1.0 plugin API, not platform middleware.
+
+### 5.7.4 Bench gate
+
+Every PR that touches `core/retrieval/`, `core/reasoning/`, or any
+relation/graph traversal must include STEP 7 bench numbers per
+CLAUDE.md rule #2. Cognitive middleware additions are *expected* to
+improve precision / recall metrics; a PR that flatlines them needs
+either a non-quality justification (latency, memory) or a re-think.
+
+### 5.7.5 What this section is **not**
+
+- Not a new memory storage. The Memory Manager **dispatches** to
+  existing storage (`core/memory/store.py`, the graph, ChromaDB);
+  it does not introduce a competing store.
+- Not a replacement for `PolicyEngine`. Security Reasoner *uses* the
+  PolicyEngine to make inferences; it does not authorize anything
+  on its own.
+- Not a domain pack. Legal / food / retail reasoning belongs in
+  packs (post-v1.0), not the middleware.
+
+---
+
 ## 6. Data Lifecycle (W7-A, 2026-05-11)
 
 Every file uploaded through `/upload/` gets a tracking row in the
