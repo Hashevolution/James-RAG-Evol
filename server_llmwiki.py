@@ -4610,6 +4610,69 @@ async def admin_files_download(
     )
 
 
+@app.delete("/admin/files",
+            summary="업로드 파일 + 파생 cascade 삭제 [Knowledge Cascade Phase C]")
+async def admin_files_delete(
+    api_key: str,
+    path:    str,
+    role:    str = Depends(get_role_from_request),
+):
+    """uploads/ 의 파일 하나를 삭제하고 그로부터 파생된 모든 wiki entity /
+    relation source / vector chunks 까지 cascade.
+
+    docs/design/v0.3-knowledge-cascade.md §5 — Phase C.
+
+    Trust boundary:
+      - admin.data feature gate
+      - root='uploads' 로 hard-coded (wiki/ entity 의 직접 삭제는
+        기존 chat 의 ``delete_entity`` 가 처리 — 다른 cascade 의미)
+      - ``_resolve_under_root`` 가 path traversal 차단
+      - 파일은 ``uploads/.deleted/{ts}_{name}`` 으로 backup, 즉시 purge
+        하지 않음 (N 일 후 운영 cleanup 의 일)
+    """
+    _require_feature(api_key, role, "admin.data")
+    if not (path or "").strip():
+        raise HTTPException(status_code=400, detail="path required")
+
+    # 'uploads' root 하에서만 동작 — wiki 의 entity 직접 삭제는 다른 경로.
+    full = _resolve_under_root("uploads", path)
+    if not full or not os.path.isfile(full):
+        raise HTTPException(status_code=404, detail="not found")
+
+    physical_filename = os.path.basename(full)
+
+    from core.cascade import cascade_delete_upload
+    try:
+        summary = cascade_delete_upload(
+            physical_filename,
+            wiki_generator = rag_engine.wiki_generator,
+            vector_store   = rag_engine.vector_store,
+            upload_dir     = _file_mgmt_roots()["uploads"],
+            user_role      = role,
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    # 결과 + audit. cascade 결과의 핵심 숫자만 JSON 으로 압축해 answer
+    # 컬럼에 저장 (max 500 chars). 자세한 summary 는 응답 본문에 그대로.
+    counts = summary.get("counts", {})
+    audit_blob = json.dumps({
+        "doc_entity_id":           summary.get("doc_entity_id"),
+        "orphan_entities_deleted": summary.get("orphan_entities_deleted"),
+        "relations_recomputed":    counts.get("relations_recomputed"),
+        "relations_dropped":       counts.get("relations_dropped"),
+        "vector_deleted":          summary.get("vector_deleted"),
+        "file_backup":             summary.get("file_backup"),
+    }, ensure_ascii=False)
+    _write_audit(
+        role, "/admin/files/delete",
+        query=physical_filename,
+        answer=audit_blob,
+        elapsed_sec=0,
+    )
+    return {"ok": True, "summary": summary}
+
+
 @app.get("/admin/settings", summary="설정 조회 [P7]")
 async def admin_settings_get(api_key: str, role: str = Depends(get_role_from_request)):
     _require_feature(api_key, role, "admin.settings")
