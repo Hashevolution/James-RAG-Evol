@@ -757,12 +757,19 @@ async def upload(
         # we now consume it to make the artifact ↔ entity relation
         # queryable from /admin/artifacts/<id> + the workspace UI.
         created_entity_ids: list = []
+        # Phase D — extraction sidecar 경로. 물리 파일 옆에 `<uuid>_<file>
+        # .extraction.json` 으로 저장 → 재업로드 시 modify cascade 가 이
+        # 파일을 읽어 old/new triple diff 를 한다.
+        extraction_sidecar = os.path.join(
+            UPLOAD_DIR, unique_name + ".extraction.json",
+        )
         try:
             created_entity_ids = list(
                 rag_engine.wiki_generator.process_document_for_entities(
                     file.filename, raw_content, [],
                     user_role="admin",
                     metadata=meta,
+                    extraction_sidecar_path=extraction_sidecar,
                 ) or []
             )
         except TypeError:
@@ -4883,6 +4890,115 @@ async def admin_files_delete(
     }, ensure_ascii=False)
     _write_audit(
         role, "/admin/files/delete",
+        query=physical_filename,
+        answer=audit_blob,
+        elapsed_sec=0,
+    )
+    return {"ok": True, "summary": summary}
+
+
+@app.put("/admin/files",
+         summary="업로드 파일 내용 교체 + 파생 cascade 갱신 [Knowledge Cascade Phase D]")
+async def admin_files_modify(
+    request:     Request,
+    file:        UploadFile = File(...),
+    api_key:     str        = Form(...),
+    path:        str        = Form(...),
+    role:        str        = Depends(get_role_from_request),
+):
+    """`uploads/` 의 기존 파일을 새 multipart file 로 교체하고 파생
+    cascade 를 재실행.
+
+    docs/design/v0.3-knowledge-cascade.md §6 — Phase D.
+
+    Trust boundary:
+      - admin.data feature gate
+      - root='uploads' hard-coded, `_resolve_under_root` 가 path traversal 차단
+      - 새 content 도 PolicyEngine sanitize_for_ingestion 통과
+      - 옛 파일은 `uploads/.deleted/{ts}_{name}` 으로 backup
+    """
+    _require_feature(api_key, role, "admin.data")
+    if not (path or "").strip():
+        raise HTTPException(status_code=400, detail="path required")
+
+    full = _resolve_under_root("uploads", path)
+    if not full or not os.path.isfile(full):
+        raise HTTPException(status_code=404, detail="not found")
+
+    physical_filename = os.path.basename(full)
+
+    # 새 파일을 메모리에 모은 뒤 cascade 에 넘긴다. 동일한 size cap.
+    new_bytes = b""
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        new_bytes += chunk
+        if len(new_bytes) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="파일 크기 초과")
+
+    # PolicyEngine sanitize — content extraction (텍스트 파일 / OCR 등은
+    # 추후 follow-up. 이번 PR 은 텍스트 직접 교체 경로). file_processor 가
+    # 일관된 entry point.
+    # NOTE: process_file expects a path; 임시 파일에 dump 후 처리.
+    import tempfile
+    suffix = os.path.splitext(file.filename or physical_filename)[1] or ".bin"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tf:
+        tf.write(new_bytes)
+        tmp_path = tf.name
+    try:
+        tc = file_processor.process_file(tmp_path, file.filename or physical_filename)
+        raw_content, _decision = default_engine.sanitize_for_ingestion(
+            tc, source=file.filename or physical_filename,
+        )
+        new_meta = file_processor.generate_file_metadata(raw_content)
+    finally:
+        try: os.unlink(tmp_path)
+        except OSError: pass
+
+    from core.cascade import cascade_modify_doc
+    from utils.tokenizer import split_chunks
+    try:
+        summary = cascade_modify_doc(
+            physical_filename,
+            raw_content,
+            wiki_generator = rag_engine.wiki_generator,
+            vector_store   = rag_engine.vector_store,
+            upload_dir     = _file_mgmt_roots()["uploads"],
+            new_metadata   = new_meta,
+            user_role      = role,
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    # cascade_modify_doc 가 vector 의 add 는 하지 않으므로 (signature
+    # 의존 회피), 여기서 새 chunks 를 다시 넣는다.
+    try:
+        new_chunks = split_chunks(raw_content)
+        rag_engine.vector_store.add_documents_with_meta(
+            texts=new_chunks,
+            source=summary["original_filename"],
+            metadata={
+                "sensitivity": new_meta.get("sensitivity", "internal"),
+                "owner":       new_meta.get("owner", "system"),
+                "category":    new_meta.get("category", "기타"),
+                "source_type": "prod",
+            },
+        )
+    except Exception as e:
+        print(f"[FILES_PUT] vector re-add fail: {e}")
+
+    cc = summary.get("cascade_counts", {})
+    audit_blob = json.dumps({
+        "doc_entity_id":           summary.get("doc_entity_id"),
+        "sidecar_present":         summary.get("sidecar_present"),
+        "diff":                    summary.get("diff"),
+        "orphan_entities_deleted": summary.get("orphan_entities_deleted"),
+        "relations_dropped":       cc.get("relations_dropped"),
+        "file_backup":             summary.get("file_backup"),
+    }, ensure_ascii=False)
+    _write_audit(
+        role, "/admin/files [PUT]",
         query=physical_filename,
         answer=audit_blob,
         elapsed_sec=0,

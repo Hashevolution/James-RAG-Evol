@@ -599,10 +599,18 @@ class WikiGenerator:
         chunk_ids: List[str],
         user_role: str = "admin",
         metadata:  Optional[Dict] = None,
+        extraction_sidecar_path: Optional[str] = None,
     ) -> List[str]:
         """
         문서 본문에서 LLM으로 인물/조직/개념 entity와 relation을 추출하여
         각 entity별 .md를 생성하고, 추가로 원본을 document entity로도 보존한다.
+
+        Phase D (Knowledge Cascade): 호출자가 ``extraction_sidecar_path`` 를
+        주면 LLM extraction 결과 (entities + relations 원본 + metadata) 를
+        JSON sidecar 로 저장한다. Phase D 의 modify cascade 가 다음 재업로드
+        시 이 sidecar 를 읽어 old/new diff 를 계산한다. sidecar 부재 시
+        modify cascade 는 wipe+reingest fallback 으로 동작 — backwards
+        compatible (Phase B 이전 업로드도 안전).
 
         Returns:
             생성된 entity_id 리스트 (실패 시 빈 리스트 또는 document만)
@@ -716,6 +724,30 @@ class WikiGenerator:
             self.resolve_pending_relations()
         except Exception as e:
             print(f"[ENTITY-EXTRACT] resolve_pending_relations fail (무시): {e}")
+
+        # Phase D — extraction sidecar 저장. 재업로드 시 modify cascade 가
+        # old vs new diff 를 계산하려면 마지막 LLM 출력이 필요하다.
+        # 사용자 ingest 정보 (filename / category / keywords) + 추출 원본을
+        # 함께 저장해 cascade 가 self-contained 로 동작.
+        if extraction_sidecar_path:
+            try:
+                sidecar = {
+                    "filename":   filename,
+                    "ingest_ts":  ingest_ts,
+                    "metadata":   {
+                        "summary":  metadata.get("summary", ""),
+                        "category": metadata.get("category", "기타"),
+                        "keywords": metadata.get("keywords", []),
+                    },
+                    "extraction": {
+                        "entities":  extracted.get("entities", []),
+                        "relations": extracted.get("relations", []),
+                    },
+                }
+                with open(extraction_sidecar_path, "w", encoding="utf-8") as sf:
+                    json.dump(sidecar, sf, ensure_ascii=False, indent=2)
+            except Exception as e:
+                print(f"[ENTITY-EXTRACT] sidecar write skipped: {e}")
 
         print(f"[ENTITY-EXTRACT] {filename} -> {len(created_ids)} entities created "
               f"(extracted {len(name_to_id)} + 1 document)")
