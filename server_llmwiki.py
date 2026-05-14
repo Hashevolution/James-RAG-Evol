@@ -3289,6 +3289,195 @@ async def admin_graph_snapshot(
     )
 
 
+# ─── /admin/graph/relation — Phase E graph editor (write path) ───
+#
+# docs/design/v0.3-knowledge-cascade.md §7. admin 이 `/admin/graph`
+# 의 edge 별 sources / weight / role 을 직접 수정할 수 있게 하는 3
+# endpoint. JAMES_GRAPH_EDIT=1 env flag 가 켜진 경우에만 활성화 —
+# 의도치 않은 mutation 방지 (graceful degradation).
+# ────────────────────────────────────────────────────────────────
+
+def _require_graph_edit_enabled() -> None:
+    from core.graph_editor import graph_edit_enabled
+    if not graph_edit_enabled():
+        raise HTTPException(
+            status_code=403,
+            detail="graph_edit_disabled: set JAMES_GRAPH_EDIT=1 to enable",
+        )
+
+
+def _truncate_audit_blob(d: dict, cap: int = 500) -> str:
+    """audit log 의 query/answer 컬럼은 500 chars cap. sources before/
+    after 가 길어질 수 있으므로 JSON dump 후 잘림."""
+    s = json.dumps(d, ensure_ascii=False)
+    return s if len(s) <= cap else s[:cap - 3] + "..."
+
+
+@app.put("/admin/graph/relation",
+         summary="relation 의 sources 전체 교체 [Knowledge Cascade Phase E]")
+async def admin_graph_relation_put(request: Request,
+                                   role: str = Depends(get_role_from_request)):
+    """forward + inverse 양쪽 relation 의 sources 배열을 body 의 값으로
+    교체. confidence 는 자동 derive. relation 이 없으면 새로 생성.
+
+    Body JSON:
+      {
+        "api_key":       "...",
+        "src_entity_id": "e_org_joby",
+        "tgt_entity_id": "e_org_nvidia",
+        "relation_type": "RELATED_TO",
+        "sources": [
+          {"doc_id": null, "weight": 0.9, "role": "manual",
+           "author": "admin", "note": "..."}
+        ]
+      }
+    """
+    _require_graph_edit_enabled()
+    body = await request.json()
+    _require_feature(body.get("api_key", ""), role, "admin.data")
+
+    src_id = (body.get("src_entity_id") or "").strip()
+    tgt_id = (body.get("tgt_entity_id") or "").strip()
+    rtype  = (body.get("relation_type") or "").strip()
+    if not (src_id and tgt_id and rtype):
+        raise HTTPException(
+            status_code=400,
+            detail="src_entity_id / tgt_entity_id / relation_type required",
+        )
+    sources = body.get("sources") or []
+    if not isinstance(sources, list) or not sources:
+        raise HTTPException(
+            status_code=400,
+            detail="sources (non-empty list) required — use DELETE to drop",
+        )
+
+    from core.graph_editor import replace_relation_sources
+    try:
+        result = replace_relation_sources(
+            src_id, tgt_id, rtype, sources,
+            wiki_generator=rag_engine.wiki_generator,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    _write_audit(
+        role, "/admin/graph/relation [PUT]",
+        query=_truncate_audit_blob({
+            "src": src_id, "tgt": tgt_id, "type": rtype,
+        }),
+        answer=_truncate_audit_blob({
+            "fwd_before_n": len(result["forward"]["before"]),
+            "fwd_after_n":  len(result["forward"]["after"]),
+            "inv_synced":   result["inverse"] is not None,
+        }),
+    )
+    return {"ok": True, "result": result}
+
+
+@app.post("/admin/graph/relation/source",
+          summary="relation 의 sources 에 한 줄 append [Knowledge Cascade Phase E]")
+async def admin_graph_relation_append(request: Request,
+                                      role: str = Depends(get_role_from_request)):
+    """단일 source 를 forward + inverse 양쪽 relation 의 sources 배열에
+    append. 다른 admin 의 PUT 과 commutative — 같은 source 를 두 번
+    append 하면 두 row 모두 남는다 (dedup 은 admin 의 일).
+
+    Body JSON:
+      {
+        "api_key":       "...",
+        "src_entity_id": "...",
+        "tgt_entity_id": "...",
+        "relation_type": "RELATED_TO",
+        "source": {"doc_id": null, "weight": 0.7, "role": "manual",
+                   "note": "..."}
+      }
+    """
+    _require_graph_edit_enabled()
+    body = await request.json()
+    _require_feature(body.get("api_key", ""), role, "admin.data")
+
+    src_id = (body.get("src_entity_id") or "").strip()
+    tgt_id = (body.get("tgt_entity_id") or "").strip()
+    rtype  = (body.get("relation_type") or "").strip()
+    source = body.get("source")
+    if not (src_id and tgt_id and rtype and isinstance(source, dict)):
+        raise HTTPException(
+            status_code=400,
+            detail="src_entity_id / tgt_entity_id / relation_type / source required",
+        )
+
+    from core.graph_editor import append_relation_source
+    try:
+        result = append_relation_source(
+            src_id, tgt_id, rtype, source,
+            wiki_generator=rag_engine.wiki_generator,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    _write_audit(
+        role, "/admin/graph/relation/source [POST]",
+        query=_truncate_audit_blob({
+            "src": src_id, "tgt": tgt_id, "type": rtype,
+            "role": source.get("role"),
+        }),
+        answer=_truncate_audit_blob({
+            "fwd_after_n": len(result["forward"]["after"]),
+            "inv_synced": result["inverse"] is not None,
+        }),
+    )
+    return {"ok": True, "result": result}
+
+
+@app.delete("/admin/graph/relation",
+            summary="relation 자체 제거 [Knowledge Cascade Phase E]")
+async def admin_graph_relation_delete(request: Request,
+                                      role: str = Depends(get_role_from_request)):
+    """forward + inverse 양쪽 relation 을 frontmatter 에서 제거.
+
+    Body JSON:
+      {
+        "api_key":       "...",
+        "src_entity_id": "...",
+        "tgt_entity_id": "...",
+        "relation_type": "RELATED_TO"
+      }
+    """
+    _require_graph_edit_enabled()
+    body = await request.json()
+    _require_feature(body.get("api_key", ""), role, "admin.data")
+
+    src_id = (body.get("src_entity_id") or "").strip()
+    tgt_id = (body.get("tgt_entity_id") or "").strip()
+    rtype  = (body.get("relation_type") or "").strip()
+    if not (src_id and tgt_id and rtype):
+        raise HTTPException(
+            status_code=400,
+            detail="src_entity_id / tgt_entity_id / relation_type required",
+        )
+
+    from core.graph_editor import delete_relation
+    try:
+        result = delete_relation(
+            src_id, tgt_id, rtype,
+            wiki_generator=rag_engine.wiki_generator,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    _write_audit(
+        role, "/admin/graph/relation [DELETE]",
+        query=_truncate_audit_blob({
+            "src": src_id, "tgt": tgt_id, "type": rtype,
+        }),
+        answer=_truncate_audit_blob({
+            "fwd_removed": result["forward"]["removed"],
+            "inv_removed": result["inverse"]["removed"],
+        }),
+    )
+    return {"ok": True, "result": result}
+
+
 @app.get("/admin/memory", summary="Memory 현황 [P7]")
 async def admin_memory(api_key: str, role: str = Depends(get_role_from_request)):
     _require_feature(api_key, role, "admin.data")
