@@ -26,6 +26,7 @@
 | 2026-05-12 | dev.to draft + launch tracker (PR #242) | ✅ Merged into main |
 | 2026-05-12 | urllib3 + python-multipart secondary advisory bumps (Dependabot #7-#10) | ✅ Merged into main (separate session — `urllib3>=2.7.0`, `python-multipart>=0.0.27`) |
 | 2026-05-12 | **Gemma 4 Challenge submission published (Build with Gemma 4 track)** | ✅ Live ([URL](https://dev.to/hashevolution/building-a-mini-palantir-on-gemma4e4b-128k-context-lets-the-graph-actually-be-graph-rag-33fk)) |
+| 2026-05-13 | Hashnode cross-post of intro article (`ragllm.hashnode.dev`) | ✅ Live ([URL](https://ragllm.hashnode.dev/building-a-mini-palantir-a-local-graph-rag-engine-with-ontology-security-and-self-evolution-alpha)) |
 
 ---
 
@@ -57,6 +58,7 @@ Three independent curators, three independent review pipelines. One acceptance i
 | Twitter/X (Korean) | _(URL pending — author to record)_ | KR | 2026-05-12 |
 | dev.to article (intro) | https://dev.to/hashevolution/building-a-mini-palantir-a-local-graph-rag-engine-with-ontology-security-and-self-evolution-1914 | Global EN (technical) | 2026-05-12 |
 | dev.to article (Gemma 4 Challenge submission) | https://dev.to/hashevolution/building-a-mini-palantir-on-gemma4e4b-128k-context-lets-the-graph-actually-be-graph-rag-33fk | Global EN (Gemma 4 contestants + judges) | 2026-05-12 |
+| Hashnode cross-post (intro article) | https://ragllm.hashnode.dev/building-a-mini-palantir-a-local-graph-rag-engine-with-ontology-security-and-self-evolution-alpha | Global EN (Hashnode algorithm + Google search) | 2026-05-13 |
 
 Monitoring rule: respond to substantive replies within 1-2 hours during the first 24 hours; longer-form responses (e.g. quote threads) get hour-of-day discretion.
 
