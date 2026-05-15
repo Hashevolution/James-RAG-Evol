@@ -1498,12 +1498,22 @@ function appendJamesMsg(data) {
    "① X" 같은 변형으로 답하면 chip이 안 나오는 간헐 누락 발생
    (사용자 보고 2026-05-08).
 
-   v2는 SUGGESTION_PATTERNS 배열을 순서대로 시도. 첫 번째로 ≥2개를
-   찾는 패턴의 결과를 채택. 패턴 우선순위:
-     ① "(1) X (2) Y (3) Z"   — strict, 우리가 권장하는 포맷
-     ② "1) X 2) Y 3) Z"      — 우괄호만
-     ③ "1. X\n2. Y\n3. Z"    — 다행 번호 목록
-     ④ "① X ② Y ③ Z"          — 원문자
+   v2는 SUGGESTION_PATTERNS 배열을 순서대로 시도. 첫 번째로 매칭이
+   잡힌 패턴의 결과를 채택. 패턴 우선순위:
+     ① "(1) X (2) Y (3) Z"        — strict, 권장 포맷
+     ② "1) X 2) Y 3) Z"           — 우괄호만
+     ③ "1. X\n2. Y\n3. Z"         — 다행 번호 목록
+     ④ "① X ② Y ③ Z"               — 원문자
+     ⑤ "혹시 X 궁금하신가요?"     — [PR-O2] 자연어 invite
+     ⑥ "X에 대해 더 알고 싶으시면" — [PR-O2] 자연어 invite
+     ⑦ "관련 질문(으로는)?: X"    — [PR-O2] 자연어 invite
+
+   [PR-O2, 2026-05-15] 사이클 12 사용자 피드백:
+     - "혹시 ~궁금하신가요?" 같은 자연어 제안은 ①~④ 어디에도 안 잡힘
+       → ⑤⑥⑦ 패턴 추가 (group 2 = chip 텍스트로 통일)
+     - threshold ≥2 → ≥1 (단일 매칭도 chip 화)
+       → 그러나 ⑤⑥⑦ 은 매우 구체적 phrasing 이라 false positive 낮고,
+         ①~④ 의 "1단계: ..." 류 본문 잔재는 길이/tail 제한으로 차단.
 
    답변 끝 600자만 검사 — 본문 중간 "(1) 첫째" 등을 제안으로
    오해하지 않도록 tail 제한. */
@@ -1512,6 +1522,14 @@ const SUGGESTION_PATTERNS = [
   /(?:^|[\s\n])(\d)\)\s+([^\n)]+?)(?=\s+\d\)|\n|$)/g,
   /(?:^|\n)\s*(\d)\.\s+([^\n]+)/g,
   /([①②③④⑤⑥⑦⑧⑨])\s+([^\n①-⑨]+?)(?=\s*[①-⑨]|$)/g,
+  // ⑤ "혹시 X 궁금하신가요?" / "혹시 X 알고 싶으세요?" — 한 LLM follow-up
+  //    group 1 = 앵커("혹시"), group 2 = chip 텍스트
+  /(혹시)\s+([^?？\n]{6,200}?)[\?？]/g,
+  // ⑥ "X에 대해 더 알고 싶으시면 …" — X 가 chip 텍스트. 시작 경계는
+  //    공백/줄바꿈/문장 시작으로 좁혀서 본문 중간 단어 침범 방지.
+  /(^|[\s\n。\.])([^\s.,()\n][^.,()\n]{4,200}?)에\s*(?:대해|관해)\s*더\s*알고\s*싶[으어]/g,
+  // ⑦ "관련 질문(으로는)?: X" / "관련된 문의: X"
+  /(관련(?:된|해서?)?\s*(?:질문|문의)(?:으로는?|은|이)?[:：])\s*([^\n]{4,200})/g,
 ];
 
 function extractNextActionSuggestions(answerText) {
@@ -1544,8 +1562,9 @@ function extractNextActionSuggestions(answerText) {
       }
       if (out.length >= 5) break;
     }
-    // 최소 2개 — 단일 매칭은 본문 잔재(예: "1단계: ...")일 가능성.
-    if (out.length >= 2) {
+    // [PR-O2, 2026-05-15] threshold ≥1. 단일 매칭도 chip 화.
+    // 본문 잔재 위험은 tail 600자 + length 4-200 + 중복 제거로 차단.
+    if (out.length >= 1) {
       // Cut the answer at the first match offset, then drop any
       // dangling colon-introducer line ("다음을 시도해보실 수 있습니다:")
       // that the LLM put right before the list and that would

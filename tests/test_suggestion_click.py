@@ -181,13 +181,19 @@ class JsContractTests(unittest.TestCase):
     def test_function_iterates_patterns(self):
         idx = self.js.index("function extractNextActionSuggestions")
         body = self.js[idx:idx + 1500]
-        # Must loop through patterns and return early on first ≥2 hit.
+        # Must loop through patterns and return early on first ≥1 hit.
+        # [PR-O2, 2026-05-15] 사이클 12: threshold ≥2 → ≥1 (단일 매칭도
+        # chip 화). 본문 잔재 위험은 tail 600자 + length 4-200 + 중복
+        # 제거 가 담당.
         self.assertIn("for (const re of SUGGESTION_PATTERNS", body,
             "must iterate patterns")
         self.assertIn("re.lastIndex = 0", body,
             "must reset lastIndex (regex with /g flag is stateful)")
-        self.assertIn(">= 2", body,
-            "must require ≥2 to accept a pattern's result")
+        self.assertIn(">= 1", body,
+            "must require ≥1 to accept a pattern's result")
+        # 옛 ≥2 게이트 잔재 차단 (PR-O2 의도된 완화).
+        self.assertNotIn("out.length >= 2", body,
+            "옛 ≥2 게이트가 남아있음 — PR-O2 가 ≥1 로 완화함")
 
     def test_ask_suggestion_function(self):
         self.assertIn("function askSuggestion", self.js)
