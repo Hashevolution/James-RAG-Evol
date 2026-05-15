@@ -1604,8 +1604,17 @@ async function approveWikiSave(btn) {
   if (!ok) return;
   btn.disabled = true;
   btn.style.opacity = '0.55';
+  // [PR-O3, 2026-05-15] 진행 spinner — chip 의 아이콘 span 자리를 mint
+  // 회전 링으로 교체. 응답 도착 시 ✓/✗ 전환. layout shift 없도록 in-place.
+  const iconEl  = btn.querySelector('span:first-child');
   const labelEl = btn.querySelector('span:last-child');
+  const origIconHTML = iconEl ? iconEl.outerHTML : '';
+  if (iconEl) {
+    iconEl.outerHTML = '<span class="chip-spinner" aria-hidden="true"></span>';
+  }
   if (labelEl) labelEl.textContent = '저장 중...';
+  // outerHTML 교체 후 reference 갱신 — 그래야 catch 에서 다시 복원 가능.
+  const spinnerEl = btn.querySelector('.chip-spinner');
   try {
     const r = await fetch(
       `${API}/admin/proposals/${encodeURIComponent(id)}/approve?api_key=${encodeURIComponent(getApiKey())}`,
@@ -1623,12 +1632,26 @@ async function approveWikiSave(btn) {
     if (data.success === false) {
       throw new Error(data.message || '저장 실패');
     }
+    if (spinnerEl) {
+      spinnerEl.outerHTML = '<span class="chip-result-ok" aria-hidden="true">✓</span>';
+    }
     if (labelEl) labelEl.textContent = '✓ 위키에 저장됨';
     btn.style.background = 'rgba(76,175,125,.18)';
     toast(`✅ 위키 저장 완료${data.details?.path ? ': ' + data.details.path : ''}`, 'success');
   } catch (e) {
+    // 실패 시 chip 을 재클릭 가능 상태로 복원 + 아이콘 원복.
     btn.disabled = false;
     btn.style.opacity = '';
+    if (spinnerEl) {
+      // 짧게 ✗ 보여주고 원래 아이콘으로 복원 (사용자가 즉시 재시도 가능).
+      spinnerEl.outerHTML = '<span class="chip-result-fail" aria-hidden="true">✗</span>';
+      const failEl = btn.querySelector('.chip-result-fail');
+      if (failEl) {
+        setTimeout(() => {
+          if (failEl.parentNode === btn) failEl.outerHTML = origIconHTML;
+        }, 1400);
+      }
+    }
     if (labelEl) labelEl.textContent = '이 자료를 위키로 저장 (장기 기억화)';
     toast(`저장 실패: ${e.message}`, 'error');
   }

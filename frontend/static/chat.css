@@ -901,5 +901,35 @@ main { display: flex; flex: 1; overflow: hidden; }
 @keyframes fadeIn  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @keyframes bounce  { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
+
+/* ── [PR-O3, 2026-05-15] 장기기억 저장 chip spinner ──
+ * 사이클 12 PR-O3: approveWikiSave chip 클릭 후 응답까지 사용자에게
+ * 진행 상태 노출. mint(--accent) 회전 링 → 응답 도착 시 ✓/✗ 전환.
+ * chip 의 첫 <span> (아이콘) 자리에 in-place 교체로 layout shift 없음. */
+.chip-spinner {
+  display: inline-block;
+  width: 0.95em;
+  height: 0.95em;
+  border: 2px solid rgba(107, 231, 208, 0.25);   /* --accent low-alpha */
+  border-top-color: var(--accent);                /* mint */
+  border-radius: 50%;
+  animation: chip-spin 0.7s linear infinite;
+  vertical-align: -2px;
+  margin-right: 6px;
+  box-sizing: border-box;
+}
+@keyframes chip-spin {
+  to { transform: rotate(360deg); }
+}
+.chip-result-ok {
+  color: var(--accent);
+  font-weight: 700;
+  margin-right: 6px;
+}
+.chip-result-fail {
+  color: var(--danger, #ef4444);
+  font-weight: 700;
+  margin-right: 6px;
+}
 </content>
 </invoke>
