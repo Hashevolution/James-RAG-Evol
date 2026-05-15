@@ -582,7 +582,13 @@
     var key = encodeURIComponent(apiKey || '');
     var url = API + '/admin/entities/' + encodeURIComponent(node.id) +
               '?api_key=' + key;
-    fetch(url, { credentials: 'same-origin' })
+    // [PR-O1, 2026-05-15] /admin/entities/<id> 는 admin.data 게이트라
+    // Bearer JWT 필수. snapshot fetch (fetchSnapshot) 와 동일 패턴.
+    // 헤더 누락 시 항상 403 — "요약 불러오지 못했습니다 403" 라이브 차단.
+    fetch(url, {
+      credentials: 'same-origin',
+      headers: { 'Authorization': 'Bearer ' + token },
+    })
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
