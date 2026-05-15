@@ -32,7 +32,7 @@ def rollback(wiki_root: Path, force: bool = False) -> int:
               "로 실행됐거나 이미 rollback 됐을 수 있음)", file=sys.stderr)
         return 2
 
-    print(f"[ROLLBACK] stop the server before continuing.")
+    print("[ROLLBACK] stop the server before continuing.")
     if not wiki_root.exists():
         print(f"[ROLLBACK] {wiki_root} 가 없음 — snapshot 으로 바로 이동")
         snap.rename(wiki_root)
@@ -53,7 +53,7 @@ def rollback(wiki_root: Path, force: bool = False) -> int:
     wiki_root.rename(trash)
     print(f"[ROLLBACK] move {snap} → {wiki_root}")
     snap.rename(wiki_root)
-    print(f"[ROLLBACK] done.")
+    print("[ROLLBACK] done.")
     print(f"           trash kept at {trash} for manual inspection. "
           f"remove when confident.")
     return 0
