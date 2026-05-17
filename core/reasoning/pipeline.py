@@ -39,14 +39,63 @@ def run_retrieval_pipeline(
     force_web_search: bool = False,   # [#A8-6] 사용자가 chip 클릭 시 True
     selected_model: str = "",         # [#A2 phase 2] catalog-validated user pick
 ) -> Dict[str, Any]:
-    # ── STEP 0.5b: query expansion [P5] ──────────────────
-    # core/query_expander.py (was core/jepa_adapter.py — 단순 동의어
-    # 사전, JEPA 메커니즘과 무관) 현재 비활성화 상태.
-    # → Phase 9에서 멀티모달 임베딩 확장 시 재활성화 예정
-    # → 현재는 원본 쿼리 그대로 사용 (0ms 오버헤드)
+    # ── STEP 0.5b: query rewrite (Phase 1 PR-2) ─────────
+    # Cognitive Layer §5.7.1 Query Rewriter. Replaces the historical
+    # no-op kept here since v0.1 (the slot was reserved for this).
+    # Opt-in via JAMES_ENABLE_QUERY_REWRITE=1 — default OFF so a stock
+    # JAMES install pays no extra LLM round-trip per query. When
+    # enabled, the rewriter goes through the Backend registry (L0)
+    # using the local Ollama path; failures fall back to the original
+    # query so the pipeline always proceeds.
     t_qexp = time.time()
-    expanded_query = safe_query   # 확장 없이 원본 사용
-    engine._elapsed(t_qexp, "STEP0.5 query_expand")
+    expanded_query = safe_query
+    rewrite_latency_ms = 0
+    try:
+        from core.retrieval.query_rewriter import get_query_rewriter
+        expanded_query, rewrite_latency_ms = get_query_rewriter().rewrite(safe_query)
+    except Exception as e:
+        engine._log("query_rewrite", e, user_role)
+    engine._elapsed(t_qexp, "STEP0.5 query_rewrite")
+
+    # Emit one trace step for the rewrite stage so the replay tool sees
+    # rewrite → retrieve → rerank → synth in chronological order. Use
+    # the existing "retrieve" stage with a descriptive applied_rule —
+    # adding a "rewrite" stage to ALLOWED_STAGES would require a §5.7.2
+    # schema change (architecture-labelled PR), which this PR avoids.
+    if expanded_query != safe_query:
+        try:
+            from core.reasoning.trace_schema import (
+                TraceStep, compute_inputs_hash, truncate_summary,
+                emit_trace_step,
+            )
+            _rewrite_extras: Dict[str, Any] = {
+                "original_query": safe_query[:200],
+                "rewritten_query": expanded_query[:200],
+            }
+            try:
+                from core.observability import get_trace_id
+                _tid = get_trace_id()
+                if _tid:
+                    _rewrite_extras["trace_id"] = _tid
+            except Exception:
+                pass
+            emit_trace_step(
+                TraceStep(
+                    stage="retrieve",
+                    backend_id="ollama_local",
+                    parent_step_id="",
+                    inputs_hash=compute_inputs_hash(safe_query),
+                    output_summary=truncate_summary(
+                        f"{safe_query} → {expanded_query}"
+                    ),
+                    applied_rule="reasoning.retrieve.query_rewrite",
+                    latency_ms=rewrite_latency_ms,
+                ),
+                user_role=user_role,
+                extras=_rewrite_extras,
+            )
+        except Exception as e:
+            engine._log("query_rewrite_trace", e, user_role)
 
     # ── Loop 상태 초기화 ─────────────────────────────────
     loop_state = {
