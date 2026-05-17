@@ -92,7 +92,64 @@ def run_retrieval_pipeline(
                     user_role=user_role,
                     source_type=source_type,
                 )
-            docs = docs[:5]
+            # ── Phase 1 PR-1: cross-encoder rerank ─────────
+            # orchestrator returns 8 docs by vector score; the reranker
+            # scores each (query, doc.text) pair and reorders. The
+            # original [:5] truncation now happens *inside* rerank()
+            # so the top-5 reflects rerank order, not vector order.
+            #
+            # JAMES_DISABLE_RERANK=1 or model load failure → rerank()
+            # returns docs[:top_k] unchanged → byte-identical to v0.3.0.
+            t_rerank = time.time()
+            pre_rerank_count = len(docs)
+            try:
+                from core.retrieval.rerank import get_reranker
+                docs = get_reranker().rerank(safe_query, docs, top_k=5)
+            except Exception as e:
+                engine._log("loop0_rerank", e, user_role)
+                docs = docs[:5]
+            rerank_ms = int((time.time() - t_rerank) * 1000)
+
+            # Emit one trace step for the rerank stage so the replay
+            # tool sees the cognitive-layer step alongside synth rows.
+            try:
+                from core.reasoning.trace_schema import (
+                    TraceStep, compute_inputs_hash, truncate_summary,
+                    emit_trace_step,
+                )
+                top = docs[0] if docs else {}
+                top_summary = (
+                    f"top: {(top.get('source') or top.get('name') or '?')[:60]} "
+                    f"rerank={top.get('rerank_score', float('nan')):.3f}"
+                    if docs else "no docs"
+                )
+                trace_extras: Dict[str, Any] = {
+                    "pre_rerank_count": pre_rerank_count,
+                    "post_rerank_count": len(docs),
+                }
+                try:
+                    from core.observability import get_trace_id
+                    _tid = get_trace_id()
+                    if _tid:
+                        trace_extras["trace_id"] = _tid
+                except Exception:
+                    pass
+                emit_trace_step(
+                    TraceStep(
+                        stage="rerank",
+                        backend_id="cross_encoder",
+                        parent_step_id="",
+                        inputs_hash=compute_inputs_hash(safe_query),
+                        output_summary=truncate_summary(top_summary),
+                        applied_rule="reasoning.rerank.cross_encoder",
+                        latency_ms=rerank_ms,
+                    ),
+                    user_role=user_role,
+                    extras=trace_extras,
+                )
+            except Exception as e:
+                engine._log("loop0_rerank_trace", e, user_role)
+
             loop_state["docs"] = docs
             doc_ctx, avg_score = engine.retrieval.build_doc_context(
                 [d.get("text", "") for d in docs],
