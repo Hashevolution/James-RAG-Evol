@@ -95,6 +95,16 @@ FEATURES: Dict[str, Feature] = {
         "웹 검색 fallback",
         "admin,manager",
     ),
+    # ── PR-O5 (cycle 12) — internal RAG gate ───────────────────
+    # external (= guest / 비로그인) 는 일상 챗만 허용하고 내부 자료
+    # (vector + graph) 는 차단. 차단 시 engine 이 retrieval pipeline
+    # 대신 handle_chat 으로 우회한다. admin 이 매트릭스 UI에서
+    # override 하면 external 도 internal RAG 통과 가능.
+    "query.internal_rag": _f(
+        "query.internal_rag",
+        "내부 자료(vector+graph) 기반 답변",
+        "admin,manager,employee",
+    ),
     # ── upload / ingestion ──────────────────────────────────────
     "upload.file": _f(
         "upload.file",

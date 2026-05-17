@@ -316,6 +316,26 @@ class ReasoningEngine:
         if mode == "coding":
             return handle_coding(self, safe_query, system_prompt, user_role, t_start, selected_model=picked_model)
 
+        # ── PR-O5 (cycle 12) — internal RAG feature gate ──────────
+        # external (= guest / 비로그인) 는 일상 챗만 허용. internal
+        # RAG (vector + graph) 차단 시 handle_chat 으로 우회 →
+        # LLM 의 일반 지식 + system_prompt + memory_context 만으로
+        # 답변. admin 이 권한 매트릭스에서 query.internal_rag 를
+        # external 에 override 하면 정상적인 retrieval 경로 통과.
+        try:
+            from core.policy_engine import default_engine as _policy_engine
+            _rag_dec = _policy_engine.can_use_feature(user_role, "query.internal_rag")
+            if not _rag_dec.allowed:
+                print(f"[POLICY] {user_role} blocked from internal_rag "
+                      f"({_rag_dec.reason}) → chat-only fallback")
+                return handle_chat(
+                    self, safe_query, system_prompt, memory_context, user_role, t_start,
+                    response_style=response_style, selected_model=picked_model,
+                    hist_ctx=hist_ctx,
+                )
+        except Exception as e:
+            self._log("internal_rag_gate", e, user_role)
+
         # ── Retrieval → core/reasoning/pipeline.py (#29 phase 3) ──
         # Lazy import to avoid circular dependency (pipeline imports
         # MAX_LOOP / LOOP_TIMEOUT / TIMING_TARGET_SEC from this module).
