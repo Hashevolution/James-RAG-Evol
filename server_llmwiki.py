@@ -3464,6 +3464,69 @@ async def admin_graph_relation_append(request: Request,
     return {"ok": True, "result": result}
 
 
+@app.put("/admin/graph/node",
+         summary="node attribute 편집 [cycle 12 PR-O6]")
+async def admin_graph_node_put(request: Request,
+                               role: str = Depends(get_role_from_request)):
+    """admin 만 호출 가능. ``JAMES_GRAPH_EDIT=1`` env opt-in.
+
+    Body JSON::
+
+        {
+          "api_key":   "...",
+          "entity_id": "e_org_anthropic",
+          "patch": {
+            "name":        "Anthropic, PBC",
+            "entity_type": "org",
+            "aliases":     ["앤스로픽", "Anthropic AI"],
+            "summary":     "AI safety company...",
+            "sensitivity": "normal"
+          }
+        }
+
+    Allowlisted fields only (NODE_EDITABLE_FIELDS in graph_editor.py).
+    ``entity_id`` is immutable and must match the existing row — admin
+    cannot repurpose an id by patching it.
+    """
+    _require_graph_edit_enabled()
+    body = await request.json()
+    _require_feature(body.get("api_key", ""), role, "admin.data")
+
+    entity_id = (body.get("entity_id") or "").strip()
+    patch     = body.get("patch") or {}
+    if not entity_id:
+        raise HTTPException(status_code=400, detail="entity_id required")
+    if not isinstance(patch, dict) or not patch:
+        raise HTTPException(status_code=400, detail="patch must be a non-empty dict")
+
+    from core.graph_node_editor import update_node_attributes
+    try:
+        result = update_node_attributes(
+            entity_id, patch,
+            wiki_generator=rag_engine.wiki_generator,
+        )
+    except ValueError as e:
+        msg = str(e)
+        # entity_id-not-found vs validation-error: both surface 400 but
+        # the not-found case is more naturally 404.
+        if msg.startswith("entity_id not found") or msg.startswith("entity file unreadable"):
+            raise HTTPException(status_code=404, detail=msg)
+        raise HTTPException(status_code=400, detail=msg)
+
+    _write_audit(
+        role, "/admin/graph/node [PUT]",
+        query=_truncate_audit_blob({
+            "entity_id":      entity_id,
+            "changed_fields": result["changed_fields"],
+        }),
+        answer=_truncate_audit_blob({
+            "path":           result["path"],
+            "changed_n":      len(result["changed_fields"]),
+        }),
+    )
+    return {"ok": True, "result": result}
+
+
 @app.delete("/admin/graph/relation",
             summary="relation 자체 제거 [Knowledge Cascade Phase E]")
 async def admin_graph_relation_delete(request: Request,

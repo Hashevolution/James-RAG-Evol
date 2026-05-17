@@ -50,6 +50,12 @@ from core.graph_editor import (
     read_relation,
     replace_relation_sources,
 )
+from core.graph_node_editor import (
+    NODE_ALLOWED_ENTITY_TYPES,
+    NODE_ALLOWED_SENSITIVITY,
+    NODE_EDITABLE_FIELDS,
+    update_node_attributes,
+)
 from core.relations_schema import (
     EXTRACT_SOURCE_ROLE,
     MANUAL_SOURCE_ROLE,
@@ -422,6 +428,200 @@ class PhaseC_CascadeIntegrationTests(unittest.TestCase):
             "old.pdf", "e_doc_old", joby_p.parent.parent,
         )
         self.assertEqual(orphans, [])
+
+
+# ── 6. update_node_attributes (PR-O6 cycle 12) ────────────────────
+
+
+def _single_entity(entity_type: str = "org"):
+    """Build a single-entity fixture for node-attribute tests.
+    Returns (root, wg_stub, entity_path, entity_id)."""
+    root = Path(tempfile.mkdtemp()) / "entity"
+    for t in NODE_ALLOWED_ENTITY_TYPES:
+        (root / t).mkdir(parents=True)
+    eid = f"e_{entity_type}_anthropic"
+    p = root / entity_type / "anthropic.md"
+    _write_entity(p, {
+        "entity_id":   eid,
+        "name":        "Anthropic",
+        "entity_type": entity_type,
+        "aliases":     ["Anthropic PBC"],
+        "summary":     "AI lab",
+        "sensitivity": "normal",
+    })
+    return root, _WgStub({eid: p}), p, eid
+
+
+class UpdateNodeAttributesTests(unittest.TestCase):
+    """PR-O6 — node attribute editor.
+
+    Pins immutability + allowlist + per-field validation + audit-diff
+    shape. UI wiring is a separate concern (PR-O6b frontend).
+    """
+
+    def test_happy_path_updates_name_and_summary(self):
+        _, wg, p, eid = _single_entity()
+        result = update_node_attributes(
+            eid,
+            {"name": "Anthropic, PBC", "summary": "AI safety company"},
+            wiki_generator=wg,
+        )
+        self.assertEqual(result["entity_id"], eid)
+        self.assertEqual(sorted(result["changed_fields"]),
+                         ["name", "summary"])
+        self.assertEqual(result["before"]["name"], "Anthropic")
+        self.assertEqual(result["after"]["name"], "Anthropic, PBC")
+        fm = _read_fm(p)
+        self.assertEqual(fm["name"], "Anthropic, PBC")
+        self.assertEqual(fm["summary"], "AI safety company")
+        self.assertIn("updated_at", fm,
+            "successful write must stamp updated_at")
+
+    def test_empty_patch_raises(self):
+        _, wg, _, eid = _single_entity()
+        with self.assertRaises(ValueError):
+            update_node_attributes(eid, {}, wiki_generator=wg)
+
+    def test_patch_with_only_unknown_fields_raises(self):
+        _, wg, _, eid = _single_entity()
+        with self.assertRaises(ValueError) as ctx:
+            update_node_attributes(
+                eid,
+                {"entity_id": "hacked", "relations": [], "random": 1},
+                wiki_generator=wg,
+            )
+        self.assertIn("no editable fields", str(ctx.exception))
+
+    def test_unknown_fields_silently_dropped_when_one_known_field_present(self):
+        # Mixed payload: a typo / smuggled relations key must NOT
+        # reach the frontmatter; the known field still writes.
+        _, wg, p, eid = _single_entity()
+        result = update_node_attributes(
+            eid,
+            {
+                "name":      "New Name",
+                "entity_id": "hacked-id",   # immutability invariant
+                "relations": [{"forged": True}],  # use relation API
+                "random":    "ignored",
+            },
+            wiki_generator=wg,
+        )
+        self.assertEqual(result["changed_fields"], ["name"])
+        fm = _read_fm(p)
+        self.assertEqual(fm["entity_id"], eid,
+            "entity_id must remain unchanged across patches")
+        # _single_entity fixture has no relations field; the forged
+        # payload must NOT cause one to appear.
+        self.assertNotIn("relations", fm,
+            "relations must not be added by node-attribute writes")
+
+    def test_invalid_entity_type_raises(self):
+        _, wg, _, eid = _single_entity()
+        with self.assertRaises(ValueError) as ctx:
+            update_node_attributes(
+                eid, {"entity_type": "alien"}, wiki_generator=wg,
+            )
+        self.assertIn("entity_type", str(ctx.exception))
+
+    def test_invalid_sensitivity_raises(self):
+        _, wg, _, eid = _single_entity()
+        with self.assertRaises(ValueError):
+            update_node_attributes(
+                eid, {"sensitivity": "ultra"}, wiki_generator=wg,
+            )
+        self.assertEqual(sorted(NODE_ALLOWED_SENSITIVITY),
+                         ["normal", "sensitive"])
+
+    def test_empty_name_raises(self):
+        _, wg, _, eid = _single_entity()
+        with self.assertRaises(ValueError):
+            update_node_attributes(
+                eid, {"name": "   "}, wiki_generator=wg,
+            )
+
+    def test_aliases_normalized(self):
+        """Whitespace, dedup, per-alias cap, total cap."""
+        _, wg, p, eid = _single_entity()
+        many = [f"alias-{i}" for i in range(30)]  # > limit 20
+        many.append("alias-0")                     # dup
+        many.append("  alias-extra  ")             # whitespace
+        many.append("")                             # empty
+        many.append(123)                            # type
+        update_node_attributes(
+            eid, {"aliases": many}, wiki_generator=wg,
+        )
+        fm = _read_fm(p)
+        aliases = fm["aliases"]
+        self.assertEqual(len(aliases), 20,
+            "alias list must be capped at 20 entries")
+        self.assertEqual(aliases[0], "alias-0")
+        self.assertNotIn("", aliases)
+        self.assertNotIn(123, aliases)
+        # alias-0 only once even though sent twice
+        self.assertEqual(aliases.count("alias-0"), 1)
+
+    def test_summary_truncated_at_4000(self):
+        _, wg, p, eid = _single_entity()
+        big = "x" * 5000
+        update_node_attributes(
+            eid, {"summary": big}, wiki_generator=wg,
+        )
+        fm = _read_fm(p)
+        self.assertEqual(len(fm["summary"]), 4000,
+            "summary must cap at 4000 chars")
+
+    def test_summary_null_clears(self):
+        _, wg, p, eid = _single_entity()
+        update_node_attributes(
+            eid, {"summary": None}, wiki_generator=wg,
+        )
+        fm = _read_fm(p)
+        self.assertEqual(fm["summary"], "")
+
+    def test_no_op_patch_returns_empty_changed_fields(self):
+        # Re-applying current values should yield no diff and no write
+        # — but the function still returns the expected shape for the
+        # audit log.
+        _, wg, _, eid = _single_entity()
+        result = update_node_attributes(
+            eid,
+            {"name": "Anthropic", "entity_type": "org"},
+            wiki_generator=wg,
+        )
+        self.assertEqual(result["changed_fields"], [])
+        self.assertEqual(result["before"], {})
+        self.assertEqual(result["after"], {})
+
+    def test_missing_entity_id_raises(self):
+        _, wg, _, _ = _single_entity()
+        with self.assertRaises(ValueError) as ctx:
+            update_node_attributes(
+                "e_org_nonexistent", {"name": "X"}, wiki_generator=wg,
+            )
+        self.assertIn("entity_id not found", str(ctx.exception))
+
+    def test_relations_array_preserved_across_patch(self):
+        # The handler must not nuke or rewrite the relations array even
+        # when the patch payload doesn't mention it.
+        _, wg, joby_p, _, (joby_id, _) = _two_entities_with_relation()
+        # Use the joby fixture for this — it has 1 relation.
+        update_node_attributes(
+            joby_id, {"summary": "Joby Aviation update"},
+            wiki_generator=wg,
+        )
+        fm = _read_fm(joby_p)
+        self.assertEqual(len(fm["relations"]), 1,
+            "node-attribute write must leave relations untouched")
+        self.assertEqual(fm["relations"][0]["target"], "NVIDIA")
+
+    def test_editable_field_allowlist_matches_doc(self):
+        # Pinned for future code reviewers: any change here must be
+        # paired with a doc/handover update because external callers
+        # (admin matrix UI) gate on this list.
+        self.assertEqual(
+            sorted(NODE_EDITABLE_FIELDS),
+            ["aliases", "entity_type", "name", "sensitivity", "summary"],
+        )
 
 
 if __name__ == "__main__":

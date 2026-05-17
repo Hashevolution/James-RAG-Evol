@@ -476,6 +476,12 @@ def delete_relation(
     }
 
 
+# Node-level attribute editor (PR-O6) lives in ``core/graph_node_editor.py``
+# so this module stays focused on edge-level mutations under the 20 KB
+# rule #5 gate. The two modules share the file I/O helpers above via
+# direct import.
+
+
 # ─────────────────────────────────────────────────────────────────
 # Env flag helper (디자인 §7 — JAMES_GRAPH_EDIT=1 opt-in)
 # ─────────────────────────────────────────────────────────────────

@@ -1,0 +1,211 @@
+"""PROJECT JAMES — Node attribute editor (cycle 12 PR-O6).
+
+Companion to ``core/graph_editor.py``. Edge-level mutations
+(PUT/POST/DELETE relation) shipped in Knowledge Cascade Phase E
+(PR #271 / #273). PR-O6 adds the node-level path so admin can rename
+an entity, refine its summary, add aliases (matching surface), correct
+entity_type, or toggle sensitivity — all from the graph editor UI
+without dropping to chat-based wiki editing.
+
+The two modules live separately so each stays under the CLAUDE.md
+rule #5 20 KB gate; they share file-I/O helpers via direct import.
+
+Immutability rules (handover §3 항목 ⑥-b):
+  - ``entity_id`` NEVER changes. It's the wiki's stable key; relations
+    on other entities point at it. Admin who wants a "new entity"
+    creates a fresh file via the existing wiki-create surface, not by
+    repurposing an existing entity_id.
+  - relations / sources are edge-level; the relation API in
+    ``graph_editor.py`` mutates them. ``update_node_attributes``
+    silently ignores those keys to keep the blast radius bounded.
+
+Trust model:
+  - admin only (server endpoint applies ``admin.data`` feature gate
+    + ``JAMES_GRAPH_EDIT=1`` env flag opt-in).
+  - audit log captures before+after dicts for the changed_fields only.
+"""
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Any, Dict, List
+
+# Share the file-I/O helpers with the relation editor — both modules
+# read/write the same entity .md files via the same yaml frontmatter
+# convention. A second copy of these helpers would invite drift.
+from core.graph_editor import _load_entity_by_id, _write_entity
+
+
+# Allowlist of frontmatter fields ``update_node_attributes`` may touch.
+# Anything else in the patch payload is silently dropped — a typo at
+# the call site cannot accidentally write a new top-level field that
+# downstream code doesn't know about.
+NODE_EDITABLE_FIELDS = frozenset({
+    "name",          # human-facing label
+    "entity_type",   # one of NODE_ALLOWED_ENTITY_TYPES
+    "aliases",       # list[str] — alternative names for matching
+    "summary",       # description text shown in node-detail panel
+    "sensitivity",   # "normal" | "sensitive" (mask_sensitive gate)
+})
+
+NODE_ALLOWED_ENTITY_TYPES = frozenset({
+    "person", "org", "concept", "document",
+})
+
+NODE_ALLOWED_SENSITIVITY = frozenset({"normal", "sensitive"})
+
+# Per-field caps. Wide enough for realistic wiki use; tight enough that
+# a runaway client payload can't blow the frontmatter.
+_NAME_CAP    = 200
+_ALIAS_CAP   = 80     # per alias
+_ALIAS_LIMIT = 20     # max aliases per entity
+_SUMMARY_CAP = 4000
+
+
+def _normalize_aliases(raw) -> List[str]:
+    """Unique non-empty alias strings, each ≤ _ALIAS_CAP chars, bounded
+    to _ALIAS_LIMIT total. Preserves insertion order so admin controls
+    the UI display sequence.
+    """
+    if not isinstance(raw, list):
+        return []
+    out: List[str] = []
+    seen: set = set()
+    for a in raw:
+        if not isinstance(a, str):
+            continue
+        s = a.strip()[:_ALIAS_CAP]
+        if not s or s in seen:
+            continue
+        seen.add(s)
+        out.append(s)
+        if len(out) >= _ALIAS_LIMIT:
+            break
+    return out
+
+
+def update_node_attributes(
+    entity_id: str,
+    patch: Dict[str, Any],
+    *,
+    wiki_generator,
+) -> Dict[str, Any]:
+    """PUT-style node attribute update. Allowlisted fields only.
+
+    Returns audit-friendly diff::
+
+        {
+          "entity_id":      "...",
+          "path":           "wiki/.../foo.md",
+          "before":         {"name": "...", ...},   # only changed fields
+          "after":          {"name": "...", ...},
+          "changed_fields": ["name", "summary"],
+        }
+
+    Raises:
+      ValueError — entity_id unknown, patch contains an invalid
+                   entity_type / sensitivity value, or patch is empty
+                   after filtering.
+    """
+    if not isinstance(patch, dict) or not patch:
+        raise ValueError("patch must be a non-empty dict")
+
+    # Filter to allowlisted fields first so a malformed payload's other
+    # keys can't reach the validation layer.
+    filtered: Dict[str, Any] = {}
+    for k in NODE_EDITABLE_FIELDS:
+        if k in patch:
+            filtered[k] = patch[k]
+    if not filtered:
+        raise ValueError(
+            f"patch contains no editable fields; "
+            f"allowed: {sorted(NODE_EDITABLE_FIELDS)}"
+        )
+
+    # Per-field validation + normalisation. Validation errors raise
+    # ValueError so the endpoint can turn them into 400.
+    cleaned: Dict[str, Any] = {}
+    if "name" in filtered:
+        name = filtered["name"]
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("name must be a non-empty string")
+        cleaned["name"] = name.strip()[:_NAME_CAP]
+    if "entity_type" in filtered:
+        et = filtered["entity_type"]
+        if et not in NODE_ALLOWED_ENTITY_TYPES:
+            raise ValueError(
+                f"entity_type must be one of "
+                f"{sorted(NODE_ALLOWED_ENTITY_TYPES)}; got {et!r}"
+            )
+        cleaned["entity_type"] = et
+    if "aliases" in filtered:
+        cleaned["aliases"] = _normalize_aliases(filtered["aliases"])
+    if "summary" in filtered:
+        summary = filtered["summary"]
+        if summary is None:
+            cleaned["summary"] = ""
+        elif not isinstance(summary, str):
+            raise ValueError("summary must be a string (or null to clear)")
+        else:
+            cleaned["summary"] = summary[:_SUMMARY_CAP]
+    if "sensitivity" in filtered:
+        sv = filtered["sensitivity"]
+        if sv not in NODE_ALLOWED_SENSITIVITY:
+            raise ValueError(
+                f"sensitivity must be one of "
+                f"{sorted(NODE_ALLOWED_SENSITIVITY)}; got {sv!r}"
+            )
+        cleaned["sensitivity"] = sv
+
+    # Load + diff + write.
+    path, fm, body = _load_entity_by_id(entity_id, wiki_generator)
+
+    before: Dict[str, Any] = {}
+    after:  Dict[str, Any] = {}
+    changed: List[str] = []
+    for k, new_val in cleaned.items():
+        old_val = fm.get(k)
+        if old_val == new_val:
+            continue
+        before[k] = old_val
+        after[k] = new_val
+        fm[k] = new_val
+        changed.append(k)
+
+    if not changed:
+        # No-op write — return the diff shape with empty changed_fields
+        # so the audit log can record "admin clicked save with no edits".
+        return {
+            "entity_id":      entity_id,
+            "path":           str(path),
+            "before":         {},
+            "after":          {},
+            "changed_fields": [],
+        }
+
+    # Touch updated_at so cascade / monitoring picks up the change.
+    fm["updated_at"] = datetime.now().isoformat()
+    _write_entity(path, fm, body)
+
+    # Refresh wiki_generator index so subsequent reads see the new name.
+    # Best-effort — a refresh failure must not invalidate the on-disk
+    # write that already succeeded.
+    try:
+        wiki_generator.refresh_entity_map()
+    except Exception:
+        pass
+
+    return {
+        "entity_id":      entity_id,
+        "path":           str(path),
+        "before":         before,
+        "after":          after,
+        "changed_fields": changed,
+    }
+
+
+__all__ = [
+    "NODE_EDITABLE_FIELDS",
+    "NODE_ALLOWED_ENTITY_TYPES",
+    "NODE_ALLOWED_SENSITIVITY",
+    "update_node_attributes",
+]
