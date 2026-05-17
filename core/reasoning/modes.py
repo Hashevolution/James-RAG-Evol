@@ -21,6 +21,8 @@ import re
 import time
 from typing import Any, Dict
 
+from core.reasoning.trace_helpers import trace_synth_call
+
 
 # [Axis 6 user feedback, 2026-05-12] Prepended to the LLM prompt
 # whenever previous-turn context exists. Suppresses the canned
@@ -88,10 +90,16 @@ def handle_chat(
             mem_prefix = f"{memory_context}\n\n"
         else:
             mem_prefix = ""
-        raw_answer = engine.llm.call_gemma(
-            f"{sys_prefix}{mem_prefix}{rule_txt}\n질문: {safe_query}\n\n답변:",
-            use_cache=True, timeout=60, max_tokens=style.max_tokens,
-            model=selected_model or None,
+        _chat_prompt = f"{sys_prefix}{mem_prefix}{rule_txt}\n질문: {safe_query}\n\n답변:"
+        raw_answer = trace_synth_call(
+            lambda: engine.llm.call_gemma(
+                _chat_prompt,
+                use_cache=True, timeout=60, max_tokens=style.max_tokens,
+                model=selected_model or None,
+            ),
+            _chat_prompt,
+            applied_rule="reasoning.synth.chat",
+            user_role=user_role,
         )
         # Preserve paragraph breaks (\n\n) — user feedback wants
         # natural 문단 separation, not a single block of text.
@@ -248,8 +256,15 @@ def handle_wiki_edit(
             ' "entity_type": "person|org|concept|document"}\n\n'
             "JSON만 출력:"
         )
-        raw = engine.llm.call_gemma(parse_prompt, timeout=30, use_cache=False,
-                                    model=selected_model or None)
+        raw = trace_synth_call(
+            lambda: engine.llm.call_gemma(
+                parse_prompt, timeout=30, use_cache=False,
+                model=selected_model or None,
+            ),
+            parse_prompt,
+            applied_rule="reasoning.synth.wiki_edit_parse",
+            user_role=user_role,
+        )
 
         # JSON 파싱
         import json as _json
@@ -295,9 +310,14 @@ def handle_wiki_edit(
                     f"[현재 내용]\n{old_content[:1200]}\n\n"
                     "수정된 전체 내용만 출력 (frontmatter 포함):"
                 )
-                new_content = engine.llm.call_gemma(
-                    new_prompt, timeout=90, use_cache=False,
-                    model=selected_model or None,
+                new_content = trace_synth_call(
+                    lambda: engine.llm.call_gemma(
+                        new_prompt, timeout=90, use_cache=False,
+                        model=selected_model or None,
+                    ),
+                    new_prompt,
+                    applied_rule="reasoning.synth.wiki_edit_update",
+                    user_role=user_role,
                 )
                 if new_content:
                     ok, msg = update_entity(target, new_content, user_role)
@@ -411,11 +431,19 @@ def handle_self_evolve(
 
                 # LLM에 세부 분석 요청
                 sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
-                analysis = engine.llm.call_gemma(
+                _folder_prompt = (
                     f"{sys_prefix}다음 폴더 구조를 보고 각 파일의 역할과 "
-                    f"전체 아키텍처를 설명해줘:\n\n{folder_report[:2000]}\n\n설명:",
-                    timeout=120, use_cache=False,
-                    model=selected_model or None,
+                    f"전체 아키텍처를 설명해줘:\n\n{folder_report[:2000]}\n\n설명:"
+                )
+                analysis = trace_synth_call(
+                    lambda: engine.llm.call_gemma(
+                        _folder_prompt,
+                        timeout=120, use_cache=False,
+                        model=selected_model or None,
+                    ),
+                    _folder_prompt,
+                    applied_rule="reasoning.synth.self_evolve_folder",
+                    user_role=user_role,
                 )
                 answer = folder_report
                 if analysis:
@@ -428,11 +456,19 @@ def handle_self_evolve(
             fname   = file_match.group(1)
             content = get_file_content(fname)
             sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
-            analysis = engine.llm.call_gemma(
+            _file_prompt = (
                 f"{sys_prefix}아래 코드를 분석하고 개선점을 제안해줘:\n\n"
-                f"파일: {fname}\n```python\n{content[:2000]}\n```\n\n분석:",
-                timeout=120, use_cache=False,
-                model=selected_model or None,
+                f"파일: {fname}\n```python\n{content[:2000]}\n```\n\n분석:"
+            )
+            analysis = trace_synth_call(
+                lambda: engine.llm.call_gemma(
+                    _file_prompt,
+                    timeout=120, use_cache=False,
+                    model=selected_model or None,
+                ),
+                _file_prompt,
+                applied_rule="reasoning.synth.self_evolve_file",
+                user_role=user_role,
             )
             answer = (
                 f"📄 **{fname}** 분석\n\n"
@@ -466,11 +502,19 @@ def handle_self_evolve(
 
             if safe_query and ("개선" in safe_query or "분석" in safe_query):
                 sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
-                extra = engine.llm.call_gemma(
+                _improve_prompt = (
                     f"{sys_prefix}PROJECT JAMES의 현재 구조를 바탕으로, "
-                    f"다음 관점에서 개선 제안을 해줘: {safe_query}\n\n제안:",
-                    timeout=90, use_cache=False,
-                    model=selected_model or None,
+                    f"다음 관점에서 개선 제안을 해줘: {safe_query}\n\n제안:"
+                )
+                extra = trace_synth_call(
+                    lambda: engine.llm.call_gemma(
+                        _improve_prompt,
+                        timeout=90, use_cache=False,
+                        model=selected_model or None,
+                    ),
+                    _improve_prompt,
+                    applied_rule="reasoning.synth.self_evolve_improve",
+                    user_role=user_role,
                 )
                 if extra:
                     answer += f"\n\n💡 **개선 제안:**\n{extra}"
@@ -536,10 +580,16 @@ def handle_coding(
                   query_len=len(safe_query))
         try:
             sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
-            answer = engine.llm.call_gemma(
-                f"{sys_prefix}코딩 질문: {safe_query}\n\n답변:",
-                use_cache=True, timeout=120,
-                model=selected_model,
+            _coding_user_prompt = f"{sys_prefix}코딩 질문: {safe_query}\n\n답변:"
+            answer = trace_synth_call(
+                lambda: engine.llm.call_gemma(
+                    _coding_user_prompt,
+                    use_cache=True, timeout=120,
+                    model=selected_model,
+                ),
+                _coding_user_prompt,
+                applied_rule="reasoning.synth.coding_user_pick",
+                user_role=user_role,
             )
             log_stage("coding_user_pick_done",
                       latency_ms=int((time.time() - t_code) * 1000),
@@ -573,9 +623,15 @@ def handle_coding(
             # Fallback: default GEMMA_MODEL via the engine's RouterWrapper
             try:
                 sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
-                answer = engine.llm.call_gemma(
-                    f"{sys_prefix}코딩 질문: {safe_query}\n\n답변:",
-                    use_cache=True, timeout=90,
+                _coding_fallback_prompt = f"{sys_prefix}코딩 질문: {safe_query}\n\n답변:"
+                answer = trace_synth_call(
+                    lambda: engine.llm.call_gemma(
+                        _coding_fallback_prompt,
+                        use_cache=True, timeout=90,
+                    ),
+                    _coding_fallback_prompt,
+                    applied_rule="reasoning.synth.coding_fallback",
+                    user_role=user_role,
                 )
                 log_stage("coding_fallback_done",
                           latency_ms=int((time.time() - t_code) * 1000),

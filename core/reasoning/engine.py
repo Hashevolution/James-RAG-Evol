@@ -23,6 +23,7 @@ from core.retrieval_engine  import RetrievalEngine
 from core.security_layer    import (
     SecurityLayer,
 )
+from core.reasoning.trace_helpers import trace_synth_call
 from core.reasoning.modes import (
     handle_chat,
     handle_meta,
@@ -423,10 +424,18 @@ class ReasoningEngine:
                 )
 
         try:
-            answer = self.llm.call_gemma(
-                prompt, timeout=120, use_cache=True,
-                max_tokens=style.max_tokens,
-                model=selected_model or None,
+            # L1 wiring: trace_synth_call wraps so the canonical RAG
+            # synthesis emits one reasoning audit row. Behaviour is
+            # byte-identical — the helper forwards call_gemma's return
+            # value untouched.
+            answer = trace_synth_call(
+                lambda: self.llm.call_gemma(
+                    prompt, timeout=120, use_cache=True,
+                    max_tokens=style.max_tokens,
+                    model=selected_model or None,
+                ),
+                prompt,
+                applied_rule="reasoning.synth.rag",
             )
             if not answer or any(answer.startswith(p) for p in self._LLM_ERROR_PREFIXES):
                 return "답변 생성에 실패했습니다."

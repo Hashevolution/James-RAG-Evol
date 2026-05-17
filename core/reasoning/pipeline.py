@@ -23,6 +23,7 @@ import time
 from typing import Any, Dict
 
 from core.reasoning.engine import MAX_LOOP, LOOP_TIMEOUT, TIMING_TARGET_SEC
+from core.reasoning.trace_helpers import trace_synth_call
 from core.security_layer import filter_answer_by_role
 from core.observability import log_stage
 
@@ -328,8 +329,14 @@ def run_retrieval_pipeline(
                                     f"아래 검색 결과를 한국어로 200자 이내 핵심 요약:\n"
                                     f"{web_context[:1000]}\n\n요약:"
                                 )
-                                summary = engine.llm.call_gemma(
-                                    summary_prompt, timeout=30, use_cache=False, max_tokens=300
+                                # L1 wiring — one audit row per LLM round-trip
+                                summary = trace_synth_call(
+                                    lambda: engine.llm.call_gemma(
+                                        summary_prompt, timeout=30, use_cache=False, max_tokens=300,
+                                    ),
+                                    summary_prompt,
+                                    applied_rule="reasoning.synth.web_summary",
+                                    user_role=user_role,
                                 )
                                 if summary:
                                     from tools.self.evo_analyzer import (
@@ -388,20 +395,32 @@ def run_retrieval_pipeline(
             _korean = sum(1 for c in safe_query if "가" <= c <= "힣")
             _is_ko = _korean >= max(1, len(safe_query) * 0.2)
             _rule = _style.rule_text_ko if _is_ko else _style.rule_text_en
-            answer_raw = engine.llm.call_gemma(
-                f"{sys_prefix}"
-                f"{'[웹 검색 결과 포함]' if web_context else ''}"
-                f"\n{_rule}\n질문: {safe_query}\n\n답변:",
-                use_cache=(not web_context), timeout=90,
-                max_tokens=_style.max_tokens,
-                model=selected_model or None,
-            ) if not combined_context.strip() else engine._generate_answer(
-                safe_query,
-                combined_context,
-                system_prompt,
-                response_style=response_style,
-                selected_model=selected_model,
-            )
+            # Two-arm decision: no internal context → direct LLM with the
+            # web-fallback prompt; otherwise the canonical RAG path via
+            # _generate_answer (which itself emits a trace row).
+            if not combined_context.strip():
+                _web_fallback_prompt = (
+                    f"{sys_prefix}"
+                    f"{'[웹 검색 결과 포함]' if web_context else ''}"
+                    f"\n{_rule}\n질문: {safe_query}\n\n답변:"
+                )
+                answer_raw = trace_synth_call(
+                    lambda: engine.llm.call_gemma(
+                        _web_fallback_prompt,
+                        use_cache=(not web_context), timeout=90,
+                        max_tokens=_style.max_tokens,
+                        model=selected_model or None,
+                    ),
+                    _web_fallback_prompt,
+                    applied_rule="reasoning.synth.web_fallback",
+                    user_role=user_role,
+                )
+            else:
+                answer_raw = engine._generate_answer(
+                    safe_query, combined_context, system_prompt,
+                    response_style=response_style,
+                    selected_model=selected_model,
+                )
             answer_raw = answer_raw if answer_raw else ""
 
             if answer_raw and not any(
@@ -424,13 +443,21 @@ def run_retrieval_pipeline(
             _korean_r = sum(1 for c in safe_query if "가" <= c <= "힣")
             _is_ko_r = _korean_r >= max(1, len(safe_query) * 0.2)
             _rule_r = _style_retry.rule_text_ko if _is_ko_r else _style_retry.rule_text_en
-            retry = engine.llm.call_gemma(
+            _retry_prompt = (
                 f"{sys_prefix}{_rule_r}\n"
                 f"질문: {safe_query}\n\n"
                 "(내부 자료에는 직접 언급이 없습니다. "
-                "위 가이드를 따라 자연스럽게 답하세요.)\n답변:",
-                use_cache=False, timeout=60, max_tokens=_style_retry.max_tokens,
-                model=selected_model or None,
+                "위 가이드를 따라 자연스럽게 답하세요.)\n답변:"
+            )
+            retry = trace_synth_call(
+                lambda: engine.llm.call_gemma(
+                    _retry_prompt,
+                    use_cache=False, timeout=60, max_tokens=_style_retry.max_tokens,
+                    model=selected_model or None,
+                ),
+                _retry_prompt,
+                applied_rule="reasoning.synth.retry_no_info",
+                user_role=user_role,
             )
             if retry and not any(retry.startswith(p) for p in engine._LLM_ERROR_PREFIXES):
                 print("[ROUTER] post_check → 재시도 (persona 포함)")
