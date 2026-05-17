@@ -260,6 +260,24 @@ def generate_answer(
         ),
     )
 
+    # Phase 2 PR-5 — optional reflection pass.
+    # ReflectionLoop is opt-in via JAMES_ENABLE_REFLECT=1; default OFF
+    # so a stock JAMES install pays no extra LLM round-trip per query.
+    # When enabled, the loop runs critique + revise on the final answer
+    # and returns the revised text; any failure falls back to ``answer``
+    # unchanged so the synth contract is preserved end-to-end.
+    try:
+        from core.reasoning.reflect import get_reflection_loop
+        reflected = get_reflection_loop().reflect(
+            safe_query, answer, user_role=user_role
+        )
+        if reflected and reflected != answer and not any(
+            reflected.startswith(p) for p in engine._LLM_ERROR_PREFIXES
+        ):
+            answer = reflected
+    except Exception as e:
+        engine._log("reflect_loop", e, user_role)
+
     out.answer = answer
     return out
 
