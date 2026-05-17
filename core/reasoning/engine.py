@@ -154,10 +154,21 @@ class ReasoningEngine:
             session_id = kwargs.get("session_id", "default")
             hist_ctx   = store.get_history_context(session_id, limit=5)
 
-            # [P7-4] 장기: 이전 세션 요약 (최근 2개)
-            long_ctx = store.get_long_term_context(
-                current_session_id=session_id, limit=2
-            )
+            # [P7-4 + PR-O4 2026-05-17] 장기 요약은 *연속* 세션에만 주입.
+            # 새 세션의 첫 turn (hist_ctx == "") 에서는 이전 세션의 분석
+            # 내용 (long_ctx 의 "[이전 대화 기억]" 블록) 을 제외한다 —
+            # persona / preferences 는 system_prompt / pref_context 로
+            # 따로 흘러가므로 사용자 정체성은 보존된다.
+            # N-3 사용자 차단 회복 (handover §3 사이클 1): PR #257 의
+            # continuity-directive 게이트만으로는 부족했음 (long_ctx 자체
+            # 가 system prompt 의 배경 정보로 들어가, LLM 이 directive
+            # 없이도 prior 분석을 끌어왔음).
+            if hist_ctx:
+                long_ctx = store.get_long_term_context(
+                    current_session_id=session_id, limit=2
+                )
+            else:
+                long_ctx = ""
 
             # 우선순위: 장기기억 → 단기기억 → 선호도
             parts = [p for p in [long_ctx, hist_ctx, pref_context] if p]
