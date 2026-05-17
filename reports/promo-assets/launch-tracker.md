@@ -29,7 +29,11 @@
 | 2026-05-13 | Hashnode cross-post of intro article (`ragllm.hashnode.dev`) | ✅ Live ([URL](https://ragllm.hashnode.dev/building-a-mini-palantir-a-local-graph-rag-engine-with-ontology-security-and-self-evolution-alpha)) |
 | 2026-05-16 | awesome-llm-apps PR #804 closed by curator | ❌ Closed (link-only PRs not accepted; full tutorial folder with self-contained runnable code required) |
 | 2026-05-16 | **First external technical exchange — Ali Afana (Provia founder, dev.to Featured)** | ✅ Two-way collaboration discussion: 83-item injection regression suite spin-out + v0.3 Gemma 4 variant benchmark (E4B / 26B MoE / 31B Dense on STEP 7 corpus) |
+| 2026-05-16 | LinkedIn DM second-turn reply to Ali | ✅ Sent — v0.3.0 release acknowledged, swap-as-benchmark commitment, 83-item suite spin-out task split, temperature-0.3 cap pushback (new ablation lead) |
+| 2026-05-16 | dev.to substantive comment on Ali's article (`/alimafana/...refused-1j18`) | ✅ Posted — Scenario 2 white-shirt counterfactual cited as cleanest evidence; typed graph_path framing positioned at the "no ambiguity to resolve" end of Ali's spectrum; cross-link to PROJECT JAMES GitHub |
 | 2026-05-17 | **v0.3.0 — Platform Skeleton released on main** | ✅ Axis 6 second-user gate cleared 2026-05-13. Knowledge Cascade Phase A→E + Cognitive Middleware Layer architecture. Plugin API slipped to v0.3.x or v0.4 (per CHANGELOG note) |
+| 2026-05-17 | Cognitive Middleware Layer Phase 2 already shipping post-v0.3.0 | ✅ Verification engine (PR #290), planner / task decomposition (PR #297), tool router (PR #295) merged on main. Layer is now code, not architecture-only |
+| 2026-05-17 | Author dev.to Gemma 4 article — self-reply with bidirectional cross-reference to Ali's article | 🟡 Comment body drafted (see archive note below); awaiting author publication |
 
 ---
 
@@ -108,6 +112,20 @@ Per-judge tie-break is by reaction count, so post-publication actions matter:
 
 Asset archive: `reports/promo-assets/devto-gemma4-challenge.md`
 
+### Pending author-publication actions
+
+The following items are drafted and waiting for the author to publish from
+their own account (not automatable from this session):
+
+- **Author-reply on the Gemma 4 dev.to article** (bidirectional cross-reference
+  to Ali's MoE-vs-Dense piece). Body cites Ali's hypothesis as a testable
+  prediction on Graph-RAG typed-path inputs; commits to running it once the
+  Plugin / LLM Provider API lands in v0.3.x. Drafted 2026-05-17.
+- **dev.to intro + Gemma 4 article body sweep** — "v0.2.0 alpha" lines could
+  be refreshed to "v0.3.0 released 2026-05-17, Cognitive Layer Phase 2 in
+  progress" for consistency with current main state. Optional polish, no
+  freshness penalty (dev.to does not down-rank edited posts).
+
 ---
 
 ## OpenSSF criterion auto-promotions (post-merge)
@@ -153,6 +171,8 @@ This launch tracker file is considered complete when all of the following are tr
 - [ ] OpenSSF Tiered % updated post-merge (target ≥ 115%)
 - [x] **Second-user real-data corpus volunteer engaged (v0.2 → v0.3 gate cleared 2026-05-13)**
 - [x] **First substantive external technical exchange (Ali Afana / Provia, 2026-05-16)**
+- [x] **Two-way exchange formalised (LinkedIn second turn + dev.to substantive comment, 2026-05-16)**
+- [ ] Author-reply on Gemma 4 article with bidirectional cross-reference (drafted, awaiting publish)
 - [ ] Gemma 4 Challenge result decided (2026-06-04)
 
 Append a final "Phase 5 outcomes" section once the above are satisfied, then archive this file under `reports/promo-assets/archive/v0.2.0-launch-tracker.md` and reset for v0.3 cycle.
