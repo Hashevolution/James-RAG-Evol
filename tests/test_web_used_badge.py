@@ -40,8 +40,8 @@ class PipelineReturnShapeTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        from core.reasoning import pipeline
-        cls.src = inspect.getsource(pipeline)
+        from tests._pipeline_src import pipeline_source
+        cls.src = pipeline_source()
 
     def test_web_used_in_return(self):
         # Locate the final return dict (last `return {` in the module).
@@ -52,24 +52,32 @@ class PipelineReturnShapeTests(unittest.TestCase):
             "pipeline result must expose web_sources list")
 
     def test_web_results_lifted_to_outer_scope(self):
-        # web_results = [] must be declared *before* `if low_relevance:`
-        # so it remains accessible at return time. Verify by ordering.
-        idx_init = self.src.index("web_results: list = []")
-        idx_if   = self.src.index("if low_relevance:", idx_init)
-        self.assertLess(idx_init, idx_if,
-            "web_results must be initialised before the low_relevance branch")
+        # Post-split (chore PR): web_results is a field on the
+        # AnswerBlock dataclass in pipeline_synth.py with a
+        # default_factory=list — guaranteed bound at AnswerBlock()
+        # construction time, which is the first line of generate_answer
+        # (before any try / branching). Equivalent contract to the
+        # pre-split "init before the if low_relevance branch" pattern.
+        self.assertIn("class AnswerBlock", self.src)
+        self.assertIn("web_results:", self.src)
+        self.assertIn("field(default_factory=list)", self.src,
+            "web_results must default to [] via dataclass field factory "
+            "so it is bound before generate_answer's try block can fail")
 
     def test_web_results_declared_outside_try(self):
-        # [hotfix] web_results: list = [] must be declared BEFORE the
-        # outer `try:` so it stays bound even if the try fast-fails
-        # (e.g. import error inside). The user reported a 500 with
-        # UnboundLocalError because the init was inside the try.
-        try_idx  = self.src.index("\n    try:\n        sys_prefix = ")
-        init_idx = self.src.index("web_results: list = []")
+        # [hotfix preserved across split] AnswerBlock() is constructed
+        # at line 1 of generate_answer's body, before ``try:`` — so
+        # ``out.web_results`` is bound even if every line inside try
+        # raises. The pre-split version used a top-level ``web_results:
+        # list = []`` for the same purpose; the dataclass default
+        # encodes the invariant in the type.
+        gen_idx = self.src.index("def generate_answer(")
+        try_idx = self.src.index("\n    try:\n        sys_prefix = ", gen_idx)
+        init_idx = self.src.index("out = AnswerBlock()", gen_idx)
         self.assertLess(init_idx, try_idx,
-            "web_results init must come BEFORE the try: block — otherwise "
-            "any exception before the init line leaves the variable unbound, "
-            "and the return-side `bool(web_results)` raises UnboundLocalError")
+            "AnswerBlock() must be constructed BEFORE the try: block — "
+            "otherwise any exception before that line leaves out.web_results "
+            "unbound and the caller's `bool(web_results)` raises UnboundLocalError")
 
     def test_web_sources_format_url_title(self):
         # Each entry: {"title": ..., "url": ..., "engine": ...}

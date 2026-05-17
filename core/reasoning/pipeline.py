@@ -1,18 +1,26 @@
-"""RAG retrieval pipeline extracted from ReasoningEngine.query() (#29 phase 3/3).
+"""RAG retrieval pipeline — orchestrator only.
 
-Same composition pattern as core/reasoning/modes.py: a free function taking
-the engine instance and the closure variables it needs. Body code is
-byte-identical to the original in-method block (lines 243-584 of post-phase-2
-engine.py) except `self.X` → `engine.X` and the trailing return assembly
-moved out of the surrounding query() context.
+Originally extracted from ReasoningEngine.query() (#29 phase 3/3). After
+Phase 1 PR-1 (reranker) + PR-2 (query rewriter) the file grew past the
+20 KB CLAUDE.md rule #5 gate, so the loop bodies and the synth block
+moved out:
+
+  * Loop 0/1/2 step bodies → ``core/reasoning/pipeline_loops.py``
+  * LLM answer-generation block (web fallback / retry / canonical RAG)
+    → ``core/reasoning/pipeline_synth.py``
+
+This module keeps the orchestration: STEP 0.5b query rewrite, loop
+dispatch, post-loop context combine + unified_score, post_check +
+sources header, delegate-to-synth, output filter, Memory Loom save,
+timing, and the final result dict assembly.
 
 Pipeline stages (in order):
-  1. STEP 0.5b query expansion (currently no-op — kept for Phase 9 multimodal)
+  1. STEP 0.5b query rewrite (Phase 1 PR-2, opt-in)
   2. Loop state init
   3. Loop 0 retrieve → Loop 1 expand → Loop 2 verify (MAX_LOOP=2 fixed)
   4. Final context combine + unified_score v3
   5. post_check (security)
-  6. LLM answer generation + [3-E] web search fallback for low-relevance
+  6. LLM answer generation (delegated to pipeline_synth.generate_answer)
   7. Output filter (role-based)
   8. Memory Loom conditional save
   9. Timing print + result dict
@@ -23,9 +31,11 @@ import time
 from typing import Any, Dict
 
 from core.reasoning.engine import MAX_LOOP, LOOP_TIMEOUT, TIMING_TARGET_SEC
-from core.reasoning.trace_helpers import trace_synth_call
+from core.reasoning.pipeline_loops import (
+    run_loop_0_retrieve, run_loop_1_expand, run_loop_2_verify,
+)
+from core.reasoning.pipeline_synth import generate_answer
 from core.security_layer import filter_answer_by_role
-from core.observability import log_stage
 
 
 def run_retrieval_pipeline(
@@ -110,182 +120,23 @@ def run_retrieval_pipeline(
     # ══════════════════════════════════════════
     # LOOP (retrieve → expand → verify)
     # MAX_LOOP=2 고정 — Loop Injection 방어
+    # Step bodies live in pipeline_loops.py to keep this file slim;
+    # the orchestrator still owns timeout coordination + timing prints.
     # ══════════════════════════════════════════
     for loop_idx in range(MAX_LOOP + 1):
         t_loop = time.time()
-        role   = f"Loop-{loop_idx}"
 
         # 루프 단계별 timeout 감시
         if time.time() - t_start > LOOP_TIMEOUT * (loop_idx + 1):
-            print(f"[LOOP] {role} TIMEOUT → 조기 종료")
+            print(f"[LOOP] Loop-{loop_idx} TIMEOUT → 조기 종료")
             break
 
-        # ── Loop 0: Retrieve (Orchestrator) ──────────────
         if loop_idx == 0:
-            print(f"\n[LOOP-{loop_idx}] retrieve (Orchestrator)")
-            try:
-                from core.orchestrator import retrieve as orch_retrieve
-                docs = orch_retrieve(
-                    original_query  = safe_query,
-                    expanded_query  = loop_state["expanded_query"],
-                    hybrid_search_fn= engine.retrieval.hybrid_search,
-                    user_role       = user_role,
-                    source_type     = source_type,
-                    top_k           = 8,
-                )
-            except Exception as e:
-                engine._log("loop0_orchestrator", e, user_role)
-                # fallback: 기존 방식
-                docs = engine.retrieval.hybrid_search(
-                    safe_query, top_k=8,
-                    user_role=user_role,
-                    source_type=source_type,
-                )
-            # ── Phase 1 PR-1: cross-encoder rerank ─────────
-            # orchestrator returns 8 docs by vector score; the reranker
-            # scores each (query, doc.text) pair and reorders. The
-            # original [:5] truncation now happens *inside* rerank()
-            # so the top-5 reflects rerank order, not vector order.
-            #
-            # JAMES_DISABLE_RERANK=1 or model load failure → rerank()
-            # returns docs[:top_k] unchanged → byte-identical to v0.3.0.
-            t_rerank = time.time()
-            pre_rerank_count = len(docs)
-            try:
-                from core.retrieval.rerank import get_reranker
-                docs = get_reranker().rerank(safe_query, docs, top_k=5)
-            except Exception as e:
-                engine._log("loop0_rerank", e, user_role)
-                docs = docs[:5]
-            rerank_ms = int((time.time() - t_rerank) * 1000)
-
-            # Emit one trace step for the rerank stage so the replay
-            # tool sees the cognitive-layer step alongside synth rows.
-            try:
-                from core.reasoning.trace_schema import (
-                    TraceStep, compute_inputs_hash, truncate_summary,
-                    emit_trace_step,
-                )
-                top = docs[0] if docs else {}
-                top_summary = (
-                    f"top: {(top.get('source') or top.get('name') or '?')[:60]} "
-                    f"rerank={top.get('rerank_score', float('nan')):.3f}"
-                    if docs else "no docs"
-                )
-                trace_extras: Dict[str, Any] = {
-                    "pre_rerank_count": pre_rerank_count,
-                    "post_rerank_count": len(docs),
-                }
-                try:
-                    from core.observability import get_trace_id
-                    _tid = get_trace_id()
-                    if _tid:
-                        trace_extras["trace_id"] = _tid
-                except Exception:
-                    pass
-                emit_trace_step(
-                    TraceStep(
-                        stage="rerank",
-                        backend_id="cross_encoder",
-                        parent_step_id="",
-                        inputs_hash=compute_inputs_hash(safe_query),
-                        output_summary=truncate_summary(top_summary),
-                        applied_rule="reasoning.rerank.cross_encoder",
-                        latency_ms=rerank_ms,
-                    ),
-                    user_role=user_role,
-                    extras=trace_extras,
-                )
-            except Exception as e:
-                engine._log("loop0_rerank_trace", e, user_role)
-
-            loop_state["docs"] = docs
-            doc_ctx, avg_score = engine.retrieval.build_doc_context(
-                [d.get("text", "") for d in docs],
-                [d.get("score", 0.5) for d in docs],
-            )
-            loop_state["doc_context"]   = doc_ctx
-            loop_state["avg_vec_score"] = avg_score
-            print(f"  docs={len(docs)} avg_score={avg_score:.3f}")
-            # [#47 phase 1] retrieve stage — top_k actually returned, best
-            # vector score, and the BM25 score of doc[0] when it carries one.
-            top_doc = docs[0] if docs else {}
-            log_stage(
-                "retrieve",
-                top_k=len(docs),
-                avg_vec_score=round(avg_score, 4),
-                top_vector_score=round(top_doc.get("score", 0.0), 4),
-                top_bm25_score=round(top_doc.get("bm25", 0.0), 4) if "bm25" in top_doc else None,
-                source_type=source_type,
-            )
-
-        # ── Loop 1: Expand (Graph DFS) ────────────────
+            run_loop_0_retrieve(engine, loop_state, safe_query, user_role, source_type)
         elif loop_idx == 1:
-            print(f"\n[LOOP-{loop_idx}] expand")
-            try:
-                entities = engine.retrieval.extract_entities(
-                    safe_query,
-                    [d.get("text", "") for d in loop_state["docs"][:3]],
-                    timeout=30,
-                )
-                snapshot   = engine.graph.build_entity_map_snapshot()
-                entity_ids = engine.graph.match_entities(entities, snapshot)
-                valid_ids  = engine.graph.validate_integrity(entity_ids)
-
-                graph_ctx, graph_paths = engine.graph.expand_dynamic(
-                    valid_ids, source_type_filter=source_type
-                )
-                graph_ctx   = engine.graph.rank_nodes(graph_ctx)
-                graph_ctx   = engine.security.filter_graph(graph_ctx, user_role)
-                graph_paths = engine.graph.verify_reasoning(graph_paths)
-
-                loop_state["graph_context"] = graph_ctx
-                loop_state["graph_paths"]   = graph_paths
-                print(f"  entities={len(entities)} graph_nodes={len(graph_ctx)} paths={len(graph_paths)}")
-                # [#47 phase 1] graph stage — entities matched, paths walked,
-                # and the integrity-validated id count as observability fields.
-                log_stage(
-                    "graph",
-                    entities_extracted=len(entities),
-                    entity_ids_matched=len(entity_ids),
-                    valid_entity_ids=len(valid_ids),
-                    graph_nodes=len(graph_ctx),
-                    paths_walked=len(graph_paths),
-                )
-            except Exception as e:
-                engine._log("loop1_expand", e, user_role)
-                log_stage("graph", error=str(e)[:200])
-
-        # ── Loop 2: Verify (최종 컨텍스트 결합) ──────
+            run_loop_1_expand(engine, loop_state, safe_query, user_role, source_type)
         elif loop_idx == 2:
-            print(f"\n[LOOP-{loop_idx}] verify")
-            # 추가 ABAC 일관성 검증 (보안 loop 관통)
-            try:
-                abac = engine.security.abac_consistency_check(
-                    user_role,
-                    loop_state["docs"],
-                    loop_state["graph_context"],
-                    "",
-                )
-                if not abac["consistent"]:
-                    print(f"  [ABAC] 위반 {len(abac['violations'])}개")
-            except Exception as e:
-                engine._log("loop2_abac", e, user_role)
-
-            # [P5.5] Tool 실행 — actions 있을 때만 (최소 연결)
-            actions = loop_state.get("pending_actions", [])
-            if actions:
-                try:
-                    from tools.router import execute_tool
-                    tool_ctx = {"user_role": user_role, "allow_fs": False, "allow_shell": False}
-                    for action in actions[:3]:   # 최대 3개 제한
-                        t_result = execute_tool(action, tool_ctx)
-                        loop_state.setdefault("tool_results", []).append(t_result)
-                    print(f"  tool_results={len(loop_state.get('tool_results',[]))}개")
-                except ImportError:
-                    pass   # tools 없으면 skip
-                except Exception as e:
-                    engine._log("loop2_tool", e, user_role)
+            run_loop_2_verify(engine, loop_state, user_role)
 
         engine._elapsed(t_loop, f"LOOP-{loop_idx}")
 
@@ -371,219 +222,21 @@ def run_retrieval_pipeline(
         )
         safe_context = sources_header + safe_context
 
-    # ── LLM 답변 생성 ────────────────────────────────────
-    t_llm = time.time()
-
-    # [#A6-2 hotfix 2026-05-08] web_results는 outer scope에서 try 진입 *이전*에
-    # 선언해야 한다. 이전 위치는 try 블록 *내부*였는데, try가 fast-fail하면
-    # (예: core.web_search_config import 실패) 파이썬 정적 분석은 web_results를
-    # local로 인식하지만 runtime에는 binding 없이 함수 끝의
-    # `bool(web_results)` 라인에서 UnboundLocalError 발생.
-    # User-reported crash: pipeline.py:498 UnboundLocalError. 사용자 환경에서
-    # 첫 query에 500 응답 → 이 줄을 try 밖으로 빼서 항상 binding 보장.
-    web_results: list = []
-    # [#A8-7] 웹 검색 성공 시 함께 만든 web_longterm_save proposal id.
-    # chat 페이지의 "📥 위키 저장" chip이 이걸로 approve API 직접 호출.
-    pending_save_proposal_id: str = ""
-
-    try:
-        sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
-
-        # [P7] retrieval 결과 품질에 따라 분기
-        # [#A6-1 2026-05-08] threshold + role gate 동적 로드
-        # [#A8-6 2026-05-09] force_web_search=True면 threshold 무시하고
-        # 무조건 low_relevance 분기 진입 → 웹 검색 시도. 사용자가 chat
-        # bubble의 "🌐 웹으로 더 조사" chip 클릭 시 True로 도착.
-        from core.web_search_config import get_threshold, is_role_allowed
-        low_relevance = (
-            force_web_search
-            or not safe_context
-            or len(safe_context.strip()) < 50
-            or unified_score < get_threshold()
-        )
-
-        if low_relevance:
-            # ── [3-E 경로 A] 내부 자료 없음 → 웹 검색 시도 ──
-            web_context = ""
-            try:
-                from tools.web.web_searcher import (
-                    search_web, format_search_results,
-                    record_search, update_knowledge_level,
-                )
-                # [#A6-1] admin-only hardcode → role allowlist (settings).
-                if is_role_allowed(user_role):
-                    print(f"[WEB] 내부 자료 부족 → 웹 검색: {safe_query[:40]}")
-                    web_results = search_web(safe_query, max_results=4)
-                    if web_results:
-                        web_context = format_search_results(web_results)
-                        search_count = record_search(safe_query)
-
-                        # 단기 지식 레벨 +2
-                        update_knowledge_level(safe_query, is_longterm=False)
-
-                        # [#A8-7 2026-05-09] 모든 웹 검색 결과에 대해 proposal
-                        # 생성 (이전에는 search_count ≥ 2 또는 명시 저장 명령
-                        # 시에만). chat 페이지의 "📥 위키 저장" chip이 첫 검색
-                        # 부터 즉시 사용 가능해야 하므로. should_promote /
-                        # is_save_command가 true면 자동 임포턴스 표시 정도로
-                        # 확장 가능하지만 현재 단순화 — admin이 chat 또는
-                        # admin 페이지에서 명시 승인.
-                        always_propose = True   # [#A8-7] 항상 만들기
-                        if always_propose:
-                            try:
-                                summary_prompt = (
-                                    f"아래 검색 결과를 한국어로 200자 이내 핵심 요약:\n"
-                                    f"{web_context[:1000]}\n\n요약:"
-                                )
-                                # L1 wiring — one audit row per LLM round-trip
-                                summary = trace_synth_call(
-                                    lambda: engine.llm.call_gemma(
-                                        summary_prompt, timeout=30, use_cache=False, max_tokens=300,
-                                    ),
-                                    summary_prompt,
-                                    applied_rule="reasoning.synth.web_summary",
-                                    user_role=user_role,
-                                )
-                                if summary:
-                                    from tools.self.evo_analyzer import (
-                                        _make_proposal, save_proposal,
-                                    )
-                                    p = _make_proposal(
-                                        prop_type   = "web_longterm_save",
-                                        title       = f"[웹→Wiki] 장기 저장: {safe_query[:40]}",
-                                        description = (
-                                            f"웹 검색 누적 {search_count}회 (≥2 또는 명시 저장 요청). "
-                                            f"승인 시 검색 결과를 wiki entity로 영구 저장 + vector "
-                                            f"인덱싱. 거절하면 단기 저장만 유지."
-                                        ),
-                                        content     = (
-                                            f"[요약]\n{summary}\n\n"
-                                            f"[출처 ({len(web_results)}건)]\n"
-                                            + "\n".join(
-                                                f"- {r.get('title','')[:60]} ({r.get('url','')})"
-                                                for r in web_results[:5]
-                                            )
-                                        ),
-                                        metadata    = {
-                                            "auto_action":  "web_longterm_save",
-                                            "query":        safe_query,
-                                            "summary":      summary,
-                                            "web_results":  web_results,
-                                            "user_role":    user_role,
-                                            "search_count": search_count,
-                                        },
-                                    )
-                                    save_proposal(p)
-                                    pending_save_proposal_id = p['proposal_id']
-                                    print(f"[WEB→WIKI] admin confirm proposal 생성: {p['proposal_id']}")
-                            except Exception as we:
-                                print(f"[WEB→WIKI] proposal 생성 실패: {we}")
-            except Exception as we:
-                print(f"[WEB] 검색 모듈 오류: {we}")
-
-            # 웹 검색 결과 있으면 컨텍스트에 포함
-            # #44 phase 4: web 결과는 low-trust → PolicyEngine.quarantine 통과
-            # ("ignore previous instructions" 류 injection 패턴 중립화).
-            # safe_context 는 이미 retrieval/graph 단계의 ABAC + 문서 ingestion 시
-            # sanitize_document_content() 를 거친 high-trust 영역이므로 추가 처리 없음.
-            if web_context:
-                from core.policy_engine import default_engine, TrustedContent
-                web_clean, _ = default_engine.quarantine(
-                    TrustedContent(text=web_context, source="web", trust="low")
-                )
-                combined_context = web_clean + "\n\n" + safe_context
-            else:
-                combined_context = safe_context
-            from core.response_style import resolve_style as _resolve_style
-            _style = _resolve_style(response_style)
-            # Pick the right-language flow guide for the no-context
-            # web-fallback prompt below. Same heuristic as engine + chat.
-            _korean = sum(1 for c in safe_query if "가" <= c <= "힣")
-            _is_ko = _korean >= max(1, len(safe_query) * 0.2)
-            _rule = _style.rule_text_ko if _is_ko else _style.rule_text_en
-            # Two-arm decision: no internal context → direct LLM with the
-            # web-fallback prompt; otherwise the canonical RAG path via
-            # _generate_answer (which itself emits a trace row).
-            if not combined_context.strip():
-                _web_fallback_prompt = (
-                    f"{sys_prefix}"
-                    f"{'[웹 검색 결과 포함]' if web_context else ''}"
-                    f"\n{_rule}\n질문: {safe_query}\n\n답변:"
-                )
-                answer_raw = trace_synth_call(
-                    lambda: engine.llm.call_gemma(
-                        _web_fallback_prompt,
-                        use_cache=(not web_context), timeout=90,
-                        max_tokens=_style.max_tokens,
-                        model=selected_model or None,
-                    ),
-                    _web_fallback_prompt,
-                    applied_rule="reasoning.synth.web_fallback",
-                    user_role=user_role,
-                )
-            else:
-                answer_raw = engine._generate_answer(
-                    safe_query, combined_context, system_prompt,
-                    response_style=response_style,
-                    selected_model=selected_model,
-                )
-            answer_raw = answer_raw if answer_raw else ""
-
-            if answer_raw and not any(
-                answer_raw.startswith(p) for p in engine._LLM_ERROR_PREFIXES
-            ):
-                print(f"[ROUTER] retrieval_fallback (score={unified_score:.3f}) → LLM 직접")
-                answer = answer_raw
-            else:
-                answer = engine._generate_answer(safe_query, safe_context, system_prompt, response_style=response_style, selected_model=selected_model)
-        else:
-            # 관련 자료 있음 → System Prompt + RAG 컨텍스트 + LLM 답변
-            answer = engine._generate_answer(safe_query, safe_context, system_prompt, response_style=response_style, selected_model=selected_model)
-
-        # [P7] "자료 없음" 단독 응답(추론 없음)이면 system_prompt 포함 재시도
-        _no_data = ("자료에 없음. 관련된", "답변 생성에 실패", "LLM 응답 생성 중 오류")
-        if answer and any(answer.startswith(p) for p in _no_data):
-            sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
-            from core.response_style import resolve_style as _resolve_style
-            _style_retry = _resolve_style(response_style)
-            _korean_r = sum(1 for c in safe_query if "가" <= c <= "힣")
-            _is_ko_r = _korean_r >= max(1, len(safe_query) * 0.2)
-            _rule_r = _style_retry.rule_text_ko if _is_ko_r else _style_retry.rule_text_en
-            _retry_prompt = (
-                f"{sys_prefix}{_rule_r}\n"
-                f"질문: {safe_query}\n\n"
-                "(내부 자료에는 직접 언급이 없습니다. "
-                "위 가이드를 따라 자연스럽게 답하세요.)\n답변:"
-            )
-            retry = trace_synth_call(
-                lambda: engine.llm.call_gemma(
-                    _retry_prompt,
-                    use_cache=False, timeout=60, max_tokens=_style_retry.max_tokens,
-                    model=selected_model or None,
-                ),
-                _retry_prompt,
-                applied_rule="reasoning.synth.retry_no_info",
-                user_role=user_role,
-            )
-            if retry and not any(retry.startswith(p) for p in engine._LLM_ERROR_PREFIXES):
-                print("[ROUTER] post_check → 재시도 (persona 포함)")
-                answer = retry
-
-    except Exception as e:
-        engine._log("generate_answer", e, user_role)
-        answer = "답변 생성 중 오류가 발생했습니다."
-    engine._elapsed(t_llm, "LLM_generate")
-    # [#47 phase 1] answer stage — model latency + size signals so a
-    # diagnoser can tell "blank answer because LLM timed out" from
-    # "blank answer because retrieval was empty".
-    log_stage(
-        "answer",
-        latency_ms=int((time.time() - t_llm) * 1000),
-        answer_len=len(answer or ""),
-        answer_starts_with_error=any(
-            (answer or "").startswith(p) for p in engine._LLM_ERROR_PREFIXES
-        ),
+    # ── LLM 답변 생성 (delegated to pipeline_synth) ──────
+    # generate_answer handles the three-way branch (web fallback /
+    # canonical RAG / no-info retry) and emits the three L1 trace
+    # rows on the call_gemma sites. Returns an AnswerBlock with the
+    # text + web search results + the optional save-proposal id.
+    _synth = generate_answer(
+        engine, safe_query, safe_context, system_prompt, user_role,
+        unified_score,
+        response_style=response_style,
+        selected_model=selected_model,
+        force_web_search=force_web_search,
     )
+    answer = _synth.answer
+    web_results = _synth.web_results
+    pending_save_proposal_id = _synth.pending_save_proposal_id
 
     # ── Output Filter ────────────────────────────────────
     # #44 phase 2-C: gate the role-based filter through PolicyEngine.can_emit

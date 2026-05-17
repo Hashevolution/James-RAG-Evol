@@ -36,8 +36,8 @@ class PipelineProposalCreationTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        from core.reasoning import pipeline
-        cls.src = inspect.getsource(pipeline)
+        from tests._pipeline_src import pipeline_source
+        cls.src = pipeline_source()
 
     def _proposal_block(self) -> str:
         # [#A8-7 update 2026-05-09] Locator changed: gate moved from

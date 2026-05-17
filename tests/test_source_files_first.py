@@ -119,8 +119,8 @@ class PipelineSourcePrependTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import core.reasoning.pipeline as pipeline_mod
-        cls.src = inspect.getsource(pipeline_mod.run_retrieval_pipeline)
+        from tests._pipeline_src import pipeline_source
+        cls.src = pipeline_source()
 
     def test_source_section_built_from_docs(self):
         # The pipeline must read from loop_state["docs"] to assemble

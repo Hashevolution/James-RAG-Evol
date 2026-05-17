@@ -128,9 +128,8 @@ class PipelineIntegrationTests(unittest.TestCase):
         # quarantine call from the web fallback, this test fails — the
         # reviewer is forced to consciously decide whether the chokepoint
         # contract still holds.
-        import core.reasoning.pipeline as pipeline_mod
-        import inspect
-        src = inspect.getsource(pipeline_mod)
+        from tests._pipeline_src import pipeline_source
+        src = pipeline_source()
         self.assertIn(
             "default_engine.quarantine",
             src,
@@ -143,9 +142,8 @@ class PipelineIntegrationTests(unittest.TestCase):
         )
 
     def test_quarantine_call_uses_trustedcontent_low(self):
-        import core.reasoning.pipeline as pipeline_mod
-        import inspect
-        src = inspect.getsource(pipeline_mod)
+        from tests._pipeline_src import pipeline_source
+        src = pipeline_source()
         # The chokepoint passes trust="low" — that is the whole point.
         self.assertIn('trust="low"', src)
 

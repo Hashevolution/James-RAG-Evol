@@ -143,9 +143,8 @@ class CallSiteContractTests(unittest.TestCase):
                       "into the prompt (pre-v2 it didn't)")
 
     def test_pipeline_uses_style(self):
-        import core.reasoning.pipeline as pipeline_mod
-        import inspect
-        src = inspect.getsource(pipeline_mod.run_retrieval_pipeline)
+        from tests._pipeline_src import pipeline_source
+        src = pipeline_source()
         self.assertIn("resolve_style", src)
         self.assertNotIn("max_tokens=2000", src)
         # No retry-path forced "📚 자료 기반: 관련 내부 자료 없음" prefix.

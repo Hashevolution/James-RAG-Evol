@@ -129,9 +129,8 @@ class EdgeContractTests(unittest.TestCase):
                       "/query/ response must carry trace_id so users can quote it")
 
     def test_pipeline_emits_three_core_stages(self):
-        import core.reasoning.pipeline as pipeline_mod
-        import inspect
-        src = inspect.getsource(pipeline_mod)
+        from tests._pipeline_src import pipeline_source
+        src = pipeline_source()
         # Whitespace-insensitive substring: the stage name appears
         # inside a log_stage() call. This is the chokepoint — a future
         # refactor that swaps log_stage() for a different observability

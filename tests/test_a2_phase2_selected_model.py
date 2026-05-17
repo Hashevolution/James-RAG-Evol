@@ -213,8 +213,8 @@ class PipelineWiringTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import core.reasoning.pipeline as pl
-        cls.src = inspect.getsource(pl)
+        from tests._pipeline_src import pipeline_source
+        cls.src = pipeline_source()
 
     def test_pipeline_signature_has_selected_model(self):
         m = re.search(

@@ -75,8 +75,8 @@ class CallSiteUnchangedTests(unittest.TestCase):
         self.assertIn("style.max_tokens", src)
 
     def test_pipeline_still_uses_resolve_style(self):
-        import core.reasoning.pipeline as pipeline_mod
-        src = inspect.getsource(pipeline_mod.run_retrieval_pipeline)
+        from tests._pipeline_src import pipeline_source
+        src = pipeline_source()
         self.assertIn("resolve_style", src)
         self.assertIn(".max_tokens", src)
 

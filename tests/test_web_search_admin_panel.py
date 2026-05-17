@@ -136,8 +136,8 @@ class PipelineUsesConfigTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        from core.reasoning import pipeline
-        cls.src = inspect.getsource(pipeline)
+        from tests._pipeline_src import pipeline_source
+        cls.src = pipeline_source()
 
     def test_imports_config_helpers(self):
         self.assertIn("from core.web_search_config import", self.src,

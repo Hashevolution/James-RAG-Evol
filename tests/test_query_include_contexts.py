@@ -78,9 +78,8 @@ class AdminGateContractTests(unittest.TestCase):
         # The pipeline result is the source of truth — even if the endpoint
         # is bypassed (e.g. import-level callers), the chunk texts must be
         # available for downstream consumers.
-        import core.reasoning.pipeline as pipeline_mod
-        import inspect
-        src = inspect.getsource(pipeline_mod)
+        from tests._pipeline_src import pipeline_source
+        src = pipeline_source()
         self.assertIn(
             '"retrieved_contexts":',
             src,

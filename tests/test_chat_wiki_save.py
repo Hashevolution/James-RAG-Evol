@@ -34,8 +34,8 @@ ROOT = Path(__file__).resolve().parent.parent
 class PipelineProposalAlwaysCreatedTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from core.reasoning import pipeline
-        cls.src = inspect.getsource(pipeline)
+        from tests._pipeline_src import pipeline_source
+        cls.src = pipeline_source()
 
     def test_pending_save_proposal_id_in_outer_scope(self):
         # Like web_results, pending_save_proposal_id must be initialized

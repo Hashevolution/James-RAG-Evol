@@ -79,8 +79,8 @@ class EnginePropagationTests(unittest.TestCase):
 class PipelineGateTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        import core.reasoning.pipeline as p
-        cls.src = inspect.getsource(p)
+        from tests._pipeline_src import pipeline_source
+        cls.src = pipeline_source()
 
     def test_signature_accepts_force_web_search(self):
         # The function declaration must include force_web_search param.
