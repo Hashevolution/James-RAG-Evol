@@ -373,6 +373,17 @@ the reverse.
 | Verification → CR-E | enforced | a verifier flagging a self-modifying outcome (memory write, ontology edit, evolution patch) must route through `core/change_request.py` — direct apply is a CLAUDE.md rule #3 violation |
 | Reflection state | working memory only | not persisted by default; episodic memory captures only the **final** verified answer trace |
 
+#### Reasoning backends + trace schema
+
+LLM 호출은 `core/reasoning/backends/` 의 명명된 어댑터
+(`claude_code_cli`, `ollama_local`, …) 를 통해서만 발생한다. 미들웨어는
+모델 SDK 를 직접 import 하지 않는다. 모든 백엔드는 동일 row 형태로
+`audit_bridge` 에 기록하며, 그 형태는 `core/reasoning/trace_schema.py`
+의 frozen dataclass (`stage`, `parent_step_id`, `backend_id`,
+`inputs_hash`, `output_summary`, `applied_rule`) 로 고정된다. 새 백엔드는
+**registry 만** 확장하고 **schema 는** 확장하지 않는다 — replay 도구는
+transport 와 무관하게 한 가지 row 형태만 읽는다.
+
 #### Trace replay invariant
 
 Every reasoning step — planner decisions, reranker scores, reflection
