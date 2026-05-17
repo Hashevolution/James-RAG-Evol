@@ -240,9 +240,135 @@
   </div>
 </div>
 
+<!-- [Cycle 12 PR-O6b] 노드 속성 편집 modal. backend PUT /admin/graph/node
+     의 5개 allowlisted field (name / entity_type / aliases / summary /
+     sensitivity) 만 노출. graph_node_editor.js 가 admin token + edit
+     mode ON 일 때만 .np-summary 패널에 진입점을 띄운다. -->
+<div class="modal-overlay" id="node-edit-modal"
+     role="dialog" aria-modal="true"
+     aria-labelledby="node-edit-title">
+  <div class="modal-card" style="max-width:520px;width:92%;max-height:85vh;overflow-y:auto">
+    <div id="node-edit-title"
+         data-i18n="graph.node.edit.title"
+         style="font-size:13px;font-weight:600;font-family:var(--font-mono);
+                color:var(--accent-fg);margin-bottom:6px;letter-spacing:.5px">
+      ▸ 노드 편집
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;
+                font-family:var(--font-mono)">
+      <span data-i18n="graph.node.edit.idLabel">entity_id</span>:
+      <span id="node-edit-id" style="color:var(--text-soft)">—</span>
+    </div>
+
+    <!-- 이름 -->
+    <div style="margin-bottom:12px">
+      <label for="node-edit-name"
+             data-i18n="graph.node.edit.name"
+             style="display:block;font-size:10px;color:var(--muted);
+                    letter-spacing:1px;font-family:var(--font-mono);
+                    margin-bottom:4px">이름</label>
+      <input id="node-edit-name" type="text" maxlength="200"
+             style="width:100%;background:var(--bg);border:1px solid var(--border);
+                    border-radius:6px;padding:8px 10px;color:var(--text);
+                    font-size:13px;outline:none;box-sizing:border-box">
+    </div>
+
+    <!-- 엔티티 종류 -->
+    <div style="margin-bottom:12px">
+      <label for="node-edit-etype"
+             data-i18n="graph.node.edit.entityType"
+             style="display:block;font-size:10px;color:var(--muted);
+                    letter-spacing:1px;font-family:var(--font-mono);
+                    margin-bottom:4px">엔티티 종류</label>
+      <select id="node-edit-etype"
+              style="width:100%;background:var(--bg);border:1px solid var(--border);
+                     border-radius:6px;padding:8px 10px;color:var(--text);
+                     font-size:13px;outline:none;box-sizing:border-box">
+        <option value="person"   data-i18n="graph.legend.person">인물</option>
+        <option value="org"      data-i18n="graph.legend.org">조직</option>
+        <option value="concept"  data-i18n="graph.legend.concept">개념</option>
+        <option value="document" data-i18n="graph.legend.document">문서</option>
+      </select>
+    </div>
+
+    <!-- 별칭 -->
+    <div style="margin-bottom:12px">
+      <label for="node-edit-aliases"
+             data-i18n="graph.node.edit.aliases"
+             style="display:block;font-size:10px;color:var(--muted);
+                    letter-spacing:1px;font-family:var(--font-mono);
+                    margin-bottom:4px">별칭 (한 줄에 하나씩)</label>
+      <textarea id="node-edit-aliases" rows="3"
+                placeholder="앤스로픽&#10;Anthropic AI"
+                style="width:100%;background:var(--bg);border:1px solid var(--border);
+                       border-radius:6px;padding:8px 10px;color:var(--text);
+                       font-size:12px;outline:none;box-sizing:border-box;
+                       font-family:var(--font-mono);resize:vertical"></textarea>
+    </div>
+
+    <!-- 요약 -->
+    <div style="margin-bottom:12px">
+      <label for="node-edit-summary"
+             data-i18n="graph.node.edit.summary"
+             style="display:block;font-size:10px;color:var(--muted);
+                    letter-spacing:1px;font-family:var(--font-mono);
+                    margin-bottom:4px">요약</label>
+      <textarea id="node-edit-summary" rows="5" maxlength="4000"
+                style="width:100%;background:var(--bg);border:1px solid var(--border);
+                       border-radius:6px;padding:8px 10px;color:var(--text);
+                       font-size:12px;outline:none;box-sizing:border-box;
+                       resize:vertical"></textarea>
+    </div>
+
+    <!-- 민감도 -->
+    <div style="margin-bottom:14px">
+      <label for="node-edit-sens"
+             data-i18n="graph.node.edit.sensitivity"
+             style="display:block;font-size:10px;color:var(--muted);
+                    letter-spacing:1px;font-family:var(--font-mono);
+                    margin-bottom:4px">민감도</label>
+      <select id="node-edit-sens"
+              style="width:100%;background:var(--bg);border:1px solid var(--border);
+                     border-radius:6px;padding:8px 10px;color:var(--text);
+                     font-size:13px;outline:none;box-sizing:border-box">
+        <option value="normal"    data-i18n="graph.node.edit.sensNormal">보통</option>
+        <option value="sensitive" data-i18n="graph.node.edit.sensSensitive">민감</option>
+      </select>
+    </div>
+
+    <div id="node-edit-status"
+         style="font-size:11px;color:var(--muted);min-height:14px;
+                margin-bottom:4px;font-family:var(--font-mono)"></div>
+    <div id="node-edit-error"
+         style="font-size:11px;color:var(--danger);min-height:14px;
+                margin-bottom:8px;font-family:var(--font-mono)"></div>
+
+    <div style="display:flex;gap:8px">
+      <button id="node-edit-save"
+              data-i18n="graph.node.edit.save"
+              style="flex:1;padding:10px;background:var(--accent);
+                     border:none;border-radius:7px;color:var(--on-accent);
+                     font-size:12px;font-weight:600;cursor:pointer;
+                     font-family:var(--font-mono);letter-spacing:.4px">
+        저장
+      </button>
+      <button id="node-edit-close"
+              data-i18n="graph.node.edit.close"
+              style="flex:1;padding:10px;background:var(--surface-2);
+                     border:1px solid var(--border);border-radius:7px;
+                     color:var(--text-soft);font-size:12px;font-weight:600;
+                     cursor:pointer;font-family:var(--font-mono);
+                     letter-spacing:.4px">
+        닫기
+      </button>
+    </div>
+  </div>
+</div>
+
 <script src="/static/i18n.js"></script>
 <script src="/static/graph.js"></script>
 <script src="/static/graph_editor.js"></script>
+<script src="/static/graph_node_editor.js"></script>
 <script src="/static/a11y-modal.js" defer></script>
 </body>
 </html>

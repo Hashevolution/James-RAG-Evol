@@ -348,6 +348,11 @@
         try { window.GraphEditor.onSnapshotLoaded(graph, data, { apiKey: apiKey, token: token }); }
         catch (_e) { /* never block graph render */ }
       }
+      // [Cycle 12 PR-O6b] node editor — edge editor 와 동일 패턴.
+      if (window.GraphNodeEditor && typeof window.GraphNodeEditor.onSnapshotLoaded === 'function') {
+        try { window.GraphNodeEditor.onSnapshotLoaded(graph, data, { apiKey: apiKey, token: token, api: API }); }
+        catch (_e) { /* never block graph render */ }
+      }
 
       var meta = snap.meta || {};
       var statBox = document.getElementById('stat-box');
@@ -649,6 +654,17 @@
       '</div>';
   }
 
+  // [Cycle 12 PR-O6b] entity_type 코드 → 표시 라벨. i18n.js 의
+  // `graph.legend.<type>` 키 (인물/조직/개념/문서) 를 우선 사용.
+  function _etypeLabel(etype) {
+    var key = 'graph.legend.' + String(etype || '').toLowerCase();
+    if (typeof t === 'function') {
+      var v = t(key);
+      if (v && v !== key) return v;
+    }
+    return String(etype || 'unknown').toUpperCase();
+  }
+
   function renderEntitySummary(data) {
     var host = _summaryHostEl();
     if (!host || !data) return;
@@ -673,12 +689,22 @@
 
     host.innerHTML =
       '<div class="np-summary-meta">' +
-        '<span class="np-summary-type">' + escapeHtml(etype.toUpperCase()) + '</span>' +
+        '<span class="np-summary-type">' + escapeHtml(_etypeLabel(etype)) + '</span>' +
         '<span class="np-summary-sens sens-' + escapeHtml(sens) + '">' +
           escapeHtml(sens.toUpperCase()) +
         '</span>' +
       '</div>' +
-      excerpt;
+      excerpt +
+      // [Cycle 12 PR-O6b] np-summary-actions placeholder — node editor
+      // 가 admin + edit-mode-ON 일 때 "노드 편집" 버튼을 여기에 주입.
+      '<div class="np-summary-actions" id="np-summary-actions"></div>';
+
+    // node editor 에게 summary 가 새로 그려졌음을 알린다.
+    if (window.GraphNodeEditor &&
+        typeof window.GraphNodeEditor.onEntitySummaryRendered === 'function') {
+      try { window.GraphNodeEditor.onEntitySummaryRendered(data); }
+      catch (_e) { /* never break summary render */ }
+    }
   }
 
   // ─── [PR mobile-loop-search] Top entity search drawer ──────────

@@ -316,6 +316,9 @@
   // Public hooks
   // ──────────────────────────────────────────────────────────────
   window.GraphEditor = {
+    /** PR-O6b — node editor 가 같은 토글 상태를 공유 (probe 재실행 회피). */
+    isEditEnabled: function () { return editEnabled; },
+
     /** graph.js 가 snapshot load 직후 호출. */
     onSnapshotLoaded: function (g, d, auth) {
       graphInstance = g;
