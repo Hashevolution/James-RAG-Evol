@@ -23,7 +23,6 @@ from core.retrieval_engine  import RetrievalEngine
 from core.security_layer    import (
     SecurityLayer,
 )
-from core.reasoning.trace_helpers import trace_synth_call
 from core.reasoning.modes import (
     handle_chat,
     handle_meta,
@@ -131,121 +130,16 @@ class ReasoningEngine:
             return self._blocked_result("보안 검사 실패")
         self._elapsed(t0, "STEP0 pre_check")
 
-        # ── Memory context + 대화 히스토리 주입 ─────────────
-        memory_context = ""
-        system_prompt  = ""
-        # [N-3 2026-05-13] hist_ctx 는 *현재* 세션의 prior turn 만 담는다.
-        # 새 세션에서는 빈 문자열 — long_ctx (다른 세션 요약) 나 prefs 가
-        # 있더라도 그것만으로 "대화 연속" 으로 취급해서는 안 된다.
-        # 모드 핸들러가 continuity directive 발동 여부를 정확히 판단할
-        # 수 있도록 try 바깥에서 미리 초기화.
-        hist_ctx = ""
-        try:
-            from core.memory import MemoryStore
-            store         = MemoryStore()
-            system_prompt = store.get_system_prompt()
-            pref_context  = store.get_context(user_role)
-
-            # [P7-1] 단기: 현재 세션 최근 5턴
-            # [Axis 6 user feedback, 2026-05-12] limit 3 → 5. Multi-
-            # turn threads ("위 내용 + 추가로 …" 3번 이상) were losing
-            # the earliest exchange. 5 keeps roughly the last minute
-            # of conversation in context without bloating the prompt.
-            session_id = kwargs.get("session_id", "default")
-            hist_ctx   = store.get_history_context(session_id, limit=5)
-
-            # [P7-4 + PR-O4 2026-05-17] 장기 요약은 *연속* 세션에만 주입.
-            # 새 세션의 첫 turn (hist_ctx == "") 에서는 이전 세션의 분석
-            # 내용 (long_ctx 의 "[이전 대화 기억]" 블록) 을 제외한다 —
-            # persona / preferences 는 system_prompt / pref_context 로
-            # 따로 흘러가므로 사용자 정체성은 보존된다.
-            # N-3 사용자 차단 회복 (handover §3 사이클 1): PR #257 의
-            # continuity-directive 게이트만으로는 부족했음 (long_ctx 자체
-            # 가 system prompt 의 배경 정보로 들어가, LLM 이 directive
-            # 없이도 prior 분석을 끌어왔음).
-            if hist_ctx:
-                long_ctx = store.get_long_term_context(
-                    current_session_id=session_id, limit=2
-                )
-            else:
-                long_ctx = ""
-
-            # 우선순위: 장기기억 → 단기기억 → 선호도
-            parts = [p for p in [long_ctx, hist_ctx, pref_context] if p]
-            memory_context = "\n\n".join(parts)
-
-            if long_ctx:
-                print(f"[LONG_TERM] 장기 기억 주입: {len(long_ctx)}자")
-            if hist_ctx:
-                print(f"[HISTORY] 단기 기억 주입: {len(hist_ctx)}자")
-            if memory_context:
-                print(f"[MEMORY] context 주입: {len(memory_context)}자")
-            if system_prompt:
-                print(f"[PERSONA] {system_prompt[:60]}")
-        except Exception as e:
-            self._log("memory_context", e, user_role)
-
-        # ── [P1-10] 성향 캐릭터 modifier → system_prompt 주입 ─
-        try:
-            from core.character_profile import CharacterProfile
-            cp       = CharacterProfile()
-            modifier = cp.get_prompt_modifiers()
-            if modifier and modifier.strip():
-                system_prompt = (system_prompt + "\n\n" + modifier).strip()
-                print(f"[CHARACTER] 성향 주입: {modifier[:60]}")
-        except Exception as e:
-            self._log("character_profile", e, user_role)
-
-        # ── [P1-5] 페르소나 명령 감지 → 장기기억 즉시 저장 ──
-        try:
-            from core.memory import is_persona_command, extract_persona_command
-            if is_persona_command(safe_query):
-                persona_data = extract_persona_command(safe_query)
-                if persona_data and persona_data.get("type") != "persona_unknown":
-                    from core.memory import MemoryStore as _MS
-                    _ms = _MS()
-                    p_type = persona_data.get("type", "")
-                    # 호칭 변경 → 장기기억 (영속)
-                    if p_type == "persona_name":
-                        _ms.save_preference({"name": persona_data["name"]})
-                        print(f"[PERSONA_UPDATE] 호칭 변경: {persona_data['name']}")
-                    # [STEP2-A] 언어 변경 → 세션 설정 (영속 X, 세션 내 유지)
-                    elif p_type == "persona_language":
-                        kwargs["session_language"] = persona_data["language"]
-                        print(f"[LANG] 세션 언어 변경: {persona_data['language']}")
-                    # 스타일 변경 → 장기기억 (영속)
-                    elif p_type == "persona_style":
-                        _ms.save_preference({"style_hint": persona_data.get("style","")})
-                        print(f"[PERSONA_UPDATE] 스타일 변경: {persona_data.get('style','')}")
-                    # system_prompt 즉시 갱신 (언어 제외)
-                    if p_type != "persona_language":
-                        system_prompt = _ms.get_system_prompt()
-        except Exception as e:
-            self._log("persona_command", e, user_role)
-
-        # ── [STEP 5-C] 언어 자동 감지 + 시스템 프롬프트 동적 전환 ──
-        session_lang = kwargs.get("session_language", "")
-
-        # 쿼리에서 언어 자동 감지 (페르소나 설정 없을 때 fallback)
-        if not session_lang:
-            import re as _re
-            korean_chars = len(_re.findall(r'[가-힣]', safe_query))
-            total_chars  = max(len(safe_query.strip()), 1)
-            session_lang = "Korean" if (korean_chars / total_chars) >= 0.2 else "English"
-
-        # 언어 지시어 주입
-        if session_lang and session_lang.lower() not in ("", "auto"):
-            if session_lang in ("Korean", "한국어"):
-                lang_directive = "반드시 한국어로 답변하세요. 이 지시는 최우선입니다."
-            elif session_lang in ("English", "영어"):
-                lang_directive = "Always respond in English. This is the highest priority instruction."
-            elif "한국어" in session_lang and "English" in session_lang:
-                # 한국어 + 영어 동시 모드
-                lang_directive = "Respond in both Korean and English. This is the highest priority instruction."
-            else:
-                lang_directive = f"Always respond in {session_lang}. This is the highest priority instruction."
-            system_prompt  = f"{lang_directive}\n\n{system_prompt}".strip()
-            print(f"[LANG] 언어 적용: {session_lang} | 쿼리 감지 기반")
+        # ── Memory context + 대화 히스토리 주입 (delegated) ───
+        # The MemoryStore / character / persona-command / language-
+        # detection logic moved to core/reasoning/engine_memory.py for
+        # the rule #5 module-size split. The helper mutates ``kwargs``
+        # in place (persona-language commands write
+        # ``kwargs["session_language"]``).
+        from core.reasoning.engine_memory import build_memory_context
+        memory_context, system_prompt, hist_ctx = build_memory_context(
+            self, safe_query, user_role, kwargs,
+        )
 
         # ── Query Router (STEP 0.5a) ─────────────────────────
         # pre_check 통과 후에만 진입. 보안 순서 유지.
@@ -350,130 +244,48 @@ class ReasoningEngine:
         )
 
 
-    # ─── LLM 답변 생성 ──────────────────────────────────────
+    # ─── LLM 답변 생성 (delegated to engine_synth) ─────────
+    # The canonical RAG synthesis (prompt assembly + trace_synth_call
+    # wrap + error normalisation) moved to core/reasoning/engine_synth.py
+    # for the rule #5 module-size split. External callers
+    # (pipeline_synth.py, reflect.py, verify.py) keep their existing
+    # ``engine._LLM_ERROR_PREFIXES`` / ``engine._generate_answer(...)``
+    # access shape; the class members below are thin re-exports /
+    # delegators so a future contract change has one place to edit.
 
-    _LLM_ERROR_PREFIXES = ("[Gemma 응답 없음]", "[Gemma 오류]", "LLM 응답 생성 중 오류")
-
-    _NO_INFO_PATTERNS = [
-        "자료에 없음", "자료 없음", "자료에는 없", "자료에서 찾을 수 없",
-        "찾을 수 없", "확인되지 않", "확인할 수 없", "언급되지 않",
-        "제공되지 않", "제공된 컨텍스트에 없", "정보가 없", "정보 없",
-        "어떠한 엔티티", "관련 정보가 없", "해당 정보가 없", "알 수 없", "모르겠",
-    ]
+    # Tuple re-export — immutable, so a single shared reference is safe.
+    from core.reasoning.engine_synth import (
+        LLM_ERROR_PREFIXES as _LLM_ERROR_PREFIXES,
+        NO_INFO_PATTERNS as _NO_INFO_PATTERNS,
+    )
 
     @classmethod
     def _normalize_no_info(cls, answer: str) -> str:
-        if not answer or "자료에 없음" in answer:
-            return answer
-        for pattern in cls._NO_INFO_PATTERNS:
-            if pattern.lower() in answer.lower():
-                return f"자료에 없음. {answer}"
-        return answer
+        from core.reasoning.engine_synth import normalize_no_info
+        return normalize_no_info(answer)
 
     @staticmethod
     def _classify_query(query: str) -> str:
-        q = query.lower()
-        if any(k in q for k in ["무엇", "란 무엇", "이란"]):
-            return "definition"
-        if any(k in q for k in ["예시", "example"]):
-            return "example"
-        if any(k in q for k in ["아닌", "않"]):
-            return "negative_fact" if "무엇" in q else "negative"
-        if any(k in q for k in ["인가", "맞"]):
-            return "yesno"
-        return "general"
+        from core.reasoning.engine_synth import classify_query
+        return classify_query(query)
 
     def _generate_answer(self, question: str, context: str,
                           system_prompt: str = "",
                           response_style: str = "",
                           selected_model: str = "") -> str:
-        """RAG context + LLM 자유 추론. 한/영 자동 감지.
+        """Thin delegator → ``engine_synth.generate_rag_answer``.
 
-        `response_style`: kept for API back-compat — v2 always returns
-        the NATURAL_PRESET (single natural-flow guide, no rigid
-        emoji-section template). See core/response_style.py for the
-        v1→v2 redesign rationale.
-
-        `selected_model`: [#A2 phase 2] catalog-validated user pick.
-        Empty string → use config.GEMMA_MODEL default.
+        Existing call sites in pipeline_synth.py keep their
+        ``engine._generate_answer(...)`` shape; this method just
+        forwards to the free function so the implementation can live
+        in a smaller, more focused module.
         """
-        from core.response_style import resolve_style
-        style = resolve_style(response_style)
-
-        safe_q    = RetrievalEngine._sanitize(question, 300)
-        sys_block = f"{system_prompt}\n\n" if system_prompt else ""
-
-        # [P7-I18N] 언어 감지 — 영어 비율로 판단
-        en_chars = sum(1 for c in question if c.isascii() and c.isalpha())
-        is_en    = en_chars > len(question) * 0.5 and len(question) > 3
-
-        if is_en:
-            lbl_data = "📚 Data-based"
-            lbl_inf  = "💡 Reasoning"
-            no_data  = "No relevant internal data"
-            rule_txt = style.rule_text_en
-        else:
-            lbl_data = "📚 자료 기반"
-            lbl_inf  = "💡 추론"
-            no_data  = "관련 내부 자료 없음"
-            rule_txt = style.rule_text_ko
-
-        if context and len(context.strip()) >= 50:
-            if style.force_two_sections:
-                prompt = (
-                    f"{sys_block}"
-                    f"[{'Internal Data' if is_en else '내부 자료'}]\n{context[:1000]}\n\n"
-                    f"[{'Question' if is_en else '질문'}]\n{safe_q}\n\n"
-                    f"{rule_txt}\n"
-                    f"{'Answer' if is_en else '답변'}:\n"
-                )
-            else:
-                # Natural-flow path (v2 default): rule_txt teaches
-                # 핵심→근거→대안 prose composition without the rigid
-                # 📚/💡 labels. The model picks length from the prompt,
-                # not from a token budget.
-                prompt = (
-                    f"{sys_block}"
-                    f"[{'Internal Data' if is_en else '내부 자료'}]\n{context[:1000]}\n\n"
-                    f"[{'Question' if is_en else '질문'}]\n{safe_q}\n\n"
-                    f"{rule_txt}"
-                    f"{'Answer' if is_en else '답변'}:\n"
-                )
-        else:
-            if style.force_two_sections:
-                prompt = (
-                    f"{sys_block}"
-                    f"[{'Question' if is_en else '질문'}]\n{safe_q}\n\n"
-                    f"{lbl_data}: {no_data}\n{lbl_inf}:\n"
-                )
-            else:
-                prompt = (
-                    f"{sys_block}"
-                    f"[{'Question' if is_en else '질문'}]\n{safe_q}\n\n"
-                    f"{rule_txt}"
-                    f"{'Answer' if is_en else '답변'}:\n"
-                )
-
-        try:
-            # L1 wiring: trace_synth_call wraps so the canonical RAG
-            # synthesis emits one reasoning audit row. Behaviour is
-            # byte-identical — the helper forwards call_gemma's return
-            # value untouched.
-            answer = trace_synth_call(
-                lambda: self.llm.call_gemma(
-                    prompt, timeout=120, use_cache=True,
-                    max_tokens=style.max_tokens,
-                    model=selected_model or None,
-                ),
-                prompt,
-                applied_rule="reasoning.synth.rag",
-            )
-            if not answer or any(answer.startswith(p) for p in self._LLM_ERROR_PREFIXES):
-                return "답변 생성에 실패했습니다."
-            return answer
-        except Exception as e:
-            self._log("generate_answer.llm", e)
-            return "LLM 응답 생성 중 오류가 발생했습니다."
+        from core.reasoning.engine_synth import generate_rag_answer
+        return generate_rag_answer(
+            self, question, context, system_prompt,
+            response_style=response_style,
+            selected_model=selected_model,
+        )
 
     # ─── 헬퍼 ───────────────────────────────────────────────
 

@@ -123,9 +123,12 @@ class CallSiteContractTests(unittest.TestCase):
     survives in v2."""
 
     def test_engine_uses_resolve_style(self):
-        import core.reasoning.engine as eng
+        # Post engine split (chore PR): _generate_answer is a thin
+        # delegator; the actual prompt assembly + LLM call lives in
+        # core/reasoning/engine_synth.generate_rag_answer.
+        import core.reasoning.engine_synth as engsynth
         import inspect
-        src = inspect.getsource(eng.ReasoningEngine._generate_answer)
+        src = inspect.getsource(engsynth.generate_rag_answer)
         self.assertIn("resolve_style", src)
         self.assertIn("style.max_tokens", src)
         self.assertNotIn("max_tokens=2000", src)

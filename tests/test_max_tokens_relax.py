@@ -70,8 +70,11 @@ class CallSiteUnchangedTests(unittest.TestCase):
     sites — they get more headroom for free."""
 
     def test_engine_still_uses_resolve_style(self):
-        import core.reasoning.engine as eng
-        src = inspect.getsource(eng.ReasoningEngine._generate_answer)
+        # Post engine split (chore PR): the actual style.max_tokens
+        # reference lives in engine_synth.generate_rag_answer; the
+        # engine method is now a thin delegator.
+        import core.reasoning.engine_synth as engsynth
+        src = inspect.getsource(engsynth.generate_rag_answer)
         self.assertIn("style.max_tokens", src)
 
     def test_pipeline_still_uses_resolve_style(self):

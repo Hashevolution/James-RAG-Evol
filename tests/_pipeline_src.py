@@ -1,19 +1,30 @@
-"""Shared helper for tests that grep the run_retrieval_pipeline source.
+"""Shared helpers for tests that grep reasoning-module source.
 
-After the chore split, ``pipeline.py`` extracted Loop 0/1/2 step bodies to
-``pipeline_loops.py`` and the LLM answer-generation block to
-``pipeline_synth.py``. Structural tests that previously did
+After the chore splits:
+
+  * ``pipeline.py`` extracted Loop 0/1/2 step bodies to
+    ``pipeline_loops.py`` and the LLM answer-generation block to
+    ``pipeline_synth.py``.
+  * ``engine.py`` extracted the memory-context assembly to
+    ``engine_memory.py`` and the canonical RAG synth to
+    ``engine_synth.py``.
+
+Structural tests that previously did
 
     src = inspect.getsource(pipeline_mod)
+    src = inspect.getsource(engine_mod)
 
-now need to inspect all three modules so an assertion like ``assertIn(
-"default_engine.quarantine", src)`` still finds the symbol it depends on.
+now need to inspect the split companions too so an assertion like
+``assertIn("if hist_ctx:", src)`` still finds the symbol it depends on.
 
 Usage:
 
-    from tests._pipeline_src import pipeline_source
+    from tests._pipeline_src import pipeline_source, engine_source
     src = pipeline_source()
     self.assertIn("low_relevance", src)
+
+    src = engine_source()
+    self.assertIn("if hist_ctx:", src)
 """
 from __future__ import annotations
 
@@ -36,4 +47,20 @@ def pipeline_source() -> str:
     )
 
 
-__all__ = ["pipeline_source"]
+def engine_source() -> str:
+    """Concatenated source of the three modules that together implement
+    ``ReasoningEngine.query``. Use instead of
+    ``inspect.getsource(engine)`` when the symbol you're grepping for
+    may live in the memory-context block or the canonical RAG synth.
+    """
+    from core.reasoning import engine, engine_memory, engine_synth
+    return (
+        inspect.getsource(engine)
+        + "\n"
+        + inspect.getsource(engine_memory)
+        + "\n"
+        + inspect.getsource(engine_synth)
+    )
+
+
+__all__ = ["pipeline_source", "engine_source"]
