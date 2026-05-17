@@ -278,6 +278,25 @@ def generate_answer(
     except Exception as e:
         engine._log("reflect_loop", e, user_role)
 
+    # Phase 2 PR-6 — optional verification pass.
+    # Verifier runs a heuristic security scan (always, ~5ms) plus an
+    # optional LLM fact-check (separate env JAMES_ENABLE_FACT_CHECK=1).
+    # Both gated on JAMES_ENABLE_VERIFY=1; default OFF preserves the
+    # v0.3.0+PR1+PR2+PR5 path byte-identical.
+    # Verifier returns one of three recommendations:
+    #   accept   → final_answer == answer (unchanged)
+    #   annotate → answer + verification note (unsupported claims)
+    #   block    → safe refusal (injection echo detected)
+    try:
+        from core.reasoning.verify import get_verifier
+        v_result = get_verifier().verify(
+            safe_query, answer, safe_context, user_role
+        )
+        if v_result.final_answer and v_result.final_answer != answer:
+            answer = v_result.final_answer
+    except Exception as e:
+        engine._log("verify_loop", e, user_role)
+
     out.answer = answer
     return out
 
