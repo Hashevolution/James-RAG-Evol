@@ -114,7 +114,14 @@ class ContinuityDirectiveTests(unittest.TestCase):
     def setUpClass(cls):
         from core.reasoning import modes as _modes
         cls.modes = _modes
-        cls.src = inspect.getsource(_modes)
+        # ``cls.modes`` is the package facade (re-exports the 5 handlers
+        # + CONTINUITY_DIRECTIVE_*) so hasattr-based tests below still
+        # work after the v0.3.x rule-#5 split. The body grep tests want
+        # the actual handle_chat source, which now lives in the
+        # ``chat`` submodule rather than __init__.py — point them at
+        # the right file.
+        from core.reasoning.modes import chat as _chat_mod
+        cls.src = inspect.getsource(_chat_mod)
 
     def test_directives_declared_at_module_level(self):
         # Constants at the top of the file so a future caller (e.g.,

@@ -169,14 +169,16 @@ class ModesHandlerWiringTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         import core.reasoning.modes as md
-        cls.src = inspect.getsource(md)
+        cls.md = md
 
     def _handler_body(self, name: str) -> str:
-        idx = self.src.index(f"def {name}(")
-        # Bound by next `def ` at column 0.
-        nxt = re.search(r"\n\ndef\s", self.src[idx + 1:])
-        end = idx + 1 + nxt.start() if nxt else len(self.src)
-        return self.src[idx:end]
+        # ``inspect.getsource`` on the function itself follows
+        # ``__code__.co_filename`` — works identically whether the
+        # handler lives in the original monolithic modes.py or in
+        # one of the v0.3.x split submodules (modes/chat.py etc.).
+        # We trim trailing whitespace just in case the file ends
+        # right after the function for cleaner regex anchoring.
+        return inspect.getsource(getattr(self.md, name)).rstrip()
 
     def test_chat_handler_accepts_and_uses_selected_model(self):
         body = self._handler_body("handle_chat")
