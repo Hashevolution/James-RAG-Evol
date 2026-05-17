@@ -27,6 +27,9 @@
 | 2026-05-12 | urllib3 + python-multipart secondary advisory bumps (Dependabot #7-#10) | ✅ Merged into main (separate session — `urllib3>=2.7.0`, `python-multipart>=0.0.27`) |
 | 2026-05-12 | **Gemma 4 Challenge submission published (Build with Gemma 4 track)** | ✅ Live ([URL](https://dev.to/hashevolution/building-a-mini-palantir-on-gemma4e4b-128k-context-lets-the-graph-actually-be-graph-rag-33fk)) |
 | 2026-05-13 | Hashnode cross-post of intro article (`ragllm.hashnode.dev`) | ✅ Live ([URL](https://ragllm.hashnode.dev/building-a-mini-palantir-a-local-graph-rag-engine-with-ontology-security-and-self-evolution-alpha)) |
+| 2026-05-16 | awesome-llm-apps PR #804 closed by curator | ❌ Closed (link-only PRs not accepted; full tutorial folder with self-contained runnable code required) |
+| 2026-05-16 | **First external technical exchange — Ali Afana (Provia founder, dev.to Featured)** | ✅ Two-way collaboration discussion: 83-item injection regression suite spin-out + v0.3 Gemma 4 variant benchmark (E4B / 26B MoE / 31B Dense on STEP 7 corpus) |
+| 2026-05-17 | **v0.3.0 — Platform Skeleton released on main** | ✅ Axis 6 second-user gate cleared 2026-05-13. Knowledge Cascade Phase A→E + Cognitive Middleware Layer architecture. Plugin API slipped to v0.3.x or v0.4 (per CHANGELOG note) |
 
 ---
 
@@ -44,7 +47,7 @@ Three independent curators, three independent review pipelines. One acceptance i
 
 | Repo | PR | Stars (approx) | Curator | Posted | Notes |
 |---|---|---|---|---|---|
-| [Shubhamsaboo/awesome-llm-apps](https://github.com/Shubhamsaboo/awesome-llm-apps) | [#804](https://github.com/Shubhamsaboo/awesome-llm-apps/pull/804) | 50k+ | Shubhamsaboo | 2026-05-11 | Listed in 📀 RAG section as `external` |
+| [Shubhamsaboo/awesome-llm-apps](https://github.com/Shubhamsaboo/awesome-llm-apps) | [#804](https://github.com/Shubhamsaboo/awesome-llm-apps/pull/804) | 50k+ | Shubhamsaboo | 2026-05-11 | ❌ **Closed 2026-05-16** — link-only PRs not accepted; sub requires self-contained runnable code under `rag_tutorials/<project_folder>/` with `app.py` + `requirements.txt` + folder README. Refile possible later as a minimal-runnable tutorial folder |
 | [DEEP-PolyU/Awesome-GraphRAG](https://github.com/DEEP-PolyU/Awesome-GraphRAG) | [#27](https://github.com/DEEP-PolyU/Awesome-GraphRAG/pull/27) | 1k+ | DEEP-PolyU | 2026-05-12 | 💻 Open-source Project section |
 | [Hannibal046/Awesome-LLM](https://github.com/Hannibal046/Awesome-LLM) | [#563](https://github.com/Hannibal046/Awesome-LLM/pull/563) | 25k+ | Hannibal046 | 2026-05-12 | LLM Applications section. Title has minor wording issue (Visualized capitalization) — curator may request rewording |
 
@@ -148,7 +151,8 @@ This launch tracker file is considered complete when all of the following are tr
 - [x] dev.to post is published and URL recorded (2026-05-12)
 - [x] dev.to Gemma 4 Challenge submission is published (2026-05-12, deadline 2026-05-24)
 - [ ] OpenSSF Tiered % updated post-merge (target ≥ 115%)
-- [ ] Second-user real-data corpus volunteer engaged (v0.2 → v0.3 gate)
+- [x] **Second-user real-data corpus volunteer engaged (v0.2 → v0.3 gate cleared 2026-05-13)**
+- [x] **First substantive external technical exchange (Ali Afana / Provia, 2026-05-16)**
 - [ ] Gemma 4 Challenge result decided (2026-06-04)
 
 Append a final "Phase 5 outcomes" section once the above are satisfied, then archive this file under `reports/promo-assets/archive/v0.2.0-launch-tracker.md` and reset for v0.3 cycle.
