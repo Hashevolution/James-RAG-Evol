@@ -61,6 +61,27 @@ def generate_answer(
     out = AnswerBlock()
     answer = ""
 
+    # Phase 2 PR-7 — optional planner decomposition.
+    # When JAMES_ENABLE_PLANNER=1, decompose the query into 2-5
+    # subtasks and prepend them to the system_prompt so the LLM
+    # follows the plan. MVP scope is "처음엔 단순 표시" — the plan
+    # informs synth phrasing, but does NOT yet drive retrieval / tool
+    # routing (future PR-7 follow-up). Trivial plans (1 subtask) are
+    # skipped to avoid prompt noise.
+    try:
+        from core.reasoning.planner import get_planner
+        _plan = get_planner().plan(safe_query, user_role=user_role)
+        if _plan and not _plan.is_trivial():
+            _steps = "\n".join(
+                f"{i + 1}. {s}" for i, s in enumerate(_plan.subtasks)
+            )
+            system_prompt = (
+                f"[추론 계획]\n{_steps}\n\n위 계획에 따라 단계별로 답변하라.\n\n"
+                + system_prompt
+            )
+    except Exception as e:
+        engine._log("planner", e, user_role)
+
     try:
         sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
 
