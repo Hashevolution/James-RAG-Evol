@@ -47,6 +47,9 @@
 | 2026-05-18 | **Injection-fixtures schema v0 → v1 (PR #317)** | ✅ Merged on main. Both Ali refinements accepted and implemented in schema doc. Backward-compatible: v0 fixtures parse under v1 unchanged. URL path preserved (same as v0 publish, only `version` field internal to doc bumped to `1`); diff-log entry records the transition with Ali's DM date and credit ("acting on Ali's LinkedIn DM 2026-05-18 feedback") |
 | 2026-05-18 | Our 5th turn LinkedIn DM reply sent | ✅ Sent — v1 refinements accepted as fact (already published), `test_prompt_is_unnormalized` enforcement pattern documented, `expected_block_stage` JAMES + Provia 3-stage mappings worked through with `ar_poi_001` example. Ali's 6/1 timeline unchanged |
 | 2026-05-18 | dev.to comment thread — **deliberately NOT cross-posted** from LinkedIn DM contents | ✅ Channel separation decision recorded. Rationale: (1) Ali chose LinkedIn DM as the sustained working channel (4 turns there vs 1 dev.to comment), (2) Ali's specific commits on LinkedIn (15-20 Arabic fixtures, 6/1 deadline, refinement detail) are sustained working-dialogue, not public announcement, (3) dev.to comment thread already has the 2026-05-16 reply with general collaboration-progress signal; next dev.to comment trigger is a milestone (Provider L1 wiring merge / swap experiment result / Part 2 article publication) |
+| 2026-05-18 | **Track 2 fixture migration started — `tests/fixtures/injection/baseline_kr_en.yaml` + harness on main** | ✅ Separate session implementation. Validates the Ali Collaboration Track handover (`docs/handovers/v0.3.x-ali-collaboration-track.md`) was picked up by a follow-up session and Track 2 work is in progress on schedule for the 2026-06-01 Ali-side `ar_ecommerce.yaml` integration |
+| 2026-05-18 | **Second potential collaboration — Matija Fućek (@mfucek_, Provia-adjacent verified) substantive X reply on graph visualization thread** | ✅ 4-paragraph reply: shares his "two tiers of connections" pattern (root + structural + mesh-via-tiny-force), names his project `@naumu_ai` (product/company brain app, plug-and-play vs Claude Code + Obsidian setups), demo video attached (default LLM `gemma2:2b` via Ollama), invites email DM for naumu_ai platform access since he already imported PROJECT JAMES into his system |
+| 2026-05-18 | Our X reply to @mfucek_ posted + X DM with email sent | ✅ Reply credited his two-tiers pattern as cleaner than our link-strength cap, named "plug-and-play as the gap between OSS RAG and someone actually shipping" as the framing we're tracking. Email transferred via DM for follow-up. Channel separation discipline followed: public X reply names the framing, private specifics go to DM |
 
 ---
 
@@ -256,9 +259,11 @@ This launch tracker file is considered complete when all of the following are tr
 - [x] **Ali received the injection-fixtures schema URL via LinkedIn DM (Track 2 trigger)** — followed up with schema v1 refinements (2026-05-18); Ali starting `ar_ecommerce.yaml` against v1, target ~2026-06-01
 - [x] **Cross-experiment design (3×3 matrix) pre-registered on main with falsification criteria locked before any cell runs**
 - [x] **LLM Provider contract published on main 2–3 weeks ahead of schedule** — external implementers can wire backends now
+- [x] **Track 2 fixture migration in progress on main** — `baseline_kr_en.yaml` + harness shipped 2026-05-18 by a separate session picking up the Ali Collaboration Track handover
+- [x] **Second potential collaboration started — @mfucek_ / naumu_ai (X verified)** — independent of the Ali track, complementary skill domain (product/UX vs experimental/academic). Email transferred 2026-05-18
 - [ ] Track 1 — Provider contract **L1 wiring (code)** lands (deadline 2026-06-15)
 - [ ] Track 2 — Ali delivers `ar_ecommerce.yaml` (15–20 Arabic fixtures + ≥5 benign, deadline ~2026-06-01)
-- [ ] @mfucek_ (X) follow-up — potential second collaboration lead, awaiting their reply
+- [ ] @mfucek_ DM follow-up — naumu_ai platform access + comparison signal
 - [ ] Gemma 4 Challenge result decided (2026-06-04)
 
 Append a final "Phase 5 outcomes" section once the above are satisfied, then archive this file under `reports/promo-assets/archive/v0.2.0-launch-tracker.md` and reset for v0.3 cycle.
