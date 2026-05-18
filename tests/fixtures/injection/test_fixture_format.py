@@ -1,22 +1,35 @@
-"""Schema-validity tests for injection fixtures (Track 2, PR-O7 prep).
+"""Schema-validity tests for injection fixtures (Track 2 + 2b).
 
-Schema: ``reports/promo-assets/injection-fixtures-schema-v0.md``.
+Schema: ``reports/promo-assets/injection-fixtures-schema-v0.md``
+(content is at v1 — backward-compatible refinements: normalization
+invariant + ``expected_block_stage`` enum).
 
 These tests verify that every fixture in this directory conforms to
-the v0 schema. They are intentionally portable — no JAMES imports
-beyond ``yaml`` — so other consumer projects (Provia's auth middleware,
-future contributors) can drop the same harness next to their fixture
-files and get the same shape guarantee.
+the schema. They are intentionally portable — no JAMES imports beyond
+``yaml`` + the stdlib ``unicodedata`` — so other consumer projects
+(Provia's auth middleware, future contributors) can drop the same
+harness next to their fixture files and get the same shape guarantee.
 
 Decision-correctness (does ``SecurityLayer.pre_check`` agree with each
 fixture's ``expected_block``?) lives in
 ``test_security_decisions.py`` — that one DOES import JAMES.
+
+v1 enforcement (Track 2b):
+  - ``test_expected_block_stage_in_enum`` — when the field is set,
+    must be one of ``input`` / ``retrieval`` / ``output`` / ``any``.
+  - ``test_prompt_is_unnormalized`` — fixtures containing direction
+    marks must be stored byte-exact (NFKC normalization would
+    otherwise silently strip the override character that the test
+    is supposed to exercise).
+  - ``test_schema_version_when_present_is_at_least_1`` — the
+    ``schema_version`` field is optional; when set, must be >= 1.
 
 Run:
     python -m pytest tests/fixtures/injection/test_fixture_format.py -v
 """
 from __future__ import annotations
 
+import unicodedata
 import unittest
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -53,6 +66,23 @@ ALLOWED_SENSITIVITIES = frozenset({
 ALLOWED_ROLES = frozenset({
     "admin", "manager", "employee", "external",
 })
+
+# v1: where the block is expected to fire in a 3-stage security
+# pipeline. ``any`` is the backward-compat default for fixtures
+# written under v0 that don't set the field explicitly.
+ALLOWED_BLOCK_STAGES = frozenset({
+    "input", "retrieval", "output", "any",
+})
+
+# Bidi/RTL override characters that must NOT be silently stripped by
+# Unicode normalization at any pipeline stage. From v1 schema.
+DIRECTION_MARK_CHARS = (
+    "‪",  # LRE — left-to-right embedding
+    "‫",  # RLE — right-to-left embedding
+    "‬",  # PDF — pop directional formatting
+    "‭",  # LRO — left-to-right override
+    "‮",  # RLO — right-to-left override
+)
 
 REQUIRED_FIELDS = frozenset({
     "id", "category", "prompt", "expected_block", "locale",
@@ -239,6 +269,142 @@ class FixtureSchemaTests(unittest.TestCase):
                     2 <= len(parts[0]) <= 3 and parts[0].islower(),
                     f"id prefix {parts[0]!r} should be a 2-3 char "
                     "lowercase locale token (kr, en, ar, ja, ...)",
+                )
+
+
+# ─── v1 schema enforcement (Track 2b) ─────────────────────────────
+
+class SchemaV1EnforcementTests(unittest.TestCase):
+    """v1 backward-compat refinements (PR #317):
+
+      - ``expected_block_stage`` enum — optional; when set must be one
+        of ``input`` / ``retrieval`` / ``output`` / ``any``.
+      - Normalization invariant — fixtures containing direction marks
+        must be byte-exact under NFKC (otherwise the test silently
+        loses the character that matters).
+      - ``schema_version`` field — optional; when present, must be >= 1.
+
+    All three are backward-compat with v0 entries — fixtures predating
+    v1 are still valid by these tests because the new fields are
+    optional and the normalization invariant only fires on direction-
+    mark-containing prompts.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.fixtures = _load_all_fixtures()
+
+    def test_expected_block_stage_in_enum_when_set(self):
+        """When the optional field is set, the value must be one of
+        the four allowed stage tokens.
+        """
+        for fname, entry in self.fixtures:
+            stage = entry.get("expected_block_stage")
+            if stage is None:
+                continue   # field is optional
+            with self.subTest(fixture=f"{fname}:{entry.get('id', '?')}"):
+                self.assertIn(
+                    stage, ALLOWED_BLOCK_STAGES,
+                    f"expected_block_stage {stage!r} not in v1 enum "
+                    f"{sorted(ALLOWED_BLOCK_STAGES)}",
+                )
+
+    def test_prompt_is_byte_exact_when_direction_marks_present(self):
+        """Direction-mark-containing prompts must be stored byte-exact.
+        Mirrors the enforcement snippet in the schema v1 doc — if a
+        prompt normalizes under NFKC to a different byte sequence and
+        the entry doesn't explicitly opt out via
+        ``notes`` containing ``byte_drift_expected``, the fixture is
+        silently weakened (the bidi override character that the test
+        is exercising can disappear at normalization time).
+        """
+        for fname, entry in self.fixtures:
+            prompt = entry.get("prompt", "")
+            if not isinstance(prompt, str):
+                continue   # other test reports type mismatch
+            if not any(c in prompt for c in DIRECTION_MARK_CHARS):
+                continue
+            with self.subTest(fixture=f"{fname}:{entry.get('id', '?')}"):
+                normalized = unicodedata.normalize("NFKC", prompt)
+                if prompt == normalized:
+                    continue   # invariant trivially holds
+                notes = str(entry.get("notes") or "")
+                self.assertIn(
+                    "byte_drift_expected", notes,
+                    f"prompt contains direction marks but NFKC "
+                    f"normalization changes the bytes. Either rewrite "
+                    f"the prompt to be NFKC-stable, or document the "
+                    f"intentional drift by adding the token "
+                    f"`byte_drift_expected` to the `notes` field.",
+                )
+
+    def test_schema_version_when_present_is_v1_or_greater(self):
+        """The ``schema_version`` field is optional. If a fixture
+        carries it, it must be an integer >= 1. Fixtures without the
+        field implicitly resolve to v1 (the published schema is at
+        v1 since PR #317).
+        """
+        for fname, entry in self.fixtures:
+            v = entry.get("schema_version")
+            if v is None:
+                continue
+            with self.subTest(fixture=f"{fname}:{entry.get('id', '?')}"):
+                self.assertIsInstance(
+                    v, int,
+                    f"schema_version {v!r} must be an integer",
+                )
+                self.assertGreaterEqual(
+                    v, 1,
+                    f"schema_version {v!r} predates the v1 publication; "
+                    "the field was introduced in v1.",
+                )
+
+    def test_data_exfiltration_stage_is_retrieval_when_set(self):
+        """Per the v1 stage-mapping table, ``data_exfiltration``
+        fixtures should map onto the ``retrieval`` stage (the ABAC
+        gate). This is advisory — a fixture may legitimately set
+        ``any`` if the project under test doesn't have a separate
+        retrieval-stage gate. But if ``expected_block_stage`` IS set
+        for data_exfiltration, it must be ``retrieval`` or ``any``
+        (not ``input`` / ``output``).
+        """
+        for fname, entry in self.fixtures:
+            if entry.get("category") != "data_exfiltration":
+                continue
+            stage = entry.get("expected_block_stage")
+            if stage is None:
+                continue
+            with self.subTest(fixture=f"{fname}:{entry.get('id', '?')}"):
+                self.assertIn(
+                    stage, {"retrieval", "any"},
+                    f"data_exfiltration fixture has "
+                    f"expected_block_stage={stage!r}; per the v1 "
+                    "stage-mapping table this category dies at the "
+                    "ABAC gate (retrieval) or `any`.",
+                )
+
+    def test_catalog_poisoning_stage_is_output_when_set(self):
+        """Companion contract to the data_exfiltration one. The
+        v0 baseline doesn't ship catalog_poisoning yet (it's reserved
+        for Ali's ar_ecommerce.yaml + future hardening), but the
+        contract test must already be in place so the first
+        catalog_poisoning fixture that does ship gets stage-checked
+        correctly.
+        """
+        for fname, entry in self.fixtures:
+            if entry.get("category") != "catalog_poisoning":
+                continue
+            stage = entry.get("expected_block_stage")
+            if stage is None:
+                continue
+            with self.subTest(fixture=f"{fname}:{entry.get('id', '?')}"):
+                self.assertIn(
+                    stage, {"output", "any"},
+                    f"catalog_poisoning fixture has "
+                    f"expected_block_stage={stage!r}; per the v1 "
+                    "stage-mapping table the poison is in the "
+                    "catalog (legitimately passes input + retrieval), "
+                    "the block fires at the output sanitizer.",
                 )
 
 
