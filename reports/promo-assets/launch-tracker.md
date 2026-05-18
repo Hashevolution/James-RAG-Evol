@@ -36,6 +36,7 @@
 | 2026-05-17 | Author dev.to Gemma 4 article — self-reply with bidirectional cross-reference to Ali's article | 🟡 Comment body drafted (see archive note below); awaiting author publication |
 | 2026-05-18 | **6 promo screenshots + README hero image landed on main (PR #304)** | ✅ `reports/promo-assets/screenshots/` — 01 memory-status, 02 intent-engineering, 03 chat-graph-paths, 04 personality-radar, 05 knowledge-tracker, 06 3d-graph. Hero on both `README.md` and `README.ko.md`. Visual-trust gap closed |
 | 2026-05-18 | New X post — v0.3.0 3D ontology visualizer with `06-3d-graph.jpg` attached | ✅ Posted by author (URL pending in tracker) — first image-bearing X post in cycle |
+| 2026-05-18 | **dev.to Write-track submission published** — fair-witness field report on E4B cognitive-stage failures | ✅ Live ([URL](https://dev.to/hashevolution/5-empty-responses-from-gemma4e4b-4-hypotheses-0-root-cause-1ggd)) — second Gemma 4 Challenge submission (Write track, $100×5 prize), draft archived at `reports/promo-assets/devto-gemma4-write-track.md` |
 
 ---
 
@@ -69,6 +70,7 @@ Three independent curators, three independent review pipelines. One acceptance i
 | dev.to article (Gemma 4 Challenge submission) | https://dev.to/hashevolution/building-a-mini-palantir-on-gemma4e4b-128k-context-lets-the-graph-actually-be-graph-rag-33fk | Global EN (Gemma 4 contestants + judges) | 2026-05-12 |
 | Hashnode cross-post (intro article) | https://ragllm.hashnode.dev/building-a-mini-palantir-a-local-graph-rag-engine-with-ontology-security-and-self-evolution-alpha | Global EN (Hashnode algorithm + Google search) | 2026-05-13 |
 | X — v0.3.0 visualizer post (with 3D graph image) | _(URL pending — author to record)_ | Global EN | 2026-05-18 |
+| dev.to article (Write-track submission — cognitive-stages fair-witness report) | https://dev.to/hashevolution/5-empty-responses-from-gemma4e4b-4-hypotheses-0-root-cause-1ggd | Global EN (Gemma 4 contestants + Ollama operators + local-LLM researchers) | 2026-05-18 |
 
 Monitoring rule: respond to substantive replies within 1-2 hours during the first 24 hours; longer-form responses (e.g. quote threads) get hour-of-day discretion.
 
@@ -105,6 +107,7 @@ Recommended hours:
 | Contest | Track | Submission URL | Deadline | Winners announced |
 |---|---|---|---|---|
 | [Gemma 4 Challenge](https://dev.to/challenges/google-gemma-2026-05-06) | Build with Gemma 4 ($500 × 5) | https://dev.to/hashevolution/building-a-mini-palantir-on-gemma4e4b-128k-context-lets-the-graph-actually-be-graph-rag-33fk | 2026-05-24 23:59 PDT | 2026-06-04 |
+| [Gemma 4 Challenge](https://dev.to/challenges/google-gemma-2026-05-06) | Write about Gemma 4 ($100 × 5) | https://dev.to/hashevolution/5-empty-responses-from-gemma4e4b-4-hypotheses-0-root-cause-1ggd | 2026-05-24 23:59 PDT | 2026-06-04 |
 
 Per-judge tie-break is by reaction count, so post-publication actions matter:
 
@@ -199,6 +202,7 @@ This launch tracker file is considered complete when all of the following are tr
 - [ ] r/LocalLLaMA post is published and URL recorded
 - [x] dev.to post is published and URL recorded (2026-05-12)
 - [x] dev.to Gemma 4 Challenge submission is published (2026-05-12, deadline 2026-05-24)
+- [x] **dev.to Gemma 4 Challenge — second submission (Write track) published (2026-05-18)**
 - [ ] OpenSSF Tiered % updated post-merge (target ≥ 115%)
 - [x] **Second-user real-data corpus volunteer engaged (v0.2 → v0.3 gate cleared 2026-05-13)**
 - [x] **First substantive external technical exchange (Ali Afana / Provia, 2026-05-16)**
