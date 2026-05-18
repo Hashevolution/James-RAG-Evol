@@ -112,5 +112,126 @@ class ChatHistoryContractTests(unittest.TestCase):
         )
 
 
+class SessionIdRefreshAfterMutationTests(unittest.TestCase):
+    """[N-3 회귀, 2026-05-18 user feedback]
+
+    PR-O4 #291 added the engine-side `hist_ctx == ""` gate that
+    prevents cross-session long_ctx leakage. But the frontend kept
+    `SESSION_ID` / `HISTORY_KEY` as `const`s evaluated at module
+    load — so newSession() / switchSession() updated localStorage
+    but never the in-memory constants. The next POST /query/ sent
+    `session_id=<old>`, the backend's hist_ctx was still populated
+    from the old session, the N-3 gate didn't fire, and prior-
+    session analyses came back in place of greetings.
+
+    These tests pin the fix: const → let + a refreshSessionGlobals()
+    helper called wherever localStorage['james_session'] is mutated.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        path = Path(__file__).resolve().parent.parent / "frontend" / "static" / "chat.js"
+        cls.src = path.read_text(encoding="utf-8")
+
+    def test_session_id_is_let_not_const(self):
+        # The bug was that const SESSION_ID couldn't be reassigned
+        # when localStorage changed. The fix declares it `let`.
+        import re
+        # Match the declaration of SESSION_ID.
+        # `const SESSION_ID = ...` (old, broken) must NOT appear.
+        self.assertFalse(
+            re.search(r"\bconst\s+SESSION_ID\b", self.src),
+            "SESSION_ID must be declared with `let` so newSession() / "
+            "switchSession() can keep it in sync with localStorage. "
+            "The previous `const` declaration caused N-3 regression — "
+            "in-memory SESSION_ID was frozen at module-load time.",
+        )
+        self.assertTrue(
+            re.search(r"\blet\s+SESSION_ID\b", self.src),
+            "SESSION_ID must exist and be declared with `let`.",
+        )
+
+    def test_history_key_is_let_not_const(self):
+        # HISTORY_KEY depends on SESSION_ID. If SESSION_ID can change
+        # at runtime, HISTORY_KEY must follow it or restoreHistory()
+        # / saveToLocal() write to the old session's localStorage slot.
+        import re
+        self.assertFalse(
+            re.search(r"\bconst\s+HISTORY_KEY\b", self.src),
+            "HISTORY_KEY must be declared with `let` for the same "
+            "reason as SESSION_ID — it has to track SESSION_ID across "
+            "session mutations or saveToLocal writes orphan history.",
+        )
+        self.assertTrue(
+            re.search(r"\blet\s+HISTORY_KEY\b", self.src),
+            "HISTORY_KEY must exist and be declared with `let`.",
+        )
+
+    def test_refresh_session_globals_helper_exists(self):
+        # A single helper is the right shape — call sites converge
+        # on one place that decides "now that localStorage changed,
+        # rebind the two in-memory constants".
+        self.assertIn(
+            "function refreshSessionGlobals(",
+            self.src,
+            "A refreshSessionGlobals() helper must exist so call "
+            "sites (newSession, switchSession, future ones) share "
+            "one re-sync path.",
+        )
+        # The body must reassign BOTH globals — half-fix would still
+        # leave restoreHistory() reading the wrong HISTORY_KEY.
+        idx = self.src.index("function refreshSessionGlobals(")
+        body = self.src[idx:idx + 400]
+        self.assertIn("SESSION_ID =", body,
+                      "refreshSessionGlobals must reassign SESSION_ID")
+        self.assertIn("HISTORY_KEY =", body,
+                      "refreshSessionGlobals must reassign HISTORY_KEY")
+
+    def test_new_session_calls_refresh_helper(self):
+        # newSession() is the most common path that hits the N-3
+        # regression (user clicks "+ 새 채팅"). It MUST call the
+        # helper after writing localStorage.
+        idx = self.src.index("function newSession(")
+        # Scan the function body — bounded by the next top-level
+        # `function ` (or end of file).
+        next_fn = self.src.find("\nfunction ", idx + 1)
+        body = self.src[idx:next_fn if next_fn > 0 else len(self.src)]
+        self.assertIn(
+            "localStorage.setItem('james_session'",
+            body,
+            "newSession should still persist the new SID to localStorage",
+        )
+        self.assertIn(
+            "refreshSessionGlobals()",
+            body,
+            "newSession MUST call refreshSessionGlobals() after the "
+            "localStorage.setItem — otherwise SESSION_ID stays at its "
+            "old value and the very next /query/ POST sends the wrong "
+            "session_id, defeating the PR-O4 #291 N-3 backend gate.",
+        )
+
+    def test_switch_session_calls_refresh_helper(self):
+        # switchSession() has the same shape — localStorage write,
+        # then in-memory constants must be re-synced.
+        idx = self.src.index("async function switchSession(")
+        next_fn = self.src.find("\nasync function ", idx + 1)
+        if next_fn < 0:
+            next_fn = self.src.find("\nfunction ", idx + 1)
+        body = self.src[idx:next_fn if next_fn > 0 else len(self.src)]
+        self.assertIn(
+            "localStorage.setItem('james_session'",
+            body,
+            "switchSession should persist the chosen SID to localStorage",
+        )
+        self.assertIn(
+            "refreshSessionGlobals()",
+            body,
+            "switchSession MUST call refreshSessionGlobals() — same "
+            "reason as newSession. Switching sessions and then sending "
+            "a query without re-syncing would route the query to the "
+            "OLD session's hist_ctx.",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -543,8 +543,22 @@ function getSessionId() {
   return sid;
 }
 
-const SESSION_ID = getSessionId();
-const HISTORY_KEY = `james_history_${SESSION_ID}`;
+// [N-3 fix, 2026-05-18] const → let. newSession() / switchSession() 가
+// localStorage 의 james_session 만 갱신하고 in-memory 상수는 안 바꾸는
+// 회귀가 있었음 — "+ 새 채팅" 직후 query 가 옛 SID 로 전송되어 backend 의
+// hist_ctx 가 비어있지 않게 되고, long_ctx (이전 세션 분석 요약) 가
+// 주입돼 인사 대신 분석 답변이 나왔음 (PR-O4 #291 의 백엔드 게이트는
+// 정상이었으나 frontend 가 새 SID 를 못 흘려보냄).
+let SESSION_ID = getSessionId();
+let HISTORY_KEY = `james_history_${SESSION_ID}`;
+
+// localStorage 의 james_session 값을 바꾼 직후 호출해서 두 in-memory
+// 상수를 재동기. getSessionId() 는 localStorage 미존재 시 새 SID 를
+// 생성 + 저장하므로 newSession() / switchSession() 양쪽에서 안전.
+function refreshSessionGlobals() {
+  SESSION_ID = getSessionId();
+  HISTORY_KEY = `james_history_${SESSION_ID}`;
+}
 // item #3-a: 50 → 200. 50턴은 ~25 사용자-자메스 페어로 모바일 사용 한 번이면
 // 금방 cap. 200이면 ~100 페어, 며칠치 대화 보존 가능. localStorage 5MB 한도
 // 안에 안전 (200턴 × 평균 1KB ≈ 200KB).
@@ -2461,6 +2475,8 @@ async function switchSession(sessionId) {
   }
   // 세션 전환: sessionStorage 업데이트 + 히스토리 로드
   localStorage.setItem('james_session', sessionId);
+  // [N-3 fix] in-memory SESSION_ID / HISTORY_KEY 동기 (newSession 과 동일).
+  refreshSessionGlobals();
   toggleSessionPanel();
 
   // 현재 메시지 초기화 후 해당 세션 히스토리 표시
@@ -2507,6 +2523,9 @@ function newSession() {
   // 새 세션 ID 생성
   const newSid = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
   localStorage.setItem('james_session', newSid);
+  // [N-3 fix] in-memory SESSION_ID / HISTORY_KEY 도 동기. 안 그러면
+  // 다음 query 가 옛 SID 로 전송되어 backend N-3 게이트가 못 풀림.
+  refreshSessionGlobals();
   toggleSessionPanel();
 
   // 화면 초기화
