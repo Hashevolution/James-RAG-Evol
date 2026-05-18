@@ -37,6 +37,8 @@
 | 2026-05-18 | **6 promo screenshots + README hero image landed on main (PR #304)** | ✅ `reports/promo-assets/screenshots/` — 01 memory-status, 02 intent-engineering, 03 chat-graph-paths, 04 personality-radar, 05 knowledge-tracker, 06 3d-graph. Hero on both `README.md` and `README.ko.md`. Visual-trust gap closed |
 | 2026-05-18 | New X post — v0.3.0 3D ontology visualizer with `06-3d-graph.jpg` attached | ✅ Posted by author (URL pending in tracker) — first image-bearing X post in cycle |
 | 2026-05-18 | **dev.to Write-track submission published** — fair-witness field report on E4B cognitive-stage failures | ✅ Live ([URL](https://dev.to/hashevolution/5-empty-responses-from-gemma4e4b-4-hypotheses-0-root-cause-1ggd)) — second Gemma 4 Challenge submission (Write track, $100×5 prize), draft archived at `reports/promo-assets/devto-gemma4-write-track.md` |
+| 2026-05-18 | **First two organic verified-account replies on X** | ✅ [@simplydt](https://x.com/simplydt) "v0.3.0 is robust, dig the local Graph-RAG security stack" (on v0.3.0 release tweet) + [@mfucek_](https://x.com/mfucek_) "you also using react force graph? Working on a similar project" (on 3D visualizer tweet) — both verified, both technical, latter is a potential second collaboration lead |
+| 2026-05-18 | **Ali Collaboration Track handover + injection-fixtures schema v0 (PR #311)** | ✅ Merged on main. 5 commits made in writing converted into 5 coding tracks with deadlines (Track 2 schema 2026-06-01, Track 1 Provider contract 2026-06-15). Schema URL ready for hand-off to Ali via LinkedIn DM |
 
 ---
 
@@ -73,6 +75,22 @@ Three independent curators, three independent review pipelines. One acceptance i
 | dev.to article (Write-track submission — cognitive-stages fair-witness report) | https://dev.to/hashevolution/5-empty-responses-from-gemma4e4b-4-hypotheses-0-root-cause-1ggd | Global EN (Gemma 4 contestants + Ollama operators + local-LLM researchers) | 2026-05-18 |
 
 Monitoring rule: respond to substantive replies within 1-2 hours during the first 24 hours; longer-form responses (e.g. quote threads) get hour-of-day discretion.
+
+### X reply response patterns (after the first organic replies, 2026-05-18)
+
+Three reply shapes observed so far; canonical response template per shape:
+
+| Reply shape | Example | Response template |
+|---|---|---|
+| **Technical question from a maker** | @mfucek_ — "you also using react force graph?" — replier is working on adjacent project | Precise technical answer + one *interesting* detail we learned + reciprocal curiosity about their project. Door opens for second-collaboration lead if their answer comes back substantive |
+| **Short positive endorsement** | @simplydt — "v0.3.0 is robust, dig the local Graph-RAG security stack" | Thank them + name the next stress test (v0.4 multi-tenant) + invitation if they've worked similar boundaries. Short, dignified, no sales tone |
+| **Critical push-back** *(none received yet)* | hypothetical | Partial acknowledgement + our reasoning made explicit + reframe with data. Same pattern as the Ali-temperature exchange |
+
+Universal rules:
+- Respond within 1–6 hours during the active follow-up window
+- Public reply means silent readers see it — depth matters more than brevity
+- Verified accounts get priority on response order, but everyone gets a reply if substantive
+- Reciprocal curiosity ("what kind of X is your project doing?") is the highest-leverage single line in a maker-to-maker reply
 
 ---
 
@@ -212,6 +230,10 @@ This launch tracker file is considered complete when all of the following are tr
 - [x] **First image-bearing X post (2026-05-18, URL pending)**
 - [ ] dev.to two articles refreshed with cover images (planned, drag-drop from screenshots library)
 - [ ] GeekNews D-Day 2026-05-19 — body refresh + image embed + author publish
+- [x] **First organic verified-account replies on X received and responded to (2026-05-18)**
+- [ ] Ali receives the injection-fixtures schema URL via LinkedIn DM (Track 2 trigger; deadline 2026-06-01)
+- [ ] Track 1 — Provider contract code lands (deadline 2026-06-15)
+- [ ] @mfucek_ (X) follow-up — potential second collaboration lead, awaiting their reply
 - [ ] Gemma 4 Challenge result decided (2026-06-04)
 
 Append a final "Phase 5 outcomes" section once the above are satisfied, then archive this file under `reports/promo-assets/archive/v0.2.0-launch-tracker.md` and reset for v0.3 cycle.
