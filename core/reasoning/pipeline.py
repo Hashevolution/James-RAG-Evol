@@ -60,9 +60,18 @@ def run_retrieval_pipeline(
     t_qexp = time.time()
     expanded_query = safe_query
     rewrite_latency_ms = 0
+    rewrite_attempted = False
     try:
         from core.retrieval.query_rewriter import get_query_rewriter
-        expanded_query, rewrite_latency_ms = get_query_rewriter().rewrite(safe_query)
+        # [PR-2 시인성 개선 2026-05-18] rewriter 가 backend.complete()
+        # 를 실제로 호출했는지 여부를 ``attempted`` 로 분리해서 받는다.
+        # 이전엔 (query, latency) 만 받았고 trace emit 도 ``expanded !=
+        # safe`` 일 때만 — 결과적으로 사용자가 env 를 켰는데도 trace
+        # 가 비어 있으면 "env 도달 안 함" / "rewriter 가 silent fail"
+        # / "LLM 이 의미적으로 동일한 문자열 반환" 을 구분할 수 없었다.
+        expanded_query, rewrite_latency_ms, rewrite_attempted = (
+            get_query_rewriter().rewrite(safe_query)
+        )
     except Exception as e:
         engine._log("query_rewrite", e, user_role)
     engine._elapsed(t_qexp, "STEP0.5 query_rewrite")
@@ -72,15 +81,24 @@ def run_retrieval_pipeline(
     # the existing "retrieve" stage with a descriptive applied_rule —
     # adding a "rewrite" stage to ALLOWED_STAGES would require a §5.7.2
     # schema change (architecture-labelled PR), which this PR avoids.
-    if expanded_query != safe_query:
+    #
+    # Emit whenever the rewriter actually called the backend (regardless
+    # of whether the output differs from the input). If the input and
+    # output match we still surface the row with "no change" so the
+    # operator can confirm the rewriter ran. Skipped cases (env off,
+    # short query, backend lookup miss) emit nothing — those are not
+    # rewrite attempts.
+    if rewrite_attempted:
         try:
             from core.reasoning.trace_schema import (
                 TraceStep, compute_inputs_hash, truncate_summary,
                 emit_trace_step,
             )
+            _changed = expanded_query != safe_query
             _rewrite_extras: Dict[str, Any] = {
                 "original_query": safe_query[:200],
                 "rewritten_query": expanded_query[:200],
+                "changed": _changed,
             }
             try:
                 from core.observability import get_trace_id
@@ -89,15 +107,17 @@ def run_retrieval_pipeline(
                     _rewrite_extras["trace_id"] = _tid
             except Exception:
                 pass
+            _summary = (
+                f"{safe_query} → {expanded_query}" if _changed
+                else f"no change: {safe_query}"
+            )
             emit_trace_step(
                 TraceStep(
                     stage="retrieve",
                     backend_id="ollama_local",
                     parent_step_id="",
                     inputs_hash=compute_inputs_hash(safe_query),
-                    output_summary=truncate_summary(
-                        f"{safe_query} → {expanded_query}"
-                    ),
+                    output_summary=truncate_summary(_summary),
                     applied_rule="reasoning.retrieve.query_rewrite",
                     latency_ms=rewrite_latency_ms,
                 ),

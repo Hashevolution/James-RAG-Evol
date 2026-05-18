@@ -71,9 +71,13 @@ class OptInGateTests(unittest.TestCase):
         rw = QueryRewriter()
         fake = MagicMock()
         with patch("core.reasoning.backends.get_backend", return_value=fake):
-            out, latency = rw.rewrite("이것은 테스트 질의입니다")
+            out, latency, attempted = rw.rewrite("이것은 테스트 질의입니다")
         self.assertEqual(out, "이것은 테스트 질의입니다")
         self.assertEqual(latency, 0)
+        self.assertFalse(attempted,
+            "env opt-in unset → backend.complete() must NOT be called "
+            "→ attempted MUST be False (caller uses this to decide "
+            "whether to emit a trace row)")
         fake.complete.assert_not_called()
 
     def test_force_bypasses_env_gate(self):
@@ -84,8 +88,10 @@ class OptInGateTests(unittest.TestCase):
             text='{"rewritten": "테스트 질의 (시험 검사)"}'
         )
         with patch("core.reasoning.backends.get_backend", return_value=fake):
-            out, _ = rw.rewrite("이것은 테스트 질의입니다", force=True)
+            out, _, attempted = rw.rewrite("이것은 테스트 질의입니다", force=True)
         self.assertEqual(out, "테스트 질의 (시험 검사)")
+        self.assertTrue(attempted,
+            "force=True + successful backend call → attempted must be True")
         fake.complete.assert_called_once()
 
 
@@ -93,16 +99,18 @@ class ShortQueryTests(unittest.TestCase):
 
     def test_empty_query_identity(self):
         from core.retrieval.query_rewriter import QueryRewriter
-        self.assertEqual(QueryRewriter().rewrite(""), ("", 0))
+        # Short-circuit before backend lookup → attempted=False so the
+        # pipeline knows not to emit a "rewrite ran" trace row.
+        self.assertEqual(QueryRewriter().rewrite(""), ("", 0, False))
 
     def test_whitespace_query_identity(self):
         from core.retrieval.query_rewriter import QueryRewriter
-        self.assertEqual(QueryRewriter().rewrite("   "), ("   ", 0))
+        self.assertEqual(QueryRewriter().rewrite("   "), ("   ", 0, False))
 
     def test_short_query_identity(self):
         from core.retrieval.query_rewriter import QueryRewriter
         # 3-char query is below the rewrite threshold
-        self.assertEqual(QueryRewriter().rewrite("RAG"), ("RAG", 0))
+        self.assertEqual(QueryRewriter().rewrite("RAG"), ("RAG", 0, False))
 
 
 class BackendFailureTests(unittest.TestCase):
@@ -124,8 +132,11 @@ class BackendFailureTests(unittest.TestCase):
     def test_backend_lookup_missing_returns_identity(self):
         from core.retrieval.query_rewriter import QueryRewriter
         rw = QueryRewriter(backend_id="definitely_not_registered")
-        out, _ = rw.rewrite("이것은 충분히 긴 질의입니다")
+        out, _, attempted = rw.rewrite("이것은 충분히 긴 질의입니다")
         self.assertEqual(out, "이것은 충분히 긴 질의입니다")
+        self.assertFalse(attempted,
+            "backend lookup miss is a configuration error — the LLM "
+            "wasn't called, so attempted must be False (no trace row)")
 
     def test_backend_raises_returns_identity(self):
         from core.retrieval.query_rewriter import QueryRewriter
@@ -133,8 +144,11 @@ class BackendFailureTests(unittest.TestCase):
         fake = MagicMock()
         fake.complete.side_effect = RuntimeError("ollama timeout")
         with patch("core.reasoning.backends.get_backend", return_value=fake):
-            out, _ = rw.rewrite("긴 한국어 질의 입니다")
+            out, _, attempted = rw.rewrite("긴 한국어 질의 입니다")
         self.assertEqual(out, "긴 한국어 질의 입니다")
+        self.assertTrue(attempted,
+            "backend.complete() raised — it WAS called, so attempted "
+            "must be True (operator wants to see this in the trace)")
 
     def test_backend_returns_error_string_identity(self):
         from core.retrieval.query_rewriter import QueryRewriter
@@ -142,8 +156,9 @@ class BackendFailureTests(unittest.TestCase):
         fake = MagicMock()
         fake.complete.return_value = _completion(error="backend reported error")
         with patch("core.reasoning.backends.get_backend", return_value=fake):
-            out, _ = rw.rewrite("긴 한국어 질의 입니다")
+            out, _, attempted = rw.rewrite("긴 한국어 질의 입니다")
         self.assertEqual(out, "긴 한국어 질의 입니다")
+        self.assertTrue(attempted)
 
     def test_empty_text_returns_identity(self):
         from core.retrieval.query_rewriter import QueryRewriter
@@ -151,8 +166,9 @@ class BackendFailureTests(unittest.TestCase):
         fake = MagicMock()
         fake.complete.return_value = _completion(text="")
         with patch("core.reasoning.backends.get_backend", return_value=fake):
-            out, _ = rw.rewrite("긴 한국어 질의 입니다")
+            out, _, attempted = rw.rewrite("긴 한국어 질의 입니다")
         self.assertEqual(out, "긴 한국어 질의 입니다")
+        self.assertTrue(attempted)
 
 
 class JsonParseTests(unittest.TestCase):
@@ -176,43 +192,72 @@ class JsonParseTests(unittest.TestCase):
             return rw.rewrite(query)
 
     def test_pure_json_response(self):
-        out, _ = self._rewrite_with_text('{"rewritten": "다시 작성된 질의"}')
+        out, _, attempted = self._rewrite_with_text('{"rewritten": "다시 작성된 질의"}')
         self.assertEqual(out, "다시 작성된 질의")
+        self.assertTrue(attempted)
 
     def test_json_with_leading_prose(self):
         # The LLM padded with prose before the JSON despite "JSON only"
-        out, _ = self._rewrite_with_text(
+        out, _, _ = self._rewrite_with_text(
             "여기 재작성된 질의입니다:\n{\"rewritten\": \"새 질의\"}"
         )
         self.assertEqual(out, "새 질의")
 
     def test_json_with_trailing_prose(self):
-        out, _ = self._rewrite_with_text(
+        out, _, _ = self._rewrite_with_text(
             '{"rewritten": "새 질의"}\n위 형태로 다시 작성했습니다.'
         )
         self.assertEqual(out, "새 질의")
 
     def test_malformed_json_identity(self):
-        out, _ = self._rewrite_with_text("not json at all, just prose")
+        out, _, attempted = self._rewrite_with_text("not json at all, just prose")
         self.assertEqual(out, "이것은 충분히 긴 한국어 질의입니다")
+        self.assertTrue(attempted,
+            "JSON parse failed but backend was called — surface this "
+            "to the operator via the trace (attempted=True)")
 
     def test_missing_rewritten_key_identity(self):
-        out, _ = self._rewrite_with_text('{"other": "value"}')
+        out, _, attempted = self._rewrite_with_text('{"other": "value"}')
         self.assertEqual(out, "이것은 충분히 긴 한국어 질의입니다")
+        self.assertTrue(attempted)
 
     def test_empty_rewritten_value_identity(self):
-        out, _ = self._rewrite_with_text('{"rewritten": ""}')
+        out, _, attempted = self._rewrite_with_text('{"rewritten": ""}')
         self.assertEqual(out, "이것은 충분히 긴 한국어 질의입니다")
+        self.assertTrue(attempted)
 
     def test_runaway_expansion_rejected(self):
         # A reply that's > 3× the original length is most likely the
         # LLM explaining instead of rewriting — keep the original.
         long_value = "x" * 200
-        out, _ = self._rewrite_with_text(
+        out, _, attempted = self._rewrite_with_text(
             f'{{"rewritten": "{long_value}"}}',
             query="짧은 질의",
         )
         self.assertEqual(out, "짧은 질의")
+        self.assertTrue(attempted)
+
+    def test_semantically_identical_rewrite_still_attempted(self):
+        """[PR-2 시인성 2026-05-18] LLM 이 의미적으로 동일한 문자열을
+        반환했더라도 backend.complete() 가 호출됐다면 attempted=True.
+
+        이전엔 pipeline 의 ``if expanded_query != safe_query`` 게이트
+        때문에 이런 경우 trace 행이 emit 안 됐다 — 사용자가 옵트인을
+        켰는데 trace 가 비어 있으면 env 도달 / LLM 호출 / 의미 동일
+        중 어느 것인지 구분 불가했다. 시그니처에 attempted 추가로
+        pipeline 이 'rewrite 실행됨, 변화 없음' 행을 그릴 수 있게 됨.
+        """
+        original = "이것은 충분히 긴 한국어 질의입니다"
+        # LLM 이 원본과 동일한 텍스트를 반환 — 의미상 변화 없음 케이스
+        out, _, attempted = self._rewrite_with_text(
+            f'{{"rewritten": "{original}"}}',
+            query=original,
+        )
+        self.assertEqual(out, original)
+        self.assertTrue(attempted,
+            "Backend was called and returned a valid rewrite that "
+            "happens to equal the input — attempted MUST be True so "
+            "the pipeline emits a 'no change' trace row")
 
 
 class LanguageDetectionTests(unittest.TestCase):
@@ -290,9 +335,10 @@ class LatencyRecordedTests(unittest.TestCase):
             return _completion(error="timeout")
         fake.complete.side_effect = slow_error
         with patch("core.reasoning.backends.get_backend", return_value=fake):
-            out, latency = rw.rewrite("이것은 충분히 긴 한국어 질의입니다")
+            out, latency, attempted = rw.rewrite("이것은 충분히 긴 한국어 질의입니다")
         self.assertEqual(out, "이것은 충분히 긴 한국어 질의입니다")
         self.assertGreaterEqual(latency, 15)
+        self.assertTrue(attempted)
 
 
 if __name__ == "__main__":   # pragma: no cover

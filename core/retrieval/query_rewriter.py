@@ -141,28 +141,43 @@ class QueryRewriter:
         query: str,
         *,
         force: bool = False,
-    ) -> Tuple[str, int]:
-        """Return ``(rewritten_query, latency_ms)``.
+    ) -> Tuple[str, int, bool]:
+        """Return ``(rewritten_query, latency_ms, attempted)``.
 
-        Falls back to ``(query, 0)`` when:
+        ``attempted`` is True iff the backend's ``.complete()`` was
+        actually called for this query — distinguishes "the rewriter
+        ran but the LLM returned an equivalent string / parse-failed
+        / errored" from "the rewriter was never invoked (env off,
+        query too short, backend lookup miss)". Callers use this to
+        decide whether to emit a trace row even when the query is
+        unchanged — without it, users opt-in to query_rewrite and see
+        ZERO trace activity, unable to tell whether the env flag was
+        wired through or the LLM just produced an equivalent rewrite.
+
+        Falls back to ``(query, 0, False)`` when:
           * the env opt-in flag is not set (and ``force`` is False)
           * query is empty / shorter than 4 chars (rewrite adds noise)
           * backend lookup fails (registry doesn't know the id)
-          * backend.complete() raises or returns an error string
+
+        Returns ``(query, latency, True)`` (= attempted, but no useful
+        rewrite) when:
+          * ``backend.complete()`` raises or returns an error
           * the response doesn't contain a valid ``"rewritten"`` value
           * the rewritten string is empty or balloons past
             ``MAX_EXPANSION_RATIO × len(original)``
+
+        Returns ``(rewritten, latency, True)`` on success.
         """
         if not query or len(query.strip()) < 4:
-            return (query, 0)
+            return (query, 0, False)
         if not force and not _enabled():
-            return (query, 0)
+            return (query, 0, False)
 
         try:
             from core.reasoning.backends import get_backend
             backend = get_backend(self._backend_id)
         except Exception:
-            return (query, 0)
+            return (query, 0, False)
 
         prompt_tmpl = REWRITE_PROMPT_KO if _is_korean(query) else REWRITE_PROMPT_EN
         prompt = prompt_tmpl.format(query=query)
@@ -175,22 +190,22 @@ class QueryRewriter:
                 timeout=self._timeout,
             )
         except Exception:
-            return (query, int((time.time() - t0) * 1000))
+            return (query, int((time.time() - t0) * 1000), True)
         latency_ms = int((time.time() - t0) * 1000)
 
         if getattr(result, "error", "") or not getattr(result, "text", ""):
-            return (query, latency_ms)
+            return (query, latency_ms, True)
 
         rewritten = _parse_rewritten(result.text)
         if not rewritten:
-            return (query, latency_ms)
+            return (query, latency_ms, True)
 
         # Reject runaway expansions — usually the LLM explaining instead
         # of rewriting. Keep the original; mark the latency we spent.
         if len(rewritten) > len(query) * MAX_EXPANSION_RATIO:
-            return (query, latency_ms)
+            return (query, latency_ms, True)
 
-        return (rewritten, latency_ms)
+        return (rewritten, latency_ms, True)
 
 
 # ─── module-level singleton ────────────────────────────────────────
