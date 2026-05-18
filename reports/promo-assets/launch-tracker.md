@@ -39,6 +39,14 @@
 | 2026-05-18 | **dev.to Write-track submission published** — fair-witness field report on E4B cognitive-stage failures | ✅ Live ([URL](https://dev.to/hashevolution/5-empty-responses-from-gemma4e4b-4-hypotheses-0-root-cause-1ggd)) — second Gemma 4 Challenge submission (Write track, $100×5 prize), draft archived at `reports/promo-assets/devto-gemma4-write-track.md` |
 | 2026-05-18 | **First two organic verified-account replies on X** | ✅ [@simplydt](https://x.com/simplydt) "v0.3.0 is robust, dig the local Graph-RAG security stack" (on v0.3.0 release tweet) + [@mfucek_](https://x.com/mfucek_) "you also using react force graph? Working on a similar project" (on 3D visualizer tweet) — both verified, both technical, latter is a potential second collaboration lead |
 | 2026-05-18 | **Ali Collaboration Track handover + injection-fixtures schema v0 (PR #311)** | ✅ Merged on main. 5 commits made in writing converted into 5 coding tracks with deadlines (Track 2 schema 2026-06-01, Track 1 Provider contract 2026-06-15). Schema URL ready for hand-off to Ali via LinkedIn DM |
+| 2026-05-18 | Ali 3rd turn (LinkedIn DM) — proposed 3×3 matrix experiment design (3 variants × 3 temperatures × 1 prompt structure per side, 9 cells, 1 run per cell) | ✅ Acknowledged. Provia Arabic-localization milestone aligned with our 2–4 week Provider window |
+| 2026-05-18 | **Gemma 4 variant 3×3 evaluation plan published (PR #315)** | ✅ Merged on main. Pre-registers matrix design + 4 hypotheses + result-to-writeup decision matrix BEFORE any cell runs (post-hoc framing drift safeguard). Two-layer measurement-site discipline (synthesis layer only) |
+| 2026-05-18 | **LLM Provider contract published (PR #316)** | ✅ Merged on main. Track 1 deliverable shipped 2–3 weeks ahead — external implementers (Ali Gemini API side, anyone else) can wire backends against the stable contract immediately while internal L1 wiring follows separately |
+| 2026-05-18 | Our 4th turn LinkedIn DM reply sent | ✅ Sent — 3×3 design accepted with synthesis-layer measurement clarification, Provider contract URL provided, pre-registration plan URL provided, scope-lock note re-acknowledged |
+| 2026-05-18 | Ali 4th turn (LinkedIn DM) — schema v0 → v1 refinements proposed | ✅ Two refinements: (a) **Normalization invariant** (byte-exact UTF-8, harness never normalizes, NFKC/U+202E collapse risk for `direction_mark_confusion`); (b) **`expected_block_stage` optional enum** (input/retrieval/output/any, defaults to `any` for backward-compat, multi-stage attack capture for `catalog_poisoning` + `data_exfiltration`) |
+| 2026-05-18 | **Injection-fixtures schema v0 → v1 (PR #317)** | ✅ Merged on main. Both Ali refinements accepted and implemented in schema doc. Backward-compatible: v0 fixtures parse under v1 unchanged. URL path preserved (same as v0 publish, only `version` field internal to doc bumped to `1`); diff-log entry records the transition with Ali's DM date and credit ("acting on Ali's LinkedIn DM 2026-05-18 feedback") |
+| 2026-05-18 | Our 5th turn LinkedIn DM reply sent | ✅ Sent — v1 refinements accepted as fact (already published), `test_prompt_is_unnormalized` enforcement pattern documented, `expected_block_stage` JAMES + Provia 3-stage mappings worked through with `ar_poi_001` example. Ali's 6/1 timeline unchanged |
+| 2026-05-18 | dev.to comment thread — **deliberately NOT cross-posted** from LinkedIn DM contents | ✅ Channel separation decision recorded. Rationale: (1) Ali chose LinkedIn DM as the sustained working channel (4 turns there vs 1 dev.to comment), (2) Ali's specific commits on LinkedIn (15-20 Arabic fixtures, 6/1 deadline, refinement detail) are sustained working-dialogue, not public announcement, (3) dev.to comment thread already has the 2026-05-16 reply with general collaboration-progress signal; next dev.to comment trigger is a milestone (Provider L1 wiring merge / swap experiment result / Part 2 article publication) |
 
 ---
 
@@ -91,6 +99,20 @@ Universal rules:
 - Public reply means silent readers see it — depth matters more than brevity
 - Verified accounts get priority on response order, but everyone gets a reply if substantive
 - Reciprocal curiosity ("what kind of X is your project doing?") is the highest-leverage single line in a maker-to-maker reply
+
+### Cross-channel posting discipline (formalized 2026-05-18 from the Ali Afana exchange)
+
+When a sustained working-dialogue lives on a private channel (LinkedIn DM, email, Discord DM), **do not cross-post the specific commits to public channels** (dev.to comments, X public replies, public Reddit) unless the collaborator explicitly opts in. Cross-posting policy:
+
+| Working channel | Public channel role | What to cross-post |
+|---|---|---|
+| **LinkedIn DM** (sustained working dialogue) | **dev.to comments / X replies** (public milestone signal) | Public-side gets only milestone announcements (Provider contract live, swap experiment result, joint article published) — never the working-dialogue specifics (deadlines committed in private, percentages of code volume committed by each side, refinement-source attribution beyond what the working artifact itself credits) |
+| Email | Same as above | Same as above |
+| Discord DM | Same as above | Same as above |
+
+Why: violating this discipline (a) commits the collaborator to public obligations they only made in private, (b) creates the impression that future private commits will be publicly announced — chilling the working dialogue's specificity, (c) leaks competitive timing info that may matter to the collaborator's company (Ali's Provia release schedule, for example).
+
+The intermediate artifacts that *do* go on public main repository (this launch-tracker, the schema docs, the Provider contract, the 3×3 evaluation plan) are different — they are deliberately published designs. The private dialogue *behind* them stays private.
 
 ---
 
@@ -231,8 +253,11 @@ This launch tracker file is considered complete when all of the following are tr
 - [ ] dev.to two articles refreshed with cover images (planned, drag-drop from screenshots library)
 - [ ] GeekNews D-Day 2026-05-19 — body refresh + image embed + author publish
 - [x] **First organic verified-account replies on X received and responded to (2026-05-18)**
-- [ ] Ali receives the injection-fixtures schema URL via LinkedIn DM (Track 2 trigger; deadline 2026-06-01)
-- [ ] Track 1 — Provider contract code lands (deadline 2026-06-15)
+- [x] **Ali received the injection-fixtures schema URL via LinkedIn DM (Track 2 trigger)** — followed up with schema v1 refinements (2026-05-18); Ali starting `ar_ecommerce.yaml` against v1, target ~2026-06-01
+- [x] **Cross-experiment design (3×3 matrix) pre-registered on main with falsification criteria locked before any cell runs**
+- [x] **LLM Provider contract published on main 2–3 weeks ahead of schedule** — external implementers can wire backends now
+- [ ] Track 1 — Provider contract **L1 wiring (code)** lands (deadline 2026-06-15)
+- [ ] Track 2 — Ali delivers `ar_ecommerce.yaml` (15–20 Arabic fixtures + ≥5 benign, deadline ~2026-06-01)
 - [ ] @mfucek_ (X) follow-up — potential second collaboration lead, awaiting their reply
 - [ ] Gemma 4 Challenge result decided (2026-06-04)
 
