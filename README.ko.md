@@ -8,6 +8,8 @@
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12806/badge)](https://www.bestpractices.dev/projects/12806)
 
+![PROJECT JAMES — 3D 온톨로지 그래프 시각화](reports/promo-assets/screenshots/06-3d-graph.jpg)
+
 > **🚀 처음 시작하시는 분?** 컴퓨터 잘 모르셔도 따라하실 수 있는
 > [**비기너 가이드**](README.beginner.ko.md) 를 먼저 보세요.
 
