@@ -292,9 +292,14 @@ class EndpointTests(_JobsFixture):
             params={"api_key": self._api_key},
             json={"job_type": "excel_build", "input_refs": []},
         )
-        # api_key is valid but no Bearer → role=employee, workspace.run_jobs
-        # default includes employee → passes gate, but no JWT subject → 401.
-        self.assertEqual(r.status_code, 401)
+        # [default-deny fallback 2026-05-18] api_key is valid but no
+        # Bearer → role=external (was 'employee' before the secure-
+        # default change). workspace.run_jobs default_allowed does NOT
+        # include external, so the feature gate stops the request at
+        # 403 — the JWT-subject check at 401 isn't reached. Either
+        # response code proves "anonymous caller cannot run jobs",
+        # which is what this test was originally pinning.
+        self.assertEqual(r.status_code, 403)
 
     def test_run_external_role_denied_by_default(self):
         # external is NOT in workspace.run_jobs default_allowed.

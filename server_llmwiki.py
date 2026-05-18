@@ -398,9 +398,13 @@ def resolve_api_key_principal(api_key: str) -> Optional[dict]:
     if api_key == API_KEY:
         # System key intentionally does NOT carry admin authority by
         # itself — pairing it with an admin JWT is still required for
-        # admin endpoints. Returning "employee" here keeps the
-        # pre-P3-2 behaviour identical for system-only callers.
-        return {"source": "system", "username": "system", "role": "employee"}
+        # admin endpoints. The role field here is currently NOT
+        # consumed (``get_role_from_request`` only honors
+        # ``source == "user"`` and falls through for "system"), but we
+        # keep it in sync with the fallback (external) so any future
+        # caller that does honor it gets the secure default.
+        # [default-deny fallback 2026-05-18] employee → external.
+        return {"source": "system", "username": "system", "role": "external"}
     return None
 
 
@@ -436,9 +440,20 @@ def get_role_from_request(
             print(f"[AUTH] X-Role 헤더 사용: {x_role} (개발 모드)")
             return x_role
 
-    # [P7-FIX] JWT 없어도 api_key 검증은 엔드포인트에서 수행됨
-    # 로컬 전용 시스템: api_key 통과 = 신뢰 사용자 → employee 수준 부여
-    return "employee"
+    # [default-deny fallback 2026-05-18] employee → external.
+    # Previously (single-local-user posture): "api_key 통과 = 신뢰
+    # 사용자 → employee 수준 부여" — convenient for solo operators but
+    # the implicit elevation undercut PR-O5 (cycle 12, #292) — the
+    # internal_rag gate is policy-attached to the external role, and
+    # an anonymous caller with only the system API key was silently
+    # promoted past that gate. Fallback is now external so the secure
+    # default actually fires: chat / meta still work for a bare key,
+    # retrieval / coding / admin paths require an explicit login.
+    # System operators who want the old behaviour can either (a) log
+    # in (gets their real role from JWT), (b) use a user API key in
+    # the jms_... format that maps to a specific role via
+    # ``resolve_api_key_principal``, or (c) set X-Role in DEV_MODE.
+    return "external"
 
 def get_client_ip(request: Request) -> str:
     forwarded = request.headers.get("X-Forwarded-For")

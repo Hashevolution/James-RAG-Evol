@@ -9,7 +9,10 @@ Three coverage angles:
   2. verify_api_key — accepts system AND user keys, rejects garbage.
   3. End-to-end via TestClient — calling an admin endpoint with only
      a user API key for an admin user must succeed; with only a
-     system key it must NOT (system key is intentionally employee).
+     system key it must NOT (system key is intentionally external —
+     since the 2026-05-18 default-deny fallback change, both the
+     system principal's nominal role and the no-credentials fallback
+     are "external" so the secure default actually fires).
 """
 from __future__ import annotations
 
@@ -106,8 +109,15 @@ class PrincipalResolutionTests(unittest.TestCase):
         self.assertEqual(p, {"source": "user", "username": "alice",
                              "role": "manager"})
 
-    def test_system_key_resolves_to_employee_not_admin(self):
-        """System key intentionally does NOT carry admin authority."""
+    def test_system_key_resolves_to_external_not_admin(self):
+        """System key intentionally does NOT carry admin authority.
+
+        [default-deny fallback 2026-05-18] role was 'employee' before;
+        flipped to 'external' so that any future caller honoring this
+        field (today only the user-key branch consumes it, but the
+        contract is widening) gets the secure default. The pairing
+        with an admin JWT for admin endpoints is unchanged.
+        """
         import server_llmwiki as srv
         sys_key = _system_api_key()
         if not sys_key:
@@ -115,8 +125,9 @@ class PrincipalResolutionTests(unittest.TestCase):
         p = srv.resolve_api_key_principal(sys_key)
         self.assertIsNotNone(p)
         self.assertEqual(p["source"], "system")
-        self.assertEqual(p["role"], "employee",
-                         "system key must not self-elevate to admin")
+        self.assertEqual(p["role"], "external",
+                         "system key must default-deny (external), "
+                         "not silently elevate to employee/admin")
 
     def test_unknown_keys_return_none(self):
         import server_llmwiki as srv
@@ -170,6 +181,70 @@ class VerifyApiKeyTests(unittest.TestCase):
         with self.assertRaises(HTTPException) as cm:
             srv.verify_api_key(plain)
         self.assertEqual(cm.exception.status_code, 403)
+
+
+class DefaultFallbackRoleTests(unittest.TestCase):
+    """[default-deny fallback 2026-05-18]
+
+    ``get_role_from_request`` used to fall back to ``"employee"`` when
+    no JWT / user API key / X-Role header was present. That silently
+    promoted bare-system-key callers past the PR-O5 internal_rag gate
+    (the gate is keyed on the ``external`` role). The fallback is
+    now ``"external"`` so the default deny actually fires.
+
+    These tests pin the new contract at the source level (regex on
+    the function body) — source-level so they don't depend on the
+    FastAPI dependency-injection plumbing.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        import inspect
+        import server_llmwiki as srv
+        cls.src = inspect.getsource(srv.get_role_from_request)
+
+    def test_fallback_returns_external(self):
+        # The function body must end with `return "external"` —
+        # not "employee", not anything else.
+        import re
+        self.assertIsNotNone(
+            re.search(r'return\s+"external"\s*$', self.src.rstrip()),
+            "get_role_from_request must end with `return \"external\"` "
+            "— the default-deny fallback. Reverting to 'employee' "
+            "silently promotes anonymous callers past PR-O5.",
+        )
+
+    def test_no_employee_fallback_remains(self):
+        # Make sure nobody put a stray `return "employee"` somewhere
+        # in the function (e.g. inside an `if` branch).
+        import re
+        # `return "employee"` must NOT appear anywhere — the function
+        # routes elsewhere for employee-role principals (user API key
+        # branch returns principal["role"], not a literal).
+        self.assertIsNone(
+            re.search(r'return\s+"employee"', self.src),
+            "No literal `return \"employee\"` should remain in "
+            "get_role_from_request. employee role still reaches "
+            "callers through resolved user keys (jms_...) — only the "
+            "anonymous fallback changed.",
+        )
+
+    def test_system_principal_role_is_external(self):
+        # The system-key principal returned by resolve_api_key_principal
+        # must also carry "external", not "employee" — kept in sync so
+        # any future caller honoring `principal["role"]` for system
+        # keys gets the same secure default.
+        import server_llmwiki as srv
+        sys_key = _system_api_key()
+        if not sys_key:
+            self.skipTest("JAMES_API_KEY missing")
+        p = srv.resolve_api_key_principal(sys_key)
+        self.assertIsNotNone(p)
+        self.assertEqual(
+            p["role"], "external",
+            "system principal must carry the same default-deny role "
+            "as the anonymous fallback",
+        )
 
 
 class EndToEndTests(unittest.TestCase):
