@@ -34,6 +34,8 @@
 | 2026-05-17 | **v0.3.0 — Platform Skeleton released on main** | ✅ Axis 6 second-user gate cleared 2026-05-13. Knowledge Cascade Phase A→E + Cognitive Middleware Layer architecture. Plugin API slipped to v0.3.x or v0.4 (per CHANGELOG note) |
 | 2026-05-17 | Cognitive Middleware Layer Phase 2 already shipping post-v0.3.0 | ✅ Verification engine (PR #290), planner / task decomposition (PR #297), tool router (PR #295) merged on main. Layer is now code, not architecture-only |
 | 2026-05-17 | Author dev.to Gemma 4 article — self-reply with bidirectional cross-reference to Ali's article | 🟡 Comment body drafted (see archive note below); awaiting author publication |
+| 2026-05-18 | **6 promo screenshots + README hero image landed on main (PR #304)** | ✅ `reports/promo-assets/screenshots/` — 01 memory-status, 02 intent-engineering, 03 chat-graph-paths, 04 personality-radar, 05 knowledge-tracker, 06 3d-graph. Hero on both `README.md` and `README.ko.md`. Visual-trust gap closed |
+| 2026-05-18 | New X post — v0.3.0 3D ontology visualizer with `06-3d-graph.jpg` attached | ✅ Posted by author (URL pending in tracker) — first image-bearing X post in cycle |
 
 ---
 
@@ -66,6 +68,7 @@ Three independent curators, three independent review pipelines. One acceptance i
 | dev.to article (intro) | https://dev.to/hashevolution/building-a-mini-palantir-a-local-graph-rag-engine-with-ontology-security-and-self-evolution-1914 | Global EN (technical) | 2026-05-12 |
 | dev.to article (Gemma 4 Challenge submission) | https://dev.to/hashevolution/building-a-mini-palantir-on-gemma4e4b-128k-context-lets-the-graph-actually-be-graph-rag-33fk | Global EN (Gemma 4 contestants + judges) | 2026-05-12 |
 | Hashnode cross-post (intro article) | https://ragllm.hashnode.dev/building-a-mini-palantir-a-local-graph-rag-engine-with-ontology-security-and-self-evolution-alpha | Global EN (Hashnode algorithm + Google search) | 2026-05-13 |
+| X — v0.3.0 visualizer post (with 3D graph image) | _(URL pending — author to record)_ | Global EN | 2026-05-18 |
 
 Monitoring rule: respond to substantive replies within 1-2 hours during the first 24 hours; longer-form responses (e.g. quote threads) get hour-of-day discretion.
 
@@ -111,6 +114,34 @@ Per-judge tie-break is by reaction count, so post-publication actions matter:
 4. Respond to substantive comments within 1-2 hours during the first 48 hours
 
 Asset archive: `reports/promo-assets/devto-gemma4-challenge.md`
+
+---
+
+## Visual asset library (since 2026-05-18)
+
+Six reusable screenshots under `reports/promo-assets/screenshots/`,
+each with a stable raw-blob URL on `main`. Drop-in for any external
+channel — see `reports/promo-assets/screenshots/README.md` for the
+strongest-signal mapping and recommended placement per channel.
+
+| File | Drop-in raw URL |
+|---|---|
+| Memory status counters | `https://github.com/Hashevolution/James-RAG-Evol/blob/main/reports/promo-assets/screenshots/01-memory-status.jpg?raw=true` |
+| Intent Engineering entity + 3D graph | `.../02-intent-engineering.jpg?raw=true` |
+| Chat response with 47 graph paths | `.../03-chat-graph-paths.jpg?raw=true` |
+| Personality 11-trait radar | `.../04-personality-radar.jpg?raw=true` |
+| Knowledge tracker (self-evolution + LV per domain) | `.../05-knowledge-tracker.jpg?raw=true` |
+| 3D ontology graph (hero) | `.../06-3d-graph.jpg?raw=true` |
+
+Channel-by-channel application status:
+
+- README.md / README.ko.md — `06-3d-graph.jpg` as hero ✅
+- dev.to intro article — cover image refresh planned (`06-3d-graph.jpg`) 🟡
+- dev.to Gemma 4 article — cover image refresh planned (`03-chat-graph-paths.jpg`) 🟡
+- X visualizer post — `06-3d-graph.jpg` attached ✅
+- LinkedIn follow-up — image attachment planned 🟡
+- GeekNews body — image embed planned for D-Day 2026-05-19 🟡
+- Show HN / Reddit — image embed planned for respective D-Days 🟡
 
 ### Pending author-publication actions
 
@@ -173,6 +204,10 @@ This launch tracker file is considered complete when all of the following are tr
 - [x] **First substantive external technical exchange (Ali Afana / Provia, 2026-05-16)**
 - [x] **Two-way exchange formalised (LinkedIn second turn + dev.to substantive comment, 2026-05-16)**
 - [ ] Author-reply on Gemma 4 article with bidirectional cross-reference (drafted, awaiting publish)
+- [x] **Visual asset library shipped — 6 screenshots + README hero (PR #304, 2026-05-18)**
+- [x] **First image-bearing X post (2026-05-18, URL pending)**
+- [ ] dev.to two articles refreshed with cover images (planned, drag-drop from screenshots library)
+- [ ] GeekNews D-Day 2026-05-19 — body refresh + image embed + author publish
 - [ ] Gemma 4 Challenge result decided (2026-06-04)
 
 Append a final "Phase 5 outcomes" section once the above are satisfied, then archive this file under `reports/promo-assets/archive/v0.2.0-launch-tracker.md` and reset for v0.3 cycle.
