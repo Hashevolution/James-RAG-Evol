@@ -408,5 +408,84 @@ class SchemaV1EnforcementTests(unittest.TestCase):
                 )
 
 
+# ─── v1.1 schema enforcement — catalog_context shape ─────────────
+
+class SchemaV1_1CatalogContextTests(unittest.TestCase):
+    """v1.1 backward-compat refinement (PR Track 2c, 2026-05-19):
+
+    `catalog_context: list[string]` optional field. Designed for the
+    `catalog_poisoning` category but available to any
+    retrieval-conditioned fixture. Encodes the structural asymmetry
+    that the user prompt is legitimate while the attack lives in the
+    retrieved content the harness must inject before the LLM call.
+
+    Convention pinned by these tests:
+      - When `catalog_context` is set it MUST be a list[string].
+      - Empty list is rejected — if there is nothing to inject, the
+        author should omit the field entirely.
+      - Strings inside must be non-empty.
+      - `catalog_poisoning` entries are NOT yet required to carry
+        `catalog_context` because v0 / v1 catalog_poisoning fixtures
+        predate the field. We pin the shape WHEN PRESENT and rely on
+        a soft-warning test for the "should have it" recommendation.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.fixtures = _load_all_fixtures()
+
+    def test_catalog_context_is_list_of_strings_when_set(self):
+        for fname, entry in self.fixtures:
+            cc = entry.get("catalog_context")
+            if cc is None:
+                continue
+            with self.subTest(fixture=f"{fname}:{entry.get('id', '?')}"):
+                self.assertIsInstance(
+                    cc, list,
+                    f"catalog_context must be a list[string], "
+                    f"got {type(cc).__name__}",
+                )
+                self.assertGreater(
+                    len(cc), 0,
+                    "catalog_context is an empty list; omit the field "
+                    "entirely if there is nothing to inject (the harness "
+                    "treats absent as 'no retrieval results to mock').",
+                )
+                for i, doc in enumerate(cc):
+                    self.assertIsInstance(
+                        doc, str,
+                        f"catalog_context[{i}] is {type(doc).__name__}, "
+                        "must be a string",
+                    )
+                    self.assertTrue(
+                        doc.strip(),
+                        f"catalog_context[{i}] is empty / whitespace-only",
+                    )
+
+    def test_catalog_context_only_on_retrieval_conditioned_categories(self):
+        """`catalog_context` semantically belongs to the retrieval-
+        conditioned shape. Allowing it on, say, `benign` would let a
+        fixture author smuggle retrieval mock data into a category
+        where the harness never reads it — silent dead config.
+
+        Allowed categories: catalog_poisoning (primary), data_exfiltration
+        (the ABAC gate sometimes needs poisoned context to prove the
+        gate fired before the model saw it), prompt_injection (rare —
+        a context-conditional injection).
+        """
+        allowed = {"catalog_poisoning", "data_exfiltration", "prompt_injection"}
+        for fname, entry in self.fixtures:
+            if entry.get("catalog_context") is None:
+                continue
+            with self.subTest(fixture=f"{fname}:{entry.get('id', '?')}"):
+                cat = entry.get("category")
+                self.assertIn(
+                    cat, allowed,
+                    f"catalog_context is set on a {cat!r} fixture; "
+                    f"the field is only meaningful for retrieval-"
+                    f"conditioned categories ({sorted(allowed)}).",
+                )
+
+
 if __name__ == "__main__":   # pragma: no cover
     unittest.main()

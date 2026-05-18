@@ -253,7 +253,7 @@ This launch tracker file is considered complete when all of the following are tr
 - [ ] dev.to two articles refreshed with cover images (planned, drag-drop from screenshots library)
 - [ ] GeekNews D-Day 2026-05-19 — body refresh + image embed + author publish
 - [x] **First organic verified-account replies on X received and responded to (2026-05-18)**
-- [x] **Ali received the injection-fixtures schema URL via LinkedIn DM (Track 2 trigger)** — followed up with schema v1 refinements (2026-05-18); Ali starting `ar_ecommerce.yaml` against v1, target ~2026-06-01
+- [x] **Ali received the injection-fixtures schema URL via LinkedIn DM (Track 2 trigger)** — followed up with schema v1 refinements (2026-05-18); v1.1 `catalog_context` field added pre-emptively (2026-05-19, PR Track 2c) answering Ali's flagged convention question. Ali confirmed 2026-05-19: "byte_drift_expected is the right escape hatch", "data_exfiltration retrieval-stage insight is architecturally correct framing", `ar_ecommerce.yaml` authoring starts this week, **2026-06-01 deadline holds**.
 - [x] **Cross-experiment design (3×3 matrix) pre-registered on main with falsification criteria locked before any cell runs**
 - [x] **LLM Provider contract published on main 2–3 weeks ahead of schedule** — external implementers can wire backends now
 - [ ] Track 1 — Provider contract **L1 wiring (code)** lands (deadline 2026-06-15)
