@@ -1590,6 +1590,37 @@ function extractNextActionSuggestions(answerText) {
         /(?:^|\n)[^\n]{0,80}[:：]\s*$/,
         '',
       ).replace(/[\s　]+$/, '');
+
+      // [PR-O2b 2026-05-18] 본문 잔재 추가 제거.
+      // tail 600자 cut 만으로는 본문 앞쪽에 enumeration ((1)/(2)/(3)/
+      // ①②③/1)/1.) 형식의 follow-up 잔재가 남는 케이스 차단 못함 —
+      // chip 으로 emit 된 텍스트가 본문 위쪽에 enumeration prefix 와
+      // 함께 또 있으면 사용자가 같은 정보를 두 번 본다.
+      //
+      // 매우 보수적 strip:
+      //   - chip 으로 emit 된 텍스트 (out[i].text) 와 *정확 일치*
+      //   - enumeration prefix 동반 ((n) / n) / n. / ①②③④⑤⑥⑦⑧⑨)
+      //   - 줄 시작/끝 boundary
+      //   - 잘못 매칭 시 본문 보존이 우선이라 try/catch 로 감쌈
+      try {
+        for (const sugg of out) {
+          const escaped = sugg.text.replace(
+            /[.*+?^${}()|[\]\\]/g, '\\$&'
+          );
+          const enumRe = new RegExp(
+            '(?:^|\\n)\\s*(?:\\(\\d\\)|\\d[\\.)]|[①②③④⑤⑥⑦⑧⑨])\\s*'
+            + escaped
+            + '[\\.。?？]?\\s*(?=\\n|$)',
+            'g'
+          );
+          cleanAnswer = cleanAnswer.replace(enumRe, '');
+        }
+        // 줄바꿈 3 개 이상 → 2 개로 정리 (strip 후 빈 줄 누적 방지)
+        cleanAnswer = cleanAnswer.replace(/\n{3,}/g, '\n\n').trim();
+      } catch (_e) {
+        // regex 빌드 실패 시 base cleanAnswer (위 cutStart strip) 유지
+      }
+
       return { suggestions: out, cleanAnswer };
     }
   }

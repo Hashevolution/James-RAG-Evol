@@ -266,5 +266,86 @@ class SuggestionPatternsPrO2Tests(unittest.TestCase):
         )
 
 
+class CleanAnswerBodyStripPrO2bTests(unittest.TestCase):
+    """[PR-O2b 2026-05-18 user feedback]
+
+    PR-O2 의 cleanAnswer 가 tail 600자 안에서 첫 매칭 이후만 자른다.
+    그래서 LLM 답변이 길고 enumeration ((1)/(2)/(3)) 이 본문 앞쪽
+    (tail 600자 밖) 에 있고, 다른 follow-up phrase 가 본문 끝쪽
+    (tail 안) 에 있으면:
+
+      - tail 안의 phrase 가 chip 으로 emit 됨
+      - cutStart 가 tail 안의 첫 매칭 위치 → 그 이후만 strip
+      - 본문 앞쪽 enumeration 은 그대로 남음
+      - 사용자는 본문 (1)(2)(3) + 하단 chip 1개를 같이 봄 (중복)
+
+    이 PR 은 chip 으로 emit 된 각 텍스트를 본문에서 enumeration prefix
+    동반으로 정확 일치 검색해서 그 라인만 추가 제거. 안전성:
+      - 정확 일치 substring 만 (sugg.text)
+      - enumeration prefix 동반 ((n) / n) / n. / ①②③)
+      - 줄 시작/끝 boundary
+      - try/catch — regex 빌드 실패 시 base cleanAnswer 유지
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = JS.read_text(encoding="utf-8")
+        m = re.search(
+            r"function\s+extractNextActionSuggestions\s*\("
+            r"[\s\S]+?\n\}\n",
+            cls.src,
+        )
+        assert m, "extractNextActionSuggestions 본문을 찾을 수 없음"
+        cls.fn_body = m.group(0)
+
+    def test_extra_strip_loop_present(self):
+        # chip out[] 을 다시 순회하며 본문에서 제거하는 loop 가 존재.
+        self.assertRegex(
+            self.fn_body,
+            r"for\s*\(\s*const\s+sugg\s+of\s+out\s*\)",
+            "PR-O2b strip loop ('for sugg of out') 누락 — 본문 잔재가 "
+            "tail cut 한 번으로만 처리되어 enumeration 잔재가 남음",
+        )
+
+    def test_regex_escape_helper_inline(self):
+        # 매칭 텍스트의 regex meta-char 를 escape 해야 안전. inline
+        # replace 로 escape 패턴이 있는지 확인.
+        self.assertIn(
+            r"[.*+?^${}()|[\]\\]",
+            self.fn_body,
+            "regex special-char escape 누락 — sugg.text 안의 '?' 같은 "
+            "메타 문자가 escape 안 되면 잘못된 RegExp 빌드 → 본문 망가짐",
+        )
+
+    def test_enumeration_prefix_required(self):
+        # strip 은 enumeration prefix 동반 일치만 — 본문 임의 위치
+        # 우연 일치를 자르지 않게.
+        self.assertRegex(
+            self.fn_body,
+            r"\\\(\\\\d\\\)|\\d\[\\\\\.\)\]|①②③",
+            "enumeration prefix 조건 ((n)/n)/n./①②③) 누락 — "
+            "조건 없는 strip 은 본문 임의 substring 을 자를 위험",
+        )
+
+    def test_try_catch_protects_base_clean_answer(self):
+        # regex 빌드 실패 시 base cleanAnswer (위 cutStart strip) 가
+        # 보존되어야 함. try { ... } catch (_e) { ... } 형태 확인.
+        self.assertRegex(
+            self.fn_body,
+            r"try\s*\{[\s\S]+?\}\s*catch\s*\(\s*_e\s*\)",
+            "try/catch 보호 누락 — 잘못된 regex 빌드 시 cleanAnswer "
+            "전체가 망가져 답변 본문이 사라질 위험",
+        )
+
+    def test_excess_newlines_collapsed_after_strip(self):
+        # strip 후 빈 줄 3 개 이상 누적되지 않게 정리하는 step.
+        self.assertIn(
+            r"\n{3,}",
+            self.fn_body,
+            "strip 후 newline 정리 step 누락 — 본문에 빈 줄 3 개 이상 "
+            "누적되어 UI 가 어색함",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
