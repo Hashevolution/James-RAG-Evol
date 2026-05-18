@@ -62,7 +62,9 @@ from core.reasoning.trace_schema import (
 )
 
 
-DEFAULT_BACKEND_ID = "ollama_local"
+# [JAMES_REASONING_BACKEND wiring 2026-05-18] resolved at import time.
+from core.reasoning.backends import get_default_backend_id as _get_default_backend
+DEFAULT_BACKEND_ID = _get_default_backend()
 DEFAULT_FACT_CHECK_TIMEOUT_S = 30.0
 DEFAULT_FACT_CHECK_MAX_TOKENS = 400
 MIN_ANSWER_LEN_FOR_VERIFY = 30

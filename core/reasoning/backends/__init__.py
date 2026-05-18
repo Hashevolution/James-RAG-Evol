@@ -109,6 +109,40 @@ def _clear_for_tests() -> None:
     _REGISTRY.clear()
 
 
+def get_default_backend_id() -> str:
+    """Resolve the default backend name for cognitive stages.
+
+    Reads ``JAMES_REASONING_BACKEND`` from the environment. Empty /
+    unset → ``"ollama_local"`` (the v0.3.0 byte-identical default).
+    When set, the value is validated against ``_REGISTRY``:
+
+      * Known backend (e.g. ``claude_code_cli`` while
+        ``JAMES_ENABLE_CLAUDE_BACKEND=1``) → use it.
+      * Unknown name (typo, or claude_code_cli requested without the
+        opt-in env) → warn once + fall back to ollama_local. This
+        avoids the failure mode where a misspelled env silently
+        breaks every cognitive stage at once.
+
+    Each stage module calls this at import time, so changing the
+    env requires a server restart (the existing JAMES pattern).
+    """
+    requested = os.environ.get("JAMES_REASONING_BACKEND", "").strip()
+    if not requested:
+        return "ollama_local"
+    if requested in _REGISTRY:
+        return requested
+    # The Claude backend requires its own opt-in (JAMES_ENABLE_CLAUDE_BACKEND=1)
+    # before it joins the registry — so a JAMES_REASONING_BACKEND=claude_code_cli
+    # without that flag lands here. Print rather than raise so a typo or
+    # half-configured operator setup doesn't take the pipeline down.
+    print(
+        f"[BACKEND] JAMES_REASONING_BACKEND={requested!r} not registered "
+        f"(known: {sorted(_REGISTRY)}) → fallback to 'ollama_local'. "
+        f"For Claude backend also set JAMES_ENABLE_CLAUDE_BACKEND=1."
+    )
+    return "ollama_local"
+
+
 # ─── auto-registration ─────────────────────────────────────────────
 # ollama_local is always registered — it wraps RouterWrapper which is
 # the v0.3.0 default path. claude_code_cli is opt-in via env so a stock
@@ -132,4 +166,5 @@ __all__ = [
     "register_backend",
     "get_backend",
     "list_backends",
+    "get_default_backend_id",
 ]

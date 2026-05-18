@@ -272,5 +272,104 @@ class OllamaLocalAdapterTests(unittest.TestCase):
         self.assertIn("RuntimeError", res.error)
 
 
+class DefaultBackendResolutionTests(unittest.TestCase):
+    """[JAMES_REASONING_BACKEND wiring 2026-05-18]
+
+    The 4 cognitive stages (query_rewriter, planner, reflect, verify)
+    used to hardcode ``DEFAULT_BACKEND_ID = "ollama_local"``. After
+    this PR they call ``get_default_backend_id()`` at import time,
+    which reads ``JAMES_REASONING_BACKEND``. These tests pin:
+
+      * env unset → "ollama_local" (backwards compat)
+      * env set to a registered backend → that name
+      * env set to an unknown / unregistered name → warning + fallback
+        to "ollama_local" (so a typo doesn't take the pipeline down)
+    """
+
+    def setUp(self):
+        self._saved = {k: os.environ.get(k) for k in
+                       ("JAMES_REASONING_BACKEND",
+                        "JAMES_ENABLE_CLAUDE_BACKEND",
+                        "JAMES_CLAUDE_CLI_PATH")}
+
+    def tearDown(self):
+        for k, v in self._saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        _reimport_backends()
+
+    def test_env_unset_returns_ollama_local(self):
+        os.environ.pop("JAMES_REASONING_BACKEND", None)
+        mod = _reimport_backends()
+        self.assertEqual(mod.get_default_backend_id(), "ollama_local")
+
+    def test_env_empty_string_returns_ollama_local(self):
+        # Whitespace-only env should be treated as unset — operators
+        # who clear with `set JAMES_REASONING_BACKEND=` shouldn't get
+        # unexpected behavior. We set the env directly (not via
+        # _reimport_backends's patch.dict) because the helper reads
+        # the env at CALL time, after the patch.dict scope ends.
+        os.environ["JAMES_REASONING_BACKEND"] = "   "
+        mod = _reimport_backends()
+        self.assertEqual(mod.get_default_backend_id(), "ollama_local")
+
+    def test_env_set_to_registered_backend_honored(self):
+        os.environ["JAMES_REASONING_BACKEND"] = "claude_code_cli"
+        os.environ["JAMES_ENABLE_CLAUDE_BACKEND"] = "1"
+        mod = _reimport_backends()
+        self.assertEqual(mod.get_default_backend_id(), "claude_code_cli")
+
+    def test_env_set_to_unknown_falls_back(self):
+        # A typo or a half-configured backend (e.g. claude requested
+        # without JAMES_ENABLE_CLAUDE_BACKEND=1) must not break the
+        # pipeline. Print and fall back.
+        os.environ["JAMES_REASONING_BACKEND"] = "rm-rf-slash"
+        mod = _reimport_backends()
+        self.assertEqual(mod.get_default_backend_id(), "ollama_local")
+
+    def test_env_set_to_claude_without_optin_falls_back(self):
+        # The most likely operator confusion: enable JAMES_REASONING_BACKEND
+        # but forget JAMES_ENABLE_CLAUDE_BACKEND=1. Must not break.
+        os.environ["JAMES_REASONING_BACKEND"] = "claude_code_cli"
+        os.environ.pop("JAMES_ENABLE_CLAUDE_BACKEND", None)
+        mod = _reimport_backends()
+        # claude_code_cli is NOT in registry → fallback
+        self.assertNotIn("claude_code_cli", mod.list_backends())
+        self.assertEqual(mod.get_default_backend_id(), "ollama_local")
+
+    def test_stage_modules_consume_helper(self):
+        """The 4 stage modules must call get_default_backend_id() at
+        import time. Source-level assertion so the wiring can't be
+        accidentally reverted to a hardcoded string in a future PR.
+        """
+        from pathlib import Path
+        root = Path(__file__).resolve().parent.parent
+        stage_files = [
+            root / "core" / "retrieval" / "query_rewriter.py",
+            root / "core" / "reasoning" / "planner.py",
+            root / "core" / "reasoning" / "reflect.py",
+            root / "core" / "reasoning" / "verify.py",
+        ]
+        for f in stage_files:
+            with self.subTest(stage=f.name):
+                src = f.read_text(encoding="utf-8")
+                self.assertIn(
+                    "get_default_backend_id",
+                    src,
+                    f"{f.name} must consume "
+                    f"get_default_backend_id() — a hardcoded "
+                    f"'ollama_local' string defeats the env-driven "
+                    f"backend swap. Re-thread through the helper.",
+                )
+                self.assertNotIn(
+                    'DEFAULT_BACKEND_ID = "ollama_local"',
+                    src,
+                    f"{f.name} still has the old hardcoded default. "
+                    f"Replace with DEFAULT_BACKEND_ID = _get_default_backend().",
+                )
+
+
 if __name__ == "__main__":   # pragma: no cover
     unittest.main()

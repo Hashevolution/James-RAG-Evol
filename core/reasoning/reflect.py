@@ -44,7 +44,9 @@ from core.reasoning.trace_schema import (
 )
 
 
-DEFAULT_BACKEND_ID = "ollama_local"
+# [JAMES_REASONING_BACKEND wiring 2026-05-18] resolved at import time.
+from core.reasoning.backends import get_default_backend_id as _get_default_backend
+DEFAULT_BACKEND_ID = _get_default_backend()
 # Critique + revise budgets — kept tight so reflection doesn't blow
 # past the 30s timing target in core/reasoning/engine.py.
 DEFAULT_CRITIQUE_TIMEOUT_S = 30.0

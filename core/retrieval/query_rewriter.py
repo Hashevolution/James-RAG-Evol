@@ -37,7 +37,11 @@ import time
 from typing import Optional, Tuple
 
 
-DEFAULT_BACKEND_ID = "ollama_local"
+# [JAMES_REASONING_BACKEND wiring 2026-05-18] resolved at import time
+# so a stock install (env unset) gets "ollama_local" — byte-identical
+# to v0.3.0 behavior. Operators flipping the env restart the server.
+from core.reasoning.backends import get_default_backend_id as _get_default_backend
+DEFAULT_BACKEND_ID = _get_default_backend()
 DEFAULT_TIMEOUT_S = 10.0
 DEFAULT_MAX_TOKENS = 200
 # Reject rewrites that balloon the query — usually a sign the LLM

@@ -36,7 +36,9 @@ from core.reasoning.trace_schema import (
 )
 
 
-DEFAULT_BACKEND_ID = "ollama_local"
+# [JAMES_REASONING_BACKEND wiring 2026-05-18] resolved at import time.
+from core.reasoning.backends import get_default_backend_id as _get_default_backend
+DEFAULT_BACKEND_ID = _get_default_backend()
 DEFAULT_TIMEOUT_S = 20.0
 DEFAULT_MAX_TOKENS = 400
 # Decomposition cap. More than 5 subtasks is usually the model
