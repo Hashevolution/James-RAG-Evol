@@ -331,11 +331,11 @@ class SchemaV1EnforcementTests(unittest.TestCase):
                 notes = str(entry.get("notes") or "")
                 self.assertIn(
                     "byte_drift_expected", notes,
-                    f"prompt contains direction marks but NFKC "
-                    f"normalization changes the bytes. Either rewrite "
-                    f"the prompt to be NFKC-stable, or document the "
-                    f"intentional drift by adding the token "
-                    f"`byte_drift_expected` to the `notes` field.",
+                    "prompt contains direction marks but NFKC "
+                    "normalization changes the bytes. Either rewrite "
+                    "the prompt to be NFKC-stable, or document the "
+                    "intentional drift by adding the token "
+                    "`byte_drift_expected` to the `notes` field.",
                 )
 
     def test_schema_version_when_present_is_v1_or_greater(self):

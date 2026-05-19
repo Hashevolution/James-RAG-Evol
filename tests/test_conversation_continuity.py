@@ -134,9 +134,7 @@ class ContinuityDirectiveTests(unittest.TestCase):
 
     def tearDown(self):
         import os as _os
-        from core.reasoning.backends import (
-            _REGISTRY, _clear_for_tests, register_backend,
-        )
+        from core.reasoning.backends import _clear_for_tests, register_backend
         _clear_for_tests()
         for name, inst in self._saved_registry.items():
             register_backend(name, inst)
