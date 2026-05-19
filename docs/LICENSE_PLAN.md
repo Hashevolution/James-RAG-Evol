@@ -286,6 +286,7 @@
 | 분기 | GH stars | Active deployers | 상용 문의 (분기) | 클로닝 | Enterprise PoC | 트리거 충족 | 비고 |
 |---|---|---|---|---|---|---|---|
 | 2026-Q2 (v0.3 release) | 1 | 0 | 0 | none | none | 0/5 | 최초 baseline 측정 (2026-05-13). repo public 전환 직후 (생성 2026-05-05). `/feedback` endpoint 미설치 → deployer 측정 인프라 미비. T3(클로닝) Google Alerts 등록 미진행. |
+| 2026-Q2 mid-update (Track 1 + CLA infra) | 5 | 0 | 0 | none | none | 0/5 | 2026-05-19 측정 (PR #340 머지 시점). Track 1 Provider contract (#324/#325/#326) + Track B CLA 코드 (#340) 완료. Forks 2 (외부 잠재 contributor 시그널 시작). Ali 협업 Track 2/2c locked, mid-June Provider 응답 예고. 트리거 충족 여전히 0/5 — CLA workflow 활성화 (GUI 4 항목) 후 첫 외부 PR 가 deployer/PoC count 의 첫 시드가 될 가능성. |
 
 ---
 

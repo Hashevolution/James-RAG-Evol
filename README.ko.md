@@ -185,6 +185,12 @@ JAMES는 보안을 **기능이 아닌 설계 원칙**으로 다룹니다:
 
 **MIT 라이선스로 배포됩니다.** 자유롭게 사용하세요. [LICENSE](LICENSE) 참조.
 
+외부 기여자는 첫 PR 시 [Contributor License Agreement](docs/legal/CLA.md)
+한 번에 서명 (CLA Assistant 봇이 자동 안내). 1회 서명으로 이후 모든 기여
+커버. 자세한 안내는 [CONTRIBUTING.md](CONTRIBUTING.md#license--contributor-license-agreement-cla)
+§License & CLA 섹션, 서명 없이 기여하는 경로는
+[docs/legal/non-cla-contributions.md](docs/legal/non-cla-contributions.md) 참조.
+
 외부 의존성의 라이선스 전체 목록은
 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) 참조.
 

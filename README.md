@@ -184,6 +184,14 @@ Priority areas:
 
 **Licensed under the MIT License.** Use freely. See [LICENSE](LICENSE).
 
+External contributors sign a one-click
+[Contributor License Agreement](docs/legal/CLA.md) on their first pull
+request (CLA Assistant). One signature covers all future contributions
+to the project. See [CONTRIBUTING.md](CONTRIBUTING.md#license--contributor-license-agreement-cla)
+for the full §License & CLA section, and
+[docs/legal/non-cla-contributions.md](docs/legal/non-cla-contributions.md)
+for contribution paths that don't require signing.
+
 A full inventory of third-party dependency licenses is available in
 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
 

@@ -396,6 +396,10 @@ JAMES가 PDF 안의 정보들이 서로 어떻게 연결돼 있는지 그림으�
 
 **MIT 라이선스로 배포됩니다.** 자유롭게 사용하세요. [LICENSE](LICENSE) 참조.
 
+외부 기여자는 첫 PR 시 [CLA](docs/legal/CLA.md) 1회 서명 (CLA Assistant
+봇이 안내). 자세한 의존성 라이선스 목록은
+[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) 참조.
+
 ---
 
 **축하합니다! 🎉 JAMES를 처음 돌려본 분이라면, v0.2의 두 번째 사용자가 된 거예요!**
