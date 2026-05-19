@@ -58,6 +58,10 @@
 | 2026-05-19 | **K1 GeekNews published** | ✅ Live ([URL](https://news.hada.io/topic?id=29648)) — title (A) variant ("JAMES v0.3.0 — Platform Skeleton 도달") used. First Korean-language milestone post of the v0.3 cycle. Body synthesized v0.3.0 release + Cognitive Middleware Phase 2 + Ali 6-turn collaboration + Gemma 4 Challenge 2 submissions + Matija second collab + schema v1.1 + Provider contract + 3×3 plan + visual asset library |
 | 2026-05-19 | K1-companion X tweet + LinkedIn post published | ✅ Both posted (URLs pending — author to record). Channel separation discipline followed: GeekNews body = full milestone synthesis (Korean IT community), X tweet + LinkedIn = milestone signal pointers (no body content duplicated) |
 | 2026-05-19 | **K4 Velog Korean intro cross-post published** | ✅ Live ([URL](https://naver.me/GUTw3kar)) — Naver-shortened. Same-day publish as K1 GeekNews (originally planned for 2026-05-20~22 window, executed early to capture K1 afterglow inside 24h). Body = dev.to intro Korean re-write + v0.3.0 update box (v0.2→v0.3 comparison table). canonical → dev.to original. Cover image: 06-3d-graph.jpg (3D ontology hero, same as K1 GeekNews body image). Tags: RAG / GraphRAG / 오픈소스 / 로컬LLM / Python. Series: JAMES Graph-RAG (created for future v0.4/v1.0 entries). SEO-accumulation channel (google.co.kr long-tail, expected payoff 6-12mo) |
+| 2026-05-19 | **HN Show HN restriction notice received from moderator (dang)** | ❌ Show HN attempt blocked. Standard new-account gating: *"We're temporarily restricting Show HNs because of a massive influx, mostly by users who aren't yet familiar with the site or its culture."* — not personal rejection, fleet-wide policy. Links provided: newsguidelines.html / newswelcome.html / showhn.html. Action: E1 D-Day deferred from 2026-05-26 → **2026-06-16** (3-week karma-building window). The Show HN body refresh (PR #328) landed before the deferral notice and remains valid; the asset isn't the blocker, the account is |
+| 2026-05-19 | **Show HN retry plan locked — 3-week karma-building program** | 📋 Plan: (Week 1, 5/20-26) read HN front page 15-20min/day, read all 3 dang-linked pages, upvote only; (Week 2, 5/27-6/2) 1-2 substantive comments/day in Python/RAG/local-LLM/security threads, **zero JAMES mentions** (new-account self-promo = shadowban), aim for 4 comment principles (own-experience line + admit potential blindspot + 1-line conclusion + no plug); (Week 3, 6/3-9) comment frequency up + Ask HN attempt (gating weaker than Show HN), target karma 20-30; (Week 4+, 6/10+) Show HN retry at karma 50+ / account ≥30 days / sustained comment trace. D-Day target 2026-06-16 (Tue) KST 23:30 |
+| 2026-05-19 | **5/26 slot reassigned — `data_exfiltration` follow-up dev.to article promoted** | 🟡 Originally a "separate cycle deliverable" committed to Ali in 6th-turn DM (2026-05-19), now becomes the 5/26 publish slot to fill the vacated Show HN gravity. Title direction: "Why output-stage PII mask is the wrong protective surface for data_exfiltration." Channel: dev.to (Ali-watched + Joe's existing 3-article archive on that platform). Cross-channel: do NOT cross-post to LinkedIn / X within 24h; the article *is* the signal |
+| 2026-05-19 | **5/26 second slot reassigned — Reddit r/LocalLLaMA account-readiness audit** | 🟡 Before submitting E2 r/LocalLLaMA, audit Joe's Reddit account state (karma, account age, recent activity in tech subreddits). r/LocalLLaMA enforces account-age + karma minimums that may mirror HN's gate. If insufficient: same karma-building plan applies on Reddit side, with adjusted timeline |
 
 ---
 
@@ -146,9 +150,11 @@ Applied via the About panel (⚙️) on 2026-05-12:
 | Channel | D-Day | Lock reason | Asset ready |
 |---|---|---|---|
 | **dev.to blog post** | ✅ Published 2026-05-12 | None | `reports/promo-assets/devto-post.md` ✅ |
-| **GeekNews** | 2026-05-19 (D+7 from account creation) | New-account post lockout | `reports/promo-assets/geeknews-post.md` ✅ |
-| **Show HN** | 2026-05-26 (GeekNews +7) | Stagger to avoid same-week saturation | `reports/promo-assets/hackernews-show-hn.md` ✅ |
-| **r/LocalLLaMA** | 2026-06-02 (Show HN +7) | Same | `reports/promo-assets/reddit-locallama.md` ✅ |
+| **GeekNews** | ✅ Published 2026-05-19 | None | `reports/promo-assets/geeknews-post.md` ✅ |
+| **Velog (K4 cross-post)** | ✅ Published 2026-05-19 | None | `reports/promo-assets/velog-intro-ko.md` ✅ |
+| **Show HN** | ❌ Deferred from 2026-05-26 → **2026-06-16** | HN new-account Show HN restriction received 2026-05-19 from moderator (dang). 3-week karma-building plan in motion (substantive commenting, no self-promo). Asset body remains current — body v0.3.0 refresh PR #328 landed before the deferral notice and stays valid for the 6/16 retry. | `reports/promo-assets/hackernews-show-hn.md` ✅ |
+| **r/LocalLLaMA** | 2026-06-02 (independent of Show HN deferral) | Reddit-side new-account threshold check pending — may need similar deferral if r/LocalLLaMA enforces account-age + karma minimums | `reports/promo-assets/reddit-locallama.md` ✅ |
+| **dev.to follow-up — `data_exfiltration` why output-stage PII mask is wrong** | Target 2026-05-26 (filling vacated Show HN slot) | Already committed to Ali in 6th-turn LinkedIn DM (2026-05-19); publishing fulfills the promise + provides Show HN-slot content gravity | Not yet drafted |
 
 Recommended hours:
 - GeekNews — KST weekday 09–11 or 20–22
@@ -253,7 +259,7 @@ This launch tracker file is considered complete when all of the following are tr
 
 - [ ] At least one awesome PR is merged
 - [ ] GeekNews post is published and URL recorded
-- [ ] Show HN post is published and URL recorded
+- [ ] Show HN post is published and URL recorded — **deferred from 2026-05-26 to 2026-06-16** per HN new-account restriction (2026-05-19 dang notice); 3-week karma-building plan in motion
 - [ ] r/LocalLLaMA post is published and URL recorded
 - [x] dev.to post is published and URL recorded (2026-05-12)
 - [x] dev.to Gemma 4 Challenge submission is published (2026-05-12, deadline 2026-05-24)
