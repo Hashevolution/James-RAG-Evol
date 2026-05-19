@@ -53,6 +53,10 @@
 | 2026-05-19 | Ali 5th turn (LinkedIn DM) — flagged `catalog_poisoning` convention question + confirmed `byte_drift_expected` opt-in + reinforced `data_exfiltration` retrieval-stage framing | ✅ Followed up on our 5th-turn reply with three threads: (a) asked how `catalog_poisoning` fixtures should represent both the legitimate customer query and the poisoned content, (b) confirmed `byte_drift_expected` is the right escape hatch, (c) reinforced that "output-stage PII mask after the model already saw confidential context = wrong protective surface" is the architecturally correct framing |
 | 2026-05-19 | **Injection-fixtures schema v1 → v1.1 (PR #322)** | ✅ Merged on main pre-emptively (before our next LinkedIn DM reply, per our own "publish before promise" lesson). New optional field `catalog_context: list[string]` — `prompt` stays the legitimate customer query (must NOT trigger input filter), `catalog_context[0..N]` is the poisoned content the retrieval stage feeds the model. List rather than single string to preserve the "1-of-N poisoned" signal so the test can assert the output filter catches the leak when N-1 of N retrieved docs are clean. New "Catalog context shape (v1.1)" section + worked example on `ar_poi_001`. Backward-compatible: fixtures without `catalog_context` parse unchanged. Diff-log entry credits Ali's flagged convention question |
 | 2026-05-19 | Our 6th turn LinkedIn DM reply sent | ✅ Sent — v1.1 `catalog_context` field published as fact (full URL provided), two short acknowledgments back (`byte_drift_expected` agreed as escape-hatch role, `data_exfiltration` retrieval-stage framing acknowledged + committed to follow-up post **"Why output-stage PII mask is the wrong protective surface for data_exfiltration"** in a separate cycle). Provider contract L1 wiring (the actual `core/reasoning/pipeline.py` swap to use the contract) committed on our queue for 2026-06-15, with offer to surface the wiring PR earlier if it helps Ali's Gemini API integration testing |
+| 2026-05-19 | **Track 1 PR-A merged — synth call-site backend wiring (PR #324)** | ✅ Merged on main. `core/reasoning/pipeline_synth.py` + `engine_synth.py` + four mode adapters (`chat.py` / `coding.py` / `self_evolve.py` / `wiki_edit.py`) now route through the Provider contract instead of calling Ollama SDK directly. Reasoning trace helpers (`trace_helpers.py`) updated for backend-agnostic capture. Originally queued for 2026-06-15 — shipped ~4 weeks ahead so Ali's Gemini API backend integration testing can start earlier than promised |
+| 2026-05-19 | **Track 1 PR-B merged — conformance suite + SDK leakage guard (PR #325)** | ✅ Merged on main. `tests/test_backend_conformance.py` (337 lines) enforces the 6 required behaviors any external Provider implementation must satisfy. `tests/test_no_sdk_leakage.py` (220 lines) guards against accidental Ollama-SDK / vendor-SDK imports leaking back into call sites after the Track 1 PR-A wiring. Together these make the Provider contract executable spec, not just doc |
+| 2026-05-19 | **K1 GeekNews published** | ✅ Live ([URL](https://news.hada.io/topic?id=29648)) — title (A) variant ("JAMES v0.3.0 — Platform Skeleton 도달") used. First Korean-language milestone post of the v0.3 cycle. Body synthesized v0.3.0 release + Cognitive Middleware Phase 2 + Ali 6-turn collaboration + Gemma 4 Challenge 2 submissions + Matija second collab + schema v1.1 + Provider contract + 3×3 plan + visual asset library |
+| 2026-05-19 | K1-companion X tweet + LinkedIn post published | ✅ Both posted (URLs pending — author to record). Channel separation discipline followed: GeekNews body = full milestone synthesis (Korean IT community), X tweet + LinkedIn = milestone signal pointers (no body content duplicated) |
 
 ---
 
@@ -80,8 +84,11 @@ Three independent curators, three independent review pipelines. One acceptance i
 
 | Channel | URL | Audience | Posted |
 |---|---|---|---|
+| **GeekNews (K1)** | https://news.hada.io/topic?id=29648 | KR (Hada.io tech community) | 2026-05-19 |
+| **LinkedIn — Korean v0.3.0 milestone post** | _(URL pending — author to record)_ | KR/Global professional | 2026-05-19 |
+| **Twitter/X (Korean — v0.3.0 K1-companion)** | _(URL pending — author to record)_ | KR | 2026-05-19 |
 | Twitter/X (English) | https://x.com/i/status/2054094082067386690 | Global EN | 2026-05-12 |
-| Twitter/X (Korean) | _(URL pending — author to record)_ | KR | 2026-05-12 |
+| Twitter/X (Korean — v0.2.0 cycle) | _(URL pending — author to record)_ | KR | 2026-05-12 |
 | dev.to article (intro) | https://dev.to/hashevolution/building-a-mini-palantir-a-local-graph-rag-engine-with-ontology-security-and-self-evolution-1914 | Global EN (technical) | 2026-05-12 |
 | dev.to article (Gemma 4 Challenge submission) | https://dev.to/hashevolution/building-a-mini-palantir-on-gemma4e4b-128k-context-lets-the-graph-actually-be-graph-rag-33fk | Global EN (Gemma 4 contestants + judges) | 2026-05-12 |
 | Hashnode cross-post (intro article) | https://ragllm.hashnode.dev/building-a-mini-palantir-a-local-graph-rag-engine-with-ontology-security-and-self-evolution-alpha | Global EN (Hashnode algorithm + Google search) | 2026-05-13 |
@@ -257,14 +264,14 @@ This launch tracker file is considered complete when all of the following are tr
 - [x] **Visual asset library shipped — 6 screenshots + README hero (PR #304, 2026-05-18)**
 - [x] **First image-bearing X post (2026-05-18, URL pending)**
 - [ ] dev.to two articles refreshed with cover images (planned, drag-drop from screenshots library)
-- [ ] GeekNews D-Day 2026-05-19 — body refresh + image embed + author publish
+- [x] **GeekNews D-Day 2026-05-19 — body refreshed for v0.3.0 + image embed + author publish complete** (id=29648, 3D ontology image attached, K1-companion X tweet + LinkedIn post sent same day)
 - [x] **First organic verified-account replies on X received and responded to (2026-05-18)**
 - [x] **Ali received the injection-fixtures schema URL via LinkedIn DM (Track 2 trigger)** — followed up with schema v1 refinements (2026-05-18); v1.1 `catalog_context` field added pre-emptively (2026-05-19, PR Track 2c) answering Ali's flagged convention question. Ali confirmed 2026-05-19: "byte_drift_expected is the right escape hatch", "data_exfiltration retrieval-stage insight is architecturally correct framing", `ar_ecommerce.yaml` authoring starts this week, **2026-06-01 deadline holds**.
 - [x] **Cross-experiment design (3×3 matrix) pre-registered on main with falsification criteria locked before any cell runs**
 - [x] **LLM Provider contract published on main 2–3 weeks ahead of schedule** — external implementers can wire backends now
 - [x] **Track 2 fixture migration in progress on main** — `baseline_kr_en.yaml` + harness shipped 2026-05-18 by a separate session picking up the Ali Collaboration Track handover
 - [x] **Second potential collaboration started — @mfucek_ / naumu_ai (X verified)** — independent of the Ali track, complementary skill domain (product/UX vs experimental/academic). Email transferred 2026-05-18
-- [ ] Track 1 — Provider contract **L1 wiring (code)** lands (deadline 2026-06-15)
+- [x] **Track 1 — Provider contract L1 wiring (code) landed 2026-05-19 (PR #324 PR-A + PR #325 PR-B)** — ~4 weeks ahead of the 2026-06-15 deadline; synth call-sites + conformance suite + SDK leakage guard all in. Remaining sub-tasks: trace-stage backend wiring (separate PR), retrieval-stage backend wiring (separate PR), public surface-the-wiring DM ping to Ali
 - [ ] Track 2 — Ali delivers `ar_ecommerce.yaml` (15–20 Arabic fixtures + ≥5 benign, deadline ~2026-06-01)
 - [ ] @mfucek_ DM follow-up — naumu_ai platform access + comparison signal
 - [ ] **`data_exfiltration` follow-up post — "Why output-stage PII mask is the wrong protective surface for data_exfiltration"** — committed to Ali in 2026-05-19 LinkedIn DM, separate cycle deliverable
