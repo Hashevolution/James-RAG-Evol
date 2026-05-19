@@ -62,6 +62,7 @@
 | 2026-05-19 | **Show HN retry plan locked — 3-week karma-building program** | 📋 Plan: (Week 1, 5/20-26) read HN front page 15-20min/day, read all 3 dang-linked pages, upvote only; (Week 2, 5/27-6/2) 1-2 substantive comments/day in Python/RAG/local-LLM/security threads, **zero JAMES mentions** (new-account self-promo = shadowban), aim for 4 comment principles (own-experience line + admit potential blindspot + 1-line conclusion + no plug); (Week 3, 6/3-9) comment frequency up + Ask HN attempt (gating weaker than Show HN), target karma 20-30; (Week 4+, 6/10+) Show HN retry at karma 50+ / account ≥30 days / sustained comment trace. D-Day target 2026-06-16 (Tue) KST 23:30 |
 | 2026-05-19 | **5/26 slot reassigned — `data_exfiltration` follow-up dev.to article promoted** | 🟡 Originally a "separate cycle deliverable" committed to Ali in 6th-turn DM (2026-05-19), now becomes the 5/26 publish slot to fill the vacated Show HN gravity. Title direction: "Why output-stage PII mask is the wrong protective surface for data_exfiltration." Channel: dev.to (Ali-watched + Joe's existing 3-article archive on that platform). Cross-channel: do NOT cross-post to LinkedIn / X within 24h; the article *is* the signal |
 | 2026-05-19 | **5/26 second slot reassigned — Reddit r/LocalLLaMA account-readiness audit** | 🟡 Before submitting E2 r/LocalLLaMA, audit Joe's Reddit account state (karma, account age, recent activity in tech subreddits). r/LocalLLaMA enforces account-age + karma minimums that may mirror HN's gate. If insufficient: same karma-building plan applies on Reddit side, with adjusted timeline |
+| 2026-05-19 | **K3 video burst — all 4 demo videos published in single session** | ✅ Live (4 URLs in Social posts table). Videos 1-4: login + main chat / actual chat conversation / character personality control / reasoning graph traversal. Originally planned as 4-day spread (Day 3-6, 5/21-5/24) but executed as single-day burst (Joe's call, 2026-05-19). Trade-off: single-day burst loses daily X algorithm gain but creates "connected pattern" on follower timelines + concentrates visual impact. Day 1 "노트북에서" wording corrected to "로컬 PC에서" for Video 1 (matches demo footage's actual GPU setup; broader laptop framing in published assets stays as gemma2:2b CPU path is technically valid). K3 series cadence revised: Day 3-6 absorbed into today, leaving Day 3 (5/21) for a v0.3.0 follow-up tweet and Day 7 (5/25) for series finale + feedback request |
 
 ---
 
@@ -91,6 +92,10 @@ Three independent curators, three independent review pipelines. One acceptance i
 |---|---|---|---|
 | **GeekNews (K1)** | https://news.hada.io/topic?id=29648 | KR (Hada.io tech community) | 2026-05-19 |
 | **Velog (K4) — Korean intro cross-post** | https://naver.me/GUTw3kar | KR (Naver-shortened, full at velog.io/@hashevolution) | 2026-05-19 |
+| **X (KO) K3 Video 1 — login + main chat** | https://x.com/i/status/2056628377919128016 | KR (X timeline) | 2026-05-19 |
+| **X (KO) K3 Video 2 — actual chat conversation** | https://x.com/i/status/2056628637814702258 | KR (X timeline) | 2026-05-19 |
+| **X (KO) K3 Video 3 — character personality control** | https://x.com/i/status/2056632428320710740 | KR (X timeline) | 2026-05-19 |
+| **X (KO) K3 Video 4 — reasoning graph traversal** | https://x.com/i/status/2056633087052910792 | KR (X timeline) | 2026-05-19 |
 | **LinkedIn — Korean v0.3.0 milestone post** | _(URL pending — author to record)_ | KR/Global professional | 2026-05-19 |
 | **Twitter/X (Korean — v0.3.0 K1-companion)** | _(URL pending — author to record)_ | KR | 2026-05-19 |
 | Twitter/X (English) | https://x.com/i/status/2054094082067386690 | Global EN | 2026-05-12 |
