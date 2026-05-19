@@ -21,6 +21,16 @@ from core.memory.loom import (
     MEMORY_DEDUP_WINDOW,
 )
 from core.memory.trust import verify_before_write
+# [Cognitive Phase 3 PR-9a, 2026-05-19] session-scoped tier (§5.7.6).
+# Wiring lands in PR-9b; this re-export keeps consumers using
+# `from core.memory import EpisodicMemory` consistent with the
+# MemoryStore / MemoryLoom pattern.
+from core.memory.episodic import (
+    EpisodicEvent,
+    EpisodicMemory,
+    KNOWN_STAGES as EPISODIC_STAGES,
+    MAX_SUMMARY_CHARS as EPISODIC_MAX_SUMMARY_CHARS,
+)
 
 __all__ = [
     "MemoryStore",
@@ -35,4 +45,8 @@ __all__ = [
     "MEMORY_CONFIDENCE_TH",
     "MEMORY_DEDUP_WINDOW",
     "verify_before_write",
+    "EpisodicEvent",
+    "EpisodicMemory",
+    "EPISODIC_STAGES",
+    "EPISODIC_MAX_SUMMARY_CHARS",
 ]
