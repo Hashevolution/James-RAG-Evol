@@ -44,9 +44,16 @@ jobs:
           path-to-document: 'https://github.com/Hashevolution/James-RAG-Evol/blob/main/docs/legal/CLA.md'
           # Signature commits land on this branch of the remote repo.
           branch: 'main'
-          # Bot accounts that should never be asked to sign — they're
-          # not legal persons. Extend as new bots are added.
-          allowlist: dependabot[bot],github-actions[bot]
+          # Accounts excluded from the CLA signature requirement.
+          # - dependabot[bot] / github-actions[bot]: not legal persons.
+          # - Hashevolution: the project's copyright holder; signing a
+          #   CLA to oneself has no legal meaning (you can't grant a
+          #   license to yourself), and CLA Assistant fires status
+          #   checks against the maintainer's own PRs otherwise.
+          # - Ji_Won_SEO: the same human under their commit-author
+          #   identity (git author name differs from the org name).
+          # Extend this list when adding a co-maintainer or a new bot.
+          allowlist: dependabot[bot],github-actions[bot],Hashevolution,Ji_Won_SEO
           # Signature storage: separate private repo so the public
           # source repo carries no PII (emails, GitHub IDs).
           remote-organization-name: Hashevolution
