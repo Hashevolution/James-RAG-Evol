@@ -163,16 +163,25 @@ class BehaviorTests(unittest.TestCase):
 class EngineIntegrationTests(unittest.TestCase):
     """엔진은 store.get_system_prompt 와 character_profile.get_prompt_modifiers
     두 곳에서 prompt 조각을 받아 합친다. P4 가 store 쪽만 손대므로 engine
-    경로 자체는 변하면 안됨."""
+    경로 자체는 변하면 안됨.
+
+    [chore 2026-05-19] After the #293 engine.py split (engine_memory.py
+    + engine_synth.py), the two calls live inside engine_memory.
+    These tests now grep the *concatenated* engine source via the
+    shared helper, so a future split that moves them again still
+    passes without rewriting the assertions.
+    """
 
     def test_engine_still_calls_get_system_prompt(self):
-        engine = (ROOT / "core" / "reasoning" / "engine.py").read_text(encoding="utf-8")
-        self.assertIn("get_system_prompt()", engine,
+        from tests._pipeline_src import engine_source
+        src = engine_source()
+        self.assertIn("get_system_prompt()", src,
             "engine 은 P4 후에도 store.get_system_prompt 를 계속 호출")
 
     def test_engine_still_calls_get_prompt_modifiers(self):
-        engine = (ROOT / "core" / "reasoning" / "engine.py").read_text(encoding="utf-8")
-        self.assertIn("get_prompt_modifiers", engine,
+        from tests._pipeline_src import engine_source
+        src = engine_source()
+        self.assertIn("get_prompt_modifiers", src,
             "engine 은 P4 후에도 character_profile 에서 trait directives 를 받음 "
             "— 성격 표현은 trait 에서, 이름/언어는 store 에서, 라는 분리가 핵심")
 

@@ -252,11 +252,17 @@ class EnginePromptStillUsesProfileTests(unittest.TestCase):
     P3에서 free-text persona 를 끊었어도 trait-based directives 는 살아 있어야 함."""
 
     def test_engine_still_imports_character_profile(self):
-        engine = (ROOT / "core" / "reasoning" / "engine.py").read_text(encoding="utf-8")
-        self.assertIn("from core.character_profile import", engine,
+        # [chore 2026-05-19] After the #293 engine.py split, the
+        # character_profile import + get_prompt_modifiers call live
+        # inside engine_memory.py. Grep the concatenated engine source
+        # via the shared helper so a future split that moves them
+        # again still passes without rewriting the assertion.
+        from tests._pipeline_src import engine_source
+        src = engine_source()
+        self.assertIn("from core.character_profile import", src,
             "엔진은 P3 이후에도 character_profile 를 import 해서 trait "
             "directives 를 system_prompt 에 주입해야 함")
-        self.assertIn("get_prompt_modifiers", engine)
+        self.assertIn("get_prompt_modifiers", src)
 
 
 if __name__ == "__main__":
