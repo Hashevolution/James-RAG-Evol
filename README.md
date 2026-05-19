@@ -1,10 +1,11 @@
 # PROJECT JAMES
 
-> **Security-focused, locally-runnable Graph-RAG knowledge engine**
-> with explicit reasoning paths and self-evolution scaffolding.
+> **Local-first, auditable knowledge reasoning system** with explicit
+> reasoning paths, a sources-aware knowledge graph, and self-evolution
+> behind a human approval gate.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-v0.1.0--alpha-orange.svg)]()
+[![Status](https://img.shields.io/badge/Status-v0.3.0-blue.svg)](docs/release_notes_v0.3.0.md)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12806/badge)](https://www.bestpractices.dev/projects/12806)
 
@@ -14,29 +15,71 @@
 
 ---
 
-## Project Status: v0.1.0 (alpha / research stage)
+## Project Status: v0.3.0 — Platform Skeleton
 
-This is an **early-stage, actively-researched project**.
-The core engine works, but:
+Released **2026-05-17** after 190 PRs since v0.2.0 (1800+ tests).
+The v0.2 → v0.3 gate is clear: all six Foundation Hardening axes
+(architecture, eval, observability, security, controlled evolution,
+real-data validation) passed; second-user validation closed
+2026-05-13.
 
-- Designed and tested with security-first principles
-- **NOT production-ready** — see [SECURITY.md](SECURITY.md)
-- Many features are scaffolded — real-data testing in progress
-- Open to collaboration and feedback
+- **NOT production-ready** — operational maturity (HTTPS / SSO /
+  multi-tenancy / backup CLI) is a v1.0 deliverable; see
+  [SECURITY.md](SECURITY.md)
+- Designed with security-first principles end to end
+- Open to collaboration — external contributors sign a one-click CLA
+  on their first PR (see [License](#license))
+
+---
+
+## Strategic frame: Mother Platform, not a single product
+
+JAMES is **not building one vertical**. It is being hardened as a
+"mother platform" from which domain packs (legal, food, retail,
+travel, etc.) can branch off **only at v1.0**. Until then:
+
+- No domain-specific features land in `core/`
+- Every change is graded against the same six-dimension readiness
+  framework (architecture / extension API / eval contract /
+  operational maturity / security boundary / production proof)
+- The plugin contract that future packs will be built against is
+  being designed and stress-tested
+
+See [`docs/PLATFORM_READINESS.md`](docs/PLATFORM_READINESS.md) for
+the 6 dimensions, 4 gates (v0.2 / v0.3 / v0.4 / v1.0), and 3
+branching forms (Domain Pack / Distribution / Vertical Product).
 
 ---
 
 ## What's Different
 
-JAMES combines five ideas that are rarely found together:
+JAMES combines ideas that are rarely found together:
 
-1. **Graph-RAG with ontology** — relations carry semantic meaning beyond embeddings
-2. **Built-in security layer** — RBAC + ABAC + instruction isolation
-3. **Self-evolution scaffold** — feedback signals → patch proposals
-4. **Personality system** — 11 tunable traits influence responses
-5. **100% local** — runs on a laptop with Ollama
+1. **Sources-aware Graph-RAG** — 12 typed relations carry semantic
+   meaning beyond embeddings, and every relation carries
+   `sources: [{doc_id, weight, role, ts}]` so deleting or modifying
+   a document surgically updates only the affected derived knowledge
+   (Knowledge Cascade A→E, v0.3.0)
+2. **Cognitive Layer** — cross-encoder reranker (default ON), LLM
+   query rewriter, reflection loop (draft → critique → revise),
+   verification engine (security + fact check), and tool router.
+   One `trace_id` reconstructs the full 8-stage reasoning sequence
+   via `scripts/replay_trace.py`
+3. **PolicyEngine as a layer, not a sprinkle** — single point of
+   role / sensitivity decisions wired into retrieval, graph, output,
+   and tools; removing it breaks 6+ modules (v0.2 Axis 4)
+4. **Change Request primitive** — every write (wiki edits, workspace
+   jobs, self-evolution patches) routes through propose → review →
+   admin approval → atomic apply → audit row. No silent writes.
+5. **Self-evolution behind a human gate** — feedback → candidate →
+   bench eval → human approval → deploy → auto-rollback on
+   regression. Every deployed patch has an `approver_username`
+   audit row (v0.2 Axis 5).
+6. **100% local** — runs on a laptop with Ollama
 
-> Honest disclosure: each feature is a *working prototype*, not a finished product. Real-data tuning is ongoing.
+> Each feature is regression-tested against the STEP 7 13-query
+> baseline + RAGAS metrics. PRs touching `core/{retrieval,graph,reasoning}`
+> cannot land without bench numbers.
 
 ---
 
@@ -63,14 +106,13 @@ cp .env.example .env
 # Install dependencies
 pip install -r requirements.txt
 
-# Pull a small LLM
-ollama pull gemma2:2b
-
-# Start the server
+# Start the server (admin wizard auto-recommends a model on first login)
 python server_llmwiki.py
 ```
 
-Open `http://localhost:8000`
+Open `http://localhost:8000/admin` — the admin wizard measures your
+hardware and offers a one-click install of an appropriate Ollama
+model. Then open `http://localhost:8000` for the chat UI.
 
 ---
 
@@ -79,20 +121,31 @@ Open `http://localhost:8000`
 ```
 [User Query]
      ↓
-[Security Filter]      ← 31+ injection patterns
+[Security Filter]      ← injection patterns + PolicyEngine pre-check
      ↓
 [Query Router]         ← chat / coding / retrieval / web_search
      ↓
+[Query Rewriter]       ← LLM rewrite (opt-in, JAMES_ENABLE_QUERY_REWRITE)
+     ↓
 [Hybrid Search]        ← Vector(60%) + BM25(20%) + keyword(10%) + name(10%)
      ↓
-[Graph Engine]         ← DFS + confidence + sensitivity gating
+[Cross-Encoder Rerank] ← MiniLM-L-6-v2 (default ON; JAMES_DISABLE_RERANK=1 to disable)
      ↓
-[Reasoning Loop]       ← retrieve → expand → verify
+[Graph Engine]         ← DFS + sources-aware + sensitivity gating
+     ↓
+[Reasoning Loop]       ← retrieve → expand → reflect (opt-in) → verify (opt-in)
+     ↓
+[Tool Router]          ← read tools direct; write tools → Change Request
      ↓
 [Output Filter]        ← PII masking + role-based filter
      ↓
-[Answer + Reasoning Path]
+[Answer + Reasoning Path + trace_id]
 ```
+
+Every stage emits a row tied to one `trace_id`.
+`scripts/replay_trace.py <trace_id>` reconstructs the full sequence
+from `audit_log`. See [`docs/ARCHITECTURE.md §5.7`](docs/ARCHITECTURE.md)
+for the Cognitive Layer design.
 
 ---
 
@@ -100,18 +153,28 @@ Open `http://localhost:8000`
 
 ```
 James-RAG-Evol/
-├── core/             User interface layer + LLM clients
-├── llm/              LLM abstraction (providers/)
-├── tools/            Feature modules (8 subfolders)
-├── frontend/         Web UI (HTML + JS)
-├── processors/       File preprocessing
-├── utils/            Utilities
-├── wiki/             Knowledge graph (markdown-based)
-├── memory/           Long-term memory DB
-├── workspace/        Runtime data (backups, patches, proposals)
-├── scripts/          Operational scripts
-├── reports/          Test results
-└── server_llmwiki.py Main server entry point
+├── core/
+│   ├── reasoning/        retrieval/reflection/verification/tool router
+│   ├── retrieval/        hybrid search + cross-encoder reranker + query rewriter
+│   ├── memory/           long-term memory (db / conversation / summaries)
+│   ├── plugins/          plugin contract surface (Provider Protocol)
+│   ├── policy_engine.py  single point of role/sensitivity decisions
+│   ├── change_request.py propose/review/approve write primitive
+│   ├── cascade.py        file delete/modify → graph surgical update
+│   ├── graph_editor.py   edge edit (replace/append/delete) + bidirectional sync
+│   └── ...
+├── eval/                 STEP 7 regression baseline + RAGAS suite
+├── llm/                  LLM provider abstraction
+├── tools/                Capability-token gated tool modules
+├── frontend/             Web UI (HTML + JS)
+├── processors/           File preprocessing
+├── wiki/                 Knowledge graph (markdown + sources)
+├── memory/               Long-term memory DB
+├── workspace/            Change requests, patches, proposals
+├── scripts/              bench.py / replay_trace.py / ops scripts
+├── reports/              Eval results + promo assets
+├── docs/                 ARCHITECTURE / PLATFORM_READINESS / ROADMAP / handovers
+└── server_llmwiki.py     Main server entry point
 ```
 
 ---
@@ -134,14 +197,22 @@ JAMES treats security as a **design principle, not a feature**:
 
 | Feature | Status |
 |---------|--------|
-| Hybrid Search (Vector + BM25) | Working |
-| Graph-RAG with ontology | Working |
-| Security layer (RBAC/ABAC) | Working |
-| Multimodal (image/video) | Scaffolded |
-| Self-evolution | Scaffolded (needs data) |
-| Web search integration | Working (Tavily/DDG) |
-| Multi-LLM routing | Working |
-| Real-data validation | Pending |
+| Hybrid Search (Vector + BM25 + keyword + name) | Working |
+| Cross-encoder reranker (MiniLM-L-6-v2) | Working — default ON (v0.3) |
+| LLM query rewriter | Opt-in (v0.3) |
+| Sources-aware Graph-RAG (Knowledge Cascade A→E) | Working (v0.3) |
+| PolicyEngine (RBAC + ABAC + capability tokens) | Working (v0.2 Axis 4) |
+| Reflection loop (draft → critique → revise) | Opt-in (v0.3) |
+| Verification engine (security + fact check) | Opt-in (v0.3) |
+| Tool router (read direct, write → Change Request) | Working (v0.3) |
+| Change Request primitive (wiki + jobs + patches) | Working (v0.2.x + v0.3) |
+| Self-evolution (human approval + auto-rollback) | Working (v0.2 Axis 5) |
+| Trace replay (one `trace_id` → full reasoning seq) | Working (v0.3) |
+| Multimodal (image/video/audio + OCR-poison quarantine) | Working (v0.2 Axis 4) |
+| Web search (Tavily / DuckDuckGo fallback) | Working |
+| Multi-LLM routing (Ollama + Claude CLI backends) | Working |
+| STEP 7 regression baseline + RAGAS | Working (v0.2 Axis 2) |
+| Real-data validation (second-user gate) | Passed 2026-05-13 |
 
 ---
 
@@ -160,12 +231,21 @@ JAMES treats security as a **design principle, not a feature**:
 
 ## Roadmap
 
-See [ROADMAP.md](ROADMAP.md). Summary:
+See [ROADMAP.md](ROADMAP.md) and [`docs/PLATFORM_READINESS.md`](docs/PLATFORM_READINESS.md).
+Summary:
 
-- **v0.1** (current): Core engine + scaffolding
-- **v0.2**: Real-data validation + polish
-- **v0.3**: Multi-agent + Neo4j option
-- **v1.0**: Production hardening
+- **v0.1**: Core engine + scaffolding (released)
+- **v0.2**: Foundation Hardening — 6 axes (closed 2026-05-13)
+- **v0.3**: Platform Skeleton — Cognitive Layer + Knowledge Cascade
+  + Change Request primitive (current; released 2026-05-17)
+- **v0.4**: First Domain Pilot — one pack + one external customer,
+  6-month no-regression
+- **v1.0**: Production-Grade Mother — HTTPS / SSO / multi-tenancy /
+  SOC2 readiness; external developers can publish their own packs
+
+Multi-agent specialists, optional Neo4j backend, OpenAI-compatible
+API, streaming responses, and federation are speculative Beyond
+v1.0 work — see [`ROADMAP.md` §Beyond v1.0](ROADMAP.md).
 
 ---
 
