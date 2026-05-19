@@ -307,9 +307,37 @@ Don't be discouraged by review feedback — it's how we build a quality codebase
 
 ---
 
-## License
+## License & Contributor License Agreement (CLA)
 
-By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
+PROJECT JAMES is **MIT-licensed** today. Your contributions are accepted
+under the same MIT terms.
+
+Because the project's license model may evolve over its lifetime (the
+conditions and procedure are tracked in
+[`docs/LICENSE_PLAN.md`](docs/LICENSE_PLAN.md)), every external contributor
+must sign the **[Individual Contributor License Agreement](docs/legal/CLA.md)**
+before their first pull request is merged.
+
+- The signing is automated. When you open your first PR, the **CLA
+  Assistant** bot will post a comment with a single-click sign link.
+- One signature covers **all your future contributions** to this project
+  unless the license model materially changes (see CLA §4-bis Relicensing
+  Grant).
+- The CLA confirms that:
+  1. You wrote (or have rights to) what you're contributing.
+  2. You grant Hashevolution a perpetual, irrevocable copyright and patent
+     license over your contribution.
+  3. You allow Hashevolution to **relicense** your contribution if a future
+     license-model change is necessary (CLA §4-bis). This clause is the
+     one that lets projects like MongoDB, Elastic, and Grafana evolve
+     their licenses without re-canvassing every past contributor — it's
+     decisive for project longevity even though it has zero effect under
+     MIT continuation.
+
+If you cannot or will not sign the CLA, you can still help in ways that
+don't require it — see [`docs/legal/non-cla-contributions.md`](docs/legal/non-cla-contributions.md)
+for alternatives (bug reports, discussion, derivative patchsets you
+publish on your own fork, etc.).
 
 ---
 
