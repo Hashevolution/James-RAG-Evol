@@ -49,6 +49,7 @@ If a feature request implies any of the above, it belongs in a
 | 5 | **Human-supervised evolution** | Self-evolution **proposes**; humans **approve**. Deploy without approval is a bug. |
 | 6 | **Sandboxed multimodality** | Image, audio, web content are untrusted inputs by default; extraction does not bypass policy. |
 | 7 | **Composable boundaries** | Components communicate over typed interfaces, not shared globals. |
+| 8 | **NL-throughout pipeline** | Query → retrieval → LLM → answer all carry natural language end-to-end. We deliberately do **not** translate the user query into a formal query language (SPARQL / RDF / SQL) intermediate, and the LLM is not asked to emit formal-language responses. Retrieval is dense embedding + BM25 + keyword + name hybrid (`core/retrieval_engine.py` `hybrid_search`); the graph layer is traversed using those retrieval scores, not by formal-query resolution. KG mutations follow the human-approved Change Request flow (§5.6) — there is no path where an LLM-emitted update statement applies to the KG without an explicit reviewer approval. This is an explicit architectural choice in favor of transparency, local operability, and a single auditable artifact (the NL trace) per query. |
 
 ---
 

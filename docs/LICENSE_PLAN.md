@@ -230,6 +230,52 @@
 | — | 심사 / 등록 | — |
 | — | Defensive Patent Pledge 공개 | — |
 
+### 7.4 외부 특허 모니터링 (third-party patent watch)
+
+> 우리 출원 트랙과 별개로, **JAMES 아키텍처와 인접한 영역의 타사 특허**를
+> 분기 1회 추적합니다. 침해 회피 + 청구항 범위 협소화 압력 + 무효화 카드
+> 축적의 세 가지 목적을 동시 달성하기 위함입니다.
+
+**모니터링 키워드 (Google Patents / KIPRIS 검색용):**
+- `graph-rag` / `graph rag` / `knowledge graph rag`
+- `formal query language` AND (`llm` OR `large language model`)
+- `sparql` AND (`llm` OR `chatbot`)
+- `vector retrieval` AND (`knowledge graph` OR `ontology`)
+- `instruction isolation` AND (`prompt injection` OR `rag`)
+- `self-evolution` AND (`patch` OR `code generation`) — 자가진화 영역
+- `audit log` AND (`llm response` OR `ai decision`) — 감사 trace 영역
+
+**관심 양수인 (Watch List):**
+
+| 양수인 | 관심 사유 | 알려진 특허 (예) |
+|---|---|---|
+| Amazon Technologies, Inc. | 2026-01-20 US12531820B2 (neuro-symbolic KG + LLM) — JAMES와 인접 아키텍처 영역 | US12531820B2 (claim 1/5/14 = method/system/CRM) |
+| Microsoft Corp. | GraphRAG 공개 + 관련 특허 출원 가능성 | 미식별 (모니터링 필요) |
+| Google LLC / DeepMind | Vertex AI RAG + Search API | 미식별 |
+| OpenAI OpCo | Assistant API + retrieval | 미식별 |
+| Meta Platforms | LlamaIndex 인수 시나리오 시 패밀리 발생 가능 | — |
+| IBM / Watson | 전통 NLP + KG 영역 | 다수 (별도 조사 필요) |
+
+**Continuation / divisional / PCT family 추적 항목:**
+- `US12531820B2` (Amazon, 2026-01-20) — continuation/divisional 출원 추적
+- 동일 패밀리의 PCT 출원 → KIPO (한국), EPO (유럽), JPO (일본) 국가 진입 여부 — 한국 거주 사용자에게는 KIPO 진입이 가장 중요
+
+**점검 주기 + 산출물:**
+- 분기 1회, §8 모니터링 로그와 같은 분기에 점검
+- 결과는 §7.4 의 외부 특허 watch table 에 행 추가 (특허번호, 양수인, 우선일, 영향 평가, 우리 아키텍처 mitigation 메모)
+- 새 특허가 *우리 아키텍처와 element-by-element 비교 필요한 수준* 으로 발견되면 비공개 분석 노트 작성 (저장소는 *공개 repo 외부* — 향후 litigation 시 attorney work-product 보호를 받지 못할 수 있음)
+
+**외부 특허 watch table (분기별 발견 항목 기록):**
+
+| 발견일 | 특허번호 | 양수인 | 우선일 / 등록일 | 인접도 (1~5) | JAMES 아키텍처 mitigation | 비공개 분석 위치 | 비고 |
+|---|---|---|---|---|---|---|---|
+| 2026-05-19 | US12531820B2 | Amazon Technologies, Inc. | 2023-09-29 / 2026-01-20 | 3 (인접하나 3개 핵심 limitation 부재) | claim 1 의 (b)(e)(g) 요소 — NL→formal 변환, LLM formal 출력, formal→NL 변환 — 모두 부재. ARCHITECTURE.md §3 원칙 8 (NL-throughout pipeline) + §5.6 (Change Request) 가 mitigation 역할. | 비공개 보관 (공개 repo 외부) | Velog K4 댓글로 제3자 문의 받음 → 본 점검의 트리거. 상업화 단계 진입 시 변리사 정식 FTO 필수 |
+
+**트리거 — 외부 특허 모니터링 결과가 라이선스/아키텍처 결정에 영향을 주는 경우:**
+1. 인접도 5 (1:1 일치 위험) 신규 특허 발견 → §4 검토 절차에 준해 비공개 변리사 자문 즉시 개시
+2. 우리 출원 가능 영역 (§7.1) 과 직접 겹치는 특허 발견 → §7.1 후보 영역 재조정
+3. 한국 KIPO 패밀리 진입 확인 → 한국 출원 우선순위 재조정
+
 ---
 
 ## 8. 분기별 모니터링 로그
