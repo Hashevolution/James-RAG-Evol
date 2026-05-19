@@ -57,6 +57,7 @@
 | 2026-05-19 | **Track 1 PR-B merged — conformance suite + SDK leakage guard (PR #325)** | ✅ Merged on main. `tests/test_backend_conformance.py` (337 lines) enforces the 6 required behaviors any external Provider implementation must satisfy. `tests/test_no_sdk_leakage.py` (220 lines) guards against accidental Ollama-SDK / vendor-SDK imports leaking back into call sites after the Track 1 PR-A wiring. Together these make the Provider contract executable spec, not just doc |
 | 2026-05-19 | **K1 GeekNews published** | ✅ Live ([URL](https://news.hada.io/topic?id=29648)) — title (A) variant ("JAMES v0.3.0 — Platform Skeleton 도달") used. First Korean-language milestone post of the v0.3 cycle. Body synthesized v0.3.0 release + Cognitive Middleware Phase 2 + Ali 6-turn collaboration + Gemma 4 Challenge 2 submissions + Matija second collab + schema v1.1 + Provider contract + 3×3 plan + visual asset library |
 | 2026-05-19 | K1-companion X tweet + LinkedIn post published | ✅ Both posted (URLs pending — author to record). Channel separation discipline followed: GeekNews body = full milestone synthesis (Korean IT community), X tweet + LinkedIn = milestone signal pointers (no body content duplicated) |
+| 2026-05-19 | **K4 Velog Korean intro cross-post published** | ✅ Live ([URL](https://naver.me/GUTw3kar)) — Naver-shortened. Same-day publish as K1 GeekNews (originally planned for 2026-05-20~22 window, executed early to capture K1 afterglow inside 24h). Body = dev.to intro Korean re-write + v0.3.0 update box (v0.2→v0.3 comparison table). canonical → dev.to original. Cover image: 06-3d-graph.jpg (3D ontology hero, same as K1 GeekNews body image). Tags: RAG / GraphRAG / 오픈소스 / 로컬LLM / Python. Series: JAMES Graph-RAG (created for future v0.4/v1.0 entries). SEO-accumulation channel (google.co.kr long-tail, expected payoff 6-12mo) |
 
 ---
 
@@ -85,6 +86,7 @@ Three independent curators, three independent review pipelines. One acceptance i
 | Channel | URL | Audience | Posted |
 |---|---|---|---|
 | **GeekNews (K1)** | https://news.hada.io/topic?id=29648 | KR (Hada.io tech community) | 2026-05-19 |
+| **Velog (K4) — Korean intro cross-post** | https://naver.me/GUTw3kar | KR (Naver-shortened, full at velog.io/@hashevolution) | 2026-05-19 |
 | **LinkedIn — Korean v0.3.0 milestone post** | _(URL pending — author to record)_ | KR/Global professional | 2026-05-19 |
 | **Twitter/X (Korean — v0.3.0 K1-companion)** | _(URL pending — author to record)_ | KR | 2026-05-19 |
 | Twitter/X (English) | https://x.com/i/status/2054094082067386690 | Global EN | 2026-05-12 |
