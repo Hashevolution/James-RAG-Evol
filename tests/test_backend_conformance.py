@@ -195,8 +195,10 @@ class ReferenceBackendConformanceTests(unittest.TestCase):
     def test_r4_reserved_kwargs_accepted(self):
         """R4 — every reserved kwarg is accepted without raising.
         Backends may translate or ignore each, but they must not
-        refuse. ``temperature`` is checked only for backends that
-        opt into the 3×3 experiment (none do on main yet).
+        refuse. ``temperature`` is the swept variable for the Gemma
+        4 3×3 experiment, so both reference backends accept it on
+        main (ollama_local applies; claude_code_cli ignores — both
+        legal per R4).
         """
         reserved = dict(
             system="be helpful",
@@ -204,6 +206,7 @@ class ReferenceBackendConformanceTests(unittest.TestCase):
             timeout=10.0,
             model=None,
             use_cache=False,
+            temperature=0.7,
         )
         for name, harness in _enumerate_reference_backends():
             with self.subTest(backend=name):
@@ -218,6 +221,33 @@ class ReferenceBackendConformanceTests(unittest.TestCase):
                         b.complete("p", **reserved)
                 else:
                     b.complete("p", **reserved)
+
+    def test_r4_temperature_reaches_ollama_for_3x3_experiment(self):
+        """R4 sub-clause for the 3×3 experiment: ollama_local must
+        actually *apply* temperature rather than just accept it.
+        The variable that the experiment sweeps must propagate end
+        to end into the ollama HTTP options block.
+
+        We inspect the fake router's recorded call rather than the
+        outgoing HTTP request — the contract surface lives at
+        ``RouterWrapper.call_gemma``'s signature, which now takes a
+        ``temperature`` kwarg.
+        """
+        from core.reasoning.backends.ollama_local import OllamaLocalBackend
+        b = OllamaLocalBackend()
+        fake_router = MagicMock()
+        fake_router.call_gemma.return_value = "ok"
+        b._router = fake_router
+        b.complete("p", temperature=0.9)
+        # Capture the kwarg the router actually received.
+        call_kwargs = fake_router.call_gemma.call_args.kwargs
+        self.assertEqual(
+            call_kwargs.get("temperature"), 0.9,
+            "ollama_local must forward `temperature` into "
+            "RouterWrapper.call_gemma so the 3×3 experiment's swept "
+            "variable reaches the model. Saw kwargs: "
+            f"{sorted(call_kwargs.keys())}",
+        )
 
     def test_r4_arbitrary_extra_opts_tolerated(self):
         """R4 sub-clause — backends accept **opts without refusing

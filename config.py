@@ -144,6 +144,28 @@ GEMMA_MODEL    = os.environ.get("JAMES_LLM_MODEL", "gemma4:e4b")
 CODING_MODEL   = os.environ.get("JAMES_CODING_MODEL", "qwen2.5-coder:32b")
 OLLAMA_API_URL = os.environ.get("OLLAMA_API_URL", "http://127.0.0.1:11434/api/generate")
 
+# [Track 1 PR-C, 2026-05-19] LLM_TEMPERATURE — default sampling
+# temperature passed to the model. Reserved kwarg per the Provider
+# contract (docs/design/v0.3-llm-provider-contract.md §R4). The
+# Gemma 4 3×3 experiment sweeps this variable, so backends used
+# in that experiment must accept it.
+#
+# Default 0.2 preserves the byte-identical v0.3.0 behavior — that
+# was the hardcoded value inside RouterWrapper.call_gemma before
+# this PR. Override via JAMES_LLM_TEMPERATURE.
+try:
+    LLM_TEMPERATURE = float(os.environ.get("JAMES_LLM_TEMPERATURE", "0.2"))
+except ValueError:
+    # An unparseable env value (e.g. "high") falls back to 0.2 with
+    # a warning rather than a hard crash — same forgiving pattern as
+    # the rest of config.py. The operator sees the print at startup.
+    print(
+        f"[CONFIG] JAMES_LLM_TEMPERATURE="
+        f"{os.environ.get('JAMES_LLM_TEMPERATURE')!r} is not a float "
+        f"→ falling back to 0.2"
+    )
+    LLM_TEMPERATURE = 0.2
+
 # ────────────────────────────────────────────────────────────────
 #  ChromaDB
 # ────────────────────────────────────────────────────────────────

@@ -202,6 +202,41 @@ def resolve_backend_for_stage(stage: str) -> str:
 # ollama_local is always registered — it wraps RouterWrapper which is
 # the v0.3.0 default path. claude_code_cli is opt-in via env so a stock
 # install can't accidentally route prompts to an external CLI.
+# External plugin backends listed in JAMES_PLUGINS are imported last so
+# they can register themselves on top of the built-in pair.
+
+def _load_plugins() -> None:
+    """[Track 1 PR-C, 2026-05-19] Import each module listed in
+    ``JAMES_PLUGINS`` (comma-separated). A plugin module typically
+    calls ``register_backend(...)`` at import time; this loader just
+    triggers the import so that registration side-effect fires.
+
+    Failures are **fatal** — a plugin that fails to load shouldn't
+    silently degrade the server. The exception surfaces with a clear
+    "JAMES_PLUGINS" prefix so the operator immediately knows where to
+    look. Empty / unset env → no-op.
+
+    Per ``docs/design/v0.3-llm-provider-contract.md`` §"Registration".
+    """
+    raw = os.environ.get("JAMES_PLUGINS", "").strip()
+    if not raw:
+        return
+    import importlib
+    modules = [m.strip() for m in raw.split(",") if m.strip()]
+    for mod_path in modules:
+        try:
+            importlib.import_module(mod_path)
+        except Exception as e:
+            # Surface the original error class + message so the
+            # operator can debug. The wrapping RuntimeError attribution
+            # is so a stack-trace consumer can grep for "JAMES_PLUGINS"
+            # rather than chasing a vague "ModuleNotFoundError" with
+            # no context.
+            raise RuntimeError(
+                f"JAMES_PLUGINS: failed to import plugin {mod_path!r}: "
+                f"{type(e).__name__}: {e}"
+            ) from e
+
 
 def _autoregister() -> None:
     from core.reasoning.backends.ollama_local import OllamaLocalBackend
@@ -210,6 +245,12 @@ def _autoregister() -> None:
     if os.environ.get("JAMES_ENABLE_CLAUDE_BACKEND") == "1":
         from core.reasoning.backends.claude_code_cli import ClaudeCodeCliBackend
         register_backend("claude_code_cli", ClaudeCodeCliBackend())
+
+    # Plugin import is last so a plugin can choose to override or
+    # extend the built-in registrations. register_backend's
+    # idempotent-with-same-instance rule still applies — duplicate
+    # registration of ollama_local with a different instance raises.
+    _load_plugins()
 
 
 _autoregister()

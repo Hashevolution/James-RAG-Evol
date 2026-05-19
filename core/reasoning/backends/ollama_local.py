@@ -41,6 +41,7 @@ class OllamaLocalBackend:
         timeout: float = 60.0,
         model: Optional[str] = None,
         use_cache: bool = True,
+        temperature: Optional[float] = None,
         **opts,
     ) -> CompletionResult:
         # RouterWrapper.call_gemma already absorbs system_prompt via the
@@ -58,6 +59,11 @@ class OllamaLocalBackend:
                 use_cache=use_cache,
                 max_tokens=max_tokens,
                 model=model or None,
+                # [Track 1 PR-C, 2026-05-19] Reserved kwarg per the
+                # Provider contract §R4. None → call_gemma falls back
+                # to config.LLM_TEMPERATURE (default 0.2). Required
+                # for the Gemma 4 3×3 experiment which sweeps this.
+                temperature=temperature,
             )
         except Exception as e:
             return CompletionResult(

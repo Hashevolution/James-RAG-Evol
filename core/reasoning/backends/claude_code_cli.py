@@ -84,6 +84,7 @@ class ClaudeCodeCliBackend:
         max_tokens: int = 1024,   # advisory — claude CLI does not surface a flag
         timeout: float = 60.0,
         model: Optional[str] = None,
+        temperature: Optional[float] = None,   # accepted per R4, ignored — CLI no flag
         **opts,
     ) -> CompletionResult:
         t0 = time.time()

@@ -163,6 +163,7 @@ class GemmaClient:
         use_cache: bool = True,
         max_tokens: int = 0,
         model: str = None,
+        temperature: float = None,
     ) -> str:
         """
         Gemma 모델 호출.
@@ -250,7 +251,17 @@ class GemmaClient:
                             # 더 길게 가능. -1 (무제한)도 옵션이지만 runaway
                             # LLM 방어 위해 hard ceiling 유지.
                             "num_predict": max_tokens if max_tokens > 0 else 8192,
-                            "temperature": 0.2,    # 결정성 강화
+                            # [Track 1 PR-C, 2026-05-19] caller-supplied
+                            # temperature wins; otherwise config.LLM_TEMPERATURE
+                            # (default 0.2 — preserves v0.3.0 byte-identical
+                            # determinism). Reserved kwarg per the Provider
+                            # contract §R4 — also the 3×3 experiment's
+                            # swept variable.
+                            "temperature": (
+                                temperature
+                                if temperature is not None
+                                else __import__("config").LLM_TEMPERATURE
+                            ),
                             "num_ctx":     8192,   # [#A8-5] 4096 → 8192 (긴 답변 토큰까지 수용)
                         },
                     },

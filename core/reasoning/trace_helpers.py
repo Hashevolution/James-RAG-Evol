@@ -95,6 +95,7 @@ def trace_synth_call(
     max_tokens: int = 1024,
     use_cache: bool = True,
     model: Optional[str] = None,
+    temperature: Optional[float] = None,
     extras: Optional[Dict[str, Any]] = None,
     **opts: Any,
 ) -> str:
@@ -161,6 +162,7 @@ def trace_synth_call(
         timeout=timeout,
         model=model,
         use_cache=use_cache,
+        temperature=temperature,
         **opts,
     )
 
