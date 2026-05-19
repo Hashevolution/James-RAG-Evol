@@ -5,9 +5,10 @@
 > 의 역사·근거·트리거 조건을 후임자에게 전달하기 위한 단일 진실
 > 소스(SSoT) 다.
 >
-> **최종 갱신**: 2026-05-13
+> **최종 갱신**: 2026-05-19
 > **현재 라이선스**: MIT
 > **다음 검토 트리거**: §3 의 T1~T5 중 2개 이상 충족 시
+> **외부 특허 FTO watch**: §7.4 (분기 1회 점검)
 
 ---
 
@@ -230,6 +231,50 @@
 | — | 심사 / 등록 | — |
 | — | Defensive Patent Pledge 공개 | — |
 
+### 7.4 외부 특허 모니터링 (FTO watch)
+
+JAMES 가 침해 위험에 노출될 수 있는 **타사 등록 특허**를 추적한다.
+§7.1~7.3 의 자체 출원 트랙과 독립적으로, **분기 1회** 갱신한다.
+
+**모니터링 대상 선정 기준** (하나 이상 해당):
+
+- JAMES core (`core/retrieval/`, `core/graph_engine.py`,
+  `core/reasoning/`, `core/cascade.py`, `core/change_request.py`) 와
+  기술 영역이 겹치는 등록/공개 특허
+- 대규모 cloud provider (AWS, Azure, GCP) 또는 LLM provider (OpenAI,
+  Anthropic, Google) 의 RAG/KG/agent 특허
+- v0.3+ 의 plugin / self-evolution 영역과 겹치는 특허
+- 한국·미국 출원 진행 시 변리사가 식별한 인접 특허
+
+**점검 시 확인 항목**:
+
+1. **Family 확장** — continuation / divisional / CIP 신규 출원 여부
+   (Google Patents → "Worldwide applications" 섹션 또는 USPTO Patent
+   Center 의 Application Data 탭)
+2. **Claim 범위 변동** — 등록 청구항이 broader 로 재출원되었는가
+3. **Assertion 활동** — 권리행사 소송/라이선스 캠페인 공개 정황
+   (RPX, Unified Patents, Docket Navigator, IPWatchdog 뉴스 검색)
+4. **JAMES 아키텍처 영향** — 최근 분기 동안 JAMES 가 도입한 변경이
+   해당 특허의 element 와 새로 겹치게 되었는가 (특히 formal query
+   language layer, auto-update gate 같은 critical differentiator
+   훼손 여부)
+
+**FTO watch 목록**:
+
+| Patent | 양수인 | 출원/등록 | 만료 예상 | 기술 영역 | 현재 리스크 | 최근 점검 | 기록 |
+|---|---|---|---|---|---|---|---|
+| [US12531820B2](https://patents.google.com/patent/US12531820B2/en) | Amazon Technologies | 2023-09-29 / 2026-01-20 | 2043-09-29 | LLM 으로 KG 를 빌드/갱신하는 chatbot 파이프라인 (NL→formal query language→formal LLM response→NL 라운드트립) | **낮음** — JAMES 는 dense vector RAG + NL-only LLM I/O 이며 formal-language layer 부재. `change_request.py` human-approval gate 가 auto-update trigger 도 차단 | 2026-05-19 | [`patent-review-2026-05-19-US12531820B2.md`](legal/patent-review-2026-05-19-US12531820B2.md) |
+
+**리스크 변경 시 행동**:
+
+- **낮음 → 중간**: 해당 특허 파일에 분기 외 추가 점검 + 변리사 자문
+  일정 우선화. 관련 아키텍처 변경 PR 에 본 문서 링크 의무화.
+- **중간 → 높음**: §4 검토 절차 (변리사 참여) 즉시 개시. 영향 영역의
+  코드 동결 검토. 정식 FTO opinion 발주.
+
+**점검 주기**: 분기 1회 (§8 모니터링 로그와 동일 사이클). 큰 PR 이
+core retrieval/graph/reasoning 을 건드릴 때는 예외적으로 즉시 점검.
+
 ---
 
 ## 8. 분기별 모니터링 로그
@@ -248,6 +293,7 @@
 | 일자 | 결정 | 근거 | 기록 |
 |---|---|---|---|
 | 2026-05-11 | v0.3 진입 시점 MIT 유지 결정 | 라이선스 강화 황금률, 0→1 채택 구간에서 AGPL/BUSL 은 채택률만 떨어뜨리고 보호할 자산 없음. 경험적 증거: 성공한 강화 사례 모두 permissive 출발 | `session-2026-05-09-license-infrastructure.md` §2 Track A-1 |
+| 2026-05-19 | §7.4 FTO watch 트랙 신설 + Amazon US12531820B2 등재 (리스크: 낮음) | 사용자 문의로 element-by-element 기술 검토 완료. JAMES 의 dense-vector RAG + human-approval gate 가 patent claim 의 NL→formal→NL + auto-update 핵심 요소와 어긋남 → 현 아키텍처 유지 시 침해 위험 낮음. 분기별 추적 인프라 확보가 더 가치 있음 | `legal/patent-review-2026-05-19-US12531820B2.md` |
 
 ---
 
