@@ -123,6 +123,57 @@ class ContinuityDirectiveTests(unittest.TestCase):
         from core.reasoning.modes import chat as _chat_mod
         cls.src = inspect.getsource(_chat_mod)
 
+    def setUp(self):
+        # Snapshot the backend registry + JAMES_BACKEND_SYNTH env so a
+        # _register_capture_backend()-using test doesn't bleed into
+        # other tests in this file (some of which run the real engine).
+        import os as _os
+        from core.reasoning.backends import _REGISTRY
+        self._saved_registry = dict(_REGISTRY)
+        self._saved_synth_env = _os.environ.get("JAMES_BACKEND_SYNTH")
+
+    def tearDown(self):
+        import os as _os
+        from core.reasoning.backends import (
+            _REGISTRY, _clear_for_tests, register_backend,
+        )
+        _clear_for_tests()
+        for name, inst in self._saved_registry.items():
+            register_backend(name, inst)
+        if self._saved_synth_env is None:
+            _os.environ.pop("JAMES_BACKEND_SYNTH", None)
+        else:
+            _os.environ["JAMES_BACKEND_SYNTH"] = self._saved_synth_env
+
+    def _register_capture_backend(self, *, reply="안녕하세요. 자메스입니다."):
+        """Register a backend that records the prompt it receives, then
+        pin the synth stage to it via JAMES_BACKEND_SYNTH so
+        handle_chat's trace_synth_call → resolve_backend_for_stage path
+        lands on us. Returns the dict that will hold ``"prompt"``.
+        """
+        import os as _os
+        from core.reasoning.backends import (
+            CompletionResult, _clear_for_tests, register_backend,
+        )
+
+        captured: dict = {}
+
+        class _CaptureBackend:
+            backend_id = "test_continuity_capture"
+
+            def complete(self_inner, prompt, *, system="", max_tokens=1024,
+                         timeout=60.0, model=None, use_cache=True, **opts):
+                captured["prompt"] = prompt
+                return CompletionResult(
+                    text=reply,
+                    backend_id=self_inner.backend_id,
+                )
+
+        _clear_for_tests()
+        register_backend("test_continuity_capture", _CaptureBackend())
+        _os.environ["JAMES_BACKEND_SYNTH"] = "test_continuity_capture"
+        return captured
+
     def test_directives_declared_at_module_level(self):
         # Constants at the top of the file so a future caller (e.g.,
         # handle_meta, handle_coding) can re-use them without
@@ -207,17 +258,21 @@ class ContinuityDirectiveTests(unittest.TestCase):
         the LLM to resolve anaphora against other sessions' content.
         This test captures the prompt that handle_chat actually
         constructs and asserts the directive is absent in that case.
+
+        [Track 1 PR-A, 2026-05-19] After the call-site wiring, the
+        synth layer goes through ``trace_synth_call`` →
+        ``get_backend(...).complete(...)`` rather than calling
+        ``engine.llm.call_gemma`` directly. We capture the prompt by
+        registering a callback backend and pinning the synth stage to
+        it via ``JAMES_BACKEND_SYNTH``.
         """
         from types import SimpleNamespace
         from core.reasoning import modes as _modes
 
-        captured = {}
-        def _fake_gemma(prompt, **_kw):
-            captured["prompt"] = prompt
-            return "안녕하세요. 자메스입니다. 무엇을 도와드릴까요?"
+        captured = self._register_capture_backend()
 
         fake_engine = SimpleNamespace(
-            llm = SimpleNamespace(call_gemma=_fake_gemma),
+            llm = SimpleNamespace(call_gemma=lambda *a, **kw: ""),
             _log = lambda *a, **kw: None,
             _LLM_ERROR_PREFIXES = ("[Gemma",),
             _elapsed = lambda *a, **kw: None,
@@ -259,17 +314,18 @@ class ContinuityDirectiveTests(unittest.TestCase):
         hist_ctx non-empty — the directive must still fire so the
         PR #249 anaphora-resolution / greeting-suppression behaviour
         survives. This is the path the original PR #249 was designed
-        for and must keep working."""
+        for and must keep working.
+
+        Track-1 PR-A note: see sibling test for the backend-capture
+        mechanism — same shape.
+        """
         from types import SimpleNamespace
         from core.reasoning import modes as _modes
 
-        captured = {}
-        def _fake_gemma(prompt, **_kw):
-            captured["prompt"] = prompt
-            return "(continuation reply)"
+        captured = self._register_capture_backend(reply="(continuation reply)")
 
         fake_engine = SimpleNamespace(
-            llm = SimpleNamespace(call_gemma=_fake_gemma),
+            llm = SimpleNamespace(call_gemma=lambda *a, **kw: ""),
             _log = lambda *a, **kw: None,
             _LLM_ERROR_PREFIXES = ("[Gemma",),
             _elapsed = lambda *a, **kw: None,

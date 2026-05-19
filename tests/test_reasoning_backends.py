@@ -371,5 +371,111 @@ class DefaultBackendResolutionTests(unittest.TestCase):
                 )
 
 
+class StageBackendResolutionTests(unittest.TestCase):
+    """[Track 1 PR-A, 2026-05-19]
+
+    ``resolve_backend_for_stage(stage)`` layers per-stage overrides on
+    top of the global ``JAMES_REASONING_BACKEND``:
+
+      1. ``JAMES_BACKEND_<STAGE>`` env (e.g. JAMES_BACKEND_SYNTH)
+      2. ``JAMES_REASONING_BACKEND`` env (global)
+      3. ``"ollama_local"`` (hardcoded default)
+
+    These tests pin every transition the docs design promises.
+    """
+
+    def setUp(self):
+        self._saved = {k: os.environ.get(k) for k in
+                       ("JAMES_REASONING_BACKEND",
+                        "JAMES_BACKEND_SYNTH",
+                        "JAMES_BACKEND_RETRIEVE",
+                        "JAMES_ENABLE_CLAUDE_BACKEND")}
+
+    def tearDown(self):
+        for k, v in self._saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        _reimport_backends()
+
+    def test_unknown_stage_raises(self):
+        # Stage typo at the call site should fail loudly during dev
+        # — silent fallthrough would silently bypass the override.
+        from core.reasoning import backends
+        with self.assertRaises(ValueError):
+            backends.resolve_backend_for_stage("snyth")
+
+    def test_no_env_returns_ollama_local(self):
+        for k in ("JAMES_REASONING_BACKEND", "JAMES_BACKEND_SYNTH"):
+            os.environ.pop(k, None)
+        mod = _reimport_backends()
+        self.assertEqual(mod.resolve_backend_for_stage("synth"), "ollama_local")
+
+    def test_per_stage_env_overrides_global(self):
+        os.environ["JAMES_REASONING_BACKEND"] = "claude_code_cli"
+        os.environ["JAMES_BACKEND_SYNTH"] = "ollama_local"
+        os.environ["JAMES_ENABLE_CLAUDE_BACKEND"] = "1"
+        mod = _reimport_backends()
+        # Global says claude, but per-stage synth pins ollama_local.
+        self.assertEqual(mod.resolve_backend_for_stage("synth"),
+                         "ollama_local")
+        # Other stages still follow the global.
+        self.assertEqual(mod.resolve_backend_for_stage("verify"),
+                         "claude_code_cli")
+
+    def test_per_stage_typo_falls_through_to_global(self):
+        # Per-stage typo (or claude requested without opt-in) must not
+        # break the rest of the pipeline — fall through to global, not
+        # raise.
+        os.environ["JAMES_REASONING_BACKEND"] = "ollama_local"
+        os.environ["JAMES_BACKEND_SYNTH"] = "rm-rf-slash"
+        os.environ.pop("JAMES_ENABLE_CLAUDE_BACKEND", None)
+        mod = _reimport_backends()
+        self.assertEqual(mod.resolve_backend_for_stage("synth"),
+                         "ollama_local")
+
+    def test_per_stage_falls_through_to_global_when_global_set(self):
+        # Stage env unset → uses JAMES_REASONING_BACKEND directly.
+        os.environ.pop("JAMES_BACKEND_SYNTH", None)
+        os.environ["JAMES_REASONING_BACKEND"] = "claude_code_cli"
+        os.environ["JAMES_ENABLE_CLAUDE_BACKEND"] = "1"
+        mod = _reimport_backends()
+        self.assertEqual(mod.resolve_backend_for_stage("synth"),
+                         "claude_code_cli")
+
+
+class SynthCallSitesUseBackendHelperTests(unittest.TestCase):
+    """Architectural assertion: every synth call site must reach the
+    LLM through ``trace_synth_call`` rather than the legacy
+    ``engine.llm.call_gemma`` pattern. A future refactor that re-adds
+    a direct ``call_gemma`` invocation in the middleware should fail
+    here, not in production.
+    """
+
+    def test_no_direct_call_gemma_in_middleware(self):
+        from pathlib import Path
+        root = Path(__file__).resolve().parent.parent
+        middleware_files = [
+            root / "core" / "reasoning" / "engine_synth.py",
+            root / "core" / "reasoning" / "pipeline_synth.py",
+            root / "core" / "reasoning" / "modes" / "chat.py",
+            root / "core" / "reasoning" / "modes" / "coding.py",
+            root / "core" / "reasoning" / "modes" / "self_evolve.py",
+            root / "core" / "reasoning" / "modes" / "wiki_edit.py",
+        ]
+        for f in middleware_files:
+            with self.subTest(file=f.name):
+                src = f.read_text(encoding="utf-8")
+                self.assertNotIn(
+                    "engine.llm.call_gemma",
+                    src,
+                    f"{f.name} still calls engine.llm.call_gemma "
+                    f"directly. After Track 1 PR-A, every synth call "
+                    f"site must route through trace_synth_call → "
+                    f"get_backend(...).complete(...).",
+                )
+
+
 if __name__ == "__main__":   # pragma: no cover
     unittest.main()

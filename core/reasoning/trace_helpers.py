@@ -1,34 +1,51 @@
-"""L1 wiring helper — wrap an LLM call so it emits one TraceStep row.
+"""L1 wiring helper — call one backend, emit one TraceStep row.
 
 L0 (PR #283) shipped TraceStep / emit_trace_step / Backend registry as
-infrastructure. L1 (this PR) wires the existing 12 ``call_gemma`` sites
-in pipeline.py / modes.py / engine.py to emit one ``audit_log`` row each,
-without changing what the LLM returns (STEP 7 must stay byte-identical).
+infrastructure. L1 (PR-A of Track 1, this file) routes every synth call
+site through the registered backend instead of calling
+``engine.llm.call_gemma`` directly. The wiring stays byte-identical when
+the default backend (``ollama_local``) runs — that backend wraps
+``RouterWrapper.call_gemma`` with the same kwargs.
 
-The helper exists to keep each call site small:
+Call shape:
 
     raw = trace_synth_call(
-        lambda: engine.llm.call_gemma(prompt, timeout=60, max_tokens=400),
         prompt,
         applied_rule="reasoning.synth.chat",
         user_role=user_role,
+        timeout=60,
+        max_tokens=400,
+        model=selected_model or None,
     )
 
-vs the inline alternative (8 lines per site × 12 sites = 96 LOC of
-boilerplate). Same byte-output, plus one audit row per LLM round-trip.
+Compared to the previous lambda form, this helper:
+
+  * resolves the backend per stage via ``resolve_backend_for_stage`` —
+    a ``JAMES_BACKEND_SYNTH=claude_code_cli`` env now retargets the
+    whole synth layer to Claude without touching call sites.
+  * never imports ``llm.router`` from the middleware layer; the SDK
+    barrier (R5 in ``docs/design/v0.3-llm-provider-contract.md``)
+    becomes architecturally enforceable.
+  * preserves the trace_id correlation, error-string classification,
+    and ``output_summary`` truncation from the v0.3.0 helper — no
+    audit-log shape change.
 
 Trace correlation: every emitted step carries the current Axis-3
 ``trace_id`` (core/observability) under ``extras["trace_id"]`` so the
-future replay tool can ``WHERE answer LIKE '%"trace_id": "<id>"%'`` to
-gather every reasoning row for one question. Schema fields stay clean —
-``parent_step_id`` continues to mean step lineage (populated in Phase 2
-when reflection/verification stack steps).
+replay tool can ``WHERE answer LIKE '%"trace_id": "<id>"%'`` to
+gather every reasoning row for one question. Schema fields stay
+clean — ``parent_step_id`` continues to mean step lineage.
 """
 from __future__ import annotations
 
 import time
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
+from core.reasoning.backends import (
+    CompletionResult,
+    get_backend,
+    resolve_backend_for_stage,
+)
 from core.reasoning.trace_schema import (
     TraceStep,
     compute_inputs_hash,
@@ -37,10 +54,10 @@ from core.reasoning.trace_schema import (
 )
 
 
-# Sentinel string used in error rows to mark a RouterWrapper-known
-# failure mode (callee returned an error string, not text). Mirrors the
-# OllamaLocalBackend convention so consumers see the same shape whether
-# they call the backend directly or via this helper.
+# Sentinel string used in error rows to mark a backend-reported failure
+# (the backend returned text matching RouterWrapper's known error strings
+# rather than a clean response). Mirrors the OllamaLocalBackend convention
+# so consumers see the same shape regardless of which backend ran.
 _ROUTER_ERROR_PREFIXES = (
     "[Gemma 응답 없음]",
     "[Gemma 오류]",
@@ -67,29 +84,42 @@ def _is_router_error(text: Optional[str]) -> bool:
 
 
 def trace_synth_call(
-    llm_call: Callable[[], Any],
     prompt: str,
     *,
     applied_rule: str,
     user_role: str = "system",
     stage: str = "synth",
-    backend_id: str = "ollama_local",
     parent_step_id: str = "",
     system: str = "",
+    timeout: float = 60.0,
+    max_tokens: int = 1024,
+    use_cache: bool = True,
+    model: Optional[str] = None,
     extras: Optional[Dict[str, Any]] = None,
+    **opts: Any,
 ) -> str:
-    """Call ``llm_call()``, emit one TraceStep, return the raw text.
+    """Run one synth call through the registered backend, emit one
+    TraceStep row, return the raw text.
+
+    The backend is resolved fresh on every call so that an operator
+    flipping ``JAMES_BACKEND_SYNTH`` takes effect without a server
+    restart for the synth layer (other stages still resolve at import
+    time — see planner.py / reflect.py / verify.py). The cost is one
+    dictionary lookup per call, dominated by the LLM round trip.
 
     Behaviour:
-      * Wraps the call in a try/except — exceptions are converted into
-        an ``error`` row and re-raised so the caller's existing
-        error-handling stays unchanged.
-      * On success, classifies RouterWrapper's known error strings
-        (`[Gemma 응답 없음]`, etc.) as ``error`` rows even though the
-        return type is a string — consumers can filter on ``blocked=1``.
-      * Returns the raw text unmodified — no truncation, no rewriting.
-        The audit row's ``output_summary`` is a truncated copy; the
-        caller's downstream logic sees the full text.
+      * Backend failures are surfaced as ``CompletionResult`` with
+        ``error`` populated — never as raised exceptions — and emitted
+        as an audit row with ``blocked=True`` semantics. The function
+        returns the empty string in that case so existing callers
+        keep their ``if not answer: …`` fallbacks.
+      * If the helper itself can't reach a backend (registry empty
+        during early init / import failure), it logs an error row and
+        returns ``""`` rather than raising — matches R1.
+      * On success, RouterWrapper-style error strings
+        (``[Gemma 응답 없음]`` …) are classified as ``error`` rows even
+        though they arrive as plain text — preserves the v0.3.0
+        signal where the caller checked ``answer.startswith(prefix)``.
 
     ``extras`` is merged with the auto-added ``trace_id`` (the latter
     wins on key collision, matching emit_trace_step's "schema field
@@ -101,44 +131,61 @@ def trace_synth_call(
     if trace_id:
         emit_extras["trace_id"] = trace_id
 
+    # Backend resolution: R1 says we don't raise on the user path, so a
+    # registry-level failure (no backends registered, unknown stage) is
+    # converted to an error row + empty return rather than an exception.
     try:
-        text = llm_call()
+        backend_id = resolve_backend_for_stage(stage)
+        backend = get_backend(backend_id)
     except Exception as e:
         emit_trace_step(
             TraceStep(
                 stage=stage,
-                backend_id=backend_id,
+                backend_id="<unresolved>",
                 parent_step_id=parent_step_id,
                 inputs_hash=compute_inputs_hash(prompt, system=system),
                 output_summary="",
                 applied_rule=applied_rule,
                 latency_ms=int((time.time() - t0) * 1000),
-                error=f"{type(e).__name__}: {str(e)[:200]}",
+                error=f"backend_resolution: {type(e).__name__}: {str(e)[:200]}",
             ),
             user_role=user_role,
             extras=emit_extras,
         )
-        raise
+        return ""
 
-    text_str = text if isinstance(text, str) else (str(text) if text is not None else "")
-    err = ""
-    if _is_router_error(text_str):
+    result: CompletionResult = backend.complete(
+        prompt,
+        system=system,
+        max_tokens=max_tokens,
+        timeout=timeout,
+        model=model,
+        use_cache=use_cache,
+        **opts,
+    )
+
+    text_str = result.text if isinstance(result.text, str) else ""
+    err = result.error or ""
+    if not err and _is_router_error(text_str):
         err = "backend reported error string"
 
     emit_trace_step(
         TraceStep(
             stage=stage,
-            backend_id=backend_id,
+            backend_id=result.backend_id or backend_id,
             parent_step_id=parent_step_id,
             inputs_hash=compute_inputs_hash(prompt, system=system),
             output_summary=truncate_summary(text_str),
             applied_rule=applied_rule,
-            latency_ms=int((time.time() - t0) * 1000),
+            latency_ms=result.latency_ms or int((time.time() - t0) * 1000),
             error=err,
         ),
         user_role=user_role,
         extras=emit_extras,
     )
+    # The caller's downstream logic (error-prefix checks, "" fallback)
+    # is unchanged — return text whether it's a clean response or one of
+    # RouterWrapper's known error strings.
     return text_str
 
 

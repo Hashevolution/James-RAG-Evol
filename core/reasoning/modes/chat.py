@@ -63,14 +63,13 @@ def handle_chat(
             mem_prefix = ""
         _chat_prompt = f"{sys_prefix}{mem_prefix}{rule_txt}\n질문: {safe_query}\n\n답변:"
         raw_answer = trace_synth_call(
-            lambda: engine.llm.call_gemma(
-                _chat_prompt,
-                use_cache=True, timeout=60, max_tokens=style.max_tokens,
-                model=selected_model or None,
-            ),
             _chat_prompt,
             applied_rule="reasoning.synth.chat",
             user_role=user_role,
+            use_cache=True,
+            timeout=60,
+            max_tokens=style.max_tokens,
+            model=selected_model or None,
         )
         # Preserve paragraph breaks (\n\n) — user feedback wants
         # natural 문단 separation, not a single block of text.

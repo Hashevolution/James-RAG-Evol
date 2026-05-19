@@ -140,18 +140,17 @@ def generate_rag_answer(
             )
 
     try:
-        # L1 wiring: trace_synth_call wraps so the canonical RAG
-        # synthesis emits one reasoning audit row. Behaviour is
-        # byte-identical — the helper forwards call_gemma's return
-        # value untouched.
+        # L1 wiring (PR-A Track 1): synth goes through the registered
+        # backend rather than calling RouterWrapper directly. Default
+        # backend (ollama_local) is byte-identical to the v0.3.0 path;
+        # JAMES_BACKEND_SYNTH retargets without touching this code.
         answer = trace_synth_call(
-            lambda: engine.llm.call_gemma(
-                prompt, timeout=120, use_cache=True,
-                max_tokens=style.max_tokens,
-                model=selected_model or None,
-            ),
             prompt,
             applied_rule="reasoning.synth.rag",
+            timeout=120,
+            use_cache=True,
+            max_tokens=style.max_tokens,
+            model=selected_model or None,
         )
         if not answer or any(answer.startswith(p) for p in LLM_ERROR_PREFIXES):
             return "답변 생성에 실패했습니다."

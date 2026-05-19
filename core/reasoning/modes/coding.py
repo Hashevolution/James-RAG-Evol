@@ -55,14 +55,12 @@ def handle_coding(
             sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
             _coding_user_prompt = f"{sys_prefix}코딩 질문: {safe_query}\n\n답변:"
             answer = trace_synth_call(
-                lambda: engine.llm.call_gemma(
-                    _coding_user_prompt,
-                    use_cache=True, timeout=120,
-                    model=selected_model,
-                ),
                 _coding_user_prompt,
                 applied_rule="reasoning.synth.coding_user_pick",
                 user_role=user_role,
+                use_cache=True,
+                timeout=120,
+                model=selected_model,
             )
             log_stage("coding_user_pick_done",
                       latency_ms=int((time.time() - t_code) * 1000),
@@ -98,13 +96,11 @@ def handle_coding(
                 sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
                 _coding_fallback_prompt = f"{sys_prefix}코딩 질문: {safe_query}\n\n답변:"
                 answer = trace_synth_call(
-                    lambda: engine.llm.call_gemma(
-                        _coding_fallback_prompt,
-                        use_cache=True, timeout=90,
-                    ),
                     _coding_fallback_prompt,
                     applied_rule="reasoning.synth.coding_fallback",
                     user_role=user_role,
+                    use_cache=True,
+                    timeout=90,
                 )
                 log_stage("coding_fallback_done",
                           latency_ms=int((time.time() - t_code) * 1000),

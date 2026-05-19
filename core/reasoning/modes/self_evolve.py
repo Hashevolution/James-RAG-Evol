@@ -87,14 +87,12 @@ def handle_self_evolve(
                     f"전체 아키텍처를 설명해줘:\n\n{folder_report[:2000]}\n\n설명:"
                 )
                 analysis = trace_synth_call(
-                    lambda: engine.llm.call_gemma(
-                        _folder_prompt,
-                        timeout=120, use_cache=False,
-                        model=selected_model or None,
-                    ),
                     _folder_prompt,
                     applied_rule="reasoning.synth.self_evolve_folder",
                     user_role=user_role,
+                    timeout=120,
+                    use_cache=False,
+                    model=selected_model or None,
                 )
                 answer = folder_report
                 if analysis:
@@ -112,14 +110,12 @@ def handle_self_evolve(
                 f"파일: {fname}\n```python\n{content[:2000]}\n```\n\n분석:"
             )
             analysis = trace_synth_call(
-                lambda: engine.llm.call_gemma(
-                    _file_prompt,
-                    timeout=120, use_cache=False,
-                    model=selected_model or None,
-                ),
                 _file_prompt,
                 applied_rule="reasoning.synth.self_evolve_file",
                 user_role=user_role,
+                timeout=120,
+                use_cache=False,
+                model=selected_model or None,
             )
             answer = (
                 f"📄 **{fname}** 분석\n\n"
@@ -158,14 +154,12 @@ def handle_self_evolve(
                     f"다음 관점에서 개선 제안을 해줘: {safe_query}\n\n제안:"
                 )
                 extra = trace_synth_call(
-                    lambda: engine.llm.call_gemma(
-                        _improve_prompt,
-                        timeout=90, use_cache=False,
-                        model=selected_model or None,
-                    ),
                     _improve_prompt,
                     applied_rule="reasoning.synth.self_evolve_improve",
                     user_role=user_role,
+                    timeout=90,
+                    use_cache=False,
+                    model=selected_model or None,
                 )
                 if extra:
                     answer += f"\n\n💡 **개선 제안:**\n{extra}"

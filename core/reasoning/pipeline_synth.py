@@ -133,12 +133,12 @@ def generate_answer(
                                 )
                                 # L1 wiring — one audit row per LLM round-trip
                                 summary = trace_synth_call(
-                                    lambda: engine.llm.call_gemma(
-                                        summary_prompt, timeout=30, use_cache=False, max_tokens=300,
-                                    ),
                                     summary_prompt,
                                     applied_rule="reasoning.synth.web_summary",
                                     user_role=user_role,
+                                    timeout=30,
+                                    use_cache=False,
+                                    max_tokens=300,
                                 )
                                 if summary:
                                     from tools.self.evo_analyzer import (
@@ -207,15 +207,13 @@ def generate_answer(
                     f"\n{_rule}\n질문: {safe_query}\n\n답변:"
                 )
                 answer_raw = trace_synth_call(
-                    lambda: engine.llm.call_gemma(
-                        _web_fallback_prompt,
-                        use_cache=(not web_context), timeout=90,
-                        max_tokens=_style.max_tokens,
-                        model=selected_model or None,
-                    ),
                     _web_fallback_prompt,
                     applied_rule="reasoning.synth.web_fallback",
                     user_role=user_role,
+                    use_cache=(not web_context),
+                    timeout=90,
+                    max_tokens=_style.max_tokens,
+                    model=selected_model or None,
                 )
             else:
                 answer_raw = engine._generate_answer(
@@ -252,14 +250,13 @@ def generate_answer(
                 "위 가이드를 따라 자연스럽게 답하세요.)\n답변:"
             )
             retry = trace_synth_call(
-                lambda: engine.llm.call_gemma(
-                    _retry_prompt,
-                    use_cache=False, timeout=60, max_tokens=_style_retry.max_tokens,
-                    model=selected_model or None,
-                ),
                 _retry_prompt,
                 applied_rule="reasoning.synth.retry_no_info",
                 user_role=user_role,
+                use_cache=False,
+                timeout=60,
+                max_tokens=_style_retry.max_tokens,
+                model=selected_model or None,
             )
             if retry and not any(retry.startswith(p) for p in engine._LLM_ERROR_PREFIXES):
                 print("[ROUTER] post_check → 재시도 (persona 포함)")

@@ -1,9 +1,11 @@
 """Adapter around RouterWrapper.call_gemma — the v0.3.0 default LLM path.
 
-Byte-identical to existing core/reasoning/pipeline.py calls. L1's
-wiring step will swap ``engine.llm.call_gemma(prompt, ...)`` for
-``get_backend("ollama_local").complete(prompt, ...)`` without changing
-which model runs or what prompt format reaches it.
+After L1 wiring (Track 1 PR-A, 2026-05-19) every synth call site goes
+through ``get_backend("ollama_local").complete(...)`` rather than
+RouterWrapper directly. This adapter remains byte-identical to the
+v0.3.0 prompt path — the same prompt, the same model, the same
+RouterWrapper call — so JAMES with no env overrides behaves exactly
+as it did before the wiring.
 """
 from __future__ import annotations
 

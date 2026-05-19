@@ -15,9 +15,12 @@ Two adapters ship with L0:
                            default so a stock JAMES install never reaches
                            an external CLI without explicit consent.
 
-L0 is wiring-free — the registry exists but core/reasoning/pipeline.py
-still calls ``engine.llm.call_gemma(...)`` directly. L1 swaps those call
-sites onto ``get_backend(name).complete(...)`` + emit_trace_step.
+L1 (Track 1 PR-A, 2026-05-19) routes every synth call site through
+``trace_synth_call`` → ``resolve_backend_for_stage(...)`` →
+``get_backend(name).complete(...)``. ``engine.llm.call_gemma`` is no
+longer reached from the middleware layer. Per-stage env override
+(``JAMES_BACKEND_SYNTH`` …) retargets a single stage without touching
+call sites.
 """
 from __future__ import annotations
 
@@ -143,6 +146,58 @@ def get_default_backend_id() -> str:
     return "ollama_local"
 
 
+# Stage names accepted by resolve_backend_for_stage. Mirrors the call-site
+# taxonomy in docs/design/v0.3-llm-provider-contract.md §"Selection".
+# Stages without a JAMES_BACKEND_<STAGE> override fall through to the
+# JAMES_REASONING_BACKEND global default. Adding a stage here is purely
+# additive — existing operators see no behavior change.
+_KNOWN_STAGES = frozenset({
+    "auth", "retrieve", "graph", "synth",
+    "verify", "reflect", "plan", "rewrite",
+})
+
+
+def resolve_backend_for_stage(stage: str) -> str:
+    """Pick the backend name for one call-site stage.
+
+    Resolution order (per ``docs/design/v0.3-llm-provider-contract.md``):
+
+      1. ``JAMES_BACKEND_<STAGE>`` env (e.g. ``JAMES_BACKEND_SYNTH``)
+         — per-stage override. Used by the 3×3 Gemma 4 experiment to
+         pin one stage to a specific backend while leaving others free.
+      2. ``JAMES_REASONING_BACKEND`` env — global default (PR #305).
+      3. Hardcoded ``"ollama_local"`` — the L0 default, always
+         registered.
+
+    Unknown / unregistered requested backends fall through to the
+    next level (same forgiving pattern as ``get_default_backend_id``).
+    A typo in ``JAMES_BACKEND_SYNTH`` shouldn't break every other
+    stage — it should just log and degrade to the global default.
+
+    ``stage`` is validated against ``_KNOWN_STAGES`` so a typo at the
+    call site (e.g. ``stage="snyth"``) raises loudly during dev
+    instead of silently bypassing the per-stage override.
+    """
+    if not isinstance(stage, str) or stage not in _KNOWN_STAGES:
+        raise ValueError(
+            f"unknown stage {stage!r}; known stages: {sorted(_KNOWN_STAGES)}"
+        )
+    per_stage_env = f"JAMES_BACKEND_{stage.upper()}"
+    requested = os.environ.get(per_stage_env, "").strip()
+    if requested:
+        if requested in _REGISTRY:
+            return requested
+        # Same forgiving pattern as get_default_backend_id — a typo or
+        # opt-in mismatch (e.g. claude_code_cli requested without
+        # JAMES_ENABLE_CLAUDE_BACKEND=1) logs and falls through.
+        print(
+            f"[BACKEND] {per_stage_env}={requested!r} not registered "
+            f"(known: {sorted(_REGISTRY)}) → falling through to "
+            f"JAMES_REASONING_BACKEND."
+        )
+    return get_default_backend_id()
+
+
 # ─── auto-registration ─────────────────────────────────────────────
 # ollama_local is always registered — it wraps RouterWrapper which is
 # the v0.3.0 default path. claude_code_cli is opt-in via env so a stock
@@ -167,4 +222,5 @@ __all__ = [
     "get_backend",
     "list_backends",
     "get_default_backend_id",
+    "resolve_backend_for_stage",
 ]

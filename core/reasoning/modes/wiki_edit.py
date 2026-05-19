@@ -49,13 +49,12 @@ def handle_wiki_edit(
             "JSON만 출력:"
         )
         raw = trace_synth_call(
-            lambda: engine.llm.call_gemma(
-                parse_prompt, timeout=30, use_cache=False,
-                model=selected_model or None,
-            ),
             parse_prompt,
             applied_rule="reasoning.synth.wiki_edit_parse",
             user_role=user_role,
+            timeout=30,
+            use_cache=False,
+            model=selected_model or None,
         )
 
         # JSON 파싱
@@ -103,13 +102,12 @@ def handle_wiki_edit(
                     "수정된 전체 내용만 출력 (frontmatter 포함):"
                 )
                 new_content = trace_synth_call(
-                    lambda: engine.llm.call_gemma(
-                        new_prompt, timeout=90, use_cache=False,
-                        model=selected_model or None,
-                    ),
                     new_prompt,
                     applied_rule="reasoning.synth.wiki_edit_update",
                     user_role=user_role,
+                    timeout=90,
+                    use_cache=False,
+                    model=selected_model or None,
                 )
                 if new_content:
                     ok, msg = update_entity(target, new_content, user_role)
