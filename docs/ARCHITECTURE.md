@@ -4,7 +4,7 @@
 > what it deliberately is not, and the trust boundaries that govern
 > all design decisions.
 >
-> Status: living document. Last updated: v0.2.0-dev.
+> Status: living document. Last updated: v0.3.0 (Platform Skeleton, 2026-05-20).
 
 ---
 

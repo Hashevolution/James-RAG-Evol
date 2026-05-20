@@ -8,9 +8,9 @@ branching forms), see [`docs/PLATFORM_READINESS.md`](docs/PLATFORM_READINESS.md)
 
 ---
 
-## v0.1.0 — Foundation (current, alpha)
+## v0.1.0 — Foundation (released, foundational)
 
-**Status**: Released
+**Status**: Released (2026, initial alpha)
 
 ### Done
 - Hybrid Search (Vector + BM25 + keyword)
@@ -206,7 +206,7 @@ The following moved to v0.3 to keep v0.2 focused:
 
 ---
 
-## v0.3.0 — Platform Skeleton (~6 months after v0.2)
+## v0.3.0 — Platform Skeleton (current cycle, entered 2026-05-13)
 
 **Theme**: define and freeze the extension contract that all future
 domain packs will be built against.
