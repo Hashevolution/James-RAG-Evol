@@ -10,6 +10,10 @@ This document describes:
 - Known limitations
 - How to report vulnerabilities
 
+For the **formal assurance case** (per-requirement arguments with code
+citations, OpenSSF `assurance_case` criterion), see
+[`docs/security/ASSURANCE_CASE.md`](docs/security/ASSURANCE_CASE.md).
+
 ---
 
 ## Security Model
