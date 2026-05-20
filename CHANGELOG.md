@@ -11,46 +11,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Cross-document source aggregation in `process_document_for_entities`**
-  — when an entity already exists from a previous doc, the new doc's
-  extracted triples are now merged into the existing frontmatter
-  (`sources.append` per
+- **Cross-document evidence accumulation now works** — uploading two
+  documents that both attest to the same `(subject, predicate, object)`
+  triple now produces a relation with 2 sources (confidence ≈ 0.91
+  with default LLM weights), rather than only the first doc's
+  contribution. Previously `core/wiki_generator.py:640` returned
+  `continue` when an entity already existed, silently dropping every
+  subsequent doc's strengthening — Knowledge Cascade relations were
+  permanently single-source, so the noisy-OR formula never had
+  multi-source state to act on and `--dry-run` of the recompute
+  migration found 0 affected relations across 278 production entity
+  files. New helper `_merge_relations_into_existing_entity` matches
+  on `(target_name, normalized_type)`, skips duplicate `doc_id` for
+  idempotency (re-upload safe), recomputes confidence via noisy-OR,
+  and writes the frontmatter back. Both forward and inverse
+  directions aggregate symmetrically. 5 new tests in
+  `tests/test_phase_b_ingestion_sources.py` lock the behaviour
+  (cross-doc append, inverse aggregation, noisy-OR confidence after
+  2 sources asserting 0.91, same-doc idempotency, distinct-target
+  new-row). Design memo
   [`docs/design/v0.3-knowledge-cascade.md §4`](docs/design/v0.3-knowledge-cascade.md)
-  Phase B spec), not silently dropped. The previous `continue` branch
-  at `core/wiki_generator.py:640` invalidated the entire Knowledge
-  Cascade premise: a relation could only ever have one source, so
-  no relation ever became "multi-source" — defeating the purpose of
-  the noisy-OR confidence formula and the quarterly-report-cascade
-  scenario the design memo §9 anticipates (N=50 sources/relation).
-  New helper `_merge_relations_into_existing_entity` matches on
-  `(target_name, normalized_type)`, skips duplicate `doc_id` for
-  idempotency, recomputes confidence via noisy-OR, and writes the
-  frontmatter back. Both forward and inverse directions aggregate
-  symmetrically. 5 new tests in `tests/test_phase_b_ingestion_sources.py`
-  lock the contract (cross-doc append, inverse aggregation, noisy-OR
-  confidence after 2 sources, same-doc idempotency, distinct-target
-  new-row).
+  describes the same behaviour as a historical reference.
 
-- **`compute_confidence_from_sources` now implements noisy-OR**
-  (`P = 1 - Π(1 - w_i)`) per
-  [`docs/design/v0.3-knowledge-cascade.md §3`](docs/design/v0.3-knowledge-cascade.md),
-  not clamped sum. The clamped-sum implementation saturated at
-  confidence = 1.0 from just 2 corroborating sources (default LLM
-  weights ~0.7) and broke the monotone cascade semantics the design
-  memo explicitly chose noisy-OR for. Single-source identity
-  preserved → Phase A back-fills remain byte-identical. STEP 7 bench
-  green (within tolerance band, 153.1s / 13 queries). Production wiki
-  audit: 0 multi-source relations existed at the time of the fix, so
-  no historical confidence values changed; the patch lands before the
-  bug could manifest in real corroboration workflows (e.g. quarterly
-  report cascades).
-  Includes `scripts/migrate_recompute_confidence.py` for any future
-  installation that may have accumulated multi-source relations under
-  the wrong formula. 7 new tests in `tests/test_relations_schema.py`
-  lock the design contract (single-source identity, 2-source
-  divergence from clamped sum, asymptotic-not-saturated for 5+
+- **Confidence from multiple sources no longer saturates at 2** —
+  `compute_confidence_from_sources` now uses noisy-OR
+  (`P = 1 - Π(1 - w_i)`) instead of clamped sum (`min(Σw, 1.0)`).
+  With default LLM weights ~0.7, the clamped-sum implementation
+  reached confidence = 1.0 from just 2 corroborating sources, losing
+  all signal about *how strongly* a relation was supported (5 vs 20
+  attestations collapsed to the same value). It also broke monotone
+  cascade semantics: deleting one of multiple sources didn't reduce
+  confidence when others kept it pinned at the ceiling. Noisy-OR
+  preserves the signal asymptotically (5×0.7 → 0.998, < 1) and
+  guarantees strict monotonicity on source add/remove — important
+  for the graph DFS `confidence < 0.6` threshold gate in
+  `core/graph_engine.py:335`. Single-source identity preserved
+  (`min(w, 1) == 1 - (1-w) == w` for one source), so Phase A
+  back-fills remain byte-identical and STEP 7 bench stayed within
+  baseline tolerance. Production wiki audit: 0 multi-source
+  relations existed at the time of the fix (because of the cross-doc
+  bug above), so no historical confidence values changed. Includes
+  `scripts/migrate_recompute_confidence.py` for any installation
+  that may have accumulated multi-source relations under the wrong
+  formula. 7 new tests in `tests/test_relations_schema.py` lock the
+  behaviour (single-source identity, 2-source divergence from
+  clamped sum asserting 0.58, asymptotic-not-saturated for 5+
   sources, strict monotonicity on add/remove, per-element weight
-  clamping).
+  clamping). Design memo
+  [`docs/design/v0.3-knowledge-cascade.md §3`](docs/design/v0.3-knowledge-cascade.md)
+  arrived at the same formula as a historical reference.
 
 ---
 
