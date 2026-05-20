@@ -87,48 +87,94 @@ CONTEXT = (
 )
 
 
-class OptInGateTests(unittest.TestCase):
-    """Default OFF — verifier must not run scans or backend calls
-    without an explicit opt-in. Returns ``accept`` with the input
-    answer unchanged.
+class DefaultGateTests(unittest.TestCase):
+    """Default ON since v0.3.x — verifier base scan
+    (security_validator heuristic) runs without an explicit opt-in.
+    Fact-check remains opt-in via JAMES_ENABLE_FACT_CHECK=1.
+    Operator can hard-opt-out via JAMES_DISABLE_VERIFY=1.
     """
 
     def setUp(self):
+        # Clear all three flags so each test starts from the documented
+        # default (base ON, fact-check OFF, no opt-out).
         self._v = os.environ.pop("JAMES_ENABLE_VERIFY", None)
         self._f = os.environ.pop("JAMES_ENABLE_FACT_CHECK", None)
+        self._d = os.environ.pop("JAMES_DISABLE_VERIFY", None)
 
     def tearDown(self):
-        # Restore-or-pop both env vars so a test that sets FACT_CHECK
-        # mid-flow (test_fact_check_double_gate) cannot leak the flag
-        # into subsequent test classes, which would silently fire real
-        # Ollama calls inside the fact-check path.
-        for key, saved in [("JAMES_ENABLE_VERIFY", self._v),
-                           ("JAMES_ENABLE_FACT_CHECK", self._f)]:
+        for key, saved in [("JAMES_ENABLE_VERIFY",  self._v),
+                           ("JAMES_ENABLE_FACT_CHECK", self._f),
+                           ("JAMES_DISABLE_VERIFY", self._d)]:
             if saved is None:
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = saved
 
-    def test_disabled_default_returns_accept_unchanged(self):
+    def test_default_runs_base_scan_without_fact_check(self):
+        """No env vars set → base security scan runs, fact-check does
+        not (no Ollama call). Recommendation accept when answer is
+        clean.
+
+        The fact-check gate is patched explicitly because .env-driven
+        environments can have JAMES_ENABLE_FACT_CHECK=1 set at the
+        process boundary; pytest's setUp pop happens after dotenv
+        load, so a defensive patch is the only hermetic way to
+        assert the base-scan-only contract.
+        """
         from core.reasoning.verify import Verifier
-        result = Verifier().verify("Q?", ANSWER_KO, CONTEXT)
+        fake = MagicMock()
+        with patch("core.reasoning.verify._fact_check_enabled",
+                   return_value=False), \
+             patch("core.reasoning.backends.get_backend",
+                   return_value=fake):
+            result = Verifier().verify("Q?", ANSWER_KO, CONTEXT)
+        self.assertEqual(result.recommendation, "accept")
+        self.assertEqual(result.final_answer, ANSWER_KO,
+            "clean answer stays unchanged")
+        fake.complete.assert_not_called()
+
+    def test_opt_out_via_disable_returns_accept_no_scan(self):
+        """JAMES_DISABLE_VERIFY=1 silences base scan + fact-check.
+        Verifier returns the input answer unchanged with no flags.
+        """
+        from core.reasoning.verify import Verifier
+        os.environ["JAMES_DISABLE_VERIFY"] = "1"
+        # Even if fact-check is requested, it must stay off when
+        # the outer opt-out is engaged (consistency invariant).
+        os.environ["JAMES_ENABLE_FACT_CHECK"] = "1"
+        fake = MagicMock()
+        with patch("core.reasoning.backends.get_backend", return_value=fake):
+            result = Verifier().verify("Q?", ANSWER_KO, CONTEXT)
         self.assertEqual(result.recommendation, "accept")
         self.assertEqual(result.final_answer, ANSWER_KO)
-        self.assertFalse(result.security_flags)
+        self.assertFalse(result.security_flags,
+            "opt-out must skip the scan entirely")
+        fake.complete.assert_not_called()
 
-    def test_force_bypasses_env_gate(self):
+    def test_legacy_opt_in_still_works(self):
+        """JAMES_ENABLE_VERIFY=1 (the pre-v0.3.x flag) still leaves
+        base scan ON — backwards compatible no-op."""
         from core.reasoning.verify import Verifier
-        # No security issues; no fact-check enabled → accept
+        os.environ["JAMES_ENABLE_VERIFY"] = "1"
+        result = Verifier().verify("Q?", ANSWER_KO, CONTEXT)
+        self.assertEqual(result.recommendation, "accept")
+
+    def test_force_runs_scan_even_under_opt_out(self):
+        """``force=True`` bypasses both gates so test code can exercise
+        verifier internals without depending on env state."""
+        from core.reasoning.verify import Verifier
+        os.environ["JAMES_DISABLE_VERIFY"] = "1"
         result = Verifier().verify("Q?", ANSWER_KO, CONTEXT, force=True)
         self.assertEqual(result.recommendation, "accept")
 
-    def test_fact_check_double_gate(self):
-        """JAMES_ENABLE_FACT_CHECK without JAMES_ENABLE_VERIFY is
-        a no-op — the outer verify gate still has to be open.
+    def test_fact_check_double_gate_under_opt_out(self):
+        """JAMES_ENABLE_FACT_CHECK=1 alone is irrelevant when the
+        outer JAMES_DISABLE_VERIFY=1 opt-out is engaged — no Ollama
+        call must fire. Mirror of the pre-v0.3.x double-gate intent.
         """
         from core.reasoning.verify import Verifier
+        os.environ["JAMES_DISABLE_VERIFY"] = "1"
         os.environ["JAMES_ENABLE_FACT_CHECK"] = "1"
-        # JAMES_ENABLE_VERIFY still unset
         fake = MagicMock()
         with patch("core.reasoning.backends.get_backend", return_value=fake):
             Verifier().verify("Q?", ANSWER_KO, CONTEXT)

@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] — v0.3.x patches
 
+### Changed
+
+- **Verifier base scan (security_validator) is now default ON**
+  (Cognitive Phase 2 PR-6 default flip). A fresh JAMES install now
+  gets injection-echo detection on every answer without an operator
+  having to discover the env flag. The base scan is ~5ms of
+  pure-Python pattern matching against the final answer — well below
+  the STEP 7 measurement noise floor (Run-A all-off: 159.6s vs
+  Run-B verify-on attempt: 152.5s; the ~7s spread is LLM-call
+  variance, not verifier cost) and independent of LLM availability.
+  Fact-check (LLM-driven, +5-15s/query) remains opt-in via
+  `JAMES_ENABLE_FACT_CHECK=1`. The legacy opt-in flag
+  `JAMES_ENABLE_VERIFY=1` is still honoured as a no-op (truthy →
+  True) so existing `.env` files keep working unchanged. A new hard
+  opt-out `JAMES_DISABLE_VERIFY=1` silences both the base scan and
+  any pending fact-check — consistent with operator intent for
+  baseline-cost measurement or quiet-mode operation.
+
 ### Added
 
 - **Episodic memory wiring across cognitive stages (Cognitive Phase 3
