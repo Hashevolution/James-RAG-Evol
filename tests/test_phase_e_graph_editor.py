@@ -253,7 +253,7 @@ class AppendRelationSourceTests(unittest.TestCase):
         # 첫 번째는 기존 extract source 보존
         self.assertEqual(rel["sources"][0]["role"], EXTRACT_SOURCE_ROLE)
         self.assertEqual(rel["sources"][1]["role"], MANUAL_SOURCE_ROLE)
-        # confidence 는 두 source 의 weight 합
+        # confidence 는 두 source 의 noisy-OR — 헬퍼로 검증.
         self.assertEqual(rel["confidence"],
                          compute_confidence_from_sources(rel["sources"]))
 

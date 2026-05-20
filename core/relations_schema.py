@@ -43,29 +43,44 @@ VALID_SOURCE_ROLES = frozenset({
     MANUAL_SOURCE_ROLE,
 })
 
-# Confidence cap. Sum of source weights can mathematically exceed 1.0 when
-# many docs corroborate the same relation; the user-visible confidence
-# stays in [0, 1] so existing UI bars / badges keep their semantics.
+# Confidence cap. Noisy-OR is mathematically in [0, 1) for finite weights
+# in [0, 1], so the cap is informational — used to keep the public type
+# contract stable for downstream code that previously saw clamped values.
 CONFIDENCE_CAP = 1.0
 
 
 def compute_confidence_from_sources(sources: list | None) -> float:
-    """sources 배열의 weight 합 (0..1 으로 cap).
+    """Noisy-OR over per-source weights — see design memo §3.
 
-    Phase A 시점에는 호출되지 않는다 — confidence 는 frontmatter 의
-    저장된 값이 정답. Phase B 에서 ingestion 이 sources 만 쓰고
-    confidence 를 derived 로 다루기 시작할 때 호출 site 가 생긴다.
+    Formula: ``P(confirmed) = 1 - Π(1 - w_i)``
+
+    Properties (the reason this formula was chosen over `sum` / `max` /
+    `mean`):
+      - 0 sources → 0.0
+      - 1 source with weight w → w (identity preserved, so single-source
+        Phase A back-fills are byte-identical to the legacy clamped sum)
+      - many sources → asymptotic to 1.0 but never saturates exactly,
+        so a quarterly-report cascade with 5–20 corroborating docs
+        keeps signal differentiation (clamped sum loses it after 2)
+      - delete cascade strictly decreases confidence (monotonic),
+        never leaves a relation at a stale 1.0 ceiling
+
+    Weights outside [0, 1] are clamped per-element before multiplication,
+    so a malformed weight cannot move the running product past 0 or
+    below 0.
     """
     if not sources:
         return 0.0
-    total = 0.0
+    product = 1.0
     for s in sources:
         if not isinstance(s, dict):
             continue
         w = s.get("weight")
-        if isinstance(w, (int, float)):
-            total += float(w)
-    return min(total, CONFIDENCE_CAP)
+        if not isinstance(w, (int, float)):
+            continue
+        w_clamped = max(0.0, min(1.0, float(w)))
+        product *= (1.0 - w_clamped)
+    return round(1.0 - product, 4)
 
 
 def read_relation_sources(rel: dict | None) -> list:

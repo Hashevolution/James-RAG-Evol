@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] — v0.3.x patches
+
+### Fixed
+
+- **`compute_confidence_from_sources` now implements noisy-OR**
+  (`P = 1 - Π(1 - w_i)`) per
+  [`docs/design/v0.3-knowledge-cascade.md §3`](docs/design/v0.3-knowledge-cascade.md),
+  not clamped sum. The clamped-sum implementation saturated at
+  confidence = 1.0 from just 2 corroborating sources (default LLM
+  weights ~0.7) and broke the monotone cascade semantics the design
+  memo explicitly chose noisy-OR for. Single-source identity
+  preserved → Phase A back-fills remain byte-identical. STEP 7 bench
+  green (within tolerance band, 153.1s / 13 queries). Production wiki
+  audit: 0 multi-source relations existed at the time of the fix, so
+  no historical confidence values changed; the patch lands before the
+  bug could manifest in real corroboration workflows (e.g. quarterly
+  report cascades).
+  Includes `scripts/migrate_recompute_confidence.py` for any future
+  installation that may have accumulated multi-source relations under
+  the wrong formula. 7 new tests in `tests/test_relations_schema.py`
+  lock the design contract (single-source identity, 2-source
+  divergence from clamped sum, asymptotic-not-saturated for 5+
+  sources, strict monotonicity on add/remove, per-element weight
+  clamping).
+
+---
+
 ## [0.3.0] — Platform Skeleton (2026-05-17)
 
 After 190 merged PRs since v0.2.0 (9 days, 129 test files), JAMES exits
