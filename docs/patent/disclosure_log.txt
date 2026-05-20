@@ -31,3 +31,31 @@ a8aaa1f5edb2dbe440b6088c0374fe4dee817d4b 2026-05-05 18:47:24 +0900 chore(logging
 # 핵심 PR: #67 (ContextVar 인프라), #97 (real reasoning stream)
 # Grace period 만료: PR #67/#97 commit 일자 확인 후 기재
 # [TODO: 정확한 commit hash 확인 후 기재]
+
+# === STAGE 1B 후속 공개 — Knowledge Cascade 실제 구현 (2026-05-19 추가) ===
+# 디자인 메모(PR #145, 2026-05-09)에 이어 Phase A~E 구현이 메인에 머지됨.
+# 각 PR 일자가 grace period 카운트다운 기준이 될 수 있으므로 별도 기록.
+# Grace period 만료: Phase D 기준 2027-05-13 (가장 늦은 grace)
+
+53751a73c270ad7cb4a550164a63890fc1f6aa7a 2026-05-13 feat(graph): Knowledge Cascade Phase A — sources schema + migration (#266)
+19137a063b059950ba99cb8a71e4cf49b8506c5f 2026-05-14 feat(graph): Knowledge Cascade Phase B — ingestion writes sources directly (#269)
+c538a3a7e07037dd8e530f054b73fd806f5be8a3 2026-05-14 feat(graph): Knowledge Cascade Phase C — file delete cascade (#270)
+82c8c9b6987d6ad50d613f5621f9eee0f9665043 2026-05-14 feat(graph): Knowledge Cascade Phase D — file modify cascade (#274)
+fb31518a69f07bc7d09ca5a22a819b6d7602ac56 2026-05-14 feat(graph): Knowledge Cascade Phase E — graph editor backend (N-7) (#271)
+35e5837b27e5345e1dbc8e6cd6970013cd1b5c2a 2026-05-14 feat(graph): Knowledge Cascade Phase E UI — edge edit modal (N-7) (#273)
+
+# === STAGE 5 (신규) — Reasoning Backend Plugin (2026-05-19 추가) ===
+# v0.3 platform skeleton 진행 중 새로 등장한 특허 후보. skeleton 미작성.
+# trace_schema MVP + 12 LLM site wiring + replay_trace 의 3 PR이 핵심.
+# Grace period 만료: 2027-05-17 (가장 빠른 PR #283 기준)
+
+412ef211e30a52fd2af49fc029e1b5e39a6f47df 2026-05-17 feat(reasoning): claude_code_cli backend + trace_schema MVP (L0) (#283)
+e05f4f16a9de72f41493bfce50d30acf0f42b9c7 2026-05-17 feat(reasoning): trace_synth_call wiring on 12 LLM call sites (L1) (#284)
+9a587e45fa310be52843387e20e4c8412db3e2d0 2026-05-17 chore(reasoning): replay_trace.py — reconstruct reasoning from audit_log (L2) (#285)
+
+# === 기타 신규 후보 (재개 시 평가, commit hash 미수집) ===
+# STAGE 6 — Cognitive Middleware Layer:        PR #275/289/290/295/297
+# STAGE 7 — Change Request Workflow:           PR #237/239/240/243
+# STAGE 8 — Episodic Memory Store:             PR #338
+# STAGE 9 — Schema v1.1 Catalog Context:       PR #322
+# STAGE 10 — Replay-able Audit Trace:          PR #284/285 (STAGE 4B 흡수 가능)

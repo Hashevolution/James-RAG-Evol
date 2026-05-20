@@ -3,8 +3,79 @@
 > 본 문서는 James-RAG-Evol의 한국 특허 출원 작업에 대한 전체 진행 상황 핸드오버입니다.
 > 새 대화 세션에서 본 파일 한 개만 읽으면 작업을 이어갈 수 있도록 설계되었습니다.
 >
-> **작성일**: 2026-05-09 (초판) / 2026-05-10 (2차 보강) / 2026-05-10 (skeleton 완성) / 2026-05-09 (메인 정합 정정)
-> **마지막 업데이트**: 메인 브랜치 vs skeleton 정합성 점검 후 5곳 정정 (STAGE 1, 1A, 3, 4B + 본 핸드오버)
+> **작성일**: 2026-05-09 (초판) / 2026-05-10 (2차 보강) / 2026-05-10 (skeleton 완성) / 2026-05-09 (메인 정합 정정) / **2026-05-19 (PAUSE 결정)**
+> **마지막 업데이트**: Knowledge Cascade 코딩 미완 — 출원 작업 일시 중단 결정
+
+---
+
+## ⏸️ 0. PAUSE 상태 (2026-05-19, 현 시점)
+
+### 결정
+**특허 출원 작업 전체를 일시 중단.** Knowledge Cascade(STAGE 1B) 코딩이 진행 중이며, 핵심 공식이 안정화되지 않았음. 미완성 상태로 출원하면 "기재요건 불비" 거절 위험 + 정식 전환 시 무가치화 위험.
+
+### 발견된 핵심 이슈
+- `core/relations_schema.py:52-69` `compute_confidence_from_sources` 가 **`min(Σw_i, 1.0)` (clamped sum)** 으로 구현됨
+- 디자인 메모(`docs/design/v0.3-knowledge-cascade.md:121`) + STAGE 1B skeleton(§4.1, 청구항 1) 은 **`1 − Π(1 − w_i)` (noisy-OR)** 명시
+- → **명세서 ↔ 구현 불일치**. 출원 전 공식 확정 필수.
+
+### 재개 조건 (ALL of)
+1. ✅ Knowledge Cascade 코딩 완료 + 공식 확정 (noisy-OR / clamped sum / 기타 결정)
+2. ✅ `docs/design/v0.3-knowledge-cascade.md` 의 "Status: outline" → "Status: stable" 변경
+3. ✅ (선택) 두 공식 검증 결과 확보 (retrieval 품질 / saturation 분포)
+4. ✅ Show HN(2026-06-16) 직전이거나, 다른 강한 시점적 트리거 발생
+
+### 재개 시 첫 메시지 (복사용)
+```
+James-RAG-Evol 특허 출원 작업 재개합니다.
+
+Cascade 코딩 정리 완료. 다음 파일 확인 후 출원 후보 재정리 해주세요:
+- docs/patent/HANDOVER.md (pause 결정 + 재개 조건 §0)
+- docs/patent/REVIEW-NOTES.md (선행기술 분석)
+- docs/patent/prior-art-1B.md (Google Patents 검색 결과)
+- docs/design/v0.3-knowledge-cascade.md (cascade 최종 설계)
+- core/cascade.py, core/relations_schema.py (실제 구현)
+
+작업 브랜치: claude/security-audit-LRxjo
+
+[구체 요청 — 예: "안정화된 공식으로 STAGE 1B skeleton 청구항 재작성"]
+```
+
+### Pause 중 보존 자산
+| 파일 | 상태 |
+|---|---|
+| `strategy.md` | ✅ 유효 |
+| `REVIEW-NOTES.md` | ✅ 유효 |
+| `prior-art-1B.md` | ✅ Google Patents 검색 완료 (🔴=0, 🟠=2, 🟡=4, 🟢=8) |
+| 8개 stage skeleton | ⚠️ STAGE 1B만 공식 변경 시 §4.1/§6 수정 필요 |
+| `disclosure_log.txt` | ⚠️ Phase A-E 머지 (PR #266/269/270/274/271/273) 누락 — 재개 시 보강 |
+
+### Grace Period 시계 (오늘 2026-05-19 기준)
+| 후보 | Grace 만료 | 남은 일수 |
+|---|---|---|
+| STAGE 4A | 2027-05-03 | **349일** ⚠️ 가장 빠름 |
+| STAGE 1·2·3·4 | 2027-05-04 | 350일 |
+| STAGE 1A·1B (디자인) | 2027-05-08 | 354일 |
+| STAGE 1B (Phase D 구현) | 2027-05-13 | 359일 |
+
+> ⚠️ **2026년 12월 ~ 2027년 1월** 까지 재개 결정 필수. 그 이후 grace 임박 시 압박 상승.
+
+### 신규 발견 (재개 시 평가 대상)
+v0.3 platform skeleton 진행 중 새로 등장한 특허 후보 6건 (skeleton 없음):
+- STAGE 5 — Reasoning Backend Plugin (trace_schema + replay, PR #283/284/285/324/325/326)
+- STAGE 6 — Cognitive Middleware Layer (PR #275/289/290/295/297)
+- STAGE 7 — Change Request Workflow (PR #237/239/240/243)
+- STAGE 8 — Episodic Memory Store (PR #338)
+- STAGE 9 — Schema v1.1 Catalog Context (PR #322)
+- STAGE 10 — Replay-able Audit Trace (PR #284/285, STAGE 4B 흡수 가능)
+
+### 전략 재평가 결과 (Pause 직전)
+- **MIT + GitHub 공개**가 이미 defensive publication 80% 커버 — 출원의 한계효용 검토 필요
+- 권장 시나리오: 권고 B (선별 출원) — 안정된 STAGE 1 + 1A만 즉시, 나머지는 grace 활용
+- 현재는 STAGE 1B 출원도 보류 → Cascade 안정화 후 재평가
+
+---
+
+
 
 ---
 
