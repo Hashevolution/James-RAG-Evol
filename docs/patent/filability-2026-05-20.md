@@ -30,7 +30,7 @@
 | **0 — Umbrella** | 3/5 조건부 | v0.3.0 Platform Skeleton 전체 | ⭐ 아키텍처 진화 중 (Cognitive Layer, Plugin API) | ⚠️ 부분 | HIGH | ❌ WAIT |
 | **1 — Memory Loom 5-gate** | 4/5 ⭐ | `core/memory/loom.py:80-149` | ⭐⭐⭐ v0.1 부터 (2026-05-05) 핵심 무변동 | ✅ 단위 테스트 | LOW | ✅ **HIGH — 즉시** |
 | **1A — Doc-source gate** | 3/5 ⭐ | `core/graph_engine.py::_doc_outgoing_hop_valid` (PR #139) | ⭐⭐⭐ 단일 PR 머지 후 무변동 | ✅ 회귀 테스트 | LOW | ✅ **HIGH — 즉시** |
-| **1B — Cascade** | 4/5 ⭐⭐ | `core/relations_schema.py`, `core/cascade.py`, `core/wiki_generator.py` | ⭐⭐ **오늘 (2026-05-20) 안정화** — Hotfix 1+2 머지 | ✅ 12 invariant lock-in | MID (0.6 threshold 재튜닝 가능성) | ⚠️ 기술 OK, **사용자 우선순위 NO** |
+| **1B — Cascade** | 4/5 ⭐⭐ | `core/relations_schema.py`, `core/cascade.py`, `core/wiki_generator.py`, `core/graph_editor.py` | ⭐⭐⭐ Phase A-E (2026-05-13/14) + Hotfix 1+2 (2026-05-20) — 명세 ↔ 구현 ↔ 테스트 3자 정합 회복 | ✅ **12 invariant lock** (최다) — 회귀 즉시 검출 | LOW (0.6 threshold 종속항 broad 처리 가능) | ✅ **HIGH — 즉시 가능** |
 | **2 — Feedback Shadow** | 2/5 | `core/feedback_engine.py:35-151` | ⭐⭐⭐ 안정 | ✅ 부분 | LOW | ✅ MID (약한 신규성) |
 | **3 — Security 2-stage** | 2/5 | `core/security_layer.py` | ⭐⭐ PR #322 (catalog_context) 종속 추가 | ✅ 광범위 | LOW | ✅ MID (#322 종속항) |
 | **4 — Trait Pair** | 2/5 | `core/character_profile.py:17-97` | ⭐⭐⭐ 안정 (#160~#170 종결) | ✅ 단위 테스트 | LOW | ✅ LOW (약한 신규성) |
@@ -47,14 +47,15 @@
 
 ## 3. Tier 분류 — 출원 시점별 권고
 
-### Tier 1: 즉시 안정적 출원 가능 (2건, 약 3.6만 원)
+### Tier 1: 즉시 안정적 출원 가능 (3건, 약 5.4만 원)
 
 | Stage | 사유 |
 |---|---|
 | **1 — Memory Loom 5-gate** | v0.1 부터 무변동, 강한 점수 4/5, 청구항 명확 (5 게이트 + audit log) |
 | **1A — Doc-source gate** | PR #139 단일 머지 후 무변동, 비대칭 출처 게이트 신규성 강함 |
+| **1B — Cascade** | **12 invariant lock (최다)**, 명세 ↔ 구현 ↔ 테스트 3자 정합, 핫픽스 후 회귀 차단 견고. 점수 4/5 ⭐⭐ 최강. Show HN 27일 전 출원 = 글로벌 노출 전 우선일 확보. |
 
-**합계**: 2건 × 1.8만 원 (개인 70% 감면) = **3.6만 원**
+**합계**: 3건 × 1.8만 원 (개인 70% 감면) = **5.4만 원**
 
 ### Tier 2: 1주 내 안정적 출원 가능 (5건, 약 9만 원)
 
@@ -68,11 +69,12 @@
 
 **합계**: 5건 × 1.8만 원 = **9만 원**
 
-### Tier 3: 기술 OK 출원 가능, 사용자 트리거 대기 (1건)
+### Tier 3: (해당 없음 — STAGE 1B 는 Tier 1 로 재분류, 2026-05-20)
 
-| Stage | 기술 상태 | 트리거 후보 |
-|---|---|---|
-| **1B — Cascade** | 12 invariant lock, 명세서 ↔ 구현 정합 | Show HN 임팩트 / 경쟁사 출원 / multi-source 자연 누적 (1~3개월) |
+> 이전 분류 (2026-05-20 첫 평가) 에서는 STAGE 1B 를 "사용자 우선순위 §8 에
+> 없음" 이유로 Tier 3 분류. 그러나 §8 은 **엔지니어링 우선순위** 이지 출원
+> 가능성과 무관. 기술적으로는 12 invariant lock + 3자 정합 + 핫픽스 후 회귀
+> 차단 견고 → **Tier 1 분류가 정합**. 재분류 적용 (2026-05-20).
 
 ### Tier 4: 점수 약함 — 출원 의무 없음 (1건)
 
@@ -101,29 +103,25 @@
 
 ## 4. 권고 시나리오
 
-### 시나리오 A — Minimal Defensive (Tier 1 만)
-- 출원 건수: 2건 (STAGE 1 + 1A)
-- 비용: **약 3.6만 원**
-- 가치: 가장 강한 단위 발명 2건 우선일 확보. 나머지는 MIT 공개로 defensive.
-- 권장 시점: 사용자 시점적 트리거 (Show HN / 경쟁사 / 투자) 발동 시
+### 시나리오 A — Tier 1 Bundle (Minimal Strong) — STAGE 1B 재분류 반영 (2026-05-20)
+- 출원 건수: **3건 (STAGE 1 + 1A + 1B)**
+- 비용: **약 5.4만 원**
+- 가치: 가장 강한 단위 발명 3건 우선일 확보 — 점수 4/3/4 의 핵심 3건. STAGE 1B 의 12 invariant + cascade 핵심 IP 포함. Show HN 전 출원 = 글로벌 노출 직전 우선일 확보.
+- 권장 시점: Show HN 전 (2026-06-16 까지 27일)
 
-### 시나리오 B — Selective Strong (Tier 1 + 2 의 강한 것만)
-- 출원 건수: 4건 (STAGE 1 + 1A + 3 + 4B)
-- 비용: **약 7.2만 원**
-- 가치: 안정 + 점수 ≥2/5 + 다른 stage 종속항 흡수
-- 권장 시점: 시점적 트리거 + STAGE 1B Tier 3 검증 대기 가능
+### 시나리오 B — Tier 1 + 강한 Tier 2 (Selective Strong)
+- 출원 건수: **5건 (시나리오 A + STAGE 3 + 4B)**
+- 비용: **약 9만 원**
+- 가치: 핵심 + 안정 + 점수 ≥2/5 보강 + 종속항 흡수 (STAGE 9, 10)
+- 권장 시점: Show HN 전, 자금 여유
 
-### 시나리오 C — Comprehensive Stable (Tier 1 + 2 모두)
-- 출원 건수: 7건 (STAGE 1 + 1A + 2 + 3 + 4B + 7 + 10)
-- 비용: **약 12.6만 원**
+### 시나리오 C — Comprehensive Stable (Tier 1 + 2 전체)
+- 출원 건수: **8건 (시나리오 B + STAGE 2 + 7 + 10)**
+- 비용: **약 14.4만 원**
 - 가치: 모든 안정 후보 일괄 출원
 - 권장 시점: 자금·시간 여유 시. Show HN 전 권장.
 
-### 시나리오 D — Full Tier 1+2+3 (STAGE 1B 포함)
-- 출원 건수: 8건 (시나리오 C + STAGE 1B)
-- 비용: **약 14.4만 원**
-- 가치: STAGE 1B 우선일 확보 (자연 누설 카운터)
-- 권장 시점: 사용자 명시 트리거 시
+### 시나리오 D — (폐기: STAGE 1B 가 Tier 1 으로 이동, 시나리오 C 가 최대 시나리오)
 
 ### 시나리오 E — 현 PAUSE 유지
 - 출원 건수: 0건

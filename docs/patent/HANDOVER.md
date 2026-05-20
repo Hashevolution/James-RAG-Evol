@@ -70,7 +70,7 @@ Production wiki: 278 files, **0 multi-source relations** — defect dormant, cau
 |---|---|---|---|
 | **1 (Memory Loom)** | 4/5 ⭐ | ⭐⭐⭐ v0.1 부터 안정 | ✅ **HIGH — 즉시 가능** |
 | **1A (Doc-source gate)** | 3/5 ⭐ | ⭐⭐⭐ 단일 PR 머지, 무변동 | ✅ **HIGH — 즉시 가능** |
-| 1B (Cascade) | 4/5 ⭐⭐ | ⭐⭐ 2026-05-20 안정화 (오늘) | ⚠️ 기술 OK, **사용자 우선순위 NO** |
+| **1B (Cascade)** | 4/5 ⭐⭐ | ⭐⭐⭐ **12 invariant lock (최다)** + 명세↔구현↔테스트 3자 정합 | ✅ **HIGH — 즉시 가능** (재분류 2026-05-20) |
 | 2 (Feedback Shadow) | 2/5 | ⭐⭐⭐ 안정 | ✅ MID — 출원 가능 (약한 신규성) |
 | 3 (Security 2-stage) | 2/5 | ⭐⭐ PR #322 catalog_context 추가 | ✅ MID — 가능 (#322 종속항) |
 | 4 (Trait Pair) | 2/5 | ⭐⭐⭐ 안정 | ✅ LOW — 약한 신규성 |
@@ -83,9 +83,14 @@ Production wiki: 278 files, **0 multi-source relations** — defect dormant, cau
 | 9 (Catalog Context) | 2/5? | ⭐⭐⭐ 안정 | ✅ STAGE 3 종속항으로 흡수 |
 | 10 (Replay Trace) | 3/5? | ⭐⭐⭐ 안정 | ✅ STAGE 4B 종속항 또는 별건 |
 
-**즉시 안정적 출원 가능**: STAGE 1, STAGE 1A (2건, 약 3.6만 원)
-**조건부 출원 가능**: STAGE 2, 3, 4, 4B, 7, 9, 10 (7건, 약 12.6만 원)
-**대기 필요**: STAGE 0, 1B (사용자 우선순위), 4A (확인 필요), 5, 6, 8
+**즉시 안정적 출원 가능 (Tier 1)**: STAGE 1, 1A, **1B** (3건, 약 5.4만 원)
+**조건부 출원 가능 (Tier 2)**: STAGE 2, 3, 4, 4B, 7, 9, 10 (7건, 약 12.6만 원)
+**대기 필요 (Tier 5)**: STAGE 0, 4A (확인 필요), 5, 6, 8
+
+> **재분류 사유 (2026-05-20)**: STAGE 1B 를 처음에는 "사용자 §8 우선순위 미포함"
+> 이유로 Tier 3 분류했으나, §8 은 **엔지니어링 우선순위** 이지 출원 가능성 아님.
+> 12 invariant lock (가장 많음) + 핫픽스 1+2 후 3자 정합 + 회귀 차단 견고 →
+> 기술적으로는 Tier 1 분류가 정합. 사용자 지적 후 정정.
 
 ### 재개 시 첫 메시지 (복사용)
 ```
