@@ -343,9 +343,18 @@ publish on your own fork, etc.).
 
 ## Code of Conduct
 
-Be respectful. Disagree with ideas, not people. Help newcomers. Assume good intent.
+PROJECT JAMES adopts the **Contributor Covenant v2.1** — see
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) for the full text, including
+the project-specific norms, the reporting channel (`karu-7@hanmail.net`),
+and the enforcement ladder.
 
-This is a research project — explore, experiment, ask questions.
+In short: disagree with ideas, not people. Help newcomers — especially
+when the mother-platform constraint (no domain features until v1.0) is
+non-obvious. Assume good intent on first read. Keep security disclosures
+out of public channels (see [`SECURITY.md`](SECURITY.md)).
+
+For how decisions get made on the project (BDFL through v1.0, release
+process, conflict-resolution path), see [`GOVERNANCE.md`](GOVERNANCE.md).
 
 ---
 
