@@ -32,10 +32,7 @@ from core.memory.episodic import (  # noqa: E402
     _clear_singleton_for_tests,
 )
 import core.memory.episodic as _episodic_mod  # noqa: E402
-from core.observability import (  # noqa: E402
-    set_session_context,
-    current_session,
-)
+from core.observability import set_session_context  # noqa: E402
 
 
 def _fresh_episodic_singleton() -> EpisodicMemory:
