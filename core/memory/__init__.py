@@ -33,6 +33,14 @@ from core.memory.episodic import (
     get_episodic_memory,
     record_event as record_episodic_event,
 )
+# Cognitive Phase 3 PR-10a — turn-scoped scratch space sibling to the
+# episodic store. No call sites yet; PR-10b wires reflect / verify /
+# planner / synth. See docs/design/v0.3-working-memory.md.
+from core.memory.working import (
+    WorkingMemory,
+    get_working_memory,
+    working_event,
+)
 
 __all__ = [
     "MemoryStore",
@@ -53,4 +61,7 @@ __all__ = [
     "EPISODIC_MAX_SUMMARY_CHARS",
     "get_episodic_memory",
     "record_episodic_event",
+    "WorkingMemory",
+    "get_working_memory",
+    "working_event",
 ]

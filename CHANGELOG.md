@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] — v0.3.x patches
 
+### Added
+
+- **Working memory infrastructure (Cognitive Phase 3 PR-10a)** —
+  `core/memory/working.py` ships a turn-scoped scratch store sibling
+  to the episodic memory landed in PR-9. Where episodic captures the
+  **final** plan/reflect/verify decisions across turns, working memory
+  holds **intra-turn** intermediate state (reflection critique drafts,
+  per-claim verifier intermediates, planner subtask scratch) that
+  reasoning stages hand off to each other while the answer is being
+  built and that the audit_log already keeps a forensic copy of.
+  In-process dict with `threading.Lock` (no SQLite) keeps the
+  "cleared at turn end" invariant safe against operator restart
+  races. ContextVar reuse: the PR-9b `(session_id, turn_id)` binding
+  is the only one needed — `working_event()` reads it directly so
+  PR-10b call sites stay one-liners.
+  15 new tests in `tests/test_working_memory.py` lock the contract
+  (round-trip, turn isolation, session isolation, keys(), clear_turn,
+  prune_idle_turns, thread-safety, helper no-op outside tracked turn,
+  helper write under bound context, singleton stability). Wiring into
+  the cognitive stages and the `engine.query()` finally-block
+  cleanup lands in PR-10b. Design memo:
+  [`docs/design/v0.3-working-memory.md`](docs/design/v0.3-working-memory.md).
+
 ### Changed
 
 - **Verifier base scan (security_validator) is now default ON**
