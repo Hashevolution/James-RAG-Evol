@@ -8,10 +8,16 @@
 
 ---
 
-## ⏸️ 0. PAUSE 상태 (2026-05-19, 업데이트 2026-05-20)
+## 🟢 0. EXECUTION 상태 (2026-05-20, PAUSE 해제)
 
 ### 현재 결정
-**출원 작업 일시 중단 유지**. 핫픽스 1 + 2 + postmortem (PR #349/350/351/352) 로 Knowledge Cascade 안정화는 달성했으나, 사용자 우선순위 (§8) 가 출원이 아닌 제품 강화 (Phase 2 Planner / Episodic Memory / Phase 2 Default ON) 임이 명시됨. **시점적 트리거 발동 시까지 PAUSE 유지**.
+**사용자 트리거 발동 — 시나리오 A (Tier 1 Bundle) 실행 진행**. STAGE 1 + 1A + 1B 3건 임시 출원. 예상 비용 약 5.4만 원 (개인 70% 감면). Show HN (2026-06-16, 27일 후) 전 우선일 확보 목표.
+
+### 실행 자료
+- `docs/patent/execution-scenario-a-2026-05-20.md` — **3-stage 실행 로드맵 + 청구항 + 코드 reference + 도면 outline + KIPO Editor 입력 checklist**
+
+### 이전 PAUSE 결정 (Historical, 2026-05-19)
+이전 PAUSE 사유는 Knowledge Cascade 안정화 미완. Hotfix 1+2 (PR #349/350) + Postmortem (PR #352) 로 안정화 달성. 사용자 시점적 트리거 "실행" (2026-05-20) 으로 PAUSE 해제.
 
 ### Postmortem (PR #352, `fcc79cc`, 2026-05-20) 흡수 — 출원 framing 원칙
 
