@@ -222,7 +222,7 @@ class FeedbackEngine:
         """응답 방향 ID 생성."""
         import hashlib
         key = f"{mode}:{query[:40]}"
-        return hashlib.md5(key.encode()).hexdigest()[:12]
+        return hashlib.md5(key.encode(), usedforsecurity=False).hexdigest()[:12]
 
     def get_stats(self) -> Dict:
         pos = sum(1 for h in self._history

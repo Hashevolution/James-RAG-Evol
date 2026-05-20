@@ -74,7 +74,8 @@ def generate_patch(
         }
     """
     patch_id = hashlib.md5(
-        f"{target}{request}{datetime.now().isoformat()}".encode()
+        f"{target}{request}{datetime.now().isoformat()}".encode(),
+        usedforsecurity=False,
     ).hexdigest()[:12]
 
     # 1. PROTECTED_FILES 차단 (Patch 생성 자체 거부)

@@ -61,7 +61,7 @@ def _triple_key(result: Dict) -> str:
         return f"{entity_id}::{relation}::{tail_id}"
 
     # fallback: text hash
-    return hashlib.md5(text.encode()).hexdigest()
+    return hashlib.md5(text.encode(), usedforsecurity=False).hexdigest()
 
 
 def _conflict_base_key(result: Dict) -> str:

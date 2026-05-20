@@ -270,7 +270,10 @@ def safe_execute(
 
     t_start = time.time()
     try:
-        result = subprocess.run(
+        # shell=True is the sandbox contract — validate_action() above is
+        # the security gate (allowlist of commands, path normalization,
+        # role check). Bandit B602 is suppressed here, not bypassed.
+        result = subprocess.run(  # nosec B602
             command, shell=True,
             cwd=os.path.normpath(path),
             capture_output=True, text=True, timeout=timeout,

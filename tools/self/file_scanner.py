@@ -195,7 +195,7 @@ def _build_tree(max_depth: int = 4) -> str:
 def _compute_hash(filepath: Path) -> str:
     try:
         content = filepath.read_bytes()
-        return hashlib.md5(content).hexdigest()
+        return hashlib.md5(content, usedforsecurity=False).hexdigest()
     except Exception:
         return ""
 

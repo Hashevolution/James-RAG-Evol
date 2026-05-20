@@ -215,7 +215,7 @@ def build_snapshot(
         {"n": len(nodes), "e": len(edges), "m": max_mtime},
         sort_keys=True,
     ).encode("utf-8")
-    snapshot_hash = hashlib.sha1(sig_src).hexdigest()[:12]
+    snapshot_hash = hashlib.sha1(sig_src, usedforsecurity=False).hexdigest()[:12]
 
     snapshot = {
         "nodes": nodes,
