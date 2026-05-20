@@ -1,13 +1,18 @@
-# STAGE 1B — 7 Invariant Test ↔ 청구항 한정 매핑
+# STAGE 1B — 12 Invariant Test ↔ 청구항 한정 매핑
 
-> 본 문서는 Hotfix PR #349 (`b89c099`, 2026-05-20) 로 `tests/test_relations_schema.py`
-> 에 lock-in 된 7개 invariant 테스트를 STAGE 1B 임시명세서 청구항 한정 표현에
-> 매핑한 작업 노트다.
+> 본 문서는 Hotfix PR #349 (`b89c099`, 2026-05-20 09:07 KST) + PR #350
+> (`1009cca`, 11:06 KST) 로 두 테스트 파일에 lock-in 된 **12개 invariant
+> 테스트** 를 STAGE 1B 임시명세서 청구항 한정 표현에 매핑한 작업 노트다.
+>
+> **출원 framing 원칙** (postmortem PR #352 §4.4 / §10):
+> - 청구 reference 는 **현재 코드 + 테스트** (skeleton X, 디자인 메모 X)
+> - 방향은 **코드 → 청구**, 청구가 코드 끌고 가는 방향은 안티-패턴
+> - STAGE 1B skeleton (`stage1b-cascade-spec-skeleton.md`) 는 historical 참고용.
+>   출원 시 본 매핑 + 현재 `core/relations_schema.py` + `core/wiki_generator.py`
+>   + 12 invariant 테스트 기반으로 새로 청구항 작성.
 >
 > **목적**: 출원 재개 시 청구항 작성 시간을 단축. 본 매핑이 그대로 청구항 한정에
 > 들어갈 수 있도록 미리 정리.
->
-> **사용 대상**: `docs/patent/stage1b-cascade-spec-skeleton.md` §6 청구항.
 >
 > **상태**: PAUSE 중 작성 (skeleton 본문은 미수정).
 
@@ -29,17 +34,33 @@
 
 ---
 
-## 1. 7 Invariant → 청구항 한정 매핑표
+## 1. 12 Invariant → 청구항 한정 매핑표
+
+### 1.A 공식 (Formula) — PR #349 의 7 invariant
+
+`tests/test_relations_schema.py::ComputeConfidenceTests`
 
 | # | Invariant 테스트 | Prior Art 대비 차별 | 청구항 한정 (제안 표현) | 청구항 위치 |
 |---|------------------|---------------------|------------------------|--------------|
-| 1 | `test_single_source_returns_weight` | — (identity) | 단일 출처 sources = [{w}] 시 confidence = w 인 것을 특징으로 하는 방법. | 청구항 1 (a) 보조 한정 또는 종속항 |
-| 2 | `test_two_sources_diverge_from_clamped_sum` | **Google US8682913B1 (clamped sum 류)**, IBM US20180060733A1 (학습 기반) | 두 출처 sources = [{w_1}, {w_2}] 에서 confidence = 1 - (1-w_1)(1-w_2) 이며, 이 값이 min(w_1+w_2, 1) 과 일반적으로 다른 것을 특징으로 하는 방법. | **청구항 1 (b) 본문** (가장 강한 차별) |
-| 3 | `test_strong_corroboration_3_sources` | 디자인 메모 §3 예시 | 3 출처 w=[0.7, 0.7, 0.7] 시 confidence = 0.973 으로 도출되는 것을 특징으로 하는 방법. | **실시예 §8** 구체 수치 |
-| 4 | `test_many_sources_asymptotic_not_saturated` | clamped sum, max, mean 모두 saturate | 5 출처 이상에서 confidence 가 1.0 으로 saturate 되지 않고 점근적으로 1 에 접근하되 1 미만의 값을 유지하는 것을 특징으로 하는 방법. | **청구항 6 추가 한정** (asymptotic property) |
-| 5 | `test_monotone_adding_source_strictly_increases` | — (수학적 성질) | 임의의 sources 집합 S 에 새 출처 s' (weight > 0) 를 추가할 때 confidence 가 strictly 증가하는 것을 특징으로 하는 방법. | **청구항 6 (i)** strict 증가 단조성 |
-| 6 | `test_monotone_removing_source_strictly_decreases` | — | sources 집합 S 에서 출처 s (weight > 0) 를 제거할 때 confidence 가 strictly 감소하는 것을 특징으로 하는 방법. | **청구항 6 (ii)** strict 감소 단조성 |
-| 7 | `test_weight_clamped_to_unit_interval` | — (정의역 한정) | 각 출처의 weight 가 [0, 1] 구간으로 element-wise clamp 된 후 결합 함수에 입력되어, 잘못된 weight 값이 confidence 를 [0, 1] 밖으로 밀어내지 않는 것을 특징으로 하는 방법. | **청구항 7** weight ∈ [0, 1] |
+| F1 | `test_single_source_returns_weight` | — (identity) | 단일 출처 sources = [{w}] 시 confidence = w 인 것을 특징으로 하는 방법. | 청구항 1 (a) 보조 한정 또는 종속항 |
+| F2 | `test_two_sources_diverge_from_clamped_sum` | **Google US8682913B1 (clamped sum 류)**, IBM US20180060733A1 (학습 기반) | 두 출처 sources = [{w_1}, {w_2}] 에서 confidence = 1 - (1-w_1)(1-w_2) 이며, 이 값이 min(w_1+w_2, 1) 과 일반적으로 다른 것을 특징으로 하는 방법. | **청구항 1 (b) 본문** (가장 강한 차별) |
+| F3 | `test_strong_corroboration_3_sources` | 디자인 메모 §3 예시 | 3 출처 w=[0.7, 0.7, 0.7] 시 confidence = 0.973 으로 도출되는 것을 특징으로 하는 방법. | **실시예 §8** 구체 수치 |
+| F4 | `test_many_sources_asymptotic_not_saturated` | clamped sum, max, mean 모두 saturate | 5 출처 이상에서 confidence 가 1.0 으로 saturate 되지 않고 점근적으로 1 에 접근하되 1 미만의 값을 유지하는 것을 특징으로 하는 방법. | **청구항 6 추가 한정** (asymptotic property) |
+| F5 | `test_monotone_adding_source_strictly_increases` | — (수학적 성질) | 임의의 sources 집합 S 에 새 출처 s' (weight > 0) 를 추가할 때 confidence 가 strictly 증가하는 것을 특징으로 하는 방법. | **청구항 6 (i)** strict 증가 단조성 |
+| F6 | `test_monotone_removing_source_strictly_decreases` | — | sources 집합 S 에서 출처 s (weight > 0) 를 제거할 때 confidence 가 strictly 감소하는 것을 특징으로 하는 방법. | **청구항 6 (ii)** strict 감소 단조성 |
+| F7 | `test_weight_clamped_to_unit_interval` | — (정의역 한정) | 각 출처의 weight 가 [0, 1] 구간으로 element-wise clamp 된 후 결합 함수에 입력되어, 잘못된 weight 값이 confidence 를 [0, 1] 밖으로 밀어내지 않는 것을 특징으로 하는 방법. | **청구항 7** weight ∈ [0, 1] |
+
+### 1.B State 생성 (Ingestion) — PR #350 의 5 invariant
+
+`tests/test_phase_b_ingestion_sources.py::CrossDocSourceAggregationTests`
+
+| # | Invariant 테스트 | Prior Art 대비 차별 | 청구항 한정 (제안 표현) | 청구항 위치 |
+|---|------------------|---------------------|------------------------|--------------|
+| S1 | `test_second_doc_appends_sources_to_existing_entity` | **Google US8682913B1** 의 "corroborating facts" 와 명확 구분: 우리는 동일 (subject, predicate, object) triple 추출 시 **기존 relation 의 sources 배열에 append** (새 relation row 생성 X) | 두 번째 문서가 동일 (subject, predicate, object) triple 을 추출하면 기존 관계의 sources 배열에 새 source 항목 {doc_id, weight, role, ts} 가 append 되고, 새 relation row 가 생성되지 않는 것을 특징으로 하는 방법. | **청구항 2 (방법-Cascade) 의 (a) 단계 추가** |
+| S2 | `test_second_doc_inverse_also_aggregates` | — | 정방향 (subject, predicate, object) source append 시 역방향 (object, inverse_predicate, subject) 도 동일 방식으로 source append 되어 양방향 대칭이 유지되는 것을 특징으로 하는 방법. | **청구항 8 (신규 종속)** 대칭 보장 |
+| **S3** | **`test_confidence_uses_noisy_or_after_two_sources`** | — (joint contract) | 두 문서에서 동일 triple 이 각 weight 0.7 로 추출됐을 때, 공식 (F2) 적용 결과 confidence ≈ 0.91 로 도출되는 것을 특징으로 하는 방법. | **청구항 1 + 2 joint 검증 — 실시예** |
+| S4 | `test_same_doc_reupload_is_idempotent` | — | 동일 doc_id 를 가진 source 가 이미 존재하면 추가 append 가 발생하지 않아 sources 의 doc_id 가 unique 하게 유지되는 것을 특징으로 하는 방법 (재업로드 / Phase D modify cascade 안전). | **청구항 9 (신규 종속)** 멱등성 |
+| S5 | `test_second_doc_new_target_appends_new_relation` | — | 두 번째 문서에서 새 (subject, predicate, new_object) triple 이 추출되면 기존 관계가 아닌 새 relation row 가 entity 의 relations 배열에 추가되는 것을 특징으로 하는 방법. | **청구항 2 (a) 단계 보충** |
 
 ---
 

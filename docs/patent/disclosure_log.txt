@@ -44,9 +44,25 @@ c538a3a7e07037dd8e530f054b73fd806f5be8a3 2026-05-14 feat(graph): Knowledge Casca
 fb31518a69f07bc7d09ca5a22a819b6d7602ac56 2026-05-14 feat(graph): Knowledge Cascade Phase E — graph editor backend (N-7) (#271)
 35e5837b27e5345e1dbc8e6cd6970013cd1b5c2a 2026-05-14 feat(graph): Knowledge Cascade Phase E UI — edge edit modal (N-7) (#273)
 
-# Hotfix — noisy-OR 공식 정정 (2026-05-20). 명세서 ↔ 구현 일치 회복.
-# 7 invariant 테스트 lock-in. Grace period 만료: 2027-05-20.
+# Hotfix 1 — noisy-OR 공식 정정 (2026-05-20 09:07 KST). 7 invariant lock.
 b89c09917e4517f51db6f9382cdbd3b3c20eb579 2026-05-20 fix(graph): confidence noisy-OR per design memo §3 (was clamped sum) (#349)
+
+# Hotfix 2 — cross-doc source aggregation 정정 (2026-05-20 11:06 KST).
+# `process_document_for_entities` 의 `if existing: continue` 버그 정정.
+# `_merge_relations_into_existing_entity` 헬퍼 신설 + 5 invariant lock.
+# 두 핫픽스 결합으로 Knowledge Cascade end-to-end 작동 회복.
+# Grace period 만료: 2027-05-20.
+1009ccacb1029a421671671cd60e4a7604dd94e1 2026-05-20 fix(graph): cross-doc source aggregation per design memo §4 Phase B (#350)
+
+# CHANGELOG framing reframe (2026-05-20 13:32 KST).
+# "design memo backing" → "product impact lead" 로 정정.
+# postmortem §0 원칙 ("코드 → 청구") 의 첫 적용.
+5517743797fd1bb25da995ccff23b5a63eea77b8 2026-05-20 docs(changelog): reframe noisy-OR + cross-doc entries — lead with product impact (#351)
+
+# Postmortem 공개 (2026-05-20 13:47 KST). 403줄 engineering retrospective.
+# 출원 framing 원칙 명시: 코드 → 청구. 청구 ground truth = 현재 코드 + 테스트.
+# 사용자 우선순위 §8 명시: 출원 비우선, Phase 2 Planner / Episodic Memory 우선.
+fcc79cc5a8ed597038eab1ee1ed5f5fde2f85a33 2026-05-20 docs(postmortem): Knowledge Cascade confidence + cross-doc defects (2026-05-20) (#352)
 
 # === STAGE 5 (신규) — Reasoning Backend Plugin (2026-05-19 추가) ===
 # v0.3 platform skeleton 진행 중 새로 등장한 특허 후보. skeleton 미작성.

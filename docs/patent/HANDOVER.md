@@ -11,57 +11,111 @@
 ## ⏸️ 0. PAUSE 상태 (2026-05-19, 업데이트 2026-05-20)
 
 ### 현재 결정
-**출원 작업 일시 중단 유지**. 단, 핵심 약점이었던 공식 ↔ 구현 불일치는 **핫픽스 PR #349 (`b89c099`, 2026-05-20)로 해결됨**. Cascade Phase 안정성 + multi-source 데이터 누적 검증이 남음.
+**출원 작업 일시 중단 유지**. 핫픽스 1 + 2 + postmortem (PR #349/350/351/352) 로 Knowledge Cascade 안정화는 달성했으나, 사용자 우선순위 (§8) 가 출원이 아닌 제품 강화 (Phase 2 Planner / Episodic Memory / Phase 2 Default ON) 임이 명시됨. **시점적 트리거 발동 시까지 PAUSE 유지**.
 
-### 핫픽스 결과 (2026-05-20)
-- `core/relations_schema.py:52` `compute_confidence_from_sources` → **noisy-OR `1 − Π(1 − w_i)` 로 정정**
-- 디자인 메모(`docs/design/v0.3-knowledge-cascade.md §3`) + STAGE 1B skeleton(§4.1, 청구항 1) 과 **3자 일치 회복**
-- **7 invariant 테스트 lock-in** (`tests/test_relations_schema.py`):
-  - `test_two_sources_diverge_from_clamped_sum` (smoking gun, regression 방지)
-  - `test_many_sources_asymptotic_not_saturated` (5×0.7=0.9976, 1.0 미만)
-  - `test_strong_corroboration_3_sources`
-  - `test_monotone_adding_source_strictly_increases`
-  - `test_monotone_removing_source_strictly_decreases`
-  - `test_weight_clamped_to_unit_interval`
-  - `test_single_source_returns_weight` (Phase A 마이그레이션 byte-identical 보장)
-- Production wiki dry-run: 278 files scanned, **multi-source relation 0건** → 핫픽스 영향 byte-identical (잠재 버그가 manifest되기 전 차단)
-- 2174 tests pass + STEP 7 bench OK
-- 매핑: `docs/patent/stage1b-invariant-claims-mapping.md` (7 invariant → 청구항 한정 매핑표)
+### Postmortem (PR #352, `fcc79cc`, 2026-05-20) 흡수 — 출원 framing 원칙
 
-### 재개 조건 (ALL of)
-1. ✅ ~~Knowledge Cascade 코딩 완료 + 공식 확정~~ ← **핫픽스로 해결됨 (2026-05-20)**
-2. ⏳ Cascade Phase E (graph editor 수동 source append) 사용 빈도 → manual immunity 실증
-3. ⏳ 실제 multi-source 데이터 누적 (1~3개월) → Tier 3 검증 (STEP 7 baseline 재캡처)
-4. ✅ (선택) 두 공식 검증 결과 확보 — Tier 1 (수학적 invariant) 완료, Tier 2 (synthetic A/B) / Tier 3 (실제 데이터) 대기
-5. ⏳ Show HN(2026-06-16) 직전이거나, 다른 강한 시점적 트리거 발생
+**`docs/postmortems/2026-05-20-knowledge-cascade-defects.md` §0 + §4.4**:
+
+> **제품 동작을 먼저 만들고, 그 결과를 특허로 정리한다.**
+> - ❌ "디자인 메모가 청구한 것을 코드로 backing"
+> - ✅ "제품이 이렇게 동작하므로 그 동작을 청구"
+> - 방향은 **코드 → 청구**. 디자인 메모는 historical artifact 이며 청구의 ground truth 아님.
+
+**§10 Ground Truth**: 청구 reference 는 항상 **현재 코드 + 테스트**:
+- `core/relations_schema.py` (현재 commit)
+- `tests/test_relations_schema.py` (현재 commit) — 7 invariant
+- `core/wiki_generator.py` (현재 commit)
+- `tests/test_phase_b_ingestion_sources.py::CrossDocSourceAggregationTests` (현재 commit) — 5 invariant
+- `CHANGELOG.md` (현재 commit)
+
+→ STAGE 1B skeleton + 디자인 메모는 historical. 출원 시점에 새로 코드·테스트 기반으로 청구 작성.
+
+### Postmortem §8 사용자 우선순위 (출원 ≠ 우선)
+
+| 우선 | 항목 | 출원 영향 |
+|---|---|---|
+| 🔴 | **Phase 2 PR-7 Planner** — multi-step task decomposition + Tool Router wiring | STAGE 6 안정화 대기 |
+| 🟠 | Phase 3 PR-9 Episodic Memory | STAGE 8 안정화 대기 |
+| 🟠 | Phase 2 Default ON 검토 (Reflection / Verification) | STAGE 6 안정화 대기 |
+| 🟡 | PR-O6b Graph Node Editor frontend | STAGE 1B Phase E UX 확장 |
+| 🟡 | 0.6 confidence 임계값 재튜닝 (multi-source 누적 후) | STAGE 1B Tier 3 검증 자동 누적 |
+
+→ 출원은 명시 우선순위 0순위. **자연 누적 + 시점적 트리거로만 트리거**.
+
+### 핫픽스 1 + 2 결합 효과 (안정화 달성)
+- **PR #349 (`b89c099`, 09:07 KST)**: `compute_confidence_from_sources` → noisy-OR `1 − Π(1 − w_i)` + 7 invariant
+- **PR #350 (`1009cca`, 11:06 KST)**: `process_document_for_entities` cross-doc aggregation + `_merge_relations_into_existing_entity` + 5 invariant
+- **PR #351 (`5517743`, 13:32 KST)**: CHANGELOG reframe — product impact lead, design memo demoted to historical reference
+- **PR #352 (`fcc79cc`, 13:47 KST)**: Postmortem 403줄, 4-layer silent alignment failure 분석 + §8 우선순위 명시
+
+**12 invariant 테스트 lock-in** (`tests/test_relations_schema.py` 7 + `tests/test_phase_b_ingestion_sources.py` 5):
+- 공식 정합 (7)
+- State 생성 정합 (5)
+- 결합 contract (`test_confidence_uses_noisy_or_after_two_sources` — 0.91 assertion)
+
+Production wiki: 278 files, **0 multi-source relations** — defect dormant, caught pre-manifestation. 다음 ingest 부터 자연 누적.
+
+### 재개 조건 (ALL of) — 업데이트
+1. ✅ ~~공식 확정~~ ← PR #349 (2026-05-20)
+2. ✅ ~~Cross-doc state 생성 정합~~ ← PR #350 (2026-05-20)
+3. ⏳ 사용자 시점적 트리거 (예: Show HN 임팩트, 경쟁사 출원, 투자 협상, 사용자 명시 결정)
+4. ⏳ (선택) Tier 2 synthetic A/B 또는 Tier 3 실 multi-source 누적 — 정식 전환 시점에 보강
+
+### 출원 가능 후보 매트릭스 (2026-05-20 재평가)
+
+상세 분석: `docs/patent/filability-2026-05-20.md`
+
+| Stage | 점수 | 코드 안정성 | 안정적 출원 가능 |
+|---|---|---|---|
+| **1 (Memory Loom)** | 4/5 ⭐ | ⭐⭐⭐ v0.1 부터 안정 | ✅ **HIGH — 즉시 가능** |
+| **1A (Doc-source gate)** | 3/5 ⭐ | ⭐⭐⭐ 단일 PR 머지, 무변동 | ✅ **HIGH — 즉시 가능** |
+| 1B (Cascade) | 4/5 ⭐⭐ | ⭐⭐ 2026-05-20 안정화 (오늘) | ⚠️ 기술 OK, **사용자 우선순위 NO** |
+| 2 (Feedback Shadow) | 2/5 | ⭐⭐⭐ 안정 | ✅ MID — 출원 가능 (약한 신규성) |
+| 3 (Security 2-stage) | 2/5 | ⭐⭐ PR #322 catalog_context 추가 | ✅ MID — 가능 (#322 종속항) |
+| 4 (Trait Pair) | 2/5 | ⭐⭐⭐ 안정 | ✅ LOW — 약한 신규성 |
+| 4A (Self-Evolution) | 3/5 ⭐ | ⚠️ PR #78/79 머지 확인 필요 | ⚠️ 확인 후 |
+| 4B (Trace Correlation) | 2/5 | ⭐⭐⭐ 안정 + STAGE 10 흡수 가능 | ✅ MID |
+| 5 (Reasoning Backend) | 4/5? | ❌ Plugin API 설계 진행 중 (#343/344) | ❌ WAIT — 1~2개월 |
+| 6 (Cognitive Middleware) | 3/5? | ❌ Phase 2 Default ON 미결 | ❌ WAIT — Phase 2 종결 후 |
+| 7 (Change Request) | 2/5? | ⭐⭐ 안정 | ✅ LOW — 약한 신규성 |
+| 8 (Episodic Memory) | 2/5? | ❌ §8 next priority — 미완 | ❌ WAIT |
+| 9 (Catalog Context) | 2/5? | ⭐⭐⭐ 안정 | ✅ STAGE 3 종속항으로 흡수 |
+| 10 (Replay Trace) | 3/5? | ⭐⭐⭐ 안정 | ✅ STAGE 4B 종속항 또는 별건 |
+
+**즉시 안정적 출원 가능**: STAGE 1, STAGE 1A (2건, 약 3.6만 원)
+**조건부 출원 가능**: STAGE 2, 3, 4, 4B, 7, 9, 10 (7건, 약 12.6만 원)
+**대기 필요**: STAGE 0, 1B (사용자 우선순위), 4A (확인 필요), 5, 6, 8
 
 ### 재개 시 첫 메시지 (복사용)
 ```
 James-RAG-Evol 특허 출원 작업 재개합니다.
 
-Cascade 코딩 정리 완료. 다음 파일 확인 후 출원 후보 재정리 해주세요:
+다음 파일 확인 후 작업 진행 해주세요:
 - docs/patent/HANDOVER.md (pause 결정 + 재개 조건 §0)
+- docs/patent/filability-2026-05-20.md (안정적 출원 가능 후보 매트릭스)
 - docs/patent/REVIEW-NOTES.md (선행기술 분석)
 - docs/patent/prior-art-1B.md (Google Patents 검색 결과)
-- docs/patent/stage1b-invariant-claims-mapping.md (7 invariant → 청구항 매핑)
-- docs/design/v0.3-knowledge-cascade.md (cascade 최종 설계)
-- core/cascade.py, core/relations_schema.py (실제 구현)
-- tests/test_relations_schema.py (7 invariant lock)
+- docs/patent/stage1b-invariant-claims-mapping.md (12 invariant → 청구항 매핑)
+- docs/postmortems/2026-05-20-knowledge-cascade-defects.md (framing 원칙)
+
+핵심 원칙: "코드 → 청구" — 디자인 메모 X, 현재 코드 + 테스트가 청구 ground truth.
 
 작업 브랜치: claude/security-audit-LRxjo
 
-[구체 요청 — 예: "안정화된 noisy-OR 공식 + 7 invariant 로 STAGE 1B 청구항 1~10 재작성"]
+[구체 요청 — 예: "STAGE 1 + 1A 즉시 출원 진행" / "STAGE 1B 출원 트리거 발동"]
 ```
 
 ### Pause 중 보존 자산
 | 파일 | 상태 |
 |---|---|
-| `strategy.md` | ✅ 유효 |
+| `strategy.md` | ✅ 유효 (단, 안정성 매트릭스는 `filability-2026-05-20.md` 우선) |
 | `REVIEW-NOTES.md` | ✅ 유효 |
-| `prior-art-1B.md` | ✅ Google Patents 검색 완료 (🔴=0, 🟠=2, 🟡=4, 🟢=8) |
-| `stage1b-invariant-claims-mapping.md` | ✅ **NEW** — 7 invariant → 청구항 매핑 (재개 시 즉시 사용) |
-| 8개 stage skeleton | ⚠️ STAGE 1B는 invariant 매핑 적용 시 §6 청구항 확장 가능 (skeleton 본문은 미수정) |
-| `disclosure_log.txt` | ✅ Phase A-E + Hotfix PR #349 commit 추가 완료 |
+| `prior-art-1B.md` | ✅ Google Patents 검색 (🔴=0, 🟠=2, 🟡=4, 🟢=8) |
+| `stage1b-invariant-claims-mapping.md` | ✅ 12 invariant 매핑 (7+5) |
+| `filability-2026-05-20.md` | ✅ **NEW** — 14 후보 안정성 평가 |
+| 8개 stage skeleton | ⚠️ historical. 출원 시 현재 코드·테스트 기반 재작성 (postmortem §10 원칙) |
+| `disclosure_log.txt` | ✅ PR #266~#352 commit 추가 완료 |
 
 ### Grace Period 시계 (오늘 2026-05-20 기준)
 | 후보 | Grace 만료 | 남은 일수 |
@@ -70,24 +124,27 @@ Cascade 코딩 정리 완료. 다음 파일 확인 후 출원 후보 재정리 �
 | STAGE 1·2·3·4 | 2027-05-04 | 349일 |
 | STAGE 1A·1B (디자인) | 2027-05-08 | 353일 |
 | STAGE 1B (Phase D 구현) | 2027-05-13 | 358일 |
-| STAGE 1B (Hotfix noisy-OR) | 2027-05-20 | 365일 |
+| STAGE 1B (Hotfix 1 noisy-OR) | 2027-05-20 | 365일 |
+| STAGE 1B (Hotfix 2 cross-doc) | 2027-05-20 | 365일 |
+| STAGE 5 (Reasoning Backend) | 2027-05-17 | 362일 |
 
-> ⚠️ **2026년 12월 ~ 2027년 1월** 까지 재개 결정 필수. 그 이후 grace 임박 시 압박 상승.
+> ⚠️ **2026년 12월 ~ 2027년 1월** 까지 재개 결정 필수.
 
 ### 신규 발견 (재개 시 평가 대상)
 v0.3 platform skeleton 진행 중 새로 등장한 특허 후보 6건 (skeleton 없음):
-- STAGE 5 — Reasoning Backend Plugin (trace_schema + replay, PR #283/284/285/324/325/326)
+- STAGE 5 — Reasoning Backend Plugin (PR #283/284/285/324/325/326)
 - STAGE 6 — Cognitive Middleware Layer (PR #275/289/290/295/297)
 - STAGE 7 — Change Request Workflow (PR #237/239/240/243)
 - STAGE 8 — Episodic Memory Store (PR #338)
 - STAGE 9 — Schema v1.1 Catalog Context (PR #322)
-- STAGE 10 — Replay-able Audit Trace (PR #284/285, STAGE 4B 흡수 가능)
+- STAGE 10 — Replay-able Audit Trace (PR #284/285)
 
-### 전략 재평가 결과 (Pause 직전 + 핫픽스 후 보강)
-- **MIT + GitHub 공개**가 이미 defensive publication 80% 커버 — 출원의 한계효용 검토 필요
-- 권장 시나리오: 권고 B (선별 출원) — 안정된 STAGE 1 + 1A만 즉시, 나머지는 grace 활용
-- **핫픽스 후 STAGE 1B 출원 가치 상승**: 7 invariant 테스트 = 청구항 한정 직접 매핑 가능, 기재요건 불비 위험 0
-- 단, multi-source 실증 미완으로 정식 전환 시점은 1~3개월 뒤 권장
+### 전략 재평가 (Postmortem 반영)
+- **MIT + GitHub 공개**가 이미 defensive publication 80% 커버
+- 권장 시나리오 (Postmortem 정합): 사용자 시점적 트리거에만 출원, 자연 누적 + grace 활용
+- **즉시 가능한 minimal 출원** (트리거 발동 시): STAGE 1 + STAGE 1A 2건 = 약 3.6만 원
+- 청구 reference 는 **현재 코드 + 테스트** (skeleton X, 디자인 메모 X)
+- 정식 전환은 multi-source 자연 누적 (1~3개월) 후 D+330일 시점에 선별
 
 ---
 
