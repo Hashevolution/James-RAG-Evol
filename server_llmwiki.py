@@ -3884,6 +3884,75 @@ async def admin_trace_get(
     }
 
 
+@app.get("/admin/episodic/{session_id}",
+         summary="Cognitive Phase 3 PR-9b — 세션의 episodic events 조회")
+async def admin_episodic_get(
+    session_id: str,
+    api_key:    str,
+    limit:      int = 50,
+    stage:      str = "",
+    role:       str = Depends(get_role_from_request),
+):
+    """Session-scoped reasoning trail dump for debugging.
+
+    Returns the most recent episodic events for one session. Each
+    event = one cognitive-stage decision (plan / reflect / verify /
+    synth) with its summary, score, and trace_id back-link.
+
+    Path:
+      session_id: the session whose trail to dump.
+
+    Query:
+      limit: 1..200, default 50.
+      stage: optional comma-separated filter
+             (e.g. ``stage=plan,verify``).
+
+    Response:
+      {"session_id": "...", "count": N,
+       "events": [{"event_id", "turn_id", "ts", "stage", "summary",
+                   "score", "extras", "trace_id"}, ...]}
+
+    Permission: admin.metrics (same as /admin/trace/* — both are
+    debugging surfaces over the reasoning audit data).
+    """
+    _require_feature(api_key, role, "admin.metrics")
+    limit = max(1, min(int(limit or 50), 200))
+    stages_filter: tuple = ()
+    if stage and stage.strip():
+        stages_filter = tuple(
+            s.strip() for s in stage.split(",") if s.strip()
+        )
+
+    try:
+        from core.memory.episodic import get_episodic_memory
+        events = get_episodic_memory().recent_events(
+            session_id, limit=limit, stages=stages_filter,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"episodic store unavailable: {type(e).__name__}",
+        )
+
+    return {
+        "session_id": session_id,
+        "count":      len(events),
+        "events":     [
+            {
+                "event_id":  ev.event_id,
+                "turn_id":   ev.turn_id,
+                "ts":        ev.ts,
+                "stage":     ev.stage,
+                "summary":   ev.summary,
+                "score":     ev.score,
+                "extras":    ev.extras,
+                "trace_id":  ev.trace_id,
+            }
+            for ev in events
+        ],
+    }
+
+
 @app.get("/admin/metrics", summary="Per-stage 레이턴시 히스토그램 [#81 phase 3-B]")
 async def admin_metrics_get(
     api_key:      str,

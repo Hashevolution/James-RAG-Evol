@@ -139,6 +139,55 @@ def build_memory_context(
     except Exception as e:
         engine._log("persona_command", e, user_role)
 
+    # ── Cross-turn episodic context — Cognitive Phase 3 PR-9b ──
+    # Same-session prior turns leave a structured reasoning trail in
+    # the episodic store (planner/reflect/verify decisions). Surface
+    # the recent slice so the LLM can build on prior conclusions
+    # instead of re-deriving them. Gated by hist_ctx (new-session
+    # first turn has no prior episodic; PR-O4 N-3 isolation also
+    # implies the prior session's episodic is intentionally hidden —
+    # the SQL filter is `WHERE session_id = ?` so this is automatic).
+    # Toggle: JAMES_EPISODIC_CONTEXT=0 disables.
+    try:
+        import os as _os
+        if hist_ctx and _os.environ.get(
+            "JAMES_EPISODIC_CONTEXT", "1"
+        ).strip().lower() not in ("0", "false", "no"):
+            from core.memory.episodic import get_episodic_memory
+            session_id_ep = kwargs.get("session_id", "default")
+            events = get_episodic_memory().recent_events(
+                session_id_ep,
+                limit=12,
+                stages=("plan", "reflect", "verify"),
+            )
+            if events:
+                # Group by turn_id, take the last 3 turns. A turn's
+                # multiple events (security_validator + fact_checker,
+                # critique + revised) collapse to one line per stage.
+                from collections import OrderedDict
+                by_turn: "OrderedDict[str, dict]" = OrderedDict()
+                for ev in events:
+                    slot = by_turn.setdefault(ev.turn_id, {})
+                    slot[ev.stage] = ev   # last event per stage wins
+                recent_turns = list(by_turn.values())[-3:]
+                if recent_turns:
+                    lines = ["[이전 추론 흔적 (이 세션)]"]
+                    for slot in recent_turns:
+                        for stage in ("plan", "reflect", "verify"):
+                            ev = slot.get(stage)
+                            if ev and ev.summary:
+                                lines.append(
+                                    f"- [{stage}] {ev.summary[:120]}"
+                                )
+                    episodic_block = "\n".join(lines)
+                    system_prompt = (
+                        f"{system_prompt}\n\n{episodic_block}".strip()
+                    )
+                    print(f"[EPISODIC] cross-turn context "
+                          f"({len(recent_turns)} turns)")
+    except Exception as e:
+        engine._log("episodic_context", e, user_role)
+
     # ── [STEP 5-C] 언어 자동 감지 + 시스템 프롬프트 동적 전환 ──
     session_lang = kwargs.get("session_language", "")
 

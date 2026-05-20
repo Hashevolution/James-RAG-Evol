@@ -306,6 +306,23 @@ class Planner:
             # unavailability.
             pass
 
+        # Cognitive Phase 3 PR-9b — session-scoped episodic mirror.
+        # The audit_log row above is the forensic record (cross-session,
+        # retained). This row is the online turn-window view the *next*
+        # turn in the same session can consult. Best-effort: skipped
+        # silently when called outside a tracked turn or when the
+        # episodic store is unavailable.
+        try:
+            from core.memory.episodic import record_event as _rec
+            _rec(
+                stage="plan",
+                summary=output,
+                extras={"latency_ms": latency_ms, "error": error,
+                        "original_query": query[:200]},
+            )
+        except Exception:
+            pass
+
     def _emit_skip(self, query: str, user_role: str, reason: str) -> None:
         """Skip cases (no opt-in, no backend) — still emit so the
         replay tool can show "planner was asked but bypassed".

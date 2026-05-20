@@ -30,6 +30,8 @@ from core.memory.episodic import (
     EpisodicMemory,
     KNOWN_STAGES as EPISODIC_STAGES,
     MAX_SUMMARY_CHARS as EPISODIC_MAX_SUMMARY_CHARS,
+    get_episodic_memory,
+    record_event as record_episodic_event,
 )
 
 __all__ = [
@@ -49,4 +51,6 @@ __all__ = [
     "EpisodicMemory",
     "EPISODIC_STAGES",
     "EPISODIC_MAX_SUMMARY_CHARS",
+    "get_episodic_memory",
+    "record_episodic_event",
 ]

@@ -185,6 +185,22 @@ def trace_synth_call(
         user_role=user_role,
         extras=emit_extras,
     )
+    # Cognitive Phase 3 PR-9b — every synth call mirrors to the
+    # session-scoped episodic store. Best-effort: no session context
+    # bound (tests, batch jobs) or store unavailable → silently skipped.
+    # Stage maps directly: KNOWN_STAGES already includes "synth".
+    try:
+        from core.memory.episodic import record_event as _rec
+        _rec(
+            stage=stage if stage in ("synth", "retrieve", "tool_call",
+                                       "plan", "reflect", "verify",
+                                       "error") else "synth",
+            summary=text_str,
+            extras={"applied_rule": applied_rule, "error": err,
+                    "backend_id": result.backend_id or backend_id},
+        )
+    except Exception:
+        pass
     # The caller's downstream logic (error-prefix checks, "" fallback)
     # is unchanged — return text whether it's a clean response or one of
     # RouterWrapper's known error strings.

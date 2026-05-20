@@ -320,6 +320,18 @@ class ReflectionLoop:
             # answer flow if audit_log is unavailable.
             pass
 
+        # Cognitive Phase 3 PR-9b — session-scoped episodic mirror.
+        try:
+            from core.memory.episodic import record_event as _rec
+            _rec(
+                stage="reflect",
+                summary=text,
+                extras={"applied_rule": applied_rule,
+                        "latency_ms": latency_ms, "error": error},
+            )
+        except Exception:
+            pass
+
 
 # ─── module-level singleton ────────────────────────────────────────
 _SINGLETON: Optional[ReflectionLoop] = None

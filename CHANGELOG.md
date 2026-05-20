@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] — v0.3.x patches
 
+### Added
+
+- **Episodic memory wiring across cognitive stages (Cognitive Phase 3
+  PR-9b)** — a follow-up question in the same session can now see what
+  the planner decomposed the prior question into, what reflection
+  revised, and what verification flagged. PR-9a (`core/memory/episodic.py`)
+  shipped the session-scoped SQLite store; this PR wires the
+  `record_event()` calls into `planner.py`, `reflect.py`, `verify.py`,
+  and the shared `trace_helpers.trace_synth_call` (covers every synth
+  sub-stage). `engine.query()` binds `(session_id, turn_id)` to a
+  ContextVar at turn start; `engine_memory.build_memory_context`
+  reads the last 3 turns of plan / reflect / verify events and
+  prepends a compact "[이전 추론 흔적 (이 세션)]" block to the system
+  prompt. Same-session isolation enforced at the SQL layer
+  (`WHERE session_id = ?`); the PR-O4 N-3 gate already prevents
+  cross-session leak on a new session's first turn. Opt-out via
+  `JAMES_EPISODIC_CONTEXT=0` for measuring baseline cost. New admin
+  endpoint `GET /admin/episodic/{session_id}` returns the session's
+  events for debugging (gated by the same `admin.metrics` permission
+  as `/admin/trace/*`). 8 new tests in
+  `tests/test_episodic_wiring.py` lock the contract (stage record,
+  cross-turn read, new-session isolation, cross-session isolation,
+  opt-out, ContextVar no-op when unbound, ContextVar happy path).
+
 ### Fixed
 
 - **Cross-document evidence accumulation now works** — uploading two

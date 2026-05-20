@@ -130,6 +130,22 @@ class ReasoningEngine:
             return self._blocked_result("보안 검사 실패")
         self._elapsed(t0, "STEP0 pre_check")
 
+        # ── Session ContextVar — Cognitive Phase 3 PR-9b ────
+        # Bind (session_id, turn_id) to the current async/threading
+        # context so cognitive stages (planner / reflect / verify /
+        # synth) can attribute their episodic events without taking
+        # session_id as a signature parameter. turn_id is millisecond-
+        # precision timestamp scoped under session_id — sortable per
+        # session, unique within a single-process turn.
+        try:
+            from core.observability import set_session_context
+            _turn_id = f"{session_id}:{int(time.time() * 1000)}"
+            set_session_context(session_id, _turn_id)
+        except Exception as e:
+            # ContextVar set failing is non-fatal — episodic stays a
+            # no-op for this turn rather than crashing the query.
+            self._log("session_context", e, user_role)
+
         # ── Memory context + 대화 히스토리 주입 (delegated) ───
         # The MemoryStore / character / persona-command / language-
         # detection logic moved to core/reasoning/engine_memory.py for

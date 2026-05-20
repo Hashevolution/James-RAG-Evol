@@ -449,6 +449,18 @@ class Verifier:
         except Exception:
             pass
 
+        # Cognitive Phase 3 PR-9b — session-scoped episodic mirror.
+        try:
+            from core.memory.episodic import record_event as _rec
+            _rec(
+                stage="verify",
+                summary=text,
+                extras={"applied_rule": applied_rule,
+                        "latency_ms": latency_ms, "error": error},
+            )
+        except Exception:
+            pass
+
 
 # ─── module-level singleton ────────────────────────────────────────
 _SINGLETON: Optional[Verifier] = None
