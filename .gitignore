@@ -42,9 +42,17 @@ ENV/
 *.db
 *.sqlite
 *.sqlite3
+# SQLite WAL/SHM/journal 사이드카 — *.db 글롭이 못 잡음
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite-journal
 james_users.db
 james_audit.db
 james_sessions.db
+james_episodic.db
 chroma_db/
 /memory/
 workspace/
