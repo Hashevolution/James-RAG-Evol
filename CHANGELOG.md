@@ -11,6 +11,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Working memory turn-end cleanup wired into `engine.query()`
+  (Cognitive Phase 3 PR-10b)** — the public `query()` is now a
+  thin try/finally wrapper that delegates to a new `_query_impl`;
+  the finally block clears the turn's working-memory scratch and
+  releases the session ContextVar on every return path, including
+  exception unwinds and the early `_blocked_result` returns from
+  `pre_check`. Before this PR, a crashed turn or a pre_check
+  rejection could leave the session ContextVar bound at the thread
+  level — the next request reusing that thread would have
+  inherited a stale `(session_id, turn_id)` until
+  `set_session_context` ran again. Working memory had no production
+  call sites yet (PR-10a infra-only), but the same cleanup invariant
+  now holds end-to-end before the wiring sites are added in a
+  future PR. 3 new integration tests in `tests/test_working_memory.py`
+  lock the contract (normal return, exception, early blocked
+  return). `tests/test_chat_mode_picker.py::test_engine_query_validates_override`
+  updated to scan both `query()` and `_query_impl` for the override
+  whitelist since the validation logic now lives in `_query_impl`.
+
 - **Working memory infrastructure (Cognitive Phase 3 PR-10a)** —
   `core/memory/working.py` ships a turn-scoped scratch store sibling
   to the episodic memory landed in PR-9. Where episodic captures the

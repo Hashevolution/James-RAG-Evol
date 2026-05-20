@@ -78,11 +78,24 @@ class BackendModeOverrideTests(unittest.TestCase):
 
     def test_engine_query_validates_override(self):
         # Engine must check the override is a known mode AND role-allowed.
-        # Bound to query() function — find next `def ` after.
-        idx = self.eng_src.index("def query(")
-        m = re.search(r"\n    def\s+\w+\(", self.eng_src[idx + 1:])
-        end = idx + 1 + m.start() if m else idx + 12000
-        body = self.eng_src[idx:end]
+        # PR-10b split the request lifecycle: ``query()`` is now a thin
+        # try/finally wrapper that delegates to ``_query_impl`` where
+        # the override validation actually lives. Scan whichever
+        # method's body holds the override logic.
+        for fn_name in ("_query_impl", "query"):
+            try:
+                idx = self.eng_src.index(f"def {fn_name}(")
+            except ValueError:
+                continue
+            m = re.search(r"\n    def\s+\w+\(", self.eng_src[idx + 1:])
+            end = idx + 1 + m.start() if m else idx + 12000
+            body = self.eng_src[idx:end]
+            if "VALID_OVERRIDES" in body:
+                break
+        else:
+            self.fail("no engine method body contains VALID_OVERRIDES — "
+                      "override whitelist must live in query() or "
+                      "_query_impl")
         self.assertIn("VALID_OVERRIDES", body,
                       "engine must whitelist valid override modes")
         self.assertIn("ROLE_ALLOWED", body,

@@ -102,6 +102,53 @@ class ReasoningEngine:
         selected_model: str     = "",          # [#A2 phase 2] 사용자가 picker로 고른 LLM tag — 모드 결정 후 catalog 대조
         **kwargs,
     ) -> Dict[str, Any]:
+        """Public reasoning entry point.
+
+        Wraps the implementation in a ``try/finally`` so every return
+        path — including ``_blocked_result`` and exception unwinds —
+        releases the turn's working-memory scratch (PR-10b). The
+        previous body lives in ``_query_impl``; this method is a
+        thin wrapper so the cleanup invariant is impossible to skip.
+        """
+        try:
+            return self._query_impl(
+                user_query, user_role, source_type, session_id,
+                response_style, mode_override, selected_model,
+                **kwargs,
+            )
+        finally:
+            # PR-10b — release the turn's scratch and clear the
+            # session ContextVar so the next request in this
+            # thread starts uninstrumented. Both wrapped in try
+            # so a teardown failure cannot eclipse a real exception
+            # bubbling up from the impl.
+            try:
+                from core.observability import (
+                    get_session_context,
+                    set_session_context,
+                )
+                _sid, _tid = get_session_context()
+                if _sid and _tid:
+                    try:
+                        from core.memory.working import get_working_memory
+                        get_working_memory().clear_turn(_sid, _tid)
+                    except Exception:
+                        pass
+                set_session_context("", "")
+            except Exception:
+                pass
+
+    def _query_impl(
+        self,
+        user_query:  str,
+        user_role:   str        = None,
+        source_type: Optional[str] = "prod",
+        session_id:  str        = "default",
+        response_style: str     = "",
+        mode_override:  str     = "",
+        selected_model: str     = "",
+        **kwargs,
+    ) -> Dict[str, Any]:
         """
         전체 추론 파이프라인.
 

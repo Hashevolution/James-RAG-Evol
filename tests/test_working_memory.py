@@ -293,5 +293,138 @@ class SingletonTests(unittest.TestCase):
         self.assertIs(a, b)
 
 
+# ─── 6. engine.query() finally-block hook (PR-10b) ──────────────────
+
+
+class EngineQueryFinallyTests(unittest.TestCase):
+    """PR-10b — verify that engine.query() releases the turn's
+    working-memory scratch and clears the session ContextVar on
+    every return path (including exception unwinds inside
+    _query_impl).
+    """
+
+    def setUp(self):
+        _clear_singleton_for_tests()
+        set_session_context("", "")
+
+    def tearDown(self):
+        _clear_singleton_for_tests()
+        set_session_context("", "")
+
+    def _wm(self):
+        return get_working_memory()
+
+    def test_query_clears_working_memory_on_normal_return(self):
+        """Happy path: a normal return through _query_impl still
+        triggers the finally clear. We stub _query_impl so the test
+        stays hermetic (no Ollama / retrieval roundtrip).
+        """
+        from core.reasoning.engine import ReasoningEngine
+        engine = ReasoningEngine.__new__(ReasoningEngine)
+
+        captured = {}
+
+        def fake_impl(user_query, user_role=None, source_type="prod",
+                      session_id="default", response_style="",
+                      mode_override="", selected_model="", **kwargs):
+            # While inside the impl, the ContextVar must be bound
+            # and a working-memory write must land in the right
+            # bucket. The wrapper sets the ContextVar BEFORE
+            # delegating — except _query_impl is what sets it in
+            # the real engine. Mimic that here.
+            from core.observability import set_session_context
+            tid = f"{session_id}:1"
+            set_session_context(session_id, tid)
+            self._wm().set(
+                session_id=session_id, turn_id=tid,
+                role="reflect.draft", key="text", value="draft v1",
+            )
+            captured["sid"] = session_id
+            captured["tid"] = tid
+            return {"answer": "ok", "blocked": False}
+
+        engine._query_impl = fake_impl
+
+        out = engine.query("hello", session_id="s_normal")
+        self.assertEqual(out["answer"], "ok")
+
+        # finally must have released the slot
+        self.assertIsNone(
+            self._wm().get(session_id=captured["sid"],
+                            turn_id=captured["tid"],
+                            role="reflect.draft", key="text"),
+            "working memory must be cleared after query() returns",
+        )
+        # ContextVar must be released so the next request starts clean
+        from core.observability import get_session_context
+        sid, tid = get_session_context()
+        self.assertEqual((sid, tid), ("", ""),
+            "session ContextVar must be cleared in finally")
+
+    def test_query_clears_working_memory_on_exception(self):
+        """Critical invariant: if _query_impl raises, the finally
+        block still releases the scratch. Otherwise a single
+        crashed turn would leak its slots until the prune sweep.
+        """
+        from core.reasoning.engine import ReasoningEngine
+        engine = ReasoningEngine.__new__(ReasoningEngine)
+
+        captured = {}
+
+        def crashing_impl(user_query, user_role=None, source_type="prod",
+                          session_id="default", response_style="",
+                          mode_override="", selected_model="", **kwargs):
+            from core.observability import set_session_context
+            tid = f"{session_id}:bang"
+            set_session_context(session_id, tid)
+            self._wm().set(
+                session_id=session_id, turn_id=tid,
+                role="verify.claims", key="c1", value="written before crash",
+            )
+            captured["sid"] = session_id
+            captured["tid"] = tid
+            raise RuntimeError("synthetic mid-turn failure")
+
+        engine._query_impl = crashing_impl
+
+        with self.assertRaises(RuntimeError):
+            engine.query("oops", session_id="s_crash")
+
+        self.assertIsNone(
+            self._wm().get(session_id=captured["sid"],
+                            turn_id=captured["tid"],
+                            role="verify.claims", key="c1"),
+            "exception must not skip the finally clear",
+        )
+        from core.observability import get_session_context
+        self.assertEqual(get_session_context(), ("", ""))
+
+    def test_query_clears_when_blocked_early(self):
+        """pre_check failures return through _blocked_result without
+        the ContextVar ever being bound. The wrapper must still
+        clear safely — set_session_context("","") is a no-op
+        when nothing was bound.
+        """
+        from core.reasoning.engine import ReasoningEngine
+        engine = ReasoningEngine.__new__(ReasoningEngine)
+
+        def early_return_impl(*args, **kwargs):
+            # No set_session_context call → ContextVar stays empty.
+            return {"answer": "blocked", "blocked": True}
+
+        engine._query_impl = early_return_impl
+        # Pre-bind to verify the wrapper actively clears even what
+        # was already there before the call.
+        set_session_context("preexisting", "preexisting:0")
+
+        out = engine.query("x", session_id="s_blocked")
+        self.assertTrue(out["blocked"])
+        from core.observability import get_session_context
+        self.assertEqual(get_session_context(), ("", ""),
+            "wrapper must clear even when impl never touched the "
+            "ContextVar — a stale pre-existing binding must not "
+            "leak into the next request")
+
+
 if __name__ == "__main__":
     unittest.main()
