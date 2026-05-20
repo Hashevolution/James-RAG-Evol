@@ -11,6 +11,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Cross-document source aggregation in `process_document_for_entities`**
+  — when an entity already exists from a previous doc, the new doc's
+  extracted triples are now merged into the existing frontmatter
+  (`sources.append` per
+  [`docs/design/v0.3-knowledge-cascade.md §4`](docs/design/v0.3-knowledge-cascade.md)
+  Phase B spec), not silently dropped. The previous `continue` branch
+  at `core/wiki_generator.py:640` invalidated the entire Knowledge
+  Cascade premise: a relation could only ever have one source, so
+  no relation ever became "multi-source" — defeating the purpose of
+  the noisy-OR confidence formula and the quarterly-report-cascade
+  scenario the design memo §9 anticipates (N=50 sources/relation).
+  New helper `_merge_relations_into_existing_entity` matches on
+  `(target_name, normalized_type)`, skips duplicate `doc_id` for
+  idempotency, recomputes confidence via noisy-OR, and writes the
+  frontmatter back. Both forward and inverse directions aggregate
+  symmetrically. 5 new tests in `tests/test_phase_b_ingestion_sources.py`
+  lock the contract (cross-doc append, inverse aggregation, noisy-OR
+  confidence after 2 sources, same-doc idempotency, distinct-target
+  new-row).
+
 - **`compute_confidence_from_sources` now implements noisy-OR**
   (`P = 1 - Π(1 - w_i)`) per
   [`docs/design/v0.3-knowledge-cascade.md §3`](docs/design/v0.3-knowledge-cascade.md),

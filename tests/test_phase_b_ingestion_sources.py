@@ -350,5 +350,203 @@ class ProcessDocumentSourcesIntegrationTests(unittest.TestCase):
             )
 
 
+# ── 4. Cross-doc source aggregation (design memo §4 Phase B) ────────
+
+class CrossDocSourceAggregationTests(unittest.TestCase):
+    """디자인 메모 §4 가 명시한 'find_or_create_relation + sources.append'
+    가 두 번째 doc 에서 실제로 동작하는지 검증.
+
+    이전 구현은 기존 entity 발견 시 entire processing 을 skip 하여
+    cross-doc 강화가 작동하지 않았다 (Knowledge Cascade 핵심 가치 무효).
+    본 테스트 클래스는 그 회귀 방지 게이트.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.wiki_dir_patcher = patch("config.WIKI_DIR", self.tmp)
+        self.wiki_dir_patcher.start()
+        import core.wiki_generator as wg_mod
+        self._orig_wiki_dir = wg_mod.WIKI_DIR
+        wg_mod.WIKI_DIR = self.tmp
+
+        self.verify_patcher = patch(
+            "core.memory.verify_before_write",
+            return_value=(True, "ok", 0.99),
+        )
+        self.verify_patcher.start()
+        self.vs_patcher = patch("core.vector_store.VectorStore")
+        self.vs_patcher.start()
+        self.router_patcher = patch("llm.router.RouterWrapper")
+        self.router_patcher.start()
+
+        from core.wiki_generator import WikiGenerator
+        self.wg = WikiGenerator(source_type="test")
+
+    def tearDown(self):
+        self.wiki_dir_patcher.stop()
+        self.verify_patcher.stop()
+        self.vs_patcher.stop()
+        self.router_patcher.stop()
+        import core.wiki_generator as wg_mod
+        wg_mod.WIKI_DIR = self._orig_wiki_dir
+
+    def _read_fm(self, name: str, etype: str) -> dict:
+        path = self.wg.entity_path / etype / f"{name.lower()}.md"
+        text = path.read_text(encoding="utf-8")
+        body = text.split("---", 2)[1]
+        return yaml.safe_load(body)
+
+    def _stub_extract(self, extracted: dict):
+        self.wg._llm_extract_document_entities = (
+            lambda *a, **kw: extracted
+        )
+
+    @staticmethod
+    def _joby_nvidia_triple(label="관련", confidence=0.7):
+        return {
+            "entities": [
+                {"name": "Joby",   "type": "org",
+                 "description": "eVTOL maker"},
+                {"name": "NVIDIA", "type": "org",
+                 "description": "GPU maker"},
+            ],
+            "relations": [
+                {"source": "Joby", "target": "NVIDIA",
+                 "label": label, "confidence": confidence},
+            ],
+        }
+
+    def test_second_doc_appends_sources_to_existing_entity(self):
+        # doc1 — Joby/NVIDIA 신규 생성
+        self._stub_extract(self._joby_nvidia_triple(confidence=0.7))
+        self.wg.process_document_for_entities(
+            filename="doc1.md", content="d1", chunk_ids=["c1"],
+        )
+        joby_fm = self._read_fm("Joby", "org")
+        rels1 = [r for r in joby_fm["relations"]
+                 if r.get("target") == "NVIDIA"]
+        self.assertEqual(len(rels1), 1)
+        self.assertEqual(len(rels1[0]["sources"]), 1,
+            "first doc -> single source")
+
+        # doc2 — 같은 (Joby, NVIDIA) triple. 디자인 메모 §4 명세대로
+        # 기존 relation 의 sources 에 append 되어야 함.
+        self._stub_extract(self._joby_nvidia_triple(confidence=0.7))
+        self.wg.process_document_for_entities(
+            filename="doc2.md", content="d2", chunk_ids=["c2"],
+        )
+        joby_fm = self._read_fm("Joby", "org")
+        rels2 = [r for r in joby_fm["relations"]
+                 if r.get("target") == "NVIDIA"]
+        self.assertEqual(len(rels2), 1,
+            "두 번째 doc 가 새 relation 행을 추가하면 안 됨 — 기존에 append")
+        self.assertEqual(len(rels2[0]["sources"]), 2,
+            "두 doc 의 sources 가 누적되어야 (이전 버그: 1개에 머무름)")
+        # 각 source 의 doc_id 가 서로 달라야
+        doc_ids = {s["doc_id"] for s in rels2[0]["sources"]}
+        self.assertEqual(len(doc_ids), 2,
+            "두 doc 의 doc_id 가 distinct 해야")
+
+    def test_second_doc_inverse_also_aggregates(self):
+        # doc1
+        self._stub_extract(self._joby_nvidia_triple(confidence=0.7))
+        self.wg.process_document_for_entities(
+            filename="doc1.md", content="d1", chunk_ids=["c1"],
+        )
+        # doc2
+        self._stub_extract(self._joby_nvidia_triple(confidence=0.7))
+        self.wg.process_document_for_entities(
+            filename="doc2.md", content="d2", chunk_ids=["c2"],
+        )
+
+        # NVIDIA 의 inverse relation (-> Joby) 도 2 sources 가 되어야 함.
+        # 한쪽만 누적되면 graph 의 양방향 confidence drift 발생.
+        nv_fm = self._read_fm("NVIDIA", "org")
+        inv = [r for r in nv_fm["relations"]
+               if r.get("target") == "Joby"]
+        self.assertEqual(len(inv), 1)
+        self.assertEqual(len(inv[0]["sources"]), 2,
+            "inverse direction 도 cross-doc aggregation 대상")
+        roles = {s["role"] for s in inv[0]["sources"]}
+        self.assertEqual(roles, {INVERSE_SOURCE_ROLE},
+            "inverse 의 sources 는 모두 role=inverse 여야")
+
+    def test_confidence_uses_noisy_or_after_two_sources(self):
+        """2 sources × 0.7 의 결과가 noisy-OR (≈0.91) 인지 검증.
+
+        이전 clamped sum 버그 시점이었으면 1.0 이 나옴. 본 테스트는
+        noisy-OR 핫픽스 (PR #349) 와 cross-doc 핫픽스 (본 PR) 의
+        조합이 정확히 정합한 confidence 를 derive 하는지의 게이트.
+        """
+        self._stub_extract(self._joby_nvidia_triple(confidence=0.7))
+        self.wg.process_document_for_entities(
+            filename="doc1.md", content="d1", chunk_ids=["c1"],
+        )
+        self._stub_extract(self._joby_nvidia_triple(confidence=0.7))
+        self.wg.process_document_for_entities(
+            filename="doc2.md", content="d2", chunk_ids=["c2"],
+        )
+
+        joby_fm = self._read_fm("Joby", "org")
+        rel = [r for r in joby_fm["relations"]
+               if r.get("target") == "NVIDIA"][0]
+        # noisy-OR: 1 - (1-0.7)*(1-0.7) = 1 - 0.09 = 0.91
+        self.assertAlmostEqual(rel["confidence"], 0.91, places=2)
+        self.assertLess(rel["confidence"], 1.0,
+            "clamped sum 회귀라면 1.0 이 나옴")
+
+    def test_same_doc_reupload_is_idempotent(self):
+        """동일 doc_id (= 동일 filename) 의 재처리는 source 안 늘림."""
+        self._stub_extract(self._joby_nvidia_triple(confidence=0.7))
+        self.wg.process_document_for_entities(
+            filename="doc1.md", content="d1", chunk_ids=["c1"],
+        )
+        # 같은 filename 으로 한 번 더 — Phase D modify cascade 의 fallback
+        # 또는 운영자 실수 시나리오.
+        self._stub_extract(self._joby_nvidia_triple(confidence=0.7))
+        self.wg.process_document_for_entities(
+            filename="doc1.md", content="d1", chunk_ids=["c1"],
+        )
+
+        joby_fm = self._read_fm("Joby", "org")
+        rel = [r for r in joby_fm["relations"]
+               if r.get("target") == "NVIDIA"][0]
+        self.assertEqual(len(rel["sources"]), 1,
+            "same doc_id 가 두 번 contribute 하면 안 됨 (idempotent)")
+
+    def test_second_doc_new_target_appends_new_relation(self):
+        """doc2 가 doc1 에 없던 (Joby, Microsoft) triple 도 가져오면
+        Joby 의 frontmatter 에 새 relation 행으로 추가되어야."""
+        self._stub_extract(self._joby_nvidia_triple(confidence=0.7))
+        self.wg.process_document_for_entities(
+            filename="doc1.md", content="d1", chunk_ids=["c1"],
+        )
+
+        # doc2: Joby + Microsoft (NVIDIA 는 등장 안 함)
+        self._stub_extract({
+            "entities": [
+                {"name": "Joby",      "type": "org", "description": ""},
+                {"name": "Microsoft", "type": "org", "description": ""},
+            ],
+            "relations": [
+                {"source": "Joby", "target": "Microsoft",
+                 "label": "관련", "confidence": 0.6},
+            ],
+        })
+        self.wg.process_document_for_entities(
+            filename="doc2.md", content="d2", chunk_ids=["c2"],
+        )
+
+        joby_fm = self._read_fm("Joby", "org")
+        targets = {r.get("target") for r in joby_fm["relations"]}
+        self.assertIn("NVIDIA",    targets, "doc1 의 NVIDIA 보존")
+        self.assertIn("Microsoft", targets, "doc2 의 새 target 추가")
+
+        ms_rel = [r for r in joby_fm["relations"]
+                  if r.get("target") == "Microsoft"][0]
+        self.assertEqual(len(ms_rel["sources"]), 1,
+            "새로 추가된 relation 은 doc2 source 만")
+
+
 if __name__ == "__main__":
     unittest.main()

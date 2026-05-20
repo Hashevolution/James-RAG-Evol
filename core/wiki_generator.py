@@ -639,7 +639,25 @@ class WikiGenerator:
 
             existing_id = self._find_existing_entity_id(name, etype)
             if existing_id:
-                print(f"[ENTITY-EXTRACT] '{name}' ({etype}) already exists -> skip")
+                # Cross-doc aggregation — docs/design/v0.3-knowledge-cascade.md
+                # §4 Phase B 의 "find_or_create_relation + sources.append".
+                # 이전 구현은 `continue` 로 두 번째 doc 의 강화를 통째로
+                # 버렸다 (Knowledge Cascade 핵심 가치 무효화). 이제 기존
+                # entity 의 frontmatter 에 새 doc 의 sources 만 누적 merge.
+                new_rels = self._build_entity_relations(
+                    name, extracted.get("relations", []),
+                    doc_id=doc_entity_id, ts=ingest_ts,
+                )
+                if new_rels:
+                    stats = self._merge_relations_into_existing_entity(
+                        existing_id, new_rels, doc_entity_id, ingest_ts,
+                    )
+                    print(f"[ENTITY-EXTRACT] '{name}' ({etype}) exists "
+                          f"-> merged sources={stats['sources_appended']} "
+                          f"new_rels={stats['relations_added']}")
+                else:
+                    print(f"[ENTITY-EXTRACT] '{name}' ({etype}) exists "
+                          f"-> no new triples in this doc")
                 name_to_id[name]   = existing_id
                 name_to_type[name] = etype
                 continue
@@ -877,6 +895,166 @@ class WikiGenerator:
         if inv_info and inv_info.get("label"):
             return inv_info["label"]
         return "관련"
+
+    def _merge_relations_into_existing_entity(
+        self,
+        entity_id:     str,
+        new_relations: List[Dict],
+        doc_id:        str,
+        ts:            str,
+    ) -> Dict[str, int]:
+        """기존 entity 의 frontmatter relations 에 새 doc 의 sources 누적 merge.
+
+        docs/design/v0.3-knowledge-cascade.md §4 Phase B 의
+        "find_or_create_relation + sources.append" 명세를 구현한다.
+
+        매칭 정책:
+          - 같은 (target_name, normalized_type) 쌍이면 → 기존 relation 의
+            sources 에 append (doc_id 중복은 skip — idempotent)
+          - 없으면 → 새 relation 행으로 추가 (target_id 는 UNRESOLVED,
+            resolve_pending_relations 가 추후 해소)
+
+        확신성 (confidence) 은 noisy-OR (`compute_confidence_from_sources`)
+        로 재 derive. 단조성 보장: source 추가하면 strictly 증가.
+
+        반환:
+            {"merged_into":      0 또는 1,
+             "sources_appended": int,  # 새로 추가된 source 개수
+             "relations_added":  int}  # 새 행으로 추가된 relation 개수
+        """
+        path = self.entity_id_index.get(entity_id)
+        if not path or not Path(path).exists():
+            return {"merged_into": 0, "sources_appended": 0,
+                    "relations_added": 0}
+
+        text = Path(path).read_text(encoding="utf-8")
+        if not text.startswith("---"):
+            return {"merged_into": 0, "sources_appended": 0,
+                    "relations_added": 0}
+        end = text.find("\n---", 4)
+        if end < 0:
+            return {"merged_into": 0, "sources_appended": 0,
+                    "relations_added": 0}
+        fm_raw = text[4:end].lstrip("\n")
+        body   = text[end + 4:].lstrip("\n")
+        try:
+            fm = yaml.safe_load(fm_raw) or {}
+        except yaml.YAMLError:
+            return {"merged_into": 0, "sources_appended": 0,
+                    "relations_added": 0}
+        if not isinstance(fm, dict):
+            return {"merged_into": 0, "sources_appended": 0,
+                    "relations_added": 0}
+
+        existing_rels = fm.get("relations") or []
+        if not isinstance(existing_rels, list):
+            existing_rels = []
+
+        # type 정규화 — 같은 의미의 label 이 다른 raw 표현으로 등장해도
+        # 매칭되도록. ontology 없으면 raw label 그대로 비교.
+        try:
+            from core.ontology import normalize_relation as _norm_rel
+        except Exception:
+            def _norm_rel(label):
+                return label
+
+        def _norm_type(rel: Dict) -> str:
+            t = rel.get("type")
+            if isinstance(t, str) and t:
+                return t
+            label = rel.get("label", "")
+            return _norm_rel(label) or label
+
+        sources_appended = 0
+        relations_added  = 0
+
+        for new_rel in new_relations:
+            if not isinstance(new_rel, dict):
+                continue
+            new_sources = new_rel.get("sources") or []
+            if not isinstance(new_sources, list) or not new_sources:
+                continue
+            new_target = new_rel.get("target")
+            if not new_target:
+                continue
+            new_type = _norm_type(new_rel)
+            if not new_type:
+                continue
+
+            match_idx = None
+            for i, er in enumerate(existing_rels):
+                if not isinstance(er, dict):
+                    continue
+                if er.get("target") != new_target:
+                    continue
+                if _norm_type(er) != new_type:
+                    continue
+                match_idx = i
+                break
+
+            if match_idx is not None:
+                er = existing_rels[match_idx]
+                existing_sources = er.get("sources") or []
+                if not isinstance(existing_sources, list):
+                    existing_sources = []
+                existing_doc_ids = {
+                    s.get("doc_id") for s in existing_sources
+                    if isinstance(s, dict) and s.get("doc_id")
+                }
+                for ns in new_sources:
+                    if not isinstance(ns, dict):
+                        continue
+                    ns_did = ns.get("doc_id")
+                    if ns_did and ns_did in existing_doc_ids:
+                        # 같은 doc 가 두 번 contribute — idempotent skip.
+                        # 실제 사용 trigger: doc 재업로드 (modify cascade
+                        # Phase D 가 별도로 처리하지만 안전망).
+                        continue
+                    existing_sources.append(ns)
+                    if ns_did:
+                        existing_doc_ids.add(ns_did)
+                    sources_appended += 1
+                er["sources"]    = existing_sources
+                er["confidence"] = compute_confidence_from_sources(
+                    existing_sources)
+            else:
+                # 기존에 없던 (target, type) — 새 행 추가. target_id 는
+                # UNRESOLVED 로 두고 resolve_pending_relations 가 다음
+                # ingest 또는 refresh 시점에 매칭. label 은 new_rel 의
+                # display label 보존.
+                added = {
+                    "target":      new_target,
+                    "target_id":   new_rel.get("target_id", "UNRESOLVED"),
+                    "target_type": new_rel.get("target_type", "concept"),
+                    "type":        new_type,
+                    "label":       new_rel.get("label", new_type),
+                    "confidence":  compute_confidence_from_sources(
+                                       new_sources),
+                    "sources":     list(new_sources),
+                }
+                existing_rels.append(added)
+                relations_added += 1
+
+        if sources_appended == 0 and relations_added == 0:
+            return {"merged_into": 0, "sources_appended": 0,
+                    "relations_added": 0}
+
+        fm["relations"]  = existing_rels
+        fm["updated_at"] = datetime.now().isoformat()
+
+        new_text = (
+            "---\n"
+            + yaml.dump(fm, allow_unicode=True, default_flow_style=False)
+            + "---\n\n"
+            + body
+        )
+        Path(path).write_text(new_text, encoding="utf-8")
+
+        return {
+            "merged_into":      1,
+            "sources_appended": sources_appended,
+            "relations_added":  relations_added,
+        }
 
     def _build_entity_relations(
         self,
