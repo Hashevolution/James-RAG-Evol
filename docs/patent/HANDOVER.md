@@ -3,26 +3,37 @@
 > 본 문서는 James-RAG-Evol의 한국 특허 출원 작업에 대한 전체 진행 상황 핸드오버입니다.
 > 새 대화 세션에서 본 파일 한 개만 읽으면 작업을 이어갈 수 있도록 설계되었습니다.
 >
-> **작성일**: 2026-05-09 (초판) / 2026-05-10 (2차 보강) / 2026-05-10 (skeleton 완성) / 2026-05-09 (메인 정합 정정) / **2026-05-19 (PAUSE 결정)**
-> **마지막 업데이트**: Knowledge Cascade 코딩 미완 — 출원 작업 일시 중단 결정
+> **작성일**: 2026-05-09 (초판) / 2026-05-10 (2차 보강) / 2026-05-10 (skeleton 완성) / 2026-05-09 (메인 정합 정정) / 2026-05-19 (PAUSE 결정) / **2026-05-20 (Pause 조건 1/3 해결 — noisy-OR 핫픽스)**
+> **마지막 업데이트**: Hotfix PR #349 (`b89c099`) 로 공식 ↔ 구현 일치 회복 + 7 invariant lock-in. Pause 유지 (남은 조건 2/3).
 
 ---
 
-## ⏸️ 0. PAUSE 상태 (2026-05-19, 현 시점)
+## ⏸️ 0. PAUSE 상태 (2026-05-19, 업데이트 2026-05-20)
 
-### 결정
-**특허 출원 작업 전체를 일시 중단.** Knowledge Cascade(STAGE 1B) 코딩이 진행 중이며, 핵심 공식이 안정화되지 않았음. 미완성 상태로 출원하면 "기재요건 불비" 거절 위험 + 정식 전환 시 무가치화 위험.
+### 현재 결정
+**출원 작업 일시 중단 유지**. 단, 핵심 약점이었던 공식 ↔ 구현 불일치는 **핫픽스 PR #349 (`b89c099`, 2026-05-20)로 해결됨**. Cascade Phase 안정성 + multi-source 데이터 누적 검증이 남음.
 
-### 발견된 핵심 이슈
-- `core/relations_schema.py:52-69` `compute_confidence_from_sources` 가 **`min(Σw_i, 1.0)` (clamped sum)** 으로 구현됨
-- 디자인 메모(`docs/design/v0.3-knowledge-cascade.md:121`) + STAGE 1B skeleton(§4.1, 청구항 1) 은 **`1 − Π(1 − w_i)` (noisy-OR)** 명시
-- → **명세서 ↔ 구현 불일치**. 출원 전 공식 확정 필수.
+### 핫픽스 결과 (2026-05-20)
+- `core/relations_schema.py:52` `compute_confidence_from_sources` → **noisy-OR `1 − Π(1 − w_i)` 로 정정**
+- 디자인 메모(`docs/design/v0.3-knowledge-cascade.md §3`) + STAGE 1B skeleton(§4.1, 청구항 1) 과 **3자 일치 회복**
+- **7 invariant 테스트 lock-in** (`tests/test_relations_schema.py`):
+  - `test_two_sources_diverge_from_clamped_sum` (smoking gun, regression 방지)
+  - `test_many_sources_asymptotic_not_saturated` (5×0.7=0.9976, 1.0 미만)
+  - `test_strong_corroboration_3_sources`
+  - `test_monotone_adding_source_strictly_increases`
+  - `test_monotone_removing_source_strictly_decreases`
+  - `test_weight_clamped_to_unit_interval`
+  - `test_single_source_returns_weight` (Phase A 마이그레이션 byte-identical 보장)
+- Production wiki dry-run: 278 files scanned, **multi-source relation 0건** → 핫픽스 영향 byte-identical (잠재 버그가 manifest되기 전 차단)
+- 2174 tests pass + STEP 7 bench OK
+- 매핑: `docs/patent/stage1b-invariant-claims-mapping.md` (7 invariant → 청구항 한정 매핑표)
 
 ### 재개 조건 (ALL of)
-1. ✅ Knowledge Cascade 코딩 완료 + 공식 확정 (noisy-OR / clamped sum / 기타 결정)
-2. ✅ `docs/design/v0.3-knowledge-cascade.md` 의 "Status: outline" → "Status: stable" 변경
-3. ✅ (선택) 두 공식 검증 결과 확보 (retrieval 품질 / saturation 분포)
-4. ✅ Show HN(2026-06-16) 직전이거나, 다른 강한 시점적 트리거 발생
+1. ✅ ~~Knowledge Cascade 코딩 완료 + 공식 확정~~ ← **핫픽스로 해결됨 (2026-05-20)**
+2. ⏳ Cascade Phase E (graph editor 수동 source append) 사용 빈도 → manual immunity 실증
+3. ⏳ 실제 multi-source 데이터 누적 (1~3개월) → Tier 3 검증 (STEP 7 baseline 재캡처)
+4. ✅ (선택) 두 공식 검증 결과 확보 — Tier 1 (수학적 invariant) 완료, Tier 2 (synthetic A/B) / Tier 3 (실제 데이터) 대기
+5. ⏳ Show HN(2026-06-16) 직전이거나, 다른 강한 시점적 트리거 발생
 
 ### 재개 시 첫 메시지 (복사용)
 ```
@@ -32,12 +43,14 @@ Cascade 코딩 정리 완료. 다음 파일 확인 후 출원 후보 재정리 �
 - docs/patent/HANDOVER.md (pause 결정 + 재개 조건 §0)
 - docs/patent/REVIEW-NOTES.md (선행기술 분석)
 - docs/patent/prior-art-1B.md (Google Patents 검색 결과)
+- docs/patent/stage1b-invariant-claims-mapping.md (7 invariant → 청구항 매핑)
 - docs/design/v0.3-knowledge-cascade.md (cascade 최종 설계)
 - core/cascade.py, core/relations_schema.py (실제 구현)
+- tests/test_relations_schema.py (7 invariant lock)
 
 작업 브랜치: claude/security-audit-LRxjo
 
-[구체 요청 — 예: "안정화된 공식으로 STAGE 1B skeleton 청구항 재작성"]
+[구체 요청 — 예: "안정화된 noisy-OR 공식 + 7 invariant 로 STAGE 1B 청구항 1~10 재작성"]
 ```
 
 ### Pause 중 보존 자산
@@ -46,16 +59,18 @@ Cascade 코딩 정리 완료. 다음 파일 확인 후 출원 후보 재정리 �
 | `strategy.md` | ✅ 유효 |
 | `REVIEW-NOTES.md` | ✅ 유효 |
 | `prior-art-1B.md` | ✅ Google Patents 검색 완료 (🔴=0, 🟠=2, 🟡=4, 🟢=8) |
-| 8개 stage skeleton | ⚠️ STAGE 1B만 공식 변경 시 §4.1/§6 수정 필요 |
-| `disclosure_log.txt` | ⚠️ Phase A-E 머지 (PR #266/269/270/274/271/273) 누락 — 재개 시 보강 |
+| `stage1b-invariant-claims-mapping.md` | ✅ **NEW** — 7 invariant → 청구항 매핑 (재개 시 즉시 사용) |
+| 8개 stage skeleton | ⚠️ STAGE 1B는 invariant 매핑 적용 시 §6 청구항 확장 가능 (skeleton 본문은 미수정) |
+| `disclosure_log.txt` | ✅ Phase A-E + Hotfix PR #349 commit 추가 완료 |
 
-### Grace Period 시계 (오늘 2026-05-19 기준)
+### Grace Period 시계 (오늘 2026-05-20 기준)
 | 후보 | Grace 만료 | 남은 일수 |
 |---|---|---|
-| STAGE 4A | 2027-05-03 | **349일** ⚠️ 가장 빠름 |
-| STAGE 1·2·3·4 | 2027-05-04 | 350일 |
-| STAGE 1A·1B (디자인) | 2027-05-08 | 354일 |
-| STAGE 1B (Phase D 구현) | 2027-05-13 | 359일 |
+| STAGE 4A | 2027-05-03 | **348일** ⚠️ 가장 빠름 |
+| STAGE 1·2·3·4 | 2027-05-04 | 349일 |
+| STAGE 1A·1B (디자인) | 2027-05-08 | 353일 |
+| STAGE 1B (Phase D 구현) | 2027-05-13 | 358일 |
+| STAGE 1B (Hotfix noisy-OR) | 2027-05-20 | 365일 |
 
 > ⚠️ **2026년 12월 ~ 2027년 1월** 까지 재개 결정 필수. 그 이후 grace 임박 시 압박 상승.
 
@@ -68,10 +83,11 @@ v0.3 platform skeleton 진행 중 새로 등장한 특허 후보 6건 (skeleton 
 - STAGE 9 — Schema v1.1 Catalog Context (PR #322)
 - STAGE 10 — Replay-able Audit Trace (PR #284/285, STAGE 4B 흡수 가능)
 
-### 전략 재평가 결과 (Pause 직전)
+### 전략 재평가 결과 (Pause 직전 + 핫픽스 후 보강)
 - **MIT + GitHub 공개**가 이미 defensive publication 80% 커버 — 출원의 한계효용 검토 필요
 - 권장 시나리오: 권고 B (선별 출원) — 안정된 STAGE 1 + 1A만 즉시, 나머지는 grace 활용
-- 현재는 STAGE 1B 출원도 보류 → Cascade 안정화 후 재평가
+- **핫픽스 후 STAGE 1B 출원 가치 상승**: 7 invariant 테스트 = 청구항 한정 직접 매핑 가능, 기재요건 불비 위험 0
+- 단, multi-source 실증 미완으로 정식 전환 시점은 1~3개월 뒤 권장
 
 ---
 

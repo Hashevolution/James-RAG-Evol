@@ -44,6 +44,10 @@ c538a3a7e07037dd8e530f054b73fd806f5be8a3 2026-05-14 feat(graph): Knowledge Casca
 fb31518a69f07bc7d09ca5a22a819b6d7602ac56 2026-05-14 feat(graph): Knowledge Cascade Phase E — graph editor backend (N-7) (#271)
 35e5837b27e5345e1dbc8e6cd6970013cd1b5c2a 2026-05-14 feat(graph): Knowledge Cascade Phase E UI — edge edit modal (N-7) (#273)
 
+# Hotfix — noisy-OR 공식 정정 (2026-05-20). 명세서 ↔ 구현 일치 회복.
+# 7 invariant 테스트 lock-in. Grace period 만료: 2027-05-20.
+b89c09917e4517f51db6f9382cdbd3b3c20eb579 2026-05-20 fix(graph): confidence noisy-OR per design memo §3 (was clamped sum) (#349)
+
 # === STAGE 5 (신규) — Reasoning Backend Plugin (2026-05-19 추가) ===
 # v0.3 platform skeleton 진행 중 새로 등장한 특허 후보. skeleton 미작성.
 # trace_schema MVP + 12 LLM site wiring + replay_trace 의 3 PR이 핵심.
