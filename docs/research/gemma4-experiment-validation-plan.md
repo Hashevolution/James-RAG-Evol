@@ -20,6 +20,52 @@
 
 ## 0. TL;DR
 
+### 0.0 — 2026-05-21 update (after Ali Afana walk-back)
+
+**SMOKING GUN — hypothesis space compressed.** Ali Afana's
+single-variable test (`max_tokens` 400 → 4096, 12/12 Gemini Dense
+recovery, see `reports/promo-assets/gemma4-e4b-cognitive-stages-eval.md`
+§"Reader contributions") plus a code audit of JAMES's per-stage
+`DEFAULT_MAX_TOKENS` constants reveals:
+
+| Stage (failed on `gemma4:e4b` in 2026-05-18 eval) | File:line | Default |
+|---|---|---:|
+| `query_rewrite` | `core/retrieval/query_rewriter.py:46` | **200** |
+| `plan.decompose` | `core/reasoning/planner.py:43` | **400** |
+| `reflect.critique` | `core/reasoning/reflect.py:54` | **400** |
+| `verify.fact_check` | `core/reasoning/verify.py:69` | **400** |
+
+Three of four sit at exactly Ali's failing cap (400); query_rewriter
+is tighter at 200. Stages this report tabled as *succeeding*
+(`synth.rag`, entity extract) use `num_predict=8192` (default in
+`gemma_client.py:253`) or `max_tokens=1500` (extraction). The
+correlation is 1:1.
+
+**Hypothesis re-weighting**:
+
+- **B (token budget)** — promoted to **dominant suspect** (~70% weight).
+  Ali's 12/12 + JAMES's 4/4 stage-cap alignment is the strongest
+  available cross-validation. Robin Converse's uncapped Ollama
+  baseline (cited in Ali's article) is the third deployment context.
+- **A (4B floor)** — **weakened** to ~30% weight. Gemini 31B Dense
+  also failed under the cap; capacity-floor framing is no longer
+  monotone in parameter count.
+- **C, D** — unchanged.
+- **E** (`<think>`-strip, this doc §3) — unchanged; covers the 0-byte
+  at <5s sub-mode that B-budget doesn't.
+
+**Headline experiment is now V3'** (this doc §4.3) — JAMES-side
+replication of Ali's single-variable test on the four cognitive
+stages. Expected runtime ~20 min. Decision tree below.
+
+V1 + V6 + V7 remain valuable but **deferred until V3' reports** —
+their conclusions branch differently depending on whether B-budget
+is confirmed in the JAMES context.
+
+---
+
+### 0.1 — Original TL;DR
+
 The existing 5-experiment runbook is structurally sound (each
 experiment maps to one hypothesis, each has a decision tree), but
 joint reading of the 4 artefacts above surfaces **6 methodology
@@ -232,39 +278,91 @@ comparison points.
 
 **Expected runtime**: ~12 min total.
 
-### 4.3 V3 — num_predict + temperature combo (3 sub-runs, n=20 each)
+### 4.3 V3' — JAMES per-stage cap replication (PRIORITY 1)
 
-**Refines**: ε + adds temperature axis.
-**Hypothesis**: B (does forcing budget / determinism move the
-needle?).
-**Sub-runs**:
-- V3.a: num_predict=1024, temp=0.2 (original ε)
-- V3.b: num_predict=512, temp=0.0 (low-budget + deterministic)
-- V3.c: num_predict=2048, temp=0.2 (max-out budget)
+**Refines**: ε + integrates the 2026-05-21 Ali walk-back finding.
+**Status**: promoted to top priority (see §0.0).
 
-**Note**: `gemma_client.py:253` already defaults to 8192 num_predict
-— so the "empty" responses **cannot** be num_predict-limited at
-the JAMES layer. V3 should call Ollama HTTP directly (bypassing
-the JAMES wrapper) to test whether *Ollama's own* budget
-interpretation matters for empty-immediate vs empty-truncated
-sub-modes. Sketch:
+**Hypothesis tested**: B-budget — does raising the per-stage cap
+recover the failing cognitive stages on `gemma4:e4b`?
 
-```python
-# tmp/pr-11b-verify/direct_ollama.py — bypasses gemma_client.py
-import requests, json
-resp = requests.post(
-    "http://127.0.0.1:11434/api/generate",
-    json={"model": "gemma4:e4b", "prompt": PROMPT, "stream": False,
-          "options": {"num_predict": 1024, "temperature": 0.0}},
-)
-print(resp.json())   # captures done_reason verbatim
-```
+**Why this matters**: `gemma_client.py:253` defaults to
+`num_predict=8192` when no explicit `max_tokens` is passed, but
+every failing stage in the 2026-05-18 eval calls the router with
+an explicit per-stage default well below that (200–400). Ali's
+external single-variable test on Gemini Dense recovered 12/12 at
+400→4096. JAMES's defaults sit at exactly the failing cap. **The
+clean test is to re-run the same 2026-05-18 query with the
+per-stage caps lifted, one variable at a time.**
 
-**Decision tree splits by sub-mode** (from V6):
-- empty-immediate rate unchanged across all 3 → B-immediate ruled out
-- empty-truncated rate drops at V3.c → B-budget confirmed
-- success rate jumps at V3.b (temp=0) → determinism helps; sampling
-  was hurting
+**Setup**:
+
+| Stage | File:line | Current default | Lifted value |
+|---|---|---:|---:|
+| `query_rewrite` | `core/retrieval/query_rewriter.py:46` | 200 | 4096 |
+| `plan.decompose` | `core/reasoning/planner.py:43` | 400 | 4096 |
+| `reflect.critique` | `core/reasoning/reflect.py:54` | 400 | 4096 |
+| `verify.fact_check` | `core/reasoning/verify.py:69` | 400 | 4096 |
+
+Query: `BlackRock 과 Vanguard 의 ETF 전략 차이를 비교해줘` (same as
+the 2026-05-18 eval).
+Model: `gemma4:e4b`. Temperature: 0.2 (unchanged from eval).
+n=10 per stage. Stage isolation: lift one stage's cap at a time,
+hold the other three at defaults, to attribute recovery per stage.
+
+**Implementation**: bypass JAMES default constants by passing
+explicit `max_tokens=4096` at the stage's call site, or set the
+constant locally for the run. Driver should record per-call
+`(elapsed_s, response_bytes, ollama_done_reason, parse_ok)` per
+V6 instrumentation.
+
+**Decision tree**:
+
+- **All four stages recover (≥9/10 success each)** → B-budget
+  confirmed in JAMES context. Cross-validates Ali's Gemini finding.
+  → **4-line PR** bumping the four `DEFAULT_MAX_TOKENS` constants,
+    with STEP 7 bench numbers per CLAUDE.md rule #2.
+  → Update `gemma4-e4b-cognitive-stages-eval.md` operational
+    recommendation: `JAMES_LLM_MODEL=gemma4:e4b` becomes safe again
+    *with* the cap fix.
+  → Mark hypothesis A weakened; V1 / V2 deprioritised.
+
+- **Partial recovery (1–3 of 4 stages)** → B-budget is one variable
+  but not the only one. The non-recovering stages need stage-specific
+  analysis (likely E for 0-byte at <5s, or A-flavor for token-shape).
+  → Bump only the recovering stages' caps. Per-stage `JAMES_LLM_MODEL_META`
+    option (handover Hypothesis A response, "Option A2") opens for
+    the rest.
+  → V1 + V6 + V7 + V8 run for the residual cases.
+
+- **No recovery (0 of 4 stages improve)** → B-budget ruled out in
+  JAMES context (would contradict Ali's Gemini finding — interesting
+  itself).
+  → Run V8 (`<think>`-strip bypass) immediately — likely E dominant.
+  → V1 + V6 + V7 follow for capacity / sampling analysis.
+
+**Expected runtime**: ~20 min sequential (4 stages × 10 calls × ~15s).
+
+**Also run as a follow-up V3'.b (after V3'.a)** — extraction prompt
+budget test on the α-experiment driver:
+- `max_tokens=1500 → 4096` on `_llm_extract_document_entities`
+  (`core/wiki_generator.py:916`).
+- Same 219-char Korean doc, n=10.
+- Tests whether the α-experiment's 60% empty rate also has a
+  cap-budget component despite the higher default (1500).
+- Result feeds into the PR-11b operational recommendation update.
+
+**Companion experiment (original ε kept for reference)**:
+
+Once V3' lands a verdict, the original ε design (num_predict +
+temperature combo) becomes the **mechanism deepening** — testing
+whether the recovery is genuinely token-budget or implicit
+temperature-mediated. Sub-runs:
+- V3'.c: num_predict=4096, temp=0.0 (determinism check)
+- V3'.d: num_predict=4096, temp=0.7 (sampling diversity check)
+
+These are only worth running if V3'.a confirms partial or full
+recovery — they sharpen the explanation, not the existence.
 
 ### 4.4 V4 — Length / type isolation (3 variants, n=15 each)
 

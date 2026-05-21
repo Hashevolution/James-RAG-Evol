@@ -208,6 +208,49 @@ If you publish your own numbers (X / GitHub issue / Reddit), please tag `#JAMES`
 
 ---
 
+## Reader contributions
+
+> This section is append-only — never edit prior entries.
+> Routing protocol: `docs/handovers/v0.3.x-gemma4-feedback-track.md`.
+
+### 2026-05-21 — Ali Afana (dev.to Write-track follow-up)
+
+**Reporter**: Ali Afana ([@alimafana](https://dev.to/alimafana), Provia founder, dev.to Featured)
+**Permalink**: https://dev.to/alimafana/i-raised-gemma-4s-token-cap-the-dense-model-stopped-refusing-2gf3 (publication imminent; preview reviewed 2026-05-21)
+**Hypothesis they support / refute**: **B (token budget) — confirming**
+
+**Verbatim quote**:
+> ... my `max_tokens: 400` cap was starving Gemma's reasoning layer before the visible reply completed. I re-ran the same six scenarios with one variable changed — budget raised from 400 to 4096. Dense recovered on every scenario, including the false-refusal headline that anchored the original article. ... The cap was doing the work. Walking it back publicly.
+
+Twelve calls, single variable changed. Gemini 31B Dense + 26B MoE both 12/12 recovery.
+
+**Decoded relevance to this report**:
+
+Walk-back maps 1:1 onto JAMES's per-stage `DEFAULT_MAX_TOKENS` defaults:
+
+| Stage (failed on `gemma4:e4b` in this report) | File:line | Default |
+|---|---|---:|
+| `query_rewrite` | `core/retrieval/query_rewriter.py:46` | **200** |
+| `plan.decompose` | `core/reasoning/planner.py:43` | **400** |
+| `reflect.critique` | `core/reasoning/reflect.py:54` | **400** |
+| `verify.fact_check` | `core/reasoning/verify.py:69` | **400** |
+
+Three of four sit at exactly Ali's failing threshold (400); query_rewriter is tighter still (200). The cognitive-stages eval's "empty response" finding (5/6 stages) is consistent with the cap being the dominant variable, not a 4B-parameter capacity floor.
+
+**Project response**:
+
+- **V3' (token-budget replication)** queued for 2026-05-21 week — re-run the same Korean retrieval query (`BlackRock 과 Vanguard 의 ETF 전략 차이를 비교해줘`) with `max_tokens` 400 → 4096 on those 4 stages, n=10 per stage, on `gemma4:e4b`. Driver lives in `tmp/pr-11b-verify/`. Decision tree: see `docs/research/gemma4-experiment-validation-plan.md` §4.3.
+- **If V3' confirms hypothesis B**: 4-line PR bumping the four `DEFAULT_MAX_TOKENS` constants (200 → 4096 / 400 → 4096 × 3). STEP 7 bench numbers in the PR description per CLAUDE.md rule #2. Operational recommendation in this report updated accordingly.
+- **Cross-validation context**: Ali's article cites Robin Converse (Triava Labs, sovereign Ollama, uncapped sweep, 100% MoE success) as the original walk-back trigger. With our defaults: **three independent deployment contexts** (Robin's sovereign Ollama / Ali's managed Gemini API / JAMES's local Ollama) point at the same cap-pathology pattern, **before any cross-experiment swap runs** (Track 3 of `docs/handovers/v0.3.x-ali-collaboration-track.md`).
+- **Outgoing**: 2026-05-21 LinkedIn DM acknowledged the walk-back, confirmed the two mention framings in the article preview, shared the JAMES per-stage default mapping (so Ali can incorporate it pre-publish if he chooses), and re-confirmed the Track 3 mid-June calendar.
+
+**Notes**:
+
+- Ali's walk-back is the **first substantive Reader contribution** since this report was published 2026-05-18. The routing matrix in the feedback-track handover (Hypothesis B → "Patch `core/gemma_client.py` to log raw Ollama response... + per-stage `num_predict` overrides per stage if a single setting fixes it") is the immediate project response shape; V3' is the falsification check on it.
+- The α-experiment (2026-05-21, wiki extraction at `max_tokens=1500`) is a related but separate test — its budget (1500) is well above Ali's failing threshold (400), so a separate V3' variant (1500 → 4096) tests whether the extraction prompt's empty rate is also cap-driven or a different mechanism.
+
+---
+
 ## 한국어 요약 (Korean summary)
 
 자메스 v0.3 의 Cognitive Layer 5 stage 검증 중 `gemma4:e4b` (4 B) 가 메타-task 5 개에서 빈 응답:
