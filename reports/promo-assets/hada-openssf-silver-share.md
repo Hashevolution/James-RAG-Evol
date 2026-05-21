@@ -9,8 +9,10 @@
 ## 외부 링크 URL (velog 발행 후 채워서 투고)
 
 ```
-<velog 글 URL — 발행 후 채울 자리>
+https://velog.io/@hashevolution/%EC%86%94%EB%A1%9C-%EB%A9%94%EC%9D%B8%ED%85%8C%EC%9D%B4%EB%84%88%EA%B0%80-OpenSSF-%EC%8B%A4%EB%B2%84%EC%97%90-%EB%8F%84%EC%A0%84%ED%95%98%EB%8A%94-6%EC%A3%BC-%EC%96%B4%EC%8A%88%EC%96%B4%EB%9F%B0%EC%8A%A4-%EC%BC%80%EC%9D%B4%EC%8A%A4-%EC%9E%91%EC%84%B1%EA%B8%B0
 ```
+
+velog 발행 일자: 2026-05-21
 
 대체 후보 (velog 글 외부 페이지가 너무 안 열리는 환경 대비):
 ```
@@ -82,7 +84,7 @@ SHOULD criterion justification) 을 얹는 방식** 으로 해당 항목을 met
 
 ## 링크
 
-- 본문 (velog): <velog URL — 발행 후 채울 자리>
+- 본문 (velog): https://velog.io/@hashevolution/%EC%86%94%EB%A1%9C-%EB%A9%94%EC%9D%B8%ED%85%8C%EC%9D%B4%EB%84%88%EA%B0%80-OpenSSF-%EC%8B%A4%EB%B2%84%EC%97%90-%EB%8F%84%EC%A0%84%ED%95%98%EB%8A%94-6%EC%A3%BC-%EC%96%B4%EC%8A%88%EC%96%B4%EB%9F%B0%EC%8A%A4-%EC%BC%80%EC%9D%B4%EC%8A%A4-%EC%9E%91%EC%84%B1%EA%B8%B0
 - GitHub: https://github.com/Hashevolution/James-RAG-Evol
 - OpenSSF 페이지 (현재 passing 뱃지, silver 진척 ~133%):
   https://www.bestpractices.dev/projects/12806
