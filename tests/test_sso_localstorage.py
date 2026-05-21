@@ -32,6 +32,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ROOT = Path(__file__).resolve().parent.parent
 CHAT_JS  = ROOT / "frontend" / "static" / "chat.js"
 ADMIN_JS = ROOT / "frontend" / "static" / "admin.js"
+# PR #372 (UI-IA Phase 2) extracted the login flow into `auth.js` so
+# the shared module owns the actual `localStorage.setItem` writes.
+# doLogin / doAdminLogin now delegate via `Auth.login()`. Tests that
+# pinned the writes inside the chat / admin function bodies are split
+# into a "caller delegates" check + an "auth.js writes" check.
+AUTH_JS  = ROOT / "frontend" / "static" / "auth.js"
 
 
 class StorageBackendTests(unittest.TestCase):
@@ -152,32 +158,45 @@ class CrossTabSyncTests(unittest.TestCase):
 
 
 class LoginPersistenceTests(unittest.TestCase):
-    """doLogin / doAdminLogin write to localStorage so other tabs see it."""
+    """Login writes to localStorage so other tabs see it.
+
+    Post-#372: the actual `localStorage.setItem` writes happen
+    inside `Auth.login()` (auth.js). doLogin / doAdminLogin
+    delegate via `Auth.login(...)`. The SSO invariant is still
+    pinned end-to-end — we just check both halves explicitly.
+    """
 
     @classmethod
     def setUpClass(cls):
         cls.chat = CHAT_JS.read_text(encoding="utf-8")
         cls.admin = ADMIN_JS.read_text(encoding="utf-8")
+        cls.auth = AUTH_JS.read_text(encoding="utf-8")
 
-    def test_chat_doLogin_writes_localstorage(self):
+    def test_chat_doLogin_delegates_to_auth(self):
         idx = self.chat.index("async function doLogin")
         end = self.chat.index("function logout", idx)
         body = self.chat[idx:end]
-        self.assertIn("localStorage.setItem('james_token'", body,
-            "doLogin must persist token to localStorage")
-        self.assertIn("localStorage.setItem('james_role'", body,
-            "doLogin must persist role to localStorage")
+        self.assertIn("Auth.login(", body,
+            "doLogin must call Auth.login() (the shared module that "
+            "owns the localStorage write — PR #372)")
 
-    def test_admin_doAdminLogin_writes_localstorage(self):
+    def test_admin_doAdminLogin_delegates_to_auth(self):
         idx = self.admin.index("async function doAdminLogin")
-        # Bound at next async function or function decl.
         m = re.search(r"\n(async )?function\s+\w+\s*\(", self.admin[idx + 1:])
         end = idx + 1 + m.start() if m else idx + 3000
         body = self.admin[idx:end]
-        self.assertIn("localStorage.setItem('james_token'", body,
-            "doAdminLogin must persist token to localStorage for SSO")
-        self.assertIn("localStorage.setItem('james_role'", body,
-            "doAdminLogin must persist role to localStorage")
+        self.assertIn("Auth.login(", body,
+            "doAdminLogin must call Auth.login() (the shared module "
+            "that owns the localStorage write — PR #372)")
+
+    def test_auth_login_writes_token_to_localstorage(self):
+        # The actual write — moved out of doLogin / doAdminLogin in
+        # PR #372 and now lives once in the shared helper.
+        self.assertIn("localStorage.setItem('james_token'", self.auth,
+            "auth.js (Auth.login) must persist token to localStorage "
+            "for cross-tab SSO")
+        self.assertIn("localStorage.setItem('james_role'", self.auth,
+            "auth.js (Auth.login) must persist role to localStorage")
 
 
 class LogoutClearsBothTests(unittest.TestCase):

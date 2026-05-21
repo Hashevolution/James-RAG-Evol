@@ -142,46 +142,74 @@ class ProgressEndpointTests(unittest.TestCase):
 
 
 class FrontendPollingTests(unittest.TestCase):
+    """Post-#372 (UI-IA Phase 2): the polling machinery (setInterval,
+    /admin/llm/install-progress fetch, p.done check, timer teardown)
+    moved out of chat.js's `triggerModelInstall` and into the shared
+    `LlmInstall.start(...)` controller in `llm-install.js`.
+
+    chat.js now keeps only the button-render layer and delegates HTTP
+    via the controller. The original behavioural contract is still
+    pinned — but checked across two files.
+    """
+
     @classmethod
     def setUpClass(cls):
         cls.js = (ROOT / "frontend" / "static" / "chat.js").read_text(encoding="utf-8")
+        cls.install_js = (
+            ROOT / "frontend" / "static" / "llm-install.js"
+        ).read_text(encoding="utf-8")
 
     def test_poll_helper_present(self):
-        self.assertIn("function _pollInstallProgress", self.js,
-            "polling helper missing")
-        self.assertIn("/admin/llm/install-progress", self.js,
-            "must hit the progress endpoint")
+        # The "function _pollInstallProgress" symbol was the helper
+        # before the extraction; now the controller IIFE exposes
+        # LlmInstall.start with a `tick` closure that owns the same
+        # behaviour. Either form satisfies "polling helper present".
+        self.assertTrue(
+            "LlmInstall = { start }" in self.install_js
+            or "LlmInstall.start" in self.install_js,
+            "llm-install.js must export LlmInstall.start as the shared "
+            "polling helper",
+        )
+        self.assertIn("/admin/llm/install-progress", self.install_js,
+            "llm-install.js must hit the progress endpoint")
 
     def test_poll_uses_setInterval(self):
+        # The interval lives in llm-install.js now.
+        self.assertIn("setInterval", self.install_js,
+            "llm-install.js must poll on an interval")
+        # chat.js still must keep a controller handle so the page
+        # can stop polling (button removed, mode picker reload, etc.).
         idx = self.js.index("async function triggerModelInstall")
         m = re.search(r"\nasync function|\nfunction\s+\w+\s*\(", self.js[idx + 1:])
         end = idx + 1 + m.start() if m else idx + 4500
         body = self.js[idx:end]
-        self.assertIn("setInterval", body,
-            "must poll on an interval (every 2.5s)")
-        # Non-blocking — interval doesn't await per tick.
-        self.assertIn("_installPollTimer", body,
-            "must store the timer handle so it can be cleared on success/failure")
+        self.assertIn("_installController", body,
+            "chat.js must hold the LlmInstall controller handle so it "
+            "can call .stop() on success/failure/teardown")
 
     def test_poll_clears_on_done(self):
-        idx = self.js.index("function _pollInstallProgress")
-        m = re.search(r"\nasync function|\nfunction\s+\w+\s*\(", self.js[idx + 1:])
-        end = idx + 1 + m.start() if m else idx + 4500
-        body = self.js[idx:end]
-        self.assertIn("p.done", body,
-            "must check the done flag")
-        self.assertIn("_stopInstallPoll", body,
-            "must call _stopInstallPoll on success/failure")
+        # done-handling now lives in llm-install.js's tick; chat.js
+        # plugs in via onDone callback.
+        self.assertIn("p.done", self.install_js,
+            "llm-install.js must check the done flag from progress endpoint")
+        self.assertIn("clearInterval", self.install_js,
+            "llm-install.js must clear the interval on done/error")
+        idx = self.js.index("async function triggerModelInstall")
+        body = self.js[idx:idx + 3000]
+        self.assertIn("onDone", body,
+            "chat.js must wire an onDone callback into LlmInstall.start")
 
     def test_poll_updates_button_label(self):
-        idx = self.js.index("function _pollInstallProgress")
+        # The live label update is in the chat.js onProgress callback.
+        idx = self.js.index("async function triggerModelInstall")
         body = self.js[idx:idx + 3000]
-        # Live progress label.
+        self.assertIn("onProgress", body,
+            "chat.js must wire an onProgress callback into LlmInstall.start")
         self.assertIn("p.percent", body,
-            "must read percent from response")
+            "chat.js onProgress must read percent from the callback payload")
         self.assertIn("⏳", body)
         self.assertIn("✅", body,
-            "must flip to ✅ when done")
+            "chat.js must flip to ✅ when LlmInstall.start onDone fires")
 
     def test_confirm_message_mentions_navigation(self):
         # User wants explicit confirmation that navigation is OK during install.
