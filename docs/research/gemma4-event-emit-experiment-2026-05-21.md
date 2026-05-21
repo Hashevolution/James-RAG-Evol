@@ -192,6 +192,13 @@ vs long unstructured), not domain-dependent.
 
 ## 7. What this experiment does NOT settle
 
+**See also**: `docs/research/gemma4-next-experiments-plan.md` —
+ranks the 5 follow-ups below by info-per-effort, gives runnable
+specs (decision trees + commands + result-reporting template).
+A future session can pick the cheapest experiment (β — gemma3:12b
+n=10 control) and ship a result in ~5 min without re-reading this
+memo.
+
 For future model researchers continuing this thread:
 
 - **`gemma3:12b` reliability** — we have 1 successful extraction (the
