@@ -251,6 +251,13 @@ const TRANSLATIONS = {
 
     'memory.longterm_title': 'Long-term memory (session summaries)',
     'memory.session_list':   'Session list',
+    'memory.feedback_title': '📊 User feedback aggregate',
+    'mem.feedback_total':    'Total signals',
+    'mem.feedback_positive': 'Positive',
+    'mem.feedback_negative': 'Negative',
+    'mem.feedback_ratio':    'Positive ratio',
+    'mem.feedback_tracked':  'Tracked directions',
+    'mem.feedback_no_signal': '(no signal yet)',
     'session.id':            'Session ID',
     'session.turns':         'Turns',
 
@@ -860,6 +867,13 @@ const TRANSLATIONS = {
 
     'memory.longterm_title': '장기 기억 (세션 요약)',
     'memory.session_list':   '세션 목록',
+    'memory.feedback_title': '📊 사용자 피드백 집계',
+    'mem.feedback_total':    '총 신호',
+    'mem.feedback_positive': '긍정',
+    'mem.feedback_negative': '부정',
+    'mem.feedback_ratio':    '긍정 비율',
+    'mem.feedback_tracked':  '추적 중인 방향',
+    'mem.feedback_no_signal': '(신호 없음)',
     'session.id':            '세션 ID',
     'session.turns':         '대화 수',
 

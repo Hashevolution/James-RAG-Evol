@@ -1396,11 +1396,82 @@ async function loadMemory() {
     await loadLongTerm();
     // 세션 목록
     await loadSessions();
+    // 사용자 피드백 집계 (UI_API_MAPPING §3.2 — last risk-#1 orphan).
+    // Best-effort: a failure here must not blank the surrounding
+    // Memory tab UI; render an inline error and keep going.
+    try { await loadFeedbackStats(); } catch (e) { console.warn('feedback-stats:', e); }
 
   } catch (e) {
     document.getElementById('memory-cards').innerHTML =
       `<div class="empty">${e.message}</div>`;
   }
+}
+
+/* ── /feedback/stats/ 4-stat strip (UI_API_MAPPING risk #1 last row).
+   The endpoint is admin.evolution-gated and returns
+     { total, positive, negative, tracked_directions }
+   from the running FeedbackEngine. Lives inside Memory tab so an
+   operator sees feedback signal alongside the long-term + sessions
+   inventory. */
+async function loadFeedbackStats() {
+  const root = document.getElementById('feedback-stats-card');
+  if (!root) return;
+  let data;
+  try {
+    data = await api('/feedback/stats/');
+  } catch (e) {
+    root.innerHTML = `<div style="color:var(--danger);font-size:12px">
+      ${_escHtml(String(e.message || e))}</div>`;
+    return;
+  }
+  if (data && data.error) {
+    root.innerHTML = `<div style="color:var(--danger);font-size:12px">
+      ${_escHtml(String(data.error))}</div>`;
+    return;
+  }
+  // Compute helpful derived metric: positive ratio. Defensive on
+  // zero-total to avoid NaN.
+  const total = Number(data && data.total) || 0;
+  const pos   = Number(data && data.positive) || 0;
+  const neg   = Number(data && data.negative) || 0;
+  const dirs  = Number(data && data.tracked_directions) || 0;
+  const ratio = total > 0 ? Math.round((pos / total) * 100) : null;
+  const ratioLabel = ratio === null
+    ? (t('mem.feedback_no_signal') || '(no signal yet)')
+    : `${ratio}%`;
+
+  root.innerHTML = `
+    <div>
+      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px">
+        <span data-i18n="mem.feedback_total">Total signals</span>
+      </div>
+      <div style="color:var(--text);font-size:18px;font-weight:600;margin-top:2px">${total}</div>
+    </div>
+    <div>
+      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px">
+        <span data-i18n="mem.feedback_positive">Positive</span>
+      </div>
+      <div style="color:var(--success);font-size:18px;font-weight:600;margin-top:2px">${pos}</div>
+    </div>
+    <div>
+      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px">
+        <span data-i18n="mem.feedback_negative">Negative</span>
+      </div>
+      <div style="color:var(--danger);font-size:18px;font-weight:600;margin-top:2px">${neg}</div>
+    </div>
+    <div>
+      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px">
+        <span data-i18n="mem.feedback_ratio">Positive ratio</span>
+      </div>
+      <div style="color:var(--accent);font-size:18px;font-weight:600;margin-top:2px">${_escHtml(ratioLabel)}</div>
+    </div>
+    <div>
+      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px">
+        <span data-i18n="mem.feedback_tracked">Tracked directions</span>
+      </div>
+      <div style="color:var(--text);font-size:18px;font-weight:600;margin-top:2px">${dirs}</div>
+    </div>`;
+  if (typeof applyTranslations === 'function') applyTranslations();
 }
 
 async function loadLongTerm() {

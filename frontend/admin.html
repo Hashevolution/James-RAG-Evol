@@ -321,6 +321,19 @@
       <div class="page-title"><span data-i18n="memory.page_title">🧠 Memory 현황</span></div>
       <div class="cards" id="memory-cards"></div>
 
+      <!-- Feedback aggregate (last risk-#1 orphan / UI_API_MAPPING §3.2).
+           Surfaces /feedback/stats/ — total positives/negatives across the
+           feedback engine's accumulated signals. Small 4-stat strip; lives
+           inside the Memory tab so the operator sees it alongside the
+           long-term + sessions inventory. -->
+      <div class="section-title">▸ <span data-i18n="memory.feedback_title">📊 사용자 피드백 집계</span></div>
+      <div class="table-wrap" style="padding: 12px 20px;">
+        <div id="feedback-stats-card"
+             style="display:flex;gap:24px;flex-wrap:wrap;font-family:var(--font-mono);font-size:13px">
+          <div style="color:var(--muted);font-size:12px" data-i18n="common.loading">Loading...</div>
+        </div>
+      </div>
+
       <div class="section-title">▸ <span data-i18n="memory.longterm_title">장기 기억 (세션 요약)</span> <span style="font-size:11px;color:var(--muted);margin-left:8px">(행 클릭 → 원본 대화 펼침)</span></div>
       <div class="table-wrap">
         <table>
