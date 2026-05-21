@@ -17,7 +17,8 @@
   `workspace.js`, `graph.js`, `graph_editor.js`, `graph_node_editor.js`
 - **1 CLI consumer** of HTTP API: `scripts/bench.py` (calls `/query/`)
 - **20 orphans** (defined backend, no frontend caller)
-- **6 duplicate / overlap pairs**
+- **5 duplicate / overlap pairs** (was 6 — `/admin/metrics` vs
+  `/admin/performance/metrics/` retracted as a false duplicate, see §5)
 - **7 area-conflict endpoints** (read and write straddle two IA areas)
 
 ---
@@ -71,8 +72,11 @@ Backend exists; no frontend caller. Grouped by disposition.
 | Endpoint | Reason | Action |
 |---|---|---|
 | `GET /admin/web-search-status` | dashboard card removed | delete or restore card |
-| `GET /admin/metrics` | overlaps `/admin/performance/metrics/` | consolidate (see §5) |
 | `GET /admin/character/correlations` | read-only stat, never surfaced | surface in Observe → Character or delete |
+
+(`/admin/metrics` was listed here in an earlier draft as a duplicate
+of `/admin/performance/metrics/`; that was an error — see §5
+correction. It serves a distinct latency-histogram purpose and stays.)
 
 ### 3.4 WIP / advanced (18 endpoints, holding)
 
@@ -97,7 +101,7 @@ implementation. Each is a duplication risk.
 
 | Endpoint | Callers | Smell |
 |---|---|---|
-| `POST /login/` | `chat.js:326`, `admin.js:326`, `graph.js:126` | 3 independent login modals — extract shared component |
+| `POST /login/` | `chat.js:326`, `admin.js:326`, `graph.js:126`, `workspace.js:99` | 4 independent login modals — extracted to `Auth.login()` (auth.js); modal markup itself still per-page (IA Phase 3) |
 | `POST /password/reset/confirm` | `chat.js:909`, `admin.js` (modal) | 2 divergent implementations |
 | `POST /llm/install/` | `chat.js:463`, `admin.js:494` | `firstRunInstall()` duplicated near-verbatim |
 | `GET /admin/llm/install-progress` | `chat.js` (poll), `admin.js:515` | parallel polling loops |
@@ -110,16 +114,24 @@ between chat and admin is a real bug source.
 
 ---
 
-## 5. Duplicate / overlap pairs (6)
+## 5. Duplicate / overlap pairs (5)
 
 | # | A | B | Recommendation |
 |---|---|---|---|
-| 1 | `GET /admin/metrics` (orphan) | `GET /admin/performance/metrics/` (used) | Deprecate A; keep B as canonical |
-| 2 | `GET /admin/memory` (whole) | `GET /admin/episodic/{session_id}` (single) | Keep both, document hierarchy (whole vs slice) |
-| 3 | `/admin/entities` (entities) | `/admin/artifacts/list` (artifacts) | Clarify concept boundary — entity = graph node, artifact = user upload? document in ARCHITECTURE |
-| 4 | `GET /admin/jobs/list` (admin, orphan) | `GET /jobs/list` (user, used) | Confirm admin-wide jobs view need; if yes, wire to Observe; if no, delete |
-| 5 | `/admin/files/tree` + `/search` (read, used) | `/admin/files` DELETE/PUT (orphan) | Read OK; writes should go through CR — confirm intent |
-| 6 | `/llm/install/` vs `/admin/llm/pull` | both download models | One is first-run, other is admin re-pull; document and stop confusing the two |
+| 1 | `GET /admin/memory` (whole) | `GET /admin/episodic/{session_id}` (single) | Keep both, document hierarchy (whole vs slice) |
+| 2 | `/admin/entities` (entities) | `/admin/artifacts/list` (artifacts) | Clarify concept boundary — entity = graph node, artifact = user upload? document in ARCHITECTURE |
+| 3 | `GET /admin/jobs/list` (admin, orphan) | `GET /jobs/list` (user, used) | Confirm admin-wide jobs view need; if yes, wire to Observe; if no, delete |
+| 4 | `/admin/files/tree` + `/search` (read, used) | `/admin/files` DELETE/PUT (orphan) | Read OK; writes should go through CR — confirm intent |
+| 5 | `/llm/install/` vs `/admin/llm/pull` | both download models | One is first-run, other is admin re-pull; document and stop confusing the two |
+
+> **Correction (post-investigation, Phase 1 cleanup, 2026-05-20)**:
+> An earlier draft listed `/admin/metrics` and `/admin/performance/metrics/`
+> as a duplicate pair. They are **not** duplicates: `/admin/metrics`
+> returns trace-derived per-stage latency histograms (p50/p90/p99 from
+> `core/trace_metrics.py`), while `/admin/performance/metrics/` returns
+> self-evaluation scores (`tools/self/performance_evaluator` +
+> `tools/self/importance_scorer`). Both are intentionally distinct and
+> live; do not deprecate either.
 
 ---
 
@@ -188,7 +200,9 @@ roughly 3 modules of ~15 calls each.
 
 ### Phase 1 — Cleanup (no IA changes yet)
 
-- [ ] Mark `/admin/metrics` as deprecated; document `/admin/performance/metrics/` as canonical
+- [x] **Not a duplicate**: `/admin/metrics` (trace latency histogram)
+      and `/admin/performance/metrics/` (self-eval scores) confirmed
+      distinct; doc corrected (this commit). No code change.
 - [ ] Decide and execute: keep or delete `/history/sessions/rename/`, `/history/long-term/`, `/feedback/stats/`
 - [ ] Each of the 18 WIP endpoints (`/code/*`, `/analyze/*`, ...) gets a roadmap line or a removal
 - [ ] `/admin/web-search-status` — restore the card or delete the endpoint
