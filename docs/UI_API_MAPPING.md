@@ -12,23 +12,28 @@
 
 ## 1. Headline numbers
 
-- **135 HTTP endpoints** (server_llmwiki.py + routers).
-  Was 133 in the initial sweep; PRs #368 (`POST /admin/graph/event`)
-  and #370 (`GET /admin/graph/events`) — Cognitive Phase 3 PR-11a-2 /
-  PR-11c — added two. See §10 for full reconciliation.
+- **137 HTTP endpoints** (server_llmwiki.py + routers).
+  Was 133 in the initial sweep; +2 from PRs #368 + #370
+  (`/admin/graph/event[s]` — Cognitive Phase 3 PR-11a-2 / PR-11c)
+  and +2 from PRs #377 + #378 (`GET / POST /admin/settings/cognitive`
+  — UI-IA risk signal #5 fix). See §10 for the full reconciliation.
 - **6 frontend JS files** call into them: `chat.js`, `admin.js`,
   `workspace.js`, `graph.js`, `graph_editor.js`, `graph_node_editor.js`
 - **1 CLI consumer** of HTTP API: `scripts/bench.py` (calls `/query/`)
 - **22 orphans** (defined backend, no frontend caller) — the two
-  new `event` endpoints are also orphan at the UI layer; both wire
-  into Govern (write) / Observe (read) per §3.2.
+  `event` endpoints (#368 / #370) are orphan at the UI layer
+  pending the Govern → Graph "Add event" affordance + the
+  Observe → Timeline view (memo §9 explicitly defers timeline UI
+  to a later cycle). The two cognitive-toggle endpoints from
+  PRs #377 / #378 were initially orphan and got wired in the
+  same series, so they no longer appear in §3.2.
 - **5 duplicate / overlap pairs** (was 6 — `/admin/metrics` vs
   `/admin/performance/metrics/` retracted as a false duplicate, see §5)
 - **7 area-conflict endpoints** (read and write straddle two IA areas).
-  The new `/admin/graph/event` (POST) / `/admin/graph/events` (GET)
-  pair is **pre-separated** at the URL level (write vs read on
-  distinct paths) and therefore is NOT a §6 conflict — it's the
-  cleaner pattern that retro-fits to the 7 existing conflicts.
+  Neither the new event endpoint pair nor the cognitive-toggle pair
+  adds to this count — both are **pre-separated** at the URL level
+  (write vs read on distinct paths) so they satisfy D8 by design
+  rather than needing the read/write split rule.
 
 ---
 
@@ -40,13 +45,13 @@
 | My Work | 12 | `/api-keys/*`, `/artifacts/mine/*`, `/jobs/*` |
 | Govern | 25 | `/admin/users/*`, `/admin/patches/*`, `/admin/proposals/*`, `/admin/cr/*`, `/admin/features/*`, `POST /admin/graph/event` |
 | Observe | 29 | `/admin/dashboard`, `/admin/audit/*`, `/admin/memory`, `/admin/evo-reports/*`, `/admin/performance/*`, `/admin/knowledge/*`, `/admin/entities/*`, `/admin/graph/*`, `GET /admin/graph/events`, `/trace/*` |
-| Configure | 22 | `/llm/*`, `/admin/web-search-*`, `/admin/character/*`, `/admin/persona`, `/admin/settings`, `/admin/learn/topic/*`, `/hardware/` |
+| Configure | 24 | `/llm/*`, `/admin/web-search-*`, `/admin/character/*`, `/admin/persona`, `/admin/settings`, `/admin/settings/cognitive` (GET + POST), `/admin/learn/topic/*`, `/hardware/` |
 | Non-UI infra | 20 | `/login/`, `/signup/`, `/password/*`, `/upload/`, `/status/`, `/healthz`, HTML routes |
 | WIP / advanced | 18 | `/code/*`, `/analyze/*`, `/screen/*`, `/export/`, admin file/wiki/graph writes |
-| **Total** | **135** | |
+| **Total** | **137** | |
 
 The IA core (Ask + My Work + Govern + Observe + Configure) covers
-**97 of 135** endpoints (72%). The remaining 38 are infrastructure
+**99 of 137** endpoints (72%). The remaining 38 are infrastructure
 (auth, health, static) or work-in-progress (multimodal, code tools)
 not yet bound to an IA area.
 
@@ -172,7 +177,7 @@ the edit button deep-links into Govern → CR Propose.
 
 | File | API calls | Primary area(s) | Observation |
 |---|---:|---|---|
-| `admin.js` | 45+ | Observe + Govern + Configure | mirrors 17-tab monolith — biggest split target |
+| `admin.js` | 47+ | Observe + Govern + Configure | mirrors 17-tab monolith — biggest split target (+2 from PR #378 cognitive section) |
 | `chat.js` | 14 | Ask + My Work | first-run install logic duplicated with admin.js |
 | `workspace.js` | 12 | My Work + Govern (CR) | CR lifecycle straddles two areas here |
 | `graph_editor.js` | 3 | Govern | relation writes |
@@ -204,17 +209,21 @@ roughly 3 modules of ~15 calls each.
 4. **Login modal in 3 files**: changing login UX requires touching
    `chat.js`, `admin.js`, `graph.js`. Pre-IA, extract into one shared
    component regardless of the larger split.
-5. **Cognitive Layer features run env-only with no admin UI**: six
-   live cognitive features (`JAMES_ENABLE_REFLECT`, `JAMES_ENABLE_VERIFY`,
-   `JAMES_ENABLE_FACT_CHECK`, `JAMES_ENABLE_PLANNER`,
-   `JAMES_ENABLE_QUERY_REWRITE`, `JAMES_DISABLE_RERANK`) ship in the
-   backend (PRs #286, #287, #289, #290, #297, #357) and have zero
-   admin toggle surface. The differentiating "thinking system"
-   capabilities are invisible to operators — set via env var on
-   process boot only. Configure → a new `cognitive` sub-page (or a
-   group inside `settings`) is the natural home. Phase 3 PR-11
-   adds a 7th env-only knob (`event` ingest path) that piggybacks
-   on the same gap.
+5. ~~**Cognitive Layer features run env-only with no admin UI**~~ —
+   **RESOLVED 2026-05-21 by PRs #377 + #378.**
+   The six live cognitive features (`JAMES_ENABLE_REFLECT`,
+   `JAMES_ENABLE_VERIFY`, `JAMES_ENABLE_FACT_CHECK`,
+   `JAMES_ENABLE_PLANNER`, `JAMES_ENABLE_QUERY_REWRITE`,
+   `JAMES_DISABLE_RERANK`) now have admin toggles inside
+   ⚙️ 설정 → 🧠 Cognitive Features. `core/feature_flags.py` is the
+   single source of truth for env-var ↔ semantic mapping (handles
+   the two-polarity case: 2 default-ON via "disable" semantics, 4
+   default-OFF via "enable" semantics). Persistence is in-process
+   only — container restart re-reads boot `.env`. Durable
+   DB-backed settings layer remains a v0.4 candidate. (The
+   `event` ingest path mentioned as a 7th knob is no longer
+   env-only either; PR-11b made it a first-class LLM extraction
+   type, not a toggle.)
 
 ---
 
@@ -255,21 +264,33 @@ The earlier UI inventory in chat reported **119 endpoints**. The
 2026-05-20 deeper sweep found **133** — the delta is mostly auth/infra
 (`/login/`, `/signup/`, `/password/*`, `/healthz`, `/status/`, HTML
 routes) and a handful of admin writes that the first pass collapsed.
-On 2026-05-21 PRs #368 + #370 added two `event` graph endpoints
-(Cognitive Phase 3 PR-11a-2 / PR-11c). Use **135** as the canonical
-number going forward; any future endpoint additions should bump this
-count and add a row to §3.2 (orphan with intended area) at the same
-time so the analysis stays self-consistent.
+
+On 2026-05-21:
+
+- PRs #368 + #370 added two `event` graph endpoints (Cognitive
+  Phase 3 PR-11a-2 / PR-11c). 133 → 135.
+- PRs #377 + #378 added the `/admin/settings/cognitive` GET + POST
+  pair (UI-IA risk signal #5 fix). 135 → 137. Both endpoints
+  landed pre-wired (UI consumes them in the same series), so
+  neither is an orphan.
+
+Use **137** as the canonical number going forward; any future
+endpoint additions should bump this count and add a row to §3.2
+(orphan with intended area) at the same time, or to §2's
+area-distribution table when shipped pre-wired, so the analysis
+stays self-consistent.
 
 ---
 
 ## 한국어 요약
 
-JAMES의 HTTP 엔드포인트 133개를 UI 5영역과 크로스레퍼런스한 결과:
-**고아 20개, 의미상 중복 6쌍, 영역 충돌 7개**가 확인됐습니다. 가장 큰
-부채는 ① `admin.js` 한 파일에 Govern·Observe·Configure가 뒤섞여 있다는
-것, ② first-run 설치/로그인 모달이 2~3 파일에 복붙되어 있다는 것,
-③ Configure → LLM의 task→모델 매핑 API(`/admin/llm/select*`)가 백엔드에만
-존재하고 UI가 없다는 것입니다. IA 마이그레이션 전에 Phase 1(고아 정리),
-Phase 2(중복 추출)만 먼저 해도 체감 개선이 큽니다. Phase 3에서 `admin.js`
-삼분할과 `/admin/cr/` 핸드오프 링크를 구현합니다.
+JAMES의 HTTP 엔드포인트 137개를 UI 5영역과 크로스레퍼런스한 결과:
+**고아 22개, 의미상 중복 5쌍, 영역 충돌 7개**가 확인됐습니다 (2026-05-21
+기준 — PR #368/#370/#377/#378 반영 후). 가장 큰 부채는 ① `admin.js` 한
+파일에 Govern·Observe·Configure가 뒤섞여 있다는 것 (47+ API 호출, 17탭),
+② first-run 설치/로그인 모달이 2~3 파일에 복붙되어 있다는 것 (#372 가
+일부 해소), ③ Configure → LLM의 task→모델 매핑 API(`/admin/llm/select*`)가
+백엔드에만 존재하고 UI가 없다는 것입니다. **§8 risk signal #5 (cognitive
+features 가 env-only 였던 부채)** 는 2026-05-21 PR #377/#378 로 해소.
+IA 마이그레이션 다음 단계는 Phase 3에서 `admin.js` 삼분할과
+`/admin/cr/` 핸드오프 링크를 구현하는 것입니다.
