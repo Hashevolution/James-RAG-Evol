@@ -25,7 +25,7 @@ from utils.metadata import MetadataGenerator
 
 
 _SAFE_ENTITY_NAME_RE = re.compile(r'^[A-Za-z0-9가-힣\s\-_,()&·\.]{2,80}$')
-_ALLOWED_EXTRACT_TYPES = frozenset(("person", "org", "concept"))
+_ALLOWED_EXTRACT_TYPES = frozenset(("person", "org", "concept", "event"))
 _ONTOLOGY_LABELS_KO = "공부, 연구, 가르침, 소속, 근무, 분류, 구성, 관련, 생산, 산업, 분야, 설립됨"
 
 # 괄호 패턴 — 반각/전각 모두 처리. e.g. "RAG (검색 증강 생성)" / "RAG（검색 증강 생성）"
@@ -738,9 +738,34 @@ class WikiGenerator:
                 "sensitivity": "internal",
                 "source_type": self.source_type,
             }
+            # PR-11b — carry event time-axis fields from LLM extraction
+            # to the create_entity_file event branch. Without these,
+            # the event branch's validate_occurred_at() always fails
+            # and falls back to concept (the symptom that surfaced in
+            # the 2026-05-21 live verification).
+            if etype == "event":
+                if ent.get("occurred_at"):
+                    payload["occurred_at"] = ent["occurred_at"]
+                if ent.get("occurred_at_precision"):
+                    payload["occurred_at_precision"] = ent["occurred_at_precision"]
             try:
                 self.create_entity_file(payload, filename, chunk_ids, user_role=user_role)
-                eid = self._generate_entity_id(name, etype)
+                # PR-11b — event entities use the date-aware hash
+                # (`_generate_event_entity_id`, PR-11a-2) so the
+                # entity_id we record here matches the file
+                # create_entity_file actually wrote. Falling through to
+                # the 4-type `_generate_entity_id` would produce a
+                # stale id and break cross-doc aggregation / id
+                # lookups for the same event.
+                if etype == "event" and payload.get("occurred_at"):
+                    from core.graph_node_editor import _generate_event_entity_id
+                    eid = _generate_event_entity_id(
+                        name,
+                        payload["occurred_at"],
+                        payload.get("occurred_at_precision", "day"),
+                    )
+                else:
+                    eid = self._generate_entity_id(name, etype)
                 name_to_id[name]   = eid
                 name_to_type[name] = etype
                 created_ids.append(eid)

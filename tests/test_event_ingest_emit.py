@@ -234,5 +234,120 @@ class FourTypeRegressionTests(_EventIngestBase):
         self.assertNotIn("occurred_at", fm)
 
 
+# ─── Integration — full process_document_for_entities path ──────────
+#
+# The 2026-05-21 live-verification round on PR-11b surfaced TWO
+# completeness gaps that the unit-level tests above didn't catch:
+#
+#   (1) `_ALLOWED_EXTRACT_TYPES` was still the 3-element frozenset
+#       (person/org/concept) — type=event got silently dropped by
+#       `_is_safe_extracted_entity` before reaching create_entity_file.
+#
+#   (2) `process_document_for_entities` built a payload dict for
+#       create_entity_file but did NOT carry occurred_at /
+#       occurred_at_precision from the LLM result; create_entity_file's
+#       event branch saw empty occurred_at and fell back to concept.
+#
+# Both gaps are post-extraction (the LLM emitted the right shape;
+# the wrapper layer dropped it). This class drives the wrapper
+# end-to-end with a mocked LLM so future refactors that re-introduce
+# either gap break here.
+
+
+class ProcessDocumentEventIntegrationTests(_EventIngestBase):
+    """End-to-end check: when the LLM returns `type: event` with
+    occurred_at, the document goes through `process_document_for_entities`
+    and lands as an event entity (not a silently-dropped or
+    concept-fallback entity)."""
+
+    def _mock_llm_extract(self, *, with_occurred_at: bool,
+                           type_value: str = "event"):
+        """Patch the WikiGenerator's LLM-extract helper to return a
+        deterministic dict shaped like the real Ollama response."""
+        from unittest.mock import patch
+        payload = {
+            "entities": [
+                {
+                    "name":        "2026 비트코인 ETF 승인",
+                    "type":        type_value,
+                    "description": "SEC 첫 spot ETF 승인",
+                    **(
+                        {"occurred_at": "2026-01-10"}
+                        if with_occurred_at
+                        else {}
+                    ),
+                },
+                {
+                    "name":        "SEC",
+                    "type":        "org",
+                    "description": "미국 증권거래위원회",
+                },
+            ],
+            "relations": [],
+        }
+        return patch.object(
+            self.wg, "_llm_extract_document_entities",
+            return_value=payload,
+        )
+
+    def test_event_with_occurred_at_lands_in_event_dir(self):
+        with self._mock_llm_extract(with_occurred_at=True):
+            ids = self.wg.process_document_for_entities(
+                filename="t.txt", content="any", chunk_ids=[],
+            )
+        # 2 entities (event + org) + 1 document → 3 created.
+        # The event one is the regression-critical row.
+        event_dir = self.wg.entity_path / "event"
+        files = list(event_dir.glob("*.md"))
+        self.assertEqual(len(files), 1,
+            "process_document_for_entities must land the LLM's "
+            "type=event entity in the event/ directory — the 2026-05-21 "
+            "live-verify finding (see commit body)")
+        fm = self._read_fm(files[0])
+        self.assertEqual(fm["entity_type"], "event")
+        self.assertEqual(fm["occurred_at"], "2026-01-10",
+            "occurred_at from the LLM payload must reach the on-disk "
+            "frontmatter — payload carry-over was the second gap")
+        self.assertEqual(fm["occurred_at_precision"], "day")
+        # And the entity_id reflects the event hash (PR-11a-2 scheme).
+        self.assertTrue(fm["entity_id"].startswith("e_event_"))
+        self.assertIn(fm["entity_id"], ids,
+            "the returned entity_ids must include the event we just wrote")
+
+    def test_event_without_occurred_at_falls_back_to_concept(self):
+        # LLM emits type=event but no occurred_at. The post-processor's
+        # graceful fallback (memo §5.1: "do not invent a date") should
+        # downgrade to concept, NOT silently drop.
+        with self._mock_llm_extract(with_occurred_at=False):
+            self.wg.process_document_for_entities(
+                filename="t.txt", content="any", chunk_ids=[],
+            )
+        event_dir   = self.wg.entity_path / "event"
+        concept_dir = self.wg.entity_path / "concept"
+        self.assertEqual(len(list(event_dir.glob("*.md"))), 0,
+            "no occurred_at → must not land in event/")
+        concept_files = list(concept_dir.glob("*.md"))
+        self.assertEqual(len(concept_files), 1,
+            "fallback row must land in concept/ (one entity)")
+        fm = self._read_fm(concept_files[0])
+        self.assertEqual(fm["entity_type"], "concept")
+        self.assertNotIn("occurred_at", fm,
+            "fallback path must not leak time-axis fields into the "
+            "downgraded concept frontmatter")
+
+    def test_allowed_extract_types_still_includes_event(self):
+        # Belt + suspenders — guard the 2026-05-21 regression at the
+        # constant level so a future refactor cannot drop `event` from
+        # the safety gate without breaking this test.
+        from core.wiki_generator import _ALLOWED_EXTRACT_TYPES
+        self.assertIn("event", _ALLOWED_EXTRACT_TYPES,
+            "_ALLOWED_EXTRACT_TYPES must include 'event' — otherwise "
+            "_is_safe_extracted_entity silently drops every LLM-emitted "
+            "event entity")
+        self.assertIn("person",  _ALLOWED_EXTRACT_TYPES)
+        self.assertIn("org",     _ALLOWED_EXTRACT_TYPES)
+        self.assertIn("concept", _ALLOWED_EXTRACT_TYPES)
+
+
 if __name__ == "__main__":
     unittest.main()

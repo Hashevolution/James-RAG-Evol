@@ -76,6 +76,9 @@ wiki/entity/prod/**/*.md
 wiki/prod/
 # media (audio/video) 추출 산출물 — entity 와 동일한 사용자 데이터
 wiki/media/prod/
+# test wiki — 검증/디버깅용 임시 데이터 (production 과 동일한 schema 라
+# 누수 위험은 적지만 git 추적할 가치 없음).
+wiki/entity/test/**/*.md
 # 메타 파일은 명시적으로 추적 — 카테고리 인덱스 / 폴더 보존용 .gitkeep
 !wiki/entity/prod/**/index.md
 !wiki/entity/prod/**/.gitkeep
