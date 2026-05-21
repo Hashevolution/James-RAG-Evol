@@ -1,5 +1,5 @@
 /* ── auth.js ──
-   Shared /login/ HTTP wrapper for all pages (chat, admin, graph,
+   Shared auth HTTP wrappers for all pages (chat, admin, graph,
    workspace).
 
    Login modals stay per-page — markup, DOM ids, and post-login UX
@@ -8,6 +8,11 @@
    duplicated was the POST + token parse + role check + localStorage
    write. That now lives here.
 
+   The password-reset-confirm endpoint is anonymous (no Bearer,
+   no api_key query) and was duplicated near-verbatim between
+   chat.js and admin.js — same fetch shape, same response handling,
+   only the surrounding UX (toast vs alert) differed.
+
    Usage:
      const res = await Auth.login({
        username, password, apiKey,
@@ -15,7 +20,11 @@
      });
      if (!res.ok) { showError(res.error); return; }
      // res.token, res.role available; localStorage already written.
-     // Caller does its own post-login UI (close modal, reload, etc.)
+
+     const res = await Auth.resetPasswordConfirm({
+       username, token, newPassword,
+     });
+     if (!res.ok) { showError(res.error); return; }
 */
 (function (global) {
   const API = window.location.origin;
@@ -62,5 +71,33 @@
     }
   }
 
-  global.Auth = { login };
+  async function resetPasswordConfirm(opts) {
+    opts = opts || {};
+    const username = (opts.username || '').trim();
+    const token = (opts.token || '').trim();
+    const newPassword = opts.newPassword || '';
+
+    if (!username || !token || !newPassword) {
+      return { ok: false, error: '아이디, 토큰, 새 비밀번호를 모두 입력하세요.' };
+    }
+
+    try {
+      // Bare fetch — no Bearer header (anonymous flow), no api_key
+      // query (the endpoint is public). Token-error responses
+      // collapse to 401 by design (enumeration defense).
+      const r = await fetch(`${API}/password/reset/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, token, new_password: newPassword }),
+      });
+      if (r.ok) return { ok: true };
+      let detail = `${r.status}`;
+      try { detail = (await r.json()).detail || detail; } catch (_e) {}
+      return { ok: false, error: detail };
+    } catch (e) {
+      return { ok: false, error: `서버 오류: ${e.message || e}` };
+    }
+  }
+
+  global.Auth = { login, resetPasswordConfirm };
 })(window);

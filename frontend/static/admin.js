@@ -1218,33 +1218,15 @@ async function submitSignup() {
 
 async function submitPasswordReset() {
   const username = document.getElementById('reset-username').value.trim();
-  const token    = document.getElementById('reset-token').value.trim();
-  const newPw    = document.getElementById('reset-new-pw').value;
-  const errEl    = document.getElementById('reset-error');
+  const token = document.getElementById('reset-token').value.trim();
+  const newPw = document.getElementById('reset-new-pw').value;
+  const errEl = document.getElementById('reset-error');
   errEl.textContent = '';
-  if (!username || !token || !newPw) {
-    errEl.textContent = t('auth.reset_fill_all');
-    return;
-  }
-  try {
-    // Bare fetch — no Bearer header (anonymous flow), no api_key
-    // query (the endpoint is public). The api() helper assumes both.
-    const r = await fetch(`${API}/password/reset/confirm`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ username, token, new_password: newPw }),
-    });
-    if (r.ok) {
-      alert(t('auth.reset_success'));
-      closeForgotPasswordModal();
-      return;
-    }
-    let detail = `${r.status}`;
-    try { detail = (await r.json()).detail || detail; } catch (_e) {}
-    errEl.textContent = detail;
-  } catch (e) {
-    errEl.textContent = e.message;
-  }
+
+  const res = await Auth.resetPasswordConfirm({ username, token, newPassword: newPw });
+  if (!res.ok) { errEl.textContent = res.error; return; }
+  alert(t('auth.reset_success'));
+  closeForgotPasswordModal();
 }
 
 /* ── Entity (item #1: search + paging + detail modal) ── */

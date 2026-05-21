@@ -834,31 +834,15 @@ function closeForgotPasswordOutside(e) {
 
 async function submitPasswordReset() {
   const username = document.getElementById('reset-username').value.trim();
-  const token    = document.getElementById('reset-token').value.trim();
-  const newPw    = document.getElementById('reset-new-pw').value;
-  const errEl    = document.getElementById('reset-error');
+  const token = document.getElementById('reset-token').value.trim();
+  const newPw = document.getElementById('reset-new-pw').value;
+  const errEl = document.getElementById('reset-error');
   errEl.textContent = '';
-  if (!username || !token || !newPw) {
-    errEl.textContent = '아이디, 토큰, 새 비밀번호를 모두 입력하세요.';
-    return;
-  }
-  try {
-    const r = await fetch(`${API}/password/reset/confirm`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ username, token, new_password: newPw }),
-    });
-    if (r.ok) {
-      toast('✅ 비밀번호가 재설정되었습니다. 새 비밀번호로 로그인하세요.', 'success');
-      closeForgotPasswordModal();
-      return;
-    }
-    let detail = `${r.status}`;
-    try { detail = (await r.json()).detail || detail; } catch (_e) {}
-    errEl.textContent = detail;
-  } catch (e) {
-    errEl.textContent = `서버 오류: ${e.message}`;
-  }
+
+  const res = await Auth.resetPasswordConfirm({ username, token, newPassword: newPw });
+  if (!res.ok) { errEl.textContent = res.error; return; }
+  toast('✅ 비밀번호가 재설정되었습니다. 새 비밀번호로 로그인하세요.', 'success');
+  closeForgotPasswordModal();
 }
 
 async function doSignup() {
