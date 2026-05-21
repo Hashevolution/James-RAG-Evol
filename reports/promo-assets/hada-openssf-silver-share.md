@@ -98,14 +98,15 @@ SHOULD criterion justification) 을 얹는 방식** 으로 해당 항목을 met
 
 ## 투고 시 체크
 
-- [ ] velog 글이 먼저 발행되었고 URL이 유효한지 확인
-- [ ] 외부 링크 URL을 velog URL로 교체 (위 placeholder 자리)
-- [ ] 본문 안의 `<velog URL — 발행 후 채울 자리>` 도 교체
+- [x] velog 글이 먼저 발행되었고 URL이 유효한지 확인 (2026-05-21 발행 완료)
+- [x] 외부 링크 URL을 velog URL로 교체 (위 placeholder 자리)
+- [x] 본문 안의 `<velog URL — 발행 후 채울 자리>` 도 교체
 - [ ] 댓글 응대 가능한 시간대에 투고 (한국 시간 오전 9~10시 권장 — 점심
       전 첫 페이지 노출)
 - [ ] 투고 후 30분 내 첫 댓글 들어오면 즉시 응대 (Hada는 첫 30분
       코멘트 활성도가 점수 가중)
-- [ ] 발행 직후 `launch-tracker.md` 에 게시 ID + URL 기록
+- [x] velog 발행 직후 `launch-tracker.md` 에 게시 URL 기록 (Velog (K5) 행 추가)
+- [ ] Hada 투고 후 게시 ID + URL을 `launch-tracker.md` Velog (K5) 행 옆에 추가 기록
 
 ## 톤 가이드 (댓글 응대 시)
 
