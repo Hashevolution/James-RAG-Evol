@@ -17,6 +17,7 @@ from core.relations_schema import (
     EXTRACT_SOURCE_ROLE,
     INVERSE_SOURCE_ROLE,
     compute_confidence_from_sources,
+    validate_occurred_at,
 )
 from core.vector_store import VectorStore
 from llm.router import RouterWrapper
@@ -298,10 +299,52 @@ class WikiGenerator:
         entity_type = entity.get("type", "concept")
         name = entity.get("name", "unknown")
 
-        normalized = self._normalize_name(name)
-        entity_id = self._generate_entity_id(name, entity_type)
+        # ── Event branch (PR-11b) ─────────────────────────────────
+        # `event` requires occurred_at. If the LLM (or any caller)
+        # emits `type: event` without a parseable occurred_at, downgrade
+        # to `concept` rather than invent a date (memo §5.1: "If you
+        # cannot determine the date from the document, emit the entity
+        # as `concept` instead — do not invent a date.").
+        event_occurred_at  = ""
+        event_precision    = "day"
+        if entity_type == "event":
+            raw_at        = entity.get("occurred_at") or ""
+            raw_precision = entity.get("occurred_at_precision") or "day"
+            try:
+                validate_occurred_at(raw_at, precision=raw_precision)
+                event_occurred_at = raw_at
+                event_precision   = raw_precision
+            except ValueError:
+                # Graceful fallback. One bad LLM emit must not refuse the
+                # whole ingest — the entity still has informational value
+                # as a concept.
+                print(
+                    f"[INGEST] event entity {name!r} missing/invalid "
+                    f"occurred_at — falling back to concept"
+                )
+                entity_type = "concept"
 
-        path = self.entity_path / entity_type / f"{normalized}.md"
+        normalized = self._normalize_name(name)
+        if entity_type == "event":
+            # Hash incorporates date + precision so same name on
+            # different dates yields distinct entity_ids (memo §12 q2).
+            # Helper sits in graph_node_editor — both ingest and admin
+            # paths must produce identical ids for the same triple.
+            from core.graph_node_editor import _generate_event_entity_id
+            entity_id = _generate_event_entity_id(
+                name, event_occurred_at, event_precision,
+            )
+            # Filename suffixed with the 8-hex tail keeps duplicate
+            # detection unambiguous AND lets same-name events on
+            # different dates coexist on disk.
+            path = (
+                self.entity_path
+                / "event"
+                / f"{normalized}_{entity_id[-8:]}.md"
+            )
+        else:
+            entity_id = self._generate_entity_id(name, entity_type)
+            path = self.entity_path / entity_type / f"{normalized}.md"
 
         # aliases — `"X (Y)"` 패턴은 outer/inner도 자동 등록 (Issue #7)
         aliases = _expand_alias_candidates(name)
@@ -387,6 +430,15 @@ class WikiGenerator:
             "name":            name,
             "normalized_name": normalized,
             "aliases":         aliases,
+            # ── Event time axis (PR-11b) — only present on events ──
+            **(
+                {
+                    "occurred_at":           event_occurred_at,
+                    "occurred_at_precision": event_precision,
+                }
+                if entity_type == "event"
+                else {}
+            ),
             # ── ABAC (진단 FAIL 수정: sensitivity/owner 저장 보장) ──
             "sensitivity":     self._default_sensitivity(entity_type),
             "owner":           "system",
@@ -442,6 +494,7 @@ class WikiGenerator:
             "org":      "internal",      # 조직정보 → 내부
             "document": "confidential",  # 문서 → 기밀
             "concept":  "public",        # 개념/지식 → 공개
+            "event":    "internal",      # 시간 축 사건 → 내부 (PR-11b)
         }
         return mapping.get(entity_type, "internal")
 
@@ -796,15 +849,20 @@ class WikiGenerator:
         # by entity-type pair + "use 관련 only when nothing else fits".
         prompt = (
             "Output ONLY raw JSON. No explanation, no markdown.\n"
-            "Format: {\"entities\": [{\"name\":\"X\",\"type\":\"person|org|concept\","
-            "\"description\":\"한줄\"}], \"relations\": [{\"source\":\"X\","
+            "Format: {\"entities\": [{\"name\":\"X\",\"type\":\"person|org|concept|event\","
+            "\"description\":\"한줄\",\"occurred_at\":\"YYYY-MM-DD or omit\"}], "
+            "\"relations\": [{\"source\":\"X\","
             "\"target\":\"Y\",\"label\":\"관련\",\"confidence\":0.7}]}\n\n"
 
-            "TYPES (3 only):\n"
+            "TYPES (4 only):\n"
             "  person  = individual (Sam Altman, 이재명)\n"
             "  org     = company/institution (Anthropic, 삼성전자, 한국은행)\n"
             "  concept = idea, method, tech, AND products/tools/services\n"
             "            (RAG, GPT-4, Claude Code, Aider, 비트코인, 갤럭시)\n"
+            "  event   = time-bound occurrence (Q1 실적 발표, ETF 승인, 이벤트).\n"
+            "            MUST include occurred_at field (ISO 8601: YYYY-MM-DD).\n"
+            "            If the date is not explicit in the document, "
+            "emit as concept instead — DO NOT invent a date.\n"
             "RULE: a product/tool is CONCEPT, the maker is ORG.\n"
             "  e.g. Anthropic=org, Claude Code=concept (Anthropic 'produces' Claude Code).\n"
             "  Same name must NEVER appear as both org and concept.\n\n"
