@@ -10,7 +10,6 @@ critical wiring so future refactors can't silently strip it.
 """
 from __future__ import annotations
 
-import os
 import re
 import sys
 import unittest
