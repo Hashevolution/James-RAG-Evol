@@ -112,6 +112,7 @@ function _bindFrontendEvents() {
       case 'load-files':          loadFiles(); break;
       case 'load-hardware':       loadHardware(); break;
       case 'save-settings':       saveSettings(); break;
+      case 'save-cognitive-flags': saveCognitiveFlags(); break;
       case 'save-web-search-config': saveWebSearchConfig(); break;
 
       /* ── login modal + signup/forgot anchors ──────────────────── */
@@ -2042,6 +2043,108 @@ async function loadSettings() {
   }
   // [#A6-1] settings 진입 시 웹 검색 설정도 함께 로드
   try { loadWebSearchConfig(); } catch (e) { console.warn(e); }
+  // PR-2 — settings 진입 시 cognitive flag 토글도 로드
+  try { loadCognitiveFlags(); } catch (e) { console.warn(e); }
+}
+
+
+/* ── PR-2 — Cognitive feature toggles (UI-IA risk signal #5) ──
+   GET / POST /admin/settings/cognitive (backend: PR #377).
+   Renders one row per flag, persists the diff via bulk POST.
+   In-process-only persistence — surfaced in the section's hint. */
+async function loadCognitiveFlags() {
+  const root = document.getElementById('cognitive-flag-rows');
+  if (!root) return;
+  let data;
+  try {
+    data = await api('/admin/settings/cognitive');
+  } catch (e) {
+    root.innerHTML = `<div style="color:var(--danger);font-size:12px">
+      Failed to load cognitive flags: ${_escHtml(String(e.message || e))}</div>`;
+    return;
+  }
+  const flags = (data && data.flags) || [];
+  if (!flags.length) {
+    root.innerHTML = `<div style="color:var(--muted);font-size:12px"
+      data-i18n="common.empty">No data</div>`;
+    return;
+  }
+  // Render: one row per flag with checkbox + label + default badge.
+  root.innerHTML = flags.map(f => {
+    const id  = `cog-flag-${_escHtml(f.key)}`;
+    const def = f.default ? 'ON' : 'OFF';
+    return `
+      <div class="setting-row" style="padding: 6px 0;">
+        <div>
+          <div class="setting-label">
+            <label for="${id}" style="cursor:pointer">
+              ${_escHtml(f.label)}
+            </label>
+          </div>
+          <div class="setting-sub" style="font-family:var(--font-mono);font-size:11px">
+            ${_escHtml(f.env)} · default ${def} · ${_escHtml(f.module)}
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="${id}"
+                 class="cognitive-flag-checkbox"
+                 data-flag-key="${_escHtml(f.key)}"
+                 ${f.on ? 'checked' : ''}>
+          <span style="font-size:11px;color:var(--muted);min-width:32px;display:inline-block">
+            ${f.on ? 'ON' : 'OFF'}
+          </span>
+        </label>
+      </div>`;
+  }).join('');
+  // Re-translate any data-i18n descendants the new HTML introduced.
+  if (typeof applyTranslations === 'function') applyTranslations();
+  // Live ON/OFF label flip on toggle — purely visual, not yet committed.
+  root.querySelectorAll('.cognitive-flag-checkbox').forEach(cb => {
+    cb.addEventListener('change', (e) => {
+      const span = e.target.parentElement.querySelector('span');
+      if (span) span.textContent = e.target.checked ? 'ON' : 'OFF';
+    });
+  });
+}
+
+async function saveCognitiveFlags() {
+  const root = document.getElementById('cognitive-flag-rows');
+  if (!root) return;
+  const flagsPayload = {};
+  root.querySelectorAll('.cognitive-flag-checkbox').forEach(cb => {
+    const key = cb.dataset.flagKey;
+    if (key) flagsPayload[key] = cb.checked;
+  });
+  if (!Object.keys(flagsPayload).length) {
+    toast(t('set.cognitive_no_changes') || 'No cognitive flags to save', 'warn');
+    return;
+  }
+  try {
+    const r = await fetch(`${API}/admin/settings/cognitive`, {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ api_key: apiKey, flags: flagsPayload }),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    const result = await r.json();
+    const changed = (result.deltas || []).filter(d => d.before !== d.after);
+    const msg = changed.length
+      ? `${t('set.cognitive_saved') || 'Cognitive flags saved'} (${changed.length})`
+      : (t('set.cognitive_no_changes') || 'No changes');
+    toast(`✅ ${msg}`, 'success');
+    // Re-load so the on-screen ON/OFF labels reflect the canonical
+    // server-resolved state (handles polarity edge cases without
+    // duplicating the logic client-side).
+    loadCognitiveFlags();
+  } catch (e) {
+    toast(`❌ ${e.message}`, 'error');
+  }
 }
 
 // [P3 unified UX 2026-05-10] savePersona / updatePersonaPreview 제거.

@@ -914,6 +914,27 @@
         </div>
       </div>
 
+      <!-- PR-2 — Cognitive Feature Toggles (UI-IA risk signal #5).
+           Six env-var-backed flags from core/feature_flags.py. The
+           backend persists them in-process only; surfacing this as a
+           "session-only" hint here so an admin who toggles knows a
+           restart reverts the change. -->
+      <div class="section-title">▸ <span data-i18n="set.cognitive_title">🧠 Cognitive Features</span></div>
+      <div class="table-wrap" style="padding: 8px 20px;">
+        <div class="setting-row" style="align-items:flex-start; padding-bottom: 0;">
+          <div>
+            <div class="setting-label" data-i18n="set.cognitive_subtitle">Reasoning pipeline toggles</div>
+            <div class="setting-sub" data-i18n="set.cognitive_hint">In-process only — container restart reverts to boot .env values. To persist, edit the .env file.</div>
+          </div>
+        </div>
+        <div id="cognitive-flag-rows" style="padding: 8px 0;">
+          <div style="color:var(--muted);font-size:12px" data-i18n="common.loading">Loading...</div>
+        </div>
+        <div style="padding: 16px 0; display:flex; justify-content:flex-end;">
+          <button class="btn btn-primary" data-action="save-cognitive-flags" data-i18n="set.cognitive_save">Save Cognitive Flags</button>
+        </div>
+      </div>
+
       <!-- [#A6-1] Web Search Settings — admin-tunable role permission +
            threshold + live engine status. Loaded by loadWebSearchConfig()
            on page mount. -->
