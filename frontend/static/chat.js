@@ -2278,15 +2278,17 @@ function jamesConfirm(opts) {
   });
 }
 
-/* ── [P3-4] 세션 선택 ── */
-let _sessionPanelOpen = false;
-
-async function toggleSessionPanel() {
-  _sessionPanelOpen = !_sessionPanelOpen;
-  const panel = document.getElementById('session-panel');
-  if (!panel) return;
-  panel.style.display = _sessionPanelOpen ? 'block' : 'none';
-  if (_sessionPanelOpen) await loadSessionList();
+/* ── [P3-4 → sidebar, 2026-05-21] 세션 선택 ──
+   세션 리스트는 사이드바 'sessions' 모드로 이동. 상단 헤더 💬 버튼은
+   이전 플로팅 패널의 open/close 토글 의미를 유지: 현재 sessions 모드
+   면 닫기(=기본 'upload'로 복귀), 아니면 sessions로 전환.
+   switchSidebarMode 가 sessions 진입 시 loadSessionList 를 호출하므로
+   리스트는 자동 로드된다. 직접 rail 💬 아이콘 클릭도 동일 경로. */
+function toggleSessionPanel() {
+  if (typeof switchSidebarMode !== 'function') return;
+  const railActive = document.querySelector('.sidebar-rail-item.active');
+  const currentMode = railActive?.dataset?.mode;
+  switchSidebarMode(currentMode === 'sessions' ? 'upload' : 'sessions');
 }
 
 async function loadSessionList() {
@@ -2422,14 +2424,13 @@ async function deleteSession(sessionId, event) {
 
 async function switchSession(sessionId) {
   if (sessionId === SESSION_ID) {
-    toggleSessionPanel();
+    // already on this session — nothing to do (sidebar stays as-is)
     return;
   }
   // 세션 전환: sessionStorage 업데이트 + 히스토리 로드
   localStorage.setItem('james_session', sessionId);
   // [N-3 fix] in-memory SESSION_ID / HISTORY_KEY 동기 (newSession 과 동일).
   refreshSessionGlobals();
-  toggleSessionPanel();
 
   // 현재 메시지 초기화 후 해당 세션 히스토리 표시
   const messages = document.getElementById('messages');
@@ -2445,6 +2446,8 @@ async function switchSession(sessionId) {
 
     if (!turns.length) {
       toast('선택한 세션에 대화 기록이 없습니다', 'info');
+      // refresh sidebar list so the active highlight follows.
+      loadSessionList().catch(() => {});
       return;
     }
 
@@ -2466,6 +2469,8 @@ async function switchSession(sessionId) {
     const badge = document.getElementById('session-count-badge');
     if (badge) badge.textContent = '✓';
     toast(`세션 전환 완료 (${turns.length/2}턴)`, 'success');
+    // refresh sidebar list so the active highlight follows the new session.
+    loadSessionList().catch(() => {});
   } catch(e) {
     toast(`세션 로드 실패: ${e.message}`, 'error');
   }
@@ -2478,11 +2483,12 @@ function newSession() {
   // [N-3 fix] in-memory SESSION_ID / HISTORY_KEY 도 동기. 안 그러면
   // 다음 query 가 옛 SID 로 전송되어 backend N-3 게이트가 못 풀림.
   refreshSessionGlobals();
-  toggleSessionPanel();
 
   // 화면 초기화
   const messages = document.getElementById('messages');
   if (messages) messages.innerHTML = '';
   document.getElementById('welcome')?.style?.setProperty('display', 'flex');
   toast('새 대화를 시작합니다', 'success');
+  // refresh sidebar list so the new session appears at top.
+  loadSessionList().catch(() => {});
 }

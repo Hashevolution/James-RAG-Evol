@@ -97,6 +97,7 @@ const TRANSLATIONS = {
     'auth.auth_expired':     'Authentication expired. Please log in again.',
 
     'sidebar.mode_upload':   'File upload',
+    'sidebar.mode_sessions': 'Chat history',
     'sidebar.mode_recent':   'My files',
     'sidebar.mine_title':    'My files (recent uploads)',
     'sidebar.open_workspace': 'Workspace ↗',
@@ -684,6 +685,7 @@ const TRANSLATIONS = {
     'auth.auth_expired':     '인증이 만료됐습니다. 다시 로그인해주세요.',
 
     'sidebar.mode_upload':   '파일 업로드',
+    'sidebar.mode_sessions': '대화 이력',
     'sidebar.mode_recent':   '내 자료',
     'sidebar.mine_title':    '내 자료 (최근 업로드)',
     'sidebar.open_workspace': 'Workspace ↗',
