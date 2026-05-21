@@ -366,7 +366,7 @@ async function doAdminLogin() {
    시 안 띄움. 그러나 firstRunCheck()는 항상 호출되며 dismiss 됐어도
    ↻ 새로고침 버튼이 강제 표시 가능. */
 
-let _firstRunInstallPoll = null;
+let _firstRunInstallController = null;
 
 async function firstRunCheck() {
   // 이번 세션에서 이미 dismiss됐고 모델이 ≥1개면 wizard 안 띄움.
@@ -481,6 +481,8 @@ function _firstRunRow(r, primary) {
   </div>`;
 }
 
+// HTTP + 폴링 메커니즘은 llm-install.js의 LlmInstall.start()가 담당.
+// 여기는 firstrun 모달 UI 렌더링만.
 async function firstRunInstall(model) {
   if (!model) return;
   const progressBox = document.getElementById('firstrun-progress');
@@ -489,77 +491,42 @@ async function firstRunInstall(model) {
   if (progressBox) progressBox.style.display = 'block';
   if (progressText) progressText.textContent = `${model} 설치 시작 중...`;
 
-  try {
-    const r = await fetch(
-      `${API}/llm/install/?api_key=${encodeURIComponent(apiKey)}&model=${encodeURIComponent(model)}`,
-      {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-      },
-    );
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      throw new Error(err.detail || `HTTP ${r.status}`);
-    }
-    // 진행률 폴링
-    if (_firstRunInstallPoll) clearInterval(_firstRunInstallPoll);
-    _firstRunInstallPoll = setInterval(() => _firstRunPollProgress(model), 2500);
-    _firstRunPollProgress(model);   // 즉시 1회
-  } catch (e) {
-    if (progressText) progressText.textContent = `❌ 설치 실패: ${e.message}`;
-  }
-}
-
-async function _firstRunPollProgress(model) {
-  try {
-    const r = await fetch(
-      `${API}/admin/llm/install-progress?api_key=${encodeURIComponent(apiKey)}&model=${encodeURIComponent(model)}`,
-      { headers: { 'Authorization': `Bearer ${token}` } },
-    );
-    if (!r.ok) {
-      if (r.status === 401) {
-        // 세션 만료 — 폴링 중단 + localStorage 정리 (chat tab role
-        // badge도 같이 업데이트되도록 SSO 일관성 유지).
-        clearInterval(_firstRunInstallPoll);
-        _firstRunInstallPoll = null;
-        try {
-          localStorage.removeItem('james_token');
-          localStorage.removeItem('james_role');
-        } catch (_) {}
+  if (_firstRunInstallController) _firstRunInstallController.stop();
+  _firstRunInstallController = LlmInstall.start(model, {
+    onProgress(p) {
+      const txt = document.getElementById('firstrun-progress-text');
+      const bar = document.getElementById('firstrun-progress-bar');
+      if (txt) {
+        const pctStr = (p.percent != null) ? `${p.percent}%` : (p.status || '진행 중');
+        txt.textContent = `⏳ ${model}: ${pctStr}`;
       }
-      return;
-    }
-    const p = await r.json();
-    const progressText = document.getElementById('firstrun-progress-text');
-    const progressBar = document.getElementById('firstrun-progress-bar');
-    if (p.error) {
-      if (progressText) progressText.textContent = `❌ ${model} 실패: ${p.error}`;
-      clearInterval(_firstRunInstallPoll);
-      _firstRunInstallPoll = null;
-      return;
-    }
-    if (p.done) {
-      if (progressText) progressText.textContent = `✅ ${model} 설치 완료! 이제 답변할 수 있습니다.`;
-      if (progressBar) progressBar.style.width = '100%';
-      clearInterval(_firstRunInstallPoll);
-      _firstRunInstallPoll = null;
+      if (bar && p.percent != null) {
+        bar.style.width = `${p.percent}%`;
+      }
+    },
+    onDone() {
+      const txt = document.getElementById('firstrun-progress-text');
+      const bar = document.getElementById('firstrun-progress-bar');
+      if (txt) txt.textContent = `✅ ${model} 설치 완료! 이제 답변할 수 있습니다.`;
+      if (bar) bar.style.width = '100%';
       // 자동 닫기 (3초 후)
       setTimeout(() => {
         const modal = document.getElementById('firstrun-wizard-modal');
         if (modal) modal.style.display = 'none';
       }, 3000);
-      return;
-    }
-    if (progressText) {
-      const pctStr = (p.percent != null) ? `${p.percent}%` : (p.status || '진행 중');
-      progressText.textContent = `⏳ ${model}: ${pctStr}`;
-    }
-    if (progressBar && p.percent != null) {
-      progressBar.style.width = `${p.percent}%`;
-    }
-  } catch (e) {
-    console.warn('[firstrun-poll]', e);
-  }
+    },
+    onError(e) {
+      const txt = document.getElementById('firstrun-progress-text');
+      if (txt) txt.textContent = `❌ ${model} 실패: ${e.message}`;
+    },
+    onUnauthorized() {
+      // 세션 만료 — chat tab role-badge도 같이 갱신되도록 SSO 일관성 유지.
+      try {
+        localStorage.removeItem('james_token');
+        localStorage.removeItem('james_role');
+      } catch (_) {}
+    },
+  });
 }
 
 function firstRunDismiss() {
