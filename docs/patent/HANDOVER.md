@@ -3,21 +3,72 @@
 > 본 문서는 James-RAG-Evol의 한국 특허 출원 작업에 대한 전체 진행 상황 핸드오버입니다.
 > 새 대화 세션에서 본 파일 한 개만 읽으면 작업을 이어갈 수 있도록 설계되었습니다.
 >
-> **작성일**: 2026-05-09 (초판) / 2026-05-10 (2차 보강) / 2026-05-10 (skeleton 완성) / 2026-05-09 (메인 정합 정정) / 2026-05-19 (PAUSE 결정) / **2026-05-20 (Pause 조건 1/3 해결 — noisy-OR 핫픽스)**
-> **마지막 업데이트**: Hotfix PR #349 (`b89c099`) 로 공식 ↔ 구현 일치 회복 + 7 invariant lock-in. Pause 유지 (남은 조건 2/3).
+> **작성일**: 2026-05-09 (초판) / 2026-05-10 (2차 보강) / 2026-05-10 (skeleton 완성) / 2026-05-09 (메인 정합 정정) / 2026-05-19 (PAUSE 결정) / 2026-05-20 (Pause 조건 1/3 해결 — noisy-OR 핫픽스) / **2026-05-21 (STAGE 1B 출원 완료)**
+> **마지막 업데이트**: STAGE 1B 임시 출원 완료, 우선일 2026-05-21 확보. STAGE 1, 1A prior art 추가 검색 진행 중.
 
 ---
 
-## 🟢 0. EXECUTION 상태 (2026-05-20, PAUSE 해제)
+## 🟢 0. EXECUTION 상태 (2026-05-21, STAGE 1B 출원 완료)
 
-### 현재 결정
-**사용자 트리거 발동 — 시나리오 A (Tier 1 Bundle) 실행 진행**. STAGE 1 + 1A + 1B 3건 임시 출원. 예상 비용 약 5.4만 원 (개인 70% 감면). Show HN (2026-06-16, 27일 후) 전 우선일 확보 목표.
+### 현재 진행 상황
+**시나리오 A (Tier 1 Bundle) — 1/3 완료**.
 
-### 실행 자료
-- `docs/patent/execution-scenario-a-2026-05-20.md` — **3-stage 실행 로드맵 + 청구항 + 코드 reference + 도면 outline + KIPO Editor 입력 checklist**
+| 출원 | 상태 | 비용 |
+|---|---|---|
+| **STAGE 1B** (Cascade) | ✅ **완료** (2026-05-21 12:21 KST) | ₩13,800 |
+| STAGE 1 (Memory Loom) | ⏳ prior art 추가 검색 후 결정 | (예상 ₩13,800) |
+| STAGE 1A (Doc-source gate) | ⏳ prior art 추가 검색 후 결정 | (예상 ₩13,800) |
+| 누적 비용 | ₩13,800 | 시나리오 A 최대 ₩41,400 |
+
+→ 우선일 확보됨. 자세한 출원 정보 (출원번호, 접수번호, DAS 코드) 는 PII 보호로 본 문서에 미기재. 출원인 본인이 별도 비공개 위치에 보관.
+
+### STAGE 1B 출원 결과 요약 (PII 제외)
+- 출원일: 2026-05-21
+- 발명의 명칭: 출처 추적 기반 지식 그래프 자동 정리 시스템 및 방법
+- 명세서: 32 페이지 (10 청구항 + 4 도면 임베드)
+- 수수료: ₩13,800 (개인 70% 감면)
+- 심사청구: 미신청 (옵션 A — 1년 grace 활용)
+- 공지예외 적용: 2026-05-09 자기공개 (PR #145, commit 66bf929) 기반
+- 첨부서류:
+  - 명세서 .hlz (32 페이지)
+  - 공지예외 적용 증명서 .pdf (3 페이지)
+- 접수증: 사용자 비공개 보관
+
+### 잔여 작업 (STAGE 1, 1A 결정 보류 중)
+- 검토 의견: STAGE 1A 의 "비대칭 게이팅" 개념이 Graph RAG / CGR 추세와 일부 중복 가능성 시사
+- 진행: STAGE 1A + STAGE 1 prior art 추가 검색 진행 중 (Claude 자동 백그라운드)
+- 결정: 검색 결과 ✅/⚠️/❌ 등급에 따라 출원 진행 / narrow / skip 결정
+
+### 출원 진행 시 권장 순서
+1. STAGE 1B (Cascade) ✅ **완료**
+2. STAGE 1 (Memory Loom) — prior art ✅ 면 다음 진행
+3. STAGE 1A (Doc-source gate) — prior art ✅ 면 마지막 진행
+
+### 실행 자료 (재개 시 사용)
+- `docs/patent/execution-scenario-a-2026-05-20.md` — 3-stage 실행 로드맵 (STAGE 1B 활용 완료, STAGE 1/1A 활용 대기)
+- `docs/patent/prior-art-1B.md` — STAGE 1B Google Patents 검색 결과 (참고)
+- (예정) `docs/patent/prior-art-1.md`, `prior-art-1A.md` — 추가 검색 결과
+
+### Grace Period 시계 (오늘 2026-05-21 기준)
+| 후보 | Grace 만료 | 출원 상태 |
+|---|---|---|
+| **STAGE 1B** (Cascade) | 2027-05-08 (디자인 메모 기준) | ✅ **출원 완료, 우선일 확보** |
+| STAGE 1 (Memory Loom) | 2027-05-04 | ⏳ 진행 중 |
+| STAGE 1A (Doc-source gate) | 2027-05-08 | ⏳ 진행 중 |
+| 기타 stage | 2027-05-03 ~ 2027-05-20 | 미진행 (시나리오 A 외) |
+
+### 향후 일정
+| 일자 | 작업 |
+|---|---|
+| 2026-05-21 (오늘) | STAGE 1B 접수중 → 수리 전환 대기 |
+| 2026-05-22 ~ 24 | STAGE 1 prior art 결과 + STAGE 1 출원 결정 |
+| 2026-05-25 ~ 27 | STAGE 1A 출원 결정 |
+| 2026-06-16 | Show HN 노출 (출원 완료분 명시) |
+| 2027-05 | 정식 전환 / 심사청구 결정 |
+| 2029-05-21 | STAGE 1B 심사청구 마감 (놓치면 자동 취하) |
 
 ### 이전 PAUSE 결정 (Historical, 2026-05-19)
-이전 PAUSE 사유는 Knowledge Cascade 안정화 미완. Hotfix 1+2 (PR #349/350) + Postmortem (PR #352) 로 안정화 달성. 사용자 시점적 트리거 "실행" (2026-05-20) 으로 PAUSE 해제.
+이전 PAUSE 사유는 Knowledge Cascade 안정화 미완. Hotfix 1+2 (PR #349/350) + Postmortem (PR #352) 로 안정화 달성. 사용자 시점적 트리거 "실행" (2026-05-20) 으로 PAUSE 해제, STAGE 1B 출원 완료 (2026-05-21).
 
 ### Postmortem (PR #352, `fcc79cc`, 2026-05-20) 흡수 — 출원 framing 원칙
 
