@@ -6,7 +6,7 @@
 > area conflicts so the IA migration knows what to clean up.
 >
 > Status: investigation snapshot. v0.3.0 Platform Skeleton track.
-> Last updated: 2026-05-20.
+> Last updated: 2026-05-21 (PRs #368/#370/#377/#378/#380/#383 wiring + measurement-rule cleanup).
 
 ---
 
@@ -20,21 +20,25 @@
 - **6 frontend JS files** call into them: `chat.js`, `admin.js`,
   `workspace.js`, `graph.js`, `graph_editor.js`, `graph_node_editor.js`
 - **1 CLI consumer** of HTTP API: `scripts/bench.py` (calls `/query/`)
-- **9 orphans (actionable subset)** = 4 in §3.1 (CLI-only,
-  intentional) + 3 in §3.2 (backend ready, UI pending) + 2 in
+- **8 orphans (actionable subset)** = 4 in §3.1 (CLI-only,
+  intentional) + 2 in §3.2 (backend ready, UI pending) + 2 in
   §3.3 (deprecated / redundant). The §3.4 WIP bucket (18 endpoints,
   intentionally parked) is excluded from this number — see the
   methodology note in §3. Recent walk:
   - 14 (pre-PR #380)
   - 11 after PR #380 wired the three `/admin/llm/select*` endpoints
-  - **9** after the 2026-05-21 stale-row correction — a closer
-    code grep found that two §3.2 rows were already wired but the
-    earlier sweep missed them: `POST /history/sessions/rename/` is
-    called from `chat.js` (sidebar sessions panel ✏️ rename
+  - 9 after the 2026-05-21 stale-row correction — a closer
+    code grep found that `POST /history/sessions/rename/` is
+    already called from `chat.js` (sidebar sessions panel ✏️ rename
     button + data-action wiring at line 2351 / 2370) and
-    `GET /history/long-term/` is called from `admin.js` Memory
-    tab (`loadLongTerm` at line 1406). Only `/feedback/stats/` from
-    the original risk-#1 cluster remains genuinely orphan.
+    `GET /history/long-term/` is already called from `admin.js`
+    Memory tab (`loadLongTerm` at line 1406). The earlier sweep
+    missed both call sites.
+  - **8** after PR #383 wired the last risk-#1 orphan,
+    `GET /feedback/stats/`, into a 5-stat strip inside the admin
+    Memory tab (between memory cards and the long-term table).
+    The two remaining §3.2 rows are both event-graph endpoints
+    explicitly deferred per memo §9 (timeline UI is a later cycle).
   Earlier drafts of this doc reported "20" / "22" orphans using a
   looser estimate that didn't fully reconcile with the sub-bucket
   sums; from this revision forward the actionable-subset rule
@@ -93,15 +97,23 @@ should walk the §1 number in lockstep with the sub-bucket sum.
 
 | Endpoint | Intended area | Status |
 |---|---|---|
-| `GET /feedback/stats/` | Observe | feedback aggregate not surfaced (risk signal #1 — last remaining) |
-| `POST /admin/graph/event` | Govern (graph editor) | event node creation (PR-11a-2); **wire into Govern → Graph editor "Add event" affordance** |
-| `GET /admin/graph/events` | Observe (timeline) | time-bucket filtered events (PR-11c); **wire into Observe → Graph (event filter) or new Timeline view** |
+| `POST /admin/graph/event` | Govern (graph editor) | event node creation (PR-11a-2); **wire into Govern → Graph editor "Add event" affordance** (deferred per memo §9 timeline UI) |
+| `GET /admin/graph/events` | Observe (timeline) | time-bucket filtered events (PR-11c); **wire into Observe → Graph (event filter) or new Timeline view** (deferred per memo §9) |
 
 > **Resolved 2026-05-21 (PR #380)**: `GET /admin/llm/selections`,
 > `POST /admin/llm/select`, `DELETE /admin/llm/select` previously
 > sat in this table. They now have UI in admin Configure → LLM
 > Task → Model and are out of the orphan inventory. Risk signal
 > #2 closed — see §8.
+>
+> **Resolved 2026-05-21 (PR #383)**: `GET /feedback/stats/`
+> previously sat in this table as the last risk-#1 orphan. PR #383
+> wires it into a 5-stat strip (total / positive / negative /
+> derived positive-ratio / tracked directions) inside the admin
+> Memory tab — between the memory cards and the long-term-memory
+> table. Defensive on the endpoint's `{error: ...}` shape and
+> any api()-layer throw so a network failure doesn't blank the
+> surrounding tab. Risk signal #1 closed — see §8.
 >
 > **Stale-row correction 2026-05-21**:
 > `POST /history/sessions/rename/` and `GET /history/long-term/`
@@ -113,10 +125,7 @@ should walk the §1 number in lockstep with the sub-bucket sum.
 >   endpoint; it's wired into the Memory tab via `loadMemory()`
 >   (page router line 564).
 > The initial UI_IA sweep missed these because both call sites are
-> deep inside their respective files (sidebar render block / inside
-> a parent tab loader). Risk signal #1 narrows from "3 unwired"
-> to "1 unwired" — the `/feedback/stats/` row above is the only
-> genuine orphan from that cluster.
+> deep inside their respective files.
 
 ### 3.3 Deprecated or redundant
 
@@ -212,7 +221,7 @@ the edit button deep-links into Govern → CR Propose.
 
 | File | API calls | Primary area(s) | Observation |
 |---|---:|---|---|
-| `admin.js` | 50+ | Observe + Govern + Configure | mirrors 17-tab monolith — biggest split target (+2 from PR #378 cognitive section, +3 from PR #380 LLM task→model section) |
+| `admin.js` | 51+ | Observe + Govern + Configure | mirrors 17-tab monolith — biggest split target (+2 PR #378 cognitive, +3 PR #380 LLM task→model, +1 PR #383 feedback-stats card) |
 | `chat.js` | 14 | Ask + My Work | first-run install logic duplicated with admin.js |
 | `workspace.js` | 12 | My Work + Govern (CR) | CR lifecycle straddles two areas here |
 | `graph_editor.js` | 3 | Govern | relation writes |
@@ -228,17 +237,22 @@ roughly 3 modules of ~15 calls each.
 
 ## 8. Risk signals worth flagging now
 
-1. **Ask area is anemic in practice** — *narrowed 2026-05-21*.
-   Of the 9 endpoints, originally only 3 were thought to be
-   actively called (`/query/`, `/history/`, `/feedback/`). A
-   closer code grep added two more: `POST /history/sessions/rename/`
-   *is* called (chat.js sidebar sessions panel) and
-   `GET /history/long-term/` *is* called (admin.js Memory tab).
-   The genuine orphan from this cluster is just `/feedback/stats/`
-   — feedback aggregate not surfaced anywhere. The remaining
-   surface debt in the Ask area is therefore narrower than the
-   initial inventory implied; tracked as the one-row `/feedback/stats/`
-   item in §3.2 above.
+1. ~~**Ask area is anemic in practice**~~ —
+   **RESOLVED 2026-05-21** through a two-step path:
+   - First (PR #382, stale-row correction): a closer code grep
+     showed `POST /history/sessions/rename/` and
+     `GET /history/long-term/` were already wired — chat.js
+     sidebar sessions panel and admin.js Memory tab respectively.
+     The "3 unwired" framing was a false positive; only 1 endpoint
+     was genuinely orphan.
+   - Then (PR #383): `GET /feedback/stats/` wired into the admin
+     Memory tab as a 5-stat strip. The original risk-#1 cluster
+     has zero unwired endpoints remaining.
+   The broader observation that the Ask area has fewer endpoints
+   than other areas (9 vs Observe's 29) is structural — Ask is
+   the end-user surface, the other areas serve operators. It is
+   not a debt to "wire more endpoints into Ask"; it's a healthy
+   shape for an admin-heavy platform.
 2. ~~**Configure → LLM is half-wired**~~ —
    **RESOLVED 2026-05-21 by PR #380.**
    `/admin/llm/installed` was already called; `/admin/llm/selections`,
@@ -285,12 +299,12 @@ roughly 3 modules of ~15 calls each.
       distinct; doc corrected (this commit). No code change.
 - [x] `/history/sessions/rename/` — already wired in `chat.js`
       (sidebar sessions ✏️ button). Stale-doc correction
-      2026-05-21.
+      2026-05-21 (PR #382).
 - [x] `/history/long-term/` — already wired in `admin.js` Memory
-      tab (`loadLongTerm`). Stale-doc correction 2026-05-21.
-- [ ] `/feedback/stats/` — still orphan. Keep + wire into Observe
-      (admin Memory tab card or Performance widget), or delete if
-      no surface is planned.
+      tab (`loadLongTerm`). Stale-doc correction 2026-05-21
+      (PR #382).
+- [x] `/feedback/stats/` — wired into admin Memory tab 5-stat
+      strip (PR #383). Risk signal #1 now closed.
 - [ ] Each of the 18 WIP endpoints (`/code/*`, `/analyze/*`, ...) gets a roadmap line or a removal
 - [ ] `/admin/web-search-status` — restore the card or delete the endpoint
 
@@ -343,13 +357,20 @@ On 2026-05-21:
   sum of §3.1 + §3.2 + §3.3 — see §3 note) — the earlier
   "20" / "22" estimate is now expressed as the precise
   `4 + 5 + 2 = 11`. Risk signal #2 closed.
-- A stale-row correction (2026-05-21, this PR) dropped two
+- A stale-row correction (2026-05-21, PR #382) dropped two
   rows from §3.2 — `POST /history/sessions/rename/` (already
   called from chat.js) and `GET /history/long-term/` (already
   called from admin.js Memory tab). Both were missed by the
   initial UI_IA sweep. Orphan count `4 + 5 + 2 = 11`
   → `4 + 3 + 2 = 9`. Risk signal #1 narrowed to a single row
   (`/feedback/stats/`).
+- PR #383 wired the last risk-#1 orphan — `GET /feedback/stats/`
+  — into a 5-stat strip inside the admin Memory tab. Orphan
+  count `4 + 3 + 2 = 9` → `4 + 2 + 2 = 8`. Risk signal #1 closed.
+  Of the 5 risk signals from the initial inventory, 4 are now
+  closed (#1, #2, #3, #5); only #4 (login-modal markup unified
+  across 4 HTML files) remains, blocked behind the Phase 3
+  admin.js triple-split per UI-IA decision D5.
 
 Use **137** as the canonical endpoint count going forward; any
 future endpoint additions should bump this count and add a row to
@@ -364,12 +385,14 @@ into a "Resolved" callout (see the 2026-05-21 example under §3.2).
 ## 한국어 요약
 
 JAMES의 HTTP 엔드포인트 137개를 UI 5영역과 크로스레퍼런스한 결과:
-**고아 9개 (액션 대상 기준 — §3.1+§3.2+§3.3 합 4+3+2; WIP 18은 별도
+**고아 8개 (액션 대상 기준 — §3.1+§3.2+§3.3 합 4+2+2; WIP 18은 별도
 보류), 의미상 중복 5쌍, 영역 충돌 7개**가 확인됐습니다 (2026-05-21 기준
-— PR #368/#370/#377/#378/#380 반영 + 측정 기준 정비 + stale-row 정정).
-**risk signal #1 narrowed**: 옛 doc 은 3 endpoint 가 unwired 라 주장했지만
-실제로는 `/history/sessions/rename/` (chat.js) 와 `/history/long-term/`
-(admin.js Memory 탭) 둘 다 이미 wired. `/feedback/stats/` 한 줄만 진짜 orphan. 가장 큰 부채는 ① `admin.js` 한
+— PR #368/#370/#377/#378/#380/#383 반영 + 측정 기준 정비 + stale-row 정정).
+**risk signal 5건 중 4건 closed** (#1, #2, #3, #5). #4 (로그인 모달 markup
+4-HTML 통합) 만 UI-IA Phase 3 의 admin.js 삼분할과 함께 해소 예정 (D5).
+§3.2 남은 orphan 2건은 둘 다 event-graph endpoint — memo §9 의 timeline UI
+의도적 deferred. IA 마이그레이션 다음 단계는 Phase 3에서 `admin.js`
+삼분할과 `/admin/cr/` 핸드오프 링크를 구현하는 것입니다. 가장 큰 부채는 ① `admin.js` 한
 파일에 Govern·Observe·Configure가 뒤섞여 있다는 것 (50+ API 호출, 17탭),
 ② first-run 설치/로그인 HTTP 가 PR #372 로 통합됐지만 **모달 마크업
 자체는 여전히 4 HTML 파일에 흩어져 있음** (Phase 3 잔여). **2026-05-21
