@@ -364,6 +364,11 @@ class FrontendArtifactTests(unittest.TestCase):
         root = Path(__file__).resolve().parent.parent / "frontend"
         cls.html = (root / "graph.html").read_text(encoding="utf-8")
         cls.js   = (root / "static" / "graph.js").read_text(encoding="utf-8")
+        # PR #372 (UI-IA Phase 2 dedup) extracted the login pattern
+        # into auth.js — graph.js now calls `Auth.login()` and the
+        # `access_token` parsing lives in the shared module. Load it
+        # here so the split-source assertions can check both halves.
+        cls.auth_js = (root / "static" / "auth.js").read_text(encoding="utf-8")
 
     def test_html_loads_three_and_force_graph(self):
         self.assertIn("three@0.160", self.html,
@@ -403,14 +408,22 @@ class FrontendArtifactTests(unittest.TestCase):
         # login flow must now match admin.js: JWT → james_token, used
         # via Authorization: Bearer; api_key stays untouched in
         # james_api_key for the ?api_key= query param.
+        #
+        # Post-#372 (UI-IA Phase 2): graph.js still owns the token
+        # storage + Bearer header on outbound admin requests, but the
+        # raw `access_token || .token` parsing of the /login/ response
+        # was extracted into the shared `Auth.login()` helper in
+        # `auth.js`. The split-source assertions below check both
+        # halves so the invariant is still pinned.
         self.assertIn("james_token", self.js,
                       "graph.js must store the JWT under james_token "
                       "(NOT james_api_key)")
         self.assertIn("'Authorization': 'Bearer ' + token", self.js,
                       "admin requests must send the JWT as a Bearer header")
-        self.assertIn("access_token || j.token", self.js,
-                      "graph.js must read access_token (or token) from "
-                      "the /login/ response — not a non-existent api_key field")
+        self.assertIn("access_token", self.auth_js,
+                      "auth.js (the shared login helper graph.js now "
+                      "delegates to) must read access_token from the "
+                      "/login/ response — not a non-existent api_key field")
 
     def test_html_login_modal_has_apikey_field(self):
         self.assertIn('id="login-apikey"', self.html,
