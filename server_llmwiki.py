@@ -5382,6 +5382,80 @@ async def admin_settings_post(data: AdminSettingsRequest, role: str = Depends(ge
     return {"success": True, "applied": {"model": data.model, "max_loop": data.max_loop}}
 
 
+# ─── Cognitive feature toggles (UI-IA risk signal #5 fix) ────────
+#
+# Six cognitive-layer features (reflect / verify / fact_check /
+# planner / query_rewrite / rerank) ship live in the backend but
+# had no admin UI before this endpoint pair. `core/feature_flags.py`
+# is the single source of truth for the env-var ↔ semantic mapping;
+# both endpoints delegate to it.
+#
+# Persistence model: in-process env mutation only, mirroring the
+# existing `/admin/settings` POST that already does
+# `os.environ["JAMES_PROTECTED_FILES"] = ...`. A container restart
+# re-reads the boot `.env`, so durable changes are still an
+# operator concern. Surfacing this in the UI (a "session-only"
+# banner) is PR-2 frontend work.
+
+
+@app.get("/admin/settings/cognitive",
+         summary="cognitive feature flags 조회 [UI-IA risk #5]")
+async def admin_settings_cognitive_get(
+    api_key: str,
+    role:    str = Depends(get_role_from_request),
+):
+    """Read-only snapshot of the six cognitive-layer feature flags.
+    See `docs/UI_API_MAPPING.md` §8 risk signal #5 and
+    `core/feature_flags.py` for the registry."""
+    _require_feature(api_key, role, "admin.settings")
+    from core.feature_flags import read_cognitive_flags
+    return {"flags": read_cognitive_flags()}
+
+
+class CognitiveFlagsRequest(BaseModel):
+    api_key: str
+    flags:   dict = {}   # {flag_key: bool, ...}
+
+
+@app.post("/admin/settings/cognitive",
+          summary="cognitive feature flags 변경 [UI-IA risk #5]")
+async def admin_settings_cognitive_post(
+    data: CognitiveFlagsRequest,
+    role: str = Depends(get_role_from_request),
+):
+    """Toggle one or more cognitive features. Body shape::
+
+        {"api_key": "...", "flags": {"reflect": true, "verify": false}}
+
+    Returns per-key (before, after) delta for the audit log.
+    Persistence is in-process only — a restart reverts to the
+    boot `.env` values.
+    """
+    _require_feature(data.api_key, role, "admin.settings")
+    if not isinstance(data.flags, dict) or not data.flags:
+        raise HTTPException(
+            status_code=400,
+            detail="flags must be a non-empty dict {flag_key: bool, ...}",
+        )
+
+    from core.feature_flags import apply_cognitive_flags
+    try:
+        deltas = apply_cognitive_flags(data.flags)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    _write_audit(
+        role, "/admin/settings/cognitive",
+        query=_truncate_audit_blob({
+            "changed": [
+                {"key": d["key"], "before": d["before"], "after": d["after"]}
+                for d in deltas
+            ],
+        }),
+    )
+    return {"success": True, "deltas": deltas}
+
+
 # ─── PR-CR-B2: Change Request endpoints ─────────────────────────
 #
 # Six endpoints back the v0.2.x Change Request primitive
