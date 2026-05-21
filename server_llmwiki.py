@@ -3311,6 +3311,80 @@ async def admin_graph_snapshot(
     )
 
 
+@app.get("/admin/graph/events",
+         summary="event 노드 시간 윈도우 조회 [PR-11c]")
+async def admin_graph_events_get(
+    api_key:         str,
+    source_type:     str = "prod",
+    occurred_after:  Optional[str] = None,
+    occurred_before: Optional[str] = None,
+    role:            str = Depends(get_role_from_request),
+):
+    """admin 만 호출 가능. snapshot 의 event-only 슬라이스 + 선택적
+    occurred_at 윈도우 필터.
+
+    Query params:
+      - ``occurred_after`` / ``occurred_before`` 둘 다 optional, ISO 8601.
+        둘 다 없을 때는 source_type 의 모든 event 반환 (filter 비활성).
+      - 둘 중 하나라도 있으면 non-event 는 자동 제거 (memo §5.3).
+
+    Returns: ``{"ok": true, "events": [{node fields...}]}``.
+    Order: entity_id 사전순 — caller 가 별도 정렬이 필요하면 그쪽에서.
+
+    400 surfacing 시나리오:
+      - occurred_after / occurred_before 가 ISO 8601 파싱 실패
+    """
+    _require_feature(api_key, role, "admin.data")
+    from core.event_time_filter import filter_entities_by_time_bucket
+    from core.graph_snapshot import build_snapshot
+
+    src = (source_type or "prod").strip().lower()
+    if src not in ("prod", "test"):
+        src = "prod"
+
+    if src == rag_engine.wiki_generator.source_type:
+        gen = rag_engine.wiki_generator
+    else:
+        from core.wiki_generator import WikiGenerator
+        gen = WikiGenerator(source_type=src)
+
+    snap = build_snapshot(
+        wiki_generator=gen, source_type=src, include_sensitive=False,
+    )
+    # snapshot 의 node 는 `occurred_at` 을 안 싣는다 (visualizer 무관).
+    # 본 endpoint 는 entity_id_index 를 직접 재방문해 frontmatter 의
+    # occurred_at 까지 끌어와야 한다.
+    enriched = []
+    for n in snap.get("nodes", []) or []:
+        if n.get("type") != "event":
+            continue
+        eid = n.get("id")
+        path = gen.entity_id_index.get(eid)
+        if not path:
+            continue
+        try:
+            fm = gen._read_frontmatter(path) or {}
+        except Exception:
+            fm = {}
+        enriched.append({
+            **n,
+            "occurred_at":           fm.get("occurred_at"),
+            "occurred_at_precision": fm.get("occurred_at_precision", "day"),
+        })
+
+    try:
+        filtered = filter_entities_by_time_bucket(
+            enriched,
+            occurred_after=occurred_after,
+            occurred_before=occurred_before,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    filtered.sort(key=lambda n: n.get("id", ""))
+    return {"ok": True, "events": filtered}
+
+
 # ─── /admin/graph/relation — Phase E graph editor (write path) ───
 #
 # docs/design/v0.3-knowledge-cascade.md §7. admin 이 `/admin/graph`
