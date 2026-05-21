@@ -112,6 +112,7 @@ function _bindFrontendEvents() {
       case 'load-files':          loadFiles(); break;
       case 'load-hardware':       loadHardware(); break;
       case 'save-settings':       saveSettings(); break;
+      case 'save-llm-selections': saveLlmSelections(); break;
       case 'save-cognitive-flags': saveCognitiveFlags(); break;
       case 'save-web-search-config': saveWebSearchConfig(); break;
 
@@ -2045,6 +2046,182 @@ async function loadSettings() {
   try { loadWebSearchConfig(); } catch (e) { console.warn(e); }
   // PR-2 — settings 진입 시 cognitive flag 토글도 로드
   try { loadCognitiveFlags(); } catch (e) { console.warn(e); }
+  // UI-IA risk signal #2 fix — LLM task→model 매핑도 로드
+  try { loadLlmSelections(); } catch (e) { console.warn(e); }
+}
+
+
+/* ── Configure → LLM Task → Model (UI-IA risk signal #2 fix) ──
+   Three endpoints (GET /admin/llm/selections, POST + DELETE
+   /admin/llm/select) already exist in the backend; this section
+   gives them their first UI. Persistent (workspace/llm_selection.json),
+   not env-only like the cognitive flags. */
+
+// Canonical task_types JAMES uses. Backend accepts any string, but
+// the UI shows these five so an admin sees the same rows on every
+// load regardless of what's persisted. New task_types added to the
+// router (llm/router.py) should be added here.
+const LLM_TASK_TYPES = [
+  { key: 'general',  label_key: 'set.llm_task_general',
+    label_default: 'General reasoning (default chat answer synthesis)' },
+  { key: 'classify', label_key: 'set.llm_task_classify',
+    label_default: 'Query classifier (task routing — fast, cheap)' },
+  { key: 'extract',  label_key: 'set.llm_task_extract',
+    label_default: 'Entity / relation extraction (wiki ingest)' },
+  { key: 'coding',   label_key: 'set.llm_task_coding',
+    label_default: 'Code generation (qwen2.5-coder family)' },
+  { key: 'vision',   label_key: 'set.llm_task_vision',
+    label_default: 'Vision / multimodal (llava family)' },
+];
+
+async function loadLlmSelections() {
+  const root = document.getElementById('llm-selection-rows');
+  if (!root) return;
+
+  // Two parallel reads: installed models + current selections.
+  let installed = [];
+  let selections = {};
+  try {
+    const [instRes, selRes] = await Promise.all([
+      api('/admin/llm/installed'),
+      api('/admin/llm/selections'),
+    ]);
+    installed  = (instRes && instRes.models) || [];
+    selections = (selRes  && selRes.selections) || {};
+  } catch (e) {
+    root.innerHTML = `<div style="color:var(--danger);font-size:12px">
+      Failed to load LLM selections: ${_escHtml(String(e.message || e))}</div>`;
+    return;
+  }
+
+  if (!installed.length) {
+    root.innerHTML = `<div style="color:var(--muted);font-size:12px">
+      ${_escHtml(t('set.llm_no_models')
+        || 'No models installed yet. Use the first-run wizard or "ollama pull <model>".')}
+    </div>`;
+    return;
+  }
+
+  // Render one row per canonical task_type.
+  root.innerHTML = LLM_TASK_TYPES.map(taskT => {
+    const current = selections[taskT.key] || '';
+    const options = [
+      `<option value="">${_escHtml(t('set.llm_default_option')
+        || '(default — config.GEMMA_MODEL)')}</option>`,
+      ...installed.map(m => {
+        const sel = (m.name === current) ? ' selected' : '';
+        const sz  = m.size_gb ? ` · ${m.size_gb} GB` : '';
+        return `<option value="${_escHtml(m.name)}"${sel}>${_escHtml(m.name)}${sz}</option>`;
+      }),
+    ].join('');
+    return `
+      <div class="setting-row" style="padding: 6px 0;">
+        <div>
+          <div class="setting-label">
+            <span data-i18n="${_escHtml(taskT.label_key)}">${_escHtml(taskT.label_default)}</span>
+          </div>
+          <div class="setting-sub" style="font-family:var(--font-mono);font-size:11px">
+            task_type=${_escHtml(taskT.key)} · ${
+              current
+                ? `current: ${_escHtml(current)}`
+                : (t('set.llm_default_label') || 'using config default')
+            }
+          </div>
+        </div>
+        <select class="setting-value llm-task-select"
+                data-task-key="${_escHtml(taskT.key)}"
+                data-task-initial="${_escHtml(current)}"
+                style="cursor:pointer; min-width: 260px">
+          ${options}
+        </select>
+      </div>`;
+  }).join('');
+  // Re-apply translations to any new data-i18n nodes the render
+  // introduced (matches the cognitive section's pattern).
+  if (typeof applyTranslations === 'function') applyTranslations();
+}
+
+async function saveLlmSelections() {
+  const root = document.getElementById('llm-selection-rows');
+  if (!root) return;
+  const selects = root.querySelectorAll('.llm-task-select');
+
+  // Compute diff vs initial. Only POST / DELETE the rows that changed.
+  // Reduces audit noise + avoids hitting ollama for unchanged rows.
+  const toSet    = []; // [{task_type, model}]
+  const toRemove = []; // [task_type]
+  selects.forEach(sel => {
+    const key     = sel.dataset.taskKey || '';
+    const initial = sel.dataset.taskInitial || '';
+    const value   = (sel.value || '').trim();
+    if (!key) return;
+    if (value === initial) return;
+    if (value === '') toRemove.push(key);
+    else              toSet.push({ task_type: key, model: value });
+  });
+
+  if (!toSet.length && !toRemove.length) {
+    toast(t('set.llm_no_changes') || 'No changes', 'warn');
+    return;
+  }
+
+  let okCount = 0;
+  const errors = [];
+
+  // Apply sets first (each is a single POST with query params per
+  // the existing backend contract — params not body — so the URL
+  // already carries everything; `api()` appends api_key).
+  for (const item of toSet) {
+    try {
+      const qs = `&task_type=${encodeURIComponent(item.task_type)}` +
+                 `&model=${encodeURIComponent(item.model)}`;
+      const r = await fetch(
+        `${API}/admin/llm/select?api_key=${encodeURIComponent(apiKey)}${qs}`,
+        {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+        },
+      );
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${r.status}`);
+      }
+      okCount++;
+    } catch (e) {
+      errors.push(`${item.task_type}: ${e.message}`);
+    }
+  }
+
+  // Apply removes (DELETE — also query-param-based).
+  for (const key of toRemove) {
+    try {
+      const r = await fetch(
+        `${API}/admin/llm/select?api_key=${encodeURIComponent(apiKey)}` +
+        `&task_type=${encodeURIComponent(key)}`,
+        {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` },
+        },
+      );
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${r.status}`);
+      }
+      okCount++;
+    } catch (e) {
+      errors.push(`${key}: ${e.message}`);
+    }
+  }
+
+  if (errors.length) {
+    toast(`⚠️ ${okCount} saved, ${errors.length} failed: ${errors.join('; ')}`, 'warn');
+  } else {
+    const msg = t('set.llm_saved') || 'LLM selections saved';
+    toast(`✅ ${msg} (${okCount})`, 'success');
+  }
+  // Re-render so data-task-initial updates to the new server state
+  // (otherwise a second click would re-send the same diff).
+  loadLlmSelections();
 }
 
 

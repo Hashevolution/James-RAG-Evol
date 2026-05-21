@@ -914,6 +914,28 @@
         </div>
       </div>
 
+      <!-- Configure → LLM Task → Model (UI-IA risk signal #2 fix).
+           Three orphan endpoints (GET /admin/llm/selections,
+           POST/DELETE /admin/llm/select) already live in the backend;
+           this section gives them their first UI. Selection is
+           persistent (workspace/llm_selection.json), unlike the
+           cognitive flags below. -->
+      <div class="section-title">▸ <span data-i18n="set.llm_selection_title">🤖 LLM Task → Model</span></div>
+      <div class="table-wrap" style="padding: 8px 20px;">
+        <div class="setting-row" style="align-items:flex-start; padding-bottom: 0;">
+          <div>
+            <div class="setting-label" data-i18n="set.llm_selection_subtitle">Per-task model overrides</div>
+            <div class="setting-sub" data-i18n="set.llm_selection_hint">Persistent (workspace/llm_selection.json). Empty selection = config default. Only models installed via ollama are selectable.</div>
+          </div>
+        </div>
+        <div id="llm-selection-rows" style="padding: 8px 0;">
+          <div style="color:var(--muted);font-size:12px" data-i18n="common.loading">Loading...</div>
+        </div>
+        <div style="padding: 16px 0; display:flex; justify-content:flex-end;">
+          <button class="btn btn-primary" data-action="save-llm-selections" data-i18n="set.llm_selection_save">Save LLM Selections</button>
+        </div>
+      </div>
+
       <!-- PR-2 — Cognitive Feature Toggles (UI-IA risk signal #5).
            Six env-var-backed flags from core/feature_flags.py. The
            backend persists them in-process only; surfacing this as a
