@@ -26,13 +26,20 @@ Trust model:
 """
 from __future__ import annotations
 
+import hashlib
+import re
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 # Share the file-I/O helpers with the relation editor — both modules
 # read/write the same entity .md files via the same yaml frontmatter
 # convention. A second copy of these helpers would invite drift.
 from core.graph_editor import _load_entity_by_id, _write_entity
+from core.relations_schema import (
+    EXTRACT_SOURCE_ROLE,
+    MANUAL_SOURCE_ROLE,
+    validate_occurred_at,
+)
 
 
 # Allowlist of frontmatter fields ``update_node_attributes`` may touch.
@@ -203,9 +210,147 @@ def update_node_attributes(
     }
 
 
+# ─── Event node creation (PR-11a-2) ─────────────────────────────────
+# Events live next to person/concept/org/document under
+# `wiki/entity/<source>/event/`. Identity hash includes occurred_at +
+# precision per design memo §12 open-question 2: two events on the
+# same date with the same name resolve via the hash; events on
+# different dates with the same name get distinct entity_ids.
+
+_EVENT_ENTITY_ID_SALT = "JAMES_SECURE_V1"
+
+
+def _normalize_event_name(name: str) -> str:
+    """Filename-safe lowercase form. Mirrors `WikiGenerator._normalize_name`
+    so event files coexist cleanly with the existing 4-type filenames.
+    """
+    return re.sub(r"[^\w가-힣]", "_", name.strip().lower())
+
+
+def _generate_event_entity_id(
+    name: str,
+    occurred_at: str,
+    occurred_at_precision: str,
+) -> str:
+    """Hash key: name + occurred_at + precision. Same SALT as the 4-type
+    path keeps the overall id space behaving identically (8-hex suffix,
+    `e_event_` prefix). The added time fields make distinct dates yield
+    distinct ids when the same name recurs.
+    """
+    normalized = _normalize_event_name(name)
+    raw = (
+        f"{normalized}_event_{occurred_at}_{occurred_at_precision}"
+        f"_{_EVENT_ENTITY_ID_SALT}"
+    )
+    h = hashlib.sha256(raw.encode()).hexdigest()[:8]
+    return f"e_event_{h}"
+
+
+def create_event_node(
+    name: str,
+    occurred_at: str,
+    *,
+    wiki_generator,
+    occurred_at_precision: str = "day",
+    aliases: Optional[List[str]] = None,
+    source_doc_id: Optional[str] = None,
+    source_weight: float = 1.0,
+) -> Dict[str, Any]:
+    """Create a new `entity_type=event` file under
+    ``<entity_path>/event/<normalized>.md`` and return the audit-style
+    descriptor.
+
+    Source provenance (Knowledge Cascade `sources[]`):
+      - ``source_doc_id`` None → ``role: "manual"`` (admin click)
+      - ``source_doc_id`` str  → ``role: "extract"`` (ingest path)
+
+    Raises ``ValueError`` on:
+      - empty / non-string ``name``
+      - ``occurred_at`` not ISO 8601 parseable
+      - ``occurred_at_precision`` not in the 5 supported buckets
+      - ``source_weight`` outside ``[0, 1]``
+      - file collision after dedup (extremely rare — different
+        occurred_at with same normalized name)
+    """
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError("name must be a non-empty string")
+    validate_occurred_at(occurred_at, precision=occurred_at_precision)
+    if not isinstance(source_weight, (int, float)):
+        raise ValueError("source_weight must be a number")
+    if not (0.0 <= float(source_weight) <= 1.0):
+        raise ValueError(
+            f"source_weight must be in [0, 1]; got {source_weight!r}"
+        )
+
+    entity_id = _generate_event_entity_id(
+        name, occurred_at, occurred_at_precision,
+    )
+    cleaned_name    = name.strip()[:_NAME_CAP]
+    cleaned_aliases = _normalize_aliases(aliases or [])
+    now_iso         = datetime.now().isoformat()
+    source_role     = (
+        MANUAL_SOURCE_ROLE if source_doc_id is None else EXTRACT_SOURCE_ROLE
+    )
+
+    fm: Dict[str, Any] = {
+        "entity_id":            entity_id,
+        "entity_type":          "event",
+        "name":                 cleaned_name,
+        "aliases":              cleaned_aliases,
+        "occurred_at":          occurred_at,
+        "occurred_at_precision": occurred_at_precision,
+        "sources": [{
+            "doc_id":  source_doc_id,
+            "weight":  float(source_weight),
+            "role":    source_role,
+            "ts":      now_iso,
+        }],
+        "relations":  [],
+        "created_at": now_iso,
+        "updated_at": now_iso,
+    }
+    body = f"\n# {cleaned_name}\n\n*Event of {occurred_at}*\n"
+
+    # Resolve target directory. wiki_generator.entity_path already
+    # accounts for prod/test split.
+    event_dir = wiki_generator.entity_path / "event"
+    event_dir.mkdir(parents=True, exist_ok=True)
+
+    # Always suffix the filename with the entity_id's 8-hex tail.
+    # Reason: the hash incorporates name + occurred_at + precision, so
+    # two events with the same name on different dates get different
+    # filenames AND a duplicate creation (same name + same date) maps
+    # to the same filename which collides at the existence check —
+    # one branch, no ambiguity.
+    normalized = _normalize_event_name(cleaned_name)
+    file_path  = event_dir / f"{normalized}_{entity_id[-8:]}.md"
+    if file_path.exists():
+        raise ValueError(
+            f"event already exists: entity_id={entity_id} "
+            f"path={file_path}"
+        )
+
+    _write_entity(file_path, fm, body)
+
+    # Refresh the index so subsequent reads see the new event.
+    # Best-effort: an index refresh failure must not invalidate the
+    # on-disk write that already succeeded.
+    try:
+        wiki_generator.refresh_entity_map()
+    except Exception:
+        pass
+
+    return {
+        "entity_id":   entity_id,
+        "path":        str(file_path),
+        "frontmatter": fm,
+    }
+
+
 __all__ = [
     "NODE_EDITABLE_FIELDS",
     "NODE_ALLOWED_ENTITY_TYPES",
     "NODE_ALLOWED_SENSITIVITY",
     "update_node_attributes",
+    "create_event_node",
 ]

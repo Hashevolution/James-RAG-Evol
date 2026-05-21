@@ -13,6 +13,7 @@ from pathlib import Path
 
 from config import WIKI_DIR
 from core.relations_schema import (
+    ENTITY_TYPES_CORE,
     EXTRACT_SOURCE_ROLE,
     INVERSE_SOURCE_ROLE,
     compute_confidence_from_sources,
@@ -129,7 +130,13 @@ class WikiGenerator:
         self.wiki_base_path = Path(WIKI_DIR)
         self.entity_path    = self.wiki_base_path / "entity" / self.source_type
 
-        self.entity_types = ["person", "concept", "org", "document"]
+        # ENTITY_TYPES_CORE = 5 types (event 5th, PR-11). LLM extraction
+        # prompt below still emits only 3 types (person/org/concept);
+        # `document` is post-processor source-attribution; `event` is
+        # admin POST path (PR-11a-2). Directory listing / index build /
+        # search default to all 5 — empty event/ dir is a no-op until
+        # the first admin event creation.
+        self.entity_types = list(ENTITY_TYPES_CORE)
 
         for t in self.entity_types:
             (self.entity_path / t).mkdir(parents=True, exist_ok=True)
@@ -154,7 +161,8 @@ class WikiGenerator:
             "## person (0)\n\n"
             "## concept (0)\n\n"
             "## org (0)\n\n"
-            "## document (0)\n"
+            "## document (0)\n\n"
+            "## event (0)\n"
         )
 
         self.index_path.write_text(content, encoding="utf-8")

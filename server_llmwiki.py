@@ -3542,6 +3542,81 @@ async def admin_graph_node_put(request: Request,
     return {"ok": True, "result": result}
 
 
+@app.post("/admin/graph/event",
+          summary="event 노드 생성 [PR-11a-2 graph evolution]")
+async def admin_graph_event_post(request: Request,
+                                 role: str = Depends(get_role_from_request)):
+    """admin 만 호출 가능. ``JAMES_GRAPH_EDIT=1`` env opt-in.
+
+    PR-11 graph evolution 의 admin 진입점. ingest path 는 여전히
+    person/org/concept/document 4 type 만 emit; event 는 본 endpoint
+    또는 후속 PR-11d (MemoryLoom date detection) 만 생성한다.
+
+    Body JSON::
+
+        {
+          "api_key":               "...",
+          "name":                  "2026 비트코인 ETF 승인",
+          "occurred_at":           "2026-01-10",
+          "occurred_at_precision": "day",          // optional, default "day"
+          "aliases":               ["BTC ETF 승인"],  // optional
+          "source_doc_id":         "d_sec_filing", // optional → role=manual when omitted
+          "source_weight":         1.0             // optional, default 1.0
+        }
+
+    Returns::
+
+        {
+          "ok":          true,
+          "entity_id":   "e_event_a1b2c3d4",
+          "path":        "wiki/entity/prod/event/<normalized>.md",
+          "frontmatter": { ... }                   // full new-file frontmatter
+        }
+    """
+    _require_graph_edit_enabled()
+    body = await request.json()
+    _require_feature(body.get("api_key", ""), role, "admin.data")
+
+    name        = body.get("name")
+    occurred_at = body.get("occurred_at")
+    if not isinstance(name, str) or not name.strip():
+        raise HTTPException(status_code=400, detail="name required")
+    if not isinstance(occurred_at, str) or not occurred_at.strip():
+        raise HTTPException(status_code=400, detail="occurred_at required")
+
+    precision     = body.get("occurred_at_precision", "day")
+    aliases       = body.get("aliases")
+    source_doc_id = body.get("source_doc_id")
+    source_weight = body.get("source_weight", 1.0)
+
+    from core.graph_node_editor import create_event_node
+    try:
+        result = create_event_node(
+            name, occurred_at,
+            wiki_generator=rag_engine.wiki_generator,
+            occurred_at_precision=precision,
+            aliases=aliases,
+            source_doc_id=source_doc_id,
+            source_weight=source_weight,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    _write_audit(
+        role, "/admin/graph/event [POST]",
+        query=_truncate_audit_blob({
+            "name":        name,
+            "occurred_at": occurred_at,
+            "precision":   precision,
+        }),
+        answer=_truncate_audit_blob({
+            "entity_id":   result["entity_id"],
+            "path":        result["path"],
+        }),
+    )
+    return {"ok": True, **result}
+
+
 @app.delete("/admin/graph/relation",
             summary="relation 자체 제거 [Knowledge Cascade Phase E]")
 async def admin_graph_relation_delete(request: Request,
