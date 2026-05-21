@@ -84,6 +84,7 @@
       case 'org':      return getCss('--t-org',      '#f59e0b');
       case 'concept':  return getCss('--t-concept',  '#a5b4fc');
       case 'document': return getCss('--t-document', '#94a3b8');
+      case 'event':    return getCss('--t-event',    '#fb7185');
       default:         return '#94a3b8';
     }
   }

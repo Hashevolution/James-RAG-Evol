@@ -23,6 +23,12 @@
     --t-org:      #f59e0b;
     --t-concept:  #a5b4fc;
     --t-document: #94a3b8;
+    /* PR-11 — fifth entity type "event" (time-bound). Distinct from
+       the four existing so admin/POST + LLM-ingest created event
+       nodes don't collapse into the slate fallback colour. Rose/coral
+       chosen for moment-in-time read; avoids mint-cyan accent
+       collision and the four existing hues. */
+    --t-event:    #fb7185;
   }
 
   html, body { height: 100%; }

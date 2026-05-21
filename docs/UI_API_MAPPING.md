@@ -12,14 +12,23 @@
 
 ## 1. Headline numbers
 
-- **133 HTTP endpoints** (server_llmwiki.py + routers)
+- **135 HTTP endpoints** (server_llmwiki.py + routers).
+  Was 133 in the initial sweep; PRs #368 (`POST /admin/graph/event`)
+  and #370 (`GET /admin/graph/events`) — Cognitive Phase 3 PR-11a-2 /
+  PR-11c — added two. See §10 for full reconciliation.
 - **6 frontend JS files** call into them: `chat.js`, `admin.js`,
   `workspace.js`, `graph.js`, `graph_editor.js`, `graph_node_editor.js`
 - **1 CLI consumer** of HTTP API: `scripts/bench.py` (calls `/query/`)
-- **20 orphans** (defined backend, no frontend caller)
+- **22 orphans** (defined backend, no frontend caller) — the two
+  new `event` endpoints are also orphan at the UI layer; both wire
+  into Govern (write) / Observe (read) per §3.2.
 - **5 duplicate / overlap pairs** (was 6 — `/admin/metrics` vs
   `/admin/performance/metrics/` retracted as a false duplicate, see §5)
-- **7 area-conflict endpoints** (read and write straddle two IA areas)
+- **7 area-conflict endpoints** (read and write straddle two IA areas).
+  The new `/admin/graph/event` (POST) / `/admin/graph/events` (GET)
+  pair is **pre-separated** at the URL level (write vs read on
+  distinct paths) and therefore is NOT a §6 conflict — it's the
+  cleaner pattern that retro-fits to the 7 existing conflicts.
 
 ---
 
@@ -29,15 +38,15 @@
 |---:|---:|---|
 | Ask | 9 | `/query/`, `/history/*`, `/feedback/*` |
 | My Work | 12 | `/api-keys/*`, `/artifacts/mine/*`, `/jobs/*` |
-| Govern | 24 | `/admin/users/*`, `/admin/patches/*`, `/admin/proposals/*`, `/admin/cr/*`, `/admin/features/*` |
-| Observe | 28 | `/admin/dashboard`, `/admin/audit/*`, `/admin/memory`, `/admin/evo-reports/*`, `/admin/performance/*`, `/admin/knowledge/*`, `/admin/entities/*`, `/admin/graph/*`, `/trace/*` |
+| Govern | 25 | `/admin/users/*`, `/admin/patches/*`, `/admin/proposals/*`, `/admin/cr/*`, `/admin/features/*`, `POST /admin/graph/event` |
+| Observe | 29 | `/admin/dashboard`, `/admin/audit/*`, `/admin/memory`, `/admin/evo-reports/*`, `/admin/performance/*`, `/admin/knowledge/*`, `/admin/entities/*`, `/admin/graph/*`, `GET /admin/graph/events`, `/trace/*` |
 | Configure | 22 | `/llm/*`, `/admin/web-search-*`, `/admin/character/*`, `/admin/persona`, `/admin/settings`, `/admin/learn/topic/*`, `/hardware/` |
 | Non-UI infra | 20 | `/login/`, `/signup/`, `/password/*`, `/upload/`, `/status/`, `/healthz`, HTML routes |
 | WIP / advanced | 18 | `/code/*`, `/analyze/*`, `/screen/*`, `/export/`, admin file/wiki/graph writes |
-| **Total** | **133** | |
+| **Total** | **135** | |
 
 The IA core (Ask + My Work + Govern + Observe + Configure) covers
-**95 of 133** endpoints (71%). The remaining 38 are infrastructure
+**97 of 135** endpoints (72%). The remaining 38 are infrastructure
 (auth, health, static) or work-in-progress (multimodal, code tools)
 not yet bound to an IA area.
 
@@ -66,6 +75,8 @@ Backend exists; no frontend caller. Grouped by disposition.
 | `POST /history/sessions/rename/` | Ask | session-rename UX missing in chat |
 | `GET /history/long-term/` | Ask / Observe | long-term memory inspector missing |
 | `GET /feedback/stats/` | Observe | feedback aggregate not surfaced |
+| `POST /admin/graph/event` | Govern (graph editor) | event node creation (PR-11a-2); **wire into Govern → Graph editor "Add event" affordance** |
+| `GET /admin/graph/events` | Observe (timeline) | time-bucket filtered events (PR-11c); **wire into Observe → Graph (event filter) or new Timeline view** |
 
 ### 3.3 Deprecated or redundant
 
@@ -193,6 +204,17 @@ roughly 3 modules of ~15 calls each.
 4. **Login modal in 3 files**: changing login UX requires touching
    `chat.js`, `admin.js`, `graph.js`. Pre-IA, extract into one shared
    component regardless of the larger split.
+5. **Cognitive Layer features run env-only with no admin UI**: six
+   live cognitive features (`JAMES_ENABLE_REFLECT`, `JAMES_ENABLE_VERIFY`,
+   `JAMES_ENABLE_FACT_CHECK`, `JAMES_ENABLE_PLANNER`,
+   `JAMES_ENABLE_QUERY_REWRITE`, `JAMES_DISABLE_RERANK`) ship in the
+   backend (PRs #286, #287, #289, #290, #297, #357) and have zero
+   admin toggle surface. The differentiating "thinking system"
+   capabilities are invisible to operators — set via env var on
+   process boot only. Configure → a new `cognitive` sub-page (or a
+   group inside `settings`) is the natural home. Phase 3 PR-11
+   adds a 7th env-only knob (`event` ingest path) that piggybacks
+   on the same gap.
 
 ---
 
@@ -229,11 +251,15 @@ roughly 3 modules of ~15 calls each.
 
 ## 10. Reconciliation note
 
-The earlier UI inventory in chat reported **119 endpoints**. This
-deeper sweep found **133** — the delta is mostly auth/infra
+The earlier UI inventory in chat reported **119 endpoints**. The
+2026-05-20 deeper sweep found **133** — the delta is mostly auth/infra
 (`/login/`, `/signup/`, `/password/*`, `/healthz`, `/status/`, HTML
 routes) and a handful of admin writes that the first pass collapsed.
-Use **133** as the canonical number going forward.
+On 2026-05-21 PRs #368 + #370 added two `event` graph endpoints
+(Cognitive Phase 3 PR-11a-2 / PR-11c). Use **135** as the canonical
+number going forward; any future endpoint additions should bump this
+count and add a row to §3.2 (orphan with intended area) at the same
+time so the analysis stays self-consistent.
 
 ---
 
