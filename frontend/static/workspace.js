@@ -87,34 +87,17 @@ async function doLogin() {
   const apiKey   = document.getElementById('login-apikey').value.trim() || _apiKey;
   const errEl    = document.getElementById('login-error');
   errEl.textContent = '';
-  if (!username || !password) {
-    errEl.textContent = '아이디와 비밀번호를 입력하세요.';
-    return;
-  }
-  if (!apiKey) {
-    errEl.textContent = 'API Key 를 입력하세요.';
-    return;
-  }
-  try {
-    const r = await fetch(`${API}/login/`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ username, password, api_key: apiKey }),
-    });
-    const data = await r.json();
-    if (!r.ok) {
-      errEl.textContent = data.detail || '로그인 실패';
-      return;
-    }
-    _saveStored(data.access_token || data.token, data.role || 'employee', apiKey);
-    closeLogin();
-    document.getElementById('login-pw').value = '';
-    updateRoleBadge();
-    toast(`✅ ${username} (${_role}) 로그인`, 'success');
-    reloadData();
-  } catch (e) {
-    errEl.textContent = `서버 오류: ${e.message}`;
-  }
+
+  const res = await Auth.login({ username, password, apiKey });
+  if (!res.ok) { errEl.textContent = res.error; return; }
+  // Auth.login already wrote token+role to localStorage; sync locals
+  // and save apiKey separately (Auth doesn't manage api key).
+  _saveStored(res.token, res.role, apiKey);
+  closeLogin();
+  document.getElementById('login-pw').value = '';
+  updateRoleBadge();
+  toast(`✅ ${username} (${_role}) 로그인`, 'success');
+  reloadData();
 }
 
 function doLogout() {

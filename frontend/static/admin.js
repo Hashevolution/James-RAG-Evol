@@ -317,46 +317,21 @@ function toggleAdminPwVisibility() {
 async function doAdminLogin() {
   const username = document.getElementById('admin-login-id')?.value.trim() || 'admin';
   const password = document.getElementById('admin-login-pw')?.value || '';
-  const errEl    = document.getElementById('admin-login-error');
+  const errEl = document.getElementById('admin-login-error');
   if (errEl) errEl.textContent = '';
 
-  if (!password) { if(errEl) errEl.textContent = t('auth.password_required'); return; }
-
-  try {
-    const r = await fetch(`${API}/login/`, {
-      method:  'POST',
-      headers: {'Content-Type': 'application/json'},
-      body:    JSON.stringify({username, password, api_key: apiKey}),
-    });
-    const d = await r.json();
-
-    if (!r.ok) {
-      if(errEl) errEl.textContent = d.detail || `Login failed (${r.status})`;
-      return;
-    }
-
-    // access_token 또는 token 필드 모두 처리
-    const tok  = d.access_token || d.token || '';
-    const role = d.role || 'external';
-
-    if (!tok)            { if(errEl) errEl.textContent = t('auth.token_failed'); return; }
-    if (role !== 'admin'){ if(errEl) errEl.textContent = `Admin role required (role: ${role})`; return; }
-
-    token = tok;
-    // [#A8-4] localStorage — chat 페이지와 공유. 다른 탭의 storage 이벤트로
-    // chat 페이지 role-badge 자동 갱신.
-    localStorage.setItem('james_token', token);
-    localStorage.setItem('james_role',  role);
-
-    const modal = document.getElementById('admin-login-modal');
-    if (modal) modal.style.display = 'none';
-    loadDashboard();
-    // [PR plan-3] 로그인 후 LLM 모델 readiness 체크. 0개면 wizard 노출.
-    setTimeout(() => { try { firstRunCheck(); } catch (_) {} }, 600);
-
-  } catch (e) {
-    if(errEl) errEl.textContent = `Server error: ${e.message}`;
+  const res = await Auth.login({ username, password, apiKey, requireRole: 'admin' });
+  if (!res.ok) {
+    if (errEl) errEl.textContent = res.error;
+    return;
   }
+  token = res.token;
+
+  const modal = document.getElementById('admin-login-modal');
+  if (modal) modal.style.display = 'none';
+  loadDashboard();
+  // [PR plan-3] 로그인 후 LLM 모델 readiness 체크. 0개면 wizard 노출.
+  setTimeout(() => { try { firstRunCheck(); } catch (_) {} }, 600);
 }
 
 /* ── [PR plan-3, 2026-05-09] First-run wizard ───────────────────

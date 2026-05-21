@@ -664,59 +664,34 @@ async function doLogin() {
   const apiKeyInput = document.getElementById('login-api-key');
   const apiKeyEntered = (apiKeyInput?.value || '').trim();
   const apiKeyToUse = apiKeyEntered || getApiKey();
-  const errEl    = document.getElementById('login-error');
+  const errEl = document.getElementById('login-error');
   errEl.textContent = '';
 
-  if (!username || !password) {
-    errEl.textContent = '아이디와 비밀번호를 입력하세요.';
-    return;
-  }
-  if (!apiKeyToUse) {
-    errEl.textContent = 'API Key를 입력하세요. (.env의 JAMES_API_KEY)';
-    apiKeyInput?.focus();
-    return;
-  }
   // 새로 입력된 값이면 localStorage에 저장 (다음 로그인 시 pre-fill).
   if (apiKeyEntered && apiKeyEntered !== getApiKey()) {
     localStorage.setItem('james_api_key', apiKeyEntered);
   }
 
-  try {
-    const r = await fetch(`${API}/login/`, {
-      method:  'POST',
-      headers: {'Content-Type': 'application/json'},
-      body:    JSON.stringify({
-        username, password,
-        api_key: apiKeyToUse,
-      }),
-    });
-
-    const data = await r.json();
-
-    if (!r.ok) {
-      errEl.textContent = data.detail || '로그인 실패';
-      return;
-    }
-
-    // 토큰 저장 [#A8-4 SSO]
-    token    = data.access_token;
-    userRole = data.role || 'employee';
-    localStorage.setItem('james_token', token);
-    localStorage.setItem('james_role',  userRole);
-
-    closeLogin();
-    updateRoleBadge();
-    // [item #1] role 변경 시 install 버튼 가시성 즉시 갱신
-    // (admin login → 미설치 모델 선택 중이면 즉시 버튼 노출, 반대로
-    //  external/employee로 다시 로그인하면 즉시 숨김)
-    try { updateInstallButton(); } catch (_) {}
-    document.getElementById('login-pw').value = '';
-
-    toast(`✅ ${username} (${userRole}) 로그인 완료`, 'success');
-
-  } catch (e) {
-    errEl.textContent = `서버 오류: ${e.message}`;
+  const res = await Auth.login({ username, password, apiKey: apiKeyToUse });
+  if (!res.ok) {
+    errEl.textContent = res.error;
+    if (res.error.includes('API Key')) apiKeyInput?.focus();
+    return;
   }
+
+  // 토큰 저장은 Auth.login이 localStorage에 했음 — 로컬 변수만 동기화.
+  token    = res.token;
+  userRole = res.role || 'employee';
+
+  closeLogin();
+  updateRoleBadge();
+  // [item #1] role 변경 시 install 버튼 가시성 즉시 갱신
+  // (admin login → 미설치 모델 선택 중이면 즉시 버튼 노출, 반대로
+  //  external/employee로 다시 로그인하면 즉시 숨김)
+  try { updateInstallButton(); } catch (_) {}
+  document.getElementById('login-pw').value = '';
+
+  toast(`✅ ${username} (${userRole}) 로그인 완료`, 'success');
 }
 
 function logout() {

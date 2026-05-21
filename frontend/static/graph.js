@@ -121,27 +121,11 @@
     var keyVal = keyInput ? keyInput.value.trim() : '';
     setLoginError('');
     if (keyVal) { apiKey = keyVal; localStorage.setItem('james_api_key', apiKey); }
-    if (!apiKey) { setLoginError('API key required (set on chat page or paste here)'); return; }
-    try {
-      var r = await fetch(API + '/login/', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ username: id, password: pw, api_key: apiKey }),
-      });
-      var j = await r.json().catch(function () { return {}; });
-      if (!r.ok) { setLoginError(j.detail || ('Login failed (' + r.status + ')')); return; }
-      var tok  = j.access_token || j.token || '';
-      var role = j.role || 'external';
-      if (!tok)              { setLoginError('No token returned'); return; }
-      if (role !== 'admin')  { setLoginError('Admin role required (got: ' + role + ')'); return; }
-      token = tok;
-      localStorage.setItem('james_token', token);
-      localStorage.setItem('james_role',  role);
-      hideLogin();
-      bootstrap();
-    } catch (e) {
-      setLoginError(String(e));
-    }
+    var res = await Auth.login({ username: id, password: pw, apiKey: apiKey, requireRole: 'admin' });
+    if (!res.ok) { setLoginError(res.error); return; }
+    token = res.token;
+    hideLogin();
+    bootstrap();
   };
 
   // ─── Snapshot fetch ────────────────────────────────────────
