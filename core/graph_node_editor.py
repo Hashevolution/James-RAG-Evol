@@ -52,6 +52,13 @@ NODE_EDITABLE_FIELDS = frozenset({
     "aliases",       # list[str] — alternative names for matching
     "summary",       # description text shown in node-detail panel
     "sensitivity",   # "normal" | "sensitive" (mask_sensitive gate)
+    # PR-11 event time-axis fields. Admit at filter level; honored only
+    # when the target node's `entity_type == "event"` (memo §5.2). For
+    # any other target type the two fields are *silently dropped* —
+    # accidental clients posting them against a person/concept node
+    # don't see a 400.
+    "occurred_at",
+    "occurred_at_precision",
 })
 
 NODE_ALLOWED_ENTITY_TYPES = frozenset({
@@ -163,8 +170,38 @@ def update_node_attributes(
             )
         cleaned["sensitivity"] = sv
 
-    # Load + diff + write.
+    # Load entity for the event-field branch (need its current
+    # entity_type to decide whether occurred_at / precision are
+    # honored or silently dropped) AND for the diff + write below.
     path, fm, body = _load_entity_by_id(entity_id, wiki_generator)
+
+    # ── Event time-axis branch (memo §5.2) ──────────────────────
+    # occurred_at / occurred_at_precision are honored only when the
+    # *existing* node is type=event. For any other type both fields
+    # are silently dropped, so an accidental client send doesn't
+    # surface as a 400.
+    has_event_payload = (
+        "occurred_at" in filtered
+        or "occurred_at_precision" in filtered
+    )
+    if has_event_payload and fm.get("entity_type") == "event":
+        # Compose the would-be new (value, precision) pair from
+        # patch ∪ existing, then validate the pair together so a
+        # partial update (only one of the two changing) still gets
+        # full ISO 8601 + enum verification.
+        new_at = filtered.get(
+            "occurred_at", fm.get("occurred_at"),
+        )
+        new_prec = filtered.get(
+            "occurred_at_precision",
+            fm.get("occurred_at_precision", "day"),
+        )
+        validate_occurred_at(new_at, precision=new_prec)
+        if "occurred_at" in filtered:
+            cleaned["occurred_at"] = filtered["occurred_at"]
+        if "occurred_at_precision" in filtered:
+            cleaned["occurred_at_precision"] = filtered["occurred_at_precision"]
+    # else: non-event target → both fields silently dropped from cleaned.
 
     before: Dict[str, Any] = {}
     after:  Dict[str, Any] = {}
