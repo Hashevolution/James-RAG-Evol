@@ -86,14 +86,14 @@ grant 의 정확한 문구)이 정해진다.
 
 ### Track B — 외부 PR CLA 검증 체계
 - [x] B-1. CLA 방식 선택 — **CLA Assistant 단독** (§3 B-1 표 + recommendation)
-- [ ] B-2. `docs/legal/CLA.md` 본문 초안 작성 (Apache ICLA 기반 + **§4-bis
-  Relicensing Grant 절 필수 포함** — 미래 전환 기술적 전제조건)
-- [ ] B-3. CLA 저장소 / 서명 기록 위치 결정
-- [ ] B-4. CLA Assistant (또는 DCO bot) 설치 — **사용자 액션 필요**
-- [ ] B-5. `.github/workflows/cla.yml` 추가 (자동 검증 게이트)
-- [ ] B-6. 첫 외부 PR 시나리오 dry-run (테스트 계정 1건)
-- [ ] B-7. `CONTRIBUTING.md` 에 CLA 절차 추가
-- [ ] B-8. CLA 거절 시 응대 템플릿 작성 (`.github/ISSUE_TEMPLATE/` 또는 PR template)
+- [x] B-2. `docs/legal/CLA.md` 본문 초안 작성 (Apache ICLA 기반 + **§4-bis
+  Relicensing Grant 절 필수 포함** — 미래 전환 기술적 전제조건) — **PR #340 (2026-05-19, v1.0 148줄)**
+- [x] B-3. CLA 저장소 / 서명 기록 위치 결정 — **`hashevolution/james-rag-evol-cla` private repo 생성 완료**
+- [x] B-4. CLA Assistant (또는 DCO bot) 설치 — **사용자 액션 완료 (cla-assistant.io 인증 + Gist 등록 + repo 연결 + `CLA_BOT_PAT` repo secret)**
+- [x] B-5. `.github/workflows/cla.yml` 추가 (자동 검증 게이트) — **PR #340 (2026-05-19, 61줄, `contributor-assistant/github-action@v2.6.1`)**
+- [x] B-6. 첫 외부 PR 시나리오 dry-run (테스트 계정 1건) — **2026-05-20 별도 GitHub 계정으로 dry-run 통과, 봇 코멘트 → 서명 코멘트 → status check ✅ 전 과정 검증 완료**
+- [x] B-7. `CONTRIBUTING.md` 에 CLA 절차 추가 — **PR #340**
+- [x] B-8. CLA 거절 시 응대 템플릿 작성 (`.github/ISSUE_TEMPLATE/` 또는 PR template) — **PR #340 + `docs/legal/non-cla-contributions.md`**
 
 ### Track C — v0.3 Plugin API 스켈레톤
 - [ ] C-1. `core/plugins/` 디렉토리 설계 합의
