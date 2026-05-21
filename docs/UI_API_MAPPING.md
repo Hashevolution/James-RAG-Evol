@@ -20,13 +20,18 @@
 - **6 frontend JS files** call into them: `chat.js`, `admin.js`,
   `workspace.js`, `graph.js`, `graph_editor.js`, `graph_node_editor.js`
 - **1 CLI consumer** of HTTP API: `scripts/bench.py` (calls `/query/`)
-- **22 orphans** (defined backend, no frontend caller) — the two
-  `event` endpoints (#368 / #370) are orphan at the UI layer
-  pending the Govern → Graph "Add event" affordance + the
-  Observe → Timeline view (memo §9 explicitly defers timeline UI
-  to a later cycle). The two cognitive-toggle endpoints from
-  PRs #377 / #378 were initially orphan and got wired in the
-  same series, so they no longer appear in §3.2.
+- **11 orphans (actionable subset)** = 4 in §3.1 (CLI-only,
+  intentional) + 5 in §3.2 (backend ready, UI pending) + 2 in
+  §3.3 (deprecated / redundant). The §3.4 WIP bucket (18 endpoints,
+  intentionally parked) is excluded from this number — see the
+  methodology note in §3. Was 14 the day before PR #380 (8 in §3.2)
+  — PR #380 wired the three `/admin/llm/select*` endpoints into
+  Configure → LLM Task → Model, dropping §3.2 from 8 to 5.
+  Earlier drafts of this doc reported "20" / "22" orphans using a
+  looser estimate that didn't fully reconcile with the sub-bucket
+  sums; from this revision forward the actionable-subset rule
+  (§3.1 + §3.2 + §3.3) is canonical and any future endpoint
+  addition / wiring should walk that number in lockstep.
 - **5 duplicate / overlap pairs** (was 6 — `/admin/metrics` vs
   `/admin/performance/metrics/` retracted as a false duplicate, see §5)
 - **7 area-conflict endpoints** (read and write straddle two IA areas).
@@ -57,9 +62,15 @@ not yet bound to an IA area.
 
 ---
 
-## 3. Orphan endpoints (20)
+## 3. Orphan endpoints
 
-Backend exists; no frontend caller. Grouped by disposition.
+Backend exists; no frontend caller. Grouped by disposition. The
+"actionable subset" total in §1 (11 as of 2026-05-21) is the sum
+of §3.1 + §3.2 + §3.3 — the WIP bucket in §3.4 is intentionally
+parked and excluded from that headline number. This methodology
+note was added 2026-05-21 to replace the looser earlier estimate
+that reported "20" / "22"; future PRs that wire or add endpoints
+should walk the §1 number in lockstep with the sub-bucket sum.
 
 ### 3.1 CLI-only (intentional)
 
@@ -74,14 +85,17 @@ Backend exists; no frontend caller. Grouped by disposition.
 
 | Endpoint | Intended area | Status |
 |---|---|---|
-| `GET /admin/llm/selections` | Configure | task→LLM mapping read; **wire into Configure → LLM** |
-| `POST /admin/llm/select` | Configure | task→LLM write; **wire into Configure → LLM** |
-| `DELETE /admin/llm/select` | Configure | task→LLM clear; **wire into Configure → LLM** |
-| `POST /history/sessions/rename/` | Ask | session-rename UX missing in chat |
-| `GET /history/long-term/` | Ask / Observe | long-term memory inspector missing |
-| `GET /feedback/stats/` | Observe | feedback aggregate not surfaced |
+| `POST /history/sessions/rename/` | Ask | session-rename UX missing in chat (risk signal #1) |
+| `GET /history/long-term/` | Ask / Observe | long-term memory inspector missing (risk signal #1) |
+| `GET /feedback/stats/` | Observe | feedback aggregate not surfaced (risk signal #1) |
 | `POST /admin/graph/event` | Govern (graph editor) | event node creation (PR-11a-2); **wire into Govern → Graph editor "Add event" affordance** |
 | `GET /admin/graph/events` | Observe (timeline) | time-bucket filtered events (PR-11c); **wire into Observe → Graph (event filter) or new Timeline view** |
+
+> **Resolved 2026-05-21 (PR #380)**: `GET /admin/llm/selections`,
+> `POST /admin/llm/select`, `DELETE /admin/llm/select` previously
+> sat in this table. They now have UI in admin Configure → LLM
+> Task → Model and are out of the orphan inventory. Risk signal
+> #2 closed — see §8.
 
 ### 3.3 Deprecated or redundant
 
@@ -177,7 +191,7 @@ the edit button deep-links into Govern → CR Propose.
 
 | File | API calls | Primary area(s) | Observation |
 |---|---:|---|---|
-| `admin.js` | 47+ | Observe + Govern + Configure | mirrors 17-tab monolith — biggest split target (+2 from PR #378 cognitive section) |
+| `admin.js` | 50+ | Observe + Govern + Configure | mirrors 17-tab monolith — biggest split target (+2 from PR #378 cognitive section, +3 from PR #380 LLM task→model section) |
 | `chat.js` | 14 | Ask + My Work | first-run install logic duplicated with admin.js |
 | `workspace.js` | 12 | My Work + Govern (CR) | CR lifecycle straddles two areas here |
 | `graph_editor.js` | 3 | Govern | relation writes |
@@ -198,10 +212,18 @@ roughly 3 modules of ~15 calls each.
    rename, long-term memory, feedback aggregate are all wired but
    unused — symptom of a UI that hasn't surfaced what the backend
    can already do.
-2. **Configure → LLM is half-wired**: `/admin/llm/installed` is
-   called, but `/admin/llm/selections`, `/admin/llm/select` (POST
-   and DELETE) are orphans. Task→LLM mapping is the headline feature
-   of Configure and it has no UI.
+2. ~~**Configure → LLM is half-wired**~~ —
+   **RESOLVED 2026-05-21 by PR #380.**
+   `/admin/llm/installed` was already called; `/admin/llm/selections`,
+   `/admin/llm/select` (POST + DELETE) now have UI in the admin
+   Configure → 🤖 LLM Task → Model section. Persistence is durable
+   (`workspace/llm_selection.json`), so an admin's task→model
+   choice survives restart. Five canonical task_types (general /
+   classify / extract / coding / vision) are surfaced as rows;
+   each row dropdowns the set of `/admin/llm/installed` models +
+   a "(default — config.GEMMA_MODEL)" empty option. The save path
+   diffs against `data-task-initial` so unchanged rows don't hit
+   the network.
 3. **First-run wizard is duplicated in two files**: `firstRunInstall()`
    exists in both `chat.js` and `admin.js`. Any change to onboarding
    has to be made twice. This is a concrete bug-source today, not
@@ -240,16 +262,22 @@ roughly 3 modules of ~15 calls each.
 
 ### Phase 2 — Deduplication (no IA changes yet)
 
-- [ ] Extract first-run install (`firstRunInstall()` + progress poll) into a shared module; call from chat **and** admin
-- [ ] Extract login modal into a shared component; remove from `chat.js`, `admin.js`, `graph.js`
-- [ ] Standardize `/password/reset/confirm` implementation across `chat.js` and `admin.js`
+- [x] Extract first-run install (`firstRunInstall()` + progress poll)
+      into a shared module; call from chat **and** admin
+      → **PR #372** (`llm-install.js`)
+- [x] Extract login HTTP from individual pages — **PR #372**
+      (`auth.js` — `Auth.login()`). Note: shared **modal markup**
+      across 4 HTML files is still pending (Phase 3 territory).
+- [x] Standardize `/password/reset/confirm` across pages —
+      **PR #372** (`Auth.resetPasswordConfirm()`)
 
 ### Phase 3 — IA migration (the big one)
 
 - [ ] Split `admin.js` along Govern / Observe / Configure boundaries
 - [ ] Wire `/admin/cr/` hand-off links per UI_IA §3.3 (My Work → Govern → Observe)
 - [ ] Implement the read/write area-split rule from §6 of this doc
-- [ ] Wire `/admin/llm/selections` + `/admin/llm/select` into Configure → LLM
+- [x] Wire `/admin/llm/selections` + `/admin/llm/select` into
+      Configure → LLM → **PR #380**
 
 ### Phase 4 — Naming (v0.4 candidate)
 
@@ -273,24 +301,35 @@ On 2026-05-21:
   pair (UI-IA risk signal #5 fix). 135 → 137. Both endpoints
   landed pre-wired (UI consumes them in the same series), so
   neither is an orphan.
+- PR #380 wired three pre-existing endpoints
+  (`GET /admin/llm/selections`, `POST /admin/llm/select`,
+  `DELETE /admin/llm/select`) into Configure → LLM Task → Model.
+  Total endpoint count unchanged (137). The §1 orphan number
+  was also recounted under a stricter methodology (sub-bucket
+  sum of §3.1 + §3.2 + §3.3 — see §3 note) — the earlier
+  "20" / "22" estimate is now expressed as the precise
+  `4 + 5 + 2 = 11`. Risk signal #2 closed.
 
-Use **137** as the canonical number going forward; any future
-endpoint additions should bump this count and add a row to §3.2
-(orphan with intended area) at the same time, or to §2's
+Use **137** as the canonical endpoint count going forward; any
+future endpoint additions should bump this count and add a row to
+§3.2 (orphan with intended area) at the same time, or to §2's
 area-distribution table when shipped pre-wired, so the analysis
-stays self-consistent.
+stays self-consistent. Likewise, every PR that wires an orphan
+should subtract from §1's orphan number and move the row out of §3.2
+into a "Resolved" callout (see the 2026-05-21 example under §3.2).
 
 ---
 
 ## 한국어 요약
 
 JAMES의 HTTP 엔드포인트 137개를 UI 5영역과 크로스레퍼런스한 결과:
-**고아 22개, 의미상 중복 5쌍, 영역 충돌 7개**가 확인됐습니다 (2026-05-21
-기준 — PR #368/#370/#377/#378 반영 후). 가장 큰 부채는 ① `admin.js` 한
-파일에 Govern·Observe·Configure가 뒤섞여 있다는 것 (47+ API 호출, 17탭),
-② first-run 설치/로그인 모달이 2~3 파일에 복붙되어 있다는 것 (#372 가
-일부 해소), ③ Configure → LLM의 task→모델 매핑 API(`/admin/llm/select*`)가
-백엔드에만 존재하고 UI가 없다는 것입니다. **§8 risk signal #5 (cognitive
-features 가 env-only 였던 부채)** 는 2026-05-21 PR #377/#378 로 해소.
-IA 마이그레이션 다음 단계는 Phase 3에서 `admin.js` 삼분할과
-`/admin/cr/` 핸드오프 링크를 구현하는 것입니다.
+**고아 11개 (액션 대상 기준 — §3.1+§3.2+§3.3 합 4+5+2; WIP 18은 별도
+보류), 의미상 중복 5쌍, 영역 충돌 7개**가 확인됐습니다 (2026-05-21 기준
+— PR #368/#370/#377/#378/#380 반영 후, 측정 기준 정비 포함). 가장 큰 부채는 ① `admin.js` 한
+파일에 Govern·Observe·Configure가 뒤섞여 있다는 것 (50+ API 호출, 17탭),
+② first-run 설치/로그인 HTTP 가 PR #372 로 통합됐지만 **모달 마크업
+자체는 여전히 4 HTML 파일에 흩어져 있음** (Phase 3 잔여). **2026-05-21
+하루에 §8 risk signal 2 건 해소**: #5 (cognitive env-only) → PR #377/#378,
+#2 (Configure→LLM half-wired) → PR #380. IA 마이그레이션 다음 단계는
+Phase 3에서 `admin.js` 삼분할과 `/admin/cr/` 핸드오프 링크를 구현하는
+것입니다.
