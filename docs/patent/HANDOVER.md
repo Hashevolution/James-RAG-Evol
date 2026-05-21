@@ -34,10 +34,32 @@
   - 공지예외 적용 증명서 .pdf (3 페이지)
 - 접수증: 사용자 비공개 보관
 
-### 잔여 작업 (STAGE 1, 1A 결정 보류 중)
-- 검토 의견: STAGE 1A 의 "비대칭 게이팅" 개념이 Graph RAG / CGR 추세와 일부 중복 가능성 시사
-- 진행: STAGE 1A + STAGE 1 prior art 추가 검색 진행 중 (Claude 자동 백그라운드)
-- 결정: 검색 결과 ✅/⚠️/❌ 등급에 따라 출원 진행 / narrow / skip 결정
+### 잔여 작업 (STAGE 1, 1A 결정 — Prior Art 검색 완료 2026-05-21)
+
+**Prior Art 추가 검색 결과**:
+
+| Stage | 🔴 | 🟠 | 🟡 | 🟢 | 권고 |
+|---|---|---|---|---|---|
+| STAGE 1 (Memory Loom) | 0 | 7 ⚠️ | 10 | 4 | ⚠️ narrow 후 진행 (Mem0 와 거리 좁음) |
+| STAGE 1A (Doc-source gate) | 0 | 1 | 9 | 7 | ⚠️ **narrow 후 진행** (prior art 클리어) |
+
+**핵심 발견**: STAGE 1A (점수 3/5) 가 STAGE 1 (점수 4/5) 보다 **prior art 환경 깨끗**. 역설적 결과.
+
+**권고 결정**: **시나리오 1 채택 — STAGE 1A 만 추가 출원**.
+- STAGE 1 은 Mem0 (2025-04), Cognee, A-MAC 등 prior art 7 건과 거리 좁음
+- STAGE 1A 의 specific 메커니즘 (stem-vs-filename + asymmetric document gate) 은 prior art 부재
+- 비용 절약 ₩13,800 (시나리오 A → STAGE 1B + 1A 만, ₩27,600 누적)
+
+**상세 분석**: `docs/patent/prior-art-1A.md`, `docs/patent/prior-art-1.md`
+
+### STAGE 1B 출원 후 청구항 보호 범위 재검토 (2026-05-21)
+
+청구항 10 개 검토:
+- ⭐ **강한 broad concept**: claim 4 (manual 면역), claim 5 (diff cascade), claim 6 (단조성), claim 7 (cross-doc aggregation)
+- ⚠️ **narrow lock-in 위험**: claim 1 (공식 lock), claim 4 (필드명 lock), claim 5 (triple lock), claim 8 (수치 lock)
+- 정식 전환 시 변리사 자문으로 필드명·공식 family broadening 필요
+
+**임시 출원 가치**: ⭐⭐⭐ 충분히 valid (₩13,800 잘 쓴 돈, 우선일 확보, 정식 전환 가능)
 
 ### 출원 진행 시 권장 순서
 1. STAGE 1B (Cascade) ✅ **완료**
