@@ -87,18 +87,17 @@ class IconOnlyButtonsTests(unittest.TestCase):
             f"{page}: button {locator!r} must declare aria-label")
 
     def test_index_session_open_button(self):
-        # The 💬 button in the header opens the session panel
+        # The 💬 button in the header opens the session sidebar mode
         # (id=session-btn).
         self._assert_aria_on_button(
             self.index, 'id="session-btn"', "index.html")
 
-    def test_index_session_close_button(self):
-        # The ✕ button INSIDE the session panel header closes it.
-        # The button HTML uses inline ``style="background:none;..."``
-        # — that string only exists on the close button.
-        self._assert_aria_on_button(
-            self.index, "background:none;border:none;color:var(--muted)",
-            "index.html")
+    # The ✕ button that used to live inside the floating #session-panel
+    # was removed when the session list moved into the sidebar
+    # (commit 78db8de). Closing the session view now uses the
+    # sidebar-toggle (◀) button, which has its own aria-label and is
+    # implicitly covered as a generic sidebar control. No replacement
+    # test needed.
 
     def test_index_send_button(self):
         # The ▲ submit button on the chat input.
