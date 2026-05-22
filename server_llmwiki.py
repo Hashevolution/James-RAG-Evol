@@ -261,6 +261,38 @@ async def on_startup():
     """서버 시작 시 자동 실행."""
     import asyncio
 
+    # [PR-C5b 2026-05-23] Plugin pack loader — JAMES_PACKS env-driven.
+    # Reads packs/general/ (and any operator-listed packs) at startup,
+    # validates each manifest, and populates core/plugins/registry. In
+    # v0.3 the registry is populated but not yet *consumed* — consumer
+    # wiring lands in PR-C5c when core/reasoning/modes/ +
+    # core/retrieval/ start reading the registered Protocol instances.
+    # Therefore STEP 7 results are byte-identical at this point (the
+    # registry exists but no code path reads from it).
+    #
+    # Failure semantics: ``PluginLoadError`` and ``PluginVersionError``
+    # are intentionally propagated and will halt server startup, per the
+    # design memo's "no silent fallback" contract. An operator who has
+    # broken JAMES_PACKS (typo'd pack name, corrupt manifest, SemVer
+    # mismatch) sees the failure at startup, not 30 minutes later when
+    # the first query lands. See docs/PLUGIN_AUTHORING.md §5.
+    try:
+        from core.plugins.loader import load_packs_from_env
+        from core.plugins.registry import get_registry
+        manifests = load_packs_from_env()
+        counts = get_registry().slot_counts()
+        pack_list = ", ".join(f"{m.name} v{m.version}" for m in manifests)
+        print(
+            f"[PLUGINS] loaded {len(manifests)} pack(s): {pack_list} — "
+            f"slots: ontology={counts['ontology']}, prompts={counts['prompts']}, "
+            f"ui={counts['ui']}, scorers={counts['scorers']}"
+        )
+    except ImportError as _import_exc:
+        # Defensive only — core.plugins lands in v0.3. An ImportError
+        # here means the package is missing entirely (likely a partial
+        # checkout); print and continue so the rest of startup proceeds.
+        print(f"[PLUGINS] skipped — package not importable: {_import_exc}")
+
     # #81 phase 3-C: prune trace files older than the retention window
     # so reports/trace/ doesn't grow unbounded over weeks of usage.
     # One-shot per process restart — operators wanting more frequent
