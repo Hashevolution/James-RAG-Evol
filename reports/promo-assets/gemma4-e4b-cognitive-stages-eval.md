@@ -319,6 +319,65 @@ The linear cap-latency scaling indicates the ~500-token hidden reasoning floor i
 - 4-line PR bumping all four `DEFAULT_MAX_TOKENS` constants (200 / 400 / 400 / 400 → 4096 each) now justified by 2-stage in-house mechanism evidence + Ali's external 12/12 + Robin's external 18/18.
 - V3'.c / V3'.d will run as **post-merge validation** — their JSONs will land in `reports/research-runs/` alongside V3'.a/.b. If either stage does NOT replicate (low-probability scenario), single-line revert.
 
+### 2026-05-22 — Robin Converse (LinkedIn sub-reply on the V3'.b commentary thread)
+
+**Reporter**: Robin Converse (Triava Labs, sovereign Ollama infrastructure)
+**Channel**: LinkedIn comment thread (public reply, ~1 hour after the JAMES V3'.b commentary)
+**Hypothesis they support / refute**: **B (token budget) — confirmed; proposes architectural-property extension**
+
+**Verbatim quote** (public LinkedIn comment):
+
+> jiwon SEO — that's a meaningful upgrade to the framing. The "~500-token reasoning floor before first visible token" is more specific than the gap-widens shape I had, and it predicts something testable: there should be a discoverable threshold below which output is impossible regardless of query complexity, and above which the cap just constrains length.
+>
+> Worth seeing if the floor is model-specific or architecture-specific. My sweep was on gemma4:26b MoE your test is on gemma4:e4b. If the floor sits at a similar token count across both, it's an architectural property. If it scales with parameter count, that's a different story.
+>
+> Adding this to the Track 3 piece when it lands. Three contexts pointing at the mechanism with measurable data is the article that writes itself.
+
+**Decoded relevance to this report**:
+
+Two substantive operational shifts:
+
+1. **Vocabulary convergence — the JAMES framing is now the joint anchor.** Robin explicitly names the "~500-token reasoning floor before first visible token" phrasing as a meaningful upgrade over her own "gap-widens" description. The cross-collaboration vocabulary stack:
+
+   | Source | Vocabulary |
+   |---|---|
+   | Robin Converse (Triava, sovereign Ollama) | "gap widens with query difficulty" — descriptive |
+   | Ali Afana (Provia, managed Gemini) | "starving the reasoning layer before the visible reply completed" — biological |
+   | Hashevolution (PROJECT JAMES, local Ollama) | "~500-token reasoning floor before first visible token" — mechanistic |
+
+   All three describe the same phenomenon. The mechanistic phrasing is the one Robin (P1) and Ali (separate DM) are now adopting forward.
+
+2. **Testable extension: model-specific vs architectural property.** Robin's sweep was on `gemma4:26b MoE`; the V3'.a/.b results are on `gemma4:e4b`. Two readings of the hypothesis:
+
+   | Scenario | Floor (hypothesis) | Reading |
+   |---|---|---|
+   | e4b and 26b MoE both ~500-token floor | **Identical** | Architectural property of the Gemma 4 family |
+   | 26b MoE has a different (e.g., higher) floor | **Scales with size** | A parameter-count function — different (still publishable) finding |
+
+   Either outcome is a clean publishable result; the disambiguation lives at the data layer, not the framing layer.
+
+**Project response**:
+
+- **Outgoing LinkedIn reply** sent the same day. Mirrored the "discoverable threshold" phrasing as the operating vocabulary. Reported V3'.b stage-independence as the second data point on `gemma4:e4b`. Offered the V3' driver (`scripts/research/v3prime_query_rewriter.py`) as a stdlib-only drop-in for her sovereign-Ollama 26b MoE environment, with explicit protocol: single `num_predict` variable, n=10 per cap, capturing `eval_count` + `done_reason` + raw response bytes per call. Emphasised "the capture matters more than the driver — eval_count vs visible bytes is where the floor signature shows up" (which implicitly credits Robin's original `eval_count` gap observation as the seed signal for the floor mechanism).
+- **New shared vocabulary proposed**: **"cross-model floor calibration"** — covers both the architectural-property reading and the parameter-scaling reading without committing to either.
+- **Deliberately not done**: did NOT speculate on which scenario will win (the "different story" reading), did NOT commit to additional family-variant sweeps (e2b / Gemma 3 etc.) on the JAMES side, did NOT claim stage-specific floor heights without V3'.c/.d data.
+- **Effect on joint piece narrative**: Robin moves from cited contributor (the walk-back trigger noted in Ali's article) to **active co-contributor with a proposed second experiment**. The joint piece now potentially carries (a) three deployment contexts, (b) two architectures (Gemini Dense+MoE / Gemma 4 4B), (c) a measurable architectural property if her 26b floor aligns. If she runs the 26b sweep, the piece carries quantitative cross-model data; if she doesn't, the framing-convergence + three-context evidence already anchors it.
+
+**Updated cross-validation bundle** (with Robin's proposed extension):
+
+| Source | Context | Test | Result |
+|---|---|---|---|
+| Robin Converse (initial) | sovereign Ollama, uncapped sweep on `gemma4:26b MoE` | 3 temperatures × 6 scenarios | 18/18 success |
+| Ali Afana (2026-05-21) | managed Gemini API, single-variable | 400 → 4096 cap on 6 scenarios × 2 architectures | 12/12 recovery |
+| Hashevolution (V3'.a) | local Ollama, single-variable on `gemma4:e4b` | 200 → 4096 cap on query_rewrite, n=10 | 0/10 → 10/10, ~500-token hidden-reasoning floor quantified |
+| Hashevolution (V3'.b) | local Ollama, single-variable on `gemma4:e4b` | 400 → 4096 cap on planner, n=10 | 0/10 → 10/10, mechanism stage-independent within model |
+| Robin Converse (proposed, 2026-05-22) | sovereign Ollama, single-variable on `gemma4:26b MoE` | same protocol as V3'.a — TBD if she runs it | Pending — would disambiguate model-specific vs architectural |
+
+**Notes**:
+
+- This is the **second Reader contribution** since the 2026-05-21 Ali entry. Routing protocol: `docs/handovers/v0.3.x-gemma4-feedback-track.md` (unchanged — same hypothesis B classification).
+- The Robin sub-reply is the first signal that the framing language is converging on the JAMES phrasing as the shared anchor (a meta-effect beyond the mechanism finding itself).
+
 ---
 
 ## 한국어 요약 (Korean summary)
