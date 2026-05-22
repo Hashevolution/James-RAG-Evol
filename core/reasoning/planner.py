@@ -40,7 +40,11 @@ from core.reasoning.trace_schema import (
 from core.reasoning.backends import get_default_backend_id as _get_default_backend
 DEFAULT_BACKEND_ID = _get_default_backend()
 DEFAULT_TIMEOUT_S = 20.0
-DEFAULT_MAX_TOKENS = 400
+# gemma4:e4b consumes ~500 hidden reasoning tokens before the first
+# visible output on short structured prompts; cap below that floor
+# → deterministic empty response (model burns the budget without
+# surfacing any byte).
+DEFAULT_MAX_TOKENS = 4096
 # Decomposition cap. More than 5 subtasks is usually the model
 # elaborating rather than decomposing — and the synth prompt only
 # benefits from a focused checklist, not a wall of bullet points.

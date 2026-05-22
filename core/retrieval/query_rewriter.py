@@ -43,7 +43,11 @@ from typing import Optional, Tuple
 from core.reasoning.backends import get_default_backend_id as _get_default_backend
 DEFAULT_BACKEND_ID = _get_default_backend()
 DEFAULT_TIMEOUT_S = 10.0
-DEFAULT_MAX_TOKENS = 200
+# gemma4:e4b consumes ~500 hidden reasoning tokens before the first
+# visible output on short structured prompts; cap below that floor
+# → deterministic empty response (model burns the budget without
+# surfacing any byte).
+DEFAULT_MAX_TOKENS = 4096
 # Reject rewrites that balloon the query — usually a sign the LLM
 # elaborated instead of rewriting (e.g., explaining what the query is
 # rather than rephrasing it). 3× length is a generous bound.

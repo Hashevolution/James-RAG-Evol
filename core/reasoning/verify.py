@@ -66,7 +66,11 @@ from core.reasoning.trace_schema import (
 from core.reasoning.backends import get_default_backend_id as _get_default_backend
 DEFAULT_BACKEND_ID = _get_default_backend()
 DEFAULT_FACT_CHECK_TIMEOUT_S = 30.0
-DEFAULT_FACT_CHECK_MAX_TOKENS = 400
+# gemma4:e4b consumes ~500 hidden reasoning tokens before the first
+# visible output on short structured prompts; cap below that floor
+# → deterministic empty response (model burns the budget without
+# surfacing any byte).
+DEFAULT_FACT_CHECK_MAX_TOKENS = 4096
 MIN_ANSWER_LEN_FOR_VERIFY = 30
 # An "unsupported claim" count at or above this triggers annotation.
 ANNOTATE_THRESHOLD = 2

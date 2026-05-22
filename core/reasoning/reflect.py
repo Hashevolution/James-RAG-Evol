@@ -47,11 +47,15 @@ from core.reasoning.trace_schema import (
 # [JAMES_REASONING_BACKEND wiring 2026-05-18] resolved at import time.
 from core.reasoning.backends import get_default_backend_id as _get_default_backend
 DEFAULT_BACKEND_ID = _get_default_backend()
-# Critique + revise budgets — kept tight so reflection doesn't blow
+# Critique + revise timeouts — kept tight so reflection doesn't blow
 # past the 30s timing target in core/reasoning/engine.py.
 DEFAULT_CRITIQUE_TIMEOUT_S = 30.0
 DEFAULT_REVISE_TIMEOUT_S = 45.0
-DEFAULT_CRITIQUE_MAX_TOKENS = 400
+# gemma4:e4b consumes ~500 hidden reasoning tokens before the first
+# visible output on short structured prompts; cap below that floor
+# → deterministic empty response (model burns the budget without
+# surfacing any byte). Revise stage already sits above the floor.
+DEFAULT_CRITIQUE_MAX_TOKENS = 4096
 DEFAULT_REVISE_MAX_TOKENS = 1024
 # Reject runaway revised answers that ballooned far past the draft —
 # usually a sign the LLM added boilerplate apologies rather than fixing
