@@ -54,7 +54,13 @@ class Feature:
       id: canonical dotted id, e.g. "upload.file". Used in the
           ``feature_overrides`` table and the ``applied_rule`` field
           of every PolicyEngine decision for this feature.
-      description: short Korean label shown in the admin UI.
+      description: short Korean label shown in the admin UI as the
+          EN-mode fallback if the i18n table misses ``label_key``.
+      label_key: i18n table lookup key for the bilingual UI label.
+          Convention: ``policy.feature.<id_with_dots_to_underscores>``.
+          The Policy matrix UI binds ``data-i18n`` to this key and
+          falls back to ``description`` on miss (same pattern as
+          ``LLM_TASK_TYPES`` in ``admin.js`` / ``PROTECTED_CANDIDATES``).
       default_allowed: roles that have this feature out of the box.
           A role NOT in this set is denied unless an admin adds an
           override row. Stored as frozenset to prevent accidental
@@ -62,12 +68,19 @@ class Feature:
     """
     id:               str
     description:      str
+    label_key:        str
     default_allowed:  FrozenSet[str]
 
 
 def _f(fid: str, desc: str, allowed_roles: str) -> Feature:
     """Compact constructor — `allowed_roles` is a comma-separated
-    list ('admin,manager,employee') so the catalog stays readable."""
+    list ('admin,manager,employee') so the catalog stays readable.
+
+    ``label_key`` is derived from ``fid`` (e.g., "upload.file" →
+    "policy.feature.upload_file") so the catalog stays a single source
+    of truth: adding a feature here means the UI lookup key follows
+    deterministically without a second registration step.
+    """
     roles = frozenset(r.strip() for r in allowed_roles.split(",") if r.strip())
     # Defensive check at module load: every default role must exist in
     # ALLOWED_ROLES. A typo here would silently produce a feature
@@ -78,7 +91,12 @@ def _f(fid: str, desc: str, allowed_roles: str) -> Feature:
             f"feature_registry: feature {fid!r} has unknown role(s) "
             f"in default_allowed: {sorted(unknown)}"
         )
-    return Feature(id=fid, description=desc, default_allowed=roles)
+    return Feature(
+        id=fid,
+        description=desc,
+        label_key=f"policy.feature.{fid.replace('.', '_')}",
+        default_allowed=roles,
+    )
 
 
 # Canonical feature catalog. Order matters only for the admin UI
@@ -391,6 +409,7 @@ def list_effective(roles: Optional[List[str]] = None) -> List[Dict]:
         out.append({
             "id":               fid,
             "description":      feat.description,
+            "label_key":        feat.label_key,
             "default_allowed":  sorted(feat.default_allowed),
             "effective":        effective,
         })

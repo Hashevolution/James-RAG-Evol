@@ -979,7 +979,7 @@ async function loadPolicy() {
       return `<tr>
         <td>
           <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${f.id}</div>
-          <div style="font-size:12px;color:var(--text);margin-top:1px">${f.description || ''}</div>
+          <div style="font-size:12px;color:var(--text);margin-top:1px"><span data-i18n="${f.label_key || ''}">${f.description || ''}</span></div>
         </td>
         ${cells}
         <td style="text-align:center">
@@ -990,6 +990,9 @@ async function loadPolicy() {
         </td>
       </tr>`;
     }).join('');
+    // Re-translate freshly-injected data-i18n spans (same pattern as
+    // loadCognitiveFlags / loadLlmSelections / buildProtectedCheckboxes).
+    if (typeof applyTranslations === 'function') applyTranslations();
   } catch (e) {
     body.innerHTML = `<tr><td colspan="6" class="empty">${e.message}</td></tr>`;
   }
