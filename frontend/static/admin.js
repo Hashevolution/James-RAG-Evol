@@ -3652,15 +3652,19 @@ function renderCapabilities(caps) {
   el.innerHTML = caps.map(c => `
     <div style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <span style="font-size:13px">${c.icon} <strong>${c.label}</strong></span>
+        <span style="font-size:13px">${c.icon} <strong><span data-i18n="${c.label_key || ''}">${c.label}</span></strong></span>
         <span style="font-size:12px;font-family:var(--font-mono);color:var(--accent)">${c.pct}%</span>
       </div>
       <div style="background:var(--border);border-radius:4px;height:8px;overflow:hidden">
         <div style="width:${c.pct}%;height:100%;background:var(--accent);
           border-radius:4px;transition:width .5s ease"></div>
       </div>
-      <div style="font-size:10px;color:var(--muted);margin-top:3px">${c.desc}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px"><span data-i18n="${c.desc_key || ''}">${c.desc}</span></div>
     </div>`).join('');
+  // Re-translate freshly-injected data-i18n spans (matches the
+  // loadCognitiveFlags / loadLlmSelections / buildProtectedCheckboxes
+  // / loadPolicy pattern).
+  if (typeof applyTranslations === 'function') applyTranslations();
 }
 
 /* [#2-C] 도메인별 도넛 차트.
@@ -3717,15 +3721,17 @@ function renderDomains(domains) {
         <!-- 우: 메타 -->
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;margin-bottom:6px">
-            ${d.icon} <strong>${d.label}</strong>
+            ${d.icon} <strong><span data-i18n="${d.label_key || ''}">${d.label}</span></strong>
           </div>
           <div style="font-size:10px;color:var(--muted);
                       font-family:var(--font-mono);line-height:1.6">
-            <div>다음까지 <strong style="color:${d.color}">${d.tier_pct ?? d.pct}%</strong></div>
+            <div><span data-i18n="growth.next_level">다음까지</span> <strong style="color:${d.color}">${d.tier_pct ?? d.pct}%</strong></div>
             <div>📄 ${d.wiki_count ?? 0} wiki · score ${d.score ?? 0}</div>
           </div>
         </div>
       </div>`).join('') + '</div>';
+  // Re-translate freshly-injected data-i18n spans.
+  if (typeof applyTranslations === 'function') applyTranslations();
 }
 
 /* ── [P3-1] 하드웨어 장비 현황 ── */
