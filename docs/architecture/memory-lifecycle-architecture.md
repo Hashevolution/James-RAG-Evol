@@ -3,8 +3,8 @@
 > **자메스 의 5-layer 아키텍처 reference 문서**
 >
 > **작성일**: 2026-05-21
-> **마지막 업데이트**: 초안 (사용자 비판 시리즈 반영, patent portfolio roadmap 정합)
-> **상태**: outline / 외부 공개·학회·patent 백서 reference 용
+> **마지막 업데이트**: 초안 (사용자 비판 시리즈 반영)
+> **상태**: 구현 reference + 외부 공개 / 학술 발표 용
 
 ---
 
@@ -79,8 +79,6 @@
 | 임베딩 생성 | `core/wiki_generator.py` (Ollama embedding) |
 | File metadata | uploads/ 디렉토리, `.extraction.json` sidecar |
 
-**특허 청구 후보**: ❌ (commodity, prior art 너무 많음)
-
 ### 2.2 Layer 2 — Extracted Facts
 
 | 책임 | 코드 매핑 |
@@ -90,28 +88,27 @@
 | Source attribution | `core/relations_schema.py` (sources 배열 schema) |
 | Confidence weights | LLM 출력 score |
 
-**특허 청구 후보**: ⚠️ 단독 X. 결합 청구로만 (Layer 3 와 함께).
-
 ### 2.3 Layer 3 — Memory Operating System ⭐
 
-| 책임 | 코드 매핑 | 청구 |
-|---|---|---|
-| Sources schema | `core/relations_schema.py` (Phase A, PR #266) | STAGE 1B claim 1(a) |
-| Noisy-OR derivation | `core/relations_schema.py::compute_confidence_from_sources` (Hotfix PR #349) | STAGE 1B claim 1(b) |
-| Cross-doc aggregation | `core/wiki_generator.py::_merge_relations_into_existing_entity` (Hotfix PR #350) | STAGE 1B claim 7 |
-| Delete cascade | `core/cascade.py::cascade_remove_doc_from_sources` (Phase C, PR #270) | STAGE 1B claim 2 |
-| Modify cascade | `core/cascade.py::cascade_modify_doc` (Phase D, PR #274) | STAGE 1B claim 5 |
-| Manual immunity | `core/cascade.py` D2 분기 (role check) | STAGE 1B claim 4 |
-| Orphan entity sweep | `core/cascade.py::find_orphan_entities` | STAGE 1B claim 2(e) |
-| Audit logging | `core/cascade.py` + `core/observability.py` | STAGE 1B claim 9 |
-| Doc-source asymmetric gate | `core/graph_engine.py::_doc_outgoing_hop_valid` (PR #139) | STAGE 1A (대기) |
+| 책임 | 코드 매핑 |
+|---|---|
+| Sources schema | `core/relations_schema.py` (Phase A, PR #266) |
+| Noisy-OR derivation | `core/relations_schema.py::compute_confidence_from_sources` (Hotfix PR #349) |
+| Cross-doc aggregation | `core/wiki_generator.py::_merge_relations_into_existing_entity` (Hotfix PR #350) |
+| Delete cascade | `core/cascade.py::cascade_remove_doc_from_sources` (Phase C, PR #270) |
+| Modify cascade | `core/cascade.py::cascade_modify_doc` (Phase D, PR #274) |
+| Manual immunity | `core/cascade.py` D2 분기 (role check) |
+| Orphan entity sweep | `core/cascade.py::find_orphan_entities` |
+| Audit logging | `core/cascade.py` + `core/observability.py` |
+| Doc-source asymmetric gate | `core/graph_engine.py::_doc_outgoing_hop_valid` (PR #139) |
 
 **Invariant tests (Layer 3 의 effect 보장)**:
 - `tests/test_relations_schema.py` (7 invariants)
 - `tests/test_phase_b_ingestion_sources.py::CrossDocSourceAggregationTests` (5 invariants)
 - 합계 12 invariants
 
-**특허**: ✅ **STAGE 1B 출원 완료** (2026-05-21), STAGE 1A 대기.
+**구현 상태**: ✅ Phase A–E 완료 (v0.3 cycle). v0.3.x hotfix 2건 (PR #349/350)
+으로 cross-doc aggregation + noisy-OR derivation 보강.
 
 ### 2.4 Layer 4 — Ontology Reasoner & Lifecycle Semantics
 
@@ -125,7 +122,7 @@
 | Reviewer authority | ❌ 미구현 | manual source 의 reviewer/approval (T4) |
 | Causality chain | ❌ 미구현 | derived_from tracking (T6) |
 
-**특허 (Phase 2 후보)**: T1-T6 (`docs/design/v0.4-lifecycle-semantics-roadmap.md`).
+**구현 계획**: T1–T6 6 영역 → `docs/design/v0.4-lifecycle-semantics-roadmap.md`.
 
 ### 2.5 Layer 5 — Agentic Reasoning & Orchestration
 
@@ -133,12 +130,10 @@
 |---|---|
 | Multi-step reasoning | `core/reasoning/` (Phase 2, 진행 중) |
 | Reasoning backend plugin | PR #283/284/285/324/326 |
-| Cognitive Middleware | PR #275/289/290/295/297 |
+| Cognitive Middleware | PR #275/289/290/295/297 (v0.3, `docs/ARCHITECTURE.md §5.7` 와 정합) |
 | Trace replay | `core/observability.py` + `replay_trace.py` |
 | Episodic memory | PR #338 (infra), PR #336 (design) |
 | Plugin contract | PR #344 (4 Protocol types) |
-
-**특허 (Phase 3 후보)**: STAGE 4B (Trace), STAGE 5 (Reasoning Backend), STAGE 6 (Cognitive Middleware).
 
 ---
 
@@ -148,11 +143,12 @@
 
 | 영역 | 코드 |
 |---|---|
-| Security (RBAC + ABAC) | `core/security_layer.py` (STAGE 3 후보) |
+| Security (RBAC + ABAC) | `core/security_layer.py`, `core/policy_engine.py` |
 | Audit log | `core/observability.py`, `core/audit_bridge.py` |
-| Personality / character | `core/character_profile.py` (STAGE 4 후보) |
-| Self-evolution | `tools/patch/patch_validator.py` (STAGE 4A 후보) |
+| Personality / character | `core/character_profile.py` |
+| Self-evolution | `tools/patch/patch_validator.py` |
 | LLM routing | `core/llm_catalog.py`, `llm/router.py` |
+| **UI i18n contract** | backend `label_key` 패턴 (7 modules, 2026-05-22 sweep). v0.4 신규 UI-노출 라벨도 동일 패턴 필수 — `tests/test_*_i18n.py` contract test 가 회귀 가드 |
 
 이들은 5-layer 전반에 걸쳐 작용.
 
@@ -323,31 +319,22 @@
 - 학술 인용 / 산업 adoption
 - 시장 표준 정의 우위
 
-### 7.2 학회·논문 발표 계획
+### 7.2 Show HN / 글로벌 노출
 
-| Venue | 주제 | 시점 |
-|---|---|---|
-| CIKM workshops | "Provenance-aware lifecycle for RAG" | 2027 가을 |
-| ACL workshops | "Mutation semantics in knowledge graphs" | 2027 봄 |
-| ICML AI4Sci workshops | "Deterministic memory governance for LLM agents" | 2027 여름 |
-
-### 7.3 Show HN / 글로벌 노출
-
-- 2026-06-16 Show HN
-- 본 architecture 백서가 marketing 자료
+- 본 architecture 메모가 외부 공개 reference
 - "Memory OS for LLM agents" 카테고리 정의
 
 ---
 
-## 8. Roadmap (Patent Portfolio 와 정합)
+## 8. Roadmap — 구현 phase
 
-| Phase | Layer | 시점 | 출원 / 구현 |
+| Phase | Layer | 시점 | 구현 상태 |
 |---|---|---|---|
-| Phase 1 | Layer 3 (Memory OS) | 2026 현재 | STAGE 1B ✅, STAGE 1A ⏳ |
-| Phase 2 | Layer 4 (Ontology Reasoner) | 2026 Q4 ~ 2027 Q2 | T1-T6 6 stage 후보 |
-| Phase 3 | Layer 5 (Agentic Reasoning) | 2027 Q3 ~ 2028 | STAGE 4B, 5, 6 |
+| Phase 1 | Layer 3 (Memory OS) | 2026 v0.3 cycle | ✅ Phase A–E + Hotfix 2건 완료 |
+| Phase 2 | Layer 4 (Ontology Reasoner) | 2026 Q4 ~ 2027 Q2 (v0.4) | T1–T6 6 영역 디자인 → 구현 |
+| Phase 3 | Layer 5 (Agentic Reasoning) | 2027 Q3 ~ 2028 (v0.5+) | Cognitive Middleware 부분 구현, 확장 계획 |
 
-상세: `docs/patent/patent-portfolio-roadmap.md`
+상세: `ROADMAP.md`
 
 ---
 
@@ -359,15 +346,12 @@
 |---|---|
 | 신규 기여자 | onboarding gate |
 | 학회 reviewer | architecture context |
-| 투자자 | IP 자산 가시화 |
-| 변리사 | 정식 전환 시 context |
 | 사용자 (개발자) | reference 백서 |
 
 ### 9.2 활용 예시
 
-- Show HN 본문 link: "5-layer architecture 백서 참조"
+- Show HN 본문 link: "5-layer architecture reference 참조"
 - 학회 paper introduction: "We define the following 5-layer model..."
-- 변리사 자문 시: "이 문서가 자메스의 architectural vision"
 
 ---
 
@@ -375,15 +359,14 @@
 
 | 문서 | 용도 |
 |---|---|
+| `docs/ARCHITECTURE.md` | 메인 architecture 문서 (Mission / Non-goals / Trust Zones / Cognitive Middleware §5.7) |
 | `docs/design/v0.3-knowledge-cascade.md` | Layer 3 디자인 (구현됨) |
 | `docs/design/v0.4-lifecycle-semantics-roadmap.md` | Layer 4 디자인 (계획, 신규) |
-| `docs/patent/patent-portfolio-roadmap.md` | Patent portfolio 18~24개월 |
-| `docs/patent/stage1b-formal-conversion-strategy.md` | STAGE 1B 정식 전환 |
 | `docs/postmortems/2026-05-20-knowledge-cascade-defects.md` | Hotfix 발견·정정 |
-| `ROADMAP.md` | 전체 product roadmap |
+| `ROADMAP.md` | 전체 product roadmap (v0.3 / v0.4 / v0.5 / v1.0) |
 
 ---
 
 **End of Memory Lifecycle Architecture Reference.**
 
-본 문서는 자메스의 5-layer vision 의 reference. Patent + Code + 학술 + 마케팅 4 트랙의 단일 진리원천.
+본 문서는 자메스의 5-layer vision 의 구현 reference.
