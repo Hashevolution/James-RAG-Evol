@@ -3789,12 +3789,19 @@ async function loadHardware() {
         if (key==='ram')  detail=`${spec.total_gb||'?'}GB total · ${spec.available_gb||'?'}GB free`;
         if (key==='gpu')  detail=spec.found ? `${spec.name} (${spec.vram_gb||'?'}GB)` : t('hw.cpu_only');
         if (key==='disk') detail=`${spec.total_gb||'?'}GB · free ${spec.free_gb||'?'}GB`;
+        // PR-6 i18n: backend (_weapon_meta in hardware_inspector.py)
+        // now emits name_key / role_key / desc_key. data-i18n binding
+        // honours the active language, falls back to the EN string on
+        // i18n table miss.
+        const nameDi = w.name_key ? ` data-i18n="${_escHtml(w.name_key)}"` : '';
+        const roleDi = w.role_key ? ` data-i18n="${_escHtml(w.role_key)}"` : '';
+        const descDi = w.desc_key ? ` data-i18n="${_escHtml(w.desc_key)}"` : '';
         return `
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
               <div style="font-size:28px">${w.icon||'🔧'}</div>
-              <div><div style="font-weight:700;font-size:15px">${w.name||'?'}</div>
-                   <div style="font-size:10px;color:var(--muted)">${w.role||key}</div></div>
+              <div><div style="font-weight:700;font-size:15px"${nameDi}>${w.name||'?'}</div>
+                   <div style="font-size:10px;color:var(--muted)"${roleDi}>${w.role||key}</div></div>
               <div style="margin-left:auto;font-size:26px;font-weight:900;color:${col};font-family:var(--font-mono)">
                 ${lv}<span style="font-size:11px;font-weight:400;color:var(--muted)">/10</span></div>
             </div>
@@ -3802,9 +3809,15 @@ async function loadHardware() {
               <div style="width:${Math.min(100,lv*10)}%;height:100%;background:${col};border-radius:4px;transition:width .8s;box-shadow:0 0 8px ${col}66"></div>
             </div>
             <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:4px">${detail}</div>
-            <div style="font-size:11px;color:var(--text)">${w.desc||''}</div>
+            <div style="font-size:11px;color:var(--text)"${descDi}>${w.desc||''}</div>
           </div>`;
       }).join('');
+      // Re-translate freshly-injected data-i18n spans so the active
+      // lang takes effect immediately (matches the loadCognitiveFlags
+      // / loadLlmSelections / buildProtectedCheckboxes / loadPolicy /
+      // renderCapabilities / renderDomains / renderTraitSliders /
+      // loadModePickerOptions pattern).
+      if (typeof applyTranslations === 'function') applyTranslations();
     }
 
     const sysEl = document.getElementById('hw-sysinfo');
