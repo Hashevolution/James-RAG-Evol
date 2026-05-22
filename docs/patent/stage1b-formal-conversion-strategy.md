@@ -380,6 +380,210 @@ James-RAG-Evol STAGE 1B 정식 전환 작업 재개합니다.
 
 ---
 
-**End of STAGE 1B Formal Conversion Strategy.**
+## 11. Effect Equivalence 위험 — Event-Sourcing 우회 차단
 
-본 문서는 2027년 4~5월 정식 전환 시점에 활용. 그 사이의 prior art 변화·시장 변화·사업화 진척을 반영하여 청구항 보강 결정.
+### 11.1 문제 식별 (2026-05-21 사용자 비판 반영)
+
+**임시명세서 청구항은 "sources 배열 + cascade recompute" 구현에 묶여 있어, event-sourcing / CRDT / temporal graph 등 다른 데이터 모델로 동일 effect 달성 시 우회 가능.**
+
+#### 우회 시나리오 예시
+
+| STAGE 1B 임시 청구 | Event-sourcing 우회 |
+|---|---|
+| sources 배열 + doc_id | events 스트림 (DOC_ADDED, FACT_EXTRACTED) |
+| noisy-OR 폐쇄식 (claim 1) | event replay 기반 confidence 누적 |
+| Cascade delete (claim 2) | SOURCE_INVALIDATED 이벤트 추가 |
+| Manual immunity (claim 4) | event_type=HUMAN_ASSERTION (invalidation 대상 X) |
+| Triple diff (claim 5) | event-based diff replay |
+
+→ **모든 임시 청구항이 형식적으로 우회 가능**. effect equivalence doctrine 으로만 침해 인정 가능.
+
+### 11.2 정식 전환 시 effect-based 청구 전략
+
+#### Claim 1 (broader, effect + invariant)
+
+```
+청구항 1 (정식 전환 broader 안):
+
+지식 그래프 시스템에서 관계의 신뢰도를 출처별 가중치 기반으로 갱신하는 방법으로서,
+다음 invariant 를 모두 만족하는 임의 구현체:
+
+(i)   출처 ε 의 추가 시 관계 r 의 신뢰도 c(r) 가 strictly 증가;
+(ii)  출처 ε 의 제거 시 c(r) 가 strictly 감소;
+(iii) c(r) ∈ [0, 1), asymptotic 접근하되 1 미달;
+(iv)  단일 출처 시 c(r) = 해당 출처의 weight (identity);
+(v)   동일 출처의 중복 제출은 idempotent;
+(vi)  자동 처리에 의해 인간 입력 source 가 제거되지 않음;
+
+상기 invariant 는 다음 차원에 관계없이 만족 (effect equivalence):
+- 데이터 구조: 배열 / 이벤트 스트림 / CRDT / temporal log 무관;
+- 갱신 시점: 실시간 cascade / replay-based / lazy evaluation 무관;
+- 계산 방식: closed-form / iterative / aggregated 무관;
+
+일 구현 예 [기존 claim 1 의 noisy-OR + sources 배열];
+다른 구현 예: event-sourced replay-based;
+다른 구현 예: CRDT-based eventual consistency;
+다른 구현 예: temporal graph version-based;
+또는 등가의 effect 를 달성하는 임의 구현.
+```
+
+#### Claim 4 (broader, role-agnostic)
+
+```
+청구항 4 (정식 전환 broader 안):
+
+청구항 1 또는 청구항 2 에 있어서, 관계의 신뢰도 갱신에 기여한 출처가
+"인간 수동 입력 (human assertion)" 으로 식별되는 경우, 자동 처리
+(파일 삭제 cascade / event invalidation / temporal expiration) 에서
+제외되어 보존되는 것을 특징으로 하는 방법.
+
+식별 방식의 일 예 [기존 claim 4 의 role="manual" + doc_id=null];
+다른 구현 예: event_type="HUMAN_ASSERTION";
+다른 구현 예: flag 필드 + boolean;
+다른 구현 예: 별도 namespace / collection;
+또는 등가 식별자의 임의 구현.
+```
+
+#### 신규 Claim 18 — Umbrella (mutation-aware lifecycle)
+
+```
+청구항 18 (신규, 우산 청구):
+
+지식 그래프의 출처 변화 (추가·삭제·수정) 에 따른 lifecycle 관리 방법으로서:
+(a) 출처별 기여도를 추적 가능한 정보를 유지;
+(b) 출처 변화 이벤트 발생 시 영향 받은 관계의 상태를 deterministic
+    알고리즘으로 재계산;
+(c) 수동 입력 source 는 자동 처리에서 제외;
+(d) 모든 변화는 audit log 에 기록;
+(e) (a)~(d) 의 invariant 가 데이터 모델·갱신 방식·계산 방식과 무관하게 보장;
+
+일 구현 예: cascade-based (본 명세서 §1~5);
+다른 구현 예: event-sourced replay-based;
+다른 구현 예: CRDT-based;
+다른 구현 예: temporal version-based.
+```
+
+### 11.3 우산 청구 + specific 청구 dual 구조
+
+| Claim # | 청구 수준 | 회피 난이도 |
+|---|---|---|
+| 18 (umbrella) | Effect + invariant — implementation 무관 | 🟢 매우 어려움 |
+| 1-15 (specific) | sources 배열 + cascade 구체 구현 | 🟡 다른 구현 가능 |
+| 8 (narrow) | 0.91, 0.973 수치 | 🔴 백업 |
+
+→ Dual 구조로 broad coverage + narrow backup 동시.
+
+---
+
+## 12. 진짜 경쟁자 5 영역 — 차별화 전략
+
+### 12.1 사용자 식별 5 영역
+
+| 영역 | 학계·산업계 | STAGE 1B 와 거리 | 차별화 포인트 |
+|---|---|---|---|
+| **Temporal Graph DB** (bitemporal, versioned edge, lineage-aware KG) | Neo4j temporal, MongoDB time-series KG, 학술 다수 | 가까움 (mutation-aware 동일) | 출처 차원 vs 시간 차원 — 결합 가능 |
+| **Truth Maintenance Systems (TMS)** | Doyle 1979, McAllester 1980s, 학술 고전 | 매우 가까움 | belief revision (논리) vs 신뢰도 누적 (확률) |
+| **CRDT / replicated knowledge** | Riak, Cosmos DB, IPFS-based KG | 멀음 (분산 vs single-node) | eventual consistency vs deterministic 즉시 |
+| **Provenance-aware databases (W3C PROV)** | PROV-O, lineage tracking DB 다수 | 가까움 | 일반 DB lineage vs RAG/KG 특화 lifecycle |
+| **Knowledge ledgers** | Blockchain-based KG, immutable fact stores | 멀음 (immutable vs mutable) | append-only vs mutable cleanup |
+
+### 12.2 차별화 narrative (정식 전환 시 명세서 §2 배경기술 강조)
+
+> **"STAGE 1B 는 Temporal Graph DB + Truth Maintenance Systems + Provenance-aware DB 의 RAG/GraphRAG 운영 계층 특화 진화. 단일 node 환경에서 deterministic mutation-aware lifecycle 을 closed-form 으로 보장."**
+
+차별 표현:
+- **vs Temporal Graph DB**: 시간 차원이 아닌 **출처 차원** lifecycle. 두 차원 결합 가능.
+- **vs TMS**: belief revision (논리 추론) 이 아닌 **신뢰도 누적** (확률적). closed-form 으로 deterministic.
+- **vs CRDT**: 분산 환경 eventual consistency 가 아닌 **단일 node deterministic 즉시 일관성**.
+- **vs Provenance DB**: 일반 DB lineage 가 아닌 **RAG/KG 특화 lifecycle semantics**.
+- **vs Knowledge ledger**: append-only immutable 이 아닌 **mutable cleanup with provenance preservation**.
+
+### 12.3 정식 전환 시 변리사 검색 요청
+
+위 5 영역에 대해 변리사 정식 검색 요청 (자문료 30~50만 원에 포함):
+1. KIPRIS — 한국 등록·공개 특허 전수 검색
+2. USPTO PatFT — temporal graph + TMS 특허 검색
+3. EPO Espacenet — 유럽 provenance DB 특허
+4. arXiv — 2024 ~ 2027 학술 동향 (CGR, GraphRAG)
+5. Mem0 / Letta / Zep / Cognee 의 출원 모니터링
+
+---
+
+## 13. Lifecycle Semantics 강화 — 사용자 제시 6 영역
+
+### 13.1 현 STAGE 1B 의 한계
+
+청구항 4 "manual immunity 영원히 보호" 는 **production 운영 측면에서 too strong**:
+- 운영자 실수 / 노후 정보 / obsolete annotation 도 영원히 살아남음 → "immortal misinformation" 위험.
+
+→ 정식 전환 시 governance 보강 또는 별도 stage 출원 영역.
+
+### 13.2 정식 전환 시 흡수 vs 별도 stage 결정
+
+| 영역 | STAGE 1B 정식 전환 시 흡수 | 별도 stage 출원 권장 |
+|---|---|---|
+| **Temporal validity** (fact validity windows, expiration) | ⚠️ 일부 (manual source TTL 만) | ✅ 별도 stage (Layer 4) |
+| **Contradiction arbitration** (deterministic vs LLM) | ⚠️ 일부 (Gate 5 충돌 검출 흡수 가능) | ✅ 별도 stage (자세한 알고리즘) |
+| **Evidence aging & trust decay** | ⚠️ 어려움 (claim 1 의 noisy-OR 와 충돌) | ✅ 별도 stage (decay 함수) |
+| **Reviewer authority hierarchy** | ❌ 흡수 X | ✅ 별도 stage (governance) |
+| **Replayable audit graph** | ⚠️ 부분 (claim 9 의 audit 확장) | ✅ 별도 stage (event sourcing) |
+| **Causality chain tracking** | ❌ 흡수 X | ✅ 별도 stage (inference provenance) |
+
+### 13.3 STAGE 1B 정식 전환 시 흡수 가능한 일부
+
+#### 청구항 4 보강 — Manual source governance (interim)
+
+```
+청구항 4 (정식 전환 추가 옵션):
+
+청구항 4 에 추가로, manual source 항목이 다음 governance 필드를
+선택적으로 보유할 수 있음:
+(i)   ttl (time-to-live) — 만료 시 자동 expiration 후보;
+(ii)  reviewer / approval_state — 인간 승인 워크플로 식별;
+(iii) superseded_by — 다른 source 에 의해 대체됐음을 명시;
+(iv)  reviewed_at, expires_at — 검토·만료 timestamp;
+이 필드들이 존재하는 경우 manual immunity 가 governance rule 에 의해
+조건부 면제될 수 있음 (예: ttl 경과 시 자동 archive).
+```
+
+→ "영원히 immune" 한계 회피.
+
+### 13.4 별도 출원 권장 영역 — Phase 2 후보
+
+`patent-portfolio-roadmap.md` 참조. 다음 6 stage 후보:
+
+1. **STAGE T1 — Temporal Validity & Expiration**
+2. **STAGE T2 — Deterministic Contradiction Arbitration**
+3. **STAGE T3 — Evidence Aging & Trust Decay**
+4. **STAGE T4 — Reviewer Authority Hierarchy**
+5. **STAGE T5 — Replayable Audit Graph (event-sourced reconstruction)**
+6. **STAGE T6 — Causality Chain Tracking (inference provenance)**
+
+→ Phase 2 (2027 ~ 2028) 에 정식 전환과 동시 또는 별도 출원.
+
+---
+
+## 14. 최종 — 정식 전환 시 청구항 1~22 통합 목록 (확장)
+
+§10 의 1~15 + 신규 16~22:
+
+| # | 핵심 | 청구 수준 |
+|---|---|---|
+| 1 (수정 v2) | **단조 invariant 임의 함수** + 일 구현 noisy-OR (effect-based) | broad |
+| 2~7 | 기존 정정안 (§2.2) | specific |
+| 8 | 0.91, 0.973 specific 수치 | narrow backup |
+| 9, 10 | 그대로 | specific |
+| 11~15 | 기존 신규 (§2.3) | specific |
+| **16** (신규) | **Manual source governance** (ttl + reviewer + approval_state) | specific |
+| **17** (신규) | **Canonicalization pipeline** (entity alias + relation normalize) | specific |
+| **18** (신규) | **Umbrella claim — mutation-aware lifecycle** (effect-based) | broadest |
+| **19** (신규) | Defense-in-depth lifecycle (cascade + event replay 등 다중 구현 호환) | broad |
+| **20** (신규) | RAG/KG 특화 lifecycle (vs general DB lineage) 차별 | specific narrative |
+| **21** (신규) | Deterministic single-node consistency (vs CRDT eventual) | specific narrative |
+| **22** (신규) | Closed-form 결합 (vs TMS belief revision logic) | specific narrative |
+
+---
+
+**End of STAGE 1B Formal Conversion Strategy (extended).**
+
+본 문서는 2027년 4~5월 정식 전환 시점에 활용. 사용자 비판 시리즈 (2026-05-21) 반영하여 effect equivalence 위험 차단 + lifecycle semantics 강화 + 5-layer portfolio 정합.
