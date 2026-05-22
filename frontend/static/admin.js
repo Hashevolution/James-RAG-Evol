@@ -3110,16 +3110,23 @@ function renderInteractiveRadar() {
     const x2 = cx + Math.cos(a) * R;
     const y2 = cy + Math.sin(a) * R;
     inner += `<line class="radar-axis" x1="${cx}" y1="${cy}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/>`;
-    // 라벨 (icon + 한글명) — 외곽
+    // 라벨 (icon + 한글명) — 외곽. label_key 가 있으면 i18n table 의
+    // 현재 lang 값으로 표시. SVG <text> 도 [data-i18n] 셀렉터에 잡혀
+    // applyTranslations() 가 textContent 를 갱신 → lang 토글 즉시 반영.
     const lx = cx + Math.cos(a) * (R + 30);
     const ly = cy + Math.sin(a) * (R + 30);
     const tr = traits[i];
-    const labelText = (tr.label_ko || tr.label);
+    const labelText = tr.label_key
+      ? (t(tr.label_key) || tr.label_ko || tr.label)
+      : (tr.label_ko || tr.label);
+    const labelDi = tr.label_key
+      ? ` data-i18n="${escapeHtml(tr.label_key)}"`
+      : '';
     inner += `
       <text class="radar-icon" x="${lx.toFixed(1)}" y="${(ly-8).toFixed(1)}"
             text-anchor="middle">${escapeHtml(tr.icon)}</text>
       <text class="radar-label" x="${lx.toFixed(1)}" y="${(ly+8).toFixed(1)}"
-            text-anchor="middle">${escapeHtml(labelText)}</text>`;
+            text-anchor="middle"${labelDi}>${escapeHtml(labelText)}</text>`;
   });
 
   // ─── 3) 짝(opposing) 연결선 — 인접 trait 짧은 dashed line ────
@@ -3545,7 +3552,7 @@ function renderTraitSliders(traits) {
         <div class="trait-row" data-trait-id="${escapeHtml(tr.id)}"
              style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
           <span style="width:22px;text-align:center">${escapeHtml(tr.icon)}</span>
-          <span style="width:90px;font-size:12px;color:var(--text)">${escapeHtml(tr.label_ko || tr.label)}</span>
+          <span style="width:90px;font-size:12px;color:var(--text)"${tr.label_key ? ` data-i18n="${escapeHtml(tr.label_key)}"` : ''}>${escapeHtml(tr.label_ko || tr.label)}</span>
           <input type="range" min="0" max="100" value="${pct}"
                  data-slider-id="${escapeHtml(tr.id)}"
                  style="flex:1;accent-color:var(--accent)">
@@ -3557,6 +3564,9 @@ function renderTraitSliders(traits) {
     html += `</div>`;
   });
   container.innerHTML = html;
+  // Re-translate freshly-injected data-i18n spans so the active lang
+  // takes effect immediately (matches other dynamic renders).
+  if (typeof applyTranslations === 'function') applyTranslations();
 
   // [PR #157 패턴] data-attr + addEventListener — inline oninput X.
   container.querySelectorAll('input[type="range"][data-slider-id]').forEach(input => {
