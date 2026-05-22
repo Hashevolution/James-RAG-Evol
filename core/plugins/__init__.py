@@ -44,6 +44,10 @@ from core.plugins.registry import (
     PluginRegistry,
     get_registry,
 )
+from core.plugins.workspace import (
+    get_workspace_root,
+    workspace_path,
+)
 
 __all__ = [
     # base
@@ -70,4 +74,7 @@ __all__ = [
     "DEFAULT_PACK",
     "JAMES_CORE_VERSION",
     "load_packs_from_env",
+    # workspace
+    "get_workspace_root",
+    "workspace_path",
 ]
