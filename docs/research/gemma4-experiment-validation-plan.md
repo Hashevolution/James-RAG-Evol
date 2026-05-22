@@ -20,6 +20,39 @@
 
 ## 0. TL;DR
 
+### 0.1 — 2026-05-22 update (after V3'.a execution)
+
+**V3'.a result on `gemma4:e4b` / `query_rewrite` stage, n=10 per cap:**
+
+| `num_predict` | non_empty | `done_reason` | `eval_count` | latency |
+|---:|---:|---|---:|---:|
+| 200 (current default) | **0 / 10** | length | 200 (cap) | 2.1 s avg |
+| 4096 (lifted) | **10 / 10** | stop | ~520 avg | 5.3 s avg |
+
+Cleaner separation than Ali Afana's 12/12 dev.to result. **Hypothesis B-budget confirmed for query_rewrite at the mechanism level**, not just at the rate level:
+
+- `done_reason: "length"` + `eval_count: 200` + `response_bytes: 0` for all 10 runs at the 200-cap → model burns the full 200-token budget while emitting **zero visible bytes**
+- 4096-cap runs averaged ~520 `eval_count` for ~100-byte visible JSON output → hidden-to-visible token ratio of roughly 5–6:1 for this prompt shape
+- The model needs ~500 hidden reasoning tokens BEFORE the first visible output token. Any cap below this threshold deterministically produces empty.
+
+**This is the toolchain-quantified mirror of Ali's "starving Gemma's reasoning layer" framing.** Mechanism is not "cap exhaustion during output" but "cap exhaustion during pre-output reasoning."
+
+**Hypothesis space after V3'.a:**
+
+- **A (4B meta-reasoning floor)** — **practically refuted for query_rewrite**: same model + same prompt + cap removed → 10/10 success
+- **B-budget** — **confirmed** with mechanism (hidden reasoning token tax)
+- **C, D** — unchanged (no new evidence)
+- **E (`<think>`-strip)** — uncertain. The 200-token hidden content could be `<think>...</think>` blocks that Ollama strips server-side OR the model's pre-`<think>` chat-template tokens. V8 (`<think>`-strip bypass via direct API capture) would isolate, but is not blocking V3'.b/.c/.d which test other stages at the same protocol.
+
+**Updated experiment priorities:**
+
+1. **V3'.b/.c/.d** (planner / reflect.critique / verify.fact_check) — same protocol, n=10 each, expected ~15 min total runtime. Each stage's current default is 400, which is below the ~500 hidden-reasoning floor measured here → strong prior they replicate.
+2. **4-line PR** lands after V3'.b/.c/.d if pattern holds — bumping the four `DEFAULT_MAX_TOKENS` constants to 4096 (or possibly 1024 if a follow-up sweep shows that's sufficient), STEP 7 bench numbers in the PR body per CLAUDE.md rule #2.
+3. **V1 / V6 / V7** — deferred. V3'.a alone already provides cleaner evidence than the original V1 (12B control) was designed to elicit. The capacity-floor and sub-mode questions are now lower-priority given the cap-budget mechanism is mechanistically isolated.
+4. **V8 (`<think>`-strip)** — still queued but no longer time-critical. Determines whether the 200 hidden tokens are reasoning content or template overhead; not blocking the 4-line PR.
+
+---
+
 ### 0.0 — 2026-05-21 update (after Ali Afana walk-back)
 
 **SMOKING GUN — hypothesis space compressed.** Ali Afana's

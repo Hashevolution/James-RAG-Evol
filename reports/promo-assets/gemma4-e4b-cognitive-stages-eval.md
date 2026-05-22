@@ -249,6 +249,45 @@ Three of four sit at exactly Ali's failing threshold (400); query_rewriter is ti
 - Ali's walk-back is the **first substantive Reader contribution** since this report was published 2026-05-18. The routing matrix in the feedback-track handover (Hypothesis B → "Patch `core/gemma_client.py` to log raw Ollama response... + per-stage `num_predict` overrides per stage if a single setting fixes it") is the immediate project response shape; V3' is the falsification check on it.
 - The α-experiment (2026-05-21, wiki extraction at `max_tokens=1500`) is a related but separate test — its budget (1500) is well above Ali's failing threshold (400), so a separate V3' variant (1500 → 4096) tests whether the extraction prompt's empty rate is also cap-driven or a different mechanism.
 
+### 2026-05-22 — Hashevolution self-replication (V3'.a, query_rewrite, n=10)
+
+**Reporter**: PROJECT JAMES maintainer (in-house V3'.a sweep)
+**Driver**: `scripts/research/v3prime_query_rewriter.py` @ commit `e80ee48`
+**Raw data**: `reports/research-runs/v3prime-query-rewriter-20260522T021221.json` @ commit `22a5ce2`
+**Hypothesis they support / refute**: **B (token budget) — confirmed for query_rewrite at the mechanism level**
+
+**Aggregate**:
+
+| `num_predict` | non_empty | `done_reason` | avg `eval_count` | avg latency |
+|---:|---:|---|---:|---:|
+| 200 (production default) | **0 / 10** | length (10/10) | 200 (= cap) | 2.1 s |
+| 4096 (lifted) | **10 / 10** | stop (10/10) | ~520 | 5.3 s |
+
+Single variable changed: `num_predict`. Model (`gemma4:e4b`), temperature (0.2), prompt template (pinned from `core/retrieval/query_rewriter.py:53`), query (`BlackRock 과 Vanguard 의 ETF 전략 차이를 비교해줘`), Ollama endpoint — all held constant.
+
+**Mechanism (richer than "cap exhaustion")**:
+
+`done_reason: "length"` plus `eval_count: 200` plus `response_bytes: 0` across all ten 200-cap runs means the model consumed the full 200-token budget while emitting **zero visible bytes**. The 4096-cap runs averaged ~520 `eval_count` for ~100-byte JSON output — a hidden-to-visible token ratio of roughly 5–6:1 on this prompt shape. The model needs ~500 hidden reasoning tokens *before* the first visible output token. Any cap below that threshold deterministically produces empty.
+
+This is the toolchain-level mirror of Ali Afana's "starving Gemma's reasoning layer before the visible reply completed" framing — now quantified.
+
+**Project response**:
+
+- This is the in-house cross-validation of the 2026-05-21 dev.to walk-back. JAMES is now the **third deployment context** (alongside Robin Converse's sovereign Ollama uncapped sweep and Ali Afana's managed Gemini 400→4096 single-variable test) for hypothesis B.
+- Remaining cognitive stages (`planner`, `reflect.critique`, `verify.fact_check`) all default to 400, looser than query_rewrite's 200 but still below the ~500 hidden-reasoning floor measured here. V3'.b/.c/.d drivers will test each stage on the same single-variable protocol.
+- If V3'.b/.c/.d replicate the 0→100% recovery pattern, the 4-line PR (bumping `DEFAULT_MAX_TOKENS` in `core/retrieval/query_rewriter.py:46`, `core/reasoning/planner.py:43`, `core/reasoning/reflect.py:54`, `core/reasoning/verify.py:69`) lands with STEP 7 bench numbers per CLAUDE.md rule #2.
+- Hypothesis A (4B meta-reasoning floor) is now **practically refuted for query_rewrite** — same model + same prompt + cap removed → 10/10 success.
+
+**Updated cross-validation bundle**:
+
+| Source | Context | Test | Result |
+|---|---|---|---|
+| Robin Converse | sovereign Ollama, uncapped sweep | 3 temperatures × 6 scenarios on Gemma 4 MoE | 18/18 success |
+| Ali Afana (2026-05-21) | managed Gemini API, single-variable | 400 → 4096 cap on 6 scenarios × 2 architectures | 12/12 recovery |
+| Hashevolution (2026-05-22, this entry) | local Ollama, single-variable | 200 → 4096 cap on query_rewrite, n=10 | 0/10 → 10/10 recovery, mechanism quantified |
+
+Three independent deployment contexts; two architectures (Gemini 31B Dense + 26B MoE, Gemma 4 E4B Ollama); one mechanism (the reasoning layer needs hidden-token budget before visible output begins, and any cap below that floor is deterministic failure).
+
 ---
 
 ## 한국어 요약 (Korean summary)

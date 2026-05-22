@@ -13,6 +13,53 @@
 
 ---
 
+## 0.1. 2026-05-22 update — root cause re-attributed after V3'.a
+
+The hypothesis interpretation in §5 below ("strong evidence for A + B,
+untested for C, weak against D") has been **partially superseded** by
+the 2026-05-22 V3'.a sweep on the `query_rewrite` cognitive stage
+(`reports/research-runs/v3prime-query-rewriter-20260522T021221.json`).
+
+V3'.a tested a single variable (`num_predict` 200 → 4096) on the same
+model (`gemma4:e4b`) using the JAMES production prompt template for
+query_rewrite. Result: 0/10 → 10/10 recovery with a quantified
+mechanism — the model consumes ~500 hidden reasoning tokens before
+emitting the first visible output token; any cap below that floor
+produces deterministic empty (`done_reason=length`, `eval_count`
+exactly at the cap, 0 visible bytes).
+
+This is **direct evidence for hypothesis B-budget** with mechanism,
+**direct refutation of hypothesis A** (4B capacity floor) for the
+query_rewrite stage. For the wiki-extraction prompt this α-experiment
+covered (max_tokens=1500, well above the ~500 floor), the dominant
+failure mechanism is likely **different** — the extraction prompt's
+empty / partial-truncate runs at ~15 s wall-clock are too slow to be
+the same "cap=length within 2 s" signature V3'.a produced. They are
+more consistent with B-budget mid-output (the model emits partial JSON
+then runs out of budget mid-object) or with hypothesis E
+(`<think>`-strip post-processing in `core/gemma_client.py:283–309`).
+
+**Implication for this experiment's future replication**: re-running
+the α-experiment driver with `max_tokens=4096` (V3'.b' companion of
+V3') is now the cheapest follow-up. If it converts the 6/10 empty
+rate to ≤2/10 — same shape as V3'.a's recovery — extraction failures
+are also cap-bound. If it converts only the partial-truncate runs to
+success but not the 0-byte ones, the residual 0-byte slice is the
+hypothesis E signature and V8 (`<think>`-strip bypass) becomes the
+isolation experiment.
+
+Cross-references:
+- `reports/promo-assets/gemma4-e4b-cognitive-stages-eval.md`
+  §"Reader contributions" (2026-05-22 Hashevolution self-replication entry)
+- `docs/research/gemma4-experiment-validation-plan.md` §0.1 (the
+  validation plan's V3'.a verdict)
+- `docs/handovers/v0.3.x-gemma4-feedback-track.md` "Internal evidence
+  pile" (3rd row, 2026-05-22)
+- External cross-validation: Ali Afana dev.to walk-back (2026-05-21,
+  preview; awaiting Robin response → publish)
+
+---
+
 ## 0. TL;DR (for future model researchers)
 
 Repeated calls to `gemma4:e4b` on the same 219-char Korean doc with
