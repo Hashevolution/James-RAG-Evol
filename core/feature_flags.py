@@ -49,46 +49,52 @@ from typing import Any, Dict, List
 # the UI).
 COGNITIVE_FEATURE_FLAGS: Dict[str, Dict[str, Any]] = {
     "verify": {
-        "env":      "JAMES_DISABLE_VERIFY",
-        "polarity": "disable",
-        "label":    "Verifier base scan",
-        "default":  True,
-        "module":   "core/reasoning/verify.py",
+        "env":       "JAMES_DISABLE_VERIFY",
+        "polarity":  "disable",
+        "label":     "Verifier base scan",
+        "label_key": "set.cognitive_flag_verify",
+        "default":   True,
+        "module":    "core/reasoning/verify.py",
     },
     "fact_check": {
-        "env":      "JAMES_ENABLE_FACT_CHECK",
-        "polarity": "enable",
-        "label":    "Fact-checker (LLM-driven, runs after verify)",
-        "default":  False,
-        "module":   "core/reasoning/verify.py",
+        "env":       "JAMES_ENABLE_FACT_CHECK",
+        "polarity":  "enable",
+        "label":     "Fact-checker (LLM-driven, runs after verify)",
+        "label_key": "set.cognitive_flag_fact_check",
+        "default":   False,
+        "module":    "core/reasoning/verify.py",
     },
     "reflect": {
-        "env":      "JAMES_ENABLE_REFLECT",
-        "polarity": "enable",
-        "label":    "Reflection loop (draft → critique → revise)",
-        "default":  False,
-        "module":   "core/reasoning/reflect.py",
+        "env":       "JAMES_ENABLE_REFLECT",
+        "polarity":  "enable",
+        "label":     "Reflection loop (draft → critique → revise)",
+        "label_key": "set.cognitive_flag_reflect",
+        "default":   False,
+        "module":    "core/reasoning/reflect.py",
     },
     "planner": {
-        "env":      "JAMES_ENABLE_PLANNER",
-        "polarity": "enable",
-        "label":    "Planner (task decomposition into 2–5 subtasks)",
-        "default":  False,
-        "module":   "core/reasoning/planner.py",
+        "env":       "JAMES_ENABLE_PLANNER",
+        "polarity":  "enable",
+        "label":     "Planner (task decomposition into 2–5 subtasks)",
+        "label_key": "set.cognitive_flag_planner",
+        "default":   False,
+        "module":    "core/reasoning/planner.py",
     },
     "query_rewrite": {
-        "env":      "JAMES_ENABLE_QUERY_REWRITE",
-        "polarity": "enable",
-        "label":    "Query rewriter (LLM-driven expansion)",
-        "default":  False,
-        "module":   "core/retrieval/query_rewriter.py",
+        "env":       "JAMES_ENABLE_QUERY_REWRITE",
+        "polarity":  "enable",
+        "label":     "Query rewriter (LLM-driven expansion)",
+        "label_key": "set.cognitive_flag_query_rewrite",
+        "default":   False,
+        "module":    "core/retrieval/query_rewriter.py",
     },
     "rerank": {
-        "env":      "JAMES_DISABLE_RERANK",
-        "polarity": "disable",
-        "label":    "Cross-encoder reranker",
-        "default":  True,
-        "module":   "core/retrieval/rerank.py",
+        "env":       "JAMES_DISABLE_RERANK",
+        "polarity":  "disable",
+        "label":     "Cross-encoder reranker",
+        "label_key": "set.cognitive_flag_rerank",
+        "default":   True,
+        "module":    "core/retrieval/rerank.py",
     },
 }
 
@@ -123,28 +129,35 @@ def read_cognitive_flags() -> List[Dict[str, Any]]:
 
         [
           {
-            "key":      "verify",
-            "label":    "Verifier base scan",
-            "env":      "JAMES_DISABLE_VERIFY",
-            "polarity": "disable",
-            "default":  true,
-            "on":       true,            # resolved semantic state
-            "module":   "core/reasoning/verify.py",
+            "key":       "verify",
+            "label":     "Verifier base scan",            # EN fallback
+            "label_key": "set.cognitive_flag_verify",     # i18n lookup
+            "env":       "JAMES_DISABLE_VERIFY",
+            "polarity":  "disable",
+            "default":   true,
+            "on":        true,            # resolved semantic state
+            "module":    "core/reasoning/verify.py",
           },
           ...
         ]
+
+    ``label_key`` mirrors the convention used by ``LLM_TASK_TYPES``
+    in ``frontend/static/admin.js`` — the UI binds ``data-i18n`` to
+    it and falls back to ``label`` if the key is missing from the
+    i18n table.
     """
     out: List[Dict[str, Any]] = []
     for key in COGNITIVE_FLAG_ORDER:
         spec = COGNITIVE_FEATURE_FLAGS[key]
         out.append({
-            "key":      key,
-            "label":    spec["label"],
-            "env":      spec["env"],
-            "polarity": spec["polarity"],
-            "default":  spec["default"],
-            "on":       _flag_is_on(spec["env"], spec["polarity"]),
-            "module":   spec["module"],
+            "key":       key,
+            "label":     spec["label"],
+            "label_key": spec["label_key"],
+            "env":       spec["env"],
+            "polarity":  spec["polarity"],
+            "default":   spec["default"],
+            "on":        _flag_is_on(spec["env"], spec["polarity"]),
+            "module":    spec["module"],
         })
     return out
 
