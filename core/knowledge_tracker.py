@@ -17,39 +17,60 @@ except ImportError:
     WIKI_DIR  = "wiki"
     CHROMA_DIR= "chroma_db"
 
+# `label_key` follows the i18n contract used elsewhere in the admin
+# UI (LLM_TASK_TYPES, PROTECTED_CANDIDATES, feature_registry.Feature):
+# frontend binds `data-i18n` to this key and falls back to `label`
+# (EN) on miss. `label_ko` is kept as the historic Korean fallback
+# but is no longer the UI's primary KO source — the i18n table is.
 DOMAINS = {
-    "security":  {"label":"Security",   "label_ko":"보안/정보보호","icon":"🔐","color":"#f06292"},
-    "coding":    {"label":"Coding",     "label_ko":"코딩/개발",    "icon":"💻","color":"#7c6af7"},
-    "business":  {"label":"Business",   "label_ko":"비즈니스",     "icon":"📊","color":"#4fc3f7"},
-    "science":   {"label":"Science/AI", "label_ko":"과학/기술",    "icon":"🔬","color":"#4caf7d"},
-    "general":   {"label":"General",    "label_ko":"일반 상식",    "icon":"🌍","color":"#ffb74d"},
-    "personal":  {"label":"Personal",   "label_ko":"개인 맞춤",    "icon":"👤","color":"#ce93d8"},
+    "security":  {"label":"Security",   "label_ko":"보안/정보보호","label_key":"growth.domain.security","icon":"🔐","color":"#f06292"},
+    "coding":    {"label":"Coding",     "label_ko":"코딩/개발",    "label_key":"growth.domain.coding",  "icon":"💻","color":"#7c6af7"},
+    "business":  {"label":"Business",   "label_ko":"비즈니스",     "label_key":"growth.domain.business","icon":"📊","color":"#4fc3f7"},
+    "science":   {"label":"Science/AI", "label_ko":"과학/기술",    "label_key":"growth.domain.science", "icon":"🔬","color":"#4caf7d"},
+    "general":   {"label":"General",    "label_ko":"일반 상식",    "label_key":"growth.domain.general", "icon":"🌍","color":"#ffb74d"},
+    "personal":  {"label":"Personal",   "label_ko":"개인 맞춤",    "label_key":"growth.domain.personal","icon":"👤","color":"#ce93d8"},
 }
 
 CAPABILITIES = [
     {"id":"retrieval",    "label":"Knowledge Retrieval",
+     "label_key":"growth.capability.retrieval",
      "desc":"Finds accurate information from documents and resources",
+     "desc_key":"growth.capability.retrieval_desc",
      "icon":"📚","base":80},
     {"id":"graph",        "label":"Relation Reasoning",
+     "label_key":"growth.capability.graph",
      "desc":"Analyzes connections between people, events, and concepts",
+     "desc_key":"growth.capability.graph_desc",
      "icon":"🕸️","base":70},
     {"id":"security",     "label":"Security Judgment",
+     "label_key":"growth.capability.security",
      "desc":"Automatically detects sensitive data and dangerous requests",
+     "desc_key":"growth.capability.security_desc",
      "icon":"🔐","base":100},
     {"id":"conversation", "label":"Conversation Understanding",
+     "label_key":"growth.capability.conversation",
      "desc":"Distinguishes casual chat from professional questions",
+     "desc_key":"growth.capability.conversation_desc",
      "icon":"💬","base":80},
     {"id":"accuracy",     "label":"Answer Accuracy",
+     "label_key":"growth.capability.accuracy",
      "desc":"Reduces misinformation and provides evidence-based answers",
+     "desc_key":"growth.capability.accuracy_desc",
      "icon":"🎯","base":70},
     {"id":"multimodal",   "label":"Image/Video Analysis",
+     "label_key":"growth.capability.multimodal",
      "desc":"Recognizes dates, places, and people in photos and videos",
+     "desc_key":"growth.capability.multimodal_desc",
      "icon":"🖼️","base":40},
     {"id":"evolution",    "label":"Self-Evolution",
+     "label_key":"growth.capability.evolution",
      "desc":"Generates better answers over time through self-improvement",
+     "desc_key":"growth.capability.evolution_desc",
      "icon":"🧬","base":50},
     {"id":"agent",        "label":"Agent Capability",
+     "label_key":"growth.capability.agent",
      "desc":"Plans and executes complex tasks autonomously",
+     "desc_key":"growth.capability.agent_desc",
      "icon":"🤖","base":20},
 ]
 
@@ -174,6 +195,7 @@ class KnowledgeTracker:
             result.append({
                 "domain":       d,
                 "label":        DOMAINS[d]["label"],
+                "label_key":    DOMAINS[d]["label_key"],   # i18n binding
                 "icon":         DOMAINS[d]["icon"],
                 "color":        DOMAINS[d]["color"],
                 "score":        round(total_score, 1),

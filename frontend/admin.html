@@ -59,13 +59,13 @@
         <span class="nav-icon">🛡️</span> <span data-i18n="admin.policy">권한 매트릭스</span>
       </div>
       <div class="nav-item" data-action="show-page" data-page="entities">
-        <span class="nav-icon">🕸</span> Entity
+        <span class="nav-icon">🕸</span> <span data-i18n="admin.entity">Entity</span>
       </div>
       <div class="nav-item" data-action="show-page" data-page="memory">
-        <span class="nav-icon">🧠</span> Memory
+        <span class="nav-icon">🧠</span> <span data-i18n="admin.memory">Memory</span>
       </div>
       <div class="nav-item" data-action="show-page" data-page="patches">
-        <span class="nav-icon">🔧</span> Patches
+        <span class="nav-icon">🔧</span> <span data-i18n="admin.patches">Patches</span>
       </div>
       <div class="nav-item" data-action="show-page" data-page="uploads">
         <span class="nav-icon">📥</span> <span data-i18n="admin.upload_history">업로드 이력</span>
@@ -873,7 +873,7 @@
       <div class="section-title"><span data-i18n="set.server_title">▸ Server Settings</span></div>
       <div class="table-wrap" style="padding: 8px 20px;">
         <div class="setting-row">
-          <div><div class="setting-label">LLM Model</div><div class="setting-sub" data-i18n="set.llm_desc">Select the active LLM model</div></div>
+          <div><div class="setting-label" data-i18n="set.llm_model_label">LLM Model</div><div class="setting-sub" data-i18n="set.llm_desc">Select the active LLM model</div></div>
           <div style="display:flex;flex-direction:column;gap:6px;min-width:260px">
             <select class="setting-value" id="set-model" style="cursor:pointer">
               <option value="gemma4:e4b">⚡ gemma4:e4b (default — fast)</option>
@@ -890,7 +890,7 @@
           </div>
         </div>
         <div class="setting-row">
-          <div><div class="setting-label">Max Loop</div>
+          <div><div class="setting-label" data-i18n="set.max_loop_label">Max Loop</div>
                <div class="setting-sub" data-i18n="set.rag_loop_desc">Max RAG reasoning loops
                  <span style="font-weight:600;color:var(--accent)">
                    (<span data-i18n="set.current">Current</span>: <span id="set-loop-val">2</span>)
@@ -977,8 +977,8 @@
       <div class="table-wrap" style="padding: 8px 20px;">
         <div class="setting-row" style="align-items:flex-start">
           <div>
-            <div class="setting-label">Engine Status</div>
-            <div class="setting-sub">현재 활성 검색 엔진 + 키 설정 상태 (실시간)</div>
+            <div class="setting-label" data-i18n="set.web_engine_status">Engine Status</div>
+            <div class="setting-sub" data-i18n="set.web_engine_status_hint">Active search engine + key configuration status (real-time)</div>
           </div>
           <div id="web-search-status-display"
                style="font-family:var(--font-mono);font-size:12px;
@@ -988,10 +988,8 @@
         </div>
         <div class="setting-row" style="align-items:flex-start">
           <div>
-            <div class="setting-label">Allowed Roles</div>
-            <div class="setting-sub">웹 검색을 트리거할 수 있는 role.
-              비어있으면 안됨 (web search 비활성화는 .env에서 TAVILY_API_KEY 제거).
-            </div>
+            <div class="setting-label" data-i18n="set.web_allowed_roles">Allowed Roles</div>
+            <div class="setting-sub" data-i18n="set.web_allowed_roles_hint">Roles allowed to trigger web search. Empty is invalid (to disable web search, remove TAVILY_API_KEY from .env).</div>
           </div>
           <div id="web-search-roles"
                style="display:flex;flex-direction:column;gap:6px;min-width:260px">
@@ -1011,18 +1009,18 @@
         </div>
         <div class="setting-row">
           <div>
-            <div class="setting-label">Relevance Threshold
+            <div class="setting-label"><span data-i18n="set.web_relevance_threshold">Relevance Threshold</span>
               <!-- [#A8-2] 숫자 옆에 직관적 라벨 — 강력/적극/보통/소극/안함.
                    admin.js applyWsThresholdLabel()가 슬라이더 값 → 라벨 매핑. -->
               <span style="font-weight:600;color:var(--accent)">
-                (Current: <span id="ws-threshold-val">0.30</span>
+                (<span data-i18n="set.current">Current</span>: <span id="ws-threshold-val">0.30</span>
                 <span id="ws-threshold-label"
                       style="margin-left:6px;padding:1px 8px;border-radius:4px;
                              font-size:11px;background:var(--accent-soft);
                              color:var(--accent-fg)">보통</span>)
               </span>
             </div>
-            <div class="setting-sub">unified_score 가 이 값 미만이면 웹 검색 트리거.
+            <div class="setting-sub" data-i18n="set.web_threshold_hint">unified_score 가 이 값 미만이면 웹 검색 트리거.
               <strong>높이면 (강력)</strong> 자료 부족해도 자주 웹 검색,
               <strong>낮추면 (안함)</strong> 자료 풍부할 때만 웹 검색.
             </div>
@@ -1033,14 +1031,14 @@
                    style="flex:1;accent-color:var(--accent)">
             <div style="display:flex;gap:4px">
               <span style="font-size:11px;padding:2px 7px;border-radius:4px;
-                           background:var(--surface-2);color:var(--muted)">안함</span>
+                           background:var(--surface-2);color:var(--muted)" data-i18n="set.web_threshold_off">안함</span>
               <span style="font-size:11px;padding:2px 7px;border-radius:4px;
-                           background:var(--surface-2);color:var(--muted)">강력</span>
+                           background:var(--surface-2);color:var(--muted)" data-i18n="set.web_threshold_strong">강력</span>
             </div>
           </div>
         </div>
         <div style="padding: 16px 0; display:flex; justify-content:flex-end;">
-          <button class="btn btn-primary" data-action="save-web-search-config">Save Web Search Settings</button>
+          <button class="btn btn-primary" data-action="save-web-search-config" data-i18n="set.web_save_button">Save Web Search Settings</button>
         </div>
       </div>
     </div>

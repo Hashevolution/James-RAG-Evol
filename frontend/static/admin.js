@@ -979,7 +979,7 @@ async function loadPolicy() {
       return `<tr>
         <td>
           <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${f.id}</div>
-          <div style="font-size:12px;color:var(--text);margin-top:1px">${f.description || ''}</div>
+          <div style="font-size:12px;color:var(--text);margin-top:1px"><span data-i18n="${f.label_key || ''}">${f.description || ''}</span></div>
         </td>
         ${cells}
         <td style="text-align:center">
@@ -990,6 +990,9 @@ async function loadPolicy() {
         </td>
       </tr>`;
     }).join('');
+    // Re-translate freshly-injected data-i18n spans (same pattern as
+    // loadCognitiveFlags / loadLlmSelections / buildProtectedCheckboxes).
+    if (typeof applyTranslations === 'function') applyTranslations();
   } catch (e) {
     body.innerHTML = `<tr><td colspan="6" class="empty">${e.message}</td></tr>`;
   }
@@ -2026,15 +2029,17 @@ function onLanguageChange(lang) {
 }
 
 /* ── 설정 — 드롭다운 연동 ── */
-// 보호 파일 목록 (고정 + 동적)
+// 보호 파일 목록 (고정 + 동적). label_key follows the LLM_TASK_TYPES
+// pattern (admin.js:2135) so the UI label honours the active language;
+// `label` stays as EN fallback if the i18n table misses the key.
 const PROTECTED_CANDIDATES = [
-  { file: 'core/security_layer.py',  label: '🔐 Security Layer',  default: true  },
-  { file: 'core/auth.py',            label: '🔑 Auth Module',      default: true  },
-  { file: 'config.py',               label: '⚙️  Config File',     default: true  },
-  { file: 'server_llmwiki.py',       label: '🌐 FastAPI Server',   default: false },
-  { file: 'core/graph_engine.py',    label: '🕸️  Graph Engine',    default: false },
-  { file: 'core/reasoning_engine.py',label: '🧠 Reasoning Engine', default: false },
-  { file: 'core/vector_store.py',    label: '🗄️  Vector Store',    default: false },
+  { file: 'core/security_layer.py',  label: '🔐 Security Layer',  label_key: 'set.protected_security_layer',   default: true  },
+  { file: 'core/auth.py',            label: '🔑 Auth Module',      label_key: 'set.protected_auth_module',      default: true  },
+  { file: 'config.py',               label: '⚙️  Config File',     label_key: 'set.protected_config_file',      default: true  },
+  { file: 'server_llmwiki.py',       label: '🌐 FastAPI Server',   label_key: 'set.protected_fastapi_server',   default: false },
+  { file: 'core/graph_engine.py',    label: '🕸️  Graph Engine',    label_key: 'set.protected_graph_engine',     default: false },
+  { file: 'core/reasoning_engine.py',label: '🧠 Reasoning Engine', label_key: 'set.protected_reasoning_engine', default: false },
+  { file: 'core/vector_store.py',    label: '🗄️  Vector Store',    label_key: 'set.protected_vector_store',     default: false },
 ];
 
 
@@ -2052,10 +2057,14 @@ function buildProtectedCheckboxes(currentProtected = []) {
       <input type="checkbox" class="protected-chk" value="${c.file}"
              ${checked.has(c.file) || (checked.size === 0 && c.default) ? 'checked' : ''}
              style="accent-color:var(--accent);width:14px;height:14px">
-      <span>${c.label}</span>
+      <span data-i18n="${c.label_key}">${c.label}</span>
       <span style="font-size:10px;color:var(--muted);font-family:var(--font-mono)">${c.file}</span>
     </label>
   `).join('');
+  // Re-translate the just-rendered nodes so the freshly-injected
+  // data-i18n spans pick up the active language (same pattern as
+  // loadCognitiveFlags + loadLlmSelections).
+  if (typeof applyTranslations === 'function') applyTranslations();
 }
 
 function getProtectedFiles() {
@@ -2326,7 +2335,7 @@ async function loadCognitiveFlags() {
         <div>
           <div class="setting-label">
             <label for="${id}" style="cursor:pointer">
-              ${_escHtml(f.label)}
+              <span data-i18n="${_escHtml(f.label_key || '')}">${_escHtml(f.label)}</span>
             </label>
           </div>
           <div class="setting-sub" style="font-family:var(--font-mono);font-size:11px">
@@ -3110,16 +3119,23 @@ function renderInteractiveRadar() {
     const x2 = cx + Math.cos(a) * R;
     const y2 = cy + Math.sin(a) * R;
     inner += `<line class="radar-axis" x1="${cx}" y1="${cy}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/>`;
-    // 라벨 (icon + 한글명) — 외곽
+    // 라벨 (icon + 한글명) — 외곽. label_key 가 있으면 i18n table 의
+    // 현재 lang 값으로 표시. SVG <text> 도 [data-i18n] 셀렉터에 잡혀
+    // applyTranslations() 가 textContent 를 갱신 → lang 토글 즉시 반영.
     const lx = cx + Math.cos(a) * (R + 30);
     const ly = cy + Math.sin(a) * (R + 30);
     const tr = traits[i];
-    const labelText = (tr.label_ko || tr.label);
+    const labelText = tr.label_key
+      ? (t(tr.label_key) || tr.label_ko || tr.label)
+      : (tr.label_ko || tr.label);
+    const labelDi = tr.label_key
+      ? ` data-i18n="${escapeHtml(tr.label_key)}"`
+      : '';
     inner += `
       <text class="radar-icon" x="${lx.toFixed(1)}" y="${(ly-8).toFixed(1)}"
             text-anchor="middle">${escapeHtml(tr.icon)}</text>
       <text class="radar-label" x="${lx.toFixed(1)}" y="${(ly+8).toFixed(1)}"
-            text-anchor="middle">${escapeHtml(labelText)}</text>`;
+            text-anchor="middle"${labelDi}>${escapeHtml(labelText)}</text>`;
   });
 
   // ─── 3) 짝(opposing) 연결선 — 인접 trait 짧은 dashed line ────
@@ -3545,7 +3561,7 @@ function renderTraitSliders(traits) {
         <div class="trait-row" data-trait-id="${escapeHtml(tr.id)}"
              style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
           <span style="width:22px;text-align:center">${escapeHtml(tr.icon)}</span>
-          <span style="width:90px;font-size:12px;color:var(--text)">${escapeHtml(tr.label_ko || tr.label)}</span>
+          <span style="width:90px;font-size:12px;color:var(--text)"${tr.label_key ? ` data-i18n="${escapeHtml(tr.label_key)}"` : ''}>${escapeHtml(tr.label_ko || tr.label)}</span>
           <input type="range" min="0" max="100" value="${pct}"
                  data-slider-id="${escapeHtml(tr.id)}"
                  style="flex:1;accent-color:var(--accent)">
@@ -3557,6 +3573,9 @@ function renderTraitSliders(traits) {
     html += `</div>`;
   });
   container.innerHTML = html;
+  // Re-translate freshly-injected data-i18n spans so the active lang
+  // takes effect immediately (matches other dynamic renders).
+  if (typeof applyTranslations === 'function') applyTranslations();
 
   // [PR #157 패턴] data-attr + addEventListener — inline oninput X.
   container.querySelectorAll('input[type="range"][data-slider-id]').forEach(input => {
@@ -3652,15 +3671,19 @@ function renderCapabilities(caps) {
   el.innerHTML = caps.map(c => `
     <div style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <span style="font-size:13px">${c.icon} <strong>${c.label}</strong></span>
+        <span style="font-size:13px">${c.icon} <strong><span data-i18n="${c.label_key || ''}">${c.label}</span></strong></span>
         <span style="font-size:12px;font-family:var(--font-mono);color:var(--accent)">${c.pct}%</span>
       </div>
       <div style="background:var(--border);border-radius:4px;height:8px;overflow:hidden">
         <div style="width:${c.pct}%;height:100%;background:var(--accent);
           border-radius:4px;transition:width .5s ease"></div>
       </div>
-      <div style="font-size:10px;color:var(--muted);margin-top:3px">${c.desc}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px"><span data-i18n="${c.desc_key || ''}">${c.desc}</span></div>
     </div>`).join('');
+  // Re-translate freshly-injected data-i18n spans (matches the
+  // loadCognitiveFlags / loadLlmSelections / buildProtectedCheckboxes
+  // / loadPolicy pattern).
+  if (typeof applyTranslations === 'function') applyTranslations();
 }
 
 /* [#2-C] 도메인별 도넛 차트.
@@ -3717,15 +3740,17 @@ function renderDomains(domains) {
         <!-- 우: 메타 -->
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;margin-bottom:6px">
-            ${d.icon} <strong>${d.label}</strong>
+            ${d.icon} <strong><span data-i18n="${d.label_key || ''}">${d.label}</span></strong>
           </div>
           <div style="font-size:10px;color:var(--muted);
                       font-family:var(--font-mono);line-height:1.6">
-            <div>다음까지 <strong style="color:${d.color}">${d.tier_pct ?? d.pct}%</strong></div>
+            <div><span data-i18n="growth.next_level">다음까지</span> <strong style="color:${d.color}">${d.tier_pct ?? d.pct}%</strong></div>
             <div>📄 ${d.wiki_count ?? 0} wiki · score ${d.score ?? 0}</div>
           </div>
         </div>
       </div>`).join('') + '</div>';
+  // Re-translate freshly-injected data-i18n spans.
+  if (typeof applyTranslations === 'function') applyTranslations();
 }
 
 /* ── [P3-1] 하드웨어 장비 현황 ── */

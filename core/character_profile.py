@@ -33,27 +33,27 @@ except ImportError:
 # Group: A~D 짝(서로 합 1.0 강제) / E,F 독립(상관관계로만 영향).
 TRAITS: Dict[str, dict] = {
     # ─── A: cognitive curiosity vs focus ────────────────────────
-    "curiosity":     {"label": "Curiosity",     "label_ko": "탐구심",   "group": "A", "default": 0.5, "icon": "🔍"},
-    "focus":         {"label": "Focus",         "label_ko": "집중력",   "group": "A", "default": 0.5, "icon": "🎯"},
+    "curiosity":     {"label": "Curiosity",     "label_ko": "탐구심",   "label_key": "char.trait.curiosity",     "group": "A", "default": 0.5, "icon": "🔍"},
+    "focus":         {"label": "Focus",         "label_ko": "집중력",   "label_key": "char.trait.focus",         "group": "A", "default": 0.5, "icon": "🎯"},
     # ─── B: caution vs boldness ─────────────────────────────────
-    "caution":       {"label": "Caution",       "label_ko": "신중함",   "group": "B", "default": 0.7, "icon": "🛡️"},
-    "boldness":      {"label": "Boldness",      "label_ko": "과감함",   "group": "B", "default": 0.3, "icon": "⚡"},
+    "caution":       {"label": "Caution",       "label_ko": "신중함",   "label_key": "char.trait.caution",       "group": "B", "default": 0.7, "icon": "🛡️"},
+    "boldness":      {"label": "Boldness",      "label_ko": "과감함",   "label_key": "char.trait.boldness",      "group": "B", "default": 0.3, "icon": "⚡"},
     # ─── C: analytical vs intuitive ─────────────────────────────
-    "analytical":    {"label": "Analytical",    "label_ko": "분석력",   "group": "C", "default": 0.6, "icon": "📊"},
-    "intuitive":     {"label": "Intuitive",     "label_ko": "직관력",   "group": "C", "default": 0.4, "icon": "💡"},
+    "analytical":    {"label": "Analytical",    "label_ko": "분석력",   "label_key": "char.trait.analytical",    "group": "C", "default": 0.6, "icon": "📊"},
+    "intuitive":     {"label": "Intuitive",     "label_ko": "직관력",   "label_key": "char.trait.intuitive",     "group": "C", "default": 0.4, "icon": "💡"},
     # ─── D: independence vs collaboration ───────────────────────
-    "independent":   {"label": "Independent",   "label_ko": "독립성",   "group": "D", "default": 0.5, "icon": "🦅"},
-    "collaborative": {"label": "Collaborative", "label_ko": "협력성",   "group": "D", "default": 0.5, "icon": "🤝"},
+    "independent":   {"label": "Independent",   "label_ko": "독립성",   "label_key": "char.trait.independent",   "group": "D", "default": 0.5, "icon": "🦅"},
+    "collaborative": {"label": "Collaborative", "label_ko": "협력성",   "label_key": "char.trait.collaborative", "group": "D", "default": 0.5, "icon": "🤝"},
     # ─── E: independent core values ─────────────────────────────
-    "security":      {"label": "Security",      "label_ko": "보안의식", "group": "E", "default": 0.9, "icon": "🔐"},
-    "creativity":    {"label": "Creativity",    "label_ko": "창의성",   "group": "E", "default": 0.5, "icon": "🎨"},
-    "empathy":       {"label": "Empathy",       "label_ko": "공감능력", "group": "E", "default": 0.5, "icon": "💙"},
+    "security":      {"label": "Security",      "label_ko": "보안의식", "label_key": "char.trait.security",      "group": "E", "default": 0.9, "icon": "🔐"},
+    "creativity":    {"label": "Creativity",    "label_ko": "창의성",   "label_key": "char.trait.creativity",    "group": "E", "default": 0.5, "icon": "🎨"},
+    "empathy":       {"label": "Empathy",       "label_ko": "공감능력", "label_key": "char.trait.empathy",       "group": "E", "default": 0.5, "icon": "💙"},
     # ─── F: P1 신규 (모두 독립, 상관관계만 작용) ─────────────────
-    "conciseness":   {"label": "Conciseness",   "label_ko": "간결성",   "group": "F", "default": 0.5, "icon": "✂️"},
-    "directness":    {"label": "Directness",    "label_ko": "직설성",   "group": "F", "default": 0.5, "icon": "🎯"},
-    "optimism":      {"label": "Optimism",      "label_ko": "낙관성",   "group": "F", "default": 0.5, "icon": "☀️"},
-    "risk_tolerance":{"label": "Risk Tolerance","label_ko": "위험감수", "group": "F", "default": 0.4, "icon": "🎲"},
-    "patience":      {"label": "Patience",      "label_ko": "인내심",   "group": "F", "default": 0.6, "icon": "⏳"},
+    "conciseness":   {"label": "Conciseness",   "label_ko": "간결성",   "label_key": "char.trait.conciseness",   "group": "F", "default": 0.5, "icon": "✂️"},
+    "directness":    {"label": "Directness",    "label_ko": "직설성",   "label_key": "char.trait.directness",    "group": "F", "default": 0.5, "icon": "🎯"},
+    "optimism":      {"label": "Optimism",      "label_ko": "낙관성",   "label_key": "char.trait.optimism",      "group": "F", "default": 0.5, "icon": "☀️"},
+    "risk_tolerance":{"label": "Risk Tolerance","label_ko": "위험감수", "label_key": "char.trait.risk_tolerance","group": "F", "default": 0.4, "icon": "🎲"},
+    "patience":      {"label": "Patience",      "label_ko": "인내심",   "label_key": "char.trait.patience",      "group": "F", "default": 0.6, "icon": "⏳"},
 }
 
 # 짝(opposing) — set_trait 시 즉시 flip, sum=1.0 invariant.

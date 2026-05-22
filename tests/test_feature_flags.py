@@ -68,7 +68,8 @@ class RegistryShapeTests(_CleanEnvMixin, unittest.TestCase):
                          set(COGNITIVE_FEATURE_FLAGS))
 
     def test_every_entry_has_required_fields(self):
-        required = {"env", "polarity", "label", "default", "module"}
+        required = {"env", "polarity", "label", "label_key",
+                    "default", "module"}
         for key, spec in COGNITIVE_FEATURE_FLAGS.items():
             with self.subTest(key=key):
                 self.assertTrue(required.issubset(spec.keys()),
@@ -76,6 +77,22 @@ class RegistryShapeTests(_CleanEnvMixin, unittest.TestCase):
                     f"{required - set(spec.keys())}")
                 self.assertIn(spec["polarity"], ("enable", "disable"))
                 self.assertIsInstance(spec["default"], bool)
+
+    def test_label_keys_follow_convention_and_are_unique(self):
+        # The UI binds `data-i18n` to this key (admin.js cognitive
+        # row render) and falls back to `label` on miss. The
+        # convention mirrors `set.llm_task_*` in i18n.js — anchored
+        # at `set.cognitive_flag_<key>` so the i18n table stays
+        # scannable.
+        keys = []
+        for key, spec in COGNITIVE_FEATURE_FLAGS.items():
+            with self.subTest(key=key):
+                expected = f"set.cognitive_flag_{key}"
+                self.assertEqual(spec["label_key"], expected,
+                    f"flag {key} label_key must be {expected!r}")
+            keys.append(spec["label_key"])
+        self.assertEqual(len(keys), len(set(keys)),
+            "label_keys must be unique across flags")
 
     def test_env_names_are_unique(self):
         envs = [s["env"] for s in COGNITIVE_FEATURE_FLAGS.values()]
@@ -108,9 +125,19 @@ class ReadCognitiveFlagsTests(_CleanEnvMixin, unittest.TestCase):
     def test_each_entry_carries_the_documented_fields(self):
         out = read_cognitive_flags()
         for entry in out:
-            for f in ("key", "label", "env", "polarity",
+            for f in ("key", "label", "label_key", "env", "polarity",
                       "default", "on", "module"):
                 self.assertIn(f, entry)
+
+    def test_label_key_is_surfaced_to_caller(self):
+        # UI binds data-i18n to this value — a regression here
+        # silently re-introduces the bug (#378 6-row labels stuck
+        # in EN regardless of lang toggle).
+        out = {e["key"]: e["label_key"] for e in read_cognitive_flags()}
+        self.assertEqual(out["verify"],
+                         "set.cognitive_flag_verify")
+        self.assertEqual(out["query_rewrite"],
+                         "set.cognitive_flag_query_rewrite")
 
     def test_default_state_with_no_env_matches_specs(self):
         # All env popped in setUp → flags should resolve to their
