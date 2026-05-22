@@ -39,14 +39,19 @@
 │ - Cognitive Middleware (reflection / verification / planner)    │
 ├────────────────────────────────────────────────────────────────┤
 │ Layer 4: Ontology Reasoner & Lifecycle Semantics                │
+│ - Split into two complementary tracks (§1.5):                   │
+│   (A) EVENT/TEMPORAL — semantic evolution (T1/T3/T5/T7)         │
+│       Validity windows, supersede chains, aging, event store    │
+│   (B) GOVERNANCE — write-time control (T2/T4)                   │
+│       Contradiction arbitration, reviewer authority hierarchy   │
 │ - Entity canonicalization, alias merge                          │
-│ - Contradiction detection & arbitration (deterministic)         │
-│ - Temporal validity, fact expiration                            │
-│ - Causality chain, evidence aging                               │
-│ - Write-time governance (Memory Loom 5-gate)                    │
+│ - Write-time governance (Memory Loom 5-gate, extends → T2/T4)   │
 ├────────────────────────────────────────────────────────────────┤
 │ Layer 3: Memory Operating System (CASCADE Engine) ⭐            │
-│ - Provenance-tracked mutation lifecycle                         │
+│ - **Definition**: provenance invalidation propagation, NOT      │
+│   semantic evolution. Triggered by *explicit invalidation*      │
+│   signals (doc delete / ingestion error / source revoke), NOT   │
+│   by world change. World change → Layer 4 EVENT track.          │
 │ - Document add/delete/modify cascade                            │
 │ - Confidence recompute (noisy-OR)                               │
 │ - Manual immunity                                               │
@@ -65,6 +70,116 @@
 │ - File provenance (uploads, timestamps)                         │
 └────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## 1.5 Core Distinction — CASCADE vs EVENT (★ architectural axis)
+
+자메스의 lifecycle 설계 핵심은 **두 종류 mutation 의 명확한 분리**:
+
+| 측면 | CASCADE (Layer 3) | EVENT/TEMPORAL (Layer 4-A) |
+|---|---|---|
+| **트리거** | Explicit invalidation 신호 (doc delete, ingestion 오류, provenance 철회) | 새 문서 유입 / 새 주장 등장 / 시간 흐름 / 정책 변경 / 상태 전이 |
+| **처리 모델** | Deterministic mutation cascade (state cleanup) | Temporal evolution (state transition + history retention) |
+| **Effect** | Source 제거 + confidence 재계산 + orphan sweep | Validity window update + supersede chain + event log append |
+| **Past data** | 무효화된 흔적 제거 (invalidation) | 보존 — `status: superseded, superseded_by: ...` 로 mark |
+| **사용 예시** | 잘못 업로드된 문서 / 철회된 보고서 / 오탈자 정정 / 삭제된 증거 | CEO 교체 / 정책 변경 / 계약 종료 / 조직 개편 |
+| **현재 구현** | ✅ `core/cascade.py` 4 함수 (v0.3 Phase C/D) | 부분 — `core/event_time_filter.py` + 5번째 entity type `event` (PR-11, v0.3) |
+
+**왜 이 분리가 중요한가**:
+
+많은 naive RAG / KG 시스템이 두 영역을 같은 메커니즘으로 처리 (overwrite / append) →
+**contradiction 폭발 / stale retrieval / hallucination 증가**.
+
+특히 "새 문서가 들어왔다" 를 "기존 사실 삭제" 로 처리하면 위험. 현실은:
+> **과거 사실이 틀린 게 아니라, 시점이 달라진 것** 인 경우가 대부분.
+
+예시 — CEO 변경:
+- 2024: `CEO = Alice` (당시 사실)
+- 2026: `CEO = Bob` (현 사실)
+- ❌ Alice 를 CASCADE 로 삭제하면 `2025-09 보고서` 의 retrieval 깨짐
+- ✅ EVENT 처리: `Alice` edge 에 `validity: to=2025-06, status: superseded_by: <bob_edge>` 추가, Bob edge 신규 생성. Alice edge 는 historical replay / forensic / audit 에서 살아남음
+
+### 두 종류의 knowledge — 명확한 분류
+
+| 종류 | 특성 | 처리 |
+|---|---|---|
+| **A. Invalidated** — 완전 무효화. 잘못 업로드 / 철회된 보고서 / 오탈자 정정 / 삭제된 증거 | 기반 증거가 사라짐. 과거에도 틀렸음. | **CASCADE** (Layer 3) — source 제거 + propagation |
+| **B. Superseded** — 과거에는 맞았으나 최신 상태가 바뀜. CEO 교체 / 정책 개정 / 계약 종료 / 조직 개편 | 시점 차이 — 과거 시점에는 맞음. | **EVENT/TEMPORAL** (Layer 4-A) — validity 종료 + supersede chain |
+
+### Edge state — 단순 boolean → rich metadata
+
+현 schema (v0.3):
+```yaml
+relation:
+  head: Joby
+  predicate: partner_of
+  tail: NVIDIA
+  sources: [...]
+  confidence: 0.95
+```
+
+v0.4 (Layer 4 두 track 통합):
+```yaml
+edge:
+  head: Joby
+  predicate: partner_of
+  tail: NVIDIA
+  validity:                          # T1 EVENT/TEMPORAL
+    from: 2024-01
+    to:   2025-06
+  status:                            # T7 EVENT supersede chain (신규)
+    active: false
+    superseded_by: edge_442
+  provenance:                        # v0.3 Layer 3 schema
+    sources: [...]
+  mutation_type:                     # T1/T7 EVENT vs Layer 3 CASCADE 라벨
+    superseded                       # | invalidated | active | derived
+  derived_from:                      # T6 CASCADE 확장 (causality chain)
+    - base_fact_id: ...
+```
+
+→ Edge state 가 단순 true/false 가 아닌 **rich temporal + provenance metadata**.
+이로써:
+- Layer 3 CASCADE 는 `mutation_type: invalidated` 만 처리
+- Layer 4-A EVENT 는 `mutation_type: superseded` 만 처리
+- 둘이 같은 edge 에 공존 가능 (시간순 layered)
+
+### Layer 3 + Layer 4-A 공존 구조
+
+```
+┌────────────────────────────────────────────────┐
+│ Layer 4-A: EVENT/TEMPORAL Engine               │
+│ - Validity windows (T1)                        │
+│ - Supersede chains (T7, 신규)                  │
+│ - Event sourcing (T5)                          │
+│ - Aging functions (T3)                         │
+│                                                │
+│ "시간에 따른 의미 진화"                          │
+└────────────────┬───────────────────────────────┘
+                 │  (위에서 layered)
+                 ▼
+┌────────────────────────────────────────────────┐
+│ Layer 3: CASCADE Engine                        │
+│ - Invalid provenance cleanup (Phase C)         │
+│ - Modify cascade (Phase D)                     │
+│ - Selective recompute (noisy-OR)               │
+│ - Orphan removal                               │
+│                                                │
+│ "기반 증거 무효화의 전파"                        │
+└────────────────────────────────────────────────┘
+```
+
+→ EVENT layer 의 mutation 은 CASCADE 를 trigger 하지 않음 (의도).
+→ CASCADE 의 mutation 은 EVENT layer 의 supersede chain 을 깨지 않음 (active history 보존).
+
+### Effect — historical replay 가능
+
+이 분리가 정착되면 가능한 것:
+- **Temporal reasoning**: "2025-09 시점에 시스템은 무엇을 알고 있었나?"
+- **Historical replay**: 과거 시점 graph 재구성 (T5 event store)
+- **Audit**: 누가 / 언제 / 왜 mutation 했는지 추적
+- **Forensic analysis**: 정부·수사·보안 시나리오에서 핵심
 
 ---
 
@@ -88,7 +203,14 @@
 | Source attribution | `core/relations_schema.py` (sources 배열 schema) |
 | Confidence weights | LLM 출력 score |
 
-### 2.3 Layer 3 — Memory Operating System ⭐
+### 2.3 Layer 3 — Memory Operating System (CASCADE Engine) ⭐
+
+**정의**: provenance invalidation propagation engine. *Explicit
+invalidation signals* (doc delete, ingestion error, source revoke)
+에 의한 deterministic mutation cascade.
+
+**NOT responsible for**: 시간 흐름, 정책 변경, CEO 교체 같은
+semantic evolution — 이건 Layer 4-A EVENT/TEMPORAL track 의 영역.
 
 | 책임 | 코드 매핑 |
 |---|---|
@@ -112,17 +234,48 @@
 
 ### 2.4 Layer 4 — Ontology Reasoner & Lifecycle Semantics
 
-| 책임 | 코드 매핑 (현재) | 코드 매핑 (v0.4 계획) |
-|---|---|---|
-| Write-time governance | `core/memory/loom.py` (5-gate) | (현 구현 그대로) |
-| Ontology validation | `core/ontology.py` (relation type list) | + SHACL/OWL extension |
-| Temporal validity | ❌ 미구현 | `core/relations_schema.py` 에 valid_from/until 추가 (T1) |
-| Contradiction arbitration | ⚠️ 부분 (Gate 5) | `core/conflict_resolver.py` 신규 (T2) |
-| Evidence aging | ❌ 미구현 | source weight 의 decay 함수 (T3) |
-| Reviewer authority | ❌ 미구현 | manual source 의 reviewer/approval (T4) |
-| Causality chain | ❌ 미구현 | derived_from tracking (T6) |
+**두 track 으로 분리** (§1.5 의 CASCADE vs EVENT 분리 axiom 따름):
 
-**구현 계획**: T1–T6 6 영역 → `docs/design/v0.4-lifecycle-semantics-roadmap.md`.
+#### 2.4-A — EVENT/TEMPORAL Track (semantic evolution)
+
+**정의**: world change 를 *append + transition* 으로 처리. 과거 데이터
+삭제 X (`status: superseded_by` 로 mark, historical replay 보존).
+
+| 책임 | 코드 매핑 (현재) | 코드 매핑 (v0.4 계획) | 분류 |
+|---|---|---|---|
+| Event entity (시간 anchor) | ✅ 5번째 entity type `event` + `occurred_at` + `occurred_at_precision` (PR #367/368/371) | (확장 — supersede chain) | EVENT |
+| Time-bucket query | ✅ `core/event_time_filter.py` (PR #370) | (시간 window expand) | EVENT |
+| Temporal validity | ❌ 미구현 | `core/relations_schema.py` 에 `validity: {from, to}` 추가 (T1) | EVENT |
+| Supersede chain | ❌ 미구현 | edge 의 `status: {active, superseded_by}` field 신규 (T7, 신규) | EVENT |
+| Evidence aging | ❌ 미구현 | source weight 의 decay 함수 (T3) | EVENT |
+| Replayable audit | ❌ 미구현 | event-sourced reconstruction (T5) | EVENT |
+
+#### 2.4-B — GOVERNANCE Track (write-time control)
+
+**정의**: write 진입 시점의 deterministic 의사결정. 누가, 어떤 권한으로,
+어느 source 를 채택할지.
+
+| 책임 | 코드 매핑 (현재) | 코드 매핑 (v0.4 계획) | 분류 |
+|---|---|---|---|
+| Write-time governance | `core/memory/loom.py` (5-gate, v0.3) | (현 구현 + T2/T4 hook) | GOVERNANCE |
+| Ontology validation | `core/ontology.py` (relation type list) | + SHACL/OWL extension | GOVERNANCE |
+| Contradiction arbitration | ⚠️ 부분 (Gate 5 silent reject) | `core/conflict_resolver.py` 신규 — rule A 면 CASCADE 로 라우팅, B 면 EVENT 로 라우팅 (T2) | GOVERNANCE → 라우팅 |
+| Reviewer authority | ❌ 미구현 | manual source 의 reviewer/approval state machine (T4) | GOVERNANCE |
+
+#### 2.4-C — Layer 3 CASCADE 의 확장
+
+Layer 3 의 invalidation 책임을 derived fact 까지 확장:
+
+| 책임 | 코드 매핑 (현재) | 코드 매핑 (v0.4 계획) | 분류 |
+|---|---|---|---|
+| Causality chain | ❌ 미구현 | edge 의 `derived_from: [base_fact_id]` + base 무효화 시 derived 자동 invalidation (T6) | CASCADE 확장 |
+
+**구현 계획**: T1–T7 7 영역 → `docs/design/v0.4-lifecycle-semantics-roadmap.md`.
+
+**T# 의 track 매핑 요약**:
+- **EVENT track**: T1 (Temporal validity), T3 (Aging), T5 (Replay), T7 (Supersede chain — 신규)
+- **CASCADE 확장**: T6 (Causality chain)
+- **GOVERNANCE**: T2 (Contradiction → 라우팅), T4 (Reviewer)
 
 ### 2.5 Layer 5 — Agentic Reasoning & Orchestration
 
@@ -328,10 +481,13 @@
 
 ## 8. Roadmap — 구현 phase
 
-| Phase | Layer | 시점 | 구현 상태 |
+| Phase | Layer / Track | 시점 | 구현 상태 |
 |---|---|---|---|
-| Phase 1 | Layer 3 (Memory OS) | 2026 v0.3 cycle | ✅ Phase A–E + Hotfix 2건 완료 |
-| Phase 2 | Layer 4 (Ontology Reasoner) | 2026 Q4 ~ 2027 Q2 (v0.4) | T1–T6 6 영역 디자인 → 구현 |
+| Phase 1 | Layer 3 (CASCADE Engine) | 2026 v0.3 cycle | ✅ Phase A–E + Hotfix 2건 완료 |
+| Phase 1.5 | Layer 4-A 첫 building block (EVENT entity, time-bucket) | 2026 v0.3 cycle | ✅ PR #367/368/370/371/376 (event entity 5th type) |
+| Phase 2-A | Layer 4-A EVENT/TEMPORAL (T1/T3/T5/T7) | 2026 Q4 ~ 2027 Q2 (v0.4) | 디자인 → 구현 |
+| Phase 2-B | Layer 4-B GOVERNANCE (T2/T4) | 2026 Q4 ~ 2027 Q2 (v0.4) | 디자인 → 구현 |
+| Phase 2-C | Layer 3 확장 (T6 causality chain) | 2027 Q1 ~ Q2 (v0.4) | 디자인 → 구현 |
 | Phase 3 | Layer 5 (Agentic Reasoning) | 2027 Q3 ~ 2028 (v0.5+) | Cognitive Middleware 부분 구현, 확장 계획 |
 
 상세: `ROADMAP.md`
