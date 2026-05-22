@@ -67,6 +67,13 @@ jobs:
         run: |
           python scripts/eval_pack.py --all
 
+      - name: Run dogfood gate invariants (PR-C10)
+        env:
+          JAMES_API_KEY: ci-test-key-not-secret-do-not-use-anywhere
+          JAMES_JWT_SECRET: ci-test-secret-32-chars-padding-padding
+        run: |
+          python scripts/dogfood_check.py
+
       # If a future PR adds a heavyweight RAGAS step, it goes here as
       # a separate step that uses the same eval_pack.py with new flags.
       # The contract surface stays one script.
