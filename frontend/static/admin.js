@@ -2326,7 +2326,7 @@ async function loadCognitiveFlags() {
         <div>
           <div class="setting-label">
             <label for="${id}" style="cursor:pointer">
-              ${_escHtml(f.label)}
+              <span data-i18n="${_escHtml(f.label_key || '')}">${_escHtml(f.label)}</span>
             </label>
           </div>
           <div class="setting-sub" style="font-family:var(--font-mono);font-size:11px">
