@@ -215,37 +215,48 @@ domain packs will be built against.
 
 ### Plugin contract — the v0.3 core
 
-- [ ] `core/plugins/base.py` — typed interfaces for 4 plugin types:
+- [x] `core/plugins/base.py` — typed interfaces for 4 plugin types
+      (✅ PR #344, Track C PR-C2):
   - `OntologyPack` (entity types, relations, hierarchies)
   - `PromptPack` (system prompts, few-shot examples per task)
   - `UIPanel` (server-rendered admin/user widgets)
   - `Scorer` (custom retrieval/answer scoring overrides)
 - [ ] `core/plugins/loader.py` — `JAMES_PLUGINS=general,reference`
       env-driven dynamic loader; signed manifest; SemVer enforcement
+      (PR-C3, **pending**) — partial loader for *reasoning backend*
+      plugins exists at `core/reasoning/backends/_load_plugins`
+      (PR #326) but the full 4-type loader is not yet wired
 - [ ] `core/plugins/manifest.py` — `pack.yaml` schema with `license:`
-      field (SPDX, allowed values `MIT` / `Apache-2.0` / `AGPL-3.0` /
-      `proprietary` — `proprietary` warns at load time, full validation
-      activates only on future license-transition trigger; see
-      [`docs/LICENSE_PLAN.md §5.2`](docs/LICENSE_PLAN.md))
+      field (PR-C3, **pending**)
+- [ ] `core/plugins/registry.py` — slot registry per Protocol type
+      (PR-C3, **pending**)
 - [ ] `packs/general/` — JAMES's default behavior extracted as a
-      pack (dogfood gate: removing it disables JAMES; swapping changes
-      domain)
-- [ ] `docs/PLUGIN_AUTHORING.md` — author guide
-- [ ] `JAMES_WORKSPACE=` env var for multi-instance hosting (same
-      code, different data root)
-- [ ] SemVer + 12-month deprecation policy committed to
-      `docs/VERSIONING.md`
-- [ ] Eval contract: every pack passes RAGAS + STEP-N before merge
+      pack, dogfood gate (PR-C5, **pending** — directory does not
+      yet exist)
+- [ ] `JAMES_WORKSPACE=` env var for multi-instance hosting
+      (PR-C6, **pending** — zero matches in code)
+- [ ] `docs/PLUGIN_AUTHORING.md` — author guide (PR-C7, **pending**)
+- [ ] `docs/VERSIONING.md` — SemVer + 12-month deprecation policy
+      (PR-C8, **pending**)
+- [ ] Eval contract — every pack passes RAGAS + STEP-N before merge
+      (PR-C9, **pending** — RAGAS itself integrated v0.2 Axis 2,
+      but pack-level enforcement not yet)
+- [ ] `scripts/dogfood_check.py` + CI hook (PR-C10, **pending**)
+
+→ **Plugin API status: 1/8 PRs landed (~12.5%)** as of 2026-05-23
+audit. Full breakdown: `docs/handovers/v0.3.x-audit-2026-05-23.md`.
 
 ### Change Request — finish the primitive
 
+- [x] **CR-A~D** completed v0.2.x — scoping (CR-A), state machine +
+      apply dispatcher + wiki_entity (CR-B, PRs #237/#243), workspace
+      UI panel (CR-C, PR #239), run_jobs apply path (CR-D, PR #240).
 - [ ] **CR-E**: route self-evolution approvals
       (`/admin/patch/approve`, `/admin/proposals/{id}/approve|reject`)
       through `core/change_request.py` as a shadow row so the unified
-      audit shape becomes part of the platform contract. Deferred from
-      v0.2.x; high regression risk (4 locked JSONL-shape test files +
-      eval-gate + rollback chain), so paired with the plugin contract
-      where the contract surface changes anyway.
+      audit shape becomes part of the platform contract. **Still
+      pending** — deferred from v0.2.x; high regression risk
+      (4 locked JSONL-shape test files + eval-gate + rollback chain).
       Scoping note: `docs/handovers/v0.2.x-cr-track.md §5`.
 - [ ] (Stretch) Open the `target_type` registration API to plugins —
       today it's a closed enum on purpose; this is the surface every
@@ -253,14 +264,15 @@ domain packs will be built against.
 
 ### Knowledge cascade — relation provenance
 
-- [ ] Replace the v0.2 single-`confidence` field with `sources:
-      [{doc_id, weight, role, ts}]` so file delete/modify can
-      surgically update only the affected derived knowledge without
-      losing other docs' contributions. 5-phase plan (A schema → B
-      ingestion → C delete → D modify → E graph editor) in
-      [`docs/design/v0.3-knowledge-cascade.md`](docs/design/v0.3-knowledge-cascade.md).
-      Phase A is reversible; Phase E ships behind `JAMES_GRAPH_EDIT=1`.
-      May slip to v0.3.x patch — calibrate expectations.
+- [x] Replaced the v0.2 single-`confidence` field with `sources:
+      [{doc_id, weight, role, ts}]`. **5-phase plan completed**:
+      Phase A schema (#266), Phase B ingestion (#269), Phase C delete
+      (#270), Phase D modify (#274), Phase E graph editor (#271, #273).
+      Two hotfixes for cross-doc aggregation + noisy-OR derivation
+      (#349, #350). 12 invariants locked in
+      `tests/test_relations_schema.py` +
+      `tests/test_phase_b_ingestion_sources.py`. Postmortem:
+      `docs/postmortems/2026-05-20-knowledge-cascade-defects.md`.
 
 ### Governance — license / CLA / monitoring
 
@@ -269,37 +281,71 @@ domain packs will be built against.
       (CLA §4-bis relicensing grant, plugin `license:` field,
       trademark + patent tracks) committed to
       [`docs/LICENSE_PLAN.md`](docs/LICENSE_PLAN.md) (2026-05-11).
-- [ ] CLA Assistant install + `docs/legal/CLA.md` + `.github/workflows/cla.yml`
-      — external contributors can sign before opening their first PR
-      with the relicensing grant in place. Full track in
-      [`docs/handovers/session-2026-05-09-license-infrastructure.md`](docs/handovers/session-2026-05-09-license-infrastructure.md) Track B.
+- [x] **CLA Assistant install + `docs/legal/CLA.md` +
+      `.github/workflows/cla.yml`** — operator window closed
+      2026-05-20 (B-3/B-4/B-5/B-6 all verified end-to-end with a
+      dry-run from a separate GitHub account). External contributors
+      can sign before opening their first PR with the relicensing
+      grant in place.
 - [ ] `THIRD_PARTY_LICENSES.md` (dependency inventory; license-strength
-      independent)
+      independent) — **pending**
 - [ ] Quarterly trigger monitoring — first measurement recorded at the
-      v0.3 release in `docs/LICENSE_PLAN.md §8`
+      v0.3 release in `docs/LICENSE_PLAN.md §8` — **pending**
 - [ ] Trademark + patent tracks opened (lawyer consult scheduled,
-      progress logged in `docs/LICENSE_PLAN.md §6 / §7`)
+      progress logged in `docs/LICENSE_PLAN.md §6 / §7`) — operator
+      track
 
 ### Carryover follow-ups (from v0.2.x)
 
-- [ ] **`core/memory/store.py` split** — 21 KB, 1 KB over the
-      CLAUDE.md rule #5 module-size gate. Split along algorithm
-      boundaries when blast radius is small. Tracked from
-      `docs/handovers/v0.2.0-platform-track.md §3 P3`.
-- [ ] **Audit Phase 4b-2 — remove 16 JSONL writer sites.** Re-entry
-      after 2–4 weeks of production mirror-reliability monitoring;
-      gating + alternative described in §"Deferred follow-ups" below.
+- [x] **`core/memory/store.py` split** — was 21 KB at v0.2 close;
+      currently ~17 KB on origin/main (`9a756b7`). Reached
+      compliance without an explicit split (incidental shrinkage
+      from later refactors). No action needed.
+- [ ] **Audit Phase 4b-2 — remove 16 JSONL writer sites** — **still
+      pending**. `core/security_layer.py` retains ~17 log / JSONL
+      references; the JSONL → SQLite mirror has been running in
+      production for the production-monitoring window assumed by the
+      original plan, so the writer-removal PR is the next safe step.
+
+### v0.3-only follow-ups discovered post-design
+
+These items were identified during the v0.3 cycle but are not in the
+original design memos:
+
+- [x] **i18n contract invariant** — backend `label_key` pattern across
+      7 modules (~316 entries). Convention test in 5 `test_*_i18n.py`
+      files. Established by the 2026-05-22 sweep series
+      (PRs #393/#394/#395/#396/#397/#398/#400/#404).
+- [x] **Reasoning cap defaults** — `DEFAULT_MAX_TOKENS` for
+      query_rewriter / planner / reflect / verify bumped from
+      200/400/400/400 to 4096 each, above the ~500-token reasoning
+      floor measured on `gemma4:e4b` (PR #399 + V3'.a/.b/.c/.d
+      4-stage validation set, PR #407).
+- [x] **CASCADE vs EVENT separation axiom** — established by PR #401
+      (architecture memo). v0.4 first ship bundle rescoped to
+      T1+T7+T2 (PR #403).
+- [ ] **Module size gate violations** discovered by 2026-05-23 audit:
+      5 files over 20 KB on origin/main —
+      `core/wiki_generator.py` 51 KB (worst),
+      `core/cascade.py` 24 KB, `core/character_profile.py` 24 KB,
+      `core/security_layer.py` 23 KB, `core/graph_editor.py` 20 KB.
+      Split needed before v0.4 entry.
+- [ ] **admin.html → 3-page split** — inventory completed (PR #385);
+      actual split (Option-A Phase 3) deferred. Operator decision
+      whether to land before v0.4 entry or run as v0.3.x parallel.
 
 ### Done when
 
-- A new contributor can build a no-op pack from `docs/PLUGIN_AUTHORING.md`
-  alone in < 1 day, load it, and observe its effect.
-- The dogfood test passes: `packs/general/` produces byte-identical
-  STEP 7 results to v0.2 main; deleting the pack breaks the server
-  cleanly with a clear "no pack loaded" error.
-- Every self-evolution approval row has a paired Change Request row
-  (CR-E acceptance).
-- CLA Assistant blocks any unsigned external PR at the workflow gate.
+| Criterion | Status |
+|---|---|
+| A new contributor can build a no-op pack from `docs/PLUGIN_AUTHORING.md` alone in < 1 day, load it, and observe its effect | ❌ — PLUGIN_AUTHORING.md does not yet exist (PR-C7 pending) |
+| The dogfood test passes: `packs/general/` produces byte-identical STEP 7 results to v0.2 main; deleting the pack breaks the server cleanly | ❌ — `packs/general/` directory does not yet exist (PR-C5 pending) |
+| Every self-evolution approval row has a paired Change Request row (CR-E acceptance) | ❌ — CR-E pending |
+| CLA Assistant blocks any unsigned external PR at the workflow gate | ✅ — verified end-to-end 2026-05-20 |
+
+→ **1/4 criteria satisfied as of 2026-05-23.** The remaining three
+hinge on Plugin contract PRs (C3 / C5 / C7) + CR-E. See
+`docs/handovers/v0.3.x-audit-2026-05-23.md` for the staged plan.
 
 ### Out of scope (deferred to v0.4)
 
