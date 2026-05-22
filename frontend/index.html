@@ -238,7 +238,8 @@
         </select>
         <span id="model-picker-wrap"
               style="display:none;align-items:center;gap:4px"
-              title="이 모드에서 사용할 모델 선택">
+              title="이 모드에서 사용할 모델 선택"
+              data-i18n-title="chat.model_picker_title">
           <select id="model-picker"
                   style="background:var(--surface);border:1px solid var(--border);
                          color:var(--text);padding:4px 10px;border-radius:6px;
@@ -251,7 +252,8 @@
                        border:1px solid var(--accent);color:var(--accent-fg);
                        padding:4px 10px;border-radius:6px;font-size:11px;
                        cursor:pointer;font-family:var(--font-ui)"
-                title="선택한 모드의 모델이 미설치 — 클릭하여 ollama pull"></button>
+                title="선택한 모드의 모델이 미설치 — 클릭하여 ollama pull"
+                data-i18n-title="chat.mode_install_title"></button>
         <!-- [PR plan-4] 추천 모델 가이드로 admin 페이지 이동 -->
         <a id="mode-recommend-link"
            href="/admin"
@@ -270,7 +272,8 @@
                      padding:2px 8px;border:1px solid var(--accent-fg);
                      border-radius:6px;cursor:pointer"
               data-action="accept-mode-recommend"
-              title="권장 모드로 전환"></span>
+              title="권장 모드로 전환"
+              data-i18n-title="chat.mode_recommend_active_title"></span>
       </div>
       <button data-action="copy-conversation"
               style="background:none;border:1px solid var(--border);
