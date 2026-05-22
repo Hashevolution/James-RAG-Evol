@@ -2026,15 +2026,17 @@ function onLanguageChange(lang) {
 }
 
 /* ── 설정 — 드롭다운 연동 ── */
-// 보호 파일 목록 (고정 + 동적)
+// 보호 파일 목록 (고정 + 동적). label_key follows the LLM_TASK_TYPES
+// pattern (admin.js:2135) so the UI label honours the active language;
+// `label` stays as EN fallback if the i18n table misses the key.
 const PROTECTED_CANDIDATES = [
-  { file: 'core/security_layer.py',  label: '🔐 Security Layer',  default: true  },
-  { file: 'core/auth.py',            label: '🔑 Auth Module',      default: true  },
-  { file: 'config.py',               label: '⚙️  Config File',     default: true  },
-  { file: 'server_llmwiki.py',       label: '🌐 FastAPI Server',   default: false },
-  { file: 'core/graph_engine.py',    label: '🕸️  Graph Engine',    default: false },
-  { file: 'core/reasoning_engine.py',label: '🧠 Reasoning Engine', default: false },
-  { file: 'core/vector_store.py',    label: '🗄️  Vector Store',    default: false },
+  { file: 'core/security_layer.py',  label: '🔐 Security Layer',  label_key: 'set.protected_security_layer',   default: true  },
+  { file: 'core/auth.py',            label: '🔑 Auth Module',      label_key: 'set.protected_auth_module',      default: true  },
+  { file: 'config.py',               label: '⚙️  Config File',     label_key: 'set.protected_config_file',      default: true  },
+  { file: 'server_llmwiki.py',       label: '🌐 FastAPI Server',   label_key: 'set.protected_fastapi_server',   default: false },
+  { file: 'core/graph_engine.py',    label: '🕸️  Graph Engine',    label_key: 'set.protected_graph_engine',     default: false },
+  { file: 'core/reasoning_engine.py',label: '🧠 Reasoning Engine', label_key: 'set.protected_reasoning_engine', default: false },
+  { file: 'core/vector_store.py',    label: '🗄️  Vector Store',    label_key: 'set.protected_vector_store',     default: false },
 ];
 
 
@@ -2052,10 +2054,14 @@ function buildProtectedCheckboxes(currentProtected = []) {
       <input type="checkbox" class="protected-chk" value="${c.file}"
              ${checked.has(c.file) || (checked.size === 0 && c.default) ? 'checked' : ''}
              style="accent-color:var(--accent);width:14px;height:14px">
-      <span>${c.label}</span>
+      <span data-i18n="${c.label_key}">${c.label}</span>
       <span style="font-size:10px;color:var(--muted);font-family:var(--font-mono)">${c.file}</span>
     </label>
   `).join('');
+  // Re-translate the just-rendered nodes so the freshly-injected
+  // data-i18n spans pick up the active language (same pattern as
+  // loadCognitiveFlags + loadLlmSelections).
+  if (typeof applyTranslations === 'function') applyTranslations();
 }
 
 function getProtectedFiles() {
