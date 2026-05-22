@@ -58,12 +58,24 @@ if os.path.exists(_env_file):
 # ────────────────────────────────────────────────────────────────
 #  Base directories — auto-detected from this file's location
 #  → Works regardless of folder name, OS, or user
+#
+#  Track C PR-C6.b: the four data directories (RAW_DIR / WIKI_DIR /
+#  UPLOAD_DIR / CHROMA_DIR) honor JAMES_WORKSPACE via the resolver in
+#  core.plugins.workspace. With the env unset the resolver returns
+#  the project root, byte-identical to the pre-v0.3 behavior. With
+#  JAMES_WORKSPACE=/some/dir the data dirs live under that workspace
+#  while BASE_DIR (the project root, used for code/asset lookups)
+#  stays anchored to this file's location.
 # ────────────────────────────────────────────────────────────────
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
-RAW_DIR    = os.path.join(BASE_DIR, "raw")
-WIKI_DIR   = os.path.join(BASE_DIR, "wiki")
-UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
-CHROMA_DIR = os.path.join(BASE_DIR, "chroma_db")
+
+from core.plugins.workspace import get_workspace_root  # noqa: E402
+
+_WORKSPACE = str(get_workspace_root())
+RAW_DIR    = os.path.join(_WORKSPACE, "raw")
+WIKI_DIR   = os.path.join(_WORKSPACE, "wiki")
+UPLOAD_DIR = os.path.join(_WORKSPACE, "uploads")
+CHROMA_DIR = os.path.join(_WORKSPACE, "chroma_db")
 
 # ────────────────────────────────────────────────────────────────
 #  Tesseract OCR — auto-detect by OS, override via env var
