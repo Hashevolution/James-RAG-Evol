@@ -587,3 +587,106 @@ James-RAG-Evol STAGE 1B 정식 전환 작업 재개합니다.
 **End of STAGE 1B Formal Conversion Strategy (extended).**
 
 본 문서는 2027년 4~5월 정식 전환 시점에 활용. 사용자 비판 시리즈 (2026-05-21) 반영하여 effect equivalence 위험 차단 + lifecycle semantics 강화 + 5-layer portfolio 정합.
+
+---
+
+## 15. CASCADE vs EVENT 분리 — 결정적 재포지셔닝 (2026-05-21 추가)
+
+### 15.1 사용자 5회 비판의 종합 통찰
+
+> "네가 사실상 분리한 건: 1) destructive mutation, 2) semantic evolution. 이 둘을 분리해서 보는 건 굉장히 중요하다. 많은 시스템이 이걸 섞어서 망가진다."
+
+### 15.2 STAGE 1B 청구 재포지셔닝
+
+| 측면 | Before (broad) | After (narrow + defensible) |
+|---|---|---|
+| 청구 범위 | "lifecycle management" | **"provenance invalidation propagation"** |
+| Trigger | 모든 mutation | **무효화 (잘못 업로드 / 철회 / 오탈자)** 만 |
+| Excluded | (없음) | **Semantic evolution (CEO 교체, 정책 변경) 은 EVENT 영역** |
+| 차별화 | event sourcing 과 비교 모호 | **Invalidation vs Evolution 분리 명확** |
+
+### 15.3 정식 전환 시 Claim 1 narrow 표현
+
+```
+청구항 1 (재포지셔닝, 정식 전환 v3):
+
+지식 그래프 시스템에서 source 의 신뢰성이 무효화되었을 때
+(invalidation event) 그 source 가 contribute 한 관계의 신뢰도를
+deterministic 으로 정리하는 방법으로서:
+
+(a) 각 관계가 source-attributed weight 집합을 유지하는 단계;
+(b) 무효화 event 발생 시 영향 받은 sources 에서 해당 항목을
+    제거하는 단계 (단, 인간 입력 source 는 면역);
+(c) 신뢰도를 closed-form 으로 재계산하는 단계;
+(d) sources 가 빈 관계는 그래프에서 제거하는 단계;
+
+(e) 본 방법은 'temporal supersession' (시간 흐름에 의한 fact 진화) 과는
+    구분되어, source invalidation 에 한정됨 ← scope 명시;
+
+을 포함하는 것을 특징으로 하는 방법.
+
+본 청구는 source 의 무효화 (예: 잘못 업로드된 문서 삭제, 철회된 보고서,
+오탈자 정정) 에 한정되며, 세상의 변화 (예: CEO 교체, 정책 변경) 에 의한
+기존 fact 의 supersession 은 별도 메커니즘 (Event Engine) 의 영역으로
+분류된다.
+```
+
+→ 본 narrow scope 로 **patent 가치 + 청구 명확성** 둘 다 확보.
+
+### 15.4 신규 Patent 영역 식별 — Event Engine (별도 stage)
+
+**STAGE T7 — Temporal Supersession Chain (신규)**
+
+| 항목 | 내용 |
+|---|---|
+| 영역 | Layer 3b — Event Engine (별도 mutation system) |
+| 트리거 | 세상의 변화 (CEO 교체, 정책, 시장 등) |
+| 메커니즘 | validity windows + superseded_by chain + deterministic supersession |
+| 차별화 vs Bitemporal DB | RAG/KG 특화, source attribution 결합 |
+| 차별화 vs Event sourcing | provenance + supersession reasoning |
+| 출원 권고 | ⭐⭐⭐ HIGH — Phase 2 우선 |
+
+### 15.5 차별화 narrative 강화
+
+STAGE 1B 의 진짜 unique selling point (정식 전환 시 강조):
+
+> **"CASCADE는 'semantic evolution'이 아니라 'provenance invalidation propagation'에 특화된 deterministic mutation system. 시간 흐름 기반 supersession (Event Engine) 과 명확히 분리되어 공존."**
+
+이 narrative 는:
+- ✅ Event-sourcing 우회 차단 (다른 layer)
+- ✅ TMS / temporal graph 와 차별 (다른 mutation type)
+- ✅ CRDT / provenance DB 와 차별 (specific to invalidation)
+
+### 15.6 신규 청구항 23-25 (정식 전환 시)
+
+| # | 핵심 |
+|---|---|
+| **23** | **Mutation type 식별** — source.mutation_type 필드 (active/invalidated/retracted/superseded/expired) 명시. |
+| **24** | **CASCADE 적용 범위 한정** — invalidated, retracted 만 cascade 대상. superseded, expired 는 별도 처리. |
+| **25** | **Coexistence with Event Engine** — 본 cascade 와 별도의 supersession 메커니즘이 동일 graph 에서 공존 가능한 시스템. |
+
+---
+
+## 16. 최종 — 정식 전환 시 청구항 1~25 통합 목록 (재정리)
+
+§14 의 1~22 + 신규 23~25:
+
+| # | 영역 | 핵심 | scope |
+|---|---|---|---|
+| 1 (재 v3) | CASCADE | Invalidation propagation 한정 | narrow + defensible |
+| 2~7 | CASCADE | cascade 절차, manual 면역, diff, system | specific |
+| 8 | CASCADE | 0.91, 0.973 수치 | narrow backup |
+| 9, 10 | CASCADE | audit, threshold | specific |
+| 11~15 | CASCADE | invariants, immunity, idempotency, symmetric, sidecar | specific |
+| 16 | governance | manual ttl/reviewer/approval | specific |
+| 17 | canonicalization | entity alias + relation normalize | specific |
+| 18 | umbrella | mutation-aware lifecycle (broad) | broadest |
+| 19 | umbrella | defense-in-depth multi-impl | broad |
+| 20-22 | narrative | RAG/KG specific, single-node, closed-form | narrative |
+| **23** (신규) | **type** | **mutation_type 필드 식별** | **specific** |
+| **24** (신규) | **scope** | **CASCADE = invalidation only** | **scope narrow** |
+| **25** (신규) | **coexist** | **Event Engine 공존 가능** | **architectural** |
+
+---
+
+**End of STAGE 1B Formal Conversion Strategy v3 (사용자 5회 비판 통합).**

@@ -365,3 +365,118 @@ TMS (1980s), temporal graph DB, provenance-aware DB 등.
 **End of Patent Portfolio Roadmap.**
 
 본 문서는 자메스의 18~24개월 patent portfolio 전략. STAGE 1B 단독이 아닌 **"Enterprise Graph Memory Lifecycle Architecture"** reference 로 묶는 vision.
+
+---
+
+## 11. CASCADE vs EVENT 분리 — 결정적 재정립 (2026-05-21 추가)
+
+### 11.1 핵심 통찰
+
+> 사용자 5회 비판 시리즈의 종합: **자메스 의 mutation 은 두 종류 — destructive mutation (CASCADE) 와 semantic evolution (EVENT). 분리 필수.**
+
+상세: `docs/patent/cascade-vs-event-mutation-distinction.md`
+
+### 11.2 Layer 3 분리 — 3a + 3b
+
+기존 5-layer architecture 의 Layer 3 (Memory OS) 를 두 sub-layer 로 명확화:
+
+| Sub-layer | 역할 | 트리거 | Patent 상태 |
+|---|---|---|---|
+| **3a — CASCADE Engine** | Provenance invalidation propagation | Source 무효화 (잘못 업로드, 철회, 오탈자) | ✅ STAGE 1B 출원 완료 (재 narrow 필요) |
+| **3b — EVENT Engine** | Temporal supersession chain | 세상의 변화 (CEO 교체, 정책, 시장) | ⭐ **STAGE T7 신규 출원 영역** |
+
+### 11.3 Phase 2 재구성 — Layer 3b + Layer 4
+
+기존 §3 Phase 2 의 T1-T6 + 신규 T7:
+
+| Stage | Layer | 영역 | 우선도 |
+|---|---|---|---|
+| **T7** ⭐ **신규** | 3b (Event Engine) | Temporal Supersession Chain | **⭐⭐⭐⭐ 최우선** |
+| T1 (재배치) | 4 → 3b 흡수 가능 | Temporal Validity & Expiration | ⭐⭐⭐ |
+| T2 (재정의) | 4 (decision) | Contradiction Arbitration — CASCADE/EVENT 분기 결정 | ⭐⭐⭐ |
+| T6 (재배치) | 3a (CASCADE 확장) | Causality Chain Tracking | ⭐⭐⭐ |
+| T3 | 4 | Evidence Aging | ⭐⭐ |
+| T4 | 3a (governance) | Reviewer Authority | ⭐⭐ |
+| T5 | 3a/3b infra | Replayable Audit Graph | ⭐⭐ |
+
+### 11.4 STAGE T7 — Temporal Supersession Chain (신규 출원 후보)
+
+| 항목 | 내용 |
+|---|---|
+| **영역** | Layer 3b — Event Engine |
+| **핵심 발명** | (1) validity windows per edge (from/to), (2) supersession chain (superseded_by), (3) deterministic supersession decision (LLM 미사용), (4) historical replay (특정 시점 graph 재구성) |
+| **차별화 vs Bitemporal DB** | RAG/KG 특화, source attribution + temporal scope 결합 |
+| **차별화 vs Event sourcing** | provenance + supersession reasoning 통합 |
+| **차별화 vs Temporal Graph DB** | 단순 versioning 이 아닌 deterministic supersession rule |
+| **청구항 후보** | (a) edge schema with validity + supersession, (b) deterministic supersession rule, (c) replay engine, (d) coexistence with CASCADE |
+| **임시 출원 비용** | ₩13,800 (개인 70% 감면) |
+| **우선일 효력 시작** | v0.4 design memo 공개 시 |
+| **출원 권장 시점** | 2026 Q4 ~ 2027 Q1 |
+
+### 11.5 차별화 narrative 강화 — Portfolio level
+
+기존:
+> "Mutation-aware enterprise graph memory lifecycle"
+
+재포지셔닝 (사용자 비판 5회 반영):
+> **"두 종류의 graph mutation 을 분리하여 처리하는 아키텍처: 'provenance invalidation propagation' (CASCADE, STAGE 1B) 와 'temporal supersession chain' (EVENT, STAGE T7). 둘이 같은 graph 에서 공존하며, contradiction arbitration (T2) 가 분기를 결정. 이 분리가 contradiction 폭발 / stale retrieval / hallucination 을 방지."**
+
+이 narrative 는:
+- ✅ Specific (CASCADE 의 scope 명확)
+- ✅ Defensible (단순 "mutation lifecycle" broad 청구 위험 회피)
+- ✅ Differentiated (Mem0, Letta 의 LLM-driven 과 다른 deterministic 영역)
+- ✅ Coherent (Event Engine 까지 통합 vision)
+
+### 11.6 Patent portfolio 전체 재정리
+
+```
+Phase 1 (현재):
+  ├── STAGE 1B (Layer 3a) ✅ 출원 완료 — 재 narrow 정식 전환 시
+  └── STAGE 1A (Layer 3a/4 경계) ⏳ 대기
+
+Phase 1.5 (신규, Layer 3b):  ⭐ 신규 영역
+  └── STAGE T7 (Layer 3b) — Event Engine — Phase 2 최우선
+
+Phase 2 (Layer 4):
+  ├── T1 (Temporal — 일부 T7 흡수 가능)
+  ├── T2 (Contradiction Arbitration — 핵심 decision role)
+  ├── T3 (Aging)
+  ├── T4 (Reviewer Authority)
+  ├── T5 (Replayable Audit)
+  └── T6 (Causality Chain — 3a CASCADE 확장)
+
+Phase 3 (Layer 5):
+  ├── STAGE 4B (Trace)
+  ├── STAGE 5 (Reasoning Backend)
+  └── STAGE 6 (Cognitive Middleware)
+```
+
+### 11.7 출원 비용 재산정
+
+| Phase | 임시 출원 건수 | 누적 비용 |
+|---|---|---|
+| Phase 1 (1B + 1A) | 2 | ₩27,600 |
+| **Phase 1.5 (T7 신규)** | **+1** | **₩41,400** |
+| Phase 2 (T1-T6) | +6 | ₩124,200 |
+| Phase 3 (4B + 5 + 6 선별) | +1~3 | ₩138,000 ~ ₩165,600 |
+
+→ Phase 1.5 의 STAGE T7 추가는 큰 비용 부담 없이 **portfolio 핵심 영역** 확보.
+
+---
+
+## 12. 결론 — 자메스 Portfolio 의 핵심 framing
+
+### 한 줄 요약 (재정리)
+
+> **"자메스는 graph mutation 을 두 종류로 분리해 처리하는 reference architecture 를 정의: CASCADE (provenance invalidation) + EVENT (temporal supersession). 두 종류의 patent portfolio (STAGE 1B + STAGE T7) 가 Layer 3 의 양 sub-layer 를 보호."**
+
+### Patent portfolio narrative
+
+| Layer | Stage | 보호 영역 |
+|---|---|---|
+| 3a | **STAGE 1B** ✅ + 1A ⏳ | Provenance invalidation propagation |
+| **3b** | **STAGE T7** ⭐ (신규) | **Temporal supersession chain** |
+| 4 | T1-T6 (Phase 2) | Lifecycle semantics (decision, aging, governance) |
+| 5 | 4B, 5, 6 (Phase 3) | Agentic reasoning |
+
+→ **5-layer + 2-sublayer architecture** 가 자메스의 진짜 IP map.

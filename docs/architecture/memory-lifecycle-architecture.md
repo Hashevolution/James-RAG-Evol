@@ -387,3 +387,86 @@
 **End of Memory Lifecycle Architecture Reference.**
 
 본 문서는 자메스의 5-layer vision 의 reference. Patent + Code + 학술 + 마케팅 4 트랙의 단일 진리원천.
+
+---
+
+## 11. Layer 3 분리 — CASCADE vs EVENT (2026-05-21 추가)
+
+### 11.1 사용자 비판 시리즈 5회 통찰
+
+기존 5-layer architecture 의 **Layer 3 (Memory OS)** 를 두 sub-layer 로 명확화. 이는 자메스 lifecycle 아키텍처의 본질적 분리.
+
+상세: `docs/patent/cascade-vs-event-mutation-distinction.md`
+
+### 11.2 Layer 3 의 두 sub-layer
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Layer 3 (Memory OS) — Mutation Management                    │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ Layer 3a — CASCADE Engine ⭐                            │ │
+│ │ - "기반 증거가 무효화됐다" 처리                            │ │
+│ │ - 트리거: 잘못 업로드, 철회, 오탈자, ingestion 오류        │ │
+│ │ - 메커니즘: doc_id-based + role immunity                │ │
+│ │ - Patent: STAGE 1B ✅                                   │ │
+│ │ - Code: core/cascade.py, core/relations_schema.py       │ │
+│ ├─────────────────────────────────────────────────────────┤ │
+│ │ Layer 3b — EVENT Engine ⭐ (신규)                       │ │
+│ │ - "세상이 변했다" 처리                                    │ │
+│ │ - 트리거: CEO 교체, 정책 변경, 시장 변화                  │ │
+│ │ - 메커니즘: validity windows + supersession chain        │ │
+│ │ - Patent: STAGE T7 (Phase 2 신규 출원 후보)              │ │
+│ │ - Code: core/event_engine.py (v0.4 신규)                │ │
+│ └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 11.3 두 sub-layer 의 공존
+
+```
+새 mutation event 발생
+   │
+   ├── Layer 4 T2 Contradiction Arbitration
+   │   ├── source 자체 무효화?  →  Layer 3a CASCADE
+   │   └── 세상의 변화?         →  Layer 3b EVENT
+   │
+   ├── Layer 3a CASCADE 동작
+   │   ├── source 제거 (doc_id 매칭)
+   │   ├── confidence 재계산
+   │   └── orphan cleanup
+   │
+   └── Layer 3b EVENT 동작
+       ├── 기존 edge: validity.to + status.superseded_by
+       ├── 새 edge: validity.from + status.active=true
+       └── supersession chain 유지 (historical replay 가능)
+```
+
+### 11.4 두 layer 가 가능하게 하는 것
+
+| 기능 | Layer 3a | Layer 3b | 결합 효과 |
+|---|---|---|---|
+| 잘못된 doc 안심 삭제 | ✅ | — | 운영자 안심 |
+| 시간 흐름 추적 | — | ✅ | "2024년 당시 CEO는?" 답변 |
+| Historical replay | (부분) | ✅ | 임의 시점 graph 재구성 |
+| Audit + Forensic | ✅ | ✅ | "왜 그때 그렇게 판단했나" 답변 |
+| Contradiction 방지 | ✅ | ✅ | 둘 다 협력 필요 |
+
+### 11.5 Reference Architecture 의 차별화 강화
+
+기존 § 5 의 차별화 narrative 강화:
+
+> **자메스는 graph mutation 을 두 종류로 분리해 처리하는 reference architecture:**
+> - **CASCADE (provenance invalidation)** — Layer 3a
+> - **EVENT (temporal supersession)** — Layer 3b
+>
+> **둘이 같은 graph 에서 공존하며, contradiction arbitration (Layer 4 T2) 가 분기를 결정. 이 분리가 contradiction 폭발 / stale retrieval / hallucination 을 방지.**
+
+기존 경쟁자 (Temporal Graph DB, TMS, CRDT, Provenance DB, Knowledge Ledger) 과 비교 시 **이 분리 자체가 자메스의 unique vision**.
+
+### 11.6 v0.4 + Patent portfolio 정합
+
+- **v0.4 (코드)**: Layer 3b EVENT Engine 신규 구현 (`docs/design/v0.4-lifecycle-semantics-roadmap.md §18`)
+- **STAGE T7 (특허)**: EVENT Engine 의 핵심 메커니즘 출원 (`docs/patent/patent-portfolio-roadmap.md §11`)
+- **STAGE 1B 재포지셔닝** (특허): CASCADE 의 scope 를 "invalidation 한정" 으로 narrow (`docs/patent/stage1b-formal-conversion-strategy.md §15`)
+
+→ **architecture / code / patent 3트랙 정합** 완성.
