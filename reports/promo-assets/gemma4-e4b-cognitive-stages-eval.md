@@ -288,6 +288,37 @@ This is the toolchain-level mirror of Ali Afana's "starving Gemma's reasoning la
 
 Three independent deployment contexts; two architectures (Gemini 31B Dense + 26B MoE, Gemma 4 E4B Ollama); one mechanism (the reasoning layer needs hidden-token budget before visible output begins, and any cap below that floor is deterministic failure).
 
+### 2026-05-22 — Hashevolution self-replication continued (V3'.b, planner, n=10)
+
+**Reporter**: PROJECT JAMES maintainer (in-house V3'.b sweep)
+**Driver**: `scripts/research/v3prime_planner.py` @ commit `494ef6d`
+**Raw data**: `reports/research-runs/v3prime-planner-20260522T063918.json` (workstation push pending)
+**Hypothesis they support / refute**: **B (token budget) — confirmed for plan.decompose, replicates V3'.a pattern at stage-independent mechanism level**
+
+**Aggregate**:
+
+| `num_predict` | non_empty | avg latency | JSON ok |
+|---:|---:|---:|---:|
+| 400 (production default) | **0 / 10** | 4.3 s | 0 / 10 |
+| 4096 (lifted) | **10 / 10** | 7.1 s | 10 / 10 |
+
+**Cross-stage consistency with V3'.a**:
+
+| Metric | V3'.a (query_rewrite, cap 200) | V3'.b (planner, cap 400) | Pattern |
+|---|---|---|---|
+| Default-cap success | 0/10 | 0/10 | Identical |
+| 4096-cap success | 10/10 | 10/10 | Identical |
+| Default-cap latency | 2.1 s | 4.3 s | **Linear in cap** (2× cap → 2× latency) |
+| 4096-cap latency | 5.3 s | 7.1 s | +1.8 s for planner's additional reasoning/output |
+
+The linear cap-latency scaling indicates the ~500-token hidden reasoning floor is **stage-independent** — a model-level property of `gemma4:e4b` on short structured-output prompts, not a stage-specific behavior. Whatever the cap is set to, the model burns it linearly and surfaces zero visible output until the floor is cleared.
+
+**Project response**:
+
+- Two cognitive stages now confirm hypothesis B-budget at the mechanism level with consistent telemetry. The remaining two cognitive stages (`reflect.critique`, `verify.fact_check`, both default 400) have a strong prior to follow the same pattern.
+- 4-line PR bumping all four `DEFAULT_MAX_TOKENS` constants (200 / 400 / 400 / 400 → 4096 each) now justified by 2-stage in-house mechanism evidence + Ali's external 12/12 + Robin's external 18/18.
+- V3'.c / V3'.d will run as **post-merge validation** — their JSONs will land in `reports/research-runs/` alongside V3'.a/.b. If either stage does NOT replicate (low-probability scenario), single-line revert.
+
 ---
 
 ## 한국어 요약 (Korean summary)

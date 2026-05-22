@@ -20,6 +20,39 @@
 
 ## 0. TL;DR
 
+### 0.2 — 2026-05-22 update (after V3'.b execution)
+
+**V3'.b result on `gemma4:e4b` / `plan.decompose` stage, n=10 per cap:**
+
+| `num_predict` | non_empty | avg latency | JSON ok |
+|---:|---:|---:|---:|
+| 400 (current default) | **0 / 10** | 4.3 s | 0 / 10 |
+| 4096 (lifted) | **10 / 10** | 7.1 s | 10 / 10 |
+
+Identical 0/10 → 10/10 pattern to V3'.a, with diagnostic latency scaling:
+
+| Metric | V3'.a (cap 200) | V3'.b (cap 400) | Inference |
+|---|---|---|---|
+| Default-cap latency | 2.1 s | 4.3 s | **Linear in cap** — 2× cap → 2× burn time |
+| 4096-cap latency | 5.3 s | 7.1 s | +1.8 s for planner's larger reasoning + output |
+
+**Mechanism update**: the ~500-token hidden reasoning floor measured in V3'.a is **stage-independent** for `gemma4:e4b` on short structured-output prompts. Different stages (different prompts, different output shapes) all show the same shape: model burns the cap linearly without surfacing any visible byte until the floor is cleared.
+
+**Hypothesis space after V3'.b:**
+
+- **B-budget** — confirmed at **two stages** with consistent stage-independent mechanism (linear cap-latency scaling)
+- **A (4B floor)** — practically refuted for both query_rewrite and planner
+- **C, D** — unchanged
+- **E (`<think>`-strip)** — still uncertain, but the cross-stage consistency suggests E is unlikely to be the dominant explanation (would need stage-specific behavior, which we don't see)
+
+**Experiment priority update:**
+
+1. **4-line PR** justified by V3'.a + V3'.b (2-stage in-house) + Ali's 12/12 + Robin's 18/18 (external). Bump all four `DEFAULT_MAX_TOKENS` to 4096. STEP 7 bench in PR per CLAUDE.md rule #2.
+2. **V3'.c / .d (reflect.critique / verify.fact_check)** — now **post-merge validation** rather than pre-merge gate. If they unexpectedly fail to replicate, single-line revert per stage.
+3. **V8 (`<think>`-strip)** — further deprioritised. Cross-stage consistency of V3'.a + V3'.b makes E unlikely as primary mechanism.
+
+---
+
 ### 0.1 — 2026-05-22 update (after V3'.a execution)
 
 **V3'.a result on `gemma4:e4b` / `query_rewrite` stage, n=10 per cap:**
