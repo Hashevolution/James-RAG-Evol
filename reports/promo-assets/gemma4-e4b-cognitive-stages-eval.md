@@ -378,6 +378,73 @@ Two substantive operational shifts:
 - This is the **second Reader contribution** since the 2026-05-21 Ali entry. Routing protocol: `docs/handovers/v0.3.x-gemma4-feedback-track.md` (unchanged — same hypothesis B classification).
 - The Robin sub-reply is the first signal that the framing language is converging on the JAMES phrasing as the shared anchor (a meta-effect beyond the mechanism finding itself).
 
+### 2026-05-22 — Hashevolution self-replication closure (V3'.c reflect.critique + V3'.d verify.fact_check, n=10 each)
+
+**Reporter**: PROJECT JAMES maintainer (in-house V3'.c + V3'.d sweeps; 4-stage validation set closed)
+**Drivers**:
+- `scripts/research/v3prime_reflect.py` @ commit `9a756b7`
+- `scripts/research/v3prime_verify.py` @ commit `9a756b7`
+
+**Raw data**:
+- `reports/research-runs/v3prime-reflect-20260522T144838.json`
+- `reports/research-runs/v3prime-verify-20260522T145610.json`
+
+**Hypothesis they support / refute**: **B (token budget) — confirmed for all four cognitive stages; closes the cap-budget validation set**
+
+**Aggregate — V3'.c (reflect.critique)**:
+
+| `num_predict` | non_empty | avg latency | NO_ISSUES | Dim. hit (모순/누락/모호) |
+|---:|---:|---:|---:|---:|
+| 400 (pre-#399 default) | **0 / 10** | 4.8 s | 0 / 10 | 0 / 10 |
+| 4096 (lifted, current default) | **10 / 10** | 14.6 s | 0 / 10 | **10 / 10** |
+
+**Aggregate — V3'.d (verify.fact_check)**:
+
+| `num_predict` | non_empty | avg latency | Valid JSON | `grounded` key seen |
+|---:|---:|---:|---:|---:|
+| 400 (pre-#399 default) | **0 / 10** | 4.1 s | 0 / 10 | 0 / 10 |
+| 4096 (lifted, current default) | **10 / 10** | 11.4 s | **10 / 10** | **10 / 10** |
+
+**Cross-stage mechanism consistency** — same `~500-token hidden reasoning floor` reproduces across all four cognitive stages on `gemma4:e4b`:
+
+| Stage | Default cap | Default-cap latency | Burn rate (tok/s) | Lifted-cap latency | Δ |
+|---|---:|---:|---:|---:|---:|
+| V3'.a query_rewrite | 200 | 2.1 s | ~95 | 5.3 s | +3.2 s |
+| V3'.b plan.decompose | 400 | 4.3 s | ~93 | 7.1 s | +2.8 s |
+| V3'.c reflect.critique | 400 | 4.8 s | ~83 | 14.6 s | **+9.8 s** |
+| V3'.d verify.fact_check | 400 | 4.1 s | ~98 | 11.4 s | **+7.3 s** |
+
+Two observations:
+
+1. **Burn rate is stage-independent** (~85–100 tok/s on `gemma4:e4b` at the default cap). The model burns the budget at roughly the same throughput regardless of which cognitive prompt drives it — consistent with the floor being a property of the model's pre-output reasoning phase, not of the prompt shape.
+2. **Lifted-cap latency Δ scales with output complexity** (V3'.c critique with three dimensions and V3'.d JSON evaluation produce visibly larger Δ than V3'.a/.b's terse rewritten-query / subtask-list outputs). The floor is the same; what varies is what gets emitted after the floor is cleared.
+
+**Project response**:
+
+- **Hypothesis B-budget confirmed for all four cognitive stages.** PR #399's cap bump (`DEFAULT_MAX_TOKENS` 200 → 4096 for query_rewriter; 400 → 4096 each for planner / reflect / verify) is now validated by in-house quantitative evidence on all four stages, in addition to the external evidence from Robin Converse (gemma4:26b MoE 18/18) and Ali Afana (Gemini Dense + MoE 12/12).
+- **Hypothesis A (4B meta-reasoning floor) practically refuted for these four stages** — same model + same prompt + cap removed → 10/10 success on every stage tested. The "5/6 cognitive stages return empty" finding from the 2026-05-18 eval is a **cap-budget pathology**, not a capability ceiling at 4B.
+- **No 4-line code PR follows** — PR #399 already applied the cap bump pre-emptively based on V3'.a/.b external evidence. This entry is the **post-merge validation** that the bump did what it was supposed to do, with cross-stage telemetry to anchor the claim publicly.
+
+**Updated cross-validation bundle**:
+
+| Source | Context | Test | Result |
+|---|---|---|---|
+| Robin Converse (initial) | sovereign Ollama, uncapped sweep on `gemma4:26b MoE` | 3 temperatures × 6 scenarios | 18/18 success |
+| Ali Afana (2026-05-21) | managed Gemini API, single-variable | 400 → 4096 cap on 6 scenarios × 2 architectures | 12/12 recovery |
+| Hashevolution (V3'.a) | local Ollama, `gemma4:e4b`, query_rewrite | 200 → 4096, n=10 | 0/10 → 10/10, ~500-token floor quantified |
+| Hashevolution (V3'.b) | local Ollama, `gemma4:e4b`, plan.decompose | 400 → 4096, n=10 | 0/10 → 10/10, mechanism stage-independent |
+| **Hashevolution (V3'.c, this entry)** | local Ollama, `gemma4:e4b`, reflect.critique | 400 → 4096, n=10 | **0/10 → 10/10, 3-dimension critique 10/10 at lifted** |
+| **Hashevolution (V3'.d, this entry)** | local Ollama, `gemma4:e4b`, verify.fact_check | 400 → 4096, n=10 | **0/10 → 10/10, valid grounded/unsupported JSON 10/10** |
+| Robin Converse (proposed) | sovereign Ollama, `gemma4:26b MoE` | same protocol — TBD | Pending — would disambiguate model-specific vs architectural |
+
+**STEP 7 baseline anchor** — re-ran `python scripts/bench.py --check` after PR #399 + the four V3' sweeps. Result: **158.3 s total** (within the `[158.7 s, 413.7 s] ± 30%` baseline band), 13/13 queries with expected status (10 OK / 2 BLOCK / 1 OK meta). No retrieval regression from the cap bump. The "third deployment context" is now a published artifact anchored to a measurable benchmark line, not a DM commitment.
+
+**Notes**:
+
+- This is the **third Reader contribution entry** (Ali 2026-05-21 / Robin 2026-05-22 sub-reply / Hashevolution V3'.c+.d closure). The cap-budget validation set is now closed for the four cognitive stages tested in the 2026-05-18 eval.
+- `synth.web_summary` (the 5th empty stage on 2026-05-18) is **not** in this set — its prompt template differs and its cap path goes through a separate `core/reasoning/synth.py` constant. If empty pattern persists post-#399, that's the next single-stage replication (V3'.e candidate); if not, the bump generalised.
+- Out of scope for this entry: Robin's optional 26b MoE sweep (would land architectural-vs-parametric disambiguation) and the V8 `<think>`-strip bypass experiment (would isolate whether the ~500 hidden tokens are reasoning content or chat-template overhead). Both are publication-worthy follow-ups but not gating for the joint piece narrative.
+
 ---
 
 ## 한국어 요약 (Korean summary)
