@@ -5,7 +5,7 @@
 > 의 역사·근거·트리거 조건을 후임자에게 전달하기 위한 단일 진실
 > 소스(SSoT) 다.
 >
-> **최종 갱신**: 2026-05-13
+> **최종 갱신**: 2026-05-23 (§8 third quarterly measurement)
 > **현재 라이선스**: MIT
 > **다음 검토 트리거**: §3 의 T1~T5 중 2개 이상 충족 시
 
@@ -287,6 +287,7 @@
 |---|---|---|---|---|---|---|---|
 | 2026-Q2 (v0.3 release) | 1 | 0 | 0 | none | none | 0/5 | 최초 baseline 측정 (2026-05-13). repo public 전환 직후 (생성 2026-05-05). `/feedback` endpoint 미설치 → deployer 측정 인프라 미비. T3(클로닝) Google Alerts 등록 미진행. |
 | 2026-Q2 mid-update (Track 1 + CLA infra) | 5 | 0 | 0 | none | none | 0/5 | 2026-05-19 측정 (PR #340 머지 시점). Track 1 Provider contract (#324/#325/#326) + Track B CLA 코드 (#340) 완료. Forks 2 (외부 잠재 contributor 시그널 시작). Ali 협업 Track 2/2c locked, mid-June Provider 응답 예고. 트리거 충족 여전히 0/5 — CLA workflow 활성화 (GUI 4 항목) 후 첫 외부 PR 가 deployer/PoC count 의 첫 시드가 될 가능성. |
+| 2026-Q2 v0.3 Plugin contract mid-cycle | 13 | 0 | 0 | none | none | 0/5 | 2026-05-23 측정 (PR-C5a 머지 직후). Stars +8 over 4 days (5→13), forks +2 (2→4) — 채택 시그널 가속 중이나 T1 임계값 (1000 stars) 의 1.3% 도달. v0.3 Plugin contract 8 PR 중 5 종 완료 (#409 PR-C3, #410 PR-C6, #411 PR-C8, #412 PR-C7, #413 PR-C5a — loader/manifest/registry + JAMES_WORKSPACE env + SemVer 정책 + 작성 가이드 + dogfood pack skeleton). Robin Converse LinkedIn engagement positive sub-reply (audit trail at `reports/promo-assets/launch-tracker.md`). Ali V3'.a/.b/.c/.d 4-stage cap-budget sweep 결과 공유 — Provider 응답 mid-June 변경 없음. CLA workflow 활성화 4 일 경과, 외부 PR / contributor 0건 — Track B 인프라 ready but unused. 다음 측정 트리거: Plugin contract dogfood gate (PR-C5b startup wiring) 실효화 시점 또는 첫 외부 PR 도착 시 중간 행 추가. |
 
 ---
 
