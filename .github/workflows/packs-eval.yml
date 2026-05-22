@@ -1,0 +1,72 @@
+name: packs-eval
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packs/**'
+      - 'core/plugins/**'
+      - 'scripts/eval_pack.py'
+      - '.github/workflows/packs-eval.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packs/**'
+      - 'core/plugins/**'
+      - 'scripts/eval_pack.py'
+      - '.github/workflows/packs-eval.yml'
+
+permissions:
+  contents: read
+
+# The v0.3 Plugin contract eval gate. Runs on any PR that touches a
+# pack, the plugin loader/registry/manifest, the eval script itself,
+# or this workflow. Triggers are intentionally broad — a change in
+# core/plugins/ can break every pack, so we re-validate then too.
+#
+# v0.3 scope (what this workflow checks):
+#   - Every pack on disk has a parseable, schema-valid pack.yaml
+#   - Every declared slot import resolves + satisfies its Protocol
+#   - Every pack passes ruff
+#
+# Not yet checked (deferred until CI gains an Ollama service container):
+#   - RAGAS retrieval-quality eval against a real corpus
+#   - STEP-N regression bench
+#
+# The shape of the gate is stable now (scripts/eval_pack.py is the
+# single source of truth). When CI gets an LLM endpoint, the
+# `--with-ragas` / `--with-step` flags get wired in — no workflow
+# rewrite needed.
+
+jobs:
+  eval-all-packs:
+    name: Eval every pack on the branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install runtime + tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff
+
+      - name: Run eval_pack on every pack under packs/
+        env:
+          # Same sentinel pattern as test.yml — config.py refuses to
+          # import without these. No security significance.
+          JAMES_API_KEY: ci-test-key-not-secret-do-not-use-anywhere
+          JAMES_JWT_SECRET: ci-test-secret-32-chars-padding-padding
+        run: |
+          python scripts/eval_pack.py --all
+
+      # If a future PR adds a heavyweight RAGAS step, it goes here as
+      # a separate step that uses the same eval_pack.py with new flags.
+      # The contract surface stays one script.
