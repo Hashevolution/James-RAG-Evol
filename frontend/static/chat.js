@@ -234,6 +234,16 @@ window.addEventListener('DOMContentLoaded', () => {
   try { loadModePickerOptions(); } catch (e) { console.warn('[JAMES] mode picker 로드 실패:', e); }
 });
 
+// Re-render the mode dropdown when the operator toggles language so the
+// EN/KO labels (mode.* i18n keys from server_llmwiki.py:1207) take
+// effect immediately. i18n.js setLang() fires this hook after the
+// applyTranslations sweep (which only handles [data-i18n] nodes — the
+// <option> elements are rendered from JS data, not data-i18n, so they
+// need an explicit re-render).
+window.onLangChange = function() {
+  try { loadModePickerOptions(); } catch (e) { console.warn('[JAMES] mode picker re-render 실패:', e); }
+};
+
 /* ── item #6: 모드 picker + 자동 추천 ──
    서버에서 role-allowed 모드 옵션을 받아 dropdown 채움. 사용자 입력에
    따라 키워드 매치로 자동 추천 배지 표시 (현재 선택과 다를 때만).
@@ -262,11 +272,23 @@ async function loadModePickerOptions() {
     // item #6: 옵션 라벨에 실제 모델명 + 설치 상태 표시
     sel.innerHTML = MODE_OPTIONS.map(m => {
       const modelTag = m.model ? ` (${m.model})` : '';
-      const status = m.installed ? '' : ' ⚠️ 미설치';
+      // Mode dropdown labels honour the active language. Backend supplies
+      // label_key (PR #398, mode.* namespace) and the i18n table provides
+      // EN/KO translations. Falls back to the backend's `label` if the
+      // table misses the key (e.g., installs without i18n.js loaded).
+      const labelTxt = m.label_key
+        ? (t(m.label_key) || m.label)
+        : m.label;
+      const descTxt = m.desc_key
+        ? (t(m.desc_key) || m.desc || '')
+        : (m.desc || '');
+      const status = m.installed
+        ? ''
+        : ' ' + (t('mode.not_installed') || '⚠️ 미설치');
       return `<option value="${escHtml(m.key)}"
-                      title="${escHtml(m.desc || '')}${modelTag}"
+                      title="${escHtml(descTxt)}${modelTag}"
                       data-model="${escHtml(m.model || '')}"
-                      data-installed="${m.installed ? '1' : '0'}">${escHtml(m.label)}${escHtml(modelTag)}${status}</option>`;
+                      data-installed="${m.installed ? '1' : '0'}">${escHtml(labelTxt)}${escHtml(modelTag)}${status}</option>`;
     }).join('');
     sel.value = selectedMode;
     refreshModelPicker();

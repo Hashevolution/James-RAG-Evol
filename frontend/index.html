@@ -110,7 +110,7 @@
           <div class="drop-label">
             <span data-i18n="upload.drag_label">클릭하거나 드래그하여 파일 추가</span><br>
             <span class="drop-types"><span data-i18n="upload.types">이미지 · 오디오 · PDF · 문서</span></span><br>
-            <span class="drop-types" style="margin-top:4px;display:inline-block">
+            <span class="drop-types" style="margin-top:4px;display:inline-block" data-i18n="upload.folder_drag">
               폴더 통째로 드래그도 가능
             </span>
           </div>
@@ -121,7 +121,8 @@
                 style="margin:0 12px;padding:8px;
                        background:var(--surface-2);border:1px solid var(--border);
                        border-radius:6px;color:var(--text-soft);font-size:12px;
-                       cursor:pointer;font-family:var(--font-ui)">
+                       cursor:pointer;font-family:var(--font-ui)"
+                data-i18n="upload.folder_button">
           📁 폴더 선택
         </button>
 
@@ -233,7 +234,7 @@
                 style="background:var(--surface);border:1px solid var(--border);
                        color:var(--text);padding:4px 10px;border-radius:6px;
                        font-size:11px;cursor:pointer">
-          <option value="auto">🤖 자동</option>
+          <option value="auto" data-i18n="mode.auto">🤖 자동</option>
         </select>
         <span id="model-picker-wrap"
               style="display:none;align-items:center;gap:4px"
@@ -259,7 +260,9 @@
            style="font-size:11px;color:var(--muted);text-decoration:none;
                   padding:4px 8px;border:1px dashed var(--border);
                   border-radius:6px;cursor:pointer"
-           title="이 PC에 맞는 모델 자동 추천 (admin 페이지)">
+           title="이 PC에 맞는 모델 자동 추천 (admin 페이지)"
+           data-i18n="mode.recommend_link"
+           data-i18n-title="mode.recommend_link_title">
           🎯 추천
         </a>
         <span id="mode-recommend"
@@ -273,7 +276,9 @@
               style="background:none;border:1px solid var(--border);
                      border-radius:6px;padding:4px 10px;cursor:pointer;
                      color:var(--muted);font-size:11px;transition:all .15s"
-              title="현재 대화 전체를 텍스트로 복사">📋 대화 전체 복사</button>
+              title="현재 대화 전체를 텍스트로 복사"
+              data-i18n="chat.copy_all"
+              data-i18n-title="chat.copy_all_title">📋 대화 전체 복사</button>
     </div>
 
     <div class="input-area">
