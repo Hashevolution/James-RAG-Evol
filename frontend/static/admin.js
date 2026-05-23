@@ -1919,14 +1919,100 @@ async function loadFiles() {
 
 /* Recursive tree renderer. Folders render as collapsible <details>
    so the user can expand/collapse selectively without the whole tree
-   collapsing on a re-render. Files have a download link (only for
-   allowlisted extensions — server enforces, but we don't render the
-   link for ones we know will 403). */
+   collapsing on a re-render. Files have:
+     - a 👁 view button (text files only) — opens an inline modal via
+       /admin/files/view (fetch + Authorization header)
+     - a ⬇ download link (any allowlisted ext) — opens in new tab
+   The view path is the natural "open file" flow for an admin doing
+   inspection; download is for taking the file off-server. */
 const _DOWNLOAD_OK_EXTS = new Set([
   'md','txt','pdf','docx','doc','xlsx','xls','pptx','ppt','csv','html','htm',
   'json','yaml','yml','png','jpg','jpeg','gif','webp','bmp','tiff','mp4','avi',
   'mov','mkv','webm','mp3','wav','m4a','aac','flac','hwpx','hwp',
 ]);
+const _VIEW_OK_EXTS = new Set([
+  'md','txt','json','yaml','yml','csv','jsonl','log','tsv',
+]);
+
+/* Inline file viewer modal — fires when the 👁 button on a file row
+   is clicked. Uses fetch() so the Authorization header is attached
+   automatically (the download <a href> path loses the header in a
+   new-tab click and trips admin.data on the server). */
+let _fileViewEl = null;
+
+function _ensureFileViewModal() {
+  if (_fileViewEl) return _fileViewEl;
+  const overlay = document.createElement('div');
+  overlay.id = 'file-view-overlay';
+  overlay.style.cssText = (
+    'position:fixed;inset:0;background:rgba(0,0,0,0.6);' +
+    'display:none;align-items:center;justify-content:center;' +
+    'z-index:9000;backdrop-filter:blur(2px)'
+  );
+  overlay.innerHTML = `
+    <div style="background:var(--bg-1);border:1px solid var(--border-2);
+                border-radius:8px;max-width:min(900px,90vw);
+                max-height:85vh;display:flex;flex-direction:column;
+                box-shadow:0 8px 32px rgba(0,0,0,0.5)">
+      <div style="display:flex;align-items:center;gap:12px;
+                  padding:12px 16px;border-bottom:1px solid var(--border-2)">
+        <span style="font-size:18px">📄</span>
+        <span id="file-view-name" style="flex:1;font-weight:600;
+              font-family:var(--font-mono);font-size:13px;
+              color:var(--accent-fg);word-break:break-all"></span>
+        <span id="file-view-meta" style="color:var(--muted);
+              font-size:11px"></span>
+        <button type="button" onclick="closeFileView()"
+                style="background:none;border:none;color:var(--muted);
+                       cursor:pointer;font-size:18px;padding:0 4px"
+                title="닫기 (Esc)">✕</button>
+      </div>
+      <pre id="file-view-body" style="margin:0;padding:14px 16px;
+           overflow:auto;flex:1;font-family:var(--font-mono);
+           font-size:12px;line-height:1.5;color:var(--fg-1);
+           white-space:pre-wrap;word-break:break-word;
+           background:var(--bg-2)"></pre>
+    </div>
+  `;
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeFileView();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay.style.display !== 'none') {
+      closeFileView();
+    }
+  });
+  document.body.appendChild(overlay);
+  _fileViewEl = overlay;
+  return overlay;
+}
+
+async function openFileView(root, path, displayName) {
+  const overlay = _ensureFileViewModal();
+  const nameEl = overlay.querySelector('#file-view-name');
+  const metaEl = overlay.querySelector('#file-view-meta');
+  const bodyEl = overlay.querySelector('#file-view-body');
+  nameEl.textContent = displayName || path;
+  metaEl.textContent = '';
+  bodyEl.textContent = '로딩 중...';
+  overlay.style.display = 'flex';
+
+  try {
+    const data = await api(
+      `/admin/files/view?root=${encodeURIComponent(root)}` +
+      `&path=${encodeURIComponent(path)}`
+    );
+    metaEl.textContent = `${_humanSize(data.size)} · ${data.ext || ''}`;
+    bodyEl.textContent = data.content || '(빈 파일)';
+  } catch (err) {
+    bodyEl.textContent = `[열기 실패] ${err && err.message ? err.message : err}`;
+  }
+}
+
+function closeFileView() {
+  if (_fileViewEl) _fileViewEl.style.display = 'none';
+}
+
 
 function _renderTree(nodes, parentPath, root) {
   if (!nodes || !nodes.length) return '';
@@ -1949,11 +2035,19 @@ function _renderTree(nodes, parentPath, root) {
     } else {
       const ext = (n.name.split('.').pop() || '').toLowerCase();
       const canDownload = _DOWNLOAD_OK_EXTS.has(ext);
+      const canView     = _VIEW_OK_EXTS.has(ext);
+      const viewBtn = canView
+        ? `<button type="button"
+              onclick="openFileView('${root.replace(/'/g,"\\'")}','${fullRel.replace(/'/g,"\\'")}','${_escHtml(n.name).replace(/'/g,"\\'")}')"
+              style="background:none;border:none;color:var(--accent-fg);
+                     cursor:pointer;font-size:13px;padding:0;margin-left:8px"
+              title="열기">👁</button>`
+        : '';
       const dlLink = canDownload
         ? `<a href="${API}/admin/files/download?root=${encodeURIComponent(root)}&path=${encodeURIComponent(fullRel)}&api_key=${encodeURIComponent(apiKey)}"
               target="_blank" rel="noopener"
               style="color:var(--accent-fg);text-decoration:none;font-size:11px;
-                     margin-left:8px"
+                     margin-left:6px"
               title="다운로드">⬇</a>`
         : '';
       html += `<li style="margin:2px 0;padding:3px 6px 3px 18px;
@@ -1962,7 +2056,7 @@ function _renderTree(nodes, parentPath, root) {
         <span>📄 ${_escHtml(n.name)}</span>
         <span style="color:var(--muted);font-size:11px;flex:1">
           ${_humanSize(n.size)} · ${_humanMtime(n.mtime)}
-        </span>${dlLink}
+        </span>${viewBtn}${dlLink}
       </li>`;
     }
   }
@@ -1995,11 +2089,19 @@ async function searchFiles() {
     for (const m of matches) {
       const ext = (m.name.split('.').pop() || '').toLowerCase();
       const canDownload = _DOWNLOAD_OK_EXTS.has(ext);
+      const canView     = _VIEW_OK_EXTS.has(ext);
+      const viewBtn = canView
+        ? `<button type="button"
+              onclick="openFileView('${root.replace(/'/g,"\\'")}','${m.path.replace(/'/g,"\\'")}','${_escHtml(m.name).replace(/'/g,"\\'")}')"
+              style="background:none;border:none;color:var(--accent-fg);
+                     cursor:pointer;font-size:13px;padding:0;margin-left:8px"
+              title="열기">👁</button>`
+        : '';
       const dlLink = canDownload
         ? `<a href="${API}/admin/files/download?root=${encodeURIComponent(root)}&path=${encodeURIComponent(m.path)}&api_key=${encodeURIComponent(apiKey)}"
               target="_blank" rel="noopener"
               style="color:var(--accent-fg);text-decoration:none;font-size:11px;
-                     margin-left:8px"
+                     margin-left:6px"
               title="다운로드">⬇</a>`
         : '';
       html += `<li style="margin:3px 0;padding:6px 8px;
@@ -2009,7 +2111,7 @@ async function searchFiles() {
                      font-family:var(--font-mono);flex-shrink:0">${_escHtml(m.path)}</span>
         <span style="color:var(--muted);font-size:11px;flex:1;text-align:right">
           ${_humanSize(m.size)} · ${_humanMtime(m.mtime)}
-        </span>${dlLink}
+        </span>${viewBtn}${dlLink}
       </li>`;
     }
     html += '</ul>';

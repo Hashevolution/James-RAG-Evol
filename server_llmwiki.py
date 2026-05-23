@@ -5307,6 +5307,81 @@ async def admin_files_search(
             "root": root}
 
 
+_FILE_VIEW_TEXT_EXTS = frozenset({
+    ".md", ".txt", ".json", ".yaml", ".yml", ".csv",
+    ".jsonl", ".log", ".tsv",
+})
+
+
+@app.get("/admin/files/view", summary="파일 인라인 보기 [item #2-view]")
+async def admin_files_view(
+    api_key: str,
+    root:    str,
+    path:    str,
+    max_kb:  int = 256,
+    role:    str = Depends(get_role_from_request),
+):
+    """Read-only inline view of a text file under an allowed root.
+
+    Sibling to ``/admin/files/download`` but tuned for the admin-side
+    file management modal: returns ``{name, size, ext, content}`` JSON
+    suitable for rendering in a ``<pre>`` block. The same ``admin.data``
+    feature gate applies — this endpoint is intended to be called from
+    the in-page JavaScript (Authorization header automatically attached
+    by ``fetch()``), unlike the download path which is a new-tab
+    ``<a href>`` click and therefore loses the JWT header.
+
+    Defenses (in order):
+
+    1. ``admin.data`` feature gate (api_key + role).
+    2. ``_resolve_under_root`` rejects unknown root + path traversal.
+    3. Extension allowlist: text-only (``.md / .txt / .json / .yaml /
+       .yml / .csv / .jsonl / .log / .tsv``). Binary / source-code
+       extensions refused with 415 — operator should use download.
+    4. ``max_kb`` cap (default 256, max 1024) — accidentally opening
+       a multi-MB file in a modal would lock the browser.
+
+    Audit log records every view.
+    """
+    _require_feature(api_key, role, "admin.data")
+    if not (path or "").strip():
+        raise HTTPException(status_code=400, detail="path required")
+    full = _resolve_under_root(root, path)
+    if not full or not os.path.isfile(full):
+        raise HTTPException(status_code=404, detail="not found")
+    ext = os.path.splitext(full)[1].lower()
+    if ext not in _FILE_VIEW_TEXT_EXTS:
+        raise HTTPException(
+            status_code=415,
+            detail=f"extension {ext} not viewable inline; use download",
+        )
+    max_kb = max(1, min(int(max_kb or 256), 1024))
+    try:
+        size = os.path.getsize(full)
+    except OSError:
+        raise HTTPException(status_code=404, detail="stat failed")
+    if size > max_kb * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail=f"file {size} bytes exceeds max_kb={max_kb}; use download",
+        )
+    try:
+        with open(full, "r", encoding="utf-8", errors="replace") as f:
+            content = f.read()
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"read failed: {e}")
+    _write_audit(role, "/admin/files/view/",
+                 query=os.path.basename(full), elapsed_sec=0)
+    return {
+        "root":    root,
+        "path":    path,
+        "name":    os.path.basename(full),
+        "size":    size,
+        "ext":     ext,
+        "content": content,
+    }
+
+
 @app.get("/admin/files/download", summary="파일 다운로드 [item #2]")
 async def admin_files_download(
     api_key: str,
