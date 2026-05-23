@@ -43,6 +43,7 @@ import core.change_request as _cr_mod
 from core.change_request import (
     STATUS_OPEN,
     TARGET_WIKI_ENTITY, TARGET_RUN_JOBS,
+    TARGET_SELF_EVO_PATCH, TARGET_SELF_EVO_PROPOSAL,
     ChangeRequest,
     compute_base_hash, get_cr, supersede_cr,
 )
@@ -277,12 +278,49 @@ def _apply_run_jobs(cr: ChangeRequest) -> ApplyResult:
     return ApplyResult(applied=True, new_hash=job_id)
 
 
+# ─── Target-specific apply: self_evo_patch / self_evo_proposal ──
+# Stage B / CR-E (audit 2026-05-23 §2). Shadow rows for self-evolution
+# approval events. The actual patch / proposal write — including the
+# bench gate, rollback chain, and lifecycle JSONL — happens in the
+# legacy path (``tools/patch/approval.py`` for patches,
+# ``tools/self/evo_analyzer.py`` for proposals). This apply function
+# is a no-op so ``merge_cr`` can cleanly transition the shadow CR
+# row from ``open`` to ``merged`` without re-running the legacy
+# write. The CR row carries the unified audit shape; the legacy
+# JSONL carries the byte-level history. See plan: dual-write
+# permanent, with apply_self_evo_* returning ``applied=True``.
+def _apply_self_evo_patch(cr: ChangeRequest) -> ApplyResult:
+    """No-op apply for ``self_evo_patch`` shadow rows.
+
+    The patch was already applied through ``tools/patch/approval.py``
+    + ``tools/patch/patch_applier`` + ``tools/patch/bench_gate``
+    before the CR row reaches merge. The shadow CR exists only to
+    carry the unified audit shape; the legacy ``james_patch_log.jsonl``
+    remains the authoritative deploy timeline.
+    """
+    return ApplyResult(applied=True, new_hash=f"legacy:patch:{cr.target_id}")
+
+
+def _apply_self_evo_proposal(cr: ChangeRequest) -> ApplyResult:
+    """No-op apply for ``self_evo_proposal`` shadow rows.
+
+    The proposal was already executed through
+    ``tools/self/evo_analyzer.approve_and_execute`` before the CR row
+    reaches merge. The shadow CR exists only to carry the unified
+    audit shape; the legacy ``james_evo_log.jsonl`` remains the
+    authoritative execution timeline.
+    """
+    return ApplyResult(applied=True, new_hash=f"legacy:proposal:{cr.target_id}")
+
+
 # ─── Dispatcher ──────────────────────────────────────────────────
 # Closed enum — ARCHITECTURE.md §5.6 explains why. Plugin-style
 # external registration is the v0.3 contract surface, not now.
 _APPLY_DISPATCH: Dict[str, Callable[[ChangeRequest], ApplyResult]] = {
-    TARGET_WIKI_ENTITY: _apply_wiki_entity,
-    TARGET_RUN_JOBS:    _apply_run_jobs,
+    TARGET_WIKI_ENTITY:       _apply_wiki_entity,
+    TARGET_RUN_JOBS:          _apply_run_jobs,
+    TARGET_SELF_EVO_PATCH:    _apply_self_evo_patch,
+    TARGET_SELF_EVO_PROPOSAL: _apply_self_evo_proposal,
 }
 
 

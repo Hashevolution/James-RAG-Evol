@@ -235,10 +235,17 @@ class TargetTypeEnumTests(unittest.TestCase):
 
     def test_target_type_set_matches_architecture_doc(self):
         # The closed enum is documented in ARCHITECTURE.md §5.6. If
-        # someone adds a third entry without updating the doc PR
+        # someone adds a target_type without updating the doc PR
         # this test catches the drift.
+        #
+        # v0.2.x: wiki_entity + run_jobs.
+        # Stage B / CR-E (audit 2026-05-23 §2, 2026-05-24): two new
+        # shadow target_types for self-evolution approval events.
+        # See tests/test_change_request_self_evo.py for the smoke
+        # tests on those two; this assertion locks the full enum.
         self.assertEqual(VALID_TARGET_TYPES,
-                         frozenset({"wiki_entity", "run_jobs"}))
+                         frozenset({"wiki_entity", "run_jobs",
+                                    "self_evo_patch", "self_evo_proposal"}))
 
 
 # ─── Propose path ────────────────────────────────────────────────

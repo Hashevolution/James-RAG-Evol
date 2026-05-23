@@ -52,9 +52,27 @@ TERMINAL_STATUSES = frozenset({
 
 # Closed enum — see ARCHITECTURE.md §5.6 for why this is not a
 # plugin extension point until v0.3.
-TARGET_WIKI_ENTITY = "wiki_entity"
-TARGET_RUN_JOBS    = "run_jobs"
-VALID_TARGET_TYPES = frozenset({TARGET_WIKI_ENTITY, TARGET_RUN_JOBS})
+TARGET_WIKI_ENTITY       = "wiki_entity"
+TARGET_RUN_JOBS          = "run_jobs"
+# Stage B / CR-E (audit 2026-05-23 §2) — self-evolution approval
+# events get a *shadow* CR row so the unified audit shape becomes
+# part of the platform contract. The legacy JSONL writers
+# (``james_patch_log.jsonl`` / ``james_evo_log.jsonl``) stay
+# authoritative; the CR row is additive and the apply handler is a
+# no-op (the actual patch / proposal write happens in the legacy
+# path, with its own bench gate + rollback chain). See
+# ``docs/handovers/v0.3.x-audit-2026-05-23.md`` §9 Stage B + the four
+# locked JSONL-shape tests (test_self_evolution_gate /
+# test_evolution_bench_gate / test_evolution_rollback /
+# test_evolution_audit_query).
+TARGET_SELF_EVO_PATCH    = "self_evo_patch"
+TARGET_SELF_EVO_PROPOSAL = "self_evo_proposal"
+VALID_TARGET_TYPES = frozenset({
+    TARGET_WIKI_ENTITY,
+    TARGET_RUN_JOBS,
+    TARGET_SELF_EVO_PATCH,
+    TARGET_SELF_EVO_PROPOSAL,
+})
 
 REVIEW_APPROVE         = "approve"
 REVIEW_REQUEST_CHANGES = "request_changes"
