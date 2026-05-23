@@ -40,7 +40,6 @@ _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO))
 
 from scripts.rename_markdown_polluted_nodes import (  # noqa: E402
-    _build_rename_plan,
     _clean_name,
     _generate_entity_id,
     _is_markdown_polluted,
