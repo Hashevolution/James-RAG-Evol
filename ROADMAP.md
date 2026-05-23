@@ -260,22 +260,39 @@ domain packs will be built against.
 → **Plugin API status: 8/8 PRs landed (100%)** as of 2026-05-24
 post-PR-C10/C6.b. The eight-PR sequence (PR-C2 / C3 / C5a / C5b / C6 /
 C6.b / C7 / C8 / C9 / C10) closed in the 2026-05-22~24 window. Full
-breakdown: `docs/handovers/v0.3.x-audit-2026-05-23.md`. Remaining v0.3
-gate items (separate from Plugin contract): CR-E, module size 5
-violations, Audit Phase 4b-2 JSONL-writer removal.
+breakdown: `docs/handovers/v0.3.x-audit-2026-05-23.md`.
+
+→ **All other v0.3 gate items closed in the 2026-05-24 marathon
+session**: CR-E shadow rows via Stage B 4-PR sequence (#433/#434/
+#435/#436), module size violations via Stage C 5-PR sequence
+(#427/#428/#429/#431/#432), Audit Phase 4b-2 JSONL-writer removal
+via Stage D.1 (#430).
 
 ### Change Request — finish the primitive
 
 - [x] **CR-A~D** completed v0.2.x — scoping (CR-A), state machine +
       apply dispatcher + wiki_entity (CR-B, PRs #237/#243), workspace
       UI panel (CR-C, PR #239), run_jobs apply path (CR-D, PR #240).
-- [ ] **CR-E**: route self-evolution approvals
+- [x] **CR-E**: route self-evolution approvals
       (`/admin/patch/approve`, `/admin/proposals/{id}/approve|reject`)
       through `core/change_request.py` as a shadow row so the unified
-      audit shape becomes part of the platform contract. **Still
-      pending** — deferred from v0.2.x; high regression risk
-      (4 locked JSONL-shape test files + eval-gate + rollback chain).
-      Scoping note: `docs/handovers/v0.2.x-cr-track.md §5`.
+      audit shape becomes part of the platform contract.
+      **✅ Stage B 4-PR sequence complete 2026-05-24**:
+      - CR-E.1 (#433) — target_type enum + no-op apply dispatcher
+        (`self_evo_patch` / `self_evo_proposal`)
+      - CR-E.2 (#434) — `/admin/patch/approve` shadow write + close
+        on bench-pass / apply_failed / regression
+      - CR-E.3 (#435) — `/admin/proposals/{id}/approve|reject`
+        shadow write + close
+      - CR-E.4 (#436) — `/admin/patch/audit` unifies legacy JSONL +
+        CR-shadow read via `include_shadow=True` (default ON in the
+        endpoint, default OFF in the library function for back-compat)
+      Dual-write permanent. Legacy `james_patch_log.jsonl` +
+      `james_evo_log.jsonl` remain authoritative for the deploy
+      timeline; CR row is additive shadow with a no-op apply handler.
+      The 4 locked JSONL-shape tests (`test_self_evolution_gate`,
+      `test_evolution_bench_gate`, `test_evolution_rollback`,
+      `test_evolution_audit_query`) all stay green.
 - [ ] (Stretch) Open the `target_type` registration API to plugins —
       today it's a closed enum on purpose; this is the surface every
       plugin pack will hook through.
@@ -319,11 +336,14 @@ violations, Audit Phase 4b-2 JSONL-writer removal.
       currently ~17 KB on origin/main (`9a756b7`). Reached
       compliance without an explicit split (incidental shrinkage
       from later refactors). No action needed.
-- [ ] **Audit Phase 4b-2 — remove 16 JSONL writer sites** — **still
-      pending**. `core/security_layer.py` retains ~17 log / JSONL
-      references; the JSONL → SQLite mirror has been running in
-      production for the production-monitoring window assumed by the
-      original plan, so the writer-removal PR is the next safe step.
+- [x] **Audit Phase 4b-2 — remove 16 JSONL writer sites** — ✅
+      Stage D.1 (#430, 2026-05-24). 14 files touched, ~158 lines
+      removed / 47 added (entry dicts + mirror_* calls retained; only
+      the `try: open(JSONL_PATH).write(json.dumps(entry))` blocks +
+      orphaned path constants + `import json` removed). SQLite
+      `audit_log` table via `core/audit_bridge.py` is now the sole
+      sink. `tests/test_router_capability.py` was migrated to the
+      `mirror_to_audit_db` capture-via-mock pattern (9/9 pass).
 
 ### v0.3-only follow-ups discovered post-design
 
@@ -342,12 +362,23 @@ original design memos:
 - [x] **CASCADE vs EVENT separation axiom** — established by PR #401
       (architecture memo). v0.4 first ship bundle rescoped to
       T1+T7+T2 (PR #403).
-- [ ] **Module size gate violations** discovered by 2026-05-23 audit:
-      5 files over 20 KB on origin/main —
-      `core/wiki_generator.py` 51 KB (worst),
-      `core/cascade.py` 24 KB, `core/character_profile.py` 24 KB,
-      `core/security_layer.py` 23 KB, `core/graph_editor.py` 20 KB.
-      Split needed before v0.4 entry.
+- [x] **Module size gate violations** discovered by 2026-05-23 audit
+      → ✅ Stage C 5-PR sequence complete 2026-05-24. All five files
+      now split into mixin/composition packages with every sub-module
+      ≤17 KB:
+      - C.1 `core/wiki_generator.py` 51 KB → 6-file mixin package
+        (max 17 KB) via PR #427
+      - C.2 `core/cascade.py` 24 KB → 4-file package (max 12 KB,
+        Phase C delete + Phase D modify + shared helpers) via PR #428
+      - C.3 `core/character_profile.py` 24 KB → 4-file mixin package
+        (max 11 KB) via PR #429
+      - C.4 `core/security_layer.py` 23 KB → 5-file package (max
+        7.2 KB; landed after Stage D.1's JSONL removal shrunk the
+        file ~50 lines first) via PR #431
+      - C.5 `core/graph_editor.py` 20 KB → 3-file package (max
+        11 KB, edge mutation writes / helpers / facade) via PR #432
+      Pure refactor — no signatures, return shapes, or behaviour
+      changed. PLATFORM_READINESS Gate v0.3 dimension A fully clear.
 - [ ] **admin.html → 3-page split** — inventory completed (PR #385);
       actual split (Option-A Phase 3) deferred. Operator decision
       whether to land before v0.4 entry or run as v0.3.x parallel.
@@ -358,15 +389,16 @@ original design memos:
 |---|---|
 | A new contributor can build a no-op pack from `docs/PLUGIN_AUTHORING.md` alone in < 1 day, load it, and observe its effect | ⚠️ — PLUGIN_AUTHORING.md exists (#412); end-to-end author run not yet validated. Awaits first external pack author. |
 | The dogfood test passes: `packs/general/` produces byte-identical STEP 7 results to v0.2 main; deleting the pack breaks the server cleanly | ✅ — `packs/general/` registers at startup via PR-C5b (#418); `scripts/dogfood_check.py` (PR-C10 #420) locks the four runtime invariants (default loads general; empty `JAMES_PACKS` refused; missing pack refused; path-traversal refused) on every PR via `.github/workflows/packs-eval.yml`. Byte-identity is preserved because the overlay is empty. |
-| Every self-evolution approval row has a paired Change Request row (CR-E acceptance) | ❌ — CR-E pending |
+| Every self-evolution approval row has a paired Change Request row (CR-E acceptance) | ✅ — Stage B 4-PR sequence complete. PR #433 (target enum + no-op apply), PR #434 (`/admin/patch/approve` shadow write), PR #435 (`/admin/proposals/{id}/approve|reject` shadow write), PR #436 (`/admin/patch/audit` unified read via `include_shadow=True`). Dual-write: legacy JSONL stays authoritative, CR table is additive shadow. All 4 locked tests green. |
 | CLA Assistant blocks any unsigned external PR at the workflow gate | ✅ — verified end-to-end 2026-05-20 |
 
-→ **2/4 fully satisfied + 1/4 partially satisfied as of 2026-05-24
-(post-PR-C10/C6.b).** Remaining fully-pending: CR-E (Stage B of the
-audit re-entry plan). Remaining partial: first external author trial
-against PLUGIN_AUTHORING.md. See
+→ **3/4 fully satisfied + 1/4 partially satisfied as of 2026-05-24
+(post-Stage-B/C/D marathon session).** Only remaining partial:
+first external author trial against `PLUGIN_AUTHORING.md`
+(infrastructure complete; awaits Ali's mid-June Gemini backend PR
+as the first external trial). See
 `docs/handovers/v0.3.x-audit-2026-05-23.md` for the staged plan and
-the post-PR-C10/C6.b reconciliation.
+the post-marathon reconciliation table.
 
 ### Out of scope (deferred to v0.4)
 
