@@ -810,29 +810,46 @@
   // avoids the readability mess of labeling all 185 nodes.
   function createTextSprite(text, color) {
     if (typeof THREE === 'undefined') return null;
-    var canvas = document.createElement('canvas');
-    canvas.width = 256; canvas.height = 64;
-    var ctx = canvas.getContext('2d');
+    // Soft cap on label length — 28 visible chars is enough for any
+    // human-readable entity name. Longer strings (e.g. raw document
+    // node IDs like "web_business_경쟁사 대비 AMD 기술적 우위 …") get
+    // ellipsized so the sprite quad can't grow without bound.
+    var label = String(text || '?');
+    if (label.length > 28) label = label.slice(0, 27) + '…';
+
     // Korean-first fallback chain — canvas glyph fallback is browser-
     // dependent and unreliable on Chromium when the primary font lacks
-    // CJK glyphs (Inter has zero Hangul coverage). Putting native CJK
-    // faces first guarantees an "엔비디아" / "삼성전자" node label
-    // renders as Hangul on every platform JAMES targets:
-    //   - Windows KO     → Malgun Gothic (preinstalled)
-    //   - macOS          → Apple SD Gothic Neo (preinstalled)
-    //   - Linux / no CJK → Noto Sans KR (if loaded), else system-ui
-    //   - Latin nodes    → Inter still applies (covers ASCII first)
-    ctx.font = 'bold 24px "Malgun Gothic", "Apple SD Gothic Neo", ' +
+    // CJK glyphs (Inter has zero Hangul coverage). Native CJK first
+    // guarantees Hangul renders on every platform JAMES targets.
+    var FONT = 'bold 24px "Malgun Gothic", "Apple SD Gothic Neo", ' +
                '"Noto Sans KR", "Pretendard", Inter, system-ui, sans-serif';
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    // Measure before sizing — measureText respects ctx.font even on a
+    // default-sized canvas, and the result tells us how wide the
+    // backing texture has to be to fit the glyphs without clipping.
+    ctx.font = FONT;
+    var textWidth = ctx.measureText(label).width;
+    // Pad both sides for the drop-shadow blur and gutters; quantize to
+    // 16px so successive labels with slightly different widths share
+    // texture sizes more often. 256 floor keeps short labels at the
+    // original visual footprint; 768 ceiling keeps any one label from
+    // spanning the viewport.
+    var pad = 24;
+    var canvasW = Math.min(768,
+      Math.max(256, Math.ceil((textWidth + pad * 2) / 16) * 16));
+    canvas.width = canvasW;
+    canvas.height = 64;
+    // Setting canvas.width resets 2D-context state — re-apply.
+    ctx.font = FONT;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    // Drop-shadow for readability against any background.
     ctx.shadowColor = 'rgba(0,0,0,0.85)';
     ctx.shadowBlur = 6;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 0;
     ctx.fillStyle = color || '#ffffff';
-    ctx.fillText(text || '?', 128, 32);
+    ctx.fillText(label, canvasW / 2, 32);
     var tex = new THREE.CanvasTexture(canvas);
     tex.minFilter = THREE.LinearFilter;     // canvas isn't power-of-two
     var mat = new THREE.SpriteMaterial({
@@ -842,7 +859,11 @@
       depthWrite:  false,
     });
     var sprite = new THREE.Sprite(mat);
-    sprite.scale.set(36, 9, 1);              // wide, thin
+    // Scale the sprite plane in proportion to the backing canvas so a
+    // longer texture renders the *same* physical glyph size on screen,
+    // just over a wider strip. Baseline (256-wide) keeps 36×9.
+    var scaleX = 36 * (canvasW / 256);
+    sprite.scale.set(scaleX, 9, 1);
     sprite.userData.isLabel = true;
     return sprite;
   }
