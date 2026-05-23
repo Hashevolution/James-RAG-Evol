@@ -2,22 +2,16 @@
 
 Multi-instance hosting groundwork: one JAMES process per workspace,
 with the same code base serving different data roots. Read at
-startup; consulted by future path-resolution code (``wiki/`` /
-``uploads/`` / ``reports/`` / ``chroma_db/``) once the path-replacement
-follow-up PR lands.
+startup; consulted by ``config.py`` for the four data directories
+(``RAW_DIR`` / ``WIKI_DIR`` / ``UPLOAD_DIR`` / ``CHROMA_DIR``) — see
+PR-C6.b (#421, 2026-05-23) for the consumption side.
 
-**v0.3 scope is intentionally minimal**: this module defines the env
-var, the resolver, and the failure modes. The existing path constants
-in ``config.py`` are NOT yet rewritten to consume the resolver — that
-is a separate PR (PR-C6.b) because it's a large structural edit that
-must verify each call site of ``BASE_DIR`` / ``WIKI_DIR`` /
-``UPLOAD_DIR`` / ``CHROMA_DIR`` lands cleanly.
-
-Per ``docs/design/v0.3-plugin-api.md`` §"`JAMES_WORKSPACE=` env (§C-6)
-— deferred to a separate PR":
-
-> Plugin loader can ignore the env in v0.3 — the default is "the
-> current directory", which is byte-identical to today.
+Layering: this module defines the env var, the resolver, and the
+failure modes; ``config.py`` consumes the resolved root once at
+module-import time and the existing path constants stay as plain
+``os.path.join`` strings so the ~100 import sites across the codebase
+are unchanged. With ``JAMES_WORKSPACE`` unset the resolver returns
+the project root, byte-identical to the pre-v0.3 codepath.
 
 Env semantics
 -------------

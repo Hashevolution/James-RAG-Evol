@@ -236,27 +236,33 @@ domain packs will be built against.
       `GeneralOntology` + `GeneralPrompts` satisfy the Protocols with
       empty values; existing JAMES defaults in
       `core/relations_schema.py` + `core/reasoning/modes/` remain
-      authoritative. Server startup wiring is **deferred to PR-C5b**
-      (separate PR under operator supervision because that change
-      makes the loader live in production; bench-required for STEP 7
-      byte-identical confirmation)
+      authoritative. Server startup wiring shipped in **PR-C5b #418**
+      (2026-05-23) — the loader now runs at FastAPI startup and the
+      pack registers into the process-wide registry.
 - [x] `JAMES_WORKSPACE=` env var for multi-instance hosting
-      (✅ PR-C6 #410 — resolver only; `config.py` path replacement
-      deferred to **PR-C6.b**)
+      (✅ PR-C6 #410 — resolver only; ✅ PR-C6.b #421, 2026-05-23 —
+      `config.py` consumes the resolver for `RAW_DIR` / `WIKI_DIR` /
+      `UPLOAD_DIR` / `CHROMA_DIR`; default unset behavior is
+      byte-identical to pre-v0.3)
 - [x] `docs/PLUGIN_AUTHORING.md` — author guide (✅ PR-C7 #412)
 - [x] `docs/VERSIONING.md` — SemVer + 12-month deprecation policy
       (✅ PR-C8 #411)
-- [ ] Eval contract — every pack passes RAGAS + STEP-N before merge
-      (PR-C9, **pending** — RAGAS itself integrated v0.2 Axis 2,
-      but pack-level enforcement not yet)
-- [ ] `scripts/dogfood_check.py` + CI hook (PR-C10, **pending**)
+- [x] Eval contract — every pack passes static manifest + slot-import
+      + ruff via `scripts/eval_pack.py`, enforced by the
+      `.github/workflows/packs-eval.yml` CI gate
+      (✅ PR-C9 #419, 2026-05-23). Heavyweight RAGAS layer reserved
+      as a follow-up step in the same workflow.
+- [x] `scripts/dogfood_check.py` + CI hook — runtime check of the 4
+      end-to-end contract invariants of the dogfood gate (default
+      loads `packs/general/`; `JAMES_PACKS=''` refused; missing pack
+      refused; path-traversal refused) (✅ PR-C10 #420, 2026-05-23).
 
-→ **Plugin API status: 5/8 PRs landed (62.5%)** as of 2026-05-23
-post-PR-C5a. Remaining: PR-C5b (startup wiring — operator-supervised
-because of STEP 7 byte-identical bench), PR-C6.b (config.py path
-replacement consuming the workspace resolver), PR-C9 (CI eval gate
-for `packs/*/`), PR-C10 (dogfood_check.py + CI hook). Full breakdown:
-`docs/handovers/v0.3.x-audit-2026-05-23.md`.
+→ **Plugin API status: 8/8 PRs landed (100%)** as of 2026-05-24
+post-PR-C10/C6.b. The eight-PR sequence (PR-C2 / C3 / C5a / C5b / C6 /
+C6.b / C7 / C8 / C9 / C10) closed in the 2026-05-22~24 window. Full
+breakdown: `docs/handovers/v0.3.x-audit-2026-05-23.md`. Remaining v0.3
+gate items (separate from Plugin contract): CR-E, module size 5
+violations, Audit Phase 4b-2 JSONL-writer removal.
 
 ### Change Request — finish the primitive
 
@@ -351,16 +357,16 @@ original design memos:
 | Criterion | Status |
 |---|---|
 | A new contributor can build a no-op pack from `docs/PLUGIN_AUTHORING.md` alone in < 1 day, load it, and observe its effect | ⚠️ — PLUGIN_AUTHORING.md exists (#412); end-to-end author run not yet validated. Awaits first external pack author. |
-| The dogfood test passes: `packs/general/` produces byte-identical STEP 7 results to v0.2 main; deleting the pack breaks the server cleanly | ⚠️ — `packs/general/` exists as no-op overlay (#413); byte-identical STEP 7 is trivially true today because the overlay is empty. The "deleting the pack breaks the server cleanly" half awaits PR-C5b (startup wiring). |
+| The dogfood test passes: `packs/general/` produces byte-identical STEP 7 results to v0.2 main; deleting the pack breaks the server cleanly | ✅ — `packs/general/` registers at startup via PR-C5b (#418); `scripts/dogfood_check.py` (PR-C10 #420) locks the four runtime invariants (default loads general; empty `JAMES_PACKS` refused; missing pack refused; path-traversal refused) on every PR via `.github/workflows/packs-eval.yml`. Byte-identity is preserved because the overlay is empty. |
 | Every self-evolution approval row has a paired Change Request row (CR-E acceptance) | ❌ — CR-E pending |
 | CLA Assistant blocks any unsigned external PR at the workflow gate | ✅ — verified end-to-end 2026-05-20 |
 
-→ **1/4 fully satisfied + 2/4 partially satisfied as of 2026-05-23
-(post-PR-C5a).** The last fully-pending criterion is CR-E
-(Stage B of the audit re-entry plan). The two partial criteria
-depend on PR-C5b (startup wiring) and first external author trial.
-See
-`docs/handovers/v0.3.x-audit-2026-05-23.md` for the staged plan.
+→ **2/4 fully satisfied + 1/4 partially satisfied as of 2026-05-24
+(post-PR-C10/C6.b).** Remaining fully-pending: CR-E (Stage B of the
+audit re-entry plan). Remaining partial: first external author trial
+against PLUGIN_AUTHORING.md. See
+`docs/handovers/v0.3.x-audit-2026-05-23.md` for the staged plan and
+the post-PR-C10/C6.b reconciliation.
 
 ### Out of scope (deferred to v0.4)
 
