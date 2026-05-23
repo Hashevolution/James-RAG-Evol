@@ -86,6 +86,16 @@ function _bindFrontendEvents() {
       case 'change-my-password':  changeMyPassword(); break;
       case 'issue-my-api-key':    issueMyApiKey(); break;
 
+      /* ── file management modal (item #2-view, 2026-05-24) ─────── */
+      case 'open-file-view': {
+        const r = t.getAttribute('data-root');
+        const p = t.getAttribute('data-path');
+        const n = t.getAttribute('data-name');
+        openFileView(r, p, n);
+        break;
+      }
+      case 'close-file-view': closeFileView(); break;
+
       /* ── entities page (static) ───────────────────────────────── */
       case 'entities-page':
         entitiesPage(parseInt(t.getAttribute('data-delta'), 10) || 0);
@@ -1962,7 +1972,7 @@ function _ensureFileViewModal() {
               color:var(--accent-fg);word-break:break-all"></span>
         <span id="file-view-meta" style="color:var(--muted);
               font-size:11px"></span>
-        <button type="button" onclick="closeFileView()"
+        <button type="button" data-action="close-file-view"
                 style="background:none;border:none;color:var(--muted);
                        cursor:pointer;font-size:18px;padding:0 4px"
                 title="닫기 (Esc)">✕</button>
@@ -2037,8 +2047,10 @@ function _renderTree(nodes, parentPath, root) {
       const canDownload = _DOWNLOAD_OK_EXTS.has(ext);
       const canView     = _VIEW_OK_EXTS.has(ext);
       const viewBtn = canView
-        ? `<button type="button"
-              onclick="openFileView('${root.replace(/'/g,"\\'")}','${fullRel.replace(/'/g,"\\'")}','${_escHtml(n.name).replace(/'/g,"\\'")}')"
+        ? `<button type="button" data-action="open-file-view"
+              data-root="${_escHtml(root)}"
+              data-path="${_escHtml(fullRel)}"
+              data-name="${_escHtml(n.name)}"
               style="background:none;border:none;color:var(--accent-fg);
                      cursor:pointer;font-size:13px;padding:0;margin-left:8px"
               title="열기">👁</button>`
@@ -2091,8 +2103,10 @@ async function searchFiles() {
       const canDownload = _DOWNLOAD_OK_EXTS.has(ext);
       const canView     = _VIEW_OK_EXTS.has(ext);
       const viewBtn = canView
-        ? `<button type="button"
-              onclick="openFileView('${root.replace(/'/g,"\\'")}','${m.path.replace(/'/g,"\\'")}','${_escHtml(m.name).replace(/'/g,"\\'")}')"
+        ? `<button type="button" data-action="open-file-view"
+              data-root="${_escHtml(root)}"
+              data-path="${_escHtml(m.path)}"
+              data-name="${_escHtml(m.name)}"
               style="background:none;border:none;color:var(--accent-fg);
                      cursor:pointer;font-size:13px;padding:0;margin-left:8px"
               title="열기">👁</button>`
