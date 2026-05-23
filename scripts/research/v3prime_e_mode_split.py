@@ -187,6 +187,13 @@ def call_ollama(
         "raw_response_sha256": hashlib.sha256(
             raw_response.encode("utf-8")
         ).hexdigest()[:16],
+        # Full text retained so post-hoc analysis can compute
+        # unique-response sets and inspect canonical text directly.
+        # Robin Converse's 2026-05-23 issue #448 Finding 1 showed
+        # 40/40 calls → 1 unique response on 26b substitution arm;
+        # this field lets the JAMES side mirror that measurement
+        # on e4b without re-running the sweep.
+        "raw_response_text": raw_response,
         "non_empty": bool(raw_response.strip()),
         # Substitution-mode signal: the response should contain the
         # canonical clause about linen/silk/cashmere final sale once
@@ -300,8 +307,9 @@ def summarize(results: dict) -> None:
     print(" Hypothesis:   Robin Converse substitution/synthesis split")
     print()
     print(f" {'Arm':<14} | {'Cap':>5} | {'Success':>10} | "
-          f"{'Avg lat':>9} | {'Domain hit':>11}")
-    print(f" {'─' * 14}-+-{'─' * 5}-+-{'─' * 10}-+-{'─' * 9}-+-{'─' * 11}")
+          f"{'Avg lat':>9} | {'Domain hit':>11} | {'Unique':>7}")
+    print(f" {'─' * 14}-+-{'─' * 5}-+-{'─' * 10}-+-{'─' * 9}-+-"
+          f"{'─' * 11}-+-{'─' * 7}")
     cells: dict = {}
     for arm in ARMS:
         for cap_key in sorted(results["runs"][arm].keys(), key=int):
@@ -312,14 +320,25 @@ def summarize(results: dict) -> None:
             domain_key = ("has_linen_clause" if arm == "substitution"
                           else "has_decision_keyword")
             domain_hit = sum(1 for r in runs if r.get(domain_key))
+            # Unique-response count per cell (Robin Finding 1
+            # signature). On 26b substitution, 40/40 → 1. We compute
+            # this from sha256-prefix (fast, 64-bit collision space)
+            # and fall back to raw_response_text equality if the
+            # earlier field isn't present (legacy JSON compatibility).
+            unique = len({
+                r.get("raw_response_sha256")
+                or r.get("raw_response_text", "")
+                for r in runs if r.get("non_empty")
+            })
             cells[(arm, int(cap_key))] = {
                 "n": n, "non_empty": non_empty,
                 "avg_lat": avg_lat, "domain_hit": domain_hit,
+                "unique_outputs": unique,
             }
             print(
                 f" {arm:<14} | {cap_key:>5} | "
                 f"{non_empty:>5}/{n:<4} | {avg_lat:>6.1f}s   | "
-                f"{domain_hit:>5}/{n:<4}"
+                f"{domain_hit:>5}/{n:<4} | {unique:>4}/{n:<2}"
             )
     print()
 
