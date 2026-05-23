@@ -53,22 +53,21 @@ Files where the body is *already* in sync are left untouched.
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from pathlib import Path
 from typing import Tuple
 
 import yaml
 
+# Path bootstrap: scripts/ is run as a top-level script, so `core.*`
+# imports need the repo root on sys.path. Match the convention used by
+# scripts/cleanup_web_noise_entities.py.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from core.wiki_generator import sync_summary_body  # noqa: E402
+
 
 WIKI_ROOT = Path(__file__).resolve().parent.parent / "wiki" / "entity"
-
-# Body window: `## 요약\n<content>\n## 관계` — capture <content>.
-# DOTALL so `.` spans newlines; non-greedy so we stop at the first `## 관계`.
-_BODY_PAT = re.compile(
-    r"(## 요약\n)(.*?)(\n## 관계)",
-    re.DOTALL,
-)
 
 
 def _split_frontmatter(raw: str) -> Tuple[dict, str, str]:
@@ -107,27 +106,6 @@ def _canonical_summary(fm: dict) -> str:
     return ""
 
 
-def _rewrite_body(body: str, summary: str) -> Tuple[str, bool]:
-    """Replace the `## 요약` body content with `summary`.
-
-    Returns (new_body, changed). If the body lacks the `## 요약\\n...\\n## 관계`
-    structure, returns (body, False).
-    """
-    m = _BODY_PAT.search(body)
-    if not m:
-        return body, False
-    current = m.group(2).strip()
-    if current == summary.strip():
-        return body, False
-    new = _BODY_PAT.sub(
-        # group 1 = "## 요약\n", group 3 = "\n## 관계"; rebuild with new content.
-        lambda mm: mm.group(1) + summary + (("\n" if summary else "")) + mm.group(3),
-        body,
-        count=1,
-    )
-    return new, True
-
-
 def process_file(path: Path, apply: bool, verbose: bool) -> Tuple[bool, str]:
     """Return (changed, message).
 
@@ -148,7 +126,7 @@ def process_file(path: Path, apply: bool, verbose: bool) -> Tuple[bool, str]:
     if not summary:
         return False, f"SKIP {path}: no summary in frontmatter"
 
-    new_body, body_changed = _rewrite_body(body, summary)
+    new_body, body_changed = sync_summary_body(body, summary)
     fm_changed = False
     new_fm = dict(fm)
     if not isinstance(new_fm.get("summary"), str) or not new_fm["summary"].strip():

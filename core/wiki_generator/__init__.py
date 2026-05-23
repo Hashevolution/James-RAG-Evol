@@ -37,6 +37,7 @@ from ._aliases import (
     _expand_alias_candidates,
     _load_synonyms,
 )
+from ._body_sync import sync_summary_body  # noqa: F401 — public helper
 from ._frontmatter import WikiFrontmatterMixin
 from ._index_ops import WikiIndexOpsMixin
 from ._ingestion import WikiIngestionMixin

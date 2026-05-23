@@ -226,6 +226,15 @@ def update_node_attributes(
             "changed_fields": [],
         }
 
+    # [B-2-A follow-up, PR #446] If summary changed, also rewrite the
+    # body's `## 요약` section. Pre-fix the editor patched only the
+    # frontmatter, so a Save from the graph node detail panel changed
+    # `summary:` in the yaml header but left the visible body section
+    # stale — the user reported "edit doesn't reflect immediately".
+    if "summary" in changed:
+        from core.wiki_generator import sync_summary_body
+        body, _body_changed = sync_summary_body(body, fm.get("summary") or "")
+
     # Touch updated_at so cascade / monitoring picks up the change.
     fm["updated_at"] = datetime.now().isoformat()
     _write_entity(path, fm, body)

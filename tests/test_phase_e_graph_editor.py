@@ -477,6 +477,80 @@ class UpdateNodeAttributesTests(unittest.TestCase):
         self.assertIn("updated_at", fm,
             "successful write must stamp updated_at")
 
+    def test_summary_edit_syncs_body_section(self):
+        """PR #446 (B-2-A follow-up) — editing `summary` must also
+        rewrite the body's `## 요약` section, otherwise the UI shows
+        the old text and the user reports "edit doesn't reflect".
+        Pre-fix only the frontmatter was patched. Pin the contract."""
+        _, wg, p, eid = _single_entity()
+        # Overwrite the fixture with a wiki-shaped body so the
+        # `## 요약\n...\n## 관계` sync window is present (the default
+        # _write_entity helper writes just `# body\n`).
+        from textwrap import dedent
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(dedent("""\
+                ---
+                entity_id: e_org_anthropic
+                entity_type: org
+                name: Anthropic
+                aliases: []
+                summary: AI lab
+                sensitivity: normal
+                ---
+
+                ## 요약
+                AI lab
+
+                ## 관계
+                - (관계 없음)
+                """))
+
+        update_node_attributes(
+            eid,
+            {"summary": "AI safety company"},
+            wiki_generator=wg,
+        )
+        text = p.read_text(encoding="utf-8")
+        # Frontmatter updated …
+        self.assertIn("summary: AI safety company", text)
+        # …and so is the body window (the regression we're pinning).
+        self.assertIn("## 요약\nAI safety company\n", text)
+        self.assertNotIn("AI lab", text,
+            "old summary must be gone from both frontmatter and body")
+
+    def test_non_summary_edit_leaves_body_alone(self):
+        """Editing a non-summary field must NOT touch the body section
+        — otherwise unrelated name/aliases edits would churn the body
+        text on every save."""
+        _, wg, p, eid = _single_entity()
+        from textwrap import dedent
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(dedent("""\
+                ---
+                entity_id: e_org_anthropic
+                entity_type: org
+                name: Anthropic
+                aliases: []
+                summary: AI lab
+                sensitivity: normal
+                ---
+
+                ## 요약
+                AI lab
+
+                ## 관계
+                - (관계 없음)
+                """))
+        update_node_attributes(
+            eid,
+            {"name": "Anthropic, PBC"},
+            wiki_generator=wg,
+        )
+        text = p.read_text(encoding="utf-8")
+        self.assertIn("## 요약\nAI lab\n", text,
+            "body summary section must be untouched when summary "
+            "wasn't part of the patch")
+
     def test_empty_patch_raises(self):
         _, wg, _, eid = _single_entity()
         with self.assertRaises(ValueError):
