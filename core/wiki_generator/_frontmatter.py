@@ -223,6 +223,20 @@ class WikiFrontmatterMixin:
 
         entity_type = entity.get("type", "concept")
         name = entity.get("name", "unknown")
+        # [Stage E.1, 2026-05-24] strip markdown emphasis tokens that LLM
+        # extractors sometimes leave wrapping entity names — `**bold**`,
+        # `*italic*`, `` `code` ``, `~~strike~~`. Without this, names like
+        # `**경쟁사 대비 AMD 기술적 우위**` flow through to the displayed
+        # name, the alias set, and the normalized filename, leaking into
+        # graph node labels as `**...**` and into IDs as `___..._`. The
+        # strip happens here — entity entry point — so every downstream
+        # consumer (`_normalize_name`, alias expansion, frontmatter write,
+        # filename build) sees a clean name. Existing stale nodes are
+        # handled by a separate backlog-rename script (cross-references
+        # to fix). Underscore is intentionally NOT stripped — it's a
+        # legitimate name character (`gpt_4`) and `_normalize_name`
+        # already collapses non-word punctuation downstream.
+        name = re.sub(r"[\*`~]+", "", name).strip() or "unknown"
 
         # ── Event branch (PR-11b) ─────────────────────────────────
         # `event` requires occurred_at. If the LLM (or any caller)
