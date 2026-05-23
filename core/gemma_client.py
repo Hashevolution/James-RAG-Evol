@@ -23,13 +23,11 @@ import requests
 import time
 import hashlib
 import base64
-import json
 import re
 from collections import OrderedDict
 from datetime import datetime
 from config import GEMMA_MODEL, OLLAMA_API_URL
 
-SYSTEM_LOG_PATH = "james_system_log.jsonl"
 
 # ─── 에러 응답 식별자 ────────────────────────────────────────
 
@@ -63,12 +61,6 @@ def log_system_event(step: str, detail: str, level: str = "ERROR"):
         "step":   step,
         "detail": str(detail)[:300],
     }
-    try:
-        with open(SYSTEM_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
-    # Phase 2: mirror to SQLite (see core/audit_bridge.py).
     try:
         from core.audit_bridge import mirror_system_event
         mirror_system_event(entry)

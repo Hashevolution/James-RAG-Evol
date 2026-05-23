@@ -24,13 +24,10 @@ PROTECTED_FILES 관리:
 """
 
 import os
-import json
 from datetime import datetime
 from typing import Dict, Optional
 
 from core.policy_engine import default_engine
-
-AUDIT_LOG_PATH = "james_audit_tool.jsonl"
 
 # ─── PROTECTED_FILES (환경변수로 관리) ───────────────────────
 
@@ -86,15 +83,9 @@ def _log_tool_event(
         "exec_time_sec":   exec_time_sec,
         "layer":           "router",
     }
-    try:
-        with open(AUDIT_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
-
-    # Phase 1: mirror to SQLite audit_log so /admin/audit/list can
-    # surface tool events alongside HTTP audit rows. Best-effort —
-    # bridge never raises.
+    # Mirror to SQLite audit_log so /admin/audit/list can surface
+    # tool events alongside HTTP audit rows. Best-effort — bridge
+    # never raises. Sole sink as of Phase 4 (Stage D.1, 2026-05-24).
     try:
         from core.audit_bridge import mirror_to_audit_db
         mirror_to_audit_db(entry)

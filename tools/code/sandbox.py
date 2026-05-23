@@ -29,7 +29,6 @@ v2.1 (유지):
 
 import os
 import re
-import json
 import time
 import subprocess
 from datetime import datetime
@@ -39,9 +38,6 @@ from typing import Tuple
 
 ALLOWED_PATHS     = ["./workspace"]
 MAX_EXEC_TIME_SEC = 10
-AUDIT_LOG_PATH    = "james_audit_tool.jsonl"
-SYSTEM_LOG_PATH   = "james_system_log.jsonl"
-
 BLOCKED_COMMANDS = [
     "rm -rf", "curl", "wget", "sudo", "chmod",
     "chown", "dd ", "mkfs", "kill", "shutdown",
@@ -79,13 +75,8 @@ def log_security_event(
         "admin_override": admin_override,
         "layer":          "sandbox",
     }
-    for path in [AUDIT_LOG_PATH, SYSTEM_LOG_PATH]:
-        try:
-            with open(path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        except Exception:
-            pass
-    # Phase 1: mirror to SQLite (see core/audit_bridge.py).
+    # Mirror to SQLite (see core/audit_bridge.py). Sole sink as of
+    # Phase 4 (Stage D.1, 2026-05-24).
     try:
         from core.audit_bridge import mirror_to_audit_db
         mirror_to_audit_db(entry)

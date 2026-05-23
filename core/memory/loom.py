@@ -18,13 +18,11 @@ PROJECT JAMES - Memory Loom-lite (Phase 5)
   Gate 5: conflict detection (동일 entity+relation + 다른 tail → 양쪽 거부)
 """
 
-import json
 import hashlib
 from collections import deque
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
-SYSTEM_LOG_PATH          = "james_system_log.jsonl"
 MAX_WRITES_PER_SESSION   = 3       # 세션당 최대 저장 횟수
 MEMORY_CONFIDENCE_TH     = 0.75    # 저장 최소 confidence
 MEMORY_DEDUP_WINDOW      = 100     # 최근 N개 내 중복 검사
@@ -34,12 +32,6 @@ CONFLICT_CONFIDENCE_DIFF = 0.3     # confidence 차이 이 이상이면 conflict
 def _log(step: str, detail: str, level: str = "INFO"):
     entry = {"time": datetime.now().isoformat(), "level": level,
              "step": f"memory_loom.{step}", "detail": detail[:300]}
-    try:
-        with open(SYSTEM_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
-    # Phase 2: mirror to SQLite (see core/audit_bridge.py).
     try:
         from core.audit_bridge import mirror_system_event
         mirror_system_event(entry)

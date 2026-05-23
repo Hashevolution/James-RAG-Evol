@@ -19,7 +19,6 @@ Predictive Architecture, LeCun)와 무관** — 모듈 이름이 학술 용어�
 
 import re
 import time
-import json
 from datetime import datetime
 from typing import Optional   # noqa: F401 — kept for downstream type hints
 
@@ -31,7 +30,6 @@ TIMEOUT_SEC      = 3.0    # 이 안에 못 끝내면 bypass
 JEPA_TOKEN_HARD_LIMIT = TOKEN_HARD_LIMIT
 JEPA_TIMEOUT_SEC      = TIMEOUT_SEC
 
-SYSTEM_LOG_PATH = "james_system_log.jsonl"
 
 # ─── 동의어 / 확장 사전 (keyword 기반, LLM 없음) ──────────
 
@@ -66,12 +64,6 @@ _STOPWORDS = {
 def _log(step: str, detail: str, level: str = "INFO"):
     entry = {"time": datetime.now().isoformat(), "level": level,
              "step": f"query_expand.{step}", "detail": detail[:200]}
-    try:
-        with open(SYSTEM_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
-    # Phase 2: mirror to SQLite (see core/audit_bridge.py).
     try:
         from core.audit_bridge import mirror_system_event
         mirror_system_event(entry)

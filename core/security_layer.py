@@ -13,7 +13,6 @@ Phase 4 신규:
 """
 
 import re
-import json
 from datetime import datetime
 from typing import Dict, List, Set, Tuple
 
@@ -21,9 +20,6 @@ from typing import Dict, List, Set, Tuple
 
 ROLE_LEVEL = {"admin": 3, "manager": 2, "employee": 1, "external": 0}
 SENSITIVITY_LEVEL = {"public": 0, "internal": 1, "confidential": 2, "secret": 3}
-
-ATTACK_LOG_PATH = "james_attack_log.jsonl"
-SYSTEM_LOG_PATH = "james_system_log.jsonl"
 
 ATTACK_PATTERNS = [
     # 영어 패턴
@@ -136,14 +132,15 @@ INSTRUCTION_INJECTION_PATTERNS = [
 # ─── 로그 ────────────────────────────────────────────────────
 
 def log_attack(query: str, role: str, attack_type: str = "injection"):
+    """Audit-log an attempted prompt-injection / risky-coding refusal.
+
+    Phase 4 (Stage D.1, 2026-05-24) of the JSONL → SQLite audit
+    migration removed the legacy `james_attack_log.jsonl` writer;
+    the SQLite audit_log table is now the sole sink, accessible via
+    `/admin/audit/list` with `endpoint LIKE 'attack:%'`.
+    """
     entry = {"time": datetime.now().isoformat(), "role": role,
              "attack_type": attack_type, "query": query[:200]}
-    try:
-        with open(ATTACK_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
-    # Phase 2: mirror to SQLite audit_log (see core/audit_bridge.py).
     try:
         from core.audit_bridge import mirror_attack_event
         mirror_attack_event(entry, attack_type=attack_type)
@@ -151,15 +148,15 @@ def log_attack(query: str, role: str, attack_type: str = "injection"):
         pass
 
 def log_system_event(step: str, detail: str, role: str = "unknown", level: str = "ERROR"):
-    """[LOG-1] james_system_log.jsonl 영구 기록"""
+    """[LOG-1] Audit-log a system event.
+
+    Phase 4 (Stage D.1, 2026-05-24) removed the legacy
+    `james_system_log.jsonl` writer; the SQLite audit_log table is
+    now the sole sink, accessible via `/admin/audit/list` with
+    `endpoint LIKE 'system:%'`.
+    """
     entry = {"time": datetime.now().isoformat(), "level": level,
              "step": step, "detail": str(detail)[:300], "role": role}
-    try:
-        with open(SYSTEM_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
-    # Phase 2: mirror to SQLite audit_log (see core/audit_bridge.py).
     try:
         from core.audit_bridge import mirror_system_event
         mirror_system_event(entry)

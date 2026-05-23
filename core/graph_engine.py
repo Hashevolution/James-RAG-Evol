@@ -17,7 +17,6 @@ PROJECT JAMES - Graph Engine (Phase 4.5)
 """
 
 import re
-import json
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -34,7 +33,6 @@ from core.ontology import (
     RELATION_TYPES,
 )
 
-SYSTEM_LOG_PATH      = "james_system_log.jsonl"
 CONFIDENCE_THRESHOLD = 0.6
 MAX_DEPTH            = 4
 DFS_SCORE_THRESHOLD  = 0.05
@@ -124,12 +122,6 @@ class GraphEngine:
             "detail": str(error)[:300],
             "role":   role,
         }
-        try:
-            with open(SYSTEM_LOG_PATH, "a", encoding="utf-8") as f:
-                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        except Exception:
-            pass
-        # Phase 2: mirror to SQLite (see core/audit_bridge.py).
         try:
             from core.audit_bridge import mirror_system_event
             mirror_system_event(entry)

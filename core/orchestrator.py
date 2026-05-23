@@ -13,23 +13,13 @@ PROJECT JAMES - Retrieval Orchestrator (Phase 5)
   ✅ 점수 재계산 없음, 순서 변경 없음
 """
 
-import json
 import re
 from datetime import datetime
 from typing import List, Dict, Optional
 
-SYSTEM_LOG_PATH = "james_system_log.jsonl"
-
-
 def _log(step: str, detail: str):
     entry = {"time": datetime.now().isoformat(), "level": "INFO",
              "step": f"orchestrator.{step}", "detail": detail[:200]}
-    try:
-        with open(SYSTEM_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
-    # Phase 2: mirror to SQLite (see core/audit_bridge.py).
     try:
         from core.audit_bridge import mirror_system_event
         mirror_system_event(entry)

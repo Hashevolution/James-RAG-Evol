@@ -14,7 +14,6 @@ PROJECT JAMES - Code Editor (Phase 5.5)
 """
 
 import os
-import json
 import shutil
 import difflib
 from datetime import datetime
@@ -23,7 +22,6 @@ from typing import Optional, Tuple
 
 from tools.code.sandbox import policy_validate_path, validate_command, log_security_event
 
-AUDIT_LOG_PATH = "james_audit_tool.jsonl"
 BACKUP_DIR     = "./workspace/.backups"
 
 # Core Engine 파일 수정 절대 금지 목록
@@ -46,12 +44,6 @@ def _log_edit(path: str, operation: str, success: bool, detail: str = ""):
         "detail":    detail[:200],
         "layer":     "tool",
     }
-    try:
-        with open(AUDIT_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
-    # Phase 1: mirror to SQLite (see core/audit_bridge.py).
     try:
         from core.audit_bridge import mirror_to_audit_db
         mirror_to_audit_db(entry)

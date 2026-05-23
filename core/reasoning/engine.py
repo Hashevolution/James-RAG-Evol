@@ -13,7 +13,6 @@ PROJECT JAMES - Reasoning Engine (Phase 4.5)
   graph_rag_engine.py (thin wrapper) → ReasoningEngine
 """
 
-import json
 import time
 from datetime import datetime
 from typing import Dict, Any, Optional
@@ -31,7 +30,6 @@ from core.reasoning.modes import (
     handle_coding,
 )
 
-SYSTEM_LOG_PATH   = "james_system_log.jsonl"
 TIMING_TARGET_SEC = 30.0
 MAX_LOOP          = 2        # Loop 최대 반복
 LOOP_TIMEOUT      = 30.0     # 단일 loop 단계 timeout(s)
@@ -70,12 +68,6 @@ class ReasoningEngine:
             "detail": str(error)[:300],
             "role":   role,
         }
-        try:
-            with open(SYSTEM_LOG_PATH, "a", encoding="utf-8") as f:
-                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        except Exception:
-            pass
-        # Phase 2: mirror to SQLite (see core/audit_bridge.py).
         try:
             from core.audit_bridge import mirror_system_event
             mirror_system_event(entry)
