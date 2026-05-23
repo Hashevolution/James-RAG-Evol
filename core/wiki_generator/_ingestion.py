@@ -111,11 +111,19 @@ class WikiIngestionMixin:
                 name, extracted.get("relations", []),
                 doc_id=doc_entity_id, ts=ingest_ts,
             )
+            # [B-2-A fix] top-level `summary` mirrors `attributes.summary`
+            # so the wiki body builder (`_frontmatter.py:create_entity_file`)
+            # can populate `## 요약`. The builder only reads top-level keys;
+            # without this mirror every newly-ingested entity's body section
+            # stays empty even though `attributes.summary` carries the LLM
+            # description.
+            _desc = (ent.get("description") or "")[:300]
             payload = {
                 "name":        name,
                 "type":        etype,
+                "summary":     _desc,
                 "attributes":  {
-                    "summary":          (ent.get("description") or "")[:300],
+                    "summary":          _desc,
                     "source_document":  filename,
                 },
                 "relations":   ent_relations,
@@ -182,11 +190,15 @@ class WikiIngestionMixin:
         ]
         kw = metadata.get("keywords", [])
         kw_str = ", ".join(str(k) for k in kw) if isinstance(kw, list) else str(kw)
+        # [B-2-A fix] mirror top-level summary for the document entity too —
+        # same reason as the entity-extract branch above.
+        _doc_summary = (metadata.get("summary") or "")[:500]
         doc_payload = {
             "name":        doc_name,
             "type":        "document",
+            "summary":     _doc_summary,
             "attributes":  {
-                "summary":   (metadata.get("summary") or "")[:500],
+                "summary":   _doc_summary,
                 "category":  metadata.get("category", "기타"),
                 "keywords":  kw_str,
             },

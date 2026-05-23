@@ -348,6 +348,19 @@ class WikiFrontmatterMixin:
 
         confidence = min(round(0.7 + 0.3 * len(attributes), 2), 1.0)
 
+        # [B-2-A fix] canonical summary lookup. Caller passes top-level
+        # `summary` (preferred — _ingestion.py mirrors it from
+        # `attributes.summary`). Fall back through `attributes.summary`
+        # and `description` so older callers that haven't been updated
+        # still produce a non-empty `## 요약` body section. Cap at 500 to
+        # keep the YAML frontmatter line-bounded.
+        summary_text = (
+            entity.get("summary")
+            or attributes.get("summary")
+            or entity.get("description")
+            or ""
+        )[:500]
+
         frontmatter = {
             # ── 식별 정보 ──
             "entity_id":       entity_id,
@@ -355,6 +368,11 @@ class WikiFrontmatterMixin:
             "name":            name,
             "normalized_name": normalized,
             "aliases":         aliases,
+            # ── Summary (top-level, canonical) ──
+            # Top-level `summary` is the canonical field; `attributes.summary`
+            # is the legacy duplicate kept for back-compat. Resync scripts
+            # treat top-level as source of truth.
+            "summary":         summary_text,
             # ── Event time axis (PR-11b) — only present on events ──
             **(
                 {
@@ -396,8 +414,12 @@ class WikiFrontmatterMixin:
             + yaml.dump(frontmatter, allow_unicode=True, default_flow_style=False)
             + "---\n\n"
             f"## 요약\n"
-            # [U-1] summary 우선, 없으면 description
-            f"{entity.get('summary', '') or entity.get('description', '')}\n\n"
+            # [B-2-A fix] reuse the canonical `summary_text` computed
+            # above. The old logic only checked top-level `summary` /
+            # `description`, which left the body blank when the caller
+            # placed the value at `attributes.summary` (the ingest path
+            # before B-2-A always did).
+            f"{summary_text}\n\n"
             f"## 관계\n{rel_summary}\n"
         )
 
