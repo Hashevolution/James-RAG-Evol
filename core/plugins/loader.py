@@ -27,7 +27,7 @@ PR-C5); ``JAMES_PLUGINS`` defaults to empty (no extra backend plugins).
 """
 from __future__ import annotations
 
-import importlib
+import importlib.util
 import os
 import sys
 from pathlib import Path
@@ -128,9 +128,24 @@ def _import_slot_class(
 ):
     """Resolve ``"module:Class"`` against the pack directory.
 
-    Adds the pack directory to ``sys.path`` *only for the duration of
-    the import* so the pack's module namespace cannot collide with
-    project-level imports. Removes the path entry on return.
+    Uses :func:`importlib.util.spec_from_file_location` with a per-pack
+    qualified key in :data:`sys.modules` so two concerns are handled
+    cleanly:
+
+    1. **Cross-pack collision.** Two packs may each ship an
+       ``ontology.py``; both must load distinctly. The qualified key
+       ``_james_pack__<pack_name>__<module_path>`` is unique per pack.
+    2. **Same-pack re-load.** Test fixtures often create a temp
+       ``packs/general/`` and re-invoke the loader; the cached module
+       must be replaced with the fresh contents, not silently re-used.
+       Each call writes a fresh module object into ``sys.modules``,
+       so the second load sees the second directory's code.
+
+    Limitation (v0.3 scope): pack modules cannot use intra-pack
+    relative imports (``from .utils import X``) or sibling absolute
+    imports — the pack directory is not added to ``sys.path``. The
+    four-Protocol contract does not require multi-file packs, and
+    every shipped pack so far is single-file per slot.
     """
     if ":" not in import_path:
         raise PluginLoadError(
@@ -138,37 +153,52 @@ def _import_slot_class(
             f"'module:Class' form; got {import_path!r}"
         )
     module_path, class_name = import_path.split(":", 1)
-    pack_dir_str = str(pack_dir)
-    sys.path.insert(0, pack_dir_str)
+
+    rel_path = Path(*module_path.split(".")).with_suffix(".py")
+    file_path = pack_dir / rel_path
+    if not file_path.is_file():
+        raise PluginLoadError(
+            f"pack {pack_name!r}: cannot import module "
+            f"{module_path!r} from {pack_dir} "
+            f"(no file at {file_path})"
+        )
+
+    qualified_name = f"_james_pack__{pack_name}__{module_path}"
+
+    spec = importlib.util.spec_from_file_location(
+        qualified_name, file_path
+    )
+    if spec is None or spec.loader is None:
+        raise PluginLoadError(
+            f"pack {pack_name!r}: cannot build import spec for "
+            f"{file_path}"
+        )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[qualified_name] = module
     try:
-        try:
-            module = importlib.import_module(module_path)
-        except ImportError as exc:
-            raise PluginLoadError(
-                f"pack {pack_name!r}: cannot import module "
-                f"{module_path!r} from {pack_dir} ({exc})"
-            ) from exc
-        if not hasattr(module, class_name):
-            raise PluginLoadError(
-                f"pack {pack_name!r}: module {module_path!r} has no "
-                f"class {class_name!r}"
-            )
-        cls = getattr(module, class_name)
-        try:
-            return cls()
-        except Exception as exc:  # noqa: BLE001 — wrap with context
-            raise PluginLoadError(
-                f"pack {pack_name!r}: instantiating "
-                f"{module_path}:{class_name} raised "
-                f"{type(exc).__name__}: {exc}"
-            ) from exc
-    finally:
-        try:
-            sys.path.remove(pack_dir_str)
-        except ValueError:
-            # Pack code might have manipulated sys.path itself.
-            # Don't crash startup over a best-effort cleanup.
-            pass
+        spec.loader.exec_module(module)
+    except Exception as exc:  # noqa: BLE001 — wrap with pack context
+        sys.modules.pop(qualified_name, None)
+        raise PluginLoadError(
+            f"pack {pack_name!r}: cannot import module "
+            f"{module_path!r} from {pack_dir} "
+            f"({type(exc).__name__}: {exc})"
+        ) from exc
+
+    if not hasattr(module, class_name):
+        raise PluginLoadError(
+            f"pack {pack_name!r}: module {module_path!r} has no "
+            f"class {class_name!r}"
+        )
+    cls = getattr(module, class_name)
+    try:
+        return cls()
+    except Exception as exc:  # noqa: BLE001 — wrap with context
+        raise PluginLoadError(
+            f"pack {pack_name!r}: instantiating "
+            f"{module_path}:{class_name} raised "
+            f"{type(exc).__name__}: {exc}"
+        ) from exc
 
 
 def _iter_slot_imports(

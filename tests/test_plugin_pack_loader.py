@@ -317,6 +317,119 @@ class LoaderEnvVarSeparation(unittest.TestCase):
                 )
 
 
+class LoaderModuleIsolation(_LoaderFixture):
+    """Pin the per-pack module-namespace behavior introduced by the
+    loader's switch to ``importlib.util.spec_from_file_location``.
+
+    Before the switch, ``importlib.import_module("ontology")`` cached
+    under the short name ``"ontology"`` in ``sys.modules``, so:
+
+    1. Two packs that each shipped ``ontology.py`` saw the second one
+       silently ignored (the first one's module returned from cache).
+    2. A test that loaded the production ``packs/general/`` first and
+       then a fixture pack of the same name found the production
+       module returned in place of the fixture's.
+
+    After the switch, the key is per-pack qualified (e.g.
+    ``_james_pack__general__ontology``), so both concerns dissolve.
+    """
+
+    def test_two_packs_with_same_filename_register_distinctly(self):
+        """Two packs each shipping ``ontology.py`` with different
+        ``entity_types`` must both register, each with its own
+        contents — not the first-loaded one twice."""
+        modules_a = {
+            "ontology.py": _ONTOLOGY_MODULE.format(name="alpha"),
+        }
+        _make_pack(
+            self.tmp_dir,
+            name="alpha",
+            plugins_block="ontology: ontology:GeneralOntology\n",
+            extra_modules=modules_a,
+        )
+        # Beta's ontology.py has the SAME filename but different
+        # contents — entity_types diverges so the test can prove which
+        # one each registered slot came from.
+        beta_ontology = textwrap.dedent("""\
+            from typing import Dict, Tuple
+
+
+            class GeneralOntology:
+                pack_id = "beta"
+                entity_types: Tuple[str, ...] = ("beta_only_entity",)
+                relation_types: Tuple[str, ...] = ()
+                hierarchies: Dict[str, Tuple[str, ...]] = {}
+        """)
+        _make_pack(
+            self.tmp_dir,
+            name="beta",
+            plugins_block="ontology: ontology:GeneralOntology\n",
+            extra_modules={"ontology.py": beta_ontology},
+        )
+
+        self._load(env={"JAMES_PACKS": "alpha,beta"})
+
+        packs = self.registry.ontology_packs()
+        self.assertEqual(len(packs), 2)
+        by_id = {p.pack_id: p for p in packs}
+        self.assertEqual(set(by_id), {"alpha", "beta"})
+        # Alpha kept the fixture-default "test_entity" from _ONTOLOGY_MODULE.
+        self.assertIn("test_entity", by_id["alpha"].entity_types)
+        # Beta kept its own "beta_only_entity" — would fail if the
+        # loader's old sys.modules["ontology"] cache returned alpha's
+        # module for beta's import.
+        self.assertIn("beta_only_entity", by_id["beta"].entity_types)
+        self.assertNotIn("test_entity", by_id["beta"].entity_types)
+
+    def test_relaod_same_pack_picks_up_new_file_contents(self):
+        """Reloading the same pack name against a different pack_dir
+        (or the same pack_dir with different file content) must reflect
+        the new content, not return the first-load cached module."""
+        # First load: standard fixture ontology with "test_entity".
+        modules_v1 = {
+            "ontology.py": _ONTOLOGY_MODULE.format(name="general"),
+        }
+        _make_pack(
+            self.tmp_dir,
+            name="general",
+            plugins_block="ontology: ontology:GeneralOntology\n",
+            extra_modules=modules_v1,
+        )
+        self._load(env={"JAMES_PACKS": "general"})
+        first_pack = self.registry.ontology_packs()[0]
+        self.assertIn("test_entity", first_pack.entity_types)
+
+        # Now rewrite the pack on disk and load into a *fresh* registry
+        # (the loader is the unit under test, not registry idempotence).
+        # Second load points at the same pack_dir but the ontology.py
+        # now declares a different entity. The loader must re-exec the
+        # file, not return the cached module object from the first load.
+        replaced_ontology = textwrap.dedent("""\
+            from typing import Dict, Tuple
+
+
+            class GeneralOntology:
+                pack_id = "general"
+                entity_types: Tuple[str, ...] = ("post_reload_entity",)
+                relation_types: Tuple[str, ...] = ()
+                hierarchies: Dict[str, Tuple[str, ...]] = {}
+        """)
+        general_dir = self.tmp_dir / "packs" / "general"
+        (general_dir / "ontology.py").write_text(replaced_ontology, encoding="utf-8")
+
+        fresh_registry = PluginRegistry()
+        packs_root = self.tmp_dir / "packs"
+        with mock.patch("core.plugins.loader._PACKS_ROOT", packs_root):
+            load_packs_from_env(
+                env={"JAMES_PACKS": "general"},
+                registry=fresh_registry,
+                core_version="0.3.0",
+            )
+        second_pack = fresh_registry.ontology_packs()[0]
+        self.assertIn("post_reload_entity", second_pack.entity_types)
+        self.assertNotIn("test_entity", second_pack.entity_types)
+
+
 if __name__ == "__main__":
     unittest.main()
 
