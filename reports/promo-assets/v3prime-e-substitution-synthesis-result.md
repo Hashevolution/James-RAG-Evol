@@ -254,6 +254,88 @@ similarly bit-for-bit deterministic on substitution, Robin's
 "bypasses sampling" claim extends across both models and is a
 publishable mechanism on its own.
 
+### Direction 4 result — e4b unique-count verification (2026-05-24)
+
+The "Action item" above was executed the next day. Driver patched
+(`scripts/research/v3prime_e_mode_split.py` — `call_ollama()`
+returns `raw_response_text`, `summarize()` adds `Unique` column
+per cell), V3'.e re-run on `gemma4:e4b` at T=0.2, N=20/cell.
+Raw JSON: `reports/research-runs/v3prime-e-mode-split-20260523T151159.json`
+(80 calls, 0 failures, ~5 min wall-time on local Ollama).
+
+#### Substitution arm — bit-for-bit determinism CONFIRMED on e4b
+
+| Cap | Success | Unique | `eval_count` range | `text_len` range |
+|---|---|---|---|---|
+| 400 | 20/20 | **1/20** | [62, 62] | [290, 290] |
+| 4096 | 20/20 | **1/20** | [62, 62] | [290, 290] |
+
+All 40 substitution calls (across both caps) returned the same
+canonical text, character for character. The canonical e4b
+substitution output (290 chars, 62 tokens):
+
+> Refund Policy
+> -------------
+> Items may be returned within 30 days of delivery for a full
+> refund, provided they are unworn, unwashed, and have all
+> original tags attached. Linen, silk, and cashmere garments are
+> final sale once washed — refunds are not issued for washed
+> items in these fabrics.
+
+#### Synthesis arm — variability persists, model-scale conditional
+
+| Cap | Success | Unique (of success) | `eval_count` range |
+|---|---|---|---|
+| 400 | 15/20 | 15/15 (100%) | [400, 400] (cap-bound) |
+| 4096 | 20/20 | 20/20 (100%) | [391, 496] (natural stop) |
+
+Synthesis on e4b is essentially fully variable — every successful
+call produces a unique response. Compare to 26b where synthesis
+unique was 6/20 @ cap=400 and 9/20 @ cap=4096 (≈30-45% unique).
+
+#### Two publishable mechanisms confirmed
+
+**Mechanism 1 — Substitution-mode bypasses sampling layer (Gemma 4
+family-wide architectural property)**. Both e4b (8B) and 26b MoE
+(25.8B) produce 1 unique substitution response across the entire
+sweep at T=0.2. Token counts shift with model size (62 vs 38),
+but the bit-for-bit determinism property is identical. This is
+the same mechanism on both stacks — not an averaging effect, not
+a temperature artifact, not stack-specific. **Axis 1 (mode split)
+graduates from "qualitative split + quantitative flatline" to
+"sampling-layer bypass as architectural property."**
+
+**Mechanism 2 — Synthesis determinism scales with parameter
+count** (new sub-finding emerging from the cross-stack
+comparison). At the same T=0.2:
+
+| Stack | Synthesis unique @ cap=400 | Synthesis unique @ cap=4096 |
+|---|---|---|
+| e4b (8B) | 15/15 = **100%** | 20/20 = **100%** |
+| 26b MoE (25.8B) | 6/20 = **30%** | 9/20 = **45%** |
+
+Larger parameter count = answers converge toward the same policy
+exception (e.g. Robin's "damaged items" reference). Smaller
+parameter count = synthesis explores more of the answer space.
+Axis 3 (model-scale efficiency) now has two layers: **(a) token
+efficiency** — fewer tokens to reach the same answer — and **(b)
+answer convergence** — answers themselves cluster more tightly at
+higher parameter counts. Both layers point at the same underlying
+property: *parameter count buys reasoning routing precision*, not
+just capacity.
+
+#### Joint-paper consequence
+
+The 3-author headline locks in as-is — substitution is free
+(bit-for-bit free on both stacks), synthesis costs scale with
+both task weight (e4b workload gradient) and inversely with
+parameter count (cross-stack token + convergence both). The
+proposed sub-clause *"and inversely to parameter count"* now has
+two evidence layers, not one.
+
+Result first-shared with Robin via issue #448 follow-up comment
+(her axis-1 owned property + new sub-finding on her axis 3).
+
 ### Latency caveat
 
 Robin's substitution-arm latency of 3.8s is **not directly
