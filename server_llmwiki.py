@@ -2218,9 +2218,21 @@ async def learn_topic_api(
                 knowledge_prompt, timeout=60, use_cache=False, max_tokens=300
             )
 
-            # ⑤ LLM 0자 → snippet 기반 fallback
-            if not knowledge or len(knowledge.strip()) < 10:
-                print("[LEARN] LLM 0자 → fallback 사용")
+            # ⑤ LLM 0자 / 오류 sentinel → snippet 기반 fallback.
+            # The old condition `len < 10` let `[Gemma 응답 없음]` (13
+            # chars) and `[Gemma 오류] ...` through. Those then got
+            # written to `attributes.summary` and the body's `## 요약`
+            # — the graph node detail panel showed the sentinel string
+            # to the operator. Treat any ERROR_PREFIXES response as
+            # equivalent to empty so the fallback kicks in.
+            from core.gemma_client import ERROR_PREFIXES
+            _knowledge_stripped = (knowledge or "").strip()
+            if (
+                not _knowledge_stripped
+                or len(_knowledge_stripped) < 10
+                or _knowledge_stripped.startswith(ERROR_PREFIXES)
+            ):
+                print(f"[LEARN] LLM empty/error ('{_knowledge_stripped[:30]}') → fallback 사용")
                 parts = []
                 for r in results[:3]:
                     title = r.get('title', '')
