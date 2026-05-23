@@ -55,7 +55,12 @@
   // pass loses the "this is the live path" signal.
   var pulseLoopTimer  = null;
   var pulseLoopEdges  = [];          // [{src: node, tgt: node}]
-  var PULSE_LOOP_MS   = 3200;        // re-fire interval — 1 cycle then breath
+  // [Stage E.1, 2026-05-24] re-fire interval bumped per UX feedback —
+  // was 3200ms (one cycle then a long breath). 2000ms keeps the
+  // "this is the live path" signal continuously visible without
+  // looking frantic. PULSE_MS is the in-flight duration (450ms), so
+  // 2000ms still leaves a ~1.5s gap between cycles.
+  var PULSE_LOOP_MS   = 2000;
 
   // [PR camera-glow, 2026-05-09] node halos — soft glowing sprite
   // around each active path node, scale + opacity pulsing on a sine
