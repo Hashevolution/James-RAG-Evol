@@ -813,7 +813,17 @@
     var canvas = document.createElement('canvas');
     canvas.width = 256; canvas.height = 64;
     var ctx = canvas.getContext('2d');
-    ctx.font = 'bold 24px Inter, "Pretendard", system-ui, sans-serif';
+    // Korean-first fallback chain — canvas glyph fallback is browser-
+    // dependent and unreliable on Chromium when the primary font lacks
+    // CJK glyphs (Inter has zero Hangul coverage). Putting native CJK
+    // faces first guarantees an "엔비디아" / "삼성전자" node label
+    // renders as Hangul on every platform JAMES targets:
+    //   - Windows KO     → Malgun Gothic (preinstalled)
+    //   - macOS          → Apple SD Gothic Neo (preinstalled)
+    //   - Linux / no CJK → Noto Sans KR (if loaded), else system-ui
+    //   - Latin nodes    → Inter still applies (covers ASCII first)
+    ctx.font = 'bold 24px "Malgun Gothic", "Apple SD Gothic Neo", ' +
+               '"Noto Sans KR", "Pretendard", Inter, system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     // Drop-shadow for readability against any background.
