@@ -248,8 +248,13 @@ class EndpointContractTests(unittest.TestCase):
         # gates this endpoint; both enforce admin authority for the
         # admin.evolution feature.
         idx = src.index('@app.get("/admin/patch/audit"')
-        # Window: 1500 chars after the decorator covers the handler body.
-        window = src[idx:idx + 1500]
+        # Window: 2200 chars after the decorator covers the handler body.
+        # Bumped from 1500 in Stage B / CR-E.4 (2026-05-24) — the
+        # include_shadow query param + the new docstring paragraph
+        # documenting the dual-source merge pushed the response-shape
+        # block past the old window. The shape contract (filters /
+        # count / events keys + admin gating) is unchanged.
+        window = src[idx:idx + 2200]
         self.assertTrue(
             "_require_admin(api_key, role)" in window
             or '_require_feature(api_key, role, "admin.evolution")' in window,

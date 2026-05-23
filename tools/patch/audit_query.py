@@ -37,6 +37,7 @@ flagged in the docstring's deferred-work block.
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -45,12 +46,87 @@ DEFAULT_LIMIT = 200
 MAX_LIMIT = 1000
 
 
+# Stage B / CR-E.4 (2026-05-24) — projection map from CR status →
+# legacy JSONL event/outcome. The shadow rows produced by /admin/
+# patch/approve (CR-E.2) and /admin/proposals/{id}/approve|reject
+# (CR-E.3) carry the same audit semantics in the CR table — this
+# mapping surfaces them through the same /admin/patch/audit endpoint.
+_CR_STATUS_TO_EVENT = {
+    "open":     "APPROVED",         # in-flight; legacy writes this on record_approval
+    "merged":   "DEPLOYED",         # legacy writes this on bench-pass record_outcome
+    "rejected": "ROLLED_BACK",      # legacy writes this on apply_failed / bench_regression
+}
+_CR_STATUS_TO_OUTCOME = {
+    "open":     None,               # legacy 'APPROVED' lines also lack 'outcome'
+    "merged":   "deployed",
+    "rejected": "rolled_back",
+}
+
+
+def _cr_row_to_audit_entry(cr) -> dict:
+    """Project a ``ChangeRequest`` row into the legacy JSONL entry
+    shape. Keys mirror ``tools/patch/approval.py`` writers so the
+    same filters (since / approver / outcome) work uniformly across
+    both sources."""
+    ts_epoch = cr.merged_at if cr.merged_at is not None else cr.created_at
+    try:
+        time_iso = datetime.fromtimestamp(int(ts_epoch)).isoformat()
+    except Exception:
+        time_iso = ""
+    return {
+        "time":              time_iso,
+        "event":             _CR_STATUS_TO_EVENT.get(cr.status, "SHADOW_CR"),
+        "patch_id":          cr.target_id,
+        "approver_username": cr.merged_by or cr.proposer,
+        "approver_role":     "from_cr_shadow",
+        "approval_method":   "shadow_cr",
+        "outcome":           _CR_STATUS_TO_OUTCOME.get(cr.status),
+        "detail":            cr.reject_reason or "",
+        # CR-source markers — operator UI can colour these differently
+        # from legacy JSONL rows if it wants.
+        "_source":           "cr_shadow",
+        "_cr_id":            cr.cr_id,
+        "_target_type":      cr.target_type,
+    }
+
+
+def _load_cr_shadow_rows(db_path: Optional[str] = None) -> List[dict]:
+    """Fetch self-evo CR rows + project to legacy-JSONL shape.
+
+    Best-effort: missing CR DB / import failure / unknown target_type
+    → empty list. Never raises. The caller (query_patch_audit) merges
+    these with legacy JSONL rows before sort + limit.
+    """
+    try:
+        from core.change_request import (
+            TARGET_SELF_EVO_PATCH, TARGET_SELF_EVO_PROPOSAL,
+            list_crs,
+        )
+    except Exception:
+        return []
+    out: List[dict] = []
+    for target in (TARGET_SELF_EVO_PATCH, TARGET_SELF_EVO_PROPOSAL):
+        try:
+            crs = list_crs(target_type=target, limit=500, db_path=db_path)
+        except Exception:
+            continue
+        for cr in crs:
+            try:
+                out.append(_cr_row_to_audit_entry(cr))
+            except Exception:
+                continue
+    return out
+
+
 def query_patch_audit(
     since:    Optional[str] = None,
     approver: Optional[str] = None,
     outcome:  Optional[str] = None,
     limit:    int           = DEFAULT_LIMIT,
     log_path: Optional[str] = None,
+    *,
+    include_shadow: bool          = False,
+    cr_db_path:     Optional[str] = None,
 ) -> List[dict]:
     """Return filtered patch lifecycle entries, newest-first.
 
@@ -61,12 +137,21 @@ def query_patch_audit(
                 deployed_gate_skipped). None → no filter.
       limit:    max entries returned. Clamped to [1, MAX_LIMIT].
       log_path: override file path (test seam). Default `james_patch_log.jsonl`.
+      include_shadow: Stage B / CR-E.4 — when True, merge projected
+                     self_evo_patch / self_evo_proposal CR rows into
+                     the result. Each shadow row carries
+                     ``_source='cr_shadow'`` so UIs can distinguish.
+                     Default False keeps legacy callers byte-identical;
+                     the /admin/patch/audit endpoint sets this to True.
+      cr_db_path:    override CR DB path (test seam). Default
+                     ``core.change_request._DEFAULT_DB``.
 
     Returns:
-      A list of lifecycle dicts as parsed from the JSONL, sorted by
-      `time` descending. Each dict carries at minimum `event`, `time`,
-      `patch_id`, plus event-specific fields (approver_*, outcome,
-      before/after_metrics, detail).
+      A list of lifecycle dicts sorted by ``time`` descending. Each
+      dict carries at minimum ``event``, ``time``, ``patch_id``, plus
+      event-specific fields (approver_*, outcome, before/after_metrics,
+      detail). When ``include_shadow=True`` shadow CR rows are merged
+      in with the legacy JSONL rows before the sort.
     """
     path = Path(log_path or PATCH_LOG_PATH)
     if not path.exists():
@@ -120,6 +205,23 @@ def query_patch_audit(
         # Outer read failure → return what we have. The endpoint
         # surfaces an empty-or-partial list rather than a 500.
         pass
+
+    # Stage B / CR-E.4 — merge projected CR-shadow rows (best-effort).
+    if include_shadow:
+        for entry in _load_cr_shadow_rows(cr_db_path):
+            if since_norm:
+                t = entry.get("time") or ""
+                if t < since_norm:
+                    continue
+            if approver_norm:
+                a = (entry.get("approver_username") or "").lower()
+                if a != approver_norm:
+                    continue
+            if outcome_norm:
+                o = (entry.get("outcome") or "").lower()
+                if o != outcome_norm:
+                    continue
+            rows.append(entry)
 
     # Newest-first by `time`. Entries without a time field sink to the
     # bottom (very old / malformed).

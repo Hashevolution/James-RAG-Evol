@@ -4096,12 +4096,13 @@ async def admin_patch_approve(request: Request, role: str = Depends(get_role_fro
 
 @app.get("/admin/patch/audit", summary="Patch 라이프사이클 감사 조회 [#68 phase 2-C]")
 async def admin_patch_audit(
-    api_key:  str,
-    since:    str = "",
-    approver: str = "",
-    outcome:  str = "",
-    limit:    int = 200,
-    role:     str = Depends(get_role_from_request),
+    api_key:        str,
+    since:          str  = "",
+    approver:       str  = "",
+    outcome:        str  = "",
+    limit:          int  = 200,
+    include_shadow: bool = True,
+    role:           str  = Depends(get_role_from_request),
 ):
     """Filtered, newest-first slice of `james_patch_log.jsonl`.
 
@@ -4111,6 +4112,10 @@ async def admin_patch_audit(
       outcome:  case-insensitive `outcome` match — `deployed` /
                 `rolled_back` / `deployed_gate_skipped`
       limit:    max entries returned (default 200, hard cap 1000)
+      include_shadow: when True (default), merges projected self-evolution
+                     CR-shadow rows (Stage B / CR-E) into the feed. Each
+                     shadow row carries ``_source='cr_shadow'``. Set False
+                     to get the byte-identical pre-CR-E view.
 
     See `tools/patch/audit_query.py` for filter semantics + rationale.
     Composes with `/admin/audit` (the broader, multi-source feed) —
@@ -4123,13 +4128,15 @@ async def admin_patch_audit(
         approver=approver or None,
         outcome=outcome or None,
         limit=limit,
+        include_shadow=include_shadow,
     )
     return {
         "filters": {
-            "since":    since,
-            "approver": approver,
-            "outcome":  outcome,
-            "limit":    limit,
+            "since":          since,
+            "approver":       approver,
+            "outcome":        outcome,
+            "limit":          limit,
+            "include_shadow": include_shadow,
         },
         "count": len(rows),
         "events": rows,
