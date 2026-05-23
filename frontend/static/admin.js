@@ -95,6 +95,13 @@ function _bindFrontendEvents() {
         break;
       }
       case 'close-file-view': closeFileView(); break;
+      case 'download-file': {
+        const r = t.getAttribute('data-root');
+        const p = t.getAttribute('data-path');
+        const n = t.getAttribute('data-name');
+        downloadFile(r, p, n);
+        break;
+      }
 
       /* ── entities page (static) ───────────────────────────────── */
       case 'entities-page':
@@ -1903,7 +1910,11 @@ async function loadFiles() {
   if (sb) sb.value = '';
 
   try {
-    const data = await api(`/admin/files/tree?root=${encodeURIComponent(root)}&max_depth=3`);
+    // max_depth=5 covers the typical wiki layout (entity/<src>/<type>/<file>
+    // is depth 4 from wiki/). Bumped from 3 because depth=3 stopped at the
+    // type-bucket level and made every populated bucket render as "(empty)"
+    // in the tree even though the bucket actually had files.
+    const data = await api(`/admin/files/tree?root=${encodeURIComponent(root)}&max_depth=5`);
     if (!data.exists) {
       container.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:var(--muted)">
         '${_escHtml(root)}' 디렉토리 없음 (아직 생성 안 됨)
@@ -2023,6 +2034,40 @@ function closeFileView() {
   if (_fileViewEl) _fileViewEl.style.display = 'none';
 }
 
+/* Inline file download via fetch + Blob — replaces the old <a href>
+   new-tab pattern that trips admin.data because the Authorization
+   header isn't carried on a plain GET. fetch() attaches the bearer
+   token automatically; the blob is then dressed up as a regular
+   download via an ephemeral <a download> element. */
+async function downloadFile(root, path, name) {
+  const url = `${API}/admin/files/download` +
+              `?root=${encodeURIComponent(root)}` +
+              `&path=${encodeURIComponent(path)}` +
+              `&api_key=${encodeURIComponent(apiKey)}`;
+  try {
+    const r = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!r.ok) {
+      let detail = '';
+      try { detail = await r.text(); } catch (_) { /* ignore */ }
+      alert(`다운로드 실패: ${r.status} ${detail.slice(0, 200)}`);
+      return;
+    }
+    const blob = await r.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objUrl;
+    a.download = name || path.split('/').pop() || 'file';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(objUrl), 1000);
+  } catch (e) {
+    alert(`다운로드 오류: ${e && e.message ? e.message : e}`);
+  }
+}
+
 
 function _renderTree(nodes, parentPath, root) {
   if (!nodes || !nodes.length) return '';
@@ -2055,12 +2100,14 @@ function _renderTree(nodes, parentPath, root) {
                      cursor:pointer;font-size:13px;padding:0;margin-left:8px"
               title="열기">👁</button>`
         : '';
-      const dlLink = canDownload
-        ? `<a href="${API}/admin/files/download?root=${encodeURIComponent(root)}&path=${encodeURIComponent(fullRel)}&api_key=${encodeURIComponent(apiKey)}"
-              target="_blank" rel="noopener"
-              style="color:var(--accent-fg);text-decoration:none;font-size:11px;
-                     margin-left:6px"
-              title="다운로드">⬇</a>`
+      const dlBtn = canDownload
+        ? `<button type="button" data-action="download-file"
+              data-root="${_escHtml(root)}"
+              data-path="${_escHtml(fullRel)}"
+              data-name="${_escHtml(n.name)}"
+              style="background:none;border:none;color:var(--accent-fg);
+                     cursor:pointer;font-size:13px;padding:0;margin-left:6px"
+              title="다운로드">⬇</button>`
         : '';
       html += `<li style="margin:2px 0;padding:3px 6px 3px 18px;
                           border-left:1px dashed var(--border-2);
@@ -2068,7 +2115,7 @@ function _renderTree(nodes, parentPath, root) {
         <span>📄 ${_escHtml(n.name)}</span>
         <span style="color:var(--muted);font-size:11px;flex:1">
           ${_humanSize(n.size)} · ${_humanMtime(n.mtime)}
-        </span>${viewBtn}${dlLink}
+        </span>${viewBtn}${dlBtn}
       </li>`;
     }
   }
@@ -2111,12 +2158,14 @@ async function searchFiles() {
                      cursor:pointer;font-size:13px;padding:0;margin-left:8px"
               title="열기">👁</button>`
         : '';
-      const dlLink = canDownload
-        ? `<a href="${API}/admin/files/download?root=${encodeURIComponent(root)}&path=${encodeURIComponent(m.path)}&api_key=${encodeURIComponent(apiKey)}"
-              target="_blank" rel="noopener"
-              style="color:var(--accent-fg);text-decoration:none;font-size:11px;
-                     margin-left:6px"
-              title="다운로드">⬇</a>`
+      const dlBtn = canDownload
+        ? `<button type="button" data-action="download-file"
+              data-root="${_escHtml(root)}"
+              data-path="${_escHtml(m.path)}"
+              data-name="${_escHtml(m.name)}"
+              style="background:none;border:none;color:var(--accent-fg);
+                     cursor:pointer;font-size:13px;padding:0;margin-left:6px"
+              title="다운로드">⬇</button>`
         : '';
       html += `<li style="margin:3px 0;padding:6px 8px;
                           border-bottom:1px dotted var(--border-2);
@@ -2125,7 +2174,7 @@ async function searchFiles() {
                      font-family:var(--font-mono);flex-shrink:0">${_escHtml(m.path)}</span>
         <span style="color:var(--muted);font-size:11px;flex:1;text-align:right">
           ${_humanSize(m.size)} · ${_humanMtime(m.mtime)}
-        </span>${viewBtn}${dlLink}
+        </span>${viewBtn}${dlBtn}
       </li>`;
     }
     html += '</ul>';
