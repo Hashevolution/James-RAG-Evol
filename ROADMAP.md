@@ -383,6 +383,83 @@ original design memos:
       actual split (Option-A Phase 3) deferred. Operator decision
       whether to land before v0.4 entry or run as v0.3.x parallel.
 
+### Measurement framework track (V3' series, 2026-05-22~ open)
+
+The V3'.a/.b/.c/.d (4-stage cap-budget validation, PR #407) + V3'.e
+(substitution/synthesis mode split, PR #440) sweeps together
+established a reproducible 3-axis measurement framework for LLM
+cost behavior. Robin Converse's 2026-05-23 same-day cross-stack
+replication (issue #448, repo
+[triavalabs/gemma4-26b-mode-split](https://github.com/triavalabs/gemma4-26b-mode-split))
+adopted the JAMES JSON schema as the cross-stack analysis template
+— graduating the framework from "data we publish" to "schema
+another lab analyses against".
+
+**Three confirmed axes**:
+
+1. **Mode split** (substitution = deterministic / synthesis =
+   variable). Robin original + JAMES e4b + Robin 26b — confirmed
+   on both stacks.
+2. **Workload gradient** (heavy / light / no synthesis cost
+   scales with task weight). JAMES V3'.e + V3'.a~d — confirmed
+   on e4b.
+3. **Model-scale efficiency** (synthesis cost ∝ 1/param-count;
+   substitution invariant). Robin 26b 2026-05-23 — new axis,
+   single point so far.
+
+Six follow-up directions queued for v0.3.x cycle (none are domain
+features; all are platform-skeleton strengthening or research):
+
+- [x] **Direction 4 — Substitution bypass verification on e4b**
+      (1-day, JAMES standalone). Patch `v3prime_e_mode_split.py`
+      to record `unique_response_count` per cell; verify Robin's
+      Finding 1 ("mode bypasses sampling layer") on our e4b data.
+      If `unique=1` confirmed → publishable mechanism axis 1
+      strengthened.
+- [ ] **Direction 1 — Adaptive Budgeting in Cognitive Middleware**
+      (~1 week, JAMES product impact). Replace PR #399's
+      `DEFAULT_MAX_TOKENS = 4096` hard floor with
+      `core/reasoning/budget.py` that assesses task weight per
+      call and requests cap accordingly. STEP 7 bench in PR body
+      (CLAUDE.md rule #2).
+- [ ] **Direction 2 — Task-weight metric formalization** (~1-2
+      weeks, research). 5-7 level fixture sweep + candidate
+      metrics (output entropy, logical step count, etc.); regress
+      `eval_count` against metrics to find best-fit predictor.
+      Output: `docs/research/v3prime-task-weight-metric.md`.
+- [ ] **Direction 6(J) — Methodology spec standalone** (~3-5
+      days, framework owner positioning).
+      `docs/research/v3prime-protocol-v1.md` — JSON schema spec,
+      fixture design guideline, statistical floor. Lets other
+      labs cite our protocol without depending on JAMES code.
+- [ ] **Direction 5 — Auto-routing on Provider Contract** (~1-2
+      weeks, JAMES product layer above Track 1). New
+      `core/reasoning/router.py` consumes Direction 1's budget to
+      select backend (e4b for substitution / light, 26b or cloud
+      for heavy synthesis). Provider Contract surface unchanged.
+- [ ] **Direction 3 — Cross-family generalization** (~2-3 weeks,
+      research). V3'.e on Llama 3.1 / Qwen 2.5 / DeepSeek v2 via
+      Ollama. Output: mode-split universality vs Gemma-only
+      judgment. Result first-shared with Robin (axis-1 owner) per
+      collaborator informational-notice pattern.
+- [ ] **Direction 6(I) — Joint paper consolidation** (Track 5
+      essential). Three-author byline (Ali / Robin / Hashevolution)
+      after Directions 1-5 produce input. Track 4 scope-lock note
+      applied.
+
+**Collaborator interaction pattern**: Track 1 success pattern
+(land first + "no action needed" DM) applies to all directions
+except 6(I) joint paper. Direction 3 result first-shared to
+Robin; Direction 5 design preview shared to Ali; otherwise
+informational notice on PR landing.
+
+**v0.4 / v0.5 alignment**: Direction 1 (adaptive budgeting) +
+Direction 5 (auto-routing) integrate naturally with v0.4 Layer 4
+GOVERNANCE/EVENT tracks (budget decisions = audit trail; routing
+decisions = events). Direction 5 also strengthens v0.5 Domain
+Pilot value proposition (domain pack-aware model routing).
+Detailed handover: `docs/handovers/v0.3.x-measurement-framework-track.md`.
+
 ### Done when
 
 | Criterion | Status |

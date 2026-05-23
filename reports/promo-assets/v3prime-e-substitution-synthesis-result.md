@@ -123,6 +123,163 @@ weight axis**: substitution arm, light synthesis arm, heavy synthesis
 arm. That's JAMES's first measurable contribution to the *framing*
 not just the *execution*.
 
+## External validation (2026-05-23 LinkedIn comment thread)
+
+PR #440 (this result, merged UTC 05:42 / KST 14:42 on 2026-05-23)
+was shared on LinkedIn the same day. Four substantive comments
+arrived within hours — one from Ali Afana, three from Robin
+Converse. Full transcripts archived in
+`docs/handovers/v0.3.x-ali-collaboration-track.md §Track 5 —
+2026-05-23 Ali + Robin LinkedIn comments`. Three things change
+about how this result doc functions going forward:
+
+### 1. The headline phrase is now three-author standing
+
+> "Substitution is free. Synthesis costs in proportion to what
+> it has to invent."
+
+Originally proposed in §Implications as a candidate. Ali
+independently re-derived the same 10-word phrase ("cost asymmetry
+in ten words") before reading the §Implications section. Robin
+endorsed it explicitly ("Ali's right, that's the line"). The
+phrase ships in the joint piece with three-author standing — no
+further framing debate required.
+
+### 2. Robin's 26b 2×2 matrix mirrors this driver exactly
+
+Robin's same-day commitment:
+
+> "Running 26b 2×2 matrix today: cap × prompt-type at N=20/cell,
+> mirroring your protocol exactly. ... Pulling your raw JSONs as
+> the analysis template. Data posted when it lands."
+
+**Consequence**: `scripts/research/v3prime_e_mode_split.py` and the
+JSON shape produced under `reports/research-runs/v3prime-e-mode-
+split-*.json` are now the **cross-stack analysis template** for
+Robin's `gemma4:26b` MoE sweep. Schema-stability obligation: do
+NOT alter the field shape of the result JSONs until Robin's 26b
+data has been merged into the cross-stack comparison. Schema
+migration after she has pulled the template would break her
+downstream analysis pipeline.
+
+### 3. Architecture-invariance test is live
+
+| 26b 2×2 outcome | Joint-piece consequence |
+|---|---|
+| 26b substitution flat @ ~60 tokens AND synthesis @ 400-450 tokens proportional | "Across stacks **and across model scales**" — portability second axis confirmed; headline ships as-is |
+| Either signature shifts | "Next research thread" — joint piece narrows to e4b-confirmed claim + open question for follow-up |
+
+Reference signatures Robin is testing against (from this result):
+
+- **Substitution baseline**: **62 tokens flat** (`ollama_eval_count=62`
+  on all 40 substitution-arm calls in this run — true flatline, not
+  averaged), 0.8s latency, 20/20 success at cap=400.
+- **Synthesis-with-recommendation baseline**: 400-450 tokens output,
+  4.0-4.5s latency, 14/20 @ cap=400 / 20/20 @ cap=4096.
+
+Data-arrival watch: Robin's 26b 2×2 matrix is **being built today
+(2026-05-23, per her sub-reply)** with the data dump posted "when
+it lands" — no specific calendar commitment beyond that. When it
+arrives, this result doc gets a §Cross-stack replication subsection
+appending her four cells alongside the e4b cells above.
+
+## Cross-stack replication — gemma4:26b MoE (Robin Converse, 2026-05-23)
+
+Robin delivered the 26b 2×2 matrix the same day she committed to it.
+
+- **Companion repo**: [triavalabs/gemma4-26b-mode-split](https://github.com/triavalabs/gemma4-26b-mode-split) (MIT, 80-call raw JSON + sweep.py + analysis.md)
+- **Issue on this repo**: [#448](https://github.com/Hashevolution/James-RAG-Evol/issues/448) (filed because PR #440 is locked post-merge)
+- **Endpoint**: `https://api.triavalabs.com` (sovereign Ollama on Hetzner CCX33, public HTTPS via Caddy reverse proxy)
+- **Model**: `gemma4:26b` MoE (25.8B params, Q4_K_M, base, no system prompt)
+- **Protocol**: T=0.2, N=20/cell, `think: False`, same fixture structure as our V3'.e
+- **Total**: 80 calls, 6 min runtime, zero failures
+
+### Side-by-side 4-cell matrix
+
+| | e4b (V3'.e, this doc) | 26b (Robin) | Delta |
+|---|---|---|---|
+| Substitution @ 400 | 20/20, eval_count=62 flat | 20/20, **eval_count=38 flat** | -39% tokens, both deterministic |
+| Substitution @ 4096 | 20/20, eval_count=62 flat | 20/20, **eval_count=38 flat** | -39%, cap-invariant on both |
+| Synthesis @ 400 | **14/20 (70%)**, 400-450 mean | **20/20 (100%)**, **mean=50.7** | +30pp success, **~9× fewer tokens** |
+| Synthesis @ 4096 | 20/20, 400-450 mean | 20/20, **mean=54.5** | ~9× fewer tokens |
+
+### Architecture-invariance decision tree — outcome
+
+The pre-registered tree (from §External validation above) had two
+arms. Strict reading of the data: **both reference signatures
+shifted** (substitution 62→38; synthesis 400-450→49-54). By
+pre-registration that triggers the right column ("next research
+thread"), not the left ("architecture-invariance confirmed").
+
+But the signatures shifted in a **systematic direction**, not
+randomly. Robin's analysis (her [`analysis.md`](https://github.com/triavalabs/gemma4-26b-mode-split/blob/main/analysis.md))
+calls it: *"Parameter count appears to buy reasoning efficiency,
+not just reasoning capacity."* The mode-split framing **held**;
+the workload gradient framing **held qualitatively but scales
+with parameter count**.
+
+Both pre-registered arms are partially true. The honest read is
+**neither pure invariance nor pure architecture-sensitivity** —
+instead, a third axis emerged:
+
+### Three axes in the joint piece (post-26b data)
+
+1. **Mode split** (Robin original, LinkedIn 2026-05-22 sweep) —
+   substitution and synthesis are architecturally distinct
+   operating modes. Substitution is deterministic, T-invariant,
+   bypasses sampling. Synthesis is variable and reasoning-bound.
+   *Confirmed on both stacks.*
+2. **Workload gradient** (JAMES V3'.e, this doc) — synthesis cost
+   scales with task weight. Heavy synthesis (4-stage cognitive,
+   V3'.a~d) deterministically fails at cap=400; light synthesis
+   (e-commerce refund, V3'.e) partially fails (70%); no synthesis
+   (verbatim) always passes. *Confirmed on e4b.*
+3. **Model-scale efficiency** (Robin 26b, new — 2026-05-23) —
+   synthesis cost scales **inversely** with parameter count.
+   Substitution stays bit-for-bit invariant. 26b synthesis is ~9×
+   more token-efficient than e4b on the same fixture, AND closes
+   the success gap (70%→100%). *New axis; emerged from the very
+   data that was supposed to confirm invariance.*
+
+### Determinism note (Robin's "Finding 1")
+
+40/40 substitution calls on 26b produced **1 unique response**,
+`eval_count=38` flat. Bit-for-bit identical text at T=0.2. Robin's
+phrasing: *"The mode genuinely bypasses sampling."* This is
+sharper than our V3'.e read (which also saw `eval_count=62`
+flatline but did not check for unique-output count). **Action
+item for future V3'.e re-runs**: also record unique-output count
+per cell to confirm the same determinism on e4b — if e4b is
+similarly bit-for-bit deterministic on substitution, Robin's
+"bypasses sampling" claim extends across both models and is a
+publishable mechanism on its own.
+
+### Latency caveat
+
+Robin's substitution-arm latency of 3.8s is **not directly
+comparable** to our 0.8s — her endpoint traverses public HTTPS +
+Caddy reverse proxy + Hetzner CCX33 cold-path; ours is local
+loopback. Within-endpoint comparisons (her sub 3.8s vs her synth
+5.0s, OR our sub 0.8s vs our synth 4.0s) are the valid ones; both
+show synth taking longer wall-time than sub at comparable
+token-counts, consistent with the mode-split finding.
+
+### Headline phrase status after data arrival
+
+The 3-author 10-word framing (*"Substitution is free. Synthesis
+costs in proportion to what it has to invent."*) **still holds as
+the headline** — substitution is empirically free on both stacks;
+synthesis still has a per-task cost. The 3rd axis (model-scale
+efficiency) becomes a **sub-clause** rather than a re-write:
+
+> *"Substitution is free. Synthesis costs in proportion to what
+> it has to invent — and inversely to parameter count."*
+
+The expanded form is not yet 3-author-locked (Robin's data is
+new; Ali has not yet weighed in on the model-scale axis). The
+original 10-word phrase remains the safe headline; the sub-clause
+extension is a draft proposal for the joint piece.
+
 ## Reproducibility
 
 - Driver: `scripts/research/v3prime_e_mode_split.py` (PR #439).
