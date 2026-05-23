@@ -374,10 +374,10 @@ These would require a v2 if they become mandatory; until then they ride as optio
 **Breaking change policy**: a breaking change (REQUIRED field removal, REQUIRED field type change, or runs structure reorganization) requires a v2 with:
 
 1. A migration guide showing how v1 JSONs map to v2 (or how to round-trip)
-2. A grace window of at least 6 months where v1 validators are still maintained
+2. A grace window of **at least 12 months** where v1 validators are still maintained — matching the project-wide deprecation policy in `docs/VERSIONING.md` so external adopters only need to remember one grace rule across the whole codebase
 3. Driver code in `scripts/research/` keeps v1 emission for at least one release cycle after v2 lands
 
-This policy mirrors the broader project versioning approach in `docs/VERSIONING.md` (SemVer + 12-month deprecation).
+This policy aligns with the broader project versioning approach (SemVer + 12-month deprecation). The unified 12-month window favors citation stability over iteration speed — V3' spec is a research artifact intended for cross-lab adoption, so adopters' analysis pipelines benefit more from predictability than from a faster v2 turnaround.
 
 ---
 
@@ -391,13 +391,15 @@ For BibTeX use:
 
 ```bibtex
 @misc{v3prime_protocol_v1,
-  author       = {Hashevolution and {V3' Protocol contributors}},
+  author       = {Hashevolution},
   title        = {V3' Protocol v1 — A reproducible measurement protocol for LLM cost behavior},
   year         = {2026},
   howpublished = {\url{https://github.com/Hashevolution/James-RAG-Evol/blob/main/docs/research/v3prime-protocol-v1.md}},
-  note         = {Commit hash specifies the exact spec version.}
+  note         = {Commit hash specifies the exact spec version. Adopters and measurement contributions are listed in the External adopter table within §11; spec authorship is solely Hashevolution. Joint research outputs that use this protocol (e.g. cross-stack analyses, the planned Track 5 joint paper) carry their own multi-author bylines and are cited separately.}
 }
 ```
+
+**Spec author vs adopter — important distinction**: the BibTeX `author` field above (`Hashevolution`) reflects who authored the spec text itself. Labs that follow the spec to produce measurements (Robin Converse / Triava Labs, future contributors) are **adopters**, not spec authors — their attribution lives in the table below + in any joint research output (Track 5 joint paper, etc.) where their measurements appear. This separation keeps the citation graph clean: cite the spec by author=Hashevolution for the protocol itself, cite the joint paper by its multi-author byline for any cross-stack finding produced under the protocol.
 
 External lab adoptions and result publications using this protocol are welcome to be listed below — open a PR adding a row:
 
