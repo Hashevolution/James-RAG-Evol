@@ -65,7 +65,9 @@
 
   // Spacing constant — radius scales with sqrt(N).
   var SPHERE_K  = 24;
-  var PULSE_MS  = 650;
+  // [Stage E.1, 2026-05-24] pulse speed bump per UX feedback — was 650.
+  // 450 keeps the eye-trail readable while making the flow feel "live".
+  var PULSE_MS  = 450;
   var STEP_GAP  = 220;             // gap between consecutive edge pulses
 
   // [#4-1, 2026-05-09] Hub detection — top 10% by degree AND degree ≥ 5.
@@ -468,9 +470,16 @@
     var stepMs = 0;
     var loopEdges = [];
     neighbors.forEach(function (item) {
-      setTimeout(function () { spawnPulse(node, item.neighbor); }, stepMs);
+      // [Stage E.1, 2026-05-24] direction contract — the pulse must travel
+      // along the data edge's source → target axis, NOT always away from
+      // the clicked node. getNeighbors() already tags each item with
+      // direction ('out' = node→neighbor, 'in' = neighbor→node); honoring
+      // it makes the lit pulse match the arrowhead the user sees.
+      var pulseSrc = (item.direction === 'in') ? item.neighbor : node;
+      var pulseTgt = (item.direction === 'in') ? node : item.neighbor;
+      setTimeout(function () { spawnPulse(pulseSrc, pulseTgt); }, stepMs);
       stepMs += STEP_GAP / 2;   // slightly faster than path replay
-      loopEdges.push({ src: node, tgt: item.neighbor });
+      loopEdges.push({ src: pulseSrc, tgt: pulseTgt });
     });
 
     // Re-trigger force-graph render so links re-color.
@@ -1081,13 +1090,16 @@
     var scene = graph.scene();
     if (!scene) return;
 
-    // [PR camera-glow] use the soft gradient texture for a comet-like
-    // wrap-around glow instead of the hard square sprite.
-    var color = getCss('--brand-2', '#4fc3f7');
-    var tex = getGlowTexture(color);
+    // [Stage E.1, 2026-05-24] color gradient src→tgt — pulse starts in
+    // source-node tint and shifts to target-node tint over its lifetime.
+    // Texture stays a neutral white radial; material.color is what we lerp.
+    // Reads as "leaving here, arriving there" and pairs with the arrowhead.
+    var srcHex = typeColor(srcNode.type) || getCss('--brand-2', '#4fc3f7');
+    var tgtHex = typeColor(tgtNode.type) || srcHex;
+    var tex = getGlowTexture('#ffffff');   // single shared white texture
     var spriteMat = new THREE.SpriteMaterial({
       map:         tex,
-      color:       0xffffff,        // texture carries the color
+      color:       new THREE.Color(srcHex),   // mutated per-frame in pulseTick
       transparent: true,
       opacity:     0.95,
       blending:    THREE.AdditiveBlending,
@@ -1099,10 +1111,12 @@
     scene.add(sprite);
 
     pulses.push({
-      sprite:  sprite,
-      src:     srcNode,
-      tgt:     tgtNode,
-      startMs: performance.now(),
+      sprite:    sprite,
+      src:       srcNode,
+      tgt:       tgtNode,
+      startMs:   performance.now(),
+      srcColor:  new THREE.Color(srcHex),
+      tgtColor:  new THREE.Color(tgtHex),
     });
   }
 
@@ -1125,6 +1139,10 @@
         // Fade-in then fade-out around midpoint.
         var op = 1.0 - Math.abs(k - 0.5) * 1.6;
         p.sprite.material.opacity = Math.max(0, op);
+        // [Stage E.1] color lerp — src tint at k=0, tgt tint at k=1.
+        if (p.srcColor && p.tgtColor && p.sprite.material.color) {
+          p.sprite.material.color.copy(p.srcColor).lerp(p.tgtColor, k);
+        }
         live.push(p);
       }
     }
