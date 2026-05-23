@@ -3886,6 +3886,42 @@ async def admin_patch_approve(request: Request, role: str = Depends(get_role_fro
         if not rec_ok:
             raise HTTPException(status_code=500, detail=f"approval_record_failed: {rec.get('error')}")
 
+        # Stage B / CR-E.2 (2026-05-24) — shadow Change Request row.
+        # Best-effort dual-write so /admin/audit/cr can surface the
+        # approval event with the same shape as wiki_entity / run_jobs
+        # CRs. The legacy james_patch_log.jsonl + record_outcome below
+        # remain authoritative for the deploy timeline; the CR row is
+        # additive and its apply handler is a no-op (Stage B CR-E.1
+        # in core/change_request_apply.py). Failures here NEVER block
+        # the deploy path.
+        cr_shadow_id = None
+        try:
+            import hashlib as _hashlib
+            import json as _json_cr
+            from core.change_request import (
+                TARGET_SELF_EVO_PATCH, create_cr as _cr_create,
+            )
+            _patch_canon = _json_cr.dumps(rec, sort_keys=True, ensure_ascii=False)
+            _base_hash = _hashlib.sha256(_patch_canon.encode("utf-8")).hexdigest()[:16]
+            _shadow = _cr_create(
+                target_type   = TARGET_SELF_EVO_PATCH,
+                target_id     = patch_id,
+                title         = f"patch:{patch_id}",
+                description   = f"approval_method={approval_method}",
+                proposed_diff = {
+                    "target":            rec.get("target", ""),
+                    "patch_id":          patch_id,
+                    "approver_username": approver_username,
+                    "approval_method":   approval_method,
+                },
+                base_hash = _base_hash,
+                proposer  = approver_username or "<system>",
+                role      = role,
+            )
+            cr_shadow_id = _shadow.cr_id
+        except Exception:
+            pass
+
         # Re-load with approval fields baked in so apply() sees the
         # final patch shape (forward-compat — applier may grow to
         # honor approval metadata).
@@ -3895,6 +3931,13 @@ async def admin_patch_approve(request: Request, role: str = Depends(get_role_fro
         # If apply() itself failed, no bench gate to run — record and exit.
         if not ok:
             record_outcome(patch_id, "rolled_back", detail=f"apply failed: {msg}")
+            if cr_shadow_id is not None:
+                try:
+                    from core.change_request import reject_cr as _cr_reject
+                    _cr_reject(cr_shadow_id, reviewer=approver_username,
+                               reason=f"apply_failed: {msg[:100]}")
+                except Exception:
+                    pass
             return {
                 "success":           False,
                 "message":           msg,
@@ -3919,6 +3962,26 @@ async def admin_patch_approve(request: Request, role: str = Depends(get_role_fro
             before_metrics=gate.before_metrics,
             after_metrics=gate.after_metrics,
         )
+
+        # Stage B / CR-E.2 — close the shadow CR row. Bench-gate pass
+        # → merge_cr; regression → reject_cr (legacy lifecycle already
+        # rolled back the file). Best-effort.
+        if cr_shadow_id is not None:
+            try:
+                if gate.passed:
+                    from core.change_request_apply import merge_cr as _cr_merge
+                    _cr_merge(cr_shadow_id, approver=approver_username)
+                else:
+                    from core.change_request import reject_cr as _cr_reject
+                    _cr_reject(
+                        cr_shadow_id,
+                        reviewer=approver_username,
+                        reason=f"bench_regression: {gate.outcome_label}: "
+                               f"{(gate.detail or '')[:100]}",
+                    )
+            except Exception:
+                pass
+
         return {
             "success":           gate.passed,
             "message":           msg,
