@@ -1914,11 +1914,44 @@ async def list_proposals(
         return {"proposals": [], "error": str(e)}
 
 
+def _cr_shadow_proposal_create(proposal_id: str, approver: str, role: str,
+                               action: str) -> Optional[str]:
+    """Stage B / CR-E.3 — best-effort shadow CR row for proposal events.
+
+    Returns the cr_id on success, None on any failure. The legacy
+    /admin/proposals/{id}/approve|reject flow continues regardless —
+    the CR row is additive shadow with a no-op apply handler (CR-E.1).
+    """
+    try:
+        import hashlib as _hashlib
+        from core.change_request import (
+            TARGET_SELF_EVO_PROPOSAL, create_cr as _cr_create,
+        )
+        _base = _hashlib.sha256(
+            f"proposal:{proposal_id}:{action}".encode("utf-8")
+        ).hexdigest()[:16]
+        shadow = _cr_create(
+            target_type   = TARGET_SELF_EVO_PROPOSAL,
+            target_id     = proposal_id,
+            title         = f"proposal:{action}:{proposal_id}",
+            description   = f"endpoint=/admin/proposals/{proposal_id}/{action}",
+            proposed_diff = {"proposal_id": proposal_id, "action": action,
+                             "approver": approver},
+            base_hash = _base,
+            proposer  = approver,
+            role      = role,
+        )
+        return shadow.cr_id
+    except Exception:
+        return None
+
+
 @app.post("/admin/proposals/{proposal_id}/approve",
           summary="제안 승인 → 자동 실행 [P7-EVO]")
 async def approve_proposal(
     proposal_id: str,
     api_key:     str,
+    request:     Request,
     role:        str = Depends(get_role_from_request),
 ):
     """
@@ -1926,14 +1959,47 @@ async def approve_proposal(
     실행 결과를 응답으로 반환.
     """
     _require_feature(api_key, role, "admin.evolution")
+
+    # Stage B / CR-E.3 — shadow CR row. Best-effort dual-write so the
+    # unified audit shape covers proposal approvals alongside patch
+    # approvals + wiki/run_jobs CRs. The legacy james_evo_log.jsonl +
+    # _write_audit(...) below remain authoritative.
+    approver = _bearer_username(request) or f"<role:{role}>"
+    cr_shadow_id = _cr_shadow_proposal_create(
+        proposal_id, approver, role, action="approve",
+    )
+
     try:
         from tools.self.evo_analyzer import approve_and_execute
         report = approve_and_execute(proposal_id)
         _write_audit(role, "/admin/proposals/approve",
                      query=proposal_id,
                      answer=f"success={report.get('success')}")
+
+        # CR-E.3 close — merge on success, reject on executor failure.
+        if cr_shadow_id is not None:
+            try:
+                if report.get("success"):
+                    from core.change_request_apply import merge_cr as _cr_merge
+                    _cr_merge(cr_shadow_id, approver=approver)
+                else:
+                    from core.change_request import reject_cr as _cr_reject
+                    _cr_reject(
+                        cr_shadow_id, reviewer=approver,
+                        reason=f"executor_failed: {str(report)[:100]}",
+                    )
+            except Exception:
+                pass
+
         return report
     except Exception as e:
+        if cr_shadow_id is not None:
+            try:
+                from core.change_request import reject_cr as _cr_reject
+                _cr_reject(cr_shadow_id, reviewer=approver,
+                           reason=f"exception: {str(e)[:100]}")
+            except Exception:
+                pass
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1942,17 +2008,48 @@ async def approve_proposal(
 async def reject_proposal_api(
     proposal_id: str,
     api_key:     str,
+    request:     Request,
     reason:      str = "",
     role:        str = Depends(get_role_from_request),
 ):
     """[4-C] 제안 거부 + 사유 장기기억 저장."""
     _require_feature(api_key, role, "admin.evolution")
+
+    # Stage B / CR-E.3 — shadow CR row for reject path. Same dual-write
+    # rationale as approve_proposal above.
+    approver = _bearer_username(request) or f"<role:{role}>"
+    cr_shadow_id = _cr_shadow_proposal_create(
+        proposal_id, approver, role, action="reject",
+    )
+
     try:
         from tools.self.evo_analyzer import reject_proposal
         ok = reject_proposal(proposal_id, reason)
         _write_audit(role, "/admin/proposals/reject", query=proposal_id)
+
+        # CR-E.3 close — reject_cr regardless of `ok` (the endpoint
+        # IS the reject action; ok=False just means the storage write
+        # failed). Reason mirrors the admin-supplied reason.
+        if cr_shadow_id is not None:
+            try:
+                from core.change_request import reject_cr as _cr_reject
+                _cr_reject(
+                    cr_shadow_id, reviewer=approver,
+                    reason=(reason or "admin_rejected")[:200]
+                           + (" (storage_failed)" if not ok else ""),
+                )
+            except Exception:
+                pass
+
         return {"success": ok, "proposal_id": proposal_id}
     except Exception as e:
+        if cr_shadow_id is not None:
+            try:
+                from core.change_request import reject_cr as _cr_reject
+                _cr_reject(cr_shadow_id, reviewer=approver,
+                           reason=f"exception: {str(e)[:100]}")
+            except Exception:
+                pass
         raise HTTPException(status_code=500, detail=str(e))
 
 
