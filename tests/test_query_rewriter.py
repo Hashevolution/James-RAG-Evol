@@ -341,5 +341,80 @@ class LatencyRecordedTests(unittest.TestCase):
         self.assertTrue(attempted)
 
 
+class AdaptiveBudgetWiringTests(unittest.TestCase):
+    """D1.B — TaskBudget wiring at the query_rewriter call site.
+
+    Pins the cap actually passed to backend.complete() against the
+    TaskBudget tier matching the user's query. Legacy max_tokens=int
+    override path also pinned so callers with explicit budget reasons
+    (e.g. STEP 7 bench A/B runs) still get a fixed cap.
+    """
+
+    def setUp(self):
+        self._saved = os.environ.get("JAMES_ENABLE_QUERY_REWRITE")
+        os.environ["JAMES_ENABLE_QUERY_REWRITE"] = "1"
+
+    def tearDown(self):
+        if self._saved is None:
+            os.environ.pop("JAMES_ENABLE_QUERY_REWRITE", None)
+        else:
+            os.environ["JAMES_ENABLE_QUERY_REWRITE"] = self._saved
+
+    def _capture_cap(self, query):
+        """Run rewrite, return the max_tokens kwarg backend.complete saw."""
+        from core.retrieval.query_rewriter import QueryRewriter
+        rw = QueryRewriter()  # max_tokens=None → dynamic budget path
+        fake = MagicMock()
+        fake.complete.return_value = _completion(text='{"rewritten":"x"}')
+        with patch("core.reasoning.backends.get_backend", return_value=fake):
+            rw.rewrite(query)
+        # backend.complete was called once with a max_tokens kwarg
+        _, kwargs = fake.complete.call_args
+        return kwargs.get("max_tokens")
+
+    def test_substitution_query_routes_to_cap_substitution(self):
+        from core.reasoning.budget import CAP_SUBSTITUTION
+        # Korean substitution pattern
+        cap = self._capture_cap("환불 정책 그대로 알려주세요")
+        self.assertEqual(cap, CAP_SUBSTITUTION,
+            "substitution-pattern query must request CAP_SUBSTITUTION (200) "
+            "from the backend, not the legacy 4096 default")
+
+    def test_substitution_english_routes_to_cap_substitution(self):
+        from core.reasoning.budget import CAP_SUBSTITUTION
+        cap = self._capture_cap("Return the exact refund policy verbatim")
+        self.assertEqual(cap, CAP_SUBSTITUTION)
+
+    def test_heavy_query_routes_to_cap_heavy(self):
+        from core.reasoning.budget import CAP_HEAVY
+        cap = self._capture_cap("한국 RAG 시장을 4단계로 분석해주세요")
+        self.assertEqual(cap, CAP_HEAVY,
+            "heavy-synthesis marker must escalate to CAP_HEAVY (4096) "
+            "— matches the pre-D1.B safe default for these queries")
+
+    def test_default_query_routes_to_cap_light(self):
+        from core.reasoning.budget import CAP_LIGHT
+        cap = self._capture_cap("RAG가 무엇인가요?")
+        self.assertEqual(cap, CAP_LIGHT,
+            "default query without markers must request CAP_LIGHT (800) "
+            "— the 5x token reduction vs the legacy 4096 cap")
+
+    def test_legacy_explicit_max_tokens_bypasses_budget(self):
+        """A caller passing max_tokens=4096 explicitly gets the legacy
+        path — backend.complete sees exactly 4096 regardless of query
+        content. Important for STEP 7 bench A/B runs that need cap
+        invariance across queries to isolate non-cap effects."""
+        from core.retrieval.query_rewriter import QueryRewriter
+        rw = QueryRewriter(max_tokens=4096)
+        fake = MagicMock()
+        fake.complete.return_value = _completion(text='{"rewritten":"x"}')
+        with patch("core.reasoning.backends.get_backend", return_value=fake):
+            # Use a substitution query — would normally trip CAP_SUBSTITUTION
+            rw.rewrite("환불 정책 그대로 알려주세요")
+        _, kwargs = fake.complete.call_args
+        self.assertEqual(kwargs.get("max_tokens"), 4096,
+            "explicit max_tokens=4096 must override TaskBudget")
+
+
 if __name__ == "__main__":   # pragma: no cover
     unittest.main()

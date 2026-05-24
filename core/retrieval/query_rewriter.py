@@ -32,6 +32,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 import threading
 import time
 from typing import Optional, Tuple
@@ -41,13 +42,35 @@ from typing import Optional, Tuple
 # so a stock install (env unset) gets "ollama_local" — byte-identical
 # to v0.3.0 behavior. Operators flipping the env restart the server.
 from core.reasoning.backends import get_default_backend_id as _get_default_backend
+from core.reasoning.budget import TaskBudget
+
 DEFAULT_BACKEND_ID = _get_default_backend()
 DEFAULT_TIMEOUT_S = 10.0
-# gemma4:e4b consumes ~500 hidden reasoning tokens before the first
-# visible output on short structured prompts; cap below that floor
-# → deterministic empty response (model burns the budget without
-# surfacing any byte).
+# Legacy cap — kept as a fallback the caller can opt into by passing
+# `max_tokens=DEFAULT_MAX_TOKENS` explicitly. The new default
+# (`max_tokens=None`) routes through TaskBudget for dynamic per-call
+# sizing; see core/reasoning/budget.py.
 DEFAULT_MAX_TOKENS = 4096
+
+
+def _trace_budget(*, stage: str, cap: int, query: str) -> None:
+    """Mirror the budget decision to stdout when JAMES_TRACE_STDOUT is on.
+
+    Single-line, prefix-tagged so operators can grep `[budget]` during
+    live verification. Truncates the query to 60 chars to keep the line
+    readable. Mirrors the JAMES_TRACE_STDOUT convention from
+    core/observability.py (default ON; disabled with `=0`/`false`/`no`).
+    """
+    if os.getenv("JAMES_TRACE_STDOUT", "1").strip().lower() in ("0", "false", "no", ""):
+        return
+    q = query.strip().replace("\n", " ")
+    if len(q) > 60:
+        q = q[:57] + "..."
+    try:
+        print(f"[budget] {stage} cap={cap} query={q!r}", file=sys.stderr, flush=True)
+    except Exception:
+        # Never let trace output wedge the actual request.
+        pass
 # Reject rewrites that balloon the query — usually a sign the LLM
 # elaborated instead of rewriting (e.g., explaining what the query is
 # rather than rephrasing it). 3× length is a generous bound.
@@ -138,11 +161,28 @@ class QueryRewriter:
         backend_id: str = DEFAULT_BACKEND_ID,
         *,
         timeout: float = DEFAULT_TIMEOUT_S,
-        max_tokens: int = DEFAULT_MAX_TOKENS,
+        max_tokens: Optional[int] = None,
+        budget: Optional[TaskBudget] = None,
     ) -> None:
+        """Construct a QueryRewriter.
+
+        `max_tokens` behaviour (D1.B wiring, Direction 1 Adaptive Budgeting):
+          • `None` (default) — cap is decided per-call by `TaskBudget.assess()`,
+            based on substitution-pattern / heavy-marker detection in the
+            actual user query. Token usage drops ~70% on substitution
+            queries and matches the prior 4096-cap behaviour on heavy ones.
+          • int (e.g. `DEFAULT_MAX_TOKENS=4096`) — legacy fixed cap; bypasses
+            TaskBudget and forces every call to this cap. Use only when the
+            caller has external reasons to pin a specific budget (e.g. a
+            STEP 7 bench that needs cap=4096 invariance for an A/B run).
+
+        `budget` is the injectable TaskBudget instance. Default is a fresh
+        stateless instance.
+        """
         self._backend_id = backend_id
         self._timeout = timeout
         self._max_tokens = max_tokens
+        self._budget = budget if budget is not None else TaskBudget()
 
     def rewrite(
         self,
@@ -190,11 +230,20 @@ class QueryRewriter:
         prompt_tmpl = REWRITE_PROMPT_KO if _is_korean(query) else REWRITE_PROMPT_EN
         prompt = prompt_tmpl.format(query=query)
 
+        # D1.B — dynamic budget. Legacy fixed cap still wins if the caller
+        # passed an explicit int to __init__; otherwise TaskBudget decides
+        # per-call based on the actual query content.
+        if self._max_tokens is not None:
+            cap = self._max_tokens
+        else:
+            cap = self._budget.assess("query_rewriter", query)
+            _trace_budget(stage="query_rewriter", cap=cap, query=query)
+
         t0 = time.time()
         try:
             result = backend.complete(
                 prompt,
-                max_tokens=self._max_tokens,
+                max_tokens=cap,
                 timeout=self._timeout,
             )
         except Exception:
