@@ -402,8 +402,10 @@ class AdaptiveBudgetWiringTests(unittest.TestCase):
         from core.reasoning.budget import CAP_LIGHT
         cap = self._capture_cap("RAG가 무엇인가요?")
         self.assertEqual(cap, CAP_LIGHT,
-            "default query without markers must request CAP_LIGHT (800) "
-            "— the 5x token reduction vs the legacy 4096 cap")
+            "default query without markers must request CAP_LIGHT (1200, v2) "
+            "— the ~3.4x token reduction vs the legacy 4096 cap "
+            "(v1 was 5x at CAP_LIGHT=800; bumped to 1200 to cover "
+            "reflect/verify natural-stop)")
 
     def test_legacy_explicit_max_tokens_bypasses_budget(self):
         """A caller passing max_tokens=4096 explicitly gets the legacy

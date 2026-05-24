@@ -34,9 +34,14 @@ def test_cap_substitution_value():
 
 
 def test_cap_light_value():
-    """CAP_LIGHT pinned to 800 — V3'.e synthesis arm eval_count ~400-450,
-    leaves 1.8x headroom."""
-    assert CAP_LIGHT == 800
+    """CAP_LIGHT pinned to 1200 (v2, bumped from 800 on 2026-05-24).
+
+    The v1 value (800) covered V3'.e synthesis arm (eval_count ~400-450)
+    and query_rewriter (~377) but truncated reflect (natural-stop ~926)
+    and verify (natural-stop ~984) in 19/20 calls each. CAP_LIGHT=1200
+    gives ~20% headroom over verify (the highest measured light-tier
+    natural-stop) while staying 5x above V3'.e light synth's 235."""
+    assert CAP_LIGHT == 1200
 
 
 def test_cap_heavy_value():
@@ -207,8 +212,8 @@ def test_retry_doubled_from_substitution():
 
 
 def test_retry_doubled_from_light():
-    """CAP_LIGHT (800) doubles to 1600 — below ceiling."""
-    assert retry_doubled(CAP_LIGHT) == 1600
+    """CAP_LIGHT (1200) doubles to 2400 — below ceiling (CAP_HEAVY=4096)."""
+    assert retry_doubled(CAP_LIGHT) == 2400
 
 
 def test_retry_doubled_caps_at_heavy():
