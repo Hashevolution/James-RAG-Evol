@@ -344,21 +344,27 @@ class LatencyRecordedTests(unittest.TestCase):
 class AdaptiveBudgetWiringTests(unittest.TestCase):
     """D1.B — TaskBudget wiring at the query_rewriter call site.
 
-    Pins the cap actually passed to backend.complete() against the
-    TaskBudget tier matching the user's query. Legacy max_tokens=int
-    override path also pinned so callers with explicit budget reasons
-    (e.g. STEP 7 bench A/B runs) still get a fixed cap.
+    Tests the three-way cap resolution:
+      (1) explicit max_tokens=int → fixed cap (experiment baseline)
+      (2) None + JAMES_ADAPTIVE_BUDGET=1 → dynamic TaskBudget (treatment)
+      (3) None + flag off → DEFAULT_MAX_TOKENS=4096 (byte-identical legacy)
     """
 
     def setUp(self):
-        self._saved = os.environ.get("JAMES_ENABLE_QUERY_REWRITE")
+        self._saved_rewrite = os.environ.get("JAMES_ENABLE_QUERY_REWRITE")
+        self._saved_budget = os.environ.get("JAMES_ADAPTIVE_BUDGET")
         os.environ["JAMES_ENABLE_QUERY_REWRITE"] = "1"
+        os.environ["JAMES_ADAPTIVE_BUDGET"] = "1"
 
     def tearDown(self):
-        if self._saved is None:
+        if self._saved_rewrite is None:
             os.environ.pop("JAMES_ENABLE_QUERY_REWRITE", None)
         else:
-            os.environ["JAMES_ENABLE_QUERY_REWRITE"] = self._saved
+            os.environ["JAMES_ENABLE_QUERY_REWRITE"] = self._saved_rewrite
+        if self._saved_budget is None:
+            os.environ.pop("JAMES_ADAPTIVE_BUDGET", None)
+        else:
+            os.environ["JAMES_ADAPTIVE_BUDGET"] = self._saved_budget
 
     def _capture_cap(self, query):
         """Run rewrite, return the max_tokens kwarg backend.complete saw."""
@@ -402,8 +408,8 @@ class AdaptiveBudgetWiringTests(unittest.TestCase):
     def test_legacy_explicit_max_tokens_bypasses_budget(self):
         """A caller passing max_tokens=4096 explicitly gets the legacy
         path — backend.complete sees exactly 4096 regardless of query
-        content. Important for STEP 7 bench A/B runs that need cap
-        invariance across queries to isolate non-cap effects."""
+        content. Important for the experiment driver's baseline condition
+        and for STEP 7 bench A/B runs needing cap invariance."""
         from core.retrieval.query_rewriter import QueryRewriter
         rw = QueryRewriter(max_tokens=4096)
         fake = MagicMock()
@@ -414,6 +420,62 @@ class AdaptiveBudgetWiringTests(unittest.TestCase):
         _, kwargs = fake.complete.call_args
         self.assertEqual(kwargs.get("max_tokens"), 4096,
             "explicit max_tokens=4096 must override TaskBudget")
+
+
+class AdaptiveBudgetDefaultOffInvariantTests(unittest.TestCase):
+    """Direction 1 default-off invariant.
+
+    PR #461 must land byte-identically for any operator who has not set
+    `JAMES_ADAPTIVE_BUDGET=1`. The dynamic budget is gated; the runtime
+    cap requested by `query_rewriter` is `DEFAULT_MAX_TOKENS=4096`
+    until the experiment validates the heuristic.
+    """
+
+    def setUp(self):
+        self._saved_rewrite = os.environ.get("JAMES_ENABLE_QUERY_REWRITE")
+        self._saved_budget = os.environ.get("JAMES_ADAPTIVE_BUDGET")
+        os.environ["JAMES_ENABLE_QUERY_REWRITE"] = "1"
+        os.environ.pop("JAMES_ADAPTIVE_BUDGET", None)  # ensure OFF
+
+    def tearDown(self):
+        if self._saved_rewrite is None:
+            os.environ.pop("JAMES_ENABLE_QUERY_REWRITE", None)
+        else:
+            os.environ["JAMES_ENABLE_QUERY_REWRITE"] = self._saved_rewrite
+        if self._saved_budget is None:
+            os.environ.pop("JAMES_ADAPTIVE_BUDGET", None)
+        else:
+            os.environ["JAMES_ADAPTIVE_BUDGET"] = self._saved_budget
+
+    def _capture_cap(self, query):
+        from core.retrieval.query_rewriter import QueryRewriter
+        rw = QueryRewriter()
+        fake = MagicMock()
+        fake.complete.return_value = _completion(text='{"rewritten":"x"}')
+        with patch("core.reasoning.backends.get_backend", return_value=fake):
+            rw.rewrite(query)
+        _, kwargs = fake.complete.call_args
+        return kwargs.get("max_tokens")
+
+    def test_flag_off_substitution_query_uses_legacy_4096(self):
+        """With JAMES_ADAPTIVE_BUDGET unset, even a substitution query
+        gets 4096 — the dynamic-budget path is gated, so behaviour is
+        byte-identical to pre-D1.B."""
+        self.assertEqual(self._capture_cap("환불 정책 그대로 알려주세요"), 4096)
+
+    def test_flag_off_default_query_uses_legacy_4096(self):
+        self.assertEqual(self._capture_cap("RAG가 무엇인가요?"), 4096)
+
+    def test_flag_off_heavy_query_uses_legacy_4096(self):
+        self.assertEqual(self._capture_cap("4단계로 분석해주세요"), 4096)
+
+    @patch.dict(os.environ, {"JAMES_ADAPTIVE_BUDGET": "false"})
+    def test_flag_set_to_false_treated_as_off(self):
+        self.assertEqual(self._capture_cap("환불 정책 그대로 알려주세요"), 4096)
+
+    @patch.dict(os.environ, {"JAMES_ADAPTIVE_BUDGET": "0"})
+    def test_flag_set_to_zero_treated_as_off(self):
+        self.assertEqual(self._capture_cap("환불 정책 그대로 알려주세요"), 4096)
 
 
 if __name__ == "__main__":   # pragma: no cover

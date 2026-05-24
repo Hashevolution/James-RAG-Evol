@@ -46,19 +46,56 @@ from core.reasoning.budget import TaskBudget
 
 DEFAULT_BACKEND_ID = _get_default_backend()
 DEFAULT_TIMEOUT_S = 10.0
-# Legacy cap — kept as a fallback the caller can opt into by passing
-# `max_tokens=DEFAULT_MAX_TOKENS` explicitly. The new default
-# (`max_tokens=None`) routes through TaskBudget for dynamic per-call
-# sizing; see core/reasoning/budget.py.
+# Legacy fixed cap — the runtime default until the experiment
+# (`scripts/research/v3prime_direction1_adaptive_budget.py`) validates
+# the dynamic-budget heuristic on real corpus. Adaptive budget is gated
+# behind `JAMES_ADAPTIVE_BUDGET=1` so PR #461 land is byte-identical
+# for any operator who hasn't opted in. V3' Protocol v1 default-off
+# invariant: a research feature ships with the experiment, not the wiring.
 DEFAULT_MAX_TOKENS = 4096
 
 
+def _adaptive_budget_enabled() -> bool:
+    """Env-flag gate for D1.B wiring.
+
+    Default OFF — `JAMES_ADAPTIVE_BUDGET=1` (or `true` / `yes` / `on`)
+    activates the TaskBudget routing. Until then, `QueryRewriter()`
+    behaves byte-identically to pre-D1.B (`max_tokens=DEFAULT_MAX_TOKENS`).
+
+    The experiment driver toggles this per-condition to measure baseline
+    (legacy 4096) vs treatment (dynamic) on the same fixture.
+    """
+    return os.getenv("JAMES_ADAPTIVE_BUDGET", "0").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
+def _classify_budget_reason(cap: int) -> str:
+    """Map an adaptive-budget cap to a reason string for trace + JSON.
+
+    Used by the experiment driver to record *why* each cap was chosen
+    without re-running the heuristic on raw response data.
+    """
+    from core.reasoning.budget import CAP_HEAVY, CAP_LIGHT, CAP_SUBSTITUTION
+    if cap == CAP_SUBSTITUTION:
+        return "substitution_pattern"
+    if cap == CAP_HEAVY:
+        return "heavy_marker"
+    if cap == CAP_LIGHT:
+        return "default_light"
+    return f"unknown_cap_{cap}"
+
+
 def _trace_budget(*, stage: str, cap: int, query: str) -> None:
-    """Mirror the budget decision to stdout when JAMES_TRACE_STDOUT is on.
+    """Mirror the budget decision to stderr when JAMES_TRACE_STDOUT is on.
 
     Single-line, prefix-tagged so operators can grep `[budget]` during
-    live verification. Truncates the query to 60 chars to keep the line
-    readable. Mirrors the JAMES_TRACE_STDOUT convention from
+    live verification. Includes the classification reason for visual
+    audit of the heuristic. Truncates the query to 60 chars for line
+    readability. Mirrors the JAMES_TRACE_STDOUT convention from
     core/observability.py (default ON; disabled with `=0`/`false`/`no`).
     """
     if os.getenv("JAMES_TRACE_STDOUT", "1").strip().lower() in ("0", "false", "no", ""):
@@ -66,8 +103,13 @@ def _trace_budget(*, stage: str, cap: int, query: str) -> None:
     q = query.strip().replace("\n", " ")
     if len(q) > 60:
         q = q[:57] + "..."
+    reason = _classify_budget_reason(cap)
     try:
-        print(f"[budget] {stage} cap={cap} query={q!r}", file=sys.stderr, flush=True)
+        print(
+            f"[budget] {stage} cap={cap} reason={reason} query={q!r}",
+            file=sys.stderr,
+            flush=True,
+        )
     except Exception:
         # Never let trace output wedge the actual request.
         pass
@@ -166,18 +208,24 @@ class QueryRewriter:
     ) -> None:
         """Construct a QueryRewriter.
 
-        `max_tokens` behaviour (D1.B wiring, Direction 1 Adaptive Budgeting):
-          • `None` (default) — cap is decided per-call by `TaskBudget.assess()`,
-            based on substitution-pattern / heavy-marker detection in the
-            actual user query. Token usage drops ~70% on substitution
-            queries and matches the prior 4096-cap behaviour on heavy ones.
-          • int (e.g. `DEFAULT_MAX_TOKENS=4096`) — legacy fixed cap; bypasses
-            TaskBudget and forces every call to this cap. Use only when the
-            caller has external reasons to pin a specific budget (e.g. a
-            STEP 7 bench that needs cap=4096 invariance for an A/B run).
+        `max_tokens` behaviour (Direction 1 Adaptive Budgeting wiring):
+          • int (e.g. `DEFAULT_MAX_TOKENS=4096`) — fixed cap; bypasses
+            TaskBudget and forces every call to this cap. The experiment
+            driver uses this for the **baseline** condition.
+          • `None` (default) — runtime decision:
+              - if `JAMES_ADAPTIVE_BUDGET=1` env flag is set, route through
+                `TaskBudget.assess()` per call (**treatment** condition).
+              - otherwise, fall back to `DEFAULT_MAX_TOKENS=4096` —
+                byte-identical to pre-D1.B behaviour.
 
         `budget` is the injectable TaskBudget instance. Default is a fresh
         stateless instance.
+
+        Direction 1 default-off invariant: PR #461 land must not change
+        the runtime cap requested by `query_rewriter` for any operator
+        who hasn't opted into the experiment. Validation that the dynamic
+        heuristic preserves answer quality is `scripts/research/
+        v3prime_direction1_adaptive_budget.py`'s job, not the wiring's.
         """
         self._backend_id = backend_id
         self._timeout = timeout
@@ -230,14 +278,18 @@ class QueryRewriter:
         prompt_tmpl = REWRITE_PROMPT_KO if _is_korean(query) else REWRITE_PROMPT_EN
         prompt = prompt_tmpl.format(query=query)
 
-        # D1.B — dynamic budget. Legacy fixed cap still wins if the caller
-        # passed an explicit int to __init__; otherwise TaskBudget decides
-        # per-call based on the actual query content.
+        # D1.B — three-way cap resolution:
+        #   1. explicit int (constructor arg) → fixed cap (experiment baseline)
+        #   2. None + JAMES_ADAPTIVE_BUDGET=1 → dynamic via TaskBudget (treatment)
+        #   3. None + flag off → legacy DEFAULT_MAX_TOKENS=4096 (byte-identical)
+        # Default-off invariant: paths 1 and 3 produce the pre-D1.B cap.
         if self._max_tokens is not None:
             cap = self._max_tokens
-        else:
+        elif _adaptive_budget_enabled():
             cap = self._budget.assess("query_rewriter", query)
             _trace_budget(stage="query_rewriter", cap=cap, query=query)
+        else:
+            cap = DEFAULT_MAX_TOKENS
 
         t0 = time.time()
         try:
