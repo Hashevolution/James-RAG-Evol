@@ -214,14 +214,40 @@ flag stays `0` by default; the implementation stays in tree for the
 operator-opt-in case and for the cognitive-stage extension experiment
 to compare against.
 
+## 4-stage cognitive-stages extension — outcome (2026-05-24)
+
+Two follow-up sweeps with `scripts/research/v3prime_direction1_cognitive_stages.py`
+on `query_rewriter / planner / reflect / verify`:
+
+| Sweep | CAP_LIGHT | reflect truncation | verify truncation | reflect quality | verify quality |
+|---|---|---|---|---|---|
+| **v1** | 800 | **19/20** | **19/20** | 12/20 (-40%) | 5/20 (-75%) |
+| **v2** | **1200** | **0/20 ✅** | **0/20 ✅** | **20/20 ✅** | **20/20 ✅** |
+
+The v1 → v2 revision was the data-driven heuristic bump landing in
+PR #462. Together with this 3-prompt sweep, the result is **7 measured
+natural-stop tiers** on `gemma4:e4b` T=0.2:
+
+| Tier | Prompt | natural-stop |
+|---|---|---|
+| 1 | substitution verbatim | 62 |
+| 2 | light synth e-commerce | 235 |
+| 3 | query_rewriter | ~370 |
+| 4 | planner | ~690 |
+| 5 | reflect | ~910 |
+| 6 | verify | ~970 |
+| 7 | heavy synth 4-step | 1681 |
+
+Full closure analysis lives in
+`reports/promo-assets/v3prime-direction1-cognitive-stages-result.md`.
+
 ## Out of scope for this result doc
 
-- 4-stage cognitive extension (D1.C/D driver) — separate sweep, planned
-- Cross-model validation (does the cap-invariance hold on 26b? on Llama?) — Direction 3
-- Production wiring of the 4 cognitive stages — gated on the cognitive
-  extension sweep showing the same cap-invariance (or, if it shows
-  cap-dependence on those prompts, on the budgeted production rollout
-  per-stage)
+- Cross-model validation (does the 7-tier gradient hold on 26b? on Llama?) — Direction 3
+- Production wiring of the 4 cognitive stages — Direction 1 closure
+  did not flip `JAMES_ADAPTIVE_BUDGET` default to ON (no token-reduction
+  justification); operators can still opt in for the latency / memory /
+  safety benefits via env flag
 
 ## Reproducibility
 
