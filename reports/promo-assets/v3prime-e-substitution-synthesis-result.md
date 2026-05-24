@@ -393,6 +393,59 @@ arm ("answer in one sentence", similar shape to our light tier), the
 corresponding cell would test whether the multi-tier gradient holds at
 26b too. Until then, the multi-tier claim is e4b-confirmed only.
 
+#### Sub-finding extension — 7-tier monotonic natural-stop gradient (2026-05-24, two sweeps)
+
+Direction 1's cognitive-stages extension sweep (160 calls × 2 sweeps
+on the 4 cognitive middleware prompts) added 4 measured natural-stop
+tiers to the original substitution / light / heavy 3-prompt sweep:
+
+| Tier | Prompt | natural-stop (gemma4:e4b T=0.2) |
+|---|---|---|
+| 1 | substitution verbatim | 62 |
+| 2 | light synth e-commerce | 235 |
+| 3 | query_rewriter | ~370 |
+| 4 | planner | ~690 |
+| 5 | reflect | ~910 |
+| 6 | verify | ~970 |
+| 7 | heavy synth 4-step | 1681 |
+
+**7 monotonically-increasing tiers, 27× dynamic range, cross-sweep
+noise within 5% on every tier**. This is the **quantitative form of
+the workload-gradient claim** — natural-stop length is the
+*measurable* expression of "task weight" on this model.
+
+#### Sub-finding extension — answer convergence has a task-type axis
+
+Cross-sweep stable: `verify` (fact-check, structured-JSON output)
+produces **2-3 unique responses across 20 calls** at T=0.2 even at
+heavy-workload (`eval_count` ~950). This is **substitution-class
+clustering at heavy-workload-class workload**:
+
+| Stage | natural-stop | unique responses |
+|---|---|---|
+| substitution | 62 (light workload) | 1/20 (high clustering) |
+| light synth e-commerce | 235 (light workload) | 4/20 (partial clustering) |
+| query_rewriter | ~370 | 19-20/20 (full sampling) |
+| planner | ~690 | 20/20 (full sampling) |
+| reflect | ~910 | 20/20 (full sampling) |
+| **verify** | **~970** | **2-3/20 (high clustering)** ← anomaly vs other heavy-tier stages |
+| heavy synth | 1681 | 20/20 (full sampling) |
+
+Interpretation: **Mechanism 2 (answer convergence) has two axes**, not
+one. The original framing — convergence scales with workload weight —
+explains substitution (1/20) and heavy synth (20/20). The verify
+result shows that **task type also matters**: structured-JSON outputs
+(fact-check returning `{"grounded": ..., "unsupported": [...]}`)
+cluster tightly even at heavy workload, because the answer space is a
+small finite set rather than open-ended generation.
+
+**Updated joint-paper §axis-2 sub-clause** (3-author lock pending):
+
+> *"Answer convergence scales with both workload weight (verbatim →
+> open-ended) and task type (structured-JSON outputs cluster
+> independent of workload). Verify-class structured outputs land in
+> the high-clustering band even at heavy-synthesis natural-stop length."*
+
 ### Latency caveat
 
 Robin's substitution-arm latency of 3.8s is **not directly
