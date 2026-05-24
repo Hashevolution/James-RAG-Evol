@@ -24,10 +24,21 @@ to the task weight of the call:
     matches PR #399's safe default; V3'.a~d showed all 4 stages reach
     10/10 at this cap.
 
-  • default (light synthesis: single recommendation, short answer)
-      → CAP_LIGHT = 800
-    matches V3'.e synthesis arm — `eval_count` lands ~400-450, so 800
-    is 1.8x headroom and the floor finishes inside the budget.
+  • default (light synthesis: single recommendation, short answer,
+    cognitive-middleware critique / fact-check / query rewrite)
+      → CAP_LIGHT = 1200  [v2 — heuristic bumped 2026-05-24]
+    Direction 1 cognitive-stages sweep (N=20, gemma4:e4b, T=0.2)
+    measured natural-stop lengths across the 4 middleware prompts:
+      query_rewriter natural-stop ~377
+      planner        natural-stop ~670 (heavy-escalated)
+      reflect        natural-stop ~926
+      verify         natural-stop ~984
+    The v1 value (CAP_LIGHT=800) covered query_rewriter cleanly but
+    truncated reflect and verify in 19/20 calls each, causing -40% /
+    -75% quality regression respectively. CAP_LIGHT=1200 covers verify
+    (984) with ~20% headroom and stays 5x larger than V3'.e light
+    synth's natural-stop of ~235, so the original e-commerce
+    light-synthesis use case is unaffected.
 
 Fallback: if a stage downstream sees `done_reason=length` (model hit
 the cap before finishing), the caller can use `retry_doubled` to re-run
@@ -56,8 +67,11 @@ ReasoningStage = Literal[
 ]
 
 # Cap tiers — sourced from V3' measurement data.
+# v1 (2026-05-24): CAP_LIGHT = 800 — bumped to 1200 (v2) after the
+# cognitive-stages sweep showed reflect (natural-stop 926) and verify
+# (984) truncate at 800.
 CAP_SUBSTITUTION: Final[int] = 200
-CAP_LIGHT: Final[int] = 800
+CAP_LIGHT: Final[int] = 1200
 CAP_HEAVY: Final[int] = 4096
 
 # Substitution-pattern regex — imperative "return verbatim" / "as-is".
