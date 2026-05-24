@@ -362,6 +362,63 @@ new; Ali has not yet weighed in on the model-scale axis). The
 original 10-word phrase remains the safe headline; the sub-clause
 extension is a draft proposal for the joint piece.
 
+### Robin endorsement — 2026-05-24 LinkedIn comment
+
+A follow-up LinkedIn comment from Robin on 2026-05-24 (with Ali
+also liking the comment) locks three things this result doc had
+left open:
+
+**1. Headline framing — *"the line that travels"*.**
+
+The line in §Two publishable mechanisms above —
+
+> *"parameter count buys reasoning routing precision, not just
+> capacity"*
+
+— originated in Robin's `analysis.md` (her companion repo). She
+re-surfaced it on LinkedIn and called it explicitly:
+
+> *"That's the line that travels."*
+
+The framing is now Robin-side endorsed for the joint piece (no
+further framing debate on the routing-precision line).
+
+**2. Convergence finding vocabulary — *"fanning out vs clustering"*.**
+
+The Mechanism 2 (answer convergence) finding in §Two publishable
+mechanisms above is, in Robin's framing:
+
+> *"e4b fanning out vs 26b clustering — same correct answer,
+> different number of paths to get there. Ali's 'shortening the
+> path' framing maps onto it cleanly."*
+
+The vocabulary is Robin's; the *measurement* (15/15 unique on e4b
+vs 6/20 unique on 26b @ cap=400) is JAMES; the *framing connector*
+to Ali's earlier *"shortening the path"* language is Robin's.
+Three-author vocab now converges on a single phrasing for the
+answer-convergence mechanism.
+
+**3. Joint-piece publishability — Robin-side evaluation.**
+
+> *"Three axes locked, three independent stacks, one architectural
+> property. The work you put into Direction 4 turned a single
+> finding into a layered one — that's the move that makes the
+> joint piece publishable."*
+
+Robin explicitly evaluates the post-Direction-4 result as
+publishable. This activates the Direction 6(I) joint-piece outline
+trigger that was previously deferred ("after Stage 1-3 data") in
+`docs/handovers/v0.3.x-measurement-framework-track.md §Stage 4`.
+The scope-lock note (Track 4 deliverable) becomes the appropriate
+next collaboration step once Ali's mid-June Gemini backend lands
+and completes the third stack.
+
+**No reply on the LinkedIn thread itself** — per the project's
+high-stakes-endorsement posture, like-only on collaborator
+endorsements that adopt our vocab/protocol/data; substantive
+response goes in the next data round (Direction 1 measurement or
+Direction 5 auto-routing, whichever lands first).
+
 ## Reproducibility
 
 - Driver: `scripts/research/v3prime_e_mode_split.py` (PR #439).
