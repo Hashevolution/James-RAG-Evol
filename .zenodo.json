@@ -1,0 +1,59 @@
+{
+  "title": "PROJECT JAMES — Local-First Graph-RAG with Adaptive Reasoning Budget (v0.3.1)",
+  "description": "JAMES is a local-first, auditable knowledge reasoning system. v0.3.1 lands Direction 1 (Adaptive Budgeting) cycle closure with three publishable findings on gemma4:e4b: (1) cap budgets are a memory + safety + latency rail rather than a token-cost lever — the model naturally stops well below cap=4096 on every workload tier; (2) a 7-tier monotonic natural-stop gradient spanning 62 → 1681 tokens (27× dynamic range, cross-sweep noise <5% per tier) — the quantitative form of the workload-gradient sub-clause; (3) verify is a high-clustering cognitive stage (~12.5% unique baseline responses across 40 calls) — answer-convergence Mechanism 2 now has two axes (workload weight + task type). Plus a process finding: heuristic v2 (CAP_LIGHT 800 → 1200) was data-driven by a falsification → revision → confirmation cycle. The release ships TaskBudget module + experiment drivers + raw JSON measurements + result docs as a citable research artifact.",
+  "upload_type": "software",
+  "creators": [
+    {
+      "name": "Seo, Jiwon",
+      "orcid": "0009-0002-0007-7860",
+      "affiliation": "Hashevolution"
+    }
+  ],
+  "keywords": [
+    "graph-rag",
+    "retrieval-augmented-generation",
+    "knowledge-graph",
+    "local-llm",
+    "sovereign-ai",
+    "gemma",
+    "ollama",
+    "adaptive-budget",
+    "reasoning-middleware",
+    "llm-evaluation",
+    "task-weight-gradient",
+    "answer-convergence",
+    "v3-prime-protocol",
+    "korean-nlp"
+  ],
+  "license": "MIT",
+  "access_right": "open",
+  "language": "eng",
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol",
+      "relation": "isSupplementTo",
+      "resource_type": "software"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/461",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/463",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/457",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/triavalabs/gemma4-26b-mode-split",
+      "relation": "isReferencedBy",
+      "resource_type": "software"
+    }
+  ],
+  "notes": "Cross-stack validation artifact for the V3' Protocol v1 methodology spec (docs/research/v3prime-protocol-v1.md). Result documents under reports/promo-assets/v3prime-*-result.md present the Direction 1 / Direction 4 findings; raw JSON measurements under reports/research-runs/ are the underlying data. Three-author joint-piece collaboration with Robin Converse (Triava Labs, 26b MoE cross-stack) and Ali Afana (Provia, mid-June managed-Gemini cross-stack) is the next-cycle trajectory."
+}

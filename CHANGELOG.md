@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.3.1] — 2026-05-24 — Direction 1 (Adaptive Budgeting) cycle closure
+
+**Theme**: ship the dynamic-token-budget mechanism as a **data-bearing experiment artifact**, not a runtime change. Default OFF; opt-in via `JAMES_ADAPTIVE_BUDGET=1`. Three publishable findings + one process finding on `gemma4:e4b` at T=0.2, validated by two A/B sweeps × N=20/cell × 7 task-weight tiers.
+
+### Added — `core/reasoning/budget.py` (TaskBudget module)
+
+- New `core/reasoning/budget.py` (~7.2 KB) providing `TaskBudget.assess(stage, prompt) → int` with a 3-tier heuristic: `CAP_SUBSTITUTION = 200`, `CAP_LIGHT = 1200` (v2; bumped from 800 on 2026-05-24 after the cognitive-stages sweep showed reflect/verify natural-stop ~926/~984), `CAP_HEAVY = 4096`. Fallback: `retry_doubled(prev_cap)` for `done_reason=length` retry, bounded by `CAP_HEAVY`.
+- 40 unit tests in `tests/test_adaptive_budget.py` pin every tier value, every regex branch, and the retry helper contract.
+
+### Added — `core/retrieval/query_rewriter.py` adaptive-budget wiring (default OFF)
+
+- `QueryRewriter.__init__` accepts an optional `budget: TaskBudget` arg and `max_tokens=None` default. Cap resolution is three-way: (1) explicit `max_tokens=int` → fixed cap (experiment baseline), (2) `None` + `JAMES_ADAPTIVE_BUDGET=1` → dynamic via `TaskBudget.assess()`, (3) `None` + flag off → `DEFAULT_MAX_TOKENS=4096` (byte-identical legacy).
+- `JAMES_ADAPTIVE_BUDGET` env flag, **default OFF**. 5 default-off invariant tests in `tests/test_query_rewriter.py` prove byte-identical pre-v0.3.1 behaviour for any operator who has not opted in.
+- Stdout trace `[budget] query_rewriter cap=N reason=...` when both `JAMES_ADAPTIVE_BUDGET=1` and `JAMES_TRACE_STDOUT=1` (default ON via `core/observability.py` convention).
+
+### Added — research drivers + result docs (experiment-grade artifacts)
+
+- `scripts/research/v3prime_direction1_adaptive_budget.py` — 3-prompt A/B driver (substitution/light/heavy), 120 calls/N=20, same fixture as V3'.e (PR #440 / PR #453). V3' Protocol v1 schema with two additive fields (`adaptive_cap_requested`, `adaptive_decision_reason`).
+- `scripts/research/v3prime_direction1_cognitive_stages.py` — 4-stage cognitive A/B driver (query_rewriter / planner / reflect / verify) using production prompt templates imported from the live modules. 160 calls/N=20.
+- `reports/promo-assets/v3prime-direction1-adaptive-budget-result.md` — 3-prompt sweep result.
+- `reports/promo-assets/v3prime-direction1-cognitive-stages-result.md` (NEW) — full v1 vs v2 comparison + per-cell detail + 2 sub-findings (verify clustering + 7-tier gradient) + Direction 1 final closure.
+- `reports/research-runs/v3prime-direction1-adaptive-budget-20260524T050347.json` — 3-prompt raw data (120 calls, 0 failures).
+- `reports/research-runs/v3prime-direction1-cognitive-stages-20260524T054634.json` — cognitive v1 sweep (CAP_LIGHT=800; falsification data — exposed reflect/verify truncation).
+- `reports/research-runs/v3prime-direction1-cognitive-stages-20260524T061858.json` — cognitive v2 sweep (CAP_LIGHT=1200; PASS data — 0/20 truncation on every cell, quality 20/20 restored).
+
+### Findings — three publishable + one process
+
+1. **Cap is a ceiling, not the floor**. `gemma4:e4b` naturally stops well below 4096 on every measured tier; cap reduction → 0% token change, but +7-17% latency win on substitution/light tiers (Ollama KV-cache buffer sizing) + ~20× per-call memory allocation reduction on substitution + bounded emergency-exit guard. PR #399's lifted cap was *permission to finish*, not waste.
+2. **7-tier monotonic natural-stop gradient** spanning 62 → 1681 tokens on `gemma4:e4b` at T=0.2. 27× dynamic range, cross-sweep noise within 5% per tier. The quantitative form of the joint-paper sub-clause *"the workload gradient is multi-tier monotonic on a single model"*.
+3. **`verify` is a high-clustering cognitive stage** (~12.5% unique baseline responses across 40 calls, stable across two independent sweeps). Direction 4 Mechanism 2 (answer convergence) now has **two axes**: workload weight + task type.
+4. **Process finding** — heuristic v2 (CAP_LIGHT 800 → 1200) was data-driven by a falsification → revision → confirmation cycle.
+
+### Joint paper sub-clauses now drafted
+
+3-author headline holds verbatim: *"Substitution is free. Synthesis costs in proportion to what it has to invent."* Direction 1 closure adds three sub-clauses:
+
+- *"…and inversely to parameter count."* (Robin axis-3 — 2 evidence layers)
+- *"…and the gradient is multi-tier monotonic — 7 measured tiers spanning 27× dynamic range."* (JAMES Direction 1)
+- *"…and answer convergence has a task-type axis: structured-JSON outputs cluster independent of workload."* (JAMES Direction 1, cross-sweep validated)
+
+### Verified
+
+- 71 unit tests pass (40 budget + 31 query_rewriter); ruff clean; `core/reasoning/budget.py` 7.2 KB / `core/retrieval/query_rewriter.py` 12 KB (CLAUDE.md rule #5 < 20 KB).
+- Default-OFF invariant proven by 5 dedicated tests.
+- Operator real-traffic signal: STEP 7 bench at intermediate commit `eccfc4d` passed within band [158.7, 413.7] @ 172.7 s — additional real-traffic robustness evidence beyond unit tests.
+
+### PR references
+
+- PR #461 — D1.A module + D1.B wiring (default OFF) + 3-prompt driver + cognitive-stages extension driver + first result doc.
+- PR #463 — Heuristic v2 (CAP_LIGHT 800 → 1200) + v2 sweep PASS + closure result docs + 7-tier gradient documentation.
+
+### Out of scope
+
+- Flipping `JAMES_ADAPTIVE_BUDGET` default to ON — token-reduction hypothesis target unmet on `gemma4:e4b`; stays OFF.
+- Production wiring of the 4 cognitive stages (planner / reflect / verify / synth) — cap-invariance removes urgency.
+- Direction 2 (task-weight metric formalization), Direction 3 (cross-family generalization), Direction 5 (auto-routing) — separate cycles.
+
+---
+
 ## [Unreleased] — v0.3.x patches
 
 ### Added
