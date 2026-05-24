@@ -322,10 +322,13 @@ via Stage D.1 (#430).
       dry-run from a separate GitHub account). External contributors
       can sign before opening their first PR with the relicensing
       grant in place.
-- [ ] `THIRD_PARTY_LICENSES.md` (dependency inventory; license-strength
-      independent) — **pending**
-- [ ] Quarterly trigger monitoring — first measurement recorded at the
-      v0.3 release in `docs/LICENSE_PLAN.md §8` — **pending**
+- [x] `THIRD_PARTY_LICENSES.md` (dependency inventory; license-strength
+      independent) — ✅ PR #414 (2026-05-23, `idna 3.13 → 3.15`
+      security pin refresh; full pip-licenses snapshot at repo root).
+      Re-run only on dependency churn.
+- [x] Quarterly trigger monitoring — first measurement recorded at the
+      v0.3 release in `docs/LICENSE_PLAN.md §8` — ✅ PR #415 (third
+      quarterly measurement, 2026-05-23, stars 5→13, triggers 0/5).
 - [ ] Trademark + patent tracks opened (lawyer consult scheduled,
       progress logged in `docs/LICENSE_PLAN.md §6 / §7`) — operator
       track
