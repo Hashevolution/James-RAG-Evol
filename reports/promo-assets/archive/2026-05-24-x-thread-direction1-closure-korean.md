@@ -1,4 +1,4 @@
-# X (Twitter) 스레드 — Direction 1 closure (한국어, 7-tweet)
+# X (Twitter) 스레드 — Direction 1 closure (한국어, 8-tweet)
 
 > Draft 2026-05-24. 한국어 LinkedIn publish 직후 발행 예정.
 >
@@ -92,7 +92,18 @@ cognitive sweep 1차: CAP_LIGHT=800 → 검토/사실확인 19/20 truncate, 품�
 empirical discipline 정합.
 ```
 
-## Tweet 7/7 (links + tag + hashtag)
+## Tweet 7/8 (citable archive — Zenodo DOI)
+
+```
+📌 인용 가능 archive (Zenodo DOI):
+doi.org/10.5281/zenodo.20363998
+
+Seo, J. (2026). PROJECT JAMES — Local-First Graph-RAG with Adaptive Reasoning Budget (v0.3.1). Zenodo.
+
+데이터 / 코드 / result docs 모두 영구 archive.
+```
+
+## Tweet 8/8 (links + tag + hashtag)
 
 ```
 🔗 PR #461: github.com/Hashevolution/James-RAG-Evol/pull/461

@@ -69,6 +69,9 @@ Sub-clauses now drafted:
 
 The joint piece outline trigger Robin endorsed on 2026-05-24 is now load-bearing on three independent stacks: hers (26b MoE), mine (e4b cognitive stack), and Ali's mid-June Gemini backend.
 
+📌 **Citable archive (Zenodo DOI)**: https://doi.org/10.5281/zenodo.20363998
+Seo, J. (2026). PROJECT JAMES — Local-First Graph-RAG with Adaptive Reasoning Budget (v0.3.1). Zenodo.
+
 🔗 PR #461 (D1.A module + D1.B wiring + 3-prompt experiment + 4-stage extension): https://github.com/Hashevolution/James-RAG-Evol/pull/461
 🔗 PR #463 (heuristic v2 + closure result docs + 7-tier gradient): https://github.com/Hashevolution/James-RAG-Evol/pull/463
 🔗 Cognitive-stages result doc: https://github.com/Hashevolution/James-RAG-Evol/blob/main/reports/promo-assets/v3prime-direction1-cognitive-stages-result.md

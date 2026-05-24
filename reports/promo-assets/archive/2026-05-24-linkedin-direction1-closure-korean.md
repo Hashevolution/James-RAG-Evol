@@ -83,6 +83,9 @@ Robin이 26b mode-split sweep에서 보여준 empirical discipline과 같은 패
 
 자메스 다음 cycle (Direction 2 — task-weight 측정 metric 공식화)이 이 7단계 데이터를 ground truth로 소비. **단일 metric으로 작업 무게 자동 예측**이 가능해지면 cap heuristic 자체가 measured signal로 교체됩니다.
 
+📌 **인용 가능 archive (Zenodo DOI)**: https://doi.org/10.5281/zenodo.20363998
+Seo, J. (2026). PROJECT JAMES — Local-First Graph-RAG with Adaptive Reasoning Budget (v0.3.1). Zenodo.
+
 🔗 PR #461 (D1.A 모듈 + D1.B wiring + 3-prompt 실험 + 4단계 확장): https://github.com/Hashevolution/James-RAG-Evol/pull/461
 🔗 PR #463 (heuristic v2 + closure result docs + 7-tier gradient): https://github.com/Hashevolution/James-RAG-Evol/pull/463
 🔗 Cognitive stages result doc: https://github.com/Hashevolution/James-RAG-Evol/blob/main/reports/promo-assets/v3prime-direction1-cognitive-stages-result.md
