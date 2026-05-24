@@ -304,12 +304,20 @@ class WikiIngestionMixin:
         )
         try:
             from llm.router import call_router
-            # max_tokens=1500: original prompt was short and default 0 (unlimited)
-            # was fine; the longer enriched prompt above pushed total context high
-            # enough that the model began truncating its JSON response (~700 chars
-            # in). Explicit budget keeps a complete 6-entity / 6-relation JSON in.
+            # max_tokens=4096: bumped from 1500 (2026-05-24) after a real-traffic
+            # report where a doc with multiple entities + occurred_at fields per
+            # entity (Musk-related companies, ~5 KB markdown) truncated mid-JSON
+            # at ~624 chars (Korean+English mix) → JSON parse fail → 0 entities
+            # created. Aligns with Direction 1's V3'.a~d 4-stage cognitive
+            # sweep finding (PR #461 / #463): on gemma4:e4b the entity-extract
+            # task has a natural-stop length above 1500 for multi-entity docs,
+            # behaves like the 'heavy synthesis' CAP_HEAVY=4096 tier in
+            # core/reasoning/budget.py. The model still stops naturally well
+            # below 4096 (Direction 1's cap-is-a-ceiling finding), so the bump
+            # incurs no measurable cost on smaller docs — only unblocks the
+            # multi-entity case.
             response = call_router(
-                prompt, task_type="extract", use_cache=False, max_tokens=1500,
+                prompt, task_type="extract", use_cache=False, max_tokens=4096,
             )
         except Exception as e:
             print(f"[ENTITY-EXTRACT] LLM call FAIL: {e}")
