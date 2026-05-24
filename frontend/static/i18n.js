@@ -352,6 +352,13 @@ const TRANSLATIONS = {
     'mem.feedback_ratio':    'Positive ratio',
     'mem.feedback_tracked':  'Tracked directions',
     'mem.feedback_no_signal': '(no signal yet)',
+    // Session list actions (admin Memory tab > session list)
+    'mem.delete_only':              'Delete',
+    'mem.summarize_delete':         'Summarize & Delete',
+    'mem.confirm_delete_only':      'Delete this session? (no summary, no LLM call)',
+    'mem.confirm_summarize_delete': 'Summarize and delete? LLM call required (~30-60s on gemma4:e4b). For a no-summary delete, use the "Delete" button instead.',
+    'mem.summarizing':              'Summarizing... (LLM call, may take 30-60s)',
+    'mem.deleted_no_summary':       'Session deleted (no summary saved)',
     'session.id':            'Session ID',
     'session.turns':         'Turns',
 
@@ -1130,6 +1137,13 @@ const TRANSLATIONS = {
     'mem.feedback_ratio':    '긍정 비율',
     'mem.feedback_tracked':  '추적 중인 방향',
     'mem.feedback_no_signal': '(신호 없음)',
+    // Session list actions (admin Memory tab > session list)
+    'mem.delete_only':              '삭제',
+    'mem.summarize_delete':         '요약 후 삭제',
+    'mem.confirm_delete_only':      '이 세션을 삭제할까요? (요약 없이, LLM 호출 없음)',
+    'mem.confirm_summarize_delete': '요약 후 삭제할까요? LLM 호출 필요 (gemma4:e4b에서 약 30-60초). 요약 없이 삭제하려면 "삭제" 버튼을 사용하세요.',
+    'mem.summarizing':              '요약 생성 중... (LLM 호출, 30-60초 소요)',
+    'mem.deleted_no_summary':       '세션 삭제 완료 (요약 저장 안 됨)',
     'session.id':            '세션 ID',
     'session.turns':         '대화 수',
 

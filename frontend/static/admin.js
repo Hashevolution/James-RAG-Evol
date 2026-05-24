@@ -173,6 +173,8 @@ function _bindFrontendEvents() {
         break;
       case 'summarize-and-delete':
         summarizeAndDelete(t.getAttribute('data-sid')); break;
+      case 'delete-session-only':
+        deleteSessionOnly(t.getAttribute('data-sid')); break;
       case 'patch-action':
         patchAction(
           t.getAttribute('data-patch-id'),
@@ -1540,6 +1542,8 @@ async function loadSessions() {
           <td class="mono">${s.started?.slice(0,16) || '-'}</td>
           <td class="mono">${s.last?.slice(0,16) || '-'}</td>
           <td>
+            <button class="btn" style="font-size:10px;background:rgba(240,98,146,.10);border:1px solid var(--red,#f06292);color:var(--red,#f06292);margin-right:4px"
+              data-action="delete-session-only" data-sid="${escapeHtml(sid)}" data-i18n='mem.delete_only'>Delete</button>
             <button class="btn btn-approve" style="font-size:10px"
               data-action="summarize-and-delete" data-sid="${escapeHtml(sid)}" data-i18n='mem.summarize_delete'>Summarize & Delete</button>
           </td>
@@ -1603,8 +1607,22 @@ function closeSessionTurns(e) {
 }
 
 async function summarizeAndDelete(sessionId) {
+  // Confirmation gate — LLM call is 30-60s long-running on gemma4:e4b.
+  // Operators frequently mistake this for the simple delete and end up
+  // waiting through a full reflect/verify-tier round-trip + a topic
+  // round-trip. Explicit confirm sets expectation.
+  const confirmMsg = t('mem.confirm_summarize_delete')
+    || `Summarize and delete? LLM call required (~30-60s on gemma4:e4b).\nFor a no-summary delete, use the "Delete" button instead.`;
+  if (!confirm(confirmMsg)) return;
+
+  // Long-running indicator — toast stays on screen until the request
+  // completes (override default 3s auto-dismiss).
+  const spinnerToast = toastPersistent(
+    t('mem.summarizing') || '⏳ Summarizing... (LLM call, may take 30-60s)',
+    'info',
+  );
   try {
-    // 1. 요약 저장
+    // 1. 요약 저장 (LLM call — long-running)
     const r = await api(`/history/summarize/?session_id=${sessionId}`, 'POST');
     if (r.success) {
       toast(`✅ ${r.topic || sessionId.slice(0,12)} saved`, 'success');
@@ -1616,7 +1634,51 @@ async function summarizeAndDelete(sessionId) {
     await loadLongTerm();
   } catch (e) {
     alert(`Failed: ${e.message}`);
+  } finally {
+    if (spinnerToast && spinnerToast.parentNode) spinnerToast.remove();
   }
+}
+
+/* ── Delete-only path (no LLM call) — for bench / temp / low-value
+   sessions where the summary is not worth a 30-60s LLM round-trip.
+   Single DELETE /history/ call + table refresh, completes in
+   sub-second. Direction 1 (PR #461) finding applied to UX: an LLM
+   call is a long-running stage and should be opt-in, not the default. */
+async function deleteSessionOnly(sessionId) {
+  const confirmMsg = t('mem.confirm_delete_only')
+    || `Delete session "${sessionId.slice(0,12)}"? (no summary, no LLM call)`;
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    await api(`/history/?session_id=${sessionId}`, 'DELETE');
+    toast(
+      t('mem.deleted_no_summary') || `🗑️ ${sessionId.slice(0,12)} deleted`,
+      'success',
+    );
+    await loadSessions();
+    // long-term unchanged for this path — no summary was written, so
+    // the long-term card doesn't need a re-fetch (saves an HTTP call).
+  } catch (e) {
+    alert(`Failed: ${e.message}`);
+  }
+}
+
+/* Persistent toast — like toast() but stays on screen until caller
+   .remove()s it. Returns the DOM element so the caller can dismiss
+   it from a try/finally. Used for long-running LLM calls where the
+   default 3s auto-dismiss would hide the indicator while the user
+   is still waiting. */
+function toastPersistent(msg, type = 'info') {
+  const t = document.createElement('div');
+  const accent = type === 'info'
+    ? 'rgba(124,106,247,.15);border:1px solid #7c6af7;color:#7c6af7'
+    : 'rgba(76,175,125,.15);border:1px solid var(--success);color:var(--success)';
+  t.style.cssText = `position:fixed;bottom:24px;right:24px;padding:10px 16px;
+    border-radius:8px;font-size:13px;z-index:100;background:${accent};
+    animation:fadeIn .25s ease`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  return t;
 }
 
 function toast(msg, type = 'success') {
