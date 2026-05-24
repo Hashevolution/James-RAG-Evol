@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT JAMES — 한눈에 보는 발표자료 (v0.3.0)</title>
+<!--
+  PROJECT JAMES — 발표용 슬라이드 (초등학생도 이해하는 버전 + 전문가용 근거)
+  자체 완결형 HTML. 인터넷 없이 동작 (JAMES의 로컬-퍼스트 철학과 동일).
+  조작법: → / Space 다음, ← 이전, F 전체화면, P 인쇄(PDF), 숫자키 점프.
+  팔레트는 제품 디자인 토큰(frontend/static/tokens.css)의 민트-온-다크 사이버 테마.
+-->
+<style>
+  :root{
+    --bg:#04060a; --surface:#07090e; --surface-2:#0b0e14;
+    --border:#1a1f28; --border-2:#14181f;
+    --accent:#6be7d0; --accent-soft:rgba(107,231,208,.10);
+    --accent-fg:#a8f3e0; --accent-hover:#56b9a7; --on-accent:#04060a;
+    --text:#f1f5f3; --text-soft:#c8d0cd; --muted:#8a8d99; --muted-2:#787c84;
+    --success:#22c55e; --danger:#ef4444; --warn:#f59e0b;
+    --radius:10px; --radius-lg:14px;
+    --font-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --font-ui:'Inter','Pretendard','Apple SD Gothic Neo',system-ui,-apple-system,'Malgun Gothic',sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    background-color:var(--bg);
+    background-image:
+      radial-gradient(70vw 55vh at 92% 0%, rgba(107,231,208,.055), transparent 60%),
+      radial-gradient(55vw 45vh at 8% 100%, rgba(107,231,208,.045), transparent 65%),
+      repeating-linear-gradient(0deg, rgba(107,231,208,.020) 0 1px, transparent 1px 38px),
+      repeating-linear-gradient(90deg, rgba(107,231,208,.020) 0 1px, transparent 1px 38px);
+    background-attachment:fixed;
+    color:var(--text);
+    font-family:var(--font-ui);
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* top accent rail */
+  body::before{
+    content:'';position:fixed;top:0;left:0;right:0;height:2px;
+    background:linear-gradient(90deg,var(--accent) 0%,var(--accent-fg) 100%);
+    opacity:.9;z-index:999;pointer-events:none;
+  }
+
+  /* progress bar */
+  #progress{position:fixed;top:0;left:0;height:2px;background:var(--accent);
+    box-shadow:0 0 12px rgba(107,231,208,.6);z-index:1000;transition:width .35s ease;}
+
+  /* deck */
+  #deck{position:relative;width:100vw;height:100vh;}
+  .slide{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:clamp(28px,5vw,90px);
+    opacity:0;visibility:hidden;transform:translateY(14px);
+    transition:opacity .4s ease,transform .4s ease,visibility .4s;
+    overflow:auto;
+  }
+  .slide.active{opacity:1;visibility:visible;transform:none;}
+
+  /* kicker / eyebrow */
+  .kicker{
+    font-family:var(--font-mono);font-size:clamp(11px,1.1vw,14px);
+    letter-spacing:.22em;text-transform:uppercase;color:var(--accent);
+    display:flex;align-items:center;gap:10px;margin-bottom:18px;
+  }
+  .kicker .live-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 0 0 rgba(107,231,208,.55);animation:pulse 1.8s ease-out infinite;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(107,231,208,.55);}60%{box-shadow:0 0 0 9px rgba(107,231,208,0);}}
+
+  h1{font-size:clamp(34px,6.2vw,76px);font-weight:700;line-height:1.05;letter-spacing:-.02em;}
+  h2{font-size:clamp(26px,3.8vw,48px);font-weight:700;line-height:1.12;letter-spacing:-.015em;margin-bottom:6px;}
+  h2 .accent,h1 .accent{color:var(--accent);}
+  .sub{font-size:clamp(15px,1.7vw,21px);color:var(--text-soft);font-weight:400;line-height:1.5;margin-top:14px;max-width:60ch;}
+  .lead{font-size:clamp(17px,2vw,26px);color:var(--text);line-height:1.5;max-width:38ch;}
+
+  /* metaphor card — the elementary-school analogy */
+  .metaphor{
+    border:1px solid var(--accent);border-radius:var(--radius-lg);
+    background:linear-gradient(180deg,rgba(107,231,208,.09),rgba(107,231,208,.03));
+    padding:clamp(18px,2.4vw,30px) clamp(20px,2.8vw,36px);
+    box-shadow:0 0 0 1px rgba(107,231,208,.10),0 0 34px rgba(107,231,208,.10);
+    position:relative;
+  }
+  .metaphor .tag{
+    position:absolute;top:-12px;left:22px;background:var(--bg);padding:0 10px;
+    font-family:var(--font-mono);font-size:12px;letter-spacing:.12em;color:var(--accent);
+  }
+  .metaphor .big{font-size:clamp(18px,2.3vw,30px);line-height:1.45;font-weight:600;}
+  .metaphor .emoji{font-size:clamp(24px,3vw,40px);margin-right:6px;}
+
+  /* evidence footnote box */
+  .evidence{
+    margin-top:auto;border-left:3px solid var(--accent);
+    background:var(--surface-2);border-radius:0 var(--radius) var(--radius) 0;
+    padding:14px 18px;font-size:clamp(12px,1.15vw,15px);color:var(--muted);
+    line-height:1.6;max-width:96ch;
+  }
+  .evidence b{color:var(--text-soft);font-weight:600;}
+  .evidence .label{font-family:var(--font-mono);font-size:11px;letter-spacing:.16em;
+    color:var(--accent);text-transform:uppercase;display:block;margin-bottom:6px;}
+  .evidence code{font-family:var(--font-mono);color:var(--accent-fg);font-size:.92em;
+    background:rgba(107,231,208,.07);padding:1px 5px;border-radius:4px;}
+
+  /* generic content layout helpers */
+  .row{display:flex;gap:clamp(18px,3vw,44px);align-items:flex-start;flex-wrap:wrap;}
+  .col{flex:1;min-width:280px;}
+  .stack>*+*{margin-top:18px;}
+
+  /* feature / point grid */
+  .grid{display:grid;gap:14px;margin-top:8px;}
+  .grid.g2{grid-template-columns:repeat(2,1fr);}
+  .grid.g3{grid-template-columns:repeat(3,1fr);}
+  .card{
+    border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);
+    padding:16px 18px;transition:border-color .2s,transform .2s;
+  }
+  .card:hover{border-color:var(--accent);transform:translateY(-2px);}
+  .card .ic{font-size:26px;display:block;margin-bottom:8px;}
+  .card .ti{font-weight:700;font-size:clamp(15px,1.5vw,19px);margin-bottom:5px;}
+  .card .de{color:var(--muted);font-size:clamp(12px,1.1vw,14.5px);line-height:1.5;}
+  .card .ev{margin-top:9px;font-family:var(--font-mono);font-size:11.5px;color:var(--accent);
+    border-top:1px dashed var(--border);padding-top:8px;}
+
+  /* stat blocks */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:6px 0;}
+  .stat{border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);
+    padding:18px 16px;text-align:center;}
+  .stat .num{font-family:var(--font-mono);font-size:clamp(26px,3.6vw,46px);font-weight:700;
+    color:var(--accent);line-height:1;letter-spacing:-.02em;}
+  .stat .cap{margin-top:8px;color:var(--text-soft);font-size:clamp(11px,1.1vw,14px);line-height:1.35;}
+  .stat .src{margin-top:5px;color:var(--muted-2);font-size:10.5px;font-family:var(--font-mono);}
+
+  /* pipeline */
+  .pipe{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0;}
+  .pipe .step{border:1px solid var(--border);background:var(--surface);border-radius:8px;
+    padding:9px 13px;font-size:clamp(12px,1.1vw,15px);font-weight:600;white-space:nowrap;}
+  .pipe .step .n{font-family:var(--font-mono);color:var(--accent);margin-right:7px;}
+  .pipe .arr{color:var(--accent);opacity:.6;font-size:14px;}
+  .pipe .step.guard{border-color:var(--accent);background:var(--accent-soft);}
+
+  /* roadmap timeline */
+  .timeline{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:10px;}
+  .tnode{border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);
+    padding:14px 12px;position:relative;}
+  .tnode.done{border-color:var(--success);}
+  .tnode.now{border-color:var(--accent);box-shadow:0 0 26px rgba(107,231,208,.16);}
+  .tnode .v{font-family:var(--font-mono);font-weight:700;font-size:clamp(13px,1.4vw,18px);}
+  .tnode.done .v{color:var(--success);} .tnode.now .v{color:var(--accent);}
+  .tnode .nm{font-size:clamp(11px,1.05vw,13.5px);color:var(--text-soft);margin-top:4px;line-height:1.3;}
+  .tnode .st{font-size:10.5px;color:var(--muted-2);margin-top:7px;font-family:var(--font-mono);}
+  .tnode .meta{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4;}
+
+  /* checklist (commercial needs) */
+  .check li{list-style:none;display:flex;gap:11px;align-items:flex-start;padding:8px 0;
+    border-bottom:1px solid var(--border-2);font-size:clamp(13px,1.25vw,16.5px);line-height:1.45;}
+  .check li .mk{flex:0 0 auto;width:22px;height:22px;border-radius:6px;display:grid;place-items:center;
+    font-size:13px;font-weight:700;margin-top:1px;}
+  .mk.have{background:rgba(34,197,94,.15);color:var(--success);border:1px solid rgba(34,197,94,.4);}
+  .mk.need{background:rgba(245,158,11,.13);color:var(--warn);border:1px solid rgba(245,158,11,.4);}
+  .check li .tx b{color:var(--text);} .check li .tx span{color:var(--muted);}
+
+  figure{margin:0;}
+  .shot{width:100%;border:1px solid var(--border);border-radius:var(--radius);display:block;
+    box-shadow:0 18px 50px rgba(0,0,0,.45);}
+  figcaption{color:var(--muted);font-size:12.5px;margin-top:9px;font-family:var(--font-mono);}
+
+  .pill{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--accent);
+    color:var(--accent);border-radius:999px;padding:5px 14px;font-size:13px;font-family:var(--font-mono);
+    background:var(--accent-soft);}
+  .pillrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
+  .badge-mit{border-color:var(--success);color:var(--success);background:rgba(34,197,94,.08);}
+
+  ul.clean{list-style:none;}
+  ul.clean li{padding:7px 0;padding-left:22px;position:relative;color:var(--text-soft);
+    font-size:clamp(13px,1.3vw,17px);line-height:1.5;}
+  ul.clean li::before{content:'▸';position:absolute;left:0;color:var(--accent);}
+  ul.clean li b{color:var(--text);}
+  ul.clean li code{font-family:var(--font-mono);color:var(--accent-fg);font-size:.9em;}
+
+  .note{color:var(--muted-2);font-size:12px;font-family:var(--font-mono);}
+
+  /* nav controls */
+  #nav{position:fixed;bottom:18px;right:22px;display:flex;align-items:center;gap:12px;z-index:1000;}
+  #nav button{background:var(--surface);border:1px solid var(--border);color:var(--text);
+    width:40px;height:40px;border-radius:50%;font-size:18px;cursor:pointer;transition:.2s;
+    display:grid;place-items:center;}
+  #nav button:hover{border-color:var(--accent);color:var(--accent);box-shadow:0 0 16px rgba(107,231,208,.25);}
+  #counter{font-family:var(--font-mono);font-size:13px;color:var(--muted);min-width:54px;text-align:center;}
+  #counter b{color:var(--accent);}
+
+  #dots{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:1000;}
+  #dots .dot{width:8px;height:8px;border-radius:50%;background:var(--border);cursor:pointer;transition:.2s;}
+  #dots .dot.active{background:var(--accent);box-shadow:0 0 10px rgba(107,231,208,.6);width:22px;border-radius:4px;}
+
+  #hint{position:fixed;bottom:20px;left:22px;z-index:1000;font-family:var(--font-mono);
+    font-size:11px;color:var(--muted-2);}
+
+  .footer-mark{position:fixed;top:16px;right:24px;z-index:998;font-family:var(--font-mono);
+    font-size:11px;letter-spacing:.18em;color:var(--muted-2);text-transform:uppercase;}
+
+  /* cover specifics */
+  .cover-logo{font-size:clamp(46px,9vw,120px);font-weight:700;letter-spacing:-.03em;line-height:.95;}
+  .cover-logo .dot{color:var(--accent);}
+
+  @media (max-width:780px){
+    .grid.g3,.stats{grid-template-columns:repeat(2,1fr);}
+    .timeline{grid-template-columns:repeat(2,1fr);}
+    #hint{display:none;}
+  }
+
+  /* print → PDF: one slide per page */
+  @media print{
+    body{overflow:visible;background:#04060a !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    #nav,#dots,#hint,#progress,.footer-mark{display:none !important;}
+    .slide{position:relative !important;opacity:1 !important;visibility:visible !important;
+      transform:none !important;height:100vh;page-break-after:always;break-after:page;}
+  }
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="footer-mark">PROJECT&nbsp;JAMES · v0.3.0</div>
+<div id="deck">
+
+  <!-- 1. COVER -->
+  <section class="slide active">
+    <div class="kicker"><span class="live-dot"></span>로컬-퍼스트 지식 추론 시스템 · 2026-05-24</div>
+    <div class="cover-logo">PROJECT&nbsp;JAMES<span class="dot">.</span></div>
+    <p class="sub" style="font-size:clamp(18px,2.3vw,28px);color:var(--text);margin-top:24px;">
+      내 컴퓨터 안에 사는 <span style="color:var(--accent)">'믿을 수 있는 AI 두뇌'</span>
+    </p>
+    <p class="sub">근거를 손가락으로 짚어주고, 사람이 승인해야만 바뀌며, 내 자료를 절대 밖으로 내보내지 않는 AI.</p>
+    <div class="pillrow">
+      <span class="pill">v0.3.0 Platform Skeleton</span>
+      <span class="pill badge-mit">MIT 오픈소스</span>
+      <span class="pill">OpenSSF Best Practices 통과</span>
+    </div>
+    <div class="evidence" style="margin-top:40px;">
+      <span class="label">📌 이 발표가 다루는 것</span>
+      개발 개념 · 아키텍처 · 로드맵(v0.1→v1.0) · 연구 성과 · 특허/상표/라이선스 · <b>실제 성과(숫자)</b> · 미래 비전 ·
+      <b>상업적 가치를 위해 필요한 것</b>까지 — 초등학생도 이해할 비유로, 전문가도 신뢰할 근거와 함께.
+    </div>
+  </section>
+
+  <!-- 2. WHAT IS JAMES -->
+  <section class="slide">
+    <div class="kicker">01 · 개념</div>
+    <h2>자메스(JAMES)가 <span class="accent">뭐예요?</span></h2>
+    <p class="sub">한 문장으로: <b style="color:var(--text)">내 컴퓨터 안에서만 일하는, 입이 무거운 도서관 사서.</b></p>
+    <div class="row" style="margin-top:26px;">
+      <div class="col">
+        <div class="metaphor">
+          <span class="tag">쉬운 비유</span>
+          <p class="big"><span class="emoji">📚</span> 내가 준 책(PDF·문서·사진)을 전부 읽고 기억해요.
+          질문하면 답을 주는데, <b style="color:var(--accent)">"몇 번째 책 몇 페이지에서 봤는지"</b>까지 짚어줘요.
+          그리고 그 책들을 <b style="color:var(--accent)">절대 밖으로 안 가져나가요.</b></p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="grid g3" style="grid-template-columns:1fr;">
+          <div class="card"><span class="ic">🏠</span><div class="ti">내 컴퓨터 안에서 (로컬)</div><div class="de">인터넷에 자료를 안 보냄. 노트북 한 대 + Ollama로 동작.</div></div>
+          <div class="card"><span class="ic">🔎</span><div class="ti">근거를 보여줌</div><div class="de">답마다 출처 문서 + 그래프 경로를 첨부. 근거 없으면 "근거 없음" 표시.</div></div>
+          <div class="card"><span class="ic">✅</span><div class="ti">사람이 승인</div><div class="de">시스템이 스스로 바뀌려면 반드시 사람의 승인 도장이 필요.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="evidence">
+      <span class="label">📌 근거</span>
+      <b>미션 정의</b> — "explicit reasoning paths(근거 경로) + role-based access(권한) + human-supervised improvement(사람 감독 개선)"
+      (<code>docs/ARCHITECTURE.md §1</code>). 설계 원칙 8가지 중 1번 <b>Local-first</b>, 2번 <b>Evidence-based reasoning</b>, 5번 <b>Human-supervised evolution</b>.
+      ERP·회계·예약 같은 시스템을 <b>대체하지 않고</b> 그 위에 얹는 분석/검색/정책 레이어(§2 Non-goals).
+    </div>
+  </section>
+
+  <!-- 3. HOW IS IT DIFFERENT -->
+  <section class="slide">
+    <div class="kicker">02 · 차별점</div>
+    <h2>보통 AI와 <span class="accent">뭐가 달라요?</span></h2>
+    <div class="row" style="margin-top:22px;">
+      <div class="col stack">
+        <div class="metaphor">
+          <span class="tag">쉬운 비유</span>
+          <p class="big"><span class="emoji">🗣️</span> 보통 챗봇 — <b>"어디서 들었는진 모르지만 그냥 술술 말함"</b> (가끔 지어냄).<br><br>
+          <span class="emoji">👉</span> 자메스 — <b style="color:var(--accent)">"이 답은 3번 문서 + 그래프 47개 경로에서 나왔어"</b>라고 손가락으로 짚어줌.</p>
+        </div>
+        <ul class="clean">
+          <li><b>지어내면 들킴</b> — 모든 답은 출처와 그래프 경로를 달고 나옴</li>
+          <li><b>왜 그 답인지 되돌려보기</b> — <code>trace_id</code> 하나로 전 과정 재생</li>
+          <li><b>아무나 못 봄</b> — 사람마다 볼 수 있는 자료가 다름(권한)</li>
+        </ul>
+      </div>
+      <div class="col">
+        <figure>
+          <img class="shot" src="../screenshots/03-chat-graph-paths.jpg" alt="채팅 답변에 그래프 경로 47개가 첨부된 화면">
+          <figcaption>실제 화면 — 답변 아래 "그래프 경로 47개 보기". 추론이 진짜로 그래프를 걷고 있다는 증거.</figcaption>
+        </figure>
+      </div>
+    </div>
+    <div class="evidence">
+      <span class="label">📌 근거</span>
+      <b>NL-throughout + Trace replay invariant</b> — 모든 추론 단계(planner·rerank·reflect·verify·tool)가 <code>audit_bridge</code>에 1행씩 기록,
+      "왜 X라고 답했나?"를 사후에 재구성 가능 (<code>scripts/replay_trace.py &lt;trace_id&gt;</code>, ARCHITECTURE §5.7.2).
+      RAGAS 측정값: <b>faithfulness(근거 충실도) 1.000</b>, context_precision/recall 1.000 (<code>eval/RESULTS.md</code>).
+    </div>
+  </section>
+
+  <!-- 4. FIVE STRONG FEATURES -->
+  <section class="slide">
+    <div class="kicker">03 · 핵심 강점</div>
+    <h2>흔히 같이 못 보는 5가지를 <span class="accent">한 몸에</span></h2>
+    <div class="grid g3" style="margin-top:18px;">
+      <div class="card"><span class="ic">🕸️</span><div class="ti">① 근거를 추적하는 그래프</div><div class="de">12종 관계로 지식을 연결. 모든 관계가 출처 목록을 들고 있어, 문서 1개를 지우면 그 문서에서 나온 지식만 정확히 갱신.</div><div class="ev">Knowledge Cascade A→E · 213 엔티티 / 656 관계</div></div>
+      <div class="card"><span class="ic">🧠</span><div class="ti">② 생각하는 과정</div><div class="de">초안→자기비판→수정, 사실확인·보안검증을 거쳐 답을 다듬는 인지 레이어.</div><div class="ev">Cognitive Layer 8단계 · trace_id 재생</div></div>
+      <div class="card"><span class="ic">🛡️</span><div class="ti">③ 보안은 '벽 그 자체'</div><div class="de">권한 검사를 문 앞에서만 하는 게 아니라, 검색·그래프·출력·도구 모든 곳에서 검사.</div><div class="ev">PolicyEngine 빼면 6개+ 모듈이 깨짐</div></div>
+      <div class="card"><span class="ic">📝</span><div class="ti">④ 모든 수정은 '품의서'</div><div class="de">위키 편집·작업 실행·자가수정 등 모든 쓰기는 제안→검토→관리자 승인→원자적 적용→감사기록.</div><div class="ev">Change Request primitive · 무단 쓰기 0</div></div>
+      <div class="card"><span class="ic">🌱</span><div class="ti">⑤ 스스로 자라되 사람이 OK</div><div class="de">피드백→후보→벤치 평가→<b>사람 승인</b>→배포→문제 시 자동 롤백.</div><div class="ev">배포 패치마다 approver_username 필수</div></div>
+      <div class="card"><span class="ic">💻</span><div class="ti">⑥ 100% 내 컴퓨터</div><div class="de">클라우드 없이 노트북 + Ollama로 동작. 클라우드는 '선택', 기본 아님.</div><div class="ev">로컬-퍼스트가 기본 설계 원칙</div></div>
+    </div>
+    <div class="evidence">
+      <span class="label">📌 근거</span>
+      각 기능은 <b>STEP 7 13문항 회귀 베이스라인 + RAGAS</b>로 검증되며, <code>core/{retrieval,graph,reasoning}</code>를 건드리는 PR은
+      벤치 수치 없이는 머지 불가(<code>CLAUDE.md</code> 규칙 #2). README "What's Different" 6항목과 일치.
+    </div>
+  </section>
+
+  <!-- 5. PIPELINE -->
+  <section class="slide">
+    <div class="kicker">04 · 동작 원리</div>
+    <h2>질문이 들어오면 <span class="accent">9개의 검문소</span>를 지나가요</h2>
+    <div class="metaphor" style="margin-top:20px;">
+      <span class="tag">쉬운 비유</span>
+      <p class="big"><span class="emoji">🚦</span> 공항 보안검색처럼, 질문 → 답까지 줄줄이 검문소를 통과해요.
+      각 검문소는 자기 일을 하고 <b style="color:var(--accent)">기록을 남겨요.</b> 그래서 나중에 "왜 이렇게 답했지?"를 전부 되감기할 수 있어요.</p>
+    </div>
+    <div class="pipe" style="margin-top:24px;">
+      <span class="step guard"><span class="n">1</span>보안 필터</span><span class="arr">→</span>
+      <span class="step"><span class="n">2</span>질문 라우터</span><span class="arr">→</span>
+      <span class="step"><span class="n">3</span>질문 재작성</span><span class="arr">→</span>
+      <span class="step"><span class="n">4</span>하이브리드 검색</span><span class="arr">→</span>
+      <span class="step"><span class="n">5</span>재정렬(Rerank)</span><span class="arr">→</span>
+      <span class="step"><span class="n">6</span>그래프 탐색</span><span class="arr">→</span>
+      <span class="step"><span class="n">7</span>추론·검증</span><span class="arr">→</span>
+      <span class="step guard"><span class="n">8</span>출력 필터(PII·권한)</span><span class="arr">→</span>
+      <span class="step guard"><span class="n">9</span>감사 로그</span>
+    </div>
+    <p class="sub" style="margin-top:18px;">검색은 <b style="color:var(--text)">벡터 60% + BM25 20% + 키워드 10% + 이름 10%</b>를 섞은 하이브리드. 형식 질의어(SQL/SPARQL)로 번역하지 않고 자연어 그대로 흐릅니다.</p>
+    <div class="evidence">
+      <span class="label">📌 근거</span>
+      파이프라인 도식은 <code>README.md "Architecture"</code> + <code>docs/ARCHITECTURE.md §5.7</code>.
+      <b>모든 단계가 하나의 <code>trace_id</code>로 1행씩 기록</b>되어 전 과정 재구성 가능(trace-replay invariant).
+      재정렬기(cross-encoder MiniLM)는 v0.3 기본 ON.
+    </div>
+  </section>
+
+  <!-- 6. SECURITY -->
+  <section class="slide">
+    <div class="kicker">05 · 안전장치</div>
+    <h2>도서관에 <span class="accent">출입증</span>이 있어요</h2>
+    <div class="row" style="margin-top:20px;">
+      <div class="col">
+        <div class="metaphor">
+          <span class="tag">쉬운 비유</span>
+          <p class="big"><span class="emoji">🎫</span> 손님마다 <b>"어느 책장까지 들어갈 수 있는지"</b> 출입증이 달라요.
+          나쁜 쪽지(해킹 명령)가 책 속에 숨어 들어와도, <b style="color:var(--accent)">"명령은 빼고 내용만"</b> 걸러서 읽어요.</p>
+        </div>
+        <ul class="clean" style="margin-top:16px;">
+          <li><b>역할 4단계</b> external &lt; employee &lt; manager &lt; admin</li>
+          <li><b>민감도 4단계</b> 자료마다 등급(RBAC + ABAC)</li>
+          <li><b>비밀키 없으면 아예 안 켜짐</b> (insecure 기본값 없음)</li>
+          <li><b>감사 로그는 append-only</b> — 승인은 적용 '전에' 기록</li>
+        </ul>
+      </div>
+      <div class="col">
+        <div class="grid g2" style="grid-template-columns:1fr;">
+          <div class="card"><div class="ti">8가지 보안 요구사항 R1–R8</div><div class="de">검색·그래프·도구·출력 게이팅 / 자가진화 사람승인 / 샌드박스 / 부팅 시 인증강제 / 감사추적 / 저신뢰 콘텐츠 무력화 / CI 게이트 / PII·권한 출력필터 — 각 항목이 <b>파일·라인 단위로 증빙</b>.</div><div class="ev">docs/security/ASSURANCE_CASE.md</div></div>
+          <div class="card"><div class="ti">정직한 한계 공개 T11–T18</div><div class="de">기호수준 인젝션 미방어, 플러그인 trust boundary 미동결 등 <b>아직 못 막는 것</b>도 8개 솔직히 추적. "프로덕션 아님"을 명시.</div><div class="ev">자랑이 아니라 감사 가능한 정직함</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="evidence">
+      <span class="label">📌 근거</span>
+      <b>"보안은 기능이 아니라 설계 원칙"</b> — <code>PolicyEngine</code>(<code>core/policy_engine.py</code>) 하나가 모든 권한 결정의 단일 출처.
+      done-when 기준: <b>이 파일을 지우면 6개 이상 모듈이 import 실패</b>(v0.2 Axis 4 완료). 위협모델 T1–T10 매핑, R1–R8 코드 인용 완비.
+    </div>
+  </section>
+
+  <!-- 7. GRAPH-RAG / KNOWLEDGE CASCADE -->
+  <section class="slide">
+    <div class="kicker">06 · 똑똑한 책장</div>
+    <h2>지식이 <span class="accent">거미줄처럼</span> 연결돼요</h2>
+    <div class="row" style="margin-top:20px;">
+      <div class="col">
+        <figure>
+          <img class="shot" src="../screenshots/06-3d-graph.jpg" alt="3D 온톨로지 그래프 시각화 화면">
+          <figcaption>실제 화면 — 3D 온톨로지 그래프(Three.js). 점은 개념, 선은 12종 관계.</figcaption>
+        </figure>
+      </div>
+      <div class="col stack">
+        <div class="metaphor">
+          <span class="tag">쉬운 비유</span>
+          <p class="big"><span class="emoji">🧩</span> 지식 조각마다 <b>"이건 어느 책에서 나왔어"</b> 꼬리표가 붙어요.
+          그래서 책 한 권을 빼면 <b style="color:var(--accent)">그 책에서 나온 지식만 콕 집어</b> 지우거나 고쳐요. 나머지는 그대로!</p>
+        </div>
+        <ul class="clean">
+          <li><b>관계마다 출처</b> <code>sources:[{doc_id,weight,role,ts}]</code></li>
+          <li><b>문서 삭제/수정 → 정밀 갱신</b> (Knowledge Cascade A→E)</li>
+          <li><b>12종 의미 관계</b>로 임베딩 너머의 뜻을 담음</li>
+        </ul>
+      </div>
+    </div>
+    <div class="evidence">
+      <span class="label">📌 근거</span>
+      v0.3.0 Knowledge Cascade 5단계(Phase A 스키마 → E 그래프 에디터) 전부 출시. Phase A에서 <b>213 엔티티 / 656 관계</b> 백필,
+      백업 <code>wiki.pre-v03-migration/</code>. 불변식 12개를 <code>tests/test_relations_schema.py</code>에 락. 결함 포스트모템까지 문서화.
+    </div>
+  </section>
+
+  <!-- 8. SELF-EVOLUTION + COGNITIVE -->
+  <section class="slide">
+    <div class="kicker">07 · 스스로 자람</div>
+    <h2>혼자 똑똑해지되, <span class="accent">사람이 도장</span>을 찍어야 해요</h2>
+    <div class="row" style="margin-top:20px;">
+      <div class="col stack">
+        <div class="metaphor">
+          <span class="tag">쉬운 비유</span>
+          <p class="big"><span class="emoji">🌱</span> 자메스가 "이렇게 바꾸면 더 똑똑해져요!"라고 <b>제안서</b>를 내요.
+          하지만 <b style="color:var(--accent)">선생님(사람)이 OK 도장을 찍어야만</b> 진짜로 바뀌어요. 바꾼 뒤 성적이 떨어지면 자동으로 되돌려요.</p>
+        </div>
+        <div class="pipe">
+          <span class="step">피드백</span><span class="arr">→</span>
+          <span class="step">후보</span><span class="arr">→</span>
+          <span class="step">벤치 평가</span><span class="arr">→</span>
+          <span class="step guard">사람 승인 ✋</span><span class="arr">→</span>
+          <span class="step">배포</span><span class="arr">→</span>
+          <span class="step">자동 롤백</span>
+        </div>
+      </div>
+      <div class="col">
+        <figure>
+          <img class="shot" src="../screenshots/05-knowledge-tracker.jpg" alt="자가진화 / 지식 트래커 화면">
+          <figcaption>실제 화면 — 도메인별 학습 누적(Knowledge Tracker). 자가진화 스캐폴드가 실제 데이터를 쌓는 중.</figcaption>
+        </figure>
+      </div>
+    </div>
+    <div class="evidence">
+      <span class="label">📌 근거</span>
+      <b>CLAUDE.md 규칙 #3</b>: approver_username 없는 자동 배포는 "버그". 기본 OFF(<code>JAMES_ENABLE_EVOLUTION=0</code>),
+      승인은 적용 <b>전에</b> 기록(R2/R5), 벤치 회귀 시 자동 롤백(v0.2 Axis 5 완료). 5-역할 멀티에이전트 상한(anti-sprawl)으로 무분별 확장 차단.
+    </div>
+  </section>
+
+  <!-- 9. ACTUAL ACHIEVEMENTS -->
+  <section class="slide">
+    <div class="kicker">08 · 실제 성과</div>
+    <h2>말이 아니라 <span class="accent">숫자</span>로</h2>
+    <div class="stats" style="margin-top:18px;">
+      <div class="stat"><div class="num">190</div><div class="cap">v0.2→v0.3 머지된 PR</div><div class="src">9일 / release notes</div></div>
+      <div class="stat"><div class="num">1,800+</div><div class="cap">테스트 (파일 129개)</div><div class="src">README v0.3.0</div></div>
+      <div class="stat"><div class="num">111%</div><div class="cap">OpenSSF Best Practices (Tiered)</div><div class="src">project 12806</div></div>
+      <div class="stat"><div class="num">6/6</div><div class="cap">v0.2 Foundation 축 통과</div><div class="src">2026-05-13 게이트</div></div>
+    </div>
+    <div class="grid g3" style="margin-top:16px;">
+      <div class="card"><div class="ti">✅ 평가 베이스라인</div><div class="de">STEP 7 13문항 락 + RAGAS. faithfulness 1.000, answer_relevancy 0.649–0.757 (band).</div></div>
+      <div class="card"><div class="ti">✅ 보안 보증</div><div class="de">R1–R8 코드 인용 증빙 + 위협모델 T1–T10 + 정직한 한계 T11–T18.</div></div>
+      <div class="card"><div class="ti">✅ 외부 검증 시작</div><div class="de">GitHub stars 1→13, forks 2→4 (4일). 타 연구실이 JSON 양식 채택(아래).</div></div>
+    </div>
+    <div class="evidence">
+      <span class="label">📌 근거 · 정직한 현황</span>
+      v0.3.0 출시 2026-05-17. <b>아직 프로덕션 준비는 아님</b> — HTTPS/SSO/멀티테넌시/백업 CLI는 v1.0 과제(<code>SECURITY.md</code>).
+      stars 13은 임계값(1,000)의 약 1.3%. 즉 "엔지니어링은 탄탄, 채택은 이제 시작" 단계.
+    </div>
+  </section>
+
+  <!-- 10. RESEARCH -->
+  <section class="slide">
+    <div class="kicker">09 · 연구 성과</div>
+    <h2>"베껴 쓰기는 공짜, <span class="accent">새 생각은 품이 든다</span>"</h2>
+    <div class="row" style="margin-top:18px;">
+      <div class="col stack">
+        <div class="metaphor">
+          <span class="tag">쉬운 비유</span>
+          <p class="big"><span class="emoji">📝</span> AI가 그대로 <b>베껴 답할 때(substitution)</b>는 매번 똑같이, 아주 빠르게(0.8초) 나와요.
+          하지만 <b style="color:var(--accent)">새로 생각해서 답할 때(synthesis)</b>는 5배 느리고 매번 달라져요. 이 '비용의 비대칭'을 숫자로 측정했어요.</p>
+        </div>
+        <ul class="clean">
+          <li><b>베껴 쓰기</b> — 62토큰 고정, <code>1/20 unique</code> (샘플링 통과)</li>
+          <li><b>새 생각</b> — 7단계 작업무게에 따라 <b>27배</b> 차이</li>
+          <li><b>모델이 클수록</b> 새 생각이 ~9배 토큰 효율적</li>
+        </ul>
+      </div>
+      <div class="col stack">
+        <div class="card"><div class="ti">🌐 다른 연구실이 우리 양식을 베낌</div><div class="de">Robin Converse가 <b>JAMES의 결과 JSON 스키마를 cross-stack 분석 템플릿으로 채택</b>(gemma4:26b로 재현, issue #448). "우리가 내는 데이터"에서 "남이 분석 기준으로 쓰는 양식"으로 승격.</div><div class="ev">triavalabs/gemma4-26b-mode-split</div></div>
+        <div class="card"><div class="ti">🤝 3저자 공동 연구 진행</div><div class="de">헤드라인 문구를 Ali·Robin·Hashevolution 3자 합의로 락. 공동 논문 consolidation 대기.</div><div class="ev">v3prime-protocol-v1 측정 프로토콜</div></div>
+      </div>
+    </div>
+    <div class="evidence">
+      <span class="label">📌 근거</span>
+      <code>reports/promo-assets/v3prime-e-substitution-synthesis-result.md</code> + <code>reports/research-runs/*.json</code>.
+      재현: <code>python scripts/research/v3prime_e_mode_split.py --n 20</code>. 3축 확립 — ①모드 분리 ②작업무게 그래디언트(7단계 단조증가, 27× 동적범위) ③모델규모 효율(파라미터↑ → 추론 라우팅 정밀도↑).
+    </div>
+  </section>
+
+  <!-- 11. ROADMAP -->
+  <section class="slide">
+    <div class="kicker">10 · 로드맵</div>
+    <h2>집 짓기에 비유하면 <span class="accent">지금은 '뼈대' 단계</span></h2>
+    <div class="metaphor" style="margin-top:16px;">
+      <span class="tag">쉬운 비유</span>
+      <p class="big"><span class="emoji">🏗️</span> 기초공사(v0.1) → 기초 다지기(v0.2) → <b style="color:var(--accent)">집 뼈대 세우기(v0.3, 지금!)</b> → 방 설계(v0.4) → 첫 입주자(v0.5) → 누구나 증축 가능한 완성 주택(v1.0)</p>
+    </div>
+    <div class="timeline" style="margin-top:22px;">
+      <div class="tnode done"><div class="v">v0.1</div><div class="nm">코어 엔진 + 스캐폴드</div><div class="st">RELEASED</div></div>
+      <div class="tnode done"><div class="v">v0.2</div><div class="nm">기초 다지기 (6축)</div><div class="st">CLOSED 05-13</div></div>
+      <div class="tnode now"><div class="v">v0.3</div><div class="nm">플랫폼 뼈대</div><div class="st">현재 · 05-17</div><div class="meta">Cognitive Layer · Knowledge Cascade · Change Request · Plugin 계약</div></div>
+      <div class="tnode"><div class="v">v0.4</div><div class="nm">메모리 수명주기 (Layer 4)</div><div class="st">~6개월 후</div><div class="meta">시간 유효성 · supersede 체인 · CASCADE/EVENT 분리</div></div>
+      <div class="tnode"><div class="v">v0.5</div><div class="nm">첫 도메인 파일럿</div><div class="st">+6개월</div><div class="meta">1개 도메인 · 외부 고객 6개월 무결성</div></div>
+      <div class="tnode"><div class="v">v1.0</div><div class="nm">프로덕션급 모체</div><div class="st">+6개월</div><div class="meta">HTTPS/SSO · 멀티테넌시 · 외부 개발자 팩 게시</div></div>
+    </div>
+    <div class="evidence">
+      <span class="label">📌 근거</span>
+      <code>ROADMAP.md</code> + <code>docs/PLATFORM_READINESS.md</code>. 각 단계는 "<b>다음 게이트 통과 전에는 다음 분화 금지</b>"라는 규율로 묶임.
+      v0.4는 원래 도메인 파일럿이었으나, v0.3 cascade가 드러낸 governance 공백 때문에 <b>Layer 4(수명주기)로 재타깃</b>, 파일럿은 v0.5로 이동(2026-05-22 결정).
+    </div>
+  </section>
+
+  <!-- 12. MOTHER PLATFORM STRATEGY -->
+  <section class="slide">
+    <div class="kicker">11 · 전략</div>
+    <h2>하나의 <span class="accent">'어미 나무'</span>를 키우는 중</h2>
+    <div class="row" style="margin-top:18px;">
+      <div class="col">
+        <div class="metaphor">
+          <span class="tag">쉬운 비유</span>
+          <p class="big"><span class="emoji">🌳</span> 법률·카페·여행·유통은 <b>가지(도메인 팩)</b>예요.
+          그런데 어미 나무가 튼튼해지기 전에 가지를 뻗으면 <b style="color:var(--accent)">나무 전체가 휘어버려요.</b>
+          그래서 v1.0까지는 <b>가지 없이 줄기만</b> 키워요.</p>
+        </div>
+        <p class="sub">"가지를 먼저 뻗고 싶은 유혹"이 이 프로젝트의 <b style="color:var(--text)">가장 큰 위험</b>이라고 문서에 못 박아둠.</p>
+      </div>
+      <div class="col">
+        <div class="grid g2">
+          <div class="card"><div class="ti">A 아키텍처</div><div class="de">모듈 &lt;20KB, 순환 import 0</div></div>
+          <div class="card"><div class="ti">B 확장 API</div><div class="de">플러그인 4종 + SemVer</div></div>
+          <div class="card"><div class="ti">C 평가 계약</div><div class="de">RAGAS + STEP-N 고정</div></div>
+          <div class="card"><div class="ti">D 운영 성숙</div><div class="de">HTTPS/SSO/백업/관측성</div></div>
+          <div class="card"><div class="ti">E 보안 경계</div><div class="de">PolicyEngine + 외부 레드팀</div></div>
+          <div class="card"><div class="ti">F 프로덕션 증명</div><div class="de">외부 고객 6개월 무회귀</div></div>
+        </div>
+        <p class="note" style="margin-top:10px;">6차원이 모두 임계치를 넘어야 도메인 분화가 '안전'.</p>
+      </div>
+    </div>
+    <div class="evidence">
+      <span class="label">📌 근거</span>
+      <code>docs/PLATFORM_READINESS.md</code> 6차원 + 4게이트. 분화 형태 3종: <b>Domain Pack</b>(VS Code 확장급) → <b>Distribution</b>(리눅스 배포판급) → <b>Vertical Product</b>(WordPress.com급).
+      비즈니스 트랙: <b>카페 도메인 1개 우선</b>, 6개월 운영 전엔 두 번째 도메인 금지(<code>v0.2.1-business-track.md §3</code>).
+    </div>
+  </section>
+
+  <!-- 13. PATENT / TRADEMARK / LICENSE -->
+  <section class="slide">
+    <div class="kicker">12 · 지식재산</div>
+    <h2>좋은 발명에 <span class="accent">이름표와 도장</span>을 준비</h2>
+    <div class="grid g3" style="margin-top:18px;">
+      <div class="card">
+        <span class="ic">📜</span><div class="ti">특허 트랙 (v0.3부터)</div>
+        <div class="de">후보 4영역: ①하이브리드+그래프-RAG 검색 통합 ②자가진화 4-게이트 패치 파이프라인 ③3단계 보안경계(RBAC+ABAC+명령격리) ④추론 모드 디스패치. 한국+미국 동시.</div>
+        <div class="ev">+ 외부 특허 감시(Amazon US12531820B2 인접도 3/5)</div>
+      </div>
+      <div class="card">
+        <span class="ic">™️</span><div class="ti">상표 트랙</div>
+        <div class="de">워드마크 "JAMES" / "PROJECT JAMES". 한국 1순위, 미국 2순위. 등록까지 12–18개월 예상.</div>
+        <div class="ev">변리사 자문 일정 = 다음 액션</div>
+      </div>
+      <div class="card badge-mit" style="border-color:var(--success)">
+        <span class="ic">⚖️</span><div class="ti">라이선스 = MIT 유지</div>
+        <div class="de">"보호할 생태계가 생긴 다음에 잠근다"는 황금률. 지금 잠그면 채택률만 하락.</div>
+        <div class="ev" style="color:var(--success)">CLA §4-bis 재라이선싱 권리 사전 확보</div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:16px;">
+      <div class="col">
+        <p class="sub"><b style="color:var(--text)">전환 트리거 T1–T5</b> — stars≥1,000 · 상용문의 분기 3건+ · 클로닝 발생 · 매출계획 확정 · enterprise PoC. <b>2개 이상</b> 충족 시에만 라이선스 재논의.</p>
+      </div>
+      <div class="col">
+        <p class="sub note">엘라스틱·해시코프·몽고DB·센트리 모두 <b style="color:var(--text-soft)">permissive로 시작 후 스타 수만 개 + 클로닝 손해가 실제 발생한 뒤에야</b> 강화 전환. 처음부터 BUSL/AGPL로 시작한 곳은 대부분 채택 0.</p>
+      </div>
+    </div>
+    <div class="evidence">
+      <span class="label">📌 근거 · 정직한 현황</span>
+      <code>docs/LICENSE_PLAN.md §6/§7</code>. <b>특허·상표 모두 아직 출원 진행 0 (계획·후보 식별 단계)</b> — 변리사 자문 일정 잡기가 미진행 액션.
+      Defensive Patent Pledge(Tesla 모델)도 검토 항목. 현재 라이선스 트리거 충족 <b>0/5</b>.
+    </div>
+  </section>
+
+  <!-- 14. COMMERCIAL NEEDS -->
+  <section class="slide">
+    <div class="kicker">13 · 상업화 분석</div>
+    <h2>돈 버는 제품이 되려면 <span class="accent">아직 뭐가 필요할까?</span></h2>
+    <p class="sub">엔지니어링 토대는 강하지만, '상업적 가치'까지는 솔직히 빈칸이 많습니다. 가진 것(✓)과 필요한 것(△)을 나눠봤어요.</p>
+    <ul class="check" style="margin-top:14px;">
+      <li><span class="mk have">✓</span><span class="tx"><b>탄탄한 토대</b> — 보안 보증·평가 베이스라인·OpenSSF 배지·190 PR·1,800+ 테스트. <span>신뢰의 출발점은 마련됨.</span></span></li>
+      <li><span class="mk need">△</span><span class="tx"><b>실사용자·채택</b> — <span>현재 stars 13 / 외부 deployer 0. 임계값(1,000 stars, 10 deployer)까지 거리가 큼. 채택 인프라(<code>/feedback</code>)도 미설치.</span></span></li>
+      <li><span class="mk need">△</span><span class="tx"><b>운영 성숙도</b> — <span>HTTPS·SSO·SAML·멀티테넌시·백업/복구 CLI·Prometheus/OpenTelemetry. 전부 v1.0 과제로 아직 없음.</span></span></li>
+      <li><span class="mk need">△</span><span class="tx"><b>외부 보안 검증</b> — <span>지금은 합성·내부 테스트. 외부 레드팀 prompt-injection 패스가 v0.5 필수.</span></span></li>
+      <li><span class="mk need">△</span><span class="tx"><b>첫 도메인 PoC</b> — <span>카페 1곳에서 6개월 무회귀 운영 = 모든 영업·투자의 핵심 증거물.</span></span></li>
+      <li><span class="mk need">△</span><span class="tx"><b>지속가능성(Bus factor ≥ 2)</b> — <span>현재 1인 + AI. 30일 부재에도 견디는 체계 필요.</span></span></li>
+      <li><span class="mk need">△</span><span class="tx"><b>수익 후크</b> — <span>MIT 유지 중. Open Core 전환 인프라(CLA·plugin license 필드)는 준비됐으나, 매출 모델은 미확정.</span></span></li>
+    </ul>
+    <div class="evidence">
+      <span class="label">📌 근거</span>
+      필요 항목은 <code>ROADMAP.md</code> v1.0 deliverables + <code>PLATFORM_READINESS.md</code> Gate v1.0과 정확히 일치.
+      자본 경로(공개 요약): 예비창업패키지(비희석) → 카페 PoC → 시드 → Series A (<code>v0.2.1-business-track.md §4</code>). 구체 영업·재무는 비공개 노트.
+    </div>
+  </section>
+
+  <!-- 15. FUTURE VISION -->
+  <section class="slide">
+    <div class="kicker">14 · 미래 비전</div>
+    <h2>모두가 <span class="accent">자기만의 믿을 수 있는 AI 두뇌</span>를</h2>
+    <div class="row" style="margin-top:20px;">
+      <div class="col">
+        <div class="metaphor">
+          <span class="tag">쉬운 비유</span>
+          <p class="big"><span class="emoji">🧠</span> 병원·법무팀·카페 본사·여행사가 각자 <b>자기 컴퓨터 안에</b> 자메스 두뇌를 두고,
+          필요한 <b style="color:var(--accent)">'가지(도메인 팩)'</b>만 끼워 쓰는 세상. 클라우드에 비밀을 안 맡겨도 되는 AI.</p>
+        </div>
+      </div>
+      <div class="col">
+        <ul class="clean">
+          <li><b>도메인 팩 생태계</b> — 법률·식품·유통·여행이 코어 수정 0줄로 분기</li>
+          <li><b>외부 개발자가 직접 팩 게시</b> (v1.0 이후 마켓플레이스)</li>
+          <li><b>로컬-퍼스트의 가치 상승</b> — 데이터 주권·규제(온프렘) 수요 확대</li>
+          <li><b>모체 투자 복리</b> — 보안·관측성·평가·정책을 도메인마다 재사용</li>
+        </ul>
+      </div>
+    </div>
+    <div class="evidence">
+      <span class="label">📌 근거</span>
+      분화 3형태(Pack / Distribution / Vertical Product)와 진입 조건은 <code>PLATFORM_READINESS.md §4</code>.
+      타깃 교집합: <b>로컬/온프렘 전용 + 멀티도메인 누적 + 한국어 우선</b>. "작지만 실재하는 시장"으로 정의.
+    </div>
+  </section>
+
+  <!-- 16. CLOSING -->
+  <section class="slide">
+    <div class="kicker"><span class="live-dot"></span>마무리</div>
+    <h1 style="margin-top:8px;">한 줄로 <span class="accent">기억하기</span></h1>
+    <p class="lead" style="margin-top:26px;font-size:clamp(20px,2.8vw,38px);max-width:24ch;">
+      "<span style="color:var(--accent)">근거</span>를 보여주고,
+      <span style="color:var(--accent)">사람</span>이 책임지고,
+      <span style="color:var(--accent)">내 컴퓨터 안</span>에서만 도는 AI 두뇌."
+    </p>
+    <div class="grid g3" style="margin-top:30px;">
+      <div class="card"><div class="ti">지금 (v0.3.0)</div><div class="de">플랫폼 뼈대 완성 · 6축 통과 · 보안 보증 · 연구 양식이 외부에 채택됨.</div></div>
+      <div class="card"><div class="ti">다음 (v0.4→v0.5)</div><div class="de">메모리 수명주기 → 카페 도메인 첫 PoC 6개월 무회귀.</div></div>
+      <div class="card"><div class="ti">목표 (v1.0)</div><div class="de">프로덕션급 모체 → 누구나 도메인 팩 게시.</div></div>
+    </div>
+    <div class="pillrow" style="margin-top:30px;">
+      <span class="pill">github.com/Hashevolution/James-RAG-Evol</span>
+      <span class="pill badge-mit">MIT</span>
+      <span class="pill">README.beginner.ko.md — 10살도 설치 가능</span>
+    </div>
+    <div class="evidence">
+      <span class="label">📌 더 깊이</span>
+      전략·근거 전문: <code>docs/PLATFORM_READINESS.md</code> · <code>docs/ARCHITECTURE.md</code> · <code>ROADMAP.md</code> ·
+      <code>docs/security/ASSURANCE_CASE.md</code> · <code>docs/LICENSE_PLAN.md</code>. 발표자료 자체도 자메스 철학대로 <b>인터넷 없이 동작하는 단일 파일</b>.
+    </div>
+  </section>
+
+</div>
+
+<div id="dots"></div>
+<div id="hint">← → 또는 Space로 이동 · F 전체화면 · P 인쇄(PDF)</div>
+<div id="nav">
+  <button id="prev" aria-label="이전">‹</button>
+  <span id="counter"><b>1</b> / 16</span>
+  <button id="next" aria-label="다음">›</button>
+</div>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var total = slides.length;
+  var i = 0;
+  var dotsWrap = document.getElementById('counter');
+  var progress = document.getElementById('progress');
+  var dotsBox = document.getElementById('dots');
+
+  // build dots
+  slides.forEach(function(_, idx){
+    var d = document.createElement('div');
+    d.className = 'dot' + (idx===0?' active':'');
+    d.addEventListener('click', function(){ go(idx); });
+    dotsBox.appendChild(d);
+  });
+  var dots = Array.prototype.slice.call(dotsBox.children);
+
+  function render(){
+    slides.forEach(function(s, idx){ s.classList.toggle('active', idx===i); });
+    dots.forEach(function(d, idx){ d.classList.toggle('active', idx===i); });
+    document.querySelector('#counter b').textContent = (i+1);
+    progress.style.width = ((i)/(total-1)*100) + '%';
+    // reset scroll of active slide
+    if(slides[i]) slides[i].scrollTop = 0;
+  }
+  function go(n){ i = Math.max(0, Math.min(total-1, n)); render(); }
+  function next(){ go(i+1); }
+  function prev(){ go(i-1); }
+
+  document.getElementById('next').addEventListener('click', next);
+  document.getElementById('prev').addEventListener('click', prev);
+
+  document.addEventListener('keydown', function(e){
+    if(e.key==='ArrowRight' || e.key===' ' || e.key==='PageDown'){ e.preventDefault(); next(); }
+    else if(e.key==='ArrowLeft' || e.key==='PageUp'){ e.preventDefault(); prev(); }
+    else if(e.key==='Home'){ e.preventDefault(); go(0); }
+    else if(e.key==='End'){ e.preventDefault(); go(total-1); }
+    else if(e.key==='f' || e.key==='F'){ if(!document.fullscreenElement){ document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen(); } else { document.exitFullscreen&&document.exitFullscreen(); } }
+    else if(e.key==='p' || e.key==='P'){ e.preventDefault(); window.print(); }
+    else if(/^[1-9]$/.test(e.key)){ go(parseInt(e.key,10)-1); }
+  });
+
+  // touch swipe
+  var x0=null;
+  document.addEventListener('touchstart', function(e){ x0 = e.touches[0].clientX; }, {passive:true});
+  document.addEventListener('touchend', function(e){
+    if(x0===null) return;
+    var dx = e.changedTouches[0].clientX - x0;
+    if(Math.abs(dx)>50){ dx<0 ? next() : prev(); }
+    x0=null;
+  }, {passive:true});
+
+  render();
+})();
+</script>
+</body>
+</html>
