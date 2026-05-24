@@ -336,6 +336,63 @@ two evidence layers, not one.
 Result first-shared with Robin via issue #448 follow-up comment
 (her axis-1 owned property + new sub-finding on her axis 3).
 
+#### Sub-finding — answer-convergence is a multi-tier gradient (2026-05-24)
+
+Direction 1's adaptive-budget A/B sweep
+(`scripts/research/v3prime_direction1_adaptive_budget.py`, N=20
+× 2 arms × 3 prompt types on `gemma4:e4b` at T=0.2) added a third
+prompt tier between substitution and heavy synthesis: **light
+synthesis** — a one-sentence answer to *"what is the standard
+refund window for an unworn, tagged item?"* on the same fixture.
+
+Unique-response counts across all three tiers on e4b:
+
+| Prompt tier | Unique responses (N=20) | Token range |
+|---|---|---|
+| substitution (verbatim retrieval) | **1/20** (sampling bypass) | 62 flat |
+| **light synthesis (constrained, 1 sentence)** | **4/20** (partial clustering) | 23-340 |
+| heavy synthesis (multi-step + decision tree) | 20/20 (full sampling) | 1443-1886 |
+
+The **light tier's `4/20`** is the new finding — it sits between
+substitution's bit-for-bit determinism and heavy synthesis's
+full variability. Mechanism 2 (answer convergence) is therefore
+a **gradient**, not a binary, on a single model.
+
+The 4-cluster on the light arm is structural — *"answer in one
+sentence"* constrains the answer space to a small finite set of
+phrasings (3 paraphrases of *"30 days"*, 1 alternative referencing
+the exchange window). The model isn't sampling randomly within that
+constraint; it's choosing from the small finite set.
+
+**Combined with the 26b cross-stack data** the convergence axis
+now looks like this:
+
+| Tier | e4b (8B) unique | 26b MoE (25.8B) unique |
+|---|---|---|
+| substitution | 1/20 (1/40 on 26b's expanded matrix) | 1/40 |
+| light | 4/20 | (not measured yet — Robin's matrix was 2×2 cap × prompt-type without a constrained-synthesis arm) |
+| heavy | 20/20 | 6/20 — 9/20 (30-45%) |
+
+**Joint-paper consequence of the sub-finding**:
+
+The headline phrase still holds verbatim. The sub-clause expands:
+
+| Phrase | Status |
+|---|---|
+| *"Substitution is free. Synthesis costs in proportion to what it has to invent."* | 3-author locked (unchanged) |
+| *"…and inversely to parameter count."* | Draft proposal (unchanged) |
+| **"…and the gradient is multi-tier: sampling bypass at verbatim, partial clustering on tight-constraint synthesis, full sampling on open-ended generation."** | **New draft proposal — measured 2026-05-24, JAMES-side; awaits Robin / Ali endorsement** |
+
+The cap-invariance result (cap=200 vs cap=4096 produces identical
+`eval_count` and identical unique counts on e4b) also lands here:
+the gradient holds across cap budgets, so the new sub-clause is
+not a cap-budget artifact.
+
+**Action item**: if Robin's 26b sweep ever adds a constrained-synthesis
+arm ("answer in one sentence", similar shape to our light tier), the
+corresponding cell would test whether the multi-tier gradient holds at
+26b too. Until then, the multi-tier claim is e4b-confirmed only.
+
 ### Latency caveat
 
 Robin's substitution-arm latency of 3.8s is **not directly
