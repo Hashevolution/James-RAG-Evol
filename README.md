@@ -5,9 +5,10 @@
 > behind a human approval gate.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-v0.3.0-blue.svg)](docs/release_notes_v0.3.0.md)
+[![Status](https://img.shields.io/badge/Status-v0.3.1-blue.svg)](docs/release_notes_v0.3.1.md)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12806/badge)](https://www.bestpractices.dev/projects/12806)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20363998.svg)](https://doi.org/10.5281/zenodo.20363998)
 
 ![PROJECT JAMES — 3D ontology graph visualizer](reports/promo-assets/screenshots/06-3d-graph.jpg)
 
