@@ -206,7 +206,16 @@ The following moved to v0.3 to keep v0.2 focused:
 
 ---
 
-## v0.3.0 — Platform Skeleton (current cycle, entered 2026-05-13)
+## v0.3.0 — Platform Skeleton (entered 2026-05-13, **closed 2026-05-25** at v0.3.3 stabilization)
+
+**Closure summary (2026-05-25)**: Platform Skeleton theme completed across three Zenodo-archived releases:
+
+- **v0.3.0** — V3' Protocol v1 methodology spec (`docs/research/v3prime-protocol-v1.md`)
+- **v0.3.1** (DOI `10.5281/zenodo.20363998`) — D1 Adaptive Budgeting closure with 7-tier natural-stop gradient
+- **v0.3.2** (DOI `10.5281/zenodo.20372649`) — D5 Auto-routing on Provider Contract (10-PR sequence #474–#484)
+- **v0.3.3** (DOI `10.5281/zenodo.20374227`) — D6 retry-wiring follow-up cycle (PR #486 wiring + #487 audit + #488 native Ollama done_reason)
+
+ROADMAP §Plugin contract / Change Request / Knowledge cascade / Governance / Carryover / v0.3-only follow-ups / Measurement framework Direction 1+4+5+6(J) — all checked. Done-when: 3/4 fully satisfied + 1/4 partial (first external pack author trial awaits Ali mid-June Gemini PR). v0.4 entry triggered.
 
 **Theme**: define and freeze the extension contract that all future
 domain packs will be built against.
@@ -520,7 +529,11 @@ the post-marathon reconciliation table.
 
 ---
 
-## v0.4.0 — Layer 4 Lifecycle Semantics (~6 months after v0.3)
+## v0.4.0 — Layer 4 Lifecycle Semantics (current cycle, entered 2026-05-25)
+
+**Entry handover**: `docs/handovers/v0.4.0-entry-track.md` — 6-sprint plan covering data correctness, UI consistency, plumbing, retrieval quality, Layer 4 main theme (T1+T2+T7), and long-term backlog. Sprint 0 (this entry) + Sprint 1 (graph entity-event relation diagnostic + language detection&matching) start first.
+
+### Original Layer 4 scope (preserved below for the eventual T1/T2/T7 sprint)
 
 **Theme**: deepen the memory lifecycle beyond the v0.3 Layer 3
 cascade (Memory OS) into Layer 4 — two complementary tracks
