@@ -183,6 +183,17 @@ class GemmaClient:
             print로 로깅돼 운영자가 보임. 하나도 설치 안 된 경우 명확한
             "ollama pull X" 안내 메시지로 RuntimeError 발생.
         """
+        # D6 follow-up (2026-05-25) — reset stale done_reason from
+        # prior call before *anything else* (including model resolve
+        # that may raise RuntimeError when no models are installed).
+        # If reset happened after resolve, a failed resolve would
+        # leave the previous truncation signal stashed and leak
+        # upward through OllamaClient.generate_meta on the next
+        # successful call. Reset-at-entry guarantees the invariant
+        # "stash is empty unless the most recent uncached
+        # resp.json() populated it."
+        self._last_done_reason = ""
+
         if model:
             # Caller specified a tag — verify it's installed before
             # hitting Ollama. If not installed, the resolver falls
@@ -212,11 +223,6 @@ class GemmaClient:
                 print(f"[MODEL_RESOLVE] {resolved.warning}")
         self._total_calls += 1
         cache_key = self._generate_cache_key(prompt)
-
-        # D6 follow-up — reset stale done_reason from prior call so
-        # a cache hit / early-return path doesn't leak the previous
-        # call's signal upward through `OllamaClient.generate_meta`.
-        self._last_done_reason = ""
 
         # 긴 프롬프트 캐시 금지
         if len(prompt) > 2000:
