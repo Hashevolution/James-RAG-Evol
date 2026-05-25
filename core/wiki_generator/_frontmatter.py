@@ -413,6 +413,17 @@ class WikiFrontmatterMixin:
             or ""
         )[:500]
 
+        # v0.4 Sprint 3 BL-2 — strip the duplicate `summary` key from
+        # attributes before frontmatter dump. The canonical value lives
+        # at top-level (`summary` field below); `attributes.summary`
+        # is a legacy duplicate kept only as a *read* fallback for
+        # older wiki files on disk (see lookup above). New writes stop
+        # emitting the duplicate so the disk shape converges on one
+        # source of truth over time. Legacy files remain readable.
+        attributes_for_dump = {
+            k: v for k, v in attributes.items() if k != "summary"
+        }
+
         frontmatter = {
             # ── 식별 정보 ──
             "entity_id":       entity_id,
@@ -438,7 +449,7 @@ class WikiFrontmatterMixin:
             "sensitivity":     self._default_sensitivity(entity_type),
             "owner":           "system",
             # ── 메타 ──
-            "attributes":      attributes,
+            "attributes":      attributes_for_dump,
             "created_at":      datetime.now().isoformat(),
             "updated_at":      datetime.now().isoformat(),
             "version":         1,

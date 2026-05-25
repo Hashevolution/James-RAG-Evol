@@ -162,13 +162,19 @@ class WikiIngestionMixin:
             # without this mirror every newly-ingested entity's body section
             # stays empty even though `attributes.summary` carries the LLM
             # description.
+            # v0.4 Sprint 3 BL-2 — stop emitting `attributes.summary` here.
+            # Top-level `summary` is canonical; the duplicate at
+            # `attributes.summary` was kept only because older callers
+            # passed it that way. _frontmatter.py:create_entity_file still
+            # reads `attributes.summary` as a fallback for legacy wiki
+            # files on disk, but new ingestion writes shouldn't keep
+            # creating the duplicate.
             _desc = (ent.get("description") or "")[:300]
             payload = {
                 "name":        name,
                 "type":        etype,
                 "summary":     _desc,
                 "attributes":  {
-                    "summary":          _desc,
                     "source_document":  filename,
                 },
                 "relations":   ent_relations,
