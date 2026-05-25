@@ -336,6 +336,7 @@ class QueryRewriter:
                 prompt,
                 cap=cap,
                 timeout=self._timeout,
+                stage="query_rewriter",
             )
         except Exception:
             return (query, int((time.time() - t0) * 1000), True)

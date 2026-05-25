@@ -16,7 +16,9 @@ Coverage:
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+import sqlite3
+import tempfile
+from unittest.mock import MagicMock, patch
 
 from core.reasoning.backends import CompletionResult
 from core.reasoning.budget import (
@@ -211,3 +213,135 @@ def test_ollama_done_reason_handles_json_terminator():
     # JSON-style outputs ending with `}` or `]` are clean stops
     out = _run_ollama('{"grounded": true}', max_tokens=10)
     assert out.done_reason == ""
+
+
+# ─── audit emit on retry (D6 follow-up: monitoring channel) ──────
+
+
+_AUDIT_SCHEMA = """
+CREATE TABLE IF NOT EXISTS audit_log (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp    TEXT    NOT NULL,
+    user_role    TEXT    NOT NULL,
+    endpoint     TEXT    NOT NULL,
+    query        TEXT,
+    answer       TEXT,
+    graph_paths  TEXT,
+    blocked      INTEGER DEFAULT 0,
+    security_event TEXT,
+    elapsed_sec  REAL,
+    ip_address   TEXT
+)
+"""
+
+
+def _fresh_audit_db() -> str:
+    f = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+    f.close()
+    conn = sqlite3.connect(f.name)
+    conn.execute(_AUDIT_SCHEMA)
+    conn.commit()
+    conn.close()
+    return f.name
+
+
+def _read_retry_rows(db_path: str):
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    try:
+        return conn.execute(
+            "SELECT * FROM audit_log WHERE endpoint='reason:retry' "
+            "ORDER BY id ASC"
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+def test_audit_row_emitted_when_retry_fires():
+    """The retry path must drop a `reason:retry` row recording
+    cap_before/cap_after/backend so operators can monitor truncation
+    hits (D6 follow-up: monitoring channel).
+
+    `audit_bridge._resolve_answer` JSON-encodes non-reserved entry
+    keys into the `answer` column, so the asserts decode the JSON.
+    """
+    import json
+    backend = MagicMock()
+    backend.complete.side_effect = [
+        CompletionResult(text="trunc", backend_id="ollama_local", done_reason="length"),
+        CompletionResult(text="full", backend_id="ollama_local", done_reason=""),
+    ]
+    db = _fresh_audit_db()
+    with patch("core.audit_bridge._DEFAULT_AUDIT_DB", db):
+        complete_with_retry(
+            backend, "팔란티어가 뭐야",
+            cap=CAP_LIGHT, stage="query_rewriter",
+        )
+    rows = _read_retry_rows(db)
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["endpoint"] == "reason:retry"
+    assert row["query"] == "query_rewriter"
+    payload = json.loads(row["answer"])
+    assert payload["cap_before"] == 1200
+    assert payload["cap_after"] == 2400
+    assert payload["backend"] == "ollama_local"
+    assert payload["prompt_hash"]   # non-empty 8-char hash
+
+
+def test_audit_row_NOT_emitted_when_no_retry():
+    """Clean stop response → no `reason:retry` row."""
+    backend = MagicMock()
+    backend.complete.return_value = CompletionResult(
+        text="ok", backend_id="stub", done_reason=""
+    )
+    db = _fresh_audit_db()
+    with patch("core.audit_bridge._DEFAULT_AUDIT_DB", db):
+        complete_with_retry(backend, "any", cap=CAP_LIGHT, stage="query_rewriter")
+    rows = _read_retry_rows(db)
+    assert rows == []
+
+
+def test_audit_row_NOT_emitted_when_retry_capped():
+    """Already at CAP_HEAVY → no retry, no audit row."""
+    backend = MagicMock()
+    backend.complete.return_value = CompletionResult(
+        text="trunc at heavy", backend_id="stub", done_reason="length"
+    )
+    db = _fresh_audit_db()
+    with patch("core.audit_bridge._DEFAULT_AUDIT_DB", db):
+        complete_with_retry(backend, "any", cap=CAP_HEAVY, stage="query_rewriter")
+    rows = _read_retry_rows(db)
+    assert rows == []
+
+
+def test_audit_row_uses_backend_id_when_stage_empty():
+    """Caller may omit `stage` — audit row falls back to backend_id."""
+    backend = MagicMock()
+    backend.complete.side_effect = [
+        CompletionResult(text="trunc", backend_id="ollama_local", done_reason="length"),
+        CompletionResult(text="full", backend_id="ollama_local", done_reason=""),
+    ]
+    db = _fresh_audit_db()
+    with patch("core.audit_bridge._DEFAULT_AUDIT_DB", db):
+        complete_with_retry(backend, "any", cap=CAP_SUBSTITUTION)
+    rows = _read_retry_rows(db)
+    assert len(rows) == 1
+    assert rows[0]["query"] == "ollama_local"
+
+
+def test_audit_emit_failure_does_not_block_retry():
+    """audit_bridge raising must not break the retry call path."""
+    backend = MagicMock()
+    backend.complete.side_effect = [
+        CompletionResult(text="trunc", backend_id="stub", done_reason="length"),
+        CompletionResult(text="full", backend_id="stub", done_reason=""),
+    ]
+    with patch(
+        "core.audit_bridge.mirror_to_audit_db",
+        side_effect=RuntimeError("simulated audit failure"),
+    ):
+        result = complete_with_retry(backend, "any", cap=CAP_LIGHT, stage="x")
+    # The retry still happened and the second result is returned
+    assert result.text == "full"
+    assert backend.complete.call_count == 2

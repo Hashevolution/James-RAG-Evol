@@ -192,6 +192,7 @@ def complete_with_retry(
     cap: int,
     max_cap: int = CAP_HEAVY,
     timeout: float = 60.0,
+    stage: str = "",
     **opts,
 ):
     """Call `backend.complete(prompt, max_tokens=cap, …)` and retry once
@@ -212,6 +213,12 @@ def complete_with_retry(
     `backend.complete` accepts via `max_tokens`. `**opts` is
     forwarded as-is on both the first and the retry call.
 
+    `stage` — optional caller identifier used for the audit row
+    emitted when a retry actually fires (`reason:retry` endpoint).
+    Empty string falls back to the backend_id read off the
+    `CompletionResult`. The audit emit is try/except-wrapped — an
+    audit failure never blocks the production call path.
+
     Returns the `CompletionResult` of the **retry** when one was
     issued, otherwise the first call's result.
     """
@@ -227,6 +234,37 @@ def complete_with_retry(
     if retried_cap <= cap:
         # Already at the ceiling — retry would change nothing.
         return result
+
+    # D6 audit emit — record the retry decision so operators can
+    # monitor truncation hits + tune heuristics in v3/v4 falsification
+    # cycles. Schema: endpoint="reason:retry", query=stage or
+    # backend_id, answer="cap_before=X cap_after=Y backend=Z
+    # prompt={hash8}".
+    try:
+        import hashlib
+        from core.audit_bridge import mirror_to_audit_db
+
+        backend_id = getattr(result, "backend_id", "") or "unknown"
+        prompt_hash = (
+            hashlib.sha256(prompt.encode("utf-8", errors="ignore")).hexdigest()[:8]
+            if prompt
+            else ""
+        )
+        # NOTE: `audit_bridge._resolve_query` reads `target` / `path` /
+        # `tool_used` keys, not `query`. So we put the stage in `target`
+        # to actually land in the SQL `query` column.
+        mirror_to_audit_db({
+            "endpoint": "reason:retry",
+            "role": "system",
+            "target": stage or backend_id,
+            "cap_before": cap,
+            "cap_after": retried_cap,
+            "backend": backend_id,
+            "prompt_hash": prompt_hash,
+        })
+    except Exception:
+        pass
+
     return backend.complete(
         prompt,
         max_tokens=retried_cap,
