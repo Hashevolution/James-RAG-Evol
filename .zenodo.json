@@ -1,6 +1,6 @@
 {
-  "title": "PROJECT JAMES — Local-First Graph-RAG with Auto-Routing on Provider Contract (v0.3.2)",
-  "description": "JAMES is a local-first, auditable knowledge reasoning system. v0.3.2 lands Direction 5 (Auto-routing on Provider Contract) cycle closure — a 10-PR sequence (#474–#484) merged in a single 2026-05-25 session. The release adds a per-call backend-selection layer sitting above the existing Provider Contract: every production LLM call path (5 cognitive stages: query_rewriter / planner / reflect / verify / synth via trace_helpers) now consults a router that picks backend by task weight and stage type. A 4-rule decision tree maps the Direction 1 budget signal to a 3-tier capability taxonomy (small / medium / large × local / sovereign / cloud); the `verify` stage is grounding-critical and always escalates to the strongest registered backend. The whole layer is opt-in (`JAMES_AUTO_ROUTER=1`) with byte-identical pre-v0.3.2 behavior when the flag is unset, so existing operators see no runtime change. Cross-lingual entity resolution gained a graph-level alias pack (`core/entity_alias_pack.py`) covering ~30 high-traffic KO↔EN entities — paired with the keyword-level `_SYNONYM_MAP` (v0.3.1 follow-up PR #472) the two layers close the 2026-05-25 'Palantir resolves to unrelated PDF' diagnostic root cause. The release builds on v0.3.1 (Direction 1) and v0.3.0 (V3' Protocol v1 methodology spec) as the JAMES-side stack for the three-author joint-piece trajectory.",
+  "title": "PROJECT JAMES — Local-First Graph-RAG with D1 Retry Wiring Closure (v0.3.3)",
+  "description": "JAMES is a local-first, auditable knowledge reasoning system. v0.3.3 lands the D6 retry-wiring follow-up cycle that closed a design ↔ wiring gap surfaced by the 2026-05-25 user diagnostic question ('does D1 7-tier cover all cases / what about exceptions?'). Three-PR sequence (#486 + #487 + #488) plus two operator-trail PRs (#489 launch-tracker rows + #490 README DOI badge bump to v0.3.2). The retry_doubled helper that existed since v0.3.1 (D1 closure) but was never invoked from any call site is now wired through complete_with_retry; truncation triggers a single retry up to CAP_HEAVY, an audit_log reason:retry row records every retry decision, and native Ollama done_reason replaces the length+terminator heuristic when the provider exposes it (heuristic preserved as fallback for cache hits / Ollama < 0.1.30 / non-Ollama providers). D1 safety-net 4겹 all backed: retry wiring ✅ + falsification cycle ✅ + flag-off default ✅ + heuristic asymmetry ✅. The release builds on v0.3.2 (D5 Auto-routing) and v0.3.1 (D1 Adaptive Budgeting) as the JAMES-side stack closure for the v0.3.x cycle before v0.4 entry.",
   "upload_type": "software",
   "creators": [
     {
@@ -26,6 +26,9 @@
     "reasoning-middleware",
     "llm-evaluation",
     "v3-prime-protocol",
+    "retry-fallback",
+    "truncation-detection",
+    "audit-trail",
     "korean-nlp"
   ],
   "license": "MIT",
@@ -38,27 +41,27 @@
       "resource_type": "software"
     },
     {
-      "identifier": "10.5281/zenodo.20363998",
+      "identifier": "10.5281/zenodo.20372649",
       "relation": "isNewVersionOf",
       "resource_type": "software"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/474",
+      "identifier": "10.5281/zenodo.20363998",
+      "relation": "isDerivedFrom",
+      "resource_type": "software"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/486",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/482",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/487",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/483",
-      "relation": "isDocumentedBy",
-      "resource_type": "publication-other"
-    },
-    {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/484",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/488",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
@@ -68,5 +71,5 @@
       "resource_type": "software"
     }
   ],
-  "notes": "Direction 5 (Auto-routing) closure builds on v0.3.1 (Direction 1 — Adaptive Budgeting). The router consumes Direction 1's TaskBudget signal as input; the alias pack (D5.D) pairs with v0.3.1 follow-up PR #472 (`_SYNONYM_MAP` keyword expansion). Result document at `reports/promo-assets/v3prime-direction5-router-result.md`; architecture amendment at `docs/ARCHITECTURE.md` §5.7.8. Three-author joint-piece collaboration with Robin Converse (Triava Labs, 26b MoE cross-stack) and Ali Afana (Provia, mid-June managed-Gemini cross-stack) remains the next-cycle trajectory."
+  "notes": "v0.3.3 closes the v0.3.x stabilization arc (D1 Adaptive Budgeting v0.3.1 + D4 substitution bypass + D5 Auto-routing v0.3.2 + D6 retry wiring v0.3.3 + D6(J) methodology spec v0.3.0). The retry path is the operational counterpart to D1's measurement findings — it acts on done_reason=length signals from Ollama (native, 0.1.30+) or the conservative length+terminator heuristic (fallback). Result documents under reports/promo-assets/ + the v0.3.2 closure result doc + the V3' Protocol v1 spec at docs/research/ all stay citable as separately-versioned artifacts. Three-author joint-piece collaboration with Robin Converse (Triava Labs, 26b MoE cross-stack) and Ali Afana (Provia, mid-June managed-Gemini cross-stack) remains the next-cycle research trajectory; the JAMES-side product stack is now stable for v0.4 entry (Layer 4 Lifecycle Semantics)."
 }

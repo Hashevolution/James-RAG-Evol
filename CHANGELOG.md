@@ -7,6 +7,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.3.3] — 2026-05-25 — D6 retry-wiring follow-up cycle closure (D1 design/wiring gap closed)
+
+**Theme**: close the design ↔ wiring gap surfaced by the 2026-05-25 user diagnostic question (*"does D1 7-tier cover all cases / what about exceptions?"*). The `retry_doubled` helper that existed since v0.3.1 (D1 closure) but was never invoked from any production call site is now wired through `complete_with_retry`. Truncation triggers single retry up to `CAP_HEAVY`. `audit_log reason:retry` row records every retry decision. Native Ollama `done_reason` replaces the heuristic when the provider exposes it (heuristic preserved as fallback for cache hits / Ollama < 0.1.30 / non-Ollama providers).
+
+Three-PR sequence (#486 + #487 + #488) plus two operator-trail PRs (#489 launch-tracker rows + #490 README DOI badge bump to v0.3.2).
+
+### Added — `complete_with_retry` helper (PR #486)
+
+- `core/reasoning/budget.py:complete_with_retry(backend, prompt, *, cap, max_cap=CAP_HEAVY, timeout, stage="", **opts)` — single retry on `done_reason="length"`, bounded by `max_cap`. `opts` forwarded both calls. Added to `__all__`.
+- `core/reasoning/backends/__init__.py` — `CompletionResult.done_reason: str = ""` field. Backward compat: backends without the attribute are tolerated (helper falls back to no-retry).
+- `core/reasoning/backends/ollama_local.py` — length-+-terminator heuristic. Two signals must fire to mark `"length"`: response length ≥ 90% × `max_tokens` × 4 chars AND no sentence terminator (`.`, `?`, `!`, `다`, `요`, `음`, `}`, `]`, `"`, `'`, `)`). Conservative — biased to false negatives.
+- `core/retrieval/query_rewriter.py` — `backend.complete(...)` → `complete_with_retry(...)` at the only call site where retry can actually fire (D1 wired stage with dynamic cap signal under `JAMES_ADAPTIVE_BUDGET=1`).
+- 14 contract tests in `tests/test_complete_with_retry.py` covering retry trigger / no-retry conditions / cap saturation / custom max_cap / backend-without-`done_reason` / opts forwarding / ollama heuristic edge cases.
+
+### Added — `audit_log reason:retry` emission (PR #487)
+
+- `complete_with_retry` drops one `reason:retry` row to `audit_log` every time a retry actually fires.
+- Schema: `endpoint="reason:retry"`, `target=stage` (or `backend_id` when stage empty), answer column auto-serialized JSON `{"cap_before": <int>, "cap_after": <int>, "backend": "<id>", "prompt_hash": "<8 hex>"}`.
+- Operator monitoring channel: `SELECT endpoint='reason:retry' FROM audit_log` shows retry rate / stage distribution / backend distribution for new fail-case discovery + heuristic false-positive rate tracking.
+- Audit emission is try/except-wrapped — never blocks production.
+- 5 new tests pinning the emit / no-emit conditions + reason label correctness + audit-failure-survives-retry.
+
+### Added — native Ollama `done_reason` exposure (PR #488, 4-layer additive)
+
+- `core/gemma_client.py` — `GemmaClient._last_done_reason` instance attribute populated from `resp.json().get("done_reason", "")`. Reset at the top of `call_gemma` so a cache hit / early-return path doesn't leak the prior call's signal.
+- `llm/base.py` — `BaseLLM.generate_meta(messages, **kwargs) → dict` default implementation wraps `generate(...)` into `{"text": str, "done_reason": ""}`. Providers that don't override get graceful fallback.
+- `llm/providers/ollama_client.py` — OllamaClient holds a single GemmaClient instance (`_gemma_client` lazy-initialized via `_client()`). `generate_meta` returns `{"text": ..., "done_reason": client._last_done_reason}`.
+- `llm/router.py` — `call_router_meta(prompt, task_type=None, **kwargs) → dict` mirrors `call_router`. `RouterWrapper.call_gemma_meta` is a thin shim. Hard fallback path reads `GemmaClient._last_done_reason` after the direct `call_gemma` call.
+- `core/reasoning/backends/ollama_local.py` — `complete()` tries `router.call_gemma_meta` first (callable + dict-return check); on absent / non-dict / exception, falls through to legacy `call_gemma` + heuristic.
+- 12 new tests in `tests/test_native_done_reason.py` covering BaseLLM default + OllamaClient stash read + RouterWrapper shim + `call_router_meta` + ollama_local preference order + heuristic fallback + GemmaClient reset.
+
+### Added — operator trail (PRs #489 + #490)
+
+- `reports/promo-assets/launch-tracker.md` — 3 new audit-trail rows (D5 cycle CLOSED catalog + v0.3.2 GitHub release published + D6 retry-wiring follow-up cycle).
+- `README.md` / `README.ko.md` — Status badge v0.3.1 → v0.3.2 + DOI badge `10.5281/zenodo.20363998` → `10.5281/zenodo.20372649`.
+
+### D1 safety net status — all backed
+
+| # | Net | Pre-D6 | Post-D6 |
+|---|---|---|---|
+| 1 | `retry_doubled` fallback | Definition-only, no wiring | **Wired via `complete_with_retry` (query_rewriter) + audit `reason:retry` + native Ollama `done_reason` precision** |
+| 2 | Falsification cycle | Measurement-driven heuristic evolution | + `audit_log reason:retry` row pile-up is now the monitoring channel for new fail-case discovery |
+| 3 | flag-off default | Pre-D6 byte-identical | Pre-D6 byte-identical (`JAMES_AUTO_ROUTER` / `JAMES_ADAPTIVE_BUDGET` both default OFF) |
+| 4 | Heuristic asymmetry | Half-effective (escalate but no retry) | Fully backed — escalate path retries on truncation, native signal where available |
+
+### Verified
+
+- Final state: **587 backend/router/budget/rewriter/graph/reflect/verify/alias/retry/gemma/done regression tests pass**.
+- 31 new D6 contract tests across 2 files (`test_complete_with_retry.py` 19 + `test_native_done_reason.py` 12).
+- ruff clean on all touched files.
+- Module sizes all under the 20 KB gate.
+
+### Out of scope for v0.3.3
+
+- **Native `done_reason` for other providers** (Claude / DeepSeek) — 3-condition gated (operator opts into `JAMES_ENABLE_CLAUDE_BACKEND=1` + `JAMES_AUTO_ROUTER=1` + observed `reason:retry` rows with that backend > 0). Memory: `feedback_d1_d5_retry_doubled_wiring_gap.md`.
+- **planner / reflect / verify wiring through `complete_with_retry`** — these stages currently use a fixed `self._max_tokens = 4096` which is already at the `CAP_HEAVY` ceiling, so retry would be no-op. Wiring lands together with the D1 budget signal expansion (v0.4 follow-up).
+- **D2 task-weight metric in measured form** — absorbed into D5 as the policy's heuristic classifier; revisit as a measured metric if the heuristic plateaus on production bench.
+- **Cost-based scoring v2** / **per-pack policy** / **per-stage explicit override under D5 ON** / **embedding swap (BL-9 bge-m3 / multilingual-e5-large)** — v0.4 follow-ups.
+- **D3 / D6(I)** — cross-family generalization + joint paper consolidation remain queued for the mid-June Robin / Ali Gemini collaboration window.
+
+### Acknowledgements
+
+- The 2026-05-25 user diagnostic question (*"7단계 사다리로 나누는 것이 전부 커버가 되나? 예외가 발생할 가능성이 제로는 아닐 것 같은데"*) directly motivated this cycle. The honest engineering response — admit the gap, ship the wiring, add the monitoring channel, swap the heuristic for native signal when available — followed in three small PRs over the same session.
+- D1 (`core/reasoning/budget.py`, v0.3.1) defined the `retry_doubled` helper that v0.3.3 finally activates. The 7-tier natural-stop gradient remains the measurement baseline.
+- D5 (Auto-routing, v0.3.2) shares the `audit_log` infrastructure: `reason:route` (D5.C.2.a, PR #478) + `reason:retry` (this cycle, PR #487) together give operators a complete picture of every routing decision plus every truncation retry.
+
+---
+
 ## [0.3.2] — 2026-05-25 — Direction 5 (Auto-routing on Provider Contract) cycle closure
 
 **Theme**: ship a per-call backend-selection layer above the Provider Contract. Every production LLM call path now consults a router that picks backend by task weight + stage type. Default OFF; opt-in via `JAMES_AUTO_ROUTER=1`. Byte-identical to pre-v0.3.2 at the production call path when the flag is unset. 10-PR sequence (#474–#484) merged in a single 2026-05-25 session.
