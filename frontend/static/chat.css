@@ -234,6 +234,19 @@ main { display: flex; flex: 1; overflow: hidden; }
 }
 .sidebar.collapsed { width: 0; border-right: none; }
 
+/* v0.4 Sprint 2 #5 — hover auto-expand when collapsed.
+   Mouse over the open-btn rail strip (or the sidebar itself once it
+   peeks back into view) temporarily expands the sidebar without
+   requiring a click. JS-driven state (`.sidebar.collapsed` toggled
+   from `toggleSidebar`) is preserved — moving the mouse away
+   re-collapses. Explicit toggle-sidebar click still persists the open
+   state across hover-leave, so power users get both affordances. */
+.sidebar-open-btn:hover ~ .sidebar.collapsed,
+.sidebar.collapsed:hover {
+  width: 340px;
+  border-right: 1px solid var(--border-2);
+}
+
 .sidebar-rail {
   width: 56px;
   flex-shrink: 0;
