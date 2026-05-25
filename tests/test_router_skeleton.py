@@ -8,8 +8,6 @@ See `docs/handovers/v0.3.x-direction5-auto-routing-track.md` for the
 full phase plan.
 """
 
-import os
-
 import pytest
 
 from core.reasoning.router import (
