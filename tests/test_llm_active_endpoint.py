@@ -108,6 +108,11 @@ class ChipWiringTests(unittest.TestCase):
         self.assertIn('id="model-chip-tag"', self.index_html,
             "The chip's tag <span> id is the populated surface — "
             "removing it makes the chip render empty.")
+        self.assertIn('id="model-chip-wrap"', self.index_html,
+            "Sprint 2 #3b — chip is wrapped in a positioned container "
+            "so the popover can anchor absolutely below it. The wrap "
+            "owns the [hidden] state; removing it breaks the chip's "
+            "first-paint hide.")
 
     def test_chat_js_calls_llm_active(self):
         self.assertTrue(
@@ -117,6 +122,61 @@ class ChipWiringTests(unittest.TestCase):
         self.assertIn("loadActiveModelChip", self.chat_js,
             "Function loadActiveModelChip should exist; "
             "DOMContentLoaded + onLangChange call it.")
+
+
+class ChipPickerPopoverTests(unittest.TestCase):
+    """v0.4 Sprint 2 #3b — popover wiring guard.
+
+    The popover lets a chat user override the resolver's pick for the
+    current session without going through admin. Wiring spans HTML
+    (popover container + chip aria attrs), CSS (positioned wrap), and
+    JS (toggle / populate / pick functions + dispatch cases). These
+    pieces are linked by string identifiers; pinning the names here
+    means a typo on one side fails CI rather than rendering a
+    silently broken picker.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.index_html = (REPO / "frontend" / "index.html").read_text(
+            encoding="utf-8")
+        cls.chat_js = (REPO / "frontend" / "static" / "chat.js").read_text(
+            encoding="utf-8")
+        cls.chat_css = (REPO / "frontend" / "static" / "chat.css").read_text(
+            encoding="utf-8")
+
+    def test_index_has_popover_skeleton(self):
+        self.assertIn('id="model-popover"', self.index_html,
+            "Popover container must exist; chat.js toggleModelPopover "
+            "flips its `hidden` attribute.")
+        self.assertIn('id="model-popover-list"', self.index_html,
+            "List target must exist; populateModelPopover writes rows here.")
+        self.assertIn('data-action="toggle-model-popover"', self.index_html,
+            "Chip button must carry the toggle-popover action so the "
+            "delegated _bindFrontendEvents click handler routes to "
+            "toggleModelPopover().")
+
+    def test_chat_js_picker_functions(self):
+        for fn in ("toggleModelPopover", "populateModelPopover",
+                   "pickModelFromPopover"):
+            self.assertIn(fn, self.chat_js,
+                f"chat.js must define {fn}; removing it breaks the "
+                "popover toggle / population / row click handlers.")
+        self.assertIn("'toggle-model-popover'", self.chat_js)
+        self.assertIn("'pick-model'", self.chat_js)
+
+    def test_chat_css_anchors_popover_to_wrap(self):
+        """`.model-chip-wrap { position: relative }` is what makes the
+        absolute-positioned `.model-popover` anchor below the chip
+        rather than the document. Dropping the position kicks the
+        popover to the top-left of the page."""
+        self.assertTrue(
+            re.search(r"\.model-chip-wrap\s*\{[^}]*position:\s*relative",
+                      self.chat_css),
+            "Wrap must be position: relative so .model-popover "
+            "(position: absolute) anchors to it.")
+        self.assertIn(".model-popover", self.chat_css,
+            "Popover style block is missing.")
 
 
 if __name__ == "__main__":

@@ -21,18 +21,47 @@
   <div class="logo">
     <span class="brand">Secure Enterprise Knowledge<span class="brand-tail">Operating System</span></span>
     <span class="live-dot" aria-hidden="true" title="System live" style="margin-left:10px"></span>
-    <!-- v0.4 Sprint 2 #3a — always-visible chat model indicator.
-         Populated by chat.js loadActiveModelChip(). Hidden until a
-         tag is known (no flash of empty chip on first paint). -->
-    <a id="model-chip"
-       href="/admin"
-       class="model-chip"
-       data-i18n-title="model.chip_title"
-       title="현재 응답에 사용 중인 모델 — 클릭 시 admin 모델 설정 페이지"
-       hidden>
-      <span class="model-chip-icon" aria-hidden="true">🤖</span>
-      <span class="model-chip-tag" id="model-chip-tag">—</span>
-    </a>
+    <!-- v0.4 Sprint 2 #3a + #3b — always-visible chat model indicator
+         + click-to-pick popover. Sprint 2 #3a populated the chip from
+         /llm/active. Sprint 2 #3b converts the <a> into a <button>
+         trigger that opens the popover; the popover lists installed
+         models (aggregated from MODE_OPTIONS) and lets the user set a
+         per-session override that flows into the next chat request as
+         `selected_model`. The popover footer keeps the admin shortcut. -->
+    <div class="model-chip-wrap" id="model-chip-wrap" hidden>
+      <button id="model-chip"
+              type="button"
+              class="model-chip"
+              data-action="toggle-model-popover"
+              data-i18n-title="model.chip_title"
+              title="현재 응답에 사용 중인 모델 — 클릭 시 변경"
+              aria-haspopup="listbox"
+              aria-expanded="false">
+        <span class="model-chip-icon" aria-hidden="true">🤖</span>
+        <span class="model-chip-tag" id="model-chip-tag">—</span>
+        <span class="model-chip-caret" aria-hidden="true">▾</span>
+      </button>
+      <!-- Popover — hidden until trigger click. Outside-click in chat.js
+           closes it. Listbox semantics for screen readers. -->
+      <div id="model-popover"
+           class="model-popover"
+           role="listbox"
+           data-i18n-aria-label="model.popover_title"
+           aria-label="모델 선택"
+           hidden>
+        <div class="model-popover-header">
+          <span data-i18n="model.popover_title">모델 선택</span>
+          <span class="model-popover-hint" data-i18n="model.popover_hint">이 세션에만 적용</span>
+        </div>
+        <div id="model-popover-list" class="model-popover-list">
+          <!-- chat.js loadModelPopover() populates rows here. -->
+        </div>
+        <div class="model-popover-footer">
+          <a href="/admin" class="model-popover-admin-link"
+             data-i18n="model.popover_admin_link">⚙ Admin 모델 설정 →</a>
+        </div>
+      </div>
+    </div>
   </div>
   <div class="header-right">
     <div class="source-toggle">

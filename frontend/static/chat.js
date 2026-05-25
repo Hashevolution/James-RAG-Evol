@@ -115,6 +115,9 @@ function _bindFrontendEvents() {
       // Sidebar
       case 'toggle-sidebar':            toggleSidebar(); break;
       case 'switch-sidebar-mode':       switchSidebarMode(t.getAttribute('data-mode')); break;
+      // v0.4 Sprint 2 #3b — model picker popover
+      case 'toggle-model-popover':      toggleModelPopover(); break;
+      case 'pick-model':                pickModelFromPopover(t.getAttribute('data-model-tag')); break;
       case 'trigger-file-input':
         document.getElementById('file-input').click();
         break;
@@ -232,6 +235,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // item #6: 모드 picker 옵션 로드 + 자동 추천 등록
   try { loadModePickerOptions(); } catch (e) { console.warn('[JAMES] mode picker 로드 실패:', e); }
+  // v0.4 Sprint 2 #3b — restore session override before chip renders
+  // so the chip shows the override on first paint, not the resolver
+  // tag flashing through to the override on the next tick.
+  try {
+    const saved = localStorage.getItem(_modelKey('chip'));
+    if (saved) selectedModel = saved;
+  } catch (_) {}
   // v0.4 Sprint 2 #3a — header chip showing the currently active
   // chat model. Independent from mode picker (mode picker shows
   // dropdown options; chip shows which model resolve_chat() picked
@@ -284,9 +294,10 @@ function _modelKey(mode) { return `james_model_${mode}`; }
    so the chat chip relies on a per-page-load fetch + the resolver
    cache TTL (60s) for freshness. */
 async function loadActiveModelChip() {
+  const wrap = document.getElementById('model-chip-wrap');
   const chip = document.getElementById('model-chip');
   const tagEl = document.getElementById('model-chip-tag');
-  if (!chip || !tagEl) return;
+  if (!wrap || !chip || !tagEl) return;
   try {
     const r = await fetch(
       `${API}/llm/active?api_key=${encodeURIComponent(getApiKey())}`,
@@ -300,24 +311,149 @@ async function loadActiveModelChip() {
       tagEl.textContent = t('model.chip_none') || '미설치';
       chip.setAttribute('data-source', 'none');
       chip.title = data.warning || (t('model.chip_title_none') || 'No model installed — click to set up');
-      chip.hidden = false;
+      wrap.hidden = false;
       return;
     }
-    tagEl.textContent = tag;
-    chip.setAttribute('data-source', data.source || 'requested');
+    // v0.4 Sprint 2 #3b — if user has picked an override in the popover,
+    // surface that instead of the resolver's choice. The override takes
+    // effect on the next chat request via selected_model in /query/.
+    const override = (selectedModel || '').trim();
+    const displayTag = override || tag;
+    tagEl.textContent = displayTag;
+    chip.setAttribute('data-source', override ? 'override' : (data.source || 'requested'));
+    // Remember the resolver pick so the popover can mark it as the
+    // "default" row even when an override is active.
+    chip.dataset.resolverTag = tag;
     // Tooltip — base label + source + optional warning. Stays
     // single-line so the title hover surface is compact.
-    const baseTitle = t('model.chip_title') || '현재 응답에 사용 중인 모델 — 클릭 시 admin 모델 설정';
-    const sourceLbl = t('model.source.' + (data.source || 'requested'))
-      || (data.source || '');
+    const baseTitle = t('model.chip_title') || '현재 응답에 사용 중인 모델 — 클릭 시 변경';
+    const sourceLbl = override
+      ? (t('model.source.override') || 'session override')
+      : (t('model.source.' + (data.source || 'requested')) || (data.source || ''));
     chip.title = data.warning
       ? `${baseTitle}\n[${sourceLbl}] ${data.warning}`
       : `${baseTitle}\n[${sourceLbl}]`;
-    chip.hidden = false;
+    wrap.hidden = false;
   } catch (e) {
     console.warn('[JAMES] /llm/active fetch 실패:', e);
   }
 }
+
+/* v0.4 Sprint 2 #3b — picker popover.
+
+   `toggleModelPopover()` flips the popover open/closed and, on first
+   open, populates the model list by aggregating installed models from
+   MODE_OPTIONS (already fetched by loadModePickerOptions). This keeps
+   the picker offline-safe: even if MODE_OPTIONS hasn't loaded yet, the
+   resolver's tag (from /llm/active, captured on the chip dataset)
+   still appears as a single row so the popover is never empty.
+
+   Selection writes to `selectedModel` (the same global the mode-picker
+   updates), so the next /query/ request carries it as `selected_model`.
+   localStorage persistence reuses `_modelKey('chip')` so an override
+   survives page reload. The popover footer keeps the admin link for
+   power users who want full installation management. */
+function toggleModelPopover(force) {
+  const chip = document.getElementById('model-chip');
+  const pop  = document.getElementById('model-popover');
+  if (!chip || !pop) return;
+  const wantOpen = (typeof force === 'boolean')
+    ? force
+    : pop.hidden;
+  if (wantOpen) {
+    populateModelPopover();
+    pop.hidden = false;
+    chip.setAttribute('aria-expanded', 'true');
+  } else {
+    pop.hidden = true;
+    chip.setAttribute('aria-expanded', 'false');
+  }
+}
+
+function populateModelPopover() {
+  const list = document.getElementById('model-popover-list');
+  const chip = document.getElementById('model-chip');
+  if (!list) return;
+  // Aggregate installed models across MODE_OPTIONS (loaded by
+  // loadModePickerOptions). Distinct by tag. Weight info follows the
+  // first occurrence — gives the picker some texture without
+  // re-deduplicating per-mode preferences.
+  const seen = new Map();
+  for (const m of (MODE_OPTIONS || [])) {
+    for (const c of (m.models || [])) {
+      if (!c || !c.tag) continue;
+      if (!seen.has(c.tag)) {
+        seen.set(c.tag, {
+          tag: c.tag,
+          weight: c.weight || 'medium',
+          installed: !!c.installed,
+        });
+      }
+    }
+  }
+  // Resolver's current pick — always include even if MODE_OPTIONS is
+  // empty (offline / first paint), so the popover is never empty when
+  // the chip is visible.
+  const resolverTag = chip ? chip.dataset.resolverTag : '';
+  if (resolverTag && !seen.has(resolverTag)) {
+    seen.set(resolverTag, { tag: resolverTag, weight: 'medium', installed: true });
+  }
+  const rows = [...seen.values()].sort((a, b) => a.tag.localeCompare(b.tag));
+  if (rows.length === 0) {
+    list.innerHTML = `<div class="model-popover-empty">${
+      escHtml(t('model.popover_empty') || '설치된 모델이 없습니다. Admin → LLM 설치 참조.')
+    }</div>`;
+    return;
+  }
+  const active = (selectedModel || '').trim();
+  const weightIcon = w => w === 'light' ? '🪶'
+                       : w === 'heavy' ? '🐘'
+                       : '⚖️';
+  list.innerHTML = rows.map(r => {
+    const isActive = active === r.tag;
+    const isDefault = !active && resolverTag === r.tag;
+    const disabled = !r.installed;
+    return `<button type="button"
+              class="model-popover-row${(isActive || isDefault) ? ' active' : ''}"
+              data-action="pick-model"
+              data-model-tag="${escHtml(r.tag)}"
+              ${disabled ? 'disabled' : ''}
+              role="option"
+              aria-selected="${(isActive || isDefault) ? 'true' : 'false'}">
+              <span class="model-popover-row-weight">${weightIcon(r.weight)}</span>
+              <span>${escHtml(r.tag)}</span>
+              ${disabled ? `<span style="font-size:10px;color:var(--muted);margin-left:auto">${
+                escHtml(t('mode.not_installed') || '⚠️ 미설치')
+              }</span>` : ''}
+            </button>`;
+  }).join('');
+}
+
+function pickModelFromPopover(tag) {
+  const cleaned = (tag || '').trim();
+  if (!cleaned) return;
+  selectedModel = cleaned;
+  // Persist for the chat session — reuses the existing _modelKey naming
+  // pattern (`james_model_<mode>`); 'chip' is the per-session override
+  // distinct from per-mode picker keys.
+  try { localStorage.setItem(_modelKey('chip'), cleaned); } catch (_) {}
+  // Refresh chip label + tooltip (loadActiveModelChip honours the
+  // override) and close the popover.
+  loadActiveModelChip();
+  toggleModelPopover(false);
+}
+
+// Outside-click closes the popover. Document-level capture so any
+// click in the page (header, sidebar, chat area) hits this before
+// individual handlers. The chip's own click is allowed through —
+// .closest('#model-chip-wrap') matches when the click is the trigger
+// or anywhere inside the popover container.
+document.addEventListener('click', (e) => {
+  const pop = document.getElementById('model-popover');
+  if (!pop || pop.hidden) return;
+  if (e.target.closest && e.target.closest('#model-chip-wrap')) return;
+  toggleModelPopover(false);
+});
 
 async function loadModePickerOptions() {
   try {
