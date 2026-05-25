@@ -36,6 +36,11 @@ import threading
 import time
 from typing import Optional
 
+from core.reasoning.budget import (
+    TaskBudget,
+    adaptive_budget_enabled,
+    complete_with_retry,
+)
 from core.reasoning.trace_schema import (
     TraceStep,
     compute_inputs_hash,
@@ -148,14 +153,32 @@ class ReflectionLoop:
         *,
         critique_timeout: float = DEFAULT_CRITIQUE_TIMEOUT_S,
         revise_timeout: float = DEFAULT_REVISE_TIMEOUT_S,
-        critique_max_tokens: int = DEFAULT_CRITIQUE_MAX_TOKENS,
-        revise_max_tokens: int = DEFAULT_REVISE_MAX_TOKENS,
+        critique_max_tokens: Optional[int] = None,
+        revise_max_tokens: Optional[int] = None,
+        budget: Optional[TaskBudget] = None,
     ) -> None:
+        """Construct a ReflectionLoop.
+
+        ``critique_max_tokens`` / ``revise_max_tokens`` behaviour
+        (D1 wiring, v0.4 Sprint 3 #7b — mirrors planner / query_rewriter):
+
+          • int — fixed cap (per-stage baseline).
+          • ``None`` (default) — runtime decision:
+              - ``JAMES_ADAPTIVE_BUDGET=1`` → both stages share
+                ``TaskBudget.assess("reflect", query)``.
+              - flag off → fall back to ``DEFAULT_CRITIQUE_MAX_TOKENS=4096``
+                / ``DEFAULT_REVISE_MAX_TOKENS=1024`` — byte-identical
+                to pre-#7b behaviour.
+
+        Default-off invariant: ``ReflectionLoop()`` with no kwargs and
+        no env opt-in must hit the same caps as before this PR.
+        """
         self._backend_id = backend_id
         self._critique_timeout = critique_timeout
         self._revise_timeout = revise_timeout
         self._critique_max_tokens = critique_max_tokens
         self._revise_max_tokens = revise_max_tokens
+        self._budget = budget if budget is not None else TaskBudget()
 
     def reflect(
         self,
@@ -189,13 +212,44 @@ class ReflectionLoop:
         crit_tmpl = CRITIQUE_PROMPT_KO if is_ko else CRITIQUE_PROMPT_EN
         rev_tmpl = REVISE_PROMPT_KO if is_ko else REVISE_PROMPT_EN
 
-        # D5.C.2.c — flag-gated backend resolution. Reflect is not
-        # D1-wired (uses fixed critique/revise caps), so
-        # `budget_signal=None` here. Flag-off → `self._backend_id`
-        # (byte-identical). Flag-on → router policy with budget=None
-        # → rule 4 → legacy. Reflect is not grounding-critical
-        # (only `verify` is) so the escalation does not fire. Single
-        # backend serves both critique + revise calls below.
+        # v0.4 Sprint 3 #7b — D1 cap resolution per sub-stage. Both
+        # critique and revise share `assess("reflect", query)` when
+        # D1 is active so a heavy task escalates both stages at once
+        # (and a light task gives both the same lower cap). assess
+        # is fed the user query — not the wrapped CRITIQUE_PROMPT_*
+        # / REVISE_PROMPT_* templates which carry heavy markers
+        # ("분석" / "review" etc.) as part of the instruction and
+        # would otherwise force every reflection call to CAP_HEAVY.
+        adaptive_on = adaptive_budget_enabled()
+        if adaptive_on and (
+            self._critique_max_tokens is None or self._revise_max_tokens is None
+        ):
+            _adaptive_cap = self._budget.assess("reflect", query)
+        else:
+            _adaptive_cap = None
+
+        if self._critique_max_tokens is not None:
+            crit_cap = self._critique_max_tokens
+        elif adaptive_on:
+            crit_cap = _adaptive_cap
+        else:
+            crit_cap = DEFAULT_CRITIQUE_MAX_TOKENS
+
+        if self._revise_max_tokens is not None:
+            rev_cap = self._revise_max_tokens
+        elif adaptive_on:
+            rev_cap = _adaptive_cap
+        else:
+            rev_cap = DEFAULT_REVISE_MAX_TOKENS
+
+        _budget_for_router = _adaptive_cap if adaptive_on else None
+
+        # D5.C.2.c — flag-gated backend resolution. With D1 active for
+        # reflect (when both flags ON) `budget_signal` carries the
+        # adaptive cap so router rules 1 / 4 fire on the correct
+        # signal. Under D1 flag-off `_budget_for_router` is None →
+        # unchanged from pre-#7b. Single backend serves both critique
+        # + revise calls below.
         try:
             from core.reasoning.backends import get_backend
             from core.reasoning.router import emit_route_event, resolve_backend
@@ -206,7 +260,7 @@ class ReflectionLoop:
             backend_id = resolve_backend(
                 "reflect",
                 router_prompt,
-                budget_signal=None,
+                budget_signal=_budget_for_router,
                 fallback_backend_id=self._backend_id,
             )
             backend = get_backend(backend_id)
@@ -217,8 +271,8 @@ class ReflectionLoop:
             "reflect",
             router_prompt,
             backend_id,
-            budget_signal=None,
-            reason="fallback",
+            budget_signal=_budget_for_router,
+            reason="auto" if _budget_for_router is not None else "fallback",
         )
 
         # ── critique pass ────────────────────────────────────
@@ -227,7 +281,7 @@ class ReflectionLoop:
             backend,
             critique_prompt,
             timeout=self._critique_timeout,
-            max_tokens=self._critique_max_tokens,
+            max_tokens=crit_cap,
             applied_rule="reasoning.reflect.critique",
             user_role=user_role,
         )
@@ -244,7 +298,7 @@ class ReflectionLoop:
             backend,
             revise_prompt,
             timeout=self._revise_timeout,
-            max_tokens=self._revise_max_tokens,
+            max_tokens=rev_cap,
             applied_rule="reasoning.reflect.revised",
             user_role=user_role,
         )
@@ -276,10 +330,20 @@ class ReflectionLoop:
         ``error`` set + ``blocked=1``) so the replay tool sees the
         attempt.
         """
+        # v0.4 Sprint 3 #7b — D6 retry wiring. When `max_tokens` is below
+        # CAP_HEAVY (D1 active + light task) and the model truncates at
+        # the cap, retry once with the doubled cap. No-op at the ceiling
+        # — pre-#7b behaviour preserved under flag-off.
+        # `stage="reflect"` is the audit-row tag complete_with_retry
+        # emits via `reason:retry` (D6 PR #487).
         t0 = time.time()
         try:
-            result = backend.complete(
-                prompt, max_tokens=max_tokens, timeout=timeout
+            result = complete_with_retry(
+                backend,
+                prompt,
+                cap=max_tokens,
+                timeout=timeout,
+                stage="reflect",
             )
         except Exception as e:
             latency_ms = int((time.time() - t0) * 1000)
