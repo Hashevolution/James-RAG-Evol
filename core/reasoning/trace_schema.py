@@ -27,6 +27,7 @@ the contract those two PRs both honor.
 from __future__ import annotations
 
 import hashlib
+import os
 from dataclasses import dataclass, asdict
 from typing import Any, Dict, Optional, FrozenSet
 
@@ -152,7 +153,52 @@ def emit_trace_step(
                 continue
             entry[k] = v
 
-    return mirror_to_audit_db(entry, db_path=db_path)
+    ok = mirror_to_audit_db(entry, db_path=db_path)
+    # v0.4 Sprint 3 BL-1 — stdout mirror so the operator sees the
+    # reasoning chain in stdout alongside the synth path. Before this,
+    # planner / reflect / verify only wrote to audit_log DB (memory:
+    # feedback_stdout_vs_audit_log_trace_split) — debugging a run
+    # required querying the DB. Follows the observability.emit_step
+    # convention: JAMES_TRACE_STDOUT=1 default ON, "0"/"false"/"no"
+    # silences the mirror. Best-effort — a cp949 console crash never
+    # blocks the reasoning path.
+    _stdout_mirror_trace_step(step, extras)
+    return ok
+
+
+def _stdout_mirror_trace_step(
+    step: TraceStep,
+    extras: Optional[Dict[str, Any]],
+) -> None:
+    """Write a single-line `[reason:<stage>] …` row to stdout.
+
+    Matches the format of observability.emit_step's mirror so the
+    operator can grep / tail a single console stream for the whole
+    chain. JAMES_TRACE_STDOUT default ON to match the operator-setup
+    convention from PR #283 (Phase 1 observability).
+    """
+    if os.getenv("JAMES_TRACE_STDOUT", "1").strip().lower() in (
+        "0", "false", "no", "",
+    ):
+        return
+    try:
+        trace_hint = ""
+        if extras:
+            tid = extras.get("trace_id") or ""
+            if isinstance(tid, str) and tid:
+                trace_hint = f" [trace {tid[:8]}]"
+        latency = f"{step.latency_ms}ms" if step.latency_ms else "?ms"
+        err = f" err={step.error[:60]}" if step.error else ""
+        print(
+            f"[reason:{step.stage}] {step.applied_rule} · "
+            f"{step.backend_id or '?'} · {latency}{trace_hint}{err}",
+            flush=True,
+        )
+    except Exception:
+        # cp949 / closed-stdout / sentinel-string crashes must never
+        # block the reasoning path. Operator sees the gap (no print)
+        # rather than a wedged request.
+        pass
 
 
 def trace_step_to_dict(step: TraceStep) -> Dict[str, Any]:
