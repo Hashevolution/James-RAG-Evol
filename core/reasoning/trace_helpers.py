@@ -135,8 +135,30 @@ def trace_synth_call(
     # Backend resolution: R1 says we don't raise on the user path, so a
     # registry-level failure (no backends registered, unknown stage) is
     # converted to an error row + empty return rather than an exception.
+    #
+    # D5.C.2.e — flag-gated D5 routing on top of the existing L1
+    # `resolve_backend_for_stage` resolution. Under D5 flag OFF the
+    # D5 helper returns the L1-resolved backend ID (byte-identical to
+    # pre-D5 main). Under D5 flag ON the router policy decides, with
+    # the L1 resolution as the `fallback_backend_id`. The audit
+    # `reason:route` row lands per call (see emit_route_event).
+    #
+    # trace_helpers serves multiple stages — synth, verify, reflect,
+    # plan, rewrite, etc. The 4 cognitive stage classes
+    # (QueryRewriter / Planner / ReflectionLoop / Verifier) route
+    # through their own wiring (D5.C.2.a–d); trace_helpers's wiring
+    # here covers the synth path and any other stage that goes
+    # through `trace_synth_call` rather than the per-class call site.
     try:
-        backend_id = resolve_backend_for_stage(stage)
+        from core.reasoning.router import emit_route_event, resolve_backend
+
+        legacy_backend_id = resolve_backend_for_stage(stage)
+        backend_id = resolve_backend(
+            stage,
+            prompt,
+            budget_signal=None,
+            fallback_backend_id=legacy_backend_id,
+        )
         backend = get_backend(backend_id)
     except Exception as e:
         emit_trace_step(
@@ -154,6 +176,17 @@ def trace_synth_call(
             extras=emit_extras,
         )
         return ""
+
+    # D5.C.2.e — audit row for the resolved backend. Emitted between
+    # resolution and call so the routing decision is logged even if
+    # the subsequent backend.complete fails.
+    emit_route_event(
+        stage,
+        prompt,
+        backend_id,
+        budget_signal=None,
+        reason="fallback",
+    )
 
     result: CompletionResult = backend.complete(
         prompt,
