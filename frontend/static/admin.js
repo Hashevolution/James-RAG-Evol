@@ -3577,14 +3577,6 @@ function buildCharacterSummary(traits) {
   (traits || []).forEach(tr => { v[tr.id] = tr.value; });
   const get = (id, fb=0.5) => (id in v ? v[id] : fb);
 
-  // label 미러 — Python TRAITS[*].label_ko 와 동일 어휘.
-  const KO = {
-    curiosity: '탐구심', focus: '집중력',
-    caution:   '신중함', boldness: '과감함',
-    analytical:'분석력', intuitive: '직관력',
-    independent:'독립성', collaborative: '협력성',
-  };
-
   // ── 핵심 (Group A~D 우세 사이드) ─────────────────────────
   const pairs = [
     ['curiosity', 'focus'], ['caution', 'boldness'],
@@ -3593,45 +3585,39 @@ function buildCharacterSummary(traits) {
   const dominants = [];
   pairs.forEach(([a, b]) => {
     const va = get(a), vb = get(b);
-    if (Math.abs(va - vb) >= 0.10) dominants.push(KO[va > vb ? a : b]);
+    if (Math.abs(va - vb) >= 0.10) {
+      const winnerId = va > vb ? a : b;
+      dominants.push(t('char.trait.' + winnerId) || winnerId);
+    }
   });
   const core = dominants.length
-    ? dominants.join('·') + '이 두드러진 성격'
-    : '여러 성향이 균형을 이룬 성격';
+    ? t('char.summary.core_prominent', { traits: dominants.join('·') })
+    : t('char.summary.core_balanced');
 
   // ── 가치 (Group E) ────────────────────────────────────────
-  const eRules = [
-    ['security',  '보안에 매우 민감함', '보안의식이 약함'],
-    ['creativity','창의성이 풍부함',    '창의성은 보통 이하'],
-    ['empathy',   '공감능력이 높음',    '공감 표현이 절제됨'],
-  ];
+  // hi/lo 라벨은 i18n 키로. 키 패턴: char.summary.value.<id>.hi|lo
+  const valueIds = ['security', 'creativity', 'empathy'];
   const valueParts = [];
-  eRules.forEach(([id, hi, lo]) => {
+  valueIds.forEach(id => {
     const x = get(id);
-    if      (x >= 0.65) valueParts.push(hi);
-    else if (x <= 0.35) valueParts.push(lo);
+    if      (x >= 0.65) valueParts.push(t('char.summary.value.' + id + '.hi'));
+    else if (x <= 0.35) valueParts.push(t('char.summary.value.' + id + '.lo'));
   });
   const values = valueParts.length
     ? valueParts.join(', ')
-    : '특정 가치 편향이 두드러지지 않음';
+    : t('char.summary.values_empty');
 
   // ── 스타일 (Group F) ──────────────────────────────────────
-  const fRules = [
-    ['conciseness',    '간결한',          '설명이 풍부한'],
-    ['directness',     '직설적인',        '우회적인'],
-    ['optimism',       '낙관적인',        '신중한 톤의'],
-    ['risk_tolerance', '위험을 감수하는', '안전 우선의'],
-    ['patience',       '인내심 있는',     '결론이 빠른'],
-  ];
+  const styleIds = ['conciseness', 'directness', 'optimism', 'risk_tolerance', 'patience'];
   const styleParts = [];
-  fRules.forEach(([id, hi, lo]) => {
+  styleIds.forEach(id => {
     const x = get(id);
-    if      (x >= 0.65) styleParts.push(hi);
-    else if (x <= 0.35) styleParts.push(lo);
+    if      (x >= 0.65) styleParts.push(t('char.summary.style.' + id + '.hi'));
+    else if (x <= 0.35) styleParts.push(t('char.summary.style.' + id + '.lo'));
   });
   const style = styleParts.length
-    ? styleParts.join(', ') + ' 표현 스타일'
-    : '균형 잡힌 표현 스타일';
+    ? styleParts.join(', ') + t('char.summary.style_suffix')
+    : t('char.summary.style_balanced');
 
   return { core, values, style };
 }
@@ -3658,22 +3644,28 @@ function renderCharacterSummary() {
 function renderConnectionsPanel(tid) {
   const el = document.getElementById('char-connections');
   if (!el) return;
+  // v0.4 Sprint 2 #6 — trait name resolves through `char.trait.<id>`
+  // i18n keys (already defined for KO/EN in i18n.js), so lang toggle
+  // re-renders this panel in the active language. Previously
+  // `tr.label_ko || tr.label` forced Korean regardless of lang.
+  const traitLabel = (tr) =>
+    t('char.trait.' + tr.id) || tr.label_ko || tr.label;
   if (!tid) {
     el.innerHTML = `<div class="char-connections-empty">${
-      escapeHtml(t('char.connections_empty') || '레이더의 점을 클릭하면 그 성향과 연결된 다른 성향들이 표시됩니다.')
+      escapeHtml(t('char.connections_empty'))
     }</div>`;
     return;
   }
   const tr = _traits.find(x => x.id === tid);
   if (!tr) { el.innerHTML = ''; return; }
-  const traitName = tr.label_ko || tr.label;
+  const traitName = traitLabel(tr);
 
-  // 강도 라벨 — |weight| 절대값 기준. damping 적용 후도 함께 표기.
+  // 강도 라벨 — |weight| 절대값 기준. lang-aware via i18n keys.
   const strengthLabel = (w) => {
     const a = Math.abs(w);
-    if (a >= 0.40) return '강하게';
-    if (a >= 0.25) return '중간 정도로';
-    return '약하게';
+    if (a >= 0.40) return t('char.conn.strength_strong');
+    if (a >= 0.25) return t('char.conn.strength_mid');
+    return t('char.conn.strength_weak');
   };
 
   // 짝 (Group A~D 만 존재)
@@ -3700,11 +3692,17 @@ function renderConnectionsPanel(tid) {
 
   // ─── 짝 섹션 ────────────────────────────────────────────────
   if (oppTr) {
+    const oppName = traitLabel(oppTr);
+    // Same pattern as out/in rows: t() builds the full sentence with
+    // the name placeholder, then we string-replace the name token
+    // with a bold-wrapped copy so the trait name still stands out.
+    const phrase = escapeHtml(t('char.conn.pair_explain', { name: oppName }))
+      .replace(escapeHtml(oppName), '<b>' + escapeHtml(oppName) + '</b>');
     html += `<div class="char-conn-section">
-               <div class="char-conn-section-title">↔ 짝 (자동 1.0 합)</div>
+               <div class="char-conn-section-title">${escapeHtml(t('char.conn.pair_title'))}</div>
                <div class="char-conn-explain">
-                 ${escapeHtml(oppTr.icon)} <b>${escapeHtml(oppTr.label_ko || oppTr.label)}</b>이/가
-                 <span class="char-conn-weight neg">자동으로 반대 방향</span>으로 함께 움직입니다.
+                 ${escapeHtml(oppTr.icon)}
+                 <span class="char-conn-weight neg">${phrase}</span>
                </div>
              </div>`;
   }
@@ -3712,16 +3710,21 @@ function renderConnectionsPanel(tid) {
   // ─── outgoing 섹션 — "이 성향이 강해지면..." ──────────────────
   if (outEdges.length > 0) {
     html += `<div class="char-conn-section">
-               <div class="char-conn-section-title">↑ ${escapeHtml(traitName)} 이/가 강해지면…</div>`;
+               <div class="char-conn-section-title">${
+                 escapeHtml(t('char.conn.out_title', { name: traitName }))
+               }</div>`;
     outEdges.forEach(r => {
       const sign = r.weight >= 0 ? 'pos' : 'neg';
-      const verb = r.weight >= 0 ? '함께 강해집니다' : '약해집니다';
+      const rowKey = r.weight >= 0 ? 'char.conn.out_row_pos' : 'char.conn.out_row_neg';
+      const rName = traitLabel(r.tr);
       const arrow = r.weight >= 0 ? '↑' : '↓';
       html += `<div class="char-conn-row">
                  <span class="char-conn-label">
-                   ${escapeHtml(r.tr.icon)} <b>${escapeHtml(r.tr.label_ko || r.tr.label)}</b>이/가 ${verb}
+                   ${escapeHtml(r.tr.icon)} ${escapeHtml(
+                     t(rowKey, { name: rName })
+                   ).replace(escapeHtml(rName), '<b>' + escapeHtml(rName) + '</b>')}
                  </span>
-                 <span class="char-conn-weight ${sign}">${arrow} ${strengthLabel(r.weight)}</span>
+                 <span class="char-conn-weight ${sign}">${arrow} ${escapeHtml(strengthLabel(r.weight))}</span>
                </div>`;
     });
     html += `</div>`;
@@ -3730,16 +3733,21 @@ function renderConnectionsPanel(tid) {
   // ─── incoming 섹션 — "이 성향에 영향을 주는 것" ───────────────
   if (inEdges.length > 0) {
     html += `<div class="char-conn-section">
-               <div class="char-conn-section-title">↓ ${escapeHtml(traitName)} 에 영향을 주는 것</div>`;
+               <div class="char-conn-section-title">${
+                 escapeHtml(t('char.conn.in_title', { name: traitName }))
+               }</div>`;
     inEdges.forEach(r => {
       const sign = r.weight >= 0 ? 'pos' : 'neg';
-      const verb = r.weight >= 0 ? '강해지면 함께 강해집니다' : '강해지면 약해집니다';
+      const rowKey = r.weight >= 0 ? 'char.conn.in_row_pos' : 'char.conn.in_row_neg';
+      const rName = traitLabel(r.tr);
       const arrow = r.weight >= 0 ? '↑' : '↓';
       html += `<div class="char-conn-row">
                  <span class="char-conn-label">
-                   ${escapeHtml(r.tr.icon)} <b>${escapeHtml(r.tr.label_ko || r.tr.label)}</b>이/가 ${verb}
+                   ${escapeHtml(r.tr.icon)} ${escapeHtml(
+                     t(rowKey, { name: rName })
+                   ).replace(escapeHtml(rName), '<b>' + escapeHtml(rName) + '</b>')}
                  </span>
-                 <span class="char-conn-weight ${sign}">${arrow} ${strengthLabel(r.weight)}</span>
+                 <span class="char-conn-weight ${sign}">${arrow} ${escapeHtml(strengthLabel(r.weight))}</span>
                </div>`;
     });
     html += `</div>`;
@@ -3748,7 +3756,7 @@ function renderConnectionsPanel(tid) {
   // 독립 성향 (어디에도 연결 없음)
   if (!oppTr && outEdges.length === 0 && inEdges.length === 0) {
     html += `<div class="char-connections-empty" style="padding: 10px 0">
-               독립 성향 — 다른 성향과 연결되지 않습니다.
+               ${escapeHtml(t('char.conn.indep_empty'))}
              </div>`;
   }
 
@@ -3873,6 +3881,27 @@ function resetCharacter() {
 // 글로벌 export — 인라인 onclick (HTML의 saveCharacter / resetCharacter).
 window.saveCharacter  = saveCharacter;
 window.resetCharacter = resetCharacter;
+
+// v0.4 Sprint 2 #6 — re-render dynamic character UI on lang toggle.
+// applyTranslations() in i18n.js refreshes every [data-i18n] element
+// in place, but the summary card body (#char-summary-core/values/style)
+// and the connections panel innerHTML are produced by buildCharacterSummary
+// / renderConnectionsPanel via t() at render time — they don't carry
+// data-i18n on the text nodes, so a lang switch doesn't reach them.
+// Hook into setLang's onLangChange callback (i18n.js line 1597) and
+// re-render those two surfaces. Safe to call regardless of which page
+// is active — each renderer checks for its target element first.
+window.onLangChange = function(_lang) {
+  if (typeof renderCharacterSummary === 'function') {
+    try { renderCharacterSummary(); } catch (_e) { /* no-op */ }
+  }
+  if (typeof renderConnectionsPanel === 'function') {
+    try {
+      const sel = (typeof _selected_trait_id !== 'undefined') ? _selected_trait_id : null;
+      renderConnectionsPanel(sel);
+    } catch (_e) { /* no-op */ }
+  }
+};
 
 /* ════════════════════════════════
    P7-EVO-E: 능력 성장 UI
