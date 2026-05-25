@@ -42,7 +42,7 @@ from typing import Optional, Tuple
 # so a stock install (env unset) gets "ollama_local" — byte-identical
 # to v0.3.0 behavior. Operators flipping the env restart the server.
 from core.reasoning.backends import get_default_backend_id as _get_default_backend
-from core.reasoning.budget import TaskBudget
+from core.reasoning.budget import TaskBudget, adaptive_budget_enabled
 
 DEFAULT_BACKEND_ID = _get_default_backend()
 DEFAULT_TIMEOUT_S = 10.0
@@ -55,22 +55,13 @@ DEFAULT_TIMEOUT_S = 10.0
 DEFAULT_MAX_TOKENS = 4096
 
 
-def _adaptive_budget_enabled() -> bool:
-    """Env-flag gate for D1.B wiring.
-
-    Default OFF — `JAMES_ADAPTIVE_BUDGET=1` (or `true` / `yes` / `on`)
-    activates the TaskBudget routing. Until then, `QueryRewriter()`
-    behaves byte-identically to pre-D1.B (`max_tokens=DEFAULT_MAX_TOKENS`).
-
-    The experiment driver toggles this per-condition to measure baseline
-    (legacy 4096) vs treatment (dynamic) on the same fixture.
-    """
-    return os.getenv("JAMES_ADAPTIVE_BUDGET", "0").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
+# v0.4 Sprint 3 follow-up — local `_adaptive_budget_enabled` migrated to
+# `core.reasoning.budget.adaptive_budget_enabled` so the 5 reasoning
+# stages (query_rewriter / synth / planner / reflect / verify) all read
+# from one source of truth. The alias below preserves any external
+# imports of the underscored name (none observed in the repo, but the
+# helper has shipped since PR #461 so 3rd-party code could reference it).
+_adaptive_budget_enabled = adaptive_budget_enabled
 
 
 def _classify_budget_reason(cap: int) -> str:
@@ -278,7 +269,7 @@ class QueryRewriter:
         if self._max_tokens is not None:
             cap = self._max_tokens
             _budget_for_router = None
-        elif _adaptive_budget_enabled():
+        elif adaptive_budget_enabled():
             cap = self._budget.assess("query_rewriter", query)
             _trace_budget(stage="query_rewriter", cap=cap, query=query)
             # D5.C.2 — only when D1 dynamic budget is active do we feed
