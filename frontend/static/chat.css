@@ -234,6 +234,44 @@ main { display: flex; flex: 1; overflow: hidden; }
 }
 .sidebar.collapsed { width: 0; border-right: none; }
 
+/* v0.4 Sprint 2 #3a — always-visible model indicator chip.
+   Sits in the header logo cluster next to the live-dot. Clicking
+   navigates to /admin (model selection page). Hidden via [hidden]
+   until chat.js loadActiveModelChip() populates it — prevents an
+   empty placeholder flash on first paint. */
+.model-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 10px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--text-soft);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s;
+  white-space: nowrap;
+}
+.model-chip:hover {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--accent);
+}
+.model-chip[hidden] { display: none; }
+.model-chip-icon { font-size: 12px; line-height: 1; }
+.model-chip-tag  { letter-spacing: .2px; }
+/* Source badge — coloured edge marker for non-default resolution
+   (fallback / preference / any). When source === "requested" the
+   chip stays neutral (operator's config.GEMMA_MODEL won). */
+.model-chip[data-source="preference"] { border-color: var(--accent-soft, var(--border)); }
+.model-chip[data-source="any"]        { border-color: var(--warn, var(--accent-soft)); }
+.model-chip[data-source="none"]       { border-color: var(--error, var(--accent-soft)); color: var(--error, var(--text-soft)); }
+
 /* v0.4 Sprint 2 #5 — hover auto-expand when collapsed.
    Mouse over the open-btn rail strip (or the sidebar itself once it
    peeks back into view) temporarily expands the sidebar without

@@ -21,6 +21,18 @@
   <div class="logo">
     <span class="brand">Secure Enterprise Knowledge<span class="brand-tail">Operating System</span></span>
     <span class="live-dot" aria-hidden="true" title="System live" style="margin-left:10px"></span>
+    <!-- v0.4 Sprint 2 #3a — always-visible chat model indicator.
+         Populated by chat.js loadActiveModelChip(). Hidden until a
+         tag is known (no flash of empty chip on first paint). -->
+    <a id="model-chip"
+       href="/admin"
+       class="model-chip"
+       data-i18n-title="model.chip_title"
+       title="현재 응답에 사용 중인 모델 — 클릭 시 admin 모델 설정 페이지"
+       hidden>
+      <span class="model-chip-icon" aria-hidden="true">🤖</span>
+      <span class="model-chip-tag" id="model-chip-tag">—</span>
+    </a>
   </div>
   <div class="header-right">
     <div class="source-toggle">

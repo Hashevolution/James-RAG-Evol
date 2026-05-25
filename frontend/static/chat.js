@@ -232,6 +232,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // item #6: 모드 picker 옵션 로드 + 자동 추천 등록
   try { loadModePickerOptions(); } catch (e) { console.warn('[JAMES] mode picker 로드 실패:', e); }
+  // v0.4 Sprint 2 #3a — header chip showing the currently active
+  // chat model. Independent from mode picker (mode picker shows
+  // dropdown options; chip shows which model resolve_chat() picked
+  // for the next request — env / preference / fallback).
+  try { loadActiveModelChip(); } catch (e) { console.warn('[JAMES] model chip 로드 실패:', e); }
 });
 
 // Re-render the mode dropdown when the operator toggles language so the
@@ -242,6 +247,9 @@ window.addEventListener('DOMContentLoaded', () => {
 // need an explicit re-render).
 window.onLangChange = function() {
   try { loadModePickerOptions(); } catch (e) { console.warn('[JAMES] mode picker re-render 실패:', e); }
+  // Sprint 2 #3a — chip tooltip changes with lang. Refresh in place
+  // (data-source attr + tag span stay; only title attr is rebuilt).
+  try { loadActiveModelChip(); } catch (e) { console.warn('[JAMES] model chip re-render 실패:', e); }
 };
 
 /* ── item #6: 모드 picker + 자동 추천 ──
@@ -258,6 +266,58 @@ let recommendedMode = '';       // last-recommended (auto-suggest)
 /* [#A2] localStorage 키 — 모드별 선택한 모델 기억. 다른 세션/탭에서도
    동일 선택을 유지. */
 function _modelKey(mode) { return `james_model_${mode}`; }
+
+/* v0.4 Sprint 2 #3a — model indicator chip.
+
+   GET /llm/active returns {tag, source, warning} from
+   core/model_resolver.resolve_chat(). Renders the tag into the
+   header chip and tags `data-source` so CSS can edge-colour
+   non-default resolutions (preference / any / none warn/error
+   tints). Tooltip surfaces the resolution source + any warning
+   text from the resolver so operators see why a fallback fired
+   without opening the admin page.
+
+   Re-runs on lang toggle (window.onLangChange) so the title
+   attribute follows the active language. Re-runs after every
+   /admin/llm/install or /admin/llm/select operation would be
+   ideal, but those happen on the admin page (different document),
+   so the chat chip relies on a per-page-load fetch + the resolver
+   cache TTL (60s) for freshness. */
+async function loadActiveModelChip() {
+  const chip = document.getElementById('model-chip');
+  const tagEl = document.getElementById('model-chip-tag');
+  if (!chip || !tagEl) return;
+  try {
+    const r = await fetch(
+      `${API}/llm/active?api_key=${encodeURIComponent(getApiKey())}`,
+      { headers: getAuthHeaders() },
+    );
+    if (!r.ok) return;            // unauthorised → leave chip hidden
+    const data = await r.json();
+    const tag = (data.tag || '').trim();
+    if (!tag) {
+      // No models installed at all — show a clear "set up" affordance.
+      tagEl.textContent = t('model.chip_none') || '미설치';
+      chip.setAttribute('data-source', 'none');
+      chip.title = data.warning || (t('model.chip_title_none') || 'No model installed — click to set up');
+      chip.hidden = false;
+      return;
+    }
+    tagEl.textContent = tag;
+    chip.setAttribute('data-source', data.source || 'requested');
+    // Tooltip — base label + source + optional warning. Stays
+    // single-line so the title hover surface is compact.
+    const baseTitle = t('model.chip_title') || '현재 응답에 사용 중인 모델 — 클릭 시 admin 모델 설정';
+    const sourceLbl = t('model.source.' + (data.source || 'requested'))
+      || (data.source || '');
+    chip.title = data.warning
+      ? `${baseTitle}\n[${sourceLbl}] ${data.warning}`
+      : `${baseTitle}\n[${sourceLbl}]`;
+    chip.hidden = false;
+  } catch (e) {
+    console.warn('[JAMES] /llm/active fetch 실패:', e);
+  }
+}
 
 async function loadModePickerOptions() {
   try {

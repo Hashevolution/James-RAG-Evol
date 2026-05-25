@@ -1465,6 +1465,27 @@ async def llm_installed(api_key: str, role: str = Depends(get_role_from_request)
                 "hint": "Ollama가 실행 중인지 확인하세요 (ollama serve)"}
 
 
+@app.get("/llm/active",
+         summary="현재 chat 모델 indicator [v0.4 Sprint 2 #3a]")
+async def llm_active(api_key: str, _role: str = Depends(get_role_from_request)):
+    """[v0.4 Sprint 2 #3a] Lightweight public-ish resolver snapshot
+    for the chat-header indicator chip.
+
+    Differs from /admin/llm/resolution: api_key check only (no
+    admin.settings feature gate), and returns just `chat` mode +
+    omits `fallback_chain` / `installed` / `preference` (already
+    surfaced in admin). Chat users on any role see which model is
+    actually serving their requests right now.
+
+    Returned shape:
+      {"tag": str, "source": str, "warning": str}
+    """
+    verify_api_key(api_key)
+    from core.model_resolver import resolve_chat
+    r = resolve_chat()
+    return {"tag": r.tag, "source": r.source, "warning": r.warning}
+
+
 @app.get("/admin/llm/resolution",
          summary="현재 모델 resolution 상태 [PR plan-1, 2026-05-09]")
 async def llm_resolution(api_key: str, role: str = Depends(get_role_from_request)):
