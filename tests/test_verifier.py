@@ -72,9 +72,22 @@ def _completion(text="", error=""):
 
 
 # Long-enough answer so the < 30-char gate doesn't trip.
+#
+# v0.4 Sprint 3 follow-up — rebalanced to be Korean-dominant by
+# character count. PR #495 (Sprint 1 #2) replaced the per-stage
+# `_is_korean(≥ 20%)` heuristic with `core.i18n.is_korean()`
+# (dominant-script comparison). The old fixture mixed enough
+# English alphabet ("Retrieval-Augmented Generation" / "LLM") that
+# the new heuristic classified it as English, flipping the
+# verifier's `_format` to the EN branch and breaking
+# `test_two_unsupported_claims_triggers_annotate`'s "검증:"
+# assertion. The shape stays "long-enough Korean answer about a
+# retrieval system" — the only change is dropping the inlined
+# English phrase that tipped the script ratio.
 ANSWER_KO = (
-    "RAG는 Retrieval-Augmented Generation 의 약자로, 외부 지식을 "
-    "검색해 LLM 응답에 결합하는 기법입니다."
+    "RAG(검색-증강 생성)는 외부 지식 자료를 빠르게 찾아서 언어 "
+    "모델 답변에 결합하는 방식입니다. 환각을 줄이고 출처를 "
+    "보존하는 효과가 있습니다."
 )
 ANSWER_EN = (
     "RAG stands for Retrieval-Augmented Generation, a technique that "
