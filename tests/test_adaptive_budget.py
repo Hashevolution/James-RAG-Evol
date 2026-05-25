@@ -246,6 +246,7 @@ def test_module_exports():
         "CAP_HEAVY",
         "ReasoningStage",
         "TaskBudget",
+        "complete_with_retry",   # D6 (2026-05-25) — retry_doubled wiring closure
         "retry_doubled",
     }
     assert set(m.__all__) == expected

@@ -185,11 +185,62 @@ def retry_doubled(prev_cap: int, max_cap: int = CAP_HEAVY) -> int:
     return min(prev_cap * 2, max_cap)
 
 
+def complete_with_retry(
+    backend,
+    prompt: str,
+    *,
+    cap: int,
+    max_cap: int = CAP_HEAVY,
+    timeout: float = 60.0,
+    **opts,
+):
+    """Call `backend.complete(prompt, max_tokens=cap, …)` and retry once
+    with `retry_doubled(cap, max_cap)` if the response is truncated.
+
+    D6 (2026-05-25) — closes the design ↔ wiring gap where the
+    `retry_doubled` helper existed but no call site invoked it.
+
+    Retry trigger: `result.done_reason == "length"`. Backends that
+    don't track `done_reason` (legacy / future plugin backends)
+    leave it empty → no retry — pre-D6 behavior is preserved.
+
+    Single retry only — bounded by `max_cap` (default `CAP_HEAVY`).
+    A misclassified light task that was already at `CAP_HEAVY` won't
+    spiral; `retry_doubled` saturates at the ceiling.
+
+    `cap` and `max_cap` are integers in the same token unit
+    `backend.complete` accepts via `max_tokens`. `**opts` is
+    forwarded as-is on both the first and the retry call.
+
+    Returns the `CompletionResult` of the **retry** when one was
+    issued, otherwise the first call's result.
+    """
+    result = backend.complete(
+        prompt,
+        max_tokens=cap,
+        timeout=timeout,
+        **opts,
+    )
+    if not getattr(result, "done_reason", "") == "length":
+        return result
+    retried_cap = retry_doubled(cap, max_cap=max_cap)
+    if retried_cap <= cap:
+        # Already at the ceiling — retry would change nothing.
+        return result
+    return backend.complete(
+        prompt,
+        max_tokens=retried_cap,
+        timeout=timeout,
+        **opts,
+    )
+
+
 __all__ = [
     "CAP_SUBSTITUTION",
     "CAP_LIGHT",
     "CAP_HEAVY",
     "ReasoningStage",
     "TaskBudget",
+    "complete_with_retry",
     "retry_doubled",
 ]

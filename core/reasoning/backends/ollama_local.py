@@ -90,12 +90,40 @@ class OllamaLocalBackend:
                          "LLM 응답 생성 중 오류")
         is_err = bool(text) and any(text.startswith(p) for p in _ERR_PREFIXES)
 
+        # D6 (2026-05-25) — done_reason heuristic. RouterWrapper does
+        # not yet expose Ollama's native `done_reason`, so we infer
+        # truncation from two signals:
+        #   1. response length is suspiciously close to the cap
+        #      (≥ 90% of `max_tokens × 4` characters — a token≈4-char
+        #      English approximation; Korean is denser so this is
+        #      conservative — bias is towards false-negatives, i.e.
+        #      missing a real truncation rather than flagging a clean
+        #      stop as truncation)
+        #   2. the response does NOT end with a sentence terminator
+        #      (`. ? ! 다 요 음 } ]` or whitespace) — a model that
+        #      stopped naturally usually ends a sentence; a model
+        #      that ran out of tokens usually doesn't
+        # Both signals must fire to set `done_reason="length"`.
+        # `complete_with_retry` (`core.reasoning.budget`) acts on it
+        # by re-issuing with `retry_doubled(max_tokens)`.
+        done_reason = ""
+        if text and not is_err:
+            char_budget_approx = max(max_tokens, 1) * 4
+            length_suspicious = len(text) >= char_budget_approx * 0.9
+            stripped = text.rstrip()
+            sentence_end = stripped.endswith((
+                ".", "?", "!", "다", "요", "음", "}", "]", "\"", "'", ")"
+            ))
+            if length_suspicious and not sentence_end:
+                done_reason = "length"
+
         return CompletionResult(
             text=text or "",
             backend_id=self.backend_id,
             model=model or "",
             latency_ms=int((time.time() - t0) * 1000),
             error=("backend reported error string" if is_err else ""),
+            done_reason=done_reason,
         )
 
 

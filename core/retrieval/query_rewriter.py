@@ -323,11 +323,18 @@ class QueryRewriter:
             reason="auto" if _budget_for_router is not None else "fallback",
         )
 
+        # D6 (2026-05-25) — D1 `retry_doubled` wiring closure. If the
+        # response is truncated at `cap` (done_reason="length"), the
+        # helper retries once with `retry_doubled(cap)` up to
+        # CAP_HEAVY. Backends that don't expose `done_reason` leave
+        # it empty → no retry — pre-D6 behavior preserved.
         t0 = time.time()
         try:
-            result = backend.complete(
+            from core.reasoning.budget import complete_with_retry
+            result = complete_with_retry(
+                backend,
                 prompt,
-                max_tokens=cap,
+                cap=cap,
                 timeout=self._timeout,
             )
         except Exception:

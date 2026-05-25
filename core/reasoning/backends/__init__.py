@@ -70,12 +70,21 @@ class CompletionResult:
     path — they return ``error="..."`` and let the caller decide. This
     matches RouterWrapper's existing "_LLM_ERROR_PREFIXES" pattern in
     core/reasoning/engine.py.
+
+    ``done_reason`` (D6 2026-05-25): optional truncation signal. When
+    the backend can determine the model stopped because it hit the
+    cap (vs naturally finished), it sets ``done_reason="length"``.
+    Unknown / not-truncated → empty string. Callers (`budget.complete_with_retry`)
+    branch on this to decide whether to retry with a doubled cap.
+    Backends that don't track this attribute leave it empty — the
+    caller treats absence as "no truncation signal observed".
     """
     text: str
     backend_id: str
     model: str = ""
     latency_ms: int = 0
     error: str = ""
+    done_reason: str = ""
 
 
 @runtime_checkable
