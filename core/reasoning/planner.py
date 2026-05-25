@@ -211,16 +211,39 @@ class Planner:
         if not force and not _enabled():
             return identity
 
+        is_ko = _is_korean(query)
+        tmpl = PLAN_PROMPT_KO if is_ko else PLAN_PROMPT_EN
+        prompt = tmpl.format(query=query)
+
+        # D5.C.2.b — flag-gated backend resolution. Planner is not
+        # D1-wired (uses fixed `self._max_tokens`), so `budget_signal`
+        # is always `None` here. Under D5 flag-off the helper returns
+        # `self._backend_id` (byte-identical to pre-D5). Under D5
+        # flag-on the router policy fires with budget=None → rule 4
+        # → legacy backend (planner is not grounding-critical, so it
+        # does not trigger the verify-stage escalation either).
         try:
             from core.reasoning.backends import get_backend
-            backend = get_backend(self._backend_id)
+            from core.reasoning.router import emit_route_event, resolve_backend
+
+            backend_id = resolve_backend(
+                "planner",
+                prompt,
+                budget_signal=None,
+                fallback_backend_id=self._backend_id,
+            )
+            backend = get_backend(backend_id)
         except Exception:
             self._emit_skip(query, user_role, "backend_lookup_failed")
             return identity
 
-        is_ko = _is_korean(query)
-        tmpl = PLAN_PROMPT_KO if is_ko else PLAN_PROMPT_EN
-        prompt = tmpl.format(query=query)
+        emit_route_event(
+            "planner",
+            prompt,
+            backend_id,
+            budget_signal=None,
+            reason="fallback",
+        )
 
         t0 = time.time()
         try:
