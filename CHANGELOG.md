@@ -7,6 +7,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.3.2] — 2026-05-25 — Direction 5 (Auto-routing on Provider Contract) cycle closure
+
+**Theme**: ship a per-call backend-selection layer above the Provider Contract. Every production LLM call path now consults a router that picks backend by task weight + stage type. Default OFF; opt-in via `JAMES_AUTO_ROUTER=1`. Byte-identical to pre-v0.3.2 at the production call path when the flag is unset. 10-PR sequence (#474–#484) merged in a single 2026-05-25 session.
+
+### Added — `core/reasoning/router.py` (Router + policy + helpers)
+
+- New `core/reasoning/router.py` (~12 KB) providing:
+  - `Router(*, enabled=None)` — env-flag-gated (`JAMES_AUTO_ROUTER`). Default OFF.
+  - `Router.select_backend(stage, prompt, *, context, budget_signal) → str` — dispatches to `_route_policy` when flag-on, returns `_legacy_backend_id()` when flag-off.
+  - `_route_policy` — 4-rule decision tree: (1) `stage == "verify"` (grounding-critical) → prefer `large` → `medium` → legacy; (2) `budget_signal == CAP_SUBSTITUTION` → prefer `small` → legacy; (3) `budget_signal == CAP_HEAVY` → prefer `large` → `medium` → legacy; (4) otherwise (CAP_LIGHT / None / unknown) → legacy.
+  - High-level stage-call-site helpers: `resolve_backend`, `emit_route_event`, `_budget_to_tier_label`. `resolve_backend` returns `fallback_backend_id` when flag-off (byte-identical); under flag-on, the router is the authority — stage-level `self._backend_id` is intentionally overridden.
+
+### Added — `BackendCapability(tier, provider)` metadata
+
+- `core/reasoning/backends/__init__.py` extended with `BackendCapability` frozen dataclass, `UNKNOWN_CAPABILITY` sentinel, `get_backend_capability(name)`, and `list_backends_by_tier(tier)`.
+- `tier` ∈ `{small, medium, large}` (model-size class); `provider` ∈ `{local, sovereign, cloud}` (deployment surface). Free-form strings — plugin backends can declare niche tiers without modifying core.
+- Two builtin backends declared: `ollama_local` = `BackendCapability(tier="small", provider="local")`; `claude_code_cli` = `BackendCapability(tier="large", provider="cloud")`.
+- Backward compat: backends without `capability` → `UNKNOWN_CAPABILITY`, treated as fallback only (not preferred by policy).
+
+### Added — 5-stage wiring (every production LLM call path)
+
+- `core/retrieval/query_rewriter.py` (D5.C.2.a) — first stage wired. cap computed first → fed to router as `budget_signal` only when D1 `JAMES_ADAPTIVE_BUDGET=1` is also on. Audit row every successful resolve.
+- `core/reasoning/planner.py` (D5.C.2.b) — same pattern, `budget_signal=None` (planner not D1-wired).
+- `core/reasoning/reflect.py` (D5.C.2.c) — single backend resolve serves both critique + revise passes.
+- `core/reasoning/verify.py` (D5.C.2.d) — grounding-critical stage, `reason="grounding-critical"` audit label. The stage where a small-tier-only fleet sees routing actually take effect when operator opts into a larger backend.
+- `core/reasoning/trace_helpers.py:trace_synth_call` (D5.C.2.e) — L1 unified entry point. `resolve_backend_for_stage(stage)` result becomes `fallback_backend_id` for `resolve_backend(...)`. Closes the 5-stage surface.
+
+### Added — `audit_log` `reason:route` rows
+
+- Per successful resolve, one row recording `(stage, prompt_hash[:8], selected_backend, budget_tier_label, reason)`. `reason` values: `auto` (D1+D5 both on), `fallback` (D5 on, D1 off), `grounding-critical` (verify stage escalation), `policy` (helper default).
+- Audit emission is try/except-wrapped — failure never blocks production.
+
+### Added — `core/entity_alias_pack.py` (cross-lingual entity resolution, D5.D)
+
+- New `core/entity_alias_pack.py` (~3.6 KB) — `_ENTITY_ALIAS_PACK` list of ~30 high-traffic entities with bidirectional KO↔EN surface forms (Palantir, Tesla, Nvidia, Apple, Microsoft, Google, Meta, Amazon, Anthropic, OpenAI, AMD, BYD, BlackRock, Citi, Archer, Bouygues, Cursor, Claude, FOMC, Federal Reserve, White House, Pentagon, …).
+- `core/graph_engine.py:build_entity_map_snapshot` augmented — after the wiki-frontmatter pass, iterate the alias pack and augment the snapshot with KO↔EN surface forms (silent skip when the canonical name has no matching wiki entity).
+- Pairs with the v0.3.1 follow-up PR #472 `_SYNONYM_MAP` keyword expansion: two layers, same KO↔EN problem, different pipeline stages (query expansion vs graph entity resolution).
+- Backward compat: wiki frontmatter `aliases:` takes precedence (first-write); removing the pack reverts to v0.3.1 alias-from-frontmatter-only behavior.
+
+### Added — closure documentation
+
+- `docs/handovers/v0.3.x-direction5-auto-routing-track.md` (PR #474, 213 lines) — design memo with scope / phase plan / STEP 7 bench plan / Build-don't-broadcast principle application.
+- `docs/ARCHITECTURE.md` §5.7.8 (PR #484) — D5 routing layer + activation flag + decision tree + authority model + audit row schema + cross-lingual entity resolution.
+- `reports/promo-assets/v3prime-direction5-router-result.md` (PR #484) — closure result doc: 10-PR catalog + acceptance (bench-neutral by design) + operator-run STEP 7 procedure for 3 scenarios + "what this closure does NOT claim" + cross-Direction map.
+- `ROADMAP.md` Direction 5 `[ ]` → `[x]` with 10-PR sequence.
+
+### Verified
+
+- All wiring PRs land on test-level invariance (flag-off byte-identical). 526 backend / router / graph / entity / rewriter / reflect / verify regression tests pass on the full D5 surface.
+- 74 new D5-specific contract tests across 5 files (`test_router_skeleton.py` 23 + `test_backend_capability.py` 14 + `test_router_policy.py` 14 + `test_query_rewriter_router_wiring.py` 11 + `test_entity_alias_pack.py` 12).
+- Module sizes all under the 20 KB gate: `router.py` ~12 KB, `entity_alias_pack.py` ~3.6 KB, `graph_engine.py` +29 lines.
+- ruff clean on all touched files.
+
+### Operator-run STEP 7 sweep (any time)
+
+The result doc documents a 3-scenario procedure: (1) baseline with flag OFF; (2) treatment with flag ON, only `ollama_local` registered — expected match baseline (all routing falls back to legacy with `reason:route` audit row pile-up); (3) treatment with flag ON + `JAMES_ENABLE_CLAUDE_BACKEND=1` — verify stage routes to Claude on every call, expected latency ↑ + grounded=true rate ↑. Acceptance: no grounded=true rate regression at any tier in scenario (2).
+
+The cross-lingual diagnostic ("팔란티어가 뭐야?" → wiki entity `palantir_technologies__pltr_` matching) was the 2026-05-25 root cause this release closes at the graph layer.
+
+### Out of scope for v0.3.2
+
+- **Cost-based routing scoring v2** — current 4-rule heuristic stays. Token price × latency × quality weighted score is a v0.4 follow-up.
+- **Per-domain-pack policy** — v0.5 Domain Pilot scope.
+- **Per-stage explicit override under D5 ON** — when the router flag is on, stage-level `self._backend_id` is intentionally overridden; a flag-aware per-stage override mechanism is a v0.4 follow-up.
+- **Embedding model swap** (BL-9) — bge-m3 / multilingual-e5-large for global retrieval quality is v0.4 retrieval-rework cycle backlog.
+- **Direction 2 (task-weight metric) as a paper** — absorbed into Direction 5 as the policy's heuristic classifier (Build-don't-broadcast principle).
+- **D3 / D6(I)** — cross-family generalization + joint paper consolidation remain queued for mid-June Robin / Ali Gemini collaboration window.
+
+### Acknowledgements
+
+- Direction 1 (`core/reasoning/budget.py`, v0.3.1) provided the `budget_signal` input the router consumes — this release stands on the 7-tier natural-stop gradient ground truth.
+- The Build-don't-broadcast principle (memory: `feedback_build_dont_broadcast`) was applied throughout: D5 is a product cycle, not a research cycle. No public broadcast, no Robin coupling. Single Ali design-preview DM at D5.0 merge.
+
+---
+
 ## [0.3.1] — 2026-05-24 — Direction 1 (Adaptive Budgeting) cycle closure
 
 **Theme**: ship the dynamic-token-budget mechanism as a **data-bearing experiment artifact**, not a runtime change. Default OFF; opt-in via `JAMES_ADAPTIVE_BUDGET=1`. Three publishable findings + one process finding on `gemma4:e4b` at T=0.2, validated by two A/B sweeps × N=20/cell × 7 task-weight tiers.
