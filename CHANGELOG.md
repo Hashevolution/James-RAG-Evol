@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.0-alpha.2] — 2026-05-25 — v0.4 alpha bundle (Sprint 2 UI consistency + Sprint 3 plumbing & 5-stage D1 surface)
+
+**Theme**: first alpha tag of the v0.4 cycle — the deliverable between v0.3.x closure (v0.3.3, D6 retry wiring) and the v0.4.0 final Layer 4 main theme (Lifecycle Semantics, Sprint 5). Two sprints of stabilisation work bundled into one citable archive. **Default-off invariant preserved** across all D1 / D5 flags: production fleets pulling alpha.2 see zero behaviour change relative to v0.3.3.
+
+### Sprint 2 — UI consistency bundle (5 PRs)
+
+- **#496 admin character profile page i18n consistency** — 38 new `char.*` keys + `window.onLangChange` dynamic re-render hook + `data-i18n="char.card.{core,values,style}"` on the summary card frame. Closes the long-standing bug where `buildCharacterSummary` / `renderConnectionsPanel` rendered Korean strings in EN mode (root cause was one layer below the existing `label_key` contract). `tests/test_i18n_char_keys_parity.py` (3 tests) pins EN↔KO `char.*` key parity + no orphan `t('char.…')` calls.
+- **#497 chat sidebar hover auto-expand** — CSS-only sibling + self `:hover` rule on `.sidebar-open-btn` / `.sidebar.collapsed`. Click-toggle UX preserved untouched.
+- **#498 always-visible chat model indicator chip** — new `GET /llm/active` endpoint (api_key only, not admin-gated) returns `{tag, source, warning}` from `resolve_chat()`. Chip in `index.html` header populated via `loadActiveModelChip()`; `data-source` attribute drives edge colour for non-default resolution (`preference` / `any` / `none`).
+- **#499 chat-side model picker popover** — chip click opens popover listing installed models (aggregated from `MODE_OPTIONS`). Selection writes to `selectedModel` (per-session override) + `localStorage`. Resolution priority unchanged: per-call (`selected_model` param) > env (`config.GEMMA_MODEL`) > preference list > any > none.
+- **#500 sticky top navigation on scrolling pages** — admin / workspace headers get `position:sticky; top:0; z-index:50`; chat / graph keep their `overflow:hidden` viewport pattern. `tests/test_header_sticky_parity.py` (4 tests) pins the per-page policy with negative assertions so a future refactor that "fixes the inconsistency" by adding sticky to chat / graph fails CI.
+
+### Sprint 3 — Plumbing closure (5 PRs + 2 follow-ups)
+
+- **#501 BL-1 emit_trace_step stdout mirror** — single-line `[reason:<stage>] applied_rule · backend · latency [trace abc12345] [err=…]` mirror lives inside `emit_trace_step` itself, so every caller (synth + planner + reflect + verify + retrieve + rerank + tool) gets the same console signal. Convention matches `observability.emit_step`: `JAMES_TRACE_STDOUT` default ON; `"0"` / `"false"` / `"no"` / empty silences. Closes `feedback_stdout_vs_audit_log_trace_split`.
+- **#502 BL-2 attributes.summary legacy field cleanup** — `_ingestion.py` stops mirroring `description` into `attributes.summary`; `_frontmatter.py` defensively strips any caller-passed `attributes.summary` before frontmatter dump. Read fallback kept for legacy disk files. New wiki writes converge on the canonical top-level `summary`.
+- **#503 D1 stage expansion #7a planner** — `Planner.__init__` accepts `max_tokens: Optional[int]` + `budget: Optional[TaskBudget]`. Per-call cap resolution: explicit int / `adaptive_budget_enabled() + TaskBudget.assess("planner", query)` / fall-back default. `backend.complete` → `complete_with_retry(stage="planner")`.
+- **#504 D1 stage expansion #7b reflect** — `ReflectionLoop` critique + revise sub-stages share `TaskBudget.assess("reflect", query)` when both `*_max_tokens` are `None` and D1 is on. `complete_with_retry(stage="reflect")` wired through `_call`.
+- **#505 D1 stage expansion #7c verify** — `Verifier.__init__` accepts `fact_check_max_tokens: Optional[int]` + `budget`. `_fact_check` routes through `assess("verify", query)` when D1 is on. D5 grounding-critical escalation (D5.C.1 rule 1) composes with D1 cap signal — both fire independently into the router policy + retry helper.
+- **#506 follow-up** — `test_verifier.py::ANSWER_KO` fixture rebalanced under PR #495 (Sprint 1 #2) dominant-script `is_korean` contract. The fixture had ~24 Hangul + ~34 English alpha chars — English-dominant under the new rule, so the verifier's `_format` took the EN branch and the `"검증:"` assertion broke. Rebalanced to ~50 Hangul + 3 ASCII (`RAG`).
+- **#507 follow-up** — `query_rewriter` local `_adaptive_budget_enabled()` migrated to `core.reasoning.budget.adaptive_budget_enabled` so all 5 reasoning stages read the D1 opt-in flag through one function.
+
+### After v0.4.0-alpha.2 — 5-stage D1 surface uniform
+
+| Stage | D1 cap | D6 retry | Router signal |
+|---|---|---|---|
+| `query_rewriter` | ✅ (v0.3.1 / PR #461) | ✅ (v0.3.3 / PR #486) | budget signal under D1 on |
+| `synth` | ✅ (v0.3.1) | ✅ (v0.3.3, via `trace_synth_call`) | budget signal under D1 on |
+| `planner` | ✅ (v0.4.0-alpha.2 / PR #503) | ✅ (v0.4.0-alpha.2) | budget signal under D1 on |
+| `reflect` | ✅ (v0.4.0-alpha.2 / PR #504) | ✅ (v0.4.0-alpha.2) | budget signal under D1 on |
+| `verify` | ✅ (v0.4.0-alpha.2 / PR #505) | ✅ (v0.4.0-alpha.2) | budget signal + grounding-critical |
+
+### Default-off invariant verified
+
+Every wiring landed in v0.4.0-alpha.2 stays gated behind `JAMES_ADAPTIVE_BUDGET=1`. Without the env opt-in, every reasoning stage hits the pre-#7a cap (4096 / 1024) byte-identically. The router signal in budget-aware mode is also a no-op under flag-off — `_budget_for_router` is `None`, so policy rules 1 / 4 don't fire on a fake CAP_HEAVY value.
+
+### Verified
+
+- 12 PRs land green on `pytest` for the changed surface + broader regression (planner / reflect / verify / query_rewriter / router / budget / trace / chip wiring / sticky parity / i18n parity).
+- New tests added across the bundle: `test_i18n_char_keys_parity.py` (3), `test_llm_active_endpoint.py` (8, including ChipPickerPopoverTests), `test_header_sticky_parity.py` (4), `test_emit_trace_step_stdout_mirror.py` (6), `test_attributes_summary_cleanup.py` (3), `test_planner_d1_wiring.py` (8), `test_reflect_d1_wiring.py` (6), `test_verify_d1_wiring.py` (6).
+- No `core/` file exceeds 20 KB after the bundle. `verify.py` approached the cap at 21.4 KB during #7c development; trimmed docstrings landed it at 19.2 KB — split is the next-action for any further verify additions (extract `_verify_security` / `_verify_fact_check`).
+- ruff / hooks clean on every PR.
+
+### Operator action
+
+GitHub release publish triggers Zenodo automatic mint. The minted DOI for v0.3.3 will be supplied by the operator at v0.4.0-alpha.2 publish time and added as `isNewVersionOf` in the next deposit; the chain back to v0.3.2 / v0.3.1 (specific DOIs `10.5281/zenodo.20372649` / `10.5281/zenodo.20363998`) stays explicit in `related_identifiers` as `isDerivedFrom`.
+
+### Out of scope for v0.4.0-alpha.2 (Sprint 4-5 follow-up)
+
+- **Sprint 4 retrieval quality** — BL-9 embedding model swap (`paraphrase-multilingual-MiniLM-L12-v2` → `bge-m3` / `multilingual-e5-large`). Re-embeds all chroma chunks. Cross-lingual diagnostic fixture (`feedback_rag_cross_lingual_diagnostic` memory) is the test bed.
+- **Sprint 5 Layer 4 main theme** — T1 Lifecycle states + T2 Event-driven transitions + T7 Cross-workspace federation primitives. The architectural shift planned for v0.4.0 final.
+- `verify.py` module split (19.2 KB, approaching 20 KB cap; extract `_verify_security` / `_verify_fact_check` on next addition).
+- `docs/ARCHITECTURE.md` LLM-model authority chain documentation polish (Sprint 2 #3c).
+- admin sidebar collapsed-state parity (Sprint 2 #5b) — bundled with sticky-nav follow-up when needed.
+
+---
+
 ## [0.3.3] — 2026-05-25 — D6 retry-wiring follow-up cycle closure (D1 design/wiring gap closed)
 
 **Theme**: close the design ↔ wiring gap surfaced by the 2026-05-25 user diagnostic question (*"does D1 7-tier cover all cases / what about exceptions?"*). The `retry_doubled` helper that existed since v0.3.1 (D1 closure) but was never invoked from any production call site is now wired through `complete_with_retry`. Truncation triggers single retry up to `CAP_HEAVY`. `audit_log reason:retry` row records every retry decision. Native Ollama `done_reason` replaces the heuristic when the provider exposes it (heuristic preserved as fallback for cache hits / Ollama < 0.1.30 / non-Ollama providers).
