@@ -83,11 +83,14 @@ def _enabled() -> bool:
     return os.environ.get("JAMES_ENABLE_PLANNER") == "1"
 
 
-def _is_korean(text: str) -> bool:
-    if not text:
-        return False
-    korean_chars = sum(1 for c in text if "가" <= c <= "힣")
-    return korean_chars >= max(1, int(len(text) * 0.2))
+# v0.4 Sprint 1 #2 — unified language detection. The local
+# `_is_korean` definition (Korean ≥ 20% threshold) was duplicated
+# across planner / reflect / verify / query_rewriter / engine_synth
+# and disagreed with engine_synth's "English > 50% else Korean"
+# logic on mixed queries. All five stages now share
+# `core.i18n.is_korean`. See `core/i18n.py` docstring for the
+# unified dominant-script algorithm + Korean-default tie-break.
+from core.i18n import is_korean as _is_korean  # noqa: F401
 
 
 PLAN_PROMPT_KO = (

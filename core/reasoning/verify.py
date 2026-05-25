@@ -128,11 +128,8 @@ def _fact_check_enabled() -> bool:
     )
 
 
-def _is_korean(text: str) -> bool:
-    if not text:
-        return False
-    korean_chars = sum(1 for c in text if "가" <= c <= "힣")
-    return korean_chars >= max(1, int(len(text) * 0.2))
+# v0.4 Sprint 1 #2 — unified language detection (see core/i18n.py).
+from core.i18n import is_korean as _is_korean  # noqa: F401
 
 
 _BLOCK_MSG_KO = (

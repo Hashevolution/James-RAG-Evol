@@ -122,14 +122,10 @@ def _enabled() -> bool:
     return os.environ.get("JAMES_ENABLE_REFLECT") == "1"
 
 
-def _is_korean(text: str) -> bool:
-    """≥ 20% Korean character ratio — same heuristic as the rest of
-    core/reasoning/{engine,modes,pipeline}.py.
-    """
-    if not text:
-        return False
-    korean_chars = sum(1 for c in text if "가" <= c <= "힣")
-    return korean_chars >= max(1, int(len(text) * 0.2))
+# v0.4 Sprint 1 #2 — unified language detection (see core/i18n.py).
+# Replaces the legacy ≥ 20% Korean-char threshold with a dominant-
+# script comparison that agrees with engine_synth on mixed queries.
+from core.i18n import is_korean as _is_korean  # noqa: F401
 
 
 def _no_issues(critique_text: str) -> bool:

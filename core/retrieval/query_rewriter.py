@@ -148,14 +148,12 @@ def _enabled() -> bool:
     return os.environ.get("JAMES_ENABLE_QUERY_REWRITE") == "1"
 
 
-def _is_korean(text: str) -> bool:
-    """≥ 20% Korean character ratio matches the existing pipeline
-    heuristic in core/reasoning/{engine,modes,pipeline}.py.
-    """
-    if not text:
-        return False
-    korean_chars = sum(1 for c in text if "가" <= c <= "힣")
-    return korean_chars >= max(1, int(len(text) * 0.2))
+# v0.4 Sprint 1 #2 — unified language detection (see core/i18n.py).
+# Previously: ≥ 20% Korean threshold defined locally. Now the same
+# dominant-script comparison used by every reasoning stage +
+# engine_synth so a mixed query like "Palantir 분석" gets the same
+# Korean/English classification at every stage.
+from core.i18n import is_korean as _is_korean  # noqa: F401
 
 
 # Capture JSON object spanning the response. The LLM may pad with
