@@ -183,6 +183,46 @@ except ValueError:
 # ────────────────────────────────────────────────────────────────
 CHROMA_COLLECTION = "james_prototype"
 
+
+# ────────────────────────────────────────────────────────────────
+#  Embedding model — v0.4 Sprint 4 BL-9 prep
+# ────────────────────────────────────────────────────────────────
+#  Default stays at paraphrase-multilingual-MiniLM-L12-v2 so any
+#  operator pulling alpha.2 sees zero behaviour change. Setting
+#  JAMES_EMBEDDING_MODEL flips the default for the next ingestion +
+#  swaps `chroma_db` to a per-model directory + downloads the new
+#  model on first run.
+#
+#  Candidates the Sprint 4 swap PR will measure:
+#    BAAI/bge-m3                       — 24 layers, 1024 dim
+#    intfloat/multilingual-e5-large    — 24 layers, 1024 dim
+#
+#  The MiniLM default is a 384-dim 12-layer model. Switching to a
+#  1024-dim model means the existing chroma collection is unusable
+#  (cosine search requires matching dimensions), so the resolver in
+#  core/vector_store.py picks a per-model chroma directory
+#  (`chroma_db_<short>` instead of plain `chroma_db`). The default
+#  path remains `chroma_db` when the env is unset or matches the
+#  legacy MiniLM tag — backward-compat invariant.
+EMBEDDING_MODEL = os.environ.get(
+    "JAMES_EMBEDDING_MODEL",
+    "paraphrase-multilingual-MiniLM-L12-v2",
+)
+
+
+def _embedding_short_name(model_id: str) -> str:
+    """Filesystem-safe short slug for a HF embedding model id.
+
+    Used to derive `models/<short>` (cached weights) and
+    `chroma_db_<short>` (per-model vector DB) without conflicting
+    with the legacy `models/miniLM` + `chroma_db` paths the v0.3.x
+    cycle has been writing to.
+    """
+    return (model_id.split("/")[-1]
+                    .replace("-", "_")
+                    .replace(".", "_")
+                    .lower())
+
 # ────────────────────────────────────────────────────────────────
 #  API Key — required for production, falls back for dev
 # ────────────────────────────────────────────────────────────────
