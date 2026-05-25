@@ -29,6 +29,13 @@
     padding: 12px 24px;
     border-bottom: 1px solid var(--border-2);
     background: var(--surface);
+    /* v0.4 Sprint 2 #4 — sticky on long scrolling pages so the
+       brand + language toggle + chat-link stay reachable while
+       data/jobs tables scroll. Matches admin.css; chat/graph
+       intentionally skipped (overflow:hidden viewport apps). */
+    position: sticky;
+    top: 0;
+    z-index: 50;
   }
   .logo { font-size: 14px; font-weight: 600; }
   .logo span.tagline {
