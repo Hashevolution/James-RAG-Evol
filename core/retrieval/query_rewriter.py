@@ -269,12 +269,6 @@ class QueryRewriter:
         if not force and not _enabled():
             return (query, 0, False)
 
-        try:
-            from core.reasoning.backends import get_backend
-            backend = get_backend(self._backend_id)
-        except Exception:
-            return (query, 0, False)
-
         prompt_tmpl = REWRITE_PROMPT_KO if _is_korean(query) else REWRITE_PROMPT_EN
         prompt = prompt_tmpl.format(query=query)
 
@@ -285,11 +279,49 @@ class QueryRewriter:
         # Default-off invariant: paths 1 and 3 produce the pre-D1.B cap.
         if self._max_tokens is not None:
             cap = self._max_tokens
+            _budget_for_router = None
         elif _adaptive_budget_enabled():
             cap = self._budget.assess("query_rewriter", query)
             _trace_budget(stage="query_rewriter", cap=cap, query=query)
+            # D5.C.2 — only when D1 dynamic budget is active do we feed
+            # a meaningful signal to the router. Under D1 flag-off the
+            # cap is fixed at DEFAULT_MAX_TOKENS=4096 which would
+            # unconditionally trigger the CAP_HEAVY routing branch —
+            # the wrong signal. Pass `None` and let the router fall
+            # back to legacy.
+            _budget_for_router = cap
         else:
             cap = DEFAULT_MAX_TOKENS
+            _budget_for_router = None
+
+        # D5.C.2 — flag-gated backend resolution. With JAMES_AUTO_ROUTER off
+        # `resolve_backend` returns `self._backend_id` (byte-identical to
+        # pre-D5). With flag on it consults the D5.C.1 policy (`_route_policy`).
+        try:
+            from core.reasoning.backends import get_backend
+            from core.reasoning.router import emit_route_event, resolve_backend
+
+            backend_id = resolve_backend(
+                "query_rewriter",
+                prompt,
+                budget_signal=_budget_for_router,
+                fallback_backend_id=self._backend_id,
+            )
+            backend = get_backend(backend_id)
+        except Exception:
+            return (query, 0, False)
+
+        # Audit row is emitted regardless of flag state — the routing
+        # decision (even when it is "fall back to legacy because flag
+        # off") is useful for diagnostics. Never raises (helper
+        # swallows audit failures).
+        emit_route_event(
+            "query_rewriter",
+            prompt,
+            backend_id,
+            budget_signal=_budget_for_router,
+            reason="auto" if _budget_for_router is not None else "fallback",
+        )
 
         t0 = time.time()
         try:

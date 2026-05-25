@@ -213,3 +213,101 @@ class Router:
         if not self.enabled:
             return _legacy_backend_id()
         return _route_policy(stage, prompt, context, budget_signal)
+
+
+# ─── D5.C.2 — high-level helpers for stage call sites ─────────────
+
+
+def _budget_to_tier_label(signal: Optional[int]) -> str:
+    """Map a TaskBudget cap to a short tier label for audit / debug."""
+    if signal is None:
+        return "none"
+    if signal == CAP_SUBSTITUTION:
+        return "substitution"
+    if signal == CAP_LIGHT:
+        return "light"
+    if signal == CAP_HEAVY:
+        return "heavy"
+    return f"unknown:{signal}"
+
+
+def resolve_backend(
+    stage: str,
+    prompt: str,
+    *,
+    context: str = "",
+    budget_signal: Optional[int] = None,
+    fallback_backend_id: Optional[str] = None,
+) -> str:
+    """High-level helper for stage call sites.
+
+    Replaces ``get_backend(self._backend_id)`` at the 5 cognitive
+    call sites (D5.C.2 wiring). Behavior:
+
+      • ``JAMES_AUTO_ROUTER`` flag OFF → returns ``fallback_backend_id``
+        (the stage's pre-D5 ``self._backend_id``) or ``_legacy_backend_id()``
+        if ``None``. Byte-identical to pre-D5 main.
+      • Flag ON → consults ``Router(...).select_backend(stage, prompt, ...)``
+        which dispatches to ``_route_policy`` (the D5.C.1 decision tree).
+
+    Stage call sites pass ``budget_signal`` only when the D1 adaptive
+    budget flag is also on (signal is meaningless under D1 flag-off
+    because the cap is fixed at ``DEFAULT_MAX_TOKENS=4096`` and
+    would unconditionally trigger the CAP_HEAVY branch). Without a
+    meaningful signal, the router's policy falls back to legacy.
+    """
+    r = Router()
+    if not r.enabled:
+        return fallback_backend_id or _legacy_backend_id()
+    return r.select_backend(
+        stage,  # type: ignore[arg-type]
+        prompt,
+        context=context,
+        budget_signal=budget_signal,
+    )
+
+
+def emit_route_event(
+    stage: str,
+    prompt: str,
+    selected_backend: str,
+    *,
+    budget_signal: Optional[int] = None,
+    reason: str = "policy",
+) -> None:
+    """Emit a ``reason:route`` row to ``audit_log``.
+
+    Stage call sites call this immediately after ``resolve_backend``
+    so every routing decision is auditable. Never raises — audit
+    failure must not block the production call path (mirrors the
+    pattern in ``core.audit_bridge.mirror_to_audit_db``).
+
+    The row schema (mapped onto the existing 11-column ``audit_log``
+    table):
+      • ``endpoint``  = ``"reason:route"``
+      • ``query``     = stage name (call-site identifier)
+      • ``answer``    = ``"backend={id} tier={label} reason={why}"``
+                        + a short prompt hash for cross-referencing
+                        with the originating /query/ row
+    """
+    try:
+        import hashlib
+        from core.audit_bridge import mirror_to_audit_db
+
+        prompt_hash = (
+            hashlib.sha256(prompt.encode("utf-8", errors="ignore")).hexdigest()[:8]
+            if prompt
+            else ""
+        )
+        tier_label = _budget_to_tier_label(budget_signal)
+        mirror_to_audit_db({
+            "endpoint": "reason:route",
+            "role": "system",
+            "query": stage,
+            "answer": (
+                f"backend={selected_backend} tier={tier_label} "
+                f"reason={reason} prompt={prompt_hash}"
+            ),
+        })
+    except Exception:
+        pass
