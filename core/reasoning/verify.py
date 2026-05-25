@@ -350,18 +350,41 @@ class Verifier:
         path returns ``(True, [])`` — fact-check is a "nice to have",
         not a gate.
         """
-        try:
-            from core.reasoning.backends import get_backend
-            backend = get_backend(self._backend_id)
-        except Exception:
-            return (True, [])
-
         is_ko = _is_korean(query) or _is_korean(answer)
         tmpl = FACT_CHECK_PROMPT_KO if is_ko else FACT_CHECK_PROMPT_EN
         prompt = tmpl.format(
             query=query[:300],
             answer=answer[:2000],
             context=context[:2000],
+        )
+
+        # D5.C.2.d — flag-gated backend resolution. Verify is the
+        # grounding-critical stage: D5.C.1 policy rule 1 escalates it
+        # to `large` tier (preferred), then `medium`, then legacy.
+        # This is the stage where a small-tier-only fleet sees
+        # routing actually take effect — even with budget_signal=None
+        # the verify-stage escalation fires when a larger backend is
+        # registered (e.g. JAMES_ENABLE_CLAUDE_BACKEND=1).
+        try:
+            from core.reasoning.backends import get_backend
+            from core.reasoning.router import emit_route_event, resolve_backend
+
+            backend_id = resolve_backend(
+                "verify",
+                prompt,
+                budget_signal=None,
+                fallback_backend_id=self._backend_id,
+            )
+            backend = get_backend(backend_id)
+        except Exception:
+            return (True, [])
+
+        emit_route_event(
+            "verify",
+            prompt,
+            backend_id,
+            budget_signal=None,
+            reason="grounding-critical",
         )
 
         t0 = time.time()
