@@ -189,15 +189,41 @@ class ReflectionLoop:
         if not force and not _enabled():
             return draft
 
-        try:
-            from core.reasoning.backends import get_backend
-            backend = get_backend(self._backend_id)
-        except Exception:
-            return draft
-
         is_ko = _is_korean(query) or _is_korean(draft)
         crit_tmpl = CRITIQUE_PROMPT_KO if is_ko else CRITIQUE_PROMPT_EN
         rev_tmpl = REVISE_PROMPT_KO if is_ko else REVISE_PROMPT_EN
+
+        # D5.C.2.c — flag-gated backend resolution. Reflect is not
+        # D1-wired (uses fixed critique/revise caps), so
+        # `budget_signal=None` here. Flag-off → `self._backend_id`
+        # (byte-identical). Flag-on → router policy with budget=None
+        # → rule 4 → legacy. Reflect is not grounding-critical
+        # (only `verify` is) so the escalation does not fire. Single
+        # backend serves both critique + revise calls below.
+        try:
+            from core.reasoning.backends import get_backend
+            from core.reasoning.router import emit_route_event, resolve_backend
+
+            # Critique prompt template is enough for routing — the
+            # actual prompts (critique then revise) hit the same backend.
+            router_prompt = crit_tmpl
+            backend_id = resolve_backend(
+                "reflect",
+                router_prompt,
+                budget_signal=None,
+                fallback_backend_id=self._backend_id,
+            )
+            backend = get_backend(backend_id)
+        except Exception:
+            return draft
+
+        emit_route_event(
+            "reflect",
+            router_prompt,
+            backend_id,
+            budget_signal=None,
+            reason="fallback",
+        )
 
         # ── critique pass ────────────────────────────────────
         critique_prompt = crit_tmpl.format(query=query, draft=draft)
