@@ -31,6 +31,9 @@ from __future__ import annotations
 import os
 from typing import Final, Literal, Optional
 
+from core.reasoning.backends import list_backends_by_tier
+from core.reasoning.budget import CAP_HEAVY, CAP_LIGHT, CAP_SUBSTITUTION
+
 ReasoningStage = Literal[
     "query_rewriter",
     "planner",
@@ -38,6 +41,13 @@ ReasoningStage = Literal[
     "verify",
     "synth",
 ]
+
+# D5.C.1 routing policy — stages that escalate beyond their budget signal.
+# `verify` is grounding-critical (D1 sub-finding: ~12.5% unique across 40
+# baseline calls = high-clustering cognitive stage). Even a light budget
+# benefits from a stronger model when the task is "is this answer
+# grounded in the retrieved context?". Other stages route by budget.
+_GROUNDING_CRITICAL_STAGES: Final[frozenset[str]] = frozenset({"verify"})
 
 # Canonical default when neither JAMES_LLM_MODEL nor the router is
 # configured. Matches the rest of the codebase's implicit fallback
@@ -68,6 +78,79 @@ def _legacy_backend_id() -> str:
     `enabled=True` branch.
     """
     return os.getenv("JAMES_LLM_MODEL", _DEFAULT_BACKEND_ID) or _DEFAULT_BACKEND_ID
+
+
+def _first_in_tier(tier: str) -> Optional[str]:
+    """Return the first backend declared at `tier`, or None if no
+    backend is registered there. Order matches `_REGISTRY` insertion
+    order — for v1 we deliberately don't sort by cost/latency. D5.C.2
+    or later can layer a preference function.
+    """
+    candidates = list_backends_by_tier(tier)
+    return candidates[0] if candidates else None
+
+
+def _route_policy(
+    stage: str,
+    prompt: str,
+    context: str,
+    budget_signal: Optional[int],
+) -> str:
+    """D5.C.1 routing policy v1.
+
+    Decision tree (first match wins):
+
+      1. `stage` ∈ ``_GROUNDING_CRITICAL_STAGES`` (currently just
+         ``verify``) → prefer ``large`` tier; fall back to
+         ``medium`` if no large registered; legacy otherwise.
+      2. ``budget_signal == CAP_SUBSTITUTION`` (200, verbatim
+         retrieval) → prefer ``small`` tier; legacy otherwise.
+         Substitution doesn't benefit from a larger model — Robin
+         2026-05-23 finding: substitution-mode bypasses sampling
+         entirely, so a small model gives bit-for-bit identical
+         output cheaper.
+      3. ``budget_signal == CAP_HEAVY`` (4096, multi-step / 4-stage
+         cognitive) → prefer ``large`` tier; fall back to ``medium``;
+         legacy otherwise. Heavy synthesis is where the
+         cost-asymmetry argument actually favors a stronger model
+         (Ali's "shortening the path" framing — 26b finds the answer
+         in 49 tokens vs e4b's 450).
+      4. Otherwise (``CAP_LIGHT`` 1200, ``None``, or unknown
+         signal) → legacy backend. Light synthesis on small model
+         is the v0.3.x default; routing only escalates when one of
+         the rules above fires.
+
+    `prompt` and `context` are reserved for D5.C.2 (prompt-surface
+    signals) and D5.D (cross-lingual alias resolution).
+
+    The "prefer tier X, fall back to legacy" pattern means an
+    operator who registers only ``ollama_local`` (the default)
+    routes everything to ``ollama_local`` — no broken decisions
+    when no larger backend is available. Opt-in routing.
+    """
+    if stage in _GROUNDING_CRITICAL_STAGES:
+        chosen = _first_in_tier("large") or _first_in_tier("medium")
+        if chosen:
+            return chosen
+        return _legacy_backend_id()
+
+    if budget_signal == CAP_SUBSTITUTION:
+        chosen = _first_in_tier("small")
+        if chosen:
+            return chosen
+        return _legacy_backend_id()
+
+    if budget_signal == CAP_HEAVY:
+        chosen = _first_in_tier("large") or _first_in_tier("medium")
+        if chosen:
+            return chosen
+        return _legacy_backend_id()
+
+    # CAP_LIGHT, None, or any unrecognized signal → legacy.
+    # Explicit `CAP_LIGHT` branch listed for readability even though
+    # it falls through to the same legacy path.
+    _ = CAP_LIGHT  # documents the intentional fall-through; satisfies linters
+    return _legacy_backend_id()
 
 
 class Router:
@@ -121,9 +204,12 @@ class Router:
             the legacy backend; D5.C replaces the flag-on branch with
             real policy.
         """
-        # D5.A: flag-off and flag-on both return legacy. The branch
-        # exists so D5.C can drop policy in without touching call sites.
+        # D5.C.1: flag-off → legacy backend (byte-identical to pre-D5).
+        # flag-on → policy decides (see `_route_policy` for the
+        # decision tree). Wiring at the 5 stage call sites lands in
+        # D5.C.2 / D5.C.3; until then, `Router` is constructible but
+        # not yet consulted by `core/retrieval/*` or
+        # `core/reasoning/*` call sites.
         if not self.enabled:
             return _legacy_backend_id()
-        # D5.C will replace this line with policy(stage, prompt, context, budget_signal)
-        return _legacy_backend_id()
+        return _route_policy(stage, prompt, context, budget_signal)
