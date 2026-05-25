@@ -180,6 +180,46 @@ def call_router(
     return llm.generate(messages, **kwargs)
 
 
+def call_router_meta(
+    prompt:    str,
+    task_type: Optional[str] = None,
+    **kwargs,
+) -> dict:
+    """D6 follow-up (2026-05-25) — text + native `done_reason`.
+
+    Mirror of `call_router` that invokes the provider's
+    `generate_meta(...)` so the caller receives the native
+    truncation signal alongside the text. Same task_type → model
+    routing logic; same Hard fallback to direct GemmaClient when
+    no provider is available (the fallback wraps the legacy
+    `call_gemma` in the BaseLLM-style dict for shape consistency).
+    """
+    # Operator override per-task (admin endpoint에서 set)
+    if task_type and "model" not in kwargs:
+        try:
+            from llm.selection import get_model_for_task
+            chosen = get_model_for_task(task_type)
+            if chosen:
+                kwargs["model"] = chosen
+        except Exception:
+            pass
+
+    llm = route(prompt, task_type=task_type)
+    if llm is None:
+        # Hard fallback path — no provider routing available.
+        # Use GemmaClient directly and read its
+        # `_last_done_reason` stash for the native signal.
+        from core.gemma_client import GemmaClient
+        client = GemmaClient()
+        text = client.call_gemma(prompt, **kwargs)
+        return {
+            "text": text,
+            "done_reason": getattr(client, "_last_done_reason", "") or "",
+        }
+    messages = [{"role": "user", "content": prompt}]
+    return llm.generate_meta(messages, **kwargs)
+
+
 class RouterWrapper:
     """GemmaClient.call_gemma 호환 인스턴스 wrapper (Issue #13 Phase 2).
 
@@ -201,6 +241,21 @@ class RouterWrapper:
     def call_gemma(self, prompt: str, **kwargs) -> str:
         task = kwargs.pop("task_type", self.default_task)
         return call_router(prompt, task_type=task, **kwargs)
+
+    def call_gemma_meta(self, prompt: str, **kwargs) -> dict:
+        """D6 follow-up (2026-05-25) — text + native `done_reason`.
+
+        Delegates to `call_router_meta` which selects the same
+        provider as `call_router` would but invokes the provider's
+        `generate_meta(...)` rather than `generate(...)`. Returns at
+        minimum `{"text": str, "done_reason": str}`.
+
+        Used by `core.reasoning.backends.ollama_local.complete` to
+        replace the length-+-terminator heuristic with the native
+        Ollama truncation signal when available.
+        """
+        task = kwargs.pop("task_type", self.default_task)
+        return call_router_meta(prompt, task_type=task, **kwargs)
 
     def call_gemma_vision(self, prompt: str, image_path: str, **kwargs) -> str:
         from core.gemma_client import GemmaClient

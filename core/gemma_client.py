@@ -81,6 +81,19 @@ class GemmaClient:
         self._cache_errors = 0   # 에러 응답 캐시 거부 횟수
         self._total_calls  = 0
 
+        # D6 follow-up (2026-05-25) — native Ollama `done_reason`
+        # stashed by the most recent uncached `call_gemma` invocation.
+        # Read by `OllamaClient.generate_meta` so the
+        # `ollama_local` backend can replace the length+terminator
+        # heuristic with Ollama's native signal.
+        #
+        # Empty string when:
+        #   - call_gemma hit a cached response (no fresh ollama call)
+        #   - the upstream response did not include `done_reason`
+        #     (Ollama < 0.1.30)
+        #   - the call errored before reaching the response
+        self._last_done_reason: str = ""
+
     # ─── 캐시 메서드 ─────────────────────────────────────────
 
     def _generate_cache_key(self, content: str) -> str:
@@ -200,6 +213,11 @@ class GemmaClient:
         self._total_calls += 1
         cache_key = self._generate_cache_key(prompt)
 
+        # D6 follow-up — reset stale done_reason from prior call so
+        # a cache hit / early-return path doesn't leak the previous
+        # call's signal upward through `OllamaClient.generate_meta`.
+        self._last_done_reason = ""
+
         # 긴 프롬프트 캐시 금지
         if len(prompt) > 2000:
             use_cache = False
@@ -212,6 +230,9 @@ class GemmaClient:
                 print(f"🔥 GEMMA CACHE HIT (hits={self._cache_hits})")
                 age = time.time() - self.cache_timestamps.get(cache_key, 0)
                 print(f"[DEBUG] cache age={age:.1f}s / TTL={self.cache_ttl}s")
+                # _last_done_reason stays "" — caller treats absence
+                # as "no truncation signal observed" (heuristic fallback
+                # applies if caller uses ollama_local heuristic).
                 return cached
             else:
                 self._cache_misses += 1
@@ -260,7 +281,13 @@ class GemmaClient:
                     timeout=timeout,
                 )
                 resp.raise_for_status()
-                output = resp.json().get("response", "").strip()
+                resp_json = resp.json()
+                output = resp_json.get("response", "").strip()
+                # D6 follow-up — stash native done_reason for
+                # OllamaClient.generate_meta to forward upward.
+                # Ollama 0.1.30+ returns "stop" / "length" / "load";
+                # older versions omit the field → "" left in place.
+                self._last_done_reason = resp_json.get("done_reason", "") or ""
                 elapsed_llm = time.time() - t_call
                 print(f"[GEMMA] 응답 수신 ({elapsed_llm:.1f}s) | {len(output)}자")
 
