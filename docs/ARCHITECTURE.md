@@ -511,6 +511,84 @@ this model, not architectural primitives. They activate only after
 v1.0 + Plugin API. Until then, JAMES is mother-hardening (CLAUDE.md
 rule #1).
 
+### 5.7.8 Backend auto-routing layer (D5, v0.3.x, 2026-05-25)
+
+`core/reasoning/router.py` sits **above** the Provider Contract
+(`core/reasoning/backends/`). It does not change the contract
+surface; it decides *which* registered backend gets the call,
+leaving the backend invocation path untouched.
+
+**Activation**: `JAMES_AUTO_ROUTER` env (`1` / `true` / `yes` /
+`on`) — default OFF. Pre-D5 behavior is byte-identical when
+flag is unset: every reasoning call falls back to
+`JAMES_LLM_MODEL` env or the stage's constructor-supplied
+`backend_id`. Mirrors the D1 `JAMES_ADAPTIVE_BUDGET` pattern.
+
+**Inputs**:
+- `stage` ∈ `{query_rewriter, planner, reflect, verify, synth}`
+  (D1's `ReasoningStage` taxonomy)
+- `prompt` (reserved for D5.D cross-lingual + future prompt-surface
+  signals)
+- `budget_signal` from `TaskBudget.assess(...)` — passed only
+  when D1 `JAMES_ADAPTIVE_BUDGET=1` is also on (otherwise None,
+  to avoid the fixed 4096 cap unconditionally triggering CAP_HEAVY)
+
+**Backend metadata** (D5.B): each backend declares `capability:
+BackendCapability(tier, provider)`. `tier` ∈
+`{small, medium, large}` (model-size class). `provider` ∈
+`{local, sovereign, cloud}` (deployment surface). Free-form
+strings; plugin backends can declare niche tiers without
+modifying core. Undeclared backends → `UNKNOWN_CAPABILITY`,
+treated as fallback only.
+
+**Decision tree** (D5.C.1 `_route_policy`, first match wins):
+
+1. `stage == "verify"` → prefer `large` tier → `medium` → legacy
+   (grounding-critical, D1 sub-finding: ~12.5% unique = high-clustering)
+2. `budget_signal == CAP_SUBSTITUTION` (200) → prefer `small` → legacy
+   (Robin 2026-05-23: substitution bypasses sampling, small ≡ large
+   bit-for-bit cheaper)
+3. `budget_signal == CAP_HEAVY` (4096) → prefer `large` → `medium` → legacy
+   (Ali "shortening the path": heavy synth is where the cost asymmetry
+   favors a stronger model)
+4. Otherwise (CAP_LIGHT / None / unknown) → legacy backend
+
+"prefer tier X → fall back to legacy" means a stock install
+(`ollama_local` only) routes everything to `ollama_local` — no
+broken decisions when no larger backend is registered. Opt-in
+routing.
+
+**Authority**: when `JAMES_AUTO_ROUTER=1`, the router is the
+authority — stage-level `self._backend_id` preferences are
+intentionally overridden. The stage's backend_id is a D5-OFF
+concept; D5 ON means "let the router decide". Per-stage override
+mechanism is v0.4 follow-up.
+
+**Audit row** (`reason:route` endpoint in `audit_log`): per
+successful resolve, one row records `(stage, prompt_hash[:8],
+selected_backend, budget_tier_label, reason)`. `reason` values:
+`auto` (D1+D5 both on), `fallback` (D5 on, D1 off), `grounding-critical`
+(verify stage escalation), `policy` (helper default). Audit
+emission is try/except-wrapped — failure never blocks production.
+
+**Cross-lingual entity resolution** (D5.D `core/entity_alias_pack.py`
++ `graph_engine.build_entity_map_snapshot` augmentation): the
+snapshot now merges three sources for the (entity_type,
+normalized_name) → entity_id map:
+1. Wiki entity frontmatter `name`
+2. Wiki entity frontmatter `aliases:` list
+3. Cross-lingual alias pack (KO↔EN surface forms for ~30
+   common entities — Palantir, Tesla, Nvidia, Apple, etc.).
+   Augments only when canonical name matches an existing wiki
+   entity (silent skip otherwise — no broken state).
+
+The alias pack pairs with the PR #472 `_SYNONYM_MAP` keyword
+expansion at two different pipeline stages: query expander
+augments at *vector search input*, alias pack augments at
+*graph entity resolution*. Embedding-model swap (bge-m3 /
+multilingual-e5-large) for global retrieval quality is v0.4
+backlog (BL-9), not addressed at D5.
+
 ### 5.7.7 Deployment isolation (deferred to v0.4)
 
 JAMES's isolation today is **policy-based**: RBAC + ABAC + PolicyEngine

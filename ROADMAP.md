@@ -445,15 +445,30 @@ features; all are platform-skeleton strengthening or research):
       v1, 12-month grace policy, BibTeX (author=Hashevolution),
       §11 external adopter table (JAMES + Triava Labs). Other
       labs can cite the protocol without depending on JAMES code.
-- [ ] **Direction 5 — Auto-routing on Provider Contract** —
-      🔵 **next big cycle (queued for 2026-05-26~)**. New
-      `core/reasoning/router.py` consumes Direction 1's budget to
-      select backend (e4b for substitution / light, 26b or cloud
-      for heavy synthesis). Provider Contract surface unchanged.
-      Cross-lingual RAG option 3 (wiki entity `aliases:` +
-      entity_extract resolve, follow-up to PR #472's keyword
-      `_SYNONYM_MAP`) bundled in this cycle while retrieval
-      contract is being touched.
+- [x] **Direction 5 — Auto-routing on Provider Contract**
+      (closed 2026-05-25, 10-PR sequence PR #474-#483). New
+      `core/reasoning/router.py` (D5.A skeleton + D5.B capability
+      tags + D5.C.1 policy decision tree) consumes Direction 1's
+      budget to select backend (`small`/`medium`/`large` tier ×
+      `local`/`sovereign`/`cloud` provider). 5-stage wiring
+      complete (`query_rewriter` / `planner` / `reflect` /
+      `verify` / synth via `trace_helpers`) — every production
+      LLM call path consults the router, gated by
+      `JAMES_AUTO_ROUTER` flag (default OFF → byte-identical to
+      pre-D5). Audit row `reason:route` per resolve call.
+      **Verify stage** is grounding-critical → policy escalates
+      to `large` tier when registered (e.g. `JAMES_ENABLE_CLAUDE_BACKEND=1`).
+      Provider Contract surface unchanged (router sits above L1).
+      Cross-lingual RAG option 3 (`core/entity_alias_pack.py` +
+      `graph_engine.build_entity_map_snapshot` augmentation,
+      PR #483) bundled — KO↔EN surface forms now resolve to the
+      same wiki entity_id without per-install frontmatter edits.
+      Per Build-don't-broadcast principle (memory: `feedback_build_dont_broadcast`)
+      this is a product cycle — no public broadcast, no Robin
+      coupling. Operator-run STEP 7 sweep numbers (D1 7-tier
+      ground truth) integrate into the closure result doc when
+      operator runs the measurement; the wiring is bench-neutral
+      at flag-OFF default.
 - [ ] **Direction 3 — Cross-family generalization** (~2-3 weeks,
       research). V3'.e on Llama 3.1 / Qwen 2.5 / DeepSeek v2 via
       Ollama. Output: mode-split universality vs Gemma-only
