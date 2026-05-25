@@ -419,27 +419,41 @@ features; all are platform-skeleton strengthening or research):
       Finding 1 ("mode bypasses sampling layer") on our e4b data.
       If `unique=1` confirmed → publishable mechanism axis 1
       strengthened.
-- [ ] **Direction 1 — Adaptive Budgeting in Cognitive Middleware**
-      (~1 week, JAMES product impact). Replace PR #399's
-      `DEFAULT_MAX_TOKENS = 4096` hard floor with
-      `core/reasoning/budget.py` that assesses task weight per
-      call and requests cap accordingly. STEP 7 bench in PR body
-      (CLAUDE.md rule #2).
-- [ ] **Direction 2 — Task-weight metric formalization** (~1-2
-      weeks, research). 5-7 level fixture sweep + candidate
-      metrics (output entropy, logical step count, etc.); regress
-      `eval_count` against metrics to find best-fit predictor.
-      Output: `docs/research/v3prime-task-weight-metric.md`.
-- [ ] **Direction 6(J) — Methodology spec standalone** (~3-5
-      days, framework owner positioning).
-      `docs/research/v3prime-protocol-v1.md` — JSON schema spec,
-      fixture design guideline, statistical floor. Lets other
-      labs cite our protocol without depending on JAMES code.
-- [ ] **Direction 5 — Auto-routing on Provider Contract** (~1-2
-      weeks, JAMES product layer above Track 1). New
+- [x] **Direction 1 — Adaptive Budgeting in Cognitive Middleware**
+      (closed 2026-05-25). PR #461 (TaskBudget module +
+      experiment driver + cognitive-stages extension), PR #463
+      (v2 heuristic CAP_LIGHT 800→1200 + closure result docs +
+      **7-tier monotonic natural-stop gradient**, 62→1681 tokens,
+      27× dynamic range, cross-sweep stable <5% per tier), PR
+      #469 (entity_extract cap 1500→4096 alignment). 4 cognitive
+      stages all zero truncation + zero quality regression. Ships
+      as safe / latency-positive / memory-positive /
+      defensive-bound. Sub-finding: `verify` is a high-clustering
+      cognitive stage (~12.5% unique across 40 baseline calls) —
+      adds task-type axis to Mechanism 2.
+- [ ] **Direction 2 — Task-weight metric formalization** —
+      absorbed into Direction 5 as a dependent fragment, not run
+      as an independent 1-2 week cycle. The 7-tier natural-stop
+      gradient from Direction 1 closure provides the ground-truth
+      dataset. Per [Build-don't-broadcast principle](docs/handovers/v0.3.x-measurement-framework-track.md):
+      research-only directions are run on collaborator cadence;
+      D2 in isolation is collaborator-coupled but the *piece D5
+      needs* is product work and lands inside D5.
+- [x] **Direction 6(J) — Methodology spec standalone** (closed
+      2026-05-24, PR #457). `docs/research/v3prime-protocol-v1.md`
+      shipped: 441 lines, 12 sections + KO, JSON schema frozen
+      v1, 12-month grace policy, BibTeX (author=Hashevolution),
+      §11 external adopter table (JAMES + Triava Labs). Other
+      labs can cite the protocol without depending on JAMES code.
+- [ ] **Direction 5 — Auto-routing on Provider Contract** —
+      🔵 **next big cycle (queued for 2026-05-26~)**. New
       `core/reasoning/router.py` consumes Direction 1's budget to
       select backend (e4b for substitution / light, 26b or cloud
       for heavy synthesis). Provider Contract surface unchanged.
+      Cross-lingual RAG option 3 (wiki entity `aliases:` +
+      entity_extract resolve, follow-up to PR #472's keyword
+      `_SYNONYM_MAP`) bundled in this cycle while retrieval
+      contract is being touched.
 - [ ] **Direction 3 — Cross-family generalization** (~2-3 weeks,
       research). V3'.e on Llama 3.1 / Qwen 2.5 / DeepSeek v2 via
       Ollama. Output: mode-split universality vs Gemma-only
