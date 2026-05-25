@@ -55,6 +55,7 @@ of the same surface.
 
 from __future__ import annotations
 
+import os
 import re
 from typing import Final, Literal
 
@@ -114,6 +115,23 @@ _HEAVY_REGEX: Final[re.Pattern[str]] = re.compile(
     "|".join(re.escape(m) for m in _HEAVY_MARKERS),
     re.IGNORECASE,
 )
+
+
+def adaptive_budget_enabled() -> bool:
+    """Single source of truth for the D1 opt-in flag.
+
+    Default OFF — operators opting into the experiment set
+    ``JAMES_ADAPTIVE_BUDGET=1`` (or ``true`` / ``yes`` / ``on``).
+    Read at every call site so an env change takes effect without
+    a server restart. Mirrors the convention from
+    ``query_rewriter._adaptive_budget_enabled`` which was the first
+    site to wire D1 — extracted here so planner / reflect / verify
+    can route through one flag-check function as the v0.4 Sprint 3
+    D1 expansion lands them on the same opt-in switch.
+    """
+    return os.getenv("JAMES_ADAPTIVE_BUDGET", "0").strip().lower() in (
+        "1", "true", "yes", "on",
+    )
 
 
 class TaskBudget:
@@ -279,6 +297,7 @@ __all__ = [
     "CAP_HEAVY",
     "ReasoningStage",
     "TaskBudget",
+    "adaptive_budget_enabled",
     "complete_with_retry",
     "retry_doubled",
 ]

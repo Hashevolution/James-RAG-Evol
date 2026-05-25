@@ -28,6 +28,11 @@ import time
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
+from core.reasoning.budget import (
+    TaskBudget,
+    adaptive_budget_enabled,
+    complete_with_retry,
+)
 from core.reasoning.trace_schema import (
     TraceStep,
     compute_inputs_hash,
@@ -185,11 +190,33 @@ class Planner:
         backend_id: str = DEFAULT_BACKEND_ID,
         *,
         timeout: float = DEFAULT_TIMEOUT_S,
-        max_tokens: int = DEFAULT_MAX_TOKENS,
+        max_tokens: Optional[int] = None,
+        budget: Optional[TaskBudget] = None,
     ) -> None:
+        """Construct a Planner.
+
+        ``max_tokens`` behaviour (D1 Adaptive Budgeting wiring, v0.4
+        Sprint 3 #7a — mirrors query_rewriter):
+
+          • int (e.g. ``DEFAULT_MAX_TOKENS=4096``) — fixed cap; bypasses
+            TaskBudget and forces every call to this cap. The experiment
+            driver uses this for the **baseline** condition.
+          • ``None`` (default) — runtime decision:
+              - ``JAMES_ADAPTIVE_BUDGET=1`` → route through
+                ``TaskBudget.assess("planner", prompt)`` (**treatment**).
+              - flag off → fall back to ``DEFAULT_MAX_TOKENS=4096`` —
+                byte-identical to pre-D1 behaviour.
+
+        ``budget`` is the injectable TaskBudget instance. Default is a
+        fresh stateless instance.
+
+        Default-off invariant: a fresh ``Planner()`` with no env opt-in
+        must hit the same cap as before this PR. See PR-#7a tests.
+        """
         self._backend_id = backend_id
         self._timeout = timeout
         self._max_tokens = max_tokens
+        self._budget = budget if budget is not None else TaskBudget()
 
     def plan(
         self,
@@ -218,13 +245,32 @@ class Planner:
         tmpl = PLAN_PROMPT_KO if is_ko else PLAN_PROMPT_EN
         prompt = tmpl.format(query=query)
 
-        # D5.C.2.b — flag-gated backend resolution. Planner is not
-        # D1-wired (uses fixed `self._max_tokens`), so `budget_signal`
-        # is always `None` here. Under D5 flag-off the helper returns
-        # `self._backend_id` (byte-identical to pre-D5). Under D5
-        # flag-on the router policy fires with budget=None → rule 4
-        # → legacy backend (planner is not grounding-critical, so it
-        # does not trigger the verify-stage escalation either).
+        # v0.4 Sprint 3 #7a — D1 cap resolution (mirrors query_rewriter):
+        #   1. explicit int (constructor arg) → fixed cap (baseline)
+        #   2. None + JAMES_ADAPTIVE_BUDGET=1 → TaskBudget.assess (treatment)
+        #   3. None + flag off → DEFAULT_MAX_TOKENS=4096 (byte-identical)
+        # Default-off invariant: paths 1 and 3 give the pre-D1 cap so an
+        # operator who didn't opt in sees no behaviour change.
+        if self._max_tokens is not None:
+            cap = self._max_tokens
+            _budget_for_router = None
+        elif adaptive_budget_enabled():
+            # Assess against the user's *query* — not the wrapped
+            # PLAN_PROMPT_* template, which carries heavy markers like
+            # "Decompose" / "분해" as part of the instruction and would
+            # otherwise force every planning call to CAP_HEAVY. Matches
+            # query_rewriter's pattern (query, not prompt).
+            cap = self._budget.assess("planner", query)
+            _budget_for_router = cap
+        else:
+            cap = DEFAULT_MAX_TOKENS
+            _budget_for_router = None
+
+        # D5.C.2.b — flag-gated backend resolution. With D1 now active
+        # for planner (when both flags ON), `budget_signal` carries the
+        # adaptive cap so router rule 1 (CAP_SUBSTITUTION → small tier)
+        # / rule 4 (CAP_HEAVY → fallback) fire correctly. Under D1 flag
+        # off `_budget_for_router` is None → unchanged from pre-#7a.
         try:
             from core.reasoning.backends import get_backend
             from core.reasoning.router import emit_route_event, resolve_backend
@@ -232,7 +278,7 @@ class Planner:
             backend_id = resolve_backend(
                 "planner",
                 prompt,
-                budget_signal=None,
+                budget_signal=_budget_for_router,
                 fallback_backend_id=self._backend_id,
             )
             backend = get_backend(backend_id)
@@ -244,16 +290,24 @@ class Planner:
             "planner",
             prompt,
             backend_id,
-            budget_signal=None,
-            reason="fallback",
+            budget_signal=_budget_for_router,
+            reason="auto" if _budget_for_router is not None else "fallback",
         )
 
+        # D6 retry wiring (v0.4 Sprint 3 #7a) — when the planner cap
+        # is below CAP_HEAVY (D1 active + light task) and the model
+        # truncates at the cap, retry once with the doubled cap.
+        # complete_with_retry is a no-op when cap == CAP_HEAVY (which
+        # is the flag-off default), preserving pre-#7a behaviour for
+        # operators who haven't opted into D1.
         t0 = time.time()
         try:
-            result = backend.complete(
+            result = complete_with_retry(
+                backend,
                 prompt,
-                max_tokens=self._max_tokens,
+                cap=cap,
                 timeout=self._timeout,
+                stage="planner",
             )
         except Exception as e:
             err = f"{type(e).__name__}: {str(e)[:200]}"
