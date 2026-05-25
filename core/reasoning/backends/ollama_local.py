@@ -12,7 +12,7 @@ from __future__ import annotations
 import time
 from typing import Optional
 
-from core.reasoning.backends import CompletionResult
+from core.reasoning.backends import BackendCapability, CompletionResult
 
 
 class OllamaLocalBackend:
@@ -22,6 +22,15 @@ class OllamaLocalBackend:
     """
 
     backend_id = "ollama_local"
+
+    # D5.B capability declaration. Default Ollama model on a stock
+    # install is ``gemma4:e4b`` (4B class) → "small" tier. ``provider``
+    # is "local" because RouterWrapper hits ``localhost:11434`` by
+    # default. Operators pointing JAMES at a remote Ollama (e.g.
+    # Hetzner sovereign) effectively re-tier this backend; v1 records
+    # the default deployment and D5.C policy degrades gracefully when
+    # the actual ``JAMES_LLM_MODEL`` exceeds the tier expectation.
+    capability = BackendCapability(tier="small", provider="local")
 
     def __init__(self) -> None:
         self._router = None   # constructed on first .complete()
