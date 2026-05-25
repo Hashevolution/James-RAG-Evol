@@ -32,6 +32,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-timeout
+          # ruff is needed because tests/test_eval_pack_script.py (PR-C9)
+          # shells out to `python -m ruff` via scripts/eval_pack.py. The
+          # dedicated lint workflow has ruff, but the pytest workflow
+          # didn't — leaving 2 tests failing every run on main since
+          # PR-C9 merged. Pinned to the same major as lint.yml.
+          pip install ruff
 
       - name: Run tests
         env:

@@ -12,25 +12,65 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 import uuid
 import os
-from config import CHROMA_DIR, CHROMA_COLLECTION, BASE_DIR
+from config import (
+    BASE_DIR,
+    CHROMA_COLLECTION,
+    CHROMA_DIR,
+    EMBEDDING_MODEL,
+    _embedding_short_name,
+)
 
 # ✅ 싱글톤 모델 캐싱 (초기화 10초 → 최초 1회만)
 _MODEL_CACHE: dict = {}
 
-# 로컬 모델 경로 (없으면 HuggingFace에서 자동 다운로드)
-# BASE_DIR 기준 자동 감지 — 폴더 이동/이름 변경에 안전
-LOCAL_MODEL_PATH = os.environ.get(
-    "JAMES_MODEL_PATH",
-    os.path.join(BASE_DIR, "models", "miniLM")
-)
-FALLBACK_MODEL   = "paraphrase-multilingual-MiniLM-L12-v2"
+# v0.4 Sprint 4 BL-9 prep — derive local-cache path + chroma directory
+# from the configured embedding model. The legacy MiniLM tag stays
+# mapped to the preexisting `models/miniLM` + `chroma_db` paths so any
+# operator who hasn't set `JAMES_EMBEDDING_MODEL` sees zero file-layout
+# change. New models get isolated `models/<short>` + `chroma_db_<short>`
+# directories.
+_LEGACY_MINILM_TAG = "paraphrase-multilingual-MiniLM-L12-v2"
+
+if EMBEDDING_MODEL == _LEGACY_MINILM_TAG:
+    _DEFAULT_MODEL_DIR = os.path.join(BASE_DIR, "models", "miniLM")
+else:
+    _DEFAULT_MODEL_DIR = os.path.join(
+        BASE_DIR, "models", _embedding_short_name(EMBEDDING_MODEL),
+    )
+
+LOCAL_MODEL_PATH = os.environ.get("JAMES_MODEL_PATH", _DEFAULT_MODEL_DIR)
+FALLBACK_MODEL   = EMBEDDING_MODEL
+
+
+def _chroma_dir_for_model(base_chroma_dir: str) -> str:
+    """Per-model chroma directory resolver.
+
+    Returns ``base_chroma_dir`` unchanged when the legacy MiniLM tag
+    is configured (so existing operators keep reading from the
+    preexisting `chroma_db/`). For any other embedding model, returns
+    ``f"{base}_{short}"`` so a swap doesn't clobber the legacy
+    embeddings (cosine search requires matching dimensions; mixing
+    384-dim MiniLM and 1024-dim bge-m3 in one collection would
+    silently corrupt results).
+    """
+    if EMBEDDING_MODEL == _LEGACY_MINILM_TAG:
+        return base_chroma_dir
+    suffix = _embedding_short_name(EMBEDDING_MODEL)
+    return f"{base_chroma_dir}_{suffix}"
 
 
 class VectorStore:
     def __init__(self, base_dir=None):
-        self.db_path = os.path.join(base_dir, "chroma_db") if base_dir else CHROMA_DIR
+        # v0.4 Sprint 4 BL-9 prep — db_path resolution routes through
+        # `_chroma_dir_for_model`. Legacy MiniLM tag → unchanged
+        # `chroma_db/` (or `<base_dir>/chroma_db`). New models →
+        # per-model `chroma_db_<short>/`.
+        legacy_base = os.path.join(base_dir, "chroma_db") if base_dir else CHROMA_DIR
+        self.db_path = _chroma_dir_for_model(legacy_base)
         os.makedirs(self.db_path, exist_ok=True)
         print(f"[VECTOR_STORE] ChromaDB 경로: {self.db_path}")
+        if EMBEDDING_MODEL != _LEGACY_MINILM_TAG:
+            print(f"[VECTOR_STORE] 임베딩 모델: {EMBEDDING_MODEL} (per-model chroma dir)")
 
         self.client = chromadb.PersistentClient(path=self.db_path)
         self.collection = self.client.get_or_create_collection(

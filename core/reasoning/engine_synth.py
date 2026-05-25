@@ -88,9 +88,16 @@ def generate_rag_answer(
     safe_q = RetrievalEngine._sanitize(question, 300)
     sys_block = f"{system_prompt}\n\n" if system_prompt else ""
 
-    # [P7-I18N] 언어 감지 — 영어 비율로 판단
-    en_chars = sum(1 for c in question if c.isascii() and c.isalpha())
-    is_en = en_chars > len(question) * 0.5 and len(question) > 3
+    # v0.4 Sprint 1 #2 — unified language detection. The legacy
+    # local heuristic ("English alphabetic chars > 50% → English")
+    # disagreed with the four reasoning-stage `_is_korean`
+    # definitions ("Korean ≥ 20% → Korean") on mixed queries like
+    # "Palantir 분석", so the synth answer language could differ
+    # from the planner/reflect/verify decision. All five stages
+    # (and this one) now share `core.i18n.detect_language` →
+    # consistent classification across the whole pipeline.
+    from core.i18n import detect_language
+    is_en = detect_language(question) == "en"
 
     if is_en:
         lbl_data = "📚 Data-based"

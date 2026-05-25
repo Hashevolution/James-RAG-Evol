@@ -92,13 +92,12 @@ class IconOnlyButtonsTests(unittest.TestCase):
         self._assert_aria_on_button(
             self.index, 'id="session-btn"', "index.html")
 
-    def test_index_session_close_button(self):
-        # The ✕ button INSIDE the session panel header closes it.
-        # The button HTML uses inline ``style="background:none;..."``
-        # — that string only exists on the close button.
-        self._assert_aria_on_button(
-            self.index, "background:none;border:none;color:var(--muted)",
-            "index.html")
+    # NOTE: the dedicated ✕ "close session panel" button was removed
+    # in #372 (UI-IA Phase 2 sidebar consolidation) — the chat session
+    # list moved into the sidebar `data-mode="sessions"` rail toggle.
+    # The toggle re-uses the same `id="session-btn"` open button (now
+    # tested in test_index_session_open_button), so an independent
+    # close affordance is no longer rendered. Test deleted with intent.
 
     def test_index_send_button(self):
         # The ▲ submit button on the chat input.

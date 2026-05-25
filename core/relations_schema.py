@@ -26,6 +26,7 @@ production 의 `relation["confidence"]` 읽기 경로는 Phase A 단계에서
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 
@@ -43,29 +44,121 @@ VALID_SOURCE_ROLES = frozenset({
     MANUAL_SOURCE_ROLE,
 })
 
-# Confidence cap. Sum of source weights can mathematically exceed 1.0 when
-# many docs corroborate the same relation; the user-visible confidence
-# stays in [0, 1] so existing UI bars / badges keep their semantics.
+# Confidence cap. Noisy-OR is mathematically in [0, 1) for finite weights
+# in [0, 1], so the cap is informational — used to keep the public type
+# contract stable for downstream code that previously saw clamped values.
 CONFIDENCE_CAP = 1.0
 
 
-def compute_confidence_from_sources(sources: list | None) -> float:
-    """sources 배열의 weight 합 (0..1 으로 cap).
+# ── Entity-type vocabulary (PR-11 graph evolution) ────────────────────
+#
+# 문서: docs/design/v0.3-graph-evolution.md
+#
+# JAMES 그래프의 5 entity type. 처음 4 종 (person/concept/org/document)
+# 은 wiki_generator 가 LLM 추출로 emit. 5번째 `event` 는 시간 축에
+# 묶인 노드로 PR-11 의 핵심. PR-11a-1 시점에는 본 상수만 존재 —
+# production 코드 (wiki_generator.py 등) 는 여전히 4 종 literal 을
+# 사용. lift 는 PR-11a-2 / PR-11b 에서.
+#
+# 이 상수는 *graph-valid* type 의 진실 원천이다. ingest-capable 의
+# subset (현재 4 종) 과 의도적으로 다르다 — admin path 로 생성된
+# event 노드는 ingest 의 emit 과 무관하게 graph 에 존재할 수 있다.
+ENTITY_TYPES_CORE: tuple[str, ...] = (
+    "person",
+    "concept",
+    "org",
+    "document",
+    "event",
+)
 
-    Phase A 시점에는 호출되지 않는다 — confidence 는 frontmatter 의
-    저장된 값이 정답. Phase B 에서 ingestion 이 sources 만 쓰고
-    confidence 를 derived 로 다루기 시작할 때 호출 site 가 생긴다.
+# Event-like entity 의 list — core 는 "event" 하나. OntologyPack 의
+# entity_types 가 시간 축을 요구하는 subtype 을 추가하면 loader
+# (PR-11e) 가 이 set 을 mutate. ingest post-processor 와 admin
+# endpoint 가 멤버십으로 occurred_at 강제 여부를 결정한다.
+#
+# set (mutable) 인 이유: loader 가 startup 시점에 추가. 코드 변경 후
+# 런타임 mutate 는 정의되지 않은 동작 (test 환경에서만 _reset_
+# helper 로 의도적으로 변경).
+EVENT_LIKE_ENTITY_TYPES: set[str] = {"event"}
+
+# occurred_at 의 quantization bucket — 디자인 §4.1.
+# 미상 / 분기·연 단위 정보도 명시적으로 표현 가능하도록 5 단계 enum.
+# 저장은 항상 full ISO 8601 (예: "2026-01-10" 또는 "2026-01-10T15:32:00Z"),
+# precision 은 consumer 에게 어디까지 신뢰할지 알려주는 메타데이터.
+VALID_OCCURRED_AT_PRECISIONS: frozenset[str] = frozenset({
+    "year",
+    "month",
+    "day",
+    "hour",
+    "minute",
+})
+
+
+def validate_occurred_at(
+    value: str,
+    precision: str = "day",
+) -> None:
+    """Validate that ``value`` is a parseable ISO 8601 datetime / date
+    string AND that ``precision`` is one of the 5 supported buckets.
+
+    Raises ``ValueError`` on either failure. The function is
+    side-effect-free; callers use it as an admission gate before
+    writing an event node.
+
+    Trailing ``Z`` (Zulu / UTC) is accepted via the standard
+    ``+00:00`` substitution. Naive datetimes (no tz) are accepted —
+    the cascade and retrieval paths treat all stored timestamps as
+    workspace-local unless an explicit offset is present.
+    """
+    if not isinstance(value, str) or not value:
+        raise ValueError(
+            "occurred_at must be a non-empty ISO 8601 string"
+        )
+    if precision not in VALID_OCCURRED_AT_PRECISIONS:
+        raise ValueError(
+            f"occurred_at_precision must be one of "
+            f"{sorted(VALID_OCCURRED_AT_PRECISIONS)}, got {precision!r}"
+        )
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as e:
+        raise ValueError(
+            f"occurred_at not parseable as ISO 8601: {value!r}"
+        ) from e
+
+
+def compute_confidence_from_sources(sources: list | None) -> float:
+    """Noisy-OR over per-source weights — see design memo §3.
+
+    Formula: ``P(confirmed) = 1 - Π(1 - w_i)``
+
+    Properties (the reason this formula was chosen over `sum` / `max` /
+    `mean`):
+      - 0 sources → 0.0
+      - 1 source with weight w → w (identity preserved, so single-source
+        Phase A back-fills are byte-identical to the legacy clamped sum)
+      - many sources → asymptotic to 1.0 but never saturates exactly,
+        so a quarterly-report cascade with 5–20 corroborating docs
+        keeps signal differentiation (clamped sum loses it after 2)
+      - delete cascade strictly decreases confidence (monotonic),
+        never leaves a relation at a stale 1.0 ceiling
+
+    Weights outside [0, 1] are clamped per-element before multiplication,
+    so a malformed weight cannot move the running product past 0 or
+    below 0.
     """
     if not sources:
         return 0.0
-    total = 0.0
+    product = 1.0
     for s in sources:
         if not isinstance(s, dict):
             continue
         w = s.get("weight")
-        if isinstance(w, (int, float)):
-            total += float(w)
-    return min(total, CONFIDENCE_CAP)
+        if not isinstance(w, (int, float)):
+            continue
+        w_clamped = max(0.0, min(1.0, float(w)))
+        product *= (1.0 - w_clamped)
+    return round(1.0 - product, 4)
 
 
 def read_relation_sources(rel: dict | None) -> list:

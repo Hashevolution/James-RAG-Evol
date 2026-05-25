@@ -27,7 +27,7 @@ import subprocess
 import time
 from typing import List, Optional
 
-from core.reasoning.backends import CompletionResult
+from core.reasoning.backends import BackendCapability, CompletionResult
 
 
 _MAX_OUTPUT_BYTES = 1 * 1024 * 1024   # 1 MiB
@@ -66,6 +66,14 @@ class ClaudeCodeCliBackend:
     """
 
     backend_id = "claude_code_cli"
+
+    # D5.B capability declaration. Claude (Anthropic frontier) is
+    # "large" tier — used by D5.C policy for heavy-synthesis routing
+    # (the arm where the cost asymmetry favors the better model).
+    # ``provider="cloud"`` because the CLI hits Anthropic's API surface
+    # — operators have no control over weights, only over whether the
+    # backend is registered (opt-in via JAMES_ENABLE_CLAUDE_BACKEND=1).
+    capability = BackendCapability(tier="large", provider="cloud")
 
     def __init__(self, cli_path: Optional[str] = None) -> None:
         # Constructor-time path resolution is a snapshot; auto-registered

@@ -1,12 +1,14 @@
 # PROJECT JAMES
 
-> 보안 중심, 로컬 실행 AI 지식 추론 엔진
-> 명시적 추론 경로와 자기진화 스캐폴딩 포함
+> **로컬 우선, 감사 가능한 지식 추론 시스템**
+> — 명시적 추론 경로 + 출처 인식 지식 그래프 + 인간 승인 게이트
+> 기반 자기진화.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-v0.1.0--alpha-orange.svg)]()
+[![Status](https://img.shields.io/badge/Status-v0.4.0--alpha.2-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/releases/tag/v0.4.0-alpha.2)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12806/badge)](https://www.bestpractices.dev/projects/12806)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20372649.svg)](https://doi.org/10.5281/zenodo.20372649)
 
 ![PROJECT JAMES — 3D 온톨로지 그래프 시각화](reports/promo-assets/screenshots/06-3d-graph.jpg)
 
@@ -15,29 +17,66 @@
 
 ---
 
-## 프로젝트 상태: v0.1.0 (알파 / 연구 단계)
+## 프로젝트 상태: v0.3.0 — Platform Skeleton
 
-현재 **활발한 연구 프로젝트** 초기 단계입니다.
-핵심 엔진은 작동하지만:
+**2026-05-17 정식 릴리스** (v0.2.0 이후 9일간 190 PR, 1800+ tests).
+v0.2 → v0.3 게이트 통과 — 6축 Foundation Hardening
+(아키텍처 / 평가 / 관찰성 / 보안 / 통제 진화 / 실데이터 검증) 모두
+완료. 두 번째 사용자 게이트는 2026-05-13 마감.
 
-- 보안 우선 원칙으로 설계되고 테스트됨
-- **프로덕션 준비 안 됨** — [SECURITY.md](SECURITY.md) 참조
-- 많은 기능이 스캐폴딩 상태 — 실데이터 테스트 진행 예정
-- 협업과 피드백 환영
+- **프로덕션 준비 안 됨** — 운영 성숙도 (HTTPS / SSO / 멀티테넌시 /
+  백업 CLI) 는 v1.0 산출물. [SECURITY.md](SECURITY.md) 참조
+- 보안 우선 원칙으로 end-to-end 설계
+- 협업 환영 — 외부 기여자는 첫 PR 시 1회 클릭 CLA 서명
+  ([라이선스](#라이선스) 참조)
+
+---
+
+## 전략 프레임: 단일 제품이 아닌 모체 플랫폼
+
+JAMES 는 **하나의 버티컬**을 만드는 것이 아닙니다. 법률·식품·유통·
+여행 등의 도메인 팩이 **v1.0 이후에만** 분기할 수 있는 "모체
+플랫폼"으로 강화 중입니다. 그 전까지는:
+
+- 도메인 특화 기능은 `core/` 에 들어가지 않음
+- 모든 변경이 동일한 6 차원 readiness 프레임워크로 측정
+  (아키텍처 / 확장 API / 평가 계약 / 운영 성숙도 / 보안 경계 /
+  프로덕션 검증)
+- 미래의 팩이 의존할 플러그인 계약을 설계 + 스트레스 테스트 중
+
+6 차원 / 4 게이트 (v0.2 / v0.3 / v0.4 / v1.0) / 3 분기 형태
+(Domain Pack / Distribution / Vertical Product) 전체 설명은
+[`docs/PLATFORM_READINESS.md`](docs/PLATFORM_READINESS.md) 참조.
 
 ---
 
 ## 무엇이 다른가
 
-JAMES는 함께 찾기 드문 5가지 아이디어를 결합합니다:
+JAMES 는 함께 찾기 드문 아이디어를 결합합니다:
 
-1. **온톨로지가 있는 Graph-RAG** — 관계에 임베딩 이상의 의미를 부여
-2. **내장 보안 레이어** — RBAC + ABAC + 지시어 격리
-3. **자기진화 스캐폴드** — 피드백 신호 → 패치 제안
-4. **성향 시스템** — 11개 조정 가능한 트레잇이 응답에 영향
-5. **100% 로컬** — Ollama로 노트북에서 실행 가능
+1. **출처 인식 Graph-RAG** — 12 typed relation 이 임베딩 이상의
+   의미를 부여하고, 모든 relation 에 `sources: [{doc_id, weight,
+   role, ts}]` 가 부착되어 문서 삭제/수정 시 영향받은 파생 지식만
+   외과적으로 갱신 (Knowledge Cascade A→E, v0.3.0)
+2. **Cognitive Layer** — cross-encoder reranker (디폴트 ON),
+   LLM query rewriter, reflection loop (draft → critique → revise),
+   verification engine (security + fact check), tool router.
+   하나의 `trace_id` 로 8 단계 추론 시퀀스를
+   `scripts/replay_trace.py` 로 재구성 가능
+3. **PolicyEngine — sprinkle 아닌 layer** — 역할/민감도 결정의
+   단일 진입점이 retrieval / graph / output / tools 모두에 연결.
+   제거하면 6+ 모듈이 깨짐 (v0.2 Axis 4)
+4. **Change Request 프리미티브** — 모든 쓰기 (위키 편집, 워크스페이스
+   잡, 자가-진화 패치) 가 propose → review → admin 승인 →
+   atomic apply → audit 행으로 라우팅. silent write 없음.
+5. **인간 게이트 뒤 자가-진화** — 피드백 → 후보 → bench eval →
+   인간 승인 → 배포 → 회귀 시 auto-rollback. 배포된 모든 패치는
+   `approver_username` 감사 행을 보유 (v0.2 Axis 5)
+6. **100% 로컬** — Ollama 로 노트북에서 실행 가능
 
-> 솔직한 고지: 각 기능은 완성된 제품이 아닌 *작동하는 프로토타입*입니다. 실데이터 조정이 진행 중입니다.
+> 모든 기능은 STEP 7 13-query baseline + RAGAS 메트릭으로 회귀
+> 테스트. `core/{retrieval,graph,reasoning}` 을 건드리는 PR 은
+> bench 숫자 없이 머지 불가.
 
 ---
 
@@ -64,14 +103,13 @@ cp .env.example .env
 # 의존성 설치
 pip install -r requirements.txt
 
-# 소형 LLM 다운로드
-ollama pull gemma2:2b
-
-# 서버 시작
+# 서버 시작 (첫 로그인 시 admin wizard 가 모델을 자동 추천)
 python server_llmwiki.py
 ```
 
-`http://localhost:8000` 접속
+`http://localhost:8000/admin` 접속 — admin wizard 가 하드웨어를
+측정하고 적합한 Ollama 모델을 한 번 클릭으로 설치합니다. 이후
+`http://localhost:8000` 에서 채팅 UI 사용.
 
 ---
 
@@ -80,20 +118,31 @@ python server_llmwiki.py
 ```
 [사용자 쿼리]
      ↓
-[보안 필터]        ← 31+ 인젝션 패턴
+[보안 필터]              ← 인젝션 패턴 + PolicyEngine pre-check
      ↓
-[쿼리 라우터]      ← chat / coding / retrieval / web_search
+[쿼리 라우터]            ← chat / coding / retrieval / web_search
      ↓
-[하이브리드 검색]  ← Vector(60%) + BM25(20%) + keyword(20%)
+[Query Rewriter]         ← LLM 재작성 (opt-in, JAMES_ENABLE_QUERY_REWRITE)
      ↓
-[그래프 엔진]      ← DFS + 신뢰도 + 민감도 게이팅
+[하이브리드 검색]        ← Vector(60%) + BM25(20%) + keyword(10%) + name(10%)
      ↓
-[추론 루프]        ← retrieve → expand → verify
+[Cross-Encoder Rerank]   ← MiniLM-L-6-v2 (디폴트 ON; JAMES_DISABLE_RERANK=1 끄기)
      ↓
-[출력 필터]        ← PII 마스킹 + 역할 기반 필터
+[그래프 엔진]            ← DFS + 출처 인식 + 민감도 게이팅
      ↓
-[답변 + 추론 경로]
+[추론 루프]              ← retrieve → expand → reflect (opt-in) → verify (opt-in)
+     ↓
+[Tool Router]            ← read 툴 직접; write 툴 → Change Request
+     ↓
+[출력 필터]              ← PII 마스킹 + 역할 기반 필터
+     ↓
+[답변 + 추론 경로 + trace_id]
 ```
+
+모든 단계가 하나의 `trace_id` 에 연결된 행을 남깁니다.
+`scripts/replay_trace.py <trace_id>` 로 `audit_log` 에서 전체
+시퀀스를 재구성. Cognitive Layer 설계는
+[`docs/ARCHITECTURE.md §5.7`](docs/ARCHITECTURE.md) 참조.
 
 ---
 
@@ -101,18 +150,28 @@ python server_llmwiki.py
 
 ```
 James-RAG-Evol/
-├── core/             사용자 인터페이스 레이어 + LLM 클라이언트
-├── llm/              LLM 추상화 (providers/)
-├── tools/            기능 모듈 (8개 서브폴더)
-├── frontend/         웹 UI (HTML + JS)
-├── processors/       파일 전처리
-├── utils/            유틸리티
-├── wiki/             지식 그래프 (마크다운 기반)
-├── memory/           장기 기억 DB
-├── workspace/        런타임 데이터 (백업, 패치, 제안)
-├── scripts/          운영 스크립트
-├── reports/          테스트 결과
-└── server_llmwiki.py 메인 서버 진입점
+├── core/
+│   ├── reasoning/        retrieval / reflection / verification / tool router
+│   ├── retrieval/        하이브리드 검색 + cross-encoder reranker + query rewriter
+│   ├── memory/           장기 기억 (db / conversation / summaries)
+│   ├── plugins/          플러그인 계약 표면 (Provider Protocol)
+│   ├── policy_engine.py  역할/민감도 결정의 단일 진입점
+│   ├── change_request.py propose/review/approve 쓰기 프리미티브
+│   ├── cascade.py        파일 삭제/수정 → 그래프 외과적 갱신
+│   ├── graph_editor.py   edge 편집 (replace/append/delete) + 양방향 동기화
+│   └── ...
+├── eval/                 STEP 7 회귀 baseline + RAGAS suite
+├── llm/                  LLM provider 추상화
+├── tools/                capability token 게이팅 툴 모듈
+├── frontend/             웹 UI (HTML + JS)
+├── processors/           파일 전처리
+├── wiki/                 지식 그래프 (마크다운 + sources)
+├── memory/               장기 기억 DB
+├── workspace/            Change request, 패치, 제안
+├── scripts/              bench.py / replay_trace.py / 운영 스크립트
+├── reports/              평가 결과 + 홍보 자료
+├── docs/                 ARCHITECTURE / PLATFORM_READINESS / ROADMAP / handovers
+└── server_llmwiki.py     메인 서버 진입점
 ```
 
 ---
@@ -135,14 +194,22 @@ JAMES는 보안을 **기능이 아닌 설계 원칙**으로 다룹니다:
 
 | 기능 | 상태 |
 |------|------|
-| 하이브리드 검색 (Vector + BM25) | 작동 |
-| 온톨로지가 있는 Graph-RAG | 작동 |
-| 보안 레이어 (RBAC/ABAC) | 작동 |
-| 멀티모달 (이미지/영상) | 스캐폴딩 |
-| 자기진화 | 스캐폴딩 (데이터 필요) |
-| 웹 검색 통합 | 작동 (Tavily/DDG) |
-| 멀티 LLM 라우팅 | 작동 |
-| 실데이터 검증 | 진행 예정 |
+| 하이브리드 검색 (Vector + BM25 + keyword + name) | 작동 |
+| Cross-encoder reranker (MiniLM-L-6-v2) | 작동 — 디폴트 ON (v0.3) |
+| LLM query rewriter | Opt-in (v0.3) |
+| 출처 인식 Graph-RAG (Knowledge Cascade A→E) | 작동 (v0.3) |
+| PolicyEngine (RBAC + ABAC + capability token) | 작동 (v0.2 Axis 4) |
+| Reflection loop (draft → critique → revise) | Opt-in (v0.3) |
+| Verification engine (security + fact check) | Opt-in (v0.3) |
+| Tool router (read 직접, write → Change Request) | 작동 (v0.3) |
+| Change Request 프리미티브 (위키 + 잡 + 패치) | 작동 (v0.2.x + v0.3) |
+| 자가-진화 (인간 승인 + auto-rollback) | 작동 (v0.2 Axis 5) |
+| Trace replay (하나의 `trace_id` → 전체 추론 시퀀스) | 작동 (v0.3) |
+| 멀티모달 (이미지/영상/오디오 + OCR-poison 격리) | 작동 (v0.2 Axis 4) |
+| 웹 검색 (Tavily / DuckDuckGo fallback) | 작동 |
+| 멀티 LLM 라우팅 (Ollama + Claude CLI 백엔드) | 작동 |
+| STEP 7 회귀 baseline + RAGAS | 작동 (v0.2 Axis 2) |
+| 실데이터 검증 (두 번째 사용자 게이트) | 통과 2026-05-13 |
 
 ---
 
@@ -161,12 +228,22 @@ JAMES는 보안을 **기능이 아닌 설계 원칙**으로 다룹니다:
 
 ## 로드맵
 
-[ROADMAP.md](ROADMAP.md) 참조. 요약:
+[ROADMAP.md](ROADMAP.md) 와
+[`docs/PLATFORM_READINESS.md`](docs/PLATFORM_READINESS.md) 참조.
+요약:
 
-- **v0.1** (현재): 핵심 엔진 + 스캐폴딩
-- **v0.2**: 실데이터 검증 + 완성도 향상
-- **v0.3**: 멀티에이전트 + Neo4j 옵션
-- **v1.0**: 프로덕션 강화
+- **v0.1**: 핵심 엔진 + 스캐폴딩 (릴리스)
+- **v0.2**: Foundation Hardening — 6축 (2026-05-13 마감)
+- **v0.3**: Platform Skeleton — Cognitive Layer + Knowledge Cascade
+  + Change Request 프리미티브 (현재; 2026-05-17 릴리스)
+- **v0.4**: First Domain Pilot — 팩 1개 + 외부 고객 1명, 6개월
+  무회귀
+- **v1.0**: Production-Grade Mother — HTTPS / SSO / 멀티테넌시 /
+  SOC2 준비; 외부 개발자가 자체 팩 출판 가능
+
+멀티에이전트 specialist, optional Neo4j 백엔드, OpenAI 호환 API,
+streaming, federation 은 Beyond v1.0 으로 재배치 (speculative) —
+[`ROADMAP.md` §Beyond v1.0](ROADMAP.md) 참조.
 
 ---
 

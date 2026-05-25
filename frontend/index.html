@@ -21,6 +21,47 @@
   <div class="logo">
     <span class="brand">Secure Enterprise Knowledge<span class="brand-tail">Operating System</span></span>
     <span class="live-dot" aria-hidden="true" title="System live" style="margin-left:10px"></span>
+    <!-- v0.4 Sprint 2 #3a + #3b — always-visible chat model indicator
+         + click-to-pick popover. Sprint 2 #3a populated the chip from
+         /llm/active. Sprint 2 #3b converts the <a> into a <button>
+         trigger that opens the popover; the popover lists installed
+         models (aggregated from MODE_OPTIONS) and lets the user set a
+         per-session override that flows into the next chat request as
+         `selected_model`. The popover footer keeps the admin shortcut. -->
+    <div class="model-chip-wrap" id="model-chip-wrap" hidden>
+      <button id="model-chip"
+              type="button"
+              class="model-chip"
+              data-action="toggle-model-popover"
+              data-i18n-title="model.chip_title"
+              title="현재 응답에 사용 중인 모델 — 클릭 시 변경"
+              aria-haspopup="listbox"
+              aria-expanded="false">
+        <span class="model-chip-icon" aria-hidden="true">🤖</span>
+        <span class="model-chip-tag" id="model-chip-tag">—</span>
+        <span class="model-chip-caret" aria-hidden="true">▾</span>
+      </button>
+      <!-- Popover — hidden until trigger click. Outside-click in chat.js
+           closes it. Listbox semantics for screen readers. -->
+      <div id="model-popover"
+           class="model-popover"
+           role="listbox"
+           data-i18n-aria-label="model.popover_title"
+           aria-label="모델 선택"
+           hidden>
+        <div class="model-popover-header">
+          <span data-i18n="model.popover_title">모델 선택</span>
+          <span class="model-popover-hint" data-i18n="model.popover_hint">이 세션에만 적용</span>
+        </div>
+        <div id="model-popover-list" class="model-popover-list">
+          <!-- chat.js loadModelPopover() populates rows here. -->
+        </div>
+        <div class="model-popover-footer">
+          <a href="/admin" class="model-popover-admin-link"
+             data-i18n="model.popover_admin_link">⚙ Admin 모델 설정 →</a>
+        </div>
+      </div>
+    </div>
   </div>
   <div class="header-right">
     <div class="source-toggle">
@@ -54,35 +95,9 @@
   </div>
 </header>
 
-<!-- [P3-4] 세션 선택 패널 -->
-<div id="session-panel"
-     style="display:none;position:fixed;top:58px;right:16px;
-            width:320px;max-height:440px;overflow-y:auto;
-            background:var(--surface);border:1px solid var(--border);
-            border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.4);
-            z-index:1000;padding:12px">
-  <div style="display:flex;justify-content:space-between;align-items:center;
-              margin-bottom:12px">
-    <div style="font-weight:600;font-size:13px;color:var(--text)"><span data-i18n="chat.previous">이전 대화</span></div>
-    <div style="display:flex;gap:6px">
-      <button data-action="new-session"
-              style="background:var(--accent);color:var(--on-accent);border:none;
-                     border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:500">
-        <span data-i18n="chat.new_session">+ 새 대화</span>
-      </button>
-      <button data-action="toggle-session-panel"
-              aria-label="세션 패널 닫기"
-              style="background:none;border:none;color:var(--muted);
-                     cursor:pointer;font-size:16px;padding:0 4px">✕</button>
-    </div>
-  </div>
-  <div id="session-list">
-    <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px"
-         data-i18n="common.loading">
-      Loading...
-    </div>
-  </div>
-</div>
+<!-- [P3-4] 세션 패널은 사이드바 'sessions' 모드로 이동.
+     #session-list / #session-count-badge ID는 그대로 보존 — chat.js의
+     loadSessionList() / 배지 갱신 로직 그대로 작동. -->
 
 <main style="position:relative">
   <button class="sidebar-open-btn" id="sidebar-open-btn"
@@ -98,10 +113,15 @@
         📂
         <span class="sidebar-rail-tip" data-i18n="sidebar.mode_upload">파일 업로드</span>
       </div>
+      <div class="sidebar-rail-item" data-mode="sessions"
+           data-action="switch-sidebar-mode">
+        💬
+        <span class="sidebar-rail-tip" data-i18n="sidebar.mode_sessions">대화 이력</span>
+      </div>
       <div class="sidebar-rail-item" data-mode="recent"
            data-action="switch-sidebar-mode">
         🕘
-        <span class="sidebar-rail-tip" data-i18n="sidebar.mode_recent">최근 챗</span>
+        <span class="sidebar-rail-tip" data-i18n="sidebar.mode_recent">내 자료</span>
       </div>
       <div class="sidebar-rail-item" data-mode="search"
            data-action="switch-sidebar-mode">
@@ -131,7 +151,7 @@
           <div class="drop-label">
             <span data-i18n="upload.drag_label">클릭하거나 드래그하여 파일 추가</span><br>
             <span class="drop-types"><span data-i18n="upload.types">이미지 · 오디오 · PDF · 문서</span></span><br>
-            <span class="drop-types" style="margin-top:4px;display:inline-block">
+            <span class="drop-types" style="margin-top:4px;display:inline-block" data-i18n="upload.folder_drag">
               폴더 통째로 드래그도 가능
             </span>
           </div>
@@ -142,7 +162,8 @@
                 style="margin:0 12px;padding:8px;
                        background:var(--surface-2);border:1px solid var(--border);
                        border-radius:6px;color:var(--text-soft);font-size:12px;
-                       cursor:pointer;font-family:var(--font-ui)">
+                       cursor:pointer;font-family:var(--font-ui)"
+                data-i18n="upload.folder_button">
           📁 폴더 선택
         </button>
 
@@ -164,6 +185,32 @@
         <button class="upload-btn" id="upload-btn" data-action="upload-files" disabled>
           <span data-i18n="upload.btn_default">업로드 및 분석</span>
         </button>
+      </div>
+
+      <!-- Mode: 대화 이력 (P3-4 → 사이드바로 이동, 2026-05-21).
+           #session-list ID 보존 — chat.js의 loadSessionList()가 그대로
+           이 div를 채움. switchSidebarMode('sessions')가 활성화 시
+           자동 로드 호출. -->
+      <div class="sidebar-panel-mode" data-mode="sessions">
+        <div style="padding:10px 12px;font-size:11px;color:var(--muted);
+                    border-bottom:1px solid var(--border-2);display:flex;
+                    justify-content:space-between;align-items:center;gap:8px">
+          <span data-i18n="chat.previous"
+                style="font-weight:600;font-size:13px;color:var(--text)">이전 대화</span>
+          <button data-action="new-session"
+                  style="background:var(--accent);color:var(--on-accent);border:none;
+                         border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;
+                         font-weight:500;flex-shrink:0">
+            <span data-i18n="chat.new_session">+ 새 대화</span>
+          </button>
+        </div>
+        <div id="session-list"
+             style="flex:1;overflow-y:auto;padding:8px 12px">
+          <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px"
+               data-i18n="common.loading">
+            Loading...
+          </div>
+        </div>
       </div>
 
       <!-- Mode: 내 자료 (W8-B: artifacts/mine 으로 채움) -->
@@ -228,11 +275,12 @@
                 style="background:var(--surface);border:1px solid var(--border);
                        color:var(--text);padding:4px 10px;border-radius:6px;
                        font-size:11px;cursor:pointer">
-          <option value="auto">🤖 자동</option>
+          <option value="auto" data-i18n="mode.auto">🤖 자동</option>
         </select>
         <span id="model-picker-wrap"
               style="display:none;align-items:center;gap:4px"
-              title="이 모드에서 사용할 모델 선택">
+              title="이 모드에서 사용할 모델 선택"
+              data-i18n-title="chat.model_picker_title">
           <select id="model-picker"
                   style="background:var(--surface);border:1px solid var(--border);
                          color:var(--text);padding:4px 10px;border-radius:6px;
@@ -245,7 +293,8 @@
                        border:1px solid var(--accent);color:var(--accent-fg);
                        padding:4px 10px;border-radius:6px;font-size:11px;
                        cursor:pointer;font-family:var(--font-ui)"
-                title="선택한 모드의 모델이 미설치 — 클릭하여 ollama pull"></button>
+                title="선택한 모드의 모델이 미설치 — 클릭하여 ollama pull"
+                data-i18n-title="chat.mode_install_title"></button>
         <!-- [PR plan-4] 추천 모델 가이드로 admin 페이지 이동 -->
         <a id="mode-recommend-link"
            href="/admin"
@@ -254,7 +303,9 @@
            style="font-size:11px;color:var(--muted);text-decoration:none;
                   padding:4px 8px;border:1px dashed var(--border);
                   border-radius:6px;cursor:pointer"
-           title="이 PC에 맞는 모델 자동 추천 (admin 페이지)">
+           title="이 PC에 맞는 모델 자동 추천 (admin 페이지)"
+           data-i18n="mode.recommend_link"
+           data-i18n-title="mode.recommend_link_title">
           🎯 추천
         </a>
         <span id="mode-recommend"
@@ -262,13 +313,16 @@
                      padding:2px 8px;border:1px solid var(--accent-fg);
                      border-radius:6px;cursor:pointer"
               data-action="accept-mode-recommend"
-              title="권장 모드로 전환"></span>
+              title="권장 모드로 전환"
+              data-i18n-title="chat.mode_recommend_active_title"></span>
       </div>
       <button data-action="copy-conversation"
               style="background:none;border:1px solid var(--border);
                      border-radius:6px;padding:4px 10px;cursor:pointer;
                      color:var(--muted);font-size:11px;transition:all .15s"
-              title="현재 대화 전체를 텍스트로 복사">📋 대화 전체 복사</button>
+              title="현재 대화 전체를 텍스트로 복사"
+              data-i18n="chat.copy_all"
+              data-i18n-title="chat.copy_all_title">📋 대화 전체 복사</button>
     </div>
 
     <div class="input-area">
@@ -290,6 +344,8 @@
 </main>
 
 <script src="/static/i18n.js"></script>
+<script src="/static/auth.js"></script>
+<script src="/static/llm-install.js"></script>
 <script src="/static/chat.js"></script>
 <script src="/static/upload.js"></script>
 <script src="/static/a11y-modal.js" defer></script>
@@ -334,6 +390,11 @@
     // W8-B: lazy-load the "내 자료" list when switching into recent.
     if (modeId === 'recent' && typeof loadMineSidebar === 'function') {
       loadMineSidebar();
+    }
+    // P3-4 → sidebar: lazy-load the "대화 이력" list when switching
+    // into sessions (was: floating panel toggle).
+    if (modeId === 'sessions' && typeof loadSessionList === 'function') {
+      loadSessionList();
     }
     // Update the panel header title from the matching rail tip so
     // i18n stays in one place.

@@ -12,15 +12,12 @@ Sandbox 검증 + Code Reader 통과 후 분석 수행.
   ✅ tool_used 필드로 tool 추적
 """
 
-import json
 import time
 from datetime import datetime
 from typing import Dict, Optional, Tuple
 
 from tools.code.sandbox import policy_validate_path, log_security_event
 from tools.code.code_reader import CodeReader
-
-AUDIT_LOG_PATH = "james_audit_tool.jsonl"
 
 # 분석 타입별 프롬프트 템플릿
 ANALYSIS_TEMPLATES = {
@@ -43,12 +40,6 @@ def _log_analysis(path: str, analysis_type: str, elapsed: float, success: bool):
         "success":       success,
         "layer":         "tool",
     }
-    try:
-        with open(AUDIT_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
-    # Phase 1: mirror to SQLite (see core/audit_bridge.py).
     try:
         from core.audit_bridge import mirror_to_audit_db
         mirror_to_audit_db(entry)
@@ -219,9 +210,10 @@ class CodeAnalyzer:
             "surface": surface,
             "layer":   "code_analyzer",
         }
+        # Mirror to SQLite (sole sink as of Phase 4 / Stage D.1).
         try:
-            with open(AUDIT_LOG_PATH, "a", encoding="utf-8") as f:
-                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            from core.audit_bridge import mirror_to_audit_db
+            mirror_to_audit_db(entry)
         except Exception:
             pass
 

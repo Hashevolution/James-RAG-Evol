@@ -1,0 +1,10 @@
+name: general
+version: 0.3.0
+james_api: ">=0.3,<0.4"
+description: "JAMES default behavior pack — dogfood gate (no-op overlay in v0.3)"
+author: "Hashevolution"
+license: "MIT"
+
+plugins:
+  ontology: ontology:GeneralOntology
+  prompts: prompts:GeneralPrompts

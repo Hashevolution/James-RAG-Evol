@@ -13,7 +13,6 @@ PROJECT JAMES - Reasoning Engine (Phase 4.5)
   graph_rag_engine.py (thin wrapper) → ReasoningEngine
 """
 
-import json
 import time
 from datetime import datetime
 from typing import Dict, Any, Optional
@@ -31,7 +30,6 @@ from core.reasoning.modes import (
     handle_coding,
 )
 
-SYSTEM_LOG_PATH   = "james_system_log.jsonl"
 TIMING_TARGET_SEC = 30.0
 MAX_LOOP          = 2        # Loop 최대 반복
 LOOP_TIMEOUT      = 30.0     # 단일 loop 단계 timeout(s)
@@ -71,12 +69,6 @@ class ReasoningEngine:
             "role":   role,
         }
         try:
-            with open(SYSTEM_LOG_PATH, "a", encoding="utf-8") as f:
-                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        except Exception:
-            pass
-        # Phase 2: mirror to SQLite (see core/audit_bridge.py).
-        try:
             from core.audit_bridge import mirror_system_event
             mirror_system_event(entry)
         except Exception:
@@ -100,6 +92,53 @@ class ReasoningEngine:
         response_style: str     = "",          # brief / standard / detailed — see core/response_style.py
         mode_override:  str     = "",          # item #6: 클라이언트가 chat/coding/retrieval 등 명시 → router 우회
         selected_model: str     = "",          # [#A2 phase 2] 사용자가 picker로 고른 LLM tag — 모드 결정 후 catalog 대조
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """Public reasoning entry point.
+
+        Wraps the implementation in a ``try/finally`` so every return
+        path — including ``_blocked_result`` and exception unwinds —
+        releases the turn's working-memory scratch (PR-10b). The
+        previous body lives in ``_query_impl``; this method is a
+        thin wrapper so the cleanup invariant is impossible to skip.
+        """
+        try:
+            return self._query_impl(
+                user_query, user_role, source_type, session_id,
+                response_style, mode_override, selected_model,
+                **kwargs,
+            )
+        finally:
+            # PR-10b — release the turn's scratch and clear the
+            # session ContextVar so the next request in this
+            # thread starts uninstrumented. Both wrapped in try
+            # so a teardown failure cannot eclipse a real exception
+            # bubbling up from the impl.
+            try:
+                from core.observability import (
+                    get_session_context,
+                    set_session_context,
+                )
+                _sid, _tid = get_session_context()
+                if _sid and _tid:
+                    try:
+                        from core.memory.working import get_working_memory
+                        get_working_memory().clear_turn(_sid, _tid)
+                    except Exception:
+                        pass
+                set_session_context("", "")
+            except Exception:
+                pass
+
+    def _query_impl(
+        self,
+        user_query:  str,
+        user_role:   str        = None,
+        source_type: Optional[str] = "prod",
+        session_id:  str        = "default",
+        response_style: str     = "",
+        mode_override:  str     = "",
+        selected_model: str     = "",
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -129,6 +168,22 @@ class ReasoningEngine:
             self._log("pre_check", e, user_role)
             return self._blocked_result("보안 검사 실패")
         self._elapsed(t0, "STEP0 pre_check")
+
+        # ── Session ContextVar — Cognitive Phase 3 PR-9b ────
+        # Bind (session_id, turn_id) to the current async/threading
+        # context so cognitive stages (planner / reflect / verify /
+        # synth) can attribute their episodic events without taking
+        # session_id as a signature parameter. turn_id is millisecond-
+        # precision timestamp scoped under session_id — sortable per
+        # session, unique within a single-process turn.
+        try:
+            from core.observability import set_session_context
+            _turn_id = f"{session_id}:{int(time.time() * 1000)}"
+            set_session_context(session_id, _turn_id)
+        except Exception as e:
+            # ContextVar set failing is non-fatal — episodic stays a
+            # no-op for this turn rather than crashing the query.
+            self._log("session_context", e, user_role)
 
         # ── Memory context + 대화 히스토리 주입 (delegated) ───
         # The MemoryStore / character / persona-command / language-

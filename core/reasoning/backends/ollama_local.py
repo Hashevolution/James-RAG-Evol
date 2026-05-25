@@ -12,7 +12,7 @@ from __future__ import annotations
 import time
 from typing import Optional
 
-from core.reasoning.backends import CompletionResult
+from core.reasoning.backends import BackendCapability, CompletionResult
 
 
 class OllamaLocalBackend:
@@ -22,6 +22,15 @@ class OllamaLocalBackend:
     """
 
     backend_id = "ollama_local"
+
+    # D5.B capability declaration. Default Ollama model on a stock
+    # install is ``gemma4:e4b`` (4B class) → "small" tier. ``provider``
+    # is "local" because RouterWrapper hits ``localhost:11434`` by
+    # default. Operators pointing JAMES at a remote Ollama (e.g.
+    # Hetzner sovereign) effectively re-tier this backend; v1 records
+    # the default deployment and D5.C policy degrades gracefully when
+    # the actual ``JAMES_LLM_MODEL`` exceeds the tier expectation.
+    capability = BackendCapability(tier="small", provider="local")
 
     def __init__(self) -> None:
         self._router = None   # constructed on first .complete()
@@ -51,20 +60,54 @@ class OllamaLocalBackend:
         # prepends; we don't double-prepend here.
         composed = f"{system}\n\n{prompt}" if system else prompt
 
+        # D6 follow-up (2026-05-25) — prefer the native Ollama
+        # `done_reason` exposed via `RouterWrapper.call_gemma_meta`.
+        # Falls back to the legacy `call_gemma` + length+terminator
+        # heuristic when:
+        #   - RouterWrapper has no `call_gemma_meta` (older deploys
+        #     or non-Ollama backends)
+        #   - the native signal is empty (Ollama < 0.1.30, or
+        #     GemmaClient hit a cache → no fresh ollama response)
+        # The fallback preserves the D6 base PR #486 behavior so
+        # `complete_with_retry` (`core.reasoning.budget`) still
+        # observes a "length" signal on truncation-suspicious text.
         t0 = time.time()
+        native_done_reason = ""
+        router = self._llm()
+        # Native path is attempted only when the router actually has
+        # `call_gemma_meta` AND returns a dict. MagicMock auto-creates
+        # missing attributes (so `hasattr` alone isn't a usable signal
+        # — test mocks would always look like they support the new
+        # method). Requiring a dict return value gracefully rejects
+        # auto-mocked attributes + future provider implementations
+        # that haven't migrated to the dict shape.
         try:
-            text = self._llm().call_gemma(
-                composed,
-                timeout=timeout,
-                use_cache=use_cache,
-                max_tokens=max_tokens,
-                model=model or None,
-                # [Track 1 PR-C, 2026-05-19] Reserved kwarg per the
-                # Provider contract §R4. None → call_gemma falls back
-                # to config.LLM_TEMPERATURE (default 0.2). Required
-                # for the Gemma 4 3×3 experiment which sweeps this.
-                temperature=temperature,
-            )
+            text = None
+            meta_fn = getattr(router, "call_gemma_meta", None)
+            if callable(meta_fn):
+                try:
+                    meta = meta_fn(
+                        composed,
+                        timeout=timeout,
+                        use_cache=use_cache,
+                        max_tokens=max_tokens,
+                        model=model or None,
+                        temperature=temperature,
+                    )
+                except Exception:
+                    meta = None
+                if isinstance(meta, dict):
+                    text = meta.get("text", "") or ""
+                    native_done_reason = meta.get("done_reason", "") or ""
+            if text is None:
+                text = router.call_gemma(
+                    composed,
+                    timeout=timeout,
+                    use_cache=use_cache,
+                    max_tokens=max_tokens,
+                    model=model or None,
+                    temperature=temperature,
+                )
         except Exception as e:
             return CompletionResult(
                 text="",
@@ -81,12 +124,37 @@ class OllamaLocalBackend:
                          "LLM 응답 생성 중 오류")
         is_err = bool(text) and any(text.startswith(p) for p in _ERR_PREFIXES)
 
+        # done_reason resolution: native first, heuristic fallback.
+        # Native values follow Ollama's vocabulary ("stop" / "length" /
+        # "load" / "" if unavailable). Heuristic only fires when:
+        #   - native is empty (signal missing)
+        #   - text is non-error
+        # so a "stop" from native does NOT get overridden by the
+        # heuristic — the precise native signal wins.
+        done_reason = ""
+        if native_done_reason:
+            done_reason = native_done_reason
+        elif text and not is_err:
+            # Legacy heuristic (PR #486, D6 base) — two-signal:
+            #   1. length ≥ 90% × cap × 4 chars (token ≈ 4-char approx)
+            #   2. no sentence terminator at end
+            # Both must fire to mark as "length".
+            char_budget_approx = max(max_tokens, 1) * 4
+            length_suspicious = len(text) >= char_budget_approx * 0.9
+            stripped = text.rstrip()
+            sentence_end = stripped.endswith((
+                ".", "?", "!", "다", "요", "음", "}", "]", "\"", "'", ")"
+            ))
+            if length_suspicious and not sentence_end:
+                done_reason = "length"
+
         return CompletionResult(
             text=text or "",
             backend_id=self.backend_id,
             model=model or "",
             latency_ms=int((time.time() - t0) * 1000),
             error=("backend reported error string" if is_err else ""),
+            done_reason=done_reason,
         )
 
 

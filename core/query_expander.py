@@ -19,7 +19,6 @@ Predictive Architecture, LeCun)와 무관** — 모듈 이름이 학술 용어�
 
 import re
 import time
-import json
 from datetime import datetime
 from typing import Optional   # noqa: F401 — kept for downstream type hints
 
@@ -31,7 +30,6 @@ TIMEOUT_SEC      = 3.0    # 이 안에 못 끝내면 bypass
 JEPA_TOKEN_HARD_LIMIT = TOKEN_HARD_LIMIT
 JEPA_TIMEOUT_SEC      = TIMEOUT_SEC
 
-SYSTEM_LOG_PATH = "james_system_log.jsonl"
 
 # ─── 동의어 / 확장 사전 (keyword 기반, LLM 없음) ──────────
 
@@ -54,6 +52,57 @@ _SYNONYM_MAP = {
     "누구":    ["어떤 사람", "인물"],
     "무엇":    ["어떤 것", "어떤 분야"],
     "어디":    ["어느 곳", "어느 기관"],
+    # ─── 한↔영 entity alias (cross-lingual RAG) ────────────
+    # RAG corpus가 영문 PDF + 한국어 entity 혼재일 때 한국어 query가
+    # 영문 chunk와 매칭 실패하는 문제를 보완. embedding 모델
+    # (paraphrase-multilingual-MiniLM-L12-v2)이 다국어를 지원하지만
+    # entity 표면 형태가 다르면 cosine similarity가 낮아 무관 자료가
+    # top으로 잡힘 (실측: 팔란티어 query → Vance/13F 보고서 top).
+    # 회사
+    "팔란티어":     ["Palantir", "PLTR"],
+    "엔비디아":     ["Nvidia", "NVIDIA", "NVDA"],
+    "마이크로소프트": ["Microsoft", "MSFT"],
+    "마소":         ["Microsoft", "MSFT"],
+    "구글":         ["Google", "Alphabet", "GOOGL", "GOOG"],
+    "알파벳":       ["Alphabet", "GOOGL", "Google"],
+    "애플":         ["Apple", "AAPL"],
+    "메타":         ["Meta", "META"],
+    "테슬라":       ["Tesla", "TSLA"],
+    "아마존":       ["Amazon", "AMZN"],
+    "앤트로픽":     ["Anthropic", "Claude"],
+    "오픈에이아이": ["OpenAI", "ChatGPT"],
+    "오픈AI":       ["OpenAI", "ChatGPT"],
+    "에이엠디":     ["AMD"],
+    "비야디":       ["BYD"],
+    "블랙록":       ["BlackRock"],
+    "시티":         ["Citi", "Citigroup"],
+    "아처":         ["Archer", "Archer Aviation"],
+    "부이그":       ["Bouygues", "Bouygues Telecom"],
+    "클로드":       ["Claude", "Anthropic"],
+    "커서":         ["Cursor"],
+    # 기관 / 정부
+    "연준":         ["Fed", "FOMC", "Federal Reserve"],
+    "연방준비제도": ["Fed", "FOMC", "Federal Reserve"],
+    "백악관":       ["White House"],
+    "펜타곤":       ["Pentagon"],
+    # 영문 → 한국어 (역방향 — 영문 query에 한국어 chunk 매칭)
+    "Palantir":     ["팔란티어", "PLTR"],
+    "Nvidia":       ["엔비디아", "NVDA"],
+    "NVIDIA":       ["엔비디아", "NVDA"],
+    "Microsoft":    ["마이크로소프트", "MSFT"],
+    "Google":       ["구글", "Alphabet"],
+    "Apple":        ["애플", "AAPL"],
+    "Tesla":        ["테슬라", "TSLA"],
+    "Meta":         ["메타"],
+    "Amazon":       ["아마존", "AMZN"],
+    "Anthropic":    ["앤트로픽", "Claude"],
+    "OpenAI":       ["오픈에이아이", "ChatGPT"],
+    "AMD":          ["에이엠디"],
+    "BYD":          ["비야디"],
+    "BlackRock":    ["블랙록"],
+    "Claude":       ["클로드", "Anthropic"],
+    "FOMC":         ["연준", "Federal Reserve"],
+    "Fed":          ["연준", "Federal Reserve", "FOMC"],
 }
 
 _STOPWORDS = {
@@ -67,12 +116,6 @@ def _log(step: str, detail: str, level: str = "INFO"):
     entry = {"time": datetime.now().isoformat(), "level": level,
              "step": f"query_expand.{step}", "detail": detail[:200]}
     try:
-        with open(SYSTEM_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
-    # Phase 2: mirror to SQLite (see core/audit_bridge.py).
-    try:
         from core.audit_bridge import mirror_system_event
         mirror_system_event(entry)
     except Exception:
@@ -85,11 +128,30 @@ def _tokenize_simple(text: str) -> list:
     return [t for t in tokens if t not in _STOPWORDS and len(t) >= 2]
 
 
+_JOSA_SUFFIXES = (
+    "에서", "으로", "이란", "라고",
+    "은", "는", "이", "가", "을", "를", "의", "에", "와", "과",
+    "도", "만", "로", "란",
+)
+
+
+def _strip_korean_josa(token: str) -> str:
+    """한국어 조사 suffix를 떼고 표제어 반환. 매치 없으면 원본."""
+    for josa in _JOSA_SUFFIXES:
+        if token.endswith(josa) and len(token) > len(josa) + 1:
+            return token[: -len(josa)]
+    return token
+
+
 def _expand_keywords(tokens: list) -> list:
-    """동의어 사전 기반 확장 (LLM 없음)"""
+    """동의어 사전 기반 확장 (LLM 없음). 한국어 조사 stripping 1단계 fallback."""
     expanded = list(tokens)
     for token in tokens:
         synonyms = _SYNONYM_MAP.get(token, [])
+        if not synonyms:
+            stripped = _strip_korean_josa(token)
+            if stripped != token:
+                synonyms = _SYNONYM_MAP.get(stripped, [])
         for syn in synonyms:
             if syn not in expanded:
                 expanded.append(syn)

@@ -86,6 +86,23 @@ function _bindFrontendEvents() {
       case 'change-my-password':  changeMyPassword(); break;
       case 'issue-my-api-key':    issueMyApiKey(); break;
 
+      /* ── file management modal (item #2-view, 2026-05-24) ─────── */
+      case 'open-file-view': {
+        const r = t.getAttribute('data-root');
+        const p = t.getAttribute('data-path');
+        const n = t.getAttribute('data-name');
+        openFileView(r, p, n);
+        break;
+      }
+      case 'close-file-view': closeFileView(); break;
+      case 'download-file': {
+        const r = t.getAttribute('data-root');
+        const p = t.getAttribute('data-path');
+        const n = t.getAttribute('data-name');
+        downloadFile(r, p, n);
+        break;
+      }
+
       /* ── entities page (static) ───────────────────────────────── */
       case 'entities-page':
         entitiesPage(parseInt(t.getAttribute('data-delta'), 10) || 0);
@@ -112,6 +129,8 @@ function _bindFrontendEvents() {
       case 'load-files':          loadFiles(); break;
       case 'load-hardware':       loadHardware(); break;
       case 'save-settings':       saveSettings(); break;
+      case 'save-llm-selections': saveLlmSelections(); break;
+      case 'save-cognitive-flags': saveCognitiveFlags(); break;
       case 'save-web-search-config': saveWebSearchConfig(); break;
 
       /* ── login modal + signup/forgot anchors ──────────────────── */
@@ -154,6 +173,8 @@ function _bindFrontendEvents() {
         break;
       case 'summarize-and-delete':
         summarizeAndDelete(t.getAttribute('data-sid')); break;
+      case 'delete-session-only':
+        deleteSessionOnly(t.getAttribute('data-sid')); break;
       case 'patch-action':
         patchAction(
           t.getAttribute('data-patch-id'),
@@ -317,46 +338,21 @@ function toggleAdminPwVisibility() {
 async function doAdminLogin() {
   const username = document.getElementById('admin-login-id')?.value.trim() || 'admin';
   const password = document.getElementById('admin-login-pw')?.value || '';
-  const errEl    = document.getElementById('admin-login-error');
+  const errEl = document.getElementById('admin-login-error');
   if (errEl) errEl.textContent = '';
 
-  if (!password) { if(errEl) errEl.textContent = t('auth.password_required'); return; }
-
-  try {
-    const r = await fetch(`${API}/login/`, {
-      method:  'POST',
-      headers: {'Content-Type': 'application/json'},
-      body:    JSON.stringify({username, password, api_key: apiKey}),
-    });
-    const d = await r.json();
-
-    if (!r.ok) {
-      if(errEl) errEl.textContent = d.detail || `Login failed (${r.status})`;
-      return;
-    }
-
-    // access_token 또는 token 필드 모두 처리
-    const tok  = d.access_token || d.token || '';
-    const role = d.role || 'external';
-
-    if (!tok)            { if(errEl) errEl.textContent = t('auth.token_failed'); return; }
-    if (role !== 'admin'){ if(errEl) errEl.textContent = `Admin role required (role: ${role})`; return; }
-
-    token = tok;
-    // [#A8-4] localStorage — chat 페이지와 공유. 다른 탭의 storage 이벤트로
-    // chat 페이지 role-badge 자동 갱신.
-    localStorage.setItem('james_token', token);
-    localStorage.setItem('james_role',  role);
-
-    const modal = document.getElementById('admin-login-modal');
-    if (modal) modal.style.display = 'none';
-    loadDashboard();
-    // [PR plan-3] 로그인 후 LLM 모델 readiness 체크. 0개면 wizard 노출.
-    setTimeout(() => { try { firstRunCheck(); } catch (_) {} }, 600);
-
-  } catch (e) {
-    if(errEl) errEl.textContent = `Server error: ${e.message}`;
+  const res = await Auth.login({ username, password, apiKey, requireRole: 'admin' });
+  if (!res.ok) {
+    if (errEl) errEl.textContent = res.error;
+    return;
   }
+  token = res.token;
+
+  const modal = document.getElementById('admin-login-modal');
+  if (modal) modal.style.display = 'none';
+  loadDashboard();
+  // [PR plan-3] 로그인 후 LLM 모델 readiness 체크. 0개면 wizard 노출.
+  setTimeout(() => { try { firstRunCheck(); } catch (_) {} }, 600);
 }
 
 /* ── [PR plan-3, 2026-05-09] First-run wizard ───────────────────
@@ -366,7 +362,7 @@ async function doAdminLogin() {
    시 안 띄움. 그러나 firstRunCheck()는 항상 호출되며 dismiss 됐어도
    ↻ 새로고침 버튼이 강제 표시 가능. */
 
-let _firstRunInstallPoll = null;
+let _firstRunInstallController = null;
 
 async function firstRunCheck() {
   // 이번 세션에서 이미 dismiss됐고 모델이 ≥1개면 wizard 안 띄움.
@@ -481,6 +477,8 @@ function _firstRunRow(r, primary) {
   </div>`;
 }
 
+// HTTP + 폴링 메커니즘은 llm-install.js의 LlmInstall.start()가 담당.
+// 여기는 firstrun 모달 UI 렌더링만.
 async function firstRunInstall(model) {
   if (!model) return;
   const progressBox = document.getElementById('firstrun-progress');
@@ -489,77 +487,42 @@ async function firstRunInstall(model) {
   if (progressBox) progressBox.style.display = 'block';
   if (progressText) progressText.textContent = `${model} 설치 시작 중...`;
 
-  try {
-    const r = await fetch(
-      `${API}/llm/install/?api_key=${encodeURIComponent(apiKey)}&model=${encodeURIComponent(model)}`,
-      {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-      },
-    );
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      throw new Error(err.detail || `HTTP ${r.status}`);
-    }
-    // 진행률 폴링
-    if (_firstRunInstallPoll) clearInterval(_firstRunInstallPoll);
-    _firstRunInstallPoll = setInterval(() => _firstRunPollProgress(model), 2500);
-    _firstRunPollProgress(model);   // 즉시 1회
-  } catch (e) {
-    if (progressText) progressText.textContent = `❌ 설치 실패: ${e.message}`;
-  }
-}
-
-async function _firstRunPollProgress(model) {
-  try {
-    const r = await fetch(
-      `${API}/admin/llm/install-progress?api_key=${encodeURIComponent(apiKey)}&model=${encodeURIComponent(model)}`,
-      { headers: { 'Authorization': `Bearer ${token}` } },
-    );
-    if (!r.ok) {
-      if (r.status === 401) {
-        // 세션 만료 — 폴링 중단 + localStorage 정리 (chat tab role
-        // badge도 같이 업데이트되도록 SSO 일관성 유지).
-        clearInterval(_firstRunInstallPoll);
-        _firstRunInstallPoll = null;
-        try {
-          localStorage.removeItem('james_token');
-          localStorage.removeItem('james_role');
-        } catch (_) {}
+  if (_firstRunInstallController) _firstRunInstallController.stop();
+  _firstRunInstallController = LlmInstall.start(model, {
+    onProgress(p) {
+      const txt = document.getElementById('firstrun-progress-text');
+      const bar = document.getElementById('firstrun-progress-bar');
+      if (txt) {
+        const pctStr = (p.percent != null) ? `${p.percent}%` : (p.status || '진행 중');
+        txt.textContent = `⏳ ${model}: ${pctStr}`;
       }
-      return;
-    }
-    const p = await r.json();
-    const progressText = document.getElementById('firstrun-progress-text');
-    const progressBar = document.getElementById('firstrun-progress-bar');
-    if (p.error) {
-      if (progressText) progressText.textContent = `❌ ${model} 실패: ${p.error}`;
-      clearInterval(_firstRunInstallPoll);
-      _firstRunInstallPoll = null;
-      return;
-    }
-    if (p.done) {
-      if (progressText) progressText.textContent = `✅ ${model} 설치 완료! 이제 답변할 수 있습니다.`;
-      if (progressBar) progressBar.style.width = '100%';
-      clearInterval(_firstRunInstallPoll);
-      _firstRunInstallPoll = null;
+      if (bar && p.percent != null) {
+        bar.style.width = `${p.percent}%`;
+      }
+    },
+    onDone() {
+      const txt = document.getElementById('firstrun-progress-text');
+      const bar = document.getElementById('firstrun-progress-bar');
+      if (txt) txt.textContent = `✅ ${model} 설치 완료! 이제 답변할 수 있습니다.`;
+      if (bar) bar.style.width = '100%';
       // 자동 닫기 (3초 후)
       setTimeout(() => {
         const modal = document.getElementById('firstrun-wizard-modal');
         if (modal) modal.style.display = 'none';
       }, 3000);
-      return;
-    }
-    if (progressText) {
-      const pctStr = (p.percent != null) ? `${p.percent}%` : (p.status || '진행 중');
-      progressText.textContent = `⏳ ${model}: ${pctStr}`;
-    }
-    if (progressBar && p.percent != null) {
-      progressBar.style.width = `${p.percent}%`;
-    }
-  } catch (e) {
-    console.warn('[firstrun-poll]', e);
-  }
+    },
+    onError(e) {
+      const txt = document.getElementById('firstrun-progress-text');
+      if (txt) txt.textContent = `❌ ${model} 실패: ${e.message}`;
+    },
+    onUnauthorized() {
+      // 세션 만료 — chat tab role-badge도 같이 갱신되도록 SSO 일관성 유지.
+      try {
+        localStorage.removeItem('james_token');
+        localStorage.removeItem('james_role');
+      } catch (_) {}
+    },
+  });
 }
 
 function firstRunDismiss() {
@@ -1035,7 +998,7 @@ async function loadPolicy() {
       return `<tr>
         <td>
           <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${f.id}</div>
-          <div style="font-size:12px;color:var(--text);margin-top:1px">${f.description || ''}</div>
+          <div style="font-size:12px;color:var(--text);margin-top:1px"><span data-i18n="${f.label_key || ''}">${f.description || ''}</span></div>
         </td>
         ${cells}
         <td style="text-align:center">
@@ -1046,6 +1009,9 @@ async function loadPolicy() {
         </td>
       </tr>`;
     }).join('');
+    // Re-translate freshly-injected data-i18n spans (same pattern as
+    // loadCognitiveFlags / loadLlmSelections / buildProtectedCheckboxes).
+    if (typeof applyTranslations === 'function') applyTranslations();
   } catch (e) {
     body.innerHTML = `<tr><td colspan="6" class="empty">${e.message}</td></tr>`;
   }
@@ -1276,33 +1242,15 @@ async function submitSignup() {
 
 async function submitPasswordReset() {
   const username = document.getElementById('reset-username').value.trim();
-  const token    = document.getElementById('reset-token').value.trim();
-  const newPw    = document.getElementById('reset-new-pw').value;
-  const errEl    = document.getElementById('reset-error');
+  const token = document.getElementById('reset-token').value.trim();
+  const newPw = document.getElementById('reset-new-pw').value;
+  const errEl = document.getElementById('reset-error');
   errEl.textContent = '';
-  if (!username || !token || !newPw) {
-    errEl.textContent = t('auth.reset_fill_all');
-    return;
-  }
-  try {
-    // Bare fetch — no Bearer header (anonymous flow), no api_key
-    // query (the endpoint is public). The api() helper assumes both.
-    const r = await fetch(`${API}/password/reset/confirm`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ username, token, new_password: newPw }),
-    });
-    if (r.ok) {
-      alert(t('auth.reset_success'));
-      closeForgotPasswordModal();
-      return;
-    }
-    let detail = `${r.status}`;
-    try { detail = (await r.json()).detail || detail; } catch (_e) {}
-    errEl.textContent = detail;
-  } catch (e) {
-    errEl.textContent = e.message;
-  }
+
+  const res = await Auth.resetPasswordConfirm({ username, token, newPassword: newPw });
+  if (!res.ok) { errEl.textContent = res.error; return; }
+  alert(t('auth.reset_success'));
+  closeForgotPasswordModal();
 }
 
 /* ── Entity (item #1: search + paging + detail modal) ── */
@@ -1470,11 +1418,82 @@ async function loadMemory() {
     await loadLongTerm();
     // 세션 목록
     await loadSessions();
+    // 사용자 피드백 집계 (UI_API_MAPPING §3.2 — last risk-#1 orphan).
+    // Best-effort: a failure here must not blank the surrounding
+    // Memory tab UI; render an inline error and keep going.
+    try { await loadFeedbackStats(); } catch (e) { console.warn('feedback-stats:', e); }
 
   } catch (e) {
     document.getElementById('memory-cards').innerHTML =
       `<div class="empty">${e.message}</div>`;
   }
+}
+
+/* ── /feedback/stats/ 4-stat strip (UI_API_MAPPING risk #1 last row).
+   The endpoint is admin.evolution-gated and returns
+     { total, positive, negative, tracked_directions }
+   from the running FeedbackEngine. Lives inside Memory tab so an
+   operator sees feedback signal alongside the long-term + sessions
+   inventory. */
+async function loadFeedbackStats() {
+  const root = document.getElementById('feedback-stats-card');
+  if (!root) return;
+  let data;
+  try {
+    data = await api('/feedback/stats/');
+  } catch (e) {
+    root.innerHTML = `<div style="color:var(--danger);font-size:12px">
+      ${_escHtml(String(e.message || e))}</div>`;
+    return;
+  }
+  if (data && data.error) {
+    root.innerHTML = `<div style="color:var(--danger);font-size:12px">
+      ${_escHtml(String(data.error))}</div>`;
+    return;
+  }
+  // Compute helpful derived metric: positive ratio. Defensive on
+  // zero-total to avoid NaN.
+  const total = Number(data && data.total) || 0;
+  const pos   = Number(data && data.positive) || 0;
+  const neg   = Number(data && data.negative) || 0;
+  const dirs  = Number(data && data.tracked_directions) || 0;
+  const ratio = total > 0 ? Math.round((pos / total) * 100) : null;
+  const ratioLabel = ratio === null
+    ? (t('mem.feedback_no_signal') || '(no signal yet)')
+    : `${ratio}%`;
+
+  root.innerHTML = `
+    <div>
+      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px">
+        <span data-i18n="mem.feedback_total">Total signals</span>
+      </div>
+      <div style="color:var(--text);font-size:18px;font-weight:600;margin-top:2px">${total}</div>
+    </div>
+    <div>
+      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px">
+        <span data-i18n="mem.feedback_positive">Positive</span>
+      </div>
+      <div style="color:var(--success);font-size:18px;font-weight:600;margin-top:2px">${pos}</div>
+    </div>
+    <div>
+      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px">
+        <span data-i18n="mem.feedback_negative">Negative</span>
+      </div>
+      <div style="color:var(--danger);font-size:18px;font-weight:600;margin-top:2px">${neg}</div>
+    </div>
+    <div>
+      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px">
+        <span data-i18n="mem.feedback_ratio">Positive ratio</span>
+      </div>
+      <div style="color:var(--accent);font-size:18px;font-weight:600;margin-top:2px">${_escHtml(ratioLabel)}</div>
+    </div>
+    <div>
+      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px">
+        <span data-i18n="mem.feedback_tracked">Tracked directions</span>
+      </div>
+      <div style="color:var(--text);font-size:18px;font-weight:600;margin-top:2px">${dirs}</div>
+    </div>`;
+  if (typeof applyTranslations === 'function') applyTranslations();
 }
 
 async function loadLongTerm() {
@@ -1523,6 +1542,8 @@ async function loadSessions() {
           <td class="mono">${s.started?.slice(0,16) || '-'}</td>
           <td class="mono">${s.last?.slice(0,16) || '-'}</td>
           <td>
+            <button class="btn" style="font-size:10px;background:rgba(240,98,146,.10);border:1px solid var(--red,#f06292);color:var(--red,#f06292);margin-right:4px"
+              data-action="delete-session-only" data-sid="${escapeHtml(sid)}" data-i18n='mem.delete_only'>Delete</button>
             <button class="btn btn-approve" style="font-size:10px"
               data-action="summarize-and-delete" data-sid="${escapeHtml(sid)}" data-i18n='mem.summarize_delete'>Summarize & Delete</button>
           </td>
@@ -1586,8 +1607,22 @@ function closeSessionTurns(e) {
 }
 
 async function summarizeAndDelete(sessionId) {
+  // Confirmation gate — LLM call is 30-60s long-running on gemma4:e4b.
+  // Operators frequently mistake this for the simple delete and end up
+  // waiting through a full reflect/verify-tier round-trip + a topic
+  // round-trip. Explicit confirm sets expectation.
+  const confirmMsg = t('mem.confirm_summarize_delete')
+    || `Summarize and delete? LLM call required (~30-60s on gemma4:e4b).\nFor a no-summary delete, use the "Delete" button instead.`;
+  if (!confirm(confirmMsg)) return;
+
+  // Long-running indicator — toast stays on screen until the request
+  // completes (override default 3s auto-dismiss).
+  const spinnerToast = toastPersistent(
+    t('mem.summarizing') || '⏳ Summarizing... (LLM call, may take 30-60s)',
+    'info',
+  );
   try {
-    // 1. 요약 저장
+    // 1. 요약 저장 (LLM call — long-running)
     const r = await api(`/history/summarize/?session_id=${sessionId}`, 'POST');
     if (r.success) {
       toast(`✅ ${r.topic || sessionId.slice(0,12)} saved`, 'success');
@@ -1599,7 +1634,51 @@ async function summarizeAndDelete(sessionId) {
     await loadLongTerm();
   } catch (e) {
     alert(`Failed: ${e.message}`);
+  } finally {
+    if (spinnerToast && spinnerToast.parentNode) spinnerToast.remove();
   }
+}
+
+/* ── Delete-only path (no LLM call) — for bench / temp / low-value
+   sessions where the summary is not worth a 30-60s LLM round-trip.
+   Single DELETE /history/ call + table refresh, completes in
+   sub-second. Direction 1 (PR #461) finding applied to UX: an LLM
+   call is a long-running stage and should be opt-in, not the default. */
+async function deleteSessionOnly(sessionId) {
+  const confirmMsg = t('mem.confirm_delete_only')
+    || `Delete session "${sessionId.slice(0,12)}"? (no summary, no LLM call)`;
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    await api(`/history/?session_id=${sessionId}`, 'DELETE');
+    toast(
+      t('mem.deleted_no_summary') || `🗑️ ${sessionId.slice(0,12)} deleted`,
+      'success',
+    );
+    await loadSessions();
+    // long-term unchanged for this path — no summary was written, so
+    // the long-term card doesn't need a re-fetch (saves an HTTP call).
+  } catch (e) {
+    alert(`Failed: ${e.message}`);
+  }
+}
+
+/* Persistent toast — like toast() but stays on screen until caller
+   .remove()s it. Returns the DOM element so the caller can dismiss
+   it from a try/finally. Used for long-running LLM calls where the
+   default 3s auto-dismiss would hide the indicator while the user
+   is still waiting. */
+function toastPersistent(msg, type = 'info') {
+  const t = document.createElement('div');
+  const accent = type === 'info'
+    ? 'rgba(124,106,247,.15);border:1px solid #7c6af7;color:#7c6af7'
+    : 'rgba(76,175,125,.15);border:1px solid var(--success);color:var(--success)';
+  t.style.cssText = `position:fixed;bottom:24px;right:24px;padding:10px 16px;
+    border-radius:8px;font-size:13px;z-index:100;background:${accent};
+    animation:fadeIn .25s ease`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  return t;
 }
 
 function toast(msg, type = 'success') {
@@ -1893,7 +1972,11 @@ async function loadFiles() {
   if (sb) sb.value = '';
 
   try {
-    const data = await api(`/admin/files/tree?root=${encodeURIComponent(root)}&max_depth=3`);
+    // max_depth=5 covers the typical wiki layout (entity/<src>/<type>/<file>
+    // is depth 4 from wiki/). Bumped from 3 because depth=3 stopped at the
+    // type-bucket level and made every populated bucket render as "(empty)"
+    // in the tree even though the bucket actually had files.
+    const data = await api(`/admin/files/tree?root=${encodeURIComponent(root)}&max_depth=5`);
     if (!data.exists) {
       container.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:var(--muted)">
         '${_escHtml(root)}' 디렉토리 없음 (아직 생성 안 됨)
@@ -1919,14 +2002,134 @@ async function loadFiles() {
 
 /* Recursive tree renderer. Folders render as collapsible <details>
    so the user can expand/collapse selectively without the whole tree
-   collapsing on a re-render. Files have a download link (only for
-   allowlisted extensions — server enforces, but we don't render the
-   link for ones we know will 403). */
+   collapsing on a re-render. Files have:
+     - a 👁 view button (text files only) — opens an inline modal via
+       /admin/files/view (fetch + Authorization header)
+     - a ⬇ download link (any allowlisted ext) — opens in new tab
+   The view path is the natural "open file" flow for an admin doing
+   inspection; download is for taking the file off-server. */
 const _DOWNLOAD_OK_EXTS = new Set([
   'md','txt','pdf','docx','doc','xlsx','xls','pptx','ppt','csv','html','htm',
   'json','yaml','yml','png','jpg','jpeg','gif','webp','bmp','tiff','mp4','avi',
   'mov','mkv','webm','mp3','wav','m4a','aac','flac','hwpx','hwp',
 ]);
+const _VIEW_OK_EXTS = new Set([
+  'md','txt','json','yaml','yml','csv','jsonl','log','tsv',
+]);
+
+/* Inline file viewer modal — fires when the 👁 button on a file row
+   is clicked. Uses fetch() so the Authorization header is attached
+   automatically (the download <a href> path loses the header in a
+   new-tab click and trips admin.data on the server). */
+let _fileViewEl = null;
+
+function _ensureFileViewModal() {
+  if (_fileViewEl) return _fileViewEl;
+  const overlay = document.createElement('div');
+  overlay.id = 'file-view-overlay';
+  overlay.style.cssText = (
+    'position:fixed;inset:0;background:rgba(0,0,0,0.6);' +
+    'display:none;align-items:center;justify-content:center;' +
+    'z-index:9000;backdrop-filter:blur(2px)'
+  );
+  overlay.innerHTML = `
+    <div style="background:var(--bg-1);border:1px solid var(--border-2);
+                border-radius:8px;max-width:min(900px,90vw);
+                max-height:85vh;display:flex;flex-direction:column;
+                box-shadow:0 8px 32px rgba(0,0,0,0.5)">
+      <div style="display:flex;align-items:center;gap:12px;
+                  padding:12px 16px;border-bottom:1px solid var(--border-2)">
+        <span style="font-size:18px">📄</span>
+        <span id="file-view-name" style="flex:1;font-weight:600;
+              font-family:var(--font-mono);font-size:13px;
+              color:var(--accent-fg);word-break:break-all"></span>
+        <span id="file-view-meta" style="color:var(--muted);
+              font-size:11px"></span>
+        <button type="button" data-action="close-file-view"
+                style="background:none;border:none;color:var(--muted);
+                       cursor:pointer;font-size:18px;padding:0 4px"
+                title="닫기 (Esc)">✕</button>
+      </div>
+      <pre id="file-view-body" style="margin:0;padding:14px 16px;
+           overflow:auto;flex:1;font-family:var(--font-mono);
+           font-size:12px;line-height:1.5;color:var(--fg-1);
+           white-space:pre-wrap;word-break:break-word;
+           background:var(--bg-2)"></pre>
+    </div>
+  `;
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeFileView();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay.style.display !== 'none') {
+      closeFileView();
+    }
+  });
+  document.body.appendChild(overlay);
+  _fileViewEl = overlay;
+  return overlay;
+}
+
+async function openFileView(root, path, displayName) {
+  const overlay = _ensureFileViewModal();
+  const nameEl = overlay.querySelector('#file-view-name');
+  const metaEl = overlay.querySelector('#file-view-meta');
+  const bodyEl = overlay.querySelector('#file-view-body');
+  nameEl.textContent = displayName || path;
+  metaEl.textContent = '';
+  bodyEl.textContent = '로딩 중...';
+  overlay.style.display = 'flex';
+
+  try {
+    const data = await api(
+      `/admin/files/view?root=${encodeURIComponent(root)}` +
+      `&path=${encodeURIComponent(path)}`
+    );
+    metaEl.textContent = `${_humanSize(data.size)} · ${data.ext || ''}`;
+    bodyEl.textContent = data.content || '(빈 파일)';
+  } catch (err) {
+    bodyEl.textContent = `[열기 실패] ${err && err.message ? err.message : err}`;
+  }
+}
+
+function closeFileView() {
+  if (_fileViewEl) _fileViewEl.style.display = 'none';
+}
+
+/* Inline file download via fetch + Blob — replaces the old <a href>
+   new-tab pattern that trips admin.data because the Authorization
+   header isn't carried on a plain GET. fetch() attaches the bearer
+   token automatically; the blob is then dressed up as a regular
+   download via an ephemeral <a download> element. */
+async function downloadFile(root, path, name) {
+  const url = `${API}/admin/files/download` +
+              `?root=${encodeURIComponent(root)}` +
+              `&path=${encodeURIComponent(path)}` +
+              `&api_key=${encodeURIComponent(apiKey)}`;
+  try {
+    const r = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!r.ok) {
+      let detail = '';
+      try { detail = await r.text(); } catch (_) { /* ignore */ }
+      alert(`다운로드 실패: ${r.status} ${detail.slice(0, 200)}`);
+      return;
+    }
+    const blob = await r.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objUrl;
+    a.download = name || path.split('/').pop() || 'file';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(objUrl), 1000);
+  } catch (e) {
+    alert(`다운로드 오류: ${e && e.message ? e.message : e}`);
+  }
+}
+
 
 function _renderTree(nodes, parentPath, root) {
   if (!nodes || !nodes.length) return '';
@@ -1949,12 +2152,24 @@ function _renderTree(nodes, parentPath, root) {
     } else {
       const ext = (n.name.split('.').pop() || '').toLowerCase();
       const canDownload = _DOWNLOAD_OK_EXTS.has(ext);
-      const dlLink = canDownload
-        ? `<a href="${API}/admin/files/download?root=${encodeURIComponent(root)}&path=${encodeURIComponent(fullRel)}&api_key=${encodeURIComponent(apiKey)}"
-              target="_blank" rel="noopener"
-              style="color:var(--accent-fg);text-decoration:none;font-size:11px;
-                     margin-left:8px"
-              title="다운로드">⬇</a>`
+      const canView     = _VIEW_OK_EXTS.has(ext);
+      const viewBtn = canView
+        ? `<button type="button" data-action="open-file-view"
+              data-root="${_escHtml(root)}"
+              data-path="${_escHtml(fullRel)}"
+              data-name="${_escHtml(n.name)}"
+              style="background:none;border:none;color:var(--accent-fg);
+                     cursor:pointer;font-size:13px;padding:0;margin-left:8px"
+              title="열기">👁</button>`
+        : '';
+      const dlBtn = canDownload
+        ? `<button type="button" data-action="download-file"
+              data-root="${_escHtml(root)}"
+              data-path="${_escHtml(fullRel)}"
+              data-name="${_escHtml(n.name)}"
+              style="background:none;border:none;color:var(--accent-fg);
+                     cursor:pointer;font-size:13px;padding:0;margin-left:6px"
+              title="다운로드">⬇</button>`
         : '';
       html += `<li style="margin:2px 0;padding:3px 6px 3px 18px;
                           border-left:1px dashed var(--border-2);
@@ -1962,7 +2177,7 @@ function _renderTree(nodes, parentPath, root) {
         <span>📄 ${_escHtml(n.name)}</span>
         <span style="color:var(--muted);font-size:11px;flex:1">
           ${_humanSize(n.size)} · ${_humanMtime(n.mtime)}
-        </span>${dlLink}
+        </span>${viewBtn}${dlBtn}
       </li>`;
     }
   }
@@ -1995,12 +2210,24 @@ async function searchFiles() {
     for (const m of matches) {
       const ext = (m.name.split('.').pop() || '').toLowerCase();
       const canDownload = _DOWNLOAD_OK_EXTS.has(ext);
-      const dlLink = canDownload
-        ? `<a href="${API}/admin/files/download?root=${encodeURIComponent(root)}&path=${encodeURIComponent(m.path)}&api_key=${encodeURIComponent(apiKey)}"
-              target="_blank" rel="noopener"
-              style="color:var(--accent-fg);text-decoration:none;font-size:11px;
-                     margin-left:8px"
-              title="다운로드">⬇</a>`
+      const canView     = _VIEW_OK_EXTS.has(ext);
+      const viewBtn = canView
+        ? `<button type="button" data-action="open-file-view"
+              data-root="${_escHtml(root)}"
+              data-path="${_escHtml(m.path)}"
+              data-name="${_escHtml(m.name)}"
+              style="background:none;border:none;color:var(--accent-fg);
+                     cursor:pointer;font-size:13px;padding:0;margin-left:8px"
+              title="열기">👁</button>`
+        : '';
+      const dlBtn = canDownload
+        ? `<button type="button" data-action="download-file"
+              data-root="${_escHtml(root)}"
+              data-path="${_escHtml(m.path)}"
+              data-name="${_escHtml(m.name)}"
+              style="background:none;border:none;color:var(--accent-fg);
+                     cursor:pointer;font-size:13px;padding:0;margin-left:6px"
+              title="다운로드">⬇</button>`
         : '';
       html += `<li style="margin:3px 0;padding:6px 8px;
                           border-bottom:1px dotted var(--border-2);
@@ -2009,7 +2236,7 @@ async function searchFiles() {
                      font-family:var(--font-mono);flex-shrink:0">${_escHtml(m.path)}</span>
         <span style="color:var(--muted);font-size:11px;flex:1;text-align:right">
           ${_humanSize(m.size)} · ${_humanMtime(m.mtime)}
-        </span>${dlLink}
+        </span>${viewBtn}${dlBtn}
       </li>`;
     }
     html += '</ul>';
@@ -2029,15 +2256,17 @@ function onLanguageChange(lang) {
 }
 
 /* ── 설정 — 드롭다운 연동 ── */
-// 보호 파일 목록 (고정 + 동적)
+// 보호 파일 목록 (고정 + 동적). label_key follows the LLM_TASK_TYPES
+// pattern (admin.js:2135) so the UI label honours the active language;
+// `label` stays as EN fallback if the i18n table misses the key.
 const PROTECTED_CANDIDATES = [
-  { file: 'core/security_layer.py',  label: '🔐 Security Layer',  default: true  },
-  { file: 'core/auth.py',            label: '🔑 Auth Module',      default: true  },
-  { file: 'config.py',               label: '⚙️  Config File',     default: true  },
-  { file: 'server_llmwiki.py',       label: '🌐 FastAPI Server',   default: false },
-  { file: 'core/graph_engine.py',    label: '🕸️  Graph Engine',    default: false },
-  { file: 'core/reasoning_engine.py',label: '🧠 Reasoning Engine', default: false },
-  { file: 'core/vector_store.py',    label: '🗄️  Vector Store',    default: false },
+  { file: 'core/security_layer.py',  label: '🔐 Security Layer',  label_key: 'set.protected_security_layer',   default: true  },
+  { file: 'core/auth.py',            label: '🔑 Auth Module',      label_key: 'set.protected_auth_module',      default: true  },
+  { file: 'config.py',               label: '⚙️  Config File',     label_key: 'set.protected_config_file',      default: true  },
+  { file: 'server_llmwiki.py',       label: '🌐 FastAPI Server',   label_key: 'set.protected_fastapi_server',   default: false },
+  { file: 'core/graph_engine.py',    label: '🕸️  Graph Engine',    label_key: 'set.protected_graph_engine',     default: false },
+  { file: 'core/reasoning_engine.py',label: '🧠 Reasoning Engine', label_key: 'set.protected_reasoning_engine', default: false },
+  { file: 'core/vector_store.py',    label: '🗄️  Vector Store',    label_key: 'set.protected_vector_store',     default: false },
 ];
 
 
@@ -2055,10 +2284,14 @@ function buildProtectedCheckboxes(currentProtected = []) {
       <input type="checkbox" class="protected-chk" value="${c.file}"
              ${checked.has(c.file) || (checked.size === 0 && c.default) ? 'checked' : ''}
              style="accent-color:var(--accent);width:14px;height:14px">
-      <span>${c.label}</span>
+      <span data-i18n="${c.label_key}">${c.label}</span>
       <span style="font-size:10px;color:var(--muted);font-family:var(--font-mono)">${c.file}</span>
     </label>
   `).join('');
+  // Re-translate the just-rendered nodes so the freshly-injected
+  // data-i18n spans pick up the active language (same pattern as
+  // loadCognitiveFlags + loadLlmSelections).
+  if (typeof applyTranslations === 'function') applyTranslations();
 }
 
 function getProtectedFiles() {
@@ -2118,6 +2351,284 @@ async function loadSettings() {
   }
   // [#A6-1] settings 진입 시 웹 검색 설정도 함께 로드
   try { loadWebSearchConfig(); } catch (e) { console.warn(e); }
+  // PR-2 — settings 진입 시 cognitive flag 토글도 로드
+  try { loadCognitiveFlags(); } catch (e) { console.warn(e); }
+  // UI-IA risk signal #2 fix — LLM task→model 매핑도 로드
+  try { loadLlmSelections(); } catch (e) { console.warn(e); }
+}
+
+
+/* ── Configure → LLM Task → Model (UI-IA risk signal #2 fix) ──
+   Three endpoints (GET /admin/llm/selections, POST + DELETE
+   /admin/llm/select) already exist in the backend; this section
+   gives them their first UI. Persistent (workspace/llm_selection.json),
+   not env-only like the cognitive flags. */
+
+// Canonical task_types JAMES uses. Backend accepts any string, but
+// the UI shows these five so an admin sees the same rows on every
+// load regardless of what's persisted. New task_types added to the
+// router (llm/router.py) should be added here.
+const LLM_TASK_TYPES = [
+  { key: 'general',  label_key: 'set.llm_task_general',
+    label_default: 'General reasoning (default chat answer synthesis)' },
+  { key: 'classify', label_key: 'set.llm_task_classify',
+    label_default: 'Query classifier (task routing — fast, cheap)' },
+  { key: 'extract',  label_key: 'set.llm_task_extract',
+    label_default: 'Entity / relation extraction (wiki ingest)' },
+  { key: 'coding',   label_key: 'set.llm_task_coding',
+    label_default: 'Code generation (qwen2.5-coder family)' },
+  { key: 'vision',   label_key: 'set.llm_task_vision',
+    label_default: 'Vision / multimodal (llava family)' },
+];
+
+async function loadLlmSelections() {
+  const root = document.getElementById('llm-selection-rows');
+  if (!root) return;
+
+  // Two parallel reads: installed models + current selections.
+  let installed = [];
+  let selections = {};
+  try {
+    const [instRes, selRes] = await Promise.all([
+      api('/admin/llm/installed'),
+      api('/admin/llm/selections'),
+    ]);
+    installed  = (instRes && instRes.models) || [];
+    selections = (selRes  && selRes.selections) || {};
+  } catch (e) {
+    root.innerHTML = `<div style="color:var(--danger);font-size:12px">
+      Failed to load LLM selections: ${_escHtml(String(e.message || e))}</div>`;
+    return;
+  }
+
+  if (!installed.length) {
+    root.innerHTML = `<div style="color:var(--muted);font-size:12px">
+      ${_escHtml(t('set.llm_no_models')
+        || 'No models installed yet. Use the first-run wizard or "ollama pull <model>".')}
+    </div>`;
+    return;
+  }
+
+  // Render one row per canonical task_type.
+  root.innerHTML = LLM_TASK_TYPES.map(taskT => {
+    const current = selections[taskT.key] || '';
+    const options = [
+      `<option value="">${_escHtml(t('set.llm_default_option')
+        || '(default — config.GEMMA_MODEL)')}</option>`,
+      ...installed.map(m => {
+        const sel = (m.name === current) ? ' selected' : '';
+        const sz  = m.size_gb ? ` · ${m.size_gb} GB` : '';
+        return `<option value="${_escHtml(m.name)}"${sel}>${_escHtml(m.name)}${sz}</option>`;
+      }),
+    ].join('');
+    return `
+      <div class="setting-row" style="padding: 6px 0;">
+        <div>
+          <div class="setting-label">
+            <span data-i18n="${_escHtml(taskT.label_key)}">${_escHtml(taskT.label_default)}</span>
+          </div>
+          <div class="setting-sub" style="font-family:var(--font-mono);font-size:11px">
+            task_type=${_escHtml(taskT.key)} · ${
+              current
+                ? `current: ${_escHtml(current)}`
+                : (t('set.llm_default_label') || 'using config default')
+            }
+          </div>
+        </div>
+        <select class="setting-value llm-task-select"
+                data-task-key="${_escHtml(taskT.key)}"
+                data-task-initial="${_escHtml(current)}"
+                style="cursor:pointer; min-width: 260px">
+          ${options}
+        </select>
+      </div>`;
+  }).join('');
+  // Re-apply translations to any new data-i18n nodes the render
+  // introduced (matches the cognitive section's pattern).
+  if (typeof applyTranslations === 'function') applyTranslations();
+}
+
+async function saveLlmSelections() {
+  const root = document.getElementById('llm-selection-rows');
+  if (!root) return;
+  const selects = root.querySelectorAll('.llm-task-select');
+
+  // Compute diff vs initial. Only POST / DELETE the rows that changed.
+  // Reduces audit noise + avoids hitting ollama for unchanged rows.
+  const toSet    = []; // [{task_type, model}]
+  const toRemove = []; // [task_type]
+  selects.forEach(sel => {
+    const key     = sel.dataset.taskKey || '';
+    const initial = sel.dataset.taskInitial || '';
+    const value   = (sel.value || '').trim();
+    if (!key) return;
+    if (value === initial) return;
+    if (value === '') toRemove.push(key);
+    else              toSet.push({ task_type: key, model: value });
+  });
+
+  if (!toSet.length && !toRemove.length) {
+    toast(t('set.llm_no_changes') || 'No changes', 'warn');
+    return;
+  }
+
+  let okCount = 0;
+  const errors = [];
+
+  // Apply sets first (each is a single POST with query params per
+  // the existing backend contract — params not body — so the URL
+  // already carries everything; `api()` appends api_key).
+  for (const item of toSet) {
+    try {
+      const qs = `&task_type=${encodeURIComponent(item.task_type)}` +
+                 `&model=${encodeURIComponent(item.model)}`;
+      const r = await fetch(
+        `${API}/admin/llm/select?api_key=${encodeURIComponent(apiKey)}${qs}`,
+        {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+        },
+      );
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${r.status}`);
+      }
+      okCount++;
+    } catch (e) {
+      errors.push(`${item.task_type}: ${e.message}`);
+    }
+  }
+
+  // Apply removes (DELETE — also query-param-based).
+  for (const key of toRemove) {
+    try {
+      const r = await fetch(
+        `${API}/admin/llm/select?api_key=${encodeURIComponent(apiKey)}` +
+        `&task_type=${encodeURIComponent(key)}`,
+        {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` },
+        },
+      );
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${r.status}`);
+      }
+      okCount++;
+    } catch (e) {
+      errors.push(`${key}: ${e.message}`);
+    }
+  }
+
+  if (errors.length) {
+    toast(`⚠️ ${okCount} saved, ${errors.length} failed: ${errors.join('; ')}`, 'warn');
+  } else {
+    const msg = t('set.llm_saved') || 'LLM selections saved';
+    toast(`✅ ${msg} (${okCount})`, 'success');
+  }
+  // Re-render so data-task-initial updates to the new server state
+  // (otherwise a second click would re-send the same diff).
+  loadLlmSelections();
+}
+
+
+/* ── PR-2 — Cognitive feature toggles (UI-IA risk signal #5) ──
+   GET / POST /admin/settings/cognitive (backend: PR #377).
+   Renders one row per flag, persists the diff via bulk POST.
+   In-process-only persistence — surfaced in the section's hint. */
+async function loadCognitiveFlags() {
+  const root = document.getElementById('cognitive-flag-rows');
+  if (!root) return;
+  let data;
+  try {
+    data = await api('/admin/settings/cognitive');
+  } catch (e) {
+    root.innerHTML = `<div style="color:var(--danger);font-size:12px">
+      Failed to load cognitive flags: ${_escHtml(String(e.message || e))}</div>`;
+    return;
+  }
+  const flags = (data && data.flags) || [];
+  if (!flags.length) {
+    root.innerHTML = `<div style="color:var(--muted);font-size:12px"
+      data-i18n="common.empty">No data</div>`;
+    return;
+  }
+  // Render: one row per flag with checkbox + label + default badge.
+  root.innerHTML = flags.map(f => {
+    const id  = `cog-flag-${_escHtml(f.key)}`;
+    const def = f.default ? 'ON' : 'OFF';
+    return `
+      <div class="setting-row" style="padding: 6px 0;">
+        <div>
+          <div class="setting-label">
+            <label for="${id}" style="cursor:pointer">
+              <span data-i18n="${_escHtml(f.label_key || '')}">${_escHtml(f.label)}</span>
+            </label>
+          </div>
+          <div class="setting-sub" style="font-family:var(--font-mono);font-size:11px">
+            ${_escHtml(f.env)} · default ${def} · ${_escHtml(f.module)}
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="${id}"
+                 class="cognitive-flag-checkbox"
+                 data-flag-key="${_escHtml(f.key)}"
+                 ${f.on ? 'checked' : ''}>
+          <span style="font-size:11px;color:var(--muted);min-width:32px;display:inline-block">
+            ${f.on ? 'ON' : 'OFF'}
+          </span>
+        </label>
+      </div>`;
+  }).join('');
+  // Re-translate any data-i18n descendants the new HTML introduced.
+  if (typeof applyTranslations === 'function') applyTranslations();
+  // Live ON/OFF label flip on toggle — purely visual, not yet committed.
+  root.querySelectorAll('.cognitive-flag-checkbox').forEach(cb => {
+    cb.addEventListener('change', (e) => {
+      const span = e.target.parentElement.querySelector('span');
+      if (span) span.textContent = e.target.checked ? 'ON' : 'OFF';
+    });
+  });
+}
+
+async function saveCognitiveFlags() {
+  const root = document.getElementById('cognitive-flag-rows');
+  if (!root) return;
+  const flagsPayload = {};
+  root.querySelectorAll('.cognitive-flag-checkbox').forEach(cb => {
+    const key = cb.dataset.flagKey;
+    if (key) flagsPayload[key] = cb.checked;
+  });
+  if (!Object.keys(flagsPayload).length) {
+    toast(t('set.cognitive_no_changes') || 'No cognitive flags to save', 'warn');
+    return;
+  }
+  try {
+    const r = await fetch(`${API}/admin/settings/cognitive`, {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ api_key: apiKey, flags: flagsPayload }),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    const result = await r.json();
+    const changed = (result.deltas || []).filter(d => d.before !== d.after);
+    const msg = changed.length
+      ? `${t('set.cognitive_saved') || 'Cognitive flags saved'} (${changed.length})`
+      : (t('set.cognitive_no_changes') || 'No changes');
+    toast(`✅ ${msg}`, 'success');
+    // Re-load so the on-screen ON/OFF labels reflect the canonical
+    // server-resolved state (handles polarity edge cases without
+    // duplicating the logic client-side).
+    loadCognitiveFlags();
+  } catch (e) {
+    toast(`❌ ${e.message}`, 'error');
+  }
 }
 
 // [P3 unified UX 2026-05-10] savePersona / updatePersonaPreview 제거.
@@ -2835,16 +3346,23 @@ function renderInteractiveRadar() {
     const x2 = cx + Math.cos(a) * R;
     const y2 = cy + Math.sin(a) * R;
     inner += `<line class="radar-axis" x1="${cx}" y1="${cy}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/>`;
-    // 라벨 (icon + 한글명) — 외곽
+    // 라벨 (icon + 한글명) — 외곽. label_key 가 있으면 i18n table 의
+    // 현재 lang 값으로 표시. SVG <text> 도 [data-i18n] 셀렉터에 잡혀
+    // applyTranslations() 가 textContent 를 갱신 → lang 토글 즉시 반영.
     const lx = cx + Math.cos(a) * (R + 30);
     const ly = cy + Math.sin(a) * (R + 30);
     const tr = traits[i];
-    const labelText = (tr.label_ko || tr.label);
+    const labelText = tr.label_key
+      ? (t(tr.label_key) || tr.label_ko || tr.label)
+      : (tr.label_ko || tr.label);
+    const labelDi = tr.label_key
+      ? ` data-i18n="${escapeHtml(tr.label_key)}"`
+      : '';
     inner += `
       <text class="radar-icon" x="${lx.toFixed(1)}" y="${(ly-8).toFixed(1)}"
             text-anchor="middle">${escapeHtml(tr.icon)}</text>
       <text class="radar-label" x="${lx.toFixed(1)}" y="${(ly+8).toFixed(1)}"
-            text-anchor="middle">${escapeHtml(labelText)}</text>`;
+            text-anchor="middle"${labelDi}>${escapeHtml(labelText)}</text>`;
   });
 
   // ─── 3) 짝(opposing) 연결선 — 인접 trait 짧은 dashed line ────
@@ -3059,14 +3577,6 @@ function buildCharacterSummary(traits) {
   (traits || []).forEach(tr => { v[tr.id] = tr.value; });
   const get = (id, fb=0.5) => (id in v ? v[id] : fb);
 
-  // label 미러 — Python TRAITS[*].label_ko 와 동일 어휘.
-  const KO = {
-    curiosity: '탐구심', focus: '집중력',
-    caution:   '신중함', boldness: '과감함',
-    analytical:'분석력', intuitive: '직관력',
-    independent:'독립성', collaborative: '협력성',
-  };
-
   // ── 핵심 (Group A~D 우세 사이드) ─────────────────────────
   const pairs = [
     ['curiosity', 'focus'], ['caution', 'boldness'],
@@ -3075,45 +3585,39 @@ function buildCharacterSummary(traits) {
   const dominants = [];
   pairs.forEach(([a, b]) => {
     const va = get(a), vb = get(b);
-    if (Math.abs(va - vb) >= 0.10) dominants.push(KO[va > vb ? a : b]);
+    if (Math.abs(va - vb) >= 0.10) {
+      const winnerId = va > vb ? a : b;
+      dominants.push(t('char.trait.' + winnerId) || winnerId);
+    }
   });
   const core = dominants.length
-    ? dominants.join('·') + '이 두드러진 성격'
-    : '여러 성향이 균형을 이룬 성격';
+    ? t('char.summary.core_prominent', { traits: dominants.join('·') })
+    : t('char.summary.core_balanced');
 
   // ── 가치 (Group E) ────────────────────────────────────────
-  const eRules = [
-    ['security',  '보안에 매우 민감함', '보안의식이 약함'],
-    ['creativity','창의성이 풍부함',    '창의성은 보통 이하'],
-    ['empathy',   '공감능력이 높음',    '공감 표현이 절제됨'],
-  ];
+  // hi/lo 라벨은 i18n 키로. 키 패턴: char.summary.value.<id>.hi|lo
+  const valueIds = ['security', 'creativity', 'empathy'];
   const valueParts = [];
-  eRules.forEach(([id, hi, lo]) => {
+  valueIds.forEach(id => {
     const x = get(id);
-    if      (x >= 0.65) valueParts.push(hi);
-    else if (x <= 0.35) valueParts.push(lo);
+    if      (x >= 0.65) valueParts.push(t('char.summary.value.' + id + '.hi'));
+    else if (x <= 0.35) valueParts.push(t('char.summary.value.' + id + '.lo'));
   });
   const values = valueParts.length
     ? valueParts.join(', ')
-    : '특정 가치 편향이 두드러지지 않음';
+    : t('char.summary.values_empty');
 
   // ── 스타일 (Group F) ──────────────────────────────────────
-  const fRules = [
-    ['conciseness',    '간결한',          '설명이 풍부한'],
-    ['directness',     '직설적인',        '우회적인'],
-    ['optimism',       '낙관적인',        '신중한 톤의'],
-    ['risk_tolerance', '위험을 감수하는', '안전 우선의'],
-    ['patience',       '인내심 있는',     '결론이 빠른'],
-  ];
+  const styleIds = ['conciseness', 'directness', 'optimism', 'risk_tolerance', 'patience'];
   const styleParts = [];
-  fRules.forEach(([id, hi, lo]) => {
+  styleIds.forEach(id => {
     const x = get(id);
-    if      (x >= 0.65) styleParts.push(hi);
-    else if (x <= 0.35) styleParts.push(lo);
+    if      (x >= 0.65) styleParts.push(t('char.summary.style.' + id + '.hi'));
+    else if (x <= 0.35) styleParts.push(t('char.summary.style.' + id + '.lo'));
   });
   const style = styleParts.length
-    ? styleParts.join(', ') + ' 표현 스타일'
-    : '균형 잡힌 표현 스타일';
+    ? styleParts.join(', ') + t('char.summary.style_suffix')
+    : t('char.summary.style_balanced');
 
   return { core, values, style };
 }
@@ -3140,22 +3644,28 @@ function renderCharacterSummary() {
 function renderConnectionsPanel(tid) {
   const el = document.getElementById('char-connections');
   if (!el) return;
+  // v0.4 Sprint 2 #6 — trait name resolves through `char.trait.<id>`
+  // i18n keys (already defined for KO/EN in i18n.js), so lang toggle
+  // re-renders this panel in the active language. Previously
+  // `tr.label_ko || tr.label` forced Korean regardless of lang.
+  const traitLabel = (tr) =>
+    t('char.trait.' + tr.id) || tr.label_ko || tr.label;
   if (!tid) {
     el.innerHTML = `<div class="char-connections-empty">${
-      escapeHtml(t('char.connections_empty') || '레이더의 점을 클릭하면 그 성향과 연결된 다른 성향들이 표시됩니다.')
+      escapeHtml(t('char.connections_empty'))
     }</div>`;
     return;
   }
   const tr = _traits.find(x => x.id === tid);
   if (!tr) { el.innerHTML = ''; return; }
-  const traitName = tr.label_ko || tr.label;
+  const traitName = traitLabel(tr);
 
-  // 강도 라벨 — |weight| 절대값 기준. damping 적용 후도 함께 표기.
+  // 강도 라벨 — |weight| 절대값 기준. lang-aware via i18n keys.
   const strengthLabel = (w) => {
     const a = Math.abs(w);
-    if (a >= 0.40) return '강하게';
-    if (a >= 0.25) return '중간 정도로';
-    return '약하게';
+    if (a >= 0.40) return t('char.conn.strength_strong');
+    if (a >= 0.25) return t('char.conn.strength_mid');
+    return t('char.conn.strength_weak');
   };
 
   // 짝 (Group A~D 만 존재)
@@ -3182,11 +3692,17 @@ function renderConnectionsPanel(tid) {
 
   // ─── 짝 섹션 ────────────────────────────────────────────────
   if (oppTr) {
+    const oppName = traitLabel(oppTr);
+    // Same pattern as out/in rows: t() builds the full sentence with
+    // the name placeholder, then we string-replace the name token
+    // with a bold-wrapped copy so the trait name still stands out.
+    const phrase = escapeHtml(t('char.conn.pair_explain', { name: oppName }))
+      .replace(escapeHtml(oppName), '<b>' + escapeHtml(oppName) + '</b>');
     html += `<div class="char-conn-section">
-               <div class="char-conn-section-title">↔ 짝 (자동 1.0 합)</div>
+               <div class="char-conn-section-title">${escapeHtml(t('char.conn.pair_title'))}</div>
                <div class="char-conn-explain">
-                 ${escapeHtml(oppTr.icon)} <b>${escapeHtml(oppTr.label_ko || oppTr.label)}</b>이/가
-                 <span class="char-conn-weight neg">자동으로 반대 방향</span>으로 함께 움직입니다.
+                 ${escapeHtml(oppTr.icon)}
+                 <span class="char-conn-weight neg">${phrase}</span>
                </div>
              </div>`;
   }
@@ -3194,16 +3710,21 @@ function renderConnectionsPanel(tid) {
   // ─── outgoing 섹션 — "이 성향이 강해지면..." ──────────────────
   if (outEdges.length > 0) {
     html += `<div class="char-conn-section">
-               <div class="char-conn-section-title">↑ ${escapeHtml(traitName)} 이/가 강해지면…</div>`;
+               <div class="char-conn-section-title">${
+                 escapeHtml(t('char.conn.out_title', { name: traitName }))
+               }</div>`;
     outEdges.forEach(r => {
       const sign = r.weight >= 0 ? 'pos' : 'neg';
-      const verb = r.weight >= 0 ? '함께 강해집니다' : '약해집니다';
+      const rowKey = r.weight >= 0 ? 'char.conn.out_row_pos' : 'char.conn.out_row_neg';
+      const rName = traitLabel(r.tr);
       const arrow = r.weight >= 0 ? '↑' : '↓';
       html += `<div class="char-conn-row">
                  <span class="char-conn-label">
-                   ${escapeHtml(r.tr.icon)} <b>${escapeHtml(r.tr.label_ko || r.tr.label)}</b>이/가 ${verb}
+                   ${escapeHtml(r.tr.icon)} ${escapeHtml(
+                     t(rowKey, { name: rName })
+                   ).replace(escapeHtml(rName), '<b>' + escapeHtml(rName) + '</b>')}
                  </span>
-                 <span class="char-conn-weight ${sign}">${arrow} ${strengthLabel(r.weight)}</span>
+                 <span class="char-conn-weight ${sign}">${arrow} ${escapeHtml(strengthLabel(r.weight))}</span>
                </div>`;
     });
     html += `</div>`;
@@ -3212,16 +3733,21 @@ function renderConnectionsPanel(tid) {
   // ─── incoming 섹션 — "이 성향에 영향을 주는 것" ───────────────
   if (inEdges.length > 0) {
     html += `<div class="char-conn-section">
-               <div class="char-conn-section-title">↓ ${escapeHtml(traitName)} 에 영향을 주는 것</div>`;
+               <div class="char-conn-section-title">${
+                 escapeHtml(t('char.conn.in_title', { name: traitName }))
+               }</div>`;
     inEdges.forEach(r => {
       const sign = r.weight >= 0 ? 'pos' : 'neg';
-      const verb = r.weight >= 0 ? '강해지면 함께 강해집니다' : '강해지면 약해집니다';
+      const rowKey = r.weight >= 0 ? 'char.conn.in_row_pos' : 'char.conn.in_row_neg';
+      const rName = traitLabel(r.tr);
       const arrow = r.weight >= 0 ? '↑' : '↓';
       html += `<div class="char-conn-row">
                  <span class="char-conn-label">
-                   ${escapeHtml(r.tr.icon)} <b>${escapeHtml(r.tr.label_ko || r.tr.label)}</b>이/가 ${verb}
+                   ${escapeHtml(r.tr.icon)} ${escapeHtml(
+                     t(rowKey, { name: rName })
+                   ).replace(escapeHtml(rName), '<b>' + escapeHtml(rName) + '</b>')}
                  </span>
-                 <span class="char-conn-weight ${sign}">${arrow} ${strengthLabel(r.weight)}</span>
+                 <span class="char-conn-weight ${sign}">${arrow} ${escapeHtml(strengthLabel(r.weight))}</span>
                </div>`;
     });
     html += `</div>`;
@@ -3230,7 +3756,7 @@ function renderConnectionsPanel(tid) {
   // 독립 성향 (어디에도 연결 없음)
   if (!oppTr && outEdges.length === 0 && inEdges.length === 0) {
     html += `<div class="char-connections-empty" style="padding: 10px 0">
-               독립 성향 — 다른 성향과 연결되지 않습니다.
+               ${escapeHtml(t('char.conn.indep_empty'))}
              </div>`;
   }
 
@@ -3270,7 +3796,7 @@ function renderTraitSliders(traits) {
         <div class="trait-row" data-trait-id="${escapeHtml(tr.id)}"
              style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
           <span style="width:22px;text-align:center">${escapeHtml(tr.icon)}</span>
-          <span style="width:90px;font-size:12px;color:var(--text)">${escapeHtml(tr.label_ko || tr.label)}</span>
+          <span style="width:90px;font-size:12px;color:var(--text)"${tr.label_key ? ` data-i18n="${escapeHtml(tr.label_key)}"` : ''}>${escapeHtml(tr.label_ko || tr.label)}</span>
           <input type="range" min="0" max="100" value="${pct}"
                  data-slider-id="${escapeHtml(tr.id)}"
                  style="flex:1;accent-color:var(--accent)">
@@ -3282,6 +3808,9 @@ function renderTraitSliders(traits) {
     html += `</div>`;
   });
   container.innerHTML = html;
+  // Re-translate freshly-injected data-i18n spans so the active lang
+  // takes effect immediately (matches other dynamic renders).
+  if (typeof applyTranslations === 'function') applyTranslations();
 
   // [PR #157 패턴] data-attr + addEventListener — inline oninput X.
   container.querySelectorAll('input[type="range"][data-slider-id]').forEach(input => {
@@ -3353,6 +3882,27 @@ function resetCharacter() {
 window.saveCharacter  = saveCharacter;
 window.resetCharacter = resetCharacter;
 
+// v0.4 Sprint 2 #6 — re-render dynamic character UI on lang toggle.
+// applyTranslations() in i18n.js refreshes every [data-i18n] element
+// in place, but the summary card body (#char-summary-core/values/style)
+// and the connections panel innerHTML are produced by buildCharacterSummary
+// / renderConnectionsPanel via t() at render time — they don't carry
+// data-i18n on the text nodes, so a lang switch doesn't reach them.
+// Hook into setLang's onLangChange callback (i18n.js line 1597) and
+// re-render those two surfaces. Safe to call regardless of which page
+// is active — each renderer checks for its target element first.
+window.onLangChange = function(_lang) {
+  if (typeof renderCharacterSummary === 'function') {
+    try { renderCharacterSummary(); } catch (_e) { /* no-op */ }
+  }
+  if (typeof renderConnectionsPanel === 'function') {
+    try {
+      const sel = (typeof _selected_trait_id !== 'undefined') ? _selected_trait_id : null;
+      renderConnectionsPanel(sel);
+    } catch (_e) { /* no-op */ }
+  }
+};
+
 /* ════════════════════════════════
    P7-EVO-E: 능력 성장 UI
 ════════════════════════════════ */
@@ -3377,15 +3927,19 @@ function renderCapabilities(caps) {
   el.innerHTML = caps.map(c => `
     <div style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <span style="font-size:13px">${c.icon} <strong>${c.label}</strong></span>
+        <span style="font-size:13px">${c.icon} <strong><span data-i18n="${c.label_key || ''}">${c.label}</span></strong></span>
         <span style="font-size:12px;font-family:var(--font-mono);color:var(--accent)">${c.pct}%</span>
       </div>
       <div style="background:var(--border);border-radius:4px;height:8px;overflow:hidden">
         <div style="width:${c.pct}%;height:100%;background:var(--accent);
           border-radius:4px;transition:width .5s ease"></div>
       </div>
-      <div style="font-size:10px;color:var(--muted);margin-top:3px">${c.desc}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px"><span data-i18n="${c.desc_key || ''}">${c.desc}</span></div>
     </div>`).join('');
+  // Re-translate freshly-injected data-i18n spans (matches the
+  // loadCognitiveFlags / loadLlmSelections / buildProtectedCheckboxes
+  // / loadPolicy pattern).
+  if (typeof applyTranslations === 'function') applyTranslations();
 }
 
 /* [#2-C] 도메인별 도넛 차트.
@@ -3442,15 +3996,17 @@ function renderDomains(domains) {
         <!-- 우: 메타 -->
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;margin-bottom:6px">
-            ${d.icon} <strong>${d.label}</strong>
+            ${d.icon} <strong><span data-i18n="${d.label_key || ''}">${d.label}</span></strong>
           </div>
           <div style="font-size:10px;color:var(--muted);
                       font-family:var(--font-mono);line-height:1.6">
-            <div>다음까지 <strong style="color:${d.color}">${d.tier_pct ?? d.pct}%</strong></div>
+            <div><span data-i18n="growth.next_level">다음까지</span> <strong style="color:${d.color}">${d.tier_pct ?? d.pct}%</strong></div>
             <div>📄 ${d.wiki_count ?? 0} wiki · score ${d.score ?? 0}</div>
           </div>
         </div>
       </div>`).join('') + '</div>';
+  // Re-translate freshly-injected data-i18n spans.
+  if (typeof applyTranslations === 'function') applyTranslations();
 }
 
 /* ── [P3-1] 하드웨어 장비 현황 ── */
@@ -3489,12 +4045,19 @@ async function loadHardware() {
         if (key==='ram')  detail=`${spec.total_gb||'?'}GB total · ${spec.available_gb||'?'}GB free`;
         if (key==='gpu')  detail=spec.found ? `${spec.name} (${spec.vram_gb||'?'}GB)` : t('hw.cpu_only');
         if (key==='disk') detail=`${spec.total_gb||'?'}GB · free ${spec.free_gb||'?'}GB`;
+        // PR-6 i18n: backend (_weapon_meta in hardware_inspector.py)
+        // now emits name_key / role_key / desc_key. data-i18n binding
+        // honours the active language, falls back to the EN string on
+        // i18n table miss.
+        const nameDi = w.name_key ? ` data-i18n="${_escHtml(w.name_key)}"` : '';
+        const roleDi = w.role_key ? ` data-i18n="${_escHtml(w.role_key)}"` : '';
+        const descDi = w.desc_key ? ` data-i18n="${_escHtml(w.desc_key)}"` : '';
         return `
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
               <div style="font-size:28px">${w.icon||'🔧'}</div>
-              <div><div style="font-weight:700;font-size:15px">${w.name||'?'}</div>
-                   <div style="font-size:10px;color:var(--muted)">${w.role||key}</div></div>
+              <div><div style="font-weight:700;font-size:15px"${nameDi}>${w.name||'?'}</div>
+                   <div style="font-size:10px;color:var(--muted)"${roleDi}>${w.role||key}</div></div>
               <div style="margin-left:auto;font-size:26px;font-weight:900;color:${col};font-family:var(--font-mono)">
                 ${lv}<span style="font-size:11px;font-weight:400;color:var(--muted)">/10</span></div>
             </div>
@@ -3502,9 +4065,15 @@ async function loadHardware() {
               <div style="width:${Math.min(100,lv*10)}%;height:100%;background:${col};border-radius:4px;transition:width .8s;box-shadow:0 0 8px ${col}66"></div>
             </div>
             <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:4px">${detail}</div>
-            <div style="font-size:11px;color:var(--text)">${w.desc||''}</div>
+            <div style="font-size:11px;color:var(--text)"${descDi}>${w.desc||''}</div>
           </div>`;
       }).join('');
+      // Re-translate freshly-injected data-i18n spans so the active
+      // lang takes effect immediately (matches the loadCognitiveFlags
+      // / loadLlmSelections / buildProtectedCheckboxes / loadPolicy /
+      // renderCapabilities / renderDomains / renderTraitSliders /
+      // loadModePickerOptions pattern).
+      if (typeof applyTranslations === 'function') applyTranslations();
     }
 
     const sysEl = document.getElementById('hw-sysinfo');

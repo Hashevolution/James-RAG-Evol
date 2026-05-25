@@ -36,6 +36,11 @@ import threading
 import time
 from typing import Optional
 
+from core.reasoning.budget import (
+    TaskBudget,
+    adaptive_budget_enabled,
+    complete_with_retry,
+)
 from core.reasoning.trace_schema import (
     TraceStep,
     compute_inputs_hash,
@@ -47,11 +52,15 @@ from core.reasoning.trace_schema import (
 # [JAMES_REASONING_BACKEND wiring 2026-05-18] resolved at import time.
 from core.reasoning.backends import get_default_backend_id as _get_default_backend
 DEFAULT_BACKEND_ID = _get_default_backend()
-# Critique + revise budgets — kept tight so reflection doesn't blow
+# Critique + revise timeouts — kept tight so reflection doesn't blow
 # past the 30s timing target in core/reasoning/engine.py.
 DEFAULT_CRITIQUE_TIMEOUT_S = 30.0
 DEFAULT_REVISE_TIMEOUT_S = 45.0
-DEFAULT_CRITIQUE_MAX_TOKENS = 400
+# gemma4:e4b consumes ~500 hidden reasoning tokens before the first
+# visible output on short structured prompts; cap below that floor
+# → deterministic empty response (model burns the budget without
+# surfacing any byte). Revise stage already sits above the floor.
+DEFAULT_CRITIQUE_MAX_TOKENS = 4096
 DEFAULT_REVISE_MAX_TOKENS = 1024
 # Reject runaway revised answers that ballooned far past the draft —
 # usually a sign the LLM added boilerplate apologies rather than fixing
@@ -118,14 +127,10 @@ def _enabled() -> bool:
     return os.environ.get("JAMES_ENABLE_REFLECT") == "1"
 
 
-def _is_korean(text: str) -> bool:
-    """≥ 20% Korean character ratio — same heuristic as the rest of
-    core/reasoning/{engine,modes,pipeline}.py.
-    """
-    if not text:
-        return False
-    korean_chars = sum(1 for c in text if "가" <= c <= "힣")
-    return korean_chars >= max(1, int(len(text) * 0.2))
+# v0.4 Sprint 1 #2 — unified language detection (see core/i18n.py).
+# Replaces the legacy ≥ 20% Korean-char threshold with a dominant-
+# script comparison that agrees with engine_synth on mixed queries.
+from core.i18n import is_korean as _is_korean  # noqa: F401
 
 
 def _no_issues(critique_text: str) -> bool:
@@ -148,14 +153,32 @@ class ReflectionLoop:
         *,
         critique_timeout: float = DEFAULT_CRITIQUE_TIMEOUT_S,
         revise_timeout: float = DEFAULT_REVISE_TIMEOUT_S,
-        critique_max_tokens: int = DEFAULT_CRITIQUE_MAX_TOKENS,
-        revise_max_tokens: int = DEFAULT_REVISE_MAX_TOKENS,
+        critique_max_tokens: Optional[int] = None,
+        revise_max_tokens: Optional[int] = None,
+        budget: Optional[TaskBudget] = None,
     ) -> None:
+        """Construct a ReflectionLoop.
+
+        ``critique_max_tokens`` / ``revise_max_tokens`` behaviour
+        (D1 wiring, v0.4 Sprint 3 #7b — mirrors planner / query_rewriter):
+
+          • int — fixed cap (per-stage baseline).
+          • ``None`` (default) — runtime decision:
+              - ``JAMES_ADAPTIVE_BUDGET=1`` → both stages share
+                ``TaskBudget.assess("reflect", query)``.
+              - flag off → fall back to ``DEFAULT_CRITIQUE_MAX_TOKENS=4096``
+                / ``DEFAULT_REVISE_MAX_TOKENS=1024`` — byte-identical
+                to pre-#7b behaviour.
+
+        Default-off invariant: ``ReflectionLoop()`` with no kwargs and
+        no env opt-in must hit the same caps as before this PR.
+        """
         self._backend_id = backend_id
         self._critique_timeout = critique_timeout
         self._revise_timeout = revise_timeout
         self._critique_max_tokens = critique_max_tokens
         self._revise_max_tokens = revise_max_tokens
+        self._budget = budget if budget is not None else TaskBudget()
 
     def reflect(
         self,
@@ -185,15 +208,72 @@ class ReflectionLoop:
         if not force and not _enabled():
             return draft
 
-        try:
-            from core.reasoning.backends import get_backend
-            backend = get_backend(self._backend_id)
-        except Exception:
-            return draft
-
         is_ko = _is_korean(query) or _is_korean(draft)
         crit_tmpl = CRITIQUE_PROMPT_KO if is_ko else CRITIQUE_PROMPT_EN
         rev_tmpl = REVISE_PROMPT_KO if is_ko else REVISE_PROMPT_EN
+
+        # v0.4 Sprint 3 #7b — D1 cap resolution per sub-stage. Both
+        # critique and revise share `assess("reflect", query)` when
+        # D1 is active so a heavy task escalates both stages at once
+        # (and a light task gives both the same lower cap). assess
+        # is fed the user query — not the wrapped CRITIQUE_PROMPT_*
+        # / REVISE_PROMPT_* templates which carry heavy markers
+        # ("분석" / "review" etc.) as part of the instruction and
+        # would otherwise force every reflection call to CAP_HEAVY.
+        adaptive_on = adaptive_budget_enabled()
+        if adaptive_on and (
+            self._critique_max_tokens is None or self._revise_max_tokens is None
+        ):
+            _adaptive_cap = self._budget.assess("reflect", query)
+        else:
+            _adaptive_cap = None
+
+        if self._critique_max_tokens is not None:
+            crit_cap = self._critique_max_tokens
+        elif adaptive_on:
+            crit_cap = _adaptive_cap
+        else:
+            crit_cap = DEFAULT_CRITIQUE_MAX_TOKENS
+
+        if self._revise_max_tokens is not None:
+            rev_cap = self._revise_max_tokens
+        elif adaptive_on:
+            rev_cap = _adaptive_cap
+        else:
+            rev_cap = DEFAULT_REVISE_MAX_TOKENS
+
+        _budget_for_router = _adaptive_cap if adaptive_on else None
+
+        # D5.C.2.c — flag-gated backend resolution. With D1 active for
+        # reflect (when both flags ON) `budget_signal` carries the
+        # adaptive cap so router rules 1 / 4 fire on the correct
+        # signal. Under D1 flag-off `_budget_for_router` is None →
+        # unchanged from pre-#7b. Single backend serves both critique
+        # + revise calls below.
+        try:
+            from core.reasoning.backends import get_backend
+            from core.reasoning.router import emit_route_event, resolve_backend
+
+            # Critique prompt template is enough for routing — the
+            # actual prompts (critique then revise) hit the same backend.
+            router_prompt = crit_tmpl
+            backend_id = resolve_backend(
+                "reflect",
+                router_prompt,
+                budget_signal=_budget_for_router,
+                fallback_backend_id=self._backend_id,
+            )
+            backend = get_backend(backend_id)
+        except Exception:
+            return draft
+
+        emit_route_event(
+            "reflect",
+            router_prompt,
+            backend_id,
+            budget_signal=_budget_for_router,
+            reason="auto" if _budget_for_router is not None else "fallback",
+        )
 
         # ── critique pass ────────────────────────────────────
         critique_prompt = crit_tmpl.format(query=query, draft=draft)
@@ -201,7 +281,7 @@ class ReflectionLoop:
             backend,
             critique_prompt,
             timeout=self._critique_timeout,
-            max_tokens=self._critique_max_tokens,
+            max_tokens=crit_cap,
             applied_rule="reasoning.reflect.critique",
             user_role=user_role,
         )
@@ -218,7 +298,7 @@ class ReflectionLoop:
             backend,
             revise_prompt,
             timeout=self._revise_timeout,
-            max_tokens=self._revise_max_tokens,
+            max_tokens=rev_cap,
             applied_rule="reasoning.reflect.revised",
             user_role=user_role,
         )
@@ -250,10 +330,20 @@ class ReflectionLoop:
         ``error`` set + ``blocked=1``) so the replay tool sees the
         attempt.
         """
+        # v0.4 Sprint 3 #7b — D6 retry wiring. When `max_tokens` is below
+        # CAP_HEAVY (D1 active + light task) and the model truncates at
+        # the cap, retry once with the doubled cap. No-op at the ceiling
+        # — pre-#7b behaviour preserved under flag-off.
+        # `stage="reflect"` is the audit-row tag complete_with_retry
+        # emits via `reason:retry` (D6 PR #487).
         t0 = time.time()
         try:
-            result = backend.complete(
-                prompt, max_tokens=max_tokens, timeout=timeout
+            result = complete_with_retry(
+                backend,
+                prompt,
+                cap=max_tokens,
+                timeout=timeout,
+                stage="reflect",
             )
         except Exception as e:
             latency_ms = int((time.time() - t0) * 1000)
@@ -318,6 +408,18 @@ class ReflectionLoop:
         except Exception:
             # Reflection trace emission is best-effort — never block the
             # answer flow if audit_log is unavailable.
+            pass
+
+        # Cognitive Phase 3 PR-9b — session-scoped episodic mirror.
+        try:
+            from core.memory.episodic import record_event as _rec
+            _rec(
+                stage="reflect",
+                summary=text,
+                extras={"applied_rule": applied_rule,
+                        "latency_ms": latency_ms, "error": error},
+            )
+        except Exception:
             pass
 
 

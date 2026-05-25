@@ -103,6 +103,24 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(FEATURES["query.basic"].default_allowed,
                          frozenset(ALLOWED_ROLES))
 
+    def test_label_key_follows_convention_and_is_unique(self):
+        # The Policy matrix UI binds `data-i18n` to label_key and
+        # falls back to `description` on miss. The convention mirrors
+        # `set.cognitive_flag_*` (PR #393) — anchored at
+        # `policy.feature.<id_with_underscores>` so the i18n table
+        # stays scannable and adding a feature does NOT need a second
+        # registration step.
+        from core.feature_registry import FEATURES
+        keys = []
+        for fid, feat in FEATURES.items():
+            with self.subTest(fid=fid):
+                expected = f"policy.feature.{fid.replace('.', '_')}"
+                self.assertEqual(feat.label_key, expected,
+                    f"{fid} label_key must be {expected!r}")
+            keys.append(feat.label_key)
+        self.assertEqual(len(keys), len(set(keys)),
+            "label_keys must be unique across features")
+
 
 class StorageTests(_FixtureBase):
     def test_get_override_returns_none_when_empty(self):
@@ -205,6 +223,10 @@ class ListEffectiveTests(_FixtureBase):
         self.assertIn("admin",   upload["effective"])
         self.assertEqual(upload["effective"]["admin"]["source"], "default")
         self.assertEqual(upload["effective"]["external"]["allowed"], False)
+        # label_key surfaced so the Policy matrix UI can bind data-i18n.
+        # A regression here re-introduces the EN-mode bug where the UI
+        # showed the KO description regardless of the active language.
+        self.assertEqual(upload["label_key"], "policy.feature.upload_file")
 
     def test_override_surfaces_with_source_override(self):
         from core.feature_registry import set_override, list_effective

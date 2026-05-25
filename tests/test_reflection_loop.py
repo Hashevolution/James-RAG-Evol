@@ -304,7 +304,11 @@ class TraceEmissionTests(unittest.TestCase):
         try:
             return conn.execute(
                 "SELECT * FROM audit_log "
-                "WHERE endpoint LIKE 'reason:%' ORDER BY id ASC"
+                # Narrowed from 'reason:%' to 'reason:reflect' so the
+                # D5.C.2.c-added 'reason:route' row (one per resolve
+                # call) doesn't inflate the count. Reflect emission
+                # itself is what these tests are pinning.
+                "WHERE endpoint = 'reason:reflect' ORDER BY id ASC"
             ).fetchall()
         finally:
             conn.close()

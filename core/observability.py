@@ -68,6 +68,45 @@ from typing import Optional
 current_trace_id: ContextVar[str] = ContextVar("current_trace_id", default="")
 
 
+# Session ContextVar — Cognitive Phase 3 PR-9b (episodic memory wiring).
+# `engine.query()` calls `set_session_context(session_id, turn_id)` at
+# turn start; cognitive stages (planner / reflect / verify / synth)
+# read via `get_session_context()` to attribute their episodic events
+# without taking session_id/turn_id as a signature parameter.
+#
+# Tuple (session_id, turn_id) is set atomically so a reader never sees
+# a half-updated context (one field new, the other stale from the
+# previous turn). Default ("", "") makes uninstrumented call sites a
+# safe no-op — record() callers branch on `if session_id` to skip.
+current_session: ContextVar[tuple[str, str]] = ContextVar(
+    "current_session", default=("", ""),
+)
+
+
+def set_session_context(session_id: str, turn_id: str) -> None:
+    """Bind (session_id, turn_id) to the current async/threading context.
+
+    Call from `engine.query()` at turn start. The pair is read by the
+    cognitive stages' `EpisodicMemory.record()` wiring.
+
+    Empty strings are allowed and used as the no-op sentinel — pass
+    `("", "")` to explicitly clear at turn end, though normal flow
+    just leaves the previous context to be overwritten by the next
+    turn's `set_session_context` call.
+    """
+    current_session.set((session_id or "", turn_id or ""))
+
+
+def get_session_context() -> tuple[str, str]:
+    """Return the current `(session_id, turn_id)` pair, or `("", "")`
+    when called outside a tracked turn. Cognitive stages branch on
+    `if session_id` to skip the episodic record() — a stray call from
+    a unit test or a background job stays silent rather than
+    polluting the store with `session_id=""` rows.
+    """
+    return current_session.get()
+
+
 # Resolved lazily on first write. We can't compute at import time
 # because the project root depends on `config.BASE_DIR`, which itself
 # depends on environment / .env. ENV override exists primarily for

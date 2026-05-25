@@ -26,7 +26,42 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Dict, Protocol, runtime_checkable
+from typing import Dict, Final, List, Protocol, runtime_checkable
+
+
+@dataclass(frozen=True)
+class BackendCapability:
+    """Routing-time metadata about a backend. D5.B (2026-05-25) addition.
+
+    ``tier``: model-size class —
+      • ``"small"``   ≤ 4B params (e.g. gemma4:e4b, llama 3.2:1b)
+      • ``"medium"``  12-27B (e.g. gemma3:12b, gemma4:26b sovereign)
+      • ``"large"``   70B+ or frontier cloud (e.g. Claude, GPT-4)
+
+    ``provider``: deployment surface —
+      • ``"local"``      same machine as JAMES
+      • ``"sovereign"``  operator-controlled remote (e.g. Hetzner Ollama)
+      • ``"cloud"``      third-party API (no operator control of weights)
+
+    Used by D5 Router (``core/reasoning/router.py``) at flag-on
+    selection time. Backends pre-dating D5.B do not declare a
+    ``capability`` attribute → ``get_backend_capability(name)`` returns
+    ``UNKNOWN_CAPABILITY`` for them, and D5 Router treats unknown-tier
+    backends as "fallback only, never preferred".
+
+    Free-form strings rather than enums so external plugin backends
+    can declare niche tiers (e.g. ``tier="tiny"`` for a 1B-class
+    backend) without modifying core. D5 Router policy validates
+    against known tier values; novel tiers degrade to UNKNOWN.
+    """
+    tier: str
+    provider: str
+
+
+UNKNOWN_CAPABILITY: Final[BackendCapability] = BackendCapability(
+    tier="unknown",
+    provider="unknown",
+)
 
 
 @dataclass(frozen=True)
@@ -35,12 +70,21 @@ class CompletionResult:
     path — they return ``error="..."`` and let the caller decide. This
     matches RouterWrapper's existing "_LLM_ERROR_PREFIXES" pattern in
     core/reasoning/engine.py.
+
+    ``done_reason`` (D6 2026-05-25): optional truncation signal. When
+    the backend can determine the model stopped because it hit the
+    cap (vs naturally finished), it sets ``done_reason="length"``.
+    Unknown / not-truncated → empty string. Callers (`budget.complete_with_retry`)
+    branch on this to decide whether to retry with a doubled cap.
+    Backends that don't track this attribute leave it empty — the
+    caller treats absence as "no truncation signal observed".
     """
     text: str
     backend_id: str
     model: str = ""
     latency_ms: int = 0
     error: str = ""
+    done_reason: str = ""
 
 
 @runtime_checkable
@@ -105,6 +149,48 @@ def list_backends() -> Dict[str, Backend]:
     code goes through get_backend.
     """
     return dict(_REGISTRY)
+
+
+def get_backend_capability(name: str) -> BackendCapability:
+    """Return the declared capability of a backend, or
+    ``UNKNOWN_CAPABILITY`` if the backend pre-dates D5.B or hasn't
+    declared one.
+
+    D5.B (2026-05-25) addition. Used by D5 Router
+    (``core/reasoning/router.py``) when the auto-router flag is on.
+    Unknown-capability backends are treated as "fallback only, never
+    preferred" by D5.C policy — so an external plugin backend that
+    doesn't opt into capability declaration is still safe to keep
+    registered; it just won't be picked over a declared backend with
+    a matching tier.
+
+    Raises ``KeyError`` if ``name`` is not registered (mirrors
+    ``get_backend`` — loud failure on typos beats silent fallback).
+    """
+    backend = get_backend(name)
+    cap = getattr(backend, "capability", None)
+    if isinstance(cap, BackendCapability):
+        return cap
+    return UNKNOWN_CAPABILITY
+
+
+def list_backends_by_tier(tier: str) -> List[str]:
+    """Return backend names whose declared ``tier`` matches.
+
+    Empty list if no backends are declared at this tier — D5 Router
+    treats that as "no preferred backend, fall back to global default
+    via ``get_default_backend_id()``".
+
+    D5.B (2026-05-25) addition. Pairs with ``get_backend_capability``
+    for D5.C routing policy. Backends without a declared capability
+    are skipped (never match any tier — they are UNKNOWN, not "all").
+    """
+    out: List[str] = []
+    for name, backend in _REGISTRY.items():
+        cap = getattr(backend, "capability", None)
+        if isinstance(cap, BackendCapability) and cap.tier == tier:
+            out.append(name)
+    return out
 
 
 def _clear_for_tests() -> None:

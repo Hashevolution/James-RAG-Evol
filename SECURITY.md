@@ -2,13 +2,17 @@
 
 ## Project Status
 
-PROJECT JAMES is in **alpha (v0.1.0)** — security-focused by design, but **not production-ready**.
+PROJECT JAMES is in **alpha — v0.3.0 (Platform Skeleton)** — security-focused by design, but **not production-ready**.
 
 This document describes:
 - The security model and threat assumptions
 - What JAMES protects against today
 - Known limitations
 - How to report vulnerabilities
+
+For the **formal assurance case** (per-requirement arguments with code
+citations, OpenSSF `assurance_case` criterion), see
+[`docs/security/ASSURANCE_CASE.md`](docs/security/ASSURANCE_CASE.md).
 
 ---
 
@@ -270,7 +274,16 @@ JAMES_JWT_SECRET=<random-32-char-string>
 
 ## Changes Log
 
-- **v0.1.0-alpha** (2026): Initial security model documented
+- **v0.1.0-alpha** (2026): Initial security model documented.
+- **v0.2.0** (2026-05-08 → 2026-05-13): Foundation Hardening — bcrypt
+  password storage with transparent migration (W4 P1-A), public signup
+  + ABAC gate (W4 P1-B), credential rotation endpoints (W4 P2-B), user
+  API keys (W4 P3-1/2), risky-coding policy (#8).
+- **v0.3.0** (2026-05-13 →): Platform Skeleton — PolicyEngine as
+  single source of policy decisions, sandbox capability bridge, OpenSSF
+  silver-tier evidence track: CLA (#340), governance/CoC/roles (#353),
+  bandit SAST gate (#356), security assurance case (PR #360), access
+  continuity + bus factor documented (PR #362).
 
 ---
 

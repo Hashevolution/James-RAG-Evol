@@ -253,7 +253,7 @@ class AppendRelationSourceTests(unittest.TestCase):
         # 첫 번째는 기존 extract source 보존
         self.assertEqual(rel["sources"][0]["role"], EXTRACT_SOURCE_ROLE)
         self.assertEqual(rel["sources"][1]["role"], MANUAL_SOURCE_ROLE)
-        # confidence 는 두 source 의 weight 합
+        # confidence 는 두 source 의 noisy-OR — 헬퍼로 검증.
         self.assertEqual(rel["confidence"],
                          compute_confidence_from_sources(rel["sources"]))
 
@@ -477,6 +477,80 @@ class UpdateNodeAttributesTests(unittest.TestCase):
         self.assertIn("updated_at", fm,
             "successful write must stamp updated_at")
 
+    def test_summary_edit_syncs_body_section(self):
+        """PR #446 (B-2-A follow-up) — editing `summary` must also
+        rewrite the body's `## 요약` section, otherwise the UI shows
+        the old text and the user reports "edit doesn't reflect".
+        Pre-fix only the frontmatter was patched. Pin the contract."""
+        _, wg, p, eid = _single_entity()
+        # Overwrite the fixture with a wiki-shaped body so the
+        # `## 요약\n...\n## 관계` sync window is present (the default
+        # _write_entity helper writes just `# body\n`).
+        from textwrap import dedent
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(dedent("""\
+                ---
+                entity_id: e_org_anthropic
+                entity_type: org
+                name: Anthropic
+                aliases: []
+                summary: AI lab
+                sensitivity: normal
+                ---
+
+                ## 요약
+                AI lab
+
+                ## 관계
+                - (관계 없음)
+                """))
+
+        update_node_attributes(
+            eid,
+            {"summary": "AI safety company"},
+            wiki_generator=wg,
+        )
+        text = p.read_text(encoding="utf-8")
+        # Frontmatter updated …
+        self.assertIn("summary: AI safety company", text)
+        # …and so is the body window (the regression we're pinning).
+        self.assertIn("## 요약\nAI safety company\n", text)
+        self.assertNotIn("AI lab", text,
+            "old summary must be gone from both frontmatter and body")
+
+    def test_non_summary_edit_leaves_body_alone(self):
+        """Editing a non-summary field must NOT touch the body section
+        — otherwise unrelated name/aliases edits would churn the body
+        text on every save."""
+        _, wg, p, eid = _single_entity()
+        from textwrap import dedent
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(dedent("""\
+                ---
+                entity_id: e_org_anthropic
+                entity_type: org
+                name: Anthropic
+                aliases: []
+                summary: AI lab
+                sensitivity: normal
+                ---
+
+                ## 요약
+                AI lab
+
+                ## 관계
+                - (관계 없음)
+                """))
+        update_node_attributes(
+            eid,
+            {"name": "Anthropic, PBC"},
+            wiki_generator=wg,
+        )
+        text = p.read_text(encoding="utf-8")
+        self.assertIn("## 요약\nAI lab\n", text,
+            "body summary section must be untouched when summary "
+            "wasn't part of the patch")
+
     def test_empty_patch_raises(self):
         _, wg, _, eid = _single_entity()
         with self.assertRaises(ValueError):
@@ -617,11 +691,148 @@ class UpdateNodeAttributesTests(unittest.TestCase):
     def test_editable_field_allowlist_matches_doc(self):
         # Pinned for future code reviewers: any change here must be
         # paired with a doc/handover update because external callers
-        # (admin matrix UI) gate on this list.
+        # (admin matrix UI) gate on this list. PR-11 adds the two
+        # event time-axis fields — honored only when target is event
+        # (see UpdateNodeAttributesEventFieldsTests below).
         self.assertEqual(
             sorted(NODE_EDITABLE_FIELDS),
-            ["aliases", "entity_type", "name", "sensitivity", "summary"],
+            [
+                "aliases", "entity_type", "name",
+                "occurred_at", "occurred_at_precision",
+                "sensitivity", "summary",
+            ],
         )
+
+
+# ─── PR-11 — PUT event occurred_at extension ────────────────────────
+
+
+def _single_event_entity(occurred_at: str = "2026-01-10",
+                          precision: str = "day"):
+    """Single event-entity fixture mirroring `_single_entity` but for
+    the new fifth entity type. Filename uses the `<normalized>_<8hex>`
+    suffix pattern (PR-11a-2) but tests only need the entity_id key
+    indexed in the WgStub — no actual hash dependency."""
+    root = Path(tempfile.mkdtemp()) / "entity"
+    for t in ("person", "concept", "org", "document", "event"):
+        (root / t).mkdir(parents=True)
+    eid = "e_event_aaaaaaaa"
+    p = root / "event" / "etf_승인_aaaaaaaa.md"
+    _write_entity(p, {
+        "entity_id":             eid,
+        "name":                  "ETF 승인",
+        "entity_type":           "event",
+        "aliases":               [],
+        "summary":               "SEC 첫 spot ETF 승인",
+        "sensitivity":           "internal",
+        "occurred_at":           occurred_at,
+        "occurred_at_precision": precision,
+    })
+    return root, _WgStub({eid: p}), p, eid
+
+
+class UpdateNodeAttributesEventFieldsTests(unittest.TestCase):
+    """PR-11 — PUT /admin/graph/node accepts occurred_at /
+    occurred_at_precision **when target is event** (memo §5.2).
+    Non-event targets silently drop both fields."""
+
+    def test_event_occurred_at_updates(self):
+        _, wg, p, eid = _single_event_entity()
+        result = update_node_attributes(
+            eid, {"occurred_at": "2027-04-15"},
+            wiki_generator=wg,
+        )
+        self.assertEqual(result["changed_fields"], ["occurred_at"])
+        fm = _read_fm(p)
+        self.assertEqual(fm["occurred_at"], "2027-04-15")
+        # Precision unchanged.
+        self.assertEqual(fm["occurred_at_precision"], "day")
+
+    def test_event_precision_only_updates(self):
+        _, wg, p, eid = _single_event_entity()
+        result = update_node_attributes(
+            eid, {"occurred_at_precision": "month"},
+            wiki_generator=wg,
+        )
+        self.assertEqual(result["changed_fields"], ["occurred_at_precision"])
+        fm = _read_fm(p)
+        self.assertEqual(fm["occurred_at_precision"], "month")
+        # Date unchanged.
+        self.assertEqual(fm["occurred_at"], "2026-01-10")
+
+    def test_event_both_fields_at_once(self):
+        _, wg, p, eid = _single_event_entity()
+        result = update_node_attributes(
+            eid,
+            {
+                "occurred_at":           "2027-04-15T15:32:00Z",
+                "occurred_at_precision": "minute",
+            },
+            wiki_generator=wg,
+        )
+        self.assertEqual(
+            sorted(result["changed_fields"]),
+            ["occurred_at", "occurred_at_precision"],
+        )
+        fm = _read_fm(p)
+        self.assertEqual(fm["occurred_at"], "2027-04-15T15:32:00Z")
+        self.assertEqual(fm["occurred_at_precision"], "minute")
+
+    def test_event_invalid_occurred_at_raises(self):
+        _, wg, _, eid = _single_event_entity()
+        with self.assertRaisesRegex(ValueError, "ISO 8601"):
+            update_node_attributes(
+                eid, {"occurred_at": "next quarter"},
+                wiki_generator=wg,
+            )
+
+    def test_event_invalid_precision_raises(self):
+        _, wg, _, eid = _single_event_entity()
+        with self.assertRaisesRegex(ValueError, "precision"):
+            update_node_attributes(
+                eid, {"occurred_at_precision": "quarter"},
+                wiki_generator=wg,
+            )
+
+    def test_non_event_silently_drops_occurred_at(self):
+        # Sending occurred_at to a person node alongside a valid name
+        # must (a) write the name and (b) NOT touch occurred_at.
+        _, wg, p, eid = _single_entity(entity_type="person")
+        result = update_node_attributes(
+            eid,
+            {"name": "Anthropic Inc", "occurred_at": "yesterday"},
+            wiki_generator=wg,
+        )
+        self.assertEqual(result["changed_fields"], ["name"])
+        fm = _read_fm(p)
+        self.assertNotIn("occurred_at", fm,
+            "non-event target must never gain an occurred_at field")
+
+    def test_non_event_alone_returns_no_op(self):
+        # Patch with ONLY occurred_at against non-event — silently
+        # dropped, returns no-op shape (no 400, no write).
+        _, wg, _, eid = _single_entity(entity_type="org")
+        result = update_node_attributes(
+            eid, {"occurred_at": "2027-04-15"},
+            wiki_generator=wg,
+        )
+        self.assertEqual(result["changed_fields"], [])
+        self.assertEqual(result["before"], {})
+        self.assertEqual(result["after"], {})
+
+    def test_event_partial_update_validates_against_existing(self):
+        # Precision-only update must still validate the pair
+        # (existing occurred_at + new precision) so a malformed
+        # combination surfaces — not just the changed field.
+        # Here the existing date is valid + new precision is valid,
+        # so the update succeeds (regression guard against the
+        # validator running on bad input by accident).
+        _, wg, _, eid = _single_event_entity()
+        result = update_node_attributes(
+            eid, {"occurred_at_precision": "hour"},
+            wiki_generator=wg,
+        )
+        self.assertEqual(result["changed_fields"], ["occurred_at_precision"])
 
 
 if __name__ == "__main__":

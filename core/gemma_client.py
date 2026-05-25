@@ -23,13 +23,11 @@ import requests
 import time
 import hashlib
 import base64
-import json
 import re
 from collections import OrderedDict
 from datetime import datetime
 from config import GEMMA_MODEL, OLLAMA_API_URL
 
-SYSTEM_LOG_PATH = "james_system_log.jsonl"
 
 # ─── 에러 응답 식별자 ────────────────────────────────────────
 
@@ -64,12 +62,6 @@ def log_system_event(step: str, detail: str, level: str = "ERROR"):
         "detail": str(detail)[:300],
     }
     try:
-        with open(SYSTEM_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
-    # Phase 2: mirror to SQLite (see core/audit_bridge.py).
-    try:
         from core.audit_bridge import mirror_system_event
         mirror_system_event(entry)
     except Exception:
@@ -88,6 +80,19 @@ class GemmaClient:
         self._cache_misses = 0
         self._cache_errors = 0   # 에러 응답 캐시 거부 횟수
         self._total_calls  = 0
+
+        # D6 follow-up (2026-05-25) — native Ollama `done_reason`
+        # stashed by the most recent uncached `call_gemma` invocation.
+        # Read by `OllamaClient.generate_meta` so the
+        # `ollama_local` backend can replace the length+terminator
+        # heuristic with Ollama's native signal.
+        #
+        # Empty string when:
+        #   - call_gemma hit a cached response (no fresh ollama call)
+        #   - the upstream response did not include `done_reason`
+        #     (Ollama < 0.1.30)
+        #   - the call errored before reaching the response
+        self._last_done_reason: str = ""
 
     # ─── 캐시 메서드 ─────────────────────────────────────────
 
@@ -178,6 +183,17 @@ class GemmaClient:
             print로 로깅돼 운영자가 보임. 하나도 설치 안 된 경우 명확한
             "ollama pull X" 안내 메시지로 RuntimeError 발생.
         """
+        # D6 follow-up (2026-05-25) — reset stale done_reason from
+        # prior call before *anything else* (including model resolve
+        # that may raise RuntimeError when no models are installed).
+        # If reset happened after resolve, a failed resolve would
+        # leave the previous truncation signal stashed and leak
+        # upward through OllamaClient.generate_meta on the next
+        # successful call. Reset-at-entry guarantees the invariant
+        # "stash is empty unless the most recent uncached
+        # resp.json() populated it."
+        self._last_done_reason = ""
+
         if model:
             # Caller specified a tag — verify it's installed before
             # hitting Ollama. If not installed, the resolver falls
@@ -220,6 +236,9 @@ class GemmaClient:
                 print(f"🔥 GEMMA CACHE HIT (hits={self._cache_hits})")
                 age = time.time() - self.cache_timestamps.get(cache_key, 0)
                 print(f"[DEBUG] cache age={age:.1f}s / TTL={self.cache_ttl}s")
+                # _last_done_reason stays "" — caller treats absence
+                # as "no truncation signal observed" (heuristic fallback
+                # applies if caller uses ollama_local heuristic).
                 return cached
             else:
                 self._cache_misses += 1
@@ -268,7 +287,13 @@ class GemmaClient:
                     timeout=timeout,
                 )
                 resp.raise_for_status()
-                output = resp.json().get("response", "").strip()
+                resp_json = resp.json()
+                output = resp_json.get("response", "").strip()
+                # D6 follow-up — stash native done_reason for
+                # OllamaClient.generate_meta to forward upward.
+                # Ollama 0.1.30+ returns "stop" / "length" / "load";
+                # older versions omit the field → "" left in place.
+                self._last_done_reason = resp_json.get("done_reason", "") or ""
                 elapsed_llm = time.time() - t_call
                 print(f"[GEMMA] 응답 수신 ({elapsed_llm:.1f}s) | {len(output)}자")
 

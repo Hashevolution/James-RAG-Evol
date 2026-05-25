@@ -107,16 +107,29 @@ class FrontendModalTests(unittest.TestCase):
 
 
 class FrontendJsTests(unittest.TestCase):
-    """admin.js must define the wizard functions + wire them to login flow."""
+    """admin.js must define the wizard functions + wire them to login flow.
+
+    Post-#372 (UI-IA Phase 2): the install endpoint POST + the
+    /admin/llm/install-progress poller were extracted into the shared
+    `LlmInstall.start(...)` controller in `llm-install.js`. admin.js
+    keeps the wizard-specific orchestration (firstRunCheck / Show /
+    Install / Dismiss / Row) and delegates the HTTP machinery via
+    callbacks. The split is asserted on both files.
+    """
 
     @classmethod
     def setUpClass(cls):
         cls.js = (ROOT / "frontend" / "static" / "admin.js").read_text(encoding="utf-8")
+        cls.install_js = (
+            ROOT / "frontend" / "static" / "llm-install.js"
+        ).read_text(encoding="utf-8")
 
     def test_required_functions_defined(self):
+        # _firstRunPollProgress moved into LlmInstall.start tick (no
+        # longer a function in admin.js). The remaining wizard
+        # functions stay in admin.js.
         for fn in ("firstRunCheck", "firstRunShow", "firstRunInstall",
-                   "_firstRunPollProgress", "firstRunDismiss",
-                   "_firstRunRow"):
+                   "firstRunDismiss", "_firstRunRow"):
             self.assertIn(f"function {fn}", self.js,
                 f"function '{fn}' must be defined")
 
@@ -133,16 +146,28 @@ class FrontendJsTests(unittest.TestCase):
         self.assertIn("/admin/llm/recommend", body)
 
     def test_install_uses_install_endpoint(self):
+        # admin.js's firstRunInstall now delegates to LlmInstall.start
+        # which owns the POST to /llm/install/. Assert the delegation
+        # in admin.js and the actual endpoint hit in llm-install.js.
         idx = self.js.index("async function firstRunInstall")
         body = self.js[idx:idx + 1500]
-        self.assertIn("/llm/install/", body)
+        self.assertIn("LlmInstall.start", body,
+            "firstRunInstall must delegate to LlmInstall.start")
+        self.assertIn("/llm/install/", self.install_js,
+            "llm-install.js must POST to /llm/install/")
 
     def test_install_polls_progress(self):
-        idx = self.js.index("async function _firstRunPollProgress")
+        # Polling machinery moved to LlmInstall.start tick. Assert
+        # admin.js wires onProgress + the poll endpoint + done check
+        # both live in llm-install.js.
+        idx = self.js.index("async function firstRunInstall")
         body = self.js[idx:idx + 1500]
-        self.assertIn("/admin/llm/install-progress", body)
-        self.assertIn("p.done", body,
-            "must check 'done' flag from progress endpoint")
+        self.assertIn("onProgress", body,
+            "firstRunInstall must wire an onProgress callback")
+        self.assertIn("/admin/llm/install-progress", self.install_js,
+            "llm-install.js must hit the progress endpoint")
+        self.assertIn("p.done", self.install_js,
+            "llm-install.js must check 'done' flag from progress endpoint")
 
     def test_dismiss_sets_session_flag(self):
         idx = self.js.index("function firstRunDismiss")

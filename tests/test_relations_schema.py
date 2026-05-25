@@ -47,48 +47,118 @@ class RoleConstantsTests(unittest.TestCase):
 
 
 class ComputeConfidenceTests(unittest.TestCase):
-    """Sum-of-weights with [0, 1] cap. Phase B reads through this."""
+    """Noisy-OR (probabilistic OR) per design memo §3.
+
+    Formula: ``P = 1 - Π(1 - w_i)``. Chosen for monotone cascade
+    semantics — adding a source strictly increases P, removing one
+    strictly decreases P, no early saturation.
+    """
 
     def test_empty_sources_returns_zero(self):
         self.assertEqual(compute_confidence_from_sources([]), 0.0)
         self.assertEqual(compute_confidence_from_sources(None), 0.0)
 
     def test_single_source_returns_weight(self):
+        # 단일 source 는 noisy-OR / clamped sum 동일.
+        # 이 identity 가 Phase A 마이그레이션의 byte-identical 게이트.
         sources = [{"weight": 0.7, "role": "extract"}]
         self.assertAlmostEqual(
             compute_confidence_from_sources(sources), 0.7,
         )
 
-    def test_multiple_sources_sum(self):
+    def test_two_sources_diverge_from_clamped_sum(self):
+        # 2-source 분기 invariant — 디자인 메모 §3 의 핵심 락인.
+        # clamped sum 이면 0.7, noisy-OR 이면 1 - (0.6 * 0.7) = 0.58.
+        # 이 값이 0.58 이 아니라면 clamped sum 으로 회귀한 것.
         sources = [
             {"weight": 0.4, "role": "extract"},
             {"weight": 0.3, "role": "extract"},
         ]
         self.assertAlmostEqual(
-            compute_confidence_from_sources(sources), 0.7,
+            compute_confidence_from_sources(sources), 0.58,
+            places=4,
+            msg="clamped sum 이 돌아왔다면 0.7 이 나옴. noisy-OR 회귀.",
         )
 
-    def test_caps_at_1_0(self):
-        # 3개 doc 가 동일 relation 을 강하게 강화 — 수학적으로 1.6 이지만
-        # UI / 정책 의미상 confidence 는 [0, 1] 안에서 표현.
+    def test_many_sources_asymptotic_not_saturated(self):
+        # 디자인 메모 §3: "many sources → asymptotic to 1, but never
+        # exceeds 1". quarterly report cascade 시 5+ 출처가 모여도
+        # confidence 가 1.0 으로 평탄화되지 않아야 함.
+        sources = [{"weight": 0.7, "role": "extract"} for _ in range(5)]
+        # 1 - 0.3**5 = 1 - 0.00243 = 0.99757
+        result = compute_confidence_from_sources(sources)
+        self.assertAlmostEqual(result, 0.9976, places=4)
+        self.assertLess(
+            result, CONFIDENCE_CAP,
+            msg="noisy-OR 은 [0, 1) — 정확히 1.0 에 도달하면 saturate 회귀.",
+        )
+
+    def test_strong_corroboration_3_sources(self):
+        # 디자인 메모 §3 의 예시: 3 doc 강한 강화. clamped sum 으로는
+        # 0.7+0.6+0.3 = 1.6 → cap 1.0. noisy-OR 로는:
+        # 1 - (0.3 * 0.4 * 0.7) = 1 - 0.084 = 0.916.
         sources = [
             {"weight": 0.7, "role": "extract"},
             {"weight": 0.6, "role": "extract"},
             {"weight": 0.3, "role": "manual"},
         ]
-        self.assertEqual(
+        self.assertAlmostEqual(
+            compute_confidence_from_sources(sources), 0.916,
+            places=3,
+        )
+        # 핵심: cap 에 도달하지 않아 신호 보존.
+        self.assertLess(
             compute_confidence_from_sources(sources), CONFIDENCE_CAP,
+        )
+
+    def test_monotone_adding_source_strictly_increases(self):
+        # 디자인 메모 §3: "adding a new source — always increases".
+        # 이 monotonicity 가 cascade 단조성의 근거.
+        before = [{"weight": 0.5, "role": "extract"}]
+        after  = [{"weight": 0.5, "role": "extract"},
+                  {"weight": 0.2, "role": "extract"}]
+        self.assertGreater(
+            compute_confidence_from_sources(after),
+            compute_confidence_from_sources(before),
+        )
+
+    def test_monotone_removing_source_strictly_decreases(self):
+        # 디자인 메모 §3: "removing a source — always decreases".
+        # clamped sum 의 saturate 동작은 이를 깬다 (이미 cap 이면
+        # source 가 빠져도 안 떨어짐).
+        before = [{"weight": 0.7, "role": "extract"},
+                  {"weight": 0.6, "role": "extract"},
+                  {"weight": 0.3, "role": "manual"}]
+        after  = [{"weight": 0.7, "role": "extract"},
+                  {"weight": 0.6, "role": "extract"}]
+        self.assertGreater(
+            compute_confidence_from_sources(before),
+            compute_confidence_from_sources(after),
+        )
+
+    def test_weight_clamped_to_unit_interval(self):
+        # 노이즈 robustness — out-of-range weight 가 product 를 음수나
+        # 1 초과로 튕기지 못 하게 per-element clamp.
+        sources = [
+            {"weight":  1.5, "role": "extract"},  # 1.0 으로 clamp
+            {"weight": -0.3, "role": "extract"},  # 0.0 으로 clamp
+        ]
+        # weight 1.0 한 개만 살아남는 효과 → 1 - 0 = 1.0 정확.
+        # weight 0.0 는 (1 - 0) = 1 곱이라 product 에 영향 없음.
+        self.assertAlmostEqual(
+            compute_confidence_from_sources(sources), 1.0,
         )
 
     def test_skips_malformed_entries(self):
         # 손편집 / 외부 plugin 이 weight 누락하거나 dict 아닌 값을 넣은
         # source 가 들어오면 무시 — 다른 잘 정의된 source 는 살린다.
         sources = [
-            {"weight": 0.5},          # OK
+            {"weight": 0.5},          # OK → contributes (1 - 0.5)
             {"role": "extract"},      # weight 누락 — 무시
             "not-a-dict",              # 자체가 무효
             {"weight": "0.3"},         # str — 무시 (Phase B/E 가 float 로 검증)
         ]
+        # 유효한 source 는 weight=0.5 한 개 → noisy-OR = 0.5.
         self.assertAlmostEqual(
             compute_confidence_from_sources(sources), 0.5,
         )

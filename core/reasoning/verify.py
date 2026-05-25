@@ -1,48 +1,28 @@
 """Verification engine — Cognitive Layer Phase 2 PR-6.
 
-ARCHITECTURE.md §5.7.1: "Verification Engine — generator → critic →
-fact_checker → security_validator → final_synthesizer". The
-generator (synth.py) and critic (reflect.py) already shipped in
-PR-5; this PR adds the **fact_checker** + **security_validator**
-passes that JAMES advertises as its security-aware reasoning
-differentiator (2026-05-14 user briefing).
+ARCHITECTURE.md §5.7.1 verifier stage. Two sub-passes:
 
-Two layers run in sequence:
-
-  1. **Security scan** — heuristic, fast (~5 ms). Reuses the existing
+  1. Security scan — heuristic, fast (~5 ms). Reuses
      INSTRUCTION_INJECTION_PATTERNS + SENSITIVE_PATTERNS from
-     core/security_layer.py so a single source of truth governs both
-     ingest-time blocking and post-synth verification. Flags injection
-     echo (a low-trust source's instruction leaked into the answer),
-     sensitive data leak (API key / password / 주민번호), and (with
-     role context) privilege over-share signals.
-  2. **Fact check** — optional, LLM-based (separate env gate
-     ``JAMES_ENABLE_FACT_CHECK=1``). Asks the backend whether each
-     claim in the answer is supported by the retrieved context;
-     parses a small JSON response. Skips silently on backend failure.
+     core/security_layer.py (single source of truth for ingest +
+     post-synth). Flags injection echo, sensitive-data leak (API key
+     / password / 주민번호), role-context privilege over-share.
+  2. Fact check — optional, LLM-based (JAMES_ENABLE_FACT_CHECK=1).
+     Asks the backend whether each claim is supported by context;
+     parses a small JSON response. Silent skip on failure.
 
-Recommendation:
+Recommendations: ``block`` (injection echo → safe refusal),
+``annotate`` (≥ 2 unsupported claims → verification note appended),
+``accept`` (default).
 
-  * ``"block"``    — security scan found injection echo (the highest
-                     severity signal). Answer is replaced with a safe
-                     refusal message; the caller still gets a string.
-  * ``"annotate"`` — fact-check found ≥ 2 unsupported claims. The
-                     original answer is preserved but appended with a
-                     short verification note.
-  * ``"accept"``   — everything passed (or only soft signals fired).
+Opt-in: JAMES_ENABLE_VERIFY=1. Fact-check doubly gated
+(JAMES_ENABLE_VERIFY + JAMES_ENABLE_FACT_CHECK) so the cheap
+heuristic can run without the LLM call.
 
-Posture: opt-in via JAMES_ENABLE_VERIFY=1. Fact-check is **doubly**
-gated (JAMES_ENABLE_VERIFY + JAMES_ENABLE_FACT_CHECK) so an operator
-can run cheap heuristic verification without the extra LLM call.
-
-CR-E integration (sustainability note): future work. When the
-verifier produces a write-recommending verdict (e.g., "answer reveals
-something that should update wiki entity X"), that write will route
-through ``core/change_request.py`` per CLAUDE.md rule #3. PR-6 itself
-doesn't produce any write-recommending verdicts — its verdicts only
-modify the answer string returned to the caller. The CR-E hook lands
-with Phase 2 PR-7/PR-8 when planner + tool router introduce
-verifier-triggered writes.
+CR-E hook: PR-6 verdicts don't write — they modify the answer
+string. Future planner / tool router will introduce
+verifier-triggered writes via core/change_request.py (CLAUDE.md
+rule #3) in Phase 2 PR-7 / PR-8.
 """
 from __future__ import annotations
 
@@ -54,6 +34,11 @@ import time
 from dataclasses import dataclass, field
 from typing import List, Optional
 
+from core.reasoning.budget import (
+    TaskBudget,
+    adaptive_budget_enabled,
+    complete_with_retry,
+)
 from core.reasoning.trace_schema import (
     TraceStep,
     compute_inputs_hash,
@@ -66,7 +51,11 @@ from core.reasoning.trace_schema import (
 from core.reasoning.backends import get_default_backend_id as _get_default_backend
 DEFAULT_BACKEND_ID = _get_default_backend()
 DEFAULT_FACT_CHECK_TIMEOUT_S = 30.0
-DEFAULT_FACT_CHECK_MAX_TOKENS = 400
+# gemma4:e4b consumes ~500 hidden reasoning tokens before the first
+# visible output on short structured prompts; cap below that floor
+# → deterministic empty response (model burns the budget without
+# surfacing any byte).
+DEFAULT_FACT_CHECK_MAX_TOKENS = 4096
 MIN_ANSWER_LEN_FOR_VERIFY = 30
 # An "unsupported claim" count at or above this triggers annotation.
 ANNOTATE_THRESHOLD = 2
@@ -89,21 +78,43 @@ class VerifyResult:
 
 
 def _enabled() -> bool:
-    return os.environ.get("JAMES_ENABLE_VERIFY") == "1"
+    """Verifier base mode (security_validator heuristic) is **default ON**
+    since v0.3.x.
+
+    The base scan is ~5ms of pure-Python pattern matching against the
+    final answer — well below the STEP 7 measurement noise floor and
+    independent of LLM availability. Keeping it always-on means that
+    a vanilla JAMES install gets injection-echo detection from day
+    one without an operator having to discover the env flag.
+
+    The legacy opt-in ``JAMES_ENABLE_VERIFY=1`` is still honoured as
+    a no-op (truthy → True), so a tightly-coupled .env from earlier
+    releases keeps working. The new opt-out is
+    ``JAMES_DISABLE_VERIFY=1`` for the rare case an operator wants
+    to measure baseline cost or silence the verifier's annotate /
+    block recommendations entirely.
+
+    Fact-checking (LLM-driven, +5-15s/query) remains opt-in — see
+    :func:`_fact_check_enabled`.
+    """
+    return os.environ.get("JAMES_DISABLE_VERIFY") != "1"
 
 
 def _fact_check_enabled() -> bool:
+    """Fact-check stays opt-in via ``JAMES_ENABLE_FACT_CHECK=1``.
+
+    The chain ``_enabled() and ...`` means a hard opt-out
+    (``JAMES_DISABLE_VERIFY=1``) silences both base scan and
+    fact-check in one knob — consistent with operator intent.
+    """
     return (
         _enabled()
         and os.environ.get("JAMES_ENABLE_FACT_CHECK") == "1"
     )
 
 
-def _is_korean(text: str) -> bool:
-    if not text:
-        return False
-    korean_chars = sum(1 for c in text if "가" <= c <= "힣")
-    return korean_chars >= max(1, int(len(text) * 0.2))
+# v0.4 Sprint 1 #2 — unified language detection (see core/i18n.py).
+from core.i18n import is_korean as _is_korean  # noqa: F401
 
 
 _BLOCK_MSG_KO = (
@@ -242,11 +253,16 @@ class Verifier:
         backend_id: str = DEFAULT_BACKEND_ID,
         *,
         fact_check_timeout: float = DEFAULT_FACT_CHECK_TIMEOUT_S,
-        fact_check_max_tokens: int = DEFAULT_FACT_CHECK_MAX_TOKENS,
+        fact_check_max_tokens: Optional[int] = None,
+        budget: Optional[TaskBudget] = None,
     ) -> None:
+        # D1 wiring (v0.4 Sprint 3 #7c, mirrors planner / reflect):
+        # fact_check_max_tokens None → JAMES_ADAPTIVE_BUDGET decides.
+        # Flag off → DEFAULT_FACT_CHECK_MAX_TOKENS (pre-#7c shape).
         self._backend_id = backend_id
         self._fact_check_timeout = fact_check_timeout
         self._fact_check_max_tokens = fact_check_max_tokens
+        self._budget = budget if budget is not None else TaskBudget()
 
     def verify(
         self,
@@ -321,12 +337,6 @@ class Verifier:
         path returns ``(True, [])`` — fact-check is a "nice to have",
         not a gate.
         """
-        try:
-            from core.reasoning.backends import get_backend
-            backend = get_backend(self._backend_id)
-        except Exception:
-            return (True, [])
-
         is_ko = _is_korean(query) or _is_korean(answer)
         tmpl = FACT_CHECK_PROMPT_KO if is_ko else FACT_CHECK_PROMPT_EN
         prompt = tmpl.format(
@@ -335,12 +345,55 @@ class Verifier:
             context=context[:2000],
         )
 
+        # v0.4 Sprint 3 #7c — D1 cap resolution. assess on the query
+        # (not the FACT_CHECK_PROMPT template — that carries heavy
+        # markers in the instruction text).
+        if self._fact_check_max_tokens is not None:
+            cap = self._fact_check_max_tokens
+            _budget_for_router = None
+        elif adaptive_budget_enabled():
+            cap = self._budget.assess("verify", query)
+            _budget_for_router = cap
+        else:
+            cap = DEFAULT_FACT_CHECK_MAX_TOKENS
+            _budget_for_router = None
+
+        # D5.C.2.d — flag-gated backend resolution. Verify is the
+        # grounding-critical stage: D5.C.1 policy rule 1 escalates to
+        # large tier when registered. With D1 active (#7c) the
+        # budget_signal layers on rules 1 / 4.
+        try:
+            from core.reasoning.backends import get_backend
+            from core.reasoning.router import emit_route_event, resolve_backend
+
+            backend_id = resolve_backend(
+                "verify",
+                prompt,
+                budget_signal=_budget_for_router,
+                fallback_backend_id=self._backend_id,
+            )
+            backend = get_backend(backend_id)
+        except Exception:
+            return (True, [])
+
+        emit_route_event(
+            "verify",
+            prompt,
+            backend_id,
+            budget_signal=_budget_for_router,
+            reason="grounding-critical",
+        )
+
+        # D6 retry wiring — length truncation → retry once at doubled
+        # cap up to CAP_HEAVY. Flag-off no-op (cap already at 4096).
         t0 = time.time()
         try:
-            result = backend.complete(
+            result = complete_with_retry(
+                backend,
                 prompt,
-                max_tokens=self._fact_check_max_tokens,
+                cap=cap,
                 timeout=self._fact_check_timeout,
+                stage="verify",
             )
         except Exception as e:
             latency_ms = int((time.time() - t0) * 1000)
@@ -445,6 +498,18 @@ class Verifier:
                 ),
                 user_role=user_role,
                 extras=extras or None,
+            )
+        except Exception:
+            pass
+
+        # Cognitive Phase 3 PR-9b — session-scoped episodic mirror.
+        try:
+            from core.memory.episodic import record_event as _rec
+            _rec(
+                stage="verify",
+                summary=text,
+                extras={"applied_rule": applied_rule,
+                        "latency_ms": latency_ms, "error": error},
             )
         except Exception:
             pass

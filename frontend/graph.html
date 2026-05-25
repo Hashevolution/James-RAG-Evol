@@ -50,6 +50,7 @@
         <div class="legend-row"><span class="legend-dot" style="background:var(--t-org)"></span>      <span data-i18n="graph.legend.org">org</span></div>
         <div class="legend-row"><span class="legend-dot" style="background:var(--t-concept)"></span>  <span data-i18n="graph.legend.concept">concept</span></div>
         <div class="legend-row"><span class="legend-dot" style="background:var(--t-document)"></span> <span data-i18n="graph.legend.document">document</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:var(--t-event)"></span>    <span data-i18n="graph.legend.event">event</span></div>
       </div>
     </div>
 
@@ -99,8 +100,9 @@
          is hidden) and gives desktop users a faster way to jump to
          any entity. Toggle tab is always visible. -->
     <div class="tsd-toggle" id="tsd-toggle" data-action="toggle-search-drawer"
-         title="엔티티 검색 (Esc로 닫기)">
-      🔎 검색 ▾
+         title="엔티티 검색 (Esc로 닫기)"
+         data-i18n-title="graph.search_toggle_title">
+      <span data-i18n="graph.search_toggle_label">🔎 검색 ▾</span>
     </div>
     <div class="top-search-drawer" id="search-drawer">
       <div class="tsd-body">
@@ -108,6 +110,7 @@
                id="tsd-search"
                class="tsd-search"
                placeholder="엔티티 이름 검색…"
+               data-i18n-placeholder="graph.search_node_placeholder"
                autocomplete="off">
         <div class="tsd-list" id="tsd-list"></div>
       </div>
@@ -366,6 +369,7 @@
 </div>
 
 <script src="/static/i18n.js"></script>
+<script src="/static/auth.js"></script>
 <script src="/static/graph.js"></script>
 <script src="/static/graph_editor.js"></script>
 <script src="/static/graph_node_editor.js"></script>

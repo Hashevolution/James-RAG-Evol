@@ -1,6 +1,6 @@
 # Third-Party Licenses
 
-> **Generated**: 2026-05-19 via the reproduction command below.
+> **Generated**: 2026-05-23 via the reproduction command below.
 > **Scope**: every Python package present in the active venv at the time of generation.
 > **Refresh policy**: re-generate at every minor JAMES version (v0.4, v0.5, …) and whenever a dep is added.
 
@@ -87,7 +87,7 @@ JAMES itself is **MIT** (see [`LICENSE`](LICENSE)). The deps inventoried below a
 | [httpx](https://github.com/encode/httpx) | 0.28.1 | BSD |
 | [httpx-sse](https://github.com/florimondmanca/httpx-sse) | 0.4.3 | MIT |
 | [huggingface_hub](https://github.com/huggingface/huggingface_hub) | 1.13.0 | Apache-2.0 |
-| [idna](https://github.com/kjd/idna) | 3.13 | BSD-3-Clause |
+| [idna](https://github.com/kjd/idna) | 3.15 | BSD-3-Clause |
 | [ImageIO](https://github.com/imageio/imageio) | 2.37.3 | BSD-2-Clause |
 | [importlib_metadata](https://github.com/python/importlib_metadata) | 8.7.1 | Apache-2.0 |
 | [importlib_resources](https://github.com/python/importlib_resources) | 7.1.0 | Apache-2.0 |

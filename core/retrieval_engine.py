@@ -23,9 +23,6 @@ from core.vector_store import VectorStore
 from core.policy_engine import default_engine as _policy
 from utils.tokenizer import tokenize
 
-SYSTEM_LOG_PATH = "james_system_log.jsonl"
-
-
 class RetrievalEngine:
     """
     Vector + BM25 하이브리드 검색 + Entity 추출 전담.
@@ -47,12 +44,6 @@ class RetrievalEngine:
             "step":   f"retrieval_engine.{step}",
             "detail": str(error)[:300],
         }
-        try:
-            with open(SYSTEM_LOG_PATH, "a", encoding="utf-8") as f:
-                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        except Exception:
-            pass
-        # Phase 2: mirror to SQLite (see core/audit_bridge.py).
         try:
             from core.audit_bridge import mirror_system_event
             mirror_system_event(entry)

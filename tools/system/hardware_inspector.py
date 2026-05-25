@@ -243,79 +243,88 @@ def _weapon_meta(component: str, level: int) -> Dict:
     그대로 인용 가능. 함수명 _weapon_meta는 호환을 위해 유지 — 반환
     딕트의 키(icon/name/role/desc)도 동일.
     """
+    # PR-6 i18n: each (lo, hi) tier carries a short_id used to derive
+    # the i18n keys (``hw.<component>.tier_<short_id>`` /
+    # ``..desc_<short_id>``). Frontend binds ``data-i18n`` to these
+    # keys and falls back to the EN ``name`` / ``desc`` strings on miss
+    # (same contract as TRAITS / CAPABILITIES / Feature label_key).
     weapons = {
         "cpu": {
             "icon": "🧮",
             "name_map": {
-                (1, 3):  "Entry CPU",
-                (4, 5):  "Mainstream CPU",
-                (6, 7):  "Workstation CPU",
-                (8, 9):  "High-Performance CPU",
-                (10, 10):"Server-Grade CPU",
+                (1, 3):   ("Entry CPU",            "entry"),
+                (4, 5):   ("Mainstream CPU",       "mainstream"),
+                (6, 7):   ("Workstation CPU",      "workstation"),
+                (8, 9):   ("High-Performance CPU", "high_performance"),
+                (10, 10): ("Server-Grade CPU",     "server_grade"),
             },
-            "role": "Compute",
+            "role":     "Compute",
+            "role_key": "hw.role.compute",
             "desc_map": {
-                (1, 3):  "Basic compute — interactive workload",
-                (4, 5):  "Mainstream inference",
-                (6, 7):  "Multi-thread parallel workload",
-                (8, 9):  "Heavy reasoning + concurrent sessions",
-                (10, 10):"Server-class throughput",
+                (1, 3):   ("Basic compute — interactive workload",     "entry"),
+                (4, 5):   ("Mainstream inference",                     "mainstream"),
+                (6, 7):   ("Multi-thread parallel workload",           "workstation"),
+                (8, 9):   ("Heavy reasoning + concurrent sessions",    "high_performance"),
+                (10, 10): ("Server-class throughput",                  "server_grade"),
             },
         },
         "ram": {
             "icon": "💾",
             "name_map": {
-                (1, 3):  "Light Memory",
-                (4, 5):  "Standard Memory",
-                (6, 7):  "Wide Context Memory",
-                (8, 9):  "Large-Batch Memory",
-                (10, 10):"Workstation Memory",
+                (1, 3):   ("Light Memory",          "light"),
+                (4, 5):   ("Standard Memory",       "standard"),
+                (6, 7):   ("Wide Context Memory",   "wide_context"),
+                (8, 9):   ("Large-Batch Memory",    "large_batch"),
+                (10, 10): ("Workstation Memory",    "workstation"),
             },
-            "role": "Memory",
+            "role":     "Memory",
+            "role_key": "hw.role.memory",
             "desc_map": {
-                (1, 3):  "Single short session",
-                (4, 5):  "Multi-session general use",
-                (6, 7):  "Long-context retention",
-                (8, 9):  "Multi-document batch",
-                (10, 10):"Enterprise-scale concurrency",
+                (1, 3):   ("Single short session",            "light"),
+                (4, 5):   ("Multi-session general use",       "standard"),
+                (6, 7):   ("Long-context retention",          "wide_context"),
+                (8, 9):   ("Multi-document batch",            "large_batch"),
+                (10, 10): ("Enterprise-scale concurrency",    "workstation"),
             },
         },
         "gpu": {
             "icon": "⚡",
             "name_map": {
-                (0, 0):  "CPU-only",
-                (1, 3):  "Entry Accelerator",
-                (4, 5):  "Inference-Capable GPU",
-                (6, 7):  "Production GPU",
-                (8, 9):  "High-Throughput GPU",
-                (10, 10):"Datacenter GPU",
+                (0, 0):   ("CPU-only",              "cpu_only"),
+                (1, 3):   ("Entry Accelerator",     "entry"),
+                (4, 5):   ("Inference-Capable GPU", "inference"),
+                (6, 7):   ("Production GPU",        "production"),
+                (8, 9):   ("High-Throughput GPU",   "high_throughput"),
+                (10, 10): ("Datacenter GPU",        "datacenter"),
             },
-            "role": "AI Acceleration",
+            "role":     "AI Acceleration",
+            "role_key": "hw.role.ai_acceleration",
             "desc_map": {
-                (0, 0):  "CPU-only inference (slow on large models)",
-                (1, 3):  "Basic GPU acceleration",
-                (4, 5):  "LLM inference capable",
-                (6, 7):  "Production-grade LLM throughput",
-                (8, 9):  "Multi-model concurrent inference",
-                (10, 10):"Datacenter-class AI throughput",
+                (0, 0):   ("CPU-only inference (slow on large models)", "cpu_only"),
+                (1, 3):   ("Basic GPU acceleration",                    "entry"),
+                (4, 5):   ("LLM inference capable",                     "inference"),
+                (6, 7):   ("Production-grade LLM throughput",           "production"),
+                (8, 9):   ("Multi-model concurrent inference",          "high_throughput"),
+                (10, 10): ("Datacenter-class AI throughput",            "datacenter"),
             },
         },
         "disk": {
             "icon": "🗄️",
             "name_map": {
-                (1, 3):  "Personal Storage",
-                (4, 5):  "Team Storage",
-                (6, 7):  "Department Storage",
-                (8, 9):  "Enterprise Storage",
-                (10, 10):"Archive-Tier Storage",
+                (1, 3):   ("Personal Storage",      "personal"),
+                (4, 5):   ("Team Storage",          "team"),
+                (6, 7):   ("Department Storage",    "department"),
+                (8, 9):   ("Enterprise Storage",    "enterprise"),
+                (10, 10): ("Archive-Tier Storage",  "archive"),
             },
-            "role": "Storage",
+            "role":     "Storage",
+            "role_key": "hw.role.storage",
             "desc_map": {
-                (1, 3):  "Small wiki / personal corpus",
-                (4, 5):  "Mid-size knowledge base",
-                (6, 7):  "Department-wide corpus",
-                (8, 9):  "Enterprise-scale knowledge base",
-                (10, 10):"Long-term archive + audit retention",
+                (1, 3):   ("Small wiki / personal corpus",          "personal"),
+                (4, 5):   ("Mid-size knowledge base",               "team"),
+                (6, 7):   ("Department-wide corpus",                "department"),
+                (8, 9):   ("Enterprise-scale knowledge base",       "enterprise"),
+                (10, 10): ("Long-term archive + audit retention",   "archive"),
             },
         },
     }
@@ -323,17 +332,28 @@ def _weapon_meta(component: str, level: int) -> Dict:
     meta = weapons.get(component, {})
     icon = meta.get("icon", "🔧")
     role = meta.get("role", component)
+    role_key = meta.get("role_key", "")
 
     def _lookup(d, lv):
+        # d values are (text, short_id) tuples — return both for the
+        # caller to derive the i18n key alongside the EN fallback.
         for (lo, hi), val in d.items():
             if lo <= lv <= hi:
                 return val
         return list(d.values())[-1]
 
-    name = _lookup(meta.get("name_map", {}), level)
-    desc = _lookup(meta.get("desc_map", {}), level)
+    name, name_short = _lookup(meta.get("name_map", {}), level)
+    desc, desc_short = _lookup(meta.get("desc_map", {}), level)
 
-    return {"icon": icon, "name": name, "role": role, "desc": desc}
+    return {
+        "icon":     icon,
+        "name":     name,
+        "name_key": f"hw.{component}.tier_{name_short}" if name_short else "",
+        "role":     role,
+        "role_key": role_key,
+        "desc":     desc,
+        "desc_key": f"hw.{component}.desc_{desc_short}" if desc_short else "",
+    }
 
 
 # ─── 메인 API ──────────────────────────────────────────────────

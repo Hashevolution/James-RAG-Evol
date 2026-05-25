@@ -16,8 +16,9 @@
  *   GET    /admin/graph/relation                   (read sources)
  *   POST   /admin/graph/relation/source            (append manual source)
  *   DELETE /admin/graph/relation                   (drop relation 전체)
- *   PUT    /admin/graph/relation                   (지금은 미사용 — per-source
- *                                                   editor 는 follow-up)
+ *   PUT    /admin/graph/relation                   (sources 배열 교체 —
+ *                                                   per-source editor [#451],
+ *                                                   Stage E.1, 2026-05-24)
  *
  * No bundler — same vanilla pattern as graph.js (IIFE, window 노출).
  */
@@ -33,6 +34,11 @@
   var editEnabled       = false;          // 토글 상태 (client side)
   var editFlagChecked   = false;          // 서버 flag 확인 했는지
   var currentEdge       = null;           // 모달에 표시 중인 edge
+  // [Stage E.1, 2026-05-24] per-source editor — cache last-fetched sources
+  // so per-row ✕/✏️ can build a "modified sources[]" for the PUT endpoint
+  // without re-fetching first. editingIdx is -1 when no row in edit mode.
+  var currentSources    = [];             // last refreshSources() payload
+  var editingIdx        = -1;             // index of row currently being edited
 
   // ──────────────────────────────────────────────────────────────
   // DOM refs (graph.html 에 정의)
@@ -113,7 +119,10 @@
   function closeModal() {
     var modal = $('edge-edit-modal');
     if (modal) modal.classList.remove('show');
-    currentEdge = null;
+    currentEdge    = null;
+    // [Stage E.1] reset per-row editor state so the next open is clean.
+    currentSources = [];
+    editingIdx     = -1;
   }
 
   function setError(msg) {
@@ -133,13 +142,35 @@
            'letter-spacing:.5px">' + role + '</span>';
   }
 
+  // [Stage E.1, 2026-05-24] per-source row — view mode (✏️ + ✕ actions)
+  // or edit mode (weight input + note input + Save/Cancel). editingIdx
+  // module-scope tracks which row is currently in edit mode.
   function renderSourceRow(s, idx) {
+    if (idx === editingIdx) return renderSourceEditRow(s, idx);
     var doc = s.doc_id ? String(s.doc_id) : '<span style="color:var(--muted)">(none)</span>';
     var w   = (typeof s.weight === 'number') ? s.weight.toFixed(2) : '?';
     var ts  = s.ts ? String(s.ts).slice(0, 19) : '';
     var meta = '';
     if (s.author) meta += '<div style="color:var(--muted);font-size:10px">author: ' + escapeHtml(s.author) + '</div>';
     if (s.note)   meta += '<div style="color:var(--muted);font-size:10px;margin-top:2px">note: ' + escapeHtml(s.note) + '</div>';
+    // Per-row actions: ✏️ (edit weight/note) and ✕ (delete this source only).
+    var actions = '' +
+      '<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">' +
+        '<button type="button" data-action="edit-src" data-idx="' + idx + '" ' +
+                'title="Edit this source" ' +
+                'style="background:transparent;border:1px solid var(--border);' +
+                       'color:var(--text-soft);width:24px;height:22px;' +
+                       'border-radius:4px;cursor:pointer;font-size:11px;line-height:1">' +
+          '✏️' +
+        '</button>' +
+        '<button type="button" data-action="del-src" data-idx="' + idx + '" ' +
+                'title="Delete this source" ' +
+                'style="background:transparent;border:1px solid var(--danger);' +
+                       'color:var(--danger);width:24px;height:22px;' +
+                       'border-radius:4px;cursor:pointer;font-size:11px;line-height:1">' +
+          '✕' +
+        '</button>' +
+      '</div>';
     return '' +
       '<div data-src-idx="' + idx + '" style="display:flex;align-items:flex-start;' +
          'gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">' +
@@ -152,6 +183,51 @@
           '<div style="margin-top:2px;color:var(--text-soft);font-family:var(--font-mono);' +
                 'font-size:10px;word-break:break-all">' + doc + '</div>' +
           meta +
+        '</div>' +
+        actions +
+      '</div>';
+  }
+
+  // [Stage E.1] inline edit row — weight + note inputs with Save/Cancel.
+  // Pre-filled with current source values. Save triggers PUT (full sources
+  // array replace); Cancel restores view mode without server call.
+  function renderSourceEditRow(s, idx) {
+    var w    = (typeof s.weight === 'number') ? s.weight.toFixed(2) : '0.50';
+    var note = s.note ? String(s.note) : '';
+    return '' +
+      '<div data-src-idx="' + idx + '" data-edit="1" ' +
+           'style="padding:6px 0;border-bottom:1px solid var(--border);' +
+                  'background:rgba(99,102,241,.05)">' +
+        '<div style="display:flex;gap:6px;align-items:center;font-family:var(--font-mono);' +
+              'font-size:11px;margin-bottom:6px">' +
+          roleBadge(s.role || '?') +
+          '<span style="color:var(--muted);font-size:10px">editing #' + idx + '</span>' +
+        '</div>' +
+        '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">' +
+          '<label style="color:var(--muted);font-size:10px;font-family:var(--font-mono);width:50px">weight</label>' +
+          '<input type="number" min="0" max="1" step="0.05" value="' + w + '" ' +
+                 'data-edit-weight="' + idx + '" ' +
+                 'style="flex:1;background:var(--bg);border:1px solid var(--border);' +
+                        'color:var(--text);padding:3px 6px;border-radius:4px;' +
+                        'font-family:var(--font-mono);font-size:11px">' +
+        '</div>' +
+        '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">' +
+          '<label style="color:var(--muted);font-size:10px;font-family:var(--font-mono);width:50px">note</label>' +
+          '<input type="text" value="' + escapeHtml(note) + '" ' +
+                 'data-edit-note="' + idx + '" placeholder="(optional)" ' +
+                 'style="flex:1;background:var(--bg);border:1px solid var(--border);' +
+                        'color:var(--text);padding:3px 6px;border-radius:4px;' +
+                        'font-family:var(--font-mono);font-size:11px">' +
+        '</div>' +
+        '<div style="display:flex;gap:6px;justify-content:flex-end">' +
+          '<button type="button" data-action="cancel-edit-src" data-idx="' + idx + '" ' +
+                  'style="background:transparent;border:1px solid var(--border);' +
+                         'color:var(--text-soft);padding:3px 10px;border-radius:4px;' +
+                         'cursor:pointer;font-size:11px">Cancel</button>' +
+          '<button type="button" data-action="save-edit-src" data-idx="' + idx + '" ' +
+                  'style="background:var(--accent);border:1px solid var(--accent);' +
+                         'color:#fff;padding:3px 10px;border-radius:4px;' +
+                         'cursor:pointer;font-size:11px">Save</button>' +
         '</div>' +
       '</div>';
   }
@@ -180,10 +256,15 @@
       var data = await r.json();
       var rel  = (data && data.relation) || {};
       var srcs = rel.sources || [];
+      currentSources = srcs.slice();   // [Stage E.1] cache for per-row mutations
       if (!srcs.length) {
         box.innerHTML = '<div style="color:var(--muted);font-size:11px">No sources (legacy or unmigrated relation).</div>';
+        editingIdx = -1;
         return;
       }
+      // [Stage E.1] if editingIdx points past the new array (row was deleted)
+      // reset to view mode to avoid rendering an orphaned editor.
+      if (editingIdx >= srcs.length) editingIdx = -1;
       box.innerHTML = srcs.map(function (s, i) { return renderSourceRow(s, i); }).join('');
       if (rel.confidence != null) {
         $('edge-edit-conf').textContent = String(rel.confidence);
@@ -235,14 +316,116 @@
     }
   }
 
-  async function deleteRelation() {
+  // [Stage E.1, 2026-05-24] PUT helper — replaces the relation's full
+  // sources array. Returns true on success. Used by per-row delete and
+  // per-row save-edit (both build a new array client-side then push it).
+  async function putSources(sources) {
+    if (!currentEdge) return false;
+    setError('');
+    var body = {
+      api_key:       apiKey,
+      src_entity_id: linkSrcId(currentEdge),
+      tgt_entity_id: linkTgtId(currentEdge),
+      relation_type: currentEdge.type || 'RELATED_TO',
+      sources:       sources,
+    };
+    try {
+      var r = await fetch(API + '/admin/graph/relation', {
+        method: 'PUT', headers: authHeaders(), body: JSON.stringify(body),
+      });
+      if (!r.ok) {
+        var j = await r.json().catch(function () { return {}; });
+        setError(j.detail || ('error ' + r.status));
+        return false;
+      }
+      await refreshSources();
+      reloadSnapshot();
+      return true;
+    } catch (e) {
+      setError(String(e));
+      return false;
+    }
+  }
+
+  // [Stage E.1] per-row delete. If this is the last remaining source the
+  // backend PUT rejects an empty array (400 "use DELETE to drop") — so
+  // we fall through to deleteRelation() for that case.
+  async function deleteSourceAt(idx) {
     if (!currentEdge) return;
-    var ok = window.confirm(
-      'Delete the entire ' + (currentEdge.type || 'RELATED_TO') +
-      ' relation between ' + nodeName(linkSrcId(currentEdge)) +
-      ' and ' + nodeName(linkTgtId(currentEdge)) + '?'
-    );
+    if (!currentSources || idx < 0 || idx >= currentSources.length) return;
+    if (currentSources.length === 1) {
+      var okLast = window.confirm(
+        'This is the only source for this relation — removing it deletes ' +
+        'the entire relation. Proceed?'
+      );
+      if (!okLast) return;
+      return deleteRelation(/*skipConfirm*/true);
+    }
+    var ok = window.confirm('Delete this source?');
     if (!ok) return;
+    var newSrcs = currentSources.filter(function (_, i) { return i !== idx; });
+    await putSources(newSrcs);
+  }
+
+  function startEditSource(idx) {
+    if (idx < 0 || idx >= currentSources.length) return;
+    editingIdx = idx;
+    // Re-render in place without re-fetching from server.
+    var box = $('edge-edit-sources');
+    if (!box) return;
+    box.innerHTML = currentSources.map(function (s, i) {
+      return renderSourceRow(s, i);
+    }).join('');
+    // Focus the weight input for quick editing.
+    var wInput = box.querySelector('[data-edit-weight="' + idx + '"]');
+    if (wInput) { wInput.focus(); wInput.select(); }
+  }
+
+  function cancelEditSource() {
+    editingIdx = -1;
+    var box = $('edge-edit-sources');
+    if (!box) return;
+    box.innerHTML = currentSources.map(function (s, i) {
+      return renderSourceRow(s, i);
+    }).join('');
+  }
+
+  async function saveEditedSource(idx) {
+    if (idx < 0 || idx >= currentSources.length) return;
+    var box = $('edge-edit-sources');
+    if (!box) return;
+    var wInput = box.querySelector('[data-edit-weight="' + idx + '"]');
+    var nInput = box.querySelector('[data-edit-note="' + idx + '"]');
+    if (!wInput || !nInput) return;
+    var w = parseFloat(wInput.value);
+    if (!isFinite(w) || w < 0 || w > 1) {
+      setError('weight must be a number in [0, 1]');
+      return;
+    }
+    var copy = currentSources.slice();
+    copy[idx] = Object.assign({}, copy[idx], {
+      weight: w,
+      note:   (nInput.value || '').trim(),
+    });
+    editingIdx = -1;             // exit edit mode before PUT
+    var ok = await putSources(copy);
+    if (!ok) {
+      // PUT failed — re-enter edit mode so user can retry without re-typing
+      editingIdx = idx;
+      startEditSource(idx);
+    }
+  }
+
+  async function deleteRelation(skipConfirm) {
+    if (!currentEdge) return;
+    if (!skipConfirm) {
+      var ok = window.confirm(
+        'Delete the entire ' + (currentEdge.type || 'RELATED_TO') +
+        ' relation between ' + nodeName(linkSrcId(currentEdge)) +
+        ' and ' + nodeName(linkTgtId(currentEdge)) + '?'
+      );
+      if (!ok) return;
+    }
     setError('');
     var body = {
       api_key:       apiKey,
@@ -358,7 +541,28 @@
     if (appendBtn) appendBtn.addEventListener('click', appendManualSource);
 
     var delBtn = $('edge-edit-delete-relation');
-    if (delBtn) delBtn.addEventListener('click', deleteRelation);
+    // [Stage E.1] wrap to avoid passing the click Event as skipConfirm.
+    if (delBtn) delBtn.addEventListener('click', function () { deleteRelation(); });
+
+    // [Stage E.1, 2026-05-24] per-source row actions (✏️ / ✕ / Save / Cancel)
+    // — delegated handler on the sources box. data-action + data-idx on
+    // each button drives the dispatch.
+    var srcBox = $('edge-edit-sources');
+    if (srcBox) {
+      srcBox.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t || !t.getAttribute) return;
+        var action = t.getAttribute('data-action');
+        if (!action) return;
+        var idx = parseInt(t.getAttribute('data-idx'), 10);
+        if (!isFinite(idx)) return;
+        e.preventDefault();
+        if (action === 'del-src')          deleteSourceAt(idx);
+        else if (action === 'edit-src')    startEditSource(idx);
+        else if (action === 'save-edit-src') saveEditedSource(idx);
+        else if (action === 'cancel-edit-src') cancelEditSource();
+      });
+    }
 
     // overlay 클릭 닫기
     var overlay = $('edge-edit-modal');

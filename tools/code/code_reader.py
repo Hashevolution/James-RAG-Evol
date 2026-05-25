@@ -12,14 +12,11 @@ Sandbox 검증 후에만 접근 허용.
 """
 
 import os
-import json
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from tools.code.sandbox import policy_validate_path, log_security_event
-
-AUDIT_LOG_PATH = "james_audit_tool.jsonl"
 
 SUPPORTED_EXTENSIONS = {
     ".py", ".js", ".ts", ".java", ".cpp", ".c", ".h",
@@ -41,12 +38,6 @@ def _log_read(path: str, lines: int, success: bool):
         "success": success,
         "layer":   "code_reader",
     }
-    try:
-        with open(AUDIT_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
-    # Phase 1: mirror to SQLite (see core/audit_bridge.py).
     try:
         from core.audit_bridge import mirror_to_audit_db
         mirror_to_audit_db(entry)

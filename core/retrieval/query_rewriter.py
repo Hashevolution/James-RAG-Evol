@@ -32,6 +32,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 import threading
 import time
 from typing import Optional, Tuple
@@ -41,9 +42,68 @@ from typing import Optional, Tuple
 # so a stock install (env unset) gets "ollama_local" — byte-identical
 # to v0.3.0 behavior. Operators flipping the env restart the server.
 from core.reasoning.backends import get_default_backend_id as _get_default_backend
+from core.reasoning.budget import TaskBudget, adaptive_budget_enabled
+
 DEFAULT_BACKEND_ID = _get_default_backend()
 DEFAULT_TIMEOUT_S = 10.0
-DEFAULT_MAX_TOKENS = 200
+# Legacy fixed cap — the runtime default until the experiment
+# (`scripts/research/v3prime_direction1_adaptive_budget.py`) validates
+# the dynamic-budget heuristic on real corpus. Adaptive budget is gated
+# behind `JAMES_ADAPTIVE_BUDGET=1` so PR #461 land is byte-identical
+# for any operator who hasn't opted in. V3' Protocol v1 default-off
+# invariant: a research feature ships with the experiment, not the wiring.
+DEFAULT_MAX_TOKENS = 4096
+
+
+# v0.4 Sprint 3 follow-up — local `_adaptive_budget_enabled` migrated to
+# `core.reasoning.budget.adaptive_budget_enabled` so the 5 reasoning
+# stages (query_rewriter / synth / planner / reflect / verify) all read
+# from one source of truth. The alias below preserves any external
+# imports of the underscored name (none observed in the repo, but the
+# helper has shipped since PR #461 so 3rd-party code could reference it).
+_adaptive_budget_enabled = adaptive_budget_enabled
+
+
+def _classify_budget_reason(cap: int) -> str:
+    """Map an adaptive-budget cap to a reason string for trace + JSON.
+
+    Used by the experiment driver to record *why* each cap was chosen
+    without re-running the heuristic on raw response data.
+    """
+    from core.reasoning.budget import CAP_HEAVY, CAP_LIGHT, CAP_SUBSTITUTION
+    if cap == CAP_SUBSTITUTION:
+        return "substitution_pattern"
+    if cap == CAP_HEAVY:
+        return "heavy_marker"
+    if cap == CAP_LIGHT:
+        return "default_light"
+    return f"unknown_cap_{cap}"
+
+
+def _trace_budget(*, stage: str, cap: int, query: str) -> None:
+    """Mirror the budget decision to stderr when JAMES_TRACE_STDOUT is on.
+
+    Single-line, prefix-tagged so operators can grep `[budget]` during
+    live verification. Includes the classification reason for visual
+    audit of the heuristic. Truncates the query to 60 chars for line
+    readability. Mirrors the JAMES_TRACE_STDOUT convention from
+    core/observability.py (default ON; disabled with `=0`/`false`/`no`).
+    """
+    if os.getenv("JAMES_TRACE_STDOUT", "1").strip().lower() in ("0", "false", "no", ""):
+        return
+    q = query.strip().replace("\n", " ")
+    if len(q) > 60:
+        q = q[:57] + "..."
+    reason = _classify_budget_reason(cap)
+    try:
+        print(
+            f"[budget] {stage} cap={cap} reason={reason} query={q!r}",
+            file=sys.stderr,
+            flush=True,
+        )
+    except Exception:
+        # Never let trace output wedge the actual request.
+        pass
 # Reject rewrites that balloon the query — usually a sign the LLM
 # elaborated instead of rewriting (e.g., explaining what the query is
 # rather than rephrasing it). 3× length is a generous bound.
@@ -79,14 +139,12 @@ def _enabled() -> bool:
     return os.environ.get("JAMES_ENABLE_QUERY_REWRITE") == "1"
 
 
-def _is_korean(text: str) -> bool:
-    """≥ 20% Korean character ratio matches the existing pipeline
-    heuristic in core/reasoning/{engine,modes,pipeline}.py.
-    """
-    if not text:
-        return False
-    korean_chars = sum(1 for c in text if "가" <= c <= "힣")
-    return korean_chars >= max(1, int(len(text) * 0.2))
+# v0.4 Sprint 1 #2 — unified language detection (see core/i18n.py).
+# Previously: ≥ 20% Korean threshold defined locally. Now the same
+# dominant-script comparison used by every reasoning stage +
+# engine_synth so a mixed query like "Palantir 분석" gets the same
+# Korean/English classification at every stage.
+from core.i18n import is_korean as _is_korean  # noqa: F401
 
 
 # Capture JSON object spanning the response. The LLM may pad with
@@ -134,11 +192,34 @@ class QueryRewriter:
         backend_id: str = DEFAULT_BACKEND_ID,
         *,
         timeout: float = DEFAULT_TIMEOUT_S,
-        max_tokens: int = DEFAULT_MAX_TOKENS,
+        max_tokens: Optional[int] = None,
+        budget: Optional[TaskBudget] = None,
     ) -> None:
+        """Construct a QueryRewriter.
+
+        `max_tokens` behaviour (Direction 1 Adaptive Budgeting wiring):
+          • int (e.g. `DEFAULT_MAX_TOKENS=4096`) — fixed cap; bypasses
+            TaskBudget and forces every call to this cap. The experiment
+            driver uses this for the **baseline** condition.
+          • `None` (default) — runtime decision:
+              - if `JAMES_ADAPTIVE_BUDGET=1` env flag is set, route through
+                `TaskBudget.assess()` per call (**treatment** condition).
+              - otherwise, fall back to `DEFAULT_MAX_TOKENS=4096` —
+                byte-identical to pre-D1.B behaviour.
+
+        `budget` is the injectable TaskBudget instance. Default is a fresh
+        stateless instance.
+
+        Direction 1 default-off invariant: PR #461 land must not change
+        the runtime cap requested by `query_rewriter` for any operator
+        who hasn't opted into the experiment. Validation that the dynamic
+        heuristic preserves answer quality is `scripts/research/
+        v3prime_direction1_adaptive_budget.py`'s job, not the wiring's.
+        """
         self._backend_id = backend_id
         self._timeout = timeout
         self._max_tokens = max_tokens
+        self._budget = budget if budget is not None else TaskBudget()
 
     def rewrite(
         self,
@@ -177,21 +258,74 @@ class QueryRewriter:
         if not force and not _enabled():
             return (query, 0, False)
 
-        try:
-            from core.reasoning.backends import get_backend
-            backend = get_backend(self._backend_id)
-        except Exception:
-            return (query, 0, False)
-
         prompt_tmpl = REWRITE_PROMPT_KO if _is_korean(query) else REWRITE_PROMPT_EN
         prompt = prompt_tmpl.format(query=query)
 
+        # D1.B — three-way cap resolution:
+        #   1. explicit int (constructor arg) → fixed cap (experiment baseline)
+        #   2. None + JAMES_ADAPTIVE_BUDGET=1 → dynamic via TaskBudget (treatment)
+        #   3. None + flag off → legacy DEFAULT_MAX_TOKENS=4096 (byte-identical)
+        # Default-off invariant: paths 1 and 3 produce the pre-D1.B cap.
+        if self._max_tokens is not None:
+            cap = self._max_tokens
+            _budget_for_router = None
+        elif adaptive_budget_enabled():
+            cap = self._budget.assess("query_rewriter", query)
+            _trace_budget(stage="query_rewriter", cap=cap, query=query)
+            # D5.C.2 — only when D1 dynamic budget is active do we feed
+            # a meaningful signal to the router. Under D1 flag-off the
+            # cap is fixed at DEFAULT_MAX_TOKENS=4096 which would
+            # unconditionally trigger the CAP_HEAVY routing branch —
+            # the wrong signal. Pass `None` and let the router fall
+            # back to legacy.
+            _budget_for_router = cap
+        else:
+            cap = DEFAULT_MAX_TOKENS
+            _budget_for_router = None
+
+        # D5.C.2 — flag-gated backend resolution. With JAMES_AUTO_ROUTER off
+        # `resolve_backend` returns `self._backend_id` (byte-identical to
+        # pre-D5). With flag on it consults the D5.C.1 policy (`_route_policy`).
+        try:
+            from core.reasoning.backends import get_backend
+            from core.reasoning.router import emit_route_event, resolve_backend
+
+            backend_id = resolve_backend(
+                "query_rewriter",
+                prompt,
+                budget_signal=_budget_for_router,
+                fallback_backend_id=self._backend_id,
+            )
+            backend = get_backend(backend_id)
+        except Exception:
+            return (query, 0, False)
+
+        # Audit row is emitted regardless of flag state — the routing
+        # decision (even when it is "fall back to legacy because flag
+        # off") is useful for diagnostics. Never raises (helper
+        # swallows audit failures).
+        emit_route_event(
+            "query_rewriter",
+            prompt,
+            backend_id,
+            budget_signal=_budget_for_router,
+            reason="auto" if _budget_for_router is not None else "fallback",
+        )
+
+        # D6 (2026-05-25) — D1 `retry_doubled` wiring closure. If the
+        # response is truncated at `cap` (done_reason="length"), the
+        # helper retries once with `retry_doubled(cap)` up to
+        # CAP_HEAVY. Backends that don't expose `done_reason` leave
+        # it empty → no retry — pre-D6 behavior preserved.
         t0 = time.time()
         try:
-            result = backend.complete(
+            from core.reasoning.budget import complete_with_retry
+            result = complete_with_retry(
+                backend,
                 prompt,
-                max_tokens=self._max_tokens,
+                cap=cap,
                 timeout=self._timeout,
+                stage="query_rewriter",
             )
         except Exception:
             return (query, int((time.time() - t0) * 1000), True)

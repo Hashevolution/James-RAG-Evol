@@ -17,7 +17,6 @@ PROJECT JAMES - Graph Engine (Phase 4.5)
 """
 
 import re
-import json
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -34,7 +33,6 @@ from core.ontology import (
     RELATION_TYPES,
 )
 
-SYSTEM_LOG_PATH      = "james_system_log.jsonl"
 CONFIDENCE_THRESHOLD = 0.6
 MAX_DEPTH            = 4
 DFS_SCORE_THRESHOLD  = 0.05
@@ -125,12 +123,6 @@ class GraphEngine:
             "role":   role,
         }
         try:
-            with open(SYSTEM_LOG_PATH, "a", encoding="utf-8") as f:
-                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        except Exception:
-            pass
-        # Phase 2: mirror to SQLite (see core/audit_bridge.py).
-        try:
             from core.audit_bridge import mirror_system_event
             mirror_system_event(entry)
         except Exception:
@@ -139,7 +131,15 @@ class GraphEngine:
     # ─── Entity Map Snapshot ─────────────────────────────────
 
     def build_entity_map_snapshot(self) -> Dict[Tuple[str, str], str]:
-        """정규화된 (entity_type, normalized_name) → entity_id 매핑"""
+        """정규화된 (entity_type, normalized_name) → entity_id 매핑
+
+        Sources merged (in order, first-write wins):
+          1. wiki entity frontmatter `name` (canonical)
+          2. wiki entity frontmatter `aliases:` list
+          3. cross-lingual alias pack (`core.entity_alias_pack`,
+             D5.D 2026-05-25) — augments KO↔EN surface forms when
+             the wiki entity's frontmatter hasn't listed them yet
+        """
         snapshot: Dict[Tuple[str, str], str] = {}
         for eid, filepath in self.wiki_generator.entity_id_index.items():
             try:
@@ -156,6 +156,34 @@ class GraphEngine:
                             snapshot[(e_type, an)] = eid
             except Exception as e:
                 self._log("entity_map_build", e)
+
+        # D5.D — cross-lingual alias pack augmentation. For each
+        # entry, find the wiki entity by canonical name (any type),
+        # then add the alias surface forms under the same type. If
+        # no wiki entity matches the canonical name, the pack entry
+        # is skipped (operator hasn't installed that entity).
+        try:
+            from core.entity_alias_pack import iter_entity_aliases
+
+            for canonical_name, aliases in iter_entity_aliases():
+                canonical_norm = self.wiki_generator._normalize_name(canonical_name)
+                if not canonical_norm:
+                    continue
+                matched_type = None
+                for t in ("org", "person", "concept", "document"):
+                    if snapshot.get((t, canonical_norm)):
+                        matched_type = t
+                        break
+                if not matched_type:
+                    continue
+                eid = snapshot[(matched_type, canonical_norm)]
+                for alias in aliases:
+                    alias_norm = self.wiki_generator._normalize_name(alias)
+                    if alias_norm and (matched_type, alias_norm) not in snapshot:
+                        snapshot[(matched_type, alias_norm)] = eid
+        except Exception as e:
+            self._log("entity_alias_pack", e)
+
         return snapshot
 
     def match_entities(

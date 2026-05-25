@@ -80,7 +80,14 @@ def _rows(db_path: str):
     conn.row_factory = sqlite3.Row
     try:
         return conn.execute(
-            "SELECT * FROM audit_log ORDER BY id ASC"
+            # Exclude D5.C.2-added 'reason:route' rows so the
+            # trace_helpers tests continue to count synth/etc. rows
+            # the way they did pre-D5. The 'reason:route' row is one
+            # per `resolve_backend` call (separate concern: routing
+            # audit, not synth call audit).
+            "SELECT * FROM audit_log "
+            "WHERE endpoint != 'reason:route' "
+            "ORDER BY id ASC"
         ).fetchall()
     finally:
         conn.close()

@@ -1,0 +1,42 @@
+name: security-scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Companion to .github/workflows/lint.yml (ruff F-class) and
+# .github/workflows/test.yml (pytest). Adds bandit SAST coverage for
+# common Python vulnerabilities — SQL/shell injection, weak crypto,
+# hardcoded passwords, yaml.load() abuse, insecure tempfile, etc.
+# Together with lint + tests, satisfies OpenSSF Best Practices
+# `static_analysis_common_vulnerabilities`.
+#
+# Severity policy: HIGH-only gate. Medium/low findings surface in
+# bandit's own log but do not block the PR. The bar lifts in a
+# follow-up once the current main is clean at medium severity.
+
+jobs:
+  bandit:
+    name: bandit (high-severity enforced)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install bandit
+        run: pip install 'bandit[toml]==1.7.10'
+
+      - name: Run bandit (high severity, source dirs only)
+        run: |
+          bandit -r core llm tools utils processors memory \
+            --severity-level high \
+            --format screen

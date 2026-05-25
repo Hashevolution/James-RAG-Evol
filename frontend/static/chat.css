@@ -234,6 +234,175 @@ main { display: flex; flex: 1; overflow: hidden; }
 }
 .sidebar.collapsed { width: 0; border-right: none; }
 
+/* v0.4 Sprint 2 #3a + #3b — model indicator chip + picker popover.
+   Sprint 2 #3a put the chip in the header logo cluster next to the
+   live-dot. Sprint 2 #3b wraps the chip in a positioned container so
+   the popover (model picker) can anchor absolutely below it. The
+   wrap carries the [hidden] attribute until chat.js
+   loadActiveModelChip() resolves; the chip button itself is always
+   visible once the wrap is shown. */
+.model-chip-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.model-chip-wrap[hidden] { display: none; }
+
+.model-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 10px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--text-soft);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s;
+  white-space: nowrap;
+}
+.model-chip:hover {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--accent);
+}
+.model-chip[aria-expanded="true"] {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.model-chip-icon { font-size: 12px; line-height: 1; }
+.model-chip-tag  { letter-spacing: .2px; }
+.model-chip-caret {
+  font-size: 9px;
+  opacity: .6;
+  margin-left: 2px;
+  transition: transform .15s;
+}
+.model-chip[aria-expanded="true"] .model-chip-caret {
+  transform: rotate(180deg);
+}
+/* Source badge — coloured edge marker for non-default resolution
+   (fallback / preference / any). When source === "requested" the
+   chip stays neutral (operator's config.GEMMA_MODEL won). */
+.model-chip[data-source="preference"] { border-color: var(--accent-soft, var(--border)); }
+.model-chip[data-source="any"]        { border-color: var(--warn, var(--accent-soft)); }
+.model-chip[data-source="none"]       { border-color: var(--error, var(--accent-soft)); color: var(--error, var(--text-soft)); }
+
+/* v0.4 Sprint 2 #3b — picker popover. Absolutely positioned below
+   the chip; click-to-open via [data-action="toggle-model-popover"]
+   in chat.js. Outside-click closes (document-level handler). */
+.model-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 10px;
+  min-width: 260px;
+  max-width: 360px;
+  z-index: 50;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  overflow: hidden;
+}
+.model-popover[hidden] { display: none; }
+.model-popover-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-2);
+  font-weight: 600;
+  color: var(--text);
+}
+.model-popover-hint {
+  font-weight: 400;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: .2px;
+}
+.model-popover-list {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.model-popover-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-soft);
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  transition: background .12s, color .12s;
+}
+.model-popover-row:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.model-popover-row.active {
+  background: var(--accent-soft);
+  color: var(--accent-fg, var(--text));
+}
+.model-popover-row.active::after {
+  content: '✓';
+  margin-left: auto;
+  font-family: var(--font-ui);
+  font-weight: 600;
+}
+.model-popover-row[disabled] {
+  opacity: .45;
+  cursor: not-allowed;
+}
+.model-popover-row-weight {
+  font-size: 11px;
+  width: 14px;
+  text-align: center;
+}
+.model-popover-empty {
+  padding: 16px 12px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+  font-family: var(--font-ui);
+}
+.model-popover-footer {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-2);
+  font-size: 11px;
+}
+.model-popover-admin-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+.model-popover-admin-link:hover {
+  text-decoration: underline;
+}
+
+/* v0.4 Sprint 2 #5 — hover auto-expand when collapsed.
+   Mouse over the open-btn rail strip (or the sidebar itself once it
+   peeks back into view) temporarily expands the sidebar without
+   requiring a click. JS-driven state (`.sidebar.collapsed` toggled
+   from `toggleSidebar`) is preserved — moving the mouse away
+   re-collapses. Explicit toggle-sidebar click still persists the open
+   state across hover-leave, so power users get both affordances. */
+.sidebar-open-btn:hover ~ .sidebar.collapsed,
+.sidebar.collapsed:hover {
+  width: 340px;
+  border-right: 1px solid var(--border-2);
+}
+
 .sidebar-rail {
   width: 56px;
   flex-shrink: 0;

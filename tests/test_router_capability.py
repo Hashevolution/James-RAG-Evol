@@ -16,10 +16,8 @@ Run:
 from __future__ import annotations
 
 import io
-import json
 import os
 import sys
-import tempfile
 import unittest
 from contextlib import redirect_stdout
 from unittest import mock
@@ -43,31 +41,39 @@ class _FakeTool:
 
 
 def _patch_audit_log():
-    """Redirect router audit log to a tempfile for the duration of a test.
+    """Capture entries that the router would mirror to the SQLite audit_log.
 
-    Returns (patcher, log_path). The caller is responsible for stopping
-    the patcher and reading log_path.
+    Phase 4 (Stage D.1, 2026-05-24) removed the legacy JSONL writer;
+    `core.audit_bridge.mirror_to_audit_db` is now the sole sink. The
+    test captures the entries via side_effect so assertions on event
+    shape / fields stay byte-identical to the pre-Phase-4 contract
+    (the entry dict the router builds is unchanged — only the sink
+    swapped from JSONL file to SQLite row).
+
+    Returns (patcher, captured_list). The caller stops the patcher
+    in tearDown and reads `captured_list` via `_read_log`.
     """
-    tmp = tempfile.NamedTemporaryFile(
-        mode="w", suffix=".jsonl", delete=False, encoding="utf-8",
+    captured: list = []
+
+    def _capture(entry, *args, **kwargs):
+        captured.append(entry)
+        return True
+
+    import core.audit_bridge as bridge_mod
+    patcher = mock.patch.object(
+        bridge_mod, "mirror_to_audit_db", side_effect=_capture,
     )
-    tmp.close()
-    import tools.router as router_mod
-    patcher = mock.patch.object(router_mod, "AUDIT_LOG_PATH", tmp.name)
     patcher.start()
-    return patcher, tmp.name
+    return patcher, captured
 
 
-def _read_log(path: str) -> list:
-    if not os.path.exists(path):
-        return []
-    with open(path, "r", encoding="utf-8") as f:
-        return [json.loads(line) for line in f if line.strip()]
+def _read_log(captured: list) -> list:
+    return list(captured)
 
 
 class RouterCapabilityGateTests(unittest.TestCase):
     def setUp(self):
-        self.patcher, self.log_path = _patch_audit_log()
+        self.patcher, self.captured = _patch_audit_log()
         # Router prints emoji-laden status lines; on Windows cp949 stdout
         # this raises UnicodeEncodeError under unittest. Redirect to a
         # StringIO for the duration of each test — the audit log on disk
@@ -87,10 +93,6 @@ class RouterCapabilityGateTests(unittest.TestCase):
         reg.TOOLS.update(self._saved_tools)
         self._stdout_ctx.__exit__(None, None, None)
         self.patcher.stop()
-        try:
-            os.unlink(self.log_path)
-        except OSError:
-            pass
 
     # ─── fs.read (relaxed to employee+) ───────────────────────────
 
@@ -165,7 +167,7 @@ class RouterCapabilityGateTests(unittest.TestCase):
             {"name": "read_file", "input": {"path": "./workspace/x.py"}},
             {"user_role": "admin"},
         )
-        entries = _read_log(self.log_path)
+        entries = _read_log(self.captured)
         executed = [e for e in entries if e["event"] == "TOOL_EXECUTED"]
         self.assertTrue(executed, msg=f"no TOOL_EXECUTED in {entries}")
         e = executed[-1]
@@ -179,7 +181,7 @@ class RouterCapabilityGateTests(unittest.TestCase):
             {"name": "code_editor", "input": {"path": "./workspace/x.py"}},
             {"user_role": "employee"},
         )
-        entries = _read_log(self.log_path)
+        entries = _read_log(self.captured)
         denied = [e for e in entries if e["event"] == "CAPABILITY_DENIED"]
         self.assertTrue(denied, msg=f"no CAPABILITY_DENIED in {entries}")
         self.assertTrue(denied[0]["cap_denied"])

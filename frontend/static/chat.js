@@ -115,6 +115,9 @@ function _bindFrontendEvents() {
       // Sidebar
       case 'toggle-sidebar':            toggleSidebar(); break;
       case 'switch-sidebar-mode':       switchSidebarMode(t.getAttribute('data-mode')); break;
+      // v0.4 Sprint 2 #3b — model picker popover
+      case 'toggle-model-popover':      toggleModelPopover(); break;
+      case 'pick-model':                pickModelFromPopover(t.getAttribute('data-model-tag')); break;
       case 'trigger-file-input':
         document.getElementById('file-input').click();
         break;
@@ -232,7 +235,32 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // item #6: 모드 picker 옵션 로드 + 자동 추천 등록
   try { loadModePickerOptions(); } catch (e) { console.warn('[JAMES] mode picker 로드 실패:', e); }
+  // v0.4 Sprint 2 #3b — restore session override before chip renders
+  // so the chip shows the override on first paint, not the resolver
+  // tag flashing through to the override on the next tick.
+  try {
+    const saved = localStorage.getItem(_modelKey('chip'));
+    if (saved) selectedModel = saved;
+  } catch (_) {}
+  // v0.4 Sprint 2 #3a — header chip showing the currently active
+  // chat model. Independent from mode picker (mode picker shows
+  // dropdown options; chip shows which model resolve_chat() picked
+  // for the next request — env / preference / fallback).
+  try { loadActiveModelChip(); } catch (e) { console.warn('[JAMES] model chip 로드 실패:', e); }
 });
+
+// Re-render the mode dropdown when the operator toggles language so the
+// EN/KO labels (mode.* i18n keys from server_llmwiki.py:1207) take
+// effect immediately. i18n.js setLang() fires this hook after the
+// applyTranslations sweep (which only handles [data-i18n] nodes — the
+// <option> elements are rendered from JS data, not data-i18n, so they
+// need an explicit re-render).
+window.onLangChange = function() {
+  try { loadModePickerOptions(); } catch (e) { console.warn('[JAMES] mode picker re-render 실패:', e); }
+  // Sprint 2 #3a — chip tooltip changes with lang. Refresh in place
+  // (data-source attr + tag span stay; only title attr is rebuilt).
+  try { loadActiveModelChip(); } catch (e) { console.warn('[JAMES] model chip re-render 실패:', e); }
+};
 
 /* ── item #6: 모드 picker + 자동 추천 ──
    서버에서 role-allowed 모드 옵션을 받아 dropdown 채움. 사용자 입력에
@@ -249,6 +277,184 @@ let recommendedMode = '';       // last-recommended (auto-suggest)
    동일 선택을 유지. */
 function _modelKey(mode) { return `james_model_${mode}`; }
 
+/* v0.4 Sprint 2 #3a — model indicator chip.
+
+   GET /llm/active returns {tag, source, warning} from
+   core/model_resolver.resolve_chat(). Renders the tag into the
+   header chip and tags `data-source` so CSS can edge-colour
+   non-default resolutions (preference / any / none warn/error
+   tints). Tooltip surfaces the resolution source + any warning
+   text from the resolver so operators see why a fallback fired
+   without opening the admin page.
+
+   Re-runs on lang toggle (window.onLangChange) so the title
+   attribute follows the active language. Re-runs after every
+   /admin/llm/install or /admin/llm/select operation would be
+   ideal, but those happen on the admin page (different document),
+   so the chat chip relies on a per-page-load fetch + the resolver
+   cache TTL (60s) for freshness. */
+async function loadActiveModelChip() {
+  const wrap = document.getElementById('model-chip-wrap');
+  const chip = document.getElementById('model-chip');
+  const tagEl = document.getElementById('model-chip-tag');
+  if (!wrap || !chip || !tagEl) return;
+  try {
+    const r = await fetch(
+      `${API}/llm/active?api_key=${encodeURIComponent(getApiKey())}`,
+      { headers: getAuthHeaders() },
+    );
+    if (!r.ok) return;            // unauthorised → leave chip hidden
+    const data = await r.json();
+    const tag = (data.tag || '').trim();
+    if (!tag) {
+      // No models installed at all — show a clear "set up" affordance.
+      tagEl.textContent = t('model.chip_none') || '미설치';
+      chip.setAttribute('data-source', 'none');
+      chip.title = data.warning || (t('model.chip_title_none') || 'No model installed — click to set up');
+      wrap.hidden = false;
+      return;
+    }
+    // v0.4 Sprint 2 #3b — if user has picked an override in the popover,
+    // surface that instead of the resolver's choice. The override takes
+    // effect on the next chat request via selected_model in /query/.
+    const override = (selectedModel || '').trim();
+    const displayTag = override || tag;
+    tagEl.textContent = displayTag;
+    chip.setAttribute('data-source', override ? 'override' : (data.source || 'requested'));
+    // Remember the resolver pick so the popover can mark it as the
+    // "default" row even when an override is active.
+    chip.dataset.resolverTag = tag;
+    // Tooltip — base label + source + optional warning. Stays
+    // single-line so the title hover surface is compact.
+    const baseTitle = t('model.chip_title') || '현재 응답에 사용 중인 모델 — 클릭 시 변경';
+    const sourceLbl = override
+      ? (t('model.source.override') || 'session override')
+      : (t('model.source.' + (data.source || 'requested')) || (data.source || ''));
+    chip.title = data.warning
+      ? `${baseTitle}\n[${sourceLbl}] ${data.warning}`
+      : `${baseTitle}\n[${sourceLbl}]`;
+    wrap.hidden = false;
+  } catch (e) {
+    console.warn('[JAMES] /llm/active fetch 실패:', e);
+  }
+}
+
+/* v0.4 Sprint 2 #3b — picker popover.
+
+   `toggleModelPopover()` flips the popover open/closed and, on first
+   open, populates the model list by aggregating installed models from
+   MODE_OPTIONS (already fetched by loadModePickerOptions). This keeps
+   the picker offline-safe: even if MODE_OPTIONS hasn't loaded yet, the
+   resolver's tag (from /llm/active, captured on the chip dataset)
+   still appears as a single row so the popover is never empty.
+
+   Selection writes to `selectedModel` (the same global the mode-picker
+   updates), so the next /query/ request carries it as `selected_model`.
+   localStorage persistence reuses `_modelKey('chip')` so an override
+   survives page reload. The popover footer keeps the admin link for
+   power users who want full installation management. */
+function toggleModelPopover(force) {
+  const chip = document.getElementById('model-chip');
+  const pop  = document.getElementById('model-popover');
+  if (!chip || !pop) return;
+  const wantOpen = (typeof force === 'boolean')
+    ? force
+    : pop.hidden;
+  if (wantOpen) {
+    populateModelPopover();
+    pop.hidden = false;
+    chip.setAttribute('aria-expanded', 'true');
+  } else {
+    pop.hidden = true;
+    chip.setAttribute('aria-expanded', 'false');
+  }
+}
+
+function populateModelPopover() {
+  const list = document.getElementById('model-popover-list');
+  const chip = document.getElementById('model-chip');
+  if (!list) return;
+  // Aggregate installed models across MODE_OPTIONS (loaded by
+  // loadModePickerOptions). Distinct by tag. Weight info follows the
+  // first occurrence — gives the picker some texture without
+  // re-deduplicating per-mode preferences.
+  const seen = new Map();
+  for (const m of (MODE_OPTIONS || [])) {
+    for (const c of (m.models || [])) {
+      if (!c || !c.tag) continue;
+      if (!seen.has(c.tag)) {
+        seen.set(c.tag, {
+          tag: c.tag,
+          weight: c.weight || 'medium',
+          installed: !!c.installed,
+        });
+      }
+    }
+  }
+  // Resolver's current pick — always include even if MODE_OPTIONS is
+  // empty (offline / first paint), so the popover is never empty when
+  // the chip is visible.
+  const resolverTag = chip ? chip.dataset.resolverTag : '';
+  if (resolverTag && !seen.has(resolverTag)) {
+    seen.set(resolverTag, { tag: resolverTag, weight: 'medium', installed: true });
+  }
+  const rows = [...seen.values()].sort((a, b) => a.tag.localeCompare(b.tag));
+  if (rows.length === 0) {
+    list.innerHTML = `<div class="model-popover-empty">${
+      escHtml(t('model.popover_empty') || '설치된 모델이 없습니다. Admin → LLM 설치 참조.')
+    }</div>`;
+    return;
+  }
+  const active = (selectedModel || '').trim();
+  const weightIcon = w => w === 'light' ? '🪶'
+                       : w === 'heavy' ? '🐘'
+                       : '⚖️';
+  list.innerHTML = rows.map(r => {
+    const isActive = active === r.tag;
+    const isDefault = !active && resolverTag === r.tag;
+    const disabled = !r.installed;
+    return `<button type="button"
+              class="model-popover-row${(isActive || isDefault) ? ' active' : ''}"
+              data-action="pick-model"
+              data-model-tag="${escHtml(r.tag)}"
+              ${disabled ? 'disabled' : ''}
+              role="option"
+              aria-selected="${(isActive || isDefault) ? 'true' : 'false'}">
+              <span class="model-popover-row-weight">${weightIcon(r.weight)}</span>
+              <span>${escHtml(r.tag)}</span>
+              ${disabled ? `<span style="font-size:10px;color:var(--muted);margin-left:auto">${
+                escHtml(t('mode.not_installed') || '⚠️ 미설치')
+              }</span>` : ''}
+            </button>`;
+  }).join('');
+}
+
+function pickModelFromPopover(tag) {
+  const cleaned = (tag || '').trim();
+  if (!cleaned) return;
+  selectedModel = cleaned;
+  // Persist for the chat session — reuses the existing _modelKey naming
+  // pattern (`james_model_<mode>`); 'chip' is the per-session override
+  // distinct from per-mode picker keys.
+  try { localStorage.setItem(_modelKey('chip'), cleaned); } catch (_) {}
+  // Refresh chip label + tooltip (loadActiveModelChip honours the
+  // override) and close the popover.
+  loadActiveModelChip();
+  toggleModelPopover(false);
+}
+
+// Outside-click closes the popover. Document-level capture so any
+// click in the page (header, sidebar, chat area) hits this before
+// individual handlers. The chip's own click is allowed through —
+// .closest('#model-chip-wrap') matches when the click is the trigger
+// or anywhere inside the popover container.
+document.addEventListener('click', (e) => {
+  const pop = document.getElementById('model-popover');
+  if (!pop || pop.hidden) return;
+  if (e.target.closest && e.target.closest('#model-chip-wrap')) return;
+  toggleModelPopover(false);
+});
+
 async function loadModePickerOptions() {
   try {
     const r = await fetch(`${API}/llm/modes/?api_key=${encodeURIComponent(getApiKey())}`, {
@@ -262,11 +468,23 @@ async function loadModePickerOptions() {
     // item #6: 옵션 라벨에 실제 모델명 + 설치 상태 표시
     sel.innerHTML = MODE_OPTIONS.map(m => {
       const modelTag = m.model ? ` (${m.model})` : '';
-      const status = m.installed ? '' : ' ⚠️ 미설치';
+      // Mode dropdown labels honour the active language. Backend supplies
+      // label_key (PR #398, mode.* namespace) and the i18n table provides
+      // EN/KO translations. Falls back to the backend's `label` if the
+      // table misses the key (e.g., installs without i18n.js loaded).
+      const labelTxt = m.label_key
+        ? (t(m.label_key) || m.label)
+        : m.label;
+      const descTxt = m.desc_key
+        ? (t(m.desc_key) || m.desc || '')
+        : (m.desc || '');
+      const status = m.installed
+        ? ''
+        : ' ' + (t('mode.not_installed') || '⚠️ 미설치');
       return `<option value="${escHtml(m.key)}"
-                      title="${escHtml(m.desc || '')}${modelTag}"
+                      title="${escHtml(descTxt)}${modelTag}"
                       data-model="${escHtml(m.model || '')}"
-                      data-installed="${m.installed ? '1' : '0'}">${escHtml(m.label)}${escHtml(modelTag)}${status}</option>`;
+                      data-installed="${m.installed ? '1' : '0'}">${escHtml(labelTxt)}${escHtml(modelTag)}${status}</option>`;
     }).join('');
     sel.value = selectedMode;
     refreshModelPicker();
@@ -388,62 +606,9 @@ function updateInstallButton() {
    클라는 2.5s 간격으로 GET /admin/llm/install-progress?model=... 폴링.
    설치 버튼이 "📦 X 설치" → "⏳ 23.5% (X)" → "✅ 설치됨" 으로 라이브 갱신.
    사용자가 다른 페이지로 이동해도 서버 백그라운드 thread는 계속 돌아감. */
-let _installPollTimer = null;
-
-function _stopInstallPoll() {
-  if (_installPollTimer) { clearInterval(_installPollTimer); _installPollTimer = null; }
-}
-
-async function _pollInstallProgress(model, btn) {
-  try {
-    const r = await fetch(
-      `${API}/admin/llm/install-progress?api_key=${encodeURIComponent(getApiKey())}&model=${encodeURIComponent(model)}`,
-      { headers: getAuthHeaders() },
-    );
-    if (!r.ok) {
-      // 401이면 admin 권한 잃음 — poll 중단.
-      if (r.status === 401) _stopInstallPoll();
-      return;
-    }
-    const p = await r.json();
-    if (!btn || !btn.isConnected) {
-      // 버튼이 사라졌으면 (모드 picker 재로드 등) — 최소 한 번 더 알림.
-      _stopInstallPoll();
-      return;
-    }
-    if (p.error) {
-      btn.textContent = `❌ ${model} 실패`;
-      btn.title = p.error;
-      _stopInstallPoll();
-      btn.disabled = false;
-      toast(`설치 실패: ${p.error}`, 'error');
-      return;
-    }
-    if (p.done) {
-      btn.textContent = `✅ ${model} 설치 완료`;
-      btn.style.background = 'rgba(76,175,125,.18)';
-      _stopInstallPoll();
-      btn.disabled = true;   // 완료된 모델은 다시 설치 불필요
-      toast(`✅ ${model} 설치 완료`, 'success');
-      // 모드 picker 갱신 → installed=true로 라벨 새로고침
-      setTimeout(loadModePickerOptions, 600);
-      return;
-    }
-    // 진행 중 — percent 또는 status 표시.
-    const pctStr = p.percent != null ? `${p.percent}%` : '';
-    const statusStr = p.status || '진행 중';
-    if (p.percent != null) {
-      btn.textContent = `⏳ ${pctStr} (${model})`;
-    } else {
-      btn.textContent = `⏳ ${statusStr}...`;
-    }
-    btn.title = `${model} 설치 — ${statusStr}${p.completed != null && p.total != null ?
-      ` (${(p.completed/1e9).toFixed(2)}/${(p.total/1e9).toFixed(2)} GB)` : ''}`;
-  } catch (e) {
-    // 네트워크 일시 단절 — 다음 tick에 다시 시도. 폴링 멈추진 않음.
-    console.warn('[install-poll]', e);
-  }
-}
+// HTTP + 폴링 메커니즘은 llm-install.js의 LlmInstall.start()가 담당.
+// 여기는 mode-install-btn UI 렌더링만.
+let _installController = null;
 
 async function triggerModelInstall() {
   const btn = document.getElementById('mode-install-btn');
@@ -459,24 +624,39 @@ async function triggerModelInstall() {
   if (!confirm(`Ollama에 ${model} 모델을 설치합니다.\n수 GB 다운로드 — 백그라운드로 진행됩니다.\n진행 중에도 다른 페이지 이동 가능합니다.\n계속할까요?`)) return;
   btn.textContent = '⏳ 설치 시작...';
   btn.disabled = true;
-  try {
-    const r = await fetch(`${API}/llm/install/?api_key=${encodeURIComponent(getApiKey())}&model=${encodeURIComponent(model)}`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-    });
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      throw new Error(err.detail || `HTTP ${r.status}`);
-    }
-    // 설치 시작 OK — 진행률 폴링 시작.
-    _stopInstallPoll();   // 이전 폴링 잔재 제거
-    _pollInstallProgress(model, btn);   // 즉시 1회
-    _installPollTimer = setInterval(() => _pollInstallProgress(model, btn), 2500);
-  } catch (e) {
-    toast(`설치 실패: ${e.message}`, 'error');
-    btn.disabled = false;
-    btn.textContent = `📦 ${model} 설치`;
-  }
+  if (_installController) _installController.stop();
+  _installController = LlmInstall.start(model, {
+    onProgress(p) {
+      // 버튼이 사라졌으면 (모드 picker 재로드 등) — 폴링 중단.
+      if (!btn || !btn.isConnected) { _installController.stop(); return; }
+      const statusStr = p.status || '진행 중';
+      if (p.percent != null) {
+        btn.textContent = `⏳ ${p.percent}% (${model})`;
+      } else {
+        btn.textContent = `⏳ ${statusStr}...`;
+      }
+      btn.title = `${model} 설치 — ${statusStr}${p.completed != null && p.total != null ?
+        ` (${(p.completed/1e9).toFixed(2)}/${(p.total/1e9).toFixed(2)} GB)` : ''}`;
+    },
+    onDone() {
+      if (btn && btn.isConnected) {
+        btn.textContent = `✅ ${model} 설치 완료`;
+        btn.style.background = 'rgba(76,175,125,.18)';
+        btn.disabled = true;   // 완료된 모델은 다시 설치 불필요
+      }
+      toast(`✅ ${model} 설치 완료`, 'success');
+      // 모드 picker 갱신 → installed=true로 라벨 새로고침
+      setTimeout(loadModePickerOptions, 600);
+    },
+    onError(e) {
+      if (btn && btn.isConnected) {
+        btn.textContent = `❌ ${model} 실패`;
+        btn.title = e.message;
+        btn.disabled = false;
+      }
+      toast(`설치 실패: ${e.message}`, 'error');
+    },
+  });
 }
 
 function acceptModeRecommend() {
@@ -702,59 +882,34 @@ async function doLogin() {
   const apiKeyInput = document.getElementById('login-api-key');
   const apiKeyEntered = (apiKeyInput?.value || '').trim();
   const apiKeyToUse = apiKeyEntered || getApiKey();
-  const errEl    = document.getElementById('login-error');
+  const errEl = document.getElementById('login-error');
   errEl.textContent = '';
 
-  if (!username || !password) {
-    errEl.textContent = '아이디와 비밀번호를 입력하세요.';
-    return;
-  }
-  if (!apiKeyToUse) {
-    errEl.textContent = 'API Key를 입력하세요. (.env의 JAMES_API_KEY)';
-    apiKeyInput?.focus();
-    return;
-  }
   // 새로 입력된 값이면 localStorage에 저장 (다음 로그인 시 pre-fill).
   if (apiKeyEntered && apiKeyEntered !== getApiKey()) {
     localStorage.setItem('james_api_key', apiKeyEntered);
   }
 
-  try {
-    const r = await fetch(`${API}/login/`, {
-      method:  'POST',
-      headers: {'Content-Type': 'application/json'},
-      body:    JSON.stringify({
-        username, password,
-        api_key: apiKeyToUse,
-      }),
-    });
-
-    const data = await r.json();
-
-    if (!r.ok) {
-      errEl.textContent = data.detail || '로그인 실패';
-      return;
-    }
-
-    // 토큰 저장 [#A8-4 SSO]
-    token    = data.access_token;
-    userRole = data.role || 'employee';
-    localStorage.setItem('james_token', token);
-    localStorage.setItem('james_role',  userRole);
-
-    closeLogin();
-    updateRoleBadge();
-    // [item #1] role 변경 시 install 버튼 가시성 즉시 갱신
-    // (admin login → 미설치 모델 선택 중이면 즉시 버튼 노출, 반대로
-    //  external/employee로 다시 로그인하면 즉시 숨김)
-    try { updateInstallButton(); } catch (_) {}
-    document.getElementById('login-pw').value = '';
-
-    toast(`✅ ${username} (${userRole}) 로그인 완료`, 'success');
-
-  } catch (e) {
-    errEl.textContent = `서버 오류: ${e.message}`;
+  const res = await Auth.login({ username, password, apiKey: apiKeyToUse });
+  if (!res.ok) {
+    errEl.textContent = res.error;
+    if (res.error.includes('API Key')) apiKeyInput?.focus();
+    return;
   }
+
+  // 토큰 저장은 Auth.login이 localStorage에 했음 — 로컬 변수만 동기화.
+  token    = res.token;
+  userRole = res.role || 'employee';
+
+  closeLogin();
+  updateRoleBadge();
+  // [item #1] role 변경 시 install 버튼 가시성 즉시 갱신
+  // (admin login → 미설치 모델 선택 중이면 즉시 버튼 노출, 반대로
+  //  external/employee로 다시 로그인하면 즉시 숨김)
+  try { updateInstallButton(); } catch (_) {}
+  document.getElementById('login-pw').value = '';
+
+  toast(`✅ ${username} (${userRole}) 로그인 완료`, 'success');
 }
 
 function logout() {
@@ -897,31 +1052,15 @@ function closeForgotPasswordOutside(e) {
 
 async function submitPasswordReset() {
   const username = document.getElementById('reset-username').value.trim();
-  const token    = document.getElementById('reset-token').value.trim();
-  const newPw    = document.getElementById('reset-new-pw').value;
-  const errEl    = document.getElementById('reset-error');
+  const token = document.getElementById('reset-token').value.trim();
+  const newPw = document.getElementById('reset-new-pw').value;
+  const errEl = document.getElementById('reset-error');
   errEl.textContent = '';
-  if (!username || !token || !newPw) {
-    errEl.textContent = '아이디, 토큰, 새 비밀번호를 모두 입력하세요.';
-    return;
-  }
-  try {
-    const r = await fetch(`${API}/password/reset/confirm`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ username, token, new_password: newPw }),
-    });
-    if (r.ok) {
-      toast('✅ 비밀번호가 재설정되었습니다. 새 비밀번호로 로그인하세요.', 'success');
-      closeForgotPasswordModal();
-      return;
-    }
-    let detail = `${r.status}`;
-    try { detail = (await r.json()).detail || detail; } catch (_e) {}
-    errEl.textContent = detail;
-  } catch (e) {
-    errEl.textContent = `서버 오류: ${e.message}`;
-  }
+
+  const res = await Auth.resetPasswordConfirm({ username, token, newPassword: newPw });
+  if (!res.ok) { errEl.textContent = res.error; return; }
+  toast('✅ 비밀번호가 재설정되었습니다. 새 비밀번호로 로그인하세요.', 'success');
+  closeForgotPasswordModal();
 }
 
 async function doSignup() {
@@ -2357,15 +2496,17 @@ function jamesConfirm(opts) {
   });
 }
 
-/* ── [P3-4] 세션 선택 ── */
-let _sessionPanelOpen = false;
-
-async function toggleSessionPanel() {
-  _sessionPanelOpen = !_sessionPanelOpen;
-  const panel = document.getElementById('session-panel');
-  if (!panel) return;
-  panel.style.display = _sessionPanelOpen ? 'block' : 'none';
-  if (_sessionPanelOpen) await loadSessionList();
+/* ── [P3-4 → sidebar, 2026-05-21] 세션 선택 ──
+   세션 리스트는 사이드바 'sessions' 모드로 이동. 상단 헤더 💬 버튼은
+   이전 플로팅 패널의 open/close 토글 의미를 유지: 현재 sessions 모드
+   면 닫기(=기본 'upload'로 복귀), 아니면 sessions로 전환.
+   switchSidebarMode 가 sessions 진입 시 loadSessionList 를 호출하므로
+   리스트는 자동 로드된다. 직접 rail 💬 아이콘 클릭도 동일 경로. */
+function toggleSessionPanel() {
+  if (typeof switchSidebarMode !== 'function') return;
+  const railActive = document.querySelector('.sidebar-rail-item.active');
+  const currentMode = railActive?.dataset?.mode;
+  switchSidebarMode(currentMode === 'sessions' ? 'upload' : 'sessions');
 }
 
 async function loadSessionList() {
@@ -2501,14 +2642,13 @@ async function deleteSession(sessionId, event) {
 
 async function switchSession(sessionId) {
   if (sessionId === SESSION_ID) {
-    toggleSessionPanel();
+    // already on this session — nothing to do (sidebar stays as-is)
     return;
   }
   // 세션 전환: sessionStorage 업데이트 + 히스토리 로드
   localStorage.setItem('james_session', sessionId);
   // [N-3 fix] in-memory SESSION_ID / HISTORY_KEY 동기 (newSession 과 동일).
   refreshSessionGlobals();
-  toggleSessionPanel();
 
   // 현재 메시지 초기화 후 해당 세션 히스토리 표시
   const messages = document.getElementById('messages');
@@ -2524,6 +2664,8 @@ async function switchSession(sessionId) {
 
     if (!turns.length) {
       toast('선택한 세션에 대화 기록이 없습니다', 'info');
+      // refresh sidebar list so the active highlight follows.
+      loadSessionList().catch(() => {});
       return;
     }
 
@@ -2545,6 +2687,8 @@ async function switchSession(sessionId) {
     const badge = document.getElementById('session-count-badge');
     if (badge) badge.textContent = '✓';
     toast(`세션 전환 완료 (${turns.length/2}턴)`, 'success');
+    // refresh sidebar list so the active highlight follows the new session.
+    loadSessionList().catch(() => {});
   } catch(e) {
     toast(`세션 로드 실패: ${e.message}`, 'error');
   }
@@ -2557,11 +2701,12 @@ function newSession() {
   // [N-3 fix] in-memory SESSION_ID / HISTORY_KEY 도 동기. 안 그러면
   // 다음 query 가 옛 SID 로 전송되어 backend N-3 게이트가 못 풀림.
   refreshSessionGlobals();
-  toggleSessionPanel();
 
   // 화면 초기화
   const messages = document.getElementById('messages');
   if (messages) messages.innerHTML = '';
   document.getElementById('welcome')?.style?.setProperty('display', 'flex');
   toast('새 대화를 시작합니다', 'success');
+  // refresh sidebar list so the new session appears at top.
+  loadSessionList().catch(() => {});
 }

@@ -358,10 +358,95 @@ class EpisodicMemory:
             return cur.rowcount
 
 
+# ─── module-level singleton + wiring helper (PR-9b) ─────────────────
+# Cognitive stages (planner / reflect / verify / synth) share a single
+# EpisodicMemory instance so they reuse the same SQLite connection
+# pool / schema-init pass. Pattern mirrors `get_planner()` in
+# core/reasoning/planner.py.
+
+import threading as _threading
+
+_SINGLETON: Optional[EpisodicMemory] = None
+_SINGLETON_LOCK = _threading.Lock()
+
+
+def get_episodic_memory() -> EpisodicMemory:
+    """Process-wide singleton. Lazily constructs on first call so import
+    of this module doesn't touch the filesystem until a stage actually
+    records something.
+    """
+    global _SINGLETON
+    if _SINGLETON is None:
+        with _SINGLETON_LOCK:
+            if _SINGLETON is None:
+                _SINGLETON = EpisodicMemory()
+    return _SINGLETON
+
+
+def _clear_singleton_for_tests() -> None:
+    """Test helper. Production code never calls this."""
+    global _SINGLETON
+    with _SINGLETON_LOCK:
+        _SINGLETON = None
+
+
+def record_event(
+    *,
+    stage:    str,
+    summary:  str,
+    score:    float = 0.0,
+    extras:   Optional[Dict[str, Any]] = None,
+) -> Optional[str]:
+    """Thin wiring helper for cognitive stages.
+
+    Reads ``(session_id, turn_id)`` from the
+    ``core.observability.current_session`` ContextVar set by
+    ``engine.query()`` at turn start, plus ``trace_id`` from the
+    existing trace ContextVar, then forwards to
+    ``EpisodicMemory.record()``.
+
+    Returns the new ``event_id`` on success, ``None`` on any failure
+    (no session_id bound, unknown stage, store unavailable). Best-effort
+    by design: a stage failing to write episodic must never propagate
+    into the reasoning loop or fail the live query.
+
+    Stage typos are caught loudly only when KNOWN_STAGES validation
+    fires inside ``record()``; here the exception is swallowed and
+    logged as a print to stderr so the operator notices on the trace
+    console.
+    """
+    try:
+        from core.observability import get_session_context, get_trace_id
+        session_id, turn_id = get_session_context()
+        if not session_id or not turn_id:
+            return None
+        return get_episodic_memory().record(
+            session_id=session_id,
+            turn_id=turn_id,
+            stage=stage,
+            summary=summary,
+            score=score,
+            extras=extras or {},
+            trace_id=get_trace_id(),
+        )
+    except Exception as e:
+        # Swallow — episodic is best-effort. Operator sees the gap
+        # via missing replay rows, not via crashed queries.
+        try:
+            import sys
+            print(f"[episodic] record_event({stage}) failed: "
+                  f"{type(e).__name__}: {e}", file=sys.stderr)
+        except Exception:
+            pass
+        return None
+
+
 __all__ = [
     "EpisodicEvent",
     "EpisodicMemory",
     "KNOWN_STAGES",
     "MAX_SUMMARY_CHARS",
     "DEFAULT_EPISODIC_DB",
+    "get_episodic_memory",
+    "record_event",
 ]

@@ -261,6 +261,38 @@ async def on_startup():
     """서버 시작 시 자동 실행."""
     import asyncio
 
+    # [PR-C5b 2026-05-23] Plugin pack loader — JAMES_PACKS env-driven.
+    # Reads packs/general/ (and any operator-listed packs) at startup,
+    # validates each manifest, and populates core/plugins/registry. In
+    # v0.3 the registry is populated but not yet *consumed* — consumer
+    # wiring lands in PR-C5c when core/reasoning/modes/ +
+    # core/retrieval/ start reading the registered Protocol instances.
+    # Therefore STEP 7 results are byte-identical at this point (the
+    # registry exists but no code path reads from it).
+    #
+    # Failure semantics: ``PluginLoadError`` and ``PluginVersionError``
+    # are intentionally propagated and will halt server startup, per the
+    # design memo's "no silent fallback" contract. An operator who has
+    # broken JAMES_PACKS (typo'd pack name, corrupt manifest, SemVer
+    # mismatch) sees the failure at startup, not 30 minutes later when
+    # the first query lands. See docs/PLUGIN_AUTHORING.md §5.
+    try:
+        from core.plugins.loader import load_packs_from_env
+        from core.plugins.registry import get_registry
+        manifests = load_packs_from_env()
+        counts = get_registry().slot_counts()
+        pack_list = ", ".join(f"{m.name} v{m.version}" for m in manifests)
+        print(
+            f"[PLUGINS] loaded {len(manifests)} pack(s): {pack_list} — "
+            f"slots: ontology={counts['ontology']}, prompts={counts['prompts']}, "
+            f"ui={counts['ui']}, scorers={counts['scorers']}"
+        )
+    except ImportError as _import_exc:
+        # Defensive only — core.plugins lands in v0.3. An ImportError
+        # here means the package is missing entirely (likely a partial
+        # checkout); print and continue so the rest of startup proceeds.
+        print(f"[PLUGINS] skipped — package not importable: {_import_exc}")
+
     # #81 phase 3-C: prune trace files older than the retention window
     # so reports/trace/ doesn't grow unbounded over weeks of usage.
     # One-shot per process restart — operators wanting more frequent
@@ -1204,38 +1236,57 @@ async def llm_modes(api_key: str, role: str = Depends(get_role_from_request)):
             })
         return out
 
+    # `label_key` / `desc_key` follow the i18n contract used elsewhere
+    # in the admin UI (LLM_TASK_TYPES, PROTECTED_CANDIDATES, Feature,
+    # CAPABILITIES, TRAITS — PR #393/#394/#395/#396/#397 series).
+    # frontend chat.js binds via data-i18n and falls back to label/desc
+    # on i18n table miss.
     options = [
         {"key": "auto",     "label": "🤖 자동",
+         "label_key": "mode.auto",
          "desc": "질문 의도를 자동 분류 (기본)",
+         "desc_key": "mode.auto_desc",
          "keywords": [],
          "model": "", "installed": True, "models": []},
         {"key": "chat",     "label": "💬 일상 대화",
+         "label_key": "mode.chat",
          "desc": "검색 없이 LLM 직답",
+         "desc_key": "mode.chat_desc",
          "keywords": ["안녕", "고마워", "hi", "hello"],
          "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL),
          "models": _models_for("chat", GEMMA_MODEL)},
         {"key": "retrieval","label": "🔍 자료 검색",
+         "label_key": "mode.retrieval",
          "desc": "내부 wiki + 그래프 추론",
+         "desc_key": "mode.retrieval_desc",
          "keywords": ["뭐야", "무엇", "설명", "알려줘", "what is"],
          "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL),
          "models": _models_for("retrieval", GEMMA_MODEL)},
         {"key": "meta",     "label": "📚 자료 목록",
+         "label_key": "mode.meta",
          "desc": "보유 wiki 인벤토리 (LLM 미사용)",
+         "desc_key": "mode.meta_desc",
          "keywords": ["목록", "리스트", "어떤 자료", "list"],
          "model": "", "installed": True, "models": []},
         {"key": "coding",   "label": "💻 코딩",
+         "label_key": "mode.coding",
          "desc": "코딩 특화 모델",
+         "desc_key": "mode.coding_desc",
          "keywords": ["코드", "함수", "버그", "python", "def ",
                       "javascript", "code", "function"],
          "model": CODING_MODEL, "installed": _mark(CODING_MODEL),
          "models": _models_for("coding", CODING_MODEL)},
         {"key": "wiki_edit","label": "✏️ Wiki 편집 (admin)",
+         "label_key": "mode.wiki_edit",
          "desc": "지식 추가/수정/삭제",
+         "desc_key": "mode.wiki_edit_desc",
          "keywords": ["수정해", "추가해", "삭제해"],
          "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL),
          "models": _models_for("wiki_edit", GEMMA_MODEL)},
         {"key": "self_evolve","label": "🧬 자기진화 (admin)",
+         "label_key": "mode.self_evolve",
          "desc": "코드 분석 / 자기 개선",
+         "desc_key": "mode.self_evolve_desc",
          "keywords": ["네 코드", "구조 분석", "스스로"],
          "model": GEMMA_MODEL, "installed": _mark(GEMMA_MODEL),
          "models": _models_for("self_evolve", GEMMA_MODEL)},
@@ -1412,6 +1463,27 @@ async def llm_installed(api_key: str, role: str = Depends(get_role_from_request)
     except Exception as e:
         return {"ok": False, "models": [], "error": str(e),
                 "hint": "Ollama가 실행 중인지 확인하세요 (ollama serve)"}
+
+
+@app.get("/llm/active",
+         summary="현재 chat 모델 indicator [v0.4 Sprint 2 #3a]")
+async def llm_active(api_key: str, _role: str = Depends(get_role_from_request)):
+    """[v0.4 Sprint 2 #3a] Lightweight public-ish resolver snapshot
+    for the chat-header indicator chip.
+
+    Differs from /admin/llm/resolution: api_key check only (no
+    admin.settings feature gate), and returns just `chat` mode +
+    omits `fallback_chain` / `installed` / `preference` (already
+    surfaced in admin). Chat users on any role see which model is
+    actually serving their requests right now.
+
+    Returned shape:
+      {"tag": str, "source": str, "warning": str}
+    """
+    verify_api_key(api_key)
+    from core.model_resolver import resolve_chat
+    r = resolve_chat()
+    return {"tag": r.tag, "source": r.source, "warning": r.warning}
 
 
 @app.get("/admin/llm/resolution",
@@ -1863,11 +1935,44 @@ async def list_proposals(
         return {"proposals": [], "error": str(e)}
 
 
+def _cr_shadow_proposal_create(proposal_id: str, approver: str, role: str,
+                               action: str) -> Optional[str]:
+    """Stage B / CR-E.3 — best-effort shadow CR row for proposal events.
+
+    Returns the cr_id on success, None on any failure. The legacy
+    /admin/proposals/{id}/approve|reject flow continues regardless —
+    the CR row is additive shadow with a no-op apply handler (CR-E.1).
+    """
+    try:
+        import hashlib as _hashlib
+        from core.change_request import (
+            TARGET_SELF_EVO_PROPOSAL, create_cr as _cr_create,
+        )
+        _base = _hashlib.sha256(
+            f"proposal:{proposal_id}:{action}".encode("utf-8")
+        ).hexdigest()[:16]
+        shadow = _cr_create(
+            target_type   = TARGET_SELF_EVO_PROPOSAL,
+            target_id     = proposal_id,
+            title         = f"proposal:{action}:{proposal_id}",
+            description   = f"endpoint=/admin/proposals/{proposal_id}/{action}",
+            proposed_diff = {"proposal_id": proposal_id, "action": action,
+                             "approver": approver},
+            base_hash = _base,
+            proposer  = approver,
+            role      = role,
+        )
+        return shadow.cr_id
+    except Exception:
+        return None
+
+
 @app.post("/admin/proposals/{proposal_id}/approve",
           summary="제안 승인 → 자동 실행 [P7-EVO]")
 async def approve_proposal(
     proposal_id: str,
     api_key:     str,
+    request:     Request,
     role:        str = Depends(get_role_from_request),
 ):
     """
@@ -1875,14 +1980,47 @@ async def approve_proposal(
     실행 결과를 응답으로 반환.
     """
     _require_feature(api_key, role, "admin.evolution")
+
+    # Stage B / CR-E.3 — shadow CR row. Best-effort dual-write so the
+    # unified audit shape covers proposal approvals alongside patch
+    # approvals + wiki/run_jobs CRs. The legacy james_evo_log.jsonl +
+    # _write_audit(...) below remain authoritative.
+    approver = _bearer_username(request) or f"<role:{role}>"
+    cr_shadow_id = _cr_shadow_proposal_create(
+        proposal_id, approver, role, action="approve",
+    )
+
     try:
         from tools.self.evo_analyzer import approve_and_execute
         report = approve_and_execute(proposal_id)
         _write_audit(role, "/admin/proposals/approve",
                      query=proposal_id,
                      answer=f"success={report.get('success')}")
+
+        # CR-E.3 close — merge on success, reject on executor failure.
+        if cr_shadow_id is not None:
+            try:
+                if report.get("success"):
+                    from core.change_request_apply import merge_cr as _cr_merge
+                    _cr_merge(cr_shadow_id, approver=approver)
+                else:
+                    from core.change_request import reject_cr as _cr_reject
+                    _cr_reject(
+                        cr_shadow_id, reviewer=approver,
+                        reason=f"executor_failed: {str(report)[:100]}",
+                    )
+            except Exception:
+                pass
+
         return report
     except Exception as e:
+        if cr_shadow_id is not None:
+            try:
+                from core.change_request import reject_cr as _cr_reject
+                _cr_reject(cr_shadow_id, reviewer=approver,
+                           reason=f"exception: {str(e)[:100]}")
+            except Exception:
+                pass
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1891,17 +2029,48 @@ async def approve_proposal(
 async def reject_proposal_api(
     proposal_id: str,
     api_key:     str,
+    request:     Request,
     reason:      str = "",
     role:        str = Depends(get_role_from_request),
 ):
     """[4-C] 제안 거부 + 사유 장기기억 저장."""
     _require_feature(api_key, role, "admin.evolution")
+
+    # Stage B / CR-E.3 — shadow CR row for reject path. Same dual-write
+    # rationale as approve_proposal above.
+    approver = _bearer_username(request) or f"<role:{role}>"
+    cr_shadow_id = _cr_shadow_proposal_create(
+        proposal_id, approver, role, action="reject",
+    )
+
     try:
         from tools.self.evo_analyzer import reject_proposal
         ok = reject_proposal(proposal_id, reason)
         _write_audit(role, "/admin/proposals/reject", query=proposal_id)
+
+        # CR-E.3 close — reject_cr regardless of `ok` (the endpoint
+        # IS the reject action; ok=False just means the storage write
+        # failed). Reason mirrors the admin-supplied reason.
+        if cr_shadow_id is not None:
+            try:
+                from core.change_request import reject_cr as _cr_reject
+                _cr_reject(
+                    cr_shadow_id, reviewer=approver,
+                    reason=(reason or "admin_rejected")[:200]
+                           + (" (storage_failed)" if not ok else ""),
+                )
+            except Exception:
+                pass
+
         return {"success": ok, "proposal_id": proposal_id}
     except Exception as e:
+        if cr_shadow_id is not None:
+            try:
+                from core.change_request import reject_cr as _cr_reject
+                _cr_reject(cr_shadow_id, reviewer=approver,
+                           reason=f"exception: {str(e)[:100]}")
+            except Exception:
+                pass
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -2070,9 +2239,21 @@ async def learn_topic_api(
                 knowledge_prompt, timeout=60, use_cache=False, max_tokens=300
             )
 
-            # ⑤ LLM 0자 → snippet 기반 fallback
-            if not knowledge or len(knowledge.strip()) < 10:
-                print("[LEARN] LLM 0자 → fallback 사용")
+            # ⑤ LLM 0자 / 오류 sentinel → snippet 기반 fallback.
+            # The old condition `len < 10` let `[Gemma 응답 없음]` (13
+            # chars) and `[Gemma 오류] ...` through. Those then got
+            # written to `attributes.summary` and the body's `## 요약`
+            # — the graph node detail panel showed the sentinel string
+            # to the operator. Treat any ERROR_PREFIXES response as
+            # equivalent to empty so the fallback kicks in.
+            from core.gemma_client import ERROR_PREFIXES
+            _knowledge_stripped = (knowledge or "").strip()
+            if (
+                not _knowledge_stripped
+                or len(_knowledge_stripped) < 10
+                or _knowledge_stripped.startswith(ERROR_PREFIXES)
+            ):
+                print(f"[LEARN] LLM empty/error ('{_knowledge_stripped[:30]}') → fallback 사용")
                 parts = []
                 for r in results[:3]:
                     title = r.get('title', '')
@@ -3311,6 +3492,80 @@ async def admin_graph_snapshot(
     )
 
 
+@app.get("/admin/graph/events",
+         summary="event 노드 시간 윈도우 조회 [PR-11c]")
+async def admin_graph_events_get(
+    api_key:         str,
+    source_type:     str = "prod",
+    occurred_after:  Optional[str] = None,
+    occurred_before: Optional[str] = None,
+    role:            str = Depends(get_role_from_request),
+):
+    """admin 만 호출 가능. snapshot 의 event-only 슬라이스 + 선택적
+    occurred_at 윈도우 필터.
+
+    Query params:
+      - ``occurred_after`` / ``occurred_before`` 둘 다 optional, ISO 8601.
+        둘 다 없을 때는 source_type 의 모든 event 반환 (filter 비활성).
+      - 둘 중 하나라도 있으면 non-event 는 자동 제거 (memo §5.3).
+
+    Returns: ``{"ok": true, "events": [{node fields...}]}``.
+    Order: entity_id 사전순 — caller 가 별도 정렬이 필요하면 그쪽에서.
+
+    400 surfacing 시나리오:
+      - occurred_after / occurred_before 가 ISO 8601 파싱 실패
+    """
+    _require_feature(api_key, role, "admin.data")
+    from core.event_time_filter import filter_entities_by_time_bucket
+    from core.graph_snapshot import build_snapshot
+
+    src = (source_type or "prod").strip().lower()
+    if src not in ("prod", "test"):
+        src = "prod"
+
+    if src == rag_engine.wiki_generator.source_type:
+        gen = rag_engine.wiki_generator
+    else:
+        from core.wiki_generator import WikiGenerator
+        gen = WikiGenerator(source_type=src)
+
+    snap = build_snapshot(
+        wiki_generator=gen, source_type=src, include_sensitive=False,
+    )
+    # snapshot 의 node 는 `occurred_at` 을 안 싣는다 (visualizer 무관).
+    # 본 endpoint 는 entity_id_index 를 직접 재방문해 frontmatter 의
+    # occurred_at 까지 끌어와야 한다.
+    enriched = []
+    for n in snap.get("nodes", []) or []:
+        if n.get("type") != "event":
+            continue
+        eid = n.get("id")
+        path = gen.entity_id_index.get(eid)
+        if not path:
+            continue
+        try:
+            fm = gen._read_frontmatter(path) or {}
+        except Exception:
+            fm = {}
+        enriched.append({
+            **n,
+            "occurred_at":           fm.get("occurred_at"),
+            "occurred_at_precision": fm.get("occurred_at_precision", "day"),
+        })
+
+    try:
+        filtered = filter_entities_by_time_bucket(
+            enriched,
+            occurred_after=occurred_after,
+            occurred_before=occurred_before,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    filtered.sort(key=lambda n: n.get("id", ""))
+    return {"ok": True, "events": filtered}
+
+
 # ─── /admin/graph/relation — Phase E graph editor (write path) ───
 #
 # docs/design/v0.3-knowledge-cascade.md §7. admin 이 `/admin/graph`
@@ -3542,6 +3797,81 @@ async def admin_graph_node_put(request: Request,
     return {"ok": True, "result": result}
 
 
+@app.post("/admin/graph/event",
+          summary="event 노드 생성 [PR-11a-2 graph evolution]")
+async def admin_graph_event_post(request: Request,
+                                 role: str = Depends(get_role_from_request)):
+    """admin 만 호출 가능. ``JAMES_GRAPH_EDIT=1`` env opt-in.
+
+    PR-11 graph evolution 의 admin 진입점. ingest path 는 여전히
+    person/org/concept/document 4 type 만 emit; event 는 본 endpoint
+    또는 후속 PR-11d (MemoryLoom date detection) 만 생성한다.
+
+    Body JSON::
+
+        {
+          "api_key":               "...",
+          "name":                  "2026 비트코인 ETF 승인",
+          "occurred_at":           "2026-01-10",
+          "occurred_at_precision": "day",          // optional, default "day"
+          "aliases":               ["BTC ETF 승인"],  // optional
+          "source_doc_id":         "d_sec_filing", // optional → role=manual when omitted
+          "source_weight":         1.0             // optional, default 1.0
+        }
+
+    Returns::
+
+        {
+          "ok":          true,
+          "entity_id":   "e_event_a1b2c3d4",
+          "path":        "wiki/entity/prod/event/<normalized>.md",
+          "frontmatter": { ... }                   // full new-file frontmatter
+        }
+    """
+    _require_graph_edit_enabled()
+    body = await request.json()
+    _require_feature(body.get("api_key", ""), role, "admin.data")
+
+    name        = body.get("name")
+    occurred_at = body.get("occurred_at")
+    if not isinstance(name, str) or not name.strip():
+        raise HTTPException(status_code=400, detail="name required")
+    if not isinstance(occurred_at, str) or not occurred_at.strip():
+        raise HTTPException(status_code=400, detail="occurred_at required")
+
+    precision     = body.get("occurred_at_precision", "day")
+    aliases       = body.get("aliases")
+    source_doc_id = body.get("source_doc_id")
+    source_weight = body.get("source_weight", 1.0)
+
+    from core.graph_node_editor import create_event_node
+    try:
+        result = create_event_node(
+            name, occurred_at,
+            wiki_generator=rag_engine.wiki_generator,
+            occurred_at_precision=precision,
+            aliases=aliases,
+            source_doc_id=source_doc_id,
+            source_weight=source_weight,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    _write_audit(
+        role, "/admin/graph/event [POST]",
+        query=_truncate_audit_blob({
+            "name":        name,
+            "occurred_at": occurred_at,
+            "precision":   precision,
+        }),
+        answer=_truncate_audit_blob({
+            "entity_id":   result["entity_id"],
+            "path":        result["path"],
+        }),
+    )
+    return {"ok": True, **result}
+
+
 @app.delete("/admin/graph/relation",
             summary="relation 자체 제거 [Knowledge Cascade Phase E]")
 async def admin_graph_relation_delete(request: Request,
@@ -3686,6 +4016,42 @@ async def admin_patch_approve(request: Request, role: str = Depends(get_role_fro
         if not rec_ok:
             raise HTTPException(status_code=500, detail=f"approval_record_failed: {rec.get('error')}")
 
+        # Stage B / CR-E.2 (2026-05-24) — shadow Change Request row.
+        # Best-effort dual-write so /admin/audit/cr can surface the
+        # approval event with the same shape as wiki_entity / run_jobs
+        # CRs. The legacy james_patch_log.jsonl + record_outcome below
+        # remain authoritative for the deploy timeline; the CR row is
+        # additive and its apply handler is a no-op (Stage B CR-E.1
+        # in core/change_request_apply.py). Failures here NEVER block
+        # the deploy path.
+        cr_shadow_id = None
+        try:
+            import hashlib as _hashlib
+            import json as _json_cr
+            from core.change_request import (
+                TARGET_SELF_EVO_PATCH, create_cr as _cr_create,
+            )
+            _patch_canon = _json_cr.dumps(rec, sort_keys=True, ensure_ascii=False)
+            _base_hash = _hashlib.sha256(_patch_canon.encode("utf-8")).hexdigest()[:16]
+            _shadow = _cr_create(
+                target_type   = TARGET_SELF_EVO_PATCH,
+                target_id     = patch_id,
+                title         = f"patch:{patch_id}",
+                description   = f"approval_method={approval_method}",
+                proposed_diff = {
+                    "target":            rec.get("target", ""),
+                    "patch_id":          patch_id,
+                    "approver_username": approver_username,
+                    "approval_method":   approval_method,
+                },
+                base_hash = _base_hash,
+                proposer  = approver_username or "<system>",
+                role      = role,
+            )
+            cr_shadow_id = _shadow.cr_id
+        except Exception:
+            pass
+
         # Re-load with approval fields baked in so apply() sees the
         # final patch shape (forward-compat — applier may grow to
         # honor approval metadata).
@@ -3695,6 +4061,13 @@ async def admin_patch_approve(request: Request, role: str = Depends(get_role_fro
         # If apply() itself failed, no bench gate to run — record and exit.
         if not ok:
             record_outcome(patch_id, "rolled_back", detail=f"apply failed: {msg}")
+            if cr_shadow_id is not None:
+                try:
+                    from core.change_request import reject_cr as _cr_reject
+                    _cr_reject(cr_shadow_id, reviewer=approver_username,
+                               reason=f"apply_failed: {msg[:100]}")
+                except Exception:
+                    pass
             return {
                 "success":           False,
                 "message":           msg,
@@ -3719,6 +4092,26 @@ async def admin_patch_approve(request: Request, role: str = Depends(get_role_fro
             before_metrics=gate.before_metrics,
             after_metrics=gate.after_metrics,
         )
+
+        # Stage B / CR-E.2 — close the shadow CR row. Bench-gate pass
+        # → merge_cr; regression → reject_cr (legacy lifecycle already
+        # rolled back the file). Best-effort.
+        if cr_shadow_id is not None:
+            try:
+                if gate.passed:
+                    from core.change_request_apply import merge_cr as _cr_merge
+                    _cr_merge(cr_shadow_id, approver=approver_username)
+                else:
+                    from core.change_request import reject_cr as _cr_reject
+                    _cr_reject(
+                        cr_shadow_id,
+                        reviewer=approver_username,
+                        reason=f"bench_regression: {gate.outcome_label}: "
+                               f"{(gate.detail or '')[:100]}",
+                    )
+            except Exception:
+                pass
+
         return {
             "success":           gate.passed,
             "message":           msg,
@@ -3736,12 +4129,13 @@ async def admin_patch_approve(request: Request, role: str = Depends(get_role_fro
 
 @app.get("/admin/patch/audit", summary="Patch 라이프사이클 감사 조회 [#68 phase 2-C]")
 async def admin_patch_audit(
-    api_key:  str,
-    since:    str = "",
-    approver: str = "",
-    outcome:  str = "",
-    limit:    int = 200,
-    role:     str = Depends(get_role_from_request),
+    api_key:        str,
+    since:          str  = "",
+    approver:       str  = "",
+    outcome:        str  = "",
+    limit:          int  = 200,
+    include_shadow: bool = True,
+    role:           str  = Depends(get_role_from_request),
 ):
     """Filtered, newest-first slice of `james_patch_log.jsonl`.
 
@@ -3751,6 +4145,10 @@ async def admin_patch_audit(
       outcome:  case-insensitive `outcome` match — `deployed` /
                 `rolled_back` / `deployed_gate_skipped`
       limit:    max entries returned (default 200, hard cap 1000)
+      include_shadow: when True (default), merges projected self-evolution
+                     CR-shadow rows (Stage B / CR-E) into the feed. Each
+                     shadow row carries ``_source='cr_shadow'``. Set False
+                     to get the byte-identical pre-CR-E view.
 
     See `tools/patch/audit_query.py` for filter semantics + rationale.
     Composes with `/admin/audit` (the broader, multi-source feed) —
@@ -3763,13 +4161,15 @@ async def admin_patch_audit(
         approver=approver or None,
         outcome=outcome or None,
         limit=limit,
+        include_shadow=include_shadow,
     )
     return {
         "filters": {
-            "since":    since,
-            "approver": approver,
-            "outcome":  outcome,
-            "limit":    limit,
+            "since":          since,
+            "approver":       approver,
+            "outcome":        outcome,
+            "limit":          limit,
+            "include_shadow": include_shadow,
         },
         "count": len(rows),
         "events": rows,
@@ -3881,6 +4281,75 @@ async def admin_trace_get(
         "day":      day_arg or datetime.now().strftime("%Y-%m-%d"),
         "count":    len(stages),
         "stages":   stages,
+    }
+
+
+@app.get("/admin/episodic/{session_id}",
+         summary="Cognitive Phase 3 PR-9b — 세션의 episodic events 조회")
+async def admin_episodic_get(
+    session_id: str,
+    api_key:    str,
+    limit:      int = 50,
+    stage:      str = "",
+    role:       str = Depends(get_role_from_request),
+):
+    """Session-scoped reasoning trail dump for debugging.
+
+    Returns the most recent episodic events for one session. Each
+    event = one cognitive-stage decision (plan / reflect / verify /
+    synth) with its summary, score, and trace_id back-link.
+
+    Path:
+      session_id: the session whose trail to dump.
+
+    Query:
+      limit: 1..200, default 50.
+      stage: optional comma-separated filter
+             (e.g. ``stage=plan,verify``).
+
+    Response:
+      {"session_id": "...", "count": N,
+       "events": [{"event_id", "turn_id", "ts", "stage", "summary",
+                   "score", "extras", "trace_id"}, ...]}
+
+    Permission: admin.metrics (same as /admin/trace/* — both are
+    debugging surfaces over the reasoning audit data).
+    """
+    _require_feature(api_key, role, "admin.metrics")
+    limit = max(1, min(int(limit or 50), 200))
+    stages_filter: tuple = ()
+    if stage and stage.strip():
+        stages_filter = tuple(
+            s.strip() for s in stage.split(",") if s.strip()
+        )
+
+    try:
+        from core.memory.episodic import get_episodic_memory
+        events = get_episodic_memory().recent_events(
+            session_id, limit=limit, stages=stages_filter,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"episodic store unavailable: {type(e).__name__}",
+        )
+
+    return {
+        "session_id": session_id,
+        "count":      len(events),
+        "events":     [
+            {
+                "event_id":  ev.event_id,
+                "turn_id":   ev.turn_id,
+                "ts":        ev.ts,
+                "stage":     ev.stage,
+                "summary":   ev.summary,
+                "score":     ev.score,
+                "extras":    ev.extras,
+                "trace_id":  ev.trace_id,
+            }
+            for ev in events
+        ],
     }
 
 
@@ -4871,6 +5340,81 @@ async def admin_files_search(
             "root": root}
 
 
+_FILE_VIEW_TEXT_EXTS = frozenset({
+    ".md", ".txt", ".json", ".yaml", ".yml", ".csv",
+    ".jsonl", ".log", ".tsv",
+})
+
+
+@app.get("/admin/files/view", summary="파일 인라인 보기 [item #2-view]")
+async def admin_files_view(
+    api_key: str,
+    root:    str,
+    path:    str,
+    max_kb:  int = 256,
+    role:    str = Depends(get_role_from_request),
+):
+    """Read-only inline view of a text file under an allowed root.
+
+    Sibling to ``/admin/files/download`` but tuned for the admin-side
+    file management modal: returns ``{name, size, ext, content}`` JSON
+    suitable for rendering in a ``<pre>`` block. The same ``admin.data``
+    feature gate applies — this endpoint is intended to be called from
+    the in-page JavaScript (Authorization header automatically attached
+    by ``fetch()``), unlike the download path which is a new-tab
+    ``<a href>`` click and therefore loses the JWT header.
+
+    Defenses (in order):
+
+    1. ``admin.data`` feature gate (api_key + role).
+    2. ``_resolve_under_root`` rejects unknown root + path traversal.
+    3. Extension allowlist: text-only (``.md / .txt / .json / .yaml /
+       .yml / .csv / .jsonl / .log / .tsv``). Binary / source-code
+       extensions refused with 415 — operator should use download.
+    4. ``max_kb`` cap (default 256, max 1024) — accidentally opening
+       a multi-MB file in a modal would lock the browser.
+
+    Audit log records every view.
+    """
+    _require_feature(api_key, role, "admin.data")
+    if not (path or "").strip():
+        raise HTTPException(status_code=400, detail="path required")
+    full = _resolve_under_root(root, path)
+    if not full or not os.path.isfile(full):
+        raise HTTPException(status_code=404, detail="not found")
+    ext = os.path.splitext(full)[1].lower()
+    if ext not in _FILE_VIEW_TEXT_EXTS:
+        raise HTTPException(
+            status_code=415,
+            detail=f"extension {ext} not viewable inline; use download",
+        )
+    max_kb = max(1, min(int(max_kb or 256), 1024))
+    try:
+        size = os.path.getsize(full)
+    except OSError:
+        raise HTTPException(status_code=404, detail="stat failed")
+    if size > max_kb * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail=f"file {size} bytes exceeds max_kb={max_kb}; use download",
+        )
+    try:
+        with open(full, "r", encoding="utf-8", errors="replace") as f:
+            content = f.read()
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"read failed: {e}")
+    _write_audit(role, "/admin/files/view/",
+                 query=os.path.basename(full), elapsed_sec=0)
+    return {
+        "root":    root,
+        "path":    path,
+        "name":    os.path.basename(full),
+        "size":    size,
+        "ext":     ext,
+        "content": content,
+    }
+
+
 @app.get("/admin/files/download", summary="파일 다운로드 [item #2]")
 async def admin_files_download(
     api_key: str,
@@ -5162,6 +5706,80 @@ async def admin_settings_post(data: AdminSettingsRequest, role: str = Depends(ge
         os.environ["JAMES_PROTECTED_FILES"] = data.protected_files
     _write_audit(role, "/admin/settings", query=f"model={data.model}")
     return {"success": True, "applied": {"model": data.model, "max_loop": data.max_loop}}
+
+
+# ─── Cognitive feature toggles (UI-IA risk signal #5 fix) ────────
+#
+# Six cognitive-layer features (reflect / verify / fact_check /
+# planner / query_rewrite / rerank) ship live in the backend but
+# had no admin UI before this endpoint pair. `core/feature_flags.py`
+# is the single source of truth for the env-var ↔ semantic mapping;
+# both endpoints delegate to it.
+#
+# Persistence model: in-process env mutation only, mirroring the
+# existing `/admin/settings` POST that already does
+# `os.environ["JAMES_PROTECTED_FILES"] = ...`. A container restart
+# re-reads the boot `.env`, so durable changes are still an
+# operator concern. Surfacing this in the UI (a "session-only"
+# banner) is PR-2 frontend work.
+
+
+@app.get("/admin/settings/cognitive",
+         summary="cognitive feature flags 조회 [UI-IA risk #5]")
+async def admin_settings_cognitive_get(
+    api_key: str,
+    role:    str = Depends(get_role_from_request),
+):
+    """Read-only snapshot of the six cognitive-layer feature flags.
+    See `docs/UI_API_MAPPING.md` §8 risk signal #5 and
+    `core/feature_flags.py` for the registry."""
+    _require_feature(api_key, role, "admin.settings")
+    from core.feature_flags import read_cognitive_flags
+    return {"flags": read_cognitive_flags()}
+
+
+class CognitiveFlagsRequest(BaseModel):
+    api_key: str
+    flags:   dict = {}   # {flag_key: bool, ...}
+
+
+@app.post("/admin/settings/cognitive",
+          summary="cognitive feature flags 변경 [UI-IA risk #5]")
+async def admin_settings_cognitive_post(
+    data: CognitiveFlagsRequest,
+    role: str = Depends(get_role_from_request),
+):
+    """Toggle one or more cognitive features. Body shape::
+
+        {"api_key": "...", "flags": {"reflect": true, "verify": false}}
+
+    Returns per-key (before, after) delta for the audit log.
+    Persistence is in-process only — a restart reverts to the
+    boot `.env` values.
+    """
+    _require_feature(data.api_key, role, "admin.settings")
+    if not isinstance(data.flags, dict) or not data.flags:
+        raise HTTPException(
+            status_code=400,
+            detail="flags must be a non-empty dict {flag_key: bool, ...}",
+        )
+
+    from core.feature_flags import apply_cognitive_flags
+    try:
+        deltas = apply_cognitive_flags(data.flags)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    _write_audit(
+        role, "/admin/settings/cognitive",
+        query=_truncate_audit_blob({
+            "changed": [
+                {"key": d["key"], "before": d["before"], "after": d["after"]}
+                for d in deltas
+            ],
+        }),
+    )
+    return {"success": True, "deltas": deltas}
 
 
 # ─── PR-CR-B2: Change Request endpoints ─────────────────────────

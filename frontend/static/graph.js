@@ -55,7 +55,12 @@
   // pass loses the "this is the live path" signal.
   var pulseLoopTimer  = null;
   var pulseLoopEdges  = [];          // [{src: node, tgt: node}]
-  var PULSE_LOOP_MS   = 3200;        // re-fire interval — 1 cycle then breath
+  // [Stage E.1, 2026-05-24] re-fire interval bumped per UX feedback —
+  // was 3200ms (one cycle then a long breath). 2000ms keeps the
+  // "this is the live path" signal continuously visible without
+  // looking frantic. PULSE_MS is the in-flight duration (450ms), so
+  // 2000ms still leaves a ~1.5s gap between cycles.
+  var PULSE_LOOP_MS   = 2000;
 
   // [PR camera-glow, 2026-05-09] node halos — soft glowing sprite
   // around each active path node, scale + opacity pulsing on a sine
@@ -65,7 +70,9 @@
 
   // Spacing constant — radius scales with sqrt(N).
   var SPHERE_K  = 24;
-  var PULSE_MS  = 650;
+  // [Stage E.1, 2026-05-24] pulse speed bump per UX feedback — was 650.
+  // 450 keeps the eye-trail readable while making the flow feel "live".
+  var PULSE_MS  = 450;
   var STEP_GAP  = 220;             // gap between consecutive edge pulses
 
   // [#4-1, 2026-05-09] Hub detection — top 10% by degree AND degree ≥ 5.
@@ -84,6 +91,7 @@
       case 'org':      return getCss('--t-org',      '#f59e0b');
       case 'concept':  return getCss('--t-concept',  '#a5b4fc');
       case 'document': return getCss('--t-document', '#94a3b8');
+      case 'event':    return getCss('--t-event',    '#fb7185');
       default:         return '#94a3b8';
     }
   }
@@ -121,27 +129,11 @@
     var keyVal = keyInput ? keyInput.value.trim() : '';
     setLoginError('');
     if (keyVal) { apiKey = keyVal; localStorage.setItem('james_api_key', apiKey); }
-    if (!apiKey) { setLoginError('API key required (set on chat page or paste here)'); return; }
-    try {
-      var r = await fetch(API + '/login/', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ username: id, password: pw, api_key: apiKey }),
-      });
-      var j = await r.json().catch(function () { return {}; });
-      if (!r.ok) { setLoginError(j.detail || ('Login failed (' + r.status + ')')); return; }
-      var tok  = j.access_token || j.token || '';
-      var role = j.role || 'external';
-      if (!tok)              { setLoginError('No token returned'); return; }
-      if (role !== 'admin')  { setLoginError('Admin role required (got: ' + role + ')'); return; }
-      token = tok;
-      localStorage.setItem('james_token', token);
-      localStorage.setItem('james_role',  role);
-      hideLogin();
-      bootstrap();
-    } catch (e) {
-      setLoginError(String(e));
-    }
+    var res = await Auth.login({ username: id, password: pw, apiKey: apiKey, requireRole: 'admin' });
+    if (!res.ok) { setLoginError(res.error); return; }
+    token = res.token;
+    hideLogin();
+    bootstrap();
   };
 
   // ─── Snapshot fetch ────────────────────────────────────────
@@ -483,9 +475,16 @@
     var stepMs = 0;
     var loopEdges = [];
     neighbors.forEach(function (item) {
-      setTimeout(function () { spawnPulse(node, item.neighbor); }, stepMs);
+      // [Stage E.1, 2026-05-24] direction contract — the pulse must travel
+      // along the data edge's source → target axis, NOT always away from
+      // the clicked node. getNeighbors() already tags each item with
+      // direction ('out' = node→neighbor, 'in' = neighbor→node); honoring
+      // it makes the lit pulse match the arrowhead the user sees.
+      var pulseSrc = (item.direction === 'in') ? item.neighbor : node;
+      var pulseTgt = (item.direction === 'in') ? node : item.neighbor;
+      setTimeout(function () { spawnPulse(pulseSrc, pulseTgt); }, stepMs);
       stepMs += STEP_GAP / 2;   // slightly faster than path replay
-      loopEdges.push({ src: node, tgt: item.neighbor });
+      loopEdges.push({ src: pulseSrc, tgt: pulseTgt });
     });
 
     // Re-trigger force-graph render so links re-color.
@@ -825,19 +824,46 @@
   // avoids the readability mess of labeling all 185 nodes.
   function createTextSprite(text, color) {
     if (typeof THREE === 'undefined') return null;
+    // Soft cap on label length — 28 visible chars is enough for any
+    // human-readable entity name. Longer strings (e.g. raw document
+    // node IDs like "web_business_경쟁사 대비 AMD 기술적 우위 …") get
+    // ellipsized so the sprite quad can't grow without bound.
+    var label = String(text || '?');
+    if (label.length > 28) label = label.slice(0, 27) + '…';
+
+    // Korean-first fallback chain — canvas glyph fallback is browser-
+    // dependent and unreliable on Chromium when the primary font lacks
+    // CJK glyphs (Inter has zero Hangul coverage). Native CJK first
+    // guarantees Hangul renders on every platform JAMES targets.
+    var FONT = 'bold 24px "Malgun Gothic", "Apple SD Gothic Neo", ' +
+               '"Noto Sans KR", "Pretendard", Inter, system-ui, sans-serif';
     var canvas = document.createElement('canvas');
-    canvas.width = 256; canvas.height = 64;
     var ctx = canvas.getContext('2d');
-    ctx.font = 'bold 24px Inter, "Pretendard", system-ui, sans-serif';
+    // Measure before sizing — measureText respects ctx.font even on a
+    // default-sized canvas, and the result tells us how wide the
+    // backing texture has to be to fit the glyphs without clipping.
+    ctx.font = FONT;
+    var textWidth = ctx.measureText(label).width;
+    // Pad both sides for the drop-shadow blur and gutters; quantize to
+    // 16px so successive labels with slightly different widths share
+    // texture sizes more often. 256 floor keeps short labels at the
+    // original visual footprint; 768 ceiling keeps any one label from
+    // spanning the viewport.
+    var pad = 24;
+    var canvasW = Math.min(768,
+      Math.max(256, Math.ceil((textWidth + pad * 2) / 16) * 16));
+    canvas.width = canvasW;
+    canvas.height = 64;
+    // Setting canvas.width resets 2D-context state — re-apply.
+    ctx.font = FONT;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    // Drop-shadow for readability against any background.
     ctx.shadowColor = 'rgba(0,0,0,0.85)';
     ctx.shadowBlur = 6;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 0;
     ctx.fillStyle = color || '#ffffff';
-    ctx.fillText(text || '?', 128, 32);
+    ctx.fillText(label, canvasW / 2, 32);
     var tex = new THREE.CanvasTexture(canvas);
     tex.minFilter = THREE.LinearFilter;     // canvas isn't power-of-two
     var mat = new THREE.SpriteMaterial({
@@ -847,7 +873,11 @@
       depthWrite:  false,
     });
     var sprite = new THREE.Sprite(mat);
-    sprite.scale.set(36, 9, 1);              // wide, thin
+    // Scale the sprite plane in proportion to the backing canvas so a
+    // longer texture renders the *same* physical glyph size on screen,
+    // just over a wider strip. Baseline (256-wide) keeps 36×9.
+    var scaleX = 36 * (canvasW / 256);
+    sprite.scale.set(scaleX, 9, 1);
     sprite.userData.isLabel = true;
     return sprite;
   }
@@ -1065,13 +1095,16 @@
     var scene = graph.scene();
     if (!scene) return;
 
-    // [PR camera-glow] use the soft gradient texture for a comet-like
-    // wrap-around glow instead of the hard square sprite.
-    var color = getCss('--brand-2', '#4fc3f7');
-    var tex = getGlowTexture(color);
+    // [Stage E.1, 2026-05-24] color gradient src→tgt — pulse starts in
+    // source-node tint and shifts to target-node tint over its lifetime.
+    // Texture stays a neutral white radial; material.color is what we lerp.
+    // Reads as "leaving here, arriving there" and pairs with the arrowhead.
+    var srcHex = typeColor(srcNode.type) || getCss('--brand-2', '#4fc3f7');
+    var tgtHex = typeColor(tgtNode.type) || srcHex;
+    var tex = getGlowTexture('#ffffff');   // single shared white texture
     var spriteMat = new THREE.SpriteMaterial({
       map:         tex,
-      color:       0xffffff,        // texture carries the color
+      color:       new THREE.Color(srcHex),   // mutated per-frame in pulseTick
       transparent: true,
       opacity:     0.95,
       blending:    THREE.AdditiveBlending,
@@ -1083,10 +1116,12 @@
     scene.add(sprite);
 
     pulses.push({
-      sprite:  sprite,
-      src:     srcNode,
-      tgt:     tgtNode,
-      startMs: performance.now(),
+      sprite:    sprite,
+      src:       srcNode,
+      tgt:       tgtNode,
+      startMs:   performance.now(),
+      srcColor:  new THREE.Color(srcHex),
+      tgtColor:  new THREE.Color(tgtHex),
     });
   }
 
@@ -1109,6 +1144,10 @@
         // Fade-in then fade-out around midpoint.
         var op = 1.0 - Math.abs(k - 0.5) * 1.6;
         p.sprite.material.opacity = Math.max(0, op);
+        // [Stage E.1] color lerp — src tint at k=0, tgt tint at k=1.
+        if (p.srcColor && p.tgtColor && p.sprite.material.color) {
+          p.sprite.material.color.copy(p.srcColor).lerp(p.tgtColor, k);
+        }
         live.push(p);
       }
     }

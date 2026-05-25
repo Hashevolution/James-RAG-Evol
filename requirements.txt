@@ -23,6 +23,12 @@ requests>=2.31.0
 # a transitive of requests, so a fresh install with a stale wheel
 # cache cannot regress us.
 urllib3>=2.7.0
+# Dependabot alerts #11/#12 — GHSA-65pc-fj4g-8rjx / CVE-2026-45409:
+# specially-crafted inputs to idna.encode() bypass the CVE-2024-3651
+# fix. Pulled in transitively by requests; pin the floor here so a
+# fresh install with a stale wheel cache cannot regress us, matching
+# the urllib3 / python-multipart approach above.
+idna>=3.15
 
 # ── Vector DB / Embeddings / Search ────────────────────────────
 chromadb>=0.4.22

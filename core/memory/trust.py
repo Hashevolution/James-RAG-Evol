@@ -18,7 +18,6 @@ PROJECT JAMES - Memory Trust Scoring (Phase 4.5)
 """
 
 import math
-import json
 from datetime import datetime
 from typing import Dict, Optional, Tuple
 from pathlib import Path
@@ -33,7 +32,6 @@ from core.security_layer import log_system_event
 
 TRUST_THRESHOLD = 0.5      # 이 이하 → write 거부
 RECENCY_DECAY   = 0.01     # 하루당 감쇠율 (30일 후 ≈ 0.74)
-SYSTEM_LOG_PATH = "james_system_log.jsonl"
 
 ROLE_TRUST: Dict[str, float] = {
     "admin":    1.0,
@@ -241,12 +239,6 @@ class MemoryTrustScorer:
             "threshold": TRUST_THRESHOLD,
             "reason":    reason[:200],
         }
-        try:
-            with open(SYSTEM_LOG_PATH, "a", encoding="utf-8") as f:
-                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        except Exception:
-            pass
-        # Phase 2: mirror to SQLite (see core/audit_bridge.py).
         try:
             from core.audit_bridge import mirror_system_event
             mirror_system_event(entry)

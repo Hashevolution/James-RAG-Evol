@@ -236,6 +236,66 @@ Files added/touched by your PR but NOT in those three subtrees do not
 require bench numbers — most docs / frontend / tooling PRs skip this
 section entirely.
 
+### Documentation currency
+
+We make an explicit effort to keep documentation consistent with the
+current version of the project. This satisfies the OpenSSF
+`documentation_current` criterion and, more practically, prevents the
+project from accumulating "documentation rot" where the README, the
+architecture doc, and the security model drift away from what the
+code actually does.
+
+**What counts as a documentation defect.** Treat each of the
+following as a bug that must be fixed (in the same PR if you spot
+it, or in a follow-up PR with a `docs:` commit prefix otherwise):
+
+1. **Stale version labels.** Any reference to a previous version
+   stage that is no longer current — e.g. `README.md`'s Project
+   Status header, `docs/ARCHITECTURE.md`'s "Last updated" footer,
+   `SECURITY.md`'s Project Status header, `ROADMAP.md`'s `(current)`
+   marker — must point at the current cycle.
+2. **Stale behavior descriptions.** If a PR changes a behavior
+   visible to users or contributors (CLI flag, env var, endpoint
+   shape, role semantics), the same PR updates every doc that
+   describes that behavior. README, SECURITY.md, ARCHITECTURE.md,
+   handover under `docs/handovers/`, and module-level docstrings
+   are all in scope.
+3. **Broken citations.** Any `file:line` or anchor link that no
+   longer resolves. The security assurance case
+   (`docs/security/ASSURANCE_CASE.md`) is especially citation-heavy
+   — broken citations there weaken the silver-tier audit trail.
+4. **Out-of-date Changes Log entries.** `SECURITY.md`'s Changes Log
+   must list every released version, not just `v0.1.0`. The same
+   applies to `CHANGELOG.md` if/when introduced and to each
+   release-notes file under `docs/release_notes_*.md`.
+
+**What the maintainer does at each minor-version cut.** On every
+`v0.x → v0.(x+1)` transition the maintainer (per
+`GOVERNANCE.md §4 Release process`) is required to:
+
+- Update the Project Status header of `README.md` (English),
+  `README.ko.md` (Korean), and `README.beginner.ko.md` (beginner)
+  so all three READMEs name the same current version.
+- Update `docs/ARCHITECTURE.md`'s "Last updated" footer.
+- Update `SECURITY.md`'s Project Status header and append a
+  Changes Log entry for the new version.
+- Move the `(current cycle, …)` marker in `ROADMAP.md` from the
+  closing version to the entering version, and add `(released …,
+  closed …)` to the closing version.
+- Sweep `docs/handovers/` for the previous cycle's handover docs
+  and confirm each one has a "closure" or "archived" marker if the
+  cycle has ended.
+
+PR #348 (READMEs synced to v0.3.0) and the doc-currency-fix PR
+introducing this section are reference precedents for the sweep.
+
+**How we detect drift.** There is no automated check yet — a future
+`docs(ci): documentation_current linter` PR will likely add a CI step
+that greps for stale version literals in canonical docs. Until then,
+the convention is: when in doubt during PR review, search for the
+previous version string (e.g. `git grep "v0.2.0-dev"` after the v0.3
+cut) and fix any hits. This is cheap and catches the common case.
+
 ### Commit Message Format
 
 Following [Conventional Commits](https://www.conventionalcommits.org/):
@@ -343,9 +403,18 @@ publish on your own fork, etc.).
 
 ## Code of Conduct
 
-Be respectful. Disagree with ideas, not people. Help newcomers. Assume good intent.
+PROJECT JAMES adopts the **Contributor Covenant v2.1** — see
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) for the full text, including
+the project-specific norms, the reporting channel (`karu-7@hanmail.net`),
+and the enforcement ladder.
 
-This is a research project — explore, experiment, ask questions.
+In short: disagree with ideas, not people. Help newcomers — especially
+when the mother-platform constraint (no domain features until v1.0) is
+non-obvious. Assume good intent on first read. Keep security disclosures
+out of public channels (see [`SECURITY.md`](SECURITY.md)).
+
+For how decisions get made on the project (BDFL through v1.0, release
+process, conflict-resolution path), see [`GOVERNANCE.md`](GOVERNANCE.md).
 
 ---
 
