@@ -293,5 +293,108 @@ class WikiMergeMixin:
                     out.append(rel_dict)
         return out
 
+    def _infer_overlap_relations(
+        self,
+        source_name: str,
+        snapshot,
+        doc_id=None,
+        ts=None,
+    ):
+        """Detect token-level entity-name overlap and emit RELATED_TO
+        relations to the matched entities.
+
+        v0.4 Sprint 1 #1 addition — closes the gap where an event
+        entity like *"비트코인 spot ETF 11개 일괄 승인"* gets
+        ingested without any link to the existing "비트코인" concept,
+        because the LLM extractor's `relations` array only contains
+        explicit (source, target) pairs and doesn't track name
+        overlaps.
+
+        Algorithm:
+          1. Normalize `source_name` (same `_normalize_name` regex
+             used elsewhere — `[^\\w가-힣]` → `_`, lowercase).
+          2. Split on `_` and keep tokens with `len ≥ 2`. Single-
+             character tokens are dropped to avoid spurious matches
+             on "i", "a", numerals, etc.
+          3. For each token, look up the entity-name overlap
+             snapshot (`{normalized_name: (canonical, eid, type)}`).
+          4. If a token resolves to an entity, emit a RELATED_TO
+             relation with `confidence=0.5`, `inferred=True`, and
+             `sources[].role="inferred-overlap"` so the entity is
+             visibly distinguishable from explicit LLM extractions.
+
+        Self-link prevention: tokens matching the source entity's
+        own normalized name are skipped. Duplicates suppressed by
+        the standard `(target, label)` seen-set.
+
+        `snapshot` is the dict from
+        `_frontmatter._build_overlap_snapshot()`; ingestion
+        callers compute it once per document and reuse across
+        every entity in the same doc.
+
+        Multi-word entity names (e.g. "미국 스팟 BTC ETF" →
+        normalized "미국_스팟_btc_etf") are NOT matched by this
+        first-iteration helper — only single-token entity names.
+        Multi-word overlap detection is a follow-up if production
+        traffic shows demand.
+
+        Returns a list of relation dicts in the same shape
+        `_build_entity_relations` emits, so the caller can
+        concatenate them directly into the entity's frontmatter
+        relations list.
+        """
+        import re as _re
+        if not source_name or not snapshot:
+            return []
+
+        source_norm = _re.sub(r"[^\w가-힣]", "_", source_name.strip().lower())
+        tokens = [t for t in source_norm.split("_") if len(t) >= 2]
+        if not tokens:
+            return []
+
+        self_norm = source_norm
+
+        def _stamp(conf):
+            if not doc_id:
+                return None
+            return [{
+                "doc_id": doc_id,
+                "weight": conf,
+                "role":   "inferred-overlap",
+                "ts":     ts,
+            }]
+
+        out = []
+        seen = set()
+        for tok in tokens:
+            if tok == self_norm:
+                continue
+            match = snapshot.get(tok)
+            if not match:
+                continue
+            canonical, eid, etype = match
+            # second-level self-check: snapshot may match because the
+            # entity being ingested already exists at this canonical
+            # name (re-ingest of same source doc).
+            if canonical == source_name:
+                continue
+            key = (canonical, "관련")
+            if key in seen:
+                continue
+            seen.add(key)
+            rel_dict = {
+                "target":      canonical,
+                "target_id":   eid,
+                "target_type": etype,
+                "label":       "관련",
+                "confidence":  0.5,
+                "inferred":    True,
+            }
+            sources = _stamp(0.5)
+            if sources:
+                rel_dict["sources"] = sources
+            out.append(rel_dict)
+        return out
+
 
 __all__ = ["WikiMergeMixin"]

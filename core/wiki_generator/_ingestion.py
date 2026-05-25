@@ -72,6 +72,14 @@ class WikiIngestionMixin:
         doc_name      = os.path.splitext(filename)[0]
         doc_entity_id = self._generate_entity_id(doc_name, "document")
 
+        # v0.4 Sprint 1 #1 — entity-name overlap snapshot built once
+        # per document so every entity in this doc can reuse it
+        # without re-scanning every wiki file. The snapshot is a
+        # frozen view at ingestion start; entities created later in
+        # this same doc are not in it (their overlaps to siblings
+        # are resolved by `resolve_pending_relations` post-pass).
+        overlap_snapshot = self._build_overlap_snapshot()
+
         created_ids:   List[str]      = []
         name_to_id:    Dict[str, str] = {}
         name_to_type:  Dict[str, str] = {}
@@ -93,6 +101,23 @@ class WikiIngestionMixin:
                     name, extracted.get("relations", []),
                     doc_id=doc_entity_id, ts=ingest_ts,
                 )
+                # v0.4 Sprint 1 #1 — overlap detection also applies
+                # on the merge branch so re-ingestion of an entity
+                # whose name overlaps with newly-existing tokens
+                # picks up the relation. Identical pattern to the
+                # new-entity branch below.
+                merge_overlap_rels = self._infer_overlap_relations(
+                    name, overlap_snapshot,
+                    doc_id=doc_entity_id, ts=ingest_ts,
+                )
+                if merge_overlap_rels:
+                    seen = {(r.get("target"), r.get("label"))
+                            for r in new_rels}
+                    for r in merge_overlap_rels:
+                        key = (r.get("target"), r.get("label"))
+                        if key not in seen:
+                            new_rels.append(r)
+                            seen.add(key)
                 if new_rels:
                     stats = self._merge_relations_into_existing_entity(
                         existing_id, new_rels, doc_entity_id, ingest_ts,
@@ -111,6 +136,26 @@ class WikiIngestionMixin:
                 name, extracted.get("relations", []),
                 doc_id=doc_entity_id, ts=ingest_ts,
             )
+            # v0.4 Sprint 1 #1 — token-level entity-name overlap
+            # detection. New event/document/concept entities whose
+            # name contains an existing entity's normalized name as
+            # a token get an automatic RELATED_TO relation. Without
+            # this step, "비트코인 spot ETF 11개 일괄 승인" event
+            # was being ingested with zero link to the existing
+            # "비트코인" concept (LLM extractor only emits explicit
+            # source/target pairs from the document body).
+            overlap_rels = self._infer_overlap_relations(
+                name, overlap_snapshot,
+                doc_id=doc_entity_id, ts=ingest_ts,
+            )
+            if overlap_rels:
+                seen_targets = {(r.get("target"), r.get("label"))
+                                for r in ent_relations}
+                for r in overlap_rels:
+                    key = (r.get("target"), r.get("label"))
+                    if key not in seen_targets:
+                        ent_relations.append(r)
+                        seen_targets.add(key)
             # [B-2-A fix] top-level `summary` mirrors `attributes.summary`
             # so the wiki body builder (`_frontmatter.py:create_entity_file`)
             # can populate `## 요약`. The builder only reads top-level keys;

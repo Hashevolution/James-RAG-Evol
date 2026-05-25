@@ -135,6 +135,44 @@ class WikiFrontmatterMixin:
     def _normalize_name(self, name: str) -> str:
         return re.sub(r"[^\w가-힣]", "_", name.strip().lower())
 
+    def _build_overlap_snapshot(self):
+        """Return `{normalized_name: (canonical_name, entity_id, entity_type)}`
+        for every existing wiki entity (any type), aliases included.
+
+        v0.4 Sprint 1 #1 addition — used by ingestion's entity-name
+        overlap detection (`_infer_overlap_relations` in `_merge.py`)
+        so a newly-ingested event named *"비트코인 spot ETF 11개
+        일괄 승인"* automatically gets a RELATED_TO relation to the
+        existing "비트코인" concept entity when its normalized name
+        appears as a token in the new entity's name.
+
+        First-write-wins: if two entities share a normalized name
+        (e.g. one canonical + one alias on a different entity), the
+        earlier one in `entity_id_index` iteration order takes
+        precedence. Tests pin this — production rarely has the
+        collision because aliases that match another canonical name
+        would already trip `_find_existing_entity_id` during ingest.
+        """
+        from pathlib import Path
+        snapshot = {}
+        for eid, filepath in self.entity_id_index.items():
+            try:
+                fm = self._read_frontmatter(Path(filepath))
+            except Exception:
+                continue
+            if not fm:
+                continue
+            canonical = fm.get("name", "")
+            norm = fm.get("normalized_name", "") or self._normalize_name(canonical)
+            etype = fm.get("entity_type", "concept")
+            if norm and norm not in snapshot:
+                snapshot[norm] = (canonical, eid, etype)
+            for alias in fm.get("aliases", []) or []:
+                alias_norm = self._normalize_name(alias)
+                if alias_norm and alias_norm not in snapshot:
+                    snapshot[alias_norm] = (canonical, eid, etype)
+        return snapshot
+
     # =========================
     # ENTITY SEARCH (FIXED)
     # =========================
