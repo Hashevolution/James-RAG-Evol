@@ -589,6 +589,74 @@ augments at *vector search input*, alias pack augments at
 multilingual-e5-large) for global retrieval quality is v0.4
 backlog (BL-9), not addressed at D5.
 
+### 5.7.9 LLM model authority chain (`core/model_resolver.py`)
+
+D5 (§5.7.8) routes between **backends** (`ollama_local`,
+`claude_code_cli`, future plugin providers). The `model_resolver`
+routes between **model tags** *within* a chosen backend (e.g.
+`gemma3:4b` vs `gemma4:e4b` vs `qwen2.5:14b` on `ollama_local`).
+The two axes compose: D5 picks the backend → resolver picks the
+tag — neither replaces the other.
+
+**Resolution chain** (`core/model_resolver.resolve_for_mode`, first
+match wins):
+
+1. **Per-call override** (`selected_model` parameter on the chat
+   request) — set by the chat-page model picker (`#model-picker`
+   in `frontend/index.html`) or the v0.4.0-alpha.2 chip popover
+   (PR #498 + PR #499). Highest priority because the operator
+   explicitly typed it for this turn.
+2. **Configured tag** (`config.GEMMA_MODEL`, from the
+   `JAMES_LLM_MODEL` env var). The "what does the operator
+   normally want" default. Honoured when installed; falls through
+   to the preference list otherwise with an audit warning.
+3. **Per-mode preference list** (`DEFAULT_PREFERENCE["chat"]` and
+   `DEFAULT_PREFERENCE["coding"]`, overridable via
+   `JAMES_MODEL_PREFERENCE_<MODE>=tag1,tag2,…`). First installed
+   wins.
+4. **Any installed model** (sorted alphabetically — deterministic
+   for replay) with a friendly "consider `ollama pull <preferred>`"
+   warning.
+5. **None** — returns `ResolvedModel(tag="", source="none")` and
+   an install-command hint. Callers see the empty tag and surface
+   it as the chat-header chip's "not installed" state (v0.4.0-alpha.2
+   `/llm/active` endpoint).
+
+**Why per-call wins over env**: a chat user with no admin role still
+needs to compare models for one turn without persisting the choice.
+The chip popover writes to `selectedModel` (JS) +
+`localStorage["james_model_chip"]`, and the next `/query/` request
+carries it as `selected_model`. The resolver short-circuits at
+step 1, never consults env — the operator-installed default stays
+authoritative for everyone else.
+
+**Why env wins over preference**: an operator who sets
+`JAMES_LLM_MODEL=gemma3:12b` has explicit intent. The preference
+list is a fleet-wide fallback for boxes that haven't pulled the
+operator's preferred model yet — never an authority override.
+
+**Per-call override + D5 routing interaction**: when both D5
+(`JAMES_AUTO_ROUTER=1`) and a per-call `selected_model` are
+active, D5 picks the backend and the resolver picks the tag *on
+that backend*. The two decisions are independent. If the per-call
+tag isn't installed on the resolved backend, the resolver still
+falls through the chain — but the audit row carries both signals
+(`reason:route` from D5 + `model_resolver.source` from the
+resolver) so an operator can reconstruct the full decision.
+
+**Surface visibility**: the chat-header chip (`/llm/active`
+endpoint, PR #498) reads `resolve_chat().tag` + `source` and tints
+its border by `source` value — `requested` (configured won) stays
+neutral, `preference` / `any` / `none` get progressively warmer
+edges. Operators see fleet-wide which boxes are running the
+configured model vs which are falling back.
+
+**Cache** (`installed_models()` set with 60s TTL): the resolver
+hits Ollama's `/api/tags` once per minute rather than per chat
+turn. `invalidate_cache()` is called from `/admin/llm/install` +
+`/admin/llm/delete` handlers so a fresh install is visible
+immediately.
+
 ### 5.7.7 Deployment isolation (deferred to v0.4)
 
 JAMES's isolation today is **policy-based**: RBAC + ABAC + PolicyEngine
