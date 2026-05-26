@@ -22,6 +22,20 @@ production 의 `relation["confidence"]` 읽기 경로는 Phase A 단계에서
   * manual   — admin 이 그래프 에디터로 수동 입력 (Phase E)
   * legacy   — Phase A 마이그레이션 시점에 출처 추적 없이 back-fill
                된 사전-마이그레이션 잔류 (cascade 가 건드리지 않음)
+
+v0.4 Sprint 5 first-bundle (2026-05-26+, PR 0 validator prep):
+  Extends the schema with T1 (Temporal Validity) + T7 (Supersede
+  Chain) fields. Existing v0.3 callers see no behaviour change —
+  every new field has a v0.3-equivalent safe default. See
+  ``docs/handovers/v0.4.0-sprint5-layer4-first-bundle-entry.md``
+  §2 for scope + §12.2 for the clock decision.
+
+  - **Source-level (T1)**: ``valid_from`` / ``valid_until``
+    (ISO 8601 strings or None).
+  - **Edge-level (T1+T7)**: ``validity`` (``{from, to}`` dict),
+    ``status`` (``{active, superseded_by, superseded_at}`` dict),
+    ``mutation_type`` (``"active" | "invalidated" | "superseded" |
+    "expired"`` enum).
 """
 
 from __future__ import annotations
@@ -189,6 +203,29 @@ def read_relation_sources(rel: dict | None) -> list:
             "ts":     None,
         }]
     return []
+
+
+# v0.4 Sprint 5 — T1 + T7 schema extension lives in
+# ``core.lifecycle.schema`` so the v0.3 surface here stays small enough
+# to take future Phase-A follow-ups without breaching the 20 KB cap.
+# Re-export for back-compat — existing callers can still
+# ``from core.relations_schema import VALID_MUTATION_TYPES`` etc.
+from core.lifecycle.schema import (  # noqa: F401
+    T1_MUTATION_ACTIVE,
+    T1_MUTATION_EXPIRED,
+    T1_MUTATION_INVALIDATED,
+    T1_MUTATION_SUPERSEDED,
+    T1_SOURCE_FIELD_VALID_FROM,
+    T1_SOURCE_FIELD_VALID_UNTIL,
+    T7_EDGE_FIELD_MUTATION_TYPE,
+    T7_EDGE_FIELD_STATUS,
+    T7_EDGE_FIELD_VALIDITY,
+    VALID_MUTATION_TYPES,
+    apply_v04_edge_defaults,
+    apply_v04_source_defaults,
+    validate_edge_v04_fields,
+    validate_source_v04_fields,
+)
 
 
 def build_legacy_source(
