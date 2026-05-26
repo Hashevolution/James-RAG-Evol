@@ -5,7 +5,7 @@
 > 기반 자기진화.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-v0.4.0--alpha.2-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/releases/tag/v0.4.0-alpha.2)
+[![Status](https://img.shields.io/badge/Status-v0.4.0--alpha.3-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/releases/tag/v0.4.0-alpha.3)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12806/badge)](https://www.bestpractices.dev/projects/12806)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20372649.svg)](https://doi.org/10.5281/zenodo.20372649)

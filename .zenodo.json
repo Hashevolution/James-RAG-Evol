@@ -1,13 +1,20 @@
 {
-  "title": "PROJECT JAMES — v0.4.0-alpha.2 (UI consistency bundle + cognitive plumbing + 5-stage D1 surface)",
-  "description": "JAMES is a local-first, auditable knowledge reasoning system. v0.4.0-alpha.2 is the first alpha tag of the v0.4 cycle, bundling two sprints of stabilisation work between the v0.3.x stack closure (v0.3.3, D6 retry wiring) and the v0.4.0 final Layer 4 main theme (Lifecycle Semantics, planned Sprint 5).\n\nSprint 2 — UI consistency bundle (5 PRs):\n- #496 admin character profile page i18n consistency — 38 new char.* keys + onLangChange dynamic re-render + CORE/VALUES/STYLE data-i18n. Closes the long-standing bug where the character summary card body + connections panel kept rendering Korean strings in EN mode.\n- #497 chat sidebar hover auto-expand — CSS-only sibling+self :hover rule. Click-toggle UX preserved untouched.\n- #498 always-visible chat model indicator chip — new /llm/active endpoint (api_key only, not admin-gated) + chip in chat header. data-source attribute drives edge colour for non-default resolution.\n- #499 chat-side model picker popover — chip click opens popover listing installed models; selection writes to selectedModel (per-session override) + localStorage. Authority chain unchanged (per-call > env > preference > any).\n- #500 sticky top navigation on scrolling pages — admin / workspace get position:sticky on the header; chat / graph keep their overflow:hidden viewport pattern (negative-assertion tests pin the per-page policy).\n\nSprint 3 — Plumbing closure (5 PRs + 2 follow-ups):\n- #501 BL-1 emit_trace_step stdout mirror — all reasoning stages now emit single-line `[reason:<stage>]` rows under JAMES_TRACE_STDOUT. Closes feedback_stdout_vs_audit_log_trace_split: planner / reflect / verify used to write to audit_log DB only.\n- #502 BL-2 attributes.summary legacy field cleanup — new wiki writes stop emitting the top-level duplicate; read fallback kept for legacy disk files.\n- #503 / #504 / #505 D1 stage expansion (#7a planner / #7b reflect / #7c verify) — all five reasoning stages (query_rewriter / synth / planner / reflect / verify) now wire D1 adaptive-budget + D6 retry through the same TaskBudget.assess + complete_with_retry pattern. Default-off byte-identical invariant preserved. Closes feedback_d1_d5_retry_doubled_wiring_gap's note that the cognitive stages held cap-ceiling defaults so D1 + D6 were no-ops.\n- #506 follow-up — test_verifier.py ANSWER_KO fixture rebalanced under PR #495 (Sprint 1 #2) dominant-script i18n contract.\n- #507 follow-up — query_rewriter local _adaptive_budget_enabled migrated to budget.adaptive_budget_enabled (single source of truth across all 5 stages).\n\nThe alpha release stays opt-in across both D1 and D5 (JAMES_ADAPTIVE_BUDGET / JAMES_AUTO_ROUTER both default OFF). Production fleets pulling alpha.2 see zero behaviour change relative to v0.3.3.",
-  "version": "v0.4.0-alpha.2",
+  "title": "PROJECT JAMES — v0.4.0-alpha.3 (LEO Evidence-Scope routing track L.0→L.D + Sprint 4 embedding prep + CI / module hygiene)",
+  "description": "JAMES is a local-first, auditable knowledge reasoning system. v0.4.0-alpha.3 is the second alpha tag of the v0.4 cycle, bundling the full LEO Evidence-Scope Routing track (4 phases from design memo through engine wiring + operator bench wrapper) plus Sprint 4 embedding-abstraction prep, CI infrastructure stabilisation, and module-size hygiene. Sits between v0.4.0-alpha.2 (Sprint 2 UI consistency + Sprint 3 5-stage D1 surface, prepped 2026-05-25 but not released — superseded by this tag) and the v0.4.0 final Layer 4 main theme (Lifecycle Semantics, planned Sprint 5).\n\nLEO Evidence-Scope Routing Track (5 PRs, 4 phases) — measured input-side routing axis complementing the predicted output-side D5 budget axis:\n- #512 (external author 222315AIS — LEO / Younghu) L.0 design memo (docs/handovers/v0.4-leo-evidence-scope-routing-track.md) + README walk-back. Track originated by Jiwon's Gemma 4 generation-halt diagnostic question; Leo proposed measuring data scope (input-side) instead of predicting token count (output-side). First external contribution to the repo.\n- #513 L.A — core/reasoning/evidence_scope.py extractor + JAMES_SCOPE_ROUTING flag (default OFF). ScopeBreakdown dataclass + compute_scope() pure function reading loop_state retrieval/graph output. 4 components: effective_k (0.35) + graph_reach (0.25) + doc_spread (0.20) + score_entropy (0.20). 23 contract tests pin the API + invariants.\n- #514 L.B — Router.select_backend + resolve_backend + _route_policy gain kwarg-only evidence_scope. Policy v1 thresholds: narrow (scope ≤ 0.30) → small backend, wide (scope ≥ 0.70) → large/medium, mid-band falls through to D5 budget rule. verify stage still wins (rule 1 priority). 23 contract tests.\n- #516 L.C — ContextVar wiring (scope_context + get_current_scope) bound in pipeline.py post-Loop-1, read in trace_helpers.trace_synth_call gate. emit_route_event audit payload extended with evidence_scope + 4 components. Zero signature churn through generate_answer → trace_synth_call chain (ContextVar pattern mirrors observability.get_trace_id). 12 contract tests pin ContextVar + audit payload + flag-OFF byte-identical at three layers.\n- #517 L.D operator bench wrapper — scripts/bench_lc_scope_arms.py runs scripts/bench.py twice (flag-OFF + flag-ON) against a live JAMES server, queries audit_log for reason:route scope payload during the flag-ON window, and writes aggregated per-query delta + scope distribution to reports/research-runs/lc-scope-bench-<timestamp>.json. Deferred to operator's live-server execution window.\n\nSprint 4 prep (1 PR):\n- #509 BL-9 embedding abstraction — JAMES_EMBEDDING_MODEL env + _embedding_short_name slug helper + per-model models/<short> cache path + per-model chroma_db_<short> directory. Default-off byte-identical: legacy MiniLM tag maps to models/miniLM + chroma_db. Actual default flip + re-embed migration is the Sprint 4 swap PR.\n\nCI infrastructure (1 PR):\n- #515 conftest pre-import — tests/conftest.py warms sys.modules for core.vector_store + core.memory + core.wiki_generator + llm.router at session start. Eliminates the recurring CI flake where patch('core.vector_store.VectorStore') triggered a 5s sentence_transformers+torch cold-import cascade inside setUp, crossed the per-test 30s pytest-timeout, killed setUp mid-execution, and leaked patch('llm.router.RouterWrapper') into the next process. Six legacy test fixtures benefit transparently with no test source changes.\n\nDocs (1 PR):\n- #510 ARCHITECTURE §5.7.9 — LLM model authority chain (per-call > env > preference > any installed > none) + D5 (per-backend) vs model_resolver (per-tag) two-axis disambiguation.\n\nModule-size hygiene (1 PR):\n- #518 pipeline.py split — extract post-loop context combine + post-check + [관련 자료 목록] sources-header to core/reasoning/pipeline_context.py. Pure refactor, byte-identical. pipeline.py 19.0 KB → 16.0 KB, returns 3 KB headroom for Sprint 5 Layer 4 wiring. tests/_pipeline_src.py:pipeline_source() helper updated to include the new split companion.\n\nAll new behaviour stays opt-in: JAMES_SCOPE_ROUTING (LEO L.C, default OFF) + JAMES_EMBEDDING_MODEL (Sprint 4 prep, default MiniLM) + existing JAMES_ADAPTIVE_BUDGET / JAMES_AUTO_ROUTER (default OFF). Production fleets pulling alpha.3 see zero behaviour change relative to v0.3.3.\n\nOperator action queue for L.D closure: run scripts/bench_lc_scope_arms.py against a live server, paste the resulting aggregate JSON into reports/promo-assets/v3prime-leo-evidence-scope-result.md, tick the ROADMAP D-LEO entry. Cross-stack comparison runs (Robin V3'.e schema-adopted, Ali Track 3 swap_eval) must pin all opt-in routing flags OFF for apples-to-apples purity.",
+  "version": "v0.4.0-alpha.3",
   "upload_type": "software",
   "creators": [
     {
       "name": "Seo, Jiwon",
       "orcid": "0009-0002-0007-7860",
       "affiliation": "Hashevolution"
+    }
+  ],
+  "contributors": [
+    {
+      "name": "LEO (Younghu)",
+      "type": "Researcher",
+      "affiliation": "ais.edu.hk"
     }
   ],
   "keywords": [
@@ -19,6 +26,9 @@
     "gemma",
     "ollama",
     "auto-routing",
+    "evidence-scope-routing",
+    "measured-input-routing",
+    "context-var-pattern",
     "provider-contract",
     "backend-capability",
     "cross-lingual-rag",
@@ -30,9 +40,9 @@
     "retry-fallback",
     "truncation-detection",
     "audit-trail",
+    "embedding-abstraction",
     "korean-nlp",
-    "ui-i18n",
-    "observability-stdout-mirror"
+    "module-size-hygiene"
   ],
   "license": "MIT",
   "access_right": "open",
@@ -54,25 +64,30 @@
       "resource_type": "software"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/496",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/512",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/500",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/513",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/503",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/514",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/505",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/516",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/517",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     }
   ],
-  "notes": "v0.4.0-alpha.2 is the alpha milestone of the v0.4 cycle — first deliverable between v0.3.x closure and v0.4.0 final (Layer 4 main theme, Sprint 5). The release ships UI consistency improvements (Sprint 2) and the 5-stage D1 surface uniformity (Sprint 3) without any production-behaviour change at the default flag setting. v0.4.0 final will add T1 Lifecycle states + T2 Event-driven transitions + T7 Cross-workspace federation primitives as the architectural shift planned for that tag (see ROADMAP.md §v0.4.0). When mint completes, the explicit isNewVersionOf chain back to v0.3.3 will land in the next deposit; v0.3.3's specific DOI is operator-supplied at GitHub release publish time. Three-author joint-piece collaboration with Robin Converse (Triava Labs) and Ali Afana (Provia) remains the next-cycle research trajectory; the JAMES-side product stack continues stabilising for v0.4.0 final."
+  "notes": "v0.4.0-alpha.3 is the second alpha milestone of the v0.4 cycle. The previously-prepped v0.4.0-alpha.2 (PR #508 metadata only, 2026-05-25, Sprint 2 UI consistency + Sprint 3 5-stage D1 surface) was never released to GitHub; this alpha.3 tag supersedes it and inherits its scope, then adds the LEO Evidence-Scope Routing track (L.0 design through L.D operator bench wrapper, 5 PRs), Sprint 4 BL-9 embedding abstraction prep, CI infrastructure stabilisation (conftest pre-import), and pipeline.py module-size hygiene. v0.4.0 final will add T1 Lifecycle states + T2 Event-driven transitions + T7 Cross-workspace federation primitives as the architectural shift planned for that tag (see ROADMAP.md §v0.4.0). The LEO contribution (#512 design memo by external author 222315AIS) is JAMES's first external PR and the first to carry a contributor entry in this deposit's metadata. When mint completes, the explicit isNewVersionOf chain back to v0.3.3 (10.5281/zenodo.20XXXXXX, operator-supplied at publish time) will land in the next deposit; the chain back to v0.3.2 / v0.3.1 (specific DOIs 10.5281/zenodo.20372649 / 10.5281/zenodo.20363998) stays explicit in related_identifiers as isDerivedFrom. Three-author joint-piece collaboration with Robin Converse (Triava Labs) and Ali Afana (Provia) on the substitution/synthesis cost-asymmetry finding remains the next-cycle research trajectory; the JAMES-side product stack continues stabilising for v0.4.0 final."
 }
