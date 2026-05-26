@@ -1,4 +1,4 @@
-"""LEO L.D — operator-runnable scope-routing 3-arm bench wrapper.
+"""LEO L.D — operator-runnable scope-routing bench wrapper.
 
 Runs ``scripts/bench.py --suite=step7`` twice against a live JAMES
 server (once with ``JAMES_SCOPE_ROUTING=0``, once with ``=1``), queries
@@ -9,18 +9,41 @@ window, and aggregates per-query delta + scope distribution into
 Operator workflow::
 
     # 1) Start JAMES server in one terminal
-    python web_app.py
+    python server_llmwiki.py
 
     # 2) Run the wrapper in another (server stays up)
     python scripts/bench_lc_scope_arms.py
+
+## D5 dependency — both arms run with ``JAMES_AUTO_ROUTER=1`` forced
+
+The 2026-05-26 live verify run of the original wrapper exposed a
+design flaw: LEO L.C scope routing only fires inside the D5 router
+policy tree. With ``JAMES_AUTO_ROUTER=0`` (D5 off) the router
+shortcircuits to legacy at ``Router(enabled=False)`` without
+consulting ``evidence_scope`` — both arms degrade to "legacy
+everywhere" and the audit_log captures zero scope decisions
+(``scope_summary={}, backend_counts={}``). The flag-ON arm's extra
+runtime is then pure LLM-sampling noise.
+
+This version forces ``JAMES_AUTO_ROUTER=1`` on BOTH the OFF and ON
+arms, so the comparison is:
+
+  - **OFF arm**: D5 budget routing (CAP_SUBSTITUTION / CAP_HEAVY /
+                 verify-stage), **without** scope override
+  - **ON arm**:  D5 budget routing **plus** scope override
+                 (narrow ≤ 0.30 → small / wide ≥ 0.70 → large /
+                 mid-band falls through to budget rule)
+
+This isolates the scope-override signal — the delta now actually
+measures what scope routing adds on top of D5, instead of measuring
+"router on vs router off".
 
 The 4 STEP-7 arms from the LEO L.0 design memo
 (``docs/handovers/v0.4-leo-evidence-scope-routing-track.md``
 §"STEP 7 bench plan") are observed indirectly via the scope
 distribution captured in the audit_log payload:
 
-  - Flag-OFF arm  — byte-identical baseline (bench.py --check
-                     against the committed baseline should still pass)
+  - Flag-OFF arm  — D5 budget baseline (no scope override)
   - Flag-ON narrow (scope ≤ 0.30) — small-tier backend routing
   - Flag-ON wide   (scope ≥ 0.70) — large-tier backend routing
   - Flag-ON halt-prone — Gemma 4 ``done_reason=length`` cases. This
@@ -32,7 +55,8 @@ Acceptance criteria for L.D closure (informational; this script
 reports but does not enforce them — that's the result doc's job):
 
   - Flag-OFF arm latency / graph_paths within bench.py baseline
-    tolerance bands (byte-identical invariant)
+    tolerance bands (post-#519 — the D5-on baseline, NOT the
+    pre-LEO byte-identical baseline)
   - Flag-ON narrow arm: latency delta ≤ baseline (small backend wins)
   - Flag-ON wide arm: latency delta within +30% (large backend
     acceptable for synthesis burden)
@@ -40,14 +64,20 @@ reports but does not enforce them — that's the result doc's job):
     (manual check against the per-query answer_len + downstream
     grounded markers; not part of bench.py's automated check yet)
 
-This script intentionally does NOT toggle other opt-in flags
-(``JAMES_AUTO_ROUTER`` / ``JAMES_ADAPTIVE_BUDGET``). Mixing flag
-changes would muddy the scope-routing signal.
+``JAMES_ADAPTIVE_BUDGET`` (D1) is intentionally **inherited** from
+the operator's environment rather than forced — D1 is an independent
+axis (per-stage cap selection vs per-query backend selection). To
+measure scope routing in isolation with D1 on, the operator sets
+``JAMES_ADAPTIVE_BUDGET=1`` before invoking this script; the wrapper
+preserves it across both arms. Same for any other env not enumerated
+above.
 
 Cross-stack note: when Robin (V3'.e schema-adopted) or Ali (Track 3
-swap_eval) work runs this stack, both arms MUST stay flag-OFF for
-apples-to-apples purity — see ``feedback_cross_stack_run_flag_off`` in
-memory.
+swap_eval) work runs this stack, BOTH arms MUST stay with all
+opt-in flags OFF for apples-to-apples purity — see
+``feedback_cross_stack_run_flag_off`` in memory. **Do not use this
+wrapper for cross-stack runs** — it forces ``JAMES_AUTO_ROUTER=1``
+which violates that purity contract.
 """
 from __future__ import annotations
 
@@ -86,11 +116,23 @@ def _run_arm(arm_name: str, scope_routing: str) -> Optional[Path]:
     failure. bench.py writes to ``reports/bench_<sha>_step7_<stamp>.json``;
     we find the most recently created matching file and assume it
     belongs to this run.
+
+    Forces ``JAMES_AUTO_ROUTER=1`` on this arm — see module docstring
+    for the D5 dependency rationale. The OFF arm is "D5 budget
+    routing without scope override"; the ON arm is "D5 budget routing
+    + scope override". Without ``JAMES_AUTO_ROUTER=1`` the router
+    shortcircuits to legacy and audit_log captures zero scope
+    decisions.
     """
     env = os.environ.copy()
     env["JAMES_SCOPE_ROUTING"] = scope_routing
+    env["JAMES_AUTO_ROUTER"] = "1"
 
-    print(f"\n=== ARM: {arm_name} (JAMES_SCOPE_ROUTING={scope_routing}) ===")
+    print(
+        f"\n=== ARM: {arm_name} "
+        f"(JAMES_SCOPE_ROUTING={scope_routing}, "
+        f"JAMES_AUTO_ROUTER=1) ==="
+    )
     pre_existing = set((ROOT / "reports").glob("bench_*_step7_*.json"))
     t0 = time.time()
     try:
@@ -239,6 +281,17 @@ def main() -> int:
     args = ap.parse_args()
 
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Pre-flight audit_log path warning. The wrapper still proceeds —
+    # the bench runs regardless — but it tells the operator up front
+    # that the scope_summary block in the output will be empty.
+    if not AUDIT_DB.exists():
+        print(
+            f"[bench_lc] WARNING: audit_log not found at {AUDIT_DB} — "
+            f"scope_summary + backend_counts in the output will be "
+            f"empty. Set the JAMES_AUDIT_DB env var to override the "
+            f"path if your deployment writes to a different location."
+        )
 
     # Arm 1: flag OFF (baseline)
     if args.off_path:
