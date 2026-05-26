@@ -8,22 +8,40 @@ window, and aggregates per-query delta + scope distribution into
 
 Operator workflow::
 
-    # 1) Start JAMES server in one terminal
-    python server_llmwiki.py
-
-    # 2) Run the wrapper in another (server stays up)
+    # Stop any pre-existing JAMES server on 127.0.0.1:8000 (the
+    # wrapper spawns + tears down its own server per arm so the env
+    # flags actually reach the routing call sites).
     python scripts/bench_lc_scope_arms.py
+
+## Server lifecycle — wrapper spawns + tears down per arm
+
+``JAMES_SCOPE_ROUTING`` and ``JAMES_AUTO_ROUTER`` are both read by
+the server's routing code (``core.reasoning.evidence_scope``,
+``core.reasoning.router``), not by bench.py. Setting them on the
+bench.py subprocess does nothing: bench.py is an HTTP client. The
+2026-05-26 live verify run of the original wrapper exposed this —
+both arms ran against the operator's pre-launched server (whose env
+was frozen at boot) so the comparison measured pure LLM-sampling
+noise, with ``scope_summary={}, backend_counts={}`` and no
+``evidence_scope=…`` tokens anywhere in audit_log.
+
+This version spawns ``python -m uvicorn server_llmwiki:app`` with
+the correct per-arm env at the start of each arm and shuts it down
+after bench.py exits. ``--reload`` is disabled (uvicorn's reload
+watcher spawns a child that survives parent termination on Windows
+and leaves the port stuck across arms). Override the bind via
+``JAMES_BASE_URL`` (default ``http://127.0.0.1:8000``); if the port
+is already in use the wrapper refuses to proceed rather than
+silently routing against a stale server.
 
 ## D5 dependency — both arms run with ``JAMES_AUTO_ROUTER=1`` forced
 
-The 2026-05-26 live verify run of the original wrapper exposed a
-design flaw: LEO L.C scope routing only fires inside the D5 router
-policy tree. With ``JAMES_AUTO_ROUTER=0`` (D5 off) the router
-shortcircuits to legacy at ``Router(enabled=False)`` without
-consulting ``evidence_scope`` — both arms degrade to "legacy
-everywhere" and the audit_log captures zero scope decisions
-(``scope_summary={}, backend_counts={}``). The flag-ON arm's extra
-runtime is then pure LLM-sampling noise.
+LEO L.C scope routing only fires inside the D5 router policy tree.
+With ``JAMES_AUTO_ROUTER=0`` (D5 off) the router shortcircuits to
+legacy at ``Router(enabled=False)`` without consulting
+``evidence_scope`` — both arms would degrade to "legacy everywhere"
+and audit_log would capture zero scope decisions even with the
+server-spawn fix above.
 
 This version forces ``JAMES_AUTO_ROUTER=1`` on BOTH the OFF and ON
 arms, so the comparison is:
@@ -102,15 +120,113 @@ except Exception:
 
 
 REPORTS_DIR = ROOT / "reports" / "research-runs"
-# audit_log SQLite path — standard JAMES location. Override via
-# JAMES_AUDIT_DB env if your deployment puts it elsewhere.
+# audit_log SQLite path — matches ``core.audit_bridge._DEFAULT_AUDIT_DB``
+# (BASE_DIR / "james_audit.db"). Override via JAMES_AUDIT_DB env if your
+# deployment writes to a different location.
 AUDIT_DB = Path(
-    os.environ.get("JAMES_AUDIT_DB", str(ROOT / "audit.db"))
+    os.environ.get("JAMES_AUDIT_DB", str(ROOT / "james_audit.db"))
 )
+SERVER_BASE_URL = os.environ.get("JAMES_BASE_URL", "http://127.0.0.1:8000")
+SERVER_HEALTHZ = SERVER_BASE_URL.rstrip("/") + "/healthz"
+SERVER_BOOT_TIMEOUT_SEC = int(os.environ.get("JAMES_SERVER_BOOT_TIMEOUT", "120"))
+
+
+def _port_in_use(host: str, port: int) -> bool:
+    import socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(0.5)
+    try:
+        return sock.connect_ex((host, port)) == 0
+    finally:
+        sock.close()
+
+
+def _parse_host_port(base_url: str) -> tuple:
+    from urllib.parse import urlparse
+    u = urlparse(base_url)
+    return (u.hostname or "127.0.0.1", int(u.port or 8000))
+
+
+def _wait_for_healthz(timeout_sec: int) -> bool:
+    """Poll SERVER_HEALTHZ until 200 OK or timeout."""
+    import urllib.request
+    deadline = time.time() + timeout_sec
+    last_err = "no attempt yet"
+    while time.time() < deadline:
+        try:
+            with urllib.request.urlopen(SERVER_HEALTHZ, timeout=2) as resp:
+                if resp.status == 200:
+                    return True
+        except Exception as e:
+            last_err = f"{type(e).__name__}: {str(e)[:80]}"
+        time.sleep(1.0)
+    print(f"[server] /healthz never returned 200 ({last_err})")
+    return False
+
+
+def _spawn_server(env: Dict[str, str]) -> Optional[subprocess.Popen]:
+    """Spawn uvicorn server with the given env. Returns Popen or None.
+
+    Uses ``python -m uvicorn`` directly (not ``python server_llmwiki.py``)
+    so we can disable ``--reload`` — reload spawns a watcher child that
+    survives parent termination on Windows and leaves port 8000 stuck.
+    """
+    host, port = _parse_host_port(SERVER_BASE_URL)
+    if _port_in_use(host, port):
+        print(
+            f"[server] {host}:{port} already in use. Stop the existing "
+            f"server (or set JAMES_BASE_URL to a free port) before "
+            f"running this wrapper — env flags applied here would not "
+            f"reach the operator-launched server."
+        )
+        return None
+    cmd = [
+        sys.executable, "-m", "uvicorn", "server_llmwiki:app",
+        "--host", host, "--port", str(port),
+    ]
+    creationflags = 0
+    if sys.platform == "win32":
+        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
+    proc = subprocess.Popen(
+        cmd, env=env, cwd=str(ROOT),
+        stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT,
+        creationflags=creationflags,
+    )
+    print(f"[server] spawned pid={proc.pid} on {host}:{port}, waiting for /healthz…")
+    if not _wait_for_healthz(SERVER_BOOT_TIMEOUT_SEC):
+        _shutdown_server(proc)
+        return None
+    print(f"[server] healthy after {SERVER_BOOT_TIMEOUT_SEC}s budget")
+    return proc
+
+
+def _shutdown_server(proc: subprocess.Popen) -> None:
+    """Stop the spawned server gracefully, escalating to kill if needed."""
+    if proc.poll() is not None:
+        return
+    try:
+        proc.terminate()
+        proc.wait(timeout=15)
+    except subprocess.TimeoutExpired:
+        print(f"[server] pid={proc.pid} did not exit on terminate, killing")
+        proc.kill()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            print(f"[server] pid={proc.pid} still alive after kill — orphaned")
+    # Give the OS a moment to release the port before the next arm spawns.
+    time.sleep(2.0)
 
 
 def _run_arm(arm_name: str, scope_routing: str) -> Optional[Path]:
     """Run one bench arm with the given JAMES_SCOPE_ROUTING value.
+
+    Server lifecycle: spawns its own uvicorn with the per-arm env so
+    ``JAMES_SCOPE_ROUTING`` / ``JAMES_AUTO_ROUTER`` actually reach the
+    routing call sites. Without this, both flags would be set only on
+    the bench.py subprocess (an HTTP client that doesn't read them) —
+    the operator-launched server would keep its boot-time env on both
+    arms, and the bench would measure pure sampling noise.
 
     Returns the path to bench.py's output JSON file, or None on
     failure. bench.py writes to ``reports/bench_<sha>_step7_<stamp>.json``;
@@ -124,34 +240,41 @@ def _run_arm(arm_name: str, scope_routing: str) -> Optional[Path]:
     shortcircuits to legacy and audit_log captures zero scope
     decisions.
     """
-    env = os.environ.copy()
-    env["JAMES_SCOPE_ROUTING"] = scope_routing
-    env["JAMES_AUTO_ROUTER"] = "1"
+    server_env = os.environ.copy()
+    server_env["JAMES_SCOPE_ROUTING"] = scope_routing
+    server_env["JAMES_AUTO_ROUTER"] = "1"
 
     print(
         f"\n=== ARM: {arm_name} "
         f"(JAMES_SCOPE_ROUTING={scope_routing}, "
         f"JAMES_AUTO_ROUTER=1) ==="
     )
-    pre_existing = set((ROOT / "reports").glob("bench_*_step7_*.json"))
-    t0 = time.time()
-    try:
-        result = subprocess.run(
-            [sys.executable, str(ROOT / "scripts" / "bench.py"), "--suite=step7"],
-            env=env,
-            cwd=str(ROOT),
-            capture_output=False,
-            check=False,
-            timeout=1200,
-        )
-    except subprocess.TimeoutExpired:
-        print(f"[{arm_name}] TIMEOUT after 20 min — aborting arm")
+    server = _spawn_server(server_env)
+    if server is None:
+        print(f"[{arm_name}] server boot failed — aborting arm")
         return None
-    elapsed = time.time() - t0
-    print(
-        f"[{arm_name}] bench.py finished in {elapsed:.1f}s "
-        f"(exit code {result.returncode})"
-    )
+    try:
+        pre_existing = set((ROOT / "reports").glob("bench_*_step7_*.json"))
+        t0 = time.time()
+        try:
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "bench.py"), "--suite=step7"],
+                env={**os.environ, "JAMES_BASE_URL": SERVER_BASE_URL},
+                cwd=str(ROOT),
+                capture_output=False,
+                check=False,
+                timeout=1200,
+            )
+        except subprocess.TimeoutExpired:
+            print(f"[{arm_name}] TIMEOUT after 20 min — aborting arm")
+            return None
+        elapsed = time.time() - t0
+        print(
+            f"[{arm_name}] bench.py finished in {elapsed:.1f}s "
+            f"(exit code {result.returncode})"
+        )
+    finally:
+        _shutdown_server(server)
 
     after = set((ROOT / "reports").glob("bench_*_step7_*.json"))
     new = sorted(after - pre_existing)
@@ -171,6 +294,16 @@ def _query_audit_log_scope_rows(after_iso: str) -> List[Dict]:
     Returns parsed payload dicts (one per emitted route decision).
     Empty list if audit_log not present — operator may have a custom
     deployment; this is best-effort observability, not core path.
+
+    Row shape: ``core.audit_bridge.mirror_to_audit_db`` packs every
+    non-reserved key (incl. ``query`` and ``answer`` from the
+    ``emit_route_event`` dict) into a JSON blob stored in the
+    ``audit_log.answer`` column. The DB ``query`` column ends up empty
+    for these rows because ``_resolve_query`` only knows about
+    tool-style fields (tool_used / target_file / path). So we read the
+    JSON blob, lift the nested ``query`` → ``stage`` and tokenize the
+    nested ``answer`` (the ``backend=… tier=… reason=… [evidence_scope=…
+    effective_k=… …]`` k=v string emitted by ``emit_route_event``).
     """
     if not AUDIT_DB.exists():
         print(f"[audit] {AUDIT_DB} not found — skipping scope row capture")
@@ -180,15 +313,27 @@ def _query_audit_log_scope_rows(after_iso: str) -> List[Dict]:
         conn = sqlite3.connect(str(AUDIT_DB))
         cur = conn.cursor()
         cur.execute(
-            "SELECT timestamp, query, answer FROM audit_log "
+            "SELECT timestamp, answer FROM audit_log "
             "WHERE endpoint = 'reason:route' AND timestamp >= ? "
             "ORDER BY timestamp",
             (after_iso,),
         )
         rows: List[Dict] = []
-        for ts, stage, answer in cur.fetchall():
-            row: Dict = {"timestamp": ts, "stage": stage, "raw": answer}
-            for tok in (answer or "").split():
+        for ts, blob in cur.fetchall():
+            row: Dict = {"timestamp": ts, "raw": blob}
+            stage = ""
+            tok_str = ""
+            try:
+                payload = json.loads(blob) if blob else {}
+                if isinstance(payload, dict):
+                    stage = str(payload.get("query") or "")
+                    tok_str = str(payload.get("answer") or "")
+            except (ValueError, TypeError):
+                # Fallback for non-JSON legacy rows: treat the blob as the
+                # k=v token string directly.
+                tok_str = blob or ""
+            row["stage"] = stage
+            for tok in tok_str.split():
                 if "=" in tok:
                     k, v = tok.split("=", 1)
                     row[k] = v

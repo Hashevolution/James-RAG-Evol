@@ -52,7 +52,7 @@ except Exception:
     pass
 
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = os.environ.get("JAMES_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 
 
 def _load_api_key() -> str:
