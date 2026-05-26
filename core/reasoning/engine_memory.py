@@ -191,12 +191,17 @@ def build_memory_context(
     # ── [STEP 5-C] 언어 자동 감지 + 시스템 프롬프트 동적 전환 ──
     session_lang = kwargs.get("session_language", "")
 
-    # 쿼리에서 언어 자동 감지 (페르소나 설정 없을 때 fallback)
+    # v0.4 Sprint 1 #2 follow-up (2026-05-26): migrate this last
+    # site to the unified dominant-script classifier in `core.i18n`.
+    # Pre-fix this block kept a legacy `≥ 20% hangul → Korean`
+    # heuristic that disagreed with the four reasoning stages
+    # (planner / reflect / verify / query_rewriter) and engine_synth
+    # already moved to `detect_language` in PR #495 — engine_memory
+    # was missed in that sweep. With this swap, all six "language
+    # decision" sites now share one contract.
     if not session_lang:
-        import re as _re
-        korean_chars = len(_re.findall(r'[가-힣]', safe_query))
-        total_chars = max(len(safe_query.strip()), 1)
-        session_lang = "Korean" if (korean_chars / total_chars) >= 0.2 else "English"
+        from core.i18n import detect_language
+        session_lang = "Korean" if detect_language(safe_query) == "ko" else "English"
 
     # 언어 지시어 주입
     if session_lang and session_lang.lower() not in ("", "auto"):

@@ -50,5 +50,52 @@ class TraitI18nTests(unittest.TestCase):
             "label_keys must be unique across traits")
 
 
+class GetWithMetaPropagatesLabelKeyTests(unittest.TestCase):
+    """v0.4 live verify regression (2026-05-26).
+
+    Before the fix, `CharacterProfile.get_with_meta()` returned every
+    field except ``label_key``. The admin radar / Fine Tune slider
+    rendering in ``admin.js`` keys off ``tr.label_key`` to resolve
+    trait names through ``t(label_key)``; an absent key forces the
+    Korean fallback (``tr.label_ko``) regardless of the active UI
+    language → 12 radar axis labels + 14 slider labels rendered
+    Korean in EN mode.
+
+    These tests pin every entry of the API surface so a future
+    refactor can't drop ``label_key`` again without breaking CI.
+    """
+
+    def setUp(self):
+        from core.character_profile import CharacterProfile
+        self.cp = CharacterProfile()
+
+    def test_get_with_meta_includes_label_key(self):
+        meta = self.cp.get_with_meta()
+        self.assertTrue(meta, "get_with_meta() must return non-empty list")
+        for entry in meta:
+            with self.subTest(trait=entry.get("id")):
+                self.assertIn("label_key", entry,
+                    f"get_with_meta entry for {entry.get('id')!r} "
+                    "missing label_key — admin radar falls back to "
+                    "label_ko under EN mode without it")
+
+    def test_get_with_meta_label_key_matches_traits_table(self):
+        meta = self.cp.get_with_meta()
+        for entry in meta:
+            with self.subTest(trait=entry.get("id")):
+                self.assertEqual(
+                    entry["label_key"],
+                    TRAITS[entry["id"]]["label_key"],
+                    f"label_key drift between TRAITS table and "
+                    f"get_with_meta for trait {entry['id']!r}",
+                )
+
+    def test_get_with_meta_label_key_unique_across_entries(self):
+        meta = self.cp.get_with_meta()
+        keys = [e["label_key"] for e in meta]
+        self.assertEqual(len(keys), len(set(keys)),
+            "label_keys must remain unique through the API surface")
+
+
 if __name__ == "__main__":
     unittest.main()

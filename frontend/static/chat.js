@@ -39,10 +39,17 @@ window.addEventListener('DOMContentLoaded', () => {
   if (indicator && typeof getLang === 'function') {
     indicator.textContent = getLang().toUpperCase();
   }
-  // [5-C] 초기 LLM 언어 = UI 기본 언어 (영어)
-  if (!sessionStorage.getItem('james_session_lang')) {
-    sessionStorage.setItem('james_session_lang', 'English');
-  }
+  // v0.4 live verify fix (2026-05-26): no longer seed
+  // `james_session_lang` to `"English"` on first load. The previous
+  // default forced every fresh chat session to send
+  // `session_language: "English"` to `/query/`, which made the backend
+  // skip `engine_memory.py` auto-detect (the `if not session_lang:`
+  // gate). A pure-Korean query like `팔란티어가 뭐야` then got tagged
+  // English, contradicting the persona's "respond in Korean" directive.
+  // Empty string → backend auto-detects from the query via
+  // `core.i18n.detect_language`, which is the right default. The
+  // operator can still pin a session language via the persona command
+  // ("영어로 답해") — that path writes `session_language` explicitly.
 });
 
 /* ── 토큰 유틸 [#A8-4 SSO localStorage] ── */

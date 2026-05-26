@@ -535,19 +535,25 @@ main { display: flex; flex: 1; overflow: hidden; }
 }
 .sidebar-toggle:hover { color: var(--text); background: var(--surface-2); }
 
-/* 사이드바 열기 버튼 (닫혔을 때) */
+/* 사이드바 열기 버튼 (닫혔을 때).
+   v0.4 live verify fix (2026-05-26): align vertically with
+   `.sidebar-toggle` (the close button inside `.sidebar-header`,
+   which sits at `padding: 14px 16px`). Pre-fix the open button used
+   `top: 50%; transform: translateY(-50%)` so the toggle target
+   *jumped* between the screen middle (closed) and the sidebar-header
+   top (open) — visually inconsistent. Aligning to `top: 14px` keeps
+   the triangle at the same eye-line through both states. */
 .sidebar-open-btn {
   position: absolute;
-  left: 0; top: 50%;
-  transform: translateY(-50%);
+  left: 0; top: 14px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-left: none;
   border-radius: 0 6px 6px 0;
-  padding: 12px 6px;
+  padding: 4px 8px;
   cursor: pointer;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
   display: none;
   z-index: 10;
   transition: color .15s, background .15s;

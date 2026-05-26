@@ -35,13 +35,20 @@ class _ProfileCoreMixin:
 
     def get_with_meta(self) -> list:
         return [{
-            "id":      k,
-            "label":   TRAITS[k]["label"],
-            "label_ko": TRAITS[k].get("label_ko", TRAITS[k]["label"]),
-            "icon":    TRAITS[k]["icon"],
-            "group":   TRAITS[k]["group"],
-            "value":   round(self._values[k], 3),
-            "default": TRAITS[k]["default"],
+            "id":        k,
+            "label":     TRAITS[k]["label"],
+            "label_ko":  TRAITS[k].get("label_ko", TRAITS[k]["label"]),
+            # v0.4 Sprint 2 #6 follow-up — propagate `label_key` so the
+            # admin character page resolves trait names through `t(label_key)`
+            # under the active UI language. Without this, the frontend
+            # falls back to `label_ko` regardless of `lang` and the radar
+            # labels + slider rows render Korean in EN mode (live verify
+            # 2026-05-26 finding on v0.4.0-alpha.3).
+            "label_key": TRAITS[k]["label_key"],
+            "icon":      TRAITS[k]["icon"],
+            "group":     TRAITS[k]["group"],
+            "value":     round(self._values[k], 3),
+            "default":   TRAITS[k]["default"],
         } for k in TRAITS]
 
     @staticmethod
