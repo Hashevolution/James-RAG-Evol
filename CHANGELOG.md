@@ -7,7 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.4.0-alpha.2] — 2026-05-25 — v0.4 alpha bundle (Sprint 2 UI consistency + Sprint 3 plumbing & 5-stage D1 surface)
+## [0.4.0-alpha.3] — 2026-05-26 — LEO Evidence-Scope routing track (L.0→L.D) + Sprint 4 embedding prep + CI / module hygiene
+
+**Theme**: second alpha tag of the v0.4 cycle. Bundles the full LEO Evidence-Scope Routing track (4 phases, 5 PRs) — a measured input-side routing axis complementing the predicted output-side D5 budget axis — plus Sprint 4 BL-9 embedding-abstraction prep, CI infrastructure stabilisation (conftest pre-import that eliminates a recurring CI flake), and pipeline.py module-size hygiene. Supersedes the never-released v0.4.0-alpha.2 prep (PR #508, see [0.4.0-alpha.2] below for the historical entry). **Default-off invariant preserved** across all opt-in flags (`JAMES_SCOPE_ROUTING` / `JAMES_EMBEDDING_MODEL` / `JAMES_ADAPTIVE_BUDGET` / `JAMES_AUTO_ROUTER`): production fleets pulling alpha.3 see zero behaviour change relative to v0.3.3.
+
+### LEO Evidence-Scope Routing Track (5 PRs, 4 phases — measured input-side axis)
+
+Track originated by Jiwon's Gemma 4 generation-halt diagnostic question; Leo (Younghu, external contributor, GitHub `222315AIS`) proposed measuring data scope (input-side, post-retrieval) instead of predicting token count (output-side, pre-retrieval). Five PRs across the L.0 → L.D phase plan from `docs/handovers/v0.4-leo-evidence-scope-routing-track.md`.
+
+- **#512 L.0 design memo (external — first external PR to the repo)** — `docs/handovers/v0.4-leo-evidence-scope-routing-track.md` + README walk-back trimming the future-binding "and that's how we intend to keep it" phrase. JAMES-side merge resolved + path renamed `docs/James_leo_evidencescoperoutingtrack` → `docs/handovers/v0.4-leo-evidence-scope-routing-track.md` to match the handovers/ convention. CLA workflow (shipped in #340) fired cleanly on this contribution.
+- **#513 L.A extractor + flag** — `core/reasoning/evidence_scope.py` (~13 KB). `ScopeBreakdown` frozen dataclass + `compute_scope(docs, graph_context, graph_paths) → ScopeBreakdown` pure function reading `loop_state` retrieval / graph output. 4 components weighted: `effective_k` (0.35) + `graph_reach` (0.25) + `doc_spread` (0.20) + `score_entropy` (0.20). `JAMES_SCOPE_ROUTING` env flag (default OFF). 23 contract tests in `tests/test_evidence_scope.py` pin the API + empty-input safety net + flag parsing + audit payload schema + determinism + frozen-dataclass guard. Module-level weight constants so Direction 2 regression can swap them in one place. Drive-by F401 cleanup: `Optional` unused in evidence_scope.py + `CAP_SUBSTITUTION` / `TaskBudget` unused in `test_planner_d1_wiring.py` (PR #507 leftover) + `test_adaptive_budget::test_module_exports` `__all__` updated to include PR #507's `adaptive_budget_enabled` entry.
+- **#514 L.B router signature + policy v1** — `Router.select_backend` + `resolve_backend` + `_route_policy` gain kwarg-only `evidence_scope`. Policy v1 thresholds: `_SCOPE_NARROW_THRESHOLD=0.30` / `_SCOPE_WIDE_THRESHOLD=0.70` (module constants, L.D tuning candidates). Decision rule order: verify-stage (rule 1, grounding-critical) > scope-override (rule 2, narrow → small / wide → large) > budget rules (3, 4, CAP_SUBSTITUTION / CAP_HEAVY) > legacy. mid-band (0.30 < scope < 0.70) falls through to budget — implements LEO open Q #4 "measurement can promote/demote one tier, not two" as a bounded correction rather than wholesale replacement. 23 contract tests in `tests/test_router_evidence_scope.py` (threshold ordering + narrow/wide overrides + fallback chain + mid-band fall-through + scope=None D5.C.1 regression + verify-wins-over-scope priority).
+- **#515 CI flake permanent fix — conftest pre-import (root-cause repair surfaced during L.B)** — `tests/conftest.py` warms `sys.modules` for `core.vector_store` + `core.memory` + `core.wiki_generator` + `llm.router` at session start. Root cause: `patch("core.vector_store.VectorStore")` in legacy `_MarkdownStripBase.setUp` triggered a ~5s `sentence_transformers`+`torch` cold-import cascade inside setUp, crossed the per-test 30s pytest-timeout on slow CI runners, killed setUp mid-execution → `tearDown` never ran → `patch("llm.router.RouterWrapper")` started earlier in the same setUp **leaked**, surfacing downstream as `test_native_done_reason::test_router_wrapper_call_gemma_meta_dispatches_to_call_router_meta` failing with `Expected 'call_router_meta' to be called once. Called 0 times.`. Six legacy test fixtures benefit transparently with no test source changes. CI pytest stabilised: 4m34s (intermittent fail) → 3m1s (consistent green).
+- **#516 L.C engine wiring + audit payload (ContextVar pattern)** — new `scope_context(...)` context manager + `get_current_scope()` reader in `evidence_scope.py`. `pipeline.py` computes scope after Loop 1 (graph_context + graph_paths populated) and wraps `generate_answer(...)` in `with scope_context(...)` so all five synth-path `trace_synth_call` invocations (rag / web_summary / web_fallback / retry_no_info, plus reflect / verify routed through trace_helpers) see the same scope. `trace_helpers.trace_synth_call` reads `get_current_scope()` (gated on `scope_routing_enabled()`) and passes `evidence_scope=breakdown.scope` to `resolve_backend`. `router.emit_route_event` audit payload extended: with a `ScopeBreakdown` it emits all 5 fields (`evidence_scope` + 4 components); with a bare float, the scalar only; with `None`, omits the scope fragment → flag-OFF audit-row shape preserved bit-for-bit. 12 contract tests in `tests/test_evidence_scope_wiring.py` pin ContextVar set / get / nested / cleanup-on-exception + audit payload shape for ScopeBreakdown vs float vs None vs invalid + flag-OFF byte-identical at three layers. Mode-gate (LEO open Q #3) auto-resolved: `engine._query_impl` dispatches `chat` / `meta` / `wiki_edit` / `self_evolve` / `coding` modes to `handle_*` helpers **before** `run_retrieval_pipeline` runs, so the scope context only ever wraps the retrieval pipeline.
+- **#517 L.D operator bench wrapper** — `scripts/bench_lc_scope_arms.py`. Operator-runnable. Runs `scripts/bench.py --suite=step7` twice (flag-OFF baseline + flag-ON arm) against a live JAMES server, queries `audit_log` for `reason:route` rows from the flag-ON window, aggregates per-query elapsed delta + scope distribution (narrow / mid / wide bin counts) + backend selection counts into `reports/research-runs/lc-scope-bench-<timestamp>.json`. Acceptance criteria reported but not enforced (that is the L.D result doc's job). Deferred to operator's live-server execution window — L.D closure consumes the resulting aggregate JSON.
+
+### Sprint 4 prep (1 PR — Sprint 4 swap PR deferred to operator compute window)
+
+- **#509 BL-9 embedding model abstraction** — `JAMES_EMBEDDING_MODEL` env + `_embedding_short_name` slug helper + per-model `models/<short>` cache path + per-model `chroma_db_<short>` directory. Default-off byte-identical: legacy MiniLM tag maps to `models/miniLM` + `chroma_db`. Actual default flip (likely `bge-m3` or `multilingual-e5-large`) + re-embed migration runner is the Sprint 4 swap PR — operator compute window required.
+
+### Documentation (1 PR)
+
+- **#510 ARCHITECTURE §5.7.9 LLM model authority chain** — per-call > env > preference > any installed > none. D5 (per-backend) ↔ model_resolver (per-tag) two-axis disambiguation. `architecture` label PR (CLAUDE.md rule #4 compliance for the model-resolution surface documentation).
+
+### Module-size hygiene (1 PR)
+
+- **#518 pipeline.py post-loop context split** — extract `build_unified_context` (unified_score v3 + graph context assembly) + `apply_post_check_and_sources_header` (post_check + [관련 자료 목록] prepend) from `pipeline.py` to new `core/reasoning/pipeline_context.py`. Pure refactor, byte-identical behaviour. `pipeline.py` 19.0 KB → 16.0 KB, returns 3 KB headroom for Sprint 5 Layer 4 wiring without breaching the 20 KB CLAUDE.md rule #5 cap. `tests/_pipeline_src.py:pipeline_source()` helper updated to include the new split companion (preserves the structural-grep test pattern used by `test_source_files_first.py` and similar).
+
+### Default-off invariant verified (every new opt-in)
+
+| Flag | Default | Verification |
+|---|---|---|
+| `JAMES_SCOPE_ROUTING` (LEO L.C, new) | OFF | `test_flag_off_ignores_bound_scope` + `test_emit_route_event_no_scope_fragment_when_none` + pipeline.py `scope_context(None)` no-op path |
+| `JAMES_EMBEDDING_MODEL` (Sprint 4 prep, new) | unset → MiniLM tag (= legacy `models/miniLM` + `chroma_db`) | retrieval-engine tests pin per-model path resolution; default flip is the Sprint 4 swap PR, not this alpha |
+| `JAMES_ADAPTIVE_BUDGET` (D1, pre-existing) | OFF | unchanged |
+| `JAMES_AUTO_ROUTER` (D5, pre-existing) | OFF | unchanged |
+
+### Cross-stack collaboration boundary
+
+Robin (V3'.e schema-adopted research runs) and Ali (Track 3 swap_eval) cross-stack comparisons MUST pin all opt-in routing flags OFF for apples-to-apples purity. Documented in memory `feedback_cross_stack_run_flag_off` and in the L.D bench-wrapper docstring. Joint piece (mid-June trigger) inclusion of evidence-scope deferred to L.D closure + at least one Ali Track 3 swap_eval result.
+
+### Verified
+
+- 9 PRs land green on `pytest` for the changed surface + broader regression. CI pytest run-time stable at 3m1s after #515 (was 4m34s with intermittent failures pre-fix).
+- New tests added across the bundle: `test_evidence_scope.py` (23), `test_router_evidence_scope.py` (23), `test_evidence_scope_wiring.py` (12). Cumulative new tests for the LEO track: 58.
+- No `core/` file exceeds 20 KB after the bundle. `pipeline.py` post-#518 split at 16.0 KB; `router.py` 17.7 KB; `evidence_scope.py` 13 KB; `trace_helpers.py` 10.7 KB. `verify.py` remains at 19.2 KB pending the next verify addition.
+- ruff / hooks clean on every PR (including drive-by F401 cleanups bundled with #513).
+
+### Operator action
+
+GitHub release publish (`gh release create v0.4.0-alpha.3 --target main --title "v0.4.0-alpha.3 — LEO Evidence-Scope routing (L.0→L.D) + Sprint 4 prep + CI hygiene" --notes-file <changelog excerpt>`) triggers Zenodo automatic mint. The minted DOI for v0.3.3 (operator-supplied at this publish time) will be added as `isNewVersionOf` in the next deposit; the chain back to v0.3.2 / v0.3.1 (specific DOIs `10.5281/zenodo.20372649` / `10.5281/zenodo.20363998`) stays explicit in `related_identifiers` as `isDerivedFrom`. L.D closure operator path (separate from release publish): run `python scripts/bench_lc_scope_arms.py` against a live JAMES server, paste the aggregate JSON into `reports/promo-assets/v3prime-leo-evidence-scope-result.md`, tick the ROADMAP entry.
+
+### Out of scope for v0.4.0-alpha.3 (Sprint 4 swap + Sprint 5 follow-up)
+
+- **Sprint 4 swap PR** — default flip `JAMES_EMBEDDING_MODEL` → `bge-m3` (or `multilingual-e5-large`) + re-embed migration runner. Requires operator compute window for the full chroma re-embed pass.
+- **Sprint 5 Layer 4 main theme** — T1 Lifecycle states + T2 Event-driven transitions + T7 Cross-workspace federation primitives. The architectural shift planned for v0.4.0 final.
+- **LEO L.D closure docs** — `reports/promo-assets/v3prime-leo-evidence-scope-result.md` + ROADMAP entry + memory sync. Waits on operator STEP 7 live run (#517 wrapper is the input).
+- **Constant consolidation** — `RELEVANCE_GATE` (now in `pipeline_context.py`) + `MAX_DEPTH` (in `graph_engine.py`) + `_RELEVANCE_THRESHOLD` / `_GRAPH_MAX_DEPTH` (in `evidence_scope.py`) are intentionally mirrored with comments; a single-source consolidation PR would touch all three modules atomically.
+- `verify.py` module split (19.2 KB, approaching 20 KB cap; extract `_verify_security` / `_verify_fact_check` on next addition).
+
+---
+
+## [0.4.0-alpha.2] — 2026-05-25 — v0.4 alpha bundle (Sprint 2 UI consistency + Sprint 3 plumbing & 5-stage D1 surface) — **PREPPED, NOT RELEASED — superseded by [0.4.0-alpha.3]**
+
+> **Note**: this entry documents the v0.4.0-alpha.2 release prep (PR #508 — `.zenodo.json` + CHANGELOG + README badge) that landed on `main` 2026-05-25. No GitHub release was published before nine additional PRs (LEO L.0→L.D + Sprint 4 prep + CI fix + module hygiene) merged on 2026-05-26. The alpha.2 scope is now part of [0.4.0-alpha.3]'s ancestry; the historical entry below is preserved so the alpha.2 prep work (Sprint 2 + Sprint 3) is still attributable to the right window.
 
 **Theme**: first alpha tag of the v0.4 cycle — the deliverable between v0.3.x closure (v0.3.3, D6 retry wiring) and the v0.4.0 final Layer 4 main theme (Lifecycle Semantics, Sprint 5). Two sprints of stabilisation work bundled into one citable archive. **Default-off invariant preserved** across all D1 / D5 flags: production fleets pulling alpha.2 see zero behaviour change relative to v0.3.3.
 
