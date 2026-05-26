@@ -8,7 +8,7 @@
 [![Status](https://img.shields.io/badge/Status-v0.4.0--alpha.3-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/releases/tag/v0.4.0-alpha.3)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12806/badge)](https://www.bestpractices.dev/projects/12806)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20372649.svg)](https://doi.org/10.5281/zenodo.20372649)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20391100.svg)](https://doi.org/10.5281/zenodo.20391100)
 
 ![PROJECT JAMES — 3D 온톨로지 그래프 시각화](reports/promo-assets/screenshots/06-3d-graph.jpg)
 

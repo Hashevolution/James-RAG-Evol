@@ -54,6 +54,11 @@
       "resource_type": "software"
     },
     {
+      "identifier": "10.5281/zenodo.20374227",
+      "relation": "isNewVersionOf",
+      "resource_type": "software"
+    },
+    {
       "identifier": "10.5281/zenodo.20372649",
       "relation": "isDerivedFrom",
       "resource_type": "software"
