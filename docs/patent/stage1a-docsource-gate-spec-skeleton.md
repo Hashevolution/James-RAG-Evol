@@ -4,7 +4,7 @@
 > 특허로(patent.go.kr) 전자출원 시 본 문서를 기반으로 PDF·hwp로 전환하여 첨부하십시오.
 > 작성 시 [TODO] 마커를 모두 제거·채워주세요.
 >
-> **참고 자료**: PR #139 (`core/graph_engine.py:_doc_outgoing_hop_valid`, **2026-05-XX 메인 머지 완료** — 머지 커밋 `371838c`), `tests/test_a5d_doc_source_gate.py` (14 unit tests).
+> **참고 자료**: 메인 `7dd2a69` 기준 — `core/graph_engine.py:42-105` (`_doc_outgoing_hop_valid` 함수), `:386` (DFS 호출부), `tests/test_a5d_doc_source_gate.py`. 본 문서의 코드 인용은 출시된 main을 기준으로 함(로컬 작업 브랜치는 main 대비 구버전이므로 인용 근거 아님).
 
 ---
 
@@ -73,35 +73,49 @@ Microsoft GraphRAG, RAG-Fusion, KGAT 등 기존 지식 그래프 기반 검색 �
 ### 4.2 Doc-source Hop Validation 알고리즘
 
 ```python
-def _doc_outgoing_hop_valid(doc_entity_id: str, target_entity: dict) -> bool:
+# core/graph_engine.py:42-105 (메인 7dd2a69 기준)
+def _doc_outgoing_hop_valid(source_entity: dict, target_entity: dict) -> bool:
     """
     문서 노드 → 엔티티 노드 hop 유효성 검사.
-
-    True iff target_entity.sources contains doc_entity_id.
+    비대칭: source_entity가 문서일 때만 적용. target_entity.sources
+    (확장자 포함 파일명 문자열 배열)에 source 문서명 stem이 부분문자열로
+    포함되면 유효(type-(a) hop), 아니면 차단(type-(b) 단순 언급).
     """
-    target_sources = target_entity.get("sources", [])
-    for src in target_sources:
-        if isinstance(src, dict) and src.get("doc_id") == doc_entity_id:
-            return True
-        if isinstance(src, str) and src == doc_entity_id:
+    # 비대칭 게이트: source가 문서가 아니면 미적용 (entity→entity edge 보존)
+    if not source_entity or source_entity.get("entity_type") != "document":
+        return True
+    if not target_entity:
+        return True                       # 데이터 결측 — permissive
+
+    src_name = (source_entity.get("name") or "").strip()   # 확장자 없는 stem
+    if not src_name:
+        return True
+
+    target_sources = target_entity.get("sources") or []
+    if not isinstance(target_sources, list):
+        return True                       # 형식 오류 — permissive
+
+    for s in target_sources:              # s: 확장자 포함 파일명 (예: PLTR_03_….pdf)
+        if isinstance(s, str) and src_name in s:   # stem ⊂ filename (부분일치)
             return True
     return False
 ```
 
-기존 DFS traversal에 다음 게이트를 삽입:
+기존 DFS traversal에 다음 게이트를 삽입 (비대칭 판정은 함수 내부에서 수행):
 
 ```python
-# 기존 graph_engine.py:266-301 DFS loop 확장
+# core/graph_engine.py:386 DFS 인접노드 확장 루프
 for rel in relations:
-    target_id = rel.get("target_id", "")
-    target_entity = self.load_entity(target_id) or {}
+    target_id    = rel.get("target_id", "")
+    target_entity = self.load_entity(target_id)
 
-    # [신규 게이트] doc → entity hop 유효성 검사
-    if entity.get("entity_type") == "document":
-        if not _doc_outgoing_hop_valid(eid, target_entity):
-            continue   # 가짜 path 차단
+    # [#A5-D 게이트] doc → entity hop 유효성 검사
+    if not _doc_outgoing_hop_valid(entity, target_entity):
+        print(f"[A5D] doc-tangential hop 차단: "
+              f"{entity.get('name','?')} → {rel.get('target','?')}")
+        continue   # 가짜 path 차단
 
-    # 기존 logic 계속
+    # 기존 게이트 (직교 적용)
     if rel.confidence < CONFIDENCE_THRESHOLD: continue
     if is_sensitive_relation(rel.type): continue
     dfs(target_id, d+1, ...)
@@ -126,7 +140,7 @@ baseline 13개 query에 대한 측정:
 2. **부수 피해 최소화** — 정방향 정상 출처 관계는 그대로 보존
 3. **비대칭 통찰 활용** — 데이터 ingestion 시 자연 발생하는 비대칭을 게이트로 전환
 4. **추가 LLM 호출 불필요** — 메타데이터 룩업만으로 게이팅, 비용 0
-5. **Audit 가능** — 차단된 hop 횟수를 logging해 효과 측정 가능
+5. **차단 hop 가시화** — 차단된 hop의 source→target을 로그(콘솔 출력)로 남겨 효과 측정·검토 가능 (구조화 audit row 적재는 미구현, 표준출력 로깅)
 
 ## 6. 청구범위
 
@@ -135,7 +149,7 @@ baseline 13개 query에 대한 측정:
 지식 그래프 시스템의 그래프 traversal 방법으로서,
 (a) 문서 노드 D로부터 엔티티 노드 E로의 hop 후보를 식별하는 단계;
 (b) 엔티티 노드 E의 출처 메타데이터(sources) 배열을 조회하는 단계;
-(c) 상기 sources 배열에 문서 D의 식별자가 포함된 경우만 hop을 유효하다고 판정하는 단계;
+(c) 상기 sources 배열의 어느 한 항목에 문서 D의 식별정보(명칭)가 부분일치로 포함된 경우만 hop을 유효하다고 판정하는 단계;
 (d) 유효 판정된 hop만 traversal 결과에 포함시키고 그렇지 않은 hop은 차단하는 단계
 를 포함하는 것을 특징으로 하는, 출처 메타데이터 기반 그래프 traversal 게이팅 방법.
 
@@ -144,7 +158,7 @@ baseline 13개 query에 대한 측정:
 지식 그래프 검색 시스템으로서,
 - (1) 엔티티 노드별 sources 메타데이터를 유지하는 그래프 저장소,
 - (2) 청구항 1의 방법을 적용하는 traversal 엔진,
-- (3) 차단된 hop 정보를 audit log에 기록하는 logger
+- (3) 차단된 hop 정보를 로그로 출력하는 로깅 수단
 를 포함하는 것을 특징으로 하는, 출처 추적 기반 지식 그래프 검색 시스템.
 
 ### 청구항 3 (종속 — 비대칭 적용)
@@ -153,7 +167,7 @@ baseline 13개 query에 대한 측정:
 
 ### 청구항 4 (종속 — sources 구조)
 
-청구항 1에 있어서, 상기 sources 배열의 각 항목은 doc_id 필드를 가지며, 게이트는 `target_entity.sources[i].doc_id == doc_id_of_source_node` 조건으로 판정하는 것을 특징으로 하는 방법.
+청구항 1에 있어서, 상기 sources 배열의 각 항목은 확장자를 포함한 파일명 문자열이고, 게이트는 문서 노드 D의 명칭 stem(확장자 제외)이 상기 sources 배열 중 어느 한 파일명 문자열에 부분문자열로 포함되는지(`src_name ⊂ source_filename`) 여부로 hop 유효성을 판정하는 것을 특징으로 하는 방법.
 
 ### 청구항 5 (종속 — DFS 통합)
 
@@ -163,7 +177,7 @@ baseline 13개 query에 대한 측정:
 
 6. 청구항 1에 있어서, 차단된 hop 횟수를 측정하여 시스템의 효과 메트릭으로 사용하는 방법.
 7. 청구항 1에 있어서, 본 게이트의 적용 결과 baseline query의 의미적 정답률이 보존되는지 회귀 테스트로 검증하는 방법.
-8. 청구항 2에 있어서, 상기 audit logger가 차단 hop의 source/target 식별자를 기록하여 운영자가 차단 사유를 검토 가능한 시스템.
+8. 청구항 2에 있어서, 상기 로깅 수단이 차단 hop의 source 및 target 식별자를 로그로 출력하여 운영자가 차단 사유를 검토 가능한 시스템.
 9. 청구항 1에 있어서, 게이트는 LLM 호출 없이 메타데이터 룩업만으로 수행되는 방법.
 10. 청구항 1에 있어서, 게이트 통과 여부와 무관하게 sensitive relation 차단, confidence threshold 등 기존 게이트는 직교적으로 적용되는 방법.
 
@@ -176,13 +190,13 @@ baseline 13개 query에 대한 측정:
 
 ## 8. 실시예 (Working Example)
 
-`core/graph_engine.py:220-307` 의 `expand_dynamic` DFS에 게이트가 삽입된 형태:
+메인 `core/graph_engine.py:314~` 의 `expand_dynamic` 내부 DFS(`dfs`, :332)에 게이트가 :386에 삽입된 형태:
 
 ```python
-def expand_dynamic(self, entity_ids, source_type_filter=None):
+def expand_dynamic(self, entity_ids, source_type_filter=None):   # :314
     visited, entities, paths = set(), [], []
 
-    def dfs(eid, d, path_so_far, parent_score):
+    def dfs(eid, d, path_so_far, parent_score):                  # :332
         if d > MAX_DEPTH or eid in visited: return
         visited.add(eid)
         entity = self.load_entity(eid)
@@ -190,15 +204,17 @@ def expand_dynamic(self, entity_ids, source_type_filter=None):
 
         relations = entity.get("relations", [])
         for rel in relations:
-            target_id = rel.get("target_id", "")
-            target_entity = self.load_entity(target_id) or {}
+            target_id    = rel.get("target_id", "")
+            target_entity = self.load_entity(target_id)
 
-            # [PR #139 게이트 — 2026-05-XX 머지 완료, 메인 graph_engine.py:46-105]
-            if entity.get("entity_type") == "document":
-                if not _doc_outgoing_hop_valid(eid, target_entity):
-                    continue
+            # [#A5-D 게이트, 메인 graph_engine.py:42-105 / 호출부 :386]
+            # 비대칭(source==document) 판정은 함수 내부에서 수행
+            if not _doc_outgoing_hop_valid(entity, target_entity):
+                print(f"[A5D] doc-tangential hop 차단: "
+                      f"{entity.get('name','?')} → {rel.get('target','?')}")
+                continue
 
-            # 기존 게이트
+            # 기존 게이트 (직교 적용)
             if rel.get("confidence", 0) < CONFIDENCE_THRESHOLD: continue
             if is_sensitive_relation(rel.type): continue
             ...
@@ -218,7 +234,7 @@ def expand_dynamic(self, entity_ids, source_type_filter=None):
 - [ ] 발명자/출원인 정보 기재
 - [ ] 도면 1~4 작성 (`assets/patent/stage1a-figs/` 권장)
 - [ ] §6 청구항 한국어 법률 용어 검수
-- [x] §8 실시예 코드는 PR #139 머지 후 메인의 `core/graph_engine.py:46-105` 구현과 동일 (출원 직전 라인번호 재확인 필요)
+- [x] §8 실시예 코드는 메인(`7dd2a69`)의 `core/graph_engine.py:42-105`(함수)·`:386`(호출부) 구현과 일치하도록 2026-05-26 재확인 완료. 매칭 방식은 stem 부분일치(`src_name in source_filename`)임 (doc_id 정확일치 아님)
 - [ ] 공지예외 적용 신청서 별도 첨부
 - [ ] 출원료 6만원 (개인 감면 시 1.8만원) 납부
 
