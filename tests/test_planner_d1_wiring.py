@@ -45,8 +45,6 @@ ensure_utf8_console()
 from core.reasoning.budget import (  # noqa: E402
     CAP_HEAVY,
     CAP_LIGHT,
-    CAP_SUBSTITUTION,
-    TaskBudget,
 )
 
 

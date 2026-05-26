@@ -44,7 +44,7 @@ from __future__ import annotations
 import math
 import os
 from dataclasses import dataclass
-from typing import Dict, Final, Optional, Sequence
+from typing import Dict, Final, Sequence
 
 # ─── Flag ──────────────────────────────────────────────────────────
 
