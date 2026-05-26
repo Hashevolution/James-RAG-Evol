@@ -68,6 +68,78 @@ DEFAULT_REVISE_MAX_TOKENS = 1024
 MAX_REVISE_RATIO = 2.5
 
 
+# v0.4 live verify fix #6 (2026-05-26): meta-narrative detector +
+# stripper. Even with the REVISE_PROMPT directives explicitly
+# forbidding meta-text, Gemma 4 occasionally opens the revision with
+# the model commenting on the critique it just received ("제시해주신
+# 검토 결과... 매우 날카롭고 정확합니다... 이러한 결함을 완벽하게
+# 보완하여... [핵심 전략]..."). The user never saw the critique,
+# so this preamble is pure noise that pushes the actual answer below
+# the fold. Live-verified on the 2026-05-26 NVIDIA query.
+#
+# Strategy:
+#   1. If revised_text head matches any meta-narrative pattern AND
+#   2. a paragraph-separator line ("***" / "---") exists later, return
+#      the body AFTER the separator (that's where the LLM resumed the
+#      real answer in observed cases). Else
+#   3. Fall back to the draft — safer than serving meta-text.
+#
+# Patterns are conservative; they target phrases that only appear when
+# the model is reflecting on the critique, not in regular answers.
+_META_NARRATIVE_PATTERNS = (
+    # Korean meta-narrative openings observed in production. `\S*` slot
+    # absorbs the connecting particles between the verb roots (검토 +
+    # 결과를 + 반영 / 검토 + 를 + 바탕) without anchoring to a specific
+    # particle form.
+    r'^\s*제시\s*해주신',
+    r'^\s*지적\s*해주신',
+    r'^\s*검토\s*\S*\s*(반영|바탕|읽고|반영하여)',
+    r'^\s*이러한\s+(결함|문제|지적)',
+    r'^\s*개정\s*된?\s+(답변|버전)',
+    r'^\s*재작성',
+    r'^\s*\[?핵심\s+전략\]?',
+    # English meta-narrative openings
+    r'^\s*Based\s+on\s+(the|your)\s+(review|critique|feedback)',
+    r'^\s*Here\s+is\s+(my|the)\s+revised',
+    r'^\s*I(\'ve|\s+have)\s+(revised|rewritten|updated)',
+    r'^\s*Below\s+is\s+the\s+revised',
+    r'^\s*Thank\s+you\s+for\s+the\s+(feedback|review|critique)',
+    r'^\s*\[?Core\s+strategy\]?',
+)
+
+
+def _looks_like_meta_narration(text: str) -> bool:
+    """Return True when `text` opens with a meta-narrative pattern."""
+    import re
+    head = text[:300]
+    for pat in _META_NARRATIVE_PATTERNS:
+        if re.search(pat, head, re.IGNORECASE | re.MULTILINE):
+            return True
+    return False
+
+
+def _strip_meta_narration(revised: str) -> str:
+    """If `revised` opens with meta-narrative, return the body after
+    the first paragraph separator (``***`` / ``---`` / ``===`` on its
+    own line). Returns empty string when no separator is found OR the
+    extracted body is too short to be a real answer — caller falls
+    back to draft on empty.
+    """
+    if not _looks_like_meta_narration(revised):
+        return revised
+    import re
+    sep_match = re.search(
+        r'^\s*([*\-=]{3,})\s*$', revised, re.MULTILINE,
+    )
+    if not sep_match:
+        return ""
+    body = revised[sep_match.end():].strip()
+    # Sanity floor — body must be substantive, not just a heading.
+    if len(body) < 100:
+        return ""
+    return body
+
+
 CRITIQUE_PROMPT_KO = (
     "아래 답변을 비판적으로 검토하라. 검토 목적은 사용자가 받기 전에 "
     "결함을 잡아내는 것이다.\n\n"
@@ -105,7 +177,14 @@ REVISE_PROMPT_KO = (
     "개정 규칙:\n"
     "- 검토에서 지적된 문제만 수정. 잘 된 부분은 그대로.\n"
     "- 의미를 보존하고 새 사실을 만들지 마라.\n"
-    "- 사과 문구나 '재작성했습니다' 같은 메타-텍스트 없이 답변만.\n\n"
+    "- **사용자는 검토 과정을 본 적이 없다.** 검토에 대해 코멘트하지 "
+    "마라. 변경사항을 설명하지 마라.\n"
+    "- 절대 금지: '제시해주신', '지적해주신', '검토 결과', "
+    "'이러한 결함', '재작성', '개정된 답변', '[핵심 전략]' "
+    "같은 메타-내러티브로 시작하지 마라.\n"
+    "- 응답은 사용자의 원본 질문에 바로 답하는 본문이어야 한다 "
+    "(원본 질문이 'NVIDIA가 뭐야?' 라면 응답은 'NVIDIA는...' 또는 "
+    "비슷한 답변 첫 문장으로 시작).\n\n"
     "개정된 답변:"
 )
 
@@ -117,8 +196,14 @@ REVISE_PROMPT_EN = (
     "Revision rules:\n"
     "- Fix only the issues the review flagged. Leave good parts as-is.\n"
     "- Preserve meaning; don't invent new facts.\n"
-    "- Output only the revised answer — no apologies or meta-text like "
-    "\"here is the revised version\".\n\n"
+    "- **The user never saw the review.** Do NOT comment on the review. "
+    "Do NOT explain what you changed.\n"
+    "- Forbidden openings: 'Based on the review', 'I have revised', "
+    "'Here is the revised version', 'Thank you for the feedback', "
+    "'The critique correctly pointed out', '[Core strategy]'.\n"
+    "- The response must directly answer the user's original question "
+    "(if the question is 'what is NVIDIA?', the response starts with "
+    "'NVIDIA is...' or a similar answer sentence).\n\n"
     "Revised answer:"
 )
 
@@ -311,7 +396,20 @@ class ReflectionLoop:
         if len(revised_text) > len(draft) * MAX_REVISE_RATIO:
             return draft
 
-        return revised_text
+        # v0.4 live verify fix #6 (2026-05-26): meta-narrative guard.
+        # Even with the REVISE_PROMPT directives forbidding meta-text,
+        # Gemma 4 occasionally opens the revision with commentary on
+        # the critique. `_strip_meta_narration` returns:
+        #   - revised_text unchanged if no meta pattern detected
+        #   - body after the first paragraph separator if both the
+        #     meta pattern AND a separator exist
+        #   - empty string when meta pattern matched but no separator
+        #     was found → fall back to draft (safer than serving the
+        #     meta-narrative as the user-facing answer).
+        cleaned = _strip_meta_narration(revised_text)
+        if not cleaned:
+            return draft
+        return cleaned
 
     def _call(
         self,

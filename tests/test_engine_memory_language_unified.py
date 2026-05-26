@@ -58,6 +58,51 @@ def test_engine_memory_imports_detect_language():
 # ─── Behavioural parity with the unified classifier ──────────────
 
 
+@pytest.mark.parametrize("system_prompt_in,expected_no_ko_directive,expected_no_en_directive", [
+    # Persona Korean default line — should be stripped before prepend
+    ("당신의 이름은 자메스입니다. 항상 한국어로 답변하세요.", True, True),
+    # Persona English variant
+    ("당신의 이름은 자메스입니다. Always respond in English.", True, True),
+    # No language line at all — passes through cleanly
+    ("당신의 이름은 자메스입니다.", True, True),
+    # Persona text + character block — strip only the language line
+    (
+        "당신의 이름은 자메스입니다. 항상 한국어로 답변하세요.\n\n"
+        "[캐릭터 페르소나] 집중력·과감함이 두드러진 성격...",
+        True, True,
+    ),
+])
+def test_persona_lang_directive_stripped_from_system_prompt(
+    system_prompt_in, expected_no_ko_directive, expected_no_en_directive,
+):
+    """v0.4 live verify fix #5 — the strip regex in engine_memory must
+    remove every persona-stored language directive from system_prompt
+    so the auto-detect / explicit session_lang directive can land
+    alone, no contradiction underneath."""
+    import re as _re
+
+    cleaned = _re.sub(
+        r'\s*항상\s+\S+로\s+답변하세요\.?', '', system_prompt_in
+    )
+    cleaned = _re.sub(
+        r'\s*Always respond in [A-Za-z]+\.?', '', cleaned
+    )
+    cleaned = _re.sub(r'\n{3,}', '\n\n', cleaned).strip()
+
+    if expected_no_ko_directive:
+        assert "항상" not in cleaned or "답변하세요" not in cleaned, (
+            f"KO language directive should be stripped: {cleaned!r}"
+        )
+    if expected_no_en_directive:
+        assert "Always respond in" not in cleaned, (
+            f"EN language directive should be stripped: {cleaned!r}"
+        )
+    # Identity check — name line + character block survives intact
+    assert "당신의 이름은 자메스입니다" in cleaned, (
+        f"strip should NOT touch the name line: {cleaned!r}"
+    )
+
+
 @pytest.mark.parametrize("query,expected_lang", [
     ("팔란티어가 뭐야",         "Korean"),    # 7 hangul / 0 alpha
     ("What is Palantir",        "English"),   # 0 hangul / 14 alpha
