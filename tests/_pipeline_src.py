@@ -3,8 +3,9 @@
 After the chore splits:
 
   * ``pipeline.py`` extracted Loop 0/1/2 step bodies to
-    ``pipeline_loops.py`` and the LLM answer-generation block to
-    ``pipeline_synth.py``.
+    ``pipeline_loops.py``, the LLM answer-generation block to
+    ``pipeline_synth.py``, and the post-loop context combine +
+    sources-header block to ``pipeline_context.py``.
   * ``engine.py`` extracted the memory-context assembly to
     ``engine_memory.py`` and the canonical RAG synth to
     ``engine_synth.py``.
@@ -32,14 +33,21 @@ import inspect
 
 
 def pipeline_source() -> str:
-    """Concatenated source of the three modules that together implement
+    """Concatenated source of the four modules that together implement
     ``run_retrieval_pipeline``. Use instead of
     ``inspect.getsource(pipeline)`` when the symbol you're grepping for
-    may live in any of the three.
+    may live in any of them.
     """
-    from core.reasoning import pipeline, pipeline_loops, pipeline_synth
+    from core.reasoning import (
+        pipeline,
+        pipeline_context,
+        pipeline_loops,
+        pipeline_synth,
+    )
     return (
         inspect.getsource(pipeline)
+        + "\n"
+        + inspect.getsource(pipeline_context)
         + "\n"
         + inspect.getsource(pipeline_loops)
         + "\n"

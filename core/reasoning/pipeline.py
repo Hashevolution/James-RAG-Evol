@@ -31,6 +31,10 @@ import time
 from typing import Any, Dict
 
 from core.reasoning.engine import MAX_LOOP, LOOP_TIMEOUT, TIMING_TARGET_SEC
+from core.reasoning.pipeline_context import (
+    apply_post_check_and_sources_header,
+    build_unified_context,
+)
 from core.reasoning.pipeline_loops import (
     run_loop_0_retrieve, run_loop_1_expand, run_loop_2_verify,
 )
@@ -160,87 +164,21 @@ def run_retrieval_pipeline(
 
         engine._elapsed(t_loop, f"LOOP-{loop_idx}")
 
-    # ── 최종 컨텍스트 결합 ───────────────────────────────
-    t_ctx = time.time()
-    try:
-        # ── unified_score v3 ────────────────────────────────
-        # 원칙: "내부 자료를 실제로 활용했나?"
-        #
-        # [핵심 개선]
-        # ChromaDB는 항상 결과를 반환하므로 docs 수만으로 판단 불가.
-        # avg_vec_score 임계값(0.45) 이상이어야 "실제 관련 자료"로 인정.
-        #
-        # 가중치:
-        #   doc_score   (55%) — 관련 자료 수 (gate 통과 시)
-        #   vec_quality (20%) — 유사도 품질   (gate 통과 시)
-        #   graph_score (25%) — 그래프 경로   (단독으론 최대 25%)
-
-        docs      = loop_state["docs"]
-        graph_ctx = loop_state["graph_context"]
-        graph_pth = loop_state["graph_paths"]
-        avg_vec   = loop_state["avg_vec_score"]
-
-        RELEVANCE_GATE = 0.45  # 이 미만 = ChromaDB가 억지로 찾은 무관한 자료
-
-        if avg_vec >= RELEVANCE_GATE and len(docs) > 0:
-            # 게이트 통과 → 실제 관련 자료 있음
-            doc_score   = min(1.0, len(docs) / 3.0)
-            vec_quality = min(1.0, (avg_vec - RELEVANCE_GATE) / 0.25)  # 0.45~0.70 → 0~1
-        else:
-            # 게이트 미통과 → 관련 자료 없음 (docs 수 무시)
-            doc_score   = 0.0
-            vec_quality = 0.0
-
-        graph_score = min(1.0, len(graph_pth) / 2.0)
-
-        unified_score = (
-            0.55 * doc_score    # 관련 자료 있는지 (핵심)
-            + 0.20 * vec_quality  # 유사도 품질
-            + 0.25 * graph_score  # 그래프 추론 (단독으론 25%까지만)
-        )
-
-        graph_ctx_str = engine.graph.build_graph_context_str(
-            graph_ctx,
-            graph_pth,
-            unified_score=unified_score,
-        )
-        final_context = loop_state["doc_context"] + graph_ctx_str
-        print(f"[CONTEXT] unified={unified_score:.3f} len={len(final_context)}"
-              f" (gate={'pass' if avg_vec >= RELEVANCE_GATE else 'fail'}"
-              f" vec={avg_vec:.3f} doc={doc_score:.2f} graph={graph_score:.2f})")
-    except Exception as e:
-        engine._log("context_build", e, user_role)
-        final_context = loop_state["doc_context"]
-    engine._elapsed(t_ctx, "context_build")
-
-    # ── Post-check ───────────────────────────────────────
-    try:
-        sec_post = engine.security.post_check(final_context, user_role)
-        safe_context = sec_post["context"] if sec_post["allowed"] else ""
-    except Exception as e:
-        engine._log("post_check", e, user_role)
-        safe_context = final_context
-
-    # item #5-A: 답변에 "관련 파일은 X.md, Y.md입니다" 형태로
-    # source 파일을 먼저 명시하기 위해 context 앞에 [관련 자료]
-    # 섹션을 prepend. 모델이 이 헤더를 보고 답변 첫 줄에 인용하도록
-    # rule_text가 지시한다 (response_style.py 참조).
-    source_names = []
-    seen_sources = set()
-    for d in (loop_state.get("docs") or [])[:5]:
-        s = d.get("source") or d.get("name") or d.get("path") or ""
-        if s and s not in seen_sources:
-            # 너무 긴 경로는 잘라서 표시
-            s_disp = s.split("/")[-1].split("\\")[-1]
-            source_names.append(s_disp[:60])
-            seen_sources.add(s)
-    if safe_context.strip() and source_names:
-        sources_header = (
-            "[관련 자료 목록]\n"
-            + "\n".join(f"- {s}" for s in source_names)
-            + "\n\n[자료 내용]\n"
-        )
-        safe_context = sources_header + safe_context
+    # ── 최종 컨텍스트 결합 + Post-check + sources header ──
+    # Extracted to pipeline_context.py (chore/v0.4-pipeline-split).
+    # `build_unified_context` returns (final_context, unified_score)
+    # after running the unified_score v3 + graph context build;
+    # `apply_post_check_and_sources_header` runs the security post_check
+    # and prepends the [관련 자료 목록] header for citation hinting.
+    # Both helpers preserve the v0.3.0+L.C behaviour byte-identical —
+    # this split is module-size hygiene (CLAUDE.md rule #5), not a
+    # semantic change.
+    final_context, unified_score = build_unified_context(
+        engine, loop_state, user_role,
+    )
+    safe_context = apply_post_check_and_sources_header(
+        engine, loop_state, final_context, user_role,
+    )
 
     # ── LEO L.C — evidence-scope measurement + scope-context bind ───
     # When JAMES_SCOPE_ROUTING is ON, compute the post-Loop-1 scope
