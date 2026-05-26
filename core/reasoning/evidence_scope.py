@@ -43,8 +43,10 @@ from __future__ import annotations
 
 import math
 import os
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import Dict, Final, Sequence
+from typing import Dict, Final, Iterator, Optional, Sequence
 
 # ─── Flag ──────────────────────────────────────────────────────────
 
@@ -273,8 +275,64 @@ def compute_scope(
     )
 
 
+# ─── L.C — ContextVar plumbing ─────────────────────────────────────
+
+
+_current_scope: ContextVar[Optional[ScopeBreakdown]] = ContextVar(
+    "evidence_scope_current", default=None
+)
+
+
+def get_current_scope() -> Optional[ScopeBreakdown]:
+    """Read the ScopeBreakdown bound to the current context, if any.
+
+    Returns None when no `scope_context(...)` is active OR when the
+    binding inside the active scope_context was None (e.g. flag OFF).
+    `trace_helpers.trace_synth_call` reads this to enable scope-based
+    backend routing without threading kwargs through every synth-path
+    signature.
+
+    Async-safe and thread-safe — `ContextVar` semantics. Each async
+    task / thread sees its own bound value.
+    """
+    return _current_scope.get()
+
+
+@contextmanager
+def scope_context(
+    breakdown: Optional[ScopeBreakdown],
+) -> Iterator[None]:
+    """Bind a ScopeBreakdown to the current async/threading context.
+
+    Used by `core/reasoning/pipeline.py` to expose the post-Loop-1
+    scope measurement to any synth-layer LLM call inside the `with`
+    block (synth, reflect, verify all flow through trace_helpers).
+
+    Usage::
+
+        breakdown = compute_scope(docs, graph_ctx, graph_paths) \\
+            if scope_routing_enabled() else None
+        with scope_context(breakdown):
+            answer = generate_answer(...)
+
+    Best-effort guarantees:
+      - `None` is a valid binding — explicitly signals "no scope this
+        turn" rather than leaking a stale prior turn's scope.
+      - Cleanup runs even on exception (try/finally on ContextVar
+        token reset), so a synth-path raise won't leak the binding
+        into the next request handled by the same worker.
+    """
+    token = _current_scope.set(breakdown)
+    try:
+        yield
+    finally:
+        _current_scope.reset(token)
+
+
 __all__ = [
     "ScopeBreakdown",
     "compute_scope",
+    "get_current_scope",
+    "scope_context",
     "scope_routing_enabled",
 ]

@@ -355,6 +355,7 @@ def emit_route_event(
     *,
     budget_signal: Optional[int] = None,
     reason: str = "policy",
+    evidence_scope: Optional[object] = None,
 ) -> None:
     """Emit a ``reason:route`` row to ``audit_log``.
 
@@ -370,6 +371,15 @@ def emit_route_event(
       • ``answer``    = ``"backend={id} tier={label} reason={why}"``
                         + a short prompt hash for cross-referencing
                         with the originating /query/ row
+                        + optional ``evidence_scope`` + 4 components
+                        (LEO L.C) when the scope was the routing input
+
+    ``evidence_scope`` accepts a
+    ``core.reasoning.evidence_scope.ScopeBreakdown`` (preferred — full
+    payload lands in the audit row) or a bare float (just the scalar
+    is emitted). ``None`` means "no scope this call" and the audit
+    string omits the scope fields entirely → flag-OFF callers stay
+    byte-identical to pre-L.C.
     """
     try:
         import hashlib
@@ -381,6 +391,21 @@ def emit_route_event(
             else ""
         )
         tier_label = _budget_to_tier_label(budget_signal)
+        scope_fragment = ""
+        if evidence_scope is not None:
+            payload_fn = getattr(evidence_scope, "as_audit_payload", None)
+            if callable(payload_fn):
+                payload = payload_fn()
+                scope_fragment = " " + " ".join(
+                    f"{k}={v}" for k, v in payload.items()
+                )
+            else:
+                try:
+                    scope_fragment = (
+                        f" evidence_scope={float(evidence_scope):.4f}"
+                    )
+                except (TypeError, ValueError):
+                    scope_fragment = ""
         mirror_to_audit_db({
             "endpoint": "reason:route",
             "role": "system",
@@ -388,6 +413,7 @@ def emit_route_event(
             "answer": (
                 f"backend={selected_backend} tier={tier_label} "
                 f"reason={reason} prompt={prompt_hash}"
+                f"{scope_fragment}"
             ),
         })
     except Exception:
