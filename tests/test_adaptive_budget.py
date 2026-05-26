@@ -246,6 +246,7 @@ def test_module_exports():
         "CAP_HEAVY",
         "ReasoningStage",
         "TaskBudget",
+        "adaptive_budget_enabled",   # PR #507 — single source of truth across 5 stages
         "complete_with_retry",   # D6 (2026-05-25) — retry_doubled wiring closure
         "retry_doubled",
     }
