@@ -242,18 +242,67 @@ def run_retrieval_pipeline(
         )
         safe_context = sources_header + safe_context
 
+    # ── LEO L.C — evidence-scope measurement + scope-context bind ───
+    # When JAMES_SCOPE_ROUTING is ON, compute the post-Loop-1 scope
+    # from loop_state (docs / graph_context / graph_paths populated by
+    # Loops 0 and 1 above) and bind it via `scope_context(...)` so any
+    # synth-layer LLM call inside the `with` block can read it via
+    # `evidence_scope.get_current_scope()` and pick a scope-appropriate
+    # backend (LEO L.B router policy v1).
+    #
+    # Flag-OFF invariant: `scope_routing_enabled()` returns False →
+    # `_scope_breakdown` stays None → `scope_context(None)` is a no-op
+    # binding → trace_helpers reads None → resolve_backend gets
+    # `evidence_scope=None` → router falls back to D5 budget policy →
+    # byte-identical to post-L.B main.
+    #
+    # `chat` / `meta` / `wiki_edit` / `self_evolve` / `coding` modes
+    # never reach this point (mode dispatch in engine._query_impl
+    # routes them to `handle_*` helpers before run_retrieval_pipeline),
+    # so the LEO open Q #3 mode gate is naturally satisfied with no
+    # extra branch here.
+    from core.reasoning.evidence_scope import (
+        compute_scope,
+        scope_context,
+        scope_routing_enabled,
+    )
+    _scope_breakdown = None
+    if scope_routing_enabled():
+        try:
+            _scope_breakdown = compute_scope(
+                docs=loop_state["docs"],
+                graph_context=loop_state["graph_context"],
+                graph_paths=loop_state["graph_paths"],
+            )
+            print(
+                f"[SCOPE] evidence_scope={_scope_breakdown.scope:.3f} "
+                f"(k={_scope_breakdown.effective_k:.2f} "
+                f"H={_scope_breakdown.score_entropy:.2f} "
+                f"g={_scope_breakdown.graph_reach:.2f} "
+                f"s={_scope_breakdown.doc_spread:.2f})"
+            )
+        except Exception as e:
+            engine._log("scope_compute", e, user_role)
+
     # ── LLM 답변 생성 (delegated to pipeline_synth) ──────
     # generate_answer handles the three-way branch (web fallback /
     # canonical RAG / no-info retry) and emits the three L1 trace
     # rows on the call_gemma sites. Returns an AnswerBlock with the
     # text + web search results + the optional save-proposal id.
-    _synth = generate_answer(
-        engine, safe_query, safe_context, system_prompt, user_role,
-        unified_score,
-        response_style=response_style,
-        selected_model=selected_model,
-        force_web_search=force_web_search,
-    )
+    #
+    # The `with scope_context(...)` wrapper covers generate_answer +
+    # the reflect / verify passes that run inside it, so all five
+    # synth-path trace_synth_call invocations (rag, web_summary,
+    # web_fallback, retry_no_info, plus reflect/verify call sites
+    # that go through trace_helpers) see the same scope.
+    with scope_context(_scope_breakdown):
+        _synth = generate_answer(
+            engine, safe_query, safe_context, system_prompt, user_role,
+            unified_score,
+            response_style=response_style,
+            selected_model=selected_model,
+            force_web_search=force_web_search,
+        )
     answer = _synth.answer
     web_results = _synth.web_results
     pending_save_proposal_id = _synth.pending_save_proposal_id

@@ -150,13 +150,34 @@ def trace_synth_call(
     # here covers the synth path and any other stage that goes
     # through `trace_synth_call` rather than the per-class call site.
     try:
+        from core.reasoning.evidence_scope import (
+            get_current_scope,
+            scope_routing_enabled,
+        )
         from core.reasoning.router import emit_route_event, resolve_backend
+
+        # LEO L.C — flag-gated scope-based backend routing on top of
+        # the existing D5 budget-based routing. With JAMES_SCOPE_ROUTING
+        # OFF (default), `scope_breakdown` stays None → resolve_backend
+        # receives `evidence_scope=None` → router policy is byte-
+        # identical to post-L.B main. With the flag ON, pipeline.py
+        # binds the post-Loop-1 ScopeBreakdown via `scope_context(...)`
+        # and the router's L.B rule (narrow→small / wide→large) fires.
+        scope_breakdown = (
+            get_current_scope() if scope_routing_enabled() else None
+        )
+        scope_val = (
+            float(scope_breakdown.scope)
+            if scope_breakdown is not None
+            else None
+        )
 
         legacy_backend_id = resolve_backend_for_stage(stage)
         backend_id = resolve_backend(
             stage,
             prompt,
             budget_signal=None,
+            evidence_scope=scope_val,
             fallback_backend_id=legacy_backend_id,
         )
         backend = get_backend(backend_id)
@@ -177,15 +198,19 @@ def trace_synth_call(
         )
         return ""
 
-    # D5.C.2.e — audit row for the resolved backend. Emitted between
-    # resolution and call so the routing decision is logged even if
-    # the subsequent backend.complete fails.
+    # D5.C.2.e + LEO L.C — audit row for the resolved backend. Emitted
+    # between resolution and call so the routing decision is logged
+    # even if the subsequent backend.complete fails. The scope payload
+    # rides along when present so the operator can correlate
+    # `evidence_scope=X.XXXX effective_k=… score_entropy=… …` in the
+    # reason:route row with the originating /query/ row via prompt hash.
     emit_route_event(
         stage,
         prompt,
         backend_id,
         budget_signal=None,
-        reason="fallback",
+        reason="scope" if scope_breakdown is not None else "fallback",
+        evidence_scope=scope_breakdown,
     )
 
     result: CompletionResult = backend.complete(
