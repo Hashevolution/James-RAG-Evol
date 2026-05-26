@@ -56,6 +56,19 @@ _DEFAULT_BACKEND_ID: Final[str] = "gemma4:e4b"
 
 _FLAG_ON_VALUES: Final[frozenset[str]] = frozenset({"1", "true", "yes", "on"})
 
+# LEO L.B — evidence-scope routing thresholds.
+# narrow: scope ≤ 0.30 → small backend (single-doc / verbatim
+#   retrieval shape — V3'.e substitution arm signature).
+# wide:   scope ≥ 0.70 → large/medium backend (multi-doc + graph
+#   fan-out — multi-hop synthesis burden, "shortening the path" applies).
+# mid-band (0.30 < scope < 0.70) → fall through to budget-based rule,
+#   so D1 task-weight signal still owns the gray zone.
+# Module constants so L.D STEP 7 tuning (or Direction 2 regression)
+# can swap them in one place without API change. Mirrors the
+# `_W_*` weight constants in `core.reasoning.evidence_scope`.
+_SCOPE_NARROW_THRESHOLD: Final[float] = 0.30
+_SCOPE_WIDE_THRESHOLD: Final[float] = 0.70
+
 
 def _auto_router_enabled() -> bool:
     """Env-flag gate for D5.
@@ -95,33 +108,66 @@ def _route_policy(
     prompt: str,
     context: str,
     budget_signal: Optional[int],
+    *,
+    evidence_scope: Optional[float] = None,
 ) -> str:
-    """D5.C.1 routing policy v1.
+    """Routing policy — D5.C.1 + LEO L.B.
 
     Decision tree (first match wins):
 
       1. `stage` ∈ ``_GROUNDING_CRITICAL_STAGES`` (currently just
          ``verify``) → prefer ``large`` tier; fall back to
          ``medium`` if no large registered; legacy otherwise.
-      2. ``budget_signal == CAP_SUBSTITUTION`` (200, verbatim
+         Grounding-critical stage wins over every other signal,
+         including measured evidence scope — a thorough verifier
+         is the whole point of `verify`.
+      2. **LEO L.B — measured evidence scope override**
+         (``evidence_scope`` not None):
+           • scope ≤ ``_SCOPE_NARROW_THRESHOLD`` (0.30) → ``small``
+             tier; legacy otherwise. Narrow retrieval = single
+             doc / verbatim arm = small model is sufficient and
+             cheaper. Matches Robin's 2026-05-23 substitution
+             bit-for-bit finding.
+           • scope ≥ ``_SCOPE_WIDE_THRESHOLD`` (0.70) → ``large`` /
+             ``medium`` tier; legacy otherwise. Wide retrieval =
+             multi-doc + graph fan-out = synthesis burden, where
+             Ali's "shortening the path" cost asymmetry applies.
+           • mid-band (0.30 < scope < 0.70) → fall through to the
+             budget rules below. Mid-scope is ambiguous; defer to
+             D1's task-weight prediction in the gray zone.
+         This is the LEO design memo §"Relationship to D5 (not a
+         fork)" axis being plugged into the existing tree.
+      3. ``budget_signal == CAP_SUBSTITUTION`` (200, verbatim
          retrieval) → prefer ``small`` tier; legacy otherwise.
          Substitution doesn't benefit from a larger model — Robin
          2026-05-23 finding: substitution-mode bypasses sampling
          entirely, so a small model gives bit-for-bit identical
          output cheaper.
-      3. ``budget_signal == CAP_HEAVY`` (4096, multi-step / 4-stage
+      4. ``budget_signal == CAP_HEAVY`` (4096, multi-step / 4-stage
          cognitive) → prefer ``large`` tier; fall back to ``medium``;
          legacy otherwise. Heavy synthesis is where the
-         cost-asymmetry argument actually favors a stronger model
-         (Ali's "shortening the path" framing — 26b finds the answer
-         in 49 tokens vs e4b's 450).
-      4. Otherwise (``CAP_LIGHT`` 1200, ``None``, or unknown
+         cost-asymmetry argument actually favors a stronger model.
+      5. Otherwise (``CAP_LIGHT`` 1200, ``None``, or unknown
          signal) → legacy backend. Light synthesis on small model
          is the v0.3.x default; routing only escalates when one of
          the rules above fires.
 
     `prompt` and `context` are reserved for D5.C.2 (prompt-surface
     signals) and D5.D (cross-lingual alias resolution).
+
+    LEO open Q #2 answer (intent routing vs synth re-selection):
+    measurement wins over prediction — rule 2 sits before rules 3/4
+    so a clear scope signal overrides the D1 budget guess. Rule 1
+    (verify) still wins over both because grounding is a stage-
+    level invariant, not a routing preference.
+
+    LEO open Q #4 answer (7-tier prediction vs evidence_scope
+    disagreement): the mid-band fall-through implements "measurement
+    can promote/demote one tier" — narrow scope (≤0.30) forces
+    small even if budget would say light/legacy; wide scope (≥0.70)
+    forces large even if budget would say substitution. The gray
+    zone leaves the budget rule untouched, so the override is a
+    bounded correction, not a wholesale replacement.
 
     The "prefer tier X, fall back to legacy" pattern means an
     operator who registers only ``ollama_local`` (the default)
@@ -133,6 +179,21 @@ def _route_policy(
         if chosen:
             return chosen
         return _legacy_backend_id()
+
+    # LEO L.B — measured evidence_scope override (rule 2).
+    # Mid-band falls through to budget rules below.
+    if evidence_scope is not None:
+        if evidence_scope <= _SCOPE_NARROW_THRESHOLD:
+            chosen = _first_in_tier("small")
+            if chosen:
+                return chosen
+            return _legacy_backend_id()
+        if evidence_scope >= _SCOPE_WIDE_THRESHOLD:
+            chosen = _first_in_tier("large") or _first_in_tier("medium")
+            if chosen:
+                return chosen
+            return _legacy_backend_id()
+        # mid-band → fall through to budget rule
 
     if budget_signal == CAP_SUBSTITUTION:
         chosen = _first_in_tier("small")
@@ -185,6 +246,7 @@ class Router:
         *,
         context: str = "",
         budget_signal: Optional[int] = None,
+        evidence_scope: Optional[float] = None,
     ) -> str:
         """Return the backend ID to invoke for this call.
 
@@ -195,24 +257,34 @@ class Router:
             context: optional retrieval context. Reserved for D5.C
                 policy + D5.D cross-lingual alias resolution.
             budget_signal: optional cap from `TaskBudget.assess(...)`.
-                D5.C will use this as the primary routing input
-                (substitution-tier → small backend, heavy-tier →
-                large backend).
+                Substitution-tier → small backend, heavy-tier → large
+                backend (D5.C.1 policy).
+            evidence_scope: optional ``ScopeBreakdown.scope`` value
+                from `core.reasoning.evidence_scope.compute_scope`
+                (LEO L.B). When passed (flag ON + L.C engine wiring),
+                a narrow scope (≤0.30) forces the small tier; a wide
+                scope (≥0.70) forces the large tier; the mid-band
+                falls through to the budget rule. `None` (the default
+                at L.B before L.C wires the engine) leaves D5.C.1
+                behaviour bit-for-bit unchanged.
 
         Returns:
-            Backend ID string (e.g. `"gemma4:e4b"`). Currently always
-            the legacy backend; D5.C replaces the flag-on branch with
-            real policy.
+            Backend ID string (e.g. `"gemma4:e4b"`). When flag OFF,
+            always the legacy backend. When flag ON, dispatches to
+            `_route_policy` (verify > scope-override > budget rules
+            > legacy).
         """
-        # D5.C.1: flag-off → legacy backend (byte-identical to pre-D5).
-        # flag-on → policy decides (see `_route_policy` for the
-        # decision tree). Wiring at the 5 stage call sites lands in
-        # D5.C.2 / D5.C.3; until then, `Router` is constructible but
-        # not yet consulted by `core/retrieval/*` or
-        # `core/reasoning/*` call sites.
+        # Flag-off → legacy backend (byte-identical to pre-D5).
+        # Flag-on → policy decides. Wiring at the 5 stage call sites
+        # for `budget_signal` landed at D5.C.2; the L.C engine wiring
+        # for `evidence_scope` is the next phase (this PR only adds
+        # the kwarg surface + policy rule).
         if not self.enabled:
             return _legacy_backend_id()
-        return _route_policy(stage, prompt, context, budget_signal)
+        return _route_policy(
+            stage, prompt, context, budget_signal,
+            evidence_scope=evidence_scope,
+        )
 
 
 # ─── D5.C.2 — high-level helpers for stage call sites ─────────────
@@ -237,6 +309,7 @@ def resolve_backend(
     *,
     context: str = "",
     budget_signal: Optional[int] = None,
+    evidence_scope: Optional[float] = None,
     fallback_backend_id: Optional[str] = None,
 ) -> str:
     """High-level helper for stage call sites.
@@ -248,13 +321,20 @@ def resolve_backend(
         (the stage's pre-D5 ``self._backend_id``) or ``_legacy_backend_id()``
         if ``None``. Byte-identical to pre-D5 main.
       • Flag ON → consults ``Router(...).select_backend(stage, prompt, ...)``
-        which dispatches to ``_route_policy`` (the D5.C.1 decision tree).
+        which dispatches to ``_route_policy``.
 
     Stage call sites pass ``budget_signal`` only when the D1 adaptive
     budget flag is also on (signal is meaningless under D1 flag-off
     because the cap is fixed at ``DEFAULT_MAX_TOKENS=4096`` and
     would unconditionally trigger the CAP_HEAVY branch). Without a
     meaningful signal, the router's policy falls back to legacy.
+
+    ``evidence_scope`` is the measured signal from
+    `core.reasoning.evidence_scope.compute_scope` (LEO L.B). The L.C
+    engine wiring will be the only caller passing this value; until
+    then the kwarg defaults to ``None`` and the L.B policy rule
+    (rule 2 in `_route_policy`) is dead code at the production call
+    path — flag OFF/ON byte-identical to pre-L.B main.
     """
     r = Router()
     if not r.enabled:
@@ -264,6 +344,7 @@ def resolve_backend(
         prompt,
         context=context,
         budget_signal=budget_signal,
+        evidence_scope=evidence_scope,
     )
 
 
