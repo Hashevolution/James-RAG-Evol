@@ -203,6 +203,37 @@ def build_memory_context(
         from core.i18n import detect_language
         session_lang = "Korean" if detect_language(safe_query) == "ko" else "English"
 
+    # v0.4 live verify fix #5 (2026-05-26): strip any persona-stored
+    # language directive from `system_prompt` BEFORE prepending the
+    # session_lang directive below. The persona's stored `language`
+    # field (default "한국어") forces `MemoryStore.get_system_prompt()`
+    # to emit `"항상 한국어로 답변하세요."` regardless of the actual
+    # query language. When a user asks `what is NVIDIA?` (English),
+    # the unified detect_language flips session_lang to English and we
+    # prepend `"Always respond in English."` — but the persona's
+    # Korean directive stays underneath, contradicting it. Gemma 4
+    # observed to follow the persona's KO line on the live A3.1 verify
+    # (2026-05-26) despite the "highest priority" tag on the English
+    # directive.
+    #
+    # Stripping the legacy directive line eliminates the contradiction
+    # — only the auto-detected (or persona-command-overridden)
+    # `session_lang` directive remains. Operator can still pin a
+    # session language explicitly via persona command
+    # ("영어로 답해" / "respond in English") — that path writes
+    # `kwargs["session_language"]` at line 130 above and the strip is
+    # symmetric for both languages.
+    import re as _re_lang
+    system_prompt = _re_lang.sub(
+        r'\s*항상\s+\S+로\s+답변하세요\.?', '', system_prompt
+    )
+    system_prompt = _re_lang.sub(
+        r'\s*Always respond in [A-Za-z]+\.?', '', system_prompt
+    )
+    system_prompt = _re_lang.sub(
+        r'\n{3,}', '\n\n', system_prompt
+    ).strip()
+
     # 언어 지시어 주입
     if session_lang and session_lang.lower() not in ("", "auto"):
         if session_lang in ("Korean", "한국어"):
