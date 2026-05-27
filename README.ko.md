@@ -1,8 +1,9 @@
 # PROJECT JAMES
 
-> **로컬 우선, 감사 가능한 지식 추론 시스템**
-> — 명시적 추론 경로 + 출처 인식 지식 그래프 + 인간 승인 게이트
-> 기반 자기진화.
+> **Replayable RAG** — 모든 claim 에 출처, 모든 추론 단계에 audit
+> row, 임의 시점 T 의 시스템 상태를 바이트-동일하게 재생 가능한
+> 로컬 우선 지식 추론 시스템. 자기진화는 인간 승인 게이트 뒤에서
+> 동작.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-v0.4.0-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/releases/tag/v0.4.0)
@@ -17,12 +18,20 @@
 
 ---
 
-## 프로젝트 상태: v0.3.0 — Platform Skeleton
+## 프로젝트 상태: v0.4.0 — Layer 4 Lifecycle Semantics (first bundle)
 
-**2026-05-17 정식 릴리스** (v0.2.0 이후 9일간 190 PR, 1800+ tests).
-v0.2 → v0.3 게이트 통과 — 6축 Foundation Hardening
-(아키텍처 / 평가 / 관찰성 / 보안 / 통제 진화 / 실데이터 검증) 모두
-완료. 두 번째 사용자 게이트는 2026-05-13 마감.
+**2026-05-27 릴리스**. v0.4.0 은 Layer 4 first bundle —
+**T1 Temporal Validity + T7 Supersede Chain + T2 Contradiction
+Arbitration** — 을 Sprint 5 의 8 PR 시퀀스로 출시. CASCADE 와
+EVENT 의 분리 invariant 가 `tests/test_t7_release_gating_invariants
+.py` (실제 wiki 픽스처 대상, 목 아님) 으로 **end-to-end 증명**.
+supersede chain 프리미티브 (`reconstruct_view_at`) 가 무관한
+CASCADE 삭제 이벤트 후에도 "시점 T 에 무엇이 참이었나" 를
+결정론적으로 답변.
+
+이전: v0.3.0 (2026-05-17) Foundation Hardening 마감 — 6 축
+(아키텍처 / 평가 / 관찰성 / 보안 / 통제 진화 / 실데이터 검증)
+모두 통과; 두 번째 사용자 게이트 2026-05-13 마감.
 
 - **프로덕션 준비 안 됨** — 운영 성숙도 (HTTPS / SSO / 멀티테넌시 /
   백업 CLI) 는 v1.0 산출물. [SECURITY.md](SECURITY.md) 참조
@@ -50,29 +59,56 @@ JAMES 는 **하나의 버티컬**을 만드는 것이 아닙니다. 법률·식�
 
 ---
 
-## 무엇이 다른가
+## 무엇이 다른가 — Replayable RAG
 
-JAMES 는 함께 찾기 드문 아이디어를 결합합니다:
+대부분의 RAG 시스템은 *"답이 뭐야?"* 한 가지 질문에 답합니다.
+JAMES 는 두 가지를 더 답합니다:
 
-1. **출처 인식 Graph-RAG** — 12 typed relation 이 임베딩 이상의
+- **시점 T 에 시스템이 무엇을 알고 있었나?** — T7 supersede chain
+  이 fact 의 과거 상태를 보존하고, `reconstruct_view_at(t)` 가
+  무관한 CASCADE 삭제 이벤트 후에도 임의 과거 시점에 활성이었던
+  edge 를 반환합니다.
+- **왜 그렇게 답했나?** — 모든 추론 단계 (query rewrite, retrieval,
+  rerank, planner, reflect, verify, synth) 가 append-only audit row
+  를 남깁니다. `scripts/replay_trace.py <trace_id>` 가 전체 시퀀스
+  를 바이트-동일하게 재구성합니다.
+
+이 둘의 결합이 JAMES 를 **Replayable RAG** 카테고리에 위치시킵니다.
+Agentic RAG (*"AI 가 무엇을 할 수 있나"* 에 최적화) 와 다르고,
+Mem0 형 메모리 layer (LLM judge 로 belief 갱신) 와 다릅니다.
+JAMES 는 LLM-free 결정론적 4-rule decision tree
+(`core/lifecycle/contradiction_arbiter.py:classify_contradiction`)
+로 belief 를 갱신하고, 과거 fact 를 overwrite 하는 대신 보존해
+replay 가능하게 만듭니다.
+
+### 어떻게 만들어졌나
+
+1. **결정론적 메모리 lifecycle** (v0.4.0) — T1 Temporal Validity +
+   T7 Supersede Chain + T2 Contradiction Arbitration. CASCADE
+   (destructive, Layer 3) 와 EVENT (history-preserving, Layer 4)
+   는 코드 path 가 분리 보장 —
+   `tests/test_t7_release_gating_invariants.py` 가 실제 wiki
+   픽스처로 release-gate.
+2. **출처 인식 Graph-RAG** — 12 typed relation 이 임베딩 이상의
    의미를 부여하고, 모든 relation 에 `sources: [{doc_id, weight,
    role, ts}]` 가 부착되어 문서 삭제/수정 시 영향받은 파생 지식만
-   외과적으로 갱신 (Knowledge Cascade A→E, v0.3.0)
-2. **Cognitive Layer** — cross-encoder reranker (디폴트 ON),
+   외과적으로 갱신 (Knowledge Cascade A→E, v0.3.0).
+3. **Cognitive Layer** — cross-encoder reranker (디폴트 ON),
    LLM query rewriter, reflection loop (draft → critique → revise),
    verification engine (security + fact check), tool router.
    하나의 `trace_id` 로 8 단계 추론 시퀀스를
-   `scripts/replay_trace.py` 로 재구성 가능
-3. **PolicyEngine — sprinkle 아닌 layer** — 역할/민감도 결정의
+   `scripts/replay_trace.py` 로 재구성 가능.
+4. **PolicyEngine — sprinkle 아닌 layer** — 역할/민감도 결정의
    단일 진입점이 retrieval / graph / output / tools 모두에 연결.
-   제거하면 6+ 모듈이 깨짐 (v0.2 Axis 4)
-4. **Change Request 프리미티브** — 모든 쓰기 (위키 편집, 워크스페이스
+   제거하면 6+ 모듈이 깨짐 (v0.2 Axis 4).
+5. **Change Request 프리미티브** — 모든 쓰기 (위키 편집, 워크스페이스
    잡, 자가-진화 패치) 가 propose → review → admin 승인 →
    atomic apply → audit 행으로 라우팅. silent write 없음.
-5. **인간 게이트 뒤 자가-진화** — 피드백 → 후보 → bench eval →
+6. **인간 게이트 뒤 자가-진화** — 피드백 → 후보 → bench eval →
    인간 승인 → 배포 → 회귀 시 auto-rollback. 배포된 모든 패치는
-   `approver_username` 감사 행을 보유 (v0.2 Axis 5)
-6. **100% 로컬** — Ollama 로 노트북에서 실행 가능
+   `approver_username` 감사 행을 보유 (v0.2 Axis 5).
+7. **100% 로컬** — Ollama 로 노트북에서 실행 가능. 기본 설정에서
+   클라우드 LLM 의존성 없음.
 
 > 모든 기능은 STEP 7 13-query baseline + RAGAS 메트릭으로 회귀
 > 테스트. `core/{retrieval,graph,reasoning}` 을 건드리는 PR 은

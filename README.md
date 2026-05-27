@@ -1,8 +1,10 @@
 # PROJECT JAMES
 
-> **Local-first, auditable knowledge reasoning system** with explicit
-> reasoning paths, a sources-aware knowledge graph, and self-evolution
-> behind a human approval gate.
+> **Replayable RAG** — a local-first knowledge reasoning system where
+> every claim is sourced, every reasoning step is audited, and the
+> system's state at any point in time can be replayed
+> byte-identically. Built behind a human approval gate for
+> self-evolution.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-v0.4.0-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/releases/tag/v0.4.0)
@@ -16,13 +18,22 @@
 
 ---
 
-## Project Status: v0.3.0 — Platform Skeleton
+## Project Status: v0.4.0 — Layer 4 Lifecycle Semantics (first bundle)
 
-Released **2026-05-17** after 190 PRs since v0.2.0 (1800+ tests).
-The v0.2 → v0.3 gate is clear: all six Foundation Hardening axes
-(architecture, eval, observability, security, controlled evolution,
-real-data validation) passed; second-user validation closed
-2026-05-13.
+Released **2026-05-27**. v0.4.0 ships the Layer 4 first bundle —
+**T1 Temporal Validity + T7 Supersede Chain + T2 Contradiction
+Arbitration** — across an 8-PR Sprint 5 sequence. The CASCADE vs
+EVENT separation invariant is now **provable end-to-end** via
+`tests/test_t7_release_gating_invariants.py`, run against the
+actual wiki fixture (not mocks). The supersede chain primitive
+(`reconstruct_view_at`) lets the system answer "what was true at
+time T?" deterministically, even after destructive CASCADE
+operations on unrelated facts.
+
+Pre-v0.4: v0.3.0 (2026-05-17) closed Foundation Hardening — all
+six axes (architecture / eval / observability / security /
+controlled evolution / real-data validation) green; second-user
+validation closed 2026-05-13.
 
 - **NOT production-ready** — operational maturity (HTTPS / SSO /
   multi-tenancy / backup CLI) is a v1.0 deliverable; see
@@ -52,31 +63,59 @@ branching forms (Domain Pack / Distribution / Vertical Product).
 
 ---
 
-## What's Different
+## What's Different — Replayable RAG
 
-JAMES combines ideas that are rarely found together:
+Most RAG systems answer one question: *"what's the answer?"*
+JAMES answers two extra:
 
-1. **Sources-aware Graph-RAG** — 12 typed relations carry semantic
+- **What did the system know at time T?** — T7 supersede chains
+  preserve historical fact states; `reconstruct_view_at(t)` returns
+  the edge that was active at any past timestamp, even after
+  unrelated CASCADE delete events.
+- **Why did the system say that?** — every reasoning step (query
+  rewrite, retrieval, rerank, planner, reflect, verify, synth)
+  writes an append-only audit row. `scripts/replay_trace.py
+  <trace_id>` reconstructs the full sequence byte-identically.
+
+The two combined make JAMES a **Replayable RAG** system — a
+category distinct from Agentic RAG (which optimises for *what an
+AI can do*) and from Mem0-style memory layers (which use an LLM
+judge to update beliefs). JAMES updates beliefs via a
+deterministic 4-rule decision tree (`core/lifecycle/
+contradiction_arbiter.py:classify_contradiction`) that is
+LLM-free by design, and preserves both the old and the new fact
+for replay rather than overwriting.
+
+### How that's built
+
+1. **Deterministic memory lifecycle** (v0.4.0) — T1 Temporal
+   Validity + T7 Supersede Chain + T2 Contradiction Arbitration.
+   CASCADE (destructive, Layer 3) and EVENT (history-preserving,
+   Layer 4) are guaranteed-separate paths — release-gated by
+   `tests/test_t7_release_gating_invariants.py` against the real
+   wiki fixture.
+2. **Sources-aware Graph-RAG** — 12 typed relations carry semantic
    meaning beyond embeddings, and every relation carries
    `sources: [{doc_id, weight, role, ts}]` so deleting or modifying
    a document surgically updates only the affected derived knowledge
-   (Knowledge Cascade A→E, v0.3.0)
-2. **Cognitive Layer** — cross-encoder reranker (default ON), LLM
+   (Knowledge Cascade A→E, v0.3.0).
+3. **Cognitive Layer** — cross-encoder reranker (default ON), LLM
    query rewriter, reflection loop (draft → critique → revise),
    verification engine (security + fact check), and tool router.
    One `trace_id` reconstructs the full 8-stage reasoning sequence
-   via `scripts/replay_trace.py`
-3. **PolicyEngine as a layer, not a sprinkle** — single point of
+   via `scripts/replay_trace.py`.
+4. **PolicyEngine as a layer, not a sprinkle** — single point of
    role / sensitivity decisions wired into retrieval, graph, output,
-   and tools; removing it breaks 6+ modules (v0.2 Axis 4)
-4. **Change Request primitive** — every write (wiki edits, workspace
+   and tools; removing it breaks 6+ modules (v0.2 Axis 4).
+5. **Change Request primitive** — every write (wiki edits, workspace
    jobs, self-evolution patches) routes through propose → review →
    admin approval → atomic apply → audit row. No silent writes.
-5. **Self-evolution behind a human gate** — feedback → candidate →
+6. **Self-evolution behind a human gate** — feedback → candidate →
    bench eval → human approval → deploy → auto-rollback on
    regression. Every deployed patch has an `approver_username`
    audit row (v0.2 Axis 5).
-6. **100% local** — runs on a laptop with Ollama
+7. **100% local** — runs on a laptop with Ollama; no cloud LLM
+   dependency by default.
 
 > Each feature is regression-tested against the STEP 7 13-query
 > baseline + RAGAS metrics. PRs touching `core/{retrieval,graph,reasoning}`
