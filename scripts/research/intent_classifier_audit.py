@@ -179,11 +179,11 @@ def main() -> int:
     }
 
     print()
-    print(f"=== Summary ===")
+    print("=== Summary ===")
     print(f"  classified:  {summary['queries_classified']}")
     print(f"  agreements:  {summary['agreements']} ({overall_acc*100:.1f}%)")
     print(f"  methods:     {summary['method_distribution']}")
-    print(f"  confusion (expected → got distribution):")
+    print("  confusion (expected → got distribution):")
     for exp, cts in summary["confusion_by_expected"].items():
         line = ", ".join(f"{g}={c}" for g, c in sorted(cts.items(), key=lambda x: -x[1]))
         print(f"    {exp:<10s} → {line}")
