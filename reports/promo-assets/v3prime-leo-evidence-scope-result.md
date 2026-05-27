@@ -468,11 +468,16 @@ verification, the L.B policy v1 has complete bench coverage.
   pattern unchanged).
 - Idea 1 ✅ landed (Path Recall). Faithfulness metric + larger
   expected_path coverage carried separately.
-- (NEW) **F6** — q15 entity-extraction stochasticity. Idea 1 found the
-  same query non-deterministically miss/hit the "David Soria Parra → MCP"
-  path. Likely LLM entity extraction or chroma rerank variance, not
-  classifier or policy gate. Needs a separate per-query repeat-run
-  diagnostic.
+- **F6** ✅ landed (this branch). Repeat-run audit refuted the
+  stochasticity hypothesis — 5/5 identical zero-recall on q15.
+  Reattributed to chroma rerank / embedding miss (Korean prompt
+  doesn't surface the foreign-name PDF). Spawns F7 (chroma top-k
+  probe — one small script, separate cycle).
+- (NEW) **F7** — chroma top-k probe for q15. Log score-sorted top-k
+  with sources, confirm `08_MCP_(Model_Context_Protocol).pdf`'s
+  rank. If it's outside top-k, the systemic fix is embedding swap
+  (BL-9 multilingual-e5-large) — alias pack patch only covers
+  KO↔EN string aliasing, not semantic mismatch.
 
 ## What this closure does NOT claim
 
@@ -555,6 +560,100 @@ verification, the L.B policy v1 has complete bench coverage.
   v3 suite). Operator can still adjust the threshold later if the
   14% narrow ratio doesn't match production expectations — formula
   fix and threshold tuning are orthogonal knobs.
+
+## F6 follow-up — q15 entity-extraction deterministic miss (2026-05-27)
+
+Branch: `feat/v0.4-f6-q15-stochasticity-audit`. Built
+`scripts/research/q15_repeat_audit.py` — spawns server, mints
+employee JWT, POSTs q15 (`David Soria Parra가 누구야?`) N=5 times via
+HTTP with `mode_override=retrieval`. Reuses Idea 1's `_parse_path_nodes`
+parser so the F6 verdict and bench-time `path_metrics` agree
+byte-for-byte on what counts as a node hit.
+
+Hypothesis on entry: q15 Idea 1 zero-recall was a one-time
+stochasticity event (LLM entity-extraction noise or chroma rerank
+variance — the L.D F1 wrapper acceptance had 80% mean recall on
+the same query in earlier sessions).
+
+`reports/research-runs/q15-repeat-audit-20260527_163609.json`
+
+### Result — deterministic miss, not stochasticity
+
+| metric | value |
+|---|---|
+| runs | 5 |
+| runs_at_zero_recall | **5 / 5** |
+| runs_hit_david_soria_parra | 0 |
+| runs_hit_mcp | 0 |
+| graph_paths_count_min | 12 |
+| graph_paths_count_max | 12 |
+
+All 5 runs produced **byte-identical** node sets. Top extracted
+nodes (sorted, run-invariant):
+
+```
+(주)파네시아, 02_4월ETF월간최강_24억달러, 07_FOMC동결_Warsh후임임박,
+FOMC, JP모건, Jerome Powell, Kevin Warsh, 비트코인,
+상원 은행위원회, 생성형 AI
+```
+
+None of these are "David Soria Parra" or "MCP" — the entities the
+query intent points at (and the wiki has under
+`wiki/entity/prod/person/david_soria_parra.md` with
+`source_document: 08_MCP_(Model_Context_Protocol).pdf`).
+
+### Reattribution — root cause is chroma rerank / embedding, not entity extractor
+
+The extracted entities cluster in finance + Korean-AI domain
+(FOMC / Powell / Warsh / 비트코인 / 정명수 / 생성형 AI), not in
+the MCP / protocol-design domain. The pattern is:
+
+1. q15 prompt → chroma embedding search → returns top-k *unrelated*
+   finance / AI docs (David Soria Parra's MCP-context PDF doesn't
+   rank in top-k for this Korean prompt)
+2. Document-side entity mining → extracts entities from those
+   unrelated docs (FOMC, 정명수, etc.)
+3. Graph DFS seeds from those mined entities → traverses their
+   relations → produces the 12-path result none of which touch
+   David Soria Parra
+4. LLM synth gets the unrelated graph context → can still produce
+   a plausible-looking answer about David Soria Parra from its
+   training knowledge (~700-chars answers across all 5 runs), but
+   the answer isn't grounded in JAMES's wiki
+
+This is the **same root cause as the 2026-05-25 "팔란티어" cross-
+lingual diagnostic** ([[feedback_rag_cross_lingual_diagnostic]]):
+chroma's MiniLM embedding under-ranks low-frequency proper nouns
+(Korean entities for foreign names, English entities for Korean
+phrasing). The D5.D entity alias pack (#483) covered some KO↔EN
+pairs but doesn't include "David Soria Parra" — there's no Korean
+alias to bridge to.
+
+### F6 verdict — measurement narrows next-layer scope
+
+The audit converts a stochasticity hypothesis into a **deterministic
+embedding/rerank miss**. Same diagnostic order from
+`feedback_rag_cross_lingual_diagnostic` still applies, but the
+F6 measurement skips ahead to chroma layer:
+
+- ✅ wiki entity exists (verified — `david_soria_parra.md` present)
+- ⚠️ chroma chunk count for David Soria Parra ⇒ next-layer probe
+- ⚠️ rerank ordering on q15 prompt ⇒ next-layer probe
+- ⏭️ embedding swap (BL-9 / multilingual-e5-large) is the
+  systemic fix; alias pack expansion is the patch
+
+Spawns **F7** (separate cycle) for the next-layer probe: log
+chroma top-k scores + sources for q15, confirm David Soria Parra's
+PDF chunks rank where expected (or don't). That diagnostic is one
+small script away from the F6 substrate.
+
+### Cost-of-diagnosis pattern (again)
+
+F2 ruled out classifier. F6 ruled out extraction stochasticity. Each
+audit costs ~30 min and eliminates one hypothesis from the candidate
+list. The "throw a fix at it" alternative would have spent days
+on classifier prompt tuning or extraction-side retry logic — both
+useless given the actual root cause.
 
 ## F2 follow-up — IntentClassifier audit (2026-05-27)
 
