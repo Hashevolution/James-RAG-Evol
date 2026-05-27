@@ -254,17 +254,49 @@ def compute_scope(
         `breakdown.scope` to decide the synth backend:
         narrow scope → small / fast backend, wide scope → large
         backend better at multi-document composition.
+
+    F5 floor fix (2026-05-27):
+        When `effective_k == 0` (no docs above the relevance
+        threshold), `score_entropy` and `doc_spread` describe the
+        distribution of *unreliable* evidence — ChromaDB's
+        always-return-top_k contract guarantees the result list is
+        filled regardless of match quality, and those filler docs
+        usually come from different sources (high `doc_spread`)
+        with similar-but-low scores (high `score_entropy`).
+        Counting them toward "wide" inflates the aggregate to a
+        ~0.40 floor (verified by F4 acceptance run
+        `lc-scope-bench-20260527_123203.json`) — above the L.B
+        narrow threshold (0.30) — so the "narrow→small" rule
+        could never fire on the production retrieval path.
+
+        Fix: when `effective_k == 0`, the aggregate uses only
+        `graph_reach` (still meaningful — graph traversal is
+        independent of doc-score quality). The 4 raw components are
+        preserved in the breakdown for observability — only the
+        `scope` aggregate changes.
+
+        Operator alternative was a threshold raise (0.30 → ~0.40)
+        but that just rebases the rule on the noise floor; the
+        formula fix matches the rule's stated intent ("single doc /
+        verbatim arm" = genuinely sparse evidence, not "chroma
+        returned low-score noise").
     """
     ek = _effective_k(docs, top_k=top_k)
     se = _score_entropy(docs)
     gr = _graph_reach(graph_context, graph_paths)
     ds = _doc_spread(docs)
-    raw = (
-        _W_EFFECTIVE_K * ek
-        + _W_SCORE_ENTROPY * se
-        + _W_GRAPH_REACH * gr
-        + _W_DOC_SPREAD * ds
-    )
+    if ek == 0:
+        # F5 floor fix — entropy + doc_spread of irrelevant chroma
+        # filler are not meaningful evidence-breadth signals. Graph
+        # reach stands alone (independent measurement path).
+        raw = _W_GRAPH_REACH * gr
+    else:
+        raw = (
+            _W_EFFECTIVE_K * ek
+            + _W_SCORE_ENTROPY * se
+            + _W_GRAPH_REACH * gr
+            + _W_DOC_SPREAD * ds
+        )
     scope = max(0.0, min(1.0, raw))
     return ScopeBreakdown(
         effective_k=ek,

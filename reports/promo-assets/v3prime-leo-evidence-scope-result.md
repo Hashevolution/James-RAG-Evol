@@ -299,6 +299,90 @@ The 0/9/5 distribution still validates the L.B policy design:
   concrete next L.B step. Operator decides between threshold
   raise vs formula revision based on what they want to measure.
 
+## F5 follow-up — scope formula floor fix (2026-05-27)
+
+Branch: `feat/v0.4-leo-lb-f5-scope-floor-fix`. Picked path (b)
+from F4 followup — formula revision over threshold raise. Path (a)
+would have just rebased the narrow rule on the noise floor; (b)
+matches the rule's stated intent ("single doc / verbatim arm" =
+genuinely sparse evidence, not "chroma returned low-score noise").
+
+**Change** (`core/reasoning/evidence_scope.py:compute_scope`):
+
+```python
+if ek == 0:
+    # F5 floor fix — entropy + doc_spread of irrelevant chroma
+    # filler are not meaningful evidence-breadth signals. Graph
+    # reach stands alone (independent measurement path).
+    raw = _W_GRAPH_REACH * gr
+else:
+    raw = (_W_EFFECTIVE_K*ek + _W_SCORE_ENTROPY*se +
+           _W_GRAPH_REACH*gr + _W_DOC_SPREAD*ds)
+```
+
+The 4 raw components stay populated in `ScopeBreakdown` for
+observability — only the `scope` aggregate changes when k=0.
+3 new tests (`test_k_zero_*`) pin the contract: scope=0 when
+k=0+no-graph, scope=0.25·graph_reach when k=0+graph,
+4-component aggregate unchanged when k>0.
+
+`reports/research-runs/lc-scope-bench-20260527_140546.json`
+
+| Metric | OFF arm | ON arm | Δ |
+|---|---|---|---|
+| Total elapsed | 1234.6s (20.6 min) | 1276.8s (21.3 min) | **+3.4%** |
+| Per-query elapsed | 55.7–119.7s | 56.1–119.8s | within ±31% noise |
+| reason:route rows with `evidence_scope` | n/a | 14 | scope_context binding fired ✅ |
+| backend distribution | n/a | `ollama_local: 69` | small-tier-only fleet, narrow + wide both route to ollama_local (the only registered backend) |
+
+### Scope distribution evolution
+
+```
+F1 (11 queries, no narrow fixture):       0  /  4  /  7   (narrow/mid/wide)
+F4 (14 queries, +narrow fixture):         0  /  9  /  5   (floor 0.40 — narrow still unreachable)
+F5 (14 queries, +formula fix):            2  /  5  /  7   ← narrow band fires ✅
+```
+
+### F5 acceptance — narrow rule production-traced
+
+The 2 narrow decisions match the F5 formula exactly:
+
+| timestamp | scope | k    | g    | Computed (W_GRAPH * g = 0.25 * g) |
+|-----------|-------|------|------|-----------------------------------|
+| 13:44:42  | 0.250 | 0.0  | 1.00 | 0.25 × 1.00 = 0.250 ✅            |
+| 14:03:54  | 0.215 | 0.0  | 0.86 | 0.25 × 0.8611 = 0.215 ✅          |
+
+Both correspond to queries where ChromaDB returned no doc above the
+0.45 relevance threshold (k=0) but graph traversal still produced
+some entity / path activity. Pre-F5, these would have aggregated
+to ~0.40 because of the entropy/spread "filler" noise; post-F5
+they aggregate to the actual evidence signal (graph only).
+
+Router behavior on the 2 narrow rows:
+- `_route_policy` rule 2 (evidence_scope ≤ 0.30) fires →
+  `_first_in_tier("small")` returns `["ollama_local"]` (the only
+  small-tier backend registered) → routes to `ollama_local`
+- Audit tag = `reason=scope` (same as wide; the differentiation
+  is in the scope value itself, not the reason tag)
+- Same `ollama_local` destination as the wide-tier decisions in
+  this run because no `large`/`medium` tier is registered → all
+  routes converge on the same backend; the **routing decision
+  semantics** are now distinguishable in the audit even when the
+  **chosen backend ID** is identical.
+
+### F5 verdict — L.B narrow→small rule reachable on production retrieval
+
+The L.B narrow→small rule now fires end-to-end with a measurable
+fraction (2/14 ≈ 14%) of synth calls on the step7 v3 suite. The
+L.B 3-band policy (narrow/mid/wide) is fully exercised in
+production audit for the first time. Combined with F1's wide-band
+verification, the L.B policy v1 has complete bench coverage.
+
+**Remaining followups** (Sprint 6+):
+- F3 — halt-prone large-tier measurement (requires `JAMES_ENABLE_CLAUDE_BACKEND=1`)
+- F2 — IntentClassifier audit (production baseline truthfulness)
+- Idea 1 — path-GT in step7 (Path Recall/Precision/Faithfulness)
+
 ## What this closure does NOT claim
 
 - **End-to-end scope routing measurement at the bench harness level**.
@@ -372,19 +456,14 @@ The 0/9/5 distribution still validates the L.B policy design:
   top_k pushes `score_entropy` and `doc_spread` to ~1.0 → scope
   floor = 0.40, above the L.B narrow threshold of 0.30). Spawned
   F5 below as the concrete next step.
-- **F5** NEW — L.B narrow threshold or scope formula re-calibration.
-  Two paths from the F4 finding:
-  - (a) **Threshold raise**: bump `_SCOPE_NARROW_THRESHOLD` from
-    0.30 → ~0.40 in `core/reasoning/router.py`. Re-baseline.
-    Smallest change, narrow rule becomes "scope ≤ floor + ε".
-  - (b) **Formula revision**: in `core.reasoning.evidence_scope`,
-    zero out `score_entropy` and `doc_spread` contributions when
-    `effective_k == 0` (those distributions measure unreliable
-    evidence in that case). Re-validate the 0/9/5 distribution
-    shifts toward narrow as expected.
-  Operator decides based on what L.B narrow→small is meant to
-  measure: "the chroma signal is weak" (path a) vs "the evidence
-  is genuinely sparse" (path b).
+- **F5** ✅ landed 2026-05-27 (this branch). Path (b) chosen —
+  formula revision drops `score_entropy` + `doc_spread` from the
+  aggregate when `effective_k == 0`. F5 acceptance run shifted
+  distribution from F4's 0/9/5 → **2/5/7**, min scope 0.40 → 0.215.
+  Narrow rule now fires in production audit (2/14 ≈ 14% on step7
+  v3 suite). Operator can still adjust the threshold later if the
+  14% narrow ratio doesn't match production expectations — formula
+  fix and threshold tuning are orthogonal knobs.
 
 ## Collaborator interaction
 

@@ -122,6 +122,87 @@ def test_doc_spread_same_source_vs_distinct():
     assert distinct_breakdown.doc_spread == pytest.approx(1.0)
 
 
+# ─── F5 floor fix — k=0 special case (2026-05-27) ─────────────────
+
+
+def test_k_zero_with_filler_docs_drops_entropy_spread_contributions():
+    """When no doc is above the relevance threshold, the aggregate
+    `scope` ignores `score_entropy` and `doc_spread` (they describe
+    the distribution of irrelevant chroma filler — see compute_scope
+    F5 docstring section). graph_reach still counts.
+
+    Regression pin: F4 acceptance run observed a ~0.40 floor from
+    chroma always-returning-top_k. The fix drops that floor to ~0
+    when no graph activity either.
+    """
+    # 5 docs all below the 0.45 relevance threshold, from distinct
+    # sources (mirrors what chroma returns when no chunk truly matches)
+    filler_docs = [
+        {"score": 0.2, "source": f"low_{i}.md"} for i in range(5)
+    ]
+    breakdown = compute_scope(
+        docs=filler_docs, graph_context=[], graph_paths=[],
+    )
+    # Aggregate must collapse — narrow rule (≤0.30) now fires
+    assert breakdown.scope == 0.0
+    # Raw components preserved for observability
+    assert breakdown.effective_k == 0.0
+    assert breakdown.score_entropy > 0.9, (
+        "raw score_entropy still measured (was meaningful pre-fix); "
+        "only the aggregate dropped its contribution"
+    )
+    assert breakdown.doc_spread == pytest.approx(1.0)
+
+
+def test_k_zero_with_filler_docs_and_graph_only_uses_graph():
+    """k=0 + non-empty graph → scope reflects only the graph_reach
+    contribution. Other 3 components measured but excluded from
+    aggregate."""
+    filler_docs = [
+        {"score": 0.2, "source": f"low_{i}.md"} for i in range(5)
+    ]
+    # max graph_reach: depth 4 + 12+ entities + 8+ paths
+    graph_context = [
+        {"_dfs_depth": d, "name": f"e{d}_{i}"}
+        for d in range(1, 5)
+        for i in range(3)
+    ]
+    graph_paths = [f"path_{i}" for i in range(8)]
+    breakdown = compute_scope(
+        docs=filler_docs,
+        graph_context=graph_context,
+        graph_paths=graph_paths,
+    )
+    # Expected: graph_reach=1.0, weighted 0.25 → scope ≈ 0.25
+    assert breakdown.graph_reach == pytest.approx(1.0)
+    assert breakdown.scope == pytest.approx(0.25, abs=1e-9)
+    # Other raw components preserved
+    assert breakdown.effective_k == 0.0
+    assert breakdown.score_entropy > 0.9
+    assert breakdown.doc_spread == pytest.approx(1.0)
+
+
+def test_k_positive_uses_all_four_components_unchanged():
+    """Regression pin — when at least one doc is above threshold,
+    the original 4-component aggregate is unchanged (no surprise
+    shifts from the F5 fix)."""
+    # 1 doc above threshold + 4 below
+    mixed = [{"score": 0.6, "source": "good.md"}] + [
+        {"score": 0.2, "source": f"low_{i}.md"} for i in range(4)
+    ]
+    breakdown = compute_scope(
+        docs=mixed, graph_context=[], graph_paths=[],
+    )
+    # ek = 1/8 = 0.125. With docs from 5 sources, ds = 5/5 = 1.0.
+    # score_entropy > 0 (mixed distribution). graph contribution 0.
+    expected_min = 0.125 * 0.35 + 1.0 * 0.20  # = 0.04 + 0.20 = 0.24
+    assert breakdown.scope >= expected_min, (
+        f"k>0 path must include doc_spread + entropy weights; "
+        f"got {breakdown.scope}"
+    )
+    assert breakdown.effective_k == pytest.approx(1 / 8)
+
+
 # ─── Flag parsing ─────────────────────────────────────────────────
 
 
