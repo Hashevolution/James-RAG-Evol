@@ -561,6 +561,109 @@ verification, the L.B policy v1 has complete bench coverage.
   14% narrow ratio doesn't match production expectations — formula
   fix and threshold tuning are orthogonal knobs.
 
+## BL-9 acceptance run — partial success, root cause moved (2026-05-27 PM)
+
+Branch: `feat/v0.4-bl9-acceptance-partial-f9-spawn`. Operator ran
+`scripts/migrate_embedding.py --target BAAI/bge-m3` (358 chunks
+re-embedded into `chroma_db_bge_m3/`) + persisted
+`JAMES_EMBEDDING_MODEL=BAAI/bge-m3` to `.env`. F7 chroma probe
+re-run with bge-m3 active.
+
+`reports/research-runs/q15-chroma-probe-20260527_182105.json`
+
+### Swap active confirmation — scores prove bge-m3 is the live model
+
+| variation | MiniLM (F7 baseline) | bge-m3 (this run) | Δ |
+|---|---|---|---|
+| concept_side rank-1 score | 0.8462 | **0.7576** | different ⇒ swap active |
+| en_translation top-1 score | 0.6041 | 0.6084 | different |
+| name_only top-1 score | 0.6662 | 0.5936 | different |
+
+`[VECTOR_STORE] ChromaDB 경로: …chroma_db_bge_m3` +
+`[VECTOR_STORE] 임베딩 모델: BAAI/bge-m3` confirm the runtime path.
+
+### Acceptance gate result — **FAIL on q15 `name_only`**
+
+| variation | MCP PDF rank under bge-m3 |
+|---|---|
+| ko_q15_exact | **NOT in top-20** |
+| en_translation | **NOT in top-20** |
+| name_only ← acceptance gate | **NOT in top-20** ❌ |
+| concept_side | rank 1, score 0.7576 ✅ |
+
+bge-m3 → MiniLM swap did NOT fix q15 cross-lingual proper-noun
+retrieval. Pre-swap baseline (F7) and post-swap (this run) both
+show the MCP PDF outside top-20 for any person-name query.
+
+### Root cause reattribution — query expansion, not embedding
+
+The post-swap diagnostic ran 5 query variations directly against
+the bge-m3 collection:
+
+| query | MCP PDF rank | semantic |
+|---|---|---|
+| `"David Soria Parra"` (name only) | **None** | bare-name miss |
+| `"MCP 설계자 David Soria Parra"` | **rank 1** | concept anchor + name → hit |
+| `"MCP designer Anthropic Justin Spahr-Summers"` | **rank 1** | concept anchor (en) → hit |
+| `"Anthropic MCP 공개"` (concept only) | **rank 1** | concept alone → hit |
+| `"David Soria Parra Justin Spahr-Summers JSON-RPC"` | **None** | over-specific → miss |
+
+**Root** — the MCP PDF chunk that names "David Soria Parra와
+Justin Spahr-Summers" is ~80 characters out of ~2 KB of MCP /
+JSON-RPC / Anthropic protocol description. The chunk vector is
+dominated by the dense concept tokens, so the bare-name query
+vector is too far from the chunk centroid. ANY 1024-dim multilingual
+embedding model has this property — switching to e5-large would
+hit the same wall (both are pooling-based dense encoders).
+
+The fix is **query expansion** — JAMES already has
+`core.retrieval.query_rewriter`; the question is whether it
+rewrites "David Soria Parra가 누구야?" into a concept-anchored
+form. If it does, q15 should hit. If it doesn't, that's the F9
+fix point.
+
+### BL-9 verdict — swap stays, downstream still broken
+
+- ✅ bge-m3 is now the production embedding (operator persisted
+  via `.env`)
+- ✅ 358 chunks re-embedded successfully
+- ⚠️ q15 `name_only` acceptance gate fails — root is upstream,
+  not the embedding model
+- ⏭️ **F9 spawned** (next §) — query rewriter audit on q15
+
+The swap is NOT a regression for the queries that did work — q2
+"Anthropic은 어떤 회사인가?" → still hits, q4 "BlackRock과 비트코인
+ETF" → still hits (operator's pre-swap OFF arm bench showed these
+still recall 1.0; full step7 v4 acceptance run pending operator
+ON-arm completion).
+
+Rollback path stays one env-var flip:
+
+```powershell
+# Comment out JAMES_EMBEDDING_MODEL=BAAI/bge-m3 in .env
+# Restart server → reads legacy MiniLM → chroma_db/ path.
+```
+
+## F9 (NEW, 2026-05-27) — query rewriter audit on q15
+
+BL-9 acceptance proved the chroma-side embedding can match q15 IF
+the query carries a concept anchor ("MCP" / "Anthropic"). The
+unknown variable: what does `core.retrieval.query_rewriter` actually
+output when fed "David Soria Parra가 누구야?"?
+
+Acceptance gate for F9:
+- Audit script (similar to F2 `intent_classifier_audit.py`) that
+  feeds q15 + the broken queries through `query_rewriter.rewrite`
+  + reports the rewritten text + flags whether a concept anchor
+  ("MCP" / "Anthropic" / domain noun) was added.
+- If rewriter added concept anchor → some OTHER layer is dropping
+  it before chroma. Trace through retrieve.py path.
+- If rewriter passed the bare-name through → tune the rewriter
+  prompt to add domain context (cheap fix candidate: add
+  "이 사람의 활동 도메인을 포함시켜라" to the rewriter's prompt).
+
+Out of scope for this PR — F9 carried as a separate cycle.
+
 ## F3 prep — large-tier wide routing + halt-prone measurement gate (2026-05-27)
 
 Branch: `feat/v0.4-f3-halt-prone-large-tier`. F1/F4/F5 acceptance
