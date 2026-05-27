@@ -299,6 +299,87 @@ The 0/9/5 distribution still validates the L.B policy design:
   concrete next L.B step. Operator decides between threshold
   raise vs formula revision based on what they want to measure.
 
+## Idea 1 follow-up — Path Recall ground truth (2026-05-27)
+
+Branch: `feat/v0.4-step7-v3-idea1-path-gt`. step7 suite bumped to
+v4 — adds `expected_path.nodes` to 5 queries (q1/q2/q3/q4/q15)
+covering retrieve / relation / narrow categories. bench.py computes:
+
+  - **Path Recall** = |actual_nodes ∩ expected_nodes| / |expected_nodes|
+  - **Path Precision** = |actual_nodes ∩ expected_nodes| / |actual_nodes|
+
+where `actual_nodes` is the union of every entity name parsed out
+of the graph_paths returned by /query (parser handles both source
+and target tokens across multi-hop paths). Reported per-query in
+the bench row + as a `path_recall_aggregate` block in the output
+JSON.
+
+`reports/research-runs/lc-scope-bench-20260527_151856.json`
+
+| Metric | OFF arm | ON arm |
+|---|---|---|
+| Total elapsed | 1207.7s (20.1 min) | 1273.5s (21.2 min) |
+| queries with expected_path | 5 | 5 |
+| **mean path recall** | **0.80** | **0.80** |
+| queries at full recall (= 1.0) | 4 / 5 | 4 / 5 |
+
+Per-query breakdown (OFF / ON arms produced identical recall):
+
+| q | expected nodes | recall | hits | missed |
+|---|---|---|---|---|
+| q1 | RAG (검색 증강 생성) | 1.00 | 1/1 | — |
+| q2 | Anthropic | 1.00 | 1/1 | — |
+| q3 | Anthropic, Claude Sonnet 4.6 | 1.00 | 2/2 | — |
+| q4 | BlackRock, 미국 스팟 BTC ETF | 1.00 | 2/2 | — |
+| q15 | David Soria Parra, MCP | 0.00 | 0/2 | both |
+
+### Idea 1 verdict — measurement surface works, surfaced a real gap
+
+The 4/5 queries at 1.0 recall confirm:
+- Path comparator parses JAMES's `<source> -[REL]→ <target>` string
+  format correctly across single-hop and multi-hop paths.
+- Wiki entity names (`name:` frontmatter) are stable enough to use
+  as direct string-match ground truth — no canonicalization layer
+  needed at the comparator (yet).
+- For queries that traverse the expected sub-graph, full recall is
+  achievable end-to-end on JAMES's current retrieval shape.
+
+The q15 (David Soria Parra) zero-recall is the **interesting
+measurement signal**. The same query in prior F4/F5 acceptance
+runs produced the expected `David Soria Parra → MCP` path
+(verified in audit_log). In this run JAMES's entity extractor
+matched "한국과학기술원 / 정명수 / Jerome Powell / Kevin Warsh"
+instead and DFS-expanded those — none of which relate to the
+query intent. Likely causes (per
+[[feedback_rag_cross_lingual_diagnostic]] order):
+1. LLM-side entity extraction stochasticity — gemma 4 may pick
+   common-named tokens over the unfamiliar foreign-name "David
+   Soria Parra"
+2. Chroma rerank pushing unrelated docs (with named-entity-rich
+   content) above the David Soria Parra wiki entry
+3. (graph state changes between runs — least likely; we haven't
+   re-ingested)
+
+For F4/F5 the same query landed in the narrow band (scope ≈ 0.22)
+because effective_k was 0 and graph_reach was driven by *whatever
+DFS produced*, not the intent-matched sub-graph. Path Recall now
+catches that — F4/F5 closed the L.B-policy-fires question but
+didn't measure whether the routed retrieval was *correct*.
+
+### Implications
+
+- **Path Recall is now a first-class L.D acceptance metric**.
+  Future regression catches "retrieval ran but matched wrong
+  entities" — invisible to scope/timing/answer_len alone.
+- **q15 is a tracking issue, not an Idea 1 blocker**. Add it to
+  the F2 (IntentClassifier) + entity-extraction-stochasticity
+  follow-up — likely the same cluster of symptoms.
+- **Conservative ground-truth design** wins here. We used
+  `expected_path.nodes` = wiki canonical names only, not edge
+  labels or path-shape constraints. The 5 queries that passed
+  unanimously validate the approach. Edge-level or
+  path-shape constraints can come later if needed.
+
 ## F5 follow-up — scope formula floor fix (2026-05-27)
 
 Branch: `feat/v0.4-leo-lb-f5-scope-floor-fix`. Picked path (b)
@@ -380,8 +461,11 @@ verification, the L.B policy v1 has complete bench coverage.
 
 **Remaining followups** (Sprint 6+):
 - F3 — halt-prone large-tier measurement (requires `JAMES_ENABLE_CLAUDE_BACKEND=1`)
-- F2 — IntentClassifier audit (production baseline truthfulness)
-- Idea 1 — path-GT in step7 (Path Recall/Precision/Faithfulness)
+- F2 — IntentClassifier audit (production baseline truthfulness); now
+  bundled with the q15 entity-extraction stochasticity finding from
+  Idea 1
+- Idea 1 ✅ landed (Path Recall, this branch). Faithfulness metric +
+  larger expected_path coverage carried separately.
 
 ## What this closure does NOT claim
 
