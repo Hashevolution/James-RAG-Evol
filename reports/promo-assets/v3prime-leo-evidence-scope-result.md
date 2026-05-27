@@ -561,6 +561,136 @@ verification, the L.B policy v1 has complete bench coverage.
   14% narrow ratio doesn't match production expectations — formula
   fix and threshold tuning are orthogonal knobs.
 
+## BL-9 prep — embedding swap runner + acceptance gate (2026-05-27)
+
+Branch: `feat/v0.4-bl9-embedding-swap-prep`. F7 (PR #533) confirmed
+the systemic fix is a multilingual embedding swap from
+`paraphrase-multilingual-MiniLM-L12-v2` (384-dim) to a 1024-dim
+model. BL-9 prep adds the **migration runner** + acceptance gate +
+operator workflow so the swap is a one-command operation when the
+operator has the compute window.
+
+### What landed
+
+- `scripts/migrate_embedding.py` (~270 lines) — re-encodes every
+  chunk in the legacy MiniLM chroma collection into a new per-model
+  collection at `chroma_db_<short>/`. Reads source via raw chromadb
+  (no `VectorStore` singleton pollution); writes target via a fresh
+  `SentenceTransformer` loaded from the target model id (local-first
+  with HF fallback, same pattern as `core/vector_store.py`). Refuses
+  to no-op-migrate (target == legacy → exits with explanation).
+  Batched encoder (default batch_size=32) to keep peak memory
+  predictable on workstations without GPU. `--dry-run` flag counts
+  + reports paths without touching disk.
+- `tests/test_migrate_embedding_runner.py` (3 tests) — pins
+  `_target_chroma_dir` (rejects legacy tag, computes `bge_m3` /
+  `multilingual_e5_large` slugs, future-proof against new candidates
+  like `Qwen3-Embedding-8B`).
+
+Dry-run output on the current data state:
+
+```
+=== BL-9 chroma re-embedding ===
+  source model:  paraphrase-multilingual-MiniLM-L12-v2 (legacy MiniLM)
+  target model:  BAAI/bge-m3
+  source dir:    .../chroma_db
+  target dir:    .../chroma_db_bge_m3
+  collection:    james_prototype
+
+[migrate] source chunks: 358
+[migrate] --dry-run set; no target write performed
+```
+
+### Model selection — `BAAI/bge-m3` recommended over `intfloat/multilingual-e5-large`
+
+Both candidates are 1024-dim multilingual. Recommendation comes
+from JAMES's actual use case (KO+EN mixed wiki, frequent
+proper-noun-mediated queries — F7 diagnostic):
+
+| dimension | bge-m3 | multilingual-e5-large |
+|---|---|---|
+| Release | 2024 (newer) | 2023 |
+| Korean perf (MTEB-style) | stronger | strong |
+| Multi-functional output | dense + sparse + multi-vector | dense only |
+| Train data diversity | mC4 + cross-lingual pairs + BGE-M3-Korean | mC4 + filtered web |
+| Download | ~2.27 GB | ~2.24 GB |
+| Encode latency (CPU, 1024-dim) | comparable | comparable |
+| License | MIT | MIT |
+
+`bge-m3`'s multi-functional output is the tiebreaker — the dense
+embedding alone matches e5-large on cross-lingual proper-noun
+retrieval per the BAAI benchmark, and the sparse + multi-vector
+heads are available for future rerank fusion if BL-9 isn't enough.
+
+Operator can swap to e5-large by passing
+`--target intfloat/multilingual-e5-large` instead — the runner is
+model-agnostic and the per-model chroma path keeps the old
+collection intact for rollback.
+
+### BL-9 acceptance gate
+
+Pre-swap baselines (locked):
+- **F7 chroma probe** — MCP PDF NOT in top-20 on `ko_q15_exact`,
+  `en_translation`, `name_only` variations. Rank 1 only on the
+  `concept_side` variation (English document title).
+- **step7 v4 q15 path_recall = 0.0** (Idea 1 PR #530).
+- Mean step7 path_recall = 0.80 (4/5 at 1.0).
+
+Post-swap acceptance:
+- F7 probe — MCP PDF in top-10 on `name_only` (single most-stringent
+  cross-lingual proper-noun test). `ko_q15_exact` and `en_translation`
+  expected to also reach top-20.
+- step7 v4 q15 path_recall ≥ 0.5 (1 of 2 expected nodes hit).
+- Mean step7 path_recall ≥ 0.85 (no regression on q1–q4, q15
+  contributes ≥ 0.5 instead of 0.0).
+- step7 latency band — operator-decision threshold: per-query
+  bench latency may rise 20-50% (1024-dim encode > 384-dim) but
+  total wall time should stay under 30-min/arm so the wrapper's
+  `--timeout=2400` survives.
+
+### Operator workflow
+
+```powershell
+# 1. Run the migration (~5-10 min for 358 chunks on CPU after HF download)
+python scripts/migrate_embedding.py --target BAAI/bge-m3
+
+# 2. Set env + restart JAMES server
+$env:JAMES_EMBEDDING_MODEL = "BAAI/bge-m3"
+# (stop current server, then start fresh — VectorStore reads at import)
+
+# 3. F7 probe acceptance gate
+python scripts/research/q15_chroma_probe.py
+# → Expected: MCP PDF in top-10 on `name_only` variation
+
+# 4. step7 v4 acceptance bench
+python scripts/bench_lc_scope_arms.py
+# → Expected: q15 path_recall ≥ 0.5, mean path_recall ≥ 0.85
+```
+
+Rollback is a one-env-var flip:
+
+```powershell
+$env:JAMES_EMBEDDING_MODEL = $null   # unset
+# Restart server → reads legacy MiniLM → chroma_db/ path.
+# The new chroma_db_bge_m3/ stays on disk; re-promote is one env var.
+```
+
+The migration runner only writes to `chroma_db_<short>/` — the
+legacy `chroma_db/` directory is never mutated, so rollback is safe
+even mid-flight (kill the migration; legacy state unchanged).
+
+### What this PR does NOT do
+
+- **No model download** — operator runs the migration on their own
+  compute window because the first run pulls ~2 GB from HuggingFace.
+- **No default flip** — `config.EMBEDDING_MODEL` still defaults to
+  the legacy MiniLM tag. The swap is opt-in via env so an operator
+  pulling main after this PR sees byte-identical behaviour.
+- **No live acceptance numbers** — those land in the follow-up
+  result-doc commit after the operator runs the workflow above. The
+  acceptance criteria in §"BL-9 acceptance gate" are the gates the
+  follow-up must pass.
+
 ## F7 follow-up — chroma top-k probe confirms embedding root cause (2026-05-27)
 
 Branch: `feat/v0.4-f7-chroma-topk-probe`. Built
