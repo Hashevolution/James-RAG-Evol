@@ -29,6 +29,10 @@ sys.path.insert(0, str(ROOT))
 from core.lifecycle.contradiction_router import (  # noqa: E402
     dispatch_contradiction,
     route_a_invalidate,
+    route_b_supersede,
+)
+from core.lifecycle.supersede_chain import (  # noqa: E402
+    reconstruct_view_at,
 )
 from core.lifecycle.schema import T1_MUTATION_INVALIDATED  # noqa: E402
 
@@ -228,13 +232,23 @@ def test_dispatch_a_requires_bad_doc_id(tmp_path):
                                 entity_root=tmp_path)
 
 
-def test_dispatch_raises_on_b_until_t2c():
-    """B_supersede dispatch must raise NotImplementedError so a
-    premature integration crashes loudly rather than silently
-    no-op'ing. The wiring lands at PR-T2.C."""
+def test_dispatch_routes_b_to_supersede():
+    """B_supersede dispatch (PR-T2.C wiring) calls supersede_edge +
+    emits the new+old ids in the audit row. Replaces the prior
+    NotImplementedError pin from PR-T2.B."""
     old, new_fact = _edge_world_changed_to_supersede()
-    with pytest.raises(NotImplementedError, match="PR-T2.C"):
-        dispatch_contradiction(old, new_fact, now=NOW)
+    captured: list[dict] = []
+    result = dispatch_contradiction(
+        old, new_fact, now=NOW, audit_emit=captured.append,
+    )
+    assert result["action"] == "supersede"
+    assert result["new_edge"]["id"].startswith("e_edge_")
+    assert result["old_edge"] is old   # mutated in place
+    assert old["mutation_type"] == "superseded"
+    assert old["status"]["superseded_by"] == result["new_edge"]["id"]
+    # Audit row carries both ids per PR-T2.C contract
+    assert captured[0]["mutation_type"] == "superseded"
+    assert captured[0]["new_edge_id"] == result["new_edge"]["id"]
 
 
 def test_dispatch_unknown_label_raises_runtime_error(monkeypatch):
@@ -281,3 +295,103 @@ def test_audit_payload_carries_cascade_counts(tmp_path):
     ):
         assert k in audit, f"audit payload missing key: {k}"
         assert isinstance(audit[k], int)
+
+
+# ─── PR-T2.C B-path tests ─────────────────────────────────────────
+
+
+def test_t2_b_class_routes_to_supersede():
+    """B_supersede dispatch invokes supersede_edge — the entry memo
+    invariant `test_t2_b_class_routes_to_supersede` from §3."""
+    old, new_fact = _edge_world_changed_to_supersede()
+
+    captured: list[dict] = []
+    result = route_b_supersede(
+        old, new_fact, NOW, audit_emit=captured.append,
+    )
+
+    assert result["action"] == "supersede"
+    new_edge = result["new_edge"]
+    mutated_old = result["old_edge"]
+    # PR-T7.A contract: new_edge gets a fresh synthetic id
+    assert new_edge["id"].startswith("e_edge_")
+    # old mutated in place — caller's reference picks up the change
+    assert mutated_old is old
+    # The two T7 invariants on old_edge
+    assert mutated_old["status"]["active"] is False
+    assert mutated_old["status"]["superseded_by"] == new_edge["id"]
+    assert mutated_old["mutation_type"] == "superseded"
+
+
+def test_supersede_audit_payload_carries_old_and_new_ids():
+    """Entry memo invariant — audit row must include both edge ids
+    so the T7 replay primitive can correlate the chain when
+    querying audit history."""
+    old, new_fact = _edge_world_changed_to_supersede()
+    old["id"] = "e_edge_pre_existing_old"   # exercise the "old has an id" path
+
+    captured: list[dict] = []
+    route_b_supersede(old, new_fact, NOW, audit_emit=captured.append)
+
+    audit = captured[0]
+    assert audit["endpoint"] == "lifecycle:supersede"
+    assert audit["mutation_type"] == "superseded"
+    assert audit["old_edge_id"] == "e_edge_pre_existing_old"
+    assert audit["new_edge_id"].startswith("e_edge_")
+    assert audit["superseded_by"] == audit["new_edge_id"]
+    assert audit["superseded_at"] == NOW.isoformat()
+
+
+def test_supersede_dispatch_uses_now_as_supersede_ts():
+    """dispatch_contradiction passes now as supersede_ts → the new
+    edge's validity.from matches now.isoformat()."""
+    old, new_fact = _edge_world_changed_to_supersede()
+    result = dispatch_contradiction(old, new_fact, now=NOW)
+    assert result["new_edge"]["validity"]["from"] == NOW.isoformat()
+
+
+def test_supersede_preserves_old_edge_sources():
+    """PR-T2.C invariant cross-check — supersede path does not touch
+    old edge's sources (CASCADE invariant from PR-T7.B preserved
+    through the router layer)."""
+    old, new_fact = _edge_world_changed_to_supersede()
+    old_sources_before = list(old["sources"])
+    route_b_supersede(old, new_fact, NOW, audit_emit=lambda _: None)
+    assert old["sources"] == old_sources_before, (
+        "supersede must NOT touch old edge's sources (CASCADE-free "
+        "invariant); only status + mutation_type"
+    )
+
+
+def test_supersede_chain_replayable_after_dispatch():
+    """End-to-end: dispatch a B_supersede contradiction, then
+    reconstruct_view_at to confirm the new edge is reachable from
+    the old via the chain. Pins that the router-emitted chain is
+    walkable by the T7 replay primitive."""
+    old, new_fact = _edge_world_changed_to_supersede()
+    old["id"] = "e_edge_v1"
+
+    result = dispatch_contradiction(old, new_fact, now=NOW)
+    new_edge = result["new_edge"]
+
+    # Build an in-memory id→edge lookup (caller would normally
+    # populate this from wiki frontmatter).
+    edges = {"e_edge_v1": old, new_edge["id"]: new_edge}
+    lookup = edges.get
+
+    # Replay at a time after the supersede → returns the new edge
+    later = datetime(2026, 12, 31, tzinfo=timezone.utc)
+    view = reconstruct_view_at(old, lookup, later)
+    assert view is not None
+    assert view["id"] == new_edge["id"]
+
+
+def test_dispatch_b_emits_audit_through_callback():
+    """audit_emit callback is invoked exactly once on the B path."""
+    old, new_fact = _edge_world_changed_to_supersede()
+    captured: list[dict] = []
+    dispatch_contradiction(
+        old, new_fact, now=NOW, audit_emit=captured.append,
+    )
+    assert len(captured) == 1
+    assert captured[0]["endpoint"] == "lifecycle:supersede"

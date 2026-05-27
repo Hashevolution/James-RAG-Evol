@@ -1,12 +1,10 @@
-"""v0.4 Sprint 5 PR-T2.B — A-path contradiction routing wire.
+"""v0.4 Sprint 5 PR-T2.B/T2.C — full A/B contradiction routing wire.
 
 Wires the deterministic ``classify_contradiction`` decision into
-the production CASCADE / EVENT dispatch.
-
-This PR delivers ONLY the **A-path** (cascade routing). The B-path
-(supersede chain wiring) lands at PR-T2.C — calling B here raises
-``NotImplementedError`` so a premature integration crashes loudly
-rather than silently no-op'ing.
+the production CASCADE / EVENT dispatch. PR-T2.B landed the A-path
+(cascade routing); PR-T2.C completes the surface with the B-path
+(supersede chain wiring) so ``dispatch_contradiction`` is now the
+single entry point for all three labels.
 
 Surface
 -------
@@ -16,11 +14,18 @@ Surface
       wrong source + emit a ``mutation_type=invalidated`` audit
       row. Returns the cascade counts dict + the audit payload.
 
+  ``route_b_supersede(old_edge, new_fact, supersede_ts,
+                      *, audit_emit=None)``
+      Call ``supersede_edge`` from PR-T7.A. Old edge marked
+      ``status.superseded_by = new_edge.id`` + ``mutation_type =
+      "superseded"``. Audit row carries both ids so the T7 replay
+      primitive (``reconstruct_view_at``) sees the chain.
+
   ``dispatch_contradiction(old_edge, new_fact, *, now, entity_root,
                            bad_doc_id_for_a=None, audit_emit=None)``
       End-to-end: calls ``classify_contradiction`` → dispatches.
       A → ``route_a_invalidate`` (requires ``bad_doc_id_for_a``).
-      B → raises ``NotImplementedError`` (PR-T2.C).
+      B → ``route_b_supersede`` (uses ``now`` as supersede_ts).
       ignore → returns ``{"action": "ignore"}``.
 
 Design notes
@@ -55,7 +60,11 @@ from typing import Any, Callable, Dict, Optional
 from core.lifecycle.contradiction_arbiter import (
     classify_contradiction,
 )
-from core.lifecycle.schema import T1_MUTATION_INVALIDATED
+from core.lifecycle.schema import (
+    T1_MUTATION_INVALIDATED,
+    T1_MUTATION_SUPERSEDED,
+)
+from core.lifecycle.supersede_chain import supersede_edge
 
 
 AuditEmit = Callable[[Dict[str, Any]], None]
@@ -144,6 +153,71 @@ def route_a_invalidate(
     }
 
 
+def route_b_supersede(
+    old_edge: dict,
+    new_fact: dict,
+    supersede_ts: datetime,
+    *,
+    audit_emit: Optional[AuditEmit] = None,
+) -> Dict[str, Any]:
+    """B-path: call PR-T7.A ``supersede_edge`` + emit audit row.
+
+    Args:
+        old_edge: the existing edge being superseded. **Mutated in
+            place** (PR-T7.A contract — the caller's frontmatter
+            list reference picks up the change).
+        new_fact: the new fact replacing the old edge. Same shape
+            as a v0.4 edge (relation dict from frontmatter).
+        supersede_ts: UTC-aware ``datetime`` of the supersede event.
+            Used for both ``old_edge.status.superseded_at`` and
+            ``new_edge.validity.from`` (PR-T7.A contract).
+        audit_emit: optional callback for the audit row. Defaults
+            to ``core.audit_bridge.mirror_to_audit_db``.
+
+    Returns:
+        ``{"action": "supersede", "new_edge": …, "old_edge": …,
+           "audit_payload": …}``
+
+        ``new_edge`` and ``old_edge`` are the dicts returned by
+        ``supersede_edge``. The caller writes both back to the wiki
+        (the router does NOT touch disk — same contract as
+        PR-T7.A's pure-function layer).
+
+        ``audit_payload`` carries ``mutation_type="superseded"`` +
+        ``superseded_by=<new_edge.id>`` so the T7 replay primitive
+        sees the chain when querying audit history. The PR-T7.B
+        invariant ``test_supersede_does_not_trigger_cascade``
+        verifies this path does not invoke CASCADE.
+
+    What this function does NOT do:
+        - **No I/O.** Caller writes ``new_edge`` + ``mutated_old``
+          back to the wiki (same as PR-T7.A direct callers).
+        - **No cascade_remove.** Supersede preserves the old
+          edge's sources; CASCADE is exclusive (T7 EVENT
+          invariant).
+    """
+    new_edge, mutated_old = supersede_edge(old_edge, new_fact, supersede_ts)
+
+    audit_payload: Dict[str, Any] = {
+        "endpoint":         "lifecycle:supersede",
+        "role":             "system",
+        "mutation_type":    T1_MUTATION_SUPERSEDED,
+        "old_edge_id":      mutated_old.get("id"),
+        "new_edge_id":      new_edge.get("id"),
+        "superseded_at":    supersede_ts.isoformat(),
+        "superseded_by":    new_edge.get("id"),
+    }
+    emitter = audit_emit or _default_audit_emit
+    emitter(audit_payload)
+
+    return {
+        "action":         "supersede",
+        "new_edge":       new_edge,
+        "old_edge":       mutated_old,
+        "audit_payload":  audit_payload,
+    }
+
+
 def dispatch_contradiction(
     old_edge: dict,
     new_fact: dict,
@@ -171,15 +245,15 @@ def dispatch_contradiction(
 
     Returns:
         For A_invalidate: see ``route_a_invalidate`` return.
+        For B_supersede: see ``route_b_supersede`` return. Uses
+            ``now`` as ``supersede_ts`` — the caller doesn't have
+            to track two timestamps when the contradiction is
+            being detected at the same moment it's being applied.
         For ignore: ``{"action": "ignore", "label": "ignore"}``.
 
     Raises:
         ValueError if A_invalidate is selected but required args
         (``entity_root`` / ``bad_doc_id_for_a``) are missing.
-        NotImplementedError if classifier returns B_supersede —
-        wiring lands at PR-T2.C. Until then the caller must not
-        invoke dispatch on cases that would route to B (or accept
-        the loud failure as a guard against premature integration).
     """
     label = classify_contradiction(old_edge, new_fact, now=now)
 
@@ -202,11 +276,8 @@ def dispatch_contradiction(
         )
 
     if label == "B_supersede":
-        raise NotImplementedError(
-            "B_supersede dispatch lands at PR-T2.C — until then, callers "
-            "must filter out B-path contradictions before invoking "
-            "dispatch_contradiction. (See PR-T7.A supersede_edge for the "
-            "primitive the T2.C wire will call.)"
+        return route_b_supersede(
+            old_edge, new_fact, now, audit_emit=audit_emit,
         )
 
     # Defensive — classifier returned a label we don't know about.
@@ -218,5 +289,6 @@ def dispatch_contradiction(
 __all__ = [
     "AuditEmit",
     "route_a_invalidate",
+    "route_b_supersede",
     "dispatch_contradiction",
 ]
