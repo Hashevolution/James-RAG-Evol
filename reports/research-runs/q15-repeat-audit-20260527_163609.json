@@ -1,0 +1,156 @@
+{
+  "generated_at": "2026-05-27T16:36:09.188999",
+  "query": "David Soria Parra가 누구야?",
+  "expected_nodes": [
+    "David Soria Parra",
+    "MCP"
+  ],
+  "runs": [
+    {
+      "run": 1,
+      "status": "ok",
+      "elapsed": 60.7,
+      "mode": "",
+      "graph_paths_count": 12,
+      "node_count": 13,
+      "hits_expected": [],
+      "missed_expected": [
+        "David Soria Parra",
+        "MCP"
+      ],
+      "path_recall": 0.0,
+      "nodes_sample": [
+        "(주)파네시아",
+        "02_4월ETF월간최강_24억달러",
+        "07_FOMC동결_Warsh후임임박",
+        "FOMC",
+        "JP모건",
+        "Jerome Powell",
+        "Kevin Warsh",
+        "비트코인",
+        "상원 은행위원회",
+        "생성형 AI"
+      ],
+      "answer_len": 291
+    },
+    {
+      "run": 2,
+      "status": "ok",
+      "elapsed": 43.9,
+      "mode": "",
+      "graph_paths_count": 12,
+      "node_count": 13,
+      "hits_expected": [],
+      "missed_expected": [
+        "David Soria Parra",
+        "MCP"
+      ],
+      "path_recall": 0.0,
+      "nodes_sample": [
+        "(주)파네시아",
+        "02_4월ETF월간최강_24억달러",
+        "07_FOMC동결_Warsh후임임박",
+        "FOMC",
+        "JP모건",
+        "Jerome Powell",
+        "Kevin Warsh",
+        "비트코인",
+        "상원 은행위원회",
+        "생성형 AI"
+      ],
+      "answer_len": 672
+    },
+    {
+      "run": 3,
+      "status": "ok",
+      "elapsed": 34.8,
+      "mode": "",
+      "graph_paths_count": 12,
+      "node_count": 13,
+      "hits_expected": [],
+      "missed_expected": [
+        "David Soria Parra",
+        "MCP"
+      ],
+      "path_recall": 0.0,
+      "nodes_sample": [
+        "(주)파네시아",
+        "02_4월ETF월간최강_24억달러",
+        "07_FOMC동결_Warsh후임임박",
+        "FOMC",
+        "JP모건",
+        "Jerome Powell",
+        "Kevin Warsh",
+        "비트코인",
+        "상원 은행위원회",
+        "생성형 AI"
+      ],
+      "answer_len": 769
+    },
+    {
+      "run": 4,
+      "status": "ok",
+      "elapsed": 34.0,
+      "mode": "",
+      "graph_paths_count": 12,
+      "node_count": 13,
+      "hits_expected": [],
+      "missed_expected": [
+        "David Soria Parra",
+        "MCP"
+      ],
+      "path_recall": 0.0,
+      "nodes_sample": [
+        "(주)파네시아",
+        "02_4월ETF월간최강_24억달러",
+        "07_FOMC동결_Warsh후임임박",
+        "FOMC",
+        "JP모건",
+        "Jerome Powell",
+        "Kevin Warsh",
+        "비트코인",
+        "상원 은행위원회",
+        "생성형 AI"
+      ],
+      "answer_len": 621
+    },
+    {
+      "run": 5,
+      "status": "ok",
+      "elapsed": 35.9,
+      "mode": "",
+      "graph_paths_count": 12,
+      "node_count": 13,
+      "hits_expected": [],
+      "missed_expected": [
+        "David Soria Parra",
+        "MCP"
+      ],
+      "path_recall": 0.0,
+      "nodes_sample": [
+        "(주)파네시아",
+        "02_4월ETF월간최강_24억달러",
+        "07_FOMC동결_Warsh후임임박",
+        "FOMC",
+        "JP모건",
+        "Jerome Powell",
+        "Kevin Warsh",
+        "비트코인",
+        "상원 은행위원회",
+        "생성형 AI"
+      ],
+      "answer_len": 649
+    }
+  ],
+  "summary": {
+    "runs": 5,
+    "ok_runs": 5,
+    "mean_path_recall": 0.0,
+    "runs_at_full_recall": 0,
+    "runs_at_zero_recall": 5,
+    "runs_hit_david_soria_parra": 0,
+    "runs_hit_mcp": 0,
+    "graph_paths_count_min": 12,
+    "graph_paths_count_max": 12
+  }
+}
