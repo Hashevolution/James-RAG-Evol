@@ -1,7 +1,7 @@
 {
-  "title": "PROJECT JAMES — v0.4.0-alpha.3 (LEO Evidence-Scope routing track L.0→L.D + Sprint 4 embedding prep + CI / module hygiene)",
-  "description": "JAMES is a local-first, auditable knowledge reasoning system. v0.4.0-alpha.3 is the second alpha tag of the v0.4 cycle, bundling the full LEO Evidence-Scope Routing track (4 phases from design memo through engine wiring + operator bench wrapper) plus Sprint 4 embedding-abstraction prep, CI infrastructure stabilisation, and module-size hygiene. Sits between v0.4.0-alpha.2 (Sprint 2 UI consistency + Sprint 3 5-stage D1 surface, prepped 2026-05-25 but not released — superseded by this tag) and the v0.4.0 final Layer 4 main theme (Lifecycle Semantics, planned Sprint 5).\n\nLEO Evidence-Scope Routing Track (5 PRs, 4 phases) — measured input-side routing axis complementing the predicted output-side D5 budget axis:\n- #512 (external author 222315AIS — LEO / Younghu) L.0 design memo (docs/handovers/v0.4-leo-evidence-scope-routing-track.md) + README walk-back. Track originated by Jiwon's Gemma 4 generation-halt diagnostic question; Leo proposed measuring data scope (input-side) instead of predicting token count (output-side). First external contribution to the repo.\n- #513 L.A — core/reasoning/evidence_scope.py extractor + JAMES_SCOPE_ROUTING flag (default OFF). ScopeBreakdown dataclass + compute_scope() pure function reading loop_state retrieval/graph output. 4 components: effective_k (0.35) + graph_reach (0.25) + doc_spread (0.20) + score_entropy (0.20). 23 contract tests pin the API + invariants.\n- #514 L.B — Router.select_backend + resolve_backend + _route_policy gain kwarg-only evidence_scope. Policy v1 thresholds: narrow (scope ≤ 0.30) → small backend, wide (scope ≥ 0.70) → large/medium, mid-band falls through to D5 budget rule. verify stage still wins (rule 1 priority). 23 contract tests.\n- #516 L.C — ContextVar wiring (scope_context + get_current_scope) bound in pipeline.py post-Loop-1, read in trace_helpers.trace_synth_call gate. emit_route_event audit payload extended with evidence_scope + 4 components. Zero signature churn through generate_answer → trace_synth_call chain (ContextVar pattern mirrors observability.get_trace_id). 12 contract tests pin ContextVar + audit payload + flag-OFF byte-identical at three layers.\n- #517 L.D operator bench wrapper — scripts/bench_lc_scope_arms.py runs scripts/bench.py twice (flag-OFF + flag-ON) against a live JAMES server, queries audit_log for reason:route scope payload during the flag-ON window, and writes aggregated per-query delta + scope distribution to reports/research-runs/lc-scope-bench-<timestamp>.json. Deferred to operator's live-server execution window.\n\nSprint 4 prep (1 PR):\n- #509 BL-9 embedding abstraction — JAMES_EMBEDDING_MODEL env + _embedding_short_name slug helper + per-model models/<short> cache path + per-model chroma_db_<short> directory. Default-off byte-identical: legacy MiniLM tag maps to models/miniLM + chroma_db. Actual default flip + re-embed migration is the Sprint 4 swap PR.\n\nCI infrastructure (1 PR):\n- #515 conftest pre-import — tests/conftest.py warms sys.modules for core.vector_store + core.memory + core.wiki_generator + llm.router at session start. Eliminates the recurring CI flake where patch('core.vector_store.VectorStore') triggered a 5s sentence_transformers+torch cold-import cascade inside setUp, crossed the per-test 30s pytest-timeout, killed setUp mid-execution, and leaked patch('llm.router.RouterWrapper') into the next process. Six legacy test fixtures benefit transparently with no test source changes.\n\nDocs (1 PR):\n- #510 ARCHITECTURE §5.7.9 — LLM model authority chain (per-call > env > preference > any installed > none) + D5 (per-backend) vs model_resolver (per-tag) two-axis disambiguation.\n\nModule-size hygiene (1 PR):\n- #518 pipeline.py split — extract post-loop context combine + post-check + [관련 자료 목록] sources-header to core/reasoning/pipeline_context.py. Pure refactor, byte-identical. pipeline.py 19.0 KB → 16.0 KB, returns 3 KB headroom for Sprint 5 Layer 4 wiring. tests/_pipeline_src.py:pipeline_source() helper updated to include the new split companion.\n\nAll new behaviour stays opt-in: JAMES_SCOPE_ROUTING (LEO L.C, default OFF) + JAMES_EMBEDDING_MODEL (Sprint 4 prep, default MiniLM) + existing JAMES_ADAPTIVE_BUDGET / JAMES_AUTO_ROUTER (default OFF). Production fleets pulling alpha.3 see zero behaviour change relative to v0.3.3.\n\nOperator action queue for L.D closure: run scripts/bench_lc_scope_arms.py against a live server, paste the resulting aggregate JSON into reports/promo-assets/v3prime-leo-evidence-scope-result.md, tick the ROADMAP D-LEO entry. Cross-stack comparison runs (Robin V3'.e schema-adopted, Ali Track 3 swap_eval) must pin all opt-in routing flags OFF for apples-to-apples purity.",
-  "version": "v0.4.0-alpha.3",
+  "title": "PROJECT JAMES — v0.4.0 (Layer 4 Lifecycle Semantics first bundle — T1 Temporal Validity + T7 Supersede Chain + T2 Contradiction Arbitration; CASCADE/EVENT separation provable)",
+  "description": "JAMES is a local-first, auditable knowledge reasoning system. v0.4.0 is the v0.4 cycle's final tag, shipping the Layer 4 Lifecycle Semantics first bundle (T1 Temporal Validity + T7 Supersede Chain + T2 Contradiction Arbitration) as a release-gated 8-PR sequence executed in a single Sprint 5 session. The CASCADE vs EVENT separation invariant the v0.4 cycle was retargeted around is now provable end-to-end via tests/test_t7_release_gating_invariants.py (5 tests run against the actual wiki fixture, not mocks). Inherits v0.4.0-alpha.3 (10.5281/zenodo.20391100): LEO Evidence-Scope Routing track + Sprint 4 embedding prep + CI / module hygiene.\n\nSprint 5 Layer 4 first bundle (8 PRs per docs/handovers/v0.4.0-sprint5-layer4-first-bundle-entry.md):\n- #524 PR-0 — schema validators + clock helper. core/lifecycle/schema.py (~9 KB) + core/lifecycle/clock.py (~2 KB) + core/relations_schema.py re-export. Field vocabulary: source-level valid_from/valid_until, edge-level validity/status/mutation_type. clock.now() is the single monkeypatch point for the entire EVENT/TEMPORAL track. 51 contract tests.\n- #525 PR-T1.A — schema migration script. scripts/migrate_v04_lifecycle.py. --dry-run default + --apply writes back via tempfile + os.replace (no half-written frontmatter). Pre-write snapshot to wiki.pre-v04-migration/. --verify mode. Idempotent at the byte level after the first apply. 18 contract tests.\n- #538 PR-T1.B — expiration cascade + runner. core/lifecycle/expiration_cascade.py (~15.5 KB) + scripts/run_expiration_cascade.py. Marks mutation_type=expired + status.active=False on every edge whose ALL non-malformed sources have reached valid_until. Does NOT delete (CASCADE concern, separated by design). Manual immunity via edge.manual_immune opt-out. 16 contract tests including the 4 entry-memo invariants.\n- #539 PR-T7.A — supersede chain ops (T7 EVENT primitive). core/lifecycle/supersede_chain.py (~13.8 KB) — 3 pure functions: supersede_edge(old, new_fact, ts) (DOES NOT call cascade_remove), walk_supersede_chain (cycle-safe, max-length-capped, dangling-pointer-tolerant), reconstruct_view_at (replay primitive, skips mutation_type=invalidated). 15 contract tests including 3 entry-memo invariants.\n- #540 PR-T7.B — release-gating invariants suite. tests/test_t7_release_gating_invariants.py (5 tests) + tests/fixtures/lifecycle/ (curated 3-entity wiki). Three release-gating invariants: test_supersede_does_not_trigger_cascade (defense-in-depth — patches both core.cascade.cascade_remove_doc_from_sources + the underlying _delete.* entry point), test_cascade_preserves_supersede_chain (real CASCADE against the fixture; chain links byte-identical post-CASCADE), test_historical_replay_via_chain (end-to-end: CASCADE → supersede_edge → reconstruct_view_at at 3 times → correct chain link). Run against the actual wiki fixture, not mocks.\n- #541 PR-T2.A — A/B contradiction classifier. core/lifecycle/contradiction_arbiter.py (~10.2 KB). Single deterministic function classify_contradiction(old_edge, new_fact, *, now) → Literal['A_invalidate','B_supersede','ignore']. 4-rule decision tree (first match wins): rule 1 B_supersede when world changed, rule 2 A_invalidate when higher-confidence retroactive correction, rule 3 ignore when duplicate inside window with no confidence delta, rule 4 B_supersede default for edge cases (safer than CASCADE). LLM-free by design — the Mem0 differentiator (Mem0 routes via LLM-judge; JAMES routes via this deterministic rule tree). 17 contract tests including 12 parametrized branch cases.\n- #542 PR-T2.B — A-path contradiction routing wire. core/lifecycle/contradiction_router.py (~8.5 KB initial). route_a_invalidate(bad_doc_id, entity_root, *, audit_emit) runs the existing cascade_remove_doc_from_sources unchanged + emits a mutation_type=invalidated audit row. dispatch_contradiction(old_edge, new_fact, ...) is the full A/B dispatcher (B-path raised NotImplementedError at this PR — wired in PR-T2.C). 13 contract tests.\n- #543 PR-T2.C — B-path supersede wiring + final A/B dispatch. Extends contradiction_router.py (~11.3 KB) with route_b_supersede(old_edge, new_fact, supersede_ts, *, audit_emit) calling supersede_edge from PR-T7.A. Audit row carries old_edge_id + new_edge_id + superseded_by + superseded_at so the T7 replay primitive sees the chain. 19 router tests total including end-to-end test_supersede_chain_replayable_after_dispatch.\n- #544 PR-T7.C — Sprint 5 closure docs + v0.4.0 release prep (this deposit). ROADMAP.md v0.4.0 marked closed with the Done-when checklist all green. .zenodo.json + CHANGELOG entry + README.md Status badge bumped to v0.4.0. docs/release_notes_v0.4.0.md.\n\nLEO L.D measurement-substrate (10 cycles, PR #526~#536) hardened the bench substrate against the alpha.3-shipped LEO Evidence-Scope routing track. F1 (retrieval-mode bench + JWT bearer) + F4 (narrow-scope fixture + L.B threshold floor finding) + F5 (k=0 floor fix in evidence_scope.py) + Idea 1 (Path Recall ground truth with expected_path.nodes) + F2 (IntentClassifier audit refuting earlier attribution) + F6 (q15 repeat-run audit refuting stochasticity) + F7 (chroma top-k probe surfacing MiniLM proper-noun weakness) + BL-9 acceptance run (partial — bge-m3 swap active, q15 fix reattributed to query-expansion layer, F9 spawned). #537 QVT handover (docs/handovers/v0.4-quality-verification-track.md) formalises the meta-frame: cost is rigorously measured (V3' protocol cross-validated through Robin's 26b matrix work) but quality is assumed; the Sprint 5 8-PR sequence is the QVT step-3 PR-gate first installment.\n\nDefault-off invariant preserved across every opt-in flag added in this cycle (JAMES_SCOPE_ROUTING / JAMES_AUTO_ROUTER / JAMES_ADAPTIVE_BUDGET / JAMES_EMBEDDING_MODEL / JAMES_ENABLE_CLAUDE_BACKEND). Production fleets pulling v0.4.0 see byte-identical retrieval behaviour relative to v0.4.0-alpha.3 unless they opt into one of the flags.\n\nVerification: Sprint 5 lifecycle suite 123+ tests all green; router + scope suite 187 tests + 77 stage-D1 wiring tests all green; bench / harness contracts 31 tests all green; 5 live wrapper acceptance runs preserved as audit trail under reports/research-runs/.\n\nWhat v0.4.0 does NOT do: no ingestion-path caller for dispatch_contradiction (carried into v0.4.1 with the canonical CEO-change STEP 7 bench); no production BL-9 embedding swap default flip (waits on F9 query-expansion fix); no T3/T4/T5/T6 (those land at v0.4.1/v0.4.2/v0.4.3).",
+  "version": "v0.4.0",
   "upload_type": "software",
   "creators": [
     {
@@ -42,7 +42,16 @@
     "audit-trail",
     "embedding-abstraction",
     "korean-nlp",
-    "module-size-hygiene"
+    "module-size-hygiene",
+    "lifecycle-semantics",
+    "temporal-validity",
+    "supersede-chain",
+    "contradiction-arbitration",
+    "cascade-event-separation",
+    "mem0-differentiator",
+    "deterministic-rule-tree",
+    "release-gating-invariants",
+    "quality-verification-track"
   ],
   "license": "MIT",
   "access_right": "open",
@@ -54,8 +63,13 @@
       "resource_type": "software"
     },
     {
-      "identifier": "10.5281/zenodo.20374227",
+      "identifier": "10.5281/zenodo.20391100",
       "relation": "isNewVersionOf",
+      "resource_type": "software"
+    },
+    {
+      "identifier": "10.5281/zenodo.20374227",
+      "relation": "isDerivedFrom",
       "resource_type": "software"
     },
     {
@@ -69,30 +83,50 @@
       "resource_type": "software"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/512",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/524",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/513",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/525",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/514",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/538",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/516",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/539",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/517",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/540",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/541",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/542",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/543",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/544",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     }
   ],
-  "notes": "v0.4.0-alpha.3 is the second alpha milestone of the v0.4 cycle. The previously-prepped v0.4.0-alpha.2 (PR #508 metadata only, 2026-05-25, Sprint 2 UI consistency + Sprint 3 5-stage D1 surface) was never released to GitHub; this alpha.3 tag supersedes it and inherits its scope, then adds the LEO Evidence-Scope Routing track (L.0 design through L.D operator bench wrapper, 5 PRs), Sprint 4 BL-9 embedding abstraction prep, CI infrastructure stabilisation (conftest pre-import), and pipeline.py module-size hygiene. v0.4.0 final will add T1 Lifecycle states + T2 Event-driven transitions + T7 Cross-workspace federation primitives as the architectural shift planned for that tag (see ROADMAP.md §v0.4.0). The LEO contribution (#512 design memo by external author 222315AIS) is JAMES's first external PR and the first to carry a contributor entry in this deposit's metadata. When mint completes, the explicit isNewVersionOf chain back to v0.3.3 (10.5281/zenodo.20XXXXXX, operator-supplied at publish time) will land in the next deposit; the chain back to v0.3.2 / v0.3.1 (specific DOIs 10.5281/zenodo.20372649 / 10.5281/zenodo.20363998) stays explicit in related_identifiers as isDerivedFrom. Three-author joint-piece collaboration with Robin Converse (Triava Labs) and Ali Afana (Provia) on the substitution/synthesis cost-asymmetry finding remains the next-cycle research trajectory; the JAMES-side product stack continues stabilising for v0.4.0 final."
+  "notes": "v0.4.0 is the v0.4 cycle's final tag. It ships the Layer 4 Lifecycle Semantics first bundle (T1 Temporal Validity + T7 Supersede Chain + T2 Contradiction Arbitration) as a release-gated 8-PR Sprint 5 sequence. The CASCADE vs EVENT separation invariant is now provable end-to-end via tests/test_t7_release_gating_invariants.py against the actual wiki fixture. Layer 4 follow-ons (T3 / T4 / T5 / T6 + an ingestion-path caller for dispatch_contradiction) land in v0.4.1~v0.4.3 per ROADMAP phase plan. The LEO contribution chain (alpha.3 PRs #512~#517 + this tag's bench-substrate hardening PRs #526~#536 + #537 QVT handover) remains JAMES's first external-contributor track. The isNewVersionOf chain back to v0.4.0-alpha.3 (10.5281/zenodo.20391100) makes the DOI lineage explicit; the chain back to v0.3.3 / v0.3.2 / v0.3.1 stays via the alpha.3 record. Three-author joint-piece collaboration with Robin Converse (Triava Labs) and Ali Afana (Provia) on the substitution/synthesis cost-asymmetry finding remains the mid-June trajectory."
 }

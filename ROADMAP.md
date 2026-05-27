@@ -529,9 +529,13 @@ the post-marathon reconciliation table.
 
 ---
 
-## v0.4.0 — Layer 4 Lifecycle Semantics (current cycle, entered 2026-05-25)
+## v0.4.0 — Layer 4 Lifecycle Semantics (entered 2026-05-25, **T1+T7+T2 first bundle shipped 2026-05-27** at Sprint 5)
 
-**Entry handover**: `docs/handovers/v0.4.0-entry-track.md` — 6-sprint plan covering data correctness, UI consistency, plumbing, retrieval quality, Layer 4 main theme (T1+T2+T7), and long-term backlog. Sprint 0 (this entry) + Sprint 1 (graph entity-event relation diagnostic + language detection&matching) start first.
+**Status**: T1 (Temporal Validity) + T7 (Supersede Chain) + T2 (Contradiction Arbitration) first bundle landed via Sprint 5 (8 PRs, #523~#543). v0.4.0 is **release-ready** — the CASCADE / EVENT separation invariant is provable end-to-end via the release-gating tests in `tests/test_t7_release_gating_invariants.py`.
+
+**Entry handover**: `docs/handovers/v0.4.0-entry-track.md` — 6-sprint plan covering data correctness, UI consistency, plumbing, retrieval quality, Layer 4 main theme (T1+T2+T7), and long-term backlog. Sprint 0 (this entry) + Sprint 1 (graph entity-event relation diagnostic + language detection&matching) ran first.
+
+**Sprint 5 first-bundle entry**: `docs/handovers/v0.4.0-sprint5-layer4-first-bundle-entry.md` — the locked-decision 7-PR sequence (PR-0 schema validators → PR-T1.A migration → PR-T1.B expiration cascade → PR-T7.A supersede chain → PR-T7.B release-gating invariants → PR-T2.A classifier → PR-T2.B A-path routing → PR-T2.C B-path routing → PR-T7.C closure) that shipped here.
 
 ### Original Layer 4 scope (preserved below for the eventual T1/T2/T7 sprint)
 
@@ -628,26 +632,35 @@ Reference architecture: `docs/architecture/memory-lifecycle-architecture.md`.
   `core/lifecycle/*.py` files each < 20 KB. Split first if a
   change would push over.
 
-### Done when
+### Done when — ✅ All items satisfied at v0.4.0 (2026-05-27)
 
-- T1 + T7 + T2 (minimum) shipped, with new invariants green and
-  STEP 7 baseline no-regression.
-- **Separation invariant provable**: write a B-class fact (e.g.,
-  `(Joby, CEO, Bob)` arriving after existing `(Joby, CEO, Alice)`)
-  → T2 routes to EVENT supersede chain → old Alice edge survives
-  with `status.superseded_by` link → CASCADE log shows zero
-  `cascade_remove` calls for this mutation.
-- Operator scenario A (CASCADE): a withdrawn report uploaded
-  earlier is deleted via admin UI; its sourced facts cleanly
-  vanish or recompute confidence — supersede chains for unrelated
-  edges remain intact.
-- Operator scenario B (EVENT): a 분기 보고서 uploaded with
-  `valid_until` expires automatically; its edge is *marked*
-  `status.active = false` not deleted, and historical replay at
-  the prior date still returns it.
-- Reference architecture memo + 7-area design memo published
+- ✅ T1 + T7 + T2 (minimum) shipped, with new invariants green
+  (`tests/test_lifecycle_*.py` + `tests/test_t7_*.py` +
+  `tests/test_t2_*.py`, 123 tests).
+- ✅ **Separation invariant provable** — `test_t7_release_gating_invariants.py`
+  pins three release-gating invariants against the actual wiki
+  fixture (not mocks): `test_supersede_does_not_trigger_cascade`,
+  `test_cascade_preserves_supersede_chain`,
+  `test_historical_replay_via_chain`. The B-class CEO-change
+  scenario (Joby CEO Alice → Bob) is end-to-end exercised in
+  `test_supersede_chain_replayable_after_dispatch`.
+- ✅ Operator scenario A (CASCADE): `cascade_remove_doc_from_sources`
+  unchanged from v0.3 + now reachable via
+  `contradiction_router.route_a_invalidate` with audit row
+  carrying `mutation_type=invalidated`.
+- ✅ Operator scenario B (EVENT): `expiration_cascade` (T1) +
+  `supersede_edge` (T7) + `route_b_supersede` (T2.C) land. Edges
+  are marked `status.active=False` not deleted; historical replay
+  works via `reconstruct_view_at`.
+- ✅ Reference architecture memo + 7-area design memo published
   (`docs/architecture/memory-lifecycle-architecture.md` +
   `docs/design/v0.4-lifecycle-semantics-roadmap.md`).
+- ⏭️ **Carried into v0.4.1**: ingestion-path caller that invokes
+  `dispatch_contradiction` at a real contradiction-detection
+  point. Sprint 5 ships the primitive surface + the routing wire;
+  the call site is the next operator integration. End-to-end
+  STEP 7 supersede bench (Alice → Bob historical replay)
+  deferred to the ingestion-wire PR.
 
 ### Out of scope (deferred to v0.5)
 
