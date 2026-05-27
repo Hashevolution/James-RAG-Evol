@@ -4,16 +4,38 @@
 > what it deliberately is not, and the trust boundaries that govern
 > all design decisions.
 >
-> Status: living document. Last updated: v0.3.0 (Platform Skeleton, 2026-05-20).
+> Status: living document. Last updated: v0.4.0 (Layer 4 Lifecycle Semantics first bundle, 2026-05-27).
 
 ---
 
 ## 1. Mission
 
-A **local-first, auditable knowledge reasoning system** that answers
-questions over a private knowledge base with:
+JAMES is a **Replayable RAG** system: a local-first knowledge
+reasoning system where every claim is sourced, every reasoning
+step is audited, and the system's state at any point in time
+can be replayed byte-identically.
 
-- explicit reasoning paths (sources + graph trace)
+The Replayable category is distinct from:
+
+- **Agentic RAG** — which optimises for *what an AI can do*
+  (tool use, planning, multi-step action). Replayable RAG asks
+  the orthogonal question: *what did the system know at time T,
+  and why did it answer that way?*
+- **Mem0-style memory layers** — which use an LLM judge to
+  update beliefs. Replayable RAG uses a deterministic 4-rule
+  decision tree (see §5.6 Change Request flow + the v0.4 T2
+  Contradiction Arbitration module
+  `core/lifecycle/contradiction_arbiter.py`) and **preserves**
+  the old fact alongside the new one (T7 Supersede Chain), so
+  the historical state is replayable instead of overwritten.
+
+Mission, expanded:
+
+- explicit reasoning paths (sources + graph trace, audit-log
+  replay via `scripts/replay_trace.py <trace_id>`)
+- temporal-faithful memory (`reconstruct_view_at(t)` returns
+  the edge that was active at any past timestamp, even after
+  unrelated CASCADE delete events)
 - role-based access at every stage
 - human-supervised improvement loop
 
