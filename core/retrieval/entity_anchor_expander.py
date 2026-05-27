@@ -62,6 +62,7 @@ What this module is NOT
 """
 from __future__ import annotations
 
+import os
 import threading
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -79,6 +80,24 @@ DEFAULT_TOP_N = 3
 # chosen threshold (covers short tickers like "BL", "TI" while still
 # excluding single-char noise).
 MIN_SURFACE_LENGTH = 2
+
+# Default-OFF env flag — F9.3 wiring at pipeline.py STEP 0.5a checks
+# this before invoking the expander. Mirrors the rewriter's
+# JAMES_ENABLE_QUERY_REWRITE / D1's JAMES_ADAPTIVE_BUDGET / LEO L.C's
+# JAMES_SCOPE_ROUTING / D5's JAMES_AUTO_ROUTER opt-in patterns
+# (CLAUDE.md rule #1 — production fleets pulling F9.3 see byte-
+# identical retrieval behaviour relative to F9.2 unless they opt in).
+ENV_FLAG = "JAMES_ENABLE_ENTITY_ANCHOR"
+
+
+def entity_anchor_enabled() -> bool:
+    """Return True when ``JAMES_ENABLE_ENTITY_ANCHOR=1`` is set.
+
+    Read at every call site (not cached) so operators can toggle it
+    in a long-running process by re-exporting the env var. Same
+    discipline as ``query_rewriter._enabled``.
+    """
+    return os.environ.get(ENV_FLAG) == "1"
 
 
 class EntityAnchorExpander:
@@ -327,6 +346,8 @@ def _clear_singleton_for_tests() -> None:
 __all__ = [
     "DEFAULT_TOP_N",
     "MIN_SURFACE_LENGTH",
+    "ENV_FLAG",
     "EntityAnchorExpander",
+    "entity_anchor_enabled",
     "get_entity_anchor_expander",
 ]
