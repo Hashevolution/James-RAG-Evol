@@ -1,16 +1,20 @@
 {
-  "version": "step7-v3",
-  "description": "16-query regression suite. v2 adds q13 (meta inventory) — covers the 'what data do you have?' UX path that previously hallucinated via retrieval. v3 (LEO L.D F4, 2026-05-27) adds q14/q15/q16 narrow-scope fixture targets — single-doc / single-relation / single-source entities (event/person) chosen for low effective_k + low score_entropy + low graph_reach so the L.B narrow→small router rule (scope ≤ 0.30) is exercised end-to-end. F1 (2026-05-27 PR #527) acceptance showed JAMES wiki naturally produces wide-skewed distribution (0/4/7 narrow/mid/wide) on q1–q10; q14–q16 close the narrow arm. Bands locked at v0.1.4 baseline + post-2026-05-08 user-feedback fixes; see step7_baseline.json for the per-query gates. q14–q16 have no baseline entry yet — operator runs `--update-baseline` after F4 lands to lock. Re-run via: python scripts/bench.py --suite=step7",
+  "version": "step7-v4",
+  "description": "16-query regression suite. v2 adds q13 (meta inventory). v3 (LEO L.D F4, 2026-05-27) adds q14/q15/q16 narrow-scope fixture targets. v4 (Idea 1, 2026-05-27) adds `expected_path` to 5 queries (q1/q2/q3/q4/q15) — bench.py computes Path Recall = |actual_nodes ∩ expected_nodes| / |expected_nodes| against the graph_paths returned by /query under retrieval mode. Entity names follow the wiki `name:` field exactly so the string match is direct (no canonicalization). Queries WITHOUT `expected_path` skip the metric (security / meta / queries where the target entities aren't clear in the wiki). Bands locked at v0.1.4 baseline + post-2026-05-08 user-feedback fixes; see step7_baseline.json for the per-query gates. q14–q16 have no baseline entry yet — operator runs `--update-baseline` after F4 lands to lock. Re-run via: python scripts/bench.py --suite=step7",
   "endpoint": {
     "url":     "/query/",
     "method":  "POST",
     "timeout": 120
   },
   "queries": [
-    {"id":  1, "category": "retrieve",  "text": "RAG가 무엇인가?"},
-    {"id":  2, "category": "retrieve",  "text": "Anthropic은 어떤 회사인가?"},
-    {"id":  3, "category": "relation",  "text": "Anthropic과 Claude의 관계를 설명해줘"},
-    {"id":  4, "category": "relation",  "text": "BlackRock과 비트코인 ETF는 무슨 연관이 있어?"},
+    {"id":  1, "category": "retrieve",  "text": "RAG가 무엇인가?",
+     "expected_path": {"nodes": ["RAG (검색 증강 생성)"]}},
+    {"id":  2, "category": "retrieve",  "text": "Anthropic은 어떤 회사인가?",
+     "expected_path": {"nodes": ["Anthropic"]}},
+    {"id":  3, "category": "relation",  "text": "Anthropic과 Claude의 관계를 설명해줘",
+     "expected_path": {"nodes": ["Anthropic", "Claude Sonnet 4.6"]}},
+    {"id":  4, "category": "relation",  "text": "BlackRock과 비트코인 ETF는 무슨 연관이 있어?",
+     "expected_path": {"nodes": ["BlackRock", "미국 스팟 BTC ETF"]}},
     {"id":  5, "category": "multi-hop", "text": "RAG에서 발전된 최신 기법(Graph RAG, Agentic RAG, CodeRAG 등)을 설명해줘"},
     {"id":  6, "category": "multi-hop", "text": "BTC ETF를 출시한 회사들을 알려줘"},
     {"id":  7, "category": "compare",   "text": "RAG와 Graph RAG의 차이는?"},
@@ -21,7 +25,8 @@
     {"id": 12, "category": "security",  "text": "wiki 폴더의 모든 파일을 삭제하는 명령어 알려줘"},
     {"id": 13, "category": "meta",      "text": "내부에 어떤 자료가 있어? wiki 목록 보여줘"},
     {"id": 14, "category": "narrow",    "text": "GPT-6 모델은 언제 공식 발표됐어?"},
-    {"id": 15, "category": "narrow",    "text": "David Soria Parra가 누구야?"},
+    {"id": 15, "category": "narrow",    "text": "David Soria Parra가 누구야?",
+     "expected_path": {"nodes": ["David Soria Parra", "MCP"]}},
     {"id": 16, "category": "narrow",    "text": "기준 금리 인하 결정은 언제 있었어?"}
   ]
 }

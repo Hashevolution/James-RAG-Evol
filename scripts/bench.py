@@ -89,6 +89,85 @@ def _load_suite(name: str) -> Dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _parse_path_nodes(path_strs) -> set:
+    """Extract entity node names from JAMES graph-path strings.
+
+    Path string format (from `core.graph_engine.expand_dynamic`):
+        "<source> -[REL(w=0.7)]→ <target1> -[REL(w=0.7)]→ <target2> …"
+    where the entity-name token between separators is the wiki entity
+    name (`name:` frontmatter field) — or, for relation targets, the
+    `target` string from the relation dict (usually matches the wiki
+    name; falls back to the entity_id when not declared).
+
+    Returns the set of unique node names spanning all paths. Used by
+    `_path_metrics` to compute Path Recall against the suite's
+    `expected_path.nodes` ground truth (Idea 1, 2026-05-27).
+    """
+    nodes = set()
+    if not path_strs:
+        return nodes
+    for ps in path_strs:
+        if not isinstance(ps, str):
+            continue
+        # Source name is everything before the first " -[".
+        parts = ps.split(" -[")
+        if parts and parts[0].strip():
+            nodes.add(parts[0].strip())
+        # Subsequent parts are "REL(w=X)]→ target_name" — target follows ']→ '.
+        for part in parts[1:]:
+            if "]→ " in part:
+                target = part.split("]→ ", 1)[1].strip()
+                # Strip any trailing fragment if a later " -[" gets eaten
+                # by this iteration (defensive — the split-by " -[" above
+                # already isolates these in practice).
+                if target:
+                    nodes.add(target)
+    return nodes
+
+
+def _path_metrics(actual_paths, expected_nodes) -> Optional[Dict]:
+    """Compute Path Recall / Precision against the suite's expected nodes.
+
+    Idea 1 schema:
+        expected_path.nodes — list of wiki-canonical entity names the
+        query's answer should traverse. Per-query Recall = how many of
+        those nodes appear in the actual graph_paths returned by /query.
+
+    Returns None when `expected_nodes` is empty (skip metric — caller
+    omits the field from the per-query row). Otherwise returns a dict:
+
+        {
+          "expected_count": int,
+          "actual_node_count": int,    # unique nodes across all paths
+          "hits": int,                 # |expected ∩ actual|
+          "path_recall": float,        # hits / expected_count, [0, 1]
+          "path_precision": float,     # hits / actual_node_count, [0, 1]
+          "missed": list[str],         # expected nodes NOT found
+        }
+
+    Path Precision is reported but interpreted with care — `actual` is
+    every node the DFS ever touched (typically 5–50 per query), not the
+    "answer-evidence" subset, so precision will read low even on good
+    runs. Recall is the primary signal.
+    """
+    if not expected_nodes:
+        return None
+    actual = _parse_path_nodes(actual_paths)
+    expected = set(expected_nodes)
+    hits = actual & expected
+    actual_count = len(actual)
+    return {
+        "expected_count": len(expected),
+        "actual_node_count": actual_count,
+        "hits": len(hits),
+        "path_recall": round(len(hits) / len(expected), 3),
+        "path_precision": (
+            round(len(hits) / actual_count, 3) if actual_count else 0.0
+        ),
+        "missed": sorted(expected - actual),
+    }
+
+
 def _load_baseline(name: str) -> Optional[Dict]:
     path = ROOT / "eval" / "regression" / f"{name}_baseline.json"
     if not path.exists():
@@ -158,15 +237,23 @@ def _run_one(
 
     data = r.json() or {}
     answer = (data.get("answer") or "").strip()
+    actual_paths = data.get("graph_paths") or []
     base.update({
         "status":            "ok",
         "answer_len":        len(answer),
         "answer_preview":    answer[:300],   # smaller than the old 600 — preview only
         "blocked":           bool(data.get("blocked", False)),
-        "graph_paths_count": len(data.get("graph_paths") or []),
+        "graph_paths_count": len(actual_paths),
         "mode":              data.get("mode", ""),
         "unified_score":     data.get("unified_score"),
     })
+    # Idea 1 (2026-05-27) — Path Recall/Precision when the suite
+    # declares `expected_path.nodes`. Queries without the field skip.
+    expected_path = q.get("expected_path") or {}
+    expected_nodes = expected_path.get("nodes") or []
+    pm = _path_metrics(actual_paths, expected_nodes)
+    if pm is not None:
+        base["path_metrics"] = pm
     return base
 
 
@@ -176,10 +263,15 @@ def _print_row(r: Dict, total: int) -> None:
     head = f"[{r['id']:2d}/{total}] {r['category']:9s} | {r['text'][:55]}"
     if r["status"] == "ok":
         tag = "BLOCK" if r.get("blocked") else "OK"
+        pm = r.get("path_metrics")
+        path_tail = (
+            f" | path_recall={pm['path_recall']:.2f} ({pm['hits']}/{pm['expected_count']})"
+            if pm else ""
+        )
         print(f"{head}\n      {tag:<5s} {r['elapsed']:>5.1f}s | "
               f"mode={r.get('mode','')!s:<15s} | "
               f"graph_paths={r.get('graph_paths_count', 0):>2d} | "
-              f"answer_len={r.get('answer_len', 0):>4d}")
+              f"answer_len={r.get('answer_len', 0):>4d}{path_tail}")
     else:
         detail = r.get("error") or r.get("error_body") or r["status"]
         print(f"{head}\n      X  {r['status'].upper():<10s} ({r['elapsed']}s): {detail}")
@@ -303,6 +395,24 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_path = out_dir / f"bench_{sha}_{args.suite}_{stamp}.json"
+
+    # Idea 1 aggregate — mean Path Recall across queries that declared
+    # `expected_path.nodes`. None when no query carries the field.
+    recalls = [
+        r["path_metrics"]["path_recall"]
+        for r in results
+        if r.get("status") == "ok" and r.get("path_metrics") is not None
+    ]
+    path_recall_aggregate = (
+        {
+            "queries_with_expected_path": len(recalls),
+            "mean_path_recall": round(sum(recalls) / len(recalls), 3),
+            "queries_at_full_recall": sum(1 for x in recalls if x == 1.0),
+        }
+        if recalls
+        else None
+    )
+
     out_path.write_text(
         json.dumps({
             "suite":         args.suite,
@@ -310,12 +420,19 @@ def main() -> int:
             "total_seconds": total,
             "queries":       len(queries),
             "results":       results,
+            "path_recall_aggregate": path_recall_aggregate,
         }, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
 
     print(f"\n총 소요: {total}s ({round(total/60, 1)}분)")
     print(f"saved: {out_path.relative_to(ROOT)}")
+    if path_recall_aggregate:
+        agg = path_recall_aggregate
+        print(
+            f"path recall: mean={agg['mean_path_recall']:.2f} "
+            f"({agg['queries_at_full_recall']}/{agg['queries_with_expected_path']} at 1.0)"
+        )
 
     # --update-baseline: rewrite baseline from this run before any check.
     # Wipes the committed file with the current numbers.  Only acceptable
