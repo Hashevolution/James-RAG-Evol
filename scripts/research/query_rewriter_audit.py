@@ -86,6 +86,15 @@ Pre-requisites
 Usage
 -----
     python scripts/research/query_rewriter_audit.py
+    python scripts/research/query_rewriter_audit.py --with-entity-anchor
+
+The ``--with-entity-anchor`` arm (F9.2) runs each query through
+``EntityAnchorExpander.expand()`` BEFORE the LLM rewriter sees it.
+A/B against the default arm by running both and diffing the
+two ``query-rewriter-audit-<stamp>.json`` outputs — the F9.2
+acceptance criterion is that the ``bare_proper_noun`` bucket's
+``anchor_added_rate`` rises from the ~0% default-arm baseline to
+≥ 67% (2 of 3 q15-cluster queries gain a corpus anchor).
 """
 from __future__ import annotations
 
@@ -256,20 +265,78 @@ def _classify_anchor_outcome(
 # ─── Per-row audit ───────────────────────────────────────────────────
 
 
-def _audit_one(row: Dict) -> Dict:
-    """Run one query through ``QueryRewriter.rewrite(force=True)``."""
+def _entity_anchor_pre_expand(query: str) -> Dict:
+    """F9.2 — run the query through ``EntityAnchorExpander`` first.
+
+    Returns a dict with the entity-anchor pre-rewrite outcome:
+      - ``pre_expanded``: query text fed into the LLM rewriter
+        (= original when the expander returns no hit)
+      - ``entity_anchors_added``: list of corpus anchors injected by
+        the graph lookup
+      - ``entity_anchor_hit``: True iff the graph found at least one
+        novel anchor for this query
+      - ``entity_anchor_latency_ms``: the ~0ms graph lookup cost
+        (recorded for operator comparison against the LLM rewriter's
+        per-call cost)
+    """
+    from core.retrieval.entity_anchor_expander import get_entity_anchor_expander
+
+    expander = get_entity_anchor_expander()
+    t0 = time.time()
+    try:
+        expanded, anchors, hit = expander.expand(query)
+        err: Optional[str] = None
+    except Exception as e:
+        expanded, anchors, hit = query, [], False
+        err = f"{type(e).__name__}: {str(e)[:200]}"
+    latency_ms = int((time.time() - t0) * 1000)
+    out = {
+        "pre_expanded":             expanded,
+        "entity_anchors_added":     anchors,
+        "entity_anchor_hit":        hit,
+        "entity_anchor_latency_ms": latency_ms,
+    }
+    if err:
+        out["entity_anchor_error"] = err
+    return out
+
+
+def _audit_one(row: Dict, *, with_entity_anchor: bool = False) -> Dict:
+    """Run one query through ``QueryRewriter.rewrite(force=True)``.
+
+    When ``with_entity_anchor`` is True, the query is first passed
+    through ``EntityAnchorExpander`` (F9.2). The LLM rewriter then
+    sees the pre-expanded form. Anchor outcome classification still
+    compares against the **original** query text — so anchors added
+    by the entity expander count toward ``anchors_added`` just like
+    anchors added by the LLM rewriter would.
+    """
     from core.retrieval.query_rewriter import QueryRewriter
+
+    if with_entity_anchor:
+        pre = _entity_anchor_pre_expand(row["text"])
+        query_for_rewriter = pre["pre_expanded"]
+    else:
+        pre = {}
+        query_for_rewriter = row["text"]
 
     rewriter = QueryRewriter()
     t0 = time.time()
     try:
-        rewritten, latency_ms, attempted = rewriter.rewrite(row["text"], force=True)
+        rewritten, latency_ms, attempted = rewriter.rewrite(
+            query_for_rewriter, force=True,
+        )
         err: Optional[str] = None
     except Exception as e:
-        rewritten, latency_ms, attempted = row["text"], 0, False
+        rewritten, latency_ms, attempted = query_for_rewriter, 0, False
         err = f"{type(e).__name__}: {str(e)[:200]}"
     elapsed_s = time.time() - t0
 
+    # Anchor outcome compares the **original** query (row["text"])
+    # against the final rewritten form. The entity expander's
+    # additions count toward "added" just like LLM-added anchors
+    # would, so the F9.2 A/B remains apples-to-apples vs the
+    # F9.1 baseline.
     outcome = _classify_anchor_outcome(
         row["text"], rewritten, row["expected_anchors"],
     )
@@ -290,6 +357,11 @@ def _audit_one(row: Dict) -> Dict:
         "anchors_dropped":          outcome["anchors_dropped"],
         "anchors_absent":           outcome["anchors_absent"],
     }
+    if pre:
+        # Surface the entity-anchor step's contribution distinctly
+        # from the LLM rewriter's so the operator can attribute
+        # wins/losses to the right layer.
+        out["entity_anchor"] = pre
     if err:
         out["error"] = err
     return out
@@ -356,6 +428,14 @@ def main() -> int:
         "--bucket", default=None,
         help="run only one bucket (bare_proper_noun / name_with_concept / pure_concept / multi_hop_control)",
     )
+    ap.add_argument(
+        "--with-entity-anchor", action="store_true",
+        help=(
+            "F9.2 arm — pre-expand each query through the EntityAnchorExpander "
+            "(corpus graph lookup) before the LLM rewriter sees it. A/B against "
+            "the default arm by running twice and diffing the two JSON outputs."
+        ),
+    )
     args = ap.parse_args()
 
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -369,14 +449,15 @@ def main() -> int:
 
     model_tag = os.environ.get("JAMES_LLM_MODEL", "<unset — backend default>")
     embedding_tag = os.environ.get("JAMES_EMBEDDING_MODEL", "<unset — legacy MiniLM>")
+    arm = "with-entity-anchor (F9.2)" if args.with_entity_anchor else "rewriter-only (F9.1 baseline)"
     print(
-        f"=== query_rewriter audit — model={model_tag}, "
+        f"=== query_rewriter audit — arm={arm}, model={model_tag}, "
         f"embedding={embedding_tag}, rows={len(fixture)} ==="
     )
 
     rows: List[Dict] = []
     for r in fixture:
-        out = _audit_one(r)
+        out = _audit_one(r, with_entity_anchor=args.with_entity_anchor)
         rows.append(out)
         _print_row(out)
 
@@ -424,15 +505,17 @@ def main() -> int:
         )
 
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_path = REPORTS_DIR / f"query-rewriter-audit-{stamp}.json"
+    arm_suffix = "-entityanchor" if args.with_entity_anchor else ""
+    out_path = REPORTS_DIR / f"query-rewriter-audit{arm_suffix}-{stamp}.json"
     out_path.write_text(
         json.dumps(
             {
-                "generated_at":   datetime.now().isoformat(),
-                "model_tag":      model_tag,
-                "embedding_tag":  embedding_tag,
-                "results":        rows,
-                "summary":        summary,
+                "generated_at":          datetime.now().isoformat(),
+                "arm":                   "with_entity_anchor" if args.with_entity_anchor else "rewriter_only",
+                "model_tag":             model_tag,
+                "embedding_tag":         embedding_tag,
+                "results":               rows,
+                "summary":               summary,
             },
             ensure_ascii=False,
             indent=2,

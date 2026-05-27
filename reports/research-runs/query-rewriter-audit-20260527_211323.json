@@ -1,0 +1,277 @@
+{
+  "generated_at": "2026-05-27T21:13:23.277858",
+  "model_tag": "<unset — backend default>",
+  "embedding_tag": "<unset — legacy MiniLM>",
+  "results": [
+    {
+      "id": "bpn-1",
+      "bucket": "bare_proper_noun",
+      "text": "David Soria Parra가 누구야?",
+      "expected_anchors": [
+        "MCP",
+        "Model Context Protocol",
+        "Anthropic"
+      ],
+      "rewritten": "David Soria Parra가 누구야?",
+      "changed": false,
+      "attempted": true,
+      "latency_ms": 12065,
+      "elapsed_s": 12.08,
+      "anchors_already_present": [],
+      "anchors_added": [],
+      "anchors_dropped": [],
+      "anchors_absent": [
+        "Anthropic",
+        "MCP",
+        "Model Context Protocol"
+      ]
+    },
+    {
+      "id": "bpn-2",
+      "bucket": "bare_proper_noun",
+      "text": "David Soria Parra",
+      "expected_anchors": [
+        "MCP",
+        "Model Context Protocol",
+        "Anthropic"
+      ],
+      "rewritten": "David Soria Parra",
+      "changed": false,
+      "attempted": true,
+      "latency_ms": 3969,
+      "elapsed_s": 3.98,
+      "anchors_already_present": [],
+      "anchors_added": [],
+      "anchors_dropped": [],
+      "anchors_absent": [
+        "Anthropic",
+        "MCP",
+        "Model Context Protocol"
+      ]
+    },
+    {
+      "id": "bpn-3",
+      "bucket": "bare_proper_noun",
+      "text": "Justin Spahr-Summers는 누구야?",
+      "expected_anchors": [
+        "MCP",
+        "Model Context Protocol",
+        "Anthropic"
+      ],
+      "rewritten": "Justin Spahr-Summers 정보 (Justin Spahr-Summers 프로필)",
+      "changed": true,
+      "attempted": true,
+      "latency_ms": 4593,
+      "elapsed_s": 4.61,
+      "anchors_already_present": [],
+      "anchors_added": [],
+      "anchors_dropped": [],
+      "anchors_absent": [
+        "Anthropic",
+        "MCP",
+        "Model Context Protocol"
+      ]
+    },
+    {
+      "id": "nwc-1",
+      "bucket": "name_with_concept",
+      "text": "MCP 설계자 David Soria Parra",
+      "expected_anchors": [
+        "MCP",
+        "Model Context Protocol",
+        "Anthropic"
+      ],
+      "rewritten": "David Soria Parra MCP 설계자 (architect)",
+      "changed": true,
+      "attempted": true,
+      "latency_ms": 4653,
+      "elapsed_s": 4.67,
+      "anchors_already_present": [
+        "MCP"
+      ],
+      "anchors_added": [],
+      "anchors_dropped": [],
+      "anchors_absent": [
+        "Anthropic",
+        "Model Context Protocol"
+      ]
+    },
+    {
+      "id": "nwc-2",
+      "bucket": "name_with_concept",
+      "text": "Anthropic의 David Soria Parra",
+      "expected_anchors": [
+        "MCP",
+        "Model Context Protocol",
+        "Anthropic"
+      ],
+      "rewritten": "Anthropic David Soria Parra",
+      "changed": true,
+      "attempted": true,
+      "latency_ms": 4816,
+      "elapsed_s": 4.84,
+      "anchors_already_present": [
+        "Anthropic"
+      ],
+      "anchors_added": [],
+      "anchors_dropped": [],
+      "anchors_absent": [
+        "MCP",
+        "Model Context Protocol"
+      ]
+    },
+    {
+      "id": "pc-1",
+      "bucket": "pure_concept",
+      "text": "MCP가 뭐야?",
+      "expected_anchors": [
+        "MCP",
+        "Model Context Protocol",
+        "Anthropic"
+      ],
+      "rewritten": "MCP의 정의와 의미는 무엇인가요?",
+      "changed": true,
+      "attempted": true,
+      "latency_ms": 5407,
+      "elapsed_s": 5.43,
+      "anchors_already_present": [
+        "MCP"
+      ],
+      "anchors_added": [],
+      "anchors_dropped": [],
+      "anchors_absent": [
+        "Anthropic",
+        "Model Context Protocol"
+      ]
+    },
+    {
+      "id": "pc-2",
+      "bucket": "pure_concept",
+      "text": "Model Context Protocol 설명",
+      "expected_anchors": [
+        "MCP",
+        "Model Context Protocol",
+        "Anthropic"
+      ],
+      "rewritten": "Model Context Protocol (모델 컨텍스트 프로토콜) 개념 정의 및 작동 원리",
+      "changed": true,
+      "attempted": true,
+      "latency_ms": 5245,
+      "elapsed_s": 5.26,
+      "anchors_already_present": [
+        "Model Context Protocol"
+      ],
+      "anchors_added": [],
+      "anchors_dropped": [],
+      "anchors_absent": [
+        "Anthropic",
+        "MCP"
+      ]
+    },
+    {
+      "id": "mhc-1",
+      "bucket": "multi_hop_control",
+      "text": "팔란티어의 CEO는 누구야?",
+      "expected_anchors": [
+        "Palantir",
+        "Karp",
+        "Alex Karp",
+        "CEO"
+      ],
+      "rewritten": "팔란티어(Palantir)의 최고경영자(CEO)는 누구입니까?",
+      "changed": true,
+      "attempted": true,
+      "latency_ms": 4659,
+      "elapsed_s": 4.68,
+      "anchors_already_present": [
+        "CEO"
+      ],
+      "anchors_added": [
+        "Palantir"
+      ],
+      "anchors_dropped": [],
+      "anchors_absent": [
+        "Alex Karp",
+        "Karp"
+      ]
+    },
+    {
+      "id": "mhc-2",
+      "bucket": "multi_hop_control",
+      "text": "Anthropic의 창립자는 누구야?",
+      "expected_anchors": [
+        "Anthropic",
+        "Amodei",
+        "founder"
+      ],
+      "rewritten": "Anthropic 창립자 (설립자)는 누구인가요?",
+      "changed": true,
+      "attempted": true,
+      "latency_ms": 5239,
+      "elapsed_s": 5.26,
+      "anchors_already_present": [
+        "Anthropic"
+      ],
+      "anchors_added": [],
+      "anchors_dropped": [],
+      "anchors_absent": [
+        "Amodei",
+        "founder"
+      ]
+    }
+  ],
+  "summary": {
+    "rows": 9,
+    "attempted": 9,
+    "changed": 7,
+    "anchor_added": 1,
+    "anchor_dropped": 0,
+    "anchor_added_rate": 0.111,
+    "anchor_dropped_rate": 0.0,
+    "outcome_distribution": {
+      "attempted": 9
+    },
+    "by_bucket": {
+      "bare_proper_noun": {
+        "n": 3,
+        "attempted": 3,
+        "changed": 1,
+        "anchor_added": 0,
+        "anchor_dropped": 0,
+        "anchor_added_rate": 0.0,
+        "anchor_dropped_rate": 0.0,
+        "latency_ms_mean": 6875.7
+      },
+      "name_with_concept": {
+        "n": 2,
+        "attempted": 2,
+        "changed": 2,
+        "anchor_added": 0,
+        "anchor_dropped": 0,
+        "anchor_added_rate": 0.0,
+        "anchor_dropped_rate": 0.0,
+        "latency_ms_mean": 4734.5
+      },
+      "pure_concept": {
+        "n": 2,
+        "attempted": 2,
+        "changed": 2,
+        "anchor_added": 0,
+        "anchor_dropped": 0,
+        "anchor_added_rate": 0.0,
+        "anchor_dropped_rate": 0.0,
+        "latency_ms_mean": 5326.0
+      },
+      "multi_hop_control": {
+        "n": 2,
+        "attempted": 2,
+        "changed": 2,
+        "anchor_added": 1,
+        "anchor_dropped": 0,
+        "anchor_added_rate": 0.5,
+        "anchor_dropped_rate": 0.0,
+        "latency_ms_mean": 4949.0
+      }
+    }
+  }
+}
