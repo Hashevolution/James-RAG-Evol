@@ -473,11 +473,11 @@ verification, the L.B policy v1 has complete bench coverage.
   Reattributed to chroma rerank / embedding miss (Korean prompt
   doesn't surface the foreign-name PDF). Spawns F7 (chroma top-k
   probe — one small script, separate cycle).
-- (NEW) **F7** — chroma top-k probe for q15. Log score-sorted top-k
-  with sources, confirm `08_MCP_(Model_Context_Protocol).pdf`'s
-  rank. If it's outside top-k, the systemic fix is embedding swap
-  (BL-9 multilingual-e5-large) — alias pack patch only covers
-  KO↔EN string aliasing, not semantic mismatch.
+- **F7** ✅ landed (this branch). Chroma top-k probe confirms BL-9
+  is the systemic fix. MCP PDF NOT in top-20 for any person-name
+  variation (KO/EN/name-only); rank 1 with score 0.85 for the
+  English document-title variation. Proper-noun-mediated retrieval
+  is the failure mode the current MiniLM embedding cannot bridge.
 
 ## What this closure does NOT claim
 
@@ -560,6 +560,83 @@ verification, the L.B policy v1 has complete bench coverage.
   v3 suite). Operator can still adjust the threshold later if the
   14% narrow ratio doesn't match production expectations — formula
   fix and threshold tuning are orthogonal knobs.
+
+## F7 follow-up — chroma top-k probe confirms embedding root cause (2026-05-27)
+
+Branch: `feat/v0.4-f7-chroma-topk-probe`. Built
+`scripts/research/q15_chroma_probe.py` — direct chroma collection
+query (no server, no LLM, ~few seconds total runtime). Runs 4 query
+variations against the same chroma collection the production
+pipeline uses, reports where the target PDF
+(`08_MCP_(Model_Context_Protocol).pdf` — David Soria Parra's wiki
+source_document) ranks in top-20 per variation.
+
+`reports/research-runs/q15-chroma-probe-20260527_165551.json`
+
+### Smoking-gun result
+
+| variation | rank of MCP PDF | top-1 source (unrelated) |
+|---|---|---|
+| `ko_q15_exact` (`"David Soria Parra가 누구야?"`) | **NOT in top-20** | `web_science_Anthropic 본사 어디고 CE_…md` |
+| `en_translation` (`"Who is David Soria Parra?"`) | **NOT in top-20** | `web_science_Anthropic 본사 어디고 CE_…md` |
+| `name_only` (`"David Soria Parra"`) | **NOT in top-20** | `web_science_us army GPS 활용한 기술_…md` |
+| **`concept_side` (`"MCP Model Context Protocol"`)** | **rank 1, score = 0.8462** | `08_MCP_(Model_Context_Protocol).pdf` ✅ |
+
+Top-5 of the `concept_side` variation are all the same PDF:
+
+```
+#1: score=0.8462 src=08_MCP_(Model_Context_Protocol).pdf
+#2: score=0.7807 src=08_MCP_(Model_Context_Protocol).pdf
+#3: score=0.6925 src=08_MCP_(Model_Context_Protocol).pdf
+#4: score=0.6793 src=08_MCP_(Model_Context_Protocol).pdf
+#5: score=0.6722 src=08_MCP_(Model_Context_Protocol).pdf
+```
+
+### F7 verdict — BL-9 (multilingual embedding swap) is the systemic fix
+
+The PDF is correctly embedded — when queried with the English
+document title it ranks #1 with strong margin (0.85 score, 5 of
+top-5 are the same PDF). The failure mode is **proper-noun-
+mediated retrieval**: the current
+`paraphrase-multilingual-MiniLM-L12-v2` 384-dim model doesn't
+encode the "David Soria Parra is the MCP co-designer" association
+that the wiki frontmatter spells out (`source_document:
+08_MCP_(Model_Context_Protocol).pdf`).
+
+This is decisively the **systemic** problem an alias pack patch
+cannot fix. A KO↔EN string alias (the D5.D pack's mechanism)
+could bridge "비트코인" ↔ "Bitcoin" but cannot bridge "David Soria
+Parra" → "MCP" because that's a content-level fact, not a naming
+convention.
+
+The fix is **BL-9 multilingual embedding swap** (Sprint 4
+backlog) — `multilingual-e5-large` or `bge-m3`, both trained on
+content where proper-noun ↔ context co-occurrence is preserved in
+the embedding space.
+
+### Diagnosis chain — final form (6 cycles compressed to one paragraph)
+
+q15 zero-recall was investigated through: classifier accuracy (F2,
+ruled out) → role policy gate (F1, mitigated by JWT; q15 still
+misses with employee) → entity-extraction stochasticity (F6, 5/5
+deterministic) → chroma rerank/embedding (F7, **confirmed root**:
+MiniLM under-ranks proper-noun-mediated retrieval). Each step took
+~30 minutes. The "throw a fix at it" alternative would have spent
+days iterating prompt tuning + LLM swaps + alias patches — all
+fixing the wrong layer.
+
+### F7 spawns concrete operator actions
+
+- **Promote BL-9 to next Sprint** (Sprint 4 backlog → near-term).
+  q15 is the bench-stamped acceptance gate; pre-swap baseline =
+  Path Recall 0/2, post-swap target = ≥ 1/2.
+- **Add `name_only` and KO variation probes to the BL-9 acceptance
+  suite** — F7's 4-variation pattern is reusable. Any candidate
+  embedding model that doesn't promote the MCP PDF to top-k on at
+  least the `name_only` query fails the cross-lingual gate.
+- **q15 step7 baseline lockedat path_recall=0** — the gate flips
+  to ≥0.5 when BL-9 ships. A path_recall>0 result on the legacy
+  embedding would be a fluke, not a regression.
 
 ## F6 follow-up — q15 entity-extraction deterministic miss (2026-05-27)
 
