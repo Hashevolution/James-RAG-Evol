@@ -1,0 +1,550 @@
+{
+  "generated_at": "2026-05-27T17:31:26.659889",
+  "variations": [
+    {
+      "label": "ko_q15_exact",
+      "query": "David Soria Parra가 누구야?",
+      "top_k": 20,
+      "elapsed": 0.035,
+      "results_count": 20,
+      "target_pdf": "08_MCP_(Model_Context_Protocol).pdf",
+      "target_rank": null,
+      "target_score": null,
+      "top_preview": [
+        {
+          "rank": 1,
+          "score": 0.6148,
+          "source": "web_science_Anthropic  본사 어디고 CE_1779083987.md",
+          "text_preview": "/wikipedia-tagline-en-25.svg)  ## Contents  # Dario Amodei  | Dario Amodei | | |"
+        },
+        {
+          "rank": 2,
+          "score": 0.6061,
+          "source": "web_science_us army  GPS 활용한 기술 _1778721531.md",
+          "text_preview": "tem"
+        },
+        {
+          "rank": 3,
+          "score": 0.5768,
+          "source": "엔비디아와_조비와_관계_조사해봐.md",
+          "text_preview": "251110035226.png)  단박제보  | 제목 | 작성자 | 날짜 | 결과 | | --- | --- | --- | --- | | 증권 |"
+        },
+        {
+          "rank": 4,
+          "score": 0.5725,
+          "source": "01_Tesla_연혁.pdf",
+          "text_preview": "| | ------- | --- | --------------------------------------------- | --- | Tesla,"
+        },
+        {
+          "rank": 5,
+          "score": 0.5717,
+          "source": "01_Tesla_연혁.pdf",
+          "text_preview": "# 파일: 01_Tesla_연혁.pdf  TESLA, Inc. 전기차에서 AI·로봇 기업으로 설립 2003년 7월 1일 (Martin Eberh"
+        },
+        {
+          "rank": 6,
+          "score": 0.5699,
+          "source": "02_SpaceX_연혁.pdf",
+          "text_preview": "# 파일: 02_SpaceX_연혁.pdf  Space Exploration Technologies 재사용 로켓에서 화성 식민지 인프라로 설립 2"
+        },
+        {
+          "rank": 7,
+          "score": 0.5682,
+          "source": "07_FOMC동결_Warsh후임임박.txt",
+          "text_preview": "내용]   · 4월 30일 FOMC, 기준금리 3.50%~3.75% 동결 (3회 연속). · 반대 4표는 1992년 이래 최다 — 정책 분열 신"
+        },
+        {
+          "rank": 8,
+          "score": 0.5603,
+          "source": "07_FOMC동결_Warsh후임임박.txt",
+          "text_preview": "# 파일: 07_FOMC동결_Warsh후임임박.txt  ================================================="
+        },
+        {
+          "rank": 9,
+          "score": 0.5601,
+          "source": "03_Musk_관련기업_연혁.pdf",
+          "text_preview": "# 파일: 03_Musk_관련기업_연혁.pdf  Musk Ecosystem xAI · Neuralink · The Boring Company x"
+        },
+        {
+          "rank": 10,
+          "score": 0.5587,
+          "source": "01_Tesla_연혁.pdf",
+          "text_preview": "------------------------------ | --- | Tesla, Inc. |  연혁 요약 - 2 -  3."
+        },
+        {
+          "rank": 11,
+          "score": 0.5583,
+          "source": "web_business_블랙록 대해 설명_1779080304.md",
+          "text_preview": "images/media-bin/web/global/wordmark/blackrock-logo-nav.svg)  # 국가의 성장과 함께하는 여정:"
+        },
+        {
+          "rank": 12,
+          "score": 0.5582,
+          "source": "08_13F공시시즌_기관매집공개.txt",
+          "text_preview": "ub-advisory     아닌 직접 전략 배분이라는 점에서 더 강한 시그널.  [출처] CoinDesk, FinanceFeeds, Yello"
+        },
+        {
+          "rank": 13,
+          "score": 0.5566,
+          "source": "web_science_Wi-Fi와 블루투스 결합한 하브리드_1778721167.md",
+          "text_preview": "- https://m.blog.naver.com/rohdeschwarzkorea/223609887960 - https://www.techflow"
+        },
+        {
+          "rank": 14,
+          "score": 0.555,
+          "source": "01_Tesla_연혁.pdf",
+          "text_preview": "|     | 5."
+        },
+        {
+          "rank": 15,
+          "score": 0.5548,
+          "source": "web_security_양자 보안 아키텍처 설계_1779080950.md",
+          "text_preview": "(/content/dam/fortinet/images/general/fortinet-logo.svg) ![](data:image/png;base"
+        },
+        {
+          "rank": 16,
+          "score": 0.5523,
+          "source": "엔비디아와_조비와_관계.md",
+          "text_preview": "--- aliases: - 엔비디아와 조비와 관계 attributes:   learn_method: web_search   learned_at:"
+        },
+        {
+          "rank": 17,
+          "score": 0.5522,
+          "source": "web_science_블루투스 위치 기능 등 상품 용하 방_1778720074.md",
+          "text_preview": "inf.pstatic.net/MjAyMjA4MjRfMjgy/MDAxNjYxMzE0NDEyMDQ4.PAf9n836VjbXM8uvl_PMMb94my"
+        },
+        {
+          "rank": 18,
+          "score": 0.5505,
+          "source": "web_business_**경쟁사 대비 AMD 기술적 우위 _1778634469.md",
+          "text_preview": "[Gemma 응답 없음]  ### 주요 내용 # [달빛향기 DalHyang](https://likedalhyang.tistory.com/ \"달빛"
+        },
+        {
+          "rank": 19,
+          "score": 0.55,
+          "source": "web_business_캐빈워시 누구?_1779524333.md",
+          "text_preview": ".com/article/Global-Biz/2026/01/2026013106345445493bc914ac71_1"
+        },
+        {
+          "rank": 20,
+          "score": 0.5495,
+          "source": "VANCE_02_2028_대선전략_분석.pdf",
+          "text_preview": "# 파일: VANCE_02_2028_대선전략_분석.pdf  VANCE 뉴스 02 / 02  2028 대선 포지셔닝과 정치적 도전  GOP 지지율"
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "en_translation",
+      "query": "Who is David Soria Parra?",
+      "top_k": 20,
+      "elapsed": 0.013,
+      "results_count": 20,
+      "target_pdf": "08_MCP_(Model_Context_Protocol).pdf",
+      "target_rank": null,
+      "target_score": null,
+      "top_preview": [
+        {
+          "rank": 1,
+          "score": 0.6041,
+          "source": "web_science_Anthropic  본사 어디고 CE_1779083987.md",
+          "text_preview": "/wikipedia-tagline-en-25.svg)  ## Contents  # Dario Amodei  | Dario Amodei | | |"
+        },
+        {
+          "rank": 2,
+          "score": 0.5773,
+          "source": "web_science_us army  GPS 활용한 기술 _1778721531.md",
+          "text_preview": "tem"
+        },
+        {
+          "rank": 3,
+          "score": 0.5733,
+          "source": "01_Tesla_연혁.pdf",
+          "text_preview": "# 파일: 01_Tesla_연혁.pdf  TESLA, Inc. 전기차에서 AI·로봇 기업으로 설립 2003년 7월 1일 (Martin Eberh"
+        },
+        {
+          "rank": 4,
+          "score": 0.5692,
+          "source": "02_SpaceX_연혁.pdf",
+          "text_preview": "# 파일: 02_SpaceX_연혁.pdf  Space Exploration Technologies 재사용 로켓에서 화성 식민지 인프라로 설립 2"
+        },
+        {
+          "rank": 5,
+          "score": 0.5612,
+          "source": "01_Tesla_연혁.pdf",
+          "text_preview": "| | ------- | --- | --------------------------------------------- | --- | Tesla,"
+        },
+        {
+          "rank": 6,
+          "score": 0.5606,
+          "source": "엔비디아와_조비와_관계_조사해봐.md",
+          "text_preview": "251110035226.png)  단박제보  | 제목 | 작성자 | 날짜 | 결과 | | --- | --- | --- | --- | | 증권 |"
+        },
+        {
+          "rank": 7,
+          "score": 0.5573,
+          "source": "03_Musk_관련기업_연혁.pdf",
+          "text_preview": "# 파일: 03_Musk_관련기업_연혁.pdf  Musk Ecosystem xAI · Neuralink · The Boring Company x"
+        },
+        {
+          "rank": 8,
+          "score": 0.5548,
+          "source": "web_business_블랙록 대해 설명_1779080304.md",
+          "text_preview": "images/media-bin/web/global/wordmark/blackrock-logo-nav.svg)  # 국가의 성장과 함께하는 여정:"
+        },
+        {
+          "rank": 9,
+          "score": 0.5547,
+          "source": "07_FOMC동결_Warsh후임임박.txt",
+          "text_preview": "내용]   · 4월 30일 FOMC, 기준금리 3.50%~3.75% 동결 (3회 연속). · 반대 4표는 1992년 이래 최다 — 정책 분열 신"
+        },
+        {
+          "rank": 10,
+          "score": 0.5466,
+          "source": "08_13F공시시즌_기관매집공개.txt",
+          "text_preview": "ub-advisory     아닌 직접 전략 배분이라는 점에서 더 강한 시그널.  [출처] CoinDesk, FinanceFeeds, Yello"
+        },
+        {
+          "rank": 11,
+          "score": 0.5464,
+          "source": "01_Tesla_연혁.pdf",
+          "text_preview": "------------------------------ | --- | Tesla, Inc. |  연혁 요약 - 2 -  3."
+        },
+        {
+          "rank": 12,
+          "score": 0.5463,
+          "source": "03_Musk_관련기업_연혁.pdf",
+          "text_preview": "기준: 2026년 5월 Musk Ecosystem | 연혁 요약 - 1 -  Part 1. xAI xAI는 2023년 3월 9일 일론 머스크가 "
+        },
+        {
+          "rank": 13,
+          "score": 0.5462,
+          "source": "엔비디아와_조비와_관계_조사해봐.md",
+          "text_preview": "– 차세대 자율비행의 신호탄**  2025년 10월 28일(미국 시간) 조비 에비에이션(Joby Aviation)은 미국 산타크루즈 본사에서 엔"
+        },
+        {
+          "rank": 14,
+          "score": 0.5453,
+          "source": "02_컨텍스트_엔지니어링.pdf",
+          "text_preview": "기법  압축(Compaction) — 대화가 길어지면 이전 turn들을 요약본으로 대체. Claude Code는 자동 압축 트리거를  둔다.  "
+        },
+        {
+          "rank": 15,
+          "score": 0.5452,
+          "source": "web_business_로봇공학 시장 주요 경쟁사 및 비교 _1778717473.md",
+          "text_preview": "orts/robotics-technology-market/6366"
+        },
+        {
+          "rank": 16,
+          "score": 0.5449,
+          "source": "web_business_캐빈워시 누구?_1779524333.md",
+          "text_preview": ".com/article/Global-Biz/2026/01/2026013106345445493bc914ac71_1"
+        },
+        {
+          "rank": 17,
+          "score": 0.544,
+          "source": "07_FOMC동결_Warsh후임임박.txt",
+          "text_preview": "# 파일: 07_FOMC동결_Warsh후임임박.txt  ================================================="
+        },
+        {
+          "rank": 18,
+          "score": 0.5437,
+          "source": "엔비디아와_조비와_관계.md",
+          "text_preview": "--- aliases: - 엔비디아와 조비와 관계 attributes:   learn_method: web_search   learned_at:"
+        },
+        {
+          "rank": 19,
+          "score": 0.5422,
+          "source": "web_science_Wi-Fi와 블루투스 결합한 하브리드_1778721167.md",
+          "text_preview": "- https://m.blog.naver.com/rohdeschwarzkorea/223609887960 - https://www.techflow"
+        },
+        {
+          "rank": 20,
+          "score": 0.5414,
+          "source": "web_security_양자 보안 아키텍처 설계_1779080950.md",
+          "text_preview": "(/content/dam/fortinet/images/general/fortinet-logo.svg) ![](data:image/png;base"
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "name_only",
+      "query": "David Soria Parra",
+      "top_k": 20,
+      "elapsed": 0.011,
+      "results_count": 20,
+      "target_pdf": "08_MCP_(Model_Context_Protocol).pdf",
+      "target_rank": null,
+      "target_score": null,
+      "top_preview": [
+        {
+          "rank": 1,
+          "score": 0.6662,
+          "source": "web_science_us army  GPS 활용한 기술 _1778721531.md",
+          "text_preview": "tem"
+        },
+        {
+          "rank": 2,
+          "score": 0.6076,
+          "source": "web_science_Anthropic  본사 어디고 CE_1779083987.md",
+          "text_preview": "/wikipedia-tagline-en-25.svg)  ## Contents  # Dario Amodei  | Dario Amodei | | |"
+        },
+        {
+          "rank": 3,
+          "score": 0.5999,
+          "source": "엔비디아와_조비와_관계_조사해봐.md",
+          "text_preview": "251110035226.png)  단박제보  | 제목 | 작성자 | 날짜 | 결과 | | --- | --- | --- | --- | | 증권 |"
+        },
+        {
+          "rank": 4,
+          "score": 0.5873,
+          "source": "01_Tesla_연혁.pdf",
+          "text_preview": "|     | 5."
+        },
+        {
+          "rank": 5,
+          "score": 0.5798,
+          "source": "엔비디아와_조비와_관계_조사해봐.md",
+          "text_preview": "on-stock-rises/"
+        },
+        {
+          "rank": 6,
+          "score": 0.573,
+          "source": "07_FOMC동결_Warsh후임임박.txt",
+          "text_preview": "내용]   · 4월 30일 FOMC, 기준금리 3.50%~3.75% 동결 (3회 연속). · 반대 4표는 1992년 이래 최다 — 정책 분열 신"
+        },
+        {
+          "rank": 7,
+          "score": 0.5706,
+          "source": "Palantir_2024Q3_실적.pdf",
+          "text_preview": "# 파일: Palantir_2024Q3_실적.pdf  PALANTIR TECHNOLOGIES (NASDAQ: PLTR) — 분기 실적 보고 Pa"
+        },
+        {
+          "rank": 8,
+          "score": 0.569,
+          "source": "01_Tesla_연혁.pdf",
+          "text_preview": "| | ------- | --- | --------------------------------------------- | --- | Tesla,"
+        },
+        {
+          "rank": 9,
+          "score": 0.5688,
+          "source": "08_13F공시시즌_기관매집공개.txt",
+          "text_preview": "ub-advisory     아닌 직접 전략 배분이라는 점에서 더 강한 시그널.  [출처] CoinDesk, FinanceFeeds, Yello"
+        },
+        {
+          "rank": 10,
+          "score": 0.5679,
+          "source": "Palantir_2025Q1_실적.pdf",
+          "text_preview": "# 파일: Palantir_2025Q1_실적.pdf  PALANTIR TECHNOLOGIES (NASDAQ: PLTR) — 분기 실적 보고 Pa"
+        },
+        {
+          "rank": 11,
+          "score": 0.5676,
+          "source": "Palantir_2025Q2_실적.pdf",
+          "text_preview": "# 파일: Palantir_2025Q2_실적.pdf  PALANTIR TECHNOLOGIES (NASDAQ: PLTR) — 분기 실적 보고 Pa"
+        },
+        {
+          "rank": 12,
+          "score": 0.5661,
+          "source": "01_Tesla_연혁.pdf",
+          "text_preview": "# 파일: 01_Tesla_연혁.pdf  TESLA, Inc. 전기차에서 AI·로봇 기업으로 설립 2003년 7월 1일 (Martin Eberh"
+        },
+        {
+          "rank": 13,
+          "score": 0.5658,
+          "source": "type_certificate_tc__획득하기_위한_세.md",
+          "text_preview": "110.121.pdf"
+        },
+        {
+          "rank": 14,
+          "score": 0.5657,
+          "source": "Palantir_2025Q4_실적.pdf",
+          "text_preview": "# 파일: Palantir_2025Q4_실적.pdf  PALANTIR TECHNOLOGIES (NASDAQ: PLTR) — 분기 실적 보고 Pa"
+        },
+        {
+          "rank": 15,
+          "score": 0.5655,
+          "source": "web_science_Wi-Fi와 블루투스 결합한 하브리드_1778721167.md",
+          "text_preview": "- https://m.blog.naver.com/rohdeschwarzkorea/223609887960 - https://www.techflow"
+        },
+        {
+          "rank": 16,
+          "score": 0.5648,
+          "source": "web_science_블루투스 위치 기능 등 상품 용하 방_1778720074.md",
+          "text_preview": "inf.pstatic.net/MjAyMjA4MjRfMjgy/MDAxNjYxMzE0NDEyMDQ4.PAf9n836VjbXM8uvl_PMMb94my"
+        },
+        {
+          "rank": 17,
+          "score": 0.5645,
+          "source": "Palantir_2025Q4_실적.pdf",
+          "text_preview": "75 |     |       |        | —   |       | —   | 5. 경영진 코멘트 (Alex Karp, CEO) CEO "
+        },
+        {
+          "rank": 18,
+          "score": 0.5637,
+          "source": "03_Musk_관련기업_연혁.pdf",
+          "text_preview": "# 파일: 03_Musk_관련기업_연혁.pdf  Musk Ecosystem xAI · Neuralink · The Boring Company x"
+        },
+        {
+          "rank": 19,
+          "score": 0.5631,
+          "source": "web_coding_**기술적 원리 심화:** 통합 칩 _1778634839.md",
+          "text_preview": "ttps://www.techflowpost.com/ko-KR/column/4059"
+        },
+        {
+          "rank": 20,
+          "score": 0.5629,
+          "source": "07_FOMC동결_Warsh후임임박.txt",
+          "text_preview": "# 파일: 07_FOMC동결_Warsh후임임박.txt  ================================================="
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "concept_side",
+      "query": "MCP Model Context Protocol",
+      "top_k": 20,
+      "elapsed": 0.011,
+      "results_count": 20,
+      "target_pdf": "08_MCP_(Model_Context_Protocol).pdf",
+      "target_rank": 1,
+      "target_score": 0.8462,
+      "top_preview": [
+        {
+          "rank": 1,
+          "score": 0.8462,
+          "source": "08_MCP_(Model_Context_Protocol).pdf",
+          "text_preview": "# 파일: 08_MCP_(Model_Context_Protocol).pdf  PART 08 / 10  MCP (Model Context Prot"
+        },
+        {
+          "rank": 2,
+          "score": 0.7807,
+          "source": "08_MCP_(Model_Context_Protocol).pdf",
+          "text_preview": "·확인 단계 필수  참고문헌 (References)  1. Anthropic (2024). Introducing the Model Context"
+        },
+        {
+          "rank": 3,
+          "score": 0.6925,
+          "source": "08_MCP_(Model_Context_Protocol).pdf",
+          "text_preview": "넘어선다.  4. 보안 위협과 방어  MCP의  빠른  채택은  보안  우려를  키웠다. MCP  Safety  Audit  (Radosevic"
+        },
+        {
+          "rank": 4,
+          "score": 0.6793,
+          "source": "08_MCP_(Model_Context_Protocol).pdf",
+          "text_preview": "채택,  이후  Google  DeepMind·Microsoft·GitHub가  합류. 2025년  12월  Anthropic은  Linux  "
+        },
+        {
+          "rank": 5,
+          "score": 0.6722,
+          "source": "08_MCP_(Model_Context_Protocol).pdf",
+          "text_preview": "계, (3) 권한 최소화(read-only  우선), (4) 정기적 도구 정의 변경 감사. James의 자메스 시스템처럼 \"rag_search만"
+        },
+        {
+          "rank": 6,
+          "score": 0.6516,
+          "source": "03_Tool_Use___Function_Calling.pdf",
+          "text_preview": "# 파일: 03_Tool_Use___Function_Calling.pdf  PART 03 / 10  Tool Use / Function Call"
+        },
+        {
+          "rank": 7,
+          "score": 0.6362,
+          "source": "04_Agent_Loop와_ReAct_패턴.pdf",
+          "text_preview": "Language Models. ICLR.  2. Yang, J. et al. (2024). SWE-agent: Agent-Computer Int"
+        },
+        {
+          "rank": 8,
+          "score": 0.6342,
+          "source": "03_Tool_Use___Function_Calling.pdf",
+          "text_preview": "ontinue, Cline 등 주요 코딩 에이전트는 모두 함수 호출을 핵심 골격으로 한다. 파일  읽기/쓰기, bash 실행, 웹 검색 등이 모"
+        },
+        {
+          "rank": 9,
+          "score": 0.6333,
+          "source": "02_컨텍스트_엔지니어링.pdf",
+          "text_preview": "# 파일: 02_컨텍스트_엔지니어링.pdf  PART 02 / 10  컨텍스트 엔지니어링  Context Engineering & Window "
+        },
+        {
+          "rank": 10,
+          "score": 0.6317,
+          "source": "08_MCP_(Model_Context_Protocol).pdf",
+          "text_preview": "HTTP(원격). 후자가 SaaS 벤더의 공개 MCP 서버  배포를 가능하게 했다.  3. 2025-11-25 스펙과 채택 규모  2025년 1"
+        },
+        {
+          "rank": 11,
+          "score": 0.6302,
+          "source": "02_컨텍스트_엔지니어링.pdf",
+          "text_preview": "사전 적재가 아닌 도구 기반 JIT 조회를 우선  참고문헌 (References)  1. Anthropic Engineering (2025). "
+        },
+        {
+          "rank": 12,
+          "score": 0.6271,
+          "source": "06_STRC모델_ETF10배매입.txt",
+          "text_preview": "# 파일: 06_STRC모델_ETF10배매입.txt  =================================================="
+        },
+        {
+          "rank": 13,
+          "score": 0.6257,
+          "source": "03_Tool_Use___Function_Calling.pdf",
+          "text_preview": "rboard  (Patil  et  al.,  ICML  2025)는  사실상  표준이다. 2,000여  개의  question-function"
+        },
+        {
+          "rank": 14,
+          "score": 0.6246,
+          "source": "01_RAG_(검색_증강_생성).pdf",
+          "text_preview": "모델조차  저장소  단위  코드  생성에서  Pass@1  40%를 넘지 못함을 보고한다. 검색 정확도가 곧 생성 품질로 직결되지 않는 점, 다"
+        },
+        {
+          "rank": 15,
+          "score": 0.6241,
+          "source": "03_Tool_Use___Function_Calling.pdf",
+          "text_preview": "사결정 · 멀티 턴 일관성에서 여전히 낮은 정확도  참고문헌 (References)  1. Patil, S. G. et al. (2025). T"
+        },
+        {
+          "rank": 16,
+          "score": 0.6212,
+          "source": "01_RAG_(검색_증강_생성).pdf",
+          "text_preview": "제안한 패러다임으로, LLM의 파라미터 지식 한계를 외부 지식 베이스  조회로  보완한다. 코드  영역에서  RAG이  특히  중요한  이유는 "
+        },
+        {
+          "rank": 17,
+          "score": 0.6189,
+          "source": "04_Agent_Loop와_ReAct_패턴.pdf",
+          "text_preview": "사이클  Thought → Action → Observation → Thought ... (ReAct, ICLR 2023)  핵심 개념  ACI"
+        },
+        {
+          "rank": 18,
+          "score": 0.6173,
+          "source": "01_RAG_(검색_증강_생성).pdf",
+          "text_preview": "# 파일: 01_RAG_(검색_증강_생성).pdf  PART 01 / 10  RAG (검색 증강 생성)  Retrieval-Augmented G"
+        },
+        {
+          "rank": 19,
+          "score": 0.6163,
+          "source": "09_코딩_특화_프롬프트_엔지니어링.pdf",
+          "text_preview": "# 파일: 09_코딩_특화_프롬프트_엔지니어링.pdf  PART 09 / 10  코딩 특화 프롬프트 엔지니어링  Prompt Engineerin"
+        },
+        {
+          "rank": 20,
+          "score": 0.614,
+          "source": "web_coding_GRAPH 추론 다양한 알고리즘과 원_1779094615.md",
+          "text_preview": "그래프 알고리즘은 서로 연결된 개체 간의 관계를 분석하는 데 사용되며, 트리 자료구조는 그래프의 한 종류입니다. DFS/BFS, 최단 경로 알고"
+        }
+      ],
+      "error": null
+    }
+  ],
+  "summary": {
+    "variations_count": 4,
+    "target_pdf": "08_MCP_(Model_Context_Protocol).pdf",
+    "top_k": 20,
+    "variations_hit": 1,
+    "best_rank": 1,
+    "ranks_by_label": {
+      "ko_q15_exact": null,
+      "en_translation": null,
+      "name_only": null,
+      "concept_side": 1
+    }
+  }
+}

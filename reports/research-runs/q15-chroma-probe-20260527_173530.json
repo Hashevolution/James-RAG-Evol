@@ -1,0 +1,550 @@
+{
+  "generated_at": "2026-05-27T17:35:30.063068",
+  "variations": [
+    {
+      "label": "ko_q15_exact",
+      "query": "David Soria Parra가 누구야?",
+      "top_k": 20,
+      "elapsed": 0.195,
+      "results_count": 20,
+      "target_pdf": "08_MCP_(Model_Context_Protocol).pdf",
+      "target_rank": null,
+      "target_score": null,
+      "top_preview": [
+        {
+          "rank": 1,
+          "score": 0.6092,
+          "source": "web_science_Anthropic  본사 어디고 CE_1779083987.md",
+          "text_preview": "/wikipedia-tagline-en-25.svg)  ## Contents  # Dario Amodei  | Dario Amodei | | |"
+        },
+        {
+          "rank": 2,
+          "score": 0.5933,
+          "source": "03_Musk_관련기업_연혁.pdf",
+          "text_preview": "e' 실시간 뇌신호 데모         |        | | 2021    | 데모  | 원숭이 'Pager' Pong 게임 마인드컨트롤 영상"
+        },
+        {
+          "rank": 3,
+          "score": 0.591,
+          "source": "엔비디아와_조비와_관계_조사해봐.md",
+          "text_preview": "[Gemma 응답 없음]  ### 주요 내용 # [Premium Contents](/)  ## [미국주식 연구센터](/globalstocks/g"
+        },
+        {
+          "rank": 4,
+          "score": 0.5907,
+          "source": "엔비디아와_조비와_관계_조사해봐.md",
+          "text_preview": "– 차세대 자율비행의 신호탄**  2025년 10월 28일(미국 시간) 조비 에비에이션(Joby Aviation)은 미국 산타크루즈 본사에서 엔"
+        },
+        {
+          "rank": 5,
+          "score": 0.5896,
+          "source": "web_business_캐빈워시 누구?_1779524333.md",
+          "text_preview": "[Gemma 응답 없음]  ### 주요 내용 [Log In](/accounts/login/?next=%2Fp%2FDUSMLzQj8rU&sourc"
+        },
+        {
+          "rank": 6,
+          "score": 0.5878,
+          "source": "엔비디아_대해_묻고_있데_.md",
+          "text_preview": ")  대외활동/GDG on Campus (GDSC)  ## 엔비디아(NVIDIA) 기업 소개 & AI 황제 ‘젠슨 황’의 탄생 이야기 - 마음 "
+        },
+        {
+          "rank": 7,
+          "score": 0.5868,
+          "source": "JOBY_02_NYC_시범비행_상용화전략.pdf",
+          "text_preview": "에어택시  네트워크 론칭은 2026년 예정.  사우디아라비아 에어택시 서비스 계획도 발표. 미국·UAE·일본·영국·한국·사우디 → 6개국 시장 "
+        },
+        {
+          "rank": 8,
+          "score": 0.5868,
+          "source": "엔비디아_대해_묻고_있데_.md",
+          "text_preview": "[Gemma 응답 없음]  ### 주요 내용 [최근 변경](/RecentChanges)[최근 토론](/RecentDiscuss)  [특수 기능]"
+        },
+        {
+          "rank": 9,
+          "score": 0.5859,
+          "source": "02_SpaceX_연혁.pdf",
+          "text_preview": "S-1 SEC 제출 — 역대 최대 IPO 후보 (Saudi Aramco 비교) |        | | 2026       | 구조변경     |"
+        },
+        {
+          "rank": 10,
+          "score": 0.5859,
+          "source": "01_Tesla_연혁.pdf",
+          "text_preview": "| 연혁 요약 - 3 -  4. 투자·M&A·재무 이벤트 4.1 주요 자본 이벤트 | 연도      | 분류   |                "
+        },
+        {
+          "rank": 11,
+          "score": 0.5851,
+          "source": "03_Musk_관련기업_연혁.pdf",
+          "text_preview": "착 회사다. 사용자가 자율주행 Tesla 차량에 탑승해 지하 Loop을 이동하는 방식이다. 2021년 라스베이거스 컨벤션 센터(LVCC) Loo"
+        },
+        {
+          "rank": 12,
+          "score": 0.5851,
+          "source": "Palantir_2025Q4_실적.pdf",
+          "text_preview": "75 |     |       |        | —   |       | —   | 5. 경영진 코멘트 (Alex Karp, CEO) CEO "
+        },
+        {
+          "rank": 13,
+          "score": 0.585,
+          "source": "01_Tesla_연혁.pdf",
+          "text_preview": "rd 승인 (12단계 마일스톤)               |        | | 2019 | 글로벌    | 상하이 Gigafactory 완공 "
+        },
+        {
+          "rank": 14,
+          "score": 0.5837,
+          "source": "VANCE_02_2028_대선전략_분석.pdf",
+          "text_preview": "# 파일: VANCE_02_2028_대선전략_분석.pdf  VANCE 뉴스 02 / 02  2028 대선 포지셔닝과 정치적 도전  GOP 지지율"
+        },
+        {
+          "rank": 15,
+          "score": 0.5834,
+          "source": "PLTR_01_Q1_2026_실적분석.pdf",
+          "text_preview": "85%  성장은  Palantir  상장(2020)  이후  최고  YoY  증가율. CEO  Alex  Karp는  \"NVIDIA·Micron"
+        },
+        {
+          "rank": 16,
+          "score": 0.5832,
+          "source": "01_Tesla_연혁.pdf",
+          "text_preview": "# 파일: 01_Tesla_연혁.pdf  TESLA, Inc. 전기차에서 AI·로봇 기업으로 설립 2003년 7월 1일 (Martin Eberh"
+        },
+        {
+          "rank": 17,
+          "score": 0.5823,
+          "source": "Palantir_2024Q4_실적.pdf",
+          "text_preview": "00B |       |     | 1.77조원 |     | +30% |     | 5. 경영진 코멘트 (Alex Karp, CEO) CEO "
+        },
+        {
+          "rank": 18,
+          "score": 0.5819,
+          "source": "03_Musk_관련기업_연혁.pdf",
+          "text_preview": "기준: 2026년 5월 Musk Ecosystem | 연혁 요약 - 1 -  Part 1. xAI xAI는 2023년 3월 9일 일론 머스크가 "
+        },
+        {
+          "rank": 19,
+          "score": 0.5811,
+          "source": "PLTR_02_AIP_국방계약_분석.pdf",
+          "text_preview": "# 파일: PLTR_02_AIP_국방계약_분석.pdf  PALANTIR 분석 02 / 03  AIP 플랫폼과 국방 계약 심층 분석  Maven "
+        },
+        {
+          "rank": 20,
+          "score": 0.5804,
+          "source": "web_science_Anthropic  본사 어디고 CE_1779083987.md",
+          "text_preview": "[Gemma 응답 없음]  ### 주요 내용 [최근 변경](/RecentChanges)[최근 토론](/RecentDiscuss)  [특수 기능]"
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "en_translation",
+      "query": "Who is David Soria Parra?",
+      "top_k": 20,
+      "elapsed": 0.081,
+      "results_count": 20,
+      "target_pdf": "08_MCP_(Model_Context_Protocol).pdf",
+      "target_rank": null,
+      "target_score": null,
+      "top_preview": [
+        {
+          "rank": 1,
+          "score": 0.6084,
+          "source": "web_science_Anthropic  본사 어디고 CE_1779083987.md",
+          "text_preview": "/wikipedia-tagline-en-25.svg)  ## Contents  # Dario Amodei  | Dario Amodei | | |"
+        },
+        {
+          "rank": 2,
+          "score": 0.5908,
+          "source": "03_Musk_관련기업_연혁.pdf",
+          "text_preview": "e' 실시간 뇌신호 데모         |        | | 2021    | 데모  | 원숭이 'Pager' Pong 게임 마인드컨트롤 영상"
+        },
+        {
+          "rank": 3,
+          "score": 0.5884,
+          "source": "엔비디아와_조비와_관계_조사해봐.md",
+          "text_preview": "– 차세대 자율비행의 신호탄**  2025년 10월 28일(미국 시간) 조비 에비에이션(Joby Aviation)은 미국 산타크루즈 본사에서 엔"
+        },
+        {
+          "rank": 4,
+          "score": 0.5878,
+          "source": "엔비디아와_조비와_관계_조사해봐.md",
+          "text_preview": "[Gemma 응답 없음]  ### 주요 내용 # [Premium Contents](/)  ## [미국주식 연구센터](/globalstocks/g"
+        },
+        {
+          "rank": 5,
+          "score": 0.5857,
+          "source": "web_business_캐빈워시 누구?_1779524333.md",
+          "text_preview": "[Gemma 응답 없음]  ### 주요 내용 [Log In](/accounts/login/?next=%2Fp%2FDUSMLzQj8rU&sourc"
+        },
+        {
+          "rank": 6,
+          "score": 0.5845,
+          "source": "엔비디아_대해_묻고_있데_.md",
+          "text_preview": "[Gemma 응답 없음]  ### 주요 내용 [최근 변경](/RecentChanges)[최근 토론](/RecentDiscuss)  [특수 기능]"
+        },
+        {
+          "rank": 7,
+          "score": 0.5833,
+          "source": "02_SpaceX_연혁.pdf",
+          "text_preview": "S-1 SEC 제출 — 역대 최대 IPO 후보 (Saudi Aramco 비교) |        | | 2026       | 구조변경     |"
+        },
+        {
+          "rank": 8,
+          "score": 0.5831,
+          "source": "JOBY_02_NYC_시범비행_상용화전략.pdf",
+          "text_preview": "에어택시  네트워크 론칭은 2026년 예정.  사우디아라비아 에어택시 서비스 계획도 발표. 미국·UAE·일본·영국·한국·사우디 → 6개국 시장 "
+        },
+        {
+          "rank": 9,
+          "score": 0.5829,
+          "source": "01_Tesla_연혁.pdf",
+          "text_preview": "| 연혁 요약 - 3 -  4. 투자·M&A·재무 이벤트 4.1 주요 자본 이벤트 | 연도      | 분류   |                "
+        },
+        {
+          "rank": 10,
+          "score": 0.5823,
+          "source": "엔비디아_대해_묻고_있데_.md",
+          "text_preview": ")  대외활동/GDG on Campus (GDSC)  ## 엔비디아(NVIDIA) 기업 소개 & AI 황제 ‘젠슨 황’의 탄생 이야기 - 마음 "
+        },
+        {
+          "rank": 11,
+          "score": 0.5821,
+          "source": "Palantir_2025Q4_실적.pdf",
+          "text_preview": "75 |     |       |        | —   |       | —   | 5. 경영진 코멘트 (Alex Karp, CEO) CEO "
+        },
+        {
+          "rank": 12,
+          "score": 0.5817,
+          "source": "03_Musk_관련기업_연혁.pdf",
+          "text_preview": "착 회사다. 사용자가 자율주행 Tesla 차량에 탑승해 지하 Loop을 이동하는 방식이다. 2021년 라스베이거스 컨벤션 센터(LVCC) Loo"
+        },
+        {
+          "rank": 13,
+          "score": 0.5811,
+          "source": "PLTR_01_Q1_2026_실적분석.pdf",
+          "text_preview": "85%  성장은  Palantir  상장(2020)  이후  최고  YoY  증가율. CEO  Alex  Karp는  \"NVIDIA·Micron"
+        },
+        {
+          "rank": 14,
+          "score": 0.581,
+          "source": "01_Tesla_연혁.pdf",
+          "text_preview": "rd 승인 (12단계 마일스톤)               |        | | 2019 | 글로벌    | 상하이 Gigafactory 완공 "
+        },
+        {
+          "rank": 15,
+          "score": 0.5793,
+          "source": "VANCE_02_2028_대선전략_분석.pdf",
+          "text_preview": "# 파일: VANCE_02_2028_대선전략_분석.pdf  VANCE 뉴스 02 / 02  2028 대선 포지셔닝과 정치적 도전  GOP 지지율"
+        },
+        {
+          "rank": 16,
+          "score": 0.5792,
+          "source": "Palantir_2024Q4_실적.pdf",
+          "text_preview": "00B |       |     | 1.77조원 |     | +30% |     | 5. 경영진 코멘트 (Alex Karp, CEO) CEO "
+        },
+        {
+          "rank": 17,
+          "score": 0.5784,
+          "source": "web_science_Anthropic  본사 어디고 CE_1779083987.md",
+          "text_preview": "[Gemma 응답 없음]  ### 주요 내용 [최근 변경](/RecentChanges)[최근 토론](/RecentDiscuss)  [특수 기능]"
+        },
+        {
+          "rank": 18,
+          "score": 0.5779,
+          "source": "01_Tesla_연혁.pdf",
+          "text_preview": "# 파일: 01_Tesla_연혁.pdf  TESLA, Inc. 전기차에서 AI·로봇 기업으로 설립 2003년 7월 1일 (Martin Eberh"
+        },
+        {
+          "rank": 19,
+          "score": 0.5776,
+          "source": "web_business_캐빈워시 누구?_1779524333.md",
+          "text_preview": "편집 요청  이용중인 IP는 문제가 자주 발생하거나 공공 IP 대역이므로 로그인이 필요합니다.   (이 메세지는 같은 인터넷 공급업체를 사용하는"
+        },
+        {
+          "rank": 20,
+          "score": 0.577,
+          "source": "PLTR_02_AIP_국방계약_분석.pdf",
+          "text_preview": "tion  Epic  Fury)  중  24시간  내  1,000개  표적  처리  보고. Palantir의  실전  AI  능력  검증.  3"
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "name_only",
+      "query": "David Soria Parra",
+      "top_k": 20,
+      "elapsed": 0.092,
+      "results_count": 20,
+      "target_pdf": "08_MCP_(Model_Context_Protocol).pdf",
+      "target_rank": null,
+      "target_score": null,
+      "top_preview": [
+        {
+          "rank": 1,
+          "score": 0.5936,
+          "source": "03_Musk_관련기업_연혁.pdf",
+          "text_preview": "e' 실시간 뇌신호 데모         |        | | 2021    | 데모  | 원숭이 'Pager' Pong 게임 마인드컨트롤 영상"
+        },
+        {
+          "rank": 2,
+          "score": 0.5924,
+          "source": "엔비디아_대해_묻고_있데_.md",
+          "text_preview": "[Gemma 응답 없음]  ### 주요 내용 [최근 변경](/RecentChanges)[최근 토론](/RecentDiscuss)  [특수 기능]"
+        },
+        {
+          "rank": 3,
+          "score": 0.5912,
+          "source": "01_Tesla_연혁.pdf",
+          "text_preview": "|     | 5."
+        },
+        {
+          "rank": 4,
+          "score": 0.5874,
+          "source": "JOBY_02_NYC_시범비행_상용화전략.pdf",
+          "text_preview": "에어택시  네트워크 론칭은 2026년 예정.  사우디아라비아 에어택시 서비스 계획도 발표. 미국·UAE·일본·영국·한국·사우디 → 6개국 시장 "
+        },
+        {
+          "rank": 5,
+          "score": 0.5863,
+          "source": "web_science_Anthropic  본사 어디고 CE_1779083987.md",
+          "text_preview": "[Gemma 응답 없음]  ### 주요 내용 [최근 변경](/RecentChanges)[최근 토론](/RecentDiscuss)  [특수 기능]"
+        },
+        {
+          "rank": 6,
+          "score": 0.5857,
+          "source": "web_science_us army  GPS 활용한 기술 _1778721531.md",
+          "text_preview": "tem"
+        },
+        {
+          "rank": 7,
+          "score": 0.5845,
+          "source": "엔비디아와_조비와_관계_조사해봐.md",
+          "text_preview": "[Gemma 응답 없음]  ### 주요 내용 # [Premium Contents](/)  ## [미국주식 연구센터](/globalstocks/g"
+        },
+        {
+          "rank": 8,
+          "score": 0.583,
+          "source": "02_SpaceX_연혁.pdf",
+          "text_preview": "S-1 SEC 제출 — 역대 최대 IPO 후보 (Saudi Aramco 비교) |        | | 2026       | 구조변경     |"
+        },
+        {
+          "rank": 9,
+          "score": 0.5821,
+          "source": "엔비디아와_조비와_관계_조사해봐.md",
+          "text_preview": "– 차세대 자율비행의 신호탄**  2025년 10월 28일(미국 시간) 조비 에비에이션(Joby Aviation)은 미국 산타크루즈 본사에서 엔"
+        },
+        {
+          "rank": 10,
+          "score": 0.5813,
+          "source": "JOBY_02_NYC_시범비행_상용화전략.pdf",
+          "text_preview": "프로젝트 선정(2026년 3월): 뉴욕/뉴저지, 텍사스, 플로리다, 노스캐롤라이나, 유타. 지리적  다각화가 첫 상업 서비스 지역 후보군.  2"
+        },
+        {
+          "rank": 11,
+          "score": 0.5811,
+          "source": "Palantir_2024Q4_실적.pdf",
+          "text_preview": "00B |       |     | 1.77조원 |     | +30% |     | 5. 경영진 코멘트 (Alex Karp, CEO) CEO "
+        },
+        {
+          "rank": 12,
+          "score": 0.581,
+          "source": "엔비디아와_조비와_관계.md",
+          "text_preview": "--- aliases: - 엔비디아와 조비와 관계 attributes:   learn_method: web_search   learned_at:"
+        },
+        {
+          "rank": 13,
+          "score": 0.5805,
+          "source": "02_SpaceX_연혁.pdf",
+          "text_preview": "투자      |        | | 2018~2019  | Funding  | Series J·K $1.2B+ — Starlink 본격 투자 "
+        },
+        {
+          "rank": 14,
+          "score": 0.5802,
+          "source": "web_business_AMD  대해 설명_1778634167.md",
+          "text_preview": "B0%98%EB%8F%84%EC%B2%B4-%EC%8B%9C%EB%8C%80%EC%9D%98-%ED%95%B5%EC%8B%AC-%ED%94%8C"
+        },
+        {
+          "rank": 15,
+          "score": 0.58,
+          "source": "01_Tesla_연혁.pdf",
+          "text_preview": "rd 승인 (12단계 마일스톤)               |        | | 2019 | 글로벌    | 상하이 Gigafactory 완공 "
+        },
+        {
+          "rank": 16,
+          "score": 0.5798,
+          "source": "JOBY_03_실적전망_투자리스크분석.pdf",
+          "text_preview": "클로징), 2차 트랜치 협의 중  OEM 잠재 매출  $10억 이상 예약 주문 공시  3. 두 가지 시나리오  시나리오 A (강세): 2026년"
+        },
+        {
+          "rank": 17,
+          "score": 0.5797,
+          "source": "03_Musk_관련기업_연혁.pdf",
+          "text_preview": "착 회사다. 사용자가 자율주행 Tesla 차량에 탑승해 지하 Loop을 이동하는 방식이다. 2021년 라스베이거스 컨벤션 센터(LVCC) Loo"
+        },
+        {
+          "rank": 18,
+          "score": 0.5795,
+          "source": "엔비디아와_조비와_관계_조사해봐.md",
+          "text_preview": "on-stock-rises/"
+        },
+        {
+          "rank": 19,
+          "score": 0.5793,
+          "source": "TSLA_02_Robotaxi_FSD_분석.pdf",
+          "text_preview": "# 파일: TSLA_02_Robotaxi_FSD_분석.pdf  TESLA 분석 02 / 03  Robotaxi·FSD 상용화 심층 분석  Cyb"
+        },
+        {
+          "rank": 20,
+          "score": 0.5789,
+          "source": "엔비디아와_조비와_관계_조사해봐.md",
+          "text_preview": "251110035226.png)  단박제보  | 제목 | 작성자 | 날짜 | 결과 | | --- | --- | --- | --- | | 증권 |"
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "concept_side",
+      "query": "MCP Model Context Protocol",
+      "top_k": 20,
+      "elapsed": 0.081,
+      "results_count": 20,
+      "target_pdf": "08_MCP_(Model_Context_Protocol).pdf",
+      "target_rank": 1,
+      "target_score": 0.7576,
+      "top_preview": [
+        {
+          "rank": 1,
+          "score": 0.7576,
+          "source": "08_MCP_(Model_Context_Protocol).pdf",
+          "text_preview": "# 파일: 08_MCP_(Model_Context_Protocol).pdf  PART 08 / 10  MCP (Model Context Prot"
+        },
+        {
+          "rank": 2,
+          "score": 0.7516,
+          "source": "08_MCP_(Model_Context_Protocol).pdf",
+          "text_preview": "·확인 단계 필수  참고문헌 (References)  1. Anthropic (2024). Introducing the Model Context"
+        },
+        {
+          "rank": 3,
+          "score": 0.6865,
+          "source": "08_MCP_(Model_Context_Protocol).pdf",
+          "text_preview": "HTTP(원격). 후자가 SaaS 벤더의 공개 MCP 서버  배포를 가능하게 했다.  3. 2025-11-25 스펙과 채택 규모  2025년 1"
+        },
+        {
+          "rank": 4,
+          "score": 0.6791,
+          "source": "08_MCP_(Model_Context_Protocol).pdf",
+          "text_preview": "채택,  이후  Google  DeepMind·Microsoft·GitHub가  합류. 2025년  12월  Anthropic은  Linux  "
+        },
+        {
+          "rank": 5,
+          "score": 0.6757,
+          "source": "08_MCP_(Model_Context_Protocol).pdf",
+          "text_preview": "넘어선다.  4. 보안 위협과 방어  MCP의  빠른  채택은  보안  우려를  키웠다. MCP  Safety  Audit  (Radosevic"
+        },
+        {
+          "rank": 6,
+          "score": 0.6633,
+          "source": "02_컨텍스트_엔지니어링.pdf",
+          "text_preview": "# 파일: 02_컨텍스트_엔지니어링.pdf  PART 02 / 10  컨텍스트 엔지니어링  Context Engineering & Window "
+        },
+        {
+          "rank": 7,
+          "score": 0.6413,
+          "source": "03_Tool_Use___Function_Calling.pdf",
+          "text_preview": "사결정 · 멀티 턴 일관성에서 여전히 낮은 정확도  참고문헌 (References)  1. Patil, S. G. et al. (2025). T"
+        },
+        {
+          "rank": 8,
+          "score": 0.6397,
+          "source": "02_컨텍스트_엔지니어링.pdf",
+          "text_preview": "순한 윈도우 확장만으로 문제가 해결되지 않는다는 점이 학계·실무에서 공통 진단이다.  2. 컨텍스트 부패 (Context Rot)  긴 컨텍스트"
+        },
+        {
+          "rank": 9,
+          "score": 0.6392,
+          "source": "02_컨텍스트_엔지니어링.pdf",
+          "text_preview": "사전 적재가 아닌 도구 기반 JIT 조회를 우선  참고문헌 (References)  1. Anthropic Engineering (2025). "
+        },
+        {
+          "rank": 10,
+          "score": 0.6353,
+          "source": "03_Tool_Use___Function_Calling.pdf",
+          "text_preview": "핵심 기술이다.  2. 호출 패턴 분류  Single Call — 한 함수에 한 번 호출. 가장 단순.  Parallel  Call  —  한 "
+        },
+        {
+          "rank": 11,
+          "score": 0.6351,
+          "source": "test_events_dominant.md",
+          "text_preview": "# 파일: test_events_dominant.md"
+        },
+        {
+          "rank": 12,
+          "score": 0.6347,
+          "source": "02_컨텍스트_엔지니어링.pdf",
+          "text_preview": "기법  압축(Compaction) — 대화가 길어지면 이전 turn들을 요약본으로 대체. Claude Code는 자동 압축 트리거를  둔다.  "
+        },
+        {
+          "rank": 13,
+          "score": 0.6335,
+          "source": "01_RAG_(검색_증강_생성).pdf",
+          "text_preview": "모델조차  저장소  단위  코드  생성에서  Pass@1  40%를 넘지 못함을 보고한다. 검색 정확도가 곧 생성 품질로 직결되지 않는 점, 다"
+        },
+        {
+          "rank": 14,
+          "score": 0.6325,
+          "source": "엔비디아_대한_설명.md",
+          "text_preview": "er: system relations: [] sensitivity: public source_type: prod sources: - web_엔비"
+        },
+        {
+          "rank": 15,
+          "score": 0.6318,
+          "source": "03_Tool_Use___Function_Calling.pdf",
+          "text_preview": "ontinue, Cline 등 주요 코딩 에이전트는 모두 함수 호출을 핵심 골격으로 한다. 파일  읽기/쓰기, bash 실행, 웹 검색 등이 모"
+        },
+        {
+          "rank": 16,
+          "score": 0.6313,
+          "source": "02_컨텍스트_엔지니어링.pdf",
+          "text_preview": "델이 필요할 때 view 도구로 로드한다.  Claude Code의 핵심 메커니즘.  4. 평가와 한계  AI 코딩 도구 핵심 기술 시리즈 · "
+        },
+        {
+          "rank": 17,
+          "score": 0.6296,
+          "source": "04_Agent_Loop와_ReAct_패턴.pdf",
+          "text_preview": "# 파일: 04_Agent_Loop와_ReAct_패턴.pdf  PART 04 / 10  Agent Loop와 ReAct 패턴  Agent Loo"
+        },
+        {
+          "rank": 18,
+          "score": 0.6291,
+          "source": "자메스_코드구조.md",
+          "text_preview": "### core\\reasoning\\evidence_scope.py > Evidence-Scope extractor (LEO proposal — "
+        },
+        {
+          "rank": 19,
+          "score": 0.6275,
+          "source": "엔비디아와_조비와_관계_조사해봐.md",
+          "text_preview": "251110035226.png)  단박제보  | 제목 | 작성자 | 날짜 | 결과 | | --- | --- | --- | --- | | 증권 |"
+        },
+        {
+          "rank": 20,
+          "score": 0.627,
+          "source": "04_Agent_Loop와_ReAct_패턴.pdf",
+          "text_preview": "Language Models. ICLR.  2. Yang, J. et al. (2024). SWE-agent: Agent-Computer Int"
+        }
+      ],
+      "error": null
+    }
+  ],
+  "summary": {
+    "variations_count": 4,
+    "target_pdf": "08_MCP_(Model_Context_Protocol).pdf",
+    "top_k": 20,
+    "variations_hit": 1,
+    "best_rank": 1,
+    "ranks_by_label": {
+      "ko_q15_exact": null,
+      "en_translation": null,
+      "name_only": null,
+      "concept_side": 1
+    }
+  }
+}
