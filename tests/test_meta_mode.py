@@ -232,15 +232,18 @@ class EngineDispatchContractTests(unittest.TestCase):
 
 
 class Step7BaselineQ13Tests(unittest.TestCase):
-    """The STEP 7 suite was extended to 13 queries. q13 = inventory.
-    A regression here means the baseline file was reverted or the
-    suite count drifted."""
+    """The STEP 7 suite includes q13 as the inventory/meta query and
+    can be additively extended (v3 added q14–q16 narrow-fixture for
+    LEO L.D F4). A regression here means q13 was removed or its
+    category drifted."""
 
     def test_step7_queries_has_q13_meta(self):
         path = Path(__file__).resolve().parent.parent / "eval" / "regression" / "step7_queries.json"
         data = json.loads(path.read_text(encoding="utf-8"))
-        self.assertEqual(len(data["queries"]), 13,
-                         "step7_queries.json must now have 13 queries")
+        self.assertGreaterEqual(len(data["queries"]), 13,
+                                "step7_queries.json must have at least 13 queries "
+                                "(v3 may add narrow-fixture or path-GT queries; "
+                                "see eval/regression/step7_queries.json description)")
         q13 = next(q for q in data["queries"] if q["id"] == 13)
         self.assertEqual(q13["category"], "meta")
         self.assertTrue(q13["text"].strip(), "q13 text must not be blank")

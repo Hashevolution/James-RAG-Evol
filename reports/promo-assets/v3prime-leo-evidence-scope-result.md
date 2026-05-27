@@ -212,6 +212,93 @@ graph fan-out). Implications:
   the LEO Q4 "measurement promotes/demotes one tier when clear,
   defers to D1 when ambiguous" pattern firing as designed.
 
+## F4 follow-up — narrow-fixture run (2026-05-27)
+
+Branch: `feat/v0.4-step7-v3-f4-narrow-fixture`. step7 v3 schema
+adds 3 narrow-scope candidate queries (q14 GPT-6 event / q15 David
+Soria Parra person / q16 기준 금리 인하 event) — single-relation
+entities chosen for low expected effective_k + low expected
+graph_reach. Bench wrapper subprocess timeout bumped 1200s → 2400s
+to fit 16 queries × 2 arms × ~80s/query.
+
+`reports/research-runs/lc-scope-bench-20260527_123203.json`
+
+| Metric | OFF arm | ON arm | Δ |
+|---|---|---|---|
+| Total elapsed | 1275.7s (21.3 min) | 1213.4s (20.2 min) | **−4.9%** |
+| Per-query elapsed | 42.9–120.0s | 46.8–116.4s | within ±50% sampling noise |
+| reason:route rows captured | n/a | 69 (5 stages × 14 retrieval queries) | — |
+| reason:route rows with `evidence_scope` | n/a | 14 | scope_context binding fired ✅ |
+| backend distribution | n/a | `ollama_local: 69` | small-tier-only fleet, D5 fallback as designed |
+
+### Scope distribution (flag-ON, 14 synth decisions)
+
+```
+mean   = 0.6789
+min    = 0.3997   ← floor observed (q15: g=0, k=0, s=1.0, H=0.9987)
+max    = 0.8687
+narrow (≤0.30): 0
+mid    (0.30 < scope < 0.70): 9   ← +5 vs F1 (q14/q15/q16 narrow candidates landed here)
+wide   (≥0.70): 5
+```
+
+### F4 verdict — narrow band is structurally unreachable on current JAMES retrieval shape
+
+The 3 narrow-candidate queries (q14/q15/q16) all landed in the mid
+band (lowest 3 rows in the per-row breakdown). The lowest observed
+scope was **0.40** even when `effective_k=0` (no docs above the
+0.45 relevance threshold) AND `graph_reach=0` (no graph activity).
+The remaining two components — `score_entropy` and `doc_spread` —
+stayed near 1.0 in every case:
+
+- **`score_entropy ≈ 0.999`** consistently. ChromaDB always returns
+  top_k results, so even when no chunk truly matches, the bottom-
+  scoring docs have similar-but-low scores → flat distribution →
+  near-max entropy. The "single doc dominates" assumption built
+  into the narrow definition is invalidated by chroma's
+  "always-return-k" behavior.
+- **`doc_spread ≈ 0.8–1.0`** consistently. Because chroma fills
+  top_k with whatever it can find, those docs are usually from
+  different sources → max doc_spread regardless of query.
+
+Quantitative floor calculation: with `effective_k=0, graph_reach=0,
+score_entropy=1.0, doc_spread=1.0`, the weighted scope is
+`0.35·0 + 0.20·1.0 + 0.25·0 + 0.20·1.0 = 0.40`. This matches the
+observed 0.3997 minimum exactly. The current L.B narrow threshold
+(0.30) is **below this structural floor** — the "narrow→small"
+rule cannot fire on the production retrieval path.
+
+### Implications + F5 followup
+
+The L.B narrow threshold needs either (a) raising from 0.30 to
+~0.40 so the mid band's low edge becomes the narrow band, or
+(b) the scope formula needs revision to handle the "chroma always
+returns top_k" reality (e.g. zero out `score_entropy` and
+`doc_spread` when `effective_k == 0` since they're measuring
+distribution of unreliable evidence). Tracked as **F5** in
+Followups below.
+
+The 0/9/5 distribution still validates the L.B policy design:
+- The 5 wide decisions correctly identified genuinely
+  multi-doc + graph-fan-out queries
+- The 9 mid decisions correctly fell through to the D1 budget
+  rule (matching LEO Q4 "measurement defers to D1 in gray zone")
+- The narrow-rule never firing in production is a *threshold
+  calibration* issue, not a *wiring* issue — F1 already proved
+  the path fires end-to-end
+
+### What changes downstream of F4 finding
+
+- **F3 (halt-prone done_reason=length measurement)** remains
+  blocked on large-tier backend, but the F1+F4 wide_count (5–7
+  consistently) gives the operator confidence that registering
+  Claude or another large backend will route a meaningful
+  fraction of synth calls. ROI metric: ~32–63% of calls would be
+  redirected (5/14 to 7/11 wide ratio).
+- **F5 (threshold or formula re-calibration)** becomes the most
+  concrete next L.B step. Operator decides between threshold
+  raise vs formula revision based on what they want to measure.
+
 ## What this closure does NOT claim
 
 - **End-to-end scope routing measurement at the bench harness level**.
@@ -279,12 +366,25 @@ graph fan-out). Implications:
   `large`-tier backend (e.g. `JAMES_ENABLE_CLAUDE_BACKEND=1`). F1
   acceptance shows wide_count=7/11 — quantifying the cost ROI for
   large-tier registration is the next concrete acceptance gate.
-- **F4** (new, surfaced by F1 acceptance): Narrow-scope fixture —
-  none of step7 queries naturally land in narrow band on JAMES wiki,
-  so "narrow→small" rule is bench-unobserved. Add 2–3 verbatim /
-  single-doc fixture queries to step7 (or sibling suite) so the
-  narrow branch is exercised end-to-end. Required for the L.B
-  4-arm acceptance promise to be fully measured.
+- **F4** ✅ landed 2026-05-27 (this branch). step7 v3 adds 3
+  narrow-candidate queries. **Verdict: narrow band is structurally
+  unreachable on current retrieval shape** (chroma always-returns-
+  top_k pushes `score_entropy` and `doc_spread` to ~1.0 → scope
+  floor = 0.40, above the L.B narrow threshold of 0.30). Spawned
+  F5 below as the concrete next step.
+- **F5** NEW — L.B narrow threshold or scope formula re-calibration.
+  Two paths from the F4 finding:
+  - (a) **Threshold raise**: bump `_SCOPE_NARROW_THRESHOLD` from
+    0.30 → ~0.40 in `core/reasoning/router.py`. Re-baseline.
+    Smallest change, narrow rule becomes "scope ≤ floor + ε".
+  - (b) **Formula revision**: in `core.reasoning.evidence_scope`,
+    zero out `score_entropy` and `doc_spread` contributions when
+    `effective_k == 0` (those distributions measure unreliable
+    evidence in that case). Re-validate the 0/9/5 distribution
+    shifts toward narrow as expected.
+  Operator decides based on what L.B narrow→small is meant to
+  measure: "the chroma signal is weak" (path a) vs "the evidence
+  is genuinely sparse" (path b).
 
 ## Collaborator interaction
 

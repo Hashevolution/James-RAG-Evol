@@ -323,10 +323,10 @@ def _run_arm(arm_name: str, scope_routing: str) -> Optional[Path]:
                 cwd=str(ROOT),
                 capture_output=False,
                 check=False,
-                timeout=1200,
+                timeout=2400,
             )
         except subprocess.TimeoutExpired:
-            print(f"[{arm_name}] TIMEOUT after 20 min — aborting arm")
+            print(f"[{arm_name}] TIMEOUT after 40 min — aborting arm")
             return None
         elapsed = time.time() - t0
         print(
