@@ -4,8 +4,10 @@ After the chore splits:
 
   * ``pipeline.py`` extracted Loop 0/1/2 step bodies to
     ``pipeline_loops.py``, the LLM answer-generation block to
-    ``pipeline_synth.py``, and the post-loop context combine +
-    sources-header block to ``pipeline_context.py``.
+    ``pipeline_synth.py``, the post-loop context combine +
+    sources-header block to ``pipeline_context.py``, and the
+    F9.3 entity-anchor STEP 0.5a block to
+    ``pipeline_query_expansion.py``.
   * ``engine.py`` extracted the memory-context assembly to
     ``engine_memory.py`` and the canonical RAG synth to
     ``engine_synth.py``.
@@ -42,6 +44,7 @@ def pipeline_source() -> str:
         pipeline,
         pipeline_context,
         pipeline_loops,
+        pipeline_query_expansion,
         pipeline_synth,
     )
     return (
@@ -50,6 +53,8 @@ def pipeline_source() -> str:
         + inspect.getsource(pipeline_context)
         + "\n"
         + inspect.getsource(pipeline_loops)
+        + "\n"
+        + inspect.getsource(pipeline_query_expansion)
         + "\n"
         + inspect.getsource(pipeline_synth)
     )

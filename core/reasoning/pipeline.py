@@ -53,6 +53,18 @@ def run_retrieval_pipeline(
     force_web_search: bool = False,   # [#A8-6] 사용자가 chip 클릭 시 True
     selected_model: str = "",         # [#A2 phase 2] catalog-validated user pick
 ) -> Dict[str, Any]:
+    # ── STEP 0.5a: entity anchor expansion (F9.3) ───────
+    # Opt-in via JAMES_ENABLE_ENTITY_ANCHOR=1 (default OFF). Helper
+    # at core/reasoning/pipeline_query_expansion.py — extracted to
+    # keep this file under the 20 KB CLAUDE.md rule #5 cap, mirroring
+    # PR #518's pipeline_context.py split pattern.
+    from core.reasoning.pipeline_query_expansion import (
+        apply_entity_anchor_expansion,
+    )
+    query_for_rewriter, _, _ = apply_entity_anchor_expansion(
+        engine, safe_query, user_role,
+    )
+
     # ── STEP 0.5b: query rewrite (Phase 1 PR-2) ─────────
     # Cognitive Layer §5.7.1 Query Rewriter. Replaces the historical
     # no-op kept here since v0.1 (the slot was reserved for this).
@@ -61,8 +73,13 @@ def run_retrieval_pipeline(
     # enabled, the rewriter goes through the Backend registry (L0)
     # using the local Ollama path; failures fall back to the original
     # query so the pipeline always proceeds.
+    #
+    # When F9.3 is also enabled (JAMES_ENABLE_ENTITY_ANCHOR=1) the
+    # rewriter sees `query_for_rewriter` = the anchor-augmented form
+    # produced by STEP 0.5a above. Otherwise `query_for_rewriter`
+    # equals `safe_query` byte-for-byte (the F9.3-flag-OFF path).
     t_qexp = time.time()
-    expanded_query = safe_query
+    expanded_query = query_for_rewriter
     rewrite_latency_ms = 0
     rewrite_attempted = False
     try:
@@ -74,7 +91,7 @@ def run_retrieval_pipeline(
         # 가 비어 있으면 "env 도달 안 함" / "rewriter 가 silent fail"
         # / "LLM 이 의미적으로 동일한 문자열 반환" 을 구분할 수 없었다.
         expanded_query, rewrite_latency_ms, rewrite_attempted = (
-            get_query_rewriter().rewrite(safe_query)
+            get_query_rewriter().rewrite(query_for_rewriter)
         )
     except Exception as e:
         engine._log("query_rewrite", e, user_role)
@@ -98,9 +115,16 @@ def run_retrieval_pipeline(
                 TraceStep, compute_inputs_hash, truncate_summary,
                 emit_trace_step,
             )
-            _changed = expanded_query != safe_query
+            # F9.3 — compare against query_for_rewriter (= safe_query
+            # when entity anchor was a no-op, = anchor-augmented form
+            # when F9.3 fired). This keeps "changed" meaning "did the
+            # LLM rewriter contribute anything" rather than blurring
+            # in the anchor expansion's contribution. The anchor trace
+            # row (emitted above when entity_anchor_hit) already
+            # surfaces the safe_query → query_for_rewriter delta.
+            _changed = expanded_query != query_for_rewriter
             _rewrite_extras: Dict[str, Any] = {
-                "original_query": safe_query[:200],
+                "original_query": query_for_rewriter[:200],
                 "rewritten_query": expanded_query[:200],
                 "changed": _changed,
             }
@@ -112,8 +136,8 @@ def run_retrieval_pipeline(
             except Exception:
                 pass
             _summary = (
-                f"{safe_query} → {expanded_query}" if _changed
-                else f"no change: {safe_query}"
+                f"{query_for_rewriter} → {expanded_query}" if _changed
+                else f"no change: {query_for_rewriter}"
             )
             emit_trace_step(
                 TraceStep(

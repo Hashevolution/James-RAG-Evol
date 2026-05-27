@@ -1,0 +1,365 @@
+{
+  "generated_at": "2026-05-27T21:49:42.915972",
+  "arm": "with_entity_anchor",
+  "model_tag": "<unset — backend default>",
+  "embedding_tag": "<unset — legacy MiniLM>",
+  "results": [
+    {
+      "id": "bpn-1",
+      "bucket": "bare_proper_noun",
+      "text": "David Soria Parra가 누구야?",
+      "expected_anchors": [
+        "MCP",
+        "Model Context Protocol",
+        "Anthropic"
+      ],
+      "rewritten": "David Soria Parra가 누구야? (관련: MCP, 08_MCP_(Model_Context_Protocol))",
+      "changed": true,
+      "attempted": true,
+      "latency_ms": 12079,
+      "elapsed_s": 12.09,
+      "anchors_already_present": [],
+      "anchors_added": [
+        "MCP"
+      ],
+      "anchors_dropped": [],
+      "anchors_absent": [
+        "Anthropic",
+        "Model Context Protocol"
+      ],
+      "entity_anchor": {
+        "pre_expanded": "David Soria Parra가 누구야? (관련: MCP, 08_MCP_(Model_Context_Protocol))",
+        "entity_anchors_added": [
+          "MCP",
+          "08_MCP_(Model_Context_Protocol)"
+        ],
+        "entity_anchor_hit": true,
+        "entity_anchor_latency_ms": 3319
+      }
+    },
+    {
+      "id": "bpn-2",
+      "bucket": "bare_proper_noun",
+      "text": "David Soria Parra",
+      "expected_anchors": [
+        "MCP",
+        "Model Context Protocol",
+        "Anthropic"
+      ],
+      "rewritten": "David Soria Parra's association with MCP (Model Context Protocol) and 08_MCP",
+      "changed": true,
+      "attempted": true,
+      "latency_ms": 5028,
+      "elapsed_s": 5.04,
+      "anchors_already_present": [],
+      "anchors_added": [
+        "MCP",
+        "Model Context Protocol"
+      ],
+      "anchors_dropped": [],
+      "anchors_absent": [
+        "Anthropic"
+      ],
+      "entity_anchor": {
+        "pre_expanded": "David Soria Parra (관련: MCP, 08_MCP_(Model_Context_Protocol))",
+        "entity_anchors_added": [
+          "MCP",
+          "08_MCP_(Model_Context_Protocol)"
+        ],
+        "entity_anchor_hit": true,
+        "entity_anchor_latency_ms": 2
+      }
+    },
+    {
+      "id": "bpn-3",
+      "bucket": "bare_proper_noun",
+      "text": "Justin Spahr-Summers는 누구야?",
+      "expected_anchors": [
+        "MCP",
+        "Model Context Protocol",
+        "Anthropic"
+      ],
+      "rewritten": "Justin Spahr-Summers의 MCP(Model Context Protocol) 관련 정보, 역할, 및 프로필",
+      "changed": true,
+      "attempted": true,
+      "latency_ms": 6667,
+      "elapsed_s": 6.68,
+      "anchors_already_present": [],
+      "anchors_added": [
+        "MCP",
+        "Model Context Protocol"
+      ],
+      "anchors_dropped": [],
+      "anchors_absent": [
+        "Anthropic"
+      ],
+      "entity_anchor": {
+        "pre_expanded": "Justin Spahr-Summers는 누구야? (관련: MCP, 08_MCP_(Model_Context_Protocol))",
+        "entity_anchors_added": [
+          "MCP",
+          "08_MCP_(Model_Context_Protocol)"
+        ],
+        "entity_anchor_hit": true,
+        "entity_anchor_latency_ms": 2
+      }
+    },
+    {
+      "id": "nwc-1",
+      "bucket": "name_with_concept",
+      "text": "MCP 설계자 David Soria Parra",
+      "expected_anchors": [
+        "MCP",
+        "Model Context Protocol",
+        "Anthropic"
+      ],
+      "rewritten": "David Soria Parra, MCP 설계자 (Model Context Protocol designer), 관련 (related) 08_MCP (Model Context Protocol), OpenAI, 및 Justin Spahr-Summers",
+      "changed": true,
+      "attempted": true,
+      "latency_ms": 4357,
+      "elapsed_s": 4.37,
+      "anchors_already_present": [
+        "MCP"
+      ],
+      "anchors_added": [
+        "Model Context Protocol"
+      ],
+      "anchors_dropped": [],
+      "anchors_absent": [
+        "Anthropic"
+      ],
+      "entity_anchor": {
+        "pre_expanded": "MCP 설계자 David Soria Parra (관련: 08_MCP_(Model_Context_Protocol), OpenAI, Justin Spahr-Summers)",
+        "entity_anchors_added": [
+          "08_MCP_(Model_Context_Protocol)",
+          "OpenAI",
+          "Justin Spahr-Summers"
+        ],
+        "entity_anchor_hit": true,
+        "entity_anchor_latency_ms": 4
+      }
+    },
+    {
+      "id": "nwc-2",
+      "bucket": "name_with_concept",
+      "text": "Anthropic의 David Soria Parra",
+      "expected_anchors": [
+        "MCP",
+        "Model Context Protocol",
+        "Anthropic"
+      ],
+      "rewritten": "Anthropic의 David Soria Parra와 Model Context Protocol (MCP), Context Engineering (프롬프트 엔지니어링) 관련 연구 및 기술",
+      "changed": true,
+      "attempted": true,
+      "latency_ms": 6511,
+      "elapsed_s": 6.53,
+      "anchors_already_present": [
+        "Anthropic"
+      ],
+      "anchors_added": [
+        "MCP",
+        "Model Context Protocol"
+      ],
+      "anchors_dropped": [],
+      "anchors_absent": [],
+      "entity_anchor": {
+        "pre_expanded": "Anthropic의 David Soria Parra (관련: MCP, 08_MCP_(Model_Context_Protocol), Context Engineering)",
+        "entity_anchors_added": [
+          "MCP",
+          "08_MCP_(Model_Context_Protocol)",
+          "Context Engineering"
+        ],
+        "entity_anchor_hit": true,
+        "entity_anchor_latency_ms": 5
+      }
+    },
+    {
+      "id": "pc-1",
+      "bucket": "pure_concept",
+      "text": "MCP가 뭐야?",
+      "expected_anchors": [
+        "MCP",
+        "Model Context Protocol",
+        "Anthropic"
+      ],
+      "rewritten": "Model Context Protocol (MCP)의 정의, 기능, 그리고 OpenAI 및 David Soria Parra와의 관련성",
+      "changed": true,
+      "attempted": true,
+      "latency_ms": 6462,
+      "elapsed_s": 6.48,
+      "anchors_already_present": [
+        "MCP"
+      ],
+      "anchors_added": [
+        "Model Context Protocol"
+      ],
+      "anchors_dropped": [],
+      "anchors_absent": [
+        "Anthropic"
+      ],
+      "entity_anchor": {
+        "pre_expanded": "MCP가 뭐야? (관련: 08_MCP_(Model_Context_Protocol), OpenAI, David Soria Parra)",
+        "entity_anchors_added": [
+          "08_MCP_(Model_Context_Protocol)",
+          "OpenAI",
+          "David Soria Parra"
+        ],
+        "entity_anchor_hit": true,
+        "entity_anchor_latency_ms": 3
+      }
+    },
+    {
+      "id": "pc-2",
+      "bucket": "pure_concept",
+      "text": "Model Context Protocol 설명",
+      "expected_anchors": [
+        "MCP",
+        "Model Context Protocol",
+        "Anthropic"
+      ],
+      "rewritten": "Model Context Protocol (모델 컨텍스트 프로토콜) 정의 및 개요",
+      "changed": true,
+      "attempted": true,
+      "latency_ms": 5007,
+      "elapsed_s": 5.03,
+      "anchors_already_present": [
+        "Model Context Protocol"
+      ],
+      "anchors_added": [],
+      "anchors_dropped": [],
+      "anchors_absent": [
+        "Anthropic",
+        "MCP"
+      ],
+      "entity_anchor": {
+        "pre_expanded": "Model Context Protocol 설명",
+        "entity_anchors_added": [],
+        "entity_anchor_hit": false,
+        "entity_anchor_latency_ms": 0
+      }
+    },
+    {
+      "id": "mhc-1",
+      "bucket": "multi_hop_control",
+      "text": "팔란티어의 CEO는 누구야?",
+      "expected_anchors": [
+        "Palantir",
+        "Karp",
+        "Alex Karp",
+        "CEO"
+      ],
+      "rewritten": "팔란티어(Palantir)의 최고경영자(CEO)는 누구이며, Alex Karp의 직책과 관련 정보는 무엇인가?",
+      "changed": true,
+      "attempted": true,
+      "latency_ms": 6411,
+      "elapsed_s": 6.43,
+      "anchors_already_present": [
+        "CEO"
+      ],
+      "anchors_added": [
+        "Alex Karp",
+        "Karp",
+        "Palantir"
+      ],
+      "anchors_dropped": [],
+      "anchors_absent": [],
+      "entity_anchor": {
+        "pre_expanded": "팔란티어의 CEO는 누구야? (관련: Alex Karp, 국방부, PLTR_01_Q1_2026_실적분석)",
+        "entity_anchors_added": [
+          "Alex Karp",
+          "국방부",
+          "PLTR_01_Q1_2026_실적분석"
+        ],
+        "entity_anchor_hit": true,
+        "entity_anchor_latency_ms": 2
+      }
+    },
+    {
+      "id": "mhc-2",
+      "bucket": "multi_hop_control",
+      "text": "Anthropic의 창립자는 누구야?",
+      "expected_anchors": [
+        "Anthropic",
+        "Amodei",
+        "founder"
+      ],
+      "rewritten": "Anthropic의 창립자(창업자, 설립자)는 누구이며, Context Engineering(컨텍스트 엔지니어링) 및 Model Context Protocol(MCP) 분야에 대한 정보는 무엇인가?",
+      "changed": true,
+      "attempted": true,
+      "latency_ms": 7984,
+      "elapsed_s": 7.99,
+      "anchors_already_present": [
+        "Anthropic"
+      ],
+      "anchors_added": [],
+      "anchors_dropped": [],
+      "anchors_absent": [
+        "Amodei",
+        "founder"
+      ],
+      "entity_anchor": {
+        "pre_expanded": "Anthropic의 창립자는 누구야? (관련: Context Engineering, 02_컨텍스트_엔지니어링, 08_MCP_(Model_Context_Protocol))",
+        "entity_anchors_added": [
+          "Context Engineering",
+          "02_컨텍스트_엔지니어링",
+          "08_MCP_(Model_Context_Protocol)"
+        ],
+        "entity_anchor_hit": true,
+        "entity_anchor_latency_ms": 2
+      }
+    }
+  ],
+  "summary": {
+    "rows": 9,
+    "attempted": 9,
+    "changed": 9,
+    "anchor_added": 7,
+    "anchor_dropped": 0,
+    "anchor_added_rate": 0.778,
+    "anchor_dropped_rate": 0.0,
+    "outcome_distribution": {
+      "attempted": 9
+    },
+    "by_bucket": {
+      "bare_proper_noun": {
+        "n": 3,
+        "attempted": 3,
+        "changed": 3,
+        "anchor_added": 3,
+        "anchor_dropped": 0,
+        "anchor_added_rate": 1.0,
+        "anchor_dropped_rate": 0.0,
+        "latency_ms_mean": 7924.7
+      },
+      "name_with_concept": {
+        "n": 2,
+        "attempted": 2,
+        "changed": 2,
+        "anchor_added": 2,
+        "anchor_dropped": 0,
+        "anchor_added_rate": 1.0,
+        "anchor_dropped_rate": 0.0,
+        "latency_ms_mean": 5434.0
+      },
+      "pure_concept": {
+        "n": 2,
+        "attempted": 2,
+        "changed": 2,
+        "anchor_added": 1,
+        "anchor_dropped": 0,
+        "anchor_added_rate": 0.5,
+        "anchor_dropped_rate": 0.0,
+        "latency_ms_mean": 5734.5
+      },
+      "multi_hop_control": {
+        "n": 2,
+        "attempted": 2,
+        "changed": 2,
+        "anchor_added": 1,
+        "anchor_dropped": 0,
+        "anchor_added_rate": 0.5,
+        "anchor_dropped_rate": 0.0,
+        "latency_ms_mean": 7197.5
+      }
+    }
+  }
+}
