@@ -75,14 +75,20 @@ class _StubLarge:
 
 @pytest.fixture
 def all_tiers_registered(monkeypatch):
-    """Register small/medium/large stubs. Restore the registry after."""
-    monkeypatch.setenv("JAMES_LLM_MODEL", "legacy_model")
+    """Register small/medium/large stubs. Restore the registry after.
+
+    Sets ``JAMES_LEGACY_BACKEND`` to a registered stub so policy
+    fallback paths return a real registry key (post-2026-05-27 fix —
+    pre-fix this used ``JAMES_LLM_MODEL=legacy_model`` but the router
+    no longer treats model tags as backend IDs)."""
+    monkeypatch.setenv("JAMES_LEGACY_BACKEND", "stub_legacy")
     import core.reasoning.backends as backends_mod
     snapshot = dict(backends_mod._REGISTRY)
     _clear_for_tests()
     register_backend("stub_small", _StubSmall())
     register_backend("stub_medium", _StubMedium())
     register_backend("stub_large", _StubLarge())
+    register_backend("stub_legacy", _StubSmall())  # fallback target
     yield
     backends_mod._REGISTRY.clear()
     backends_mod._REGISTRY.update(snapshot)
@@ -90,11 +96,12 @@ def all_tiers_registered(monkeypatch):
 
 @pytest.fixture
 def only_small_registered(monkeypatch):
-    monkeypatch.setenv("JAMES_LLM_MODEL", "legacy_model")
+    monkeypatch.setenv("JAMES_LEGACY_BACKEND", "stub_legacy")
     import core.reasoning.backends as backends_mod
     snapshot = dict(backends_mod._REGISTRY)
     _clear_for_tests()
     register_backend("stub_small", _StubSmall())
+    register_backend("stub_legacy", _StubSmall())
     yield
     backends_mod._REGISTRY.clear()
     backends_mod._REGISTRY.update(snapshot)
@@ -131,15 +138,16 @@ def test_narrow_scope_at_threshold_exactly(all_tiers_registered):
 
 
 def test_narrow_scope_falls_back_to_legacy_when_no_small(monkeypatch):
-    monkeypatch.setenv("JAMES_LLM_MODEL", "legacy_model")
+    monkeypatch.setenv("JAMES_LEGACY_BACKEND", "stub_legacy")
     import core.reasoning.backends as backends_mod
     snapshot = dict(backends_mod._REGISTRY)
     _clear_for_tests()
     register_backend("stub_large", _StubLarge())
+    register_backend("stub_legacy", _StubSmall())
     try:
         assert _route_policy(
             "synth", "any prompt", "", CAP_LIGHT, evidence_scope=0.10,
-        ) == "legacy_model"
+        ) == "stub_legacy"
     finally:
         backends_mod._REGISTRY.clear()
         backends_mod._REGISTRY.update(snapshot)
@@ -164,12 +172,13 @@ def test_wide_scope_at_threshold_exactly(all_tiers_registered):
 
 
 def test_wide_scope_falls_back_to_medium_when_no_large(monkeypatch):
-    monkeypatch.setenv("JAMES_LLM_MODEL", "legacy_model")
+    monkeypatch.setenv("JAMES_LEGACY_BACKEND", "stub_legacy")
     import core.reasoning.backends as backends_mod
     snapshot = dict(backends_mod._REGISTRY)
     _clear_for_tests()
     register_backend("stub_small", _StubSmall())
     register_backend("stub_medium", _StubMedium())
+    register_backend("stub_legacy", _StubSmall())
     try:
         assert _route_policy(
             "synth", "any prompt", "", CAP_LIGHT, evidence_scope=0.90,
@@ -200,7 +209,7 @@ def test_mid_scope_falls_through_to_budget_light(all_tiers_registered):
     """Mid scope + light budget → legacy (D5.C.1 rule 4 unchanged)."""
     assert _route_policy(
         "synth", "short", "", CAP_LIGHT, evidence_scope=0.50,
-    ) == "legacy_model"
+    ) == "stub_legacy"
 
 
 # ─── scope=None → D5.C.1 unchanged (regression pin) ──────────────
@@ -221,7 +230,7 @@ def test_scope_none_is_byte_identical_to_d5_c1(all_tiers_registered):
     # Rule 4: light / unknown
     assert _route_policy(
         "synth", "p", "", CAP_LIGHT, evidence_scope=None,
-    ) == "legacy_model"
+    ) == "stub_legacy"
 
 
 # ─── verify stage wins over scope (rule 1 priority) ──────────────
@@ -257,12 +266,12 @@ def test_select_backend_accepts_evidence_scope_kwarg():
 
 def test_select_backend_flag_off_ignores_scope(monkeypatch):
     """Flag OFF returns legacy regardless of scope (byte-identical)."""
-    monkeypatch.setenv("JAMES_LLM_MODEL", "gemma4:e4b")
+    monkeypatch.setenv("JAMES_LEGACY_BACKEND", "stub_legacy")
     r = Router(enabled=False)
     for scope in (0.0, 0.1, 0.5, 0.9, 1.0):
         assert r.select_backend(
             "synth", "p", evidence_scope=scope,
-        ) == "gemma4:e4b"
+        ) == "stub_legacy"
 
 
 def test_select_backend_flag_on_uses_scope(all_tiers_registered):
@@ -282,7 +291,7 @@ def test_select_backend_flag_on_uses_scope(all_tiers_registered):
 def test_resolve_backend_accepts_evidence_scope_kwarg(monkeypatch):
     """High-level helper exposes the same surface."""
     monkeypatch.setenv("JAMES_AUTO_ROUTER", "0")
-    monkeypatch.setenv("JAMES_LLM_MODEL", "fallback")
+    monkeypatch.setenv("JAMES_LEGACY_BACKEND", "stub_legacy")
     out = resolve_backend(
         "synth", "p", evidence_scope=0.5, fallback_backend_id="legacy",
     )

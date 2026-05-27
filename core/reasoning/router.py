@@ -49,10 +49,13 @@ ReasoningStage = Literal[
 # grounded in the retrieved context?". Other stages route by budget.
 _GROUNDING_CRITICAL_STAGES: Final[frozenset[str]] = frozenset({"verify"})
 
-# Canonical default when neither JAMES_LLM_MODEL nor the router is
-# configured. Matches the rest of the codebase's implicit fallback
-# (see `core/model_resolver.py`).
-_DEFAULT_BACKEND_ID: Final[str] = "gemma4:e4b"
+# Canonical legacy backend ID. Matches the always-registered
+# `core.reasoning.backends.ollama_local.OllamaLocalBackend` (see
+# `core.reasoning.backends.__init__._autoregister`). This is a
+# **registry key**, NOT a model tag — `JAMES_LLM_MODEL` controls
+# which model the backend asks Ollama for and is passed via
+# `backend.complete(model=...)`, never as a backend ID.
+_DEFAULT_BACKEND_ID: Final[str] = "ollama_local"
 
 _FLAG_ON_VALUES: Final[frozenset[str]] = frozenset({"1", "true", "yes", "on"})
 
@@ -83,14 +86,25 @@ def _auto_router_enabled() -> bool:
 
 
 def _legacy_backend_id() -> str:
-    """Return whatever the rest of the codebase resolves to today.
+    """Return the registry backend ID for the pre-D5 default path.
 
-    Pre-D5, every reasoning call effectively hits `JAMES_LLM_MODEL`
-    (or the codebase default when unset). Returning the same value
-    here is the contract for `enabled=False` and the D5.A stub
-    `enabled=True` branch.
+    The registry's always-auto-registered key is ``"ollama_local"``;
+    that is the canonical legacy. ``JAMES_LEGACY_BACKEND`` env can
+    override (test injection point — pass a stub backend's registered
+    name); empty / unset / unknown → ``_DEFAULT_BACKEND_ID``.
+
+    Pre-2026-05-27 this function read ``JAMES_LLM_MODEL``, treating
+    the value as a backend ID. That was an L0/D5.A oversight:
+    ``JAMES_LLM_MODEL`` is a **model tag** (e.g. ``"gemma4:e4b"``)
+    passed to ``backend.complete(model=...)``, not a registry key.
+    The conflation caused ``get_backend("gemma4:e4b")`` to ``KeyError``
+    on every routing fallback path under ``JAMES_AUTO_ROUTER=1`` when
+    no large/medium-tier backend was registered — the small-tier-only
+    fleet scenario the D5 closure result doc promised would just emit
+    extra audit rows.
     """
-    return os.getenv("JAMES_LLM_MODEL", _DEFAULT_BACKEND_ID) or _DEFAULT_BACKEND_ID
+    requested = os.getenv("JAMES_LEGACY_BACKEND", "").strip()
+    return requested or _DEFAULT_BACKEND_ID
 
 
 def _first_in_tier(tier: str) -> Optional[str]:

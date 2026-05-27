@@ -42,17 +42,32 @@ def test_flag_off_or_invalid_treated_as_off(monkeypatch, value):
 
 
 def test_legacy_backend_uses_env_when_set(monkeypatch):
-    monkeypatch.setenv("JAMES_LLM_MODEL", "gemma3:12b")
-    assert _legacy_backend_id() == "gemma3:12b"
+    """JAMES_LEGACY_BACKEND overrides the default registry key —
+    test-injection point. Production normally leaves this unset."""
+    monkeypatch.setenv("JAMES_LEGACY_BACKEND", "stub_legacy")
+    assert _legacy_backend_id() == "stub_legacy"
 
 
 def test_legacy_backend_falls_back_when_unset(monkeypatch):
-    monkeypatch.delenv("JAMES_LLM_MODEL", raising=False)
+    monkeypatch.delenv("JAMES_LEGACY_BACKEND", raising=False)
     assert _legacy_backend_id() == _DEFAULT_BACKEND_ID
 
 
 def test_legacy_backend_falls_back_when_empty(monkeypatch):
-    monkeypatch.setenv("JAMES_LLM_MODEL", "")
+    monkeypatch.setenv("JAMES_LEGACY_BACKEND", "")
+    assert _legacy_backend_id() == _DEFAULT_BACKEND_ID
+
+
+def test_legacy_backend_ignores_jamesllm_model(monkeypatch):
+    """Regression pin (2026-05-27): JAMES_LLM_MODEL is a model tag
+    (e.g. 'gemma4:e4b'), not a registry backend ID. Pre-fix
+    `_legacy_backend_id` read it and returned the tag, causing
+    get_backend(tag) to KeyError on every router fallback path under
+    JAMES_AUTO_ROUTER=1 with only the small-tier ollama_local
+    registered. Pin: setting JAMES_LLM_MODEL must NOT affect the
+    registry-key resolution."""
+    monkeypatch.setenv("JAMES_LLM_MODEL", "gemma3:12b")
+    monkeypatch.delenv("JAMES_LEGACY_BACKEND", raising=False)
     assert _legacy_backend_id() == _DEFAULT_BACKEND_ID
 
 
@@ -60,18 +75,18 @@ def test_legacy_backend_falls_back_when_empty(monkeypatch):
 
 
 def test_router_flag_off_returns_legacy(monkeypatch):
-    monkeypatch.setenv("JAMES_LLM_MODEL", "gemma4:e4b")
+    monkeypatch.setenv("JAMES_LEGACY_BACKEND", "stub_legacy")
     r = Router(enabled=False)
     assert r.enabled is False
-    assert r.select_backend("query_rewriter", "팔란티어가 뭐야") == "gemma4:e4b"
+    assert r.select_backend("query_rewriter", "팔란티어가 뭐야") == "stub_legacy"
 
 
 def test_router_flag_on_stub_also_returns_legacy(monkeypatch):
     """D5.A stub — flag-on currently returns legacy. D5.C replaces this."""
-    monkeypatch.setenv("JAMES_LLM_MODEL", "gemma4:e4b")
+    monkeypatch.setenv("JAMES_LEGACY_BACKEND", "stub_legacy")
     r = Router(enabled=True)
     assert r.enabled is True
-    assert r.select_backend("query_rewriter", "팔란티어가 뭐야") == "gemma4:e4b"
+    assert r.select_backend("query_rewriter", "팔란티어가 뭐야") == "stub_legacy"
 
 
 def test_router_default_construction_consults_env(monkeypatch):

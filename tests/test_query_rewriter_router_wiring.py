@@ -41,17 +41,22 @@ class _EnvSnapshot(unittest.TestCase):
         "JAMES_ENABLE_QUERY_REWRITE",
         "JAMES_ADAPTIVE_BUDGET",
         "JAMES_AUTO_ROUTER",
-        "JAMES_LLM_MODEL",
+        "JAMES_LEGACY_BACKEND",
     )
 
     def setUp(self):
         self._saved = {k: os.environ.get(k) for k in self._FLAGS}
         # Default test env: rewriter enabled (so wiring actually fires),
-        # D1 + D5 flags both off (caller flips per test).
+        # D1 + D5 flags both off (caller flips per test). The router's
+        # `_legacy_backend_id()` reads JAMES_LEGACY_BACKEND (a registry
+        # key) — pre-2026-05-27 it read JAMES_LLM_MODEL (a model tag),
+        # which caused get_backend() KeyError on the routing fallback
+        # path. Tests use a stub key here; get_backend is patched per
+        # test so no real backend needs to be registered.
         os.environ["JAMES_ENABLE_QUERY_REWRITE"] = "1"
         os.environ.pop("JAMES_ADAPTIVE_BUDGET", None)
         os.environ.pop("JAMES_AUTO_ROUTER", None)
-        os.environ["JAMES_LLM_MODEL"] = "fixture_legacy"
+        os.environ["JAMES_LEGACY_BACKEND"] = "fixture_legacy"
 
     def tearDown(self):
         for k, v in self._saved.items():
@@ -102,10 +107,10 @@ class FlagOffPreservesFallbackTests(_EnvSnapshot):
 
 class FlagOnD1OffRoutesToLegacyTests(_EnvSnapshot):
     """D5 flag ON but D1 flag OFF → budget_signal=None → router policy
-    falls through to its own legacy backend (`JAMES_LLM_MODEL` env).
-    The stage's `self._backend_id` is intentionally overridden because
-    D5 ON means "let the router decide" — stage-level preferences are
-    a D5-OFF concept."""
+    falls through to its own legacy backend (`JAMES_LEGACY_BACKEND` env,
+    a registry key). The stage's `self._backend_id` is intentionally
+    overridden because D5 ON means "let the router decide" — stage-level
+    preferences are a D5-OFF concept."""
 
     def test_d5_on_d1_off_uses_router_legacy_not_self_backend_id(self):
         os.environ["JAMES_AUTO_ROUTER"] = "1"
@@ -122,7 +127,7 @@ class FlagOnD1OffRoutesToLegacyTests(_EnvSnapshot):
             rw.rewrite("이것은 충분히 긴 질의입니다", force=True)
         # D5 flag ON → router policy decides. With budget_signal=None
         # the policy rule 4 (legacy) fires → router returns
-        # `_legacy_backend_id()` = JAMES_LLM_MODEL = "fixture_legacy".
+        # `_legacy_backend_id()` = JAMES_LEGACY_BACKEND = "fixture_legacy".
         # `self._backend_id` ("ollama_local") is intentionally ignored
         # — D5 ON means router is the authority, not the stage.
         get_b.assert_called_with("fixture_legacy")
@@ -211,19 +216,19 @@ class RouterHelpersDirectTests(unittest.TestCase):
 
     def setUp(self):
         self._saved_router = os.environ.get("JAMES_AUTO_ROUTER")
-        self._saved_model = os.environ.get("JAMES_LLM_MODEL")
+        self._saved_legacy = os.environ.get("JAMES_LEGACY_BACKEND")
         os.environ.pop("JAMES_AUTO_ROUTER", None)
-        os.environ["JAMES_LLM_MODEL"] = "fixture_legacy"
+        os.environ["JAMES_LEGACY_BACKEND"] = "fixture_legacy"
 
     def tearDown(self):
         if self._saved_router is None:
             os.environ.pop("JAMES_AUTO_ROUTER", None)
         else:
             os.environ["JAMES_AUTO_ROUTER"] = self._saved_router
-        if self._saved_model is None:
-            os.environ.pop("JAMES_LLM_MODEL", None)
+        if self._saved_legacy is None:
+            os.environ.pop("JAMES_LEGACY_BACKEND", None)
         else:
-            os.environ["JAMES_LLM_MODEL"] = self._saved_model
+            os.environ["JAMES_LEGACY_BACKEND"] = self._saved_legacy
 
     def test_resolve_flag_off_returns_fallback(self):
         from core.reasoning.router import resolve_backend
