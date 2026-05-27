@@ -561,6 +561,112 @@ verification, the L.B policy v1 has complete bench coverage.
   14% narrow ratio doesn't match production expectations — formula
   fix and threshold tuning are orthogonal knobs.
 
+## F3 prep — large-tier wide routing + halt-prone measurement gate (2026-05-27)
+
+Branch: `feat/v0.4-f3-halt-prone-large-tier`. F1/F4/F5 acceptance
+runs all show `backend_counts = {ollama_local: 54-69}` because no
+large/medium-tier backend was registered — the L.B wide-tier rule
+(rule 2, `evidence_scope ≥ 0.70`) fires but falls back to legacy
+because `_first_in_tier("large")` returns empty. F1 reported
+5–7 wide-band decisions per run = 32–63% of synth calls.
+
+F3 prep wires the **operator opt-in** to register the
+`claude_code_cli` large-tier backend at server-spawn time, so the
+wide-tier rule actually reaches a real route target. The backend
+itself landed in D5.B (#476) and the registration helper landed in
+the always-auto-registered backend index — F3 just adds the
+wrapper-side env propagation + an acceptance signal in the
+wrapper's per-run summary.
+
+### What landed
+
+- `scripts/bench_lc_scope_arms.py` gains `--enable-claude` CLI
+  flag. When set, the wrapper injects `JAMES_ENABLE_CLAUDE_BACKEND=1`
+  into the per-arm server env so the registry includes
+  `claude_code_cli` (tier=`large`, provider=`cloud`). Default off —
+  L.D F1/F4/F5 acceptance runs remain byte-identical to their
+  small-tier-only configuration.
+- Per-run summary gains an "F3 large-tier capture rate" block when
+  `--enable-claude` is on. Reports wide-band decisions, count that
+  reached `claude_code_cli`, and the capture ratio (target: ≥ 90%).
+- `tests/test_bench_wrapper_enable_claude.py` (4 tests) pin the
+  flag-toggle ↔ env-propagation invariant + back-compat (default
+  off does NOT inject the env).
+
+### Pre-conditions (operator-side)
+
+- `claude` CLI installed + on PATH (or `JAMES_CLAUDE_CLI_PATH` env)
+- Authenticated — either `ANTHROPIC_API_KEY` env OR
+  `~/.claude` config dir with valid session
+- Same retrieval-mode + JWT bearer infrastructure F1 already added
+
+### F3 acceptance gate
+
+Pre-fix baseline (current L.D F1/F4/F5 runs):
+- backend_counts: `ollama_local: 54+` (single-tier monolith)
+- F1 wide_count: 7 / 11 (Idea 1 acceptance run)
+- F4 wide_count: 5 / 14
+- F5 wide_count: 7 / 14
+
+Post-fix targets (operator runs `--enable-claude`):
+- backend_counts now includes `claude_code_cli` for wide-band
+  decisions
+- **F3 capture ratio: `claude_code_cli` count ≥ 90% of wide_count**
+  (some loss expected for non-grounding wide queries that race a
+  budget rule fallback)
+- No regression on small-tier queries (narrow + mid bands continue
+  to land on `ollama_local`)
+- Per-query elapsed delta — large-tier queries may take longer
+  (cloud roundtrip vs local Ollama); wrapper's 2400s subprocess
+  timeout already absorbed this for the 16-query × 2-arm run
+
+### Operator workflow
+
+```powershell
+# 1. Verify claude CLI is on PATH + authenticated
+claude --version
+$env:ANTHROPIC_API_KEY = "..."   # or rely on ~/.claude config
+
+# 2. Run wrapper with the new flag — both arms spawn server with
+#    JAMES_ENABLE_CLAUDE_BACKEND=1 + JAMES_AUTO_ROUTER=1 (forced)
+python scripts/bench_lc_scope_arms.py --enable-claude
+
+# 3. Inspect the new "F3 large-tier capture rate" summary block
+#    + per-row reason:route audit (audit_log SELECT ...
+#    WHERE answer LIKE '%backend=claude_code_cli%')
+```
+
+### Halt-prone (`done_reason=length`) follow-up
+
+The L.D handover §"STEP 7 bench plan" lists "halt-prone arm" as
+the 4th measurement axis — done_reason=length rate reduction when
+wide-scope routes to large tier. F3 prep does NOT measure that
+axis directly; the `claude_code_cli` backend's
+`CompletionResult.done_reason` is empty (the CLI doesn't surface
+a truncation signal). Two follow-ups split out:
+
+- **F3a** — instrument the backend wrapper to detect output
+  truncation heuristically (e.g. `len(output) ≥ max_tokens` or
+  `len(output) == _MAX_OUTPUT_BYTES`) and emit
+  `done_reason="length"` so the existing audit infra picks it up.
+- **F3b** — operator-run baseline of done_reason=length rate on
+  small-tier ollama_local vs large-tier claude_code_cli for the
+  same prompts. Surface in wrapper summary.
+
+Carried as separate cycles — F3 prep ships the registration plumbing
++ capture-rate gate; halt-prone instrumentation is independent
+infra work.
+
+### What this PR does NOT do
+
+- **No model download / API spend** — `--enable-claude` is operator
+  opt-in; PR default off.
+- **No production change** — `core/reasoning/backends/__init__.py`
+  already gated the `claude_code_cli` registration on
+  `JAMES_ENABLE_CLAUDE_BACKEND` since D5.B; PR uses that gate.
+- **No live acceptance numbers** — follow-up commit lands them
+  after the operator runs the workflow.
+
 ## BL-9 prep — embedding swap runner + acceptance gate (2026-05-27)
 
 Branch: `feat/v0.4-bl9-embedding-swap-prep`. F7 (PR #533) confirmed

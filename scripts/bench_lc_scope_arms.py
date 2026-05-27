@@ -153,6 +153,15 @@ SERVER_HEALTHZ = SERVER_BASE_URL.rstrip("/") + "/healthz"
 SERVER_BOOT_TIMEOUT_SEC = int(os.environ.get("JAMES_SERVER_BOOT_TIMEOUT", "120"))
 
 
+# F3 (2026-05-27) — module-level toggle set from --enable-claude CLI
+# flag in main(). When True, _run_arm injects JAMES_ENABLE_CLAUDE_BACKEND=1
+# into the per-arm server env so the large-tier ``claude_code_cli``
+# backend registers + becomes a valid route target for the L.B wide-tier
+# rule. Default False keeps the small-tier-only fleet behavior the L.D
+# F1/F4/F5 acceptance runs documented.
+_ENABLE_CLAUDE_LARGE_TIER: bool = False
+
+
 def _port_in_use(host: str, port: int) -> bool:
     import socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -290,11 +299,19 @@ def _run_arm(arm_name: str, scope_routing: str) -> Optional[Path]:
     server_env = os.environ.copy()
     server_env["JAMES_SCOPE_ROUTING"] = scope_routing
     server_env["JAMES_AUTO_ROUTER"] = "1"
+    # F3 (2026-05-27) — optional large-tier registration. When set, the
+    # backend registry includes claude_code_cli (tier="large"), making
+    # the L.B "wide→large" rule reach a real backend instead of falling
+    # back to ollama_local. Operator must have `claude` CLI installed +
+    # authenticated (ANTHROPIC_API_KEY or ~/.claude config).
+    if _ENABLE_CLAUDE_LARGE_TIER:
+        server_env["JAMES_ENABLE_CLAUDE_BACKEND"] = "1"
 
+    extra = " JAMES_ENABLE_CLAUDE_BACKEND=1" if _ENABLE_CLAUDE_LARGE_TIER else ""
     print(
         f"\n=== ARM: {arm_name} "
         f"(JAMES_SCOPE_ROUTING={scope_routing}, "
-        f"JAMES_AUTO_ROUTER=1) ==="
+        f"JAMES_AUTO_ROUTER=1{extra}) ==="
     )
     server = _spawn_server(server_env)
     if server is None:
@@ -483,7 +500,24 @@ def main() -> int:
         "--off-path", type=Path, default=None,
         help="Reuse a prior bench.py output JSON for the flag-OFF arm.",
     )
+    ap.add_argument(
+        "--enable-claude", action="store_true",
+        help=(
+            "F3 (2026-05-27) — register the claude_code_cli large-tier "
+            "backend on both arms so the L.B wide-tier rule has a real "
+            "route target. Requires `claude` CLI installed + "
+            "ANTHROPIC_API_KEY (or ~/.claude config). Pre-fix (default): "
+            "wide-tier decisions fall back to ollama_local. With this "
+            "flag: wide-tier decisions route to claude_code_cli; the "
+            "F3 acceptance gate is backend_counts['claude_code_cli'] > 0."
+        ),
+    )
     args = ap.parse_args()
+
+    # F3 — propagate the CLI flag into the module-level toggle that
+    # `_run_arm` reads to derive per-server env.
+    global _ENABLE_CLAUDE_LARGE_TIER
+    _ENABLE_CLAUDE_LARGE_TIER = bool(args.enable_claude)
 
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -568,6 +602,24 @@ def main() -> int:
         print("\n=== Backend selection counts (flag-ON) ===")
         for b, c in sorted(agg["backend_counts"].items()):
             print(f"  {b}: {c}")
+        # F3 acceptance signal — when --enable-claude was set, large-tier
+        # decisions should reach claude_code_cli instead of falling back
+        # to ollama_local. Wide-tier decisions are the ones that matter
+        # for the "JAMES wiki naturally wide-skewed" finding (F1).
+        if _ENABLE_CLAUDE_LARGE_TIER:
+            wide = (agg.get("scope_summary") or {}).get("wide_count", 0)
+            large = agg["backend_counts"].get("claude_code_cli", 0)
+            print(
+                f"\n=== F3 large-tier capture rate ===\n"
+                f"  wide-band routing decisions: {wide}\n"
+                f"  reached claude_code_cli:    {large}\n"
+                f"  capture ratio:              "
+                f"{(large / wide * 100):.1f}% (target: >= 90%)"
+                if wide > 0 else
+                "\n=== F3 large-tier capture rate ===\n"
+                "  wide-band routing decisions: 0 (no wide-tier signal "
+                "this run — F3 acceptance inconclusive)"
+            )
 
     print("\n=== Per-query elapsed delta ===")
     for d in agg["deltas"]:
