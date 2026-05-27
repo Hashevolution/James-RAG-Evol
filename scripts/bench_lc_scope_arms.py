@@ -43,6 +43,28 @@ legacy at ``Router(enabled=False)`` without consulting
 and audit_log would capture zero scope decisions even with the
 server-spawn fix above.
 
+## Mode dependency — ``--mode=retrieval`` forced on bench.py
+
+step7 RAG-style queries (id 1-10) get classified as ``chat`` by the
+production IntentClassifier (verified across 40+ historical step7
+runs — distribution always ``{'chat': 10, '': 2, 'meta': 1}``).
+``chat`` mode bypasses ``run_retrieval_pipeline`` entirely, so the
+L.C ``compute_scope`` + ``scope_context(...)`` binding never fires
+and audit captures only ``reason=fallback`` rows with no
+``evidence_scope`` payload.
+
+This wrapper passes ``--mode=retrieval`` to ``bench.py``, which
+populates the ``mode_override`` field on ``/query/`` (already wired
+since item #6 / chat-page mode picker). ``ROLE_ALLOWED["external"]``
+includes ``"retrieval"`` so the API-key role used by bench passes
+the role-allowed gate. Result: step7 queries flow through the
+retrieval pipeline → L.C scope binds → audit rows carry
+``evidence_scope=X.XXXX effective_k=… …`` payload → wrapper's
+``scope_summary`` aggregate is non-empty.
+
+See ``feedback_bench_step7_chat_mode_passthrough`` in memory for
+the full structural analysis.
+
 This version forces ``JAMES_AUTO_ROUTER=1`` on BOTH the OFF and ON
 arms, so the comparison is:
 
@@ -218,6 +240,31 @@ def _shutdown_server(proc: subprocess.Popen) -> None:
     time.sleep(2.0)
 
 
+def _mint_employee_jwt() -> Optional[str]:
+    """Mint a short-lived employee-role JWT for the bench subprocess.
+
+    Retrieval mode requires the ``query.internal_rag`` feature, which
+    the default policy grants to ``admin / manager / employee`` only.
+    The bench's ``api_key`` alone resolves to ``external`` (per
+    ``server_llmwiki.get_role_from_request``'s default-deny fallback),
+    so without this elevation ``mode_override="retrieval"`` is silently
+    routed back to ``handle_chat`` by the engine's internal_rag gate
+    and L.C ``scope_context`` never binds.
+
+    Returns the JWT string, or None if minting fails (caller falls
+    back to api_key-only auth and surfaces the chat-mode passthrough
+    issue in audit_log — same as pre-fix behavior).
+    """
+    try:
+        from core.auth import create_token
+        return create_token("bench-runner", "employee")
+    except Exception as e:
+        print(f"[server] JWT mint failed ({type(e).__name__}: {e}) — "
+              f"falling back to api_key-only auth (mode_override may "
+              f"silently fall through to handle_chat)")
+        return None
+
+
 def _run_arm(arm_name: str, scope_routing: str) -> Optional[Path]:
     """Run one bench arm with the given JAMES_SCOPE_ROUTING value.
 
@@ -257,9 +304,22 @@ def _run_arm(arm_name: str, scope_routing: str) -> Optional[Path]:
         pre_existing = set((ROOT / "reports").glob("bench_*_step7_*.json"))
         t0 = time.time()
         try:
+            # --mode=retrieval forces step7 RAG queries into
+            # run_retrieval_pipeline so the L.C scope_context binding
+            # actually fires — without this, IntentClassifier routes
+            # all 10 RAG queries to chat mode and scope_compute never
+            # runs (see `feedback_bench_step7_chat_mode_passthrough`).
+            # JWT bearer elevates the request to employee role so the
+            # engine's `query.internal_rag` gate doesn't kick the
+            # retrieval-mode request back to handle_chat.
+            bench_env = {**os.environ, "JAMES_BASE_URL": SERVER_BASE_URL}
+            bearer = _mint_employee_jwt()
+            if bearer:
+                bench_env["JAMES_BENCH_BEARER"] = bearer
             result = subprocess.run(
-                [sys.executable, str(ROOT / "scripts" / "bench.py"), "--suite=step7"],
-                env={**os.environ, "JAMES_BASE_URL": SERVER_BASE_URL},
+                [sys.executable, str(ROOT / "scripts" / "bench.py"),
+                 "--suite=step7", "--mode=retrieval"],
+                env=bench_env,
                 cwd=str(ROOT),
                 capture_output=False,
                 check=False,

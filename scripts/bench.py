@@ -96,18 +96,44 @@ def _load_baseline(name: str) -> Optional[Dict]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _run_one(api_key: str, q: Dict, endpoint: str, timeout: int) -> Dict:
+def _run_one(
+    api_key: str, q: Dict, endpoint: str, timeout: int,
+    default_mode: Optional[str] = None,
+) -> Dict:
     """Run a single query against the live server. Returns the row dict that
-    bench reports operate on."""
+    bench reports operate on.
+
+    ``default_mode``: server-side ``mode_override`` value to apply when the
+    suite or per-query entry doesn't pin one. Precedence:
+    ``q["mode"] > default_mode > omit field``. Passing a value bypasses
+    the server's IntentClassifier and forces routing to that mode (e.g.
+    ``"retrieval"`` for L.D evidence-scope measurement which would
+    otherwise hit chat-mode passthrough). See
+    ``feedback_bench_step7_chat_mode_passthrough`` for context.
+    """
     t0 = time.time()
+    body: Dict = {
+        "question":   q["text"],
+        "api_key":    api_key,
+        "session_id": f"bench_step7_{q['id']}",
+    }
+    mode_override = q.get("mode") or default_mode
+    if mode_override:
+        body["mode_override"] = mode_override
+    headers = {}
+    bearer = os.environ.get("JAMES_BENCH_BEARER", "").strip()
+    if bearer:
+        # JWT bearer for role-elevated bench runs (e.g. retrieval mode
+        # requires employee+ since external is policy-blocked from
+        # `query.internal_rag` → falls back to handle_chat regardless
+        # of mode_override). Mint via `core.auth.create_token(name,
+        # role)` in the wrapper; never commit a real token.
+        headers["Authorization"] = f"Bearer {bearer}"
     try:
         r = requests.post(
             f"{BASE_URL}{endpoint}",
-            json={
-                "question":   q["text"],
-                "api_key":    api_key,
-                "session_id": f"bench_step7_{q['id']}",
-            },
+            json=body,
+            headers=headers,
             timeout=timeout,
         )
         elapsed = time.time() - t0
@@ -240,20 +266,34 @@ def main() -> int:
                     help="compare against committed baseline; exit 1 on regression")
     ap.add_argument("--update-baseline", action="store_true",
                     help="DESTRUCTIVE: rewrite baseline from this run (use only on intentional scope change PRs)")
+    ap.add_argument(
+        "--mode", default=None,
+        help=(
+            "server-side mode_override applied to every query that doesn't "
+            "declare its own `mode` field. Bypasses the IntentClassifier "
+            "(e.g. --mode=retrieval forces RAG path for L.D evidence-scope "
+            "measurement which otherwise hits chat-mode passthrough). "
+            "Precedence: per-query `mode` > --mode > suite `default_mode` > omit."
+        ),
+    )
     args = ap.parse_args()
 
     suite = _load_suite(args.suite)
     queries = suite.get("queries", [])
     endpoint = (suite.get("endpoint") or {}).get("url", "/query/")
     timeout  = int((suite.get("endpoint") or {}).get("timeout", 120))
+    effective_default_mode = args.mode or suite.get("default_mode")
 
     api_key = _load_api_key()
     print(f"=== bench {args.suite} ({len(queries)} queries) ===\n")
+    if effective_default_mode:
+        print(f"[bench] mode_override default: {effective_default_mode!r} "
+              f"(per-query `mode` field still wins)\n")
 
     results: List[Dict] = []
     t_total = time.time()
     for q in queries:
-        res = _run_one(api_key, q, endpoint, timeout)
+        res = _run_one(api_key, q, endpoint, timeout, effective_default_mode)
         results.append(res)
         _print_row(res, len(queries))
     total = round(time.time() - t_total, 1)
