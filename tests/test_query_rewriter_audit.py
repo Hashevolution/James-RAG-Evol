@@ -43,6 +43,7 @@ import importlib.util
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -302,6 +303,131 @@ class BucketSummaryTests(unittest.TestCase):
 
     def test_empty_input_returns_empty(self):
         self.assertEqual(audit_mod._bucket_summary([]), {})
+
+
+class EntityAnchorPreExpandTests(unittest.TestCase):
+    """F9.2 — the audit script's `--with-entity-anchor` arm wiring."""
+
+    def test_pre_expand_records_hit_and_anchors(self):
+        with patch(
+            "core.retrieval.entity_anchor_expander.get_entity_anchor_expander"
+        ) as mock_get:
+            mock_get.return_value.expand.return_value = (
+                "David Soria Parra가 누구야? (관련: MCP)",
+                ["MCP"],
+                True,
+            )
+            out = audit_mod._entity_anchor_pre_expand("David Soria Parra가 누구야?")
+
+        self.assertTrue(out["entity_anchor_hit"])
+        self.assertEqual(out["entity_anchors_added"], ["MCP"])
+        self.assertIn("(관련: MCP)", out["pre_expanded"])
+        self.assertIn("entity_anchor_latency_ms", out)
+
+    def test_pre_expand_no_hit_returns_original(self):
+        with patch(
+            "core.retrieval.entity_anchor_expander.get_entity_anchor_expander"
+        ) as mock_get:
+            mock_get.return_value.expand.return_value = ("foo bar", [], False)
+            out = audit_mod._entity_anchor_pre_expand("foo bar")
+
+        self.assertFalse(out["entity_anchor_hit"])
+        self.assertEqual(out["entity_anchors_added"], [])
+        self.assertEqual(out["pre_expanded"], "foo bar")
+
+    def test_pre_expand_exception_returns_original_no_op(self):
+        """Expander raising must NOT abort the audit row — fall back
+        to the original query and surface the error string for the
+        operator to inspect."""
+        with patch(
+            "core.retrieval.entity_anchor_expander.get_entity_anchor_expander"
+        ) as mock_get:
+            mock_get.return_value.expand.side_effect = RuntimeError("xyz")
+            out = audit_mod._entity_anchor_pre_expand("anything")
+
+        self.assertFalse(out["entity_anchor_hit"])
+        self.assertEqual(out["pre_expanded"], "anything")
+        self.assertIn("entity_anchor_error", out)
+        self.assertIn("RuntimeError", out["entity_anchor_error"])
+
+
+class AuditOneWithEntityAnchorTests(unittest.TestCase):
+    """``_audit_one(with_entity_anchor=True)`` — wiring between the
+    entity anchor pre-step and the LLM rewriter."""
+
+    FIXTURE_ROW = {
+        "id":               "test-1",
+        "bucket":           "bare_proper_noun",
+        "text":             "David Soria Parra가 누구야?",
+        "expected_anchors": ["MCP", "Anthropic"],
+    }
+
+    def test_default_arm_skips_entity_pre_expand(self):
+        """Without ``with_entity_anchor=True`` the audit row must
+        carry NO ``entity_anchor`` key — the F9.1 baseline shape is
+        preserved exactly."""
+        with patch("core.retrieval.query_rewriter.QueryRewriter") as mock_cls:
+            mock_cls.return_value.rewrite.return_value = (
+                "David Soria Parra가 누구야?", 100, True,
+            )
+            row = audit_mod._audit_one(self.FIXTURE_ROW)
+
+        self.assertNotIn("entity_anchor", row)
+
+    def test_with_anchor_arm_feeds_expanded_to_rewriter(self):
+        """The LLM rewriter must receive the expander's output, not
+        the original query. The audit row carries the anchor outcome
+        comparing original → final rewrite."""
+        with patch(
+            "core.retrieval.entity_anchor_expander.get_entity_anchor_expander"
+        ) as mock_exp, patch(
+            "core.retrieval.query_rewriter.QueryRewriter"
+        ) as mock_rw_cls:
+            expanded = "David Soria Parra가 누구야? (관련: MCP)"
+            mock_exp.return_value.expand.return_value = (expanded, ["MCP"], True)
+            # The rewriter echoes back the expanded form unchanged
+            # — simulates "LLM had nothing to add over the anchor".
+            mock_rw_cls.return_value.rewrite.return_value = (expanded, 200, True)
+
+            row = audit_mod._audit_one(self.FIXTURE_ROW, with_entity_anchor=True)
+
+        # rewriter was called with the EXPANDED query, not the
+        # original — the wiring contract.
+        rw_call_args, _ = mock_rw_cls.return_value.rewrite.call_args
+        self.assertEqual(rw_call_args[0], expanded)
+        # anchor outcome compares original vs final: MCP is now in
+        # the final, NOT in the original → counted as added.
+        self.assertIn("MCP", row["anchors_added"])
+        # entity_anchor sub-block carries the pre-step attribution
+        self.assertIn("entity_anchor", row)
+        self.assertEqual(row["entity_anchor"]["entity_anchors_added"], ["MCP"])
+        self.assertTrue(row["entity_anchor"]["entity_anchor_hit"])
+
+    def test_with_anchor_arm_no_hit_falls_through(self):
+        """When the expander finds nothing, the LLM rewriter still
+        runs on the original query — F9.2 is purely additive."""
+        with patch(
+            "core.retrieval.entity_anchor_expander.get_entity_anchor_expander"
+        ) as mock_exp, patch(
+            "core.retrieval.query_rewriter.QueryRewriter"
+        ) as mock_rw_cls:
+            mock_exp.return_value.expand.return_value = (
+                "Foobar Baz?", [], False,
+            )
+            mock_rw_cls.return_value.rewrite.return_value = (
+                "Foobar Baz? rewrite", 150, True,
+            )
+
+            unknown_row = {
+                "id": "test-unknown", "bucket": "bare_proper_noun",
+                "text": "Foobar Baz?", "expected_anchors": ["MCP"],
+            }
+            row = audit_mod._audit_one(unknown_row, with_entity_anchor=True)
+
+        rw_call_args, _ = mock_rw_cls.return_value.rewrite.call_args
+        self.assertEqual(rw_call_args[0], "Foobar Baz?",
+                         "no-hit case must pass ORIGINAL query to rewriter")
+        self.assertFalse(row["entity_anchor"]["entity_anchor_hit"])
 
 
 if __name__ == "__main__":
