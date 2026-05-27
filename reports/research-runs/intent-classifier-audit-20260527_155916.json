@@ -1,0 +1,165 @@
+{
+  "generated_at": "2026-05-27T15:59:16.359103",
+  "suite": "step7",
+  "results": [
+    {
+      "id": 1,
+      "category": "retrieve",
+      "text": "RAG가 무엇인가?",
+      "expected": "retrieval",
+      "got": "retrieval",
+      "method": "llm",
+      "agree": true,
+      "elapsed": 6.45
+    },
+    {
+      "id": 2,
+      "category": "retrieve",
+      "text": "Anthropic은 어떤 회사인가?",
+      "expected": "retrieval",
+      "got": "retrieval",
+      "method": "llm",
+      "agree": true,
+      "elapsed": 0.29
+    },
+    {
+      "id": 3,
+      "category": "relation",
+      "text": "Anthropic과 Claude의 관계를 설명해줘",
+      "expected": "retrieval",
+      "got": "retrieval",
+      "method": "llm",
+      "agree": true,
+      "elapsed": 0.26
+    },
+    {
+      "id": 4,
+      "category": "relation",
+      "text": "BlackRock과 비트코인 ETF는 무슨 연관이 있어?",
+      "expected": "retrieval",
+      "got": "retrieval",
+      "method": "llm",
+      "agree": true,
+      "elapsed": 0.25
+    },
+    {
+      "id": 5,
+      "category": "multi-hop",
+      "text": "RAG에서 발전된 최신 기법(Graph RAG, Agentic RAG, CodeRAG 등)을 설명해줘",
+      "expected": "retrieval",
+      "got": "retrieval",
+      "method": "llm",
+      "agree": true,
+      "elapsed": 0.26
+    },
+    {
+      "id": 6,
+      "category": "multi-hop",
+      "text": "BTC ETF를 출시한 회사들을 알려줘",
+      "expected": "retrieval",
+      "got": "retrieval",
+      "method": "llm",
+      "agree": true,
+      "elapsed": 0.28
+    },
+    {
+      "id": 7,
+      "category": "compare",
+      "text": "RAG와 Graph RAG의 차이는?",
+      "expected": "retrieval",
+      "got": "retrieval",
+      "method": "llm",
+      "agree": true,
+      "elapsed": 0.25
+    },
+    {
+      "id": 8,
+      "category": "dedup",
+      "text": "BTC와 비트코인은 같은 것인가?",
+      "expected": "retrieval",
+      "got": "retrieval",
+      "method": "llm",
+      "agree": true,
+      "elapsed": 0.25
+    },
+    {
+      "id": 9,
+      "category": "lang-mix",
+      "text": "What is RAG?",
+      "expected": "retrieval",
+      "got": "retrieval",
+      "method": "llm",
+      "agree": true,
+      "elapsed": 0.26
+    },
+    {
+      "id": 10,
+      "category": "negative",
+      "text": "OpenAI의 최신 모델 전략은?",
+      "expected": "retrieval",
+      "got": "retrieval",
+      "method": "llm",
+      "agree": true,
+      "elapsed": 0.27
+    },
+    {
+      "id": 13,
+      "category": "meta",
+      "text": "내부에 어떤 자료가 있어? wiki 목록 보여줘",
+      "expected": "meta",
+      "got": "meta",
+      "method": "fast",
+      "agree": true,
+      "elapsed": 0.0
+    },
+    {
+      "id": 14,
+      "category": "narrow",
+      "text": "GPT-6 모델은 언제 공식 발표됐어?",
+      "expected": "retrieval",
+      "got": "retrieval",
+      "method": "llm",
+      "agree": true,
+      "elapsed": 0.26
+    },
+    {
+      "id": 15,
+      "category": "narrow",
+      "text": "David Soria Parra가 누구야?",
+      "expected": "retrieval",
+      "got": "retrieval",
+      "method": "llm",
+      "agree": true,
+      "elapsed": 0.25
+    },
+    {
+      "id": 16,
+      "category": "narrow",
+      "text": "기준 금리 인하 결정은 언제 있었어?",
+      "expected": "retrieval",
+      "got": "retrieval",
+      "method": "llm",
+      "agree": true,
+      "elapsed": 0.29
+    }
+  ],
+  "summary": {
+    "suite": "step7",
+    "queries_audited": 14,
+    "queries_classified": 14,
+    "agreements": 14,
+    "overall_accuracy": 1.0,
+    "method_distribution": {
+      "llm": 13,
+      "fast": 1
+    },
+    "confusion_by_expected": {
+      "retrieval": {
+        "retrieval": 13
+      },
+      "meta": {
+        "meta": 1
+      }
+    }
+  }
+}

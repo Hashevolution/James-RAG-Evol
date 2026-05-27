@@ -461,11 +461,18 @@ verification, the L.B policy v1 has complete bench coverage.
 
 **Remaining followups** (Sprint 6+):
 - F3 — halt-prone large-tier measurement (requires `JAMES_ENABLE_CLAUDE_BACKEND=1`)
-- F2 — IntentClassifier audit (production baseline truthfulness); now
-  bundled with the q15 entity-extraction stochasticity finding from
-  Idea 1
-- Idea 1 ✅ landed (Path Recall, this branch). Faithfulness metric +
-  larger expected_path coverage carried separately.
+- F2 ✅ landed (this branch). Audit script lives in
+  `scripts/research/intent_classifier_audit.py` as a regression canary.
+  Classifier needed no production change; chat-mode passthrough
+  reattributed to the `query.internal_rag` policy gate (F1 mitigation
+  pattern unchanged).
+- Idea 1 ✅ landed (Path Recall). Faithfulness metric + larger
+  expected_path coverage carried separately.
+- (NEW) **F6** — q15 entity-extraction stochasticity. Idea 1 found the
+  same query non-deterministically miss/hit the "David Soria Parra → MCP"
+  path. Likely LLM entity extraction or chroma rerank variance, not
+  classifier or policy gate. Needs a separate per-query repeat-run
+  diagnostic.
 
 ## What this closure does NOT claim
 
@@ -548,6 +555,70 @@ verification, the L.B policy v1 has complete bench coverage.
   v3 suite). Operator can still adjust the threshold later if the
   14% narrow ratio doesn't match production expectations — formula
   fix and threshold tuning are orthogonal knobs.
+
+## F2 follow-up — IntentClassifier audit (2026-05-27)
+
+Branch: `feat/v0.4-f2-intent-classifier-audit`. Built
+`scripts/research/intent_classifier_audit.py` — runs each step7
+query through the production `core.intent_classifier.classify_intent`
+(no server needed, direct Ollama-backed call), compares the returned
+mode against the suite's design-time expected mode, reports per-query
+agreement + summary stats.
+
+`reports/research-runs/intent-classifier-audit-20260527_155916.json`
+
+### Audit result — classifier is fine, prior attribution was wrong
+
+| Metric | Value |
+|---|---|
+| Queries audited | 14 (q11/q12 security skipped — pre-check blocks before classify) |
+| Agreements | **14 / 14 = 100%** |
+| Method distribution | 13 llm + 1 fast (q13 meta-pattern match) |
+| Per-query LLM classify latency | 0.25–0.29s |
+| Confusion | `retrieval → retrieval: 13`, `meta → meta: 1` |
+
+### Reattribution — chat-mode passthrough root cause was NOT the classifier
+
+L.D F1 closure (PR #527) attributed the "step7 always shows
+`mode=chat`" pattern to the IntentClassifier (carried in
+`feedback_bench_step7_chat_mode_passthrough` memory at the time).
+This audit refutes that. The actual chain:
+
+1. `bench.py` sends only `api_key` → `server_llmwiki.get_role_from_request`
+   default-deny fallback → role = **external**
+2. `IntentClassifier.classify_intent` correctly returns `"retrieval"`
+   for step7 RAG queries (verified — 13/13 above)
+3. `core.reasoning.engine._query_impl` lines 274–284 evaluates
+   `_policy_engine.can_use_feature("external", "query.internal_rag")`
+   — denied by default (catalog allows `admin/manager/employee` only;
+   PR-O5 #292 intentionally added this gate for unauthenticated
+   users)
+4. Engine returns `handle_chat(...)` regardless of the classifier's
+   `retrieval` decision
+5. Response's `mode: "chat"` reflects step 4, not step 2
+
+F1's JWT bearer pattern (`core.auth.create_token("bench-runner",
+"employee")` → `Authorization: Bearer …` header) elevates the role
+past the policy gate. This is why F1's acceptance run showed
+retrieval mode firing end-to-end (graph_paths 7–52, scope_summary
+populated). The fix was always in F1; the F2 attribution to the
+classifier was wrong, but the F1 mitigation pattern still applies.
+
+### F2 verdict — no production code change needed
+
+The classifier prompt + fast-pattern catalog don't need tuning.
+The audit script stays in `scripts/research/` as a regression
+canary — re-run after any future IntentClassifier change (`prompt`
+edit, new mode added, fast-pattern extension) to confirm step7
+expected-mode agreement remains 100%.
+
+### Lesson cost-of-diagnosis
+
+Without this audit, the next session might have spent days
+re-tuning a perfectly-working classifier. Measurement before
+hypothesis. Captured in
+`feedback_intent_classifier_audit_clean` memory + the
+`feedback_bench_step7_chat_mode_passthrough` correction.
 
 ## Collaborator interaction
 
