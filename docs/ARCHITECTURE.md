@@ -703,6 +703,63 @@ before the cognitive middleware is built would invert priorities. The
 brief's "12 containers per VPS" pattern is an *operations topology*, not
 an architecture; it sits on top of JAMES, not inside it.
 
+### 5.7.10 Quality Verification Track (QVT, v0.4, 2026-05-28)
+
+The §5.7.4 bench gate measures **cost** (latency, token count, graph
+fan-out). The QVT subsystem measures **marginal quality contribution**
+of each routing / caching / rewriting layer — the question "should
+this layer be ON?" was structurally unanswerable through v0.3 because
+`grounded` and `RAGAS` were saturated (1.0 ceiling) and
+`answer_relevancy` sat in the noise band. v0.4 adds three orthogonal
+non-saturating axes:
+
+| axis | source | what it catches |
+|---|---|---|
+| **Path Coverage** | `bench.py`'s `path_metrics` block (v4 added Idea-1 path-GT to 5 fixture queries; v5 keeps all 5) | retrieval / extraction regressions on relation queries (q15 zero-recall surfaced this) |
+| **Graded Answer Accuracy** | per-query 3 atomic `gold_signals` (term + aliases) matched as case-insensitive substring against the answer | over-shortening or topic drift even when path is correct |
+| **Calibrated Abstention F1** | `abstention_truth` (`present` / `absent`) compared with whether the answer triggered an abstention phrase | hallucination on no-evidence queries; over-cautious refusal on present-evidence queries |
+
+The oracle (`eval/qvt/oracle.py`) is deterministic — no LLM judge,
+no embedding lookups, just substring + path-set matching — so it is
+audit-replay safe by construction (consistent with the Replayable
+RAG positioning in §1). The canonical baseline (`eval/qvt/baseline_<sha>.json`,
+captured via `scripts/qvt_capture_baseline.py` with N=3 paired
+reruns) freezes the v0.4.0 production environment numbers. Every
+subsequent PR that touches `core/retrieval/` / `core/graph/` /
+`core/reasoning/` pastes a 3-axis Quality Delta Card paired against
+this baseline (CLAUDE.md rule 2, extended by α-4).
+
+**Trust zone**: same as §5.7.2 (Cognitive Middleware Layer) — the
+oracle reads bench JSON + fixture, produces JSON. It does NOT
+authorize anything, does NOT mutate state, does NOT have a network
+surface. Its only invariant is that the same `(bench_json, fixture)`
+input produces byte-identical output across runs.
+
+**What this subsystem is not**:
+- Not a judge / not an evaluator with semantic understanding — the
+  matcher is deterministic substring. Paraphrased / negated /
+  quantitative-approximate matches are scored low. LLM-judge
+  augmentation is a v0.5+ candidate after the deterministic floor
+  stabilizes.
+- Not a routing decision-maker. The v0.4-end ablation matrix
+  (`eval/qvt/baseline_<sha>.json` runs across all 6 routing combos ×
+  3 model tiers = 18 cells) produces evidence; the routing policy
+  decision that consumes that evidence is a separate PR (α-5).
+- Not a domain-pack metric. Path Coverage / Graded Answer /
+  Abstention F1 are platform-wide; domain packs at v1.0+ will layer
+  their own axes (legal: citation-validity, food: allergen-safety,
+  retail: SKU-resolution) without replacing the platform floor.
+
+**Subsystem files**:
+- `eval/qvt/oracle.py` — 3-axis scorers + `score_three_axis()` entry
+- `eval/qvt/baseline_<sha>.json` — canonical reference (one per
+  intentional baseline-environment change; never silently overwrite)
+- `scripts/qvt_capture_baseline.py` — operator wrapper (N=3 paired
+  reruns + noise band)
+- `eval/regression/step7_queries.json` v5 — fixture with
+  `gold_signals` + `abstention_truth` (PR #551)
+- `docs/design/v0.4-qvt-alpha-non-saturating-oracle.md` — full design
+
 ---
 
 ## 6. Data Lifecycle (W7-A, 2026-05-11)

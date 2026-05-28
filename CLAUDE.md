@@ -31,8 +31,24 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
    "no parallel domains" rule and what it forbids.
 
 2. **Every PR touching `core/retrieval`, `core/graph`, or
-   `core/reasoning` must paste bench numbers** in the description
-   (Axis 2 of v0.2 ROADMAP). PRs without numbers will not land.
+   `core/reasoning` must paste bench numbers + a Quality Delta
+   Card** in the description (Axis 2 of v0.2 ROADMAP, extended by
+   QVT α-4 2026-05-28). PRs without numbers will not land.
+   - **Bench numbers**: STEP 7 result deltas (`scripts/bench.py
+     --suite=step7 --mode=retrieval`) — latency, graph_paths,
+     answer_len.
+   - **Quality Delta Card**: 3-axis paired comparison against
+     `eval/qvt/baseline_<sha>.json` (Path Recall / Graded Answer /
+     Abstention F1). Template lives in `.github/PULL_REQUEST_TEMPLATE.md`.
+   - **Exemption labels** (skip the Quality Delta Card with one line
+     `Quality delta: exempt (label: <name>)`): `external-contributor`
+     (Robin / Ali / other collaborator PR), `joint-collab-prep`
+     (mid-June joint piece / shared deliverable), `docs` / `chore` /
+     `ci` (not touching `core/`), `code` (circular — the PR is the
+     oracle / baseline itself). Rationale: the gate is for measuring
+     JAMES-internal marginal contribution, not a collaboration
+     friction tool. See `docs/design/v0.4-qvt-alpha-non-saturating-oracle.md`
+     §4 for the full exemption rule.
 
 3. **Self-evolution is opt-in only**. Any change that allows
    auto-deploy without an `approver_username` in the audit log
