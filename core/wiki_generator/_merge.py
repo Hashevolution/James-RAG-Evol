@@ -13,12 +13,16 @@ composes the mixins onto ``WikiGenerator``.
 """
 from __future__ import annotations
 
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import yaml
 
+from core.lifecycle.ingest_contradiction import (
+    dispatch_contradictions_for_merge,
+)
 from core.relations_schema import (
     EXTRACT_SOURCE_ROLE,
     INVERSE_SOURCE_ROLE,
@@ -133,6 +137,33 @@ class WikiMergeMixin:
 
         sources_appended = 0
         relations_added  = 0
+
+        # T2.D-2 — opt-in contradiction dispatch pre-merge hook.
+        # JAMES_T2D_INGEST_DISPATCH=1 enables the v0.4.1 contradiction
+        # arbiter on (head, predicate) matches between new_relations
+        # and existing_rels. Default OFF preserves byte-identical
+        # legacy behavior. B_supersede + ignore paths handled in-line;
+        # A_invalidate is logged + deferred to T2.D-2.b (cascade race
+        # with the in-memory entity edit is the open problem). The
+        # dispatcher mutates existing_rels in place for B_supersede
+        # (new edge appended via supersede_edge contract) and returns
+        # a filtered new_relations list for the regular merge loop.
+        if os.environ.get("JAMES_T2D_INGEST_DISPATCH") == "1":
+            try:
+                new_relations, _dispatch_log = dispatch_contradictions_for_merge(
+                    list(new_relations),
+                    existing_rels,
+                    ingest_doc_id=doc_id,
+                    ingest_ts=ts,
+                )
+            except Exception as e:
+                # Defensive — never let the dispatch hook crash the
+                # merge. Fall back to legacy behavior; the operator
+                # sees the exception via the audit_log audit emitter
+                # configured at boot, or via stdout.
+                print(f"[t2d-ingest] dispatch hook crashed, "
+                      f"falling back to legacy merge: "
+                      f"{type(e).__name__}: {e}")
 
         for new_rel in new_relations:
             if not isinstance(new_rel, dict):
