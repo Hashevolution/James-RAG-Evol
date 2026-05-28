@@ -19,7 +19,6 @@ Run:
 """
 from __future__ import annotations
 
-import inspect
 import os
 import sqlite3
 import sys
@@ -38,8 +37,9 @@ class EndpointSourceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         import server_llmwiki as srv
+        from tests._server_split_helpers import combined_server_source
         cls.srv = srv
-        cls.src = inspect.getsource(srv)
+        cls.src = combined_server_source()
 
     def test_route_registered(self):
         self.assertIn('@app.get("/admin/uploads/history/"', self.src,
