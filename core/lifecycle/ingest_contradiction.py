@@ -1,11 +1,18 @@
-"""v0.4.1 PR-T2.D-2 — ingestion-path contradiction dispatch.
+"""v0.4.1 PR-T2.D-2 + T2.D-2.b — ingestion-path contradiction dispatch.
 
 Wires the v0.4.0 contradiction infrastructure
 (``classify_contradiction`` + ``supersede_edge``) into the
 ``core/wiki_generator/_merge.py`` merge loop. Pre-merge hook: before
 new relations are sources-appended, identify contradiction candidates
-via PR-T2.D-1's detector, run the classifier, and apply the
-no-file-I/O branches in-line.
+via PR-T2.D-1's detector, run the classifier, and apply the resulting
+label.
+
+T2.D-2.b extends T2.D-2 with proper A_invalidate handling via the
+``PendingCascade`` deferred-execution pattern — the dispatcher
+records cascade requests but doesn't execute them; the caller
+(``_merge.py``) applies them AFTER writing back the entity it had
+loaded in memory. This sidesteps the write-after-read race that
+T2.D-2 dropped A_invalidate over.
 
 ## Trigger policy LOCK — B (적극)
 
@@ -14,13 +21,13 @@ Per v0.4.1 entry memo §2 + this session's added LOCK. Any
 contradiction candidate; the classifier (already deterministic
 v0.4.0 #541) decides A_invalidate / B_supersede / ignore.
 
-## Scope split — three labels handled differently
+## Scope — three labels handled differently
 
-| label | how this PR handles it | rationale |
+| label | how the dispatcher handles it | rationale |
 |---|---|---|
 | ``B_supersede`` | call ``supersede_edge`` in-line → ``new_edge`` appended to ``existing_rels``, ``old_edge`` mutated in place. new_rel filtered out. | pure function, no file I/O, race-free |
 | ``ignore`` | drop ``new_rel`` from the merge output | the classifier already said "duplicate"; nothing to do |
-| ``A_invalidate`` | **deferred to T2.D-2.b** — this PR logs only. ``new_rel`` is dropped (cascade would handle the bad source). | ``route_a_invalidate`` calls ``cascade_remove_doc_from_sources`` which mutates entity files while ``_merge.py`` has the same files open in memory → write-after-read race. T2.D-2.b restructures the merge flow to handle this safely. |
+| ``A_invalidate`` | record a ``PendingCascade`` for the lowest-weight non-manual source on existing_rel + **keep new_rel** so the regular merge loop appends it as a fresh edge. Caller runs the cascade post-write via ``apply_pending_cascades``. | ``cascade_remove_doc_from_sources`` mutates entity files; deferring until AFTER ``_merge.py`` writes prevents the write-after-read race. |
 
 ## Flag-gated
 
@@ -50,9 +57,12 @@ not import the audit bridge directly.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+from core.cascade._delete import cascade_remove_doc_from_sources
 from core.lifecycle.contradiction_arbiter import (
     classify_contradiction,
 )
@@ -64,6 +74,19 @@ from core.lifecycle.supersede_chain import supersede_edge
 
 
 AuditEmit = Callable[[Dict[str, Any]], None]
+
+
+@dataclass
+class PendingCascade:
+    """A cascade request captured during dispatch but not yet executed.
+
+    The caller (``_merge.py``) runs ``apply_pending_cascades`` after
+    writing back the entity it had loaded in memory, so the cascade's
+    file mutations don't race with the merge's pending write.
+    """
+    bad_doc_id: str
+    pattern: str         # "different_tail" | "divergent_validity"
+    audit_payload: Dict[str, Any] = field(default_factory=dict)
 
 
 def _noop_audit(_payload: Dict[str, Any]) -> None:
@@ -131,17 +154,23 @@ def dispatch_contradictions_for_merge(
             ``ignored``). Defaults to no-op.
 
     Returns:
-        ``(rels_to_merge, dispatch_log)``:
-          - ``rels_to_merge``: ``new_rels`` with contradicting ones
-            filtered out. The caller's regular sources-append path
-            handles whatever remains.
+        ``(rels_to_merge, dispatch_log, pending_cascades)``:
+          - ``rels_to_merge``: ``new_rels`` with B_supersede/ignore
+            cases filtered out. A_invalidate cases stay so the regular
+            sources-append path adds the new rel as a fresh edge
+            (cascade runs after the write removes the wrong source).
           - ``dispatch_log``: per-decision audit entries
             (``new_rel``, ``existing_rel``, ``pattern``, ``label``,
-            ``action``). Useful for tests + future ``audit_log`` mirroring.
+            ``action``). Useful for tests + ``audit_log`` mirroring.
+          - ``pending_cascades``: deferred ``PendingCascade`` requests
+            the caller MUST execute (via ``apply_pending_cascades``)
+            after writing back its in-memory entity state — otherwise
+            A_invalidate decisions are silently dropped.
     """
     emit = audit_emit or _noop_audit
     rels_to_merge: List[Dict[str, Any]] = []
     dispatch_log: List[Dict[str, Any]] = []
+    pending_cascades: List[PendingCascade] = []
 
     now_dt = _parse_iso(ingest_ts) or datetime.now(timezone.utc)
 
@@ -196,19 +225,45 @@ def dispatch_contradictions_for_merge(
             })
 
         elif label == "A_invalidate":
-            # T2.D-2.b territory — cascade_remove is deferred so
-            # _merge.py doesn't race with cascade on the same entity
-            # file. This PR logs the decision; the new_rel is
-            # dropped on the assumption that the deferred cascade
-            # would have invalidated the conflicting source.
-            log_entry["action"] = "a_invalidate_logged_deferred"
-            emit({
-                "endpoint":      "lifecycle:ingest_contradiction",
-                "role":          "system",
-                "mutation_type": "invalidated_deferred",
-                "pattern":       pattern,
-                "note":          "cascade_remove deferred to T2.D-2.b",
-            })
+            # T2.D-2.b — collect a PendingCascade for the lowest-weight
+            # non-manual source on existing_rel + KEEP new_rel in
+            # rels_to_merge. The regular merge loop appends new_rel
+            # as a fresh edge; the caller runs the cascade
+            # post-write so it doesn't race with the in-memory
+            # entity edit.
+            bad_doc_id = _pick_cascade_target(existing_rel)
+            if bad_doc_id is None:
+                # No cascadeable source on existing_rel — keep new_rel
+                # and log as no-op. Defensive: an edge with no usable
+                # source shouldn't have made it to dispatch, but if
+                # it did we don't manufacture an invalid cascade.
+                log_entry["action"] = "a_invalidate_no_cascade_target"
+                rels_to_merge.append(new_rel)
+                emit({
+                    "endpoint":      "lifecycle:ingest_contradiction",
+                    "role":          "system",
+                    "mutation_type": "invalidated_skipped",
+                    "pattern":       pattern,
+                    "note":          "existing_rel has no cascadeable source",
+                })
+            else:
+                audit_payload = {
+                    "endpoint":      "lifecycle:ingest_contradiction",
+                    "role":          "system",
+                    "mutation_type": "invalidated",
+                    "pattern":       pattern,
+                    "bad_doc_id":    bad_doc_id,
+                    "old_edge_id":   existing_rel.get("id"),
+                }
+                pending_cascades.append(PendingCascade(
+                    bad_doc_id=bad_doc_id,
+                    pattern=pattern,
+                    audit_payload=audit_payload,
+                ))
+                rels_to_merge.append(new_rel)
+                log_entry["action"] = "a_invalidate_cascade_pending"
+                log_entry["bad_doc_id"] = bad_doc_id
+                emit(audit_payload)
 
         else:
             # Defensive — classifier returned a label we don't
@@ -218,10 +273,92 @@ def dispatch_contradictions_for_merge(
 
         dispatch_log.append(log_entry)
 
-    return rels_to_merge, dispatch_log
+    return rels_to_merge, dispatch_log, pending_cascades
+
+
+def _pick_cascade_target(existing_rel: Dict[str, Any]) -> Optional[str]:
+    """Pick the doc_id whose source should be cascaded out of the
+    existing edge. Conservative heuristic: lowest-weight non-manual
+    source. Returns ``None`` if no eligible source.
+
+    Manual sources are NEVER returned — ``cascade_remove_doc_from_sources``
+    preserves them by design (manual role = operator-curated, immune
+    from cascade), and picking one as the cascade target would be a
+    no-op that hides the actual cascade miss.
+    """
+    sources = existing_rel.get("sources") if isinstance(existing_rel, dict) else None
+    if not isinstance(sources, list) or not sources:
+        return None
+    eligible: List[Tuple[float, str]] = []
+    for s in sources:
+        if not isinstance(s, dict):
+            continue
+        doc_id = s.get("doc_id")
+        role = s.get("role")
+        if not isinstance(doc_id, str) or not doc_id:
+            continue
+        if role == "manual":
+            continue
+        weight = s.get("weight")
+        weight_f = float(weight) if isinstance(weight, (int, float)) else 0.0
+        eligible.append((weight_f, doc_id))
+    if not eligible:
+        return None
+    eligible.sort(key=lambda x: x[0])
+    return eligible[0][1]
+
+
+def apply_pending_cascades(
+    pending_cascades: List[PendingCascade],
+    entity_root: Union[Path, str],
+    *,
+    audit_emit: Optional[AuditEmit] = None,
+) -> List[Dict[str, Any]]:
+    """Execute the cascade requests captured by
+    ``dispatch_contradictions_for_merge`` against the wiki on disk.
+
+    Call AFTER the caller writes back any in-memory entity state.
+    Otherwise the cascade can race with the pending write (T2.D-2's
+    original bug).
+
+    Args:
+        pending_cascades: list from ``dispatch_contradictions_for_merge``.
+        entity_root: directory whose ``rglob("*.md")`` is the wiki's
+            entity file set (typically ``wiki/entity/prod/`` or
+            equivalent). Each cascade removes ``bad_doc_id`` from
+            every entity file under this root.
+        audit_emit: optional callback for emitting post-cascade
+            audit rows (one per cascade), enriched with the
+            ``cascade_remove`` counts dict.
+
+    Returns:
+        list of per-cascade result dicts, each ``{"bad_doc_id": …,
+        "counts": {entities_scanned, entities_touched,
+        relations_recomputed, relations_dropped}}``. Empty list
+        when no cascades were pending.
+    """
+    if not pending_cascades:
+        return []
+    emit = audit_emit or _noop_audit
+    root = Path(entity_root)
+    results: List[Dict[str, Any]] = []
+    for pc in pending_cascades:
+        counts = cascade_remove_doc_from_sources(pc.bad_doc_id, root)
+        results.append({
+            "bad_doc_id": pc.bad_doc_id,
+            "counts":     counts,
+        })
+        payload = dict(pc.audit_payload)
+        payload["cascade_counts"] = counts
+        payload.setdefault("mutation_type", "invalidated")
+        payload["mutation_type"] = "invalidated_applied"
+        emit(payload)
+    return results
 
 
 __all__ = [
     "AuditEmit",
+    "PendingCascade",
+    "apply_pending_cascades",
     "dispatch_contradictions_for_merge",
 ]
