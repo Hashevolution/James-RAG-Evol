@@ -81,19 +81,34 @@ class AuditListEndpointTests(unittest.TestCase):
     def setUp(self):
         if not self._api_key:
             self.skipTest("JAMES_API_KEY missing")
-        # Replace the audit DB the module reads. The path is captured
-        # at import time as a module-level constant.
+        # Replace the audit DB the module reads. `_AUDIT_DB` is captured
+        # at import time as a module-level constant — patch all the
+        # downstream bindings (server + routes/_helpers + routes/admin)
+        # since the v0.4.x server-split moved /admin/audit/list to
+        # routes/admin.py with its own snapshot.
         import server_llmwiki as srv
+        import routes._helpers as _h
+        import routes.admin as _a
         self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self._tmp.close()
         self.db = self._tmp.name
-        self._saved = srv._AUDIT_DB
+        self._saved = {
+            "srv":     srv._AUDIT_DB,
+            "helpers": _h._AUDIT_DB,
+            "admin":   _a._AUDIT_DB,
+        }
         srv._AUDIT_DB = self.db
+        _h._AUDIT_DB = self.db
+        _a._AUDIT_DB = self.db
         _seed_audit_db(self.db, self._fixture())
 
     def tearDown(self):
         import server_llmwiki as srv
-        srv._AUDIT_DB = self._saved
+        import routes._helpers as _h
+        import routes.admin as _a
+        srv._AUDIT_DB = self._saved["srv"]
+        _h._AUDIT_DB = self._saved["helpers"]
+        _a._AUDIT_DB = self._saved["admin"]
         Path(self.db).unlink(missing_ok=True)
 
     def _fixture(self) -> list[dict]:

@@ -25,7 +25,6 @@ Run:
 """
 from __future__ import annotations
 
-import inspect
 import json
 import os
 import re
@@ -173,8 +172,8 @@ class AdminEndpointTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import server_llmwiki as srv
-        cls.src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        cls.src = combined_server_source()
 
     def test_get_endpoint_registered(self):
         self.assertIn('@app.get("/admin/web-search-config/"', self.src,

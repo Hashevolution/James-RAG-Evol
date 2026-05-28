@@ -39,7 +39,6 @@ Run:
 """
 from __future__ import annotations
 
-import inspect
 import os
 import sys
 import tempfile
@@ -57,8 +56,9 @@ class EndpointSourceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         import server_llmwiki as srv
+        from tests._server_split_helpers import combined_server_source
         cls.srv = srv
-        cls.src = inspect.getsource(srv)
+        cls.src = combined_server_source()
 
     def _endpoint_body(self, route_pattern: str) -> str:
         idx = self.src.index(route_pattern)

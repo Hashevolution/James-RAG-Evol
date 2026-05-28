@@ -264,9 +264,8 @@ class AdminMetricsEndpointTests(unittest.TestCase):
         return TestClient(srv.app)
 
     def test_route_registered_and_admin_gated(self):
-        import server_llmwiki as srv
-        import inspect
-        src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        src = combined_server_source()
         self.assertIn('@app.get("/admin/metrics"', src)
         self.assertIn("from core.trace_metrics import aggregate_metrics", src)
         idx = src.index('@app.get("/admin/metrics"')
