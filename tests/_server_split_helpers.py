@@ -28,8 +28,8 @@ def combined_server_source() -> str:
     import server_llmwiki  # noqa: F401  — surfaces import errors clearly
     parts: list[str] = [inspect.getsource(server_llmwiki)]
 
-    # Probe known routes/* modules. Add new ones here as PR-E..PR-H land.
-    for mod_name in ("routes.auth", "routes.llm", "routes.jobs", "routes.artifacts"):
+    # Probe known routes/* modules. Add new ones here as PR-F..PR-H land.
+    for mod_name in ("routes.auth", "routes.llm", "routes.jobs", "routes.artifacts", "routes.evolution"):
         try:
             mod = importlib.import_module(mod_name)
             parts.append(

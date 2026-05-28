@@ -167,9 +167,8 @@ class EndpointGateContractTests(unittest.TestCase):
     """
 
     def test_endpoint_imports_and_checks_evolution_flag(self):
-        import server_llmwiki as srv
-        import inspect
-        src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        src = combined_server_source()
         # Imports the flag from config.
         self.assertIn("from config import EVOLUTION_ENABLED, APPROVER_ROLE", src,
                       "/admin/patch/approve must read EVOLUTION_ENABLED + APPROVER_ROLE")
