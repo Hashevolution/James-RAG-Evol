@@ -86,16 +86,34 @@ class CodeSurfaceSqliteTests(unittest.TestCase):
         if not self._api_key:
             self.skipTest("JAMES_API_KEY missing")
         import server_llmwiki as srv
+        import routes._helpers as _h
+        import routes.coding as _c
         self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self._tmp.close()
         self.db = self._tmp.name
-        self._saved_db = srv._AUDIT_DB
+        # /code/surface/ handler moved to routes/coding.py in v0.4.x
+        # PR-F (server-split). It imports `_AUDIT_DB` from
+        # routes/_helpers at module-load time — so the snapshot lives
+        # in THREE places now (server_llmwiki, routes/_helpers,
+        # routes/coding). Patch all three so the handler resolves to
+        # our temp DB regardless of which binding it reads.
+        self._saved = {
+            "srv":     srv._AUDIT_DB,
+            "helpers": _h._AUDIT_DB,
+            "coding":  _c._AUDIT_DB,
+        }
         srv._AUDIT_DB = self.db
+        _h._AUDIT_DB = self.db
+        _c._AUDIT_DB = self.db
         _seed(self.db, self._fixture())
 
     def tearDown(self):
         import server_llmwiki as srv
-        srv._AUDIT_DB = self._saved_db
+        import routes._helpers as _h
+        import routes.coding as _c
+        srv._AUDIT_DB = self._saved["srv"]
+        _h._AUDIT_DB = self._saved["helpers"]
+        _c._AUDIT_DB = self._saved["coding"]
         Path(self.db).unlink(missing_ok=True)
 
     def _fixture(self) -> list[dict]:
@@ -237,11 +255,19 @@ class CodeSurfaceEmptyDbTests(unittest.TestCase):
         if not self._api_key:
             self.skipTest("JAMES_API_KEY missing")
         import server_llmwiki as srv
+        import routes._helpers as _h
+        import routes.coding as _c
         self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self._tmp.close()
         self.db = self._tmp.name
-        self._saved_db = srv._AUDIT_DB
+        self._saved = {
+            "srv":     srv._AUDIT_DB,
+            "helpers": _h._AUDIT_DB,
+            "coding":  _c._AUDIT_DB,
+        }
         srv._AUDIT_DB = self.db
+        _h._AUDIT_DB = self.db
+        _c._AUDIT_DB = self.db
         conn = sqlite3.connect(self.db)
         conn.execute(_SCHEMA)
         conn.commit()
@@ -249,7 +275,11 @@ class CodeSurfaceEmptyDbTests(unittest.TestCase):
 
     def tearDown(self):
         import server_llmwiki as srv
-        srv._AUDIT_DB = self._saved_db
+        import routes._helpers as _h
+        import routes.coding as _c
+        srv._AUDIT_DB = self._saved["srv"]
+        _h._AUDIT_DB = self._saved["helpers"]
+        _c._AUDIT_DB = self._saved["coding"]
         Path(self.db).unlink(missing_ok=True)
 
     def test_empty_db_returns_zero_counts(self):
