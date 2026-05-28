@@ -21,6 +21,7 @@ from typing import Dict, List, Optional
 import yaml
 
 from core.lifecycle.ingest_contradiction import (
+    apply_pending_cascades,
     dispatch_contradictions_for_merge,
 )
 from core.relations_schema import (
@@ -138,23 +139,26 @@ class WikiMergeMixin:
         sources_appended = 0
         relations_added  = 0
 
-        # T2.D-2 — opt-in contradiction dispatch pre-merge hook.
+        # T2.D-2 + T2.D-2.b — opt-in contradiction dispatch pre-merge hook.
         # JAMES_T2D_INGEST_DISPATCH=1 enables the v0.4.1 contradiction
         # arbiter on (head, predicate) matches between new_relations
         # and existing_rels. Default OFF preserves byte-identical
         # legacy behavior. B_supersede + ignore paths handled in-line;
-        # A_invalidate is logged + deferred to T2.D-2.b (cascade race
-        # with the in-memory entity edit is the open problem). The
-        # dispatcher mutates existing_rels in place for B_supersede
-        # (new edge appended via supersede_edge contract) and returns
-        # a filtered new_relations list for the regular merge loop.
+        # A_invalidate captured as pending_cascades for post-write
+        # execution (see below). The dispatcher mutates existing_rels
+        # in place for B_supersede (new edge appended via supersede_edge
+        # contract) and returns a filtered new_relations list for the
+        # regular merge loop.
+        pending_cascades: list = []
         if os.environ.get("JAMES_T2D_INGEST_DISPATCH") == "1":
             try:
-                new_relations, _dispatch_log = dispatch_contradictions_for_merge(
-                    list(new_relations),
-                    existing_rels,
-                    ingest_doc_id=doc_id,
-                    ingest_ts=ts,
+                new_relations, _dispatch_log, pending_cascades = (
+                    dispatch_contradictions_for_merge(
+                        list(new_relations),
+                        existing_rels,
+                        ingest_doc_id=doc_id,
+                        ingest_ts=ts,
+                    )
                 )
             except Exception as e:
                 # Defensive — never let the dispatch hook crash the
@@ -164,6 +168,7 @@ class WikiMergeMixin:
                 print(f"[t2d-ingest] dispatch hook crashed, "
                       f"falling back to legacy merge: "
                       f"{type(e).__name__}: {e}")
+                pending_cascades = []
 
         for new_rel in new_relations:
             if not isinstance(new_rel, dict):
@@ -246,6 +251,20 @@ class WikiMergeMixin:
             + body
         )
         Path(path).write_text(new_text, encoding="utf-8")
+
+        # T2.D-2.b — execute pending_cascades AFTER write_text so the
+        # cascade's file mutations don't race with this entity's
+        # pending write. The cascade may further modify this entity's
+        # file (removing the bad source); that's a separate read-then-
+        # write inside cascade_remove_doc_from_sources and is safe
+        # because the merge write has already committed.
+        if pending_cascades:
+            try:
+                entity_root = self.wiki_base_path / "entity" / self.source_type
+                apply_pending_cascades(pending_cascades, entity_root)
+            except Exception as e:
+                print(f"[t2d-ingest] post-write cascade crashed; merge "
+                      f"already committed: {type(e).__name__}: {e}")
 
         return {
             "merged_into":      1,

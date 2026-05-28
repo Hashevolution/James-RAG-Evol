@@ -121,7 +121,7 @@ class BSupersedeAcceptanceTests(unittest.TestCase):
             valid_from="2026-06-01T00:00:00Z",
         )
 
-        rels_to_merge, log = dispatch_contradictions_for_merge(
+        rels_to_merge, log, _pending = dispatch_contradictions_for_merge(
             [new_rel], self.existing_rels,
             ingest_doc_id="press_release_2026_q2",
             ingest_ts="2026-06-01T00:00:00Z",
