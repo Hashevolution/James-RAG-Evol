@@ -1,7 +1,7 @@
 {
-  "title": "PROJECT JAMES — v0.4.0 (Layer 4 Lifecycle Semantics first bundle — T1 Temporal Validity + T7 Supersede Chain + T2 Contradiction Arbitration; CASCADE/EVENT separation provable)",
-  "description": "JAMES is a local-first, auditable knowledge reasoning system. v0.4.0 is the v0.4 cycle's final tag, shipping the Layer 4 Lifecycle Semantics first bundle (T1 Temporal Validity + T7 Supersede Chain + T2 Contradiction Arbitration) as a release-gated 8-PR sequence executed in a single Sprint 5 session. The CASCADE vs EVENT separation invariant the v0.4 cycle was retargeted around is now provable end-to-end via tests/test_t7_release_gating_invariants.py (5 tests run against the actual wiki fixture, not mocks). Inherits v0.4.0-alpha.3 (10.5281/zenodo.20391100): LEO Evidence-Scope Routing track + Sprint 4 embedding prep + CI / module hygiene.\n\nSprint 5 Layer 4 first bundle (8 PRs per docs/handovers/v0.4.0-sprint5-layer4-first-bundle-entry.md):\n- #524 PR-0 — schema validators + clock helper. core/lifecycle/schema.py (~9 KB) + core/lifecycle/clock.py (~2 KB) + core/relations_schema.py re-export. Field vocabulary: source-level valid_from/valid_until, edge-level validity/status/mutation_type. clock.now() is the single monkeypatch point for the entire EVENT/TEMPORAL track. 51 contract tests.\n- #525 PR-T1.A — schema migration script. scripts/migrate_v04_lifecycle.py. --dry-run default + --apply writes back via tempfile + os.replace (no half-written frontmatter). Pre-write snapshot to wiki.pre-v04-migration/. --verify mode. Idempotent at the byte level after the first apply. 18 contract tests.\n- #538 PR-T1.B — expiration cascade + runner. core/lifecycle/expiration_cascade.py (~15.5 KB) + scripts/run_expiration_cascade.py. Marks mutation_type=expired + status.active=False on every edge whose ALL non-malformed sources have reached valid_until. Does NOT delete (CASCADE concern, separated by design). Manual immunity via edge.manual_immune opt-out. 16 contract tests including the 4 entry-memo invariants.\n- #539 PR-T7.A — supersede chain ops (T7 EVENT primitive). core/lifecycle/supersede_chain.py (~13.8 KB) — 3 pure functions: supersede_edge(old, new_fact, ts) (DOES NOT call cascade_remove), walk_supersede_chain (cycle-safe, max-length-capped, dangling-pointer-tolerant), reconstruct_view_at (replay primitive, skips mutation_type=invalidated). 15 contract tests including 3 entry-memo invariants.\n- #540 PR-T7.B — release-gating invariants suite. tests/test_t7_release_gating_invariants.py (5 tests) + tests/fixtures/lifecycle/ (curated 3-entity wiki). Three release-gating invariants: test_supersede_does_not_trigger_cascade (defense-in-depth — patches both core.cascade.cascade_remove_doc_from_sources + the underlying _delete.* entry point), test_cascade_preserves_supersede_chain (real CASCADE against the fixture; chain links byte-identical post-CASCADE), test_historical_replay_via_chain (end-to-end: CASCADE → supersede_edge → reconstruct_view_at at 3 times → correct chain link). Run against the actual wiki fixture, not mocks.\n- #541 PR-T2.A — A/B contradiction classifier. core/lifecycle/contradiction_arbiter.py (~10.2 KB). Single deterministic function classify_contradiction(old_edge, new_fact, *, now) → Literal['A_invalidate','B_supersede','ignore']. 4-rule decision tree (first match wins): rule 1 B_supersede when world changed, rule 2 A_invalidate when higher-confidence retroactive correction, rule 3 ignore when duplicate inside window with no confidence delta, rule 4 B_supersede default for edge cases (safer than CASCADE). LLM-free by design — the Mem0 differentiator (Mem0 routes via LLM-judge; JAMES routes via this deterministic rule tree). 17 contract tests including 12 parametrized branch cases.\n- #542 PR-T2.B — A-path contradiction routing wire. core/lifecycle/contradiction_router.py (~8.5 KB initial). route_a_invalidate(bad_doc_id, entity_root, *, audit_emit) runs the existing cascade_remove_doc_from_sources unchanged + emits a mutation_type=invalidated audit row. dispatch_contradiction(old_edge, new_fact, ...) is the full A/B dispatcher (B-path raised NotImplementedError at this PR — wired in PR-T2.C). 13 contract tests.\n- #543 PR-T2.C — B-path supersede wiring + final A/B dispatch. Extends contradiction_router.py (~11.3 KB) with route_b_supersede(old_edge, new_fact, supersede_ts, *, audit_emit) calling supersede_edge from PR-T7.A. Audit row carries old_edge_id + new_edge_id + superseded_by + superseded_at so the T7 replay primitive sees the chain. 19 router tests total including end-to-end test_supersede_chain_replayable_after_dispatch.\n- #544 PR-T7.C — Sprint 5 closure docs + v0.4.0 release prep (this deposit). ROADMAP.md v0.4.0 marked closed with the Done-when checklist all green. .zenodo.json + CHANGELOG entry + README.md Status badge bumped to v0.4.0. docs/release_notes_v0.4.0.md.\n\nLEO L.D measurement-substrate (10 cycles, PR #526~#536) hardened the bench substrate against the alpha.3-shipped LEO Evidence-Scope routing track. F1 (retrieval-mode bench + JWT bearer) + F4 (narrow-scope fixture + L.B threshold floor finding) + F5 (k=0 floor fix in evidence_scope.py) + Idea 1 (Path Recall ground truth with expected_path.nodes) + F2 (IntentClassifier audit refuting earlier attribution) + F6 (q15 repeat-run audit refuting stochasticity) + F7 (chroma top-k probe surfacing MiniLM proper-noun weakness) + BL-9 acceptance run (partial — bge-m3 swap active, q15 fix reattributed to query-expansion layer, F9 spawned). #537 QVT handover (docs/handovers/v0.4-quality-verification-track.md) formalises the meta-frame: cost is rigorously measured (V3' protocol cross-validated through Robin's 26b matrix work) but quality is assumed; the Sprint 5 8-PR sequence is the QVT step-3 PR-gate first installment.\n\nDefault-off invariant preserved across every opt-in flag added in this cycle (JAMES_SCOPE_ROUTING / JAMES_AUTO_ROUTER / JAMES_ADAPTIVE_BUDGET / JAMES_EMBEDDING_MODEL / JAMES_ENABLE_CLAUDE_BACKEND). Production fleets pulling v0.4.0 see byte-identical retrieval behaviour relative to v0.4.0-alpha.3 unless they opt into one of the flags.\n\nVerification: Sprint 5 lifecycle suite 123+ tests all green; router + scope suite 187 tests + 77 stage-D1 wiring tests all green; bench / harness contracts 31 tests all green; 5 live wrapper acceptance runs preserved as audit trail under reports/research-runs/.\n\nWhat v0.4.0 does NOT do: no ingestion-path caller for dispatch_contradiction (carried into v0.4.1 with the canonical CEO-change STEP 7 bench); no production BL-9 embedding swap default flip (waits on F9 query-expansion fix); no T3/T4/T5/T6 (those land at v0.4.1/v0.4.2/v0.4.3).",
-  "version": "v0.4.0",
+  "title": "PROJECT JAMES — v0.4.1 (T6 Causality Chain — CASCADE extension for derived facts; per-derivation-type foundational-vs-corroborative semantics; QVT α track full closure)",
+  "description": "JAMES is a local-first, auditable knowledge reasoning system. v0.4.1 ships the T6 Causality Chain — the CASCADE extension that closes the pillar v0.4.0 only half-finished. When cascade_remove_doc_from_sources empties a base fact's sources, edges whose derived_from references that base now auto-invalidate via invalidate_derived_facts. Per-derivation-type foundational-vs-corroborative semantics (T6.C.b refinement): transitive / inferred are hard deps (any base empty → invalidate); operator is corroborative (only invalidates when no hard deps AND all operator bases empty). Plus the v0.4.0 carry-over dispatch_contradiction wiring (T2.D-1/2/2.b/3) lands as flag-gated default-OFF, and the QVT α track ships end-to-end (3-axis non-saturating oracle + canonical baseline_2a31b20.json + PR-gate template + ARCHITECTURE.md §5.7.10).\n\nT6 5-PR sequence:\n- #562 PR-T6.A — derived_from schema + cycle validator (Decision 3 LOCK rejects self-referential derivations at write time) + idempotent migration script (scripts/migrate_v041_lifecycle.py, --dry-run/--apply/--verify, pre-write snapshot). 23 contract tests.\n- #563 PR-T6.B — derivation extraction. core/lifecycle/derivation.py extract_derivation_chain(new_rel, *, context_edges_by_id, llm_provider, enable_llm). Operator-tagged path validates + cycle-checks. LLM-inferred path default OFF via JAMES_T6_LLM_DERIVATION; provider is caller-supplied (module never imports an LLM client). 14 tests.\n- #564 PR-T6.C — invalidate_derived_facts cascade. core/lifecycle/causality.py soft-invalidates (status.active=False + mutation_type=invalidated, sources preserved → edge survives for T7 replay). Atomic per-file writes. 19 tests.\n- #565 PR-T6.C.b — foundational-vs-corroborative refinement. User-clarified intent during review: T6.C had collapsed the 1-transitive + 1-operator case (operator gone → invalidate trivially). C.b refines: transitive / inferred are structural chain links (hard deps); operator is corroborative (soft — strengthens but doesn't single-handedly support when hard deps are alive). 3 new tests pin the case explicitly.\n- #566 PR-T6.D — cascade_remove_doc_from_sources integration + 4 release-gating invariants. Single walk over the wiki with all dropped relation ids batched via additional_empty_bases. tests/test_t6_release_gating_invariants.py runs against tmpdir wiki fixtures with the REAL cascade call (not mocks): test_derived_invalidated_when_base_removed, test_partial_base_loss_preserves_derived (T6.C.b), test_self_reference_rejected_at_write + test_two_hop_cycle_rejected_at_write (Decision 3), test_cascade_invalidate_emits_audit_row. 69 pre-T6 cascade tests still green; CASCADE/EVENT separation invariants from v0.4.0 hold unchanged.\n\nv0.4.0 carry-over T2.D (4 PRs):\n- #558 PR-T2.D-1 — contradiction ingest detector. core/lifecycle/contradiction_ingest_detector.py find_contradiction_candidates (P1 different_tail = CEO-change scenario; P2 divergent_validity). 19 tests.\n- #559 PR-T2.D-2 — flag-gated dispatch in _merge.py. JAMES_T2D_INGEST_DISPATCH=1 default OFF → production byte-identical until operator opts in. B_supersede + ignore handled in-line. 10 tests.\n- #561 PR-T2.D-2.b — A_invalidate cascade race fix via PendingCascade deferred-execution pattern. Dispatcher captures cascade requests; _merge.py calls apply_pending_cascades AFTER writing back its entity (no race). Bad-doc-id heuristic: lowest-weight non-manual source. 15 tests.\n- #560 PR-T2.D-3 — step7 v6 q17 'Anthropic의 CEO는 누구야?' (category ceo-change, abstention_truth absent today, dual-purpose gold_signals matching both abstention phrases AND the actual answer post-seed) + tests/test_t2d3_dispatch_acceptance.py end-to-end synthetic CEO-change. 6 tests.\n\nQVT α track full closure (6 PRs):\n- #550 PR-α-1 design memo — docs/design/v0.4-qvt-alpha-non-saturating-oracle.md. 3-axis non-saturating oracle (Path Coverage / Graded Answer Accuracy / Calibrated Abstention F1) + fixture schema v5 + per-PR Quality Delta Card pattern + 5 exemption labels + 18-cell ablation-matrix shape for v0.4-end.\n- #551 PR-α-2 step7 fixture v4 → v5 — gold_signals (3 atomic claims per query, deterministic substring + alias matcher) + abstention_truth (12 present / 4 absent) + min_recall on 5 path-annotated queries.\n- #552 PR-α-3 oracle module + capture wrapper — eval/qvt/oracle.py 3-axis scorer + scripts/qvt_capture_baseline.py operator wrapper (N=3 paired reruns, v0.4.0 production env fixed).\n- #553 PR-α-4 PR-gate template + CLAUDE.md rule 2 + ARCHITECTURE.md §5.7.10 — Quality Delta Card section, exemption-label one-liner, QVT subsystem named alongside §5.7.4 Bench gate.\n- #555 PR-α-3 baseline capture — eval/qvt/baseline_2a31b20.json canonical reference. N=3 paired, 64-minute operator run. 3 raw bench JSONs under reports/research-runs/ for audit replay.\n- #556 PR-α-3 oracle phrase calibration — Korean security-block phrase additions + blocked=True short-circuit. abstention_f1 lifted from 0.29 → 0.67 median (+0.38).\n\nAlso in v0.4.1:\n- #548 Replayable RAG positioning. README + ARCHITECTURE adopt 'Replayable RAG' as the JAMES category framing.\n- #549 F9 cycle full closure. q15 'David Soria Parra가 누구야?' zero-recall 8-cycle diagnostic ended with path_recall = 1.0 after JAMES_ENABLE_ENTITY_ANCHOR=1 + bge-m3 + JAMES_ENABLE_QUERY_REWRITE=1.\n- #554 v0.4.0 post-mint DOI badge bump (10.5281/zenodo.20391100 → 10.5281/zenodo.20411354).\n- #557 v0.4.1 entry memo. 4-decision LOCK (eager trigger / operator-tagged + LLM flag / strict cycle reject / C.b foundational-vs-corroborative).\n\nDefault-off invariant preserved across every opt-in flag added in this cycle (JAMES_T2D_INGEST_DISPATCH / JAMES_T6_LLM_DERIVATION). T6.D cascade integration default-on but byte-identical retrieval because migration adds derived_from: [] (empty).\n\nVerification: T6 lifecycle suite 83+ contract tests; T2.D ingest suite 50 tests; QVT α 22+ oracle tests + 11 step7 schema tests + canonical baseline_2a31b20.json; 69 pre-T6 cascade tests still green; CASCADE/EVENT separation invariants from v0.4.0 hold unchanged.\n\nWhat v0.4.1 does NOT do: no production flip of JAMES_T2D_INGEST_DISPATCH default to ON; no production population of derived_from; no T3/T4/T5 (those land at v0.4.2/v0.4.3); no v0.4-end QVT ablation matrix capture (18 cells, ~20-hour operator run, deferred to late June+).",
+  "version": "v0.4.1",
   "upload_type": "software",
   "creators": [
     {
@@ -51,7 +51,13 @@
     "mem0-differentiator",
     "deterministic-rule-tree",
     "release-gating-invariants",
-    "quality-verification-track"
+    "quality-verification-track",
+    "causality-chain",
+    "derived-fact-propagation",
+    "foundational-vs-corroborative",
+    "non-saturating-quality-oracle",
+    "pr-gate-quality-delta-card",
+    "replayable-rag"
   ],
   "license": "MIT",
   "access_right": "open",
@@ -63,8 +69,13 @@
       "resource_type": "software"
     },
     {
-      "identifier": "10.5281/zenodo.20391100",
+      "identifier": "10.5281/zenodo.20411354",
       "relation": "isNewVersionOf",
+      "resource_type": "software"
+    },
+    {
+      "identifier": "10.5281/zenodo.20391100",
+      "relation": "isDerivedFrom",
       "resource_type": "software"
     },
     {
@@ -83,50 +94,100 @@
       "resource_type": "software"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/524",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/548",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/525",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/549",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/538",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/550",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/539",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/551",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/540",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/552",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/541",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/553",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/542",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/554",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/543",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/555",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/544",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/556",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/557",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/558",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/559",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/560",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/561",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/562",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/563",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/564",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/565",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/566",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     }
   ],
-  "notes": "v0.4.0 is the v0.4 cycle's final tag. It ships the Layer 4 Lifecycle Semantics first bundle (T1 Temporal Validity + T7 Supersede Chain + T2 Contradiction Arbitration) as a release-gated 8-PR Sprint 5 sequence. The CASCADE vs EVENT separation invariant is now provable end-to-end via tests/test_t7_release_gating_invariants.py against the actual wiki fixture. Layer 4 follow-ons (T3 / T4 / T5 / T6 + an ingestion-path caller for dispatch_contradiction) land in v0.4.1~v0.4.3 per ROADMAP phase plan. The LEO contribution chain (alpha.3 PRs #512~#517 + this tag's bench-substrate hardening PRs #526~#536 + #537 QVT handover) remains JAMES's first external-contributor track. The isNewVersionOf chain back to v0.4.0-alpha.3 (10.5281/zenodo.20391100) makes the DOI lineage explicit; the chain back to v0.3.3 / v0.3.2 / v0.3.1 stays via the alpha.3 record. Three-author joint-piece collaboration with Robin Converse (Triava Labs) and Ali Afana (Provia) on the substitution/synthesis cost-asymmetry finding remains the mid-June trajectory."
+  "notes": "v0.4.1 closes the CASCADE pillar v0.4.0 only half-finished. T6 Causality Chain ships as a 5-PR sequence (T6.A schema + cycle validator + migration → T6.B derivation extraction → T6.C invalidate_derived_facts cascade → T6.C.b foundational-vs-corroborative refinement → T6.D cascade integration + 4 release-gating invariants). Plus the v0.4.0 carry-over dispatch_contradiction wiring (T2.D-1/2/2.b/3) lands as flag-gated default-OFF. Plus the QVT α track ships end-to-end (3-axis non-saturating oracle + canonical baseline_2a31b20.json + PR-gate template + ARCHITECTURE §5.7.10). All decisions back-traceable to the T6.C.b user-clarified semantics during T6.C review. The isNewVersionOf chain back to v0.4.0 (10.5281/zenodo.20411354) makes the DOI lineage explicit; the chain back to v0.4.0-alpha.3 (10.5281/zenodo.20391100) and v0.3.x stays via isDerivedFrom. Three-author joint-piece collaboration with Robin Converse (Triava Labs) and Ali Afana (Provia) on the substitution/synthesis cost-asymmetry finding remains the mid-June trajectory."
 }

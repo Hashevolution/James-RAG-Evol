@@ -671,6 +671,72 @@ Reference architecture: `docs/architecture/memory-lifecycle-architecture.md`.
 
 ---
 
+## v0.4.1 — T6 Causality Chain (CASCADE extension, shipped 2026-05-28)
+
+**Status**: ✅ **CLOSED**. T6 Causality Chain landed as the v0.4.1 cycle's main theme (5-PR sequence T6.A → T6.B → T6.C → T6.C.b refinement → T6.D + the v0.4.0 carry-over T2.D-1/2/2.b/3 + QVT α track full closure). 21 PRs in a single multi-day session (#548 ~ #566).
+
+**Entry handover**: `docs/handovers/v0.4.1-t6-causality-chain-entry.md` — 4-LOCK decisions (eager trigger / operator-tagged + LLM flag / strict cycle reject / **C.b foundational-vs-corroborative semantics** — Decision 4 refined in T6.C.b vs the original memo text).
+
+### Done — T6 5-PR sequence + 4 release-gating invariants
+
+- **PR-T6.A** (#562) — `derived_from` schema field + `validate_edge_t6_derived_from` cycle validator (Decision 3 LOCK) + `apply_t6_edge_defaults` idempotent helper. `scripts/migrate_v041_lifecycle.py` (`--dry-run` / `--apply` / `--verify` / pre-write snapshot). 23 contract tests.
+- **PR-T6.B** (#563) — `core/lifecycle/derivation.py` `extract_derivation_chain` (operator-tagged path + `JAMES_T6_LLM_DERIVATION` flag-gated LLM-inferred path). 14 contract tests.
+- **PR-T6.C** (#564) — `core/lifecycle/causality.py` `invalidate_derived_facts(base_fact_id, entity_root, *, additional_empty_bases, audit_emit)`. Soft-invalidate (status.active=False + mutation_type=invalidated, sources preserved for T7 replay). Atomic per-file writes. 19 contract tests.
+- **PR-T6.C.b** (#565) — foundational-vs-corroborative refinement. `transitive` / `inferred` are hard deps (any base empty → invalidate); `operator` is corroborative (only invalidates when no hard deps AND all operator bases empty). 22 tests (19 original + 3 new C.b cases).
+- **PR-T6.D** (#566) — cascade integration. `cascade_remove_doc_from_sources` now calls `invalidate_derived_facts` for every relation whose sources became empty (single walk batched via `additional_empty_bases`). `tests/test_t6_release_gating_invariants.py` (5 tests): `test_derived_invalidated_when_base_removed`, `test_partial_base_loss_preserves_derived` (T6.C.b), `test_self_reference_rejected_at_write` + `test_two_hop_cycle_rejected_at_write` (Decision 3), `test_cascade_invalidate_emits_audit_row`. Run against tmpdir wiki fixtures + real `cascade_remove_doc_from_sources` — no mocks of the cascade itself.
+
+### Done — v0.4.0 carry-over `dispatch_contradiction` ingestion wiring (T2.D, 4 PRs)
+
+- **PR-T2.D-1** (#558) — `core/lifecycle/contradiction_ingest_detector.py` (P1 different_tail + P2 divergent_validity patterns). 19 tests.
+- **PR-T2.D-2** (#559) — `core/lifecycle/ingest_contradiction.py` + `_merge.py` pre-merge hook. Flag-gated by `JAMES_T2D_INGEST_DISPATCH` (default OFF). 10 tests.
+- **PR-T2.D-2.b** (#561) — A_invalidate cascade race fix via `PendingCascade` deferred-execution. 15 tests.
+- **PR-T2.D-3** (#560) — step7 v6 q17 *"Anthropic의 CEO는 누구야?"* + acceptance integration test. 6 tests.
+
+### Done — QVT α track full closure (6 PRs)
+
+- **PR-α-1** (#550) — `docs/design/v0.4-qvt-alpha-non-saturating-oracle.md`. 3-axis non-saturating oracle + per-PR Quality Delta Card pattern + 5 exemption labels.
+- **PR-α-2** (#551) — step7 fixture v4 → v5 (`gold_signals` + `abstention_truth`).
+- **PR-α-3** (#552) — `eval/qvt/oracle.py` + `scripts/qvt_capture_baseline.py` (operator wrapper).
+- **PR-α-4** (#553) — `.github/PULL_REQUEST_TEMPLATE.md` + CLAUDE.md rule 2 extension + `docs/ARCHITECTURE.md` §5.7.10 QVT subsystem.
+- **PR-α-3 baseline capture** (#555) — `eval/qvt/baseline_2a31b20.json` (N=3 paired reruns, canonical reference).
+- **PR-α-3 oracle calibration** (#556) — Korean security-block phrase additions + `blocked=True` short-circuit. `abstention_f1` 0.29 → 0.67 median.
+
+### Done — also in v0.4.1
+
+- **Replayable RAG positioning** (#548) — README + ARCHITECTURE category framing.
+- **F9 cycle full closure** (#549) — q15 zero-recall closure result doc + audit-trail bench JSON.
+- **v0.4.0 post-mint DOI** (#554) — `10.5281/zenodo.20411354`.
+- **v0.4.1 entry memo** (#557).
+
+### Default-off invariant preserved across every opt-in
+
+| Flag | Default | Verification |
+|---|---|---|
+| `JAMES_T2D_INGEST_DISPATCH` (T2.D-2) | OFF | `_merge.py` pre-merge hook only fires when `=1` |
+| `JAMES_T6_LLM_DERIVATION` (T6.B) | OFF | `extract_derivation_chain` LLM-inferred path needs provider AND flag |
+| T6.D cascade integration | ON (default-on per cycle scope) | byte-identical retrieval because migration adds `derived_from: []`; no actual derivations yet |
+
+### Done when — ✅ All items satisfied at v0.4.1 (2026-05-28)
+
+- ✅ T6 5-PR sequence merged with all 83+ contract tests green.
+- ✅ T6.D 4 release-gating invariants run against real wiki fixtures (`tests/test_t6_release_gating_invariants.py`).
+- ✅ T2.D ingestion wiring (carry-over from v0.4.0) shipped with race-free pending_cascades pattern.
+- ✅ QVT α track complete: oracle module + canonical baseline JSON + PR-gate template + CLAUDE.md rule 2 extension + ARCHITECTURE.md §5.7.10.
+- ✅ Migration script (`scripts/migrate_v041_lifecycle.py`) is idempotent + byte-stable; `--verify` mode confirms.
+- ✅ 69 pre-T6 cascade tests still green (no regression).
+- ✅ Closure docs published: `docs/release_notes_v0.4.1.md` + CHANGELOG `[0.4.1]` + `.zenodo.json` v0.4.1.
+
+### Out of scope (deferred to v0.4.2+)
+
+- **T3 Evidence Aging** — confidence decay over time (EVENT track)
+- **T4 Reviewer Authority Hierarchy** — multi-level governance (GOVERNANCE track)
+- **T5 Replayable Audit Graph** — full event-sourced reconstruction (partial in v0.4.0 via `reconstruct_view_at`)
+- v0.4-end QVT ablation matrix capture (18 cells × N=3 reruns, ~20 hours operator-run)
+- `JAMES_T2D_INGEST_DISPATCH` default flip to ON (waits for fixture coverage)
+- Production seeding of `derived_from` (waits for operator workflow or v0.4.2+ LLM path)
+
+---
+
 ## v0.5.0 — First Domain Pilot (~6 months after v0.4)
 
 **Theme**: prove the platform contract by running ONE real domain
