@@ -33,7 +33,17 @@ class UploadAcceptsVideoExtensionsTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.src = (ROOT / "server_llmwiki.py").read_text(encoding="utf-8")
+        # The /upload/ handler moved to routes/auth.py in v0.4.x PR-A.1
+        # (server-split). Test scans both locations so a future move
+        # back, or splitting upload into a separate router, does not
+        # silently regress this invariant.
+        candidates = [
+            ROOT / "routes" / "auth.py",
+            ROOT / "server_llmwiki.py",
+        ]
+        cls.src = "\n".join(
+            p.read_text(encoding="utf-8") for p in candidates if p.exists()
+        )
 
     def test_video_extensions_constant_removed(self):
         self.assertNotIn(
