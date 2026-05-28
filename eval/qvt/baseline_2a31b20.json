@@ -1,0 +1,974 @@
+{
+  "schema": "qvt-baseline-v1",
+  "captured_at": "2026-05-28T03:18:48.124676+00:00",
+  "git_sha": "2a31b20",
+  "fixture_version": "step7-v5",
+  "fixture_path": "eval\\regression\\step7_queries.json",
+  "n_runs": 3,
+  "env": {
+    "JAMES_ENABLE_ENTITY_ANCHOR": "1",
+    "JAMES_EMBEDDING_MODEL": "BAAI/bge-m3",
+    "JAMES_ENABLE_QUERY_REWRITE": "1",
+    "JAMES_AUTO_ROUTER": "0",
+    "JAMES_ADAPTIVE_BUDGET": "0",
+    "JAMES_SCOPE_ROUTING": "0"
+  },
+  "aggregate": {
+    "path_coverage": {
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "noise_band": 0.0
+    },
+    "graded_answer": {
+      "median": 0.5833,
+      "min": 0.5417,
+      "max": 0.6458,
+      "noise_band": 0.1041
+    },
+    "abstention_f1": {
+      "median": 0.2857,
+      "min": 0.0,
+      "max": 0.4,
+      "noise_band": 0.4
+    },
+    "n_runs": 3
+  },
+  "runs": [
+    {
+      "bench_output": "reports/research-runs/step7-bench-baseline-run1-20260528_113557.json",
+      "scores": {
+        "git_sha": "2a31b20",
+        "suite": "step7",
+        "fixture_version": "step7-v5",
+        "n_queries": 16,
+        "path_coverage": {
+          "mean_recall": 1.0,
+          "queries_with_expected_path": 4,
+          "queries_at_full_recall": 4,
+          "per_query": [
+            {
+              "id": 2,
+              "expected_count": 1,
+              "hits": 1,
+              "recall": 1.0
+            },
+            {
+              "id": 3,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0
+            },
+            {
+              "id": 4,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0
+            },
+            {
+              "id": 15,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0
+            }
+          ]
+        },
+        "graded_answer": {
+          "mean_accuracy": 0.5417,
+          "queries_with_signals": 16,
+          "per_query": [
+            {
+              "id": 1,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 2,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "AI 회사",
+                "Claude"
+              ]
+            },
+            {
+              "id": 3,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "제공"
+              ]
+            },
+            {
+              "id": 4,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "BlackRock",
+                "비트코인 ETF"
+              ]
+            },
+            {
+              "id": 5,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "CodeRAG",
+                "agent",
+                "RAG"
+              ]
+            },
+            {
+              "id": 6,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "BlackRock"
+              ]
+            },
+            {
+              "id": 7,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 8,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "동일",
+                "BTC",
+                "비트코인"
+              ]
+            },
+            {
+              "id": 9,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "RAG",
+                "enhance"
+              ]
+            },
+            {
+              "id": 10,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 11,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "정책"
+              ]
+            },
+            {
+              "id": 12,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "정책"
+              ]
+            },
+            {
+              "id": 13,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "위키",
+                "목록"
+              ]
+            },
+            {
+              "id": 14,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "GPT-6",
+                "발표"
+              ]
+            },
+            {
+              "id": 15,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "David Soria Parra",
+                "MCP",
+                "설계자"
+              ]
+            },
+            {
+              "id": 16,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "기준 금리",
+                "인하",
+                "FRB"
+              ]
+            }
+          ]
+        },
+        "abstention": {
+          "f1": 0.2857,
+          "precision": 0.3333,
+          "recall": 0.25,
+          "tp_abstain": 1,
+          "fp_incorrect_abstention": 2,
+          "fn_hallucination": 3,
+          "tn_answer": 10,
+          "n_queries": 16,
+          "per_query": [
+            {
+              "id": 1,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 2,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 3,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 4,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 5,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 6,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 7,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 8,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 9,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 10,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 11,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 12,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 13,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 14,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 15,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 16,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "bench_output": "reports/research-runs/step7-bench-baseline-run2-20260528_115715.json",
+      "scores": {
+        "git_sha": "2a31b20",
+        "suite": "step7",
+        "fixture_version": "step7-v5",
+        "n_queries": 16,
+        "path_coverage": {
+          "mean_recall": 1.0,
+          "queries_with_expected_path": 5,
+          "queries_at_full_recall": 5,
+          "per_query": [
+            {
+              "id": 1,
+              "expected_count": 1,
+              "hits": 1,
+              "recall": 1.0
+            },
+            {
+              "id": 2,
+              "expected_count": 1,
+              "hits": 1,
+              "recall": 1.0
+            },
+            {
+              "id": 3,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0
+            },
+            {
+              "id": 4,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0
+            },
+            {
+              "id": 15,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0
+            }
+          ]
+        },
+        "graded_answer": {
+          "mean_accuracy": 0.5833,
+          "queries_with_signals": 16,
+          "per_query": [
+            {
+              "id": 1,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "검색 증강 생성"
+              ]
+            },
+            {
+              "id": 2,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "LLM"
+              ]
+            },
+            {
+              "id": 3,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "Anthropic",
+                "Claude",
+                "개발"
+              ]
+            },
+            {
+              "id": 4,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "BlackRock",
+                "비트코인 ETF",
+                "운용"
+              ]
+            },
+            {
+              "id": 5,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 6,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "BlackRock",
+                "피델리티"
+              ]
+            },
+            {
+              "id": 7,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "RAG",
+                "Graph RAG"
+              ]
+            },
+            {
+              "id": 8,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "동일",
+                "BTC",
+                "비트코인"
+              ]
+            },
+            {
+              "id": 9,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 10,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 11,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "정책"
+              ]
+            },
+            {
+              "id": 12,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "정책"
+              ]
+            },
+            {
+              "id": 13,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "위키",
+                "목록"
+              ]
+            },
+            {
+              "id": 14,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "GPT-6",
+                "발표",
+                "OpenAI"
+              ]
+            },
+            {
+              "id": 15,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "David Soria Parra",
+                "MCP",
+                "designer"
+              ]
+            },
+            {
+              "id": 16,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "기준 금리",
+                "인하",
+                "연준"
+              ]
+            }
+          ]
+        },
+        "abstention": {
+          "f1": 0.4,
+          "precision": 1.0,
+          "recall": 0.25,
+          "tp_abstain": 1,
+          "fp_incorrect_abstention": 0,
+          "fn_hallucination": 3,
+          "tn_answer": 12,
+          "n_queries": 16,
+          "per_query": [
+            {
+              "id": 1,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 2,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 3,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 4,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 5,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 6,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 7,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 8,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 9,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 10,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 11,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 12,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 13,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 14,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 15,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 16,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "bench_output": "reports/research-runs/step7-bench-baseline-run3-20260528_121845.json",
+      "scores": {
+        "git_sha": "2a31b20",
+        "suite": "step7",
+        "fixture_version": "step7-v5",
+        "n_queries": 16,
+        "path_coverage": {
+          "mean_recall": 1.0,
+          "queries_with_expected_path": 5,
+          "queries_at_full_recall": 5,
+          "per_query": [
+            {
+              "id": 1,
+              "expected_count": 1,
+              "hits": 1,
+              "recall": 1.0
+            },
+            {
+              "id": 2,
+              "expected_count": 1,
+              "hits": 1,
+              "recall": 1.0
+            },
+            {
+              "id": 3,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0
+            },
+            {
+              "id": 4,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0
+            },
+            {
+              "id": 15,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0
+            }
+          ]
+        },
+        "graded_answer": {
+          "mean_accuracy": 0.6458,
+          "queries_with_signals": 16,
+          "per_query": [
+            {
+              "id": 1,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "검색 증강 생성",
+                "정확성"
+              ]
+            },
+            {
+              "id": 2,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 3,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "Anthropic",
+                "Claude",
+                "develops"
+              ]
+            },
+            {
+              "id": 4,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "BlackRock",
+                "비트코인 ETF",
+                "운용"
+              ]
+            },
+            {
+              "id": 5,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 6,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "BlackRock",
+                "피델리티"
+              ]
+            },
+            {
+              "id": 7,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "RAG",
+                "Graph RAG"
+              ]
+            },
+            {
+              "id": 8,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "동일",
+                "BTC",
+                "비트코인"
+              ]
+            },
+            {
+              "id": 9,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "Retrieval-Augmented Generation",
+                "augment"
+              ]
+            },
+            {
+              "id": 10,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "OpenAI"
+              ]
+            },
+            {
+              "id": 11,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "정책"
+              ]
+            },
+            {
+              "id": 12,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "정책"
+              ]
+            },
+            {
+              "id": 13,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "위키",
+                "목록"
+              ]
+            },
+            {
+              "id": 14,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "GPT-6",
+                "발표",
+                "OpenAI"
+              ]
+            },
+            {
+              "id": 15,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "David Soria Parra",
+                "MCP",
+                "설계자"
+              ]
+            },
+            {
+              "id": 16,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "기준 금리",
+                "인하",
+                "연준"
+              ]
+            }
+          ]
+        },
+        "abstention": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "tp_abstain": 0,
+          "fp_incorrect_abstention": 1,
+          "fn_hallucination": 4,
+          "tn_answer": 11,
+          "n_queries": 16,
+          "per_query": [
+            {
+              "id": 1,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 2,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 3,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 4,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 5,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 6,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 7,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 8,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 9,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 10,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 11,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 12,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 13,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 14,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 15,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 16,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
