@@ -27,10 +27,10 @@
       "noise_band": 0.1041
     },
     "abstention_f1": {
-      "median": 0.2857,
-      "min": 0.0,
-      "max": 0.4,
-      "noise_band": 0.4
+      "median": 0.6667,
+      "min": 0.5714,
+      "max": 0.8571,
+      "noise_band": 0.2857
     },
     "n_runs": 3
   },
@@ -231,12 +231,12 @@
           ]
         },
         "abstention": {
-          "f1": 0.2857,
-          "precision": 0.3333,
-          "recall": 0.25,
-          "tp_abstain": 1,
+          "f1": 0.6667,
+          "precision": 0.6,
+          "recall": 0.75,
+          "tp_abstain": 3,
           "fp_incorrect_abstention": 2,
-          "fn_hallucination": 3,
+          "fn_hallucination": 1,
           "tn_answer": 10,
           "n_queries": 16,
           "per_query": [
@@ -303,14 +303,14 @@
             {
               "id": 11,
               "truth": "absent",
-              "abstained": false,
-              "classification": "fn_hallucination"
+              "abstained": true,
+              "classification": "tp_abstain"
             },
             {
               "id": 12,
               "truth": "absent",
-              "abstained": false,
-              "classification": "fn_hallucination"
+              "abstained": true,
+              "classification": "tp_abstain"
             },
             {
               "id": 13,
@@ -544,12 +544,12 @@
           ]
         },
         "abstention": {
-          "f1": 0.4,
+          "f1": 0.8571,
           "precision": 1.0,
-          "recall": 0.25,
-          "tp_abstain": 1,
+          "recall": 0.75,
+          "tp_abstain": 3,
           "fp_incorrect_abstention": 0,
-          "fn_hallucination": 3,
+          "fn_hallucination": 1,
           "tn_answer": 12,
           "n_queries": 16,
           "per_query": [
@@ -616,14 +616,14 @@
             {
               "id": 11,
               "truth": "absent",
-              "abstained": false,
-              "classification": "fn_hallucination"
+              "abstained": true,
+              "classification": "tp_abstain"
             },
             {
               "id": 12,
               "truth": "absent",
-              "abstained": false,
-              "classification": "fn_hallucination"
+              "abstained": true,
+              "classification": "tp_abstain"
             },
             {
               "id": 13,
@@ -861,12 +861,12 @@
           ]
         },
         "abstention": {
-          "f1": 0.0,
-          "precision": 0.0,
-          "recall": 0.0,
-          "tp_abstain": 0,
+          "f1": 0.5714,
+          "precision": 0.6667,
+          "recall": 0.5,
+          "tp_abstain": 2,
           "fp_incorrect_abstention": 1,
-          "fn_hallucination": 4,
+          "fn_hallucination": 2,
           "tn_answer": 11,
           "n_queries": 16,
           "per_query": [
@@ -933,14 +933,14 @@
             {
               "id": 11,
               "truth": "absent",
-              "abstained": false,
-              "classification": "fn_hallucination"
+              "abstained": true,
+              "classification": "tp_abstain"
             },
             {
               "id": 12,
               "truth": "absent",
-              "abstained": false,
-              "classification": "fn_hallucination"
+              "abstained": true,
+              "classification": "tp_abstain"
             },
             {
               "id": 13,
