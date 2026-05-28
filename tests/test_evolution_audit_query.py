@@ -235,9 +235,8 @@ class EndpointContractTests(unittest.TestCase):
     forward filter args into query_patch_audit."""
 
     def test_route_exists_and_is_admin_gated(self):
-        import server_llmwiki as srv
-        import inspect
-        src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        src = combined_server_source()
         self.assertIn('@app.get("/admin/patch/audit"', src,
                       "audit endpoint must be registered as GET")
         self.assertIn("from tools.patch.audit_query import query_patch_audit", src,

@@ -253,9 +253,8 @@ class ApproveEndpointContractTests(unittest.TestCase):
     and pass before/after metrics into record_outcome."""
 
     def test_approve_endpoint_invokes_gate(self):
-        import server_llmwiki as srv
-        import inspect
-        src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        src = combined_server_source()
         self.assertIn("from tools.patch.bench_gate import run_bench_gate", src,
                       "/admin/patch/approve must import run_bench_gate")
         self.assertIn("await run_bench_gate(", src,
