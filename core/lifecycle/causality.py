@@ -1,28 +1,35 @@
-"""v0.4.1 PR-T6.C — derivation-aware invalidation cascade.
+"""v0.4.1 PR-T6.C + T6.C.b — derivation-aware invalidation cascade.
 
 When a base fact is fully removed (sources=[]), edges whose
 ``derived_from`` references that base may need to invalidate too.
-This module implements the **per-derivation-type semantics**
-(Decision 4 LOCK clarification, 2026-05-28):
+This module implements the **foundational-vs-corroborative semantics**
+(Decision 4 LOCK refined 2026-05-28, T6.C.b):
 
-  - ``derivation: "transitive"`` (chain inference, e.g. A→B→C ⇒ A→C):
-    **ANY-trigger**. Loss of any single base breaks the chain →
-    invalidate the derived edge.
+  - **Hard deps** (``transitive`` / ``inferred``) — structural
+    chain links. Loss of any one breaks the derivation → invalidate.
 
-  - ``derivation: "inferred"`` (LLM-suggested single conclusion):
-    **ANY-trigger**. The inference rests on the cited base; if that
-    base is gone, the inference is suspect → invalidate.
+  - **Soft deps** (``operator``) — corroborative evidence that
+    strengthens the conclusion but doesn't single-handedly support
+    it when hard deps are present. Loss of any one (while hard deps
+    stay alive) only WEAKENS the derivation, doesn't invalidate.
 
-  - ``derivation: "operator"`` (human-tagged multi-source support):
-    **ALL-trigger**. Loss of one base leaves remaining bases as
-    alternative support → keep alive. Only when ALL operator bases
-    are gone does the edge invalidate.
+Combined rules (T6.C.b refinement):
 
-Mixed-derivation edges (e.g. one transitive + two operator) are
-evaluated jointly:
+    invalidate :=
+        (any hard dep base empty)
+      OR
+        (hard_deps == [] AND soft_deps != [] AND all soft empty)
 
-    invalidate := (any transitive/inferred base empty) OR
-                  (operator entries exist AND all of them empty)
+This corrects the original T6.C semantics where ``operator``-only
+emptiness fired even when hard deps were alive. The original case
+the refinement fixes:
+
+  derived edge has [b1 transitive, b2 operator]
+  → b2 gone (b1 alive)
+  → original T6.C: invalidate (operator-all-empty trivially fires
+    when there's only one operator entry)
+  → T6.C.b: preserve (transitive intact; operator was just
+    corroborative; loss weakens but doesn't break)
 
 ## What "invalidate" means here
 
@@ -129,19 +136,27 @@ def should_invalidate_edge(
     edge: Dict[str, Any],
     empty_bases: Set[str],
 ) -> bool:
-    """Decision 4 (C-semantics) evaluator.
+    """T6.C.b foundational-vs-corroborative evaluator.
 
     Returns True iff the edge's ``derived_from`` evaluates to
     "invalidated" given the set of currently-empty base ids:
 
-      - ANY transitive/inferred entry whose base is in ``empty_bases``
-        → invalidate
-      - operator entries exist AND ALL of them have bases in
-        ``empty_bases`` → invalidate
-      - Otherwise → preserve.
+      Rule 1 (hard dep break): ANY transitive/inferred entry whose
+        base is in ``empty_bases`` → invalidate. Structural chain
+        links — losing one breaks the derivation regardless of how
+        many corroborators remain.
 
-    Returns False for edges with empty/missing ``derived_from``
-    (nothing to invalidate against).
+      Rule 2 (lone-corroborator collapse): hard_deps == [] AND
+        operator entries exist AND ALL operator bases empty →
+        invalidate. The edge was supported only by corroborators;
+        all corroborators gone means no support at all.
+
+      Otherwise → preserve.
+
+    Crucially, when hard deps are present and alive, operator loss
+    (even total) does NOT invalidate — corroborators only WEAKEN
+    a foundationally-supported derivation. Confidence reduction is
+    T3 (Aging) territory.
     """
     if not isinstance(edge, dict):
         return False
@@ -149,6 +164,7 @@ def should_invalidate_edge(
     if not isinstance(derived_from, list) or not derived_from:
         return False
 
+    hard_entries: List[Dict[str, Any]] = []
     operator_entries: List[Dict[str, Any]] = []
     for entry in derived_from:
         if not isinstance(entry, dict):
@@ -158,12 +174,18 @@ def should_invalidate_edge(
         if not isinstance(base_id, str) or not base_id:
             continue
         if derivation in _ANY_TRIGGER_DERIVATIONS:
-            if base_id in empty_bases:
-                return True
+            hard_entries.append(entry)
         elif derivation == T6_DERIVATION_OPERATOR:
             operator_entries.append(entry)
 
-    if operator_entries:
+    # Rule 1 — any hard dep empty → invalidate (structural break).
+    for entry in hard_entries:
+        if entry.get("base_fact_id") in empty_bases:
+            return True
+
+    # Rule 2 — no hard deps, operator-only edge, all operators
+    # empty → invalidate (no support remains).
+    if not hard_entries and operator_entries:
         all_operator_empty = all(
             entry.get("base_fact_id") in empty_bases
             for entry in operator_entries
