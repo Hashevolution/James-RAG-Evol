@@ -18,13 +18,35 @@
 
 ---
 
-## Project Status: v0.4.0 — Layer 4 Lifecycle Semantics (first bundle)
+## What's Verified (one-screen summary)
 
-Released **2026-05-27**. v0.4.0 ships the Layer 4 first bundle —
-**T1 Temporal Validity + T7 Supersede Chain + T2 Contradiction
-Arbitration** — across an 8-PR Sprint 5 sequence. The CASCADE vs
-EVENT separation invariant is now **provable end-to-end** via
-`tests/test_t7_release_gating_invariants.py`, run against the
+The numbers below come from the current `main` branch — not aspirational, not from an older release. Every value is reproducible by cloning + running the listed command.
+
+| Surface | Verified | Where to check |
+|---|---|---|
+| **Test suite** | **3290 tests** collected across `tests/` (224 test files), all green on PR CI | `python -m pytest tests/ --collect-only -q` |
+| **CASCADE / EVENT separation** | Provable end-to-end via 5 release-gating invariants run against a real wiki fixture (not mocks) | `tests/test_t7_release_gating_invariants.py` |
+| **T6 causality cascade** | 4 additional release-gating invariants pin foundational vs corroborative semantics | `tests/test_t6_release_gating_invariants.py` |
+| **QVT 3-axis quality baseline** | path_recall **1.00** / graded_answer **0.58** / abstention_f1 **0.67** (median, post-calibration, N=3 paired reruns) | `eval/qvt/baseline_2a31b20.json` |
+| **STEP 7 regression** | 17-query suite with `gold_signals` + `abstention_truth` + `expected_path.nodes` ground truth on 5 queries | `eval/regression/step7_queries.json` v6 |
+| **F9 entity-anchor q15 fix** | q15 ("David Soria Parra가 누구야?") path_recall **0.00 → 1.00** after `JAMES_ENABLE_ENTITY_ANCHOR=1` + `JAMES_EMBEDDING_MODEL=BAAI/bge-m3` + `JAMES_ENABLE_QUERY_REWRITE=1` | `reports/research-runs/step7-bench-baseline-run*.json` |
+| **Module size discipline** | 20 KB cap enforced on every `core/` file. Largest current: `core/lifecycle/schema.py` at 18.9 KB | CLAUDE.md rule 5 + module-size CI gate |
+| **Default-off invariant** | Every routing layer added since v0.3 (D5 / LEO / D1 / T2.D / T6 LLM) defaults OFF — production fleets pulling v0.4.1 see byte-identical retrieval to v0.3.3 unless they opt in | `JAMES_*` env audit (CHANGELOG `[0.4.x]` table) |
+| **Deterministic contradiction arbitration** | `classify_contradiction` is an LLM-free 4-rule decision tree (~10.2 KB pure function). Audit-replay-safe by construction. | `core/lifecycle/contradiction_arbiter.py` |
+
+**What is NOT yet headline-verified**: a single-page ablation card showing **Graph-RAG vs flat RAG** on the same fixture. The infrastructure to produce it (`scripts/qvt_capture_baseline.py` + the 18-cell ablation matrix design from QVT memo §5) is wired; the operator-run capture is the late-June deliverable. Until then, the graph contribution is measurable via `graph_paths_count` per query in any STEP 7 bench output, but not summarized in one table.
+
+---
+
+## Project Status: v0.4.1 — T6 Causality Chain (CASCADE extension)
+
+Released **2026-05-28**. v0.4.1 closes the CASCADE pillar that v0.4.0 only half-finished: when a base fact's sources are fully removed, edges whose `derived_from` references that base now auto-invalidate via `invalidate_derived_facts` — the derivation chain stays internally consistent without manual operator intervention. Per-derivation-type semantics (T6.C.b refinement): `transitive` / `inferred` are structural chain links (any base empty → invalidate); `operator` is corroborative (only invalidates when no hard deps AND all operator bases empty).
+
+Pre-v0.4.1: **v0.4.0** (2026-05-27) shipped the Layer 4 first
+bundle — **T1 Temporal Validity + T7 Supersede Chain + T2
+Contradiction Arbitration** — across an 8-PR Sprint 5 sequence.
+The CASCADE vs EVENT separation invariant is **provable end-to-end**
+via `tests/test_t7_release_gating_invariants.py`, run against the
 actual wiki fixture (not mocks). The supersede chain primitive
 (`reconstruct_view_at`) lets the system answer "what was true at
 time T?" deterministically, even after destructive CASCADE
