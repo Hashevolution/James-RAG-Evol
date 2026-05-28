@@ -51,6 +51,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 _ABSTENTION_PHRASES: Tuple[str, ...] = (
     "정보가 없",
+    "자료에 없",          # JAMES security-block phrasing
     "내부 자료에 없",
     "확인할 수 없",
     "찾을 수 없",
@@ -64,6 +65,8 @@ _ABSTENTION_PHRASES: Tuple[str, ...] = (
     "제공할 수 없",
     "안내할 수 없",
     "응답할 수 없",
+    "차단",                # security policy refusal marker
+    "보안 정책",           # security policy refusal marker
     "i don't have",
     "i cannot",
     "i can't",
@@ -284,10 +287,13 @@ def score_abstention_f1(
     Positive class = "system abstained". Rows from queries without an
     `abstention_truth` annotation are silently skipped.
 
-    A result row with `status != "ok"` (timeout / blocked / error) is
-    treated as abstention (the system did not produce a substantive
-    answer). This conservatively credits the system for refusing to
-    fabricate on errors, but also penalizes it when truth=present.
+    A result row is treated as an abstention when any of these holds:
+      - `status != "ok"` (timeout / error)
+      - `blocked is True` (policy-blocked — e.g. JAMES security policy
+        returns ``status=ok`` + ``blocked=true`` + a refusal message,
+        which is semantically a refusal even though the HTTP layer
+        looks successful)
+      - the answer text contains a phrase in ``_ABSTENTION_PHRASES``
     """
     fixture_map: Dict[int, Dict[str, Any]] = {
         int(q["id"]): q for q in fixture.get("queries", [])
@@ -304,6 +310,8 @@ def score_abstention_f1(
         if truth not in ("present", "absent"):
             continue
         if r.get("status") != "ok":
+            abstained = True
+        elif r.get("blocked") is True:
             abstained = True
         else:
             abstained = detect_abstention(_answer_text(r))

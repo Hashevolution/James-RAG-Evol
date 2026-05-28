@@ -61,6 +61,9 @@ class DetectAbstentionTests(unittest.TestCase):
             "확인할 수 없습니다.",
             "잘 모르겠습니다.",
             "근거가 부족합니다.",
+            # α-3 baseline calibration (2026-05-28) — JAMES security
+            # policy returns this exact phrasing on blocked queries.
+            "자료에 없음. 보안 정책에 의해 차단되었습니다.",
         ]:
             self.assertTrue(detect_abstention(phrase), f"missed: {phrase}")
 
@@ -244,6 +247,39 @@ class AbstentionF1Tests(unittest.TestCase):
         self.assertEqual(axis.tp_abstain, 1)
         self.assertEqual(axis.fn_hallucination, 0)
         self.assertEqual(axis.f1, 1.0)
+
+    def test_blocked_flag_treated_as_abstention(self):
+        """status=ok + blocked=True is a policy refusal — abstained
+        even if the answer text is short / doesn't trip a phrase.
+        α-3 baseline calibration finding: JAMES security policy returns
+        status=ok+blocked=true with a fixed refusal body."""
+        fixture = {"queries": [
+            {"id": 11, "abstention_truth": "absent"},
+        ]}
+        bench = {"results": [
+            {"id": 11, "status": "ok", "blocked": True, "answer": "."},
+        ]}
+        axis = score_abstention_f1(bench, fixture)
+        self.assertEqual(axis.tp_abstain, 1)
+        self.assertEqual(axis.fn_hallucination, 0)
+
+    def test_security_block_real_phrasing(self):
+        """End-to-end: JAMES's actual security-block response text +
+        the blocked=true flag both fire → abstained=True. α-3 baseline
+        calibration: this exact phrasing was scoring as FN before."""
+        fixture = {"queries": [
+            {"id": 11, "abstention_truth": "absent"},
+            {"id": 12, "abstention_truth": "absent"},
+        ]}
+        bench = {"results": [
+            {"id": 11, "status": "ok", "blocked": True,
+             "answer": "자료에 없음. 보안 정책에 의해 차단되었습니다."},
+            {"id": 12, "status": "ok", "blocked": True,
+             "answer": "자료에 없음. 보안 정책에 의해 차단되었습니다."},
+        ]}
+        axis = score_abstention_f1(bench, fixture)
+        self.assertEqual(axis.tp_abstain, 2)
+        self.assertEqual(axis.fn_hallucination, 0)
 
     def test_balanced_p_r_f1(self):
         """TP=2, FP=1, FN=1 → P=2/3, R=2/3, F1=2/3 ≈ 0.6667."""
