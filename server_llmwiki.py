@@ -25,23 +25,21 @@ import json
 from datetime import datetime
 from collections import defaultdict
 from urllib.parse import quote
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Header, Depends, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Depends, Request
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional
 
-from config import UPLOAD_DIR, WIKI_DIR, CHROMA_DIR, API_KEY, MAX_UPLOAD_BYTES
+from config import BASE_DIR, UPLOAD_DIR, WIKI_DIR, CHROMA_DIR, MAX_UPLOAD_BYTES
 from core.graph_rag_engine import RAGEngine
 from core.feedback_engine import FeedbackEngine
 from core.auth import (
-    authenticate, get_role_from_token, ALLOWED_ROLES, DEV_MODE,
+    authenticate, ALLOWED_ROLES,
     signup as _auth_signup, list_users as _auth_list_users,
     approve_user as _auth_approve_user,
     reject_user as _auth_reject_user,
     deactivate_user as _auth_deactivate_user,
-    verify_token as _auth_verify_token,
 )
 from core.auth_reset import (
     change_password    as _auth_change_password,
@@ -53,16 +51,30 @@ from core.api_keys import (
     issue_api_key  as _api_key_issue,
     revoke_api_key as _api_key_revoke,
     list_api_keys  as _api_key_list,
-    verify_api_key as _api_key_verify,
 )
 from core.policy_engine import default_engine
 from processors.file_processor import FileProcessor
 
-try:
-    from config import BASE_DIR
-    _AUDIT_DB = os.path.join(BASE_DIR, "james_audit.db")
-except ImportError:
-    _AUDIT_DB = "james_audit.db"
+# Server-split scaffolding (v0.4.x cycle, PR-A) — auth/audit helpers
+# moved to routes/_helpers.py. Re-imported here so handlers still inline
+# in this module continue to use the same names. routes/<domain>.py
+# modules import from routes/_helpers directly. See
+# docs/design/v0.4.x-server-split.md.
+from routes._helpers import (
+    _AUDIT_DB,
+    _bearer_username,
+    _require_admin,
+    _require_feature,
+    _write_audit,
+    get_client_ip,
+    get_role_from_request,
+    verify_api_key,
+)
+from routes._deps import (
+    set_file_processor,
+    set_rag_engine,
+    set_rate_limiter,
+)
 
 # ─── [P4-SRV-2] 감사 로그 DB 초기화 ─────────────────────────
 
@@ -88,43 +100,6 @@ def _init_audit_db():
     print(f"[AUDIT] DB 초기화: {_AUDIT_DB}")
 
 _init_audit_db()
-
-def _write_audit(
-    user_role: str,
-    endpoint:  str,
-    query:     str     = "",
-    answer:    str     = "",
-    graph_paths: list  = None,
-    blocked:   bool    = False,
-    security_event: str = "",
-    elapsed_sec: float = 0.0,
-    ip_address: str    = "",
-):
-    """[P4-SRV-2] 감사 로그 DB 기록 (graph_path 포함)"""
-    try:
-        conn = sqlite3.connect(_AUDIT_DB, check_same_thread=False)
-        conn.execute(
-            """INSERT INTO audit_log
-               (timestamp, user_role, endpoint, query, answer, graph_paths,
-                blocked, security_event, elapsed_sec, ip_address)
-               VALUES (?,?,?,?,?,?,?,?,?,?)""",
-            (
-                datetime.now().isoformat(),
-                user_role,
-                endpoint,
-                query[:500],
-                answer[:500],
-                json.dumps(graph_paths or [], ensure_ascii=False)[:1000],
-                int(blocked),
-                security_event[:200],
-                round(elapsed_sec, 2),
-                ip_address,
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"[AUDIT] 로그 기록 실패: {e}")
 
 # ─── [P4-SRV-1] Rate Limiter ─────────────────────────────────
 
@@ -253,7 +228,15 @@ os.makedirs(CHROMA_DIR, exist_ok=True)
 
 rag_engine     = RAGEngine(default_role="external")
 file_processor = FileProcessor()
-bearer_scheme  = HTTPBearer(auto_error=False)
+# bearer_scheme moved to routes/_helpers.py (single source of truth for
+# Depends(bearer_scheme) across server + extracted routers).
+
+# Register singletons with routes/_deps so extracted routers can fetch them
+# via get_rag_engine() / get_file_processor() / get_rate_limiter().
+# Must precede any app.include_router() call below.
+set_rag_engine(rag_engine)
+set_file_processor(file_processor)
+set_rate_limiter(_rate_limiter)
 
 
 @app.on_event("startup")
@@ -395,103 +378,10 @@ async def on_startup():
     asyncio.create_task(_index())
 
 # ─── 인증 헬퍼 ───────────────────────────────────────────────
-
-def verify_api_key(api_key: str):
-    """Accept either the system API_KEY or a per-user ``jms_...`` key.
-
-    Raises 403 if neither matches. This function only validates the
-    credential; role-based authorization continues to consult
-    ``get_role_from_request`` (so a bare system key still gets the
-    employee role, and a user key gets the owner's actual role).
-    """
-    if api_key and api_key.startswith("jms_"):
-        if _api_key_verify(api_key) is not None:
-            return
-    elif api_key == API_KEY:
-        return
-    raise HTTPException(status_code=403, detail="API Key 오류")
-
-
-def resolve_api_key_principal(api_key: str) -> Optional[dict]:
-    """Non-raising counterpart to ``verify_api_key``.
-
-    Returns ``{"source", "username", "role"}`` or None. Used by
-    ``get_role_from_request`` to map a user key to the owner's role
-    without raising on miss (the caller decides whether absence is
-    an error).
-    """
-    if not api_key:
-        return None
-    if api_key.startswith("jms_"):
-        out = _api_key_verify(api_key)
-        if out is not None:
-            return {"source": "user", **out}
-        return None
-    if api_key == API_KEY:
-        # System key intentionally does NOT carry admin authority by
-        # itself — pairing it with an admin JWT is still required for
-        # admin endpoints. The role field here is currently NOT
-        # consumed (``get_role_from_request`` only honors
-        # ``source == "user"`` and falls through for "system"), but we
-        # keep it in sync with the fallback (external) so any future
-        # caller that does honor it gets the secure default.
-        # [default-deny fallback 2026-05-18] employee → external.
-        return {"source": "system", "username": "system", "role": "external"}
-    return None
-
-
-def get_role_from_request(
-    request: Request,
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
-    x_role: Optional[str] = Header(None, alias="X-Role"),
-    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
-) -> str:
-    """JWT > user API key > X-Role (dev) > default employee.
-
-    [W4 P3-2] User API keys (``jms_...``) now surface the owner's
-    role to authorization gates. The system key remains employee
-    so a leaked .env value cannot self-elevate to admin.
-    """
-    if credentials and credentials.credentials:
-        role = get_role_from_token(credentials.credentials)
-        print(f"[AUTH] JWT role: {role}")
-        return role
-
-    # W4 P3-2: X-API-Key header takes precedence over ?api_key= so
-    # clients on shared proxies (where logs may capture the URL) can
-    # move the credential out of the URL line.
-    key = (x_api_key or "").strip() or request.query_params.get("api_key", "")
-    if key:
-        principal = resolve_api_key_principal(key)
-        if principal and principal["source"] == "user":
-            print(f"[AUTH] user API key: {principal['username']} (role={principal['role']})")
-            return principal["role"]
-
-    if x_role and x_role in ALLOWED_ROLES:
-        if DEV_MODE:
-            print(f"[AUTH] X-Role 헤더 사용: {x_role} (개발 모드)")
-            return x_role
-
-    # [default-deny fallback 2026-05-18] employee → external.
-    # Previously (single-local-user posture): "api_key 통과 = 신뢰
-    # 사용자 → employee 수준 부여" — convenient for solo operators but
-    # the implicit elevation undercut PR-O5 (cycle 12, #292) — the
-    # internal_rag gate is policy-attached to the external role, and
-    # an anonymous caller with only the system API key was silently
-    # promoted past that gate. Fallback is now external so the secure
-    # default actually fires: chat / meta still work for a bare key,
-    # retrieval / coding / admin paths require an explicit login.
-    # System operators who want the old behaviour can either (a) log
-    # in (gets their real role from JWT), (b) use a user API key in
-    # the jms_... format that maps to a specific role via
-    # ``resolve_api_key_principal``, or (c) set X-Role in DEV_MODE.
-    return "external"
-
-def get_client_ip(request: Request) -> str:
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+# verify_api_key, resolve_api_key_principal, get_role_from_request,
+# get_client_ip — moved to routes/_helpers.py (v0.4.x server-split PR-A,
+# single source of truth across server + extracted routers). Re-imported
+# at top of this module for back-compat with handlers still inline here.
 
 # ─── Pydantic 모델 ───────────────────────────────────────────
 
@@ -2737,40 +2627,8 @@ async def code_surface(
 
 
 # ── Phase 7: Admin API ──────────────────────────────────────────────────────
-
-def _require_admin(api_key: str, role: str):
-    """
-    Admin API 접근 검증.
-    api_key 검증 + role=admin 체크 (보안 유지)
-    """
-    verify_api_key(api_key)
-    if role != "admin":
-        raise HTTPException(status_code=403,
-                            detail="admin 권한 필요 — admin 계정으로 로그인하세요")
-
-
-def _require_feature(api_key: str, role: str, feature_id: str):
-    """[W4-Q2] Validate api_key + consult PolicyEngine.can_use_feature.
-
-    Same shape as _require_admin but consults the per-feature gate
-    from W4-Q1 instead of the hardcoded ``role != "admin"`` check.
-    For features whose default_allowed set is ``{"admin"}`` (every
-    admin.* feature in the Q1 catalog), behaviour is identical to
-    _require_admin — that equivalence is the safety net for Q2-a's
-    rewrite of existing endpoints.
-
-    Q2-b will add new admin.* features for the remaining endpoints
-    (settings/llm/persona/...) and replace their _require_admin
-    calls similarly.
-    """
-    verify_api_key(api_key)
-    from core.policy_engine import default_engine
-    d = default_engine.can_use_feature(role, feature_id)
-    if not d.allowed:
-        raise HTTPException(
-            status_code=403,
-            detail=f"권한이 부족합니다. ({feature_id})",
-        )
+# _require_admin, _require_feature — moved to routes/_helpers.py (v0.4.x
+# server-split PR-A). Re-imported at top.
 
 
 @app.get("/admin/dashboard", summary="관리자 대시보드 [P7]")
@@ -3020,19 +2878,7 @@ async def admin_users_deactivate(
 
 
 # ─── W4 P2-B: password change + reset-token workflow ────────────
-
-def _bearer_username(request: Request) -> Optional[str]:
-    """Pull `sub` (username) out of the Bearer JWT, or None.
-
-    The endpoints below need the caller's username to scope the
-    operation to their own account. We use the JWT subject claim
-    rather than a body field so the client cannot self-impersonate.
-    """
-    auth_header = request.headers.get("authorization", "")
-    if not auth_header.startswith("Bearer "):
-        return None
-    payload = _auth_verify_token(auth_header[7:].strip())
-    return (payload or {}).get("sub") if payload else None
+# _bearer_username — moved to routes/_helpers.py (v0.4.x server-split PR-A).
 
 
 class PasswordChangeRequest(BaseModel):
