@@ -25,23 +25,21 @@ import json
 from datetime import datetime
 from collections import defaultdict
 from urllib.parse import quote
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Header, Depends, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Depends, Request
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional
 
-from config import BASE_DIR, UPLOAD_DIR, WIKI_DIR, CHROMA_DIR, API_KEY, MAX_UPLOAD_BYTES
+from config import BASE_DIR, UPLOAD_DIR, WIKI_DIR, CHROMA_DIR, MAX_UPLOAD_BYTES
 from core.graph_rag_engine import RAGEngine
 from core.feedback_engine import FeedbackEngine
 from core.auth import (
-    authenticate, get_role_from_token, ALLOWED_ROLES, DEV_MODE,
+    authenticate, ALLOWED_ROLES,
     signup as _auth_signup, list_users as _auth_list_users,
     approve_user as _auth_approve_user,
     reject_user as _auth_reject_user,
     deactivate_user as _auth_deactivate_user,
-    verify_token as _auth_verify_token,
 )
 from core.auth_reset import (
     change_password    as _auth_change_password,
@@ -53,25 +51,23 @@ from core.api_keys import (
     issue_api_key  as _api_key_issue,
     revoke_api_key as _api_key_revoke,
     list_api_keys  as _api_key_list,
-    verify_api_key as _api_key_verify,
 )
 from core.policy_engine import default_engine
 from processors.file_processor import FileProcessor
 
 # Server-split scaffolding (v0.4.x cycle, PR-A) — auth/audit helpers
-# moved to routes/_helpers.py. Re-imported here so other handlers still
-# inline in this module use the same names. routes/<domain>.py modules
-# import from routes/_helpers directly. See docs/design/v0.4.x-server-split.md.
+# moved to routes/_helpers.py. Re-imported here so handlers still inline
+# in this module continue to use the same names. routes/<domain>.py
+# modules import from routes/_helpers directly. See
+# docs/design/v0.4.x-server-split.md.
 from routes._helpers import (
     _AUDIT_DB,
     _bearer_username,
     _require_admin,
     _require_feature,
     _write_audit,
-    bearer_scheme,
     get_client_ip,
     get_role_from_request,
-    resolve_api_key_principal,
     verify_api_key,
 )
 from routes._deps import (
