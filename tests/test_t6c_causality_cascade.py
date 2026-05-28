@@ -1,12 +1,20 @@
-"""v0.4.1 PR-T6.C — derivation-aware invalidation cascade tests.
+"""v0.4.1 PR-T6.C + T6.C.b — derivation-aware invalidation cascade tests.
 
-Pins the per-derivation-type C-semantics (entry memo §2 Decision 4,
-clarified 2026-05-28):
+Pins the foundational-vs-corroborative semantics (entry memo §2
+Decision 4, refined 2026-05-28 in T6.C.b):
 
-  - ``transitive`` / ``inferred`` → ANY-trigger
-  - ``operator`` → ALL-trigger
-  - mixed → invalidate iff (any transitive/inferred broken) OR
-    (all operator broken when at least one exists)
+  - ``transitive`` / ``inferred`` = hard deps (structural chain links)
+    → ANY-trigger: loss of any one breaks the derivation.
+  - ``operator`` = soft deps (corroborative evidence)
+    → contributes only when no hard dep supports the edge; when
+       hard deps are present and alive, operator loss only WEAKENS,
+       doesn't invalidate.
+
+Combined: invalidate iff (any hard dep base empty) OR
+                          (no hard deps AND all operator bases empty)
+
+T6.C.b corrects the original T6.C edge case where one transitive
++ one operator with operator gone invalidated incorrectly.
 
 Run:
   python -m unittest tests.test_t6c_causality_cascade
@@ -145,6 +153,76 @@ class ShouldInvalidateEdgeTests(unittest.TestCase):
             ],
         }
         self.assertFalse(should_invalidate_edge(edge, set()))
+
+    def test_t6cb_corroborator_loss_with_foundation_preserves(self):
+        """T6.C.b refinement: ONE transitive (foundation) + ONE operator
+        (corroborator). The operator base goes empty; foundation alive.
+
+        Original T6.C: invalidate (operator-all-empty trivially fires
+        with one operator entry).
+        T6.C.b: preserve (foundation intact; lost corroborator only
+        weakens the derivation, doesn't break it).
+
+        Mirrors the "캘리포니아는 미국이다" + "어른 X가 봤다" example:
+        losing the corroborator (X's testimony) while the chain link
+        survives = derivation weakens but holds.
+        """
+        edge = {
+            "id": "e_derived",
+            "derived_from": [
+                {"base_fact_id": "b_foundation",
+                 "derivation": "transitive"},
+                {"base_fact_id": "b_corroborator",
+                 "derivation": "operator"},
+            ],
+        }
+        # Only the corroborator empty → preserve.
+        self.assertFalse(
+            should_invalidate_edge(edge, {"b_corroborator"})
+        )
+
+    def test_t6cb_all_corroborators_lost_with_foundation_preserves(self):
+        """T6.C.b refinement: 1 transitive + 3 operator. ALL operator
+        bases go empty; foundation alive → preserve. The foundation
+        still supports the derivation alone."""
+        edge = {
+            "id": "e_derived",
+            "derived_from": [
+                {"base_fact_id": "b_foundation",
+                 "derivation": "transitive"},
+                {"base_fact_id": "b_corr1", "derivation": "operator"},
+                {"base_fact_id": "b_corr2", "derivation": "operator"},
+                {"base_fact_id": "b_corr3", "derivation": "operator"},
+            ],
+        }
+        # All operators empty, foundation alive → preserve.
+        self.assertFalse(
+            should_invalidate_edge(
+                edge, {"b_corr1", "b_corr2", "b_corr3"},
+            ),
+        )
+        # Now the foundation is also lost → invalidate (Rule 1).
+        self.assertTrue(
+            should_invalidate_edge(
+                edge,
+                {"b_foundation", "b_corr1", "b_corr2", "b_corr3"},
+            ),
+        )
+
+    def test_t6cb_operator_only_edge_still_collapses_when_all_gone(self):
+        """Rule 2 boundary: operator-only edge (no hard deps) with
+        ALL operator bases empty → invalidate. The "lone corroborator
+        collapse" case — no foundation to fall back on."""
+        edge = {
+            "id": "e_corr_only",
+            "derived_from": [
+                {"base_fact_id": "b1", "derivation": "operator"},
+                {"base_fact_id": "b2", "derivation": "operator"},
+            ],
+        }
+        self.assertTrue(should_invalidate_edge(edge, {"b1", "b2"}))
+        # Partial loss still preserves.
+        self.assertFalse(should_invalidate_edge(edge, {"b1"}))
 
 
 # ---------------------------------------------------------------------------
