@@ -76,7 +76,12 @@ class LlmActiveEndpointTests(unittest.TestCase):
                     "using 'gemma3:4b' from preference list",
         )
 
-        with patch.object(srv, "verify_api_key", lambda _k: None), \
+        # v0.4.x server-split: llm_active lives in routes/llm.py with
+        # its own `from routes._helpers import verify_api_key` binding.
+        # Patching `srv.verify_api_key` would not reach that binding —
+        # patch routes.llm.verify_api_key directly so the handler sees
+        # the stub.
+        with patch("routes.llm.verify_api_key", lambda _k: None), \
              patch("core.model_resolver.resolve_chat", return_value=fake):
             result = asyncio.run(srv.llm_active(api_key="ignored", _role="admin"))
 

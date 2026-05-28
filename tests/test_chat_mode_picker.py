@@ -46,8 +46,8 @@ class BackendModeOverrideTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import server_llmwiki as srv
-        cls.srv_src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        cls.srv_src = combined_server_source()
         import core.reasoning.engine as eng
         cls.eng_src = inspect.getsource(eng)
 
@@ -110,8 +110,8 @@ class LlmModesEndpointTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import server_llmwiki as srv
-        cls.src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        cls.src = combined_server_source()
 
     def _endpoint_body(self) -> str:
         # Bound to ONLY this endpoint's body — next @app. is end.

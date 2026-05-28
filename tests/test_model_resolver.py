@@ -239,9 +239,8 @@ class InvalidateHookTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import inspect
-        import server_llmwiki as srv
-        cls.src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        cls.src = combined_server_source()
 
     def test_install_thread_invalidates_cache(self):
         # _start_install_with_progress runs the pull in a background

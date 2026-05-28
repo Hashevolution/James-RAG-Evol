@@ -42,8 +42,8 @@ class LlmModesEndpointTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import server_llmwiki as srv
-        cls.src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        cls.src = combined_server_source()
 
     def _endpoint_body(self) -> str:
         idx = self.src.index('@app.get("/llm/modes/"')
@@ -90,8 +90,8 @@ class LlmInstallEndpointTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import server_llmwiki as srv
-        cls.src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        cls.src = combined_server_source()
 
     def _endpoint_body(self) -> str:
         idx = self.src.index('@app.post("/llm/install/"')
