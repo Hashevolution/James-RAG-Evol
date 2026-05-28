@@ -39,8 +39,9 @@ class BackendTrackerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         import server_llmwiki as srv
+        from tests._server_split_helpers import combined_server_source
         cls.srv = srv
-        cls.src = inspect.getsource(srv)
+        cls.src = combined_server_source()
 
     def test_progress_dict_exists(self):
         self.assertTrue(hasattr(self.srv, "_install_progress"),
@@ -85,8 +86,8 @@ class BackendTrackerTests(unittest.TestCase):
 class InstallEndpointTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        import server_llmwiki as srv
-        cls.src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        cls.src = combined_server_source()
 
     def _endpoint_body(self) -> str:
         idx = self.src.index('@app.post("/llm/install/"')
@@ -115,8 +116,8 @@ class InstallEndpointTests(unittest.TestCase):
 class ProgressEndpointTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        import server_llmwiki as srv
-        cls.src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        cls.src = combined_server_source()
 
     def test_get_endpoint_registered(self):
         self.assertIn('@app.get("/admin/llm/install-progress"', self.src,

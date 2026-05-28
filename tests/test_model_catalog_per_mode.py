@@ -30,7 +30,6 @@ Run:
 """
 from __future__ import annotations
 
-import inspect
 import os
 import re
 import sys
@@ -48,8 +47,9 @@ class ModelCatalogTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         import server_llmwiki as srv
+        from tests._server_split_helpers import combined_server_source
         cls.srv = srv
-        cls.src = inspect.getsource(srv)
+        cls.src = combined_server_source()
 
     def test_catalog_function_exists(self):
         self.assertIn("def _model_catalog", self.src,
@@ -114,8 +114,8 @@ class LlmModesResponseShapeTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import server_llmwiki as srv
-        cls.src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        cls.src = combined_server_source()
 
     def _endpoint_body(self) -> str:
         idx = self.src.index('@app.get("/llm/modes/"')
