@@ -33,20 +33,25 @@ def _load_fixture() -> dict:
 
 
 class FixtureVersionTests(unittest.TestCase):
-    """v5 schema version + description carry the QVT α-2 contract."""
+    """v5+ schema version + description carry the QVT α-2 contract.
+    v6 (T2.D-3, 2026-05-28) adds q17 CEO question for dispatch
+    acceptance baseline."""
 
-    def test_version_is_v5(self):
+    def test_version_at_least_v5(self):
         data = _load_fixture()
-        self.assertEqual(
-            data["version"],
-            "step7-v5",
-            "version must be 'step7-v5' (any later bump should keep the "
-            "QVT α-2 invariants below or add an explicit schema migration)",
+        # Accept v5 or v6 — v6 adds q17 but keeps every v5 invariant.
+        self.assertIn(
+            data["version"], ("step7-v5", "step7-v6"),
+            "version must be 'step7-v5' or 'step7-v6' (later bumps "
+            "should keep the QVT α-2 invariants below or add an "
+            "explicit schema migration)",
         )
 
-    def test_queries_count_unchanged(self):
+    def test_queries_count_min(self):
+        """v5 = 16 queries; v6 = 17 queries (q17 CEO acceptance).
+        Lower bound is the v5 baseline."""
         data = _load_fixture()
-        self.assertEqual(len(data["queries"]), 16)
+        self.assertGreaterEqual(len(data["queries"]), 16)
 
 
 class GoldSignalsTests(unittest.TestCase):
