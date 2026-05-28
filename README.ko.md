@@ -18,16 +18,25 @@
 
 ---
 
-## 프로젝트 상태: v0.4.0 — Layer 4 Lifecycle Semantics (first bundle)
+## 프로젝트 상태: v0.4.1 — T6 Causality Chain (CASCADE extension)
 
-**2026-05-27 릴리스**. v0.4.0 은 Layer 4 first bundle —
+**2026-05-28 릴리스**. v0.4.1 은 v0.4.0 이 절반만 마친 CASCADE
+pillar 를 마감합니다. base fact 의 sources 가 모두 제거되면,
+`derived_from` 이 그 base 를 가리키는 edge 들이
+`invalidate_derived_facts` 로 자동 무효화 — 파생 체인이 운영자
+개입 없이 내부 정합성을 유지합니다. derivation-type 별 semantics
+(T6.C.b 정정): `transitive` / `inferred` 는 구조적 체인 링크
+(any base empty → invalidate); `operator` 는 보조적
+(hard deps 가 없고 모든 operator base 가 비었을 때만 invalidate).
+
+이전: **v0.4.0** (2026-05-27) 은 Layer 4 first bundle —
 **T1 Temporal Validity + T7 Supersede Chain + T2 Contradiction
 Arbitration** — 을 Sprint 5 의 8 PR 시퀀스로 출시. CASCADE 와
-EVENT 의 분리 invariant 가 `tests/test_t7_release_gating_invariants
-.py` (실제 wiki 픽스처 대상, 목 아님) 으로 **end-to-end 증명**.
-supersede chain 프리미티브 (`reconstruct_view_at`) 가 무관한
-CASCADE 삭제 이벤트 후에도 "시점 T 에 무엇이 참이었나" 를
-결정론적으로 답변.
+EVENT 의 분리 invariant 가
+`tests/test_t7_release_gating_invariants.py` (실제 wiki 픽스처
+대상, 목 아님) 으로 **end-to-end 증명**. supersede chain
+프리미티브 (`reconstruct_view_at`) 가 무관한 CASCADE 삭제 이벤트
+후에도 "시점 T 에 무엇이 참이었나" 를 결정론적으로 답변.
 
 이전: v0.3.0 (2026-05-17) Foundation Hardening 마감 — 6 축
 (아키텍처 / 평가 / 관찰성 / 보안 / 통제 진화 / 실데이터 검증)
