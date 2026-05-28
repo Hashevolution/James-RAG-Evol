@@ -32,7 +32,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 import shutil
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from core.relations_schema import (
     MANUAL_SOURCE_ROLE,
@@ -50,18 +50,43 @@ from ._helpers import (
 def cascade_remove_doc_from_sources(
     doc_entity_id: str,
     entity_root:   Path,
+    *,
+    audit_emit:    Optional[Callable[[Dict[str, Any]], None]] = None,
+    propagate_t6:  bool = True,
 ) -> Dict[str, int]:
     """모든 entity 의 relation sources 에서 ``doc_entity_id`` 항목을 제거.
 
     설계 §14 의 reference 구현. manual / legacy source 는 건드리지 않음.
     sources 가 모두 사라진 relation 은 relation 자체가 사라진다.
 
+    v0.4.1 PR-T6.D — when a relation is dropped (sources became empty),
+    its ``id`` is collected as a ``base_fact_id`` for the downstream
+    T6 causality cascade. After this function's primary loop completes,
+    ``invalidate_derived_facts`` (T6.C) is invoked with the full set
+    of dropped ids, walking the wiki once to find edges whose
+    ``derived_from`` references any of them. Per the T6.C.b refined
+    semantics, only edges with broken foundational (transitive/inferred)
+    bases — OR purely-corroborator edges with all bases gone —
+    invalidate; edges with surviving foundational support stay alive.
+
+    Args:
+        doc_entity_id: doc whose sources are being purged.
+        entity_root: wiki entity root for the walk.
+        audit_emit: optional callback for T6 audit rows. Each
+            T6-invalidated edge gets one row with
+            ``mutation_type="invalidated_by_cascade"``.
+        propagate_t6: opt-out switch (default True). Set False for
+            test scenarios that need the pre-T6.D byte-identical
+            behavior, or for callers that intentionally separate
+            the cascade and T6 phases.
+
     Returns:
         counts = {
-          "entities_scanned":     int,
-          "entities_touched":     int,
-          "relations_recomputed": int,
-          "relations_dropped":    int,
+          "entities_scanned":      int,
+          "entities_touched":      int,
+          "relations_recomputed":  int,
+          "relations_dropped":     int,
+          "derived_invalidated":   int,  # v0.4.1 PR-T6.D
         }
     """
     counts = {
@@ -69,7 +94,9 @@ def cascade_remove_doc_from_sources(
         "entities_touched":     0,
         "relations_recomputed": 0,
         "relations_dropped":    0,
+        "derived_invalidated":  0,
     }
+    dropped_rel_ids: List[str] = []  # T6.D — base_fact_id candidates
     for path in _iter_entity_files(entity_root):
         parsed = _read_frontmatter(path)
         if not parsed:
@@ -105,6 +132,14 @@ def cascade_remove_doc_from_sources(
             touched = True
             if not kept:
                 counts["relations_dropped"] += 1
+                # T6.D — collect the dropped relation's id as a
+                # base_fact_id candidate for the downstream causality
+                # cascade. Relations without an id can't be the target
+                # of any derived_from reference (no stable handle), so
+                # they're silently skipped from the propagation set.
+                rel_id = rel.get("id")
+                if isinstance(rel_id, str) and rel_id:
+                    dropped_rel_ids.append(rel_id)
                 continue   # relation 자체가 사라짐
             rel["sources"]    = kept
             rel["confidence"] = compute_confidence_from_sources(kept)
@@ -115,6 +150,25 @@ def cascade_remove_doc_from_sources(
             counts["entities_touched"] += 1
             fm["relations"] = new_rels
             _write_frontmatter(path, fm, body)
+
+    # v0.4.1 PR-T6.D — propagate causality cascade. Dropped relations
+    # may have been base_fact_id targets of derived edges elsewhere
+    # in the wiki. Call invalidate_derived_facts once with the full
+    # set so the walk is O(N entity files) instead of O(N × dropped).
+    # Per-derived-edge T6.C.b semantics still evaluates correctly.
+    if propagate_t6 and dropped_rel_ids:
+        # Import locally to avoid circular-import risk + keep T6
+        # optional for callers that don't pull it in.
+        from core.lifecycle.causality import invalidate_derived_facts
+        first = dropped_rel_ids[0]
+        rest = set(dropped_rel_ids[1:])
+        invalidated = invalidate_derived_facts(
+            first,
+            entity_root,
+            additional_empty_bases=rest,
+            audit_emit=audit_emit,
+        )
+        counts["derived_invalidated"] = len(invalidated)
 
     return counts
 
