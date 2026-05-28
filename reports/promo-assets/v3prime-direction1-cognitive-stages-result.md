@@ -167,7 +167,11 @@ The data turned out to be more valuable than the hypothesis:
 | Mechanism 2 (answer convergence) framed by workload weight only | Mechanism 2 has **two convergence axes**: workload weight (1/20 → 20/20) AND task type (verify 2-3/20 even at heavy workload — structured-JSON clustering) |
 | Direction 1's product impact was framed as "Adaptive Budgeting cuts tokens" | Direction 1's product impact is framed as *"cap budgets are a memory + safety rail on a model whose natural-stop length is the actual workload measurement; the v2 heuristic stays in tree as the canonical task-weight band for any operator opt-in"* |
 
-Headline phrase (3-author locked, unchanged):
+Headline phrase (3-author locked, unchanged — **PROVISIONAL pending
+4-way attribution map at mid-June outline; Robin 2026-05-28 flagged
+thread-level contributions from Vadym Arnaut (substitution-vs-decision
+boundary) + Ali (each-variant-tax framing), see launch-tracker
+2026-05-28 row**):
 
 > *"Substitution is free. Synthesis costs in proportion to what it
 > has to invent."*

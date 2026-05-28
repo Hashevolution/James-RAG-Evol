@@ -135,6 +135,15 @@ about how this result doc functions going forward:
 
 ### 1. The headline phrase is now three-author standing
 
+> **PROVISIONAL (2026-05-28)**: Robin's 5/28 reply flagged
+> thread-level contributors — **Vadym Arnaut**
+> (substitution-vs-decision boundary) + **Ali**'s
+> "each variant has its own tax" framing also feed this
+> articulation. "Three-author standing" below remains in place
+> but is known incomplete; the precise 4-way attribution map is
+> deferred to the mid-June 3-way outline conversation. See
+> `reports/promo-assets/launch-tracker.md` 2026-05-28 row.
+
 > "Substitution is free. Synthesis costs in proportion to what
 > it has to invent."
 
@@ -379,7 +388,7 @@ The headline phrase still holds verbatim. The sub-clause expands:
 
 | Phrase | Status |
 |---|---|
-| *"Substitution is free. Synthesis costs in proportion to what it has to invent."* | 3-author locked (unchanged) |
+| *"Substitution is free. Synthesis costs in proportion to what it has to invent."* | 3-author locked (unchanged) **— PROVISIONAL: 4-way map pending mid-June outline, see top-of-doc note + launch-tracker 2026-05-28** |
 | *"…and inversely to parameter count."* | Draft proposal (unchanged) |
 | **"…and the gradient is multi-tier: sampling bypass at verbatim, partial clustering on tight-constraint synthesis, full sampling on open-ended generation."** | **New draft proposal — measured 2026-05-24, JAMES-side; awaits Robin / Ali endorsement** |
 
