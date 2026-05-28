@@ -72,6 +72,28 @@ T7_EDGE_FIELD_VALIDITY:      Final[str] = "validity"
 T7_EDGE_FIELD_STATUS:        Final[str] = "status"
 T7_EDGE_FIELD_MUTATION_TYPE: Final[str] = "mutation_type"
 
+# ─── T6 Causality Chain (v0.4.1, 2026-05-28) ─────────────────────
+#
+# Edge-level ``derived_from`` field tracks the base facts that an
+# inferred edge depends on. When a base fact is invalidated by
+# CASCADE, derived edges automatically lose their support and become
+# invalidation candidates (T6 cascade, separate module).
+#
+# Per v0.4.1 entry memo Decision 3 LOCK: cycles are rejected at
+# schema validation time (a derivation that includes itself in its
+# transitive chain is genuine schema confusion).
+T6_EDGE_FIELD_DERIVED_FROM: Final[str] = "derived_from"
+
+T6_DERIVATION_TRANSITIVE: Final[str] = "transitive"
+T6_DERIVATION_OPERATOR:   Final[str] = "operator"
+T6_DERIVATION_INFERRED:   Final[str] = "inferred"
+
+VALID_DERIVATION_TYPES: Final[frozenset[str]] = frozenset({
+    T6_DERIVATION_TRANSITIVE,
+    T6_DERIVATION_OPERATOR,
+    T6_DERIVATION_INFERRED,
+})
+
 
 def _parse_optional_iso(value: Any) -> datetime | None:
     """Return parsed ``datetime`` for an ISO-8601 string, ``None`` for
@@ -282,6 +304,135 @@ def apply_v04_edge_defaults(edge: dict) -> dict:
     return out
 
 
+# ─── T6 derived_from validator + defaults (v0.4.1) ───────────────
+
+
+def validate_edge_t6_derived_from(
+    edge: dict,
+    *,
+    edges_by_id: dict | None = None,
+) -> None:
+    """Raise ``ValueError`` if the edge's ``derived_from`` field is
+    malformed OR (when ``edges_by_id`` is provided) introduces a
+    derivation cycle.
+
+    Acceptable shapes:
+      - ``derived_from`` missing → OK (treated as ``[]``, v0.3-equivalent)
+      - ``derived_from: []``     → OK (the migration-script default)
+      - ``derived_from: [{base_fact_id: str, derivation: str ∈
+        VALID_DERIVATION_TYPES}, …]`` → validated entry-by-entry
+
+    Decision 3 LOCK (v0.4.1 entry memo §2): when ``edges_by_id`` is
+    provided (mapping ``id`` → ``edge`` for all edges in scope), this
+    function walks each ``base_fact_id``'s transitive chain and raises
+    ``ValueError`` on cycle (the edge itself appears in its own
+    ancestor set). Pass ``edges_by_id=None`` to skip cycle detection
+    (single-edge validation without ancestor context).
+
+    Args:
+        edge: the edge dict to validate.
+        edges_by_id: optional map from edge id to edge dict, used for
+            cycle detection. When omitted, only shape is checked.
+    """
+    if not isinstance(edge, dict):
+        raise ValueError(
+            f"edge must be a dict, got {type(edge).__name__}"
+        )
+
+    derived_from = edge.get(T6_EDGE_FIELD_DERIVED_FROM)
+    if derived_from is None:
+        return
+    if not isinstance(derived_from, list):
+        raise ValueError(
+            f"edge.derived_from must be a list, got "
+            f"{type(derived_from).__name__}"
+        )
+
+    for i, entry in enumerate(derived_from):
+        if not isinstance(entry, dict):
+            raise ValueError(
+                f"edge.derived_from[{i}] must be a dict, got "
+                f"{type(entry).__name__}"
+            )
+        base_fact_id = entry.get("base_fact_id")
+        if not isinstance(base_fact_id, str) or not base_fact_id:
+            raise ValueError(
+                f"edge.derived_from[{i}].base_fact_id must be a "
+                f"non-empty str, got {base_fact_id!r}"
+            )
+        derivation = entry.get("derivation")
+        if derivation not in VALID_DERIVATION_TYPES:
+            raise ValueError(
+                f"edge.derived_from[{i}].derivation must be one of "
+                f"{sorted(VALID_DERIVATION_TYPES)}, got {derivation!r}"
+            )
+
+    # Decision 3 LOCK — cycle rejection. Walk every base_fact_id's
+    # transitive chain; if we encounter the edge's own id, raise.
+    if edges_by_id is None:
+        return
+    edge_id = edge.get("id")
+    if not isinstance(edge_id, str) or not edge_id:
+        # Without a stable id we can't recognize the cycle endpoint.
+        # Skip — calling code that wants strict cycle checking sets
+        # an id on the edge before validation.
+        return
+    _walk_for_cycle(edge_id, derived_from, edges_by_id, visited=set())
+
+
+def _walk_for_cycle(
+    target_id: str,
+    derivations: list,
+    edges_by_id: dict,
+    *,
+    visited: set,
+) -> None:
+    """Recursive helper for cycle detection. Walks transitive base
+    chains; raises ``ValueError`` if ``target_id`` reappears."""
+    for entry in derivations:
+        if not isinstance(entry, dict):
+            continue
+        base_fact_id = entry.get("base_fact_id")
+        if not isinstance(base_fact_id, str) or not base_fact_id:
+            continue
+        if base_fact_id == target_id:
+            raise ValueError(
+                f"derivation cycle: edge id={target_id!r} appears in "
+                f"its own transitive derived_from chain — Decision 3 "
+                f"LOCK rejects self-referential derivations"
+            )
+        if base_fact_id in visited:
+            continue
+        visited.add(base_fact_id)
+        base = edges_by_id.get(base_fact_id)
+        if not isinstance(base, dict):
+            continue
+        base_derivations = base.get(T6_EDGE_FIELD_DERIVED_FROM)
+        if isinstance(base_derivations, list):
+            _walk_for_cycle(
+                target_id, base_derivations, edges_by_id,
+                visited=visited,
+            )
+
+
+def apply_t6_edge_defaults(edge: dict) -> dict:
+    """Return a copy of ``edge`` with the v0.4.1 ``derived_from``
+    field set to ``[]`` when absent. Idempotent — re-running on an
+    already-migrated edge yields the same dict.
+
+    The migration script (T6.A's ``scripts/migrate_v041_lifecycle.py``)
+    calls this on every edge in every entity file, then writes back
+    only when the dict actually changed (byte-stable).
+    """
+    if not isinstance(edge, dict):
+        raise ValueError(
+            f"edge must be a dict, got {type(edge).__name__}"
+        )
+    out = dict(edge)
+    out.setdefault(T6_EDGE_FIELD_DERIVED_FROM, [])
+    return out
+
+
 __all__ = [
     # mutation type enum
     "T1_MUTATION_ACTIVE",
@@ -295,6 +446,15 @@ __all__ = [
     "T7_EDGE_FIELD_VALIDITY",
     "T7_EDGE_FIELD_STATUS",
     "T7_EDGE_FIELD_MUTATION_TYPE",
+    "T6_EDGE_FIELD_DERIVED_FROM",
+    # T6 derivation type enum
+    "T6_DERIVATION_TRANSITIVE",
+    "T6_DERIVATION_OPERATOR",
+    "T6_DERIVATION_INFERRED",
+    "VALID_DERIVATION_TYPES",
+    # T6 validators + defaults
+    "validate_edge_t6_derived_from",
+    "apply_t6_edge_defaults",
     # validators
     "validate_source_v04_fields",
     "validate_edge_v04_fields",
