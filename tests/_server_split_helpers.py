@@ -28,10 +28,12 @@ def combined_server_source() -> str:
     import server_llmwiki  # noqa: F401  — surfaces import errors clearly
     parts: list[str] = [inspect.getsource(server_llmwiki)]
 
-    # Probe known routes/* modules. Add new ones here as PR-H lands.
+    # Probe known routes/* modules (8-PR cycle complete after PR-H).
     for mod_name in (
         "routes.auth", "routes.llm", "routes.jobs", "routes.artifacts",
         "routes.evolution", "routes.coding", "routes.admin",
+        "routes.query", "routes.history", "routes.feedback",
+        "routes.multimodal", "routes.ops",
     ):
         try:
             mod = importlib.import_module(mod_name)

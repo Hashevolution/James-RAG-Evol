@@ -56,9 +56,8 @@ class AdminGateContractTests(unittest.TestCase):
     """
 
     def test_endpoint_admin_gates_retrieved_contexts(self):
-        import server_llmwiki as srv
-        import inspect
-        src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        src = combined_server_source()
         # The exposure must be gated on BOTH the request flag AND the role.
         self.assertIn(
             'data.include_contexts and role == "admin"',
