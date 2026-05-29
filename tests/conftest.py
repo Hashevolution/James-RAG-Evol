@@ -44,6 +44,30 @@ Cost: ~5s of session-start overhead instead of ~5s of per-test
 ``setUp`` overhead on cold runners. The session pays the import once;
 no test pays it.
 
+## 2026-05-29 extension — flaky-fix follow-up
+
+The original conftest (above) pre-imported the four heavy modules but
+two tests still failed intermittently on cold CI runners:
+
+  - ``test_entity_name_markdown_strip::test_all_markdown_falls_back_to_unknown``
+    — timeout (>30s)
+  - ``test_native_done_reason::test_router_wrapper_call_gemma_meta_dispatches_to_call_router_meta``
+    — cascade failure when the entity-name test's setUp times out and
+    leaks ``patch("llm.router.RouterWrapper")``
+
+Two additions to cover the remaining lazy-import paths that fire
+during ``WikiFrontmatterMixin.create_entity_file``:
+
+  - ``core.ontology`` / ``core.graph_node_editor`` — both `from … import`
+    lazily inside the create_entity_file method body, so the first test
+    that drives that path pays their first-import cost. Pre-importing
+    here lifts that out of per-test ``setUp``.
+  - A ``WikiGenerator`` warm-up instantiation forces every mixin
+    ``__init__`` (Frontmatter / Merge / Ingestion) to run once at
+    session start, priming any LRU caches or class-level lazy attrs.
+    Wrapped in try/except — instantiation side-effects (filesystem,
+    config) are recoverable; we just want the cache primed.
+
 ## What this does NOT do
 
 This is not a global patch / mock — it just imports. Module identity
@@ -63,3 +87,21 @@ import core.memory  # noqa: F401 — pre-import to warm sys.modules
 import core.vector_store  # noqa: F401 — pulls torch / transformers (~5s cold)
 import core.wiki_generator  # noqa: F401 — pre-import to warm sys.modules
 import llm.router  # noqa: F401 — pre-import to warm sys.modules
+
+# 2026-05-29 — additional pre-imports for create_entity_file lazy paths.
+import core.graph_node_editor  # noqa: F401 — lazy-imported in _frontmatter.py:310
+import core.ontology  # noqa: F401 — lazy-imported in _frontmatter.py:336
+
+# 2026-05-29 — warm-up WikiGenerator so every mixin __init__ runs once
+# at session start. Side-effects are recoverable; we only need caches
+# primed for create_entity_file's first call to stay under 30s on cold
+# CI runners.
+try:
+    from core.wiki_generator import WikiGenerator
+    WikiGenerator(source_type="test")
+except Exception:
+    # Instantiation side-effects (filesystem, network, config) are not
+    # required to succeed — the goal is just to trigger any lazy
+    # imports / one-shot setup the class performs. Tests that need a
+    # working instance build their own under isolated tmp dirs.
+    pass
