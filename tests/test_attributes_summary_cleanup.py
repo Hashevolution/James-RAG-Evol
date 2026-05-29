@@ -56,34 +56,35 @@ class _Base(unittest.TestCase):
     """Same pattern as test_wiki_summary_body_sync — isolate WIKI_DIR
     and bypass memory/verify/vector-store side effects."""
 
-    def setUp(self):
-        self.tmp = tempfile.mkdtemp()
-        self.wiki_dir_patcher = patch("config.WIKI_DIR", self.tmp)
-        self.wiki_dir_patcher.start()
+    # Class-level patches + WikiGenerator (sibling of PR #592 canary).
+    # See conftest.py docstring + PR #582 / PR #592 history.
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp()
+        cls._patchers = [
+            patch("config.WIKI_DIR", cls.tmp),
+            patch(
+                "core.memory.verify_before_write",
+                return_value=(True, "ok", 0.99),
+            ),
+            patch("core.vector_store.VectorStore"),
+            patch("llm.router.RouterWrapper"),
+        ]
+        for p in cls._patchers:
+            p.start()
         import core.wiki_generator as wg_mod
-        self._orig_wiki_dir = wg_mod.WIKI_DIR
-        wg_mod.WIKI_DIR = self.tmp
-
-        self.verify_patcher = patch(
-            "core.memory.verify_before_write",
-            return_value=(True, "ok", 0.99),
-        )
-        self.verify_patcher.start()
-        self.vs_patcher = patch("core.vector_store.VectorStore")
-        self.vs_patcher.start()
-        self.router_patcher = patch("llm.router.RouterWrapper")
-        self.router_patcher.start()
-
+        cls._orig_wiki_dir = wg_mod.WIKI_DIR
+        wg_mod.WIKI_DIR = cls.tmp
         from core.wiki_generator import WikiGenerator
-        self.wg = WikiGenerator(source_type="test")
+        cls.wg = WikiGenerator(source_type="test")
 
-    def tearDown(self):
-        self.wiki_dir_patcher.stop()
-        self.verify_patcher.stop()
-        self.vs_patcher.stop()
-        self.router_patcher.stop()
+    @classmethod
+    def tearDownClass(cls):
+        for p in cls._patchers:
+            p.stop()
         import core.wiki_generator as wg_mod
-        wg_mod.WIKI_DIR = self._orig_wiki_dir
+        wg_mod.WIKI_DIR = cls._orig_wiki_dir
 
     def _read_fm(self, path: Path):
         raw = path.read_text(encoding="utf-8")
