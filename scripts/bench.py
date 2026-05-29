@@ -71,6 +71,56 @@ def _load_api_key() -> str:
     )
 
 
+def _resolve_bearer() -> str:
+    """Return the JWT bearer for retrieval-mode bench access.
+
+    Precedence:
+      1. ``JAMES_BENCH_BEARER`` env (operator-provided, e.g. a token
+         minted with a specific role for a targeted scenario).
+      2. Auto-mint an admin token via ``core.auth.create_token`` and
+         emit a stderr warning so the operator knows where the token
+         came from.
+
+    The fallback exists because ``/query/`` routes through
+    ``query.internal_rag``, which blocks external role and silently
+    falls through to ``handle_chat`` (``mode="chat"``,
+    ``graph_paths_count=0``). Without a bearer, bench numbers reflect
+    chat-passthrough latency, not RAG-path latency — a category
+    mistake easy to miss because the script still exits 0.
+
+    Surfaced 2026-05-29 during M4 step7 baseline reproduction: an
+    attempt to re-measure the 2026-05-28 baseline yielded ~6× faster
+    totals + ``graph_paths_total=0``, traced to ``JAMES_BENCH_BEARER``
+    being unset in the new session. Same code, same fixture, same
+    sha — only the bearer presence differed. See
+    ``feedback_bench_step7_chat_mode_passthrough`` for the original
+    2026-05-27 diagnostic, and
+    ``reports/research-runs/step7-bench-variance-analysis-2026-05-29.md``
+    §10 for the follow-up.
+    """
+    env_v = os.environ.get("JAMES_BENCH_BEARER", "").strip()
+    if env_v:
+        return env_v
+    try:
+        from core.auth import create_token
+    except Exception as e:
+        print(
+            f"[bench] WARN: could not import core.auth.create_token "
+            f"({e!r}). Proceeding without bearer — expect chat-passthrough "
+            f"numbers (mode=chat, graph_paths_count=0).",
+            file=sys.stderr,
+        )
+        return ""
+    token = create_token("bench", "admin")
+    print(
+        "[bench] JAMES_BENCH_BEARER not set — auto-minted admin token "
+        "for RAG-path measurement (subject=bench, role=admin). Set the "
+        "env var to override (e.g. role=employee for tier checks).",
+        file=sys.stderr,
+    )
+    return token
+
+
 def _git_sha() -> str:
     try:
         out = subprocess.check_output(
@@ -178,6 +228,7 @@ def _load_baseline(name: str) -> Optional[Dict]:
 def _run_one(
     api_key: str, q: Dict, endpoint: str, timeout: int,
     default_mode: Optional[str] = None,
+    bearer: str = "",
 ) -> Dict:
     """Run a single query against the live server. Returns the row dict that
     bench reports operate on.
@@ -189,6 +240,13 @@ def _run_one(
     ``"retrieval"`` for L.D evidence-scope measurement which would
     otherwise hit chat-mode passthrough). See
     ``feedback_bench_step7_chat_mode_passthrough`` for context.
+
+    ``bearer``: JWT bearer for retrieval-mode bench access. Resolved
+    once in ``main()`` via ``_resolve_bearer()`` and passed in so every
+    query reuses the same token (consistent expiry window across the
+    whole suite). External role is policy-blocked from
+    ``query.internal_rag`` and falls through to ``handle_chat``, so
+    without a bearer the bench reports chat-passthrough numbers.
     """
     t0 = time.time()
     body: Dict = {
@@ -200,13 +258,7 @@ def _run_one(
     if mode_override:
         body["mode_override"] = mode_override
     headers = {}
-    bearer = os.environ.get("JAMES_BENCH_BEARER", "").strip()
     if bearer:
-        # JWT bearer for role-elevated bench runs (e.g. retrieval mode
-        # requires employee+ since external is policy-blocked from
-        # `query.internal_rag` → falls back to handle_chat regardless
-        # of mode_override). Mint via `core.auth.create_token(name,
-        # role)` in the wrapper; never commit a real token.
         headers["Authorization"] = f"Bearer {bearer}"
     try:
         r = requests.post(
@@ -377,6 +429,7 @@ def main() -> int:
     effective_default_mode = args.mode or suite.get("default_mode")
 
     api_key = _load_api_key()
+    bearer  = _resolve_bearer()
     print(f"=== bench {args.suite} ({len(queries)} queries) ===\n")
     if effective_default_mode:
         print(f"[bench] mode_override default: {effective_default_mode!r} "
@@ -385,7 +438,9 @@ def main() -> int:
     results: List[Dict] = []
     t_total = time.time()
     for q in queries:
-        res = _run_one(api_key, q, endpoint, timeout, effective_default_mode)
+        res = _run_one(
+            api_key, q, endpoint, timeout, effective_default_mode, bearer,
+        )
         results.append(res)
         _print_row(res, len(queries))
     total = round(time.time() - t_total, 1)

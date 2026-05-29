@@ -166,7 +166,44 @@ This follow-up is operator-run because the wall-time budget (~1h Ollama inferenc
 - v0.4-end QVT ablation matrix (18 cells × N=3) is a separate operator-run task (ROADMAP v0.4.1 OOS). Not blocked by this analysis.
 - The 158.3s figure cited in PR #399's STEP 7 bench line is from a specific measurement context (single-mode mini-bench, not the full suite). This analysis covers the full-suite baseline, which is the framework PR #399's claim sits inside, not a literal reproduction of the single number.
 
-## 9. Related
+## 10. Environment dependency finding (2026-05-29 PM follow-up)
+
+While capturing a post-T6 baseline to answer Q2, a deeper finding surfaced. The 5/27 reference and the 5/28 baseline runs were captured with `JAMES_BENCH_BEARER` set in the operator session (not committed anywhere — no record in `.env`, no mention in handover, no memo). Without the bearer, `bench.py` posts to `/query/` with `api_key=2026` only, which the server treats as `external` role. The `query.internal_rag` policy gate blocks `external`, and the request silently falls through to `handle_chat` — the script still exits 0, the JSON still records 17 rows, but every row is chat-passthrough instead of RAG-path.
+
+### Evidence
+
+| Capture | sha | bearer in env? | mode distribution | graph_paths total | total_s |
+|---|---|---|---|---|---|
+| 5/27 ref | f2c088f | yes (implied) | `""` × 15, `(none)` × 1 | 313 | 1323.1 |
+| 5/28 run1 | 2a31b20 | yes (implied) | `""` × 14, `(none)` × 2 | 271 | 1333.4 |
+| 5/28 run2 | 2a31b20 | yes (implied) | `""` × 15, `(none)` × 1 | 305 | 1247.4 |
+| 5/28 run3 | 2a31b20 | yes (implied) | `""` × 16 | 325 | 1277.9 |
+| 5/29 post-T6 | e663933 | **no** | `chat` × 14, `""` × 2, `meta` × 1 | **0** | **221.4** |
+| 5/29 reproduce | **2a31b20** | **no** | `chat` × 13, `""` × 2, `meta` × 1 | **0** | **207.9** |
+
+Same sha (`2a31b20`) producing different `graph_paths_total` (271-325 vs 0) and different `total_seconds` (~1300 vs ~210) — and the only varying factor across the two captures is the presence of `JAMES_BENCH_BEARER`. This isolates the cause to the bearer / policy-gate path, not a code regression.
+
+### Implication for §6 Decision table
+
+The §6 decisions still stand for what they actually claim:
+- **Q1 (5/28 3-run internal consistency)**: still ✅ pass. The three runs are self-consistent — bearer was equally set for all three.
+- **PR #399 cap-fix reproducibility at `2a31b20`**: still ✅ pass *within the bearer-set measurement frame*.
+
+What §10 adds is a measurement-methodology integrity finding:
+- **Any future bench measurement that wants to reproduce the 5/28 baseline's absolute numbers must have `JAMES_BENCH_BEARER` set.** Without it, the comparison is chat-passthrough vs RAG-path — a category mistake, not a regression.
+- The Q2 question (v0.4.1 lifecycle effect on baseline) can be answered by the §7 follow-up *only if the follow-up uses a bearer*. Otherwise it measures the wrong code path.
+
+### Mitigation landed in this PR
+
+`scripts/bench.py` now auto-mints an admin bearer via `core.auth.create_token("bench", "admin")` when `JAMES_BENCH_BEARER` is not provided in env, and emits a stderr warning so the operator knows where the token came from. This removes the "silent chat-passthrough" failure mode. Override stays available for operators who want a specific role (e.g. `employee` for tier-boundary tests).
+
+### Effect on Robin/Ali collaboration narrative
+
+None. Robin and Ali measurements run against their own stacks (sovereign Ollama for Robin, managed Gemini for Ali) — they do not hit the JAMES server and are unaffected by the bearer issue. The JAMES-side joint-piece main evidence is V3'.a-V3'.d, which uses `scripts/research/v3prime_*.py` calling Ollama HTTP directly (bypassing both the bench script and the JAMES server). PR #399's "STEP 7 bench no-regression" line is a *secondary* check; the main evidence stack for the joint piece is the V3' direct-measurement set, which is unaffected.
+
+This finding is internal JAMES measurement-tool integrity, not a collaboration data integrity event.
+
+## 11. Related
 
 - handover doc `docs/handovers/v0.4.x-session-2026-05-29-collaboration-checkpoint.md` §5 M4, §6 Tier 1.3, §7 risk matrix
 - launch-tracker `reports/promo-assets/launch-tracker.md` (5/28 baseline capture rows pending status update via §7 follow-up)
