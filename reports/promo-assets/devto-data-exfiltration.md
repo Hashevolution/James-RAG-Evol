@@ -1,11 +1,14 @@
 ---
 title: "Why output-stage PII masking is the wrong protective surface for data exfiltration in RAG"
-published: false
+published: true
 description: "The output filter runs after the LLM has already seen the confidential data. By then, three classes of leak can no longer be stopped. The right surface is retrieval. Walking through a real implementation."
 tags: rag, llm, security, ai
 cover_image:
 canonical_url:
 ---
+
+<!-- Published 2026-05-29 at https://dev.to/hashevolution/why-output-stage-pii-masking-is-the-wrong-protective-surface-for-data-exfiltration-in-rag-2obi — dev.to is the canonical source (canonical_url intentionally blank). -->
+
 
 > **TL;DR**
 > Most RAG-with-RBAC stacks I see in production put the access-control gate at the output stage: an LLM-response post-filter that masks PII or redacts confidential strings. This is *defense-in-depth*, not the load-bearing layer. By the time the filter runs, the LLM has already received the confidential context, and three classes of leak — creative paraphrasing, inference, cross-turn persistence — can no longer be stopped by string-matching the output. The protective surface that actually carries the weight is **retrieval-stage ABAC**: documents and graph nodes the user can't read are never traversed, never make it into the prompt, never seen by the model. The output filter still belongs in the stack, but as the second-to-last line, not the first.
