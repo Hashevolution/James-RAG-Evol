@@ -322,8 +322,8 @@ class ServerRouteContractTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        srv_path = Path(__file__).resolve().parent.parent / "server_llmwiki.py"
-        cls.src = srv_path.read_text(encoding="utf-8")
+        from tests._server_split_helpers import combined_server_source
+        cls.src = combined_server_source()
 
     def test_html_route_registered(self):
         self.assertIn('@app.get("/admin/graph"', self.src,

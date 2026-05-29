@@ -54,9 +54,8 @@ class EndpointContractTests(unittest.TestCase):
     """Source-level: route is registered, admin-gated, returns shape."""
 
     def test_route_registered_and_admin_gated(self):
-        import server_llmwiki as srv
-        import inspect
-        src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        src = combined_server_source()
         self.assertIn('@app.get("/admin/trace/{trace_id}"', src,
                       "trace endpoint must be registered as GET /admin/trace/{trace_id}")
         self.assertIn("from core.observability import read_trace", src,

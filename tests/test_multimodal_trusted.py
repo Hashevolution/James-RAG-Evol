@@ -260,9 +260,8 @@ class IngestionChokepointTests(_SilenceMixin, unittest.TestCase):
         # default_engine.sanitize_for_ingestion. If a future refactor
         # bypasses the engine, this test fails — mirrors the chokepoint
         # contract test pattern from test_policy_quarantine.py.
-        import server_llmwiki as srv
-        import inspect
-        src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        src = combined_server_source()
         self.assertIn("default_engine.sanitize_for_ingestion", src,
                       "server_llmwiki upload handler must route ingestion through "
                       "PolicyEngine — see #44 phase 4-C chokepoint contract.")

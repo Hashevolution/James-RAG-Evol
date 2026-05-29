@@ -135,16 +135,28 @@ class DashboardSqliteSourcedTests(unittest.TestCase):
         if not self._api_key:
             self.skipTest("JAMES_API_KEY missing")
         import server_llmwiki as srv
+        import routes._helpers as _h
+        import routes.admin as _a
         self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self._tmp.close()
         self.db = self._tmp.name
-        self._saved_db = srv._AUDIT_DB
+        self._saved = {
+            "srv":     srv._AUDIT_DB,
+            "helpers": _h._AUDIT_DB,
+            "admin":   _a._AUDIT_DB,
+        }
         srv._AUDIT_DB = self.db
+        _h._AUDIT_DB = self.db
+        _a._AUDIT_DB = self.db
         _seed(self.db, self._fixture())
 
     def tearDown(self):
         import server_llmwiki as srv
-        srv._AUDIT_DB = self._saved_db
+        import routes._helpers as _h
+        import routes.admin as _a
+        srv._AUDIT_DB = self._saved["srv"]
+        _h._AUDIT_DB = self._saved["helpers"]
+        _a._AUDIT_DB = self._saved["admin"]
         Path(self.db).unlink(missing_ok=True)
 
     def _fixture(self) -> list[dict]:

@@ -17,7 +17,6 @@ Run:
 """
 from __future__ import annotations
 
-import inspect
 import os
 import sys
 import unittest
@@ -31,8 +30,8 @@ class EndpointWiringTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import server_llmwiki as srv
-        cls.src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        cls.src = combined_server_source()
 
     def _window(self) -> str:
         idx = self.src.index('@app.post("/admin/wiki/resolve-relations"')
