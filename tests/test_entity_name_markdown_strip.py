@@ -35,36 +35,58 @@ import yaml
 class _MarkdownStripBase(unittest.TestCase):
     """Same fixture as test_wiki_summary_body_sync — isolate WIKI_DIR,
     bypass memory/verify and vector-store side effects so we can drive
-    create_entity_file from a clean tmp dir."""
+    create_entity_file from a clean tmp dir.
 
-    def setUp(self):
-        self.tmp = tempfile.mkdtemp()
-        self.wiki_dir_patcher = patch("config.WIKI_DIR", self.tmp)
-        self.wiki_dir_patcher.start()
+    The 4 patches + WikiGenerator instantiation are class-level setup
+    (``setUpClass`` / ``tearDownClass``), not per-test. Earlier the
+    same work ran in ``setUp`` for every test, costing ~5-10s of
+    patch-resolution + lazy-import warm-up on cold CI runners. Under
+    pytest-timeout=30s that put the first test's setUp dangerously
+    close to the budget; if it tipped over, ``tearDown`` never ran,
+    the started patches leaked, and downstream test files imported
+    a ``MagicMock`` instead of the real class — visible as e.g.
+    ``test_native_done_reason::test_router_wrapper_call_gemma_meta_dispatches_to_call_router_meta``
+    failing with *"Expected 'call_router_meta' to be called once.
+    Called 0 times."* See PR #582 for the conftest-level mitigation
+    (heavy module pre-import) and the partial-fix history.
+
+    Class-level pollution risk: all 5 tests in the subclass share
+    one tmp dir and one WikiGenerator instance. Each test creates
+    a distinct entity name (`경쟁사 대비 AMD 기술적 우위`,
+    `엔비디아`, `gpt_4`, ``Structured CoT v2``, `unknown`) so the
+    written ``.md`` files do not collide. Relations are empty across
+    all tests, so ``_find_existing_entity_id`` / overlap-snapshot
+    paths are not exercised → no cross-test interference via the
+    WikiGenerator's internal lookup caches. If a future test adds
+    relations or shared names, revisit the per-test isolation.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp()
+        cls._patchers = [
+            patch("config.WIKI_DIR", cls.tmp),
+            patch(
+                "core.memory.verify_before_write",
+                return_value=(True, "ok", 0.99),
+            ),
+            patch("core.vector_store.VectorStore"),
+            patch("llm.router.RouterWrapper"),
+        ]
+        for p in cls._patchers:
+            p.start()
         import core.wiki_generator as wg_mod
-        self._orig_wiki_dir = wg_mod.WIKI_DIR
-        wg_mod.WIKI_DIR = self.tmp
-
-        self.verify_patcher = patch(
-            "core.memory.verify_before_write",
-            return_value=(True, "ok", 0.99),
-        )
-        self.verify_patcher.start()
-        self.vs_patcher = patch("core.vector_store.VectorStore")
-        self.vs_patcher.start()
-        self.router_patcher = patch("llm.router.RouterWrapper")
-        self.router_patcher.start()
-
+        cls._orig_wiki_dir = wg_mod.WIKI_DIR
+        wg_mod.WIKI_DIR = cls.tmp
         from core.wiki_generator import WikiGenerator
-        self.wg = WikiGenerator(source_type="test")
+        cls.wg = WikiGenerator(source_type="test")
 
-    def tearDown(self):
-        self.wiki_dir_patcher.stop()
-        self.verify_patcher.stop()
-        self.vs_patcher.stop()
-        self.router_patcher.stop()
+    @classmethod
+    def tearDownClass(cls):
+        for p in cls._patchers:
+            p.stop()
         import core.wiki_generator as wg_mod
-        wg_mod.WIKI_DIR = self._orig_wiki_dir
+        wg_mod.WIKI_DIR = cls._orig_wiki_dir
 
     def _read_fm(self, path: Path):
         raw = path.read_text(encoding="utf-8")
