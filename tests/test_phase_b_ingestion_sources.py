@@ -125,38 +125,42 @@ class BuildEntityRelationsSourcesTests(unittest.TestCase):
 
 class CreateEntityFileSourcesPropagationTests(unittest.TestCase):
     """caller 가 미리 채운 sources 를 frontmatter 에 그대로 쓰고
-    confidence 를 sources 로부터 derive 한다."""
+    confidence 를 sources 로부터 derive 한다.
+
+    Split design: 3 heavy patches at class level, wiki_dir + wg
+    per-test. See feedback_pytest_flaky_native_done_reason_entity_markdown.md.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls._patchers = [
+            patch(
+                "core.memory.verify_before_write",
+                return_value=(True, "ok", 0.99),
+            ),
+            patch("core.vector_store.VectorStore"),
+            patch("llm.router.RouterWrapper"),
+        ]
+        for p in cls._patchers:
+            p.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        for p in cls._patchers:
+            p.stop()
 
     def setUp(self):
-        # WikiGenerator 가 WIKI_DIR 을 통째로 import 하므로 monkey-patch.
         self.tmp = tempfile.mkdtemp()
         self.wiki_dir_patcher = patch("config.WIKI_DIR", self.tmp)
         self.wiki_dir_patcher.start()
-        # core.wiki_generator 가 module-load 시 import 한 WIKI_DIR 도 갈아끼움
         import core.wiki_generator as wg_mod
         self._orig_wiki_dir = wg_mod.WIKI_DIR
         wg_mod.WIKI_DIR = self.tmp
-
-        # vector_store / verify_before_write 의 side effect 비활성.
-        # (테스트는 frontmatter 만 검증)
-        self.verify_patcher = patch(
-            "core.memory.verify_before_write",
-            return_value=(True, "ok", 0.99),
-        )
-        self.verify_patcher.start()
-        self.vs_patcher = patch("core.vector_store.VectorStore")
-        self.vs_patcher.start()
-        self.router_patcher = patch("llm.router.RouterWrapper")
-        self.router_patcher.start()
-
         from core.wiki_generator import WikiGenerator
         self.wg = WikiGenerator(source_type="test")
 
     def tearDown(self):
         self.wiki_dir_patcher.stop()
-        self.verify_patcher.stop()
-        self.vs_patcher.stop()
-        self.router_patcher.stop()
         import core.wiki_generator as wg_mod
         wg_mod.WIKI_DIR = self._orig_wiki_dir
 
@@ -224,7 +228,30 @@ class CreateEntityFileSourcesPropagationTests(unittest.TestCase):
 
 class ProcessDocumentSourcesIntegrationTests(unittest.TestCase):
     """LLM 추출 mock 후 실제 frontmatter (entity + inverse + doc) 가
-    sources 를 갖는지 확인."""
+    sources 를 갖는지 확인.
+
+    Split design: 3 heavy patches at class level, wiki_dir + wg + LLM
+    extract mock per-test (process_document writes entities into the
+    wiki — per-test renewal isolates them).
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls._patchers = [
+            patch(
+                "core.memory.verify_before_write",
+                return_value=(True, "ok", 0.99),
+            ),
+            patch("core.vector_store.VectorStore"),
+            patch("llm.router.RouterWrapper"),
+        ]
+        for p in cls._patchers:
+            p.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        for p in cls._patchers:
+            p.stop()
 
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
@@ -233,17 +260,6 @@ class ProcessDocumentSourcesIntegrationTests(unittest.TestCase):
         import core.wiki_generator as wg_mod
         self._orig_wiki_dir = wg_mod.WIKI_DIR
         wg_mod.WIKI_DIR = self.tmp
-
-        self.verify_patcher = patch(
-            "core.memory.verify_before_write",
-            return_value=(True, "ok", 0.99),
-        )
-        self.verify_patcher.start()
-        self.vs_patcher = patch("core.vector_store.VectorStore")
-        self.vs_patcher.start()
-        self.router_patcher = patch("llm.router.RouterWrapper")
-        self.router_patcher.start()
-
         from core.wiki_generator import WikiGenerator
         self.wg = WikiGenerator(source_type="test")
 
@@ -266,9 +282,6 @@ class ProcessDocumentSourcesIntegrationTests(unittest.TestCase):
 
     def tearDown(self):
         self.wiki_dir_patcher.stop()
-        self.verify_patcher.stop()
-        self.vs_patcher.stop()
-        self.router_patcher.stop()
         import core.wiki_generator as wg_mod
         wg_mod.WIKI_DIR = self._orig_wiki_dir
 
@@ -359,7 +372,31 @@ class CrossDocSourceAggregationTests(unittest.TestCase):
     이전 구현은 기존 entity 발견 시 entire processing 을 skip 하여
     cross-doc 강화가 작동하지 않았다 (Knowledge Cascade 핵심 가치 무효).
     본 테스트 클래스는 그 회귀 방지 게이트.
+
+    Split design: 3 heavy patches at class level, wiki_dir + wg
+    per-test. Cross-doc aggregation tests *intentionally* call
+    process_document_for_entities multiple times within a single
+    test — that's the design they verify. The per-test wg-renew
+    isolates one test's multiple process calls from the next test's.
     """
+
+    @classmethod
+    def setUpClass(cls):
+        cls._patchers = [
+            patch(
+                "core.memory.verify_before_write",
+                return_value=(True, "ok", 0.99),
+            ),
+            patch("core.vector_store.VectorStore"),
+            patch("llm.router.RouterWrapper"),
+        ]
+        for p in cls._patchers:
+            p.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        for p in cls._patchers:
+            p.stop()
 
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
@@ -368,25 +405,11 @@ class CrossDocSourceAggregationTests(unittest.TestCase):
         import core.wiki_generator as wg_mod
         self._orig_wiki_dir = wg_mod.WIKI_DIR
         wg_mod.WIKI_DIR = self.tmp
-
-        self.verify_patcher = patch(
-            "core.memory.verify_before_write",
-            return_value=(True, "ok", 0.99),
-        )
-        self.verify_patcher.start()
-        self.vs_patcher = patch("core.vector_store.VectorStore")
-        self.vs_patcher.start()
-        self.router_patcher = patch("llm.router.RouterWrapper")
-        self.router_patcher.start()
-
         from core.wiki_generator import WikiGenerator
         self.wg = WikiGenerator(source_type="test")
 
     def tearDown(self):
         self.wiki_dir_patcher.stop()
-        self.verify_patcher.stop()
-        self.vs_patcher.stop()
-        self.router_patcher.stop()
         import core.wiki_generator as wg_mod
         wg_mod.WIKI_DIR = self._orig_wiki_dir
 
