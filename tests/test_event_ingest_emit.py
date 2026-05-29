@@ -37,7 +37,50 @@ ensure_utf8_console()
 class _EventIngestBase(unittest.TestCase):
     """Common harness — tempdir WIKI_DIR + stubbed vector store / router /
     memory-trust verifier so create_entity_file's side effects are
-    isolated to disk."""
+    isolated to disk.
+
+    Split design (sibling of PR #592/#593 canary; wg-renew variant for
+    state-pollution-sensitive subclasses):
+
+    - **3 heavy patches at class level** (`core.memory.verify_before_write`,
+      `core.vector_store.VectorStore`, `llm.router.RouterWrapper`).
+      These trigger heavyweight imports (sentence_transformers / torch /
+      router module load) — ~5-10s on cold CI. Pay once per class
+      instead of once per test.
+    - **WIKI_DIR patch + WikiGenerator instantiation per-test.**
+      Multiple test classes here (HappyPath / Fallback / Collision /
+      FourTypeRegression / ProcessDocumentEventIntegration) share this
+      base. `ProcessDocumentEventIntegrationTests` calls
+      `process_document_for_entities`, which writes entities into the
+      shared tmp wiki — without per-test renewal, a previous test's
+      event entity leaks into the next test's "no event in event/"
+      assertion (verified locally during PR #593 sibling extension
+      attempt). The per-test tmp + wg pair restores state isolation
+      at minimal cost (WikiGenerator __init__ is cheap after the
+      class-level patches have already primed the heavy imports).
+
+    See `feedback_pytest_flaky_native_done_reason_entity_markdown.md`
+    for the full design history (Option A canary → siblings → wg-renew
+    variant for deferred 3).
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls._patchers = [
+            patch(
+                "core.memory.verify_before_write",
+                return_value=(True, "ok", 0.99),
+            ),
+            patch("core.vector_store.VectorStore"),
+            patch("llm.router.RouterWrapper"),
+        ]
+        for p in cls._patchers:
+            p.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        for p in cls._patchers:
+            p.stop()
 
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
@@ -46,25 +89,11 @@ class _EventIngestBase(unittest.TestCase):
         import core.wiki_generator as wg_mod
         self._orig_wiki_dir = wg_mod.WIKI_DIR
         wg_mod.WIKI_DIR = self.tmp
-
-        self.verify_patcher = patch(
-            "core.memory.verify_before_write",
-            return_value=(True, "ok", 0.99),
-        )
-        self.verify_patcher.start()
-        self.vs_patcher = patch("core.vector_store.VectorStore")
-        self.vs_patcher.start()
-        self.router_patcher = patch("llm.router.RouterWrapper")
-        self.router_patcher.start()
-
         from core.wiki_generator import WikiGenerator
         self.wg = WikiGenerator(source_type="test")
 
     def tearDown(self):
         self.wiki_dir_patcher.stop()
-        self.verify_patcher.stop()
-        self.vs_patcher.stop()
-        self.router_patcher.stop()
         import core.wiki_generator as wg_mod
         wg_mod.WIKI_DIR = self._orig_wiki_dir
 

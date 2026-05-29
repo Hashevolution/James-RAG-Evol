@@ -169,7 +169,32 @@ def _read_fm(path: Path) -> dict:
 
 class CascadeModifyDocIntegrationTests(unittest.TestCase):
     """전체 cascade_modify_doc 호출 — 기존 doc 의 wiki 가 새 content 의
-    추출로 정확히 교체되는지 검증."""
+    추출로 정확히 교체되는지 검증.
+
+    Split design (variant of event_ingest / phase_b): 3 heavy patches
+    at class level, wiki_dir + tmp_root + entity files + extract mock
+    + vs MagicMock per-test. The richer per-test setUp (uploads dir,
+    pre-existing entity files, sidecar) requires full state isolation
+    each test, so wiki_dir patch + WikiGenerator stay per-test.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls._patchers = [
+            patch(
+                "core.memory.verify_before_write",
+                return_value=(True, "ok", 0.99),
+            ),
+            patch("core.vector_store.VectorStore"),
+            patch("llm.router.RouterWrapper"),
+        ]
+        for p in cls._patchers:
+            p.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        for p in cls._patchers:
+            p.stop()
 
     def setUp(self):
         self.tmp_root = Path(tempfile.mkdtemp())
@@ -182,15 +207,6 @@ class CascadeModifyDocIntegrationTests(unittest.TestCase):
         import core.wiki_generator as wg_mod
         self._orig_wiki_dir = wg_mod.WIKI_DIR
         wg_mod.WIKI_DIR = str(self.tmp_root / "wiki")
-        self.verify_patcher = patch(
-            "core.memory.verify_before_write",
-            return_value=(True, "ok", 0.99),
-        )
-        self.verify_patcher.start()
-        self.vs_patcher = patch("core.vector_store.VectorStore")
-        self.vs_patcher.start()
-        self.router_patcher = patch("llm.router.RouterWrapper")
-        self.router_patcher.start()
 
         from core.wiki_generator import WikiGenerator
         self.wg = WikiGenerator(source_type="test")
@@ -295,9 +311,6 @@ class CascadeModifyDocIntegrationTests(unittest.TestCase):
 
     def tearDown(self):
         self.wiki_patcher.stop()
-        self.verify_patcher.stop()
-        self.vs_patcher.stop()
-        self.router_patcher.stop()
         import core.wiki_generator as wg_mod
         wg_mod.WIKI_DIR = self._orig_wiki_dir
 
