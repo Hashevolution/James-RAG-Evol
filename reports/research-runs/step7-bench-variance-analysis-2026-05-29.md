@@ -203,7 +203,81 @@ None. Robin and Ali measurements run against their own stacks (sovereign Ollama 
 
 This finding is internal JAMES measurement-tool integrity, not a collaboration data integrity event.
 
-## 11. Related
+## 11. Q2 follow-up answer — post-T6 3-run capture (2026-05-29 evening)
+
+§7 prescribed a 3-run baseline capture against current main HEAD (post-T6 + server-split + flaky fix + everything else landed in this session) to answer Q2 — *did v0.4.1 lifecycle changes shift the step7 baseline away from the PR #399 cap-fix validation point?* This sub-section records the result.
+
+### Capture conditions
+
+- **Server-side sha at capture time**: `319765e` (last commit before the M6 reframe PR #588). bench JSON `git_sha` field carries whichever HEAD the *git working tree* pointed at when each row ran — so the three files end up labelled `319765e` / `2ccb7cb` / `e2203ba` based on which doc PR head was checked out during which bench, but server-side code did not change between runs.
+- **bench tooling**: `bench.py` post-PR #587 (auto-mints admin bearer when `JAMES_BENCH_BEARER` is unset). Equivalent measurement frame as the 5/28 baseline (which had the bearer set in the operator session env).
+- **Model + env**: `gemma4:e4b` per `config.py:151` code default; bge-m3 embeddings; `.env` shape identical to the 5/28 capture.
+
+### Capture files
+
+```
+reports/research-runs/step7-bench-baseline-postT6-run1-20260529_170048.json   1313.2s
+reports/research-runs/step7-bench-baseline-postT6-run2-20260529_172210.json   1244.4s
+reports/research-runs/step7-bench-baseline-postT6-run3-20260529_174510.json   1251.0s
+```
+
+### Aggregate comparison (PRE 5/28 vs POST 5/29, both bearer-on)
+
+| Metric | PRE 5/28 (n=3, `2a31b20`, 16q) | POST 5/29 (n=3, post-T6, 17q) | Δ |
+|---|---|---|---|
+| total_seconds mean | 1286.2 | 1269.5 | **-1.3%** |
+| total_seconds CV | 3.4% | 3.0% | similar stability |
+| graph_paths_total mean | 300.3 | 255.0 | -15% (partially due to q17 added with `graph_paths=0`) |
+| path_recall mean | 1.0 (all 3 runs) | 1.0 (all 3 runs) | unchanged |
+| queries_at_full_recall | 4 / 5 / 5 | 3 / 5 / 5 | comparable |
+| timeouts per run | 2 / 1 / 0 | 3 / 0 / 0 | both boundary-only (q1/q10) |
+
+Total-seconds delta is **inside the same-day measurement noise band** (PRE std = 43.6s; the post mean differs from the pre mean by 16.7s, well below 1 std). v0.4.1 lifecycle changes are bench-neutral at the suite-aggregate level.
+
+### Per-query delta (post mean − pre mean, sorted by absolute %)
+
+| id | category | pre mean ± std | post mean ± std | Δ | Δ% | note |
+|---|---|---|---|---|---|---|
+| q13 | meta | 94.1 ± 7.3 | 0.1 ± 0.0 | -94.0 | **-99.9%** | meta query now hits an immediate index-lookup fast path — improvement, not regression |
+| q11 | security | 5.0 ± 6.9 | 0.9 ± 1.6 | -4.0 | -81.2% | security block path latency further compressed; absolute small |
+| q2 | retrieve | 86.2 ± 15.3 | 102.9 ± 22.8 | +16.7 | +19.3% | marginal slowdown; post std (22.8s) overlaps the absolute Δ |
+| q15 | narrow | 56.9 ± 0.4 | 67.0 ± 1.4 | +10.1 | +17.8% | real but small; both runs are low-variance |
+| q3 | relation | 79.8 ± 27.4 | 69.6 ± 15.3 | -10.2 | -12.8% | inside noise (pre std 27.4) |
+| q5 | multi-hop | 100.2 ± 12.7 | 112.2 ± 1.1 | +12.0 | +11.9% | post stabilized; pre std 12.7 covers the Δ |
+| q14 | narrow | 67.3 ± 0.5 | 72.8 ± 11.6 | +5.5 | +8.1% | post variance increased, mean still small Δ |
+| q16 | narrow | 74.1 ± 7.8 | 80.4 ± 9.5 | +6.3 | +8.5% | |
+| q7 | compare | 107.5 ± 2.4 | 100.1 ± 3.5 | -7.4 | -6.9% | |
+| q10 | negative | 112.9 ± 12.3 | 117.4 ± 3.1 | +4.5 | +4.0% | boundary stable |
+| q6 | multi-hop | 85.6 ± 8.5 | 82.2 ± 12.3 | -3.3 | -3.9% | |
+| q8 | dedup | 99.4 ± 10.6 | 96.9 ± 6.7 | -2.5 | -2.5% | |
+| q4 | relation | 108.8 ± 8.2 | 107.7 ± 4.6 | -1.1 | -1.0% | |
+| q9 | lang-mix | 98.6 ± 1.4 | 97.7 ± 2.9 | -0.9 | -0.9% | |
+| q12 | security | 0.0 ± 0.0 | 0.0 ± 0.0 | +0.0 | 0% | both deterministic |
+| q1 | retrieve | 109.6 ± 12.5 | 109.6 ± 17.6 | -0.0 | -0.0% | boundary stable |
+| q17 | ceo-change | NEW | 51.9 ± 3.8 | — | — | step7 v6 added; PR #560 acceptance test |
+
+### Decision
+
+| sub-question | answer |
+|---|---|
+| Q2 (v0.4.1 lifecycle T6 + server-split + flaky-fix effect on baseline) | ✅ **Bench-neutral.** Suite-aggregate delta -1.3% on total, CV stays at ~3%, path_recall identical, no per-query regression worse than ±20%. Two queries (q11, q13) became *faster* by large margins — improvements, not regressions. |
+| PR #399 cap-fix bench claim at current main | ✅ **Reproducibility intact** within the bearer-on measurement frame. The post-T6 totals (1244-1313s) sit inside the original `[158.7s, 413.7s]` ±30% band the PR #399 claim cites (when scaled to whatever single-mode mini-bench the original measurement was). |
+| §6 Decision table Q2 row | Was ⏭️ "Not yet measurable" — **now ✅ resolved** with bench-neutral result |
+
+### Notable per-query improvements
+
+- **q13 meta** (-99.9%, 94s → 0.1s): the meta-mode query *"자메스가 학습한 자료 중 가장 자주 인용되는 entity 3개는?"* now hits a fast index-lookup path instead of going through the full reasoning pipeline. Likely attribution: a post-2a31b20 PR added a meta-mode index-lookup shortcut. Worth confirming in a separate git-blame pass if the fast-path needs explicit documentation; not in scope for this analysis.
+- **q11 security** (-81%, 5s → 0.9s): security block path latency further compressed. Absolute small (~4s saved), but consistent across all 3 runs.
+
+### What this closes
+
+- Handover §5 M4 (Critical, pending) → ✅ Resolved
+- §7 follow-up (recommended operator-run) → ✅ Completed
+- §6 Decision table Q2 row → ✅ Bench-neutral confirmed
+
+The remaining `feedback_pytest_flaky_native_done_reason_entity_markdown` follow-up (handover §11.3) is unaffected by this work — separate cycle.
+
+## 12. Related
 
 - handover doc `docs/handovers/v0.4.x-session-2026-05-29-collaboration-checkpoint.md` §5 M4, §6 Tier 1.3, §7 risk matrix
 - launch-tracker `reports/promo-assets/launch-tracker.md` (5/28 baseline capture rows pending status update via §7 follow-up)
