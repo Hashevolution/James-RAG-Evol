@@ -92,6 +92,19 @@ import llm.router  # noqa: F401 — pre-import to warm sys.modules
 import core.graph_node_editor  # noqa: F401 — lazy-imported in _frontmatter.py:310
 import core.ontology  # noqa: F401 — lazy-imported in _frontmatter.py:336
 
+# 2026-05-29 evening — additional cascade origin found:
+# `tests/test_admin_cognitive_endpoint.py::CognitiveEndpointTests`
+# calls ``_client()`` which does ``import server_llmwiki as srv`` +
+# ``TestClient(srv.app)``. The server module pulls in all routes/ +
+# every FastAPI startup-event dependency — local import cost ~9.4s
+# (cold) on top of the routes-package walk. On a cold CI runner that
+# brings the first call_into-cognitive-endpoint test up to or past
+# the 30s pytest-timeout budget. Pre-importing here pays the cost
+# once per session and stops the cascade that surfaced via
+# ``test_native_done_reason`` still flaking after PRs #582 / #592 /
+# #593 / #595 closed the original 6-file cluster.
+import server_llmwiki  # noqa: F401 — pulls all routes/ + heavy startup deps
+
 # 2026-05-29 — warm-up WikiGenerator so every mixin __init__ runs once
 # at session start. Side-effects are recoverable; we only need caches
 # primed for create_entity_file's first call to stay under 30s on cold
