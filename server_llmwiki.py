@@ -17,21 +17,15 @@ from utils.console import ensure_utf8_console
 ensure_utf8_console()
 
 import os
-import re
 import sqlite3
 import time
-from datetime import datetime
 from collections import defaultdict
-from urllib.parse import quote
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Depends, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-from typing import Optional
 
 from config import BASE_DIR, UPLOAD_DIR, WIKI_DIR, CHROMA_DIR
 from core.graph_rag_engine import RAGEngine
-from core.feedback_engine import FeedbackEngine
 from processors.file_processor import FileProcessor
 
 # Server-split scaffolding (v0.4.x cycle, PR-A) — auth/audit helpers
@@ -41,12 +35,14 @@ from processors.file_processor import FileProcessor
 # docs/design/v0.4.x-server-split.md.
 from routes._helpers import (
     _AUDIT_DB,
-    _require_feature,
     _write_audit,
     get_client_ip,
-    get_role_from_request,
-    resolve_api_key_principal,  # noqa: F401  back-compat re-export — test_api_key_middleware imports via server
-    verify_api_key,
+    # Back-compat re-exports for tests that access these via srv.<name>
+    # — server itself no longer uses them after PR-H route extraction.
+    bearer_scheme,            # noqa: F401  test_api_key_middleware
+    get_role_from_request,    # noqa: F401  test_api_key_middleware (inspect.getsource)
+    resolve_api_key_principal,  # noqa: F401  test_api_key_middleware
+    verify_api_key,           # noqa: F401  test_api_key_middleware
 )
 from routes._deps import (
     set_file_processor,
@@ -260,6 +256,29 @@ from routes.admin import (  # noqa: F401
 )
 app.include_router(admin_router)
 
+# v0.4.x server-split PR-H — final extraction:
+from routes.query import router as query_router
+# Back-compat re-exports for tests that import via server
+# (test_a2_phase2 imports QueryRequest, test_force_web_chip/test_web_used_badge
+# / test_query_include_contexts use srv.QueryRequest/srv.QueryResponse).
+from routes.query import QueryRequest, QueryResponse  # noqa: F401
+app.include_router(query_router)
+
+from routes.history import router as history_router
+app.include_router(history_router)
+
+from routes.feedback import router as feedback_router
+from routes.feedback import FeedbackRequest  # noqa: F401  back-compat
+app.include_router(feedback_router)
+
+from routes.multimodal import router as multimodal_router
+from routes.multimodal import ScreenRequest  # noqa: F401  back-compat
+app.include_router(multimodal_router)
+
+from routes.ops import router as ops_router
+from routes.ops import StatusResponse  # noqa: F401  back-compat
+app.include_router(ops_router)
+
 
 
 @app.on_event("startup")
@@ -413,81 +432,9 @@ async def on_startup():
 # W4 P1-B — self-service signup.
 
 
-class QueryRequest(BaseModel):
-    api_key:          str
-    question:         str
-    source_type:      str = "prod"
-    session_id:       str = "default"   # 대화 세션 구분
-    session_language: str = ""          # [STEP2-A] 세션 언어 (빈 문자열=기본)
-    # [#65 phase 3] admin-only debug field. When True AND the resolved
-    # role is "admin", the response carries `retrieved_contexts` (the
-    # actual chunk texts that fed the LLM). Used by `eval/ragas/run_ragas.py
-    # --live` to drive RAGAS evaluation against the live retrieval path.
-    # Non-admin callers see no behavior change — the field is silently
-    # dropped from the response shape.
-    include_contexts: bool = False
-    # Response shape control — brief / standard / detailed. Empty
-    # string falls through to JAMES_RESPONSE_STYLE env then `standard`.
-    # See core/response_style.py for the resolver and preset defs.
-    response_style:   str  = ""
-    # Client-supplied trace_id (item: real reasoning stream). When set,
-    # the server uses this id instead of generating a new one — letting
-    # the client poll /trace/poll/{trace_id} for stage events as they
-    # arrive (real reasoning stream, replacing the fake 2.5s timer
-    # placeholder). Empty → server generates uuid7 as before.
-    trace_id:         str  = ""
-    # item #6: client-side mode picker. When non-empty + recognised +
-    # role-allowed, bypasses the QueryRouter intent classifier and
-    # routes straight to that mode handler. Permitted values:
-    # chat / retrieval / meta / coding / wiki_edit / self_evolve.
-    mode_override:    str  = ""
-    # [#A8-6] User explicitly asked for additional web exploration.
-    # When True AND role is in web_search_config.allowed_roles, pipeline's
-    # `low_relevance` gate is bypassed — web search runs regardless of
-    # `unified_score < threshold`. Chat UI surfaces this via a
-    # "🌐 웹으로 더 조사" chip on low-confidence answers; click re-issues
-    # the same question with this flag set.
-    force_web_search: bool = False
-    # [#A2 phase 2] User-selected LLM tag from the secondary picker.
-    # Validated server-side against core.model_catalog before being passed
-    # to call_gemma. Empty string OR a tag not in the per-mode catalog
-    # silently falls back to the mode default (security: client cannot
-    # request arbitrary Ollama tags).
-    selected_model:   str  = ""
-
-class QueryResponse(BaseModel):
-    question:       str
-    answer:         str
-    sources:        list
-    blocked:        bool  = False
-    role_used:      str   = "external"
-    graph_paths:    list  = []
-    timing_sec:     float = 0.0
-    unified_score:  float = 0.0    # [3-B] 신뢰도 배지
-    mode:           str   = ""
-    session_id:     str   = ""
-    direction_id:   str   = ""
-    # [#65 phase 3] populated only when request.include_contexts AND role==admin.
-    retrieved_contexts: Optional[list] = None
-    # [#47 phase 1] end-to-end trace correlation. Always populated; users
-    # quote this on bug reports so we can read back the per-stage trace.
-    trace_id:       str   = ""
-    # [#A6-2] 웹 검색 사용 여부 + 출처 URL — 답변 bubble의 "🌐 웹 검색
-    # 사용됨" 배지 + 출처 리스트. internal-only 답변엔 둘 다 빈/false.
-    web_used:       bool  = False
-    web_sources:    list  = []
-    # [#A8-7] chat-side "📥 위키 저장" chip이 approve API에 보낼 proposal id.
-    # 빈 문자열이면 chip 숨김. web_used=true일 때만 채워진다.
-    pending_save_proposal_id: str = ""
 
 
-class StatusResponse(BaseModel):
-    status:            str
-    upload_dir:        str
-    wiki_dir:          str
-    chroma_dir:        str
-    indexed_documents: int
-    version:           str
+
 
 # ─── 미들웨어: Rate Limiting ─────────────────────────────────
 
@@ -534,170 +481,8 @@ async def rate_limit_middleware(request: Request, call_next):
 
 
 
-@app.post("/query/", response_model=QueryResponse, summary="질의응답 (권한 기반)")
-async def query(
-    data:    QueryRequest,
-    request: Request,
-    role:    str = Depends(get_role_from_request),
-):
-    # [W4-Q2-c] api_key + feature gate. query.basic defaults to ALL
-    # roles (admin/manager/employee/external) so default behaviour is
-    # unchanged — anyone with a valid api_key still hits the engine.
-    # Operators who want to revoke query access for a specific role
-    # (e.g. lock down external during incident response) now have a
-    # matrix knob without revoking the user's api_key.
-    _require_feature(data.api_key, role, "query.basic")
-    ip = get_client_ip(request)
-
-    # [#47 phase 1] start a trace at the API edge. Stage logs from any
-    # downstream module reading `current_trace_id` correlate to this id.
-    # Client-supplied trace_id takes precedence (real-reasoning-stream
-    # feature) — lets the client poll /trace/poll/{trace_id} the moment
-    # it sends the request, before /query/ has returned a response.
-    # Sanity-check the supplied id (alphanumeric + hyphens only, 8-64
-    # chars) to keep filesystem path-safety guarantees from
-    # observability._trace_file_for.
-    from core.observability import start_trace, log_stage
-    import re as _re
-    client_tid = (data.trace_id or "").strip()
-    if client_tid and _re.fullmatch(r"[A-Za-z0-9_\-]{8,64}", client_tid):
-        trace_id = start_trace(client_tid)
-    else:
-        trace_id = start_trace()
-
-    question   = data.question.strip()
-    session_id = data.session_id or "default"
-    if not question:
-        log_stage("auth", role=role, allowed=False, reason="empty_question")
-        raise HTTPException(status_code=400, detail="질문이 비어 있습니다.")
-
-    log_stage("auth", role=role, allowed=True, session_id=session_id,
-              question_len=len(question), include_contexts=data.include_contexts)
-
-    t_start = time.time()
-    result  = rag_engine.query(
-        user_query       = question,
-        user_role        = role,
-        session_id       = session_id,
-        session_language = data.session_language,  # [STEP2-A] 세션 언어
-        response_style   = data.response_style,    # brief/standard/detailed
-        mode_override    = data.mode_override,     # item #6: chat 페이지 모드 picker
-        force_web_search = data.force_web_search,  # [#A8-6] explicit web exploration
-        selected_model   = data.selected_model,    # [#A2 phase 2] user-picked LLM tag
-    )
-    elapsed = time.time() - t_start
-
-    log_stage("complete", elapsed_ms=int(elapsed * 1000),
-              blocked=bool(result.get("blocked", False)),
-              answer_len=len(result.get("answer", "") or ""),
-              graph_paths=len(result.get("graph_paths") or []),
-              mode=result.get("mode", ""))
-
-    answer = result.get("answer", "")
-
-    # [P4-SRV-2] 감사 로그
-    _write_audit(
-        user_role      = role,
-        endpoint       = "/query/",
-        query          = question,
-        answer         = answer,
-        graph_paths    = result.get("graph_paths", []),
-        blocked        = result.get("blocked", False),
-        security_event = "blocked" if result.get("blocked") else "",
-        elapsed_sec    = elapsed,
-        ip_address     = ip,
-    )
-
-    # [P7] 대화 히스토리 자동 저장
-    if not result.get("blocked") and answer:
-        try:
-            from core.memory import MemoryStore
-            MemoryStore().save_turn(
-                session_id = session_id,
-                question   = question,
-                answer     = answer,
-                mode       = result.get("mode", ""),
-            )
-        except Exception as e:
-            print(f"[HISTORY] 저장 실패: {e}")
-
-    # [P7-EVO] 자기진화 관찰 — 개선 신호 자동 수집
-    if not result.get("blocked"):
-        try:
-            from tools.self.evo_analyzer import observe_and_signal
-            signal = observe_and_signal(question, {
-                **result,
-                "unified_score": result.get("unified_score", 1.0),
-            })
-            if signal:
-                print(f"[EVO] 신호 감지: {signal['type']} "
-                      f"score={signal.get('score','-'):.3f}")
-        except Exception:
-            pass
-
-    # [P7-EVO-B] 중요도 측정 — LOOM 연동
-    if not result.get("blocked"):
-        try:
-            from tools.self.importance_scorer import score_query
-            imp = score_query(
-                question,
-                unified_score = result.get("unified_score", 1.0),
-                answer        = result.get("answer", ""),
-            )
-            if imp["propose_wiki"]:
-                print(f"[EVO-B] wiki 보강 제안 대상: '{question[:40]}'")
-        except Exception:
-            pass
-
-    # [P8-EVAL-1] 성능 지표 기록
-    try:
-        from tools.self.performance_evaluator import record_query
-        record_query(question, result, elapsed)
-    except Exception:
-        pass
-
-    response = {
-        "question":      question,
-        "answer":        answer,
-        "sources":       result.get("sources", []),
-        "blocked":       result.get("blocked", False),
-        "role_used":     role,
-        "graph_paths":   result.get("graph_paths", []),
-        "timing_sec":    round(elapsed, 2),
-        "mode":          result.get("mode", ""),
-        "session_id":    session_id,
-        "unified_score": round(result.get("unified_score", 0.0), 3),  # [3-B] 신뢰도
-        "direction_id":  FeedbackEngine.make_direction_id(
-            result.get("mode",""), question
-        ) if not result.get("blocked") else "",
-        # [#47 phase 1] correlate response to per-stage trace file.
-        "trace_id":      trace_id,
-        # [#A6-2] 웹 검색 사용됨 배지 + 출처 URL (자료 부족 fallback 시).
-        "web_used":      bool(result.get("web_used", False)),
-        "web_sources":   result.get("web_sources", []),
-        # [#A8-7] chat-side 위키 저장 chip용 proposal id
-        "pending_save_proposal_id": result.get("pending_save_proposal_id", ""),
-    }
-    # [#65 phase 3] admin-only RAGAS evaluation hook. The chunk texts that
-    # fed the LLM are surfaced only when (a) caller opted in via
-    # `include_contexts=true` AND (b) resolved role is "admin". Other
-    # roles see the same response shape as before.
-    if data.include_contexts and role == "admin":
-        response["retrieved_contexts"] = result.get("retrieved_contexts", [])
-    return response
 
 
-@app.get("/status/", response_model=StatusResponse, summary="서버 상태")
-async def status(api_key: str):
-    verify_api_key(api_key)
-    return {
-        "status":            "running",
-        "upload_dir":        os.path.abspath(UPLOAD_DIR),
-        "wiki_dir":          os.path.abspath(WIKI_DIR),
-        "chroma_dir":        os.path.abspath(CHROMA_DIR),
-        "indexed_documents": rag_engine.vector_store.count(),
-        "version":           "7.0.0",
-    }
 
 
 
@@ -718,181 +503,18 @@ async def status(api_key: str):
 
 
 
-@app.get("/hardware/", summary="PC 하드웨어 정보 조회 [P3-1]")
-async def hardware_info(
-    api_key: str,
-    role:    str = Depends(get_role_from_request),
-):
-    """자메스를 실행하는 PC 하드웨어 측정 — 무기/장비 형식 반환."""
-    verify_api_key(api_key)
-    try:
-        import sys as _sys
-        _sys.path.insert(0, os.path.dirname(__file__))
-        from tools.system.hardware_inspector import get_hardware_specs
-        specs = get_hardware_specs()
-        return {"ok": True, "specs": specs}
-    except Exception as e:
-        # psutil 없는 환경 — 기본값 반환. [F821 fix 2026-05-11]
-        # ``platform`` was referenced without import; before this fix
-        # the fallback path raised NameError → 500 instead of the
-        # friendly default specs. Imported locally so the happy path
-        # is not taxed with an unused module load.
-        import platform
-        return {
-            "ok": False,
-            "specs": {
-                "cpu":  {"name": platform.processor(), "cores": os.cpu_count(),
-                         "level": 5, "weapon": {"icon":"🧮","name":"Mainstream CPU","role":"Compute","desc":"Mainstream inference"}},
-                "ram":  {"total_gb": 0, "level": 5,
-                         "weapon": {"icon":"💾","name":"Standard Memory","role":"Memory","desc":"Multi-session general use"}},
-                "gpu":  {"name": "Unknown", "level": 0, "found": False,
-                         "weapon": {"icon":"⚡","name":"CPU-only","role":"AI Acceleration","desc":"CPU-only inference (slow on large models)"}},
-                "disk": {"total_gb": 0, "level": 5,
-                         "weapon": {"icon":"🗄️","name":"Team Storage","role":"Storage","desc":"Mid-size knowledge base"}},
-                "overall_level": 5,
-                "james_rank": "Production Tier",
-            },
-            "error": str(e),
-        }
 
 
-@app.get("/history/", summary="대화 히스토리 조회 [P7]")
-async def get_history(
-    api_key:    str,
-    session_id: str = "default",
-    limit:      int = 20,
-    role:       str = Depends(get_role_from_request),
-):
-    verify_api_key(api_key)
-    try:
-        from core.memory import MemoryStore
-        turns = MemoryStore().get_recent_turns(session_id, limit)
-        return {"session_id": session_id, "turns": turns, "count": len(turns)}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/history/sessions/", summary="세션 목록 조회 [P7]")
-async def get_sessions(
-    api_key: str,
-    role:    str = Depends(get_role_from_request),
-):
-    verify_api_key(api_key)
-    try:
-        from core.memory import MemoryStore
-        return {"sessions": MemoryStore().get_all_sessions()}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/history/sessions/rename/", summary="세션 이름 변경 [3-D]")
-async def rename_session(
-    api_key:    str,
-    session_id: str,
-    name:       str,
-    role:       str = Depends(get_role_from_request),
-):
-    """[3-D] 세션에 사용자 지정 이름 부여."""
-    verify_api_key(api_key)
-    if not session_id:
-        raise HTTPException(status_code=400, detail="session_id 필요")
-    if len(name) > 60:
-        raise HTTPException(status_code=400, detail="이름은 60자 이내")
-    try:
-        from core.memory import MemoryStore
-        ok = MemoryStore().set_session_name(session_id, name.strip())
-        return {"success": ok, "session_id": session_id, "name": name}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.delete("/history/", summary="대화 히스토리 삭제 [P7]")
-async def delete_history(
-    api_key:    str,
-    session_id: str = "default",
-    role:       str = Depends(get_role_from_request),
-):
-    verify_api_key(api_key)
-    try:
-        from core.memory import MemoryStore
-        ok = MemoryStore().delete_session(session_id)
-        return {"success": ok, "session_id": session_id}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/history/summarize/", summary="세션 요약 저장 [P7]")
-async def summarize_session(
-    api_key:    str,
-    session_id: str = "default",
-    role:       str = Depends(get_role_from_request),
-):
-    """
-    세션 대화를 LLM으로 요약해서 장기 기억에 저장.
-    세션 종료 시 또는 수동 호출.
-    """
-    verify_api_key(api_key)
-    try:
-        from core.memory import MemoryStore
-        store = MemoryStore()
-
-        # 해당 세션 대화 조회
-        turns = store.get_recent_turns(session_id, limit=20)
-        if not turns:
-            return {"success": False, "message": "저장된 대화 없음"}
-
-        # 대화 텍스트 구성
-        dialogue = "\n".join([
-            f"{'User' if t['role']=='user' else '자메스'}: {t['content'][:200]}"
-            for t in turns
-        ])
-
-        # LLM으로 요약 생성 (#13: router 경유)
-        from llm.router import RouterWrapper
-        llm = RouterWrapper("general")
-        summary_prompt = (
-            f"아래 대화를 3줄 이내로 핵심만 요약해줘. "
-            f"주제와 결론 중심으로.\n\n{dialogue[:1500]}\n\n요약:"
-        )
-        summary = llm.call_gemma(summary_prompt, timeout=60, use_cache=False)
-        if not summary:
-            summary = dialogue[:200] + "..."
-
-        # 주제 추출
-        topic_prompt = (
-            f"아래 대화의 주제를 단어 2~3개로 표현해줘.\n\n{dialogue[:500]}\n\n주제:"
-        )
-        topic = llm.call_gemma(topic_prompt, timeout=30, use_cache=False) or ""
-        topic = topic.strip()[:30]
-
-        # 장기 기억에 저장
-        ok = store.save_session_summary(session_id, summary, topic)
-
-        return {
-            "success":    ok,
-            "session_id": session_id,
-            "summary":    summary,
-            "topic":      topic,
-            "turns":      len(turns) // 2,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/history/long-term/", summary="장기 기억 조회 [P7]")
-async def get_long_term(
-    api_key: str,
-    limit:   int = 5,
-    role:    str = Depends(get_role_from_request),
-):
-    """이전 세션 요약 목록 조회."""
-    verify_api_key(api_key)
-    try:
-        from core.memory import MemoryStore
-        summaries = MemoryStore().get_session_summaries(limit)
-        return {"summaries": summaries, "count": len(summaries)}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── Phase 7: 자기진화 API ──────────────────────────────────────
@@ -929,36 +551,8 @@ async def get_long_term(
 
 # ── P7-EVO-C: 피드백 API ────────────────────────────────────────
 
-class FeedbackRequest(BaseModel):
-    api_key:      str
-    direction_id: str
-    signal:       str
-    query:        str = ""
 
-@app.post("/feedback/", summary="피드백 전송 [P7-EVO-C]")
-async def submit_feedback(
-    data: FeedbackRequest,
-    role: str = Depends(get_role_from_request),
-):
-    verify_api_key(data.api_key)
-    try:
-        from core.feedback_engine import accumulate_feedback
-        result = accumulate_feedback(data.direction_id, data.signal, data.query)
-        _write_audit(role, "/feedback/", query=f"{data.signal}:{data.direction_id[:20]}")
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/feedback/stats/", summary="피드백 통계 [P7-EVO-C]")
-async def get_feedback_stats_api(
-    api_key: str, role: str = Depends(get_role_from_request),
-):
-    _require_feature(api_key, role, "admin.evolution")
-    try:
-        from core.feedback_engine import get_feedback_stats
-        return get_feedback_stats()
-    except Exception as e:
-        return {"error": str(e)}
 
 
 
@@ -983,122 +577,16 @@ async def get_feedback_stats_api(
 
 # ── P7-VIS-1 / P7-VID-1: 멀티모달 분석 API ─────────────────────
 
-@app.post("/analyze/image/", summary="이미지 분석 [P7-VIS-1]")
-async def analyze_image(
-    file:    UploadFile = File(...),
-    api_key: str = Form(...),
-    role:    str = Depends(get_role_from_request),
-):
-    """이미지 파일 업로드 → EXIF + LLaVA 분석 → 결과 반환."""
-    verify_api_key(api_key)
-    suffix  = os.path.splitext(file.filename)[1].lower()
-    allowed = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
-    if suffix not in allowed:
-        raise HTTPException(status_code=400, detail=f"지원 형식: {allowed}")
-
-    # 임시 저장
-    tmp_path = os.path.join(UPLOAD_DIR, f"vis_{int(time.time())}{suffix}")
-    with open(tmp_path, "wb") as f:
-        f.write(await file.read())
-
-    try:
-        from tools.multimodal.image_analyzer import analyze_image as _analyze
-        result = _analyze(tmp_path)
-        _write_audit(role, "/analyze/image/", query=file.filename,
-                     answer=str(result.get("description",""))[:80])
-        return {
-            "filename":    file.filename,
-            "analyzed_at": datetime.now().isoformat(),
-            "description": result.get("description",""),
-            "date":        result.get("date",""),
-            "location":    result.get("location",""),
-            "persons":     result.get("persons",[]),
-            "tags":        result.get("tags",[]),
-            "exif":        result.get("exif",{}),
-            "success":     result.get("success", True),
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        try: os.remove(tmp_path)
-        except Exception: pass
 
 
-@app.post("/analyze/video/", summary="영상 분석 [P7-VID-1]")
-async def analyze_video(
-    file:    UploadFile = File(...),
-    api_key: str = Form(...),
-    role:    str = Depends(get_role_from_request),
-):
-    """영상 파일 업로드 → OpenCV 장면 + Whisper 자막 분석."""
-    verify_api_key(api_key)
-    suffix  = os.path.splitext(file.filename)[1].lower()
-    allowed = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
-    if suffix not in allowed:
-        raise HTTPException(status_code=400, detail=f"지원 형식: {allowed}")
-
-    tmp_path = os.path.join(UPLOAD_DIR, f"vid_{int(time.time())}{suffix}")
-    with open(tmp_path, "wb") as f:
-        f.write(await file.read())
-
-    try:
-        from tools.multimodal.video_analyzer import analyze_video as _analyze
-        result = _analyze(tmp_path)
-        _write_audit(role, "/analyze/video/", query=file.filename,
-                     answer=str(result.get("summary",""))[:80])
-        return {
-            "filename":    file.filename,
-            "analyzed_at": datetime.now().isoformat(),
-            "summary":     result.get("summary",""),
-            "duration":    result.get("duration",""),
-            "scenes":      result.get("scenes",[]),
-            "transcript":  result.get("transcript",""),
-            "tags":        result.get("tags",[]),
-            "success":     result.get("success", True),
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        try: os.remove(tmp_path)
-        except Exception: pass
 
 
 
 # ── P7-SCR-1: Screen Agent API ──────────────────────────────────
 
-class ScreenRequest(BaseModel):
-    api_key:  str
-    question: str = ""
-    region:   Optional[list] = None   # [x, y, w, h]
-
-@app.post("/screen/analyze/", summary="화면 분석 [P7-SCR-1]")
-async def screen_analyze(
-    data: ScreenRequest,
-    role: str = Depends(get_role_from_request),
-):
-    """화면 캡처 → OCR → LLM 분석. admin 전용."""
-    _require_feature(data.api_key, role, "admin.tools")
-    try:
-        from tools.screen.screen_agent import run_screen_analysis
-        region = tuple(data.region) if data.region else None
-        result = run_screen_analysis(data.question, region)
-        _write_audit(role, "/screen/analyze/",
-                     query=data.question[:60],
-                     answer=result.get("analysis","")[:80])
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/")
-async def root():
-    return {
-        "message":  "PROJECT JAMES v4.0 가동 중",
-        "features": ["JWT Auth","Graph-RAG","ABAC+RBAC","Ontology",
-                     "Output Filter","Rate Limiting","Audit DB","Instruction Isolation",
-                     "Coding Agent (Phase 5.5)"],
-        "docs":     "http://127.0.0.1:8000/docs",
-    }
+
 
 # ─── Phase 5.5: 코딩 에이전트 엔드포인트 ──────────────────────
 
@@ -1206,55 +694,6 @@ async def root():
 
 
 
-@app.get("/trace/poll/{trace_id}", summary="실시간 추론 단계 polling [real-reasoning-stream]")
-async def trace_poll(
-    trace_id: str,
-    api_key:  str,
-    after_ns: int = 0,
-    role:     str = Depends(get_role_from_request),
-):
-    """Stream real reasoning stages as they arrive in the JSONL file.
-
-    Client flow:
-      1. Generate a uuid hex on the client (e.g. crypto.randomUUID).
-      2. Submit POST /query/ with the trace_id field in the body.
-      3. Immediately start polling this endpoint every ~200ms with
-         after_ns increasing each call (last seen ts_ns) — minimises
-         duplicate transfer.
-      4. Render each new event in the chat bubble (retrieve / graph /
-         answer / complete with their actual fields).
-      5. Stop polling when the response arrives OR an event with
-         stage='complete' is in the returned list.
-
-    Auth: api_key only (no admin requirement). The trace_id itself
-    acts as a capability — uuid hex is unguessable, so a different
-    user cannot poll someone else's trace. Same trust model as
-    /query/.
-
-    Path arg sanitization: only alphanumerics + hyphen + underscore
-    (8-64 chars). Keeps `core.observability._trace_file_for` from
-    looking outside `reports/trace/<day>/`.
-    """
-    verify_api_key(api_key)
-
-    # Path traversal guard — same regex as /query/'s client_tid check.
-    import re as _re
-    if not _re.fullmatch(r"[A-Za-z0-9_\-]{8,64}", trace_id):
-        raise HTTPException(status_code=400,
-                            detail="invalid trace_id format")
-
-    from core.observability import read_trace
-    rows = read_trace(trace_id)
-    # Only return events newer than the last seen timestamp.
-    new_rows = [r for r in rows if int(r.get("ts_ns") or 0) > int(after_ns or 0)]
-    is_complete = any(r.get("stage") == "complete" for r in rows)
-
-    return {
-        "trace_id":  trace_id,
-        "events":    new_rows,
-        "complete":  is_complete,
-        "total":     len(rows),
-    }
 
 
 
@@ -1263,67 +702,6 @@ async def trace_poll(
 
 
 
-@app.post("/export/", summary="답변 문서 export [item #4]")
-async def export_answer(request: Request, role: str = Depends(get_role_from_request)):
-    """Export an answer (or arbitrary content) to .md / .txt / .docx.
-
-    Body:
-      content:   text to export (typically a JAMES answer the user
-                 wants to save).
-      format:    "md" / "txt" / "docx" (default "md"). "pdf" is
-                 documented as v0.3+ and silently downgrades to "md"
-                 with `fallback_reason` set in the response headers.
-      filename:  optional stem (no extension). Sanitized server-side.
-      api_key:   required (matches the rest of the API contract).
-
-    Returns: file bytes with proper MIME + Content-Disposition.
-
-    Why a POST instead of GET: the answer content may be hundreds of
-    KB. URL length limits would bite a GET. Also keeps the answer
-    text out of access logs.
-
-    Auth: api_key check only (no admin requirement). Any logged-in
-    user may export their own answers — same trust model as the
-    chat /query/ endpoint.
-    """
-    from fastapi.responses import Response
-    body = await request.json()
-    api_key  = body.get("api_key", "")
-    content  = body.get("content", "") or ""
-    fmt      = body.get("format", "md")
-    filename = body.get("filename", "")
-
-    verify_api_key(api_key)
-    if not isinstance(content, str):
-        raise HTTPException(status_code=400, detail="content must be a string")
-    # Sanity cap — 1MB of text is more than enough for an answer.
-    if len(content.encode("utf-8")) > 1_000_000:
-        raise HTTPException(
-            status_code=413,
-            detail="content too large (>1MB); split into multiple exports",
-        )
-
-    from tools.export.document_exporter import export_document
-    result = export_document(content, format=fmt, filename=filename)
-
-    # ASCII-encode the filename for the header. Browsers handle utf-8
-    # via the filename* RFC 5987 form when present, but the plain
-    # `filename=` must stay ASCII-safe.
-    ascii_name = re.sub(r"[^\w.\-]+", "_", result.filename)
-    headers = {
-        "Content-Disposition":
-            f'attachment; filename="{ascii_name}"; '
-            f"filename*=UTF-8''{quote(result.filename)}",
-        "X-James-Export-Format": result.actual_format,
-    }
-    if result.fallback_reason:
-        headers["X-James-Export-Fallback"] = result.fallback_reason[:256]
-
-    return Response(
-        content=result.data,
-        media_type=result.mime,
-        headers=headers,
-    )
 
 
 

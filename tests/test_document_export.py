@@ -19,7 +19,6 @@ Run:
 """
 from __future__ import annotations
 
-import inspect
 import os
 import sys
 import unittest
@@ -160,8 +159,8 @@ class ExportEndpointSourceContractTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import server_llmwiki as srv
-        cls.src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        cls.src = combined_server_source()
 
     def test_endpoint_registered(self):
         self.assertIn('@app.post("/export/"', self.src,

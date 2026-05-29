@@ -116,9 +116,8 @@ class EdgeContractTests(unittest.TestCase):
     """
 
     def test_query_endpoint_starts_trace(self):
-        import server_llmwiki as srv
-        import inspect
-        src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        src = combined_server_source()
         self.assertIn("start_trace()", src,
                       "/query/ must issue a trace_id at edge — see #47 phase 1")
         self.assertIn('log_stage("auth"', src,

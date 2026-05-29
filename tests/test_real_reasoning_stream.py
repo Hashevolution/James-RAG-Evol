@@ -26,7 +26,6 @@ Run:
 """
 from __future__ import annotations
 
-import inspect
 import os
 import re
 import sys
@@ -63,8 +62,8 @@ class QueryRequestTraceIdTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import server_llmwiki as srv
-        cls.src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        cls.src = combined_server_source()
 
     def test_querryrequest_has_trace_id_field(self):
         # Locate QueryRequest body — bounded by next class or function def.
@@ -101,8 +100,8 @@ class TracePollEndpointSourceTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import server_llmwiki as srv
-        cls.src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        cls.src = combined_server_source()
 
     def test_poll_endpoint_registered(self):
         self.assertIn('@app.get("/trace/poll/{trace_id}"', self.src,

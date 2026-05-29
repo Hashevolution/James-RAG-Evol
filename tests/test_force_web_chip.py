@@ -40,8 +40,8 @@ ROOT = Path(__file__).resolve().parent.parent
 class QueryRequestSchemaTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        import server_llmwiki as srv
-        cls.src = inspect.getsource(srv)
+        from tests._server_split_helpers import combined_server_source
+        cls.src = combined_server_source()
 
     def test_force_web_search_field_present(self):
         m = re.search(

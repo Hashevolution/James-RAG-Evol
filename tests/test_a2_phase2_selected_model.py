@@ -81,16 +81,9 @@ class ServerSchemaTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         import server_llmwiki as srv
+        from tests._server_split_helpers import combined_server_source
         cls.srv = srv
-        # `_model_catalog` moved to routes/llm.py in v0.4.x PR-B
-        # (server-split). Concatenate sources so source-level assertions
-        # (`"def _model_catalog" in self.src`) still find it after
-        # subsequent routers are extracted.
-        try:
-            import routes.llm as _llm_mod
-            cls.src = inspect.getsource(srv) + "\n" + inspect.getsource(_llm_mod)
-        except ImportError:
-            cls.src = inspect.getsource(srv)
+        cls.src = combined_server_source()
 
     def test_query_request_has_selected_model_field(self):
         m = re.search(
