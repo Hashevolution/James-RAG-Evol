@@ -1,0 +1,533 @@
+{
+  "metadata": {
+    "started_utc": "2026-05-30T11:19:11.575696+00:00",
+    "driver": "v3prime_a3_v2_llm_judge.py",
+    "generator_model": "gemma4:e4b",
+    "judge_model": "gemma3:12b",
+    "cap": 4096,
+    "temperature": 0.2,
+    "n": 5,
+    "cells_selected": [
+      [
+        "verify",
+        "easy"
+      ],
+      [
+        "synthesis",
+        "hard"
+      ],
+      [
+        "planner",
+        "hard"
+      ]
+    ],
+    "closes": "A3 LLM-judge reservation gate (PR #608 §reservation)",
+    "finished_utc": "2026-05-30T11:23:25.565323+00:00"
+  },
+  "cells": [
+    {
+      "stage": "verify",
+      "fixture": "easy",
+      "a3_verdict": "OFF wins (judgment_correct 0.6 ON vs 1.0 OFF)",
+      "pairs": [
+        {
+          "idx": 1,
+          "on": {
+            "elapsed_s": 14.35,
+            "response": "```json\n{\n  \"grounded\": true,\n  \"unsupported\": []\n}\n```",
+            "eval_count": 1009,
+            "done_reason": "stop"
+          },
+          "off": {
+            "elapsed_s": 0.51,
+            "response": "```json\n{\n  \"grounded\": true,\n  \"unsupported\": []\n}\n```",
+            "eval_count": 24,
+            "done_reason": "stop"
+          }
+        },
+        {
+          "idx": 2,
+          "on": {
+            "elapsed_s": 9.58,
+            "response": "```json\n{\n  \"grounded\": true,\n  \"unsupported\": []\n}\n```",
+            "eval_count": 958,
+            "done_reason": "stop"
+          },
+          "off": {
+            "elapsed_s": 0.51,
+            "response": "```json\n{\n  \"grounded\": true,\n  \"unsupported\": []\n}\n```",
+            "eval_count": 24,
+            "done_reason": "stop"
+          }
+        },
+        {
+          "idx": 3,
+          "on": {
+            "elapsed_s": 11.04,
+            "response": "```json\n{\n  \"grounded\": true,\n  \"unsupported\": []\n}\n```",
+            "eval_count": 1110,
+            "done_reason": "stop"
+          },
+          "off": {
+            "elapsed_s": 0.51,
+            "response": "```json\n{\n  \"grounded\": true,\n  \"unsupported\": []\n}\n```",
+            "eval_count": 24,
+            "done_reason": "stop"
+          }
+        },
+        {
+          "idx": 4,
+          "on": {
+            "elapsed_s": 10.61,
+            "response": "```json\n{\n  \"grounded\": true,\n  \"unsupported\": []\n}\n```",
+            "eval_count": 1071,
+            "done_reason": "stop"
+          },
+          "off": {
+            "elapsed_s": 0.52,
+            "response": "```json\n{\n  \"grounded\": true,\n  \"unsupported\": []\n}\n```",
+            "eval_count": 24,
+            "done_reason": "stop"
+          }
+        },
+        {
+          "idx": 5,
+          "on": {
+            "elapsed_s": 12.07,
+            "response": "```json\n{\n  \"grounded\": false,\n  \"unsupported\": [\n    \"BlackRock 운용 보수는 평균 0.10~0.30% 수준이다.\"\n  ]\n}\n```",
+            "eval_count": 1210,
+            "done_reason": "stop"
+          },
+          "off": {
+            "elapsed_s": 0.51,
+            "response": "```json\n{\n  \"grounded\": true,\n  \"unsupported\": []\n}\n```",
+            "eval_count": 24,
+            "done_reason": "stop"
+          }
+        }
+      ],
+      "judgements": [
+        {
+          "pair_idx": 1,
+          "pos1": {
+            "verdict": "tie",
+            "mode": "tie",
+            "rationale": "두 답변 모두 내부 자료에 의해 뒷받침되는 주장을 정확히 제시했고, unsupported 주장이 없음."
+          },
+          "pos2": {
+            "verdict": "tie",
+            "mode": "tie",
+            "rationale": "두 답변 모두 내부 자료에 의해 뒷받침되는 주장을 정확히 제시하고, unsupported 주장이 없음."
+          },
+          "agreement": "agreed",
+          "agreed_mode": "tie"
+        },
+        {
+          "pair_idx": 2,
+          "pos1": {
+            "verdict": "tie",
+            "mode": "tie",
+            "rationale": "두 답변 모두 내부 자료에 의해 뒷받침되는 주장을 정확히 제시했고, unsupported 주장이 없음."
+          },
+          "pos2": {
+            "verdict": "tie",
+            "mode": "tie",
+            "rationale": "두 답변 모두 내부 자료에 의해 뒷받침되는 주장을 정확히 제시했고, unsupported 주장은 없음."
+          },
+          "agreement": "agreed",
+          "agreed_mode": "tie"
+        },
+        {
+          "pair_idx": 3,
+          "pos1": {
+            "verdict": "tie",
+            "mode": "tie",
+            "rationale": "두 답변 모두 내부 자료에 의해 뒷받침되는 주장을 정확히 제시하고, unsupported 주장이 없음."
+          },
+          "pos2": {
+            "verdict": "tie",
+            "mode": "tie",
+            "rationale": "두 답변 모두 내부 자료를 정확히 반영하여 grounded: true, unsupported: [] 로 평가할 수 있다."
+          },
+          "agreement": "agreed",
+          "agreed_mode": "tie"
+        },
+        {
+          "pair_idx": 4,
+          "pos1": {
+            "verdict": "tie",
+            "mode": "tie",
+            "rationale": "두 답변 모두 내부 자료에 의해 뒷받침되는 주장을 정확히 제시했고, unsupported 주장은 없음."
+          },
+          "pos2": {
+            "verdict": "tie",
+            "mode": "tie",
+            "rationale": "두 답변 모두 내부 자료에 의해 뒷받침되는 주장을 정확히 제시했고, unsupported 주장이 없음."
+          },
+          "agreement": "agreed",
+          "agreed_mode": "tie"
+        },
+        {
+          "pair_idx": 5,
+          "pos1": {
+            "verdict": "B_wins",
+            "mode": "OFF",
+            "rationale": "답변 B는 모든 주장이 내부 자료에 의해 뒷받침됨을 정확히 판단했고, 답변 A는 오류를 범함."
+          },
+          "pos2": {
+            "verdict": "B_wins",
+            "mode": "ON",
+            "rationale": "답변 B는 BlackRock 운용 보수 주장의 unsupported를 정확히 지적, 답변 A는 모든 주장을 grounded로 잘못 판단."
+          },
+          "agreement": "position_biased",
+          "agreed_mode": null
+        }
+      ],
+      "tally": {
+        "agreed": 4,
+        "ON_wins": 0,
+        "OFF_wins": 0,
+        "tie": 4,
+        "position_biased": 1,
+        "judge_parse_fail": 0
+      },
+      "judge_direction": "tie"
+    },
+    {
+      "stage": "synthesis",
+      "fixture": "hard",
+      "a3_verdict": "OFF wins (conflict_flag 0.4 ON vs 1.0 OFF)",
+      "pairs": [
+        {
+          "idx": 1,
+          "on": {
+            "elapsed_s": 15.13,
+            "response": "## S&P 500 ETF Comparison (VOO, IVV, SPY)\n\n| Feature | VOO (Vanguard) | IVV (BlackRock) | SPY (State Street) |\n| :--- | :--- | :--- | :--- |\n| **Issuer** | Vanguard | BlackRock | State Street |\n| **Expense Ratio** | 0.03% (Current official rate, per Doc B). **Conflict/Note:** Document B notes that the rate is under review for an increase to 0.05% as of 2026 Q1. | 0.03% | 0.0945% |\n| **AUM** | 1.2T USD (Document A). Also noted as having the #1 AUM (Document C). | 0.5T USD | 0.5T USD |\n\n***\n\n### Summary of Findings and Conflicts\n\n**1. Expense Ratio:**\n*   **VOO:** The current official expense ratio is 0.03% (Doc A, Doc B). However, Document B explicitly flags a potential conflict/change, noting that the rate is under review for an increase to 0.05% as of 2026 Q1.\n*   **IVV & SPY:** No conflicts were found for the expense ratios provided in Document A.\n\n**2. AUM:**\n*   **VOO:** Document A states the AUM is 1.2T USD. Document C corroborates that VOO has the #1 AUM among the listed ETFs.\n*   **IVV & SPY:** Both are listed with an AUM of 0.5T USD in Document A.\n\n**3. Issuer:**\n*   The issuers were identified as Vanguard (VOO), BlackRock (IVV), and State Street (SPY) based on the context provided in the documents.",
+            "eval_count": 1117,
+            "done_reason": "stop"
+          },
+          "off": {
+            "elapsed_s": 5.24,
+            "response": "## S&P 500 ETF Comparison (VOO, IVV, SPY)\n\nBased on the provided documents, here is a comparison of the three S&P 500 ETFs:\n\n| Feature | VOO (Vanguard) | IVV (iShares/BlackRock) | SPY (State Street) |\n| :--- | :--- | :--- | :--- |\n| **Expense Ratio** | 0.03% (Document A) / **Conflict:** Document B notes a potential increase to 0.05% in 2026 Q1, but the current official rate is 0.03%. | 0.03% (Document A) | 0.0945% (Document A) |\n| **AUM** | 1.2T USD (Document A) | 0.5T USD (Document A) | 0.5T USD (Document A) |\n| **Issuer** | Vanguard | BlackRock (Document A, Document C) | State Street (Document A) |\n\n---\n\n### Detailed Field Analysis & Conflict Flagging\n\n**1. Expense Ratio:**\n*   **VOO:** Document A states **0.03%**. Document B provides context, noting that while the current official rate is 0.03%, Vanguard is *reviewing* an increase to 0.05% for 2026 Q1. **(Conflict Flagged: Document B suggests a potential future change not reflected in the primary data point of Document A.)**\n*   **IVV:** Document A states **0.03%**. (No conflicting information found.)\n*   **SPY:** Document A states **0.0945%**. (No conflicting information found.)\n\n**2. AUM (Assets Under Management):**\n*   **VOO:** Document A states **1.2T USD**.\n*   **IVV:** Document A states **0.5T USD**.\n*   **SPY:** Document A states **0.5T USD**.\n*   *(Note: Document C mentions VOO has the highest AUM, which aligns with the 1.2T USD figure provided in Document A.)*\n\n**3. Issuer:**\n*   **VOO:** Vanguard (Document A).\n*   **IVV:** BlackRock (Document A and Document C).\n*   **SPY:** State Street (Document A).",
+            "eval_count": 526,
+            "done_reason": "stop"
+          }
+        },
+        {
+          "idx": 2,
+          "on": {
+            "elapsed_s": 10.9,
+            "response": "## S&P 500 ETF Comparison (VOO, IVV, SPY)\n\n| Feature | VOO (Vanguard) | IVV (BlackRock) | SPY (State Street) |\n| :--- | :--- | :--- | :--- |\n| **Issuer** | Vanguard | BlackRock | State Street |\n| **AUM** | 1.2T USD (Document A) / AUM #1 (Document C) | 0.5T USD (Document A) | 0.5T USD (Document A) |\n| **Expense Ratio** | **Conflict/Update:** Document A lists 0.03%. Document B states the current official rate is 0.03%, but notes that a review for 0.05% is being considered. | 0.03% (Document A) | 0.0945% (Document A) |\n\n***\n\n### Summary of Findings and Conflicts\n\n**1. Expense Ratio (ER)**\n*   **Conflict Flag:** VOO's expense ratio is noted as having two values. Document A lists the rate as **0.03%**. Document B clarifies that while the current official rate is **0.03%**, the fund is reviewing an increase to **0.05%**.\n\n**2. AUM (Assets Under Management)**\n*   The documents provide specific figures (1.2T USD for VOO; 0.5T USD for IVV and SPY).\n*   Document C adds qualitative context: VOO is noted as having the highest AUM (#1).\n\n**3. Issuer**\n*   The issuer for each ETF is clearly identified in Document A (Vanguard, BlackRock, State Street).\n*   Document C confirms IVV is classified as BlackRock's core index ETF.",
+            "eval_count": 1114,
+            "done_reason": "stop"
+          },
+          "off": {
+            "elapsed_s": 5.61,
+            "response": "## S&P 500 ETF Comparison (VOO, IVV, SPY)\n\nBased on the provided documents, here is a comparison of the three S&P 500 ETFs:\n\n| Feature | VOO (Vanguard) | IVV (iShares/BlackRock) | SPY (State Street) |\n| :--- | :--- | :--- | :--- |\n| **Expense Ratio** | 0.03% (Document A); *Potential increase to 0.05% (Document B)* | 0.03% (Document A) | 0.0945% (Document A) |\n| **AUM** | 1.2T USD (Document A) | 0.5T USD (Document A) | 0.5T USD (Document A) |\n| **Issuer** | Vanguard | BlackRock (Document A, Document C) | State Street (Document A) |\n\n---\n\n### Detailed Comparison Points:\n\n**1. Expense Ratio:**\n*   **VOO:** Document A lists it at **0.03%**. Document B notes that while the current official ratio is 0.03%, there is a review for an increase to **0.05%** in Q1 2026.\n*   **IVV:** Document A lists it at **0.03%**.\n*   **SPY:** Document A lists it at **0.0945%**.\n\n**2. AUM (Assets Under Management):**\n*   **VOO:** **1.2T USD** (Document A).\n*   **IVV:** **0.5T USD** (Document A).\n*   **SPY:** **0.5T USD** (Document A).\n\n**3. Issuer:**\n*   **VOO:** Vanguard (Document A).\n*   **IVV:** BlackRock (Document A, Document C).\n*   **SPY:** State Street (Document A).\n\n### Conflict Flagging:\n\n*   **Expense Ratio (VOO):** There is a potential conflict/update noted. Document A states the ratio is **0.03%**, but Document B indicates that the ratio is under review for an increase to **0.05%** in Q1 2026. (The current official rate is cited as 0.03% in Document B).\n*   **AUM:** No direct conflict is found, but Document C notes that VOO has the highest AUM, which aligns with the data in Document A (1.2T USD).",
+            "eval_count": 562,
+            "done_reason": "stop"
+          }
+        },
+        {
+          "idx": 3,
+          "on": {
+            "elapsed_s": 11.3,
+            "response": "## S&P 500 ETF Comparison (VOO, IVV, SPY)\n\n| Feature | VOO (Vanguard) | IVV (BlackRock) | SPY (State Street) |\n| :--- | :--- | :--- | :--- |\n| **Issuer** | Vanguard (Implied) | BlackRock (Document C) | State Street (Implied) |\n| **AUM** | 1.2T USD (Document A). Also noted as having the highest AUM (Document C). | 0.5T USD (Document A) | 0.5T USD (Document A) |\n| **Expense Ratio** | **0.03%** (Document A). **Conflict/Note:** Document B states the current official rate is 0.03%, but notes that a review for 0.05% is pending. | 0.03% (Document A) | 0.0945% (Document A) |\n\n***\n\n### Summary of Conflicts and Notes\n\n**1. VOO Expense Ratio:**\n*   **Conflict/Update:** Document B provides a critical update regarding VOO's expense ratio. While the current official rate is cited as **0.03%** (Document A), Document B notes that the expense ratio is under review for an increase to **0.05%**.\n\n**2. AUM/Ranking:**\n*   Document C notes that VOO has the highest AUM, which aligns with the specific figure provided in Document A (1.2T USD).\n\n**3. Issuer:**\n*   The issuer for IVV is explicitly stated as BlackRock in Document C. The issuers for VOO and SPY are implied by the full names/context but are not explicitly stated in the documents.",
+            "eval_count": 1149,
+            "done_reason": "stop"
+          },
+          "off": {
+            "elapsed_s": 5.08,
+            "response": "## S&P 500 ETF Comparison (VOO, IVV, SPY)\n\nBased on the provided documents, here is a comparison of the three S&P 500 ETFs:\n\n| Feature | VOO (Vanguard) | IVV (iShares/BlackRock) | SPY (State Street) |\n| :--- | :--- | :--- | :--- |\n| **Expense Ratio** | 0.03% (Document A) / *Potential increase to 0.05% (Document B)* | 0.03% (Document A) | 0.0945% (Document A) |\n| **AUM** | 1.2T USD (Document A) | 0.5T USD (Document A) | 0.5T USD (Document A) |\n| **Issuer** | Vanguard | BlackRock (Document A, Document C) | State Street (Document A) |\n\n---\n\n### Detailed Field Analysis & Conflict Flagging\n\n**1. Expense Ratio:**\n*   **VOO:** Document A states **0.03%**. Document B notes that while the current official rate is 0.03%, there is a review for an increase to **0.05%** in Q1 2026.\n*   **IVV:** Document A states **0.03%**.\n*   **SPY:** Document A states **0.0945%**.\n*   **Conflict:** No direct numerical conflict exists for the *current* reported rates, but Document B introduces a potential future change for VOO.\n\n**2. AUM (Assets Under Management):**\n*   **VOO:** Document A states **1.2T USD**.\n*   **IVV:** Document A states **0.5T USD**.\n*   **SPY:** Document A states **0.5T USD**.\n*   **Conflict:** No conflicts found. (Note: Document C mentions VOO has the highest AUM, which aligns with the 1.2T figure provided in Document A).\n\n**3. Issuer:**\n*   **VOO:** Vanguard (Document A).\n*   **IVV:** BlackRock (Document A, Document C).\n*   **SPY:** State Street (Document A).\n*   **Conflict:** No conflicts found.",
+            "eval_count": 509,
+            "done_reason": "stop"
+          }
+        },
+        {
+          "idx": 4,
+          "on": {
+            "elapsed_s": 10.63,
+            "response": "## S&P 500 ETF Comparison (VOO, IVV, SPY)\n\n| Feature | VOO (Vanguard) | IVV (BlackRock) | SPY (State Street) |\n| :--- | :--- | :--- | :--- |\n| **Issuer** | Vanguard (Implied) | BlackRock (Doc C) | State Street (Implied) |\n| **AUM** | 1.2T USD (Doc A). Also noted as having the highest AUM (Doc C). | 0.5T USD (Doc A) | 0.5T USD (Doc A) |\n| **Expense Ratio** | **Conflict/Update:** Doc A states 0.03%. Doc B states the current official rate is 0.03%, but notes that a review for 0.05% is being considered. | 0.03% (Doc A) | 0.0945% (Doc A) |\n\n***\n\n### Summary of Findings and Conflicts\n\n**Expense Ratio Conflict (VOO):**\n*   Document A lists the expense ratio as **0.03%**.\n*   Document B provides a more recent update, stating the current official rate is **0.03%**, but explicitly notes that the rate is under review for a potential increase to **0.05%**.\n\n**Other Conflicts:**\n*   No numerical conflicts were found for the AUM or the expense ratios of IVV or SPY.",
+            "eval_count": 1085,
+            "done_reason": "stop"
+          },
+          "off": {
+            "elapsed_s": 6.05,
+            "response": "## S&P 500 ETF Comparison (VOO, IVV, SPY)\n\nBased on the provided documents, here is a comparison of the three S&P 500 ETFs:\n\n| Feature | VOO (Vanguard) | IVV (iShares/BlackRock) | SPY (State Street) |\n| :--- | :--- | :--- | :--- |\n| **Expense Ratio** | 0.03% (Document A) / **Conflict:** Document B notes a potential increase to 0.05% but confirms the current official rate is 0.03%. | 0.03% (Document A) | 0.0945% (Document A) |\n| **AUM** | 1.2T USD (Document A) | 0.5T USD (Document A) | 0.5T USD (Document A) |\n| **Issuer** | Vanguard | BlackRock (Document A) / BlackRock (Document C) | State Street (Document A) |\n\n---\n\n### Detailed Field Analysis and Conflict Flagging\n\n**1. Expense Ratio:**\n*   **VOO:** Document A states **0.03%**. Document B provides context, stating the *current official* rate is **0.03%**, although a review for an increase to 0.05% is underway. **(No direct conflict on the stated current rate, but a future change is noted.)**\n*   **IVV:** Document A states **0.03%**. (No conflicting information found.)\n*   **SPY:** Document A states **0.0945%**. (No conflicting information found.)\n\n**2. AUM (Assets Under Management):**\n*   **VOO:** Document A states **1.2T USD**.\n*   **IVV:** Document A states **0.5T USD**.\n*   **SPY:** Document A states **0.5T USD**.\n*   **Conflict Check:** Document C mentions VOO has the highest AUM, which aligns with the 1.2T USD figure provided in Document A. No numerical conflicts were found for AUM.\n\n**3. Issuer:**\n*   **VOO:** Vanguard (Document A).\n*   **IVV:** BlackRock (Document A & C).\n*   **SPY:** State Street (Document A).\n\n***\n\n**Summary of Conflicts/Notes:**\n\n*   **Expense Ratio (VOO):** There is no conflict regarding the *current* stated rate (0.03%), but Document B warns that this rate is under review for a potential increase to 0.05%.\n*   **AUM/Ranking:** Document C notes that VOO has the highest AUM, which is consistent with the data provided in Document A.",
+            "eval_count": 608,
+            "done_reason": "stop"
+          }
+        },
+        {
+          "idx": 5,
+          "on": {
+            "elapsed_s": 11.25,
+            "response": "## S&P 500 ETF Comparison (VOO, IVV, SPY)\n\n| Feature | VOO (Vanguard) | IVV (BlackRock) | SPY (State Street) |\n| :--- | :--- | :--- | :--- |\n| **Issuer** | Vanguard | BlackRock | State Street |\n| **Expense Ratio** | **0.03%** (Document A) | 0.03% (Document A) | 0.0945% (Document A) |\n| | **Conflict/Update:** Document B notes that while the current official ratio is 0.03%, the fund is reviewing an increase to 0.05% as of 2026 Q1. | | |\n| **AUM** | 1.2T USD (Document A) | 0.5T USD (Document A) | 0.5T USD (Document A) |\n| | **Context:** Document C notes that VOO is the ETF with the highest AUM. | | |\n\n***\n\n### Summary of Findings and Conflicts\n\n**1. Expense Ratio:**\n*   **VOO:** The primary conflict/update is noted between Document A and Document B. Document A lists the ratio as 0.03%, but Document B provides a warning that the fund is reviewing an increase to 0.05% as of 2026 Q1.\n*   **IVV & SPY:** No conflicts were found for the expense ratios.\n\n**2. AUM:**\n*   **VOO:** Document A provides the specific figure (1.2T USD), and Document C corroborates that VOO has the highest AUM among the listed ETFs.\n*   **IVV & SPY:** Both are listed with 0.5T USD in Document A.\n\n**3. Issuer:**\n*   The issuer for each ETF is clearly identified in Document A (Vanguard, BlackRock, State Street).",
+            "eval_count": 1138,
+            "done_reason": "stop"
+          },
+          "off": {
+            "elapsed_s": 5.68,
+            "response": "## S&P 500 ETF Comparison (VOO, IVV, SPY)\n\nBased on the provided documents, here is a comparison of the three S&P 500 ETFs:\n\n| Feature | VOO (Vanguard) | IVV (iShares/BlackRock) | SPY (State Street) |\n| :--- | :--- | :--- | :--- |\n| **Expense Ratio** | 0.03% (Document A) / 0.05% (Potential, Document B) | 0.03% (Document A) | 0.0945% (Document A) |\n| **AUM** | 1.2T USD (Document A) | 0.5T USD (Document A) | 0.5T USD (Document A) |\n| **Issuer** | Vanguard | BlackRock (Document A, Document C) | State Street (Document A) |\n\n---\n\n### Detailed Comparison Points:\n\n**1. Expense Ratio:**\n*   **VOO:** Document A states the expense ratio is **0.03%**. Document B notes that while the current official rate is 0.03%, it is under review for an increase to 0.05% in Q1 2026.\n*   **IVV:** Document A states the expense ratio is **0.03%**.\n*   **SPY:** Document A states the expense ratio is **0.0945%**.\n\n**2. AUM (Assets Under Management):**\n*   **VOO:** Document A states the AUM is **1.2T USD**.\n*   **IVV:** Document A states the AUM is **0.5T USD**.\n*   **SPY:** Document A states the AUM is **0.5T USD**.\n\n**3. Issuer:**\n*   **VOO:** Vanguard\n*   **IVV:** BlackRock (Document C confirms BlackRock association)\n*   **SPY:** State Street\n\n### Conflict Flagging:\n\n*   **Expense Ratio (VOO):** There is a potential conflict/update noted. Document A lists the expense ratio as **0.03%**, but Document B indicates that Vanguard is *reviewing* an increase to **0.05%** for Q1 2026. The current official rate cited is 0.03%.\n*   **AUM (IVV & SPY):** No conflict found. Both documents agree that the AUM for IVV and SPY is **0.5T USD** (based on Document A).",
+            "eval_count": 567,
+            "done_reason": "stop"
+          }
+        }
+      ],
+      "judgements": [
+        {
+          "pair_idx": 1,
+          "pos1": {
+            "verdict": "A_wins",
+            "mode": "ON",
+            "rationale": "답변 A는 충돌을 더 명확하게 설명하고, 요약 섹션에서 충돌을 강조한다."
+          },
+          "pos2": {
+            "verdict": "A_wins",
+            "mode": "OFF",
+            "rationale": "답변 A는 표와 상세 분석을 통해 충돌을 더 명확하게 제시하고, 정보의 출처를 명시함."
+          },
+          "agreement": "position_biased",
+          "agreed_mode": null
+        },
+        {
+          "pair_idx": 2,
+          "pos1": {
+            "verdict": "A_wins",
+            "mode": "ON",
+            "rationale": "답변 A는 표와 요약으로 정보를 더 체계적으로 정리하여 가독성이 더 좋습니다."
+          },
+          "pos2": {
+            "verdict": "A_wins",
+            "mode": "OFF",
+            "rationale": "답변 A는 표와 상세 설명을 모두 제공하여 비교가 더 명료하고 포괄적입니다."
+          },
+          "agreement": "position_biased",
+          "agreed_mode": null
+        },
+        {
+          "pair_idx": 3,
+          "pos1": {
+            "verdict": "A_wins",
+            "mode": "ON",
+            "rationale": "답변 A는 충돌을 더 명확하게 강조하고, 요약 섹션을 통해 가독성을 높임."
+          },
+          "pos2": {
+            "verdict": "A_wins",
+            "mode": "OFF",
+            "rationale": "답변 A는 표와 상세 분석을 통해 정보를 더 체계적으로 제시하고, 충돌을 명확히 설명합니다."
+          },
+          "agreement": "position_biased",
+          "agreed_mode": null
+        },
+        {
+          "pair_idx": 4,
+          "pos1": {
+            "verdict": "A_wins",
+            "mode": "ON",
+            "rationale": "답변 A는 충돌을 더 명확하게 표시하고, 요약 섹션으로 정리하여 가독성이 더 좋습니다."
+          },
+          "pos2": {
+            "verdict": "A_wins",
+            "mode": "OFF",
+            "rationale": "답변 A는 더 자세한 분석과 표를 제공하여 비교를 더 명료하게 제시합니다."
+          },
+          "agreement": "position_biased",
+          "agreed_mode": null
+        },
+        {
+          "pair_idx": 5,
+          "pos1": {
+            "verdict": "A_wins",
+            "mode": "ON",
+            "rationale": "답변 A는 표와 요약으로 정보를 더 체계적으로 정리하여 가독성이 더 좋습니다."
+          },
+          "pos2": {
+            "verdict": "A_wins",
+            "mode": "OFF",
+            "rationale": "답변 A는 표와 상세 설명으로 정보를 더 체계적으로 정리했고, 충돌 사항을 명확하게 표시함."
+          },
+          "agreement": "position_biased",
+          "agreed_mode": null
+        }
+      ],
+      "tally": {
+        "agreed": 0,
+        "ON_wins": 0,
+        "OFF_wins": 0,
+        "tie": 0,
+        "position_biased": 5,
+        "judge_parse_fail": 0
+      },
+      "judge_direction": "tie"
+    },
+    {
+      "stage": "planner",
+      "fixture": "hard",
+      "a3_verdict": "tie (Δ=+0.04, sanity check)",
+      "pairs": [
+        {
+          "idx": 1,
+          "on": {
+            "elapsed_s": 13.41,
+            "response": "```json\n{\n  \"subtasks\": [\n    \"2026년 고(高)인플레이션(5% 이상) 및 저(低)인플레이션(2% 수준) 시나리오별 자산군별 경제적 영향 분석\",\n    \"각 시나리오별로 가장 유리한 자산군(Asset Class) 결정\",\n    \"고인플레이션 시나리오에 유리한 자산군 내에서 expense ratio가 가장 낮은 ETF 3개 선정\",\n    \"저인플레이션 시나리오에 유리한 자산군 내에서 expense ratio가 가장 낮은 ETF 3개 선정\",\n    \"선정된 자산군 및 ETF를 비교 분석한 최종 보고서 작성\"\n  ],\n  \"rationale\": \"경제 시나리오 분석 -> 자산군 결정 -> 각 시나리오별 ETF 선정 -> 최종 보고서 작성의 논리적 순서를 따름\"\n}\n```",
+            "eval_count": 933,
+            "done_reason": "stop"
+          },
+          "off": {
+            "elapsed_s": 2.06,
+            "response": "```json\n{\n  \"subtasks\": [\n    \"2026년 미국 인플레이션 5% 이상 유지 시나리오와 2% 안정 시나리오별 거시 경제 분석 및 예상 자산군 결정\",\n    \"각 시나리오별로 유리한 자산군을 확정하고, 해당 자산군 내에서 대표 ETF 목록 조사\",\n    \"조사된 ETF 목록 중 expense ratio가 가장 낮은 ETF 3개씩 선정\",\n    \"선정된 ETF 6개(각 시나리오별 3개)의 상세 정보(운용보수, 추적지수 등) 비교 분석 및 보고서 작성\"\n  ],\n  \"rationale\": \"질문의 핵심 요구사항(시나리오별 자산군 결정 -> ETF 선정 -> 비교 보고서 작성)을 논리적 순서로 분해했습니다.\"\n}\n```",
+            "eval_count": 193,
+            "done_reason": "stop"
+          }
+        },
+        {
+          "idx": 2,
+          "on": {
+            "elapsed_s": 8.96,
+            "response": "```json\n{\n  \"subtasks\": [\n    \"2026년 고인플레이션(5% 이상) 및 저인플레이션(2% 수준) 시나리오별 유리 자산군을 결정\",\n    \"각 시나리오별 유리 자산군 내에서 expense ratio가 가장 낮은 ETF 3개를 선정 및 비교\",\n    \"선정된 자산군과 ETF를 바탕으로 비교 보고서 작성\"\n  ],\n  \"rationale\": \"경제 시나리오 분석 -> 자산군 및 ETF 선정 -> 최종 보고서 작성의 순서로 진행되어야 질문의 모든 요소를 충족할 수 있다.\"\n}\n```",
+            "eval_count": 911,
+            "done_reason": "stop"
+          },
+          "off": {
+            "elapsed_s": 1.87,
+            "response": "```json\n{\n  \"subtasks\": [\n    \"2026년 미국 인플레이션 5% 이상 유지 시나리오와 2% 안정 시나리오의 경제적 특징 분석\",\n    \"각 시나리오별로 유리한 자산군(Asset Class) 결정\",\n    \"결정된 각 자산군별로 운용보수(Expense Ratio)가 가장 낮은 ETF 3개 조사\",\n    \"조사된 ETF 6개(각 시나리오별 3개)를 비교 분석하는 보고서 초안 작성\"\n  ],\n  \"rationale\": \"질문의 핵심 요구사항(시나리오 분석 -> 자산군 결정 -> ETF 선정 및 비교 보고서 작성)을 순차적으로 충족하도록 분해함.\"\n}\n```",
+            "eval_count": 174,
+            "done_reason": "stop"
+          }
+        },
+        {
+          "idx": 3,
+          "on": {
+            "elapsed_s": 8.15,
+            "response": "```json\n{\n  \"subtasks\": [\n    \"2026년 고인플레이션(5% 이상) 및 저인플레이션(2% 수준) 시나리오별 경제 환경 분석\",\n    \"각 시나리오에 유리한 자산군을 결정하고 그 근거를 제시\",\n    \"결정된 자산군 내에서 expense ratio가 가장 낮은 ETF 3개씩 선정\",\n    \"두 시나리오별 ETF 비교 보고서를 작성하여 최종 결론 도출\"\n  ],\n  \"rationale\": \"경제 시나리오 분석 → 자산군 결정 → 구체적인 상품(ETF) 선정 → 최종 보고서 작성의 논리적 흐름을 따름\"\n}\n```",
+            "eval_count": 828,
+            "done_reason": "stop"
+          },
+          "off": {
+            "elapsed_s": 2.13,
+            "response": "```json\n{\n  \"subtasks\": [\n    \"2026년 미국 인플레이션 5% 이상 유지 시나리오와 2% 안정화 시나리오별 거시경제 분석 및 예상 자산군 결정\",\n    \"각 시나리오별로 유리한 자산군을 확정하고, 해당 자산군 내에서 ETF 검색 및 필터링\",\n    \"선정된 자산군별로 Expense Ratio가 가장 낮은 ETF 3개씩 추출\",\n    \"추출된 ETF 6개(각 시나리오별 3개)의 주요 특징, 성과, 비용 구조를 비교 분석하여 보고서 초안 작성\"\n  ],\n  \"rationale\": \"질문의 핵심 요구사항(시나리오별 자산군 결정 -> ETF 선정 -> 비교 보고서 작성)을 논리적 순서에 따라 4단계로 분해했습니다.\"\n}\n```",
+            "eval_count": 200,
+            "done_reason": "stop"
+          }
+        },
+        {
+          "idx": 4,
+          "on": {
+            "elapsed_s": 8.91,
+            "response": "```json\n{\n  \"subtasks\": [\n    \"2026년 고인플레이션(5% 이상) 시나리오에서 유리한 자산군을 결정하라.\",\n    \"2026년 저인플레이션(2% 수준) 시나리오에서 유리한 자산군을 결정하라.\",\n    \"각 시나리오별로 결정된 자산군 내에서 expense ratio가 가장 낮은 ETF 3개를 조사하고 비교하라.\",\n    \"조사된 자산군 및 ETF 정보를 바탕으로 비교 보고서를 작성하라.\"\n  ],\n  \"rationale\": \"경제 시나리오 분석 → 자산군 결정 → 구체적인 상품(ETF) 선정 및 비교 → 최종 보고서 작성의 순서로 진행된다.\"\n}\n```",
+            "eval_count": 910,
+            "done_reason": "stop"
+          },
+          "off": {
+            "elapsed_s": 2.06,
+            "response": "```json\n{\n  \"subtasks\": [\n    \"2026년 미국 인플레이션 5% 이상 유지 시나리오와 2% 안정화 시나리오별 거시 경제 분석 및 예상 자산군 결정\",\n    \"각 시나리오별로 유리한 자산군을 확정하고, 해당 자산군 내에서 ETF 검색 및 필터링\",\n    \"선정된 자산군별로 expense ratio가 가장 낮은 ETF 3개씩 추출\",\n    \"추출된 ETF 6개(각 시나리오별 3개)의 주요 특징, 성과, 그리고 비교 분석 보고서 작성\"\n  ],\n  \"rationale\": \"질문의 복잡성을 고려하여, 시나리오 분석 -> 자산군 결정 -> ETF 선정 -> 최종 보고서 작성의 순서로 논리적 흐름을 구성했습니다.\"\n}\n```",
+            "eval_count": 194,
+            "done_reason": "stop"
+          }
+        },
+        {
+          "idx": 5,
+          "on": {
+            "elapsed_s": 8.88,
+            "response": "```json\n{\n  \"subtasks\": [\n    \"2026년 고인플레이션(5% 이상) 및 저인플레이션(2% 수준) 시나리오의 경제적 영향을 분석한다.\",\n    \"각 시나리오별로 가장 유리한 자산군을 결정한다.\",\n    \"결정된 자산군별로 expense ratio가 가장 낮은 ETF 3개를 조사하여 비교한다.\",\n    \"두 시나리오의 ETF들을 종합적으로 비교하고 최종 보고서를 작성한다.\"\n  ],\n  \"rationale\": \"질문은 시나리오 분석(1) -> 자산군 결정(2) -> 구체 상품(ETF) 선정 및 비교(3) -> 최종 보고서 작성(4)의 순서로 진행되어야 하므로, 이 4단계가 가장 논리적이고 순차적인 하위 작업 분해이다.\"\n}\n```",
+            "eval_count": 902,
+            "done_reason": "stop"
+          },
+          "off": {
+            "elapsed_s": 2.18,
+            "response": "```json\n{\n  \"subtasks\": [\n    \"2026년 미국 인플레이션 5% 이상 유지 시나리오와 2% 안정 시나리오별 거시 경제 분석 및 예상 자산군 결정\",\n    \"각 시나리오별 유리한 자산군을 기반으로, 해당 자산군 내에서 운용보수(expense ratio)가 낮은 ETF 목록 조사\",\n    \"각 시나리오별로 선정된 자산군 내에서 expense ratio가 가장 낮은 ETF 3개 선정 및 데이터 수집\",\n    \"선정된 ETF 3개에 대한 비교 분석 보고서 작성 (성능, 비용 효율성 등 포함)\"\n  ],\n  \"rationale\": \"질문의 복잡한 조건(시나리오 분기, 자산군 결정, ETF 필터링, 비교 보고서 작성)을 순차적으로 처리하기 위해 4단계로 분해함.\"\n}\n```",
+            "eval_count": 204,
+            "done_reason": "stop"
+          }
+        }
+      ],
+      "judgements": [
+        {
+          "pair_idx": 1,
+          "pos1": {
+            "verdict": "A_wins",
+            "mode": "ON",
+            "rationale": "A는 시나리오별 자산군 분석을 명시하여 질문의 핵심을 더 잘 반영함."
+          },
+          "pos2": {
+            "verdict": "B_wins",
+            "mode": "ON",
+            "rationale": "B는 시나리오별 자산군 분석을 명확히 분리하여 더 세분화된 접근 방식을 취했습니다."
+          },
+          "agreement": "agreed",
+          "agreed_mode": "ON"
+        },
+        {
+          "pair_idx": 2,
+          "pos1": {
+            "verdict": "B_wins",
+            "mode": "OFF",
+            "rationale": "B는 시나리오 분석을 명시하여 A보다 더 포괄적이고, 자산군과 ETF의 의존성도 더 자연스럽다."
+          },
+          "pos2": {
+            "verdict": "A_wins",
+            "mode": "OFF",
+            "rationale": "A는 시나리오 분석을 명시하여 더 포괄적이며, B는 너무 간략하다."
+          },
+          "agreement": "agreed",
+          "agreed_mode": "OFF"
+        },
+        {
+          "pair_idx": 3,
+          "pos1": {
+            "verdict": "A_wins",
+            "mode": "ON",
+            "rationale": "A는 시나리오별 분석을 명시하여 질문의 핵심을 더 잘 반영하고, B보다 더 간결함."
+          },
+          "pos2": {
+            "verdict": "A_wins",
+            "mode": "OFF",
+            "rationale": "답변 A가 시나리오별 분석을 명시하여 더 포괄적이고, 단계별 의존성도 자연스럽습니다."
+          },
+          "agreement": "position_biased",
+          "agreed_mode": null
+        },
+        {
+          "pair_idx": 4,
+          "pos1": {
+            "verdict": "A_wins",
+            "mode": "ON",
+            "rationale": "A는 간결하고 명확하며, B는 불필요한 세분화와 전문 용어 사용이 많음."
+          },
+          "pos2": {
+            "verdict": "A_wins",
+            "mode": "OFF",
+            "rationale": "A는 시나리오별 자산군 분석을 먼저 수행하여 B보다 더 논리적인 순서를 갖는다."
+          },
+          "agreement": "position_biased",
+          "agreed_mode": null
+        },
+        {
+          "pair_idx": 5,
+          "pos1": {
+            "verdict": "A_wins",
+            "mode": "ON",
+            "rationale": "답변 A가 더 간결하고 질문의 핵심 단계를 잘 반영함."
+          },
+          "pos2": {
+            "verdict": "A_wins",
+            "mode": "OFF",
+            "rationale": "답변 A가 인플레이션 시나리오를 명시적으로 언급하여 더 포괄적이고, 단계별 흐름이 자연스럽다."
+          },
+          "agreement": "position_biased",
+          "agreed_mode": null
+        }
+      ],
+      "tally": {
+        "agreed": 2,
+        "ON_wins": 1,
+        "OFF_wins": 1,
+        "tie": 0,
+        "position_biased": 3,
+        "judge_parse_fail": 0
+      },
+      "judge_direction": "tie"
+    }
+  ]
+}
