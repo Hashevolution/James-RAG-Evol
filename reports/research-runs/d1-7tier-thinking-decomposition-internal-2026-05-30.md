@@ -32,7 +32,10 @@ visible `response` tokens against `eval_count` (the gap = hidden thinking trace,
 language-independent — important since the cognitive tiers are Korean and a
 chars/token heuristic does not transfer). Then re-run each tier with
 `think=false` to show the reclaimable budget. Cross-family context comes from
-the existing D1/D3 cap=4096 natural-budget JSONs (no new cross-family runs).
+the existing D1/D3 cap=4096 natural-budget JSONs, plus a 2026-05-30 fill of the
+two missing tiers (heavy_synth via `v3prime_e_mode_split_complex.py`,
+query_rewrite via `v3prime_query_rewriter.py`) across all 7 models at n=10 to
+complete the grid (§4).
 
 The 7 tiers (D1 ordering): substitution / light-synth / heavy-synth (English
 e-commerce) + query_rewrite / planner / reflect / verify (Korean cognitive,
@@ -52,20 +55,39 @@ prompts pinned from `core/reasoning/*`).
 
 Gradient spans: think-ON `eval_count` **62→1492 (24×)** ← *this is the column the public D1 "27×" measures*; think-OFF (workload-only) 24→463 (19×); visible-output-only 23→580 (25×).
 
-## 4. Cross-family context (existing JSONs, natural median eval_count, cap=4096, T=0.2)
+## 4. Full 7×7 cross-family grid (natural median eval_count, cap=4096, T=0.2)
 
-The other six panel models have **no thinking capability** (§16.7), so their
-`eval_count` == visible output.
+Complete grid (49/49 cells). The other six panel models have **no thinking
+capability** (§16.7), so their `eval_count` == visible output. †`gemma4:e4b` is
+think-ON (its values include the hidden trace — see §3 for the decomposition).
+heavy_synth and query_rewrite cross-family were measured 2026-05-30 (n=10) to
+complete the grid for future R&D use; the rest are from the existing D1/D3 JSONs.
 
-| tier | gemma2 | qwen2.5 | qwen2.5-coder | llama3.1 | gemma3 | deepseek-v2 |
-|---|---|---|---|---|---|---|
-| substitution | 63 | 59 | 59 | 58 | 62 | 4 |
-| light_synth | 57 | 72 | 95 | 89 | 73 | 89 |
-| planner | 99 | 99 | 99 | 95 | 60 | 375 |
-| reflect | 336 | 191 | 4 | 464 | 643 | 787 |
-| verify | 18 | 86 | 19 | 90 | 24 | 17 |
+| tier | gemma4:e4b† | gemma2:2b | qwen2.5:7b | qwen2.5-coder | llama3.1:8b | gemma3:12b | deepseek-v2 |
+|---|---|---|---|---|---|---|---|
+| 1. substitution | 62 | 63 | 59 | 59 | 58 | 62 | 4 |
+| 2. light_synth | 456 | 57 | 72 | 95 | 89 | 73 | 89 |
+| 3. heavy_synth | 603 | 251 | 219 | 161 | 160 | 177 | 190 |
+| 4. query_rewrite | 533 | 25 | 24 | 25 | 23 | 35 | 53 |
+| 5. planner | 733 | 99 | 99 | 99 | 95 | 60 | 375 |
+| 6. reflect | 1402 | 336 | 191 | 4 | 464 | 643 | 787 |
+| 7. verify | 1032 | 18 | 86 | 19 | 90 | 24 | 17 |
 
-(query_rewrite and heavy_synth cross-family not in existing JSONs; not load-bearing for the internal question.)
+**What the completed grid adds (heavy_synth + query_rewrite):**
+
+- **heavy_synth is a genuine cross-family workload tier**: all six non-thinking
+  models rise to 160–251 tokens (vs ~57–95 for light_synth). Heavy synthesis
+  costs more *everywhere* — real workload signal, like reflect.
+- **query_rewrite is the most thinking-inflated tier on e4b**: cross-family it is
+  tiny (23–53 tokens — the other models rewrite a query in ~25 tokens), but e4b
+  spends **533** (95% thinking, §3). This is the single widest e4b-vs-rest gap
+  in the grid.
+- **The real cross-family workload peaks are `heavy_synth` and `reflect`**
+  (the two tiers large across all models). e4b's other peaks — verify (1032),
+  planner (733), query_rewrite (533) — are thinking-inflated; cross-family those
+  tiers are small (17–375). This sharpens F3: D1's gradient mixes a genuine
+  workload component (heavy_synth, reflect) with an e4b-specific thinking
+  component (verify, query_rewrite, planner).
 
 ## 5. Findings
 
