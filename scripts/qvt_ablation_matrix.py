@@ -592,12 +592,33 @@ def main(argv: Optional[List[str]] = None) -> int:
         "--dry-run", action="store_true",
         help="Print the planned cells + envs; do not spawn server.",
     )
+    parser.add_argument(
+        "--t0-smoke", action="store_true",
+        help="α-5 prereq §3 T0 smoke gate — equivalent to "
+             "`--tiers M_M --rows L1,L5`. The smallest run (~2.2 h) that "
+             "tells whether the matrix has any signal at production tier. "
+             "If |graded_answer Δ| < 0.05, STOP and skip M_S/M_L — the "
+             "matrix is null and 18 h of further compute would be wasted.",
+    )
     args = parser.parse_args(argv)
 
     if args.render_report:
         ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
         out_path = _REPORT_DIR / f"v0.4-qvt-ablation-matrix-{ts}.md"
         return _render_report(out_path)
+
+    # T0 smoke gate (α-5 prereq §3) takes precedence over --rows/--tiers
+    # so an operator can fire the gate run with one flag.
+    if args.t0_smoke:
+        if args.rows or args.tiers:
+            print("[error] --t0-smoke implies --tiers M_M --rows L1,L5; "
+                  "remove --rows/--tiers or drop --t0-smoke")
+            return 7
+        args.rows = "L1,L5"
+        args.tiers = "M_M"
+        print("[t0-smoke] α-5 prereq §3 gate — running "
+              "M_M × {L1, L5} (~2.2 h). Verdict rule: if |graded_answer "
+              "Δ| < 0.05 → matrix null at production tier → STOP.")
 
     rows = _parse_subset(args.rows, list(_ROW_ENVS.keys()), "rows")
     tiers = _parse_subset(args.tiers, list(_TIER_MODELS.keys()), "tiers")
@@ -639,7 +660,37 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     print(f"\n[done] cells succeeded: {n_ok}, failed: {n_fail}")
     print(f"Per-cell JSONs at {_OUTPUT_DIR.relative_to(ROOT)}.")
-    print(f"Render the consolidated report with:\n"
+
+    # T0 smoke verdict — print the prereq §3 decision in-line so the
+    # operator knows whether to proceed to T1 or stop, without having
+    # to re-render the report.
+    if args.t0_smoke and n_fail == 0:
+        l1 = _cell_output_path("L1", "M_M")
+        l5 = _cell_output_path("L5", "M_M")
+        if l1.exists() and l5.exists():
+            j1 = json.loads(l1.read_text(encoding="utf-8"))
+            j5 = json.loads(l5.read_text(encoding="utf-8"))
+            g1 = j1["aggregate"]["graded_answer"]["median"]
+            g5 = j5["aggregate"]["graded_answer"]["median"]
+            delta = round(g5 - g1, 4)
+            print(f"\n=== T0 smoke verdict ===")
+            print(f"L1 graded_answer median: {g1:.4f}")
+            print(f"L5 graded_answer median: {g5:.4f}")
+            print(f"Δ (full stack vs baseline): {delta:+.4f}")
+            if abs(delta) < 0.05:
+                print(
+                    "VERDICT: matrix likely NULL at production tier "
+                    f"(|Δ|={abs(delta):.4f} < 0.05). Do NOT run T2 "
+                    f"(M_S / M_L) — savings ~18 h. See prereq §3 + §4."
+                )
+            else:
+                print(
+                    "VERDICT: matrix has SIGNAL at production tier "
+                    f"(|Δ|={abs(delta):.4f} ≥ 0.05). Proceed to T1 "
+                    f"(`--tiers M_M`, ~5.5 h) to isolate which layer."
+                )
+
+    print(f"\nRender the consolidated report with:\n"
           f"  python scripts/qvt_ablation_matrix.py --render-report")
     return 0 if n_fail == 0 else 6
 

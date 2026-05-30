@@ -179,6 +179,72 @@ class GradedAnswerTests(unittest.TestCase):
         self.assertEqual(len(axis.per_query), 0)
         self.assertEqual(axis.mean_accuracy, 0.0)
 
+    # α-5 prereq §1.b — negation guard tests.
+
+    def test_english_negation_suppresses_match(self):
+        fixture = {"queries": [{"id": 1, "gold_signals": [
+            {"term": "Claude", "aliases": []},
+        ]}]}
+        bench = {"results": [{"id": 1,
+                              "answer": "Anthropic does not develop Claude."}]}
+        axis = score_graded_answer(bench, fixture)
+        self.assertEqual(axis.per_query[0].hits, 0)
+
+    def test_english_contraction_negation_suppresses(self):
+        fixture = {"queries": [{"id": 1, "gold_signals": [
+            {"term": "Claude", "aliases": []},
+        ]}]}
+        bench = {"results": [{"id": 1,
+                              "answer": "Anthropic doesn't make Claude."}]}
+        axis = score_graded_answer(bench, fixture)
+        self.assertEqual(axis.per_query[0].hits, 0)
+
+    def test_korean_negation_morpheme_suppresses(self):
+        fixture = {"queries": [{"id": 1, "gold_signals": [
+            {"term": "Anthropic", "aliases": []},
+        ]}]}
+        bench = {"results": [{"id": 1,
+                              "answer": "Claude는 Anthropic이 아니다."}]}
+        axis = score_graded_answer(bench, fixture)
+        self.assertEqual(axis.per_query[0].hits, 0)
+
+    def test_later_positive_occurrence_still_counts(self):
+        """Sentence A says 'X is not Y' but sentence B says 'Y is real'.
+        The signal should hit on B even though it was negated in A."""
+        fixture = {"queries": [{"id": 1, "gold_signals": [
+            {"term": "Claude", "aliases": []},
+        ]}]}
+        bench = {"results": [{"id": 1,
+                              "answer": ("Anthropic does not own that. "
+                                         "However Claude is a model.")}]}
+        axis = score_graded_answer(bench, fixture)
+        self.assertEqual(axis.per_query[0].hits, 1)
+
+    def test_negation_far_away_does_not_bleed(self):
+        """A negation more than 12 chars before the match should not
+        suppress it — otherwise unrelated earlier 'not' affects later."""
+        fixture = {"queries": [{"id": 1, "gold_signals": [
+            {"term": "Claude", "aliases": []},
+        ]}]}
+        # 'not' is ~30 chars before 'Claude' — should NOT suppress.
+        bench = {"results": [{"id": 1,
+                              "answer": ("It is not raining outside today, "
+                                         "but Claude works fine.")}]}
+        axis = score_graded_answer(bench, fixture)
+        self.assertEqual(axis.per_query[0].hits, 1)
+
+    def test_alias_negation_falls_through_to_term(self):
+        """If the answer negates an alias but uses the term positively,
+        the term should still match."""
+        fixture = {"queries": [{"id": 1, "gold_signals": [
+            {"term": "Anthropic", "aliases": ["the company"]},
+        ]}]}
+        bench = {"results": [{"id": 1,
+                              "answer": ("This is not the company. "
+                                         "Anthropic ships Claude.")}]}
+        axis = score_graded_answer(bench, fixture)
+        self.assertEqual(axis.per_query[0].hits, 1)
+
 
 # ---------------------------------------------------------------------------
 # score_abstention_f1
