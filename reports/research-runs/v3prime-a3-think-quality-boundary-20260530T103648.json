@@ -1,0 +1,1575 @@
+{
+  "metadata": {
+    "started_utc": "2026-05-30T10:27:28.730184+00:00",
+    "driver": "v3prime_a3_think_quality_boundary.py",
+    "model": "gemma4:e4b",
+    "cap": 4096,
+    "temperature": 0.2,
+    "n": 5,
+    "stages": [
+      "planner",
+      "reflect",
+      "verify",
+      "synthesis",
+      "query_rewriter"
+    ],
+    "fixtures": [
+      "easy",
+      "hard"
+    ],
+    "closes": "§17.5.3 v3prime-cross-family-final-2026-05-29.md",
+    "finished_utc": "2026-05-30T10:36:48.741704+00:00"
+  },
+  "cells": {
+    "planner": {
+      "easy": {
+        "think_on": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 6.97,
+              "eval_count": 666,
+              "response_chars": 185,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 3,
+              "has_conditional": false,
+              "has_dependency": false
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 7.02,
+              "eval_count": 704,
+              "response_chars": 190,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 3,
+              "has_conditional": false,
+              "has_dependency": false
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 6.37,
+              "eval_count": 638,
+              "response_chars": 220,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 3,
+              "has_conditional": false,
+              "has_dependency": false
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 7.43,
+              "eval_count": 748,
+              "response_chars": 230,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 3,
+              "has_conditional": false,
+              "has_dependency": false
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 7.37,
+              "eval_count": 739,
+              "response_chars": 203,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 3,
+              "has_conditional": false,
+              "has_dependency": false
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "elapsed_s_mean": 7.03,
+            "eval_count_mean": 699,
+            "has_conditional_frac": 0.0,
+            "has_dependency_frac": 0.0,
+            "n_subtasks_mean": 3,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 205.6,
+            "valid_json_frac": 1.0
+          }
+        },
+        "think_off": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 1.13,
+              "eval_count": 94,
+              "response_chars": 205,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 3,
+              "has_conditional": false,
+              "has_dependency": false
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 1.09,
+              "eval_count": 94,
+              "response_chars": 205,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 3,
+              "has_conditional": false,
+              "has_dependency": false
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 1.06,
+              "eval_count": 91,
+              "response_chars": 200,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 3,
+              "has_conditional": false,
+              "has_dependency": false
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 1.1,
+              "eval_count": 95,
+              "response_chars": 205,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 3,
+              "has_conditional": false,
+              "has_dependency": false
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 1.1,
+              "eval_count": 94,
+              "response_chars": 205,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 3,
+              "has_conditional": false,
+              "has_dependency": false
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "elapsed_s_mean": 1.1,
+            "eval_count_mean": 93.6,
+            "has_conditional_frac": 0.0,
+            "has_dependency_frac": 0.0,
+            "n_subtasks_mean": 3,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 204,
+            "valid_json_frac": 1.0
+          }
+        }
+      },
+      "hard": {
+        "think_on": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 9.63,
+              "eval_count": 969,
+              "response_chars": 347,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 4,
+              "has_conditional": true,
+              "has_dependency": false
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 9.87,
+              "eval_count": 996,
+              "response_chars": 385,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 4,
+              "has_conditional": true,
+              "has_dependency": false
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 8.7,
+              "eval_count": 877,
+              "response_chars": 350,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 5,
+              "has_conditional": true,
+              "has_dependency": false
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 9.91,
+              "eval_count": 1000,
+              "response_chars": 328,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 4,
+              "has_conditional": true,
+              "has_dependency": false
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 8.86,
+              "eval_count": 894,
+              "response_chars": 379,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 4,
+              "has_conditional": true,
+              "has_dependency": false
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "elapsed_s_mean": 9.39,
+            "eval_count_mean": 947.2,
+            "has_conditional_frac": 1.0,
+            "has_dependency_frac": 0.0,
+            "n_subtasks_mean": 4.2,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 357.8,
+            "valid_json_frac": 1.0
+          }
+        },
+        "think_off": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 2.08,
+              "eval_count": 192,
+              "response_chars": 365,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 4,
+              "has_conditional": true,
+              "has_dependency": false
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 2.06,
+              "eval_count": 195,
+              "response_chars": 376,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 4,
+              "has_conditional": true,
+              "has_dependency": false
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 1.7,
+              "eval_count": 157,
+              "response_chars": 309,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 4,
+              "has_conditional": true,
+              "has_dependency": false
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 1.78,
+              "eval_count": 165,
+              "response_chars": 317,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 4,
+              "has_conditional": true,
+              "has_dependency": false
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 2.12,
+              "eval_count": 199,
+              "response_chars": 369,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "n_subtasks": 4,
+              "has_conditional": true,
+              "has_dependency": false
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "elapsed_s_mean": 1.95,
+            "eval_count_mean": 181.6,
+            "has_conditional_frac": 1.0,
+            "has_dependency_frac": 0.0,
+            "n_subtasks_mean": 4,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 347.2,
+            "valid_json_frac": 1.0
+          }
+        }
+      }
+    },
+    "reflect": {
+      "easy": {
+        "think_on": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 10.89,
+              "eval_count": 1087,
+              "response_chars": 505,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 13.69,
+              "eval_count": 1389,
+              "response_chars": 1004,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 13.82,
+              "eval_count": 1403,
+              "response_chars": 833,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 14.1,
+              "eval_count": 1432,
+              "response_chars": 948,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 14.34,
+              "eval_count": 1455,
+              "response_chars": 985,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "decision_correct_frac": 1.0,
+            "dim_ambiguous_frac": 1.0,
+            "dim_contradiction_frac": 1.0,
+            "dim_coverage_mean": 3,
+            "dim_missing_frac": 1.0,
+            "elapsed_s_mean": 13.37,
+            "eval_count_mean": 1353.2,
+            "no_issues_frac": 0.0,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 855
+          }
+        },
+        "think_off": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 4.74,
+              "eval_count": 471,
+              "response_chars": 908,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 5.27,
+              "eval_count": 532,
+              "response_chars": 987,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 4.07,
+              "eval_count": 404,
+              "response_chars": 727,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 4.6,
+              "eval_count": 458,
+              "response_chars": 874,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 4.98,
+              "eval_count": 502,
+              "response_chars": 985,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "decision_correct_frac": 1.0,
+            "dim_ambiguous_frac": 1.0,
+            "dim_contradiction_frac": 1.0,
+            "dim_coverage_mean": 3,
+            "dim_missing_frac": 1.0,
+            "elapsed_s_mean": 4.73,
+            "eval_count_mean": 473.4,
+            "no_issues_frac": 0.0,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 896.2
+          }
+        }
+      },
+      "hard": {
+        "think_on": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 11.39,
+              "eval_count": 1156,
+              "response_chars": 821,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 11.93,
+              "eval_count": 1215,
+              "response_chars": 1006,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 10.47,
+              "eval_count": 1065,
+              "response_chars": 791,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 13.04,
+              "eval_count": 1329,
+              "response_chars": 1096,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 12.4,
+              "eval_count": 1262,
+              "response_chars": 1092,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "decision_correct_frac": 1.0,
+            "dim_ambiguous_frac": 1.0,
+            "dim_contradiction_frac": 1.0,
+            "dim_coverage_mean": 3,
+            "dim_missing_frac": 1.0,
+            "elapsed_s_mean": 11.85,
+            "eval_count_mean": 1205.4,
+            "no_issues_frac": 0.0,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 961.2
+          }
+        },
+        "think_off": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 5.13,
+              "eval_count": 515,
+              "response_chars": 1001,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 4.99,
+              "eval_count": 500,
+              "response_chars": 990,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 6.03,
+              "eval_count": 608,
+              "response_chars": 1203,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 5.69,
+              "eval_count": 573,
+              "response_chars": 1116,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 4.03,
+              "eval_count": 400,
+              "response_chars": 790,
+              "done_reason": "stop",
+              "non_empty": true,
+              "no_issues": false,
+              "dim_contradiction": true,
+              "dim_missing": true,
+              "dim_ambiguous": true,
+              "dim_coverage": 3,
+              "decision_correct": true
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "decision_correct_frac": 1.0,
+            "dim_ambiguous_frac": 1.0,
+            "dim_contradiction_frac": 1.0,
+            "dim_coverage_mean": 3,
+            "dim_missing_frac": 1.0,
+            "elapsed_s_mean": 5.17,
+            "eval_count_mean": 519.2,
+            "no_issues_frac": 0.0,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 1020
+          }
+        }
+      }
+    },
+    "verify": {
+      "easy": {
+        "think_on": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 10.74,
+              "eval_count": 1079,
+              "response_chars": 55,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": true,
+              "n_unsupported": 0,
+              "judgment_correct": true,
+              "list_adequate": true
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 10.6,
+              "eval_count": 1070,
+              "response_chars": 55,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": true,
+              "n_unsupported": 0,
+              "judgment_correct": true,
+              "list_adequate": true
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 11.79,
+              "eval_count": 1190,
+              "response_chars": 103,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": false,
+              "n_unsupported": 1,
+              "judgment_correct": false,
+              "list_adequate": true
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 13.78,
+              "eval_count": 1390,
+              "response_chars": 55,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": true,
+              "n_unsupported": 0,
+              "judgment_correct": true,
+              "list_adequate": true
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 12.72,
+              "eval_count": 1286,
+              "response_chars": 102,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": false,
+              "n_unsupported": 1,
+              "judgment_correct": false,
+              "list_adequate": true
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "elapsed_s_mean": 11.93,
+            "eval_count_mean": 1203,
+            "grounded_frac": 0.6,
+            "judgment_correct_frac": 0.6,
+            "list_adequate_frac": 1.0,
+            "n_unsupported_mean": 0.4,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 74,
+            "valid_json_frac": 1.0
+          }
+        },
+        "think_off": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 0.53,
+              "eval_count": 24,
+              "response_chars": 55,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": true,
+              "n_unsupported": 0,
+              "judgment_correct": true,
+              "list_adequate": true
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 0.42,
+              "eval_count": 24,
+              "response_chars": 55,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": true,
+              "n_unsupported": 0,
+              "judgment_correct": true,
+              "list_adequate": true
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 0.42,
+              "eval_count": 24,
+              "response_chars": 55,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": true,
+              "n_unsupported": 0,
+              "judgment_correct": true,
+              "list_adequate": true
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 0.42,
+              "eval_count": 24,
+              "response_chars": 55,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": true,
+              "n_unsupported": 0,
+              "judgment_correct": true,
+              "list_adequate": true
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 0.42,
+              "eval_count": 24,
+              "response_chars": 55,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": true,
+              "n_unsupported": 0,
+              "judgment_correct": true,
+              "list_adequate": true
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "elapsed_s_mean": 0.44,
+            "eval_count_mean": 24,
+            "grounded_frac": 1.0,
+            "judgment_correct_frac": 1.0,
+            "list_adequate_frac": 1.0,
+            "n_unsupported_mean": 0,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 55,
+            "valid_json_frac": 1.0
+          }
+        }
+      },
+      "hard": {
+        "think_on": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 9.34,
+              "eval_count": 935,
+              "response_chars": 216,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": false,
+              "n_unsupported": 3,
+              "judgment_correct": true,
+              "list_adequate": true
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 9.37,
+              "eval_count": 945,
+              "response_chars": 215,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": false,
+              "n_unsupported": 3,
+              "judgment_correct": true,
+              "list_adequate": true
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 9.81,
+              "eval_count": 990,
+              "response_chars": 224,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": false,
+              "n_unsupported": 3,
+              "judgment_correct": true,
+              "list_adequate": true
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 10.25,
+              "eval_count": 1036,
+              "response_chars": 224,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": false,
+              "n_unsupported": 3,
+              "judgment_correct": true,
+              "list_adequate": true
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 10.3,
+              "eval_count": 1043,
+              "response_chars": 225,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": false,
+              "n_unsupported": 3,
+              "judgment_correct": true,
+              "list_adequate": true
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "elapsed_s_mean": 9.81,
+            "eval_count_mean": 989.8,
+            "grounded_frac": 0.0,
+            "judgment_correct_frac": 1.0,
+            "list_adequate_frac": 1.0,
+            "n_unsupported_mean": 3,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 220.8,
+            "valid_json_frac": 1.0
+          }
+        },
+        "think_off": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 1.02,
+              "eval_count": 78,
+              "response_chars": 170,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": false,
+              "n_unsupported": 2,
+              "judgment_correct": true,
+              "list_adequate": true
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 0.94,
+              "eval_count": 78,
+              "response_chars": 170,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": false,
+              "n_unsupported": 2,
+              "judgment_correct": true,
+              "list_adequate": true
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 1.17,
+              "eval_count": 102,
+              "response_chars": 224,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": false,
+              "n_unsupported": 3,
+              "judgment_correct": true,
+              "list_adequate": true
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 0.95,
+              "eval_count": 78,
+              "response_chars": 170,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": false,
+              "n_unsupported": 2,
+              "judgment_correct": true,
+              "list_adequate": true
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 1.17,
+              "eval_count": 102,
+              "response_chars": 224,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "grounded": false,
+              "n_unsupported": 3,
+              "judgment_correct": true,
+              "list_adequate": true
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "elapsed_s_mean": 1.05,
+            "eval_count_mean": 87.6,
+            "grounded_frac": 0.0,
+            "judgment_correct_frac": 1.0,
+            "list_adequate_frac": 1.0,
+            "n_unsupported_mean": 2.4,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 191.6,
+            "valid_json_frac": 1.0
+          }
+        }
+      }
+    },
+    "synthesis": {
+      "easy": {
+        "think_on": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 4.98,
+              "eval_count": 496,
+              "response_chars": 313,
+              "done_reason": "stop",
+              "non_empty": true,
+              "has_decision": false
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 4.79,
+              "eval_count": 480,
+              "response_chars": 317,
+              "done_reason": "stop",
+              "non_empty": true,
+              "has_decision": false
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 4.75,
+              "eval_count": 475,
+              "response_chars": 313,
+              "done_reason": "stop",
+              "non_empty": true,
+              "has_decision": false
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 4.67,
+              "eval_count": 467,
+              "response_chars": 320,
+              "done_reason": "stop",
+              "non_empty": true,
+              "has_decision": false
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 4.18,
+              "eval_count": 417,
+              "response_chars": 314,
+              "done_reason": "stop",
+              "non_empty": true,
+              "has_decision": false
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "elapsed_s_mean": 4.67,
+            "eval_count_mean": 467,
+            "has_decision_frac": 0.0,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 315.4
+          }
+        },
+        "think_off": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 0.78,
+              "eval_count": 56,
+              "response_chars": 277,
+              "done_reason": "stop",
+              "non_empty": true,
+              "has_decision": false
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 0.79,
+              "eval_count": 61,
+              "response_chars": 303,
+              "done_reason": "stop",
+              "non_empty": true,
+              "has_decision": false
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 0.8,
+              "eval_count": 60,
+              "response_chars": 296,
+              "done_reason": "stop",
+              "non_empty": true,
+              "has_decision": false
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 0.8,
+              "eval_count": 60,
+              "response_chars": 297,
+              "done_reason": "stop",
+              "non_empty": true,
+              "has_decision": false
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 0.78,
+              "eval_count": 61,
+              "response_chars": 303,
+              "done_reason": "stop",
+              "non_empty": true,
+              "has_decision": false
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "elapsed_s_mean": 0.79,
+            "eval_count_mean": 59.6,
+            "has_decision_frac": 0.0,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 295.2
+          }
+        }
+      },
+      "hard": {
+        "think_on": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 10.93,
+              "eval_count": 1108,
+              "response_chars": 1130,
+              "done_reason": "stop",
+              "non_empty": true,
+              "n_entity_coverage": 3,
+              "all_entities_covered": true,
+              "has_conflict_flag": false,
+              "has_both_fee_numbers": true
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 11.72,
+              "eval_count": 1193,
+              "response_chars": 976,
+              "done_reason": "stop",
+              "non_empty": true,
+              "n_entity_coverage": 3,
+              "all_entities_covered": true,
+              "has_conflict_flag": true,
+              "has_both_fee_numbers": true
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 10.23,
+              "eval_count": 1039,
+              "response_chars": 833,
+              "done_reason": "stop",
+              "non_empty": true,
+              "n_entity_coverage": 3,
+              "all_entities_covered": true,
+              "has_conflict_flag": true,
+              "has_both_fee_numbers": true
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 12.05,
+              "eval_count": 1223,
+              "response_chars": 1361,
+              "done_reason": "stop",
+              "non_empty": true,
+              "n_entity_coverage": 3,
+              "all_entities_covered": true,
+              "has_conflict_flag": false,
+              "has_both_fee_numbers": true
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 10.96,
+              "eval_count": 1114,
+              "response_chars": 975,
+              "done_reason": "stop",
+              "non_empty": true,
+              "n_entity_coverage": 3,
+              "all_entities_covered": true,
+              "has_conflict_flag": false,
+              "has_both_fee_numbers": true
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "all_entities_covered_frac": 1.0,
+            "elapsed_s_mean": 11.18,
+            "eval_count_mean": 1135.4,
+            "has_both_fee_numbers_frac": 1.0,
+            "has_conflict_flag_frac": 0.4,
+            "n_entity_coverage_mean": 3,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 1055
+          }
+        },
+        "think_off": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 5.67,
+              "eval_count": 570,
+              "response_chars": 1680,
+              "done_reason": "stop",
+              "non_empty": true,
+              "n_entity_coverage": 3,
+              "all_entities_covered": true,
+              "has_conflict_flag": true,
+              "has_both_fee_numbers": true
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 5.38,
+              "eval_count": 543,
+              "response_chars": 1547,
+              "done_reason": "stop",
+              "non_empty": true,
+              "n_entity_coverage": 3,
+              "all_entities_covered": true,
+              "has_conflict_flag": true,
+              "has_both_fee_numbers": true
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 5.03,
+              "eval_count": 505,
+              "response_chars": 1422,
+              "done_reason": "stop",
+              "non_empty": true,
+              "n_entity_coverage": 3,
+              "all_entities_covered": true,
+              "has_conflict_flag": true,
+              "has_both_fee_numbers": true
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 5.71,
+              "eval_count": 574,
+              "response_chars": 1713,
+              "done_reason": "stop",
+              "non_empty": true,
+              "n_entity_coverage": 3,
+              "all_entities_covered": true,
+              "has_conflict_flag": true,
+              "has_both_fee_numbers": true
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 5.06,
+              "eval_count": 505,
+              "response_chars": 1403,
+              "done_reason": "stop",
+              "non_empty": true,
+              "n_entity_coverage": 3,
+              "all_entities_covered": true,
+              "has_conflict_flag": true,
+              "has_both_fee_numbers": true
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "all_entities_covered_frac": 1.0,
+            "elapsed_s_mean": 5.37,
+            "eval_count_mean": 539.4,
+            "has_both_fee_numbers_frac": 1.0,
+            "has_conflict_flag_frac": 1.0,
+            "n_entity_coverage_mean": 3,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 1553
+          }
+        }
+      }
+    },
+    "query_rewriter": {
+      "easy": {
+        "think_on": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 5.28,
+              "eval_count": 530,
+              "response_chars": 75,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 44
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 5.18,
+              "eval_count": 524,
+              "response_chars": 90,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 59
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 5.4,
+              "eval_count": 547,
+              "response_chars": 84,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 53
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 5.3,
+              "eval_count": 536,
+              "response_chars": 76,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 45
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 5.08,
+              "eval_count": 512,
+              "response_chars": 81,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 50
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "elapsed_s_mean": 5.25,
+            "eval_count_mean": 529.8,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 81.2,
+            "rewritten_chars_mean": 50.2,
+            "valid_json_frac": 1.0
+          }
+        },
+        "think_off": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 0.61,
+              "eval_count": 39,
+              "response_chars": 81,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 48
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 0.47,
+              "eval_count": 28,
+              "response_chars": 65,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 48
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 0.45,
+              "eval_count": 26,
+              "response_chars": 61,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 44
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 0.5,
+              "eval_count": 33,
+              "response_chars": 86,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 69
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 0.38,
+              "eval_count": 19,
+              "response_chars": 54,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 37
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "elapsed_s_mean": 0.48,
+            "eval_count_mean": 29,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 69.4,
+            "rewritten_chars_mean": 49.2,
+            "valid_json_frac": 1.0
+          }
+        }
+      },
+      "hard": {
+        "think_on": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 6.01,
+              "eval_count": 607,
+              "response_chars": 58,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 27,
+              "has_concept_anchor": false
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 5.65,
+              "eval_count": 571,
+              "response_chars": 64,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 33,
+              "has_concept_anchor": false
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 5.9,
+              "eval_count": 594,
+              "response_chars": 70,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 39,
+              "has_concept_anchor": false
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 6.12,
+              "eval_count": 621,
+              "response_chars": 85,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 54,
+              "has_concept_anchor": false
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 6.27,
+              "eval_count": 636,
+              "response_chars": 79,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 48,
+              "has_concept_anchor": false
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "elapsed_s_mean": 5.99,
+            "eval_count_mean": 605.8,
+            "has_concept_anchor_frac": 0.0,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 71.2,
+            "rewritten_chars_mean": 40.2,
+            "valid_json_frac": 1.0
+          }
+        },
+        "think_off": {
+          "rows": [
+            {
+              "run_idx": 1,
+              "elapsed_s": 0.48,
+              "eval_count": 26,
+              "response_chars": 57,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 40,
+              "has_concept_anchor": false
+            },
+            {
+              "run_idx": 2,
+              "elapsed_s": 0.4,
+              "eval_count": 21,
+              "response_chars": 55,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 38,
+              "has_concept_anchor": false
+            },
+            {
+              "run_idx": 3,
+              "elapsed_s": 0.46,
+              "eval_count": 27,
+              "response_chars": 60,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 43,
+              "has_concept_anchor": false
+            },
+            {
+              "run_idx": 4,
+              "elapsed_s": 0.4,
+              "eval_count": 21,
+              "response_chars": 55,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 38,
+              "has_concept_anchor": false
+            },
+            {
+              "run_idx": 5,
+              "elapsed_s": 0.42,
+              "eval_count": 24,
+              "response_chars": 56,
+              "done_reason": "stop",
+              "non_empty": true,
+              "valid_json": true,
+              "rewritten_chars": 39,
+              "has_concept_anchor": false
+            }
+          ],
+          "summary": {
+            "n_ok": 5,
+            "errors": 0,
+            "elapsed_s_mean": 0.43,
+            "eval_count_mean": 23.8,
+            "has_concept_anchor_frac": 0.0,
+            "non_empty_frac": 1.0,
+            "response_chars_mean": 56.6,
+            "rewritten_chars_mean": 39.6,
+            "valid_json_frac": 1.0
+          }
+        }
+      }
+    }
+  }
+}
