@@ -324,6 +324,13 @@ def _run_one(
     data = r.json() or {}
     answer = (data.get("answer") or "").strip()
     actual_paths = data.get("graph_paths") or []
+    # α-5 plan §findings 2026-05-31 — `sources` is the citation field
+    # (top-3 source documents that fed the LLM, per
+    # core/reasoning/pipeline.py:343). Capturing it here so the oracle
+    # can score source-recall against the fixture's expected article
+    # titles — that's the MultiHop-RAG `evidence_list.title` semantic,
+    # which doesn't map onto the entity-only `graph_paths`.
+    actual_sources = data.get("sources") or []
     base.update({
         "status":            "ok",
         "answer_len":        len(answer),
@@ -332,9 +339,14 @@ def _run_one(
         "graph_paths_count": len(actual_paths),
         "mode":              data.get("mode", ""),
         "unified_score":     data.get("unified_score"),
+        "sources":           actual_sources,
     })
     # Idea 1 (2026-05-27) — Path Recall/Precision when the suite
     # declares `expected_path.nodes`. Queries without the field skip.
+    # The oracle (eval/qvt/oracle.py::score_path_coverage) is the
+    # authority on path scoring; `path_metrics` here stays as a
+    # graph-entity-only signal for legacy callers. Oracle considers
+    # both `path_metrics` and `sources` when computing the axis.
     expected_path = q.get("expected_path") or {}
     expected_nodes = expected_path.get("nodes") or []
     pm = _path_metrics(actual_paths, expected_nodes)

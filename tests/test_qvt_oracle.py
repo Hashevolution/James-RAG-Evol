@@ -115,6 +115,105 @@ class PathCoverageTests(unittest.TestCase):
         self.assertEqual(axis.queries_at_full_recall, 1)
         self.assertEqual(len(axis.per_query), 3)
 
+    # α-5 §findings 2026-05-31 — source-side path scoring tests.
+
+    def test_source_match_full_recall(self):
+        """JAMES `sources` filenames slug-match all expected article titles."""
+        bench = {"results": [{
+            "id": 1, "status": "ok",
+            "sources": [
+                "multihop_0009_SBF-Trial-The-latest-updates-from-the-FTX-collapse-s-courtroom-drama.txt",
+                "multihop_0010_SBF-s-trial-starts-soon-but-how-did-he-and-FTX-get-here.txt",
+                "multihop_0175_The-FTX-trial-is-bigger-than-Sam-Bankman-Fried.txt",
+            ],
+        }]}
+        fixture = {"queries": [{
+            "id": 1, "category": "test",
+            "expected_path": {"nodes": [
+                "SBF Trial: The latest updates from the FTX collapse's courtroom drama",
+                "SBF's trial starts soon, but how did he — and FTX — get here?",
+                "The FTX trial is bigger than Sam Bankman-Fried",
+            ], "min_recall": 1.0},
+        }]}
+        axis = score_path_coverage(bench, fixture)
+        self.assertEqual(len(axis.per_query), 1)
+        self.assertEqual(axis.per_query[0].hits, 3)
+        self.assertEqual(axis.per_query[0].via_sources, 3)
+        self.assertEqual(axis.per_query[0].via_graph, 0)
+        self.assertAlmostEqual(axis.mean_recall, 1.0, places=4)
+
+    def test_source_partial_match(self):
+        """Top-3 sources contain only 2 of 3 expected articles."""
+        bench = {"results": [{
+            "id": 1, "status": "ok",
+            "sources": [
+                "multihop_0009_SBF-Trial-The-latest-updates-from-the-FTX-collapse-s-courtroom-drama.txt",
+                "multihop_0010_SBF-s-trial-starts-soon-but-how-did-he-and-FTX-get-here.txt",
+                "multihop_0999_Unrelated-article.txt",
+            ],
+        }]}
+        fixture = {"queries": [{
+            "id": 1, "category": "test",
+            "expected_path": {"nodes": [
+                "SBF Trial: The latest updates from the FTX collapse's courtroom drama",
+                "SBF's trial starts soon, but how did he — and FTX — get here?",
+                "The FTX trial is bigger than Sam Bankman-Fried",
+            ], "min_recall": 1.0},
+        }]}
+        axis = score_path_coverage(bench, fixture)
+        self.assertAlmostEqual(axis.per_query[0].recall, 2 / 3, places=4)
+
+    def test_unified_credit_from_both_sides(self):
+        """A hit from graph_paths AND a hit from sources both count, but
+        a title matched on both sides is credited once (no double count)."""
+        bench = {"results": [{
+            "id": 1, "status": "ok",
+            "graph_paths": [
+                # A path that contains 'The FTX trial …' as a node — this
+                # is a synthetic graph-entity match the way bench parses
+                # path strings.
+                "The FTX trial is bigger than Sam Bankman-Fried -[REL]→ Sam Bankman-Fried",
+            ],
+            "sources": [
+                # Source filename also covers the same article.
+                "multihop_0175_The-FTX-trial-is-bigger-than-Sam-Bankman-Fried.txt",
+                # And a second article covered by sources only.
+                "multihop_0010_SBF-s-trial-starts-soon-but-how-did-he-and-FTX-get-here.txt",
+            ],
+        }]}
+        fixture = {"queries": [{
+            "id": 1, "category": "test",
+            "expected_path": {"nodes": [
+                "The FTX trial is bigger than Sam Bankman-Fried",
+                "SBF's trial starts soon, but how did he — and FTX — get here?",
+            ], "min_recall": 1.0},
+        }]}
+        axis = score_path_coverage(bench, fixture)
+        self.assertEqual(axis.per_query[0].hits, 2)
+        # First article matched on both sides; second only via sources.
+        # via_graph counts pre-dedup hits from graph side; via_sources
+        # counts pre-dedup hits from sources side. Each hit is allowed
+        # to appear in both counters.
+        self.assertEqual(axis.per_query[0].via_graph, 1)
+        self.assertEqual(axis.per_query[0].via_sources, 2)
+        self.assertAlmostEqual(axis.per_query[0].recall, 1.0, places=4)
+
+    def test_no_sources_no_graph_no_hits(self):
+        bench = {"results": [{
+            "id": 1, "status": "ok",
+            "sources": [
+                "multihop_0999_completely-unrelated-article.txt",
+            ],
+        }]}
+        fixture = {"queries": [{
+            "id": 1, "category": "test",
+            "expected_path": {"nodes": ["The FTX trial is bigger than Sam Bankman-Fried"],
+                              "min_recall": 1.0},
+        }]}
+        axis = score_path_coverage(bench, fixture)
+        self.assertEqual(axis.per_query[0].hits, 0)
+        self.assertEqual(axis.per_query[0].recall, 0.0)
+
 
 # ---------------------------------------------------------------------------
 # score_graded_answer

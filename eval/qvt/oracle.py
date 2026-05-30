@@ -95,7 +95,50 @@ def detect_abstention(answer: Optional[str]) -> bool:
 
 # ---------------------------------------------------------------------------
 # Path Coverage
+#
+# α-5 plan §findings 2026-05-31 — the path axis is now scored against
+# BOTH `graph_paths` entities (per-query `path_metrics` from bench.py)
+# AND `sources` (top-3 source documents citation field, per
+# `core/reasoning/pipeline.py:343`). MultiHop-RAG's
+# `evidence_list.title` semantic ("did the system cite the right
+# source") doesn't match graph_paths (entity-centric) but does match
+# the `sources` field (document-centric). Both signal types contribute
+# to a unified path-recall axis after slug normalisation.
 # ---------------------------------------------------------------------------
+
+# Slug normaliser — used to bring three different naming surfaces into
+# a single comparable form:
+#
+#   - fixture expected node: "The FTX trial is bigger than Sam …"
+#   - graph entity name    : "Sam Bankman-Fried"
+#   - source document file : "multihop_0009_SBF-Trial-The-latest-…txt"
+#
+# All three become lowercase ascii-alphanumeric-dash strings capped at
+# 80 chars. The `multihop_<id>_` prefix and `.txt` suffix on source
+# filenames are stripped before slugging so the comparable form is just
+# the article slug.
+import re as _re  # noqa: E402
+
+_SOURCE_PREFIX_RE = _re.compile(r"^multihop_\d+_")
+_SLUG_BAD_RE = _re.compile(r"[^a-z0-9\-]+")
+_SLUG_MAX = 80
+
+
+def _slug_for_match(s: str) -> str:
+    if not s:
+        return ""
+    s = s.strip()
+    # Drop multihop_<id>_ prefix on source filenames.
+    s = _SOURCE_PREFIX_RE.sub("", s)
+    # Drop common file extensions on source filenames.
+    if s.lower().endswith(".txt"):
+        s = s[:-4]
+    elif s.lower().endswith(".pdf"):
+        s = s[:-4]
+    s = s.lower()
+    s = _SLUG_BAD_RE.sub("-", s).strip("-")
+    return s[:_SLUG_MAX]
+
 
 @dataclass
 class PathCoverageQueryRow:
@@ -103,6 +146,8 @@ class PathCoverageQueryRow:
     expected_count: int
     hits: int
     recall: float
+    via_graph: int = 0        # how many hits came from graph_paths
+    via_sources: int = 0      # how many hits came from `sources` citations
 
 
 @dataclass
@@ -113,28 +158,122 @@ class PathCoverageAxis:
     per_query: List[PathCoverageQueryRow] = field(default_factory=list)
 
 
+def _graph_node_slugs_from_bench_row(r: Dict[str, Any]) -> set:
+    """Best-effort recovery of graph entity names from a bench row.
+
+    bench.py's per-row `path_metrics` block has aggregate counts but not
+    the raw `actual_paths` list. The unified recall axis can still match
+    via `sources` (always captured post-2026-05-31). For graph-path
+    matching, the row needs to have stored either `graph_paths` (list of
+    path strings) or a `path_metrics.actual_nodes` field. When absent,
+    graph-side returns the empty set and `sources` carries the axis.
+    """
+    nodes: set = set()
+    raw_paths = r.get("graph_paths") or []
+    if raw_paths:
+        # Strings like "<src> -[REL]→ <tgt> -[REL]→ <tgt2>". The same
+        # parsing bench.py uses pre-`_path_metrics` — but we re-derive
+        # here because the raw list isn't stored in path_metrics.
+        for ps in raw_paths:
+            if not isinstance(ps, str):
+                continue
+            parts = ps.split(" -[")
+            if parts and parts[0].strip():
+                nodes.add(_slug_for_match(parts[0].strip()))
+            for part in parts[1:]:
+                if "]→ " in part:
+                    target = part.split("]→ ", 1)[1].strip()
+                    if target:
+                        nodes.add(_slug_for_match(target))
+    return nodes
+
+
 def score_path_coverage(
     bench_results: Dict[str, Any],
     fixture: Dict[str, Any],
 ) -> PathCoverageAxis:
-    """Aggregate bench.py's per-query `path_metrics` block.
+    """Unified path-recall axis against expected nodes (titles or entity
+    names), with hits credited from BOTH graph_paths entities AND the
+    `sources` document-citation field (post-α-5 plan §findings).
 
-    Skips queries without `expected_path` (the denominator is "annotated
-    queries", not "all queries"). The fixture parameter is accepted for
-    API symmetry but currently unused — bench.py already joined against
-    the fixture when producing `path_metrics`.
+    Match semantics: slug-normalise both sides (lowercase, dash-separated,
+    `multihop_<id>_` prefix stripped from source filenames, `.txt`/`.pdf`
+    extension stripped). A hit on either side counts toward recall.
+
+    The fixture parameter is currently used to map row → expected nodes
+    when the bench row didn't store `path_metrics` (queries with
+    `expected_path` set but no `path_metrics` block — bench.py emits one
+    when graph_paths is non-empty; we keep the fixture as authority).
     """
-    _ = fixture  # reserved for future use (e.g. min_recall threshold)
+    # Map fixture queries by id for expected-nodes lookup.
+    fixture_map: Dict[int, Dict[str, Any]] = {
+        int(q["id"]): q for q in fixture.get("queries", [])
+    }
     rows: List[PathCoverageQueryRow] = []
     for r in bench_results.get("results", []):
-        pm = r.get("path_metrics")
-        if not pm:
+        qid = int(r.get("id", -1))
+        fq = fixture_map.get(qid)
+        # Legacy compatibility — when no fixture context is available
+        # but bench already stored `path_metrics`, trust those numbers.
+        # The new unified scorer requires fixture lookup for slug
+        # comparison; this branch lets historic bench JSONs (step7 v5/v6
+        # or tests with empty fixture) keep working unchanged.
+        if not fq:
+            pm = r.get("path_metrics")
+            if not pm:
+                continue
+            hits = int(pm.get("hits", 0))
+            rows.append(PathCoverageQueryRow(
+                id=qid,
+                expected_count=int(pm.get("expected_count", 0)),
+                hits=hits,
+                recall=float(pm.get("path_recall", 0.0)),
+                via_graph=hits,
+                via_sources=0,
+            ))
             continue
+        ep = fq.get("expected_path") or {}
+        expected_nodes = ep.get("nodes") or []
+        if not expected_nodes:
+            continue
+        expected_slugs = {_slug_for_match(n) for n in expected_nodes
+                          if isinstance(n, str)}
+        expected_slugs.discard("")
+        if not expected_slugs:
+            continue
+
+        # Graph-side hits: prefer row.graph_paths (added when present);
+        # fall back to bench.py's aggregate path_metrics.hits if raw
+        # paths aren't stored. The latter is graph-only and loses the
+        # source-side credit.
+        graph_slugs = _graph_node_slugs_from_bench_row(r)
+        # Source-side hits: the citation list.
+        source_slugs = {_slug_for_match(s) for s in (r.get("sources") or [])
+                        if isinstance(s, str)}
+        source_slugs.discard("")
+
+        via_graph = len(expected_slugs & graph_slugs)
+        via_sources = len(expected_slugs & source_slugs)
+        # A title can be hit via either side; dedup so recall ≤ 1.0.
+        union_hits = len(expected_slugs & (graph_slugs | source_slugs))
+
+        # When bench.py emitted no graph_paths AND no sources, fall back
+        # to whatever path_metrics.hits says so legacy bench JSONs
+        # without the new fields don't regress to all-zero.
+        if not graph_slugs and not source_slugs:
+            pm = r.get("path_metrics")
+            if pm:
+                union_hits = int(pm.get("hits", 0))
+                via_graph = union_hits  # treat all as graph-side legacy
+
+        recall = union_hits / len(expected_slugs) if expected_slugs else 0.0
         rows.append(PathCoverageQueryRow(
-            id=int(r["id"]),
-            expected_count=int(pm.get("expected_count", 0)),
-            hits=int(pm.get("hits", 0)),
-            recall=float(pm.get("path_recall", 0.0)),
+            id=qid,
+            expected_count=len(expected_slugs),
+            hits=union_hits,
+            recall=round(recall, 4),
+            via_graph=via_graph,
+            via_sources=via_sources,
         ))
     if not rows:
         return PathCoverageAxis(
