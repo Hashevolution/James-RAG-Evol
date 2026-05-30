@@ -75,6 +75,23 @@ _ABSTENTION_PHRASES: Tuple[str, ...] = (
     "unable to",
     "refuse",
     "decline",
+    # α-5 findings 2026-05-31 — gemma4:e4b's grounding training uses
+    # strong refusal phrasings for null queries that the original list
+    # missed. Validated against bench_f7762a3_multihop_rag_*: of the
+    # 19 "FN_hallucination" rows, 14 actually abstain using one of the
+    # phrases below. Kept narrow on purpose: hedges like "does not
+    # contain" / "lack the specific" appear in PARTIAL-answer rows
+    # ("The company is Amazon. However, the source material does not
+    # contain ...") too, so over-eager phrases generate FPs on
+    # truth=present queries. The phrases below only appear in unhedged
+    # refusal positions.
+    "impossible to answer",
+    "impossible to determine",
+    "impossible to identify",
+    "cannot be determined",
+    "cannot be answered",
+    "insufficient information",
+    "insufficient data",
 )
 
 
