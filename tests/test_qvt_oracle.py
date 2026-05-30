@@ -397,7 +397,8 @@ class ThreeAxisIntegrationTests(unittest.TestCase):
         self.assertIsInstance(result, ThreeAxisResult)
         # Schema version checked permissively — v5 baseline shipped
         # with α-2, v6 adds q17. Either is valid.
-        self.assertIn(result.fixture_version, ("step7-v5", "step7-v6"))
+        self.assertIn(result.fixture_version,
+                      ("step7-v5", "step7-v6", "step7-v7"))
         self.assertEqual(result.git_sha, "deadbeef")
         # q2 is path-annotated → path axis is non-empty.
         self.assertGreater(result.path_coverage.queries_with_expected_path, 0)

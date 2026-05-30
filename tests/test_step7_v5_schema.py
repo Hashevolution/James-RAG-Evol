@@ -35,21 +35,23 @@ def _load_fixture() -> dict:
 class FixtureVersionTests(unittest.TestCase):
     """v5+ schema version + description carry the QVT α-2 contract.
     v6 (T2.D-3, 2026-05-28) adds q17 CEO question for dispatch
-    acceptance baseline."""
+    acceptance baseline. v7 (α-5 prereq §5.2/5.3, 2026-05-30) adds
+    8 expected_path annotations + 3 hard queries (q18/q19/q20) so
+    the path-coverage axis is not saturated at the baseline."""
 
     def test_version_at_least_v5(self):
         data = _load_fixture()
-        # Accept v5 or v6 — v6 adds q17 but keeps every v5 invariant.
+        # Accept v5, v6, or v7 — all retain v5 invariants.
         self.assertIn(
-            data["version"], ("step7-v5", "step7-v6"),
-            "version must be 'step7-v5' or 'step7-v6' (later bumps "
+            data["version"], ("step7-v5", "step7-v6", "step7-v7"),
+            "version must be 'step7-v5'/'v6'/'v7' (later bumps "
             "should keep the QVT α-2 invariants below or add an "
             "explicit schema migration)",
         )
 
     def test_queries_count_min(self):
-        """v5 = 16 queries; v6 = 17 queries (q17 CEO acceptance).
-        Lower bound is the v5 baseline."""
+        """v5 = 16 queries; v6 = 17 queries (q17 CEO acceptance);
+        v7 = 20 queries (q18/q19/q20 hard fixtures). Lower bound is v5."""
         data = _load_fixture()
         self.assertGreaterEqual(len(data["queries"]), 16)
 
@@ -189,11 +191,12 @@ class AggregateCountsTests(unittest.TestCase):
         n_present = sum(
             1 for q in data["queries"] if q["abstention_truth"] == "present"
         )
-        # The 2026-05-28 baseline is 12 present / 4 absent. Allow a band
-        # to absorb future small fixture edits without breaking the test
-        # on every annotation tweak.
+        # 2026-05-28 v6 baseline = 12 present / 5 absent (17 total).
+        # 2026-05-30 v7 adds 3 hard `present` queries (q18/q19/q20) →
+        # 15 present / 5 absent (20 total). Band widened to absorb v7
+        # while still catching wholesale flips.
         self.assertGreaterEqual(n_present, 8)
-        self.assertLessEqual(n_present, 14)
+        self.assertLessEqual(n_present, 17)
 
 
 if __name__ == "__main__":
