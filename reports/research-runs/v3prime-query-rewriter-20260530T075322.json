@@ -1,0 +1,76 @@
+{
+  "metadata": {
+    "started_utc": "2026-05-30T07:53:22.716787+00:00",
+    "driver": "v3prime_query_rewriter.py",
+    "stage": "query_rewrite",
+    "model": "gemma2:2b",
+    "temperature": 0.2,
+    "n_per_cap": 2,
+    "query": "BlackRock 과 Vanguard 의 ETF 전략 차이를 비교해줘",
+    "caps_tested": [
+      200,
+      4096
+    ],
+    "ollama_url": "http://127.0.0.1:11434/api/generate",
+    "prompt_template_pinned_from": "core/retrieval/query_rewriter.py:53 (REWRITE_PROMPT_KO)",
+    "completed_utc": "2026-05-30T07:53:24.065272+00:00"
+  },
+  "runs": {
+    "200": [
+      {
+        "elapsed_s": 0.58,
+        "response_bytes": 97,
+        "response_chars": 69,
+        "ollama_done_reason": "stop",
+        "ollama_total_duration_ms": 561,
+        "ollama_eval_count": 30,
+        "raw_response_sha256": "44b3c1413376dc32",
+        "non_empty": true,
+        "looks_like_rewritten_json": true,
+        "run_idx": 1,
+        "num_predict": 200
+      },
+      {
+        "elapsed_s": 0.28,
+        "response_bytes": 97,
+        "response_chars": 69,
+        "ollama_done_reason": "stop",
+        "ollama_total_duration_ms": 254,
+        "ollama_eval_count": 30,
+        "raw_response_sha256": "44b3c1413376dc32",
+        "non_empty": true,
+        "looks_like_rewritten_json": true,
+        "run_idx": 2,
+        "num_predict": 200
+      }
+    ],
+    "4096": [
+      {
+        "elapsed_s": 0.23,
+        "response_bytes": 80,
+        "response_chars": 64,
+        "ollama_done_reason": "stop",
+        "ollama_total_duration_ms": 227,
+        "ollama_eval_count": 25,
+        "raw_response_sha256": "e38b1337bb5f397d",
+        "non_empty": true,
+        "looks_like_rewritten_json": true,
+        "run_idx": 1,
+        "num_predict": 4096
+      },
+      {
+        "elapsed_s": 0.27,
+        "response_bytes": 100,
+        "response_chars": 72,
+        "ollama_done_reason": "stop",
+        "ollama_total_duration_ms": 264,
+        "ollama_eval_count": 32,
+        "raw_response_sha256": "d0451d4092069357",
+        "non_empty": true,
+        "looks_like_rewritten_json": true,
+        "run_idx": 2,
+        "num_predict": 4096
+      }
+    ]
+  }
+}
