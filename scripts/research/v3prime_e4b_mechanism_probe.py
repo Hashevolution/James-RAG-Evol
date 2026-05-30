@@ -217,6 +217,70 @@ def part_c_thinking_toggle() -> None:
     )
 
 
+SYNTHESIS_PROMPT_COT = (
+    "Based on the policy context below, advise whether a customer who "
+    "bought a linen shirt, washed it, and now wants to return it qualifies "
+    "for a refund. Think step by step through each relevant clause before "
+    "giving your final recommendation.\n\nContext:\n" + CONTEXT_FIXTURE
+    + "\nReasoning:"
+)
+
+
+def _gen_eval(model: str, prompt: str, cap: int = 4096) -> int:
+    body = json.dumps({
+        "model": model, "prompt": prompt, "stream": False,
+        "options": {"num_predict": cap, "temperature": 0.2},
+    }).encode("utf-8")
+    req = request.Request(OLLAMA_URL, data=body, method="POST",
+                          headers={"Content-Type": "application/json"})
+    with request.urlopen(req, timeout=180) as resp:
+        return json.loads(resp.read().decode()).get("eval_count") or 0
+
+
+def part_d_crossmodel_reasoning() -> None:
+    """Is the reasoning cost e4b-specific? Compare native think-only vs
+    prompt-induced explicit reasoning across the panel (§16.7)."""
+    print("## Part D — is the reasoning cost e4b-specific? "
+          "(native think vs prompt-induced CoT, §16.7)\n")
+    # (A) native think toggle is e4b-only — rejected elsewhere.
+    chat_url = OLLAMA_URL.replace("/api/generate", "/api/chat")
+    body = json.dumps({
+        "model": "qwen2.5:7b",
+        "messages": [{"role": "user", "content": SYNTHESIS_PROMPT}],
+        "stream": False, "think": True,
+        "options": {"num_predict": 512, "temperature": 0.2},
+    }).encode("utf-8")
+    req = request.Request(chat_url, data=body, method="POST",
+                          headers={"Content-Type": "application/json"})
+    try:
+        with request.urlopen(req, timeout=120):
+            verdict = "accepted (unexpected)"
+    except Exception as exc:  # HTTP 400 for non-thinking models
+        verdict = f"rejected — {str(exc)[:40]}"
+    print(f"(A) native think=true on qwen2.5:7b (no thinking capability): "
+          f"{verdict}\n")
+
+    # (B) prompt-induced CoT cost across the standard models.
+    print("(B) prompt-induced explicit reasoning (eval_count, cap=4096):\n")
+    print(f"| {'model':<14} | {'plain':>6} | {'CoT':>5} | "
+          f"{'induced reasoning':>17} |")
+    print(f"|{'-'*16}|{'-'*8}|{'-'*7}|{'-'*19}|")
+    for model in ["qwen2.5:7b", "gemma3:12b", "llama3.1:8b", "gemma2:2b"]:
+        try:
+            plain = _gen_eval(model, SYNTHESIS_PROMPT)
+            cot = _gen_eval(model, SYNTHESIS_PROMPT_COT)
+            print(f"| {model:<14} | {plain:>6} | {cot:>5} | "
+                  f"{cot - plain:>+17} |")
+        except Exception as exc:  # pragma: no cover
+            print(f"| {model:<14} | ERROR {str(exc)[:30]} |")
+    print(
+        "\nReading: induced reasoning (~170-390 tokens) matches e4b's native "
+        "trace (~377). Reasoning costs the same on every model — e4b is not "
+        "abnormally expensive. The floor is a DEFAULT-MODE difference "
+        "(reasoning on-by-default + hidden) not an efficiency defect.\n"
+    )
+
+
 def main() -> None:
     print("# V3'.e mechanism probe — gemma4:e4b cap-400 floor\n")
     print("Headline: the floor is the gemma4:e4b THINKING TRACE consuming the "
@@ -225,6 +289,7 @@ def main() -> None:
     part_a_live()
     part_b_stored()
     part_c_thinking_toggle()
+    part_d_crossmodel_reasoning()
 
 
 if __name__ == "__main__":

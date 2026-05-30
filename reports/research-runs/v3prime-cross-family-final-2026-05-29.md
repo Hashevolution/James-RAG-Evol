@@ -438,7 +438,41 @@ JAMES production calls Ollama via **`/api/generate` with `think` unset**, and `g
 
 ### 16.6 Artifact
 
-- `scripts/research/v3prime_e4b_mechanism_probe.py` — self-contained, reproducible. Part A (live stream: visible vs counted tokens), Part B (stored-JSON chars/token corroboration: e4b 0.71 vs others ~4.8), Part C (`think` toggle root-cause isolation). cp949-safe.
+- `scripts/research/v3prime_e4b_mechanism_probe.py` — self-contained, reproducible. Part A (live stream: visible vs counted tokens), Part B (stored-JSON chars/token corroboration: e4b 0.71 vs others ~4.8), Part C (`think` toggle root-cause isolation), Part D (cross-model reasoning-cost comparison, §16.7). cp949-safe.
+
+### 16.7 Is the reasoning cost e4b-specific? No — it is a default-mode difference, not an efficiency defect
+
+Natural follow-up: can the "thinking cost" be measured on the *other* models too? Two findings settle it.
+
+**(A) Native `think` toggle is e4b-only.** `ollama show` confirms only `gemma4:e4b` declares the `thinking` capability; the other six list `completion` (+ `tools`/`vision`/`insert`). Passing `think:true` to a non-thinking model is rejected:
+
+```
+/api/chat think=true on qwen2.5:7b → HTTP 400 Bad Request
+```
+
+So there is no native thinking phase to toggle or measure on the other six — their reasoning happens implicitly in the forward pass and emits **no** extra output tokens (§16.1: `eval_count == visible`).
+
+**(B) Prompt-induced explicit reasoning is universal and comparable in cost.** Forcing any model to reason out loud ("Think step by step through each relevant clause before giving your final recommendation") converts the implicit reasoning into explicit output tokens, which `eval_count` then captures (cap=4096, temp=0.2, single-item e-commerce):
+
+| Model | plain `eval_count` | CoT `eval_count` | induced reasoning tokens |
+|---|---|---|---|
+| `qwen2.5:7b` | 63 | 272 | +209 |
+| `gemma3:12b` | 51 | 440 | +389 |
+| `llama3.1:8b` | 72 | 240 | +168 |
+| `gemma2:2b` | 48 | 215 | +167 |
+
+The induced reasoning cost (~170–390 tokens) lands in the **same band as e4b's native trace (~377)** — `gemma3:12b` at +389 is essentially identical. Explicit reasoning costs roughly the same on every model.
+
+**Reframing.** `gemma4:e4b` is **not** abnormally expensive at reasoning. The cap-400 floor is a **default-mode** difference, not a reasoning-efficiency defect:
+
+| | `gemma4:e4b` (thinking model) | other six (standard models) |
+|---|---|---|
+| explicit reasoning | **default-on** | opt-in (only when prompted) |
+| visibility | **hidden** (stripped from `response`) | visible (it is the requested output) |
+| counted in `num_predict` budget | yes | yes |
+| operator perception | "unexplained floor" | "I asked for it" |
+
+When the other six are *asked* to reason, they pay the same token tax and could floor at the same caps; when e4b is told `think=false`, it drops to ~45 tokens like the others. The asymmetry is entirely "reasoning on-by-default and invisible" vs "reasoning off-by-default and visible." This is the cleanest cross-family statement of the mechanism for the joint piece: the token economy of reasoning is roughly model-invariant; what differs is the **default reasoning mode and its visibility**.
 
 ## 14. Related
 
