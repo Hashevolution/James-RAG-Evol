@@ -31,6 +31,20 @@ urllib3>=2.7.0
 idna>=3.15
 
 # ── Vector DB / Embeddings / Search ────────────────────────────
+# Dependabot alerts #13/#14 — GHSA-f4j7-r4q5-qw2c / CVE-2026-45829
+# ("ChromaToast"): pre-auth code-injection RCE (CVSS 9.3) in the
+# ChromaDB *FastAPI server*, reachable by POSTing a malicious model
+# repo with trust_remote_code=true to the collections endpoint.
+# Affected range: >=1.0.0,<=1.5.9. No upstream patch exists yet
+# (advisory "Patched versions: None"), so we cannot raise the floor
+# to a fixed release.
+#   JAMES is NOT exploitable by this CVE: we embed ChromaDB purely as
+#   a library via chromadb.PersistentClient (core/vector_store.py:75,
+#   scripts/migrate_embedding.py) — the vulnerable HTTP server is never
+#   started (no HttpClient / `chroma run`) and trust_remote_code is
+#   never set anywhere in the tree. The pre-auth attack surface does
+#   not exist in a local-first deployment. Alert is documented + held;
+#   bump the floor here the moment a fixed chromadb release ships.
 chromadb>=0.4.22
 sentence-transformers>=2.5.0
 rank-bm25>=0.2.2

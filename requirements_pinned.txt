@@ -10,6 +10,10 @@ build==1.4.3
 certifi==2026.2.25
 cffi==2.0.0
 charset-normalizer==3.4.7
+# CVE-2026-45829 / GHSA-f4j7-r4q5-qw2c — pre-auth RCE in the ChromaDB
+# FastAPI server (>=1.0.0,<=1.5.9), no upstream patch yet. JAMES embeds
+# ChromaDB via PersistentClient only (no server, no trust_remote_code),
+# so it is not exploitable. Holding 1.5.7; bump when a fix is released.
 chromadb==1.5.7
 click==8.3.1
 colorama==0.4.6
