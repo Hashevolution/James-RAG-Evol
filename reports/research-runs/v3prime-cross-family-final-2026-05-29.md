@@ -1,7 +1,7 @@
 # V3'.e Direction 3 — Cross-family / cross-generation final analysis
 
 **Date**: 2026-05-29 evening session + 2026-05-30 lower-cap closure
-**Status**: 🔒 **Internal consolidated — sharing decision deferred to operator**
+**Status**: 🔒 **Internal consolidated — sharing decision deferred to operator**. **§17 is the final consolidated conclusion** (integrates the §16 mechanism resolution; governs where it conflicts with §7/§15).
 **Trigger**: handover §5 M3 (Direction 3, user-deferred earlier) + §5 M11 (arxiv:2605.09104 prior art finding); 2026-05-30 follow-up closes §11 Limitation 1 cap-range sub-gap
 **Drivers**: `scripts/research/v3prime_e_mode_split.py` (`--model` flag), `v3prime_planner.py`, `v3prime_reflect.py`, `v3prime_verify.py`; four single-purpose copies (`v3prime_e_mode_split_complex.py`, `v3prime_e_mode_split_cap200.py`, `v3prime_e_mode_split_cap50_100.py`, `v3prime_e4b_cap4096_audit.py`) for fixture / cap variants
 **Total trials**: ~1960 across 7 models × multiple fixtures × multiple caps × n=10 (n=20 for boundary reproducibility, n=50 for e4b cap=4096 natural-budget audit)
@@ -213,13 +213,15 @@ Verifying which requires inspecting `raw_response_text` per call. Not load-beari
 
 Nothing in the prior Robin/Ali/Vadym/Hashevolution narrative gets retired. The only mechanical change is a **scope clarification** from "Gemma 4 family-wide cap pathology" to "`gemma4:e4b` checkpoint-isolated cap pathology". Robin's substitution/synthesis split, Ali's walk-back framing and "each variant has its own tax" line, and Vadym's substitution-vs-decision boundary all get **stronger** under cross-family confirmation rather than weaker.
 
+> **Note (2026-05-30): points 2 and 4 below are reframed by §16/§17.** The floor is the default-on thinking trace (not a quantization/distillation property), and the "9× efficiency" is a default-reasoning-mode difference (not an efficiency tax) — reasoning cost is model-invariant (§16.7). See §17.4 for the final four-way narrative.
+
 The new findings layered on top:
 
 1. **Substitution = architectural primitive** (Robin's split is family-, generation-, and scale-invariant within the 7-model panel)
-2. **Synthesis-mode floor = checkpoint property** (training/distillation/quantization choice, not architecture; H1 confirmed)
-3. **Yang et al. CES framework empirical layer** (cross-family first fit)
-4. **9× synthesis efficiency** (Robin's within-Gemma observation generalizes; 4-9× spread holds against `gemma4:e4b` across 5 families)
-5. **Direction 3 contribution** belongs to the Hashevolution slot of the four-way attribution — methodology + measurement + framework anchor
+2. **Synthesis-mode floor = checkpoint property** (~~training/distillation/quantization choice~~ → **default-on thinking trace**, §16; not architecture; H1 confirmed)
+3. **Yang et al. CES framework empirical layer** (cross-family first fit; mechanistically grounded in §17.3)
+4. **9× synthesis efficiency** (~~Robin's within-Gemma observation generalizes~~ → reframed: default-reasoning-mode difference, reasoning cost model-invariant, §16.7)
+5. **Direction 3 contribution** belongs to the Hashevolution slot of the four-way attribution — methodology + measurement + **mechanism resolution** + framework anchor
 
 The "three deployment contexts, two architectures, single mechanism" line from Phase R5/R6 stays valid; the JAMES local-Ollama context is now explicitly the `gemma4:e4b`-checkpoint context, not a Gemma-4-family claim.
 
@@ -227,7 +229,7 @@ The "three deployment contexts, two architectures, single mechanism" line from P
 
 1. **Single environment** — all 7-model measurements ran on the same local Ollama at the same time of day. External re-replication (Robin's sovereign Ollama, Ali's managed Gemini) would let the joint piece make a stronger "three deployment contexts" claim with full data per context. (Note: prior sub-limitation "cap range tested only 200-4096 on the other 6 models" is **closed** by the 2026-05-30 lower-cap sweep — see §15.7.)
 2. **Two language / two domain pairs** — English e-commerce (substitution, simple synthesis, complex synthesis) + Korean cognitive (planner, reflect, verify). A Korean e-commerce condition would untangle whether the `gemma4:e4b` floor is genuinely a reasoning-budget property or a language–domain interaction. Not in scope today.
-3. **`gemma4:e4b` mechanism unresolved** — why this specific checkpoint has a 4-9× higher synthesis-mode token tax is unanswered. Plausible candidates: quantization tier (e4b is the 4-bit-quantized variant), training-data distribution, distillation choice. The empirical signature is clear; the causal story is open.
+3. **`gemma4:e4b` mechanism — RESOLVED (§16, see §17.2).** ~~why this specific checkpoint has a 4-9× higher synthesis-mode token tax is unanswered~~. Closed 2026-05-30: the cause is the **default-on thinking trace** (gemma4 declares the `thinking` capability), not quantization/distillation and not verbosity. See §16 / §17.
 4. **No external validation yet** — the Robin/Ali side has not independently re-run this protocol on the 6 new models. The joint-piece value rises sharply when they do.
 5. **Yang et al. 2605.09104 framework anchor** — Yang et al. could publish their own cross-family empirical follow-up at any time. The "first" framing assumes a 2026-05-29 timestamp window; if their follow-up lands, this run reads as confirmation rather than the original fit.
 
@@ -473,6 +475,61 @@ The induced reasoning cost (~170–390 tokens) lands in the **same band as e4b's
 | operator perception | "unexplained floor" | "I asked for it" |
 
 When the other six are *asked* to reason, they pay the same token tax and could floor at the same caps; when e4b is told `think=false`, it drops to ~45 tokens like the others. The asymmetry is entirely "reasoning on-by-default and invisible" vs "reasoning off-by-default and visible." This is the cleanest cross-family statement of the mechanism for the joint piece: the token economy of reasoning is roughly model-invariant; what differs is the **default reasoning mode and its visibility**.
+
+## 17. Direction 3 — final consolidated conclusion
+
+This section is the single load-bearing read for Direction 3, integrating the §16 mechanism resolution into the §1–§13 findings. Where it conflicts with §7 / §15.5 / §15.6, §17 governs.
+
+### 17.1 The three findings, integrated
+
+**F1 — Substitution is a cross-family architectural primitive.** All 7 checkpoints / 5 families / 3 Gemma generations / 2B–16B scale / both temperatures: verbatim retrieval is 10/10 success, 1 unique output per cell, ~58–63 tokens (DeepSeek-v2 a 4-token tokenizer outlier, §9). Robin Converse's 26B "40/40 → 1 unique" replicates everywhere. Substitution mode is family-, generation-, scale-, and temperature-invariant. **(Unchanged by §16.)**
+
+**F2 — The synthesis cap-floor is checkpoint-isolated to `gemma4:e4b` (H1 confirmed).** Across four fixtures (single-item EN, two-item EN, Korean cognitive ×3) and three caps (200/400/4096), `gemma4:e4b` is the *only* model that floors; the other six clear every condition at 10/10. H2 (fixture-complexity-universal) and H3 (cognitive-domain-universal) are rejected. **(Unchanged by §16.)**
+
+**F3 — The floor is a default-on hidden reasoning trace, not verbosity, efficiency, or quantization (§16, §16.7).** `gemma4:e4b` is the only panel model declaring the `thinking` capability; it emits a "Thinking Process:" trace by default that is ~85% of generated tokens, consumes the `num_predict` budget, and is silently stripped from `/api/generate`'s `response`. `think=false` collapses it (eval_count ~400 → ~45) with an identical visible answer. Reasoning cost itself is **model-invariant**: prompt-inducing explicit CoT on the other six costs +167…+389 tokens — the same band as e4b's native ~377 (§16.7). **This supersedes the §7/§15.6 "4–9× / 5–10× more verbose" and §15.5 "reasoning-first positioning" framings.**
+
+### 17.2 What F3 reframes (correction ledger)
+
+| Earlier claim | Final (§17) statement |
+|---|---|
+| §7 / §10.4 "`gemma4:e4b` is 4–9× more verbose; each variant has its own tax" | Not verbosity. The token gap is a default-on **thinking trace**; visible answers are the same length. Reasoning cost is model-invariant (§16.7). |
+| §15.5 "reasoning-first, keyword at the tail (frac 0.86)" | Discarded. Visible-text keyword is frac ~0.07 (decision-first); reasoning lives in the hidden channel before the answer. |
+| §10.2 / §11.3 floor cause = "training / distillation / **quantization** choice (unresolved)" | Resolved: the cause is the **default reasoning mode** (gemma4 ships `thinking` on). Quantization is not implicated. |
+
+The H1 verdict (F2) is **untouched** by all of this — the floor still follows `gemma4:e4b` one-to-one. F3 explains *why*: the floor tracks the thinking capability, which only e4b has.
+
+### 17.3 Yang et al. CES framework — now mechanistically grounded
+
+The §8 mapping gets sharper. Yang et al.'s M_int (internal reasoning) as a substitutable production factor is, in this panel, **model-invariant in cost but model-specific in default activation**:
+
+- M_int *unit cost* is roughly constant cross-family (~170–390 tokens of explicit reasoning, §16.7).
+- What differs is whether M_int is **on by default and hidden** (`gemma4:e4b`) or **opt-in and visible** (the other six).
+- The cap-floor is precisely the regime `cap < default-activated M_int budget` — visible only on the one checkpoint whose M_int is default-on. This is a clean, mechanistic cross-family instantiation of their substitution boundary, not just a curve fit.
+
+### 17.4 Joint-piece narrative (four-way attribution, final)
+
+Nothing in the Robin / Ali / Vadym / Hashevolution narrative is retired; F3 makes the story *more* mechanistic, not less:
+
+- **Robin Converse** — substitution/synthesis split: confirmed as a cross-family architectural primitive (F1). Her within-Gemma "9×" observation is reframed (and strengthened) from an efficiency tax into a **default-reasoning-mode** difference (F3).
+- **Ali Afana** — "each variant has its own tax" / walk-back framing: the "tax" is now precisely identified as the default thinking-mode budget; the architectural-primitive elevation holds.
+- **Vadym** — substitution-vs-decision boundary: intact, now with a token-channel mechanism underneath.
+- **Hashevolution (JAMES)** — Direction 3 contribution: methodology + the 7-model cross-family measurement + the **mechanism resolution** (visible-vs-counted-token decomposition + `think`-toggle isolation) + the Yang et al. empirical anchor. This is the load-bearing JAMES slot.
+
+The "three deployment contexts, two architectures, single mechanism" line stays valid, with the JAMES local-Ollama context now precisely the *`gemma4:e4b`-default-thinking* context.
+
+### 17.5 Status — resolved vs still open
+
+**Resolved this cycle:** H1 (F2), the cap-range sub-gap (§15.7), and the mechanism (§16, F3 — closes §11 Limitation 3).
+
+**Still open (honest):**
+1. **External re-replication** — Robin's sovereign Ollama / Ali's managed Gemini have not re-run the protocol (§11.1, §11.4). The "three deployment contexts" claim is strongest once they do.
+2. **Korean e-commerce cell** — would fully separate reasoning-budget from language–domain interaction (§11.2).
+3. **`think`-mode quality boundary** — when does the default reasoning trace actually improve the answer vs waste budget? Measured-null on easy fixtures (§16 Part C); unmeasured on hard multi-step prompts. Deferred to a JAMES-operations follow-up (relates to the §16.5 task).
+4. **Yang et al. timing** — the "first cross-family empirical fit" framing is timestamp-dependent (§11.5).
+
+**One-sentence headline (DM substrate):** *Across 7 models / 5 families / 2B–16B, verbatim substitution is a universal architectural primitive and explicit-reasoning cost is model-invariant; the `gemma4:e4b` cap-floor is not a verbosity or efficiency defect but a default-on, hidden reasoning trace consuming the token budget — toggle it off and e4b behaves exactly like the rest.*
+
+**Sharing:** unchanged from §12 — this consolidated read is the DM substrate; first-share drafting/timing remains an operator decision (Robin Option B pre-notice sent; Ali paused through 6/6).
 
 ## 14. Related
 
