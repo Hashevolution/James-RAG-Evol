@@ -26,6 +26,7 @@ import base64
 import re
 from collections import OrderedDict
 from datetime import datetime
+from typing import Optional
 from config import GEMMA_MODEL, OLLAMA_API_URL
 
 
@@ -169,6 +170,7 @@ class GemmaClient:
         max_tokens: int = 0,
         model: str = None,
         temperature: float = None,
+        think: Optional[bool] = None,
     ) -> str:
         """
         Gemma 모델 호출.
@@ -222,7 +224,17 @@ class GemmaClient:
             if resolved.warning:
                 print(f"[MODEL_RESOLVE] {resolved.warning}")
         self._total_calls += 1
-        cache_key = self._generate_cache_key(prompt)
+        # A2 — think-mode is part of the request shape (§16.2: think=False
+        # produces a different (shorter, no-trace) response than the
+        # default). The cache key must vary with it, otherwise the first
+        # think=ON answer would be returned to a later think=OFF caller
+        # (silent staleness). Model also varies the response, so include
+        # both in the key salt — keeps backward compat when think=None
+        # and actual_model is the historical default.
+        from core.reasoning.think_policy import is_thinking_capable
+        emit_think = think is not None and is_thinking_capable(actual_model)
+        cache_salt = f"|model={actual_model}|think={think if emit_think else 'default'}"
+        cache_key = self._generate_cache_key(prompt + cache_salt)
 
         # 긴 프롬프트 캐시 금지
         if len(prompt) > 2000:
@@ -255,13 +267,20 @@ class GemmaClient:
         t_call   = time.time()
         for _ in range(1):   # 재시도 1회 고정 (이중 timeout 방지)
             try:
-                resp = requests.post(
-                    OLLAMA_API_URL,
-                    json={
-                        "model":  actual_model,
-                        "prompt": prompt,
-                        "stream": False,
-                        "options": {
+                # A2 — emit `think` field only when (caller specified)
+                # AND (model is thinking-capable). Non-thinking models
+                # reject `think:true` with HTTP 400 (§16.7); we omit the
+                # field entirely to keep their request body byte-identical
+                # to pre-A2. think=False on gemma4:e4b collapses eval_count
+                # from ~400 to ~45 with the same visible answer (§16.2).
+                body: dict = {
+                    "model":  actual_model,
+                    "prompt": prompt,
+                    "stream": False,
+                }
+                if emit_think:
+                    body["think"] = bool(think)
+                body["options"] = {
                             # [#A8-5 2026-05-09] num_predict 기본값 2000 → 8192.
                             # 사용자 보고: "대화 글자수가 중간에 짤리지 않고
                             # 최대한 다 나올수 있도록". 이전 2000 토큰 ≈ 한국어
@@ -282,8 +301,10 @@ class GemmaClient:
                                 else __import__("config").LLM_TEMPERATURE
                             ),
                             "num_ctx":     8192,   # [#A8-5] 4096 → 8192 (긴 답변 토큰까지 수용)
-                        },
-                    },
+                        }
+                resp = requests.post(
+                    OLLAMA_API_URL,
+                    json=body,
                     timeout=timeout,
                 )
                 resp.raise_for_status()

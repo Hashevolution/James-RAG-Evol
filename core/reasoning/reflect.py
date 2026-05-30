@@ -436,12 +436,14 @@ class ReflectionLoop:
         # emits via `reason:retry` (D6 PR #487).
         t0 = time.time()
         try:
+            from core.reasoning.think_policy import think_for_stage
             result = complete_with_retry(
                 backend,
                 prompt,
                 cap=max_tokens,
                 timeout=timeout,
                 stage="reflect",
+                think=think_for_stage("reflect"),
             )
         except Exception as e:
             latency_ms = int((time.time() - t0) * 1000)

@@ -302,12 +302,14 @@ class Planner:
         # operators who haven't opted into D1.
         t0 = time.time()
         try:
+            from core.reasoning.think_policy import think_for_stage
             result = complete_with_retry(
                 backend,
                 prompt,
                 cap=cap,
                 timeout=self._timeout,
                 stage="planner",
+                think=think_for_stage("planner"),
             )
         except Exception as e:
             err = f"{type(e).__name__}: {str(e)[:200]}"

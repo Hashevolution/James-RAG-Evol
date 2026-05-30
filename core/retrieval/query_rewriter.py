@@ -320,12 +320,14 @@ class QueryRewriter:
         t0 = time.time()
         try:
             from core.reasoning.budget import complete_with_retry
+            from core.reasoning.think_policy import think_for_stage
             result = complete_with_retry(
                 backend,
                 prompt,
                 cap=cap,
                 timeout=self._timeout,
                 stage="query_rewriter",
+                think=think_for_stage("query_rewriter"),
             )
         except Exception:
             return (query, int((time.time() - t0) * 1000), True)

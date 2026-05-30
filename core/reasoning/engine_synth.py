@@ -151,6 +151,7 @@ def generate_rag_answer(
         # backend rather than calling RouterWrapper directly. Default
         # backend (ollama_local) is byte-identical to the v0.3.0 path;
         # JAMES_BACKEND_SYNTH retargets without touching this code.
+        from core.reasoning.think_policy import think_for_stage
         answer = trace_synth_call(
             prompt,
             applied_rule="reasoning.synth.rag",
@@ -158,6 +159,7 @@ def generate_rag_answer(
             use_cache=True,
             max_tokens=style.max_tokens,
             model=selected_model or None,
+            think=think_for_stage("synth"),
         )
         if not answer or any(answer.startswith(p) for p in LLM_ERROR_PREFIXES):
             return "답변 생성에 실패했습니다."

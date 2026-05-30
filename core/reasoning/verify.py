@@ -388,12 +388,14 @@ class Verifier:
         # cap up to CAP_HEAVY. Flag-off no-op (cap already at 4096).
         t0 = time.time()
         try:
+            from core.reasoning.think_policy import think_for_stage
             result = complete_with_retry(
                 backend,
                 prompt,
                 cap=cap,
                 timeout=self._fact_check_timeout,
                 stage="verify",
+                think=think_for_stage("verify"),
             )
         except Exception as e:
             latency_ms = int((time.time() - t0) * 1000)
