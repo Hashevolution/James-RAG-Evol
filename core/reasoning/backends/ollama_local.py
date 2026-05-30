@@ -51,6 +51,7 @@ class OllamaLocalBackend:
         model: Optional[str] = None,
         use_cache: bool = True,
         temperature: Optional[float] = None,
+        think: Optional[bool] = None,
         **opts,
     ) -> CompletionResult:
         # RouterWrapper.call_gemma already absorbs system_prompt via the
@@ -93,6 +94,7 @@ class OllamaLocalBackend:
                         max_tokens=max_tokens,
                         model=model or None,
                         temperature=temperature,
+                        think=think,
                     )
                 except Exception:
                     meta = None
@@ -107,6 +109,7 @@ class OllamaLocalBackend:
                     max_tokens=max_tokens,
                     model=model or None,
                     temperature=temperature,
+                    think=think,
                 )
         except Exception as e:
             return CompletionResult(
