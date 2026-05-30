@@ -50,7 +50,10 @@ sys.path.insert(0, str(ROOT))
 # Imported after sys.path manipulation so the script remains runnable
 # from any cwd.
 from eval.qvt.oracle import (  # noqa: E402
+    FiveAxisResult,
     ThreeAxisResult,
+    score_five_axis,
+    score_five_axis_by_question_type,
     score_three_axis,
 )
 
@@ -177,15 +180,21 @@ def _mint_employee_jwt() -> Optional[str]:
 # Per-run execution
 # ---------------------------------------------------------------------------
 
-def _run_single_bench(run_index: int) -> Optional[Path]:
+def _run_single_bench(run_index: int, suite: str) -> Optional[Path]:
     """Spawn server, run bench.py once, return path to the bench JSON
     output. Server is torn down between runs so each run starts from
-    the same warm-cache-cold state."""
+    the same warm-cache-cold state.
+
+    `suite` is forwarded to bench.py as `--suite=<suite>`. Output JSONs
+    on the reports/ side use the suite name in their filename
+    (`bench_<sha>_<suite>_<ts>.json`) so the new-file diff below
+    matches whichever suite is being captured.
+    """
     server_env = os.environ.copy()
     server_env.update(_BASELINE_ENV)
 
     print(
-        f"\n=== run {run_index + 1}/N "
+        f"\n=== run {run_index + 1}/N — suite={suite} "
         f"(env: ENTITY_ANCHOR=1 EMBEDDING=bge-m3 REWRITE=1 "
         f"AUTO_ROUTER=0 ADAPTIVE_BUDGET=0 SCOPE_ROUTING=0) ==="
     )
@@ -195,7 +204,8 @@ def _run_single_bench(run_index: int) -> Optional[Path]:
 
     bench_output: Optional[Path] = None
     try:
-        pre_existing = set((ROOT / "reports").glob("bench_*_step7_*.json"))
+        glob_pattern = f"bench_*_{suite}_*.json"
+        pre_existing = set((ROOT / "reports").glob(glob_pattern))
         t0 = time.time()
         try:
             bench_env = {**os.environ, "JAMES_BASE_URL": SERVER_BASE_URL}
@@ -204,7 +214,7 @@ def _run_single_bench(run_index: int) -> Optional[Path]:
                 bench_env["JAMES_BENCH_BEARER"] = bearer
             subprocess.run(
                 [sys.executable, str(ROOT / "scripts" / "bench.py"),
-                 "--suite=step7", "--mode=retrieval"],
+                 f"--suite={suite}", "--mode=retrieval"],
                 env=bench_env,
                 cwd=str(ROOT),
                 capture_output=False,
@@ -218,7 +228,7 @@ def _run_single_bench(run_index: int) -> Optional[Path]:
         elapsed = time.time() - t0
         print(f"[run {run_index + 1}] bench finished in {elapsed:.1f}s")
 
-        after = set((ROOT / "reports").glob("bench_*_step7_*.json"))
+        after = set((ROOT / "reports").glob(glob_pattern))
         new = sorted(after - pre_existing)
         if new:
             bench_output = new[-1]
@@ -233,14 +243,32 @@ def _run_single_bench(run_index: int) -> Optional[Path]:
 # Aggregation
 # ---------------------------------------------------------------------------
 
-def _aggregate_runs(runs: List[ThreeAxisResult]) -> Dict[str, Any]:
-    """Compute median + noise band (max - min) for each axis across runs."""
+def _aggregate_runs(runs: List[FiveAxisResult]) -> Dict[str, Any]:
+    """5-axis aggregation — quality 3-axis (path/graded/abstention) +
+    cost 2-axis (token_cost, latency_cost). Per-axis stats:
+    median + min + max + noise_band (max−min).
+
+    Back-compat note: legacy callers passing a list of `ThreeAxisResult`
+    still work because `FiveAxisResult` is structurally compatible on
+    the quality-axis accessors used here.
+    """
     if not runs:
         return {}
 
     path_means = [r.path_coverage.mean_recall for r in runs]
     graded_means = [r.graded_answer.mean_accuracy for r in runs]
     abstention_f1s = [r.abstention.f1 for r in runs]
+    # Cost axes only present on FiveAxisResult; gracefully degrade for
+    # the legacy 3-axis caller in case anything still feeds those in.
+    token_means: List[float] = []
+    latency_means: List[float] = []
+    for r in runs:
+        token = getattr(r, "token_cost", None)
+        latency = getattr(r, "latency_cost", None)
+        if token is not None:
+            token_means.append(token.mean_chars)
+        if latency is not None:
+            latency_means.append(latency.mean_s)
 
     def _stats(values: List[float]) -> Dict[str, float]:
         values_sorted = sorted(values)
@@ -252,12 +280,17 @@ def _aggregate_runs(runs: List[ThreeAxisResult]) -> Dict[str, Any]:
             "noise_band": round(max(values) - min(values), 4),
         }
 
-    return {
+    out: Dict[str, Any] = {
         "path_coverage": _stats(path_means),
         "graded_answer": _stats(graded_means),
         "abstention_f1": _stats(abstention_f1s),
         "n_runs": len(runs),
     }
+    if token_means:
+        out["token_cost"] = _stats(token_means)
+    if latency_means:
+        out["latency_cost"] = _stats(latency_means)
+    return out
 
 
 def _current_git_sha() -> Optional[str]:
@@ -276,10 +309,34 @@ def _current_git_sha() -> Optional[str]:
 # CLI entry
 # ---------------------------------------------------------------------------
 
+def _resolve_fixture(suite: str) -> Path:
+    """Locate fixture: project-root `eval/regression/{suite}_queries.json`
+    if present, else `$JAMES_WORKSPACE/eval/{suite}_queries.json`. Mirrors
+    `scripts/bench.py:_load_suite` resolution so the two scripts agree."""
+    canonical = ROOT / "eval" / "regression" / f"{suite}_queries.json"
+    if canonical.exists():
+        return canonical
+    ws_raw = os.environ.get("JAMES_WORKSPACE", "").strip()
+    if ws_raw:
+        ws_path = Path(ws_raw).resolve() / "eval" / f"{suite}_queries.json"
+        if ws_path.exists():
+            return ws_path
+    return canonical  # caller prints "missing" against this expected path
+
+
+def _resolve_output_dir() -> Path:
+    """α-5 baseline lives under the active workspace's eval/qvt/ when a
+    workspace is set; otherwise under the project's `eval/qvt/`."""
+    ws_raw = os.environ.get("JAMES_WORKSPACE", "").strip()
+    if ws_raw:
+        return Path(ws_raw).resolve() / "eval" / "qvt"
+    return _OUTPUT_DIR
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
-        description="QVT α-3 baseline capture (paired N=3 rerun + "
-                    "3-axis oracle aggregation).",
+        description="QVT α-3/α-5 baseline capture (paired N=3 rerun + "
+                    "5-axis oracle aggregation).",
     )
     parser.add_argument(
         "--n-runs", type=int, default=3,
@@ -287,9 +344,15 @@ def main(argv: Optional[List[str]] = None) -> int:
              "design).",
     )
     parser.add_argument(
+        "--suite", type=str, default="step7",
+        help="Suite name. Default 'step7' (project-root canonical). "
+             "Use 'multihop_rag' to capture against the α-5 external "
+             "benchmark workspace.",
+    )
+    parser.add_argument(
         "--output", type=str, default=None,
         help="Output JSON path. Default: "
-             "eval/qvt/baseline_<git-sha>.json",
+             "<workspace>/eval/qvt/baseline_<git-sha>.json",
     )
     parser.add_argument(
         "--dry-run", action="store_true",
@@ -299,15 +362,18 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = parser.parse_args(argv)
 
     sha = _current_git_sha() or "unknown"
+    fixture_path = _resolve_fixture(args.suite)
+    out_dir = _resolve_output_dir()
     out_path = (
         Path(args.output) if args.output
-        else _OUTPUT_DIR / f"baseline_{sha}.json"
+        else out_dir / f"baseline_{sha}.json"
     )
 
-    print("=== QVT α-3 baseline capture ===")
+    print("=== QVT 5-axis baseline capture ===")
     print(f"git_sha:      {sha}")
-    print(f"fixture:      {_FIXTURE_PATH.relative_to(ROOT)}")
-    print(f"output:       {out_path.relative_to(ROOT)}")
+    print(f"suite:        {args.suite}")
+    print(f"fixture:      {fixture_path}")
+    print(f"output:       {out_path}")
     print(f"n_runs:       {args.n_runs}")
     print(f"baseline env: {_BASELINE_ENV}")
 
@@ -315,20 +381,21 @@ def main(argv: Optional[List[str]] = None) -> int:
         print("[dry-run] not spawning server, not running bench.")
         return 0
 
-    if not _FIXTURE_PATH.exists():
-        print(f"[error] fixture {_FIXTURE_PATH} missing")
+    if not fixture_path.exists():
+        print(f"[error] fixture {fixture_path} missing — build it first "
+              f"(e.g. scripts/hotpot/build_fixture.py for multihop_rag)")
         return 2
 
-    fixture = json.loads(_FIXTURE_PATH.read_text(encoding="utf-8"))
+    fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
 
-    runs: List[ThreeAxisResult] = []
+    runs: List[FiveAxisResult] = []
     run_paths: List[str] = []
     for i in range(args.n_runs):
-        bench_path = _run_single_bench(i)
+        bench_path = _run_single_bench(i, args.suite)
         if bench_path is None:
             print(f"[error] run {i + 1} failed to produce bench output")
             return 3
-        result = score_three_axis(bench_path, fixture)
+        result = score_five_axis(bench_path, fixture)
         print(f"[run {i + 1}] {result.summary()}")
         runs.append(result)
         run_paths.append(str(bench_path.relative_to(ROOT)))
@@ -336,15 +403,36 @@ def main(argv: Optional[List[str]] = None) -> int:
     aggregate = _aggregate_runs(runs)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    # Per-question_type aggregation (when the suite carries the field —
+    # multihop_rag does; step7 does not). Aggregates with the same
+    # 5-axis shape so downstream Δ computations use one helper.
+    by_type_per_run: List[Dict[str, FiveAxisResult]] = []
+    for run_path in run_paths:
+        full_bench_path = ROOT / run_path
+        by_type_per_run.append(
+            score_five_axis_by_question_type(full_bench_path, fixture)
+        )
+    aggregate_by_question_type: Dict[str, Dict[str, Any]] = {}
+    if any(by_type_per_run):
+        all_qts: set[str] = set()
+        for d in by_type_per_run:
+            all_qts.update(d.keys())
+        for qt in sorted(all_qts):
+            sub = [d[qt] for d in by_type_per_run if qt in d]
+            if sub:
+                aggregate_by_question_type[qt] = _aggregate_runs(sub)
+
     payload = {
-        "schema": "qvt-baseline-v1",
+        "schema": "qvt-baseline-v2",  # v2 adds 5-axis + per_question_type
         "captured_at": datetime.now(timezone.utc).isoformat(),
         "git_sha": sha,
+        "suite": args.suite,
         "fixture_version": fixture.get("version"),
-        "fixture_path": str(_FIXTURE_PATH.relative_to(ROOT)),
+        "fixture_path": str(fixture_path),
         "n_runs": args.n_runs,
         "env": _BASELINE_ENV,
         "aggregate": aggregate,
+        "aggregate_by_question_type": aggregate_by_question_type,
         "runs": [
             {
                 "bench_output": run_paths[i],
@@ -357,8 +445,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         json.dumps(payload, indent=2, ensure_ascii=False, default=str),
         encoding="utf-8",
     )
-    print(f"\n[done] baseline written to {out_path.relative_to(ROOT)}")
+    print(f"\n[done] baseline written to {out_path}")
     print(f"aggregate: {aggregate}")
+    if aggregate_by_question_type:
+        print(f"per-type aggregates: {list(aggregate_by_question_type.keys())}")
     return 0
 
 

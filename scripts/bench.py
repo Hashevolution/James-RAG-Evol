@@ -133,10 +133,39 @@ def _git_sha() -> str:
 
 
 def _load_suite(name: str) -> Dict:
-    path = ROOT / "eval" / "regression" / f"{name}_queries.json"
-    if not path.exists():
-        raise RuntimeError(f"suite definition not found: {path}")
-    return json.loads(path.read_text(encoding="utf-8"))
+    """Locate suite fixture. Two search locations, in order:
+
+    1. ``eval/regression/{name}_queries.json`` (project-root canonical,
+       used by step7 and any future internal regression suites).
+    2. ``$JAMES_WORKSPACE/eval/{name}_queries.json`` (workspace-relative,
+       used by external benchmark suites like ``multihop_rag`` that live
+       under ``workspaces/<name>/``). The workspace abstraction
+       (config.py:74, ``core/plugins/workspace.py::get_workspace_root``)
+       isolates the benchmark corpus + fixture from production state.
+
+    Raises if neither location resolves — caller sees both attempted
+    paths so a typo or missing build step is diagnosable in one read.
+    """
+    canonical = ROOT / "eval" / "regression" / f"{name}_queries.json"
+    if canonical.exists():
+        return json.loads(canonical.read_text(encoding="utf-8"))
+
+    ws_raw = os.environ.get("JAMES_WORKSPACE", "").strip()
+    if ws_raw:
+        ws_path = Path(ws_raw).resolve() / "eval" / f"{name}_queries.json"
+        if ws_path.exists():
+            return json.loads(ws_path.read_text(encoding="utf-8"))
+        # Workspace set but file missing — surface it explicitly.
+        raise RuntimeError(
+            f"suite definition not found:\n"
+            f"  tried: {canonical}\n"
+            f"  tried: {ws_path}\n"
+            f"  hint:  build it first (e.g. scripts/hotpot/build_fixture.py)"
+        )
+    raise RuntimeError(
+        f"suite definition not found: {canonical}\n"
+        f"(set JAMES_WORKSPACE to also search a benchmark workspace's eval/)"
+    )
 
 
 def _parse_path_nodes(path_strs) -> set:
@@ -278,6 +307,11 @@ def _run_one(
 
     base = {"id": q["id"], "category": q["category"], "text": q["text"],
             "elapsed": round(elapsed, 1)}
+    # α-5 plan Step 6 — preserve fixture's `question_type` for cross-tab
+    # analysis (MultiHop-RAG inference/comparison/temporal/null_query).
+    # Quietly skipped when the suite doesn't carry the field (step7).
+    if "question_type" in q:
+        base["question_type"] = q["question_type"]
 
     if r.status_code != 200:
         base.update({
@@ -420,10 +454,30 @@ def main() -> int:
             "Precedence: per-query `mode` > --mode > suite `default_mode` > omit."
         ),
     )
+    ap.add_argument(
+        "--dry-run", action="store_true",
+        help=("Resolve the suite + print plan (count, version, fixture path); "
+              "make no HTTP calls and write no bench JSON. Used by the α-5 "
+              "wiring smoke check before any compute is spent."),
+    )
     args = ap.parse_args()
 
     suite = _load_suite(args.suite)
     queries = suite.get("queries", [])
+    if args.dry_run:
+        print(f"=== bench {args.suite} dry-run ===")
+        print(f"version:       {suite.get('version', '?')}")
+        print(f"description:   {(suite.get('description') or '')[:120]}")
+        print(f"queries:       {len(queries)}")
+        # Surface question_type distribution if present (multihop_rag fixture
+        # builder emits it — useful sanity for the Step 3 → Step 4 wiring).
+        dist = suite.get("type_distribution")
+        if dist:
+            print("type_distribution:")
+            for t, n in dist.items():
+                print(f"  {t}: {n}")
+        return 0
+
     endpoint = (suite.get("endpoint") or {}).get("url", "/query/")
     timeout  = int((suite.get("endpoint") or {}).get("timeout", 120))
     effective_default_mode = args.mode or suite.get("default_mode")

@@ -18,13 +18,20 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from eval.qvt.oracle import (  # noqa: E402
+    FiveAxisResult,
+    LatencyCostAxis,
     PathCoverageAxis,
     ThreeAxisResult,
+    TokenCostAxis,
+    _percentile,
     detect_abstention,
     score_abstention_f1,
+    score_five_axis,
     score_graded_answer,
+    score_latency_cost,
     score_path_coverage,
     score_three_axis,
+    score_token_cost,
 )
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -424,6 +431,152 @@ class ThreeAxisIntegrationTests(unittest.TestCase):
         result = score_three_axis(bench, fixture)
         # Must serialize without TypeError.
         json.dumps(result.to_dict())
+
+
+# ---------------------------------------------------------------------------
+# Cost axes — Step 5 (5-axis extension for α-5 plan)
+# ---------------------------------------------------------------------------
+
+class PercentileHelperTests(unittest.TestCase):
+    def test_p50_odd_length(self):
+        # Nearest-rank: ceil(0.5 * 5) - 1 = 2 → element 3 (1-indexed) → 3.
+        self.assertEqual(_percentile([1, 2, 3, 4, 5], 0.5), 3)
+
+    def test_p95(self):
+        # Nearest-rank: ceil(0.95 * 10) - 1 = 9 → last element → 10.
+        self.assertEqual(_percentile(list(range(1, 11)), 0.95), 10)
+
+    def test_empty_returns_zero(self):
+        self.assertEqual(_percentile([], 0.5), 0.0)
+
+    def test_zero_percentile_returns_min(self):
+        self.assertEqual(_percentile([3.0, 1.0, 2.0], 0.0), 1.0)
+
+
+class TokenCostAxisTests(unittest.TestCase):
+    """answer_len is the token-cost proxy; failures / timeouts excluded."""
+
+    def test_mean_and_p95_on_ok_rows_only(self):
+        bench = {"results": [
+            {"id": 1, "status": "ok", "elapsed": 1.0, "answer_len": 100},
+            {"id": 2, "status": "ok", "elapsed": 2.0, "answer_len": 200},
+            {"id": 3, "status": "ok", "elapsed": 3.0, "answer_len": 300},
+            {"id": 4, "status": "timeout", "elapsed": 60.0},  # excluded
+            {"id": 5, "status": "error", "elapsed": 5.0},     # excluded
+        ]}
+        axis = score_token_cost(bench)
+        self.assertEqual(axis.n_queries, 3)
+        self.assertEqual(axis.mean_chars, 200.0)
+        # Nearest-rank p95 of {100, 200, 300} = 300.
+        self.assertEqual(axis.p95_chars, 300.0)
+
+    def test_falls_back_to_answer_preview_chars(self):
+        # Older bench JSONs may omit answer_len but always have preview.
+        bench = {"results": [
+            {"id": 1, "status": "ok", "elapsed": 1.0,
+             "answer_preview": "x" * 250},
+        ]}
+        axis = score_token_cost(bench)
+        self.assertEqual(axis.mean_chars, 250.0)
+
+    def test_empty_returns_zero_axis(self):
+        axis = score_token_cost({"results": []})
+        self.assertEqual(axis.n_queries, 0)
+        self.assertEqual(axis.mean_chars, 0.0)
+
+
+class LatencyCostAxisTests(unittest.TestCase):
+    def test_mean_and_p95_seconds(self):
+        bench = {"results": [
+            {"id": 1, "status": "ok", "elapsed": 2.0, "answer_len": 100},
+            {"id": 2, "status": "ok", "elapsed": 4.0, "answer_len": 100},
+            {"id": 3, "status": "ok", "elapsed": 6.0, "answer_len": 100},
+        ]}
+        axis = score_latency_cost(bench)
+        self.assertEqual(axis.n_queries, 3)
+        self.assertEqual(axis.mean_s, 4.0)
+        self.assertEqual(axis.p95_s, 6.0)
+
+    def test_timeout_rows_skipped(self):
+        bench = {"results": [
+            {"id": 1, "status": "ok", "elapsed": 2.0, "answer_len": 100},
+            {"id": 2, "status": "timeout", "elapsed": 120.0},
+        ]}
+        axis = score_latency_cost(bench)
+        # Timeout row would skew mean → ensure it's excluded.
+        self.assertEqual(axis.n_queries, 1)
+        self.assertEqual(axis.mean_s, 2.0)
+
+    def test_empty_returns_zero_axis(self):
+        axis = score_latency_cost({"results": []})
+        self.assertEqual(axis.n_queries, 0)
+
+
+class FiveAxisResultTests(unittest.TestCase):
+    """The 5-axis integration object — quality 3-axis + cost 2-axis."""
+
+    def _minimal_bench(self) -> dict:
+        return {
+            "git_sha": "abc1234",
+            "suite": "multihop_rag",
+            "results": [
+                {"id": 1, "status": "ok", "elapsed": 1.5, "answer_len": 120,
+                 "answer_preview": "Foo bar.", "blocked": False,
+                 "graph_paths_count": 3},
+                {"id": 2, "status": "ok", "elapsed": 3.0, "answer_len": 240,
+                 "answer_preview": "정보가 없습니다.", "blocked": False,
+                 "graph_paths_count": 0},
+            ],
+        }
+
+    def _minimal_fixture(self) -> dict:
+        return {
+            "version": "multihop-rag-test",
+            "queries": [
+                {"id": 1, "category": "test", "text": "Q1",
+                 "gold_signals": [{"term": "Foo", "aliases": []}],
+                 "abstention_truth": "present"},
+                {"id": 2, "category": "test", "text": "Q2",
+                 "gold_signals": [{"term": "Bar", "aliases": []}],
+                 "abstention_truth": "absent"},
+            ],
+        }
+
+    def test_score_five_axis_returns_correct_type(self):
+        result = score_five_axis(self._minimal_bench(), self._minimal_fixture())
+        self.assertIsInstance(result, FiveAxisResult)
+        self.assertIsInstance(result.three_axis, ThreeAxisResult)
+        self.assertIsInstance(result.token_cost, TokenCostAxis)
+        self.assertIsInstance(result.latency_cost, LatencyCostAxis)
+
+    def test_quality_axes_delegate_to_three_axis(self):
+        result = score_five_axis(self._minimal_bench(), self._minimal_fixture())
+        # Proxy properties must return the underlying axes.
+        self.assertIs(result.path_coverage, result.three_axis.path_coverage)
+        self.assertIs(result.graded_answer, result.three_axis.graded_answer)
+        self.assertIs(result.abstention, result.three_axis.abstention)
+
+    def test_to_dict_contains_all_five_axes(self):
+        result = score_five_axis(self._minimal_bench(), self._minimal_fixture())
+        d = result.to_dict()
+        for key in ("path_coverage", "graded_answer", "abstention",
+                    "token_cost", "latency_cost"):
+            self.assertIn(key, d)
+        # JSON-serializable.
+        json.dumps(d)
+
+    def test_summary_contains_cost_axes(self):
+        result = score_five_axis(self._minimal_bench(), self._minimal_fixture())
+        s = result.summary()
+        self.assertIn("token_cost", s)
+        self.assertIn("latency", s)
+
+    def test_metadata_proxies(self):
+        result = score_five_axis(self._minimal_bench(), self._minimal_fixture())
+        self.assertEqual(result.git_sha, "abc1234")
+        self.assertEqual(result.suite, "multihop_rag")
+        self.assertEqual(result.fixture_version, "multihop-rag-test")
+        self.assertEqual(result.n_queries, 2)
 
 
 if __name__ == "__main__":

@@ -89,6 +89,20 @@ wiki/entity/test/**/*.md
 wiki.pre-v03-migration/
 wiki.rollback-trash/
 
+# α-5 benchmark workspaces — corpus / chroma / ingested wiki / per-cell
+# JSON outputs are all re-derivable from the dataset adapter
+# (scripts/hotpot/download_multihop_rag.py) + the build_fixture script
+# + the matrix runner. Only the structural files (README, .env,
+# ATTRIBUTION) are tracked so reviewers see the layout.
+workspaces/*/raw/
+workspaces/*/uploads/
+workspaces/*/wiki/
+workspaces/*/chroma_db*/
+workspaces/*/eval/multihop_rag_raw_queries.json
+workspaces/*/eval/multihop_rag_queries.json
+workspaces/*/eval/qvt/baseline_*.json
+workspaces/*/reports/
+
 # 운영자 튜닝 가능한 런타임 설정 (web search role/threshold 등).
 # 코드 안에 안전한 기본값 존재 — 운영자별 오버라이드는 로컬에만.
 web_search_config.json

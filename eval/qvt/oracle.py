@@ -418,6 +418,113 @@ def score_abstention_f1(
 
 
 # ---------------------------------------------------------------------------
+# Cost axes (Step 5 of α-5 plan — quality×cost integrated matrix)
+#
+# bench.py captures per-query ``elapsed`` (seconds) directly. ``eval_count``
+# (Ollama-side token count) is NOT exposed by the server's /query/ response
+# today, so token cost is approximated by ``answer_len`` (characters in
+# the response). ~4 chars/token English / ~2 chars/token Korean — the
+# proxy is monotonic but biased by language mix. Operators interpreting
+# Δ_token_cost across cells should focus on within-tier comparison
+# (same prompt language) rather than cross-tier absolute values.
+#
+# A future PR can wire Ollama ``eval_count`` through the server response
+# and swap this proxy for the real number; the axis interface stays
+# identical (mean + p95 + per_query rows).
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class CostQueryRow:
+    id: int
+    elapsed_s: float
+    answer_chars: int   # token-cost proxy until server forwards eval_count
+
+
+@dataclass
+class TokenCostAxis:
+    """Per-query answer chars (token-cost proxy). Lower is better."""
+    mean_chars: float
+    p95_chars: float
+    n_queries: int
+    per_query: List[CostQueryRow] = field(default_factory=list)
+
+
+@dataclass
+class LatencyCostAxis:
+    """Per-query wall-clock elapsed. Lower is better."""
+    mean_s: float
+    p95_s: float
+    n_queries: int
+    per_query: List[CostQueryRow] = field(default_factory=list)
+
+
+def _percentile(values: List[float], p: float) -> float:
+    """Nearest-rank percentile (good enough for n≥20 cells)."""
+    if not values:
+        return 0.0
+    s = sorted(values)
+    if p <= 0:
+        return s[0]
+    if p >= 1.0:
+        return s[-1]
+    # nearest-rank: index = ceil(p * n) - 1
+    import math
+    idx = max(0, min(len(s) - 1, math.ceil(p * len(s)) - 1))
+    return s[idx]
+
+
+def _collect_cost_rows(bench_results: Dict[str, Any]) -> List[CostQueryRow]:
+    rows: List[CostQueryRow] = []
+    for r in bench_results.get("results", []):
+        # Successful + answered queries only — timeouts / errors would
+        # bias the cost axis toward "very cheap" (zero output) when in
+        # practice they are operational failures, not efficiency wins.
+        if r.get("status") != "ok":
+            continue
+        elapsed = r.get("elapsed")
+        if elapsed is None:
+            continue
+        # Prefer explicit answer_len when bench.py emitted it; fall back
+        # to answer_preview length (300-char truncated) for older runs.
+        chars = r.get("answer_len")
+        if chars is None:
+            chars = len(r.get("answer_preview", "") or "")
+        rows.append(CostQueryRow(
+            id=int(r.get("id", -1)),
+            elapsed_s=float(elapsed),
+            answer_chars=int(chars),
+        ))
+    return rows
+
+
+def score_token_cost(bench_results: Dict[str, Any]) -> TokenCostAxis:
+    rows = _collect_cost_rows(bench_results)
+    if not rows:
+        return TokenCostAxis(mean_chars=0.0, p95_chars=0.0, n_queries=0)
+    chars = [r.answer_chars for r in rows]
+    return TokenCostAxis(
+        mean_chars=round(sum(chars) / len(chars), 2),
+        p95_chars=round(_percentile([float(c) for c in chars], 0.95), 2),
+        n_queries=len(rows),
+        per_query=rows,
+    )
+
+
+def score_latency_cost(bench_results: Dict[str, Any]) -> LatencyCostAxis:
+    rows = _collect_cost_rows(bench_results)
+    if not rows:
+        return LatencyCostAxis(mean_s=0.0, p95_s=0.0, n_queries=0)
+    elapsed = [r.elapsed_s for r in rows]
+    return LatencyCostAxis(
+        mean_s=round(sum(elapsed) / len(elapsed), 3),
+        p95_s=round(_percentile(elapsed, 0.95), 3),
+        n_queries=len(rows),
+        per_query=rows,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Three-axis unified result
 # ---------------------------------------------------------------------------
 
@@ -493,3 +600,156 @@ def score_three_axis(
         graded_answer=score_graded_answer(bench, fixture),
         abstention=score_abstention_f1(bench, fixture),
     )
+
+
+# ---------------------------------------------------------------------------
+# Five-axis result — α-5 quality×cost integrated (Step 5)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class FiveAxisResult:
+    """3 quality axes (existing) + 2 cost axes (new). Used by the α-5
+    ablation matrix runner to express verdicts on the (quality, cost)
+    Pareto plane rather than quality alone.
+
+    The 3 quality axes are *delegated* to the existing `ThreeAxisResult`
+    so any caller that already understands the 3-axis schema keeps
+    working — `.three_axis` gives the unchanged object. Cost axes are
+    additive fields.
+    """
+    three_axis: ThreeAxisResult
+    token_cost: TokenCostAxis
+    latency_cost: LatencyCostAxis
+
+    # Convenience accessors — keep call sites short.
+    @property
+    def git_sha(self) -> Optional[str]:
+        return self.three_axis.git_sha
+
+    @property
+    def suite(self) -> Optional[str]:
+        return self.three_axis.suite
+
+    @property
+    def fixture_version(self) -> Optional[str]:
+        return self.three_axis.fixture_version
+
+    @property
+    def n_queries(self) -> int:
+        return self.three_axis.n_queries
+
+    @property
+    def path_coverage(self) -> PathCoverageAxis:
+        return self.three_axis.path_coverage
+
+    @property
+    def graded_answer(self) -> GradedAnswerAxis:
+        return self.three_axis.graded_answer
+
+    @property
+    def abstention(self) -> AbstentionF1Axis:
+        return self.three_axis.abstention
+
+    def summary(self) -> str:
+        return (
+            f"{self.three_axis.summary()} "
+            f"token_cost(chars)={self.token_cost.mean_chars:.1f}/"
+            f"p95={self.token_cost.p95_chars:.1f} "
+            f"latency(s)={self.latency_cost.mean_s:.2f}/"
+            f"p95={self.latency_cost.p95_s:.2f}"
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        d = self.three_axis.to_dict()
+        d["token_cost"] = asdict(self.token_cost)
+        d["latency_cost"] = asdict(self.latency_cost)
+        return d
+
+
+def score_five_axis(
+    bench_results_path: Union[str, Path, Dict[str, Any]],
+    fixture_path: Union[str, Path, Dict[str, Any]],
+) -> FiveAxisResult:
+    """Top-level α-5 entry — quality 3-axis (path/graded/abstention) +
+    cost 2-axis (token, latency).
+
+    Backward-compatible: callers that only need 3-axis can still use
+    ``score_three_axis``; ``FiveAxisResult.three_axis`` exposes the
+    same shape so legacy code paths keep working when migrated.
+    """
+    three = score_three_axis(bench_results_path, fixture_path)
+    # Re-load bench dict once for the cost axes (cheap — file already cached
+    # by the OS after the 3-axis pass). Accept dict to skip when caller
+    # already has it.
+    bench = (
+        bench_results_path
+        if isinstance(bench_results_path, dict)
+        else _load_json(bench_results_path)
+    )
+    return FiveAxisResult(
+        three_axis=three,
+        token_cost=score_token_cost(bench),
+        latency_cost=score_latency_cost(bench),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Per-question_type 5-axis breakdown (α-5 plan Step 6 cross-tab)
+# ---------------------------------------------------------------------------
+
+
+def score_five_axis_by_question_type(
+    bench_results_path: Union[str, Path, Dict[str, Any]],
+    fixture_path: Union[str, Path, Dict[str, Any]],
+) -> Dict[str, FiveAxisResult]:
+    """Return one FiveAxisResult per `question_type` present in the
+    bench output (Step 6 cross-tab).
+
+    Requires both the bench rows and the fixture queries to carry the
+    `question_type` field (MultiHop-RAG fixture does this; step7 does
+    not — returns an empty dict in that case). The function partitions
+    both the bench results and the fixture queries by question_type,
+    then runs the 5-axis scorer on each partition independently. Two
+    partitions of size 0 (no overlap) are skipped silently.
+
+    Sum-up: per-type results carry the same FiveAxisResult schema as
+    the global one, so the matrix runner can compute Δ per (type, layer,
+    tier) using the same machinery.
+    """
+    bench = (
+        bench_results_path
+        if isinstance(bench_results_path, dict)
+        else _load_json(bench_results_path)
+    )
+    fixture = (
+        fixture_path
+        if isinstance(fixture_path, dict)
+        else _load_json(fixture_path)
+    )
+    bench_rows = bench.get("results", [])
+    fixture_queries = fixture.get("queries", [])
+
+    # Collect question types observed on the bench side.
+    types_seen: set[str] = set()
+    for r in bench_rows:
+        qt = r.get("question_type")
+        if isinstance(qt, str) and qt:
+            types_seen.add(qt)
+    if not types_seen:
+        return {}
+
+    out: Dict[str, FiveAxisResult] = {}
+    for qt in sorted(types_seen):
+        sub_bench = {
+            **{k: v for k, v in bench.items() if k != "results"},
+            "results": [r for r in bench_rows if r.get("question_type") == qt],
+        }
+        sub_fixture = {
+            **{k: v for k, v in fixture.items() if k != "queries"},
+            "queries": [q for q in fixture_queries if q.get("question_type") == qt],
+        }
+        if not sub_bench["results"] or not sub_fixture["queries"]:
+            continue
+        out[qt] = score_five_axis(sub_bench, sub_fixture)
+    return out

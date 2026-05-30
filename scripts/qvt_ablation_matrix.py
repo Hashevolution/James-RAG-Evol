@@ -69,7 +69,11 @@ from typing import Any, Dict, List, Optional, Tuple
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from eval.qvt.oracle import ThreeAxisResult, score_three_axis  # noqa: E402
+from eval.qvt.oracle import (  # noqa: E402
+    FiveAxisResult,
+    score_five_axis,
+    score_five_axis_by_question_type,
+)
 
 # ---------------------------------------------------------------------------
 # Matrix definition (memo §2)
@@ -157,10 +161,42 @@ SERVER_HEALTHZ = SERVER_BASE_URL.rstrip("/") + "/healthz"
 SERVER_BOOT_TIMEOUT_SEC = 120
 BENCH_SUBPROCESS_TIMEOUT_SEC = 2400
 
-_FIXTURE_PATH = ROOT / "eval" / "regression" / "step7_queries.json"
+_DEFAULT_FIXTURE_PATH = ROOT / "eval" / "regression" / "step7_queries.json"
 _OUTPUT_DIR = ROOT / "reports" / "research-runs" / "qvt-ablation-cells"
 _REPORT_DIR = ROOT / "reports" / "promo-assets"
 _BASELINE_DIR = ROOT / "eval" / "qvt"
+
+
+def _resolve_fixture(suite: str) -> Path:
+    """Same resolution as bench.py:_load_suite — eval/regression/ first,
+    workspace's eval/ fallback. Lets `--suite=multihop_rag` find the
+    α-5 fixture without hardcoding."""
+    canonical = ROOT / "eval" / "regression" / f"{suite}_queries.json"
+    if canonical.exists():
+        return canonical
+    ws_raw = os.environ.get("JAMES_WORKSPACE", "").strip()
+    if ws_raw:
+        ws_path = Path(ws_raw).resolve() / "eval" / f"{suite}_queries.json"
+        if ws_path.exists():
+            return ws_path
+    return canonical  # caller prints "missing" diagnostic against this
+
+
+def _resolve_output_dir() -> Path:
+    """Per-cell JSON output dir — workspace-relative when set, else the
+    project's `reports/research-runs/qvt-ablation-cells/`."""
+    ws_raw = os.environ.get("JAMES_WORKSPACE", "").strip()
+    if ws_raw:
+        return (Path(ws_raw).resolve()
+                / "reports" / "research-runs" / "qvt-ablation-cells")
+    return _OUTPUT_DIR
+
+
+def _resolve_baseline_dir() -> Path:
+    ws_raw = os.environ.get("JAMES_WORKSPACE", "").strip()
+    if ws_raw:
+        return Path(ws_raw).resolve() / "eval" / "qvt"
+    return _BASELINE_DIR
 
 
 # ---------------------------------------------------------------------------
@@ -261,22 +297,42 @@ def _mint_employee_jwt() -> Optional[str]:
 # Per-cell execution
 # ---------------------------------------------------------------------------
 
-def _cell_env(row: str, tier: str) -> Dict[str, str]:
-    """Compose the full env for one cell: OS env + fixed + row + tier."""
+def _cell_env(row: str, tier: str,
+              think_override: Optional[bool] = None) -> Dict[str, str]:
+    """Compose the full env for one cell: OS env + fixed + row + tier +
+    optional `JAMES_GEMMA4_E4B_THINK_OFF` override (Step 9 sanity cell).
+
+    `think_override` semantics:
+      None         — inherit from process env (workspace .env's setting).
+      True         — force `JAMES_GEMMA4_E4B_THINK_OFF=1` (matrix primary).
+      False        — force the variable unset (sanity cell — restores
+                     production default = thinking ON).
+    """
     env = os.environ.copy()
     env.update(_FIXED_ENV)
     env.update(_ROW_ENVS[row])
     env["JAMES_LLM_MODEL"] = _TIER_MODELS[tier]
+    if think_override is True:
+        env["JAMES_GEMMA4_E4B_THINK_OFF"] = "1"
+    elif think_override is False:
+        # Force unset — sanity cell reverts to production default.
+        env.pop("JAMES_GEMMA4_E4B_THINK_OFF", None)
     return env
 
 
-def _run_single_bench(row: str, tier: str, run_index: int) -> Optional[Path]:
-    server_env = _cell_env(row, tier)
+def _run_single_bench(row: str, tier: str, run_index: int,
+                      think_override: Optional[bool] = None) -> Optional[Path]:
+    server_env = _cell_env(row, tier, think_override=think_override)
 
     flagged = {k: v for k, v in _ROW_ENVS[row].items()}
+    think_tag = ""
+    if think_override is True:
+        think_tag = " think=OFF (primary)"
+    elif think_override is False:
+        think_tag = " think=ON (sanity)"
     print(
         f"\n=== cell {row}/{tier} run {run_index + 1}/N "
-        f"(model={_TIER_MODELS[tier]}, env={flagged}) ==="
+        f"(model={_TIER_MODELS[tier]}, env={flagged}{think_tag}) ==="
     )
     server = _spawn_server(server_env)
     if server is None:
@@ -320,14 +376,21 @@ def _run_single_bench(row: str, tier: str, run_index: int) -> Optional[Path]:
     return bench_output
 
 
-def _aggregate_runs(runs: List[ThreeAxisResult]) -> Dict[str, Any]:
-    """Same shape as qvt_capture_baseline._aggregate_runs for cell-vs-
-    baseline comparability."""
+def _aggregate_runs(runs: List[FiveAxisResult]) -> Dict[str, Any]:
+    """5-axis aggregation: 3 quality (path/graded/abstention) + 2 cost
+    (token, latency). Same per-axis stats shape (median/min/max/
+    noise_band) so the matrix render can compute Δ vs baseline uniformly.
+    """
     if not runs:
         return {}
     path_means = [r.path_coverage.mean_recall for r in runs]
     graded_means = [r.graded_answer.mean_accuracy for r in runs]
     abstention_f1s = [r.abstention.f1 for r in runs]
+    # Cost axes — lower is better. We report mean (paired with the
+    # per-query p95 captured in to_dict() for tail-watching) and same
+    # noise-band shape as quality axes.
+    token_means = [r.token_cost.mean_chars for r in runs]
+    latency_means = [r.latency_cost.mean_s for r in runs]
 
     def _stats(values: List[float]) -> Dict[str, float]:
         values_sorted = sorted(values)
@@ -343,6 +406,8 @@ def _aggregate_runs(runs: List[ThreeAxisResult]) -> Dict[str, Any]:
         "path_coverage": _stats(path_means),
         "graded_answer": _stats(graded_means),
         "abstention_f1": _stats(abstention_f1s),
+        "token_cost": _stats(token_means),
+        "latency_cost": _stats(latency_means),
         "n_runs": len(runs),
     }
 
@@ -359,36 +424,71 @@ def _current_git_sha() -> Optional[str]:
         return None
 
 
-def _cell_output_path(row: str, tier: str) -> Path:
-    return _OUTPUT_DIR / f"qvt-ablation-cell-{row}-{tier}.json"
+def _cell_output_path(row: str, tier: str,
+                      sanity_think_on: bool = False) -> Path:
+    suffix = "-thinkON" if sanity_think_on else ""
+    return _resolve_output_dir() / f"qvt-ablation-cell-{row}-{tier}{suffix}.json"
 
 
 def _run_cell(row: str, tier: str, n_runs: int, fixture: Dict[str, Any],
-              sha: str, resume: bool) -> Optional[Dict[str, Any]]:
+              sha: str, resume: bool,
+              sanity_think_on: bool = False) -> Optional[Dict[str, Any]]:
     """Run one cell. Writes per-cell JSON. Returns the payload (or
-    loads-and-returns when --resume hits an existing file)."""
-    out = _cell_output_path(row, tier)
+    loads-and-returns when --resume hits an existing file).
+
+    `sanity_think_on=True` (Step 9): forces gemma4:e4b's `think=ON`
+    (matrix sanity supplement — production default). Output JSON gets
+    `-thinkON` suffix so the standard L1/M_M cell and the sanity cell
+    coexist on disk.
+    """
+    out = _cell_output_path(row, tier, sanity_think_on=sanity_think_on)
     if resume and out.exists():
-        print(f"[cell {row}/{tier}] --resume: skipping, "
+        cell_tag = f"{row}/{tier}{' (sanity think=ON)' if sanity_think_on else ''}"
+        print(f"[cell {cell_tag}] --resume: skipping, "
               f"{out.relative_to(ROOT)} exists")
         return json.loads(out.read_text(encoding="utf-8"))
 
-    runs: List[ThreeAxisResult] = []
+    # Determine think override: sanity cell forces think=ON; other cells
+    # inherit (workspace .env sets JAMES_GEMMA4_E4B_THINK_OFF=1 for the
+    # primary matrix). Pass through to bench subprocess via _cell_env.
+    think_override: Optional[bool] = False if sanity_think_on else None
+    runs: List[FiveAxisResult] = []
+    # Per-run per-question_type breakdowns (α-5 plan Step 6 cross-tab).
+    # Empty for step7 fixtures that don't carry the field — those cells
+    # simply skip the per-type aggregation.
+    runs_by_type: List[Dict[str, FiveAxisResult]] = []
     run_paths: List[str] = []
+    cell_label = f"{row}/{tier}{' (sanity think=ON)' if sanity_think_on else ''}"
     for i in range(n_runs):
-        bench_path = _run_single_bench(row, tier, i)
+        bench_path = _run_single_bench(row, tier, i,
+                                       think_override=think_override)
         if bench_path is None:
-            print(f"[cell {row}/{tier}] run {i + 1} failed to produce "
+            print(f"[cell {cell_label}] run {i + 1} failed to produce "
                   f"bench output — aborting cell")
             return None
-        result = score_three_axis(bench_path, fixture)
-        print(f"[cell {row}/{tier} run {i + 1}] {result.summary()}")
+        result = score_five_axis(bench_path, fixture)
+        print(f"[cell {cell_label} run {i + 1}] {result.summary()}")
         runs.append(result)
+        runs_by_type.append(score_five_axis_by_question_type(bench_path, fixture))
         run_paths.append(str(bench_path.relative_to(ROOT)))
 
     aggregate = _aggregate_runs(runs)
+    # Per-question_type aggregation. Same shape as `aggregate` but keyed
+    # by question_type. Empty for non-cross-tab suites.
+    aggregate_by_type: Dict[str, Dict[str, Any]] = {}
+    if runs_by_type and any(runs_by_type):
+        all_types: set[str] = set()
+        for d in runs_by_type:
+            all_types.update(d.keys())
+        for qt in sorted(all_types):
+            sub_runs: List[FiveAxisResult] = [
+                d[qt] for d in runs_by_type if qt in d
+            ]
+            if sub_runs:
+                aggregate_by_type[qt] = _aggregate_runs(sub_runs)
+
     payload = {
-        "schema": "qvt-ablation-cell-v1",
+        "schema": "qvt-ablation-cell-v2",  # v2 adds aggregate_by_question_type
         "captured_at": datetime.now(timezone.utc).isoformat(),
         "git_sha": sha,
         "row": row,
@@ -397,20 +497,28 @@ def _run_cell(row: str, tier: str, n_runs: int, fixture: Dict[str, Any],
         "model": _TIER_MODELS[tier],
         "env": _ROW_ENVS[row],
         "fixed_env": _FIXED_ENV,
+        # Step 9 — sanity cell flag travels in the JSON so the report
+        # writer can distinguish it from the primary L1/M_M (think=OFF).
+        "sanity_think_on": bool(sanity_think_on),
         "fixture_version": fixture.get("version"),
         "n_runs": n_runs,
         "aggregate": aggregate,
+        "aggregate_by_question_type": aggregate_by_type,
         "runs": [
             {"bench_output": run_paths[i], "scores": runs[i].to_dict()}
             for i in range(n_runs)
         ],
     }
-    _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    _resolve_output_dir().mkdir(parents=True, exist_ok=True)
     out.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False, default=str),
         encoding="utf-8",
     )
-    print(f"[cell {row}/{tier}] wrote {out.relative_to(ROOT)}")
+    try:
+        rel = out.relative_to(ROOT)
+    except ValueError:
+        rel = out
+    print(f"[cell {cell_label}] wrote {rel}")
     return payload
 
 
@@ -418,11 +526,20 @@ def _run_cell(row: str, tier: str, n_runs: int, fixture: Dict[str, Any],
 # Report rendering (--render-report)
 # ---------------------------------------------------------------------------
 
+_QUALITY_AXES = ("path_coverage", "graded_answer", "abstention_f1")
+_COST_AXES = ("token_cost", "latency_cost")
+
+
 def _classify_delta(deltas: Dict[str, float], noise_band: Dict[str, float]) -> str:
-    """Memo §3.1 verdict rule."""
+    """3-axis quality verdict (legacy, used by step7 path).
+
+    Memo §3.1 verdict rule — positive / mixed / zero / negative / regression
+    against quality axes only. Kept for back-compat; the α-5 5-axis
+    runner uses `_classify_five_axis_delta` instead.
+    """
     positives = []
     negatives = []
-    for axis in ("path_coverage", "graded_answer", "abstention_f1"):
+    for axis in _QUALITY_AXES:
         d = deltas.get(axis, 0.0)
         band = noise_band.get(axis, 0.0)
         if d > band:
@@ -440,14 +557,63 @@ def _classify_delta(deltas: Dict[str, float], noise_band: Dict[str, float]) -> s
     return "zero"
 
 
+def _classify_five_axis_delta(deltas: Dict[str, float],
+                              noise_band: Dict[str, float]) -> str:
+    """5-axis Pareto-aware verdict (plan Step 5).
+
+    Quality side: any quality axis Δ > +noise_band ⇒ quality_positive.
+                  any quality axis Δ < -noise_band ⇒ quality_negative.
+    Cost side  : cost axis is "lower is better", so token/latency Δ
+                  < -noise_band (numerically smaller than baseline) is
+                  cost-positive, and Δ > +noise_band is cost-regression.
+
+    Combined verdicts (plan §implementation step 5):
+      - quality_positive + cost_positive  → "strong-adopt"
+      - quality_positive + cost_flat      → "adopt"
+      - quality_flat     + cost_positive  → "efficiency-adopt"
+      - quality_positive + cost_negative  → "tier-gated"
+      - quality_negative + *              → "reject"  (no cost gain redeems quality loss)
+      - else (quality_flat + cost_flat)   → "zero"
+    """
+    q_pos = q_neg = 0
+    for axis in _QUALITY_AXES:
+        d = deltas.get(axis, 0.0)
+        band = noise_band.get(axis, 0.0)
+        if d > band:
+            q_pos += 1
+        elif d < -band:
+            q_neg += 1
+    c_pos = c_neg = 0
+    for axis in _COST_AXES:
+        d = deltas.get(axis, 0.0)
+        band = noise_band.get(axis, 0.0)
+        # Cost down (Δ < -band) is good; cost up (Δ > +band) is bad.
+        if d < -band:
+            c_pos += 1
+        elif d > band:
+            c_neg += 1
+    if q_neg > 0:
+        return "reject"
+    if q_pos > 0 and c_pos > 0 and c_neg == 0:
+        return "strong-adopt"
+    if q_pos > 0 and c_pos == 0 and c_neg == 0:
+        return "adopt"
+    if q_pos > 0 and c_neg > 0:
+        return "tier-gated"
+    if q_pos == 0 and c_pos > 0 and c_neg == 0:
+        return "efficiency-adopt"
+    return "zero"
+
+
 def _read_baseline() -> Optional[Dict[str, Any]]:
-    files = sorted(_BASELINE_DIR.glob("baseline_*.json"))
+    baseline_dir = _resolve_baseline_dir()
+    files = sorted(baseline_dir.glob("baseline_*.json"))
     if not files:
-        print(f"[report] no baseline JSON under {_BASELINE_DIR.relative_to(ROOT)}")
+        print(f"[report] no baseline JSON under {baseline_dir}")
         return None
     # Most recent SHA — operator captures one baseline per release.
     latest = files[-1]
-    print(f"[report] using baseline {latest.relative_to(ROOT)}")
+    print(f"[report] using baseline {latest}")
     return json.loads(latest.read_text(encoding="utf-8"))
 
 
@@ -456,15 +622,14 @@ def _render_report(out_path: Path) -> int:
     if baseline is None:
         return 4
     base_agg = baseline.get("aggregate", {})
+    # 5-axis baseline medians + noise bands.
+    _ALL_AXES = ("path_coverage", "graded_answer", "abstention_f1",
+                 "token_cost", "latency_cost")
     base_med = {
-        "path_coverage": base_agg.get("path_coverage", {}).get("median"),
-        "graded_answer": base_agg.get("graded_answer", {}).get("median"),
-        "abstention_f1": base_agg.get("abstention_f1", {}).get("median"),
+        ax: base_agg.get(ax, {}).get("median") for ax in _ALL_AXES
     }
     base_noise = {
-        "path_coverage": base_agg.get("path_coverage", {}).get("noise_band", 0.0),
-        "graded_answer": base_agg.get("graded_answer", {}).get("noise_band", 0.0),
-        "abstention_f1": base_agg.get("abstention_f1", {}).get("noise_band", 0.0),
+        ax: base_agg.get(ax, {}).get("noise_band", 0.0) for ax in _ALL_AXES
     }
 
     cells: List[Dict[str, Any]] = []
@@ -477,70 +642,194 @@ def _render_report(out_path: Path) -> int:
 
     if not cells:
         print(f"[report] no per-cell JSONs found under "
-              f"{_OUTPUT_DIR.relative_to(ROOT)}")
+              f"{_resolve_output_dir()}")
         return 5
 
     rows: List[str] = [
-        "# QVT α-5 ablation matrix — 18-cell verdict",
+        "# QVT α-5 ablation matrix — 5-axis × 18-cell verdict",
         "",
         f"**Baseline**: `{baseline.get('git_sha', 'unknown')}` "
         f"(captured {baseline.get('captured_at', '?')}).",
         f"**Cells available**: {len(cells)}/{len(_ROW_ENVS) * len(_TIER_MODELS)}.",
         "",
         "| Row | Tier | Model | Path Δ | Graded Δ | Abst F1 Δ | "
-        "Noise band (P/G/A) | Verdict |",
-        "|---|---|---|---|---|---|---|---|",
+        "Token Δ | Latency Δ (s) | Verdict |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
     for c in cells:
         agg = c.get("aggregate", {})
-        med = {
-            "path_coverage": agg.get("path_coverage", {}).get("median"),
-            "graded_answer": agg.get("graded_answer", {}).get("median"),
-            "abstention_f1": agg.get("abstention_f1", {}).get("median"),
-        }
+        med = {ax: agg.get(ax, {}).get("median") for ax in _ALL_AXES}
         deltas: Dict[str, float] = {}
-        for axis in ("path_coverage", "graded_answer", "abstention_f1"):
+        for axis in _ALL_AXES:
             if med[axis] is None or base_med[axis] is None:
                 deltas[axis] = 0.0
             else:
                 deltas[axis] = round(med[axis] - base_med[axis], 4)
-        verdict = _classify_delta(deltas, base_noise)
+        verdict = _classify_five_axis_delta(deltas, base_noise)
         rows.append(
             f"| {c['row']} ({c['row_label']}) | {c['tier']} | "
             f"`{c['model']}` | {deltas['path_coverage']:+.3f} | "
             f"{deltas['graded_answer']:+.3f} | "
             f"{deltas['abstention_f1']:+.3f} | "
-            f"{base_noise['path_coverage']:.3f}/"
-            f"{base_noise['graded_answer']:.3f}/"
-            f"{base_noise['abstention_f1']:.3f} | "
+            f"{deltas['token_cost']:+.0f} | "
+            f"{deltas['latency_cost']:+.2f} | "
             f"**{verdict}** |"
         )
 
     rows += [
         "",
-        "## Verdict rule",
+        "## 5-axis Pareto-aware verdict rule (plan Step 5)",
         "",
         "Per cell, Δ vs L1/M_M baseline median per axis. Noise band =",
-        "max − min across the baseline's paired-N=3 runs. Classification:",
+        "max − min across the baseline's paired-N=3 runs.",
         "",
-        "- **positive** — all 3 axes Δ > noise band",
-        "- **mixed** — at least one Δ > band, none Δ < −band",
-        "- **zero** — all |Δ| ≤ band",
-        "- **negative** — at least one Δ < −band, none Δ > band",
-        "- **regression** — all 3 axes Δ < −band",
+        "Quality axes (higher = better): path_coverage, graded_answer, abstention_f1.",
+        "Cost axes (lower = better): token_cost (answer chars proxy), latency_cost (seconds).",
         "",
-        "## Routing policy decision (memo §3.2)",
+        "- **strong-adopt** — at least one quality Δ > +band AND at least",
+        "  one cost Δ < −band (lower = improvement), no cost regression",
+        "- **adopt** — quality+ on at least one axis, cost flat",
+        "- **efficiency-adopt** — quality flat, cost down on at least one axis",
+        "- **tier-gated** — quality+ but cost regressed (justify per tier;",
+        "  small-tier accept, large-tier reject)",
+        "- **reject** — any quality axis Δ < −band (no cost gain redeems)",
+        "- **zero** — within noise band on all five",
+        "",
+        "## Routing policy decision",
         "",
         "| Per-tier pattern | Policy |",
         "|---|---|",
-        "| `positive` on ≥ 2 tiers including M_M | enable as default (flip `.env.example`) |",
-        "| `positive` only on one tier | tier-gated (router policy keys on `JAMES_LLM_MODEL`) |",
+        "| `strong-adopt` or `adopt` on ≥ 2 tiers incl. M_M | enable as default (flip `.env.example`) |",
+        "| `efficiency-adopt` on all tiers | enable as default (free efficiency) |",
+        "| only one tier `*-adopt` | tier-gated (router keys on `JAMES_LLM_MODEL`) |",
         "| `zero` on all tiers | delete / document as inert (deprecation PR) |",
-        "| `negative` or `regression` on ≥ 1 tier | keep opt-in indefinitely |",
+        "| `reject` on ≥ 1 tier | keep opt-in indefinitely |",
+        "| `tier-gated` verdict on any cell | per-tier evaluation (small ≤ large?) |",
         "",
         "Follow-up PRs (one per layer with non-`zero` verdict) cite the",
         "specific cell here as their Quality Delta Card source.",
     ]
+
+    # ──────────────────────────────────────────────────────────
+    # Step 6 — Per-question_type cross-tab + routing policy recs.
+    # Skipped silently when no cell carries `aggregate_by_question_type`
+    # (legacy v1 cells, or step7 fixture without question_type).
+    # ──────────────────────────────────────────────────────────
+    cells_with_types = [c for c in cells if c.get("aggregate_by_question_type")]
+    if cells_with_types:
+        # Union of all question types across all cells.
+        all_qts: set[str] = set()
+        for c in cells_with_types:
+            all_qts.update(c["aggregate_by_question_type"].keys())
+        all_qts_sorted = sorted(all_qts)
+
+        rows.append("")
+        rows.append("## Cross-tab — verdict per `question_type` × `(row, tier)`")
+        rows.append("")
+        rows.append(
+            "Per question_type Δ vs the **L1/M_M baseline of the same "
+            "question_type** (intra-type comparison — keeps the "
+            "baseline subgroup size and language consistent). Verdict "
+            "uses the 5-axis Pareto rule."
+        )
+        rows.append("")
+        # Find L1/M_M cell once for baseline per type.
+        l1_mm_cell = None
+        for c in cells_with_types:
+            if c["row"] == "L1" and c["tier"] == "M_M":
+                l1_mm_cell = c
+                break
+        if l1_mm_cell is None:
+            rows.append("(no L1/M_M cell present — cross-tab uses global baseline instead)")
+            rows.append("")
+
+        def _per_type_base_med(qt: str) -> Dict[str, Optional[float]]:
+            if l1_mm_cell is not None:
+                ag = l1_mm_cell.get("aggregate_by_question_type", {}).get(qt, {})
+            else:
+                ag = base_agg  # fall back to global baseline
+            return {ax: ag.get(ax, {}).get("median") for ax in _ALL_AXES}
+
+        def _per_type_base_noise(qt: str) -> Dict[str, float]:
+            if l1_mm_cell is not None:
+                ag = l1_mm_cell.get("aggregate_by_question_type", {}).get(qt, {})
+            else:
+                ag = base_agg
+            return {ax: ag.get(ax, {}).get("noise_band", 0.0) for ax in _ALL_AXES}
+
+        # Routing policy aggregator: per question_type, collect winning
+        # (cell, verdict) so the recommended routing rule is sourced
+        # from the strongest cell per type.
+        per_type_winners: Dict[str, List[tuple]] = {qt: [] for qt in all_qts_sorted}
+
+        for qt in all_qts_sorted:
+            rows.append(f"### `{qt}`")
+            rows.append("")
+            rows.append("| Row | Tier | Model | Path Δ | Graded Δ | Abst F1 Δ | "
+                        "Token Δ | Latency Δ | Verdict |")
+            rows.append("|---|---|---|---|---|---|---|---|---|")
+            base_med_qt = _per_type_base_med(qt)
+            base_noise_qt = _per_type_base_noise(qt)
+            for c in cells_with_types:
+                ag_qt = c.get("aggregate_by_question_type", {}).get(qt)
+                if not ag_qt:
+                    continue
+                med = {ax: ag_qt.get(ax, {}).get("median") for ax in _ALL_AXES}
+                deltas_qt: Dict[str, float] = {}
+                for axis in _ALL_AXES:
+                    if med[axis] is None or base_med_qt[axis] is None:
+                        deltas_qt[axis] = 0.0
+                    else:
+                        deltas_qt[axis] = round(med[axis] - base_med_qt[axis], 4)
+                verdict_qt = _classify_five_axis_delta(deltas_qt, base_noise_qt)
+                rows.append(
+                    f"| {c['row']} | {c['tier']} | `{c['model']}` | "
+                    f"{deltas_qt['path_coverage']:+.3f} | "
+                    f"{deltas_qt['graded_answer']:+.3f} | "
+                    f"{deltas_qt['abstention_f1']:+.3f} | "
+                    f"{deltas_qt['token_cost']:+.0f} | "
+                    f"{deltas_qt['latency_cost']:+.2f} | "
+                    f"**{verdict_qt}** |"
+                )
+                if verdict_qt in ("strong-adopt", "adopt", "efficiency-adopt"):
+                    per_type_winners[qt].append(
+                        (verdict_qt, c['row'], c['tier'], c['model'])
+                    )
+            rows.append("")
+
+        # Routing policy recommendation — per question_type, pick the
+        # strongest verdict cell. Priority: strong-adopt > adopt >
+        # efficiency-adopt. Within tier preference: M_M (production
+        # default) > M_S > M_L, so a tie prefers the production-tier cell.
+        rows.append("## Routing policy recommendation (auto-generated)")
+        rows.append("")
+        rows.append(
+            "Each row maps a query type to a (model, layer-stack) recipe "
+            "derived from the strongest verdict cell on that type. "
+            "Operator: feed these into the routing layer's policy file. "
+            "Plan §6 deliverable for user requirement #2."
+        )
+        rows.append("")
+        rows.append("| Query type | Recommended (model, row) | Source verdict | Evidence cell |")
+        rows.append("|---|---|---|---|")
+
+        _VERDICT_RANK = {"strong-adopt": 3, "adopt": 2, "efficiency-adopt": 1}
+        _TIER_RANK = {"M_M": 3, "M_S": 2, "M_L": 1}  # prefer production
+        for qt in all_qts_sorted:
+            winners = per_type_winners[qt]
+            if not winners:
+                rows.append(f"| `{qt}` | n/a — no adopt verdict | — | — |")
+                continue
+            # Sort by (verdict rank desc, tier rank desc) — best first.
+            winners.sort(key=lambda w: (_VERDICT_RANK[w[0]], _TIER_RANK[w[1]]),
+                         reverse=True)
+            verdict, row_id, tier_id, model = winners[0]
+            rows.append(
+                f"| `{qt}` | `{model}` + **{row_id}** ({_ROW_LABELS[row_id]}) | "
+                f"{verdict} | {row_id}/{tier_id} |"
+            )
+        rows.append("")
+
     _REPORT_DIR.mkdir(parents=True, exist_ok=True)
     out_path.write_text("\n".join(rows), encoding="utf-8")
     print(f"[report] wrote {out_path.relative_to(ROOT)}")
@@ -600,6 +889,20 @@ def main(argv: Optional[List[str]] = None) -> int:
              "If |graded_answer Δ| < 0.05, STOP and skip M_S/M_L — the "
              "matrix is null and 18 h of further compute would be wasted.",
     )
+    parser.add_argument(
+        "--sanity-think-on", action="store_true",
+        help="Plan Step 9 sanity cell — additionally run the L1/M_M cell "
+             "with `JAMES_GEMMA4_E4B_THINK_OFF` unset (production default "
+             "= think=ON). Output JSON gets a `-thinkON` suffix and the "
+             "5-axis Δ vs L1/M_M (primary, think=OFF) lands in the report "
+             "as the A2 default-flip evidence supplement. ~22 min extra "
+             "compute at n_runs=3.",
+    )
+    parser.add_argument(
+        "--suite", type=str, default="step7",
+        help="Suite name. Use 'multihop_rag' for the α-5 external "
+             "benchmark (workspace-resolved fixture).",
+    )
     args = parser.parse_args(argv)
 
     if args.render_report:
@@ -623,16 +926,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     rows = _parse_subset(args.rows, list(_ROW_ENVS.keys()), "rows")
     tiers = _parse_subset(args.tiers, list(_TIER_MODELS.keys()), "tiers")
     sha = _current_git_sha() or "unknown"
+    fixture_path = _resolve_fixture(args.suite)
+    out_dir = _resolve_output_dir()
 
+    n_cells = len(rows) * len(tiers) + (1 if args.sanity_think_on else 0)
     print("=== QVT α-5 ablation matrix ===")
     print(f"git_sha:    {sha}")
-    print(f"fixture:    {_FIXTURE_PATH.relative_to(ROOT)}")
+    print(f"suite:      {args.suite}")
+    print(f"fixture:    {fixture_path}")
+    print(f"output:     {out_dir}")
     print(f"rows:       {rows}")
     print(f"tiers:      {tiers}  → {[_TIER_MODELS[t] for t in tiers]}")
     print(f"n_runs:     {args.n_runs}")
     print(f"resume:     {args.resume}")
-    print(f"cells:      {len(rows) * len(tiers)} "
-          f"(~{round(len(rows) * len(tiers) * 66 / 60, 1)} h compute)")
+    print(f"sanity:     {'YES (M_M/L1 think=ON extra cell)' if args.sanity_think_on else 'no'}")
+    print(f"cells:      {n_cells} "
+          f"(~{round(n_cells * 66 / 60, 1)} h compute)")
 
     if args.dry_run:
         print("\n[dry-run] cells planned:")
@@ -640,12 +949,16 @@ def main(argv: Optional[List[str]] = None) -> int:
             for tier in tiers:
                 print(f"  {row}/{tier} model={_TIER_MODELS[tier]} "
                       f"env={_ROW_ENVS[row]}")
+        if args.sanity_think_on:
+            print(f"  L1/M_M sanity (think=ON, suffix '-thinkON') "
+                  f"model={_TIER_MODELS['M_M']}")
         return 0
 
-    if not _FIXTURE_PATH.exists():
-        print(f"[error] fixture {_FIXTURE_PATH} missing")
+    if not fixture_path.exists():
+        print(f"[error] fixture {fixture_path} missing — build it first "
+              f"(e.g. scripts/hotpot/build_fixture.py for multihop_rag)")
         return 2
-    fixture = json.loads(_FIXTURE_PATH.read_text(encoding="utf-8"))
+    fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
 
     n_ok = 0
     n_fail = 0
@@ -658,8 +971,25 @@ def main(argv: Optional[List[str]] = None) -> int:
             else:
                 n_ok += 1
 
+    # Step 9 sanity cell — run after the standard grid so its think=ON
+    # measurement uses the same fixture + same runner state.
+    if args.sanity_think_on:
+        if "M_M" not in tiers or "L1" not in rows:
+            print("[sanity] WARNING: --sanity-think-on requires the standard "
+                  "L1/M_M cell in the run. Skipping sanity cell because "
+                  "neither L1 nor M_M is in the subset.")
+        else:
+            sanity_payload = _run_cell(
+                "L1", "M_M", args.n_runs, fixture, sha,
+                resume=args.resume, sanity_think_on=True,
+            )
+            if sanity_payload is None:
+                n_fail += 1
+            else:
+                n_ok += 1
+
     print(f"\n[done] cells succeeded: {n_ok}, failed: {n_fail}")
-    print(f"Per-cell JSONs at {_OUTPUT_DIR.relative_to(ROOT)}.")
+    print(f"Per-cell JSONs at {out_dir}.")
 
     # T0 smoke verdict — print the prereq §3 decision in-line so the
     # operator knows whether to proceed to T1 or stop, without having
@@ -670,24 +1000,47 @@ def main(argv: Optional[List[str]] = None) -> int:
         if l1.exists() and l5.exists():
             j1 = json.loads(l1.read_text(encoding="utf-8"))
             j5 = json.loads(l5.read_text(encoding="utf-8"))
-            g1 = j1["aggregate"]["graded_answer"]["median"]
-            g5 = j5["aggregate"]["graded_answer"]["median"]
-            delta = round(g5 - g1, 4)
-            print(f"\n=== T0 smoke verdict ===")
-            print(f"L1 graded_answer median: {g1:.4f}")
-            print(f"L5 graded_answer median: {g5:.4f}")
-            print(f"Δ (full stack vs baseline): {delta:+.4f}")
-            if abs(delta) < 0.05:
+            # 5-axis deltas. Quality threshold 0.05 (unchanged) +
+            # cost thresholds: ~10% of L1 median for each cost axis.
+            def _med(j: dict, axis: str) -> float:
+                return float(j["aggregate"].get(axis, {}).get("median") or 0.0)
+            quality_axes = ("path_coverage", "graded_answer", "abstention_f1")
+            cost_axes = ("token_cost", "latency_cost")
+            quality_d = {ax: round(_med(j5, ax) - _med(j1, ax), 4) for ax in quality_axes}
+            cost_d = {ax: round(_med(j5, ax) - _med(j1, ax), 4) for ax in cost_axes}
+            print(f"\n=== T0 smoke verdict (5-axis) ===")
+            for ax, d in quality_d.items():
+                print(f"  {ax:15s} L1={_med(j1, ax):.4f} L5={_med(j5, ax):.4f} Δ={d:+.4f}")
+            for ax, d in cost_d.items():
+                print(f"  {ax:15s} L1={_med(j1, ax):.4f} L5={_med(j5, ax):.4f} Δ={d:+.4f} (down=better)")
+            # Quality signal: any quality axis Δ moves > 0.05.
+            quality_moved = any(abs(d) >= 0.05 for d in quality_d.values())
+            # Cost signal: token_cost Δ moves > 10% of L1, OR latency Δ > 10% of L1.
+            l1_token = max(_med(j1, "token_cost"), 1.0)
+            l1_lat = max(_med(j1, "latency_cost"), 0.1)
+            cost_moved = (abs(cost_d["token_cost"]) >= 0.10 * l1_token
+                          or abs(cost_d["latency_cost"]) >= 0.10 * l1_lat)
+            if not quality_moved and not cost_moved:
                 print(
                     "VERDICT: matrix likely NULL at production tier "
-                    f"(|Δ|={abs(delta):.4f} < 0.05). Do NOT run T2 "
-                    f"(M_S / M_L) — savings ~18 h. See prereq §3 + §4."
+                    "(no quality axis moves ≥ 0.05 AND no cost axis moves "
+                    "≥ 10%). Do NOT run T2 (M_S / M_L) — savings ~18 h."
+                )
+            elif quality_moved and not cost_moved:
+                print(
+                    "VERDICT: matrix has QUALITY signal at production tier. "
+                    "Proceed to T1 (`--tiers M_M`, ~5.5 h)."
+                )
+            elif cost_moved and not quality_moved:
+                print(
+                    "VERDICT: matrix has COST-only signal at production tier "
+                    "(quality flat, cost ≥ 10% Δ). Likely efficiency-adopt "
+                    "verdict — proceed to T1 to isolate which layer."
                 )
             else:
                 print(
-                    "VERDICT: matrix has SIGNAL at production tier "
-                    f"(|Δ|={abs(delta):.4f} ≥ 0.05). Proceed to T1 "
-                    f"(`--tiers M_M`, ~5.5 h) to isolate which layer."
+                    "VERDICT: matrix has both QUALITY and COST signal. "
+                    "Proceed to T1 + likely T2 for tier-gating decisions."
                 )
 
     print(f"\nRender the consolidated report with:\n"

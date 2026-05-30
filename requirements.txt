@@ -84,6 +84,13 @@ openai-whisper>=20231117
 #   pip install ragas --only-binary=:all:
 ragas>=0.4.0
 
+# α-5 external benchmark — MultiHop-RAG (Tang & Yang 2024, EMNLP).
+# Used by scripts/hotpot/download_multihop_rag.py to pull the dataset
+# from HuggingFace into workspaces/hotpot_eval/. Read-only adapter;
+# no impact on production unless JAMES_WORKSPACE is set to the
+# benchmark workspace.
+datasets>=2.14.0
+
 # ═══════════════════════════════════════════════════════════════
 #  System Requirements (install separately, not via pip)
 # ═══════════════════════════════════════════════════════════════
