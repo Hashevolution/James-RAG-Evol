@@ -50,14 +50,44 @@
   pipeline crashed on a specific article; budget caps interacting with
   routing).
 
+## Diagnostic bucket (MANDATORY field, per user guidance 2026-05-31 PM-2)
+
+Before this finding becomes a code change, classify which solution
+bucket it belongs to. Getting the bucket wrong → wrong fix.
+
+| Bucket | Symptom | Solution shape | Examples in repo |
+|---|---|---|---|
+| **(a) Architecture** | layer's designed boundary / shape is wrong | redesign / split / merge | (none yet this cycle) |
+| **(b) LLM model** | model capability ceiling | tier change / model swap | A3 #608 — gemma4:e4b thinking trace; D3 #602/#603 — model-invariant cost |
+| **(c) Feature gap** | no layer covers this need | new layer design | D6 LLM-judge (deferred); abstention nuance beyond phrase matcher |
+| **(d) Measurement artifact** | oracle / fixture / bench misses real JAMES output | matcher fix (zero JAMES code change) | #618 source-recall; #619 abstention phrases |
+
+Diagnosis order (priority): **(d) first** — cheapest to rule out;
+**(b)** — same layer fails on multiple tiers?; **(a)** — design vs
+observed behaviour mismatch; **(c)** — only after the above are ruled
+out (otherwise you build a layer that didn't need to exist).
+
+The 4-step verification rule for ruling out (d) is documented in memory
+`feedback_oracle_phrase_artifacts.md` — apply it BEFORE proposing a
+fix in any of the other three buckets.
+
+Every entry below MUST include a `bucket:` line tagging (a)/(b)/(c)/(d).
+"unclassified — needs more sampling" is fine while waiting on data.
+
 ---
 
 ## Findings
 
 <!-- Add entries below this line, newest at the bottom. -->
 
-### 2026-05-31 — multihop-rag-path-axis-dead
+### 2026-05-31 — multihop-rag-path-axis-dead → RESOLVED (bucket-d) (#618)
 
+- **bucket**: (d) measurement artifact — bench.py was dropping
+  `response.sources`; JAMES citation design was correct all along.
+  Diagnosis: applied the 4-step rule (axis 0 → sample answers manually →
+  check `response` keys → reconcile design vs matcher) and found
+  `core/reasoning/pipeline.py:343` emits `sources: [d["source"] for d
+  in docs[:3]]` while bench only inspected `graph_paths`.
 - **pattern**: 100/100 queries with `expected_path` → `path_recall = 0.000`
 - **cell context**: baseline L1/M_M (`baseline_f7762a3.json`), workspace
   ingested 183 articles (931 entities)
