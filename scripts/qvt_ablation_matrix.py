@@ -158,8 +158,8 @@ _TIER_MODELS: Dict[str, str] = {
 
 SERVER_BASE_URL = os.environ.get("JAMES_BASE_URL", "http://127.0.0.1:8000")
 SERVER_HEALTHZ = SERVER_BASE_URL.rstrip("/") + "/healthz"
-SERVER_BOOT_TIMEOUT_SEC = 120
-BENCH_SUBPROCESS_TIMEOUT_SEC = 2400
+SERVER_BOOT_TIMEOUT_SEC = 180  # heavier workspace boot
+BENCH_SUBPROCESS_TIMEOUT_SEC = 14400  # 4h ceiling for α-5 multihop_rag suites
 
 _DEFAULT_FIXTURE_PATH = ROOT / "eval" / "regression" / "step7_queries.json"
 _OUTPUT_DIR = ROOT / "reports" / "research-runs" / "qvt-ablation-cells"
