@@ -63,8 +63,11 @@ from eval.qvt.oracle import (  # noqa: E402
 
 SERVER_BASE_URL = os.environ.get("JAMES_BASE_URL", "http://127.0.0.1:8000")
 SERVER_HEALTHZ = SERVER_BASE_URL.rstrip("/") + "/healthz"
-SERVER_BOOT_TIMEOUT_SEC = 120
-BENCH_SUBPROCESS_TIMEOUT_SEC = 2400
+SERVER_BOOT_TIMEOUT_SEC = 180  # heavier workspace (931 entities) needs more boot time
+# α-5 MultiHop-RAG balanced-200 worst-case = 200 queries × ~60s = 200 min. Set to
+# 4h to comfortably absorb workspaces with larger graphs. step7 (16 queries × ~30s
+# = 8 min) is unaffected — the timeout is an upper bound, not a target.
+BENCH_SUBPROCESS_TIMEOUT_SEC = 14400
 
 # v0.4.0 production baseline flags (memo §3). Routing layers OFF — they
 # are the things being measured *against* this baseline by future PRs.
