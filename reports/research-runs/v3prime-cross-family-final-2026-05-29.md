@@ -1,10 +1,11 @@
 # V3'.e Direction 3 — Cross-family / cross-generation final analysis
 
-**Date**: 2026-05-29 (single calendar day, evening session)
+**Date**: 2026-05-29 evening session + 2026-05-30 lower-cap closure
 **Status**: 🔒 **Internal consolidated — sharing decision deferred to operator**
-**Trigger**: handover §5 M3 (Direction 3, user-deferred earlier) + §5 M11 (arxiv:2605.09104 prior art finding)
-**Drivers**: `scripts/research/v3prime_e_mode_split.py` (`--model` flag), `v3prime_planner.py`, `v3prime_reflect.py`, `v3prime_verify.py`; two single-purpose copies (`v3prime_e_mode_split_complex.py`, `v3prime_e_mode_split_cap200.py`) for fixture / cap variants
-**Total trials**: ~1480 across 7 models × multiple fixtures × multiple caps × n=10 (n=20 for boundary reproducibility)
+**Trigger**: handover §5 M3 (Direction 3, user-deferred earlier) + §5 M11 (arxiv:2605.09104 prior art finding); 2026-05-30 follow-up closes §11 Limitation 1 cap-range sub-gap
+**Drivers**: `scripts/research/v3prime_e_mode_split.py` (`--model` flag), `v3prime_planner.py`, `v3prime_reflect.py`, `v3prime_verify.py`; four single-purpose copies (`v3prime_e_mode_split_complex.py`, `v3prime_e_mode_split_cap200.py`, `v3prime_e_mode_split_cap50_100.py`, `v3prime_e4b_cap4096_audit.py`) for fixture / cap variants
+**Total trials**: ~1960 across 7 models × multiple fixtures × multiple caps × n=10 (n=20 for boundary reproducibility, n=50 for e4b cap=4096 natural-budget audit)
+**Headline**: H1 (checkpoint-isolated cap-floor on `gemma4:e4b`) **CONFIRMED** by the 7-model panel. **Mechanism RESOLVED 2026-05-30 (§16)**: the floor is the `gemma4:e4b` **thinking trace** (a default-on reasoning phase, ~85% of generated tokens, hidden from the `response` stream) consuming the `num_predict` budget — **not** verbosity (§7/§15.6) and **not** keyword positioning (§15.5). think=false collapses eval_count from ~400 to ~45 and removes the floor. The §15 "verbosity / 5-10× token-tax / position-fraction" framings are superseded by §16; H1 itself stands and is now mechanistically explained.
 
 This doc supersedes the partial `v3prime-cross-family-step1-2026-05-29.md` landed earlier (#599). That partial Step 1 record stays for the diagnostic chain but the headline findings here are the load-bearing read.
 
@@ -160,6 +161,8 @@ All 6 cross-family models clear cap=400 cleanly on the Korean cognitive prompts.
 
 ## 7. Token-consumption signature — `gemma4:e4b` is 4-9× more verbose
 
+> **Correction (2026-05-30)**: the 400-token figure below is the cap=400 cap-hit ceiling, not the true natural budget. The cap=4096 audit (§15.1) measures e4b synthesis natural median at **464 tokens** with 0/50 cap-hits, giving a corrected cross-family spread of **5-10×** (§15.6). The §7 table is retained for audit trail.
+
 `gemma4:e4b` synthesis median `eval_count` vs the other 6 models (cap=400, temp=0.2, single-item e-commerce):
 
 | Model | median eval_count | ratio vs `gemma4:e4b` |
@@ -222,7 +225,7 @@ The "three deployment contexts, two architectures, single mechanism" line from P
 
 ## 11. Limitations (honest framing)
 
-1. **Single environment** — all 7-model measurements ran on the same local Ollama at the same time of day. External re-replication (Robin's sovereign Ollama, Ali's managed Gemini) would let the joint piece make a stronger "three deployment contexts" claim with full data per context.
+1. **Single environment** — all 7-model measurements ran on the same local Ollama at the same time of day. External re-replication (Robin's sovereign Ollama, Ali's managed Gemini) would let the joint piece make a stronger "three deployment contexts" claim with full data per context. (Note: prior sub-limitation "cap range tested only 200-4096 on the other 6 models" is **closed** by the 2026-05-30 lower-cap sweep — see §15.7.)
 2. **Two language / two domain pairs** — English e-commerce (substitution, simple synthesis, complex synthesis) + Korean cognitive (planner, reflect, verify). A Korean e-commerce condition would untangle whether the `gemma4:e4b` floor is genuinely a reasoning-budget property or a language–domain interaction. Not in scope today.
 3. **`gemma4:e4b` mechanism unresolved** — why this specific checkpoint has a 4-9× higher synthesis-mode token tax is unanswered. Plausible candidates: quantization tier (e4b is the 4-bit-quantized variant), training-data distribution, distillation choice. The empirical signature is clear; the causal story is open.
 4. **No external validation yet** — the Robin/Ali side has not independently re-run this protocol on the 6 new models. The joint-piece value rises sharply when they do.
@@ -256,6 +259,186 @@ Driver copies for fixture/cap variants:
 - `scripts/research/v3prime_e_mode_split_complex.py` (new, B-orig two-item synthesis fixture)
 - `scripts/research/v3prime_e_mode_split_cap200.py` (new, Option A cap=200 variant)
 - `scripts/research/v3prime_{planner,reflect,verify}.py` (existing, used as-is with `--model` flag)
+
+## 15. Update 2026-05-30 — lower-cap closure + ratio correction
+
+Closes §11 Limitation 1 sub-gap (cap range untested below 200 on the other 6 models) with two additional sweeps plus an e4b natural-budget audit. The H1 verdict (§6) gets **stronger** under this data, not weaker.
+
+### 15.1 `gemma4:e4b` natural budget — cap=4096 audit (n=50, temp=0.2)
+
+50/50 done=stop (100% natural finish), **0/50 cap-hit**. `eval_count` distribution [390, 662], median **464**, p75 496. Synthesis budget fully characterized; cap=4096 sits comfortably above. Driver: `scripts/research/v3prime_e4b_cap4096_audit.py`.
+
+This invalidates §7's use of the cap=400 cap-hit value (400 tokens) as the e4b natural budget. Corrected ratios in §15.6.
+
+### 15.2 cap=50 / cap=100 sweep — 6 cross-family models
+
+`v3prime_e_mode_split_cap50_100.py` (n=10 per cell):
+
+| Model | sub@50 | sub@100 | syn@50 | syn@100 |
+|---|---|---|---|---|
+| `gemma2:2b` | 10/10 | 10/10 | 10/10 | 10/10 |
+| `qwen2.5:7b` | 10/10 | 10/10 | 10/10 | 10/10 |
+| `qwen2.5-coder:7b` | 10/10 | 10/10 | 10/10 | 10/10 |
+| `gemma3:12b` | 10/10 | 10/10 | 10/10 | 10/10 |
+| `llama3.1:8b` | 10/10 | 10/10 | 10/10 | 10/10 |
+| `deepseek-v2:16b` | **0/10** ⚠️ | **0/10** ⚠️ | 10/10 | 10/10 |
+
+5/6 models clean at cap=50 on both arms (well below their natural 46-95 token budgets). `deepseek-v2:16b` substitution arm reproduces the §9 4-token outlier (median eval=4, "linen" never emitted) at cap=50/100 — confirms per-checkpoint output-style property, not a cap effect.
+
+### 15.3 cap=20 / cap=30 sweep — 6 cross-family models
+
+| Model | sub@20 | sub@30 | syn@20 | syn@30 |
+|---|---|---|---|---|
+| `gemma2:2b` | 0/10 | 0/10 | 10/10 | 10/10 |
+| `qwen2.5:7b` | 0/10 | 0/10 | 10/10 | 10/10 |
+| `qwen2.5-coder:7b` | 0/10 | 0/10 | 9/10 | 10/10 |
+| `gemma3:12b` | 0/10 | 0/10 | 10/10 | 10/10 |
+| `llama3.1:8b` | 0/10 | 0/10 | 10/10 | 10/10 |
+| `deepseek-v2:16b` | 0/10 | 0/10 | **0/10** | 10/10 |
+
+**Substitution arm**: 5 models drop from 10/10 @ cap=50 → 0/10 @ cap=30. Sharp phase transition — detector artifact. The canonical "Refund Policy\n-------------\nItems may be returned within 30 days..." header pushes "linen" to the ~50-60 token mark; cap≤30 truncates before the keyword. The answer is being produced correctly; the detector is positionally biased. Not pathology.
+
+**Synthesis arm**: 5/6 models retain 100% detector hit at cap=20 (21-43% of their natural budget). `deepseek-v2:16b` is the single floor-activation case: 0/10 @ cap=20 → 10/10 @ cap=30 — narrow window, keyword sits in 20-30 token range post-prompt.
+
+### 15.4 H1 strengthened — operational-range asymmetry 20-30×
+
+| Model | synthesis floor activation cap | as % of natural budget |
+|---|---|---|
+| `gemma4:e4b` | cap ≤ 400 (47.5% miss @ cap=400) | **~86%** |
+| `deepseek-v2:16b` | cap ≤ 20 (clears @ cap=30) | ~37% |
+| Other 5 | cap ≤ 20 (not reached — 100% @ cap=20) | < ~25% |
+
+Activating the synthesis-mode floor on the other 5 checkpoints requires cap below 20 (cap=10 or less, untested but extrapolatable). On `deepseek-v2:16b` the window is narrow (cap=20 only). `gemma4:e4b` sits **20-30× higher** on the activation-cap axis.
+
+At any cap in the deployment-meaningful range (200+), `gemma4:e4b` is the only checkpoint showing the floor.
+
+### 15.5 Mechanism — budget magnitude × response-shape positioning
+
+> **⚠️ SUPERSEDED by §16 (2026-05-30).** Direct streaming + `think`-toggle measurement shows e4b's reasoning lives in a **hidden thinking trace** (not at the visible-response tail), and the visible answer is the *same length* as the other models. The "budget × position_fraction" model below is discarded; the keyword-position estimates here were never measured (the actual visible-text keyword position is frac ≈ 0.07, decision-first). Retained for audit trail.
+
+Two compounded factors:
+
+1. **Natural budget magnitude** — e4b 464 tokens vs others 46-95 tokens (5-10× gap, §15.6)
+2. **Detector keyword positioning** — e4b is **reasoning-first** (decision keyword at response tail: *"Based on the policy, since the customer washed the linen item, the clause states... therefore no refund applies."*). Other 5 are **decision-first** (keyword in first 20 tokens: *"No refund. The customer washed a linen item, which is final sale per the policy."*). `deepseek-v2:16b` sits midway (keyword at 20-30 token mark).
+
+Activation cap ≈ `natural_budget × position_fraction`. For e4b: `464 × ~0.86 ≈ 400`. For other 5: `~60 × ~0.3 ≈ 18`. For `deepseek-v2`: `54 × ~0.5 ≈ 27`.
+
+The §7 "4-9× more verbose" captures factor 1 only; **factor 2 (response shape) is the dominant driver of the operational asymmetry**. A model that produces 100 tokens reasoning-first with the keyword at token 95 would behave like e4b at cap=80; a model that produces 100 tokens decision-first with the keyword at token 5 would clear cap=10. Budget alone underdetermines floor activation.
+
+### 15.6 §7 ratio correction (5-10× via natural median)
+
+> **⚠️ SUPERSEDED by §16 (2026-05-30).** The natural median 464 is ~85% hidden thinking-trace tokens, not output volume. e4b is **not** 5-10× more verbose — its *visible* answer matches the panel (~320 chars). The ratio below measures thinking-trace cost, not verbosity. Retained for audit trail.
+
+Using the cap=4096 audit (§15.1) natural median **464** instead of cap=400 cap-hit value:
+
+| Model | natural median | ratio vs e4b (464) |
+|---|---|---|
+| `gemma4:e4b` | 464 | 1.0× |
+| `gemma2:2b` | 46 | **10.1× less** |
+| `deepseek-v2:16b` | 54 | 8.6× less |
+| `qwen2.5:7b` | 62 | 7.5× less |
+| `gemma3:12b` | 73 | 6.4× less |
+| `llama3.1:8b` | 84 | 5.5× less |
+| `qwen2.5-coder:7b` | 95 | 4.9× less |
+
+Corrected cross-family spread: **5-10×** (was 4-9× in §7 using cap-hit ceiling). Robin Converse's within-Gemma 9× observation (issue #448, 2026-05-23) falls cleanly in the upper half of the corrected range.
+
+### 15.7 §11 Limitation 1 — closed; new minor gap (cap=10 boundary)
+
+§11 Limitation 1 sub-gap (cap range untested below 200 on the other 6 models) **closed** by §15.2 + §15.3.
+
+**New minor gap**: the cap=10 boundary on the 5 decision-first models is untested. §15.5 mechanism predicts floor activation at cap ≤ 10 for these models (specifically: keyword-at-token-5 models clear cap=10; keyword-at-token-15-to-20 models fail). The question is whether this gap warrants an additional sweep before sharing.
+
+**Verdict**: **defer unless externally triggered**. Rationale below.
+
+**Arguments for running now**:
+
+1. *Mechanism falsifiability* — §15.5 makes a sharp prediction; a cap=10 sweep is the direct test. If all 5 decision-first models still clear cap=10, the position-fraction model is wrong (or grossly miscalibrated).
+2. *Symmetrizes the H1 asymmetry claim* — currently the e4b side is measured directly (cap=400, 47.5% miss) while the other-5 floor is bounded from above only (cap=20 clears, cap=10 unknown). Direct measurement would let §15.4 quote the asymmetry as a measured ratio rather than a lower bound.
+3. *Cheap* — ~5 min, 6 model × cap=10 × n=10. No new code; flip `CAP_DEFAULT=10, CAP_LIFTED=10` in `v3prime_e_mode_split_cap50_100.py`.
+4. *Preempts the obvious reviewer question* — Robin or a joint-piece referee will ask "you ran cap=20 and cap=30, why not cap=10?"
+
+**Arguments against running now**:
+
+1. *H1 verdict does not depend on it* — §15.4's 20-30× operational-range asymmetry is already established by **measured** points (cap=400 vs cap≤20). Even if cap=10 cleared on all 5 decision-first models, the asymmetry holds at ≥20×. Even if cap=10 failed on all 5, it tightens the ratio toward 40× but does not change the qualitative claim.
+2. *Phenomenon confound risk* — at cap=10 the response is ~5-8 tokens of actual content after prompt overhead. The §15.3 substitution-arm finding (cap≤30 → detector miss is *positional truncation*, not floor activation) extends downward: at cap=10, even synthesis-arm misses likely conflate two distinct phenomena —
+   - **floor activation**: model produces its normal response shape; cap truncates before the keyword (the e4b cap=400 phenomenon)
+   - **subcritical truncation**: model cannot emit anything meaningful in 10 tokens; nothing is "produced and then cut"; the measurement is dominated by tokenizer/prompt-echo artifacts
+
+   §15.5 mechanism applies cleanly to (a). Running cap=10 risks measuring (b) and labeling it (a).
+3. *Detector positional bias is now known to dominate at low cap* — §15.3 already established this for the substitution arm at cap ≤ 30. The cap=10 substitution arm would re-measure the same artifact at a more extreme point, not new physics.
+4. *§15.5 prediction is split, not pointwise* — the mechanism predicts intra-class variance among the 5 decision-first models (some clear, some fail, depending on keyword token position). Measuring this variance is a secondary signal about keyword positioning, not load-bearing for H1 or for the cross-family architectural-primitive claim.
+5. *Pre-registration cost is sunk* — §15.5 already states the falsifiable prediction. Future verification (by us or by Robin/Ali) has a clear pre-registered hypothesis; running it now vs later changes nothing about the prediction's epistemic status.
+
+**Recommendation**: defer. Document the §15.5 prediction as pre-registered; if a reviewer asks, or if Robin/Ali want to run it on their stacks for cross-environment replication, the sweep takes 5 minutes and the prediction is already on record. Adding it now would primarily generate audit-trail (the §15.3 detector-position framing applies; the answer is largely foreseeable) rather than novel evidence.
+
+**Optional cheap hedge** (if zero-confound, ~5 min): run cap=10 *synthesis-arm only* on the 5 decision-first models (skip substitution — known detector artifact at low cap, would only add noise). Reports back one number per model (clear / fail) directly against the §15.5 prediction. This is the minimum-confound version of the test if running it at all feels safer than deferring.
+
+### 15.8 File inventory delta (vs §13)
+
+12 new JSONs in `reports/research-runs/`:
+
+| Phase | Files | Count |
+|---|---|---|
+| cap=50/100 sweep (§15.2) | `v3prime-e-mode-split-20260529T2326*-T2330*.json` × 6 | 6 |
+| cap=20/30 sweep (§15.3) | `v3prime-e-mode-split-20260529T2354*-T2356*.json` × 6 | 6 |
+| **2026-05-30 additions** | | **12** |
+
+Drivers (currently untracked, in `scripts/research/`):
+- `v3prime_e4b_cap4096_audit.py` (§15.1, read-only audit of prior JSONs)
+- `v3prime_e_mode_split_cap50_100.py` (§15.2 + §15.3; `CAP_DEFAULT`/`CAP_LIFTED` constants swapped between batches, currently restored to 50/100; `sys.stdout.reconfigure(encoding='utf-8')` added at module top for cp949-safe Windows console operation)
+
+## 16. Update 2026-05-30 — mechanism RESOLVED: the floor is the gemma4:e4b thinking trace (overturns §7 / §15.5 / §15.6 framing)
+
+Closes §11 Limitation 3 (`gemma4:e4b` mechanism unresolved). A direct probe — `scripts/research/v3prime_e4b_mechanism_probe.py` — settles the causal story and **invalidates the "verbosity" and "keyword-positioning" framings carried in §7, §15.5, and §15.6.** The H1 verdict (§6, checkpoint-isolated floor) is untouched and now mechanistically explained.
+
+### 16.1 The decisive measurement — visible tokens vs counted tokens
+
+Streaming each model's synthesis generation (num_predict=4096, temp=0.2) and counting *emitted* `response` tokens against `eval_count`:
+
+| Model | visible tokens | eval_count | hidden | hidden % | answer chars |
+|---|---|---|---|---|---|
+| `gemma4:e4b` | 63 | 440 | **377** | **85.7%** | 323 |
+| `qwen2.5:7b` | 61 | 62 | 1 | 1.6% | 298 |
+| `gemma3:12b` | 56 | 57 | 1 | 1.8% | 283 |
+| `llama3.1:8b` | 90 | 91 | 1 | 1.1% | 435 |
+| `gemma2:2b` | 46 | 47 | 1 | 2.1% | 220 |
+
+For all six non-e4b models, `eval_count == visible tokens` (hidden == 1, just EOS). **`gemma4:e4b` carries ~84-86% hidden tokens** that are counted in `eval_count` (and therefore consume the `num_predict` cap) but never appear in the `response` stream. Crucially, the *visible* answer is the **same length** as every other model (~63 visible tokens / ~320 chars ≈ qwen's 61 / 303). The "464-token natural budget" measured in §15.1 is ~85% invisible.
+
+### 16.2 Root cause — `gemma4:e4b` is a thinking model, by design
+
+`ollama show gemma4:e4b` declares the **`thinking`** capability (alongside vision/audio/tools; arch `gemma4`, 8.0B, Q4_K_M). The hidden tokens are a structured **"Thinking Process:"** reasoning trace the checkpoint emits by default. Exposed directly via `/api/chat` with the `think` toggle (cap=400, temp=0.2):
+
+| call | eval_count | done | answer chars | thinking field |
+|---|---|---|---|---|
+| `/api/chat` think=True | 378-404 | stop | ~230-307 | **yes (~1200-1360 chars)** |
+| `/api/chat` think=False | **44-45** | stop | ~204-215 | none |
+| `/api/generate` think=False | **44** | stop | ~204 | none |
+
+`think=False` collapses `eval_count` from ~400 to ~45 — landing exactly in the other-six band (45-95) — with the **same visible answer**. The floor disappears entirely. **The floor IS the thinking trace.** This is the same class of phenomenon as o1/R1-style reasoning models where `max_tokens` must budget for invisible reasoning; Ollama's `/api/generate` simply does not surface the trace, so it read as a mysterious "cap floor."
+
+### 16.3 What this overturns
+
+- **§7 "4-9× more verbose"** and **§15.6 "5-10× more verbose"** — ❌ e4b is **not** more verbose. Its visible answer is the same length as the panel. The token-count gap is the thinking trace, not output volume.
+- **§15.5 "reasoning-first; decision keyword at the tail (position_fraction ≈ 0.86)"** — ❌ Measured keyword position in the *visible* text is frac ≈ 0.07 (early/decision-first, like the others). e4b's reasoning is real but lives in the **hidden** channel **before** the answer, not at the tail of the visible response. The `activation_cap ≈ budget × position_fraction` model is discarded.
+- **§15.4 "20-30× operational-range asymmetry"** — the *measured asymmetry holds* (e4b floors at cap≤400, others at cap≤20), but the cause is reclassified: it is the thinking-trace token cost, not a budget×shape interaction.
+
+### 16.4 Why only `gemma4:e4b` (H1, now mechanistic)
+
+The other six panel checkpoints are not thinking-capable models — they answer directly (`eval_count == visible tokens`). `gemma4:e4b` is the only one in the panel that emits a default-on reasoning trace, so it is the only one whose `num_predict` budget is dominated by invisible tokens. The floor follows the thinking capability one-to-one — exactly the checkpoint-isolation H1 asserted.
+
+### 16.5 JAMES operational implication (in-scope, actionable)
+
+JAMES production calls Ollama via **`/api/generate` with `think` unset**, and `gemma4:e4b` is the code-default model. Under that path the thinking trace is **still generated and counted** (silently stripped from `response`). Consequences:
+
+1. Every synthesis/reasoning call silently spends ~85% of its `num_predict` budget on the hidden trace.
+2. Any tightened cap below ~450 (e.g. D1 Adaptive Budgeting `CAP_LIGHT` 800-1200 is safe; but lower experimental caps, or the planner/reflect/verify stages if ever capped tighter) risks **empty or truncated output** on the default model — the 39% empty-at-cap=400 rate measured in §16.1's stored data.
+3. Mitigations, if desired: pass `think=false` for stages that do not need reasoning (reclaims ~85% of budget, full answer in ~45 tokens), or ensure caps stay ≥ ~500 for synthesis-class calls on `gemma4:e4b`. This is a measurement finding only — **no code change is made here**; it is flagged for a separate D1/budget follow-up.
+
+### 16.6 Artifact
+
+- `scripts/research/v3prime_e4b_mechanism_probe.py` — self-contained, reproducible. Part A (live stream: visible vs counted tokens), Part B (stored-JSON chars/token corroboration: e4b 0.71 vs others ~4.8), Part C (`think` toggle root-cause isolation). cp949-safe.
 
 ## 14. Related
 
