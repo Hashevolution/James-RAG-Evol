@@ -188,18 +188,76 @@ def _answer_text(result_row: Dict[str, Any]) -> str:
     return ""
 
 
+# α-5 prereq §1.b (#612 follow-up) — negation guard. A literal
+# substring match counts "Anthropic does not develop Claude" as a hit on
+# both "Anthropic" and "Claude" gold_signals, inflating graded_answer.
+# This window scans for KO/EN negation markers near the match:
+#   - English: prefix markers ("not", "doesn't", …) in the N chars BEFORE
+#   - Korean:  prefix markers ("못", "안") in the N chars before, AND
+#              suffix markers ("아니다", "않다", "없다") in the N chars
+#              after the match — Korean negation is post-positional.
+# Window=12 chars on each side catches typical syntax while staying
+# short enough that an unrelated earlier "not" doesn't bleed in.
+_NEGATION_WINDOW_CHARS = 12
+_NEGATION_MARKERS_BEFORE: Tuple[str, ...] = (
+    # English
+    "not ", "no ", "n't ", "without ", "never ", "lack ", "absent ",
+    # Korean — short morphemes that prefix the negated verb/noun
+    "못 ", "안 ",
+)
+_NEGATION_MARKERS_AFTER: Tuple[str, ...] = (
+    # Korean — trailing negation copula / verb. "X이 아니다" / "X 없다" /
+    # "X 않다" all negate the closest preceding noun/verb.
+    "아니", "없", "않",
+)
+
+
+def _has_negation_around(answer_lower: str, match_start: int, match_end: int) -> bool:
+    """True if any negation marker is adjacent to the match (KO/EN).
+
+    Prefix markers ("not", "못", "안", ...) are searched in the N chars
+    immediately before `match_start`. Suffix markers ("아니", "없", "않"),
+    Korean post-positional negation, are searched in the N chars
+    immediately after `match_end`. Both windows are short by design —
+    unrelated earlier/later negations should not bleed in.
+    """
+    # Before the match.
+    if match_start > 0:
+        before = answer_lower[max(0, match_start - _NEGATION_WINDOW_CHARS):match_start]
+        if any(m in before for m in _NEGATION_MARKERS_BEFORE):
+            return True
+    # After the match.
+    if match_end < len(answer_lower):
+        after = answer_lower[match_end:match_end + _NEGATION_WINDOW_CHARS]
+        if any(m in after for m in _NEGATION_MARKERS_AFTER):
+            return True
+    return False
+
+
 def _matches_signal(
     answer_lower: str,
     signal: Dict[str, Any],
 ) -> Tuple[bool, Optional[str]]:
     """Return (hit, matched_form) — whether the answer contains the
-    signal's term or any of its aliases (case-insensitive substring)."""
+    signal's term or any of its aliases (case-insensitive substring),
+    skipping matches preceded by a negation marker (§1.b)."""
+    candidates: List[str] = []
     term = signal.get("term", "")
-    if isinstance(term, str) and term and term.lower() in answer_lower:
-        return True, term
+    if isinstance(term, str) and term:
+        candidates.append(term)
     for alias in signal.get("aliases", []) or []:
-        if isinstance(alias, str) and alias and alias.lower() in answer_lower:
-            return True, alias
+        if isinstance(alias, str) and alias:
+            candidates.append(alias)
+    for form in candidates:
+        form_lower = form.lower()
+        idx = answer_lower.find(form_lower)
+        while idx >= 0:
+            end = idx + len(form_lower)
+            if not _has_negation_around(answer_lower, idx, end):
+                return True, form
+            # Skip past this negated occurrence and try the next one —
+            # later in the answer the same claim may appear positively.
+            idx = answer_lower.find(form_lower, idx + 1)
     return False, None
 
 
