@@ -16,6 +16,7 @@ Returns a small dataclass so the caller can keep the existing
 """
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
@@ -235,8 +236,12 @@ def generate_answer(
             answer = engine._generate_answer(safe_query, safe_context, system_prompt, response_style=response_style, selected_model=selected_model)
 
         # [P7] "자료 없음" 단독 응답(추론 없음)이면 system_prompt 포함 재시도
+        # α-6 S5 sector ablation — `JAMES_DISABLE_ABSTENTION=1` skips the
+        # retry-no-info pass so the LLM's first "자료에 없음" answer stands.
+        # The cell measures JAMES *without* the abstention softener.
         _no_data = ("자료에 없음. 관련된", "답변 생성에 실패", "LLM 응답 생성 중 오류")
-        if answer and any(answer.startswith(p) for p in _no_data):
+        _s5_disabled = os.environ.get("JAMES_DISABLE_ABSTENTION") == "1"
+        if not _s5_disabled and answer and any(answer.startswith(p) for p in _no_data):
             sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
             from core.response_style import resolve_style as _resolve_style
             _style_retry = _resolve_style(response_style)
