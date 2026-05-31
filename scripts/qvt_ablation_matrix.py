@@ -830,9 +830,17 @@ def _render_report(out_path: Path) -> int:
             )
         rows.append("")
 
-    _REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text("\n".join(rows), encoding="utf-8")
-    print(f"[report] wrote {out_path.relative_to(ROOT)}")
+    # Defensive — out_path may live outside ROOT when the operator passes
+    # an absolute path or runs against a JAMES_WORKSPACE that's not a
+    # subpath of the project. relative_to would raise ValueError; fall
+    # back to the absolute path so the diagnostic line still prints.
+    try:
+        rel = out_path.relative_to(ROOT)
+    except ValueError:
+        rel = out_path
+    print(f"[report] wrote {rel}")
     return 0
 
 
