@@ -321,7 +321,18 @@ def _cell_env(row: str, tier: str,
 
 
 def _run_single_bench(row: str, tier: str, run_index: int,
+                      suite: str = "step7",
                       think_override: Optional[bool] = None) -> Optional[Path]:
+    """Run one bench subprocess against the configured suite.
+
+    `suite` carries the matrix runner's --suite argument through; the
+    pre-α-5 default was hardcoded "step7" (the legacy regression suite)
+    and remained as default for back-compat.
+
+    bench JSON output detection uses the same `{suite}_*.json` glob so
+    multihop_rag (or any future suite) finds its own newly-written file
+    rather than searching an unrelated suite's output.
+    """
     server_env = _cell_env(row, tier, think_override=think_override)
 
     flagged = {k: v for k, v in _ROW_ENVS[row].items()}
@@ -332,7 +343,8 @@ def _run_single_bench(row: str, tier: str, run_index: int,
         think_tag = " think=ON (sanity)"
     print(
         f"\n=== cell {row}/{tier} run {run_index + 1}/N "
-        f"(model={_TIER_MODELS[tier]}, env={flagged}{think_tag}) ==="
+        f"(model={_TIER_MODELS[tier]}, suite={suite}, "
+        f"env={flagged}{think_tag}) ==="
     )
     server = _spawn_server(server_env)
     if server is None:
@@ -340,7 +352,8 @@ def _run_single_bench(row: str, tier: str, run_index: int,
 
     bench_output: Optional[Path] = None
     try:
-        pre_existing = set((ROOT / "reports").glob("bench_*_step7_*.json"))
+        glob_pattern = f"bench_*_{suite}_*.json"
+        pre_existing = set((ROOT / "reports").glob(glob_pattern))
         t0 = time.time()
         try:
             bench_env = {**os.environ, "JAMES_BASE_URL": SERVER_BASE_URL}
@@ -349,7 +362,7 @@ def _run_single_bench(row: str, tier: str, run_index: int,
                 bench_env["JAMES_BENCH_BEARER"] = bearer
             subprocess.run(
                 [sys.executable, str(ROOT / "scripts" / "bench.py"),
-                 "--suite=step7", "--mode=retrieval"],
+                 f"--suite={suite}", "--mode=retrieval"],
                 env=bench_env,
                 cwd=str(ROOT),
                 capture_output=False,
@@ -432,7 +445,8 @@ def _cell_output_path(row: str, tier: str,
 
 def _run_cell(row: str, tier: str, n_runs: int, fixture: Dict[str, Any],
               sha: str, resume: bool,
-              sanity_think_on: bool = False) -> Optional[Dict[str, Any]]:
+              sanity_think_on: bool = False,
+              suite: str = "step7") -> Optional[Dict[str, Any]]:
     """Run one cell. Writes per-cell JSON. Returns the payload (or
     loads-and-returns when --resume hits an existing file).
 
@@ -461,6 +475,7 @@ def _run_cell(row: str, tier: str, n_runs: int, fixture: Dict[str, Any],
     cell_label = f"{row}/{tier}{' (sanity think=ON)' if sanity_think_on else ''}"
     for i in range(n_runs):
         bench_path = _run_single_bench(row, tier, i,
+                                       suite=suite,
                                        think_override=think_override)
         if bench_path is None:
             print(f"[cell {cell_label}] run {i + 1} failed to produce "
@@ -973,7 +988,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     for row in rows:
         for tier in tiers:
             payload = _run_cell(row, tier, args.n_runs, fixture, sha,
-                                resume=args.resume)
+                                resume=args.resume, suite=args.suite)
             if payload is None:
                 n_fail += 1
             else:
@@ -989,7 +1004,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             sanity_payload = _run_cell(
                 "L1", "M_M", args.n_runs, fixture, sha,
-                resume=args.resume, sanity_think_on=True,
+                resume=args.resume, sanity_think_on=True, suite=args.suite,
             )
             if sanity_payload is None:
                 n_fail += 1
