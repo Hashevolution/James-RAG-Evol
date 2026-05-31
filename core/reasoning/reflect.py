@@ -209,6 +209,10 @@ REVISE_PROMPT_EN = (
 
 
 def _enabled() -> bool:
+    # α-6 S6 sector ablation — `JAMES_DISABLE_COGNITIVE_STAGES=1`
+    # forces all cognitive stages OFF regardless of per-stage flags.
+    if os.environ.get("JAMES_DISABLE_COGNITIVE_STAGES") == "1":
+        return False
     return os.environ.get("JAMES_ENABLE_REFLECT") == "1"
 
 
