@@ -144,6 +144,87 @@ _ROW_LABELS: Dict[str, str] = {
 }
 
 
+# α-6 sector cells (per docs/design/v0.4-alpha-6-sector-llm-ablation-matrix.md §2).
+# Each cell layers on L1 (production-default ENTITY_ANCHOR + QUERY_REWRITE)
+# but toggles the 5 sector disable-flags (PRs #657-#661) to ablate
+# infrastructure sectors. Production-byte-identical when no sector flag
+# is set; the matrix runner overlays these on top of L1's row env when
+# the operator passes --sector-cells.
+#
+# Cell taxonomy (S1 RAG / S2 Graph / S3 Preproc / S4 Cite / S5 Abst /
+# S6 Cog):
+#   C_minus      = none on  (pure LLM, no JAMES)
+#   C_rag-basic  = S1 only
+#   C_rag-cited  = S1 + S4
+#   C_rag-graph  = S1 + S2 + S3 + S4 (= "JAMES retrieval + graph + cite,
+#                                       no abstention softener, no
+#                                       cognitive stages")
+#   C_rag-full   = all on (= α-5 L1 cell — already measured)
+#   C_rag-routed = full + routing layers (= α-5 L5 cell — already measured)
+_SECTOR_CELL_ENVS: Dict[str, Dict[str, str]] = {
+    "C_minus": {
+        # Pure LLM — all 5 sector flags ON (disable everything except
+        # S3 query preprocessing, which is the row's responsibility).
+        # Also disable S3 by overriding the row env below.
+        "JAMES_DISABLE_RAG_RETRIEVAL":    "1",
+        "JAMES_DISABLE_GRAPH":            "1",
+        "JAMES_DISABLE_SOURCES_FIELD":    "1",
+        "JAMES_DISABLE_ABSTENTION":       "1",
+        "JAMES_DISABLE_COGNITIVE_STAGES": "1",
+        # S3 also off — override row ENV's ENABLE flags
+        "JAMES_ENABLE_ENTITY_ANCHOR":     "0",
+        "JAMES_ENABLE_QUERY_REWRITE":     "0",
+    },
+    "C_rag-basic": {
+        # S1 (RAG) only — everything else off.
+        "JAMES_DISABLE_GRAPH":            "1",
+        "JAMES_DISABLE_SOURCES_FIELD":    "1",
+        "JAMES_DISABLE_ABSTENTION":       "1",
+        "JAMES_DISABLE_COGNITIVE_STAGES": "1",
+        # S3 off — basic RAG means no entity anchor + no rewrite
+        "JAMES_ENABLE_ENTITY_ANCHOR":     "0",
+        "JAMES_ENABLE_QUERY_REWRITE":     "0",
+    },
+    "C_rag-cited": {
+        # S1 + S4 on; S2 / S3 / S5 / S6 off.
+        "JAMES_DISABLE_GRAPH":            "1",
+        "JAMES_DISABLE_ABSTENTION":       "1",
+        "JAMES_DISABLE_COGNITIVE_STAGES": "1",
+        "JAMES_ENABLE_ENTITY_ANCHOR":     "0",
+        "JAMES_ENABLE_QUERY_REWRITE":     "0",
+    },
+    "C_rag-graph": {
+        # S1 + S2 + S3 + S4 on; S5 + S6 off.
+        # S3 stays ON (row's defaults: ENTITY_ANCHOR=1, QUERY_REWRITE=1).
+        "JAMES_DISABLE_ABSTENTION":       "1",
+        "JAMES_DISABLE_COGNITIVE_STAGES": "1",
+    },
+    "C_rag-full": {
+        # Equivalent to α-5 L1 — all sectors on, no routing layers.
+        # No sector disable flag; row's L1 default applies.
+    },
+    "C_rag-routed": {
+        # Equivalent to α-5 L5 — all sectors on + all routing layers on.
+        # Operator should pair this with --rows L5 instead of using
+        # --sector-cells for clarity, but we list it here for the
+        # naming-convention completeness.
+        "JAMES_AUTO_ROUTER":      "1",
+        "JAMES_ADAPTIVE_BUDGET":  "1",
+        "JAMES_SCOPE_ROUTING":    "1",
+    },
+}
+
+
+_SECTOR_CELL_LABELS: Dict[str, str] = {
+    "C_minus":      "pure LLM (no JAMES)",
+    "C_rag-basic":  "+ RAG only",
+    "C_rag-cited":  "+ RAG + citation (S4)",
+    "C_rag-graph":  "+ RAG + graph + S3 preproc + citation",
+    "C_rag-full":   "JAMES full stack (= α-5 L1)",
+    "C_rag-routed": "JAMES + routing layers (= α-5 L5)",
+}
+
+
 # Model tier → Ollama tag (memo §2.2)
 _TIER_MODELS: Dict[str, str] = {
     "M_S": "gemma3:4b",
@@ -298,15 +379,23 @@ def _mint_employee_jwt() -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 def _cell_env(row: str, tier: str,
-              think_override: Optional[bool] = None) -> Dict[str, str]:
+              think_override: Optional[bool] = None,
+              sector_cell: Optional[str] = None) -> Dict[str, str]:
     """Compose the full env for one cell: OS env + fixed + row + tier +
-    optional `JAMES_GEMMA4_E4B_THINK_OFF` override (Step 9 sanity cell).
+    optional `JAMES_GEMMA4_E4B_THINK_OFF` override + optional α-6 sector
+    cell overlay.
 
     `think_override` semantics:
       None         — inherit from process env (workspace .env's setting).
       True         — force `JAMES_GEMMA4_E4B_THINK_OFF=1` (matrix primary).
       False        — force the variable unset (sanity cell — restores
                      production default = thinking ON).
+
+    `sector_cell` (α-6) — when set to one of `_SECTOR_CELL_ENVS` keys,
+    the cell's sector-flag dict overlays the row's flags. This lets
+    α-6 cells like `C_minus` (everything off) reuse the L1 row's
+    base env while toggling the 5 sector disable-flags
+    (JAMES_DISABLE_* per PRs #657-#661).
     """
     env = os.environ.copy()
     env.update(_FIXED_ENV)
@@ -317,32 +406,49 @@ def _cell_env(row: str, tier: str,
     elif think_override is False:
         # Force unset — sanity cell reverts to production default.
         env.pop("JAMES_GEMMA4_E4B_THINK_OFF", None)
+    if sector_cell is not None:
+        if sector_cell not in _SECTOR_CELL_ENVS:
+            raise ValueError(
+                f"unknown sector cell {sector_cell!r}; "
+                f"choose from {sorted(_SECTOR_CELL_ENVS.keys())}"
+            )
+        env.update(_SECTOR_CELL_ENVS[sector_cell])
     return env
 
 
 def _run_single_bench(row: str, tier: str, run_index: int,
                       suite: str = "step7",
-                      think_override: Optional[bool] = None) -> Optional[Path]:
+                      think_override: Optional[bool] = None,
+                      sector_cell: Optional[str] = None) -> Optional[Path]:
     """Run one bench subprocess against the configured suite.
 
     `suite` carries the matrix runner's --suite argument through; the
     pre-α-5 default was hardcoded "step7" (the legacy regression suite)
     and remained as default for back-compat.
 
+    `sector_cell` (α-6) — when set, the row's flag dict is overlaid
+    with the sector cell's `_SECTOR_CELL_ENVS[sector_cell]` so the
+    matrix can run α-6 cells (C_minus / C_rag-basic / C_rag-cited /
+    C_rag-graph etc.) on top of an L1 row.
+
     bench JSON output detection uses the same `{suite}_*.json` glob so
     multihop_rag (or any future suite) finds its own newly-written file
     rather than searching an unrelated suite's output.
     """
-    server_env = _cell_env(row, tier, think_override=think_override)
+    server_env = _cell_env(row, tier, think_override=think_override,
+                           sector_cell=sector_cell)
 
     flagged = {k: v for k, v in _ROW_ENVS[row].items()}
+    if sector_cell is not None:
+        flagged.update(_SECTOR_CELL_ENVS[sector_cell])
     think_tag = ""
     if think_override is True:
         think_tag = " think=OFF (primary)"
     elif think_override is False:
         think_tag = " think=ON (sanity)"
+    cell_id = f"{sector_cell}/{tier}" if sector_cell else f"{row}/{tier}"
     print(
-        f"\n=== cell {row}/{tier} run {run_index + 1}/N "
+        f"\n=== cell {cell_id} run {run_index + 1}/N "
         f"(model={_TIER_MODELS[tier]}, suite={suite}, "
         f"env={flagged}{think_tag}) ==="
     )
@@ -438,15 +544,19 @@ def _current_git_sha() -> Optional[str]:
 
 
 def _cell_output_path(row: str, tier: str,
-                      sanity_think_on: bool = False) -> Path:
+                      sanity_think_on: bool = False,
+                      sector_cell: Optional[str] = None) -> Path:
     suffix = "-thinkON" if sanity_think_on else ""
+    if sector_cell:
+        return _resolve_output_dir() / f"qvt-ablation-cell-{sector_cell}-{tier}{suffix}.json"
     return _resolve_output_dir() / f"qvt-ablation-cell-{row}-{tier}{suffix}.json"
 
 
 def _run_cell(row: str, tier: str, n_runs: int, fixture: Dict[str, Any],
               sha: str, resume: bool,
               sanity_think_on: bool = False,
-              suite: str = "step7") -> Optional[Dict[str, Any]]:
+              suite: str = "step7",
+              sector_cell: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """Run one cell. Writes per-cell JSON. Returns the payload (or
     loads-and-returns when --resume hits an existing file).
 
@@ -454,10 +564,18 @@ def _run_cell(row: str, tier: str, n_runs: int, fixture: Dict[str, Any],
     (matrix sanity supplement — production default). Output JSON gets
     `-thinkON` suffix so the standard L1/M_M cell and the sanity cell
     coexist on disk.
+
+    `sector_cell` (α-6) — when set, the cell's row env is overlaid
+    with the sector cell's flag dict (`_SECTOR_CELL_ENVS[sector_cell]`).
+    The output filename uses the sector cell name instead of the row
+    name (e.g. `qvt-ablation-cell-C_minus-M_M.json`).
     """
-    out = _cell_output_path(row, tier, sanity_think_on=sanity_think_on)
+    out = _cell_output_path(row, tier, sanity_think_on=sanity_think_on,
+                            sector_cell=sector_cell)
     if resume and out.exists():
-        cell_tag = f"{row}/{tier}{' (sanity think=ON)' if sanity_think_on else ''}"
+        cell_tag = (f"{sector_cell}/{tier}" if sector_cell
+                    else f"{row}/{tier}")
+        cell_tag += " (sanity think=ON)" if sanity_think_on else ""
         print(f"[cell {cell_tag}] --resume: skipping, "
               f"{out.relative_to(ROOT)} exists")
         return json.loads(out.read_text(encoding="utf-8"))
@@ -472,11 +590,14 @@ def _run_cell(row: str, tier: str, n_runs: int, fixture: Dict[str, Any],
     # simply skip the per-type aggregation.
     runs_by_type: List[Dict[str, FiveAxisResult]] = []
     run_paths: List[str] = []
-    cell_label = f"{row}/{tier}{' (sanity think=ON)' if sanity_think_on else ''}"
+    cell_label = (f"{sector_cell}/{tier}" if sector_cell
+                  else f"{row}/{tier}")
+    cell_label += " (sanity think=ON)" if sanity_think_on else ""
     for i in range(n_runs):
         bench_path = _run_single_bench(row, tier, i,
                                        suite=suite,
-                                       think_override=think_override)
+                                       think_override=think_override,
+                                       sector_cell=sector_cell)
         if bench_path is None:
             print(f"[cell {cell_label}] run {i + 1} failed to produce "
                   f"bench output — aborting cell")
@@ -502,19 +623,32 @@ def _run_cell(row: str, tier: str, n_runs: int, fixture: Dict[str, Any],
             if sub_runs:
                 aggregate_by_type[qt] = _aggregate_runs(sub_runs)
 
+    # Compose the effective env block — row flags + sector overlay
+    # (α-6). The cell JSON records what *actually* ran, not just the
+    # row defaults.
+    effective_env: Dict[str, str] = dict(_ROW_ENVS[row])
+    if sector_cell:
+        effective_env.update(_SECTOR_CELL_ENVS[sector_cell])
+
     payload = {
-        "schema": "qvt-ablation-cell-v2",  # v2 adds aggregate_by_question_type
+        # v3 adds optional sector_cell + sector_cell_label fields. Cells
+        # without --sector-cells stay schema-v2 compatible.
+        "schema": "qvt-ablation-cell-v3" if sector_cell else "qvt-ablation-cell-v2",
         "captured_at": datetime.now(timezone.utc).isoformat(),
         "git_sha": sha,
         "row": row,
         "row_label": _ROW_LABELS[row],
         "tier": tier,
         "model": _TIER_MODELS[tier],
-        "env": _ROW_ENVS[row],
+        "env": effective_env,
         "fixed_env": _FIXED_ENV,
         # Step 9 — sanity cell flag travels in the JSON so the report
         # writer can distinguish it from the primary L1/M_M (think=OFF).
         "sanity_think_on": bool(sanity_think_on),
+        # α-6 — sector_cell metadata (None when classic row-based cell)
+        "sector_cell": sector_cell,
+        "sector_cell_label": (_SECTOR_CELL_LABELS.get(sector_cell)
+                              if sector_cell else None),
         "fixture_version": fixture.get("version"),
         "n_runs": n_runs,
         "aggregate": aggregate,
@@ -926,6 +1060,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Suite name. Use 'multihop_rag' for the α-5 external "
              "benchmark (workspace-resolved fixture).",
     )
+    parser.add_argument(
+        "--sector-cells", type=str, default=None,
+        help="α-6 sector ablation cells (comma-separated). Available: "
+             f"{','.join(sorted(_SECTOR_CELL_ENVS.keys()))}. Each cell "
+             "overlays its sector-flag dict on top of L1's row env. "
+             "Mutually exclusive with --rows.",
+    )
     args = parser.parse_args(argv)
 
     if args.render_report:
@@ -936,9 +1077,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     # T0 smoke gate (α-5 prereq §3) takes precedence over --rows/--tiers
     # so an operator can fire the gate run with one flag.
     if args.t0_smoke:
-        if args.rows or args.tiers:
+        if args.rows or args.tiers or args.sector_cells:
             print("[error] --t0-smoke implies --tiers M_M --rows L1,L5; "
-                  "remove --rows/--tiers or drop --t0-smoke")
+                  "remove --rows/--tiers/--sector-cells or drop --t0-smoke")
             return 7
         args.rows = "L1,L5"
         args.tiers = "M_M"
@@ -946,19 +1087,38 @@ def main(argv: Optional[List[str]] = None) -> int:
               "M_M × {L1, L5} (~2.2 h). Verdict rule: if |graded_answer "
               "Δ| < 0.05 → matrix null at production tier → STOP.")
 
+    # α-6 — --sector-cells is mutually exclusive with --rows. When
+    # passed, the runner iterates over (sector_cell, tier) pairs;
+    # the row used as base is always L1 (production).
+    sector_cells: List[Optional[str]] = []
+    if args.sector_cells:
+        if args.rows:
+            print("[error] --sector-cells is mutually exclusive with --rows")
+            return 7
+        sector_cells = _parse_subset(
+            args.sector_cells, list(_SECTOR_CELL_ENVS.keys()), "sector-cells")
+        # In sector mode the row is fixed to L1 (production-default
+        # ENTITY_ANCHOR + QUERY_REWRITE; sector overlay further toggles).
+        args.rows = "L1"
+
     rows = _parse_subset(args.rows, list(_ROW_ENVS.keys()), "rows")
     tiers = _parse_subset(args.tiers, list(_TIER_MODELS.keys()), "tiers")
     sha = _current_git_sha() or "unknown"
     fixture_path = _resolve_fixture(args.suite)
     out_dir = _resolve_output_dir()
 
-    n_cells = len(rows) * len(tiers) + (1 if args.sanity_think_on else 0)
+    # Cell count includes sector cells (α-6) when in sector mode.
+    n_grid_cells = (len(sector_cells) if sector_cells else len(rows)) * len(tiers)
+    n_cells = n_grid_cells + (1 if args.sanity_think_on else 0)
     print("=== QVT α-5 ablation matrix ===")
     print(f"git_sha:    {sha}")
     print(f"suite:      {args.suite}")
     print(f"fixture:    {fixture_path}")
     print(f"output:     {out_dir}")
-    print(f"rows:       {rows}")
+    if sector_cells:
+        print(f"sector_cells: {sector_cells} (base row: L1)")
+    else:
+        print(f"rows:       {rows}")
     print(f"tiers:      {tiers}  → {[_TIER_MODELS[t] for t in tiers]}")
     print(f"n_runs:     {args.n_runs}")
     print(f"resume:     {args.resume}")
@@ -968,10 +1128,16 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if args.dry_run:
         print("\n[dry-run] cells planned:")
-        for row in rows:
-            for tier in tiers:
-                print(f"  {row}/{tier} model={_TIER_MODELS[tier]} "
-                      f"env={_ROW_ENVS[row]}")
+        if sector_cells:
+            for sc in sector_cells:
+                for tier in tiers:
+                    print(f"  {sc}/{tier} model={_TIER_MODELS[tier]} "
+                          f"(L1 base + sector overlay)")
+        else:
+            for row in rows:
+                for tier in tiers:
+                    print(f"  {row}/{tier} model={_TIER_MODELS[tier]} "
+                          f"env={_ROW_ENVS[row]}")
         if args.sanity_think_on:
             print(f"  L1/M_M sanity (think=ON, suffix '-thinkON') "
                   f"model={_TIER_MODELS['M_M']}")
@@ -985,14 +1151,25 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     n_ok = 0
     n_fail = 0
-    for row in rows:
-        for tier in tiers:
-            payload = _run_cell(row, tier, args.n_runs, fixture, sha,
-                                resume=args.resume, suite=args.suite)
-            if payload is None:
-                n_fail += 1
-            else:
-                n_ok += 1
+    if sector_cells:
+        for sc in sector_cells:
+            for tier in tiers:
+                payload = _run_cell("L1", tier, args.n_runs, fixture, sha,
+                                    resume=args.resume, suite=args.suite,
+                                    sector_cell=sc)
+                if payload is None:
+                    n_fail += 1
+                else:
+                    n_ok += 1
+    else:
+        for row in rows:
+            for tier in tiers:
+                payload = _run_cell(row, tier, args.n_runs, fixture, sha,
+                                    resume=args.resume, suite=args.suite)
+                if payload is None:
+                    n_fail += 1
+                else:
+                    n_ok += 1
 
     # Step 9 sanity cell — run after the standard grid so its think=ON
     # measurement uses the same fixture + same runner state.
