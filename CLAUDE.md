@@ -33,22 +33,38 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 2. **Every PR touching `core/retrieval`, `core/graph`, or
    `core/reasoning` must paste bench numbers + a Quality Delta
    Card** in the description (Axis 2 of v0.2 ROADMAP, extended by
-   QVT α-4 2026-05-28). PRs without numbers will not land.
+   QVT α-4 2026-05-28, α-5 cycle 2026-05-31). PRs without
+   numbers will not land.
    - **Bench numbers**: STEP 7 result deltas (`scripts/bench.py
      --suite=step7 --mode=retrieval`) — latency, graph_paths,
      answer_len.
-   - **Quality Delta Card**: 3-axis paired comparison against
-     `eval/qvt/baseline_<sha>.json` (Path Recall / Graded Answer /
-     Abstention F1). Template lives in `.github/PULL_REQUEST_TEMPLATE.md`.
+   - **Quality Delta Card**: 3-axis (or, after α-5 lands, 5-axis)
+     paired comparison against `eval/qvt/baseline_<sha>.json`
+     (Path Recall / Graded Answer / Abstention F1 / + Token Cost /
+     Latency Cost). Template lives in
+     `.github/PULL_REQUEST_TEMPLATE.md`. The α-5 Pareto verdict
+     rule (`scripts/qvt_ablation_matrix.py::_classify_five_axis_delta`)
+     applies once the 5-axis baseline is the canonical reference.
    - **Exemption labels** (skip the Quality Delta Card with one line
      `Quality delta: exempt (label: <name>)`): `external-contributor`
      (Robin / Ali / other collaborator PR), `joint-collab-prep`
      (mid-June joint piece / shared deliverable), `docs` / `chore` /
      `ci` (not touching `core/`), `code` (circular — the PR is the
-     oracle / baseline itself). Rationale: the gate is for measuring
+     oracle / baseline itself), **`fix` (oracle/fixture/bench
+     correction PR — the very thing being corrected is what would be
+     measured against)**. Rationale: the gate is for measuring
      JAMES-internal marginal contribution, not a collaboration
-     friction tool. See `docs/design/v0.4-qvt-alpha-non-saturating-oracle.md`
-     §4 for the full exemption rule.
+     friction tool, and not a measurement-side hygiene PR. See
+     `docs/design/v0.4-qvt-alpha-non-saturating-oracle.md` §4 for the
+     full exemption rule.
+   - **`fix` label discipline** (α-5 cycle lesson): when the PR
+     corrects a measurement-side artifact in oracle / fixture / bench
+     (e.g. bucket-(d) findings per `feedback_oracle_phrase_artifacts`),
+     state the exemption explicitly in the description. The α-5 cycle
+     saw 5 fix PRs (#618 #619 #622 #623 #625) where the Quality Delta
+     Card would either circular-reference the broken oracle or
+     measure noise. Explicit `Quality delta: exempt (label: fix)`
+     keeps the review readable without paste-noise.
 
 3. **Self-evolution is opt-in only**. Any change that allows
    auto-deploy without an `approver_username` in the audit log
