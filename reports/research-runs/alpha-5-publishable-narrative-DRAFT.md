@@ -212,6 +212,69 @@ fix**.
 
 ---
 
+## Section 5.5 — The fourth case, caught mid-write
+
+[Added 2026-05-31 PM during T0 smoke completion.]
+
+The cycle made four wrong-fix-averted corrections, not three. The
+fourth landed as PR #638 when the first T0 cell JSON wrote at 12:07
+and the 4-step rule was applied to it as routine hygiene (per
+discipline 7.3 below).
+
+The cell aggregate reported `path_coverage=0.000`, `abstention_f1=0.000`,
+and `graded_answer=0.028` on a 100-query MultiHop-RAG cell. Three
+saturated quality axes on a JAMES baseline that already showed
+graded ≈ 0.33 + path ≈ 0.40 on the corrected baseline JSON. The
+saturation was too clean.
+
+Step 1: axis values triggered the rule. Step 2: read the cell JSON's
+`runs[0].bench_output` field — it pointed at
+`bench_nogit_step7_20260507_194228.json`, a 24-day-old step7 file
+from a completely different fixture. Step 3: trace the matrix runner.
+The bench subprocess was correctly running `--suite=multihop_rag` (the
+#625 fix from earlier in the cycle), writing a fresh 100-query bench
+to `bench_87ed176_multihop_rag_20260531_120746.json`. But the runner's
+post-bench detection glob (`bench_*_step7_*.json`, line 380) still
+scanned the legacy suite and never saw the fresh file. `new[-1]`
+returned the lexicographically last stale step7 file. Step 4:
+reconcile design vs matcher — the matrix is producing the right
+measurement, but the score-collection wiring sees the wrong file.
+
+Bucket-(a) architecture. Sibling oversight to #625: that PR fixed the
+subprocess CALL but didn't audit the glob used to detect the
+subprocess's OUTPUT. The plumbing was 95% the way through; this was
+the final 5%.
+
+Real numbers after `scripts/qvt_rescore_ablation_cell.py` swapped in
+the actual bench file:
+
+| Axis              | Stale step7 (0/0/0.028) | Real multihop_rag |
+|-------------------|-------------------------|-------------------|
+| path_coverage     | 0.000                   | **0.419**         |
+| graded_answer     | 0.028                   | **0.327**         |
+| abstention_f1     | 0.000                   | **0.591**         |
+
+Same cell, same matrix run, same JAMES code — completely different
+verdict. If the operator had taken the saturated read as truth, the
+entire matrix would have been re-interpreted as "JAMES baseline is
+already 0; layer-on cells can't help what's dead." A multi-hour
+debug spiral was averted by ~5 minutes of 4-step-rule application
+to the first cell JSON the matrix wrote.
+
+The wider lesson: **the 4-step rule is bucket-(a) applicable too**.
+The original `feedback_oracle_phrase_artifacts` memory framed the
+rule as primarily a bucket-(d) "matcher coverage" tool. Case 4
+shows the same procedure catches bucket-(a) plumbing bugs
+identically — saturated axis → read samples → check the wiring
+layer → reconcile design vs matcher. The rule generalises from
+"oracle phrase coverage" to "any measurement-side wiring."
+
+This is the second wrong-fix averted by the same discipline within
+the same cycle. The cycle's contribution is the rule's
+*generalisation* across both buckets, not just the per-case fixes.
+
+---
+
 ## Section 6 — The cycle as evidence
 
 [FILL: this is the section that depends on the actual α-5 matrix

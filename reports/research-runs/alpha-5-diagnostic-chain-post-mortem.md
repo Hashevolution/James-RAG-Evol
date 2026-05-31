@@ -162,6 +162,94 @@ verdict would have been the published result. The cleanup wasn't
 file, which surfaced the filename. **Routine hygiene > careful
 review** as a bug-catcher.
 
+### Correction 4 — matrix runner bench-output glob still hardcoded step7 (PR #638)
+
+**Symptom**: T0 smoke cell L1/M_M completed cleanly at 12:07; cell
+JSON written immediately after; 4-step rule applied as a routine
+check on the first cell aggregate. All three quality axes saturated:
+path_coverage = 0.0, abstention_f1 = 0.0, graded_answer = 0.0278
+(one stale row matched the generic "Based" keyword). Cost axes
+plausible-but-low (token=2212, latency=42.68 s) — a mismatch with
+the actual 65 s mean visible in the trace files.
+
+  `bench_output: bench_nogit_step7_20260507_194228.json`
+
+`bench_nogit_step7_*` is the smoking gun *again*. The cell JSON
+recorded a step7 file from **2026-05-07** (24 days before the run)
+even though the matrix subprocess was correctly invoking
+`--suite=multihop_rag` and writing
+`bench_87ed176_multihop_rag_20260531_120746.json` (the fresh
+100-query bench, 6598 s of compute).
+
+**Diagnosis** (4-step rule, applied step by step):
+
+1. axis values — three quality axes at 0/saturated; cost axes
+   "almost normal." Suspicious enough to inspect.
+2. Read the cell `runs[0].bench_output` — `bench_nogit_step7_*` from
+   May 7th, n_queries=12. The actual matrix run was a 100-query
+   multihop_rag suite. Smoking gun.
+3. Check what `_run_single_bench` does post-bench. Line 380:
+   `after = set((ROOT / "reports").glob("bench_*_step7_*.json"))`.
+   Hardcoded step7 glob. The pre-existing set on line 355 uses
+   `bench_*_{suite}_*.json` (correct), so `after - pre_existing`
+   only contained stale step7 files that happened to land between
+   line 356 and line 380 — none of which were the fresh multihop
+   bench. `new[-1]` then picked the lexicographically last,
+   `bench_nogit_*` from May 7.
+4. Reconcile design vs matcher: the matrix DOES write the right
+   bench file; the runner's score collection just CAN'T SEE IT,
+   so it picks an unrelated stale step7 file as the "newly emitted"
+   bench output and scores 12 unrelated queries as the cell result.
+
+**Bucket**: (a) architecture. Sibling oversight to #625: that PR
+fixed the subprocess CALL but didn't audit the glob used to detect
+the subprocess's OUTPUT. The plumbing was 95% the way through;
+this was the final 5%.
+
+**Wrong first interpretation** (averted, again): the cell shows
+"JAMES L1 baseline gets 0/0/0.028 on 5-axis." Without the 4-step
+rule applied to the cell JSON, the operator would have concluded
+the baseline cell already shows JAMES can't do MultiHop-RAG at all,
+and the remaining 18 cells would be re-interpreted as "tier-and-
+layer choices don't matter because the baseline is dead." A
+multi-hour debug spiral was avoided.
+
+**The real numbers** (after `scripts/qvt_rescore_ablation_cell.py`
+ran on the same cell JSON against the *actual* bench file):
+
+| Axis              | Stale step7 (0/0/0.028) | Real multihop_rag |
+|-------------------|-------------------------|-------------------|
+| path_coverage     | 0.000                   | **0.419**         |
+| graded_answer     | 0.028                   | **0.327**         |
+| abstention_f1     | 0.000                   | **0.591**         |
+| token_cost        | 2212 chars              | 1224 chars        |
+| latency_cost      | 42.68 s                 | 65.99 s           |
+
+Same matrix run, same JAMES code, same cell — completely different
+verdict. The numbers above are L1/M_M baseline; the layer-on cells
+ought to *improve* on them, not collapse from 0/0/0.028.
+
+**Caught by**: the same 4-step rule the cycle's prior memory entry
+codified, applied as part of the planned "look at the first cell
+JSON when it lands" hygiene check (i.e. the cycle's own learning
+from Correction 3). This is the second wrong-fix averted by the
+same discipline within the same cycle.
+
+**Companion tool**: `scripts/qvt_rescore_ablation_cell.py` —
+auto-resolves the correct bench file by mtime proximity to the cell
+file, rewrites `runs[*].scores` + `aggregate`, writes a side-copy
+`.before-rescore.json` for the diagnostic trail. The currently-
+running T0 matrix is NOT killed — it continues to produce correct
+bench JSONs while the cell aggregates are scored wrong, and post-
+hoc rescore at matrix end is cheap (~seconds per cell).
+
+**4-step rule is bucket-(a)-applicable too**. The original memory
+entry framed the rule as primarily a bucket-(d) "matcher coverage"
+tool. Correction 4 shows the same procedure catches bucket-(a)
+plumbing bugs identically — saturated axis → read samples → check
+the wiring layer → reconcile design vs matcher. Update the rule
+text accordingly.
+
 ---
 
 ## What stays in the head after this
