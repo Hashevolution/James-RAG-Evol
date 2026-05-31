@@ -50,6 +50,24 @@ The intervening 5 PRs all sat on the *measurement* side — the bench
 adapter, the oracle's phrase list, the matrix runner. The system did
 what it was designed to do all along. The harness was lying.
 
+The pattern repeated. When the ablation matrix's first cell finished
+five hours later, the cell aggregate read 0.000 / 0.028 / 0.000 again.
+Same three saturated axes, same first-read panic. The fifth fix (a
+sibling oversight in the matrix's score-collection glob) recovered
+the cell's real numbers — 0.419 / 0.327 / 0.591 — which were the
+expected mid-range readings for the L1 production baseline tier.
+
+| Read              | Cell L1/M_M (before) | Cell L1/M_M (after #638) |
+|-------------------|----------------------|--------------------------|
+| `path_coverage`   | 0.000                | **0.419**                |
+| `graded_answer`   | 0.028                | **0.327**                |
+| `abstention_f1`   | 0.000                | **0.591**                |
+
+The discipline isn't just for the opening baseline. Every measurement
+the harness produces has to clear the same checks, every time. The
+α-5 cycle is the story of treating that as a habit, not a one-off
+debugging episode.
+
 ---
 
 ## Section 2 — Why this happens to everyone
@@ -164,11 +182,17 @@ The α-5 cycle's bug taxonomy by PR:
 | #619 | abstention F1 = 0.316 | (d) | add 7 narrow English refusal phrases | (a) "rewrite grounding pipeline" — model was already refusing |
 | #623 | abstention F1 = 0.627 | (d) | add 3 more narrow phrases | (b) "swap to a model with better grounding" — model was fine |
 | #625 | matrix verdict near-zero | (a) | un-hardcode `--suite=step7` in cell runner | (b) "small model can't do routing" — actually wrong fixture |
+| #638 | cell L1/M_M 0/0/0.028 | (a) | un-hardcode glob `bench_*_step7_*.json` in score collection | (a) "baseline is dead, layer-on cells can't help" |
 | later | [FILL: actual α-5 routing verdict] | (a)/(b)/(c)/(d) | [FILL] | [FILL] |
 
-The single (a) bug (#625) was caught by routine cleanup, not testing.
-The four (d) bugs were caught by reading sample answers and tracing
+The two (a) bugs (#625 and #638) were both caught by routine inspection,
+not testing — and both were sibling oversights of the same `step7`
+constant left over from before the multihop_rag suite was added. The
+three (d) bugs were caught by reading sample answers and tracing
 field names. **Zero of the bugs were caught by aggregate inspection.**
+Aggregate values were what triggered the suspicion (the saturated 0
+or saturated near-1) but the diagnosis happened by walking the data
+backwards from the suspicious number to its source.
 
 ---
 
