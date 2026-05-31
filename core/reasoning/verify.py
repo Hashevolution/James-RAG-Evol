@@ -97,6 +97,10 @@ def _enabled() -> bool:
     Fact-checking (LLM-driven, +5-15s/query) remains opt-in — see
     :func:`_fact_check_enabled`.
     """
+    # α-6 S6 sector ablation — `JAMES_DISABLE_COGNITIVE_STAGES=1`
+    # forces all cognitive stages OFF regardless of per-stage flags.
+    if os.environ.get("JAMES_DISABLE_COGNITIVE_STAGES") == "1":
+        return False
     return os.environ.get("JAMES_DISABLE_VERIFY") != "1"
 
 
