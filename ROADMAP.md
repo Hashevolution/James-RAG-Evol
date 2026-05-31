@@ -737,7 +737,7 @@ Reference architecture: `docs/architecture/memory-lifecycle-architecture.md`.
 
 ---
 
-## v0.4.x — α-5 Ablation Matrix Cycle (2026-05-30~31, **in flight**)
+## v0.4.x — α-5 Ablation Matrix Cycle (2026-05-30~31, **T0 closed 2026-05-31 15:52 KST**)
 
 **Theme**: the v0.4-end ablation matrix that v0.4.1's "out of scope" line
 deferred — re-shaped end-to-end during execution. The single bullet
@@ -842,18 +842,70 @@ narrative + 1 finding-promotion script. Locked deferred-bucket-(c)
 follow-up + locked the methodology lesson in a publishable form
 before the cycle closes.
 
-### Cycle deliverables (gated on T0 smoke completing)
+### Cycle deliverables — T0 closure 2026-05-31 15:52 KST
 
-- [ ] 5-axis × per-question-type cross-tab report at
-      `reports/promo-assets/v0.4-qvt-ablation-matrix-<ts>.md` with
-      auto-generated routing-policy recommendations per query type.
-- [ ] Findings log at `reports/research-runs/qvt-ablation-findings.md`
-      with each entry tagged `bucket: (a)/(b)/(c)/(d)`.
-- [ ] ROADMAP §v0.4-end summary PR after matrix completes (this
-      section gets locked + the matrix report linked).
-- [ ] Routing-flag default-flip PRs per layer with non-`zero` verdict
-      (separate one per layer; CLAUDE.md rule 2 Quality Delta Card
-      cites the specific cell as evidence).
+- [x] **5-axis matrix report** at
+      `reports/promo-assets/v0.4-qvt-ablation-matrix-20260531T065209.md`.
+      Both L1/M_M (baseline) and L5/M_M (full stack) classified
+      **reject** vs corrected baseline; sanity cell L1/M_M-thinkON
+      also reject.
+- [x] **T0 analysis** at
+      `reports/research-runs/qvt-ablation-T0-smoke-result-20260531-1552.md`.
+- [x] **Rescore audit** at
+      `reports/research-runs/qvt-ablation-rescore-summary.md` —
+      3/3 cells QQ-bugged at write time, all rescored in one pass.
+- [x] **Findings log** at
+      `reports/research-runs/qvt-ablation-findings.md` — all entries
+      `bucket:`-tagged (a/d).
+- [x] **ROADMAP / backlog sync** — this section locked, status
+      moved from "in flight" to "T0 closed". A1 in backlog §2
+      marked closed.
+- [ ] Routing-flag default-flip PRs per layer — **not applicable**
+      at production tier (Branch B verdict). Tier-gated assessment
+      requires T1 (M_S + M_L) which is post-T0 operator decision.
+- [ ] T1 / T2 operator decision — see §"T0 verdict + post-closure"
+      below.
+
+### T0 verdict + post-closure (2026-05-31)
+
+| Read | Number | Compared to |
+|---|---|---|
+| L1/M_M baseline (production) | path **0.419** / graded **0.327** / abst_f1 **0.591** | corrected baseline `3a961a3_rescored` (path 0.404 / graded 0.343 / abst_f1 0.609) |
+| L5/M_M full stack (all routing ON) | path 0.412 / graded 0.317 / **abst_f1 0.500** | abst_f1 -0.091 vs L1 — real regression |
+| Sanity L1/M_M think=ON | path 0.404 / graded 0.370 / abst_f1 0.533 / token -109 chars / latency -1.7 s | think=ON not unambiguously winning; A2 default-flip gate (real-query QDC) unchanged |
+
+**Verdict**: routing-layer stack (`AUTO_ROUTER` + `ADAPTIVE_BUDGET`
++ `SCOPE_ROUTING`) all-ON at the M_M production tier provides **no
+positive net Δ** on any quality axis and a **real -0.091 abstention
+F1 regression**. Both cells classify **reject** under the
+5-axis Pareto rule. **Branch B** of the publishable narrative §6
+applies. Opt-in flags remain available; no default-flip PRs file at
+this verdict. Tier-gating (M_S small-model upside) is the next
+question and requires T1.
+
+**Cycle totals**: 36 PRs (#608 → #645+), 5 measurement-side fixes
+(3 bucket-d + 2 bucket-a), 4 wrong-fix-averted, **0 lines of JAMES
+code changed against α-5 measurement debt**. The publishable claim
+(see §6.1 of `reports/research-runs/alpha-5-publishable-narrative-DRAFT.md`)
+is the cycle's load-bearing artifact.
+
+### Operator decision — T1 / T2 sizing
+
+T1 (M_M + more rows) and T2 (M_S + M_L) are operator-budget calls.
+Recommended:
+
+- **T1** (~5.5 h on M_M) — measures whether individual layers (L2/L3/L4)
+  show effects that all-on L5 smears together. Could surface
+  ADAPTIVE_BUDGET (L3) wins inference-query graded while AUTO_ROUTER
+  (L2) hurts abstention.
+- **T2** (~13 h on M_S + M_L) — tests the **tier-gated routing**
+  hypothesis: smaller models might benefit MORE from routing
+  (compensating for base-capability gap); larger models might benefit
+  LESS. T2 closes the cycle's "model is universally tested" caveat.
+
+Both deferable. **T0 closure is itself shippable** as
+"production-tier evidence: routing layers inert" + Branch B
+publication. T1/T2 fold into an α-5.1 or α-6 cycle.
 
 ### Open methodology questions for the next cycle
 
