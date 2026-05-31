@@ -301,30 +301,93 @@ the same cycle. The cycle's contribution is the rule's
 
 ## Section 6 — The cycle as evidence
 
-[FILL: this is the section that depends on the actual α-5 matrix
-verdict. Pattern:
+### 6.1 The publishable baseline (independent of the routing verdict)
 
-If the matrix shows routing layers help —
+Even before any routing flag is turned on, the cycle establishes a
+**publishable baseline** for what JAMES does on MultiHop-RAG
+(Tang & Yang, EMNLP 2024) at the production tier (`gemma4:e4b`,
+think=OFF per A2 #609, balanced-100 subset, 25 queries per
+question-type stratum). After the 5 measurement-side PRs land:
+
+| Axis              | Corrected baseline | Stale-oracle first read |
+|-------------------|--------------------|--------------------------|
+| Path coverage     | **0.404**          | 0.000                    |
+| Graded answer     | **0.343**          | 0.333                    |
+| Abstention F1     | **0.704**          | 0.316                    |
+| Token cost (mean) | 1150 chars         | (unchanged — cost-axis was healthy) |
+| Latency cost (mean) | 64 s             | (unchanged)              |
+
+**The publishable claim** (one paragraph for a blog / arXiv abstract /
+`eval/RESULTS.md` entry):
+
+> JAMES (production env, gemma4:e4b 4B, think=OFF, BAAI/bge-m3
+> embedding) measured on MultiHop-RAG balanced-100 cites the right
+> source document for 40% of multi-hop queries, includes ~1/3 of the
+> atomic gold claims in its answer (graded recall 0.343), and
+> correctly refuses to answer 76% of null-truth queries while keeping
+> false abstention on truth-present queries below 10% (abstention F1
+> 0.704). Mean answer latency is 64 s, mean answer length 1.15 k
+> characters. The same measurement run against the *first* version
+> of the oracle reported 0.000 / 0.333 / 0.316 — the discrepancy was
+> entirely measurement-side and is documented in 5 PRs under the
+> bucket-(d) / bucket-(a) "wrong-bucket follow-up averted" framing.
+
+This claim is **already complete** before T0 closes. It's the answer
+to "what does JAMES do on a published external benchmark?" — user
+requirement #4 ("external credibility") and the
+`eval/RESULTS.md` entry that v0.3 had to defer because no external
+benchmark existed yet.
+
+### 6.2 The routing-layer verdict (T0 / T1 / T2 conditional)
+
+Layered on top of the baseline, the matrix asks: *does turning on
+`AUTO_ROUTER`, `ADAPTIVE_BUDGET`, or `SCOPE_ROUTING` move any axis
+past the noise band, and at what cost?* The verdict lands in three
+forms:
+
+[FILL after T0 closes — pick one of the three branches:]
+
+**Branch A** — Routing layers help on at least one (axis × tier ×
+question-type) combination at the cycle's noise threshold:
 
 > "After the 5 measurement-side PRs landed, the corrected matrix
 > showed [routing layer X] moves the [axis] by [Δ] on [tier]. That
 > verdict is the routing-policy evidence the cycle was designed to
 > produce. It survives publication review because the measurement-
-> side artifacts are out of the way."
+> side artifacts are out of the way. Default-flip PRs follow per
+> layer in the next sub-cycle."
 
-If the matrix shows routing layers null —
+**Branch B** — Routing layers do not move any axis past noise at the
+production tier:
 
 > "After the 5 measurement-side PRs landed, the corrected matrix
-> showed [no routing layer moves any axis past noise] / [some axes
-> move but cost regresses]. That's bucket-(d) on the routing-layer
-> ROI question — measurement artifacts are out, the layers are
-> genuinely inert at production tier. The deprecation track follows
-> from honest measurement."
+> showed no routing layer moves any axis past noise at the production
+> tier. That's bucket-(d) on the routing-layer ROI question —
+> measurement artifacts are out, the layers are genuinely inert at
+> production tier. The deprecation track follows from honest
+> measurement. Routing remains available at smaller tiers (M_S) where
+> tier-gating evidence does support the lift."
 
-Either branch is a publishable result because the *measurement
-discipline* is the contribution. The numbers happen to support
-[whichever verdict]. Past benchmarks showing JAMES "fails" without
-this discipline would have been wrong in either direction.]
+**Branch C** — Mixed (per-question-type routing recommended):
+
+> "After the 5 measurement-side PRs landed, the corrected matrix
+> showed [layer X] helps on [question_type subset] but is null
+> elsewhere. Routing policy becomes question-type gated: turn X on
+> when the classifier sees [comparison / inference / temporal /
+> null]. The cross-tab evidence is the routing-policy spec."
+
+### 6.3 Either branch is publishable
+
+The publishable contribution **does not depend on which branch wins**.
+The measurement discipline is the contribution; the verdict is the
+illustration. A cycle that concluded "JAMES routing layers help by
+12%" without the 5 measurement-side fixes would have been quoting
+0.000 / 0.343 / 0.316 → 0.121 / 0.418 / 0.395 — *all four numbers
+wrong*, because the underlying oracle was wrong. Past public RAG
+benchmarks have shipped such reads without the discipline. The α-5
+cycle's claim is that **even when the verdict number reads "moves
+12% on path_coverage," 100% of the credibility of that number depends
+on the four measurement-side fixes that preceded it**.
 
 ---
 
