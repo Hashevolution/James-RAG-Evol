@@ -1,10 +1,19 @@
 # PROJECT JAMES
 
-> **Replayable RAG** — a local-first knowledge reasoning system where
-> every claim is sourced, every reasoning step is audited, and the
-> system's state at any point in time can be replayed
-> byte-identically. Built behind a human approval gate for
-> self-evolution.
+> **JAMES** — a local-first, auditable knowledge reasoning platform.
+> Graph-RAG retrieval, deterministic contradiction arbitration,
+> append-only audit log, replayable knowledge state, and a human
+> approval gate for self-evolution. Built as a general
+> **mother platform** through v1.0; domain packs (legal, food,
+> retail, …) branch off only after v1.0 (see
+> [`docs/PLATFORM_READINESS.md`](docs/PLATFORM_READINESS.md)).
+>
+> **One differentiator highlight**: *Replayable RAG* — the system's
+> state at any past point can be reconstructed byte-identically via
+> the T7 supersede chain + append-only audit log (`reconstruct_view_at`).
+> Other first-class differentiators include Graph-RAG retrieval,
+> Knowledge Cascade (Layer 3), Layer 4 Lifecycle (T1–T7), the Plugin
+> API, and the deterministic 4-rule contradiction tree.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-v0.4.1-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/releases/tag/v0.4.1)

@@ -1,9 +1,17 @@
 # PROJECT JAMES
 
-> **Replayable RAG** — 모든 claim 에 출처, 모든 추론 단계에 audit
-> row, 임의 시점 T 의 시스템 상태를 바이트-동일하게 재생 가능한
-> 로컬 우선 지식 추론 시스템. 자기진화는 인간 승인 게이트 뒤에서
-> 동작.
+> **JAMES** — 로컬 우선, 감사 가능한 지식 추론 **플랫폼**. Graph-RAG
+> 검색, 결정론적 모순 중재, append-only audit log, replayable
+> knowledge state, 인간 승인 게이트 기반 자기진화. v1.0 까지
+> **범용 mother 플랫폼** 으로 강화; 도메인 팩 (법률 · 식품 · 유통 · 여행 등)
+> 분화는 v1.0 이후 (
+> [`docs/PLATFORM_READINESS.md`](docs/PLATFORM_READINESS.md) 참조).
+>
+> **차별점 한 줄**: *Replayable RAG* — T7 supersede 체인 + audit log
+> append-only 조합으로 시점 T 의 시스템 상태를 바이트-동일하게 재구성
+> 가능 (`reconstruct_view_at`). Graph-RAG 검색, Knowledge Cascade
+> (Layer 3), Layer 4 Lifecycle (T1–T7), Plugin API, 결정론적 4-rule
+> 모순 트리 등도 모두 first-class 차별점.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-v0.4.1-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/releases/tag/v0.4.1)
