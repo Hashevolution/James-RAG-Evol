@@ -377,7 +377,7 @@ def _run_single_bench(row: str, tier: str, run_index: int,
         print(f"[cell {row}/{tier} run {run_index + 1}] bench finished "
               f"in {elapsed:.1f}s")
 
-        after = set((ROOT / "reports").glob("bench_*_step7_*.json"))
+        after = set((ROOT / "reports").glob(glob_pattern))
         new = sorted(after - pre_existing)
         if new:
             bench_output = new[-1]
