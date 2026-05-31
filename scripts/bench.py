@@ -258,6 +258,7 @@ def _run_one(
     api_key: str, q: Dict, endpoint: str, timeout: int,
     default_mode: Optional[str] = None,
     bearer: str = "",
+    suite: str = "step7",
 ) -> Dict:
     """Run a single query against the live server. Returns the row dict that
     bench reports operate on.
@@ -281,7 +282,13 @@ def _run_one(
     body: Dict = {
         "question":   q["text"],
         "api_key":    api_key,
-        "session_id": f"bench_step7_{q['id']}",
+        # session_id was hardcoded "bench_step7_*" for years — fine for
+        # the original suite but landed in the audit log identically for
+        # multihop_rag / future suites, which made trace correlation
+        # ambiguous when both ran on the same workspace. Suffix on the
+        # actual suite so each run partition is distinguishable in
+        # `reports/trace/*.jsonl` + the `audit_log` table.
+        "session_id": f"bench_{suite}_{q['id']}",
     }
     mode_override = q.get("mode") or default_mode
     if mode_override:
@@ -506,6 +513,7 @@ def main() -> int:
     for q in queries:
         res = _run_one(
             api_key, q, endpoint, timeout, effective_default_mode, bearer,
+            suite=args.suite,
         )
         results.append(res)
         _print_row(res, len(queries))
