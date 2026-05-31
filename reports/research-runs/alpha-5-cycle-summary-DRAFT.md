@@ -14,15 +14,23 @@
 
 ## 0. One-paragraph headline
 
-[FILL: 3-5 sentences. Match this pattern when writing:
-"α-5 measured JAMES against MultiHop-RAG (Tang & Yang 2024) — the
-first external benchmark. **Routing layer verdicts**: [strong-adopt /
-tier-gated / null] per layer. **Reasoning capability evidence**:
-JAMES's citation layer hits N% of expected sources at L1; layer
-addition moves it by [Δ]. **Diagnostic discipline**: 5 out of [N]
-PRs in the cycle were bucket-(d) measurement-side fixes — the 4-step
-verification rule (memory `feedback_oracle_phrase_artifacts`)
-prevented [K] wrong-bucket follow-ups."]
+α-5 measured JAMES against MultiHop-RAG (Tang & Yang 2024) — the
+first external benchmark in `eval/RESULTS.md`. **Routing layer
+verdicts**: [FILL — strong-adopt / tier-gated / null per layer, after
+T0 closes ~16:00 KST and the rescore wrapper runs]. **Reasoning
+capability evidence (corrected baseline)**: JAMES's citation layer
+hits ~40% of expected sources at L1 (mid-range, not the saturated 0
+the first read showed), graded answer at ~33%, abstention F1 at ~70%
+(real null-query hallucination rate is 36%, not the 76% the first
+oracle suggested). **Diagnostic discipline**: 5 of 32 cycle PRs were
+measurement-side fixes (3 bucket-(d) phrase / sources coverage +
+2 bucket-(a) matrix wiring); the 4-step verification rule
+(memory `feedback_oracle_phrase_artifacts`) prevented **4
+wrong-bucket follow-ups**, all of which would have shipped JAMES-side
+code changes against bugs that lived entirely in the measurement layer.
+Cumulative JAMES code change attributable to α-5 measurement debt:
+**0 lines**. The publishable contribution is the discipline as much
+as the verdict.
 
 ---
 
@@ -50,8 +58,9 @@ designed to serve both at once.
 ## 2. Methodological corrections that shaped the result
 
 The first read of the matrix would have produced misleading
-conclusions if accepted at face value. Three corrections shifted the
-narrative before any verdict shipped:
+conclusions if accepted at face value. **Four** corrections shifted
+the narrative before any verdict shipped (count corrected 2026-05-31
+PM when Correction 4 landed mid-cycle):
 
 ### 2.1 Path coverage 0.000 → 0.404 (PR #618)
 
@@ -83,16 +92,49 @@ narrative before any verdict shipped:
   smoke would have produced a "JAMES routing layers do nothing"
   verdict on the wrong dataset.
 
-### 2.4 Why this matters for the read
+### 2.4 Matrix runner bench-output glob still hardcoded `step7` (PR #638)
+
+- Sibling oversight to #625: that PR fixed the bench subprocess CALL
+  but the post-bench detection glob at `qvt_ablation_matrix.py:380`
+  was still `bench_*_step7_*.json`. The fresh multihop_rag bench file
+  was written correctly but invisible to the runner; `new[-1]`
+  returned a stale `bench_nogit_step7_20260507_*.json` from 24 days
+  prior.
+- Caught at 12:07 KST when T0 cell 1 (L1/M_M) JSON wrote with all
+  three quality axes saturated (0.0 / 0.0 / 0.028). Applying the
+  cycle's own 4-step rule to the cell JSON's `runs[0].bench_output`
+  field surfaced the smoking gun within minutes.
+- bucket: (a) architecture. Fixed in one line + companion rescore
+  tool `scripts/qvt_rescore_ablation_cell.py`.
+- Real cell L1/M_M numbers after rescore: path=0.42, graded=0.33,
+  abst_f1=0.59 — mid-range baseline, not saturated.
+
+### 2.5 Why this matters for the read
 
 Without (2.1)/(2.2), the headline would have been "JAMES hallucinates
-3/4 of null queries and can't cite sources." The corrected reality is
-"JAMES refuses 2/3 of null queries correctly and cites the right
-source for ~40% of expected articles."
+3/4 of null queries and can't cite sources." Without (2.3), the
+matrix would have measured against a Korean step7 wiki fixture, not
+the English MultiHop-RAG corpus the cycle was designed around.
+Without (2.4), every cell of T0 would have scored against a 12-query
+May-7 step7 file instead of the freshly-captured 100-query
+multihop_rag bench.
 
-[FILL: 1-2 lines about cycle credit — this is what user req #4
-"external credibility" needs: the published narrative survives review
-because the cycle removed measurement artifacts first.]
+The corrected reality is "JAMES refuses 2/3 of null queries correctly
+and cites the right source for ~40% of expected articles" — and that
+reality only became visible because each correction landed BEFORE the
+matrix verdict shipped.
+
+**Wrong-fix avoided count**: 4 (#618 / #619+#623 / #625 / #638).
+**Cumulative JAMES code change attributable to α-5 measurement debt**:
+0 lines.
+
+This is what user req #4 ("external credibility") needs: the published
+narrative survives review because the cycle removed measurement
+artifacts first — across both bucket-(d) (matcher coverage) and
+bucket-(a) (measurement wiring). Memory
+`feedback_oracle_phrase_artifacts` §"확장 2" locks the
+generalisation: the 4-step rule applies to *any* measurement-side
+wiring, not just oracle phrase coverage.
 
 ---
 
@@ -213,25 +255,58 @@ the bare retrieval baseline (L0 floor cell, when measured)."]
 
 ### 7.1 Bucket framework worked
 
-[FILL: 1 line. All findings entries from the cycle carry mandatory
-bucket tags (post #621). Future entries inherit the discipline.]
+All findings entries from #621 forward carry a mandatory `bucket:`
+tag (a/b/c/d). The discipline forces a hypothesis commitment before
+recommending a fix; future entries inherit the contract. Worked
+example landed: cycle's own findings log has correct bucket attribution
+on every entry, retroactively applied by #622.
 
-### 7.2 The 4-step rule prevented [K] wrong-bucket follow-ups
+### 7.2 The 4-step rule prevented 4 wrong-bucket follow-ups
 
-[FILL: 2 lines. Without the rule, the path=0 finding would have
-become "add citation layer" (c) or "rewrite graph" (a). Neither was
-needed — JAMES code change across all 20+ PRs was 0 on the JAMES
-side, all on the oracle/bench side.]
+Within the same cycle (`feedback_oracle_phrase_artifacts.md`):
+- path_coverage=0 → would have been (c) "add citation layer" or (a)
+  "rewrite graph traversal" — was bucket-(d) bench dropping the
+  `sources` field (#618).
+- 76% null-query hallucination → would have been (b) "swap to a
+  bigger model with stronger grounding" or (a) "add grounding pass"
+  — was bucket-(d) phrase coverage gap (#619 + #623).
+- Matrix runner produced near-zero verdicts → would have been (a)
+  "AUTO_ROUTER does nothing, deprecate it" or (b) "tier change
+  needed" — was bucket-(a) subprocess suite-arg hardcoded (#625).
+- T0 cell 1 saturated at 0/0/0.028 → would have been (a) "L1 baseline
+  is dead, layer-on cells can't help" — was bucket-(a) score-collection
+  glob hardcoded (#638).
+
+JAMES code change across all 32 cycle PRs: **0 lines**.
+All fixes landed on the oracle / bench / matrix-runner side. The
+rule generalised from "oracle phrase coverage" to "any measurement-
+side wiring" via Correction 4 (locked in memory `feedback_oracle_phrase_artifacts`
+§"확장 2").
 
 ### 7.3 User domain knowledge was the strongest signal
 
-[FILL: 1-2 lines. The pivot moment for path_coverage=0 came from one
-user sentence remembering JAMES's citation design.]
+The pivot moment for path_coverage=0 came from one user sentence
+remembering JAMES's citation design: *"출처 인용에 대한 것도 내가
+자메스상 설계해놓은 것으로 기억하는데, 만약 이게 안되있으면 문제가
+될듯."* No automated test caught it; the existing UI didn't surface it.
+The discipline: when a system's owner says "wait, that doesn't match
+the design," treat it as a higher-priority signal than the saturated
+axis value, not a lower one.
 
 ### 7.4 Routine hygiene catches non-obvious bugs
 
-[FILL: 1 line. PR #625 (matrix suite-hardcoded) was caught by routine
-stale-cell cleanup, not by tests or review.]
+Two of the four bucket-(a) bugs were caught by routine inspection,
+not tests:
+- #625 (subprocess suite-arg) caught during a planned stale-cell
+  cleanup that wasn't *looking* for the bug — opening a cell JSON
+  surfaced the `_step7_` filename suffix.
+- #638 (score-collection glob) caught by applying the 4-step rule
+  to the first cell JSON when it landed, as a routine check.
+
+**Plan deliberate hygiene loops into long-running cycles.** They pay
+back the moment they catch one bug like #625 or #638. The cycle's
+own 4-step rule discipline became the hygiene tool that caught its
+own 4th measurement bug, in real time.
 
 ---
 
@@ -260,11 +335,33 @@ stale-cell cleanup, not by tests or review.]
 | #627 | docs | Pareto verdict walk-through + CLAUDE.md `fix` exempt + post-mortem |
 | #628 | feat | T0 analysis fill script |
 | #629 | docs | oracle.py package split plan (deferred) |
+| #630 | docs | α-5 cycle summary outline (this doc, initial form) |
+| #631 | docs | publishable narrative draft — "Don't Build a Layer for the Bug" |
+| #632 | docs | bucket-(c) LLM-judge abstention detector design memo |
+| #633 | feat | `qvt_promote_findings.py` — auto-draft memory entries from findings.md |
+| #634 | docs | mid-cycle sync — ROADMAP PR table 24 + backlog §7.5/7.6/7.7/7.8 |
+| #635 | fix | `core/observability.py::_trace_root()` workspace-aware (D11) |
+| #636 | docs | A2 default-flip Quality Delta Card pre-template (D12) |
+| #637 | test | 4-step rule contract — pin #618 / #619 / #623 measurement-debt fixes |
+| #638 | fix (a) | matrix runner bench-output glob suite-aware (sibling to #625) + cell rescore tool |
+| #639 | docs | Correction 4 post-mortem + narrative + backlog §7.9 |
+| #640 | feat | `qvt_rescore_all_cells.py` — matrix-end audit + bulk rescore wrapper |
+| #641 | docs | α-5 matrix closure runbook (operator sequence) |
 | #[FILL] | feat | T0 result analysis publication (after matrix completes) |
 | #[FILL] | feat | (optional) routing-flag default-flip PRs per layer |
 | #[FILL] | docs | ROADMAP §v0.4.x cycle closure (replace "in flight" status) |
 
-[FILL: tally — N fix-(d) bucket, K docs, M tooling, … final breakdown.]
+**Tally** (post-#641, pre-matrix-closure): **32 cycle PRs**.
+- Bucket-(d) measurement-side fix: 3 (#618 / #619 / #623)
+- Bucket-(a) measurement-side fix: 2 (#625 / #638)
+- Methodology / design docs: 12 (#615 / #621 / #624 / #627 / #629 /
+  #630 / #631 / #632 / #634 / #636 / #639 / #641)
+- Tooling / scripts: 7 (#612 / #613 / #616 / #620 / #628 / #633 / #640)
+- Code-side feats (think-mode track, not bucket-(d)/(a)): 4 (#608 /
+  #609 / #611 / #614)
+- Code-side hygiene fix: 2 (#622 / #635)
+- Contract test: 1 (#637)
+- Cycle outline / closure PR (after this): TBD
 
 ---
 
