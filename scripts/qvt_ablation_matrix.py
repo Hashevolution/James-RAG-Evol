@@ -789,7 +789,18 @@ def _render_report(out_path: Path) -> int:
                 continue
             cells.append(json.loads(p.read_text(encoding="utf-8")))
 
-    if not cells:
+    # α-6 sector cells (qvt-ablation-cell-C_*.json). Stored under the
+    # same output dir; picked up separately so the report can render
+    # the sector axis below the row axis.
+    sector_cells: List[Dict[str, Any]] = []
+    for sc in _SECTOR_CELL_ENVS:
+        for tier in _TIER_MODELS:
+            p = _cell_output_path("L1", tier, sector_cell=sc)
+            if not p.exists():
+                continue
+            sector_cells.append(json.loads(p.read_text(encoding="utf-8")))
+
+    if not cells and not sector_cells:
         print(f"[report] no per-cell JSONs found under "
               f"{_resolve_output_dir()}")
         return 5
@@ -976,6 +987,106 @@ def _render_report(out_path: Path) -> int:
             rows.append(
                 f"| `{qt}` | `{model}` + **{row_id}** ({_ROW_LABELS[row_id]}) | "
                 f"{verdict} | {row_id}/{tier_id} |"
+            )
+        rows.append("")
+
+    # ──────────────────────────────────────────────────────────
+    # α-6 — sector cell axis. Rendered separately from the row axis
+    # because sector cells answer a different question: "does adding
+    # this JAMES sector help vs vanilla LLM / vanilla RAG?" rather
+    # than "does adding this routing flag help vs production baseline?"
+    # The same 5-axis Pareto rule applies, against the same L1 baseline.
+    # ──────────────────────────────────────────────────────────
+    if sector_cells:
+        rows += [
+            "",
+            "## α-6 sector-cells — what each JAMES sector adds vs vanilla",
+            "",
+            "Cells layer JAMES infrastructure sectors on top of the LLM. "
+            "Δ vs L1/M_M baseline (= JAMES full stack). "
+            "Reading: a *positive* Δ on a partial cell means the sectors "
+            "ALREADY ON in that cell match the full stack's quality; a "
+            "*negative* Δ means the removed sectors were load-bearing. "
+            "Per α-6 design memo §2 + §5.6 layer-intent matrix.",
+            "",
+            "| Cell | Tier | Model | Path Δ | Graded Δ | Abst F1 Δ | "
+            "Token Δ | Latency Δ (s) | Verdict |",
+            "|---|---|---|---|---|---|---|---|---|",
+        ]
+        for c in sector_cells:
+            agg = c.get("aggregate", {})
+            med = {ax: agg.get(ax, {}).get("median") for ax in _ALL_AXES}
+            deltas_sc: Dict[str, float] = {}
+            for axis in _ALL_AXES:
+                if med[axis] is None or base_med[axis] is None:
+                    deltas_sc[axis] = 0.0
+                else:
+                    deltas_sc[axis] = round(med[axis] - base_med[axis], 4)
+            verdict_sc = _classify_five_axis_delta(deltas_sc, base_noise)
+            sc_id = c.get("sector_cell") or c.get("row")
+            sc_label = c.get("sector_cell_label") or ""
+            rows.append(
+                f"| {sc_id} ({sc_label}) | {c['tier']} | "
+                f"`{c['model']}` | {deltas_sc['path_coverage']:+.3f} | "
+                f"{deltas_sc['graded_answer']:+.3f} | "
+                f"{deltas_sc['abstention_f1']:+.3f} | "
+                f"{deltas_sc['token_cost']:+.0f} | "
+                f"{deltas_sc['latency_cost']:+.2f} | "
+                f"**{verdict_sc}** |"
+            )
+        # Pairwise progression — the intended α-6 reading. Each row
+        # shows what ONE more sector added when stacked onto the
+        # previous configuration. Operator-friendly framing.
+        _PROGRESSION = [
+            ("C_minus", "C_rag-basic", "+ S1 RAG retrieval"),
+            ("C_rag-basic", "C_rag-cited", "+ S4 citation"),
+            ("C_rag-cited", "C_rag-graph", "+ S2 graph + S3 preproc"),
+            ("C_rag-graph", "C_rag-full", "+ S5 abstention + S6 cognitive (= α-5 L1)"),
+            ("C_rag-full", "C_rag-routed", "+ routing layers (= α-5 L5)"),
+        ]
+        sc_by_id = {c.get("sector_cell"): c for c in sector_cells
+                    if c.get("sector_cell")}
+        # Include L1/L5 row cells under their sector-name aliases so
+        # the progression table can reach them.
+        for c in cells:
+            if c.get("row") == "L1":
+                sc_by_id.setdefault("C_rag-full", c)
+            elif c.get("row") == "L5":
+                sc_by_id.setdefault("C_rag-routed", c)
+        rows += [
+            "",
+            "### Sector-progression deltas (cell-to-cell)",
+            "",
+            "What each marginal sector contributes when added to the "
+            "previous configuration. Δ here is *cell-to-previous-cell*, "
+            "not vs L1 baseline. This is the publishable answer to "
+            "user requirement *\"각 sector 추가 시 좋아지나?\"*",
+            "",
+            "| From → To | Sector added | Path Δ | Graded Δ | Abst F1 Δ | "
+            "Token Δ | Latency Δ |",
+            "|---|---|---|---|---|---|---|",
+        ]
+        for from_id, to_id, what in _PROGRESSION:
+            a = sc_by_id.get(from_id)
+            b = sc_by_id.get(to_id)
+            if a is None or b is None:
+                rows.append(
+                    f"| {from_id} → {to_id} | {what} | _missing_ | _missing_ | _missing_ | _missing_ | _missing_ |"
+                )
+                continue
+            ag_a = a.get("aggregate", {})
+            ag_b = b.get("aggregate", {})
+            med_a = {ax: ag_a.get(ax, {}).get("median") for ax in _ALL_AXES}
+            med_b = {ax: ag_b.get(ax, {}).get("median") for ax in _ALL_AXES}
+            d_path = (med_b["path_coverage"] or 0) - (med_a["path_coverage"] or 0)
+            d_graded = (med_b["graded_answer"] or 0) - (med_a["graded_answer"] or 0)
+            d_abst = (med_b["abstention_f1"] or 0) - (med_a["abstention_f1"] or 0)
+            d_token = (med_b["token_cost"] or 0) - (med_a["token_cost"] or 0)
+            d_lat = (med_b["latency_cost"] or 0) - (med_a["latency_cost"] or 0)
+            rows.append(
+                f"| {from_id} → {to_id} | {what} | "
+                f"{d_path:+.3f} | {d_graded:+.3f} | {d_abst:+.3f} | "
+                f"{d_token:+.0f} | {d_lat:+.2f} |"
             )
         rows.append("")
 
