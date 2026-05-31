@@ -796,7 +796,7 @@ Workspace isolation via the existing `JAMES_WORKSPACE` env
 the data-dir resolver. Production wiki is untouched throughout the
 cycle.
 
-### PR sequence (14 PRs, 2026-05-30 → 2026-05-31)
+### PR sequence (24 PRs to date, 2026-05-30 → 2026-05-31, T0 smoke mid-flight)
 
 | PR | Layer | Note |
 |---|---|---|
@@ -809,9 +809,19 @@ cycle.
 | #621 | docs | 4-bucket diagnostic taxonomy + dual purpose |
 | #622 | fix | render_report defensive path + bucket retroactive |
 | #623 | fix (d) | session_id suite-aware + 3 narrow abstention phrases |
+| #624 | docs | ROADMAP §v0.4.x α-5 cycle entry (this section, initial form) |
+| #625 | fix (a) | matrix runner — bench subprocess respects `--suite` (was hardcoded step7) |
+| #626 | docs | T0 smoke result analysis TEMPLATE (`qvt-ablation-T0-smoke-analysis-TEMPLATE.md`) |
+| #627 | docs | Pareto verdict walk-through + CLAUDE.md rule 2 `fix` label exempt + diagnostic post-mortem |
+| #628 | feat | T0 analysis fill script — auto-populate template from cell JSONs |
+| #629 | docs | oracle.py → package split design (deferred to post-matrix) |
+| #630 | docs | α-5 cycle summary outline — reviewer-ready closure read |
+| #631 | docs | publishable narrative draft — "Don't Build a Layer for the Bug" |
+| #632 | docs | bucket-(c) LLM-judge abstention detector design memo |
+| #633 | feat | `qvt_promote_findings.py` — auto-draft memory entries from findings.md |
 
-All 9 above land on `main` between `f7762a3` and `2544c5d`. Two
-landmark findings of the cycle — `path_recall = 0` and
+All 19 cycle PRs above land on `main` between `f7762a3` and `ba50c47`.
+Two landmark findings of the cycle — `path_recall = 0` and
 `null_query hallucination = 76%` — were **both bucket-(d) oracle
 artifacts**, fixed in #618 / #619 / #623. Without the 4-step
 verification rule (memory `feedback_oracle_phrase_artifacts`) they
@@ -819,6 +829,18 @@ would have generated wrong-bucket follow-ups (new citation layer,
 grounding architecture change) and the matrix verdicts would have
 read as "JAMES fails the benchmark" when the failure was on the
 measurement side.
+
+**Wrong-fix avoided count**: 3 (path_recall=0 → new citation layer
+prevented #618; 76% hallucination → grounding rewrite prevented
+#619+#623; matrix near-zero verdict → AUTO_ROUTER decommission
+prevented #625). Cumulative system code change attributable to
+α-5 measurement debt: **0 lines**.
+
+**Mid-cycle infra additions** (#626–#633): 1 template + 1 fill
+script + 2 design memos + 1 closure outline + 1 publishable
+narrative + 1 finding-promotion script. Locked deferred-bucket-(c)
+follow-up + locked the methodology lesson in a publishable form
+before the cycle closes.
 
 ### Cycle deliverables (gated on T0 smoke completing)
 
