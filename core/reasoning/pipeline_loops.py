@@ -22,6 +22,7 @@ Three steps:
 """
 from __future__ import annotations
 
+import os
 import time
 from typing import Any, Dict
 
@@ -155,6 +156,16 @@ def run_loop_1_expand(
     Mutates ``loop_state`` with ``graph_context`` and ``graph_paths``.
     """
     print("\n[LOOP-1] expand")
+    # α-6 S2 sector ablation — `JAMES_DISABLE_GRAPH=1` skips graph
+    # traversal entirely. Vector RAG (`loop_state["docs"]`) still runs.
+    # Used by α-6 cells `C_minus` / `C_rag-basic` / `C_rag-cited`.
+    if os.environ.get("JAMES_DISABLE_GRAPH") == "1":
+        loop_state["graph_context"] = []
+        loop_state["graph_paths"]   = []
+        log_stage("graph", entities_extracted=0, entity_ids_matched=0,
+                  valid_entity_ids=0, graph_nodes=0, paths_walked=0,
+                  sector_disabled=True)
+        return
     try:
         entities = engine.retrieval.extract_entities(
             safe_query,
