@@ -27,6 +27,7 @@ Pipeline stages (in order):
 """
 from __future__ import annotations
 
+import os
 import time
 from typing import Any, Dict
 
@@ -340,7 +341,8 @@ def run_retrieval_pipeline(
         "answer":        answer,
         "graph_paths":   loop_state["graph_paths"],
         "graph_used":    len(loop_state["graph_context"]),
-        "sources":       [d.get("source", "unknown") for d in loop_state["docs"][:3]],
+        "sources":       ([] if os.environ.get("JAMES_DISABLE_SOURCES_FIELD") == "1"
+                          else [d.get("source", "unknown") for d in loop_state["docs"][:3]]),
         # [#A6-2] web search 사용 여부 + 출처
         "web_used":      web_used,
         "web_sources":   web_sources,
