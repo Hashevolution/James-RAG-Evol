@@ -65,6 +65,23 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
      Card would either circular-reference the broken oracle or
      measure noise. Explicit `Quality delta: exempt (label: fix)`
      keeps the review readable without paste-noise.
+   - **Layer-intent matrix** (α-6 cycle extension 2026-05-31): when a
+     PR touches one of the routing / cognitive layers
+     (`AUTO_ROUTER` / `ADAPTIVE_BUDGET` / `SCOPE_ROUTING` /
+     `ENTITY_ANCHOR` / `QUERY_REWRITE` / `Citation` / `Graph` /
+     `Abstention` / `Cognitive Stages`), the Quality Delta Card MUST
+     be scored against the layer's **design-intent axes** (per
+     `docs/design/v0.4-alpha-6-sector-llm-ablation-matrix.md` §5.6 +
+     memory `mechanism_layer_intent_axis_alignment`). Uniform 5-axis
+     judgment is rejected for these PRs because it mis-classifies
+     cost-optimization layers as quality regressions (α-5 post-closure
+     self-audit lesson, sub-categories 5/6 of bucket-(a)). The PR
+     description must include a short *"intent axes vs regression
+     axes"* split with the appropriate per-layer matrix entry.
+     **Layer measurement prerequisites must also be confirmed** —
+     e.g., AUTO_ROUTER PRs require multi-tier backend registration
+     evidence (otherwise the layer is no-op and the PR's number is
+     "not in evidence," not "no effect").
 
 3. **Self-evolution is opt-in only**. Any change that allows
    auto-deploy without an `approver_username` in the audit log
