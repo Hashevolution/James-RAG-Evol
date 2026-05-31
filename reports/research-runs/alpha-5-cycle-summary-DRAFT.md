@@ -15,22 +15,28 @@
 ## 0. One-paragraph headline
 
 α-5 measured JAMES against MultiHop-RAG (Tang & Yang 2024) — the
-first external benchmark in `eval/RESULTS.md`. **Routing layer
-verdicts**: [FILL — strong-adopt / tier-gated / null per layer, after
-T0 closes ~16:00 KST and the rescore wrapper runs]. **Reasoning
-capability evidence (corrected baseline)**: JAMES's citation layer
-hits ~40% of expected sources at L1 (mid-range, not the saturated 0
-the first read showed), graded answer at ~33%, abstention F1 at ~70%
-(real null-query hallucination rate is 36%, not the 76% the first
-oracle suggested). **Diagnostic discipline**: 5 of 32 cycle PRs were
-measurement-side fixes (3 bucket-(d) phrase / sources coverage +
-2 bucket-(a) matrix wiring); the 4-step verification rule
-(memory `feedback_oracle_phrase_artifacts`) prevented **4
-wrong-bucket follow-ups**, all of which would have shipped JAMES-side
-code changes against bugs that lived entirely in the measurement layer.
-Cumulative JAMES code change attributable to α-5 measurement debt:
-**0 lines**. The publishable contribution is the discipline as much
-as the verdict.
+first external benchmark in `eval/RESULTS.md`. **Reasoning capability
+evidence (corrected baseline, T0 closed 2026-05-31 15:52 KST)**:
+JAMES's citation layer hits ~40% of expected sources at L1 (mid-range,
+not the saturated 0 the first read showed), graded answer at ~33%,
+abstention F1 at ~70% (real null-query hallucination rate is 36%, not
+the 76% the first oracle suggested). **Routing-layer verdict
+(conditional Branch B, post-closure-review-corrected)**:
+`ADAPTIVE_BUDGET + SCOPE_ROUTING + (AUTO_ROUTER no-op)` all-on at
+production tier regresses abstention_f1 by 0.091 without meaningful
+cost benefit. **AUTO_ROUTER was a no-op** in α-5 (multi-tier backend
+not registered) — its verdict is not in evidence. **ADAPTIVE_BUDGET
+was tested on the wrong axes** (cost-optimization layer judged by
+quality axes) — its own design intent (token / latency efficiency,
+quality-neutral) was under-instrumented. **Diagnostic discipline**:
+6 of 36 cycle PRs were measurement-side fixes; the 4-step verification
+rule (memory `feedback_oracle_phrase_artifacts`) prevented **5
+wrong-bucket follow-ups** including post-closure self-audit catches
+(AUTO_ROUTER no-op + ADAPTIVE_BUDGET axis-mismatch). Cumulative JAMES
+code change attributable to α-5 measurement debt: **0 lines**. The
+publishable contribution is the discipline as much as the verdict —
+the cycle's most honest self-audit happened AFTER closure, and was
+publishable in its own right.
 
 ---
 

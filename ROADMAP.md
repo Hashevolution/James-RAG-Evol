@@ -874,14 +874,27 @@ before the cycle closes.
 | L5/M_M full stack (all routing ON) | path 0.412 / graded 0.317 / **abst_f1 0.500** | abst_f1 -0.091 vs L1 — real regression |
 | Sanity L1/M_M think=ON | path 0.404 / graded 0.370 / abst_f1 0.533 / token -109 chars / latency -1.7 s | think=ON not unambiguously winning; A2 default-flip gate (real-query QDC) unchanged |
 
-**Verdict**: routing-layer stack (`AUTO_ROUTER` + `ADAPTIVE_BUDGET`
-+ `SCOPE_ROUTING`) all-ON at the M_M production tier provides **no
-positive net Δ** on any quality axis and a **real -0.091 abstention
-F1 regression**. Both cells classify **reject** under the
-5-axis Pareto rule. **Branch B** of the publishable narrative §6
-applies. Opt-in flags remain available; no default-flip PRs file at
-this verdict. Tier-gating (M_S small-model upside) is the next
-question and requires T1.
+**Verdict (post-closure-corrected 2026-05-31 PM)**: routing-layer
+stack as exercised in α-5 reduces to
+`ADAPTIVE_BUDGET + SCOPE_ROUTING + (AUTO_ROUTER no-op)` because the
+matrix env registered only the always-on `ollama_local` backend
+(`core/reasoning/backends/__init__.py:329`); without multi-tier
+backend registration the routing policy in `core/reasoning/router.py`
+collapses to legacy on every branch. The combined stack regresses
+abstention_f1 by **0.091** without meaningful cost benefit
+(token -1.5%, latency +3.6%) at the M_M production tier. Both cells
+classify **reject** under the 5-axis Pareto rule.
+
+**AUTO_ROUTER verdict is not in evidence** at this cycle; proper
+measurement requires multi-tier backend registration (engineering
+preconditions documented in α-6 design memo). **ADAPTIVE_BUDGET was
+under-instrumented** — judged by quality axes when its design intent
+(per `core/reasoning/budget.py` docstring) is cost-optimization at
+quality-neutral. Per-layer isolation (L2 / L3 / L4 cells) defers to
+T1. **Branch B** of the publishable narrative §6 applies *as
+"conditional Branch B"* — routing-layer stack inert *as measured by
+quality axes*, with explicit caveats. Opt-in flags remain available;
+no default-flip PRs file at this verdict.
 
 **Cycle totals**: 36 PRs (#608 → #645+), 5 measurement-side fixes
 (3 bucket-d + 2 bucket-a), 4 wrong-fix-averted, **0 lines of JAMES

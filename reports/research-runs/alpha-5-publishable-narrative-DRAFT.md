@@ -376,6 +376,90 @@ production tier:
 > when the classifier sees [comparison / inference / temporal /
 > null]. The cross-tab evidence is the routing-policy spec."
 
+### 6.2.5 Correction — what α-5 actually measured (vs what was claimed)
+
+Post-closure review (2026-05-31 PM) surfaced two methodological gaps
+that narrow the Branch B claim:
+
+**Gap 1 — AUTO_ROUTER was a no-op in α-5 cells**
+
+Inspection of `core/reasoning/router.py` + `core/reasoning/backends/__init__.py`
+(after closure landed) shows the routing policy requires multiple
+backends registered with `tier ∈ {small, medium, large}`. The α-5
+matrix env activated `JAMES_AUTO_ROUTER=1` in L5 but registered ONLY
+the always-on `ollama_local` backend (tier="small"). With only one
+backend at "small," every routing branch — `_first_in_tier("large")`,
+`"medium"`, `"small"` — returns the same `ollama_local`, which then
+honors `JAMES_LLM_MODEL=gemma4:e4b` for the entire run.
+
+**Result**: AUTO_ROUTER ran but had nothing to route TO. The L5 cell
+did not test routing-to-different-model. It tested
+ADAPTIVE_BUDGET + SCOPE_ROUTING + (AUTO_ROUTER no-op).
+
+The AUTO_ROUTER verdict is **not in evidence** for α-5. A proper test
+requires either:
+- Multi-tier backend registration (cloud-backed claude / openai
+  registered at "large" alongside ollama at "small"); OR
+- A multi-model ollama backend that does per-call model swap
+  (engineering work pending — α-6 design memo §"AUTO_ROUTER
+  multi-tier prerequisite").
+
+**Gap 2 — ADAPTIVE_BUDGET was tested on the wrong axes**
+
+`core/reasoning/budget.py` docstring states the design intent
+explicitly:
+
+> "4096 is safe but wasteful: ... a one-size cap pays ~8x for the
+> heavy path and ~70x for the substitution path."
+
+ADAPTIVE_BUDGET is a **cost-optimization layer**, not a
+quality-improvement layer. Its design goal is **quality-neutral
+token reduction** (the closure memory `direction_1_adaptive_budget_closure`
+records "zero quality regression" as the explicit constraint).
+Judging it by `path_coverage` / `graded_answer` / `abstention_f1`
+deltas (the 3 quality axes) measures the wrong dimension.
+
+Proper success criteria for ADAPTIVE_BUDGET:
+1. **Quality regression check** — quality axes within noise band
+   (target: zero regression)
+2. **Token efficiency check** — meaningful reduction in `eval_count`
+   / avg answer length
+3. **Latency check** — speed-up vs fixed-cap baseline
+4. **(Future) cloud-LLM $-cost check** — meaningful reduction when
+   the same matrix runs on API providers
+
+L5 vs L1 against these criteria:
+- Quality regression check: abst_f1 -0.091 — **FAILED**
+  (target was zero, observed substantial regression)
+- Token efficiency: -19 chars (1.5%) — marginal, not the 8x-70x the
+  module's design memo predicts
+- Latency: +2.4 s (3.6%) — wrong direction (slowdown)
+- Cloud $-cost: unmeasured at this cycle's compute (local only)
+
+So even on its own axes, the α-5 L5 cell does not vindicate
+ADAPTIVE_BUDGET. **But the cell can't distinguish** between
+ADAPTIVE_BUDGET's contribution and SCOPE_ROUTING's contribution
+(both were on simultaneously). L3 (ADAPTIVE_BUDGET only) would
+isolate the signal.
+
+**Updated honest claim**:
+
+> α-5 measured `ADAPTIVE_BUDGET + SCOPE_ROUTING + (AUTO_ROUTER no-op)`
+> all-on at gemma4:e4b production tier. The combined stack regresses
+> abstention_f1 by 0.091 without meaningful cost benefit (token -1.5%,
+> latency +3.6%). The AUTO_ROUTER verdict is **not in evidence** at
+> this cycle. Per-layer isolation requires L2 / L3 / L4 cells (T1
+> phase) — until then, the cycle's contribution is the corrected
+> baseline (path 0.404 / graded 0.343 / abst_f1 0.704) and the
+> methodology discipline (4-step rule generalised across
+> bucket-d / bucket-a / **bucket-a layer-intent-axis-mismatch** as a
+> new sub-category).
+
+**The Branch B claim becomes conditional**: routing-layer stack
+inert at production tier *as measured by quality axes*, with the
+explicit caveats that (a) AUTO_ROUTER was not actually exercised,
+and (b) ADAPTIVE_BUDGET's intended cost axes were under-instrumented.
+
 ### 6.3 Either branch is publishable
 
 The publishable contribution **does not depend on which branch wins**.
