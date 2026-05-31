@@ -117,7 +117,12 @@ _TRACE_ROOT_OVERRIDE: Optional[Path] = None
 def _trace_root() -> Path:
     if _TRACE_ROOT_OVERRIDE is not None:
         return _TRACE_ROOT_OVERRIDE
-    # Default: <project_root>/reports/trace
+    # Workspace-aware: route per-trace JSONL into the active workspace
+    # so isolated benchmarks (e.g. `JAMES_WORKSPACE=./workspaces/hotpot_eval`)
+    # don't leak traces into the production tree.
+    ws_raw = os.environ.get("JAMES_WORKSPACE", "").strip()
+    if ws_raw:
+        return Path(ws_raw).resolve() / "reports" / "trace"
     here = Path(__file__).resolve().parent.parent
     return here / "reports" / "trace"
 
