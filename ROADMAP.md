@@ -731,9 +731,123 @@ Reference architecture: `docs/architecture/memory-lifecycle-architecture.md`.
 - **T3 Evidence Aging** — confidence decay over time (EVENT track)
 - **T4 Reviewer Authority Hierarchy** — multi-level governance (GOVERNANCE track)
 - **T5 Replayable Audit Graph** — full event-sourced reconstruction (partial in v0.4.0 via `reconstruct_view_at`)
-- v0.4-end QVT ablation matrix capture (18 cells × N=3 reruns, ~20 hours operator-run)
+- ~~v0.4-end QVT ablation matrix capture (18 cells × N=3 reruns, ~20 hours operator-run)~~ — **re-shaped 2026-05-30~31 into the α-5 cycle below**.
 - `JAMES_T2D_INGEST_DISPATCH` default flip to ON (waits for fixture coverage)
 - Production seeding of `derived_from` (waits for operator workflow or v0.4.2+ LLM path)
+
+---
+
+## v0.4.x — α-5 Ablation Matrix Cycle (2026-05-30~31, **in flight**)
+
+**Theme**: the v0.4-end ablation matrix that v0.4.1's "out of scope" line
+deferred — re-shaped end-to-end during execution. The single bullet
+"18 cells × N=3, ~20 h" turned out to be too thin a frame for what
+the matrix actually needs to deliver. Recording the corrected sizing,
+the external-benchmark adoption, and the **dual purpose** so the next
+operator entering this cycle reads the right shape on the way in.
+
+### Dual purpose (per 2026-05-31 user clarification)
+
+1. **Routing decision** — flag-ON / tier-gating for each Layer 4 cognitive
+   routing layer (`AUTO_ROUTER` D5, `ADAPTIVE_BUDGET` D1,
+   `SCOPE_ROUTING` LEO). The original framing.
+2. **Reasoning-capability evidence** — publishable proof that JAMES's
+   layer stack outperforms peers on external benchmarks. Ties to
+   `eval/RESULTS.md`'s `external benchmark` line that v0.3 deferred —
+   this cycle is the unblock.
+
+Both purposes must be served by every cell verdict; **bucket-(d)
+measurement artifacts** must be removed before either narrative ships
+externally (per `feedback_oracle_phrase_artifacts` 4-step rule).
+
+### Actual sizing (vs the original 18×N=3 ≈ 20h estimate)
+
+- **19 cells** (18 standard + 1 sanity `M_M/L1 think=ON`) — extra cell
+  carries A2 default-flip evidence inside the matrix.
+- **5-axis oracle** — 3 quality (path / graded / abstention) + 2 cost
+  (token_cost, latency_cost) per cell, Pareto verdict
+  (strong-adopt / adopt / efficiency-adopt / tier-gated / reject /
+  zero). Cost integration was added to serve user requirement #3
+  (token / time efficiency).
+- **Workspace runtime** (MultiHop-RAG balanced-100, 931-entity
+  workspace, A2 think=OFF):
+  - Ingest: 264 min for 183 articles (latency grew with workspace
+    size — first 25 s, last 197 s)
+  - Baseline N=1: 107 min (100 queries × ~64 s)
+  - T0 smoke (N=1, 3 cells): ~5.3 h estimate
+  - Full N=3 sanity-included T0+T1: ~16 h
+  - Full N=3 T0+T1+T2 across all 3 tiers: ~30 h (vs original 20 h)
+- **Adaptive tiering** — `--t0-smoke` (~2-5 h) gates whether T1
+  (M_M, ~5.5 h) is worth running; T1 gates whether T2 (M_S + M_L,
+  ~13 h) adds tier-gating signal.
+
+### External benchmark adoption
+
+`eval/RESULTS.md` originally said *"BEIR / MS MARCO — too large for
+laptop, defer to v0.3"* and *"KLUE-RC — no clean public option yet,
+watch for v0.4."* This cycle finally lands an external benchmark via
+**MultiHop-RAG** (Tang & Yang, EMNLP 2024) — 2,556 multi-hop QA over
+609 news articles, CC-BY-4.0, with 4 question types (comparison /
+inference / temporal / null) that map directly onto the routing /
+abstention measurement need.
+
+Workspace isolation via the existing `JAMES_WORKSPACE` env
+(`config.py:74`, `core/plugins/workspace.py`) — zero code change to
+the data-dir resolver. Production wiki is untouched throughout the
+cycle.
+
+### PR sequence (14 PRs, 2026-05-30 → 2026-05-31)
+
+| PR | Layer | Note |
+|---|---|---|
+| #615 | reset | MultiHop-RAG external benchmark + 5-axis + per-question-type matrix |
+| #616 | exec | Ingest wrapper + bench timeout fix + path-axis finding |
+| #617 | docs | §7.4 first per-question-type baseline signal |
+| #618 | fix (d) | source-recall — bench was dropping `response.sources` |
+| #619 | fix (d) | abstention phrases — gemma4:e4b English refusals |
+| #620 | tool | re-score tool + §7.4 76% → 36% correction |
+| #621 | docs | 4-bucket diagnostic taxonomy + dual purpose |
+| #622 | fix | render_report defensive path + bucket retroactive |
+| #623 | fix (d) | session_id suite-aware + 3 narrow abstention phrases |
+
+All 9 above land on `main` between `f7762a3` and `2544c5d`. Two
+landmark findings of the cycle — `path_recall = 0` and
+`null_query hallucination = 76%` — were **both bucket-(d) oracle
+artifacts**, fixed in #618 / #619 / #623. Without the 4-step
+verification rule (memory `feedback_oracle_phrase_artifacts`) they
+would have generated wrong-bucket follow-ups (new citation layer,
+grounding architecture change) and the matrix verdicts would have
+read as "JAMES fails the benchmark" when the failure was on the
+measurement side.
+
+### Cycle deliverables (gated on T0 smoke completing)
+
+- [ ] 5-axis × per-question-type cross-tab report at
+      `reports/promo-assets/v0.4-qvt-ablation-matrix-<ts>.md` with
+      auto-generated routing-policy recommendations per query type.
+- [ ] Findings log at `reports/research-runs/qvt-ablation-findings.md`
+      with each entry tagged `bucket: (a)/(b)/(c)/(d)`.
+- [ ] ROADMAP §v0.4-end summary PR after matrix completes (this
+      section gets locked + the matrix report linked).
+- [ ] Routing-flag default-flip PRs per layer with non-`zero` verdict
+      (separate one per layer; CLAUDE.md rule 2 Quality Delta Card
+      cites the specific cell as evidence).
+
+### Open methodology questions for the next cycle
+
+- **bucket-(c) LLM-judge abstention detector** — 6 of 9 remaining FN
+  on baseline_f7762a3 use "not possible to" / "is not available"
+  phrasings that broader phrase additions would FP-flood. An LLM
+  classifier ("does the answer refuse to answer the question?") would
+  resolve them without phrase-overlap risk. Deferred candidate.
+- **Korean-corpus version of MultiHop-RAG** — current cycle is English
+  only (gemma4:e4b handles both per `core/i18n.py`, but the matrix
+  measures English routing only). No public Korean multi-hop RAG
+  benchmark exists; translation cost vs. value is a v0.5+ question.
+- **Production-real-query Quality Delta Card** — bridging the
+  benchmark-vs-production gap for the A2 default-flip
+  (`JAMES_GEMMA4_E4B_THINK_OFF`) decision. Plan is documented but the
+  card itself is a separate cycle.
 
 ---
 
