@@ -90,6 +90,9 @@ _ABSTENTION_PHRASES: Tuple[str, ...] = (
     "impossible to identify",
     "cannot be determined",
     "cannot be answered",
+    "cannot be confirmed",     # α-5 R cycle 2026-05-31: q58 etc
+    "cannot be identified",    # q69
+    "none of the provided",    # q51 ("Source files: None of the provided …")
     "insufficient information",
     "insufficient data",
 )
