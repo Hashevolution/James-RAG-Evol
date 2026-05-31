@@ -46,6 +46,19 @@ def run_loop_0_retrieve(
       - ``avg_vec_score``   — average vector score over docs
     """
     print("\n[LOOP-0] retrieve (Orchestrator)")
+    # α-6 S1 sector ablation — `JAMES_DISABLE_RAG_RETRIEVAL=1` skips
+    # vector + BM25 retrieval entirely. The model receives no
+    # retrieved context (must answer from parametric knowledge or
+    # refuse). Used by α-6 cell `C_minus` (pure LLM baseline).
+    if os.environ.get("JAMES_DISABLE_RAG_RETRIEVAL") == "1":
+        loop_state["docs"] = []
+        loop_state["doc_context"] = ""
+        loop_state["avg_vec_score"] = 0.0
+        log_stage("retrieve", top_k=0, avg_vec_score=0.0,
+                  top_vector_score=0.0, top_bm25_score=None,
+                  source_type=source_type, sector_disabled=True)
+        print("  docs=0 (S1 disabled — JAMES_DISABLE_RAG_RETRIEVAL=1)")
+        return
     try:
         from core.orchestrator import retrieve as orch_retrieve
         docs = orch_retrieve(
