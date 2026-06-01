@@ -5,7 +5,9 @@ Implements the matrix specified in
 
   6 layer rows  (L0 floor / L1 baseline / L2 +AUTO_ROUTER /
                  L3 +ADAPTIVE_BUDGET / L4 +SCOPE_ROUTING / L5 full)
-  3 model tiers (M_S gemma3:4b / M_M gemma4:e4b / M_L gemma3:12b)
+  5 model tiers (M_XS gemma3:1b / M_S gemma3:4b / M_M gemma4:e4b /
+                 M_L gemma3:12b / M_XL gemma3:27b)  -- α-6 Phase 3a
+                 added M_XS / M_XL for the gemma3 scale ladder
   × paired N=3 reruns
   × 3-axis QVT oracle (path / graded / abstention)
   = 18 cells × ~66 min ≈ 20 hours operator-side compute.
@@ -233,11 +235,13 @@ _SECTOR_CELL_LABELS: Dict[str, str] = {
 }
 
 
-# Model tier → Ollama tag (memo §2.2)
+# Model tier → Ollama tag (memo §2.2; α-6 Phase 3a adds M_XS / M_XL)
 _TIER_MODELS: Dict[str, str] = {
+    "M_XS": "gemma3:1b",   # α-6 Phase 3a — extreme small (capability floor probe)
     "M_S": "gemma3:4b",
     "M_M": "gemma4:e4b",   # production default; α-3 baseline tier
     "M_L": "gemma3:12b",
+    "M_XL": "gemma3:27b",  # α-6 Phase 3a — large (saturation point probe)
 }
 
 
@@ -982,7 +986,8 @@ def _render_report(out_path: Path) -> int:
         rows.append("|---|---|---|---|")
 
         _VERDICT_RANK = {"strong-adopt": 3, "adopt": 2, "efficiency-adopt": 1}
-        _TIER_RANK = {"M_M": 3, "M_S": 2, "M_L": 1}  # prefer production
+        _TIER_RANK = {"M_M": 3, "M_S": 2, "M_L": 1,
+                      "M_XS": 0, "M_XL": 0}  # prefer production; α-6 scale-ladder tiers tied last
         for qt in all_qts_sorted:
             winners = per_type_winners[qt]
             if not winners:
@@ -1142,7 +1147,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     parser.add_argument(
         "--tiers", type=str, default=None,
-        help="Comma-separated subset of M_S/M_M/M_L (default: all).",
+        help="Comma-separated subset of M_XS/M_S/M_M/M_L/M_XL (default: all).",
     )
     parser.add_argument(
         "--resume", action="store_true",
