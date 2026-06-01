@@ -1,5 +1,41 @@
 # α-6 Phase 3a Analysis — gemma3:1b (extreme small / below-floor probe)
 
+---
+
+## ⚠️ Post-12b reconciliation header (added 2026-06-01 after Phase 3a M_L lands)
+
+The framings below were written before the M_L (gemma3:12b) data
+landed. M_L data reverses several of the claims made here. The body
+text is preserved as the historical record of what the 1b run *alone*
+seemed to support; the reconciliation table below lists what changes
+once M_L is in the picture.
+
+| Claim in this doc | Status after M_L | Where to read the corrected version |
+|---|---|---|
+| §4 "deeply below the abstention capability floor" | **partially withdrawn** — M_L pure abst_f1 is also 0.000, refuting "1b is uniquely below the floor"; the floor concept itself becomes weak | recovery curve doc §5 |
+| §4 "inverted-U recovery curve (1b inert / 4b disrupted / e4b amplified)" | **withdrawn** — M_L adds a fourth mode (enable: pure 0 → JAMES 0.375). Three-mode U is incomplete | recovery curve doc §3 + §5 |
+| §5 "S5+S6 → tier-gated adopt. Adopt at M_M. REJECT at M_S" | **scope unchanged for M_XS / M_S / M_M, but M_L adds adopt at +0.375 abst_f1** — the routing rule becomes 4-row, not 3-row | recovery curve doc §6 |
+| §5 "abstention-recovery layers exhibit a capability floor: they reward model capacity above a threshold, not deficit below it" | **withdrawn** — M_L shows substitution / enablement (not reward of existing capacity); the framing was too tidy for the actual non-monotonic data | recovery curve doc §3 prose |
+| §7 `inverted-u-capability-floor-s5-s6` finding | **withdrawn** | recovery curve §5 |
+| §7 `s4-citation-tier-invariant-extended-to-1b` finding | **strengthened** — M_L confirmed at +0.410 path, making a 4-point series | recovery curve §4 |
+| §7 `gemma3-1b-rag-stack-feasible-but-no-quality-lift` finding | **survives** — still tier-specific operational observation | promoted as-is |
+
+Honest framing rule per `memory/feedback_finding_size_honest_framing`:
+the inverted-U was written under the misimpression that 4b's
+disruption mode would generalise to other gemma3 points. It doesn't.
+The 1b doc's mistake is not the *numbers* (those are correct as
+measured) but the *taxonomy* — we extrapolated a 3-mode regime from
+2 data points (the 4b "disrupted" inference from Phase 2 + the 1b
+"inert" observation). Two data points can fit many curves; we picked
+a curve that the next data point refuted.
+
+The body below is preserved verbatim for audit trail. **For the
+honest current picture, read the recovery curve doc** at
+`reports/research-runs/alpha-6-phase-3a-recovery-curve-20260601.md`.
+
+---
+
+
 > **Auto-filled at**: 2026-06-01T02:48:57.051371+00:00
 > **Source**: cell JSONs in `C:\Project\James-RAG-Evol-v010\workspaces\hotpot_eval\reports\research-runs\qvt-ablation-cells`
 > **Baseline**: `workspaces\hotpot_eval\eval\qvt\baseline_3a961a3_rescored.json`

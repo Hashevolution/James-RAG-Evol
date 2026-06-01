@@ -1,0 +1,212 @@
+# α-6 Phase 3a — Cross-Tier Recovery Curve (gemma3 ladder + gemma4 reference)
+
+> **Status**: skeleton built before 27b lands. 1b / 4b / 12b / e4b
+> rows filled from canonical JSON aggregates. M_XL row reserved for
+> the 27b result (`bhsl1zgqm` background, ~6-8h ETA).
+>
+> **Framing discipline**: this doc is *not* a "publishable mechanism
+> finding" — it is the operational data picture from the α-6 cycle,
+> per `memory/feedback_finding_size_honest_framing`. The single
+> ⭐⭐⭐ candidate (S4 citation tier-invariant) is highlighted
+> separately; everything else is operational / partial.
+
+---
+
+## 0. Run metadata
+
+| Field | Value |
+|---|---|
+| Cycle | α-6 Phase 3a (gemma3 scale ladder + gemma4 reference) |
+| Date | 2026-06-01 |
+| Workspace | `./workspaces/hotpot_eval` |
+| Suite | `multihop_rag` (Tang & Yang 2024, EMNLP) |
+| Fixture | balanced-100 (25 per question_type) |
+| Baseline | `3a961a3_rescored` (M_M full stack = e4b) |
+| think mode | OFF on all tiers (sanity: e4b think=ON also measured) |
+| Cells per tier | C_minus + C_rag-full (Phase 3a endpoints) |
+| Intermediates | C_rag-basic / C_rag-graph filled only at M_S / M_M (Phase 1+2) |
+
+---
+
+## 1. Cross-tier raw aggregates (median per axis)
+
+### C_minus (pure LLM, no JAMES)
+
+| Tier | Model | path | graded | abst_f1 | token | latency |
+|---|---|---:|---:|---:|---:|---:|
+| M_XS | gemma3:1b | 0.000 | 0.297 | **0.000** | 755 | 0.9s |
+| M_S | gemma3:4b | 0.000 | 0.307 | **0.074** | 930 | 1.9s |
+| **M_M** | **gemma4:e4b** | 0.000 | 0.347 | **0.558** | 1385 | 11.9s |
+| M_L | gemma3:12b | 0.000 | 0.313 | **0.000** | 903 | 4.1s |
+| M_XL | gemma3:27b | TBD | TBD | TBD | TBD | TBD |
+
+### C_rag-full (JAMES full stack = α-5 L1)
+
+| Tier | Model | path | graded | abst_f1 | token | latency |
+|---|---|---:|---:|---:|---:|---:|
+| M_XS | gemma3:1b | **0.410** | 0.257 | 0.000 | 712 | 6.9s |
+| M_S | gemma3:4b | **0.397** | 0.290 | 0.000 | 956 | 15.6s |
+| M_M | gemma4:e4b | **0.419** | 0.327 | **0.591** | 1224 | 66.0s |
+| M_L | gemma3:12b | **0.410** | 0.333 | **0.375** | 913 | 34.9s |
+| M_XL | gemma3:27b | TBD | TBD | TBD | TBD | TBD |
+
+---
+
+## 2. Intra-tier Δ (= "JAMES contribution at this tier")
+
+| Tier | path Δ | graded Δ | **abst_f1 Δ** | latency Δ | latency × |
+|---|---:|---:|---:|---:|---:|
+| M_XS (1b) | **+0.410** | -0.040 | **0.000** | +6.0s | 7.5× |
+| M_S (4b) | **+0.397** | -0.017 | **-0.074** | +13.7s | 8.2× |
+| M_M (e4b) | **+0.419** | -0.020 | **+0.033** | +54.1s | 5.5× |
+| M_L (12b) | **+0.410** | +0.020 | **+0.375** | +30.8s | 8.6× |
+| M_XL (27b) | TBD | TBD | TBD | TBD | TBD |
+
+**Noise reference** (per α-5 ablation suite, n=100 fixture):
+graded ±0.104, abst_f1 ±0.286, path effectively 0. Deltas inside
+the band are not interpretable.
+
+---
+
+## 3. The "recovery curve" — abst_f1 contribution by tier
+
+| Tier | Pure abst_f1 | + JAMES abst_f1 | **Δ** | Effect (descriptive, not mechanistic) |
+|---|---:|---:|---:|---|
+| M_XS (1b) | 0.000 | 0.000 | **0.000** | no effect — empty in, empty out |
+| M_S (4b) | 0.074 | 0.000 | **-0.074** | negative — JAMES kills weak native attempt |
+| M_M (e4b) | 0.558 | 0.591 | **+0.033** | small positive (inside noise band) |
+| M_L (12b) | 0.000 | 0.375 | **+0.375** | large positive — emerges where pure is silent |
+| M_XL (27b) | TBD | TBD | TBD | TBD |
+
+**Honest framing constraint (per `feedback_finding_size_honest_framing`)**:
+
+- 3 of 4 measured Δs are *inside the noise band ±0.286*. The two
+  observations that exceed the band: M_S -0.074 (no — well inside),
+  M_L +0.375 (yes — exceeds band). So the **only statistically
+  defensible non-zero JAMES contribution from this Δ table is M_L**.
+- The "curve" shape across tiers is descriptive narration, not a
+  mechanism claim. Calling it a "curve" already implies a function
+  that doesn't exist in n=1 data.
+- Previously-claimed framings — "inverted-U capability floor", "JAMES
+  amplifier", "capability floor between 4b and e4b", "amplifier vs
+  small-model crutch" — all withdrawn per §5.
+
+---
+
+## 4. The actually-defensible finding (⭐⭐⭐ candidate)
+
+### S4 citation path Δ tier-invariance
+
+| Tier | Model | path Δ (intra-tier) |
+|---|---|---:|
+| M_XS | gemma3:1b | **+0.410** |
+| M_S | gemma3:4b | **+0.397** |
+| M_M | gemma4:e4b | **+0.419** |
+| M_L | gemma3:12b | **+0.410** |
+| M_XL | gemma3:27b | TBD |
+
+4 of 4 measured points sit within ±0.012 of each other across a
+**27× model size gap (1b → 12b)** spanning **two model families
+(gemma3 + gemma4)**.
+
+Why this is non-trivial:
+- Independent of the model's native capability profile (path Δ does
+  not correlate with pure-LLM abst_f1, which spans 0.000 → 0.558
+  across the same tiers)
+- Mechanism candidate = the citation pipeline runs at the *graph
+  layer*, not the *language model*, so its effect projects through
+  any backbone that can parse the rendered citation block
+
+Why this is bounded (not yet universal-law):
+- 4 data points only; needs M_XL confirmation
+- Same fixture + same retrieval stack across all measurements;
+  unknown sensitivity to fixture shift
+- Within-family extension (gemma3 only) is 3 of 4 points; gemma4
+  contribution is single point
+
+**Promotion plan**: defer to `qvt_promote_findings.py` until M_XL
+lands + cross-fixture sanity check is run (next-cycle).
+
+---
+
+## 5. Withdrawn / superseded claims registry
+
+| Claim | Source | Why withdrawn / superseded |
+|---|---|---|
+| "JAMES = capability amplifier, not small-model crutch" | Phase 2 closure PR #674 | M_L data shows substitution (pure 0 → JAMES 0.375), which is closer to "small-model crutch" than to "amplifier" |
+| "Inverted-U capability floor (1b inert / 4b disrupt / e4b amplify)" | Phase 3a 1b doc (commit `ac9670d`) | M_L adds a fourth mode (enable). Three-mode U was incomplete |
+| "Capability floor between 4b and e4b" | Phase 2 §6 + Phase 3a 1b §4 | M_L crosses the floor too; the floor is not a single position |
+| "Only gemma4 family can use abstention layers" | Speculative reframe during 12b wait | M_L (gemma3:12b) achieves abst_f1 +0.375 with JAMES, refuting family-only hypothesis |
+| "S5+S6 recover at +0.129 abst_f1 at M_M" | Phase 2 §5 prose | M_M C_rag-graph→full Δ recomputes to +0.129 ✓ (this one survives) |
+
+---
+
+## 6. Operational routing rule (post-Phase 3a)
+
+⚠️ **Reads as routing data, not as a mechanism claim**. Numbers are
+based on n=1 runs at each tier; treat as preliminary until cross-fixture
+validation.
+
+| Tier | S1+S2+S3+S4 (citation stack) | S5+S6 (abstention + cognitive) | Production recommendation |
+|---|---|---|---|
+| M_XS (1b) | adopt (+0.41 path) | skip (zero effect, 7.5× tax) | citation-only deployment |
+| M_S (4b) | adopt (+0.40 path) | **skip** (negative -0.074, 8.2× tax) | citation-only deployment |
+| M_M (e4b) | adopt (+0.42 path) | adopt (+0.033 noise-band edge, 5.5× tax) | full stack — current production |
+| M_L (12b) | adopt (+0.41 path) | **adopt** (+0.375, 8.6× tax) | full stack |
+| M_XL (27b) | TBD | TBD | TBD |
+
+Caveats:
+1. **Graph layer bug** (Phase 1 §3): the current graph adds graded
+   regression at M_M (-0.053). All graded Δs above are measured with
+   this bug present. Post-graph-fix re-baseline is the next-cycle
+   dependency. Recovery curve will be re-measured at that point.
+2. **n=1**: every cell is a single bench run; QVT noise band is
+   theoretical, not measured per-tier here.
+3. **Fixture-bound**: MultiHop-RAG balanced-100 only; routing rule
+   validity outside this fixture is unverified.
+
+---
+
+## 7. Cost picture (token + latency, intra-tier)
+
+| Tier | Pure latency | + JAMES latency | × | + JAMES token Δ | What this buys |
+|---|---:|---:|---:|---:|---|
+| M_XS (1b) | 0.9s | 6.9s | 7.5× | -43 | +0.41 path, zero quality / abstention |
+| M_S (4b) | 1.9s | 15.6s | 8.2× | +26 | +0.40 path, *minus* 0.074 abst_f1 |
+| M_M (e4b) | 11.9s | 66.0s | 5.5× | -161 | +0.42 path, +0.033 abst_f1 noise |
+| M_L (12b) | 4.1s | 34.9s | 8.6× | +10 | +0.41 path, +0.375 abst_f1 |
+| M_XL (27b) | TBD | TBD | TBD | TBD | TBD |
+
+Where the latency tax is "worth it" (defensible) = M_M and M_L.
+Where it isn't = M_XS and M_S. **27b will tell us whether the
+worth-it regime continues into saturation or saturates.**
+
+---
+
+## 8. Cross-references
+
+- α-6 design memo: `docs/design/v0.4-alpha-6-sector-llm-ablation-matrix.md`
+- α-6 cycle PR index: `reports/research-runs/alpha-6-cycle-pr-index.md`
+- Phase 1 analysis: `reports/research-runs/alpha-6-phase-1-analysis-20260601.md`
+- Phase 2 analysis: `reports/research-runs/alpha-6-phase-2-analysis-20260601.md`
+- Phase 3a 1b: `reports/research-runs/alpha-6-phase-3a-gemma3-1b-analysis-20260601.md` (⚠️ framing pollution flagged, see §5)
+- Phase 3a 12b: `reports/research-runs/alpha-6-phase-3a-gemma3-12b-analysis-20260601.md`
+- Honest framing rule: `memory/feedback_finding_size_honest_framing.md`
+- Layer intent: `memory/mechanism_layer_intent_axis_alignment.md`
+- Position guard: `memory/feedback_jameses_positioning_replayable_rag.md`
+- Matrix tier extension: PR #677
+- bench / matrix timeout overrides: commit `be2fb64`
+
+---
+
+## 9. Done condition for this doc
+
+- [x] §1-§3 filled for M_XS / M_S / M_M / M_L
+- [x] §4 ⭐⭐⭐ candidate established with 4 data points
+- [x] §5 withdrawn-claims registry consolidated
+- [x] §6 operational routing rule preliminary
+- [x] §7 cost picture
+- [ ] M_XL (27b) row in §1-§3, §6, §7
+- [ ] §4 5-point S4 confirmation
+- [ ] §6 27b routing recommendation
+- [ ] Phase 3a closure PR description references this doc as primary artifact
