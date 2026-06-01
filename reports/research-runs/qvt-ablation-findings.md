@@ -234,6 +234,93 @@ Every entry below MUST include a `bucket:` line tagging (a)/(b)/(c)/(d).
   path coverage +0.42 vs zero for the bare LLM. Quality axes are
   roughly LLM-equivalent at production tier."*
 
+### 2026-06-01 — jameses-s5-s6-capability-floor-not-crutch
+
+- **bucket**: (a) architecture + universal-law candidate
+- **cell context**: α-6 Phase 2, M_M vs M_S comparison
+- **observation**: at gemma4:e4b (M_M production), JAMES S5+S6
+  layers recover +0.129 abst_f1 + +0.054 graded from RAG damage.
+  At gemma3:4b (M_S small), the same layers produce **0.000**
+  abst_f1 recovery and **degrade** graded by 0.070. The layers are
+  mechanically engaged in both cells but produce measurable
+  improvement only above a model-capacity floor.
+- **surprise**: this REVERSES the original tier-gated routing
+  hypothesis (small models gain more). The smaller model gains
+  *less* — or actively loses ground.
+- **data pointer**: Phase 2 analysis
+  `reports/research-runs/alpha-6-phase-2-analysis-20260601.md`
+- **follow-up tag**: `mechanism-candidate` + `universal-law`
+- **probe ideas**: Phase 3a gemma3 scale ladder (1b / 4b / 12b /
+  27b) to localize the capability floor; cross-family at qwen / llama / deepseek
+- **immediate impact on α-6**: publishable framing — JAMES
+  abstention layers are a *capability amplifier*, NOT a
+  *small-model crutch*. The routing policy at M_S becomes "S4
+  citation only; skip S5+S6 to save the 8.4× latency tax."
+
+### 2026-06-01 — tier-conditional-rag-helps-small-hurts-large
+
+- **bucket**: (b) model-context interaction
+- **cell context**: α-6 Phase 1 + 2, C_minus → C_rag-basic transition
+  at both M_M and M_S tiers
+- **observation**: adding RAG retrieval to pure LLM yields **opposite**
+  Δ on graded by tier:
+  - M_M (gemma4:e4b): graded **-0.020** (Lost in the Middle)
+  - M_S (gemma3:4b): graded **+0.043** (RAG compensates for
+    weaker parametric knowledge)
+- **surprise**: Lost-in-the-Middle is conditional on model capacity.
+  Below the capability threshold, RAG context is genuinely
+  informative; above it, RAG context becomes a distractor.
+- **data pointer**: Phase 1 analysis (M_M) + Phase 2 analysis (M_S)
+- **follow-up tag**: `mechanism-candidate`
+- **probe ideas**: Phase 3a scale ladder to find the inversion
+  point; Phase 3b cross-family to test family-specific inversion
+- **immediate impact on α-6**: routing policy must be tier-aware.
+  M_S → keep RAG on; M_M → RAG ON only with abstention layer to
+  recover damage.
+
+### 2026-06-01 — s4-citation-tier-invariant
+
+- **bucket**: (a) architecture + universal-law candidate
+- **cell context**: α-6 Phase 1 + 2 path_coverage comparison
+- **observation**: S4 citation contributes +0.42 path at M_M and
+  +0.397 path at M_S — nearly identical structural contribution
+  across model scales.
+- **surprise**: NOT a surprise. Citation is a structural output, not
+  a quality measure — it should be model-invariant. Worth promoting
+  because *this is the one axis where JAMES's contribution is
+  measurable AND universal*.
+- **data pointer**: Phase 1 + Phase 2 analyses
+- **follow-up tag**: `universal-law`
+- **probe ideas**: Phase 3b at qwen/llama/deepseek to confirm
+  family-invariance
+- **immediate impact on α-6**: S4 citation = JAMES's one
+  unconditional contribution. Always-on at any tier.
+
+### 2026-06-01 — jameses-rate-limit-corruption-arithmetic-step
+
+- **bucket**: (a) measurement-side wiring + mechanism-candidate
+- **cell context**: α-6 Phase 2 C_minus/M_S first run (corrupted)
+- **observation**: server's per-IP rate limiter (30 req / 60 s)
+  silently corrupted a cell whose model responded in sub-2s/query.
+  70/100 queries got 429s; bench treated empty answers as
+  abstentions; oracle computed apparent abst_f1 = 0.521 from what
+  was actually rate-limit errors.
+- **surprise**: the corrupted scores looked plausible. They
+  fabricated "valid" abstention behavior. The catch was the
+  **arithmetic step** of the 4-step rule: cell wall-clock 53s vs
+  latency 1.71s × 100 = 171s expected. The math didn't add up.
+- **data pointer**: post-mortem at
+  `reports/research-runs/alpha-6-phase-2-rate-limit-corruption-postmortem-2026-06-01.md` (#671);
+  fix at #672
+- **follow-up tag**: `mechanism-candidate` (the lesson is the
+  arithmetic step itself, not the specific bug)
+- **probe ideas**: extend the 4-step rule's memory entry with the
+  arithmetic step as a worked example
+- **immediate impact on α-6**: cycle wrong-fix-averted count went
+  from 7 to 8; the arithmetic step is the new fast catch for
+  silent corruption. Future bench runs at sub-1s/query (Phase 3a
+  gemma3:1b) would have corrupted entirely without this catch.
+
 ---
 
 ## Promoted to memory
