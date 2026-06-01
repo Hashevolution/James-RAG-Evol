@@ -31,28 +31,53 @@
 
 *Auto-filled when `bfzt6tx9h` exits + `baseline_91b9a2c.json` lands.*
 
-| Axis | Pre-α-7 (`3a961a3_rescored`) | Post-α-7 (`91b9a2c`) | **Δ** |
-|---|---:|---:|---:|
-| path_coverage | 0.404 | *TBD* | *TBD* |
-| graded_answer | 0.343 | *TBD* | *TBD* |
-| abstention_f1 | 0.609 | *TBD* | *TBD* |
-| token_cost | 1150 | *TBD* | *TBD* |
-| latency_cost | 64s | *TBD* | *TBD* |
+| Axis | Pre-α-7 (`3a961a3_rescored`) | Post-α-7 (`91b9a2c_rescored`) | **Δ** | Within noise? |
+|---|---:|---:|---:|---|
+| path_coverage | 0.4044 | 0.4033 | **-0.0011** | ✓ flat |
+| graded_answer | 0.3433 | 0.3233 | **-0.0200** | ✓ inside noise band ±0.03 |
+| abstention_f1 | 0.6087 | 0.5385 | **-0.0702** | ✗ outside α-7 noise ±0.101 edge (consistent direction across 3 runs: 0.444/0.539/0.546) |
+| token_cost | 1149.7 | 1233.2 | **+83.5** | ✓ inside noise band ±137 |
+| latency_cost | 63.65s | 64.06s | +0.41s | ✓ flat |
 
-Noise band (N=3 paired reruns, in baseline JSON `noise_band`):
-- graded: ±*TBD* (was ±0.104 at α-6 close)
-- abst_f1: ±*TBD* (was ±0.286)
-- path: ±*TBD* (was ~0.0)
+Noise band (N=3 paired reruns, baseline JSON `noise_band`):
+- graded: **±0.030** (was n/a at α-6 close, N=1)
+- abst_f1: **±0.101**
+- path: **±0.009**
+- token: ±137.4
+- latency: ±1.708s
+
+**α-7 vs α-6 measurement quality**: α-7 captured at N=3 (proper noise
+band); α-6 captured at N=1 (single-point, no error bar). The α-7
+deltas read against α-6 are inflated by the unmeasured α-6 variance.
 
 ### 1.1 Acceptance decision (per design memo §4)
 
 | Outcome | Condition | Verdict |
 |---|---|---|
-| **Adopt** | graded Δ ≥ +0.030 vs α-6 baseline | *pending* |
-| **Tier-gated adopt** | +0.010 ≤ graded Δ < +0.030 | *pending* |
-| **Reject + investigate** | graded Δ < +0.010 | *pending* |
+| **Adopt** | graded Δ ≥ +0.030 vs α-6 baseline | ❌ not met (-0.020) |
+| **Tier-gated adopt** | +0.010 ≤ graded Δ < +0.030 | ❌ not met (negative) |
+| **Reject + investigate** | graded Δ < +0.010 | ✅ **TRIGGERED** |
 
-Per-question-type cross-tab **mandatory** for any verdict other than reject — see §4.
+**Verdict: REJECT + sub-finding investigation (§3.2)**.
+
+Per-question-type cross-tab populated in §4. Investigation in §3.2.
+
+### 1.2 What measurement quality actually says
+
+The L1/M_M baseline alone shows α-7's net effect ≈ -0.07 on
+abstention with confidence interval barely overlapping noise.
+graded shifted -0.02 (well within noise) but consistently downward
+across all 3 runs.
+
+The L1 measurement does NOT isolate the graph fix benefit — S5+S6
+stages in L1 are already designed to recover graph regressions, so
+removing the graph noise via top-K can only marginally improve L1.
+The TRUE α-7 test point is the C_rag-graph cell (where Phase 1 §3
+found the -0.054 graded regression). That cell measurement is
+deferred to §2.
+
+The S4 citation primitive (path Δ = -0.001) stays intact under
+context reshape — confirms ⭐⭐⭐ candidate robustness.
 
 ---
 
@@ -74,22 +99,64 @@ post-α-7 cells with same env.*
 
 ## 3. Mechanism verification (post-bench)
 
-The α-6 27b audit (`scripts/research/audit_12b_null_query_refusal_shape.py`)
-identified that the graph layer's 41-161 entity surface (truncated
-downstream to 10 but in DFS visit order) leaves the LLM looking at
-the wrong 10 entities. α-7 sorts by `_dfs_score` before the cap so
-the LLM sees the highest-ranked 10.
+### 3.1 Predictions vs observed
 
-Two falsifiable predictions to compare against the bench:
+| Prediction | Result |
+|---|---|
+| graph_paths_count drops 41-161 → ≤ 10 per query | ✅ confirmed (top-K filter engaged; expand_dynamic returns ≤ K) |
+| graded Δ ≥ +0.030 vs α-6 baseline | ❌ **refuted** — Δ = -0.020 (regression direction at L1 aggregate) |
 
-| Prediction | If confirmed | If refuted |
+The first prediction (top-K wiring) is mechanically correct. The
+second prediction (graded recovery) is refuted at the L1/M_M
+production tier. **The α-7 hypothesis is partially falsified at this
+tier**.
+
+### 3.2 Sub-finding investigation — null_query regression mechanism
+
+4-step rule audit on α-7 baseline (`scripts/research/audit_12b_null_query_refusal_shape.py`
+on the bench JSONs) shows:
+
+| Comparison | α-6 baseline | α-7 baseline (run 3, representative) |
 |---|---|---|
-| **graph_paths_count** drops from typical 41-161 to ≤ 10 per query | top-K filter wires through correctly | filter not engaged; check `expand_dynamic` return path |
-| **graded Δ** recovers by at least +0.030 vs α-6 baseline | top-K is the dominant fix mechanism | other graph-layer issue beyond top-K; sub-finding investigation per design memo §8 decision 5 |
+| Oracle TP (refusal caught) | 14/25 | 11/25 (after bucket-(d) phrase add: 12/25) |
+| Oracle FN | 11/25 | 14/25 → 13/25 |
+| Audit-found missed refusal in FN | 1/11 ("not available" pattern → added to oracle) | 0/14 → 0/13 |
+| Effective refusals (TP + missed) | **15/25 (60%)** | **12/25 (48%)** |
+| Net refusal loss | (reference) | **-3 refusals** (real, not artifact) |
 
-⚠️ **Build-before-claim discipline**: §1 and §2 tables empty until
-bench runs. The PR description's Quality Delta Card uses the **filled**
-table, not the prediction.
+Even after adding 2 more narrow phrases (`cannot be completed`,
+`is not available` + 3 tense variants) to the oracle in this session,
+the regression persists. **The mechanism is not phrase coverage**.
+
+**Mechanism hypothesis (provisional, requires 5-tier confirmation)**:
+
+The α-7 top-K filter reduces gemma4's "evidence-of-absence" signal.
+When gemma4 sees 41-161 entities none of which exactly answer a null
+query, it has stronger signal to refuse: "lots of stuff here, none
+of it is the answer." When gemma4 sees only top-10 entities, the
+narrower context lets it commit to an inference: "maybe these 10
+are relevant to the question."
+
+This is **opposite direction** to the α-6 Phase 3a 27b mechanism
+finding (where source-injection commits the model to answer; α-7
+top-K was expected to reduce that commitment pressure). At the
+**gemma4 grounding-trained production tier**, narrower context
+HURTS abstention. At larger gemma3 tiers (12b/27b) it may help —
+that's the 5-tier remeasurement test in §5.
+
+### 3.3 Bucket-(d) follow-up phrase additions (this session)
+
+Re-running the audit on α-7 baseline + α-6 baseline found 2 more
+narrow refusal patterns that the oracle was missing:
+
+- `cannot be completed` — caught in α-7 null #5 (id=56)
+- `is not available` / `are not available` / `was not available` /
+  `were not available` — caught in α-6 null #24 (id=75)
+
+These were added to `_ABSTENTION_PHRASES` in this session. Re-score
+of α-7 baseline shifted median abst_f1 by only +0.002 (from 0.5366
+→ 0.5385), confirming that **phrase coverage is not the regression's
+root cause**. The mechanism in §3.2 is the actual driver.
 
 ---
 
@@ -99,12 +166,24 @@ table, not the prediction.
 
 | Question type | graded Δ | abst_f1 Δ | path Δ | latency Δ | Notes |
 |---|---:|---:|---:|---:|---|
-| inference (n=25) | *TBD* | *TBD* | *TBD* | *TBD* | |
-| comparison (n=25) | *TBD* | *TBD* | *TBD* | *TBD* | most affected by graph noise (multi-source) |
-| temporal (n=25) | *TBD* | *TBD* | *TBD* | *TBD* | |
-| null (n=25) | *TBD* | *TBD* | *TBD* | *TBD* | abstention quality probe; bucket-(d) phrases now active |
+| inference (n=25) | **+0.013** | n/a (truth=present) | +0.010 | -0.04s | marginal positive, gemma4 likely benefits from focused top-K |
+| comparison (n=25) | -0.013 | n/a | -0.013 | +0.91s | flat |
+| temporal (n=25) | **+0.040** | n/a | 0.000 | +1.00s | **positive above noise band edge** — most favourable type |
+| null (n=25) | **-0.120** | **-0.107** | 0.000 | -0.77s | **REGRESSION** — see §3.2 |
 
-Per-type verdict per design memo §4.1 (cross-tab acceptance band).
+### 4.1 Per-type verdict (per design memo §4.1)
+
+| Type | Outcome | Mechanism (post-§3.2) |
+|---|---|---|
+| inference | tier-gated adopt candidate (+0.013 graded marginal) | top-K removes noisy entities from gemma4's "evidence eval" → cleaner reasoning |
+| comparison | flat | already neutral; multi-source nature less affected by top-K |
+| temporal | **adopt candidate** (+0.040 graded above noise edge) | most timeline-oriented queries benefit from focused entity surface |
+| null | **REJECT** (-0.120 graded, -0.107 abst_f1 — both outside noise) | top-K removes "evidence-of-absence" signal; gemma4 can no longer determine "answer not present" from narrower context (see §3.2 mechanism) |
+
+Net L1 aggregate = average of types ≈ -0.020 graded (dominated by
+null regression). The α-7 fix produces a **type-conditional effect**
+at gemma4 production tier — helps inference/temporal slightly, hurts
+null queries significantly.
 
 ---
 
