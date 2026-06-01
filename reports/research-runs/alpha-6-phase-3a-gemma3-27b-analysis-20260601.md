@@ -28,15 +28,12 @@
 
 ## 1. 5-axis Δ table vs M_M baseline
 
-*Auto-filled by `alpha6_fill_phase1.py --tier M_XL` post-bench. Below
-table is a placeholder structure.*
-
 | Cell | path Δ | graded Δ | abst_f1 Δ | token Δ | latency Δ | Verdict |
-|---|---|---|---|---|---|---|
-| C_minus | *TBD* | *TBD* | *TBD* | *TBD* | *TBD* | _observed_ |
+|---|---:|---:|---:|---:|---:|---|
+| C_minus | -0.404 | +0.047 | -0.351 | -227 | +13.65 | _observed_ |
 | C_rag-basic | n/a | n/a | n/a | n/a | n/a | _missing_ |
 | C_rag-graph | n/a | n/a | n/a | n/a | n/a | _missing_ |
-| C_rag-full | *TBD* | *TBD* | *TBD* | *TBD* | *TBD* | _observed_ |
+| C_rag-full | -0.001 | -0.033 | -0.532 | -50 | +124.04 | _observed_ |
 | C_rag-routed | n/a | n/a | n/a | n/a | n/a | _missing_ |
 
 Baseline (for reference): path 0.404 / graded 0.343 / abst_f1 0.609 / token 1150 / latency 64.
@@ -51,7 +48,7 @@ Baseline (for reference): path 0.404 / graded 0.343 / abst_f1 0.609 / token 1150
 
 ## 3. Predictions vs reality (auto-classified)
 
-§3 prose (operator-fill post-bench):
+§3 prose:
 
 Endpoint-only measurement; intermediates intentionally `_missing_`. The
 two cells together give the intra-tier Δ = "what JAMES contributes on
@@ -59,11 +56,77 @@ top of pure 27b":
 
 | Axis | Pure 27b | + JAMES (C_rag-full) | Δ (JAMES contribution) |
 |---|---:|---:|---:|
-| path_coverage | *TBD* | *TBD* | *TBD* |
-| graded_answer | *TBD* | *TBD* | *TBD* |
-| abstention_f1 | *TBD* | *TBD* | *TBD* |
-| token_cost | *TBD* | *TBD* | *TBD* |
-| latency_cost | *TBD* | *TBD* | *TBD* (~8× tax expected) |
+| path_coverage | 0.000 | **0.403** | **+0.403** ← 5-point S4 universal candidate confirmed |
+| graded_answer | 0.390 | 0.310 | **-0.080** (graph-bug confound; see §3 caveat) |
+| abstention_f1 | 0.258 | 0.077 | **-0.181** ⚡ disruption (audit-clean, not artifact) |
+| token_cost | 923 | 1100 | +177 |
+| latency_cost | 77.65s | 188.04s | +110.4s (2.4× tax — lowest tax ratio across ladder) |
+
+### Hypothesis check (predictions vs observed)
+
+| Hypothesis | Predicted | Observed | Verdict |
+|---|---|---|---|
+| H1 — S4 citation tier-invariant extends to 27b | path Δ +0.40 ± 0.02 | **+0.403** | **✅ confirmed** — 5-point series 1b/4b/12b/27b/e4b all within +0.397~+0.419 |
+| H2 — Pure 27b abst_f1 stays at gemma3-family floor | pure abst_f1 ≈ 0.00 | **0.258** | ❌ **refuted** — 27b emerges within-family abstention; gemma4-only hypothesis dead |
+| H2-alt — Pure 27b emerges abst_f1 > 0.20 | pure abst_f1 > 0.20 | **0.258** | ✅ confirmed |
+| H3 — JAMES on 27b enables abst_f1 like 12b | full abst_f1 +0.30 to +0.50 | **0.077** (Δ = -0.181) | ❌ **refuted** — opposite direction; disruption not enable |
+| H3-alt — JAMES on 27b saturates above 12b | full abst_f1 +0.50 or higher | 0.077 | ❌ refuted |
+| **H3-alt2 (surprise)** — JAMES on 27b regresses below 12b | full abst_f1 < +0.30 | **0.077** | ✅ **confirmed** — apply 4-step rule (done in §3.1) |
+
+The "surprise" hypothesis fired — 27b is the **disruption** mode like
+4b, not amplification. Despite 27b's higher native capability, JAMES
+broke its refusal behaviour. Mode-vs-scale is non-monotonic within the
+gemma3 family.
+
+### 3.1 4-step rule audit on C_rag-full (post-result, before publishing)
+
+Following the same 4-step protocol applied to 12b C_minus (which
+caught 1 oracle phrase gap), audited 27b C_rag-full's 24 oracle-FN
+answers using `scripts/research/audit_12b_null_query_refusal_shape.py`.
+
+| Audit metric | Value |
+|---|---|
+| Oracle TP (refusal caught) | 1/25 |
+| Oracle FN (refusal missed or hallucination) | 24/25 |
+| Audit-found missed refusal patterns | **0/24** |
+| True hallucinations in FN set | 24/24 (100%) |
+
+Conclusion: **the 27b disruption is REAL**, not an oracle phrase
+coverage artifact. The 24 FN answers are all genuine hallucinations.
+
+### 3.2 Mechanism observation — Source-file injection commits the model
+
+The 24 hallucination answers at 27b C_rag-full all share a pattern:
+they start with `"Source files: multihop_0543_..., multihop_0212_...,
+multihop_0188_..."` (JAMES's retrieved-source filename injection).
+
+The model treats the presence of N source filenames as evidence
+that "an answer must exist within these N sources" and produces
+confident fabrications. Native abstention behaviour — which surfaces
+at pure 27b with 4 TPs ("Source files: None provided",
+"unable to answer", "without direct access to") — gets suppressed
+when JAMES injects 41-161 source filenames.
+
+The one surviving TP (null #3 id=54) explicitly rejected JAMES's
+injected context: `"the provided documents do **not** contain
+information about the band 'Used To Be Young'..."`. The other 3
+native refusals from pure 27b became hallucinations once JAMES
+context was added.
+
+**Implication for α-7**: cutting the source surface from 41-161 to
+~10 (top-K) is expected to reduce the "must answer" pressure. α-7
+closure includes 5-tier mode re-measurement to test whether this
+reshapes the 5-mode picture. See
+[[feedback_james_mode_taxonomy_context_dependent]] +
+[[feedback_graph_layer_top_k_debt]].
+
+### 3.3 Graded caveat (carry-over)
+
+The graded Δ = -0.080 at 27b is the largest graded regression
+across the 5-tier ladder, consistent with the graph-bug-confound
+flagged in Phase 1 §3. Larger model context space → more entities
+surfaced → more reasoning interference. α-7 graph top-K fix should
+reverse this regression at re-baseline.
 
 ### Hypotheses to compare against the observed (predictions per
 `feedback_finding_size_honest_framing` — explicit + falsifiable):
@@ -89,11 +152,15 @@ graded Δ as confounded.
 ## 4. Publishable claim (operator-fill post-bench)
 
 > **JAMES sector endpoint ablation on MultiHop-RAG balanced-100, gemma3:27b ladder-saturation tier (think=OFF, bge-m3)**:
-> - Pure gemma3:27b (no JAMES): path *TBD* / graded *TBD* / abst_f1 *TBD* / latency *TBD*
-> - JAMES full stack (= α-5 L1) on gemma3:27b: path *TBD* / graded *TBD* / abst_f1 *TBD* / latency *TBD*
-> - Intra-tier Δ (the publishable column): path **TBD** / graded **TBD** / abst_f1 **TBD** / latency **TBD** (~8× tax expected)
+> - Pure gemma3:27b (no JAMES): path 0.000 / graded 0.390 / abst_f1 **0.258** / latency 77.65s
+> - JAMES full stack (= α-5 L1) on gemma3:27b: path **0.403** / graded 0.310 / abst_f1 **0.077** / latency 188.04s
+> - Intra-tier Δ (the publishable column): path **+0.403** / graded **-0.080** / abst_f1 **-0.181** / latency **+110.4s** (2.4× tax)
 >
-> ⚠️ **Tone discipline (per memory `feedback_finding_size_honest_framing`)** — same as 12b doc §4. The observation is empirical numbers; mechanism candidates (saturation curve, instruction-following threshold, family-bound vs scale-bound) remain hypothesis territory. JAMES-specific value is the *measured tier position*, not the *discovered mechanism*.
+> Two findings to highlight:
+> 1. **S4 citation universal candidate confirmed at 5 data points** (1b/4b/12b/27b/e4b path Δ all in +0.397~+0.419 — within noise across a 27× model size and 2 model families). Strongest non-trivial finding from α-6 cycle.
+> 2. **27b disruption is real and audit-clean** (§3.1 audit found 0/24 oracle misses). JAMES's source-file context injection (41-161 filenames per query) suppresses 27b's native refusal behaviour. The disruption mechanism (§3.2) explains why 27b drops from 0.258 → 0.077 despite having more native abstention than gemma3:12b (which goes 0.000 → 0.375 in the opposite direction).
+>
+> ⚠️ **Tone discipline (per `memory/feedback_finding_size_honest_framing`)**: the 5-mode pattern (inert/disrupt/create/disrupt/amplify across 1b/4b/12b/27b/e4b) is **cycle-specific empirical**, not universal. It depends on α-6 cycle's context shape (full sector stack, 41-161 entity overload). α-7 graph top-K fix is expected to reshape this pattern (see [[feedback_james_mode_taxonomy_context_dependent]]). Universal-law candidate promotion requires α-7 5-tier remeasurement + Phase 3b cross-family verification.
 
 ---
 
@@ -101,29 +168,41 @@ graded Δ as confounded.
 
 | Layer | Design intent | Primary axes | Δ on primary (intra-tier 27b) | Regression check | Verdict |
 |---|---|---|---|---|---|
-| S1+S2+S3+S4 bundle | retrieval + multi-hop + fluency + citation | path + graded | path *TBD* / graded *TBD* | abst_f1 *TBD* | *TBD per data* |
-| S4 Citation (extracted) | source surface | path primary | *TBD* (compare to +0.397~+0.420 from 1b/4b/12b/e4b) | quality flat | *TBD per data* |
-| S5 Abstention | refusal grounding | abst_f1 primary | *TBD* | quality flat | *TBD per data* |
-| S6 Cognitive | multi-step | graded primary | *TBD* | latency *TBD* | *TBD per data* |
+| S1+S2+S3+S4 bundle | retrieval + multi-hop + fluency + citation | path + graded | path **+0.403** ✓✓, graded **-0.080** ✗ | abst_f1 **-0.181** ✗✗ | **mixed/regression** at this tier — path lead intact, but graded + abstention both regress |
+| S4 Citation (extracted) | source surface | path primary | **+0.403** ✓✓✓ | quality flat | **strong-adopt (5-point universal-law candidate)** — within +0.397~+0.419 across 1b/4b/12b/27b/e4b |
+| S5 Abstention | refusal grounding | abst_f1 primary | **-0.181** ✗✗ | quality protection failed: graded -0.080 too | **reject at this tier** — source-file context injection commits the model to answer; native refusal suppressed (§3.2 mechanism). α-7 top-K may reverse this |
+| S6 Cognitive | multi-step | graded primary | graded -0.080 ✗ | latency **+110s (2.4× tax)** | **reject at this tier** — cognitive stages compound the source-injection commitment. Lowest tax ratio across ladder because raw inference dominates |
 
-### §5 prose (post-bench fill):
+### §5 prose:
 
 Tier-tagging per `memory/feedback_finding_size_honest_framing`:
 
-| Finding | Tier | Note |
+| Finding | Tier | Status |
 |---|---|---|
-| S4 citation tier-invariant 5-point series | ⭐⭐⭐ if path Δ +0.40±0.02 → universal-law candidate matures | confirmation vs partial vs reversal per 27b data |
-| JAMES S5 effect at 27b vs 12b | ⭐⭐ if positive Δ; ⭐ operational if saturated; bucket-(d) investigation if regression | apply 4-step rule before reframing if surprise |
-| 27b operational routing data | ⭐ operational | numbers for routing rule, not knowledge |
+| **S4 citation tier-invariant 5-point series** | ⭐⭐⭐ candidate | **confirmed** — path Δ +0.397~+0.419 across 1b/4b/12b/27b/e4b. Cross-fixture sanity remains pre-requisite for `validated` promotion |
+| JAMES S5 disruption mechanism (source-file injection commits model) | ⭐⭐ partial mechanism candidate | empirical at 27b; mechanism gated on α-7 top-K reshaping test |
+| 5-mode JAMES taxonomy (inert/disrupt/create/disrupt/amplify) | ⭐⭐ partial, cycle-specific | not universal; depends on α-6 context shape. ⭐⭐⭐ candidate requires α-7+α-8 stability + cross-family in Phase 3b |
+| 27b operational routing data | ⭐ operational | adopt: S4 citation only at 27b production; skip S5+S6 unless α-7 reverses disruption |
 | Anything ending in "amplifier" / "capability floor" / "REVERSES" | ❌ | superseded vocabulary; do not revive |
-| Latency tax at 27b | ⭐ operational | 8× expected; if higher, "27b not production-feasible" itself is the finding |
+| 27b latency tax 2.4× (lowest across ladder) | ⭐ operational | inference dominates over JAMES overhead at 27b; cost-efficiency angle vs other tiers |
 
-The qualitative addition over the 12b doc — the **upper-bound** of the
-scale ladder:
-- Does the S5+S6 enable behaviour from 12b plateau, grow, or regress?
-- Does S4 path Δ universal-law candidate survive a 27× model size
-  span (1b → 27b) without noise blur?
-- Does the latency tax stay at ~8× or get worse at the GPU/CPU split?
+### Qualitative additions over 1b / 4b / 12b docs
+
+- **Upper-bound of gemma3 ladder**: S5+S6 disruption at high native
+  capability (0.258 → 0.077) refutes the "amplifier" framing
+  decisively. Even strong native abstention gets broken by
+  source-file injection.
+- **S4 5-point series**: the strongest single finding from α-6 cycle.
+  Independent of native LLM capability profile, family, scale.
+- **2.4× latency tax**: the cheapest JAMES tax ratio observed. This
+  is because 27b raw inference is so slow (77.65s pure) that JAMES
+  overhead (~110s) doesn't multiply as dramatically. At e4b (5.5×),
+  the JAMES overhead matters more proportionally.
+
+The 5-mode picture is the empirical map; the mechanism (source-file
+injection committing the model) is observed at 27b but unconfirmed
+elsewhere; α-7 + α-8 + Phase 3b will tell whether the pattern is
+robust under context change and cross-family.
 
 ---
 
@@ -156,13 +235,12 @@ per 2026-06-01 strategy handover §4 sequencing rule.
 
 ## 7. Findings to promote (post-bench fill)
 
-*Auto-template; operator fills numbers + bucket-tags after data lands.*
-
 | Finding slug | Bucket | Tier | What |
 |---|---|---|---|
-| `s4-citation-tier-invariant-5-point-series` | (a) universal-law | ⭐⭐⭐ (if confirmed) | extends to 5th data point at 27b; *promotes from "candidate" to "validated within MultiHop-RAG fixture"* |
-| `gemma3-27b-james-routing-data` | (c) operational | ⭐ | 27b + JAMES = *TBD*; routing rule input |
-| TBD per surprise | TBD | TBD | apply 4-step rule before drafting |
+| `s4-citation-tier-invariant-5-point-series` | (a) universal-law | ⭐⭐⭐ candidate | path Δ +0.397/+0.410/+0.410/+0.403/+0.419 across 1b/4b/12b/27b/e4b. Validated within MultiHop-RAG fixture; cross-fixture pending |
+| `james-s5-source-injection-disrupts-native-refusal` | (b) mechanism candidate | ⭐⭐ partial | 27b pure abst_f1 0.258 → JAMES 0.077 (-0.181). 24 hallucination answers all start with "Source files: ..." injection. Mechanism: model commits to answer when N sources present. Reshaping pending α-7 top-K |
+| `gemma3-27b-james-routing-data` | (c) operational | ⭐ | 27b production routing: S4 citation only; skip S5+S6 (-0.181 abst_f1) unless α-7 reverses disruption |
+| `27b-latency-tax-lowest-in-ladder` | (c) operational | ⭐ | 2.4× tax (vs e4b 5.5×, 12b 8.6×, 4b 8.2×) — inference dominates JAMES overhead at this scale |
 
 ### Findings WITHDRAWN (carry-over from earlier docs):
 

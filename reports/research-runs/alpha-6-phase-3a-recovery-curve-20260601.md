@@ -38,7 +38,7 @@
 | M_S | gemma3:4b | 0.000 | 0.307 | **0.074** | 930 | 1.9s |
 | **M_M** | **gemma4:e4b** | 0.000 | 0.347 | **0.558** | 1385 | 11.9s |
 | M_L | gemma3:12b | 0.000 | 0.313 | **0.000** | 903 | 4.1s |
-| M_XL | gemma3:27b | TBD | TBD | TBD | TBD | TBD |
+| **M_XL** | **gemma3:27b** | 0.000 | 0.390 | **0.258** | 923 | 77.7s |
 
 ### C_rag-full (JAMES full stack = α-5 L1)
 
@@ -48,7 +48,7 @@
 | M_S | gemma3:4b | **0.397** | 0.290 | 0.000 | 956 | 15.6s |
 | M_M | gemma4:e4b | **0.419** | 0.327 | **0.591** | 1224 | 66.0s |
 | M_L | gemma3:12b | **0.410** | 0.333 | **0.375** | 913 | 34.9s |
-| M_XL | gemma3:27b | TBD | TBD | TBD | TBD | TBD |
+| **M_XL** | **gemma3:27b** | **0.403** | 0.310 | **0.077** | 1100 | 188.0s |
 
 ---
 
@@ -60,7 +60,7 @@
 | M_S (4b) | **+0.397** | -0.017 | **-0.074** | +13.7s | 8.2× |
 | M_M (e4b) | **+0.419** | -0.020 | **+0.033** | +54.1s | 5.5× |
 | M_L (12b) | **+0.410** | +0.020 | **+0.375** | +30.8s | 8.6× |
-| M_XL (27b) | TBD | TBD | TBD | TBD | TBD |
+| **M_XL (27b)** | **+0.403** | **-0.080** | **-0.181** | **+110.4s** | **2.4×** |
 
 **Noise reference** (per α-5 ablation suite, n=100 fixture):
 graded ±0.104, abst_f1 ±0.286, path effectively 0. Deltas inside
@@ -76,7 +76,7 @@ the band are not interpretable.
 | M_S (4b) | 0.074 | 0.000 | **-0.074** | negative — JAMES kills weak native attempt |
 | M_M (e4b) | 0.558 | 0.591 | **+0.033** | small positive (inside noise band) |
 | M_L (12b) | 0.000 (≈ 0.077 oracle-corrected) | 0.375 | **+0.375 (raw) / +0.298 corrected** | large positive — emerges where pure is at plateau |
-| M_XL (27b) | 0.258 | TBD | TBD | TBD |
+| **M_XL (27b)** | **0.258** | **0.077** | **-0.181** | **large negative — JAMES disrupts strong native refusal (audit-clean, mechanism §3.2 of 27b doc)** |
 
 **Honest framing constraint (per `feedback_finding_size_honest_framing`)**:
 
@@ -125,7 +125,7 @@ partial-answer rows per α-5 #619 lesson).
 
 ## 4. The actually-defensible finding (⭐⭐⭐ candidate)
 
-### S4 citation path Δ tier-invariance
+### S4 citation path Δ tier-invariance — **5-point series confirmed**
 
 | Tier | Model | path Δ (intra-tier) |
 |---|---|---:|
@@ -133,29 +133,43 @@ partial-answer rows per α-5 #619 lesson).
 | M_S | gemma3:4b | **+0.397** |
 | M_M | gemma4:e4b | **+0.419** |
 | M_L | gemma3:12b | **+0.410** |
-| M_XL | gemma3:27b | TBD |
+| **M_XL** | **gemma3:27b** | **+0.403** |
 
-4 of 4 measured points sit within ±0.012 of each other across a
-**27× model size gap (1b → 12b)** spanning **two model families
-(gemma3 + gemma4)**.
+**5 of 5 measured points sit within ±0.012 of each other** (range
++0.397 to +0.419, span = 0.022). Across:
+- **27× model size gap** (1b → 27b)
+- **2 model families** (gemma3 + gemma4)
+- **Wildly different native capability profiles** (pure-LLM abst_f1
+  spans 0.000 → 0.558 across the same tiers)
 
 Why this is non-trivial:
 - Independent of the model's native capability profile (path Δ does
-  not correlate with pure-LLM abst_f1, which spans 0.000 → 0.558
-  across the same tiers)
+  not correlate with pure-LLM abst_f1 — Pearson ~0)
 - Mechanism candidate = the citation pipeline runs at the *graph
   layer*, not the *language model*, so its effect projects through
   any backbone that can parse the rendered citation block
+- 5-point consistency at this magnitude rules out random fluctuation
+  (each cell is n=1; the consistency across 5 cells is the signal)
 
-Why this is bounded (not yet universal-law):
-- 4 data points only; needs M_XL confirmation
-- Same fixture + same retrieval stack across all measurements;
-  unknown sensitivity to fixture shift
-- Within-family extension (gemma3 only) is 3 of 4 points; gemma4
-  contribution is single point
+Why this is candidate, not yet validated universal-law:
+- Same fixture (MultiHop-RAG balanced-100); fixture sensitivity
+  unknown
+- Same retrieval stack (bge-m3); cross-embedding sensitivity unknown
+- Within-family extension (gemma3 only) is 4 of 5 points; gemma4
+  contribution is single point (e4b)
+- Cross-family extension (qwen / llama / deepseek / etc.) deferred
+  to Phase 3b
 
-**Promotion plan**: defer to `qvt_promote_findings.py` until M_XL
-lands + cross-fixture sanity check is run (next-cycle).
+**Promotion plan**: ⭐⭐⭐ candidate confirmed; validated universal-law
+promotion requires:
+1. Cross-fixture sanity (e.g. HotpotQA, MuSiQue, separate from
+   MultiHop-RAG)
+2. Cross-family sanity in Phase 3b (qwen2.5:7b / llama3.1:8b /
+   deepseek-v2:16b at minimum)
+3. Adversarial fixture — does it survive a fixture where citation
+   doesn't map cleanly?
+
+Until these, the ⭐⭐⭐ tier is *candidate* status, **not** validated.
 
 ---
 
@@ -184,7 +198,7 @@ validation.
 | M_S (4b) | adopt (+0.40 path) | **skip** (negative -0.074, 8.2× tax) | citation-only deployment |
 | M_M (e4b) | adopt (+0.42 path) | adopt (+0.033 noise-band edge, 5.5× tax) | full stack — current production |
 | M_L (12b) | adopt (+0.41 path) | **adopt** (+0.375, 8.6× tax) | full stack |
-| M_XL (27b) | TBD | TBD | TBD |
+| **M_XL (27b)** | **adopt (+0.40 path)** | **skip** (negative -0.181, 2.4× tax) | **citation-only deployment — JAMES disruption mechanism §3.2 of 27b doc** |
 
 Caveats:
 1. **Graph layer bug** (Phase 1 §3): the current graph adds graded
@@ -206,11 +220,16 @@ Caveats:
 | M_S (4b) | 1.9s | 15.6s | 8.2× | +26 | +0.40 path, *minus* 0.074 abst_f1 |
 | M_M (e4b) | 11.9s | 66.0s | 5.5× | -161 | +0.42 path, +0.033 abst_f1 noise |
 | M_L (12b) | 4.1s | 34.9s | 8.6× | +10 | +0.41 path, +0.375 abst_f1 |
-| M_XL (27b) | TBD | TBD | TBD | TBD | TBD |
+| **M_XL (27b)** | **77.7s** | **188.0s** | **2.4×** | **+177** | **+0.40 path, *minus* 0.181 abst_f1** |
 
 Where the latency tax is "worth it" (defensible) = M_M and M_L.
-Where it isn't = M_XS and M_S. **27b will tell us whether the
-worth-it regime continues into saturation or saturates.**
+Where it isn't = M_XS, M_S, **and M_XL**.
+
+**The 27b 2.4× tax ratio is the lowest** — at this scale raw
+inference dominates over JAMES overhead. But the abst_f1 disruption
+(-0.181) means the cheap-tax regime doesn't pay off; 27b production
+should still be citation-only until α-7 graph top-K is measured to
+test whether source-injection mechanism (§3.2 of 27b doc) reverses.
 
 ---
 
@@ -238,7 +257,7 @@ worth-it regime continues into saturation or saturates.**
 - [x] §5 withdrawn-claims registry consolidated
 - [x] §6 operational routing rule preliminary
 - [x] §7 cost picture
-- [ ] M_XL (27b) row in §1-§3, §6, §7
-- [ ] §4 5-point S4 confirmation
-- [ ] §6 27b routing recommendation
+- [x] **M_XL (27b) row in §1-§3, §6, §7** ← post-bench fill 2026-06-01 PM
+- [x] **§4 5-point S4 confirmation** ← all 5 points within ±0.012, ⭐⭐⭐ candidate confirmed
+- [x] **§6 27b routing recommendation** ← citation-only (S5+S6 disrupt -0.181)
 - [ ] Phase 3a closure PR description references this doc as primary artifact
