@@ -511,7 +511,13 @@ def main() -> int:
         return 0
 
     endpoint = (suite.get("endpoint") or {}).get("url", "/query/")
-    timeout  = int((suite.get("endpoint") or {}).get("timeout", 120))
+    # α-6 Phase 3a: JAMES_BENCH_TIMEOUT env var wins if set (large models like
+    # gemma3:27b need >120s per query on consumer GPU). Fixture endpoint.timeout
+    # is the next fallback, then 120s default.
+    _env_timeout = os.environ.get("JAMES_BENCH_TIMEOUT", "").strip()
+    timeout = int(_env_timeout) if _env_timeout else int(
+        (suite.get("endpoint") or {}).get("timeout", 120)
+    )
     effective_default_mode = args.mode or suite.get("default_mode")
 
     api_key = _load_api_key()
