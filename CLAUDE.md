@@ -98,15 +98,21 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
+| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/handovers/v0.4-next-session-entry-2026-06-01-PM.md`** |
 | Strategic vision + 6-dimension readiness | `docs/PLATFORM_READINESS.md` |
 | Architecture & non-goals | `docs/ARCHITECTURE.md` |
 | 6-axis v0.2 plan + future v0.3/v0.4/v1.0 | `ROADMAP.md` |
-| Active session brief (start here for tasks) | `docs/handovers/v0.3.0-platform-track.md` |
-| v0.2 closure (audit trail) | `docs/handovers/v0.2.0-platform-track.md` |
-| Business track (current cycle) | `docs/handovers/v0.2.1-business-track.md` |
-| v0.3 license / CLA / plugin API session | `docs/handovers/session-2026-05-09-license-infrastructure.md` |
+| α-6 cycle PR index (60+ PRs) | `reports/research-runs/alpha-6-cycle-pr-index.md` |
+| α-5 cycle PR index | `reports/research-runs/alpha-5-cycle-pr-index.md` |
+| α-6 Phase 1 analysis (M_M) | `reports/research-runs/alpha-6-phase-1-analysis-20260601.md` |
+| α-6 Phase 2 analysis (M_S; tier-gated REVERSED) | `reports/research-runs/alpha-6-phase-2-analysis-20260601.md` |
+| Active backlog reconciliation | `docs/handovers/v0.4.x-backlog-reconciliation-2026-05-30.md` |
+| v0.4.1 closure (audit trail) | `docs/handovers/v0.4.1-t6-causality-chain-entry.md` |
 | License long-term plan + trigger monitoring | `docs/LICENSE_PLAN.md` |
 | **Change Request primitive (v0.2.x cycle)** | `docs/handovers/v0.2.x-cr-track.md` + `docs/ARCHITECTURE.md §5.6` |
+| 4-step rule (+ arithmetic step) | `memory/feedback_oracle_phrase_artifacts.md` |
+| Layer-intent matrix mechanism | `memory/mechanism_layer_intent_axis_alignment.md` |
+| Mother framing position guard | `memory/feedback_jameses_positioning_replayable_rag.md` §"정정 2026-05-31" |
 | Open issues by priority | `gh issue list --label priority:high` |
 | STEP 7 regression baseline | `eval/regression/step7_queries.json` (or `scripts/step7_query_test.py`) |
 
