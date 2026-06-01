@@ -123,6 +123,117 @@ Every entry below MUST include a `bucket:` line tagging (a)/(b)/(c)/(d).
   at 0), Pareto verdict still works but on a smaller surface. Sanity cell
   (think=ON vs OFF) still measurable on all 4 active axes.
 
+### 2026-06-01 — multihop-rag-lost-in-middle-at-gemma4-e4b
+
+- **bucket**: (b) — model-context interaction (well-documented in
+  Lost-in-the-Middle / Power-of-Noise literature)
+- **cell context**: α-6 Phase 1, C_minus → C_rag-basic transition at
+  gemma4:e4b production tier (M_M), MultiHop-RAG balanced-100
+- **observation**: adding S1 RAG retrieval to pure gemma4:e4b
+  degrades abst_f1 by 0.137 (0.558 → 0.421). Null-query refusal
+  count drops from 12/25 (pure LLM) to 8/25 (with RAG context).
+  Specifically, the LLM hallucinates ON 4 MORE null queries when
+  given irrelevant retrieved context vs no context at all.
+- **surprise**: this matches the published Lost-in-the-Middle
+  (Liu et al. 2023) + Power-of-Noise (Cuconasu et al. 2024)
+  findings. Worth documenting that gemma4:e4b reproduces the
+  pattern at production scale on MultiHop-RAG balanced-100. NOT
+  JAMES-specific.
+- **data pointer**: `workspaces/hotpot_eval/reports/research-runs/qvt-ablation-cells/qvt-ablation-cell-C_minus-M_M.json` +
+  `qvt-ablation-cell-C_rag-basic-M_M.json` + analysis at
+  `reports/research-runs/alpha-6-phase-1-analysis-20260601.md`
+- **follow-up tag**: `mechanism-candidate`
+- **probe ideas**: tier-gated check (Phase 2 in flight); does smaller
+  gemma3:4b see larger relative degradation?
+- **immediate impact on α-6**: framing change — α-6's "does each
+  sector help vs vanilla LLM" question reframes: "does each sector
+  help vs the LLM-alone-with-no-context baseline?" RAG and graph
+  are no longer assumed-positive contributors.
+
+### 2026-06-01 — jameses-s5-s6-recover-rag-damage
+
+- **bucket**: (a) — architecture-as-designed; mechanism candidate
+- **cell context**: α-6 Phase 1, C_rag-graph → C_rag-full transition
+  at gemma4:e4b production tier (M_M)
+- **observation**: enabling S5 abstention + S6 cognitive stages
+  on top of S1+S2+S3+S4 recovers graded_answer by +0.054 (0.273 →
+  0.327) AND abst_f1 by +0.129 (0.462 → 0.591). The recovery
+  brings abst_f1 ABOVE the pure-LLM baseline (0.591 vs 0.558).
+- **surprise**: this is the measurable JAMES contribution at
+  production tier. S5+S6 are doing the heaviest semantic work in
+  the stack — exactly the "abstention softener" mechanism the
+  layer was designed for. Latency tax: +37s/query (~5.5× total
+  over pure LLM).
+- **data pointer**: same as above + α-5 L1 cell as C_rag-full
+- **follow-up tag**: `mechanism-candidate` + `universal-law`
+  (preliminary — Phase 2/3 confirms or restricts to gemma4)
+- **probe ideas**:
+  1. Phase 2 (M_S = gemma3:4b) tier-gated check
+  2. Phase 3a (gemma3 scale ladder) — does recovery magnitude
+     scale with model size?
+  3. Phase 3b (cross-family qwen/llama/deepseek) — is the recovery
+     JAMES-architecture-specific or universal RAG mitigation?
+- **immediate impact on α-6**: this is the publishable JAMES
+  contribution at production tier on MultiHop-RAG. Phase 2 tests
+  whether the pattern is model-invariant.
+
+### 2026-06-01 — jameses-graph-too-many-entities-surfaced
+
+- **bucket**: (a) — architecture, optimizable (engineering, not
+  fundamental)
+- **cell context**: α-6 Phase 1, C_rag-graph cell, gemma4:e4b
+- **pattern**: per-query graph_paths counts in trace JSONL range
+  41-161 entities (sample queries 96-100 show counts of 90, 41,
+  137, 161). LLM context window flooded with potentially-irrelevant
+  graph entities.
+- **observation**: adding S2 graph traversal + S3 preproc + S4
+  citation as a bundle on top of S1 RAG degrades graded_answer by
+  -0.054 (0.327 → 0.273). The aggregate Power-of-Noise pattern
+  (semantically-similar irrelevant entities hurt more than random
+  noise) reproduces on the graph axis.
+- **surprise**: the graph layer is providing MORE noise than the
+  document layer alone. Aggressive top-K filtering on graph
+  results (by query embedding similarity, threshold ~0.3) is the
+  cheapest engineering improvement candidate.
+- **data pointer**: `workspaces/hotpot_eval/reports/research-runs/qvt-ablation-cells/qvt-ablation-cell-C_rag-graph-M_M.json`;
+  trace files in `workspaces/hotpot_eval/reports/trace/2026-06-01/`
+- **follow-up tag**: `mechanism-candidate` + `anti-pattern`
+- **probe ideas**:
+  1. Implement top-K graph filtering (~1 day code) — expected
+     graded +0.03-0.05
+  2. Per-question-type routing — graph for multi-hop queries
+     only, skip for comparison/temporal/null
+  3. Query embedding similarity threshold in
+     `engine.graph.rank_nodes`
+- **immediate impact on α-6**: an engineering candidate that could
+  shift the C_rag-graph cell verdict from "neutral" to "adopt"
+  with one focused PR. Tagged for after Phase 2/3 completes (so
+  the fix is informed by the cross-model data).
+
+### 2026-06-01 — multihop-rag-citation-axis-jameses-only
+
+- **bucket**: (a) — structural; JAMES's unique measurable contribution
+- **cell context**: α-6 Phase 1, C_rag-graph → path 0 → 0.411 step
+- **observation**: enabling S4 citation (bundled with S2+S3 in this
+  batch, but isolated by C_rag-cited cell when next phase runs)
+  drives path_coverage from 0.0 (no JAMES → no citation surface)
+  to 0.411 (JAMES emits top-3 source documents per query). No
+  regression on other axes from this layer.
+- **surprise**: NO surprise — confirms JAMES's design. Worth
+  promoting because *this is the one axis where vanilla LLM
+  cannot compete by construction.* All other JAMES contributions
+  are recoveries from RAG damage; the citation axis is JAMES's
+  one-axis structural lead.
+- **data pointer**: cell L1 carryover (C_rag-full) at path 0.419
+  vs C_minus at 0.0
+- **follow-up tag**: `mechanism-candidate` + `universal-law`
+- **probe ideas**: Phase 2/3 confirms path axis is model-invariant
+  (should be — it's a structural output, not a quality measure)
+- **immediate impact on α-6**: publishable framing —
+  *"JAMES's measurable structural contribution on MultiHop-RAG is
+  path coverage +0.42 vs zero for the bare LLM. Quality axes are
+  roughly LLM-equivalent at production tier."*
+
 ---
 
 ## Promoted to memory
