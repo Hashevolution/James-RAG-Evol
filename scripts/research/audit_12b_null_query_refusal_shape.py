@@ -1,19 +1,23 @@
-"""4-step rule audit — refusal-shape vs hallucination across null queries.
+"""4-step rule audit — null-query refusal-shape coverage gap finder.
 
-Usage (defaults to 12b C_minus bench):
+Usage:
     python scripts/research/audit_12b_null_query_refusal_shape.py
     python scripts/research/audit_12b_null_query_refusal_shape.py <bench_json>
 
-Output: counts of refusal-shaped vs hallucination answers + sample text.
+Output:
+    - Loads the actual oracle `_ABSTENTION_PHRASES` set
+    - Splits null queries into oracle-positive (detected refusal) vs
+      oracle-negative (oracle did NOT detect refusal — these are the FNs)
+    - Among the FN set, applies a wider refusal-shape regex panel to
+      surface patterns the oracle would benefit from adding (narrow only —
+      patterns appearing in unhedged refusal positions, not in
+      partial-answer rows).
 
-Origin: α-6 Phase 3a, 2026-06-01 — 4-step rule check on the 12b C_minus
-abst_f1=0.000 finding. Determined the 12b "dip" is 96% real (24/25 true
-hallucinations) with 1 missed refusal pattern (`doesn't link`); the
-"dip" framing is reshaped to "plateau" in the recovery curve doc.
-
-Re-usable for any later cycle where pure-LLM abst_f1=0 at a scale we
-expected to abstain — the audit catches bucket-(d) phrase-coverage gaps
-before they pollute publishable framings.
+Origin: α-6 Phase 3a, 2026-06-01.
+- Initial run on 12b C_minus found 1/25 missed refusal (`doesn't
+  link`); 12b "dip" reframed to "plateau with 4b".
+- Extension run on 27b C_minus + 4b C_minus to consolidate any
+  multi-tier oracle phrase coverage gaps (= bucket-(d) sub-findings).
 """
 import json, sys, re
 
@@ -27,7 +31,20 @@ with open(bench_path, 'rb') as fp:
 results = d['results']
 nulls = [r for r in results if r.get('question_type') == 'null_query']
 
-# Refusal indicators (rough — what an oracle SHOULD catch)
+# Load oracle's actual phrase list to compute oracle TP / FN per query.
+sys.path.insert(0, '.')
+try:
+    from eval.qvt.oracle import _ABSTENTION_PHRASES, detect_abstention
+    oracle_phrases = _ABSTENTION_PHRASES
+except ImportError:
+    oracle_phrases = ()
+    detect_abstention = lambda a: bool(a) and any(p in a.lower() for p in [])
+
+def oracle_decides(answer):
+    """What the oracle would classify (True = refusal detected)."""
+    return detect_abstention(answer)
+
+# Refusal indicators (wider than oracle — for finding coverage gaps)
 refusal_patterns = [
     r"\bdoesn'?t\s+(explicitly\s+)?link",
     r"\bdoes\s+not\s+(explicitly\s+)?link",
@@ -62,39 +79,55 @@ def classify(answer):
             return True, f"pattern[{i}]={refusal_patterns[i]} → match='{m.group(0)}'"
     return False, None
 
-print(f'=== 12b (M_L) C_minus — 25 null query refusal-shape audit ===')
-print(f'Oracle reported: TP=0 FP=0 FN=25 TN=75 → abst_f1 = 0.000')
-print(f'4-step rule check: does any answer LOOK like refusal that oracle missed?')
+print(f'=== Null-query refusal-shape audit ===')
+print(f'bench file: {bench_path}')
+print(f'null queries: {len(nulls)}')
 print()
 
-n_refusal_shape = 0
-n_halluc = 0
-refusal_samples = []
-halluc_samples = []
+# Split by oracle decision
+oracle_tp = []      # oracle classified as refusal
+oracle_fn = []      # oracle classified as hallucination (= FN since truth=null=should refuse)
 for i, q in enumerate(nulls):
-    ans = q.get('answer_preview', '')
+    ans = q.get('answer_preview', '') or ''
+    if oracle_decides(ans):
+        oracle_tp.append((i, q.get('id'), ans))
+    else:
+        oracle_fn.append((i, q.get('id'), ans))
+
+print(f'Oracle TP (refusal caught): {len(oracle_tp)}/25')
+print(f'Oracle FN (refusal missed or true hallucination): {len(oracle_fn)}/25')
+print()
+
+# Among oracle-FN, find refusal-shape patterns (= missed by oracle)
+print(f'=== Audit on Oracle-FN set ({len(oracle_fn)} answers) ===')
+missed = []
+true_halluc = []
+for idx, qid, ans in oracle_fn:
     is_refusal, pat = classify(ans)
     if is_refusal:
-        n_refusal_shape += 1
-        refusal_samples.append((i, q.get('id'), pat, ans[:300]))
+        missed.append((idx, qid, pat, ans))
     else:
-        n_halluc += 1
-        halluc_samples.append((i, q.get('id'), ans[:200]))
+        true_halluc.append((idx, qid, ans))
 
-print(f'refusal-shape answers: {n_refusal_shape}/25  ({n_refusal_shape*4}% — would be TP if oracle caught)')
-print(f'hallucination answers: {n_halluc}/25  ({n_halluc*4}% — real FN)')
+print(f'  oracle-missed refusal-shape: {len(missed)}/{len(oracle_fn)} ({len(missed)*100//max(1,len(oracle_fn))}%)')
+print(f'  true hallucinations:         {len(true_halluc)}/{len(oracle_fn)} ({len(true_halluc)*100//max(1,len(oracle_fn))}%)')
 print()
 
-if refusal_samples:
-    print(f'=== Refusal-shape answers (oracle should have caught these) ===')
-    for idx, qid, pat, ans in refusal_samples:
+if missed:
+    print(f'=== Oracle-missed refusal patterns (candidates for bucket-(d) phrase add) ===')
+    for idx, qid, pat, ans in missed:
         print(f'  null[{idx}] id={qid}')
         print(f'    matched: {pat}')
-        print(f'    answer:  {ans}')
+        print(f'    answer:  {ans[:300]}')
         print()
 
-print(f'=== First 3 true hallucinations (no refusal indicator) ===')
-for idx, qid, ans in halluc_samples[:3]:
-    print(f'  null[{idx}] id={qid}')
-    print(f'    answer: {ans}')
+if oracle_tp:
+    print(f'=== Oracle-caught refusals (for comparison) ===')
+    for idx, qid, ans in oracle_tp[:3]:
+        print(f'  null[{idx}] id={qid}: {ans[:200]}')
+        print()
+
+print(f'=== Top-3 true hallucinations (no refusal indicator) ===')
+for idx, qid, ans in true_halluc[:3]:
+    print(f'  null[{idx}] id={qid}: {ans[:200]}')
     print()
