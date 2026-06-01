@@ -15,12 +15,15 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   QVT α track. v0.2.0 (Foundation Hardening) and v0.3.0
   (Platform Skeleton) both fully closed; v0.4.0 (Layer 4 Lifecycle:
   T1+T7+T2 first bundle) shipped 2026-05-27.
-- **Active theme**: **α-6 measurement cycle in flight (Phase 3a)** —
-  MultiHop-RAG external benchmark, 5-axis Pareto oracle, scale-ladder
-  measurement of JAMES sector contributions across gemma3 1b/4b/12b/27b
-  + gemma4 e4b. Phase 1 + Phase 2 closed (2026-06-01 AM); Phase 3a
-  scale ladder running. Closure → α-7 (graph top-K fix) → α-8 (ontology
-  typed-filter A/B). Domain pilot (v0.5) still gated.
+- **Active theme**: **α-7 — graph top-K filter** (first JAMES code
+  change against α-5+α-6 measurement debt; design memo at
+  `docs/design/v0.4-alpha-7-graph-topk.md`, sub-finding bucket-(d)
+  oracle phrase add at `reports/research-runs/alpha-7-bucket-d-oracle-phrase-gap.md`).
+  α-6 cycle closed 2026-06-01 PM (PR #678) with 5-point S4 universal-law
+  candidate, 5-mode taxonomy (cycle-specific empirical), 9 wrong-fix-
+  averted, 0 JAMES code lines changed. Sequence: α-7 → 5-tier mode
+  re-measurement → Phase 3b proper (5 families × n=3) → α-8 ontology.
+  Domain pilot (v0.5) still gated.
 - **Strategic frame**: We are still building a **mother platform**;
   v1.0 vertical domain branching remains the only authorised
   specialisation point. The 2026-06-01 strategic discussion narrowed
@@ -108,7 +111,8 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
-| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/handovers/v0.4-next-session-entry-2026-06-01-PM.md`** |
+| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/handovers/v0.4-next-session-entry-2026-06-02-alpha7.md`** |
+| Previous session entry (Phase 3a launch — now sealed) | `docs/handovers/v0.4-next-session-entry-2026-06-01-PM.md` |
 | Strategic vision + 6-dimension readiness | `docs/PLATFORM_READINESS.md` |
 | Architecture & non-goals | `docs/ARCHITECTURE.md` |
 | 6-axis v0.2 plan + future v0.3/v0.4/v1.0 | `ROADMAP.md` |
@@ -161,4 +165,4 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 자메스는 **v1.0까지 "범용 모체"로만** 강화합니다. 도메인 분화(법률·식품·유통·여행 등)는 v1.0 이후에만 시작합니다. 이 세션에서 도메인 코드를 추가하지 마세요.
 
-**현재 위치**: v0.4.1 완료 (DOI `10.5281/zenodo.20426719`) → α-6 측정 사이클 Phase 3a 진행 중 (gemma3 1b/12b/27b scale ladder). 다음 사이클 순서: α-7 (graph top-K fix) → α-8 (온톨로지 typed-filter A/B). v0.5 첫 도메인 후보 = 기업 내부지식 온톨로지 (수평 — 도메인 vertical 아님). 자세한 내용은 `docs/PLATFORM_READINESS.md` + `ROADMAP.md` + `docs/handovers/v0.4.x-backlog-reconciliation-2026-05-30.md`.
+**현재 위치**: v0.4.1 완료 (DOI `10.5281/zenodo.20426719`) → α-6 사이클 closed 2026-06-01 PM (PR #678, 5-point S4 universal candidate + 5-mode taxonomy cycle-specific empirical). 다음 사이클 순서: α-7 (graph top-K fix, design memo 있음) → α-7 5-tier mode re-measurement → Phase 3b proper (5 families × n=3 ≈ 45h) → α-8 ontology typed-filter. v0.5 첫 도메인 후보 = 기업 내부지식 ontology (수평 — vertical 아님). 다음 세션 entry: `docs/handovers/v0.4-next-session-entry-2026-06-02-alpha7.md`. 자세한 내용은 `docs/PLATFORM_READINESS.md` + `ROADMAP.md`.
