@@ -938,6 +938,193 @@ publication. T1/T2 fold into an α-5.1 or α-6 cycle.
 
 ---
 
+## v0.4.x — α-6 Sector × LLM Ablation Cycle (2026-05-31~, **Phase 3a in flight**)
+
+**Theme**: successor to α-5. α-5 toggled 5 routing flags at one model
+tier and found the routing stack inert at production tier (Branch B).
+α-6 reshapes to:
+
+1. **Sector-level ablation** (10 sectors of JAMES infrastructure
+   instead of 5 routing flags). Cells are sector *combinations*, not
+   flag combinations.
+2. **Multi-LLM extension** — gemma3 1b/4b/12b/27b + gemma4:e4b + (later)
+   cross-family (qwen2.5 / llama3.1 / deepseek-v2).
+3. **JAMES-vs-vanilla comparison** — α-5's L1 baseline already had
+   every other JAMES sector on; α-6's C_minus cell strips them off and
+   measures bare gemma against benchmark.
+
+**Cycle sizing** (vs original α-6 design memo §3):
+
+- 4 phases (Phase 0 sector flags / Phase 1 M_M / Phase 2 M_S / Phase 3a
+  scale ladder / Phase 3b cross-family deferred).
+- 75+ PRs through Phase 3a entry, 8 wrong-fix-averted, **0 lines of
+  JAMES code changed** against measurement debt.
+- Per-tier wall-clock: M_XS ~15 min / M_S ~30 min / M_M ~107 min /
+  M_L ~65 min / M_XL ~6-8h (GPU/CPU split, see below).
+
+### Phase status (live)
+
+| Phase | Tier | Status |
+|---|---|---|
+| Phase 1 | M_M (gemma4:e4b) | ✅ closed 2026-06-01 AM |
+| Phase 2 | M_S (gemma3:4b) | ✅ closed 2026-06-01 AM — tier-gated hypothesis REVERSED |
+| Phase 3a step 1 | M_XS (gemma3:1b) | ✅ closed 2026-06-01 PM |
+| Phase 3a step 2 | M_L (gemma3:12b) | ✅ closed 2026-06-01 PM — gemma4-only hypothesis REVERSED |
+| Phase 3a step 3 | M_XL (gemma3:27b) | 🟡 in flight (bench timeout overrides applied, see PR-pending) |
+| Phase 3a closure | recovery curve + closure PR | ⏳ post-27b |
+| Phase 3b | cross-family (qwen / llama / deepseek) | deferred (gated on Phase 3a verdict) |
+
+### Findings (4 tier-tagged per `feedback_finding_size_honest_framing`)
+
+| Finding | Tier | Status |
+|---|---|---|
+| S4 citation tier-invariant — path Δ +0.397~+0.420 across 1b/4b/12b/e4b (4-point series, 27b pending) | ⭐⭐⭐ candidate | universal-law promotion gated on 27b confirmation + cross-fixture sanity |
+| JAMES S5 effect non-monotonic in pure-model abstention (1b 0 / 4b -0.074 / 12b +0.375 / e4b +0.033) | ⭐⭐ partial | mechanism candidate = instruction-following capacity threshold |
+| Graph layer regresses graded (-0.054 at M_M C_rag-graph step) | ⭐⭐ measurement debt | resolves on α-7 graph top-K fix; logged in `qvt-ablation-findings.md` |
+| Withdrawn framings — "JAMES amplifier", "inverted-U capability floor", "gemma3 vs gemma4 family", "REVERSES tier-gated hypothesis" | ❌ self-deception | superseded by 12b / 27b data; honest framing memory applied |
+
+### Cycle PR index
+
+`reports/research-runs/alpha-6-cycle-pr-index.md`.
+
+### Closure deliverables (in flight on `feat/v0.4-alpha6-phase-3a-closure`)
+
+- Phase 3a 1b analysis (`alpha-6-phase-3a-gemma3-1b-analysis-20260601.md`)
+  with post-12b reconciliation header
+- Phase 3a 12b analysis (`alpha-6-phase-3a-gemma3-12b-analysis-20260601.md`)
+  with honest framing tier table
+- Phase 3a 27b analysis (post-bench)
+- Recovery curve doc (`alpha-6-phase-3a-recovery-curve-20260601.md`)
+  with §5 withdrawn-claims registry
+- Closure PR consolidating all 3 analyses + recovery curve + 2 timeout
+  fix patches + CLAUDE.md sync + α-7/α-8 design memo seeds
+
+---
+
+## v0.4.x — α-7 Graph Top-K Cycle (post-α-6 closure)
+
+**Theme**: first JAMES code change against α-5 + α-6 measurement debt.
+Per α-6 Phase 1 §3 finding, the graph layer (`expand_dynamic` in
+`core/graph_engine.py:314`) is the net regressor on `graded` at M_M
+(-0.054). 41-161 entities surface per query at the 931-entity workspace,
+swamping the LLM context window with low-signal nodes.
+
+**Status**: design memo landed
+(`docs/design/v0.4-alpha-7-graph-topk.md`); implementation gated on
+α-6 closure + re-baseline.
+
+**Scope** (per design memo §2):
+
+- New module `core/graph_topk.py` (~3 KB target) — post-DFS top-K
+  filter, default K=10
+- Tighten `DFS_SCORE_THRESHOLD` 0.05 → 0.08
+- Wire into `expand_dynamic` return
+- Avoids forcing `core/graph_engine.py` split (already 20.4 KB,
+  marginally over the 20 KB gate — new module routes around it)
+- Re-baseline `multihop_rag` post-PR (~107 min operator action)
+- 5-axis Quality Delta Card with per-question-type cross-tab
+
+**Acceptance band** (per design memo §4): `graded_answer Δ ≥ +0.030`
+for adopt; +0.010-0.030 for tier-gated; ≤ +0.010 → reject + sub-finding
+investigation.
+
+**Honest framing** (per memory `feedback_finding_size_honest_framing`):
+
+- ⭐ **operational** — top-K filtering is a standard GraphRAG technique
+  (MS GraphRAG, Neo4j LLM KG Builder both do variants). PR's value is
+  the measured Δ numbers, not the mechanism.
+- Don't frame as "JAMES discovered top-K filtering" — false claim.
+
+**Cycle dependencies**:
+
+- Predecessor: α-6 closure (the re-baseline depends on Phase 3a
+  closure being on main)
+- Successor: α-8 ontology typed-filter (A/B compares against α-7's
+  K-bound baseline)
+- Parallel: T3 Evidence Aging (orthogonal axis)
+
+---
+
+## v0.4.x — α-8 Ontology Typed-Filter Cycle (post-α-7 closure)
+
+**Theme**: measures whether **typed** filtering (only surface entities
+whose type matches query intent) beats α-7's **type-agnostic** K
+filter on multihop_rag. A/B isolation: `Δ = C_rag-ontology −
+C_rag-graph_post-α-7`.
+
+**Status**: design memo landed
+(`docs/design/v0.4-alpha-8-ontology-typed-filter.md`); implementation
+gated on α-7 closure.
+
+**Scope** (per design memo §2 + §3):
+
+- Extend `core/ontology.py` (10 KB → ~14-15 KB; under gate):
+  - Abstract root `Entity` + `ENTITY_TYPES` registry
+  - 5 new horizontal types: `event`, `date`, `location`, `quantity`,
+    `project` (additive; existing `person / org / concept / document`
+    unchanged)
+  - 6 new relations: `OCCURRED_AT`, `HAPPENED_ON`, `LOCATED_IN`,
+    `INVOLVES`, `MEASURED_AS`, `WORKED_ON`
+- **Migration cost: 0** — additive only; old types and 931 wiki
+  entities unchanged.
+- New sector flag `JAMES_DISABLE_TYPED_FILTER` (disable-polarity,
+  default OFF = sector ON = production byte-identical)
+- New matrix cell `C_rag-ontology` (between `C_rag-graph` and
+  `C_rag-full`)
+- Query intent → expected-type classifier (keyword heuristic; LLM
+  classifier deferred to v0.5+)
+- 5-axis QDC + per-question-type cross-tab against post-α-7 C_rag-graph
+
+**Acceptance band** (per design memo §4):
+
+- ⭐⭐ adopt — `graded Δ ≥ +0.030`
+- tier-gated — `+0.010 ≤ graded Δ < +0.030` (enable per question_type
+  only)
+- reject — `graded Δ < +0.010` (heuristic top-K is sufficient; ontology
+  layer stays in codebase but disabled by default)
+
+**Rule #1 boundary test** (per design memo §2.3): each proposed type
+checked horizontally. The 5 accepted types pass; `regulation`,
+`transaction`, `recipe` flagged for deferral or rejection.
+
+**Forward compat hook** (per design memo §3.4): `since:` field anchor
+allows v0.5 domain packs to register pack-specific types via the same
+mechanism without absorbing them into the mother schema.
+
+**Honest framing** (per memory `feedback_finding_size_honest_framing`):
+
+- ⭐⭐ **partial** if Δ exceeds noise — typed filtering is a known
+  technique; JAMES-specific value is the empirical position, not the
+  mechanism
+- ⭐ **operational** if Δ ≤ noise — confirms heuristic top-K is
+  sufficient; finding logged either way
+- ❌ Don't claim "JAMES discovered typed semantics matter" — decades-
+  old territory
+
+**Cycle dependencies**:
+
+- Predecessor: α-7 closure (baseline = post-α-7 C_rag-graph)
+- Successor: cross-fixture sanity (deferred to v0.5 entry)
+- Parallel: T3 Evidence Aging (orthogonal)
+
+---
+
+## v0.4.x — Sequencing rule (2026-06-01 strategy handover §4)
+
+Graph-touching cycles **serial** to avoid measurement baseline drift:
+`α-6 closure → α-7 → α-8`. Confidence/time-axis cycles **parallel** to
+graph track: T3 Evidence Aging is orthogonal to entity surfacing/typing
+and can land in any cycle alongside the graph track.
+
+The v0.5 first-domain candidate is **enterprise internal knowledge
+ontology** (horizontal, audit/ownership/correction moat) per 2026-06-01
+strategy handover §6. This framing applies to v0.5 *domain selection
+criteria*, not to v0.4 cycle scope. Mother-platform rule #1 holds —
+v0.4.x cycles add only horizontal infrastructure (top-K, abstract types,
+forward-compat hooks), no domain-specific types.
+
+---
+
 ## v0.5.0 — First Domain Pilot (~6 months after v0.4)
 
 **Theme**: prove the platform contract by running ONE real domain

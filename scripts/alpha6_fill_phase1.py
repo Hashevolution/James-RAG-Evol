@@ -381,7 +381,7 @@ def main(argv: Optional[list] = None) -> int:
                    help="Output path (default: "
                         "reports/research-runs/alpha-6-phase-1-analysis-<YYYYMMDD>.md)")
     p.add_argument("--tier", type=str, default="M_M",
-                   choices=["M_S", "M_M", "M_L"],
+                   choices=["M_XS", "M_S", "M_M", "M_L", "M_XL"],
                    help="Tier suffix on cell JSON filenames "
                         "(default M_M = Phase 1 production tier)")
     p.add_argument("--phase-label", type=str, default="Phase 1",

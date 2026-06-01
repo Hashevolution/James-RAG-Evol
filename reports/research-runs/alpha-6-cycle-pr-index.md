@@ -1,14 +1,19 @@
-# α-6 Cycle PR Index — Live (2026-06-01)
+# α-6 Cycle PR Index — Live (2026-06-01 PM)
 
 > α-5 closed with `reports/research-runs/alpha-5-cycle-pr-index.md`
 > (#655). α-6 cycle continues — this is the live navigable index
 > for α-6 PRs landed so far. Update as each PR lands.
 >
-> **Cycle range (live)**: PR #663 → #669+ (extends α-5's 1-655)
-> **Total project PRs to date**: 60 (#608 → #669)
+> **Cycle range (live)**: PR #663 → #677+ (extends α-5's 1-655)
+> **Total project PRs to date (α-6)**: 17+ landed PRs + 9 commits on
+> closure branch pending PR
 > **α-5 PRs**: 47 (#608 → #654, plus #655 = cycle close)
 > **α-6 prep + Engineering pre PRs**: 11 (#657-#661 + #662-#666)
-> **α-6 Phase 1 closure**: 4 (#667 → #670 (this))
+> **α-6 Phase 1 closure**: 4 (#667 → #670)
+> **α-6 Phase 2 closure**: 5 (#671-#676)
+> **α-6 Phase 3a tier extension**: 1 (#677)
+> **α-6 Phase 3a closure (pending PR)**: 10 commits on
+> `feat/v0.4-alpha6-phase-3a-closure` branch — see §K
 
 ---
 
@@ -16,15 +21,17 @@
 
 | Category | Count |
 |---|---|
-| **Total cycle PRs to date** | 60 |
+| **Total α-6 cycle PRs landed** | 17 (#663 → #677) |
+| **Closure branch commits pending PR** | 10 (Phase 3a closure consolidation) |
 | Sector flag features (S1-S6) | 5 (#657-#661) |
-| Matrix runner + renderer extensions | 2 (#663, #664) |
+| Matrix runner + renderer extensions | 3 (#663, #664, #677 tier extension) |
 | Phase 1 closure (template + auto-fill + analysis + findings) | 4 (#665, #667, #668, #669) |
+| Phase 2 closure (rate-limit + tier-parametrized fill + analysis) | 5 (#671-#676) |
 | Phase 2 entry doc | 1 (#666) |
 | Phase 1 design + handover | 3 (#646, #647, #650) |
 | Memory layer-intent + CLAUDE.md rule 2 | 1 (#652) |
-| Wrong-fix-averted in cycle | 7 |
-| Cumulative JAMES code change against α-5 measurement debt | **0 lines** |
+| **Wrong-fix-averted in cycle** | **9** (was 7 at Phase 1 close; +1 at Phase 2 rate-limit; +1 at Phase 3a tier override) |
+| Cumulative JAMES code change against α-5+α-6 measurement debt | **0 lines** |
 
 ---
 
@@ -152,8 +159,33 @@ Operator action: review each draft, move accepted into
 | Phase 3a (gemma3 scale ladder) | gated on Phase 2 verdict |
 | Phase 3b (cross-family) | gated on Phase 3a verdict |
 | AUTO_ROUTER multi-tier engineering | gated on Phase 4+ decision |
-| Engineering candidate: graph top-K filtering | finding-driven; 1-day code; gated on Phase 2/3 confirms graph hurts at other tiers |
-| Engineering candidate: ontology relation types | v0.5+ pilot; bigger work |
+| Engineering candidate: graph top-K filtering | ✅ Phase 1/2/3a all confirmed graded regression; α-7 cycle design memo landed `docs/design/v0.4-alpha-7-graph-topk.md` |
+| Engineering candidate: ontology typed-filter | ✅ promoted from "v0.5+ pilot" to **α-8 cycle** (post-α-7 closure); design memo landed `docs/design/v0.4-alpha-8-ontology-typed-filter.md` with integration plan vs existing 4 entity types |
+
+---
+
+## K. Phase 3a closure branch (pending PR — `feat/v0.4-alpha6-phase-3a-closure`)
+
+10 commits accumulated against α-6 cycle measurement debt while
+Phase 3a 27b runs in background. Single closure PR planned post-27b
+finish. Commit list:
+
+| # | Commit | Theme |
+|---|---|---|
+| 1 | `ac9670d` | feat — Phase 3a 1b analysis + alpha6_fill_phase1.py M_XS/M_XL choices |
+| 2 | `492b28e` | docs — Phase 3a 12b analysis (honest framing applied) |
+| 3 | `be2fb64` | fix — bench + matrix subprocess timeout env overrides (for 27b GPU/CPU split) |
+| 4 | `85beb6e` | docs — recovery curve skeleton + 1b doc reconciliation header |
+| 5 | `0528f27` | docs — CLAUDE.md sync to v0.4.1 + α-6 measurement cycle |
+| 6 | `6ac76dd` | docs — α-7 + α-8 design memo drafts (no code change) |
+| 7 | `7250699` | docs — ROADMAP α-6/α-7/α-8 + sequencing rule |
+| 8 | `4a5a60c` | docs — Phase 3a 27b analysis skeleton (pre-bench placeholders) |
+| 9 | `f9938a0` | docs — 4-step rule audit on 12b abst_f1=0 → reshape "dip" to "plateau" |
+| 10 | `<pending>` | docs — α-7 bucket-(d) oracle phrase gap sub-finding |
+
+Closure PR will additionally include: 27b numbers (post-bench),
+recovery curve M_XL row + S4 5-point series confirmation, closure
+PR description with consolidated narrative.
 
 ---
 
@@ -172,10 +204,22 @@ Operator action: review each draft, move accepted into
 
 - α-5 cycle PR index: `reports/research-runs/alpha-5-cycle-pr-index.md` (#655)
 - Phase 1 analysis: `reports/research-runs/alpha-6-phase-1-analysis-20260601.md`
+- Phase 2 analysis: `reports/research-runs/alpha-6-phase-2-analysis-20260601.md`
+- Phase 3a 1b analysis (⚠️ reconciliation header): `reports/research-runs/alpha-6-phase-3a-gemma3-1b-analysis-20260601.md`
+- Phase 3a 12b analysis (honest framing): `reports/research-runs/alpha-6-phase-3a-gemma3-12b-analysis-20260601.md`
+- Phase 3a 27b analysis (skeleton): `reports/research-runs/alpha-6-phase-3a-gemma3-27b-analysis-20260601.md`
+- Phase 3a recovery curve: `reports/research-runs/alpha-6-phase-3a-recovery-curve-20260601.md`
 - Phase 2 entry: `docs/handovers/v0.4-alpha-6-phase-2-entry.md`
+- Phase 3a entry: `docs/handovers/v0.4-next-session-entry-2026-06-01-PM.md`
+- α-7 design memo (next cycle): `docs/design/v0.4-alpha-7-graph-topk.md`
+- α-8 design memo (cycle after): `docs/design/v0.4-alpha-8-ontology-typed-filter.md`
+- α-7 bucket-(d) sub-finding: `reports/research-runs/alpha-7-bucket-d-oracle-phrase-gap.md`
+- 4-step rule audit script: `scripts/research/audit_12b_null_query_refusal_shape.py`
 - Findings log: `reports/research-runs/qvt-ablation-findings.md`
 - α-6 design memo: `docs/design/v0.4-alpha-6-sector-llm-ablation-matrix.md`
 - α-6 engineering pre plan: `docs/design/v0.4-alpha-6-engineering-pre-pr-sequence.md`
+- Honest framing rule: `memory/feedback_finding_size_honest_framing.md`
+- Matrix runner tier override (9th wrong-fix): `memory/feedback_matrix_runner_tier_model_override.md`
 - Layer-intent mechanism: `memory/mechanism_layer_intent_axis_alignment.md`
 - 4-step rule: `memory/feedback_oracle_phrase_artifacts.md`
 - Position guard: `memory/feedback_jameses_positioning_replayable_rag.md`
