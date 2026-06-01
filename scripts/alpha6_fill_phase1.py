@@ -380,6 +380,13 @@ def main(argv: Optional[list] = None) -> int:
     p.add_argument("--out", type=Path, default=None,
                    help="Output path (default: "
                         "reports/research-runs/alpha-6-phase-1-analysis-<YYYYMMDD>.md)")
+    p.add_argument("--tier", type=str, default="M_M",
+                   choices=["M_S", "M_M", "M_L"],
+                   help="Tier suffix on cell JSON filenames "
+                        "(default M_M = Phase 1 production tier)")
+    p.add_argument("--phase-label", type=str, default="Phase 1",
+                   help="Phase label for output filename + doc title "
+                        "(e.g. 'Phase 2' when --tier=M_S)")
     args = p.parse_args(argv)
 
     cell_dir = _resolve_cell_dir()
@@ -389,11 +396,21 @@ def main(argv: Optional[list] = None) -> int:
 
     # Load required cells; alias L1/L5 row cells into sector cell slots.
     cells: Dict[str, Optional[Dict[str, Any]]] = {}
-    cells["C_minus"]      = _load_cell(cell_dir / "qvt-ablation-cell-C_minus-M_M.json")
-    cells["C_rag-basic"]  = _load_cell(cell_dir / "qvt-ablation-cell-C_rag-basic-M_M.json")
-    cells["C_rag-graph"]  = _load_cell(cell_dir / "qvt-ablation-cell-C_rag-graph-M_M.json")
-    cells["C_rag-full"]   = _load_cell(cell_dir / "qvt-ablation-cell-L1-M_M.json")
-    cells["C_rag-routed"] = _load_cell(cell_dir / "qvt-ablation-cell-L5-M_M.json")
+    # Tier suffix on cell files; α-5 row-named L1/L5 carryover only
+    # exists for M_M tier. For other tiers, look for the sector-cell
+    # form first (C_rag-full / C_rag-routed) then fall back to L1/L5.
+    t = args.tier
+    cells["C_minus"]      = _load_cell(cell_dir / f"qvt-ablation-cell-C_minus-{t}.json")
+    cells["C_rag-basic"]  = _load_cell(cell_dir / f"qvt-ablation-cell-C_rag-basic-{t}.json")
+    cells["C_rag-graph"]  = _load_cell(cell_dir / f"qvt-ablation-cell-C_rag-graph-{t}.json")
+    cells["C_rag-full"]   = (
+        _load_cell(cell_dir / f"qvt-ablation-cell-C_rag-full-{t}.json")
+        or _load_cell(cell_dir / f"qvt-ablation-cell-L1-{t}.json")
+    )
+    cells["C_rag-routed"] = (
+        _load_cell(cell_dir / f"qvt-ablation-cell-C_rag-routed-{t}.json")
+        or _load_cell(cell_dir / f"qvt-ablation-cell-L5-{t}.json")
+    )
 
     have_any = any(cells.values())
     if not have_any:
@@ -402,8 +419,9 @@ def main(argv: Optional[list] = None) -> int:
 
     if args.out is None:
         today = datetime.now().strftime("%Y%m%d")
+        phase_slug = args.phase_label.lower().replace(" ", "-")
         args.out = (ROOT / "reports" / "research-runs"
-                    / f"alpha-6-phase-1-analysis-{today}.md")
+                    / f"alpha-6-{phase_slug}-analysis-{today}.md")
 
     body = _render(cells, baseline, baseline_path)
     args.out.parent.mkdir(parents=True, exist_ok=True)
