@@ -10,14 +10,24 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 ## Where we are right now
 
-- **Current version**: v0.2.0 closed → **v0.3.0 진입 (2026-05-13)**.
-  6 axes (Foundation Hardening) 모두 통과 — Axis 6 (real-data validation)
-  의 두 번째 사용자 게이트도 모집 완료. v0.2 → v0.3 gate clear.
-- **Active theme**: **Platform Skeleton** (`core/plugins/` 확정 + 도그푸드
-  + CLA + Knowledge Cascade). 도메인 분화는 여전히 v1.0 이후.
-- **Strategic frame**: We are not building a single product.
-  We are building a **mother platform** from which domain packs
-  (legal, food, retail, travel, etc.) will branch off **only at v1.0**.
+- **Current version**: **v0.4.1 closed** (2026-05-28, DOI
+  `10.5281/zenodo.20426719`) — T6 Causality Chain + T2.D ingestion +
+  QVT α track. v0.2.0 (Foundation Hardening) and v0.3.0
+  (Platform Skeleton) both fully closed; v0.4.0 (Layer 4 Lifecycle:
+  T1+T7+T2 first bundle) shipped 2026-05-27.
+- **Active theme**: **α-6 measurement cycle in flight (Phase 3a)** —
+  MultiHop-RAG external benchmark, 5-axis Pareto oracle, scale-ladder
+  measurement of JAMES sector contributions across gemma3 1b/4b/12b/27b
+  + gemma4 e4b. Phase 1 + Phase 2 closed (2026-06-01 AM); Phase 3a
+  scale ladder running. Closure → α-7 (graph top-K fix) → α-8 (ontology
+  typed-filter A/B). Domain pilot (v0.5) still gated.
+- **Strategic frame**: We are still building a **mother platform**;
+  v1.0 vertical domain branching remains the only authorised
+  specialisation point. The 2026-06-01 strategic discussion narrowed
+  the v0.5 first-domain candidate to **enterprise internal knowledge
+  ontology** (horizontal, audit/ownership/correction moat) — see
+  the 2026-06-01 strategy handover; the framing applies to v0.5 domain
+  *selection criteria*, not to v0.4 cycle scope.
   See `docs/PLATFORM_READINESS.md` for the 6-dimension readiness
   framework and the v0.2 → v0.3 → v0.4 → v1.0 gate definitions.
 
@@ -102,16 +112,21 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 | Strategic vision + 6-dimension readiness | `docs/PLATFORM_READINESS.md` |
 | Architecture & non-goals | `docs/ARCHITECTURE.md` |
 | 6-axis v0.2 plan + future v0.3/v0.4/v1.0 | `ROADMAP.md` |
-| α-6 cycle PR index (60+ PRs) | `reports/research-runs/alpha-6-cycle-pr-index.md` |
+| α-6 cycle PR index (75+ PRs) | `reports/research-runs/alpha-6-cycle-pr-index.md` |
 | α-5 cycle PR index | `reports/research-runs/alpha-5-cycle-pr-index.md` |
 | α-6 Phase 1 analysis (M_M) | `reports/research-runs/alpha-6-phase-1-analysis-20260601.md` |
 | α-6 Phase 2 analysis (M_S; tier-gated REVERSED) | `reports/research-runs/alpha-6-phase-2-analysis-20260601.md` |
+| α-6 Phase 3a 1b analysis (⚠️ framing pollution flagged) | `reports/research-runs/alpha-6-phase-3a-gemma3-1b-analysis-20260601.md` |
+| α-6 Phase 3a 12b analysis (honest framing) | `reports/research-runs/alpha-6-phase-3a-gemma3-12b-analysis-20260601.md` |
+| α-6 Phase 3a recovery curve (live) | `reports/research-runs/alpha-6-phase-3a-recovery-curve-20260601.md` |
 | Active backlog reconciliation | `docs/handovers/v0.4.x-backlog-reconciliation-2026-05-30.md` |
 | v0.4.1 closure (audit trail) | `docs/handovers/v0.4.1-t6-causality-chain-entry.md` |
 | License long-term plan + trigger monitoring | `docs/LICENSE_PLAN.md` |
 | **Change Request primitive (v0.2.x cycle)** | `docs/handovers/v0.2.x-cr-track.md` + `docs/ARCHITECTURE.md §5.6` |
 | 4-step rule (+ arithmetic step) | `memory/feedback_oracle_phrase_artifacts.md` |
 | Layer-intent matrix mechanism | `memory/mechanism_layer_intent_axis_alignment.md` |
+| **Honest framing rule** (apply to every closure / publishable claim) | `memory/feedback_finding_size_honest_framing.md` |
+| Matrix runner tier override trap | `memory/feedback_matrix_runner_tier_model_override.md` |
 | Mother framing position guard | `memory/feedback_jameses_positioning_replayable_rag.md` §"정정 2026-05-31" |
 | Open issues by priority | `gh issue list --label priority:high` |
 | STEP 7 regression baseline | `eval/regression/step7_queries.json` (or `scripts/step7_query_test.py`) |
@@ -127,8 +142,11 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 ## Operational conventions (PR / commit / branch)
 
-- Branch naming: `fix/v0.2-<topic>`, `chore/v0.2-<topic>`, `docs/v0.2-<topic>`,
-  `feat/v0.3-<topic>` (only after v0.2 closes)
+- Branch naming: current convention is `feat/v0.4-<topic>` / `fix/v0.4-<topic>` /
+  `docs/v0.4-<topic>` / `chore/v0.4-<topic>`. (Use `feat/v0.5-<topic>` only
+  after v0.4.x cycle closure — currently still in α-6/α-7/α-8 measurement
+  phase. Older v0.2 / v0.3 branch prefixes are retained in history but not
+  used for new work.)
 - Commit messages: conventional commits (`fix:`, `feat:`, `refactor:`,
   `chore:`, `docs:`, `test:`)
 - PR body: include `## Summary`, `## Verification`, `## Out of scope`
@@ -141,4 +159,6 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 ## 한국어 요약
 
-자메스는 **v1.0까지 "범용 모체"로만** 강화합니다. 도메인 분화(법률·식품·유통·여행 등)는 v1.0 이후에만 시작합니다. 이 세션에서 도메인 코드를 추가하지 마세요. v0.2의 6축 Foundation Hardening이 현재 우선순위입니다. 자세한 내용은 `docs/PLATFORM_READINESS.md` 참조.
+자메스는 **v1.0까지 "범용 모체"로만** 강화합니다. 도메인 분화(법률·식품·유통·여행 등)는 v1.0 이후에만 시작합니다. 이 세션에서 도메인 코드를 추가하지 마세요.
+
+**현재 위치**: v0.4.1 완료 (DOI `10.5281/zenodo.20426719`) → α-6 측정 사이클 Phase 3a 진행 중 (gemma3 1b/12b/27b scale ladder). 다음 사이클 순서: α-7 (graph top-K fix) → α-8 (온톨로지 typed-filter A/B). v0.5 첫 도메인 후보 = 기업 내부지식 온톨로지 (수평 — 도메인 vertical 아님). 자세한 내용은 `docs/PLATFORM_READINESS.md` + `ROADMAP.md` + `docs/handovers/v0.4.x-backlog-reconciliation-2026-05-30.md`.
