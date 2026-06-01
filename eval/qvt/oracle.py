@@ -112,6 +112,19 @@ _ABSTENTION_PHRASES: Tuple[str, ...] = (
     "data does not explicitly link",
     "information doesn't link",
     "information does not link",
+    # α-7 baseline audit follow-up 2026-06-02 — 2 narrow phrases found
+    # in cross-tier audit of post-α-7 M_M C_rag-full + α-6 baseline.
+    # "cannot be completed" caught in α-7 null #5 ("The deduction
+    # cannot be completed because the source material...").
+    # "not available" caught in α-6 null #24 ("the articles ... is
+    # not available in the current data set"). Narrow: verb-tied
+    # (cannot + completed; not + available) — broader patterns like
+    # "not in" or "cannot" alone FP-flood per α-5 #619 lesson.
+    "cannot be completed",
+    "is not available",
+    "are not available",
+    "was not available",
+    "were not available",
 )
 
 
