@@ -35,7 +35,11 @@ from core.ontology import (
 
 CONFIDENCE_THRESHOLD = 0.6
 MAX_DEPTH            = 4
-DFS_SCORE_THRESHOLD  = 0.05
+# α-7 (2026-06-02): tightened 0.05 → 0.08 in concert with the
+# post-DFS top-K filter in core.graph_topk. Threshold drops noisier
+# marginal entities at the DFS step; top-K caps the survivors at
+# DEFAULT_TOP_K. See docs/design/v0.4-alpha-7-graph-topk.md §2.
+DFS_SCORE_THRESHOLD  = 0.08
 DEPTH_DECAY          = 0.7
 
 
@@ -406,7 +410,15 @@ class GraphEngine:
         for eid in entity_ids:
             dfs(eid, 0, "", 1.0)
 
-        print(f"[DFS] 완료: {len(entities)}개 node | {len(paths)}개 경로")
+        # α-7 (2026-06-02): post-DFS top-K filter caps the entity
+        # surface at DEFAULT_TOP_K, sorting by _dfs_score so the LLM
+        # context sees the highest-ranked entities (not just the
+        # first 10 in DFS visit order — which was the prior behaviour
+        # of `graph_entities[:10]` in build_graph_context_str).
+        from core.graph_topk import top_k_filter
+        entities, paths = top_k_filter(entities, paths)
+
+        print(f"[DFS] 완료: {len(entities)}개 node | {len(paths)}개 경로 (post top-K)")
         return entities, paths
 
     # ─── Ranking ─────────────────────────────────────────────
