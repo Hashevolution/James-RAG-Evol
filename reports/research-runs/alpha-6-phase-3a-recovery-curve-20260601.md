@@ -75,8 +75,8 @@ the band are not interpretable.
 | M_XS (1b) | 0.000 | 0.000 | **0.000** | no effect — empty in, empty out |
 | M_S (4b) | 0.074 | 0.000 | **-0.074** | negative — JAMES kills weak native attempt |
 | M_M (e4b) | 0.558 | 0.591 | **+0.033** | small positive (inside noise band) |
-| M_L (12b) | 0.000 | 0.375 | **+0.375** | large positive — emerges where pure is silent |
-| M_XL (27b) | TBD | TBD | TBD | TBD |
+| M_L (12b) | 0.000 (≈ 0.077 oracle-corrected) | 0.375 | **+0.375 (raw) / +0.298 corrected** | large positive — emerges where pure is at plateau |
+| M_XL (27b) | 0.258 | TBD | TBD | TBD |
 
 **Honest framing constraint (per `feedback_finding_size_honest_framing`)**:
 
@@ -90,6 +90,36 @@ the band are not interpretable.
 - Previously-claimed framings — "inverted-U capability floor", "JAMES
   amplifier", "capability floor between 4b and e4b", "amplifier vs
   small-model crutch" — all withdrawn per §5.
+
+### 3.1 Pure-LLM abst_f1 across the gemma3 ladder (4-step rule applied)
+
+| Tier | Pure abst_f1 (raw) | Pure abst_f1 (oracle-corrected) | Notes |
+|---|---:|---:|---|
+| 1b (gemma3) | 0.000 | 0.000 | 25/25 hallucinations |
+| 4b (gemma3) | 0.074 | ~0.074 | 2/25 caught refusal |
+| 12b (gemma3) | 0.000 | **~0.077** | **24/25 hallucinations + 1 missed `doesn't link` pattern** (4-step rule check, `scripts/research/audit_12b_null_query_refusal_shape.py`) |
+| 27b (gemma3) | **0.258** | 0.258 | 4 TP / 21 FN — first emergence above family floor |
+| e4b (gemma4) | 0.558 | 0.558 | 14 TP / 11 FN — gemma4 grounding-trained refusal |
+
+**Reshaped framing — "plateau + late emergence" (replaces earlier
+"12b dip" claim)**:
+- 1b → 4b → 12b: pure abst_f1 stays ≈ 0.00-0.08 across 3× scale steps
+  (no growth; plateau)
+- 12b → 27b: jump to 0.258 = first within-family emergence
+- 27b → e4b: jump to 0.558 = either further scale or gemma4 grounding
+  contribution (cannot disambiguate from this fixture)
+
+The earlier "12b dip" reading was the un-corrected oracle value
+(0.000). The 4-step rule audit found 96% of 12b's null answers are
+genuine hallucinations, with one (4%) being a refusal-style phrasing
+(`"data ... doesn't explicitly link"`) that the current
+`_ABSTENTION_PHRASES` list does not catch. Adding the pattern would
+shift 12b from 0.000 to ~0.077 — essentially equal to 4b's 0.074.
+
+**Bucket-(d) sub-finding** logged for α-7 or later cycle: add
+`doesn't [explicitly] link` and `data [provided] doesn't` to oracle
+phrase list (narrow, not broad — broad patterns flood FPs on
+partial-answer rows per α-5 #619 lesson).
 
 ---
 
@@ -138,6 +168,7 @@ lands + cross-fixture sanity check is run (next-cycle).
 | "Capability floor between 4b and e4b" | Phase 2 §6 + Phase 3a 1b §4 | M_L crosses the floor too; the floor is not a single position |
 | "Only gemma4 family can use abstention layers" | Speculative reframe during 12b wait | M_L (gemma3:12b) achieves abst_f1 +0.375 with JAMES, refuting family-only hypothesis |
 | "S5+S6 recover at +0.129 abst_f1 at M_M" | Phase 2 §5 prose | M_M C_rag-graph→full Δ recomputes to +0.129 ✓ (this one survives) |
+| "12b dip — pure abst_f1 = 0 is uniquely lower than 4b and 1b" | Phase 3a 12b §3 prose + recovery curve §3 first draft | reshaped to "**12b plateau**" — 4-step rule audit (`scripts/research/audit_12b_null_query_refusal_shape.py`) found 24/25 genuine hallucinations + 1 missed `doesn't link` refusal pattern. Oracle-corrected ~0.077 ≈ 4b's 0.074. Plateau not dip |
 
 ---
 
@@ -196,6 +227,7 @@ worth-it regime continues into saturation or saturates.**
 - Position guard: `memory/feedback_jameses_positioning_replayable_rag.md`
 - Matrix tier extension: PR #677
 - bench / matrix timeout overrides: commit `be2fb64`
+- 4-step rule audit script (12b plateau verification): `scripts/research/audit_12b_null_query_refusal_shape.py`
 
 ---
 

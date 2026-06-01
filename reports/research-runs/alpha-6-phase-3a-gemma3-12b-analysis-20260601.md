@@ -91,6 +91,37 @@ contribution vs absence of the regressor's bite at 12b's larger
 context. Closure-doc reconciliation: route the publishable graded
 claims through the post-graph-fix re-baseline planned in next cycle.
 
+### 3.1 4-step rule audit on `abst_f1 = 0.000` (added post-27b C_minus)
+
+The pure-12b abst_f1 = 0.000 read as a "dip" below 4b (0.074) in the
+first draft of this doc. After the 27b C_minus result landed at 0.258
+(2026-06-01 PM), the dip story stopped being intuitive — it would have
+required a non-monotonic explanation across the gemma3 ladder. Applied
+the 4-step rule (per `memory/feedback_oracle_phrase_artifacts`) to
+verify the dip before publishing it.
+
+Audit script:
+`scripts/research/audit_12b_null_query_refusal_shape.py`
+Source bench: `reports/bench_ac9670d_multihop_rag_20260601_115524.json`
+
+Audit result over all 25 null queries:
+
+| Answer category | Count | Notes |
+|---|---:|---|
+| True hallucination (no refusal indicator) | **24/25** (96%) | Roche, iPhone 13 Pro Max, Sygic+Switzerland, Egypt+Thutmose, etc. — confident fabrications |
+| Refusal-shape (oracle missed) | **1/25** (4%) | id=58: `"The data provided doesn't explicitly link a specific Zimbabwean finance minister..."` — clear refusal phrasing not in current `_ABSTENTION_PHRASES` |
+
+**Verdict**: the 12b abst_f1 = 0 is **96% real**. Oracle-corrected
+upper bound = ~0.077 (TP=1, FN=24), which is essentially the same as
+4b's 0.074. **Reshape framing from "12b dip" to "12b plateau with 4b"
+(no improvement despite 3× scale)**. The recovery curve doc §5
+withdrawn-claims registry tracks this reshape.
+
+Bucket-(d) sub-finding logged for α-7 or later: oracle phrase list
+should narrowly add `doesn't [explicitly] link` and `data [provided]
+doesn't` to catch gemma3:12b-style conversational refusals without
+FP-flooding partial-answer rows.
+
 ---
 
 ## 4. Publishable claim (auto-template; operator fills final sentence)
@@ -165,8 +196,10 @@ decision). Graph-fix becomes next-cycle (post-Phase 3a closure).
 |---|---|---|---|
 | `s4-citation-tier-invariant-4-point-series` | (a) universal-law | ⭐⭐⭐ | path Δ +0.397 (4b) / +0.410 (1b) / +0.410 (12b) / +0.419 (e4b) — 4 data points within noise. Independent of model native capability. Strongest non-trivial finding from α-6 cycle |
 | `james-s5-effect-non-monotonic-in-pure-abstention` | (b) model-context interaction | ⭐⭐ | S5+S6 abst_f1 contribution Δ: 1b 0.000 / 4b -0.074 / 12b +0.375 / e4b +0.033. Sign flips between 4b and 12b in same family. Mechanism candidate = instruction-following capacity threshold; JAMES-specific = the threshold position |
+| `gemma3-12b-pure-abstention-plateau-with-4b` | (b) model-context | ⭐ | 4-step rule audit (§3.1): raw 0.000 → oracle-corrected ~0.077 ≈ 4b's 0.074. 12b shows no within-family abstention improvement over 4b despite 3× scale. Reshaped from earlier "dip" finding |
 | `gemma3-12b-james-routing-data` | (c) operational | ⭐ | 12b + JAMES = path 0.41 / graded 0.33 / abst_f1 0.375 / 35s latency. Operational routing input, not a knowledge claim |
 | `graph-layer-bug-confounds-all-graded-deltas` | (d) measurement debt | ⭐⭐ | every α-6 graded Δ depends on the current graph layer which regresses graded at M_M (-0.053 per Phase 1 §3). Resolves on α-7 graph top-K fix → re-baseline |
+| `oracle-misses-doesnt-link-pattern` | (d) measurement debt | ⭐ | 4-step rule found 1 missed refusal pattern at 12b. Narrow add to `_ABSTENTION_PHRASES` for α-7 sub-finding (would shift 12b pure abst_f1 from 0.000 → 0.077; framing-significant, magnitude-small) |
 
 ⚠️ **Findings withdrawn vs prior phase docs**:
 
