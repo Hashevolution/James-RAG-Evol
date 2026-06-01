@@ -95,6 +95,23 @@ _ABSTENTION_PHRASES: Tuple[str, ...] = (
     "none of the provided",    # q51 ("Source files: None of the provided …")
     "insufficient information",
     "insufficient data",
+    # α-7 sub-finding 2026-06-02 — gemma3:12b refusal style caught
+    # by 4-step rule audit (`scripts/research/audit_12b_null_query_refusal_shape.py`).
+    # Cross-tier audit (1b/4b/12b/27b C_minus + 12b/27b C_rag-full = 6
+    # benches × 25 nulls = 150 audited answers) found 1 missed pattern
+    # at gemma3:12b id=58: "The data provided doesn't explicitly link
+    # a specific Zimbabwean finance minister to a partnership ...".
+    # Narrow on purpose (subject = data/information + verb = link) —
+    # broader patterns (e.g. plain "doesn't have") FP-flood per α-5
+    # #619 lesson. Quality delta: shifts 12b pure abst_f1 0.000 →
+    # ~0.077, locking the "plateau with 4b" framing in the recovery
+    # curve doc. See reports/research-runs/alpha-7-bucket-d-oracle-phrase-gap.md.
+    "data doesn't link",
+    "data does not link",
+    "data doesn't explicitly link",
+    "data does not explicitly link",
+    "information doesn't link",
+    "information does not link",
 )
 
 

@@ -760,6 +760,46 @@ input produces byte-identical output across runs.
   `gold_signals` + `abstention_truth` (PR #551)
 - `docs/design/v0.4-qvt-alpha-non-saturating-oracle.md` — full design
 
+### 5.7.11 Graph Layer Top-K Filter (α-7, v0.4, 2026-06-02)
+
+Caps the graph DFS entity surface at `DEFAULT_TOP_K` (=10) entities per
+query, sorted by `_dfs_score` (descending). The α-6 Phase 1 §3 finding
+flagged the graph layer as a net `graded` regressor at M_M production
+tier (Δ -0.054); the 931-entity workspace yields 41-161 entities per
+query under the prior score-threshold-only DFS halting policy, and
+`build_graph_context_str`'s downstream display cap of 10 was operating
+on **DFS visit order**, not **score order**, so the LLM saw the first
+10 visited entities, not the 10 highest-ranked.
+
+The α-7 change ships two complementary edits:
+
+1. **`core/graph_topk.py`** — new module (~3 KB) exposing
+   `top_k_filter(entities, paths, k=10)`. Sorts entities by
+   `_dfs_score` desc with stable tie-breaking on DFS visit order,
+   drops paths whose tail entity is filtered out, idempotent on
+   re-application.
+2. **`core/graph_engine.py:expand_dynamic`** — calls the filter
+   before returning. `DFS_SCORE_THRESHOLD` tightened from 0.05 to
+   0.08 in the same change so fewer marginal entities reach the
+   filter input.
+
+Trust zone: graph layer; no new policy surface. The filter is a
+deterministic functional transform with unit-test coverage at
+`tests/test_graph_topk.py` (14 cases including idempotence, tie-break
+determinism, path-tail extraction across multi-hop chains).
+
+Module size: `core/graph_topk.py` ≈ 3 KB (well under 20 KB);
+`core/graph_engine.py` ~20.9 KB (already at the 20 KB gate edge as
+of α-6 close — α-7 intentionally avoids extending it; new logic
+lives in the new module).
+
+Pointers:
+- `docs/design/v0.4-alpha-7-graph-topk.md` — full design memo + open
+  decisions
+- `reports/research-runs/alpha-7-bucket-d-oracle-phrase-gap.md` —
+  companion bucket-(d) oracle phrase add (narrow `doesn't link`
+  pattern caught via cross-tier 4-step rule audit)
+
 ---
 
 ## 6. Data Lifecycle (W7-A, 2026-05-11)
