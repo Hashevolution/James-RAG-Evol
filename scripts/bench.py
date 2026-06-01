@@ -296,13 +296,26 @@ def _run_one(
     headers = {}
     if bearer:
         headers["Authorization"] = f"Bearer {bearer}"
+    # α-6 Phase 2 corruption (PR #671): the server's per-IP rate
+    # limiter (operator-safe 30 req/60s) silently corrupts cells
+    # whose model responds in sub-2s/query. Honor Retry-After and
+    # try once more before giving up. Two retries is enough -- the
+    # rate-limit window is 60s and the matrix runner now also sets
+    # JAMES_RATE_LIMIT_MAX=10000 to effectively disable the limit
+    # for benchmark loops (defense in depth).
+    max_rate_retries = 2
     try:
-        r = requests.post(
-            f"{BASE_URL}{endpoint}",
-            json=body,
-            headers=headers,
-            timeout=timeout,
-        )
+        for attempt in range(max_rate_retries + 1):
+            r = requests.post(
+                f"{BASE_URL}{endpoint}",
+                json=body,
+                headers=headers,
+                timeout=timeout,
+            )
+            if r.status_code != 429 or attempt == max_rate_retries:
+                break
+            retry_after = int(r.headers.get("Retry-After", "60"))
+            time.sleep(min(retry_after + 1, 70))
         elapsed = time.time() - t0
     except requests.Timeout:
         return {"id": q["id"], "category": q["category"], "text": q["text"],

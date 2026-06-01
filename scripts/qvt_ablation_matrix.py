@@ -80,8 +80,16 @@ from eval.qvt.oracle import (  # noqa: E402
 # ---------------------------------------------------------------------------
 
 # Layer flags held fixed across all cells regardless of row.
+# JAMES_RATE_LIMIT_MAX is set to a large value to effectively
+# disable the per-IP rate limiter for benchmark loops -- the
+# operator-safe default (30 req / 60s) silently corrupts cells
+# whose model responds in sub-2s/query (gemma3:4b with no
+# retrieval hits this). Per α-6 Phase 2 corruption post-mortem
+# (PR #671). The server's `server_llmwiki.py` reads this env at
+# startup; the matrix runner spawns a fresh server per cell.
 _FIXED_ENV: Dict[str, str] = {
     "JAMES_EMBEDDING_MODEL": "BAAI/bge-m3",
+    "JAMES_RATE_LIMIT_MAX": "10000",
 }
 
 

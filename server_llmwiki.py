@@ -114,7 +114,14 @@ class RateLimiter:
         self._requests[ip] = [t for t in self._requests[ip] if t > now - self.window_sec]
         return max(0, self.max_requests - len(self._requests[ip]))
 
-_rate_limiter = RateLimiter(max_requests=30, window_sec=60)
+# Rate limiter — operator-safe defaults (30/60s, ~0.5 req/s) for
+# production single-operator workflow. Env overrides exist for
+# benchmark loops (matrix runner sets MAX=10000 to effectively
+# disable; per α-6 Phase 2 rate-limit corruption post-mortem #671).
+_RATE_LIMIT_MAX = int(os.environ.get("JAMES_RATE_LIMIT_MAX", "30"))
+_RATE_LIMIT_WINDOW_SEC = int(os.environ.get("JAMES_RATE_LIMIT_WINDOW_SEC", "60"))
+_rate_limiter = RateLimiter(max_requests=_RATE_LIMIT_MAX,
+                            window_sec=_RATE_LIMIT_WINDOW_SEC)
 
 # ─── App 초기화 ──────────────────────────────────────────────
 
