@@ -335,8 +335,8 @@ def render_report(results: dict) -> str:
         f"**Generator**: {GEN_MODEL}  **Judge**: {JUDGE_MODEL}  "
         f"**Cap**: {meta['cap']}  **Temp**: {meta['temperature']}  "
         f"**n pairs/cell**: {meta['n']}",
-        f"**Closes**: A3 (#608) LLM-judge reservation gate; feeds A2 (#609) "
-        f"default-flip follow-up decision.",
+        "**Closes**: A3 (#608) LLM-judge reservation gate; feeds A2 (#609) "
+        "default-flip follow-up decision.",
         "",
         "## Verdicts",
         "",

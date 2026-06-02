@@ -79,7 +79,7 @@ def classify(answer):
             return True, f"pattern[{i}]={refusal_patterns[i]} → match='{m.group(0)}'"
     return False, None
 
-print(f'=== Null-query refusal-shape audit ===')
+print('=== Null-query refusal-shape audit ===')
 print(f'bench file: {bench_path}')
 print(f'null queries: {len(nulls)}')
 print()
@@ -114,7 +114,7 @@ print(f'  true hallucinations:         {len(true_halluc)}/{len(oracle_fn)} ({len
 print()
 
 if missed:
-    print(f'=== Oracle-missed refusal patterns (candidates for bucket-(d) phrase add) ===')
+    print('=== Oracle-missed refusal patterns (candidates for bucket-(d) phrase add) ===')
     for idx, qid, pat, ans in missed:
         print(f'  null[{idx}] id={qid}')
         print(f'    matched: {pat}')
@@ -122,12 +122,12 @@ if missed:
         print()
 
 if oracle_tp:
-    print(f'=== Oracle-caught refusals (for comparison) ===')
+    print('=== Oracle-caught refusals (for comparison) ===')
     for idx, qid, ans in oracle_tp[:3]:
         print(f'  null[{idx}] id={qid}: {ans[:200]}')
         print()
 
-print(f'=== Top-3 true hallucinations (no refusal indicator) ===')
+print('=== Top-3 true hallucinations (no refusal indicator) ===')
 for idx, qid, ans in true_halluc[:3]:
     print(f'  null[{idx}] id={qid}: {ans[:200]}')
     print()

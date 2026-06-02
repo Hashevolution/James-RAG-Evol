@@ -51,7 +51,7 @@ def main() -> None:
             for t in trials:
                 cells[(model, float(temp), cap)].append(t)
 
-    print(f"# v3prime e4b cap=4096 natural-budget audit\n")
+    print("# v3prime e4b cap=4096 natural-budget audit\n")
     print(f"Source files scanned: {len(files)}")
     print(f"Cells found: {len(cells)}\n")
 

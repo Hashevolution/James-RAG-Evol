@@ -34,9 +34,8 @@ import subprocess
 import sys
 import time
 import urllib.request
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -298,7 +297,7 @@ def main() -> int:
     print(f"think-off: {os.environ.get('JAMES_GEMMA4_E4B_THINK_OFF', '<unset>')}")
     print(f"embedding: {os.environ.get('JAMES_EMBEDDING_MODEL', '<default>')}")
     if args.dry_run:
-        print(f"[dry-run] first 3 files:")
+        print("[dry-run] first 3 files:")
         for p in files[:3]:
             print(f"  {p.name} ({p.stat().st_size} bytes)")
         return 0

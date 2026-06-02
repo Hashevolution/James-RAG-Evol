@@ -54,7 +54,7 @@ import statistics
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, List, Optional
 
 ROOT = Path(__file__).resolve().parent.parent
 

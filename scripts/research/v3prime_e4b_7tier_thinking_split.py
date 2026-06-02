@@ -122,9 +122,9 @@ def think_false_eval(prompt: str, cap: int = 4096) -> int:
 def main() -> None:
     print("# gemma4:e4b 7-tier budget — thinking-trace decomposition (INTERNAL)\n")
     print("Question: is D1's 7-tier budget gradient workload, or thinking trace?\n")
-    print(f"| Tier | visible tok | eval_count (think ON) | hidden | hidden % | "
-          f"eval (think OFF) | reclaim |")
-    print(f"|---|---|---|---|---|---|---|")
+    print("| Tier | visible tok | eval_count (think ON) | hidden | hidden % | "
+          "eval (think OFF) | reclaim |")
+    print("|---|---|---|---|---|---|---|")
     rows = []
     for tier, prompt in build_tiers():
         on = stream_visible(prompt)

@@ -1335,7 +1335,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             cost_axes = ("token_cost", "latency_cost")
             quality_d = {ax: round(_med(j5, ax) - _med(j1, ax), 4) for ax in quality_axes}
             cost_d = {ax: round(_med(j5, ax) - _med(j1, ax), 4) for ax in cost_axes}
-            print(f"\n=== T0 smoke verdict (5-axis) ===")
+            print("\n=== T0 smoke verdict (5-axis) ===")
             for ax, d in quality_d.items():
                 print(f"  {ax:15s} L1={_med(j1, ax):.4f} L5={_med(j5, ax):.4f} Δ={d:+.4f}")
             for ax, d in cost_d.items():
@@ -1370,8 +1370,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                     "Proceed to T1 + likely T2 for tier-gating decisions."
                 )
 
-    print(f"\nRender the consolidated report with:\n"
-          f"  python scripts/qvt_ablation_matrix.py --render-report")
+    print("\nRender the consolidated report with:\n"
+          "  python scripts/qvt_ablation_matrix.py --render-report")
     return 0 if n_fail == 0 else 6
 
 

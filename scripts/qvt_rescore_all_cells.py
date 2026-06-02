@@ -44,7 +44,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 ROOT = Path(__file__).resolve().parent.parent
 SINGLE_SCRIPT = ROOT / "scripts" / "qvt_rescore_ablation_cell.py"
@@ -116,7 +116,7 @@ def _write_summary(out_path: Path, expected_suite: str,
     lines.append(f"- Generated: {datetime.now(timezone.utc).isoformat()}")
     lines.append(f"- Expected suite: `{expected_suite}`")
     lines.append(f"- Mode: {'dry-run' if dry_run else 'live'}")
-    lines.append(f"- Tool: `scripts/qvt_rescore_all_cells.py`")
+    lines.append("- Tool: `scripts/qvt_rescore_all_cells.py`")
     lines.append("")
     lines.append("## Per-cell classification")
     lines.append("")
