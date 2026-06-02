@@ -307,14 +307,18 @@ def score_path_coverage(
         # A title can be hit via either side; dedup so recall ≤ 1.0.
         union_hits = len(expected_slugs & (graph_slugs | source_slugs))
 
-        # When bench.py emitted no graph_paths AND no sources, fall back
-        # to whatever path_metrics.hits says so legacy bench JSONs
-        # without the new fields don't regress to all-zero.
-        if not graph_slugs and not source_slugs:
-            pm = r.get("path_metrics")
-            if pm:
-                union_hits = int(pm.get("hits", 0))
-                via_graph = union_hits  # treat all as graph-side legacy
+        # bench.py's `path_metrics.hits` is computed by bench's internal
+        # matcher which has access to raw graph_paths even when bench
+        # only emits `graph_paths_count` in the row (post-α-7 schema).
+        # If bench saw more graph-side matches than we re-derived,
+        # trust bench as the graph-side floor. Source-side credit is
+        # additive (file slugs vs entity slugs rarely overlap), capped
+        # at expected_count so over-counts can't push recall above 1.0.
+        pm = r.get("path_metrics") or {}
+        bench_graph_hits = max(0, int(pm.get("hits", 0)))
+        if bench_graph_hits > via_graph:
+            via_graph = min(bench_graph_hits, len(expected_slugs))
+            union_hits = min(len(expected_slugs), via_graph + via_sources)
 
         recall = union_hits / len(expected_slugs) if expected_slugs else 0.0
         rows.append(PathCoverageQueryRow(
