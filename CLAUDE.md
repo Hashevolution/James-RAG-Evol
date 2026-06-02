@@ -15,20 +15,31 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   QVT α track. v0.2.0 (Foundation Hardening) and v0.3.0
   (Platform Skeleton) both fully closed; v0.4.0 (Layer 4 Lifecycle:
   T1+T7+T2 first bundle) shipped 2026-05-27.
-- **Active theme**: **α-7 closure (5-tier mode reshape) + Track 2c
-  collaboration parallel + bidi gate security fix** (three concurrent
-  tracks as of 2026-06-02). α-7 PR #680 draft (graph top-K + threshold +
-  bucket-(d) phrases). Baseline showed -0.107 abst_f1 regression on
-  null queries at gemma4 production tier (outside noise); 5-tier
-  remeasurement in flight (background) to test mode-pattern reshape
-  across 5 tiers (1b/4b/12b/27b/e4b). Track 2c (Ali Arabic adversarial
-  18 cases) PR #681 draft — preserved imports + design + schema remap
-  + sweep runner + 29-unit-test bidi audit. Bidi runtime gate PR #682
-  draft — `core/input_normalization.py` + `routes/query.py` wire +
-  29 tests. α-6 cycle closed 2026-06-01 PM (PR #678).
-  Sequence: α-7 closure → α-8 typed-filter (evidence-of-absence
-  preservation rule R1-R5 baked in) → Phase 3b proper on α-8 baseline
-  per Option C (2026-06-02 decision). Domain pilot (v0.5) still gated.
+- **Active theme**: **α-8 ontology typed-filter** (R1-R5 evidence-of-
+  absence preservation, architectural fix for α-7's wrong-knob). Phase
+  A (PR #688 `fcf343d`) + Phase B (PR #689 `6d6698e`) landed
+  2026-06-02:
+  - `core/ontology.py` +5 horizontal types (event/date/location/
+    quantity/project) + 6 relations (OCCURRED_AT/HAPPENED_ON/
+    LOCATED_IN/INVOLVES/MEASURED_AS/WORKED_ON)
+  - `core/graph_typed_filter.py` new module + `JAMES_DISABLE_TYPED_FILTER`
+    flag (disable-polarity, default OFF = filter ON)
+  - Matrix cell `C_rag-ontology` between `C_rag-graph` (now pre-α-8
+    baseline with flag forced) and `C_rag-full`
+  - `pipeline_context.build_unified_context` prepends typed entity
+    summary BEFORE graph context (byte-additive)
+  - 137 tests pass; ruff clean
+  - Default behavior post-merge: typed filter ACTIVE in `/query/`
+  
+  Phase C N=3 baseline at M_M background launched 2026-06-02 (ETA
+  2.2h). Phase C 5-tier remeasurement + Phase D closure analysis +
+  `docs/ARCHITECTURE.md §5.7` typed filter section = 다음 세션.
+  α-7 cycle closed as REJECT 2026-06-02 (PR #680, 10th wrong-fix-
+  averted). α-6 closed 2026-06-01 PM (PR #678). Track 2c Phase 4
+  M_M sweep complete 2026-06-02 (0 breach / 11 resisted / 6 partial /
+  1 manual_review — α-8 acceptance test target poison_01 identified).
+  Sequence resumes: α-8 Phase C+D → 5-tier remeasurement → Phase 3b
+  proper on α-8 baseline. Domain pilot (v0.5) still gated.
 - **Strategic frame**: We are still building a **mother platform**;
   v1.0 vertical domain branching remains the only authorised
   specialisation point. The 2026-06-01 strategic discussion narrowed
@@ -116,7 +127,8 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
-| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/handovers/v0.4-next-session-entry-2026-06-02-post-tracks.md`** |
+| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/handovers/v0.4-next-session-entry-2026-06-02-evening.md`** |
+| Previous entry (2026-06-02 post-tracks — now sealed) | `docs/handovers/v0.4-next-session-entry-2026-06-02-post-tracks.md` |
 | Previous session entry (α-7 launch — sealed) | `docs/handovers/v0.4-next-session-entry-2026-06-02-alpha7.md` |
 | Previous-previous (Phase 3a launch — sealed) | `docs/handovers/v0.4-next-session-entry-2026-06-01-PM.md` |
 | Track 2c integration design memo | `docs/design/v0.4-track-2c-arabic-adversarial-integration.md` |
