@@ -32,6 +32,7 @@ from core.ontology import (
     is_valid_relation_triple,
     RELATION_TYPES,
 )
+from core.relations_schema import ENTITY_TYPES_CORE
 
 CONFIDENCE_THRESHOLD = 0.6
 MAX_DEPTH            = 4
@@ -207,7 +208,15 @@ class GraphEngine:
             norm = self.wiki_generator._normalize_name(name)
             eid  = snapshot.get((etype, norm))
             if not eid:
-                for t in ["person", "org", "concept", "document"]:
+                # α-8 extension (2026-06-03): when the extractor declared
+                # type doesn't find a snapshot hit, try the full 9-type
+                # set (mirror of core.relations_schema.ENTITY_TYPES_CORE).
+                # Pre-extension this only tried 4 types so entities
+                # named with the 5 new types could never be resolved
+                # via the same-norm-different-type fallback path.
+                for t in ENTITY_TYPES_CORE:
+                    if t == etype:
+                        continue  # already tried via the declared type
                     eid = snapshot.get((t, norm))
                     if eid:
                         break

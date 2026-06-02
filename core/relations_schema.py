@@ -74,15 +74,25 @@ CONFIDENCE_CAP = 1.0
 # production 코드 (wiki_generator.py 등) 는 여전히 4 종 literal 을
 # 사용. lift 는 PR-11a-2 / PR-11b 에서.
 #
-# 이 상수는 *graph-valid* type 의 진실 원천이다. ingest-capable 의
-# subset (현재 4 종) 과 의도적으로 다르다 — admin path 로 생성된
-# event 노드는 ingest 의 emit 과 무관하게 graph 에 존재할 수 있다.
+# 이 상수는 *graph-valid* type 의 진실 원천이다. α-8 (2026-06-03) 까지
+# 는 ingest-capable subset 과 의도적으로 분리됐으나 (admin path 로
+# 생성된 event 노드는 ingest emit 과 무관) α-8 extractor extension
+# 후로는 ingest 도 9 type 모두 emit 가능. 본 상수가 truth source.
 ENTITY_TYPES_CORE: tuple[str, ...] = (
     "person",
     "concept",
     "org",
     "document",
+    # α-8 horizontal extension (2026-06-03) — must mirror
+    # core/ontology.py:ENTITY_TYPES. wiki/entity/<type>/ directories
+    # auto-created at WikiGenerator startup, empty until first ingest
+    # of that type. 5 new types all horizontal per design memo §2.3
+    # boundary test (no legal/food/finance vertical drift).
     "event",
+    "date",
+    "location",
+    "quantity",
+    "project",
 )
 
 # Event-like entity 의 list — core 는 "event" 하나. OntologyPack 의

@@ -180,12 +180,30 @@ class RetrievalEngine:
         return entities if isinstance(entities, list) else []
 
     def _build_entity_prompt(self, query: str, docs: List[str]) -> str:
+        # α-8 extension (2026-06-03): query-time extractor now mirrors
+        # INGEST extractor (_ingestion.py:_llm_extract_document_entities)
+        # by listing all 9 horizontal types. Pre-extension this only
+        # listed the 4 v0.1 types, so DFS expansion seeds had no way to
+        # be classified as event/date/location/quantity/project even
+        # when the question explicitly named such entities. Mother
+        # platform symmetry: extractor types == ontology types ==
+        # validator types.
         safe_docs  = [self._sanitize(d, 300) for d in docs[:3]]
         safe_query = self._sanitize(query, 500)
         return (
             "You are an entity extraction system.\n"
             "Output ONLY valid JSON array. No explanation.\n\n"
-            'Format: [{"name": "entity_name", "type": "person|org|concept|document"}]\n\n'
+            'Format: [{"name": "entity_name",'
+            ' "type": "person|org|concept|document'
+            '|event|date|location|quantity|project"}]\n\n'
+            "Type hints:\n"
+            "  person/org/concept/document — as before\n"
+            "  event = named time-bound occurrence (Q1 발표, ETF 승인)\n"
+            "  date = explicit calendar reference (2026-05-28, Q3 2026)\n"
+            "  location = place name (Seoul, San Francisco, JFK공항)\n"
+            "  quantity = explicit numeric measure with unit (10억 달러, 30%)\n"
+            "  project = named initiative (Project Apollo, MCP v2 개발)\n"
+            "Prefer specific type over concept catch-all.\n\n"
             f"Question:\n{safe_query}\n\n"
             f"Context:\n{chr(10).join(safe_docs)}\n\n"
             "JSON:"

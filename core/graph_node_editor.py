@@ -62,7 +62,13 @@ NODE_EDITABLE_FIELDS = frozenset({
 })
 
 NODE_ALLOWED_ENTITY_TYPES = frozenset({
+    # 4 original (v0.1 — present in 99%+ of legacy wiki entities)
     "person", "org", "concept", "document",
+    # α-8 horizontal extension (v0.4, 2026-06-03 — must mirror
+    # core/ontology.py:ENTITY_TYPES). Without this validator extension,
+    # admin node create/update endpoints would reject the new types
+    # even though the ontology + typed filter expect them.
+    "event", "date", "location", "quantity", "project",
 })
 
 NODE_ALLOWED_SENSITIVITY = frozenset({"normal", "sensitive"})
