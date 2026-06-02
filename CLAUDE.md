@@ -15,15 +15,20 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   QVT α track. v0.2.0 (Foundation Hardening) and v0.3.0
   (Platform Skeleton) both fully closed; v0.4.0 (Layer 4 Lifecycle:
   T1+T7+T2 first bundle) shipped 2026-05-27.
-- **Active theme**: **α-7 — graph top-K filter** (first JAMES code
-  change against α-5+α-6 measurement debt; design memo at
-  `docs/design/v0.4-alpha-7-graph-topk.md`, sub-finding bucket-(d)
-  oracle phrase add at `reports/research-runs/alpha-7-bucket-d-oracle-phrase-gap.md`).
-  α-6 cycle closed 2026-06-01 PM (PR #678) with 5-point S4 universal-law
-  candidate, 5-mode taxonomy (cycle-specific empirical), 9 wrong-fix-
-  averted, 0 JAMES code lines changed. Sequence: α-7 → 5-tier mode
-  re-measurement → Phase 3b proper (5 families × n=3) → α-8 ontology.
-  Domain pilot (v0.5) still gated.
+- **Active theme**: **α-7 closure (5-tier mode reshape) + Track 2c
+  collaboration parallel + bidi gate security fix** (three concurrent
+  tracks as of 2026-06-02). α-7 PR #680 draft (graph top-K + threshold +
+  bucket-(d) phrases). Baseline showed -0.107 abst_f1 regression on
+  null queries at gemma4 production tier (outside noise); 5-tier
+  remeasurement in flight (background) to test mode-pattern reshape
+  across 5 tiers (1b/4b/12b/27b/e4b). Track 2c (Ali Arabic adversarial
+  18 cases) PR #681 draft — preserved imports + design + schema remap
+  + sweep runner + 29-unit-test bidi audit. Bidi runtime gate PR #682
+  draft — `core/input_normalization.py` + `routes/query.py` wire +
+  29 tests. α-6 cycle closed 2026-06-01 PM (PR #678).
+  Sequence: α-7 closure → α-8 typed-filter (evidence-of-absence
+  preservation rule R1-R5 baked in) → Phase 3b proper on α-8 baseline
+  per Option C (2026-06-02 decision). Domain pilot (v0.5) still gated.
 - **Strategic frame**: We are still building a **mother platform**;
   v1.0 vertical domain branching remains the only authorised
   specialisation point. The 2026-06-01 strategic discussion narrowed
@@ -111,8 +116,16 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
-| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/handovers/v0.4-next-session-entry-2026-06-02-alpha7.md`** |
-| Previous session entry (Phase 3a launch — now sealed) | `docs/handovers/v0.4-next-session-entry-2026-06-01-PM.md` |
+| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/handovers/v0.4-next-session-entry-2026-06-02-post-tracks.md`** |
+| Previous session entry (α-7 launch — sealed) | `docs/handovers/v0.4-next-session-entry-2026-06-02-alpha7.md` |
+| Previous-previous (Phase 3a launch — sealed) | `docs/handovers/v0.4-next-session-entry-2026-06-01-PM.md` |
+| Track 2c integration design memo | `docs/design/v0.4-track-2c-arabic-adversarial-integration.md` |
+| Bidi normalization audit | `reports/research-runs/bidi-normalization-audit-20260602.md` |
+| α-7 closure analysis (mid-fill) | `reports/research-runs/alpha-7-closure-analysis-20260602.md` |
+| α-7 baseline run log | `reports/research-runs/_alpha7-baseline-capture.log` |
+| α-7 5-tier remeasurement log | `reports/research-runs/_alpha7-5tier-remeasurement.log` |
+| Ali Track 2c originals (preserved) | `eval/adversarial/ar_ecommerce-{v1.1-pending.yaml, REPORT-provia.md, ...}` |
+| Adversarial runner | `scripts/adversarial_sweep.py` |
 | Strategic vision + 6-dimension readiness | `docs/PLATFORM_READINESS.md` |
 | Architecture & non-goals | `docs/ARCHITECTURE.md` |
 | 6-axis v0.2 plan + future v0.3/v0.4/v1.0 | `ROADMAP.md` |
@@ -165,4 +178,4 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 자메스는 **v1.0까지 "범용 모체"로만** 강화합니다. 도메인 분화(법률·식품·유통·여행 등)는 v1.0 이후에만 시작합니다. 이 세션에서 도메인 코드를 추가하지 마세요.
 
-**현재 위치**: v0.4.1 완료 (DOI `10.5281/zenodo.20426719`) → α-6 사이클 closed 2026-06-01 PM (PR #678, 5-point S4 universal candidate + 5-mode taxonomy cycle-specific empirical). 다음 사이클 순서: α-7 (graph top-K fix, design memo 있음) → α-7 5-tier mode re-measurement → Phase 3b proper (5 families × n=3 ≈ 45h) → α-8 ontology typed-filter. v0.5 첫 도메인 후보 = 기업 내부지식 ontology (수평 — vertical 아님). 다음 세션 entry: `docs/handovers/v0.4-next-session-entry-2026-06-02-alpha7.md`. 자세한 내용은 `docs/PLATFORM_READINESS.md` + `ROADMAP.md`.
+**현재 위치 (2026-06-02 mid-cycle)**: α-7 cycle implementation + N=3 baseline 완료, 5-tier mode remeasurement 진행 중 (백그라운드). α-7 PR #680 draft. Baseline 결과: gemma4 production tier 에서 null_query abst_f1 -0.107 (noise edge 밖). Mechanism = top-K=10 이 evidence-of-absence signal 제거. → α-8 architectural fix 가 필요 (typed filter + 빈 type rows 명시). Track 2c (Ali Arabic adversarial) Phase 1-3 완료 (PR #681 draft). Bidi runtime gate 구현 (PR #682 draft). Ali ack + Robin Direction 3 share DM 둘 다 2026-06-02 발송됨. 다음 세션 entry: `docs/handovers/v0.4-next-session-entry-2026-06-02-post-tracks.md`. v0.5 첫 도메인 후보 = 기업 내부지식 ontology (수평). 자세한 내용은 `docs/PLATFORM_READINESS.md` + `ROADMAP.md`.
