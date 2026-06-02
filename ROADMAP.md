@@ -1043,6 +1043,49 @@ investigation.
   K-bound baseline)
 - Parallel: T3 Evidence Aging (orthogonal axis)
 
+### α-7 cycle CLOSURE (2026-06-02) — REJECT
+
+**Status**: cycle closed as REJECT. PR #680 closed without merge.
+α-7 graph top-K is a research artifact, not a production change.
+
+**5-tier remeasurement verdict** (1000 queries, 0 timeouts, 0 errors,
+10/10 cells written):
+
+| Tier | α-6 contribution | α-7 contribution | change | mode change |
+|---|---:|---:|---:|---|
+| M_XS (1b) | 0.000 | 0.000 | 0 | unchanged (inert) |
+| M_S (4b) | -0.074 | -0.067 | +0.007 | unchanged (disrupt) |
+| **M_M (e4b)** | **+0.033** | **-0.283** | **-0.316** | **CRASH** amplify → disrupt |
+| **M_L (12b)** | **+0.375** | **-0.076** | **-0.451** | **CRASH** create → disrupt |
+| M_XL (27b) | -0.181 | -0.359 | -0.178 | worse disrupt |
+
+**Mechanism (CONFIRMED)**: top-K=10 removes "evidence-of-absence"
+signal at every tier where pure-LLM had nonzero abstention capability.
+Universal regression. K=50/K=25 tuning would not fix — wrong-knob
+mechanism, not wrong-value problem.
+
+**S4 universal-law candidate** (path Δ) survives the context reshape:
+spread ±0.013 across 5 tiers (vs α-6 ±0.022). ⭐⭐⭐ candidate
+strengthens — citation pipeline is graph-entity-count independent.
+
+**Wrong-fix-averted**: 10th cumulative (7 α-5 + 2 α-6 + 1 α-7).
+α-7 cycle's value = preventing the wrong fix from shipping, plus
+mechanism finding informing α-8.
+
+**Carry-forward to α-8**:
+- Bucket-(d) phrase additions (7 total: 5 α-7 PR + 2 follow-up) —
+  eligible for separate docs-only PR for oracle improvement.
+- α-7 closure analysis preserved at
+  `reports/research-runs/alpha-7-closure-analysis-20260602.md`.
+- α-7 5-tier 10 cell JSONs preserved at
+  `workspaces/hotpot_eval/reports/research-runs/qvt-ablation-cells/`.
+
+**Memory entries** added 2026-06-02:
+- `feedback_alpha7_top_k_destroys_positive_contributions`
+- `feedback_s4_citation_survives_context_reshape`
+- `feedback_12b_pure_capability_misclassified_as_plateau`
+- `project_alpha_7_closure_state`
+
 ---
 
 ## v0.4.x — α-8 Ontology Typed-Filter Cycle (post-α-7 closure)
