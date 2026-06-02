@@ -51,10 +51,8 @@ sys.path.insert(0, str(ROOT))
 # from any cwd.
 from eval.qvt.oracle import (  # noqa: E402
     FiveAxisResult,
-    ThreeAxisResult,
     score_five_axis,
     score_five_axis_by_question_type,
-    score_three_axis,
 )
 
 # ---------------------------------------------------------------------------

@@ -258,7 +258,7 @@ def main() -> int:
             summary.append(("written", f.slug, f"-> {dest.relative_to(ROOT) if dest.is_relative_to(ROOT) else dest}"))
 
     # Output summary
-    print(f"\n=== qvt_promote_findings summary ===")
+    print("\n=== qvt_promote_findings summary ===")
     print(f"Findings scanned: {len(findings)}")
     print(f"Promotion tags accepted: {sorted(promote_tags)}")
     print(f"Written: {written}  Skipped: {skipped}  Rejected: {rejected}")

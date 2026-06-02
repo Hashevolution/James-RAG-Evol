@@ -267,7 +267,6 @@ def grade_planner(response: str) -> dict:
     except (json.JSONDecodeError, ValueError):
         parsed = None
     subtasks = parsed.get("subtasks", []) if isinstance(parsed, dict) else []
-    has_subtasks = isinstance(subtasks, list) and len(subtasks) > 0
     n_subtasks = len(subtasks) if isinstance(subtasks, list) else 0
     text_lower = response
     conditional_keywords = ("시나리오", "경우", "이면", "조건", "5%", "2%")
@@ -541,12 +540,12 @@ def verdict(stage: str, fixture: str, on: dict, off: dict) -> tuple[str, str]:
 def render_report(results: dict) -> str:
     meta = results["metadata"]
     lines: list[str] = [
-        f"# A3 — think-mode quality boundary (gemma4:e4b, 5 cognitive stages)",
+        "# A3 — think-mode quality boundary (gemma4:e4b, 5 cognitive stages)",
         "",
         f"**Date**: {meta['started_utc']}",
         f"**Model**: {meta['model']}  **Cap**: {meta['cap']}  "
         f"**Temp**: {meta['temperature']}  **n/cell**: {meta['n']}",
-        f"**Closes**: §17.5.3 of v3prime-cross-family-final-2026-05-29.md",
+        "**Closes**: §17.5.3 of v3prime-cross-family-final-2026-05-29.md",
         "",
         "## Per-stage verdicts (feeds A2 per-stage think policy)",
         "",

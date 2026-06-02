@@ -153,7 +153,7 @@ def main() -> int:
     print(f"=== QVT 5-axis re-score ({len(bench_paths)} run(s)) ===")
     print(f"suite:   {args.suite}")
     print(f"fixture: {fixture_path}")
-    print(f"oracle:  current main (run `git log --oneline -3` to see what's loaded)")
+    print("oracle:  current main (run `git log --oneline -3` to see what's loaded)")
     for i, bp in enumerate(bench_paths, start=1):
         bench = json.loads(bp.read_text(encoding="utf-8"))
         result = score_five_axis(bench, fixture)
