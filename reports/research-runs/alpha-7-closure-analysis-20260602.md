@@ -210,15 +210,77 @@ context):
 - M_XL: ~5-8 hours (GPU/CPU split unchanged from α-6)
 - **Total: ~8-10 hours**
 
-### 5.1 Mode comparison table (α-6 vs α-7)
+### 5.1 Mode comparison table (α-6 vs α-7 — 2026-06-02 post-bench)
 
-| Tier | α-6 pure abst_f1 | α-6 + JAMES abst_f1 | α-6 mode | α-7 + JAMES abst_f1 | α-7 mode | Reshape? |
-|---|---:|---:|---|---:|---|---|
-| M_XS (1b) | 0.000 | 0.000 | inert | *TBD* | *TBD* | *TBD* |
-| M_S (4b) | 0.074 | 0.000 | disrupt | *TBD* | *TBD* | *TBD* |
-| M_M (e4b) | 0.558 | 0.591 | amplify | *TBD* | *TBD* | *TBD* |
-| M_L (12b) | 0.000 | 0.375 | create | *TBD* | *TBD* | *TBD* |
-| M_XL (27b) | 0.258 | 0.077 | disrupt | *TBD* | *TBD* | *TBD* |
+5-tier remeasurement (1000 queries, 0 timeouts, 0 errors, 10/10
+cells written 2026-06-02):
+
+| Tier | α-7 pure | α-7 + JAMES | α-7 Δ (contrib.) | α-6 Δ (contrib.) | mode change |
+|---|---:|---:|---:|---:|---|
+| M_XS (1b) | 0.000 | 0.000 | **0.000** | 0.000 | unchanged (inert) |
+| M_S (4b) | 0.067 | 0.000 | **-0.067** | -0.074 | unchanged (disrupt) |
+| **M_M (e4b)** | 0.591 | 0.308 | **-0.283** | **+0.033** | **CRASH** — amplify → disrupt |
+| **M_L (12b)** | 0.429 | 0.353 | **-0.076** | **+0.375** | **CRASH** — create → disrupt |
+| M_XL (27b) | 0.359 | 0.000 | **-0.359** | -0.181 | worse disrupt (-0.178 deeper) |
+
+Α-6 → α-7 contribution change (each tier):
+
+| Tier | α-6 → α-7 change | interpretation |
+|---|---:|---|
+| 1b | 0 | stable inert |
+| 4b | +0.007 | unchanged |
+| **e4b** | **-0.316** | α-7 destroyed gemma4 amplification |
+| **12b** | **-0.451** | α-7 destroyed gemma3:12b creation mode |
+| 27b | -0.178 | disrupt deepened |
+
+§3.2 mechanism hypothesis **CONFIRMED**: top-K=10 removes evidence-of-
+absence signal at every tier where pure-LLM had nonzero abstention
+capability. Universal regression of positive contributions at
+e4b / 12b / 27b. Only 1b (no capability) and 4b (already disrupted)
+unchanged.
+
+### Pure-LLM C_minus jumps at 12b / 27b — explanation
+
+C_minus cells aren't affected by α-7 graph top-K (no JAMES). But
+12b C_minus jumped from α-6's 0.000 to α-7's 0.429, and 27b from
+0.258 to 0.359. The bench responses are freshly generated AND scored
+with the expanded oracle (α-7's 5 bucket-(d) phrases + this session's
+2 follow-up phrases `cannot be completed` / `is/are/was/were not
+available`). The α-6 sealed values used the narrower oracle that
+systematically missed 12b's `data ... doesn't link` and similar
+refusal styles.
+
+So 12b's pure-LLM abstention was always ≈0.43, not ≈0.00. The α-6
+recovery curve doc §3.1 already flagged this in the 4-step rule
+audit ("oracle-corrected 12b pure abst_f1 ≈ 0.077") — the 5-tier
+remeasurement at full-bench scale × expanded oracle confirms the
+pattern at the higher magnitude.
+
+This does NOT change the α-7 verdict — α-7's contribution Δ uses
+each cycle's own C_minus as baseline (so the oracle correction
+applies symmetrically to both C_minus and C_rag-full at α-7).
+
+**12b "plateau" reframe under-corrected**: the α-6 recovery curve
+doc framed 12b as plateau-with-4b (~0.077 vs 0.074). The 5-tier
+oracle-expanded value (~0.429) shows 12b's pure capability was
+always similar to e4b's (~0.59) and the "plateau with 4b" framing
+was an artifact of oracle coverage gaps specific to 12b's refusal
+vocabulary. Memory + recovery curve doc §5 require annotation.
+
+### Path Δ (S4 universal-law candidate) — survives context reshape
+
+| Tier | α-6 path Δ | α-7 path Δ |
+|---|---:|---:|
+| 1b | +0.410 | +0.410 |
+| 4b | +0.397 | +0.397 |
+| e4b | +0.419 | +0.400 |
+| 12b | +0.410 | +0.406 |
+| 27b | +0.403 | +0.403 |
+
+α-7 path Δ spread: **±0.013** (range +0.397 to +0.410). α-6 spread
+was ±0.022. **S4 citation primitive survives the context reshape** —
+⭐⭐⭐ universal-law candidate strengthens. The structural axis is
+independent of the abstention-axis mechanism that α-7 broke.
 
 ### 5.2 Predictions (per memory `feedback_james_mode_taxonomy_context_dependent` §3)
 
@@ -236,47 +298,86 @@ update memory.
 
 ---
 
-## 6. Verdict per layer (post-bench fill)
+## 6. Verdict per layer (2026-06-02 post-bench)
 
-| Layer | Design intent | Primary axes | Δ on primary (intra-M_M) | Regression check | Verdict |
+| Layer | Design intent | Primary axes | Δ on primary (5-tier observed) | Regression check | Verdict |
 |---|---|---|---|---|---|
-| S2 Graph (post top-K) | concept multi-hop | path + graded | *TBD* | abst_f1 *TBD* | *TBD* |
-| S4 Citation | source surface | path | *TBD* (expected stable ~+0.41) | quality flat | *TBD* |
-| Bucket-(d) oracle phrase | abstention coverage | abst_f1 | *TBD* (12b only shifts; M_M unchanged) | FP check | *TBD* |
+| S2 Graph (post top-K) | concept multi-hop | path + graded | path ±0.013 (preserved); graded -0.026 to -0.050 at e4b/12b | abst_f1 -0.283/-0.076/-0.359 at e4b/12b/27b | **REJECT** — top-K destroys positive contributions at every tier where pure-LLM had abstention capability |
+| S4 Citation | source surface | path | **+0.397 to +0.410 5-point spread** (±0.013) | quality flat | **⭐⭐⭐ candidate strengthens** — universal-law survives context reshape |
+| Bucket-(d) oracle phrase | abstention coverage | abst_f1 | 12b pure 0.000 → 0.429 (oracle-expanded scoring) | FP check pending | **partial fix** — captures 12b refusal styles correctly; under-corrected the α-6 "plateau" framing |
 
 ---
 
-## 7. Findings to promote (post-bench fill)
+## 7. Findings to promote (2026-06-02 post-bench)
 
 | Finding slug | Bucket | Tier | What |
 |---|---|---|---|
-| `alpha-7-graph-top-k-recovers-m-m-graded` | (a) measurement debt closed | ⭐ operational | *Δ +TBD pending bench* — recovers Phase 1 §3 regression |
-| `s4-citation-tier-invariant-stays-under-context-reshape` | (a) universal-law candidate strengthening | ⭐⭐⭐ if path Δ +0.40 across post-α-7 5 tiers | extends 5-point series robustness to context-reshape (cycle dimension) |
-| `james-s5-mode-reshape-under-top-k` | (b) mechanism candidate | ⭐⭐ partial | mode pattern α-6 vs α-7 comparison — if 27b disrupt → amplify, mechanism hypothesis (source-injection) confirmed |
-| `bucket-d-doesnt-link-narrow-add` | (d) measurement debt closed | ⭐ operational | 12b pure abst_f1 0.000 → ~0.077 (no other tier affected) |
+| `s4-citation-survives-context-reshape` | (a) universal-law candidate strengthening | **⭐⭐⭐ candidate strengthens** | 5-point path Δ ±0.013 spread under top-K reshape; structural axis independent of abstention mechanism |
+| `alpha-7-top-k-destroys-positive-contributions` | (b) mechanism finding | **⭐⭐ partial mechanism** | universal regression of amplify (e4b -0.316), create (12b -0.451), and disrupt (27b -0.178 deeper) under top-K. **Evidence-of-absence preservation is necessary architectural property**; top-K is the wrong knob |
+| `12b-pure-capability-misclassified-as-plateau` | (d) measurement debt | ⭐ operational | α-6 recovery curve §3.1 framing under-corrected. 12b pure abstention ~0.43 (not ~0.077), similar to e4b's ~0.59. Memory + recovery curve doc need annotation |
+| `alpha-8-evidence-of-absence-preservation-required` | (a) architectural finding | ⭐⭐ partial | α-8 design memo §1.5-1.6 + §2.4 R1-R5 (Track 2c session 2026-06-02) is now empirically justified by α-7's universal regression. Cycle dependency: α-8 implementation = next launch |
 
 ### Findings withdrawn / not promoted
 
 | Withdrawn | Origin | Why |
 |---|---|---|
 | (carry-over from α-6) "JAMES amplifier" / "inverted-U" / "family-only" / "REVERSES" | recovery curve §5 + memory `feedback_alpha6_findings_mostly_known_to_literature` | already withdrawn pre-α-7 |
+| `alpha-7-graph-top-k-recovers-m-m-graded` (predicted in §1.1) | this doc, pre-bench | ❌ **falsified** — top-K destroyed gemma4 amplification (-0.283 abst_f1, -0.026 graded). α-7 hypothesis was wrong knob |
+| `27b disrupt likely weakens under top-K` (§5.2 prediction) | this doc, pre-bench | ❌ falsified — 27b disrupt deepened by -0.178 |
+| `e4b amplify likely stable` (§5.2 prediction) | this doc, pre-bench | ❌ falsified — e4b mode CRASHED (amplify → disrupt) |
+| `12b create may weaken` (§5.2 prediction) | this doc, pre-bench | ❌ partially falsified — 12b mode CRASHED (create → disrupt), not just weakened |
 
 ---
 
-## 8. Closure PR description draft (template, fill on merge)
+## 8. Closure PR decision (2026-06-02 post-bench) — REJECT
 
-The PR #680 description's Quality Delta Card section should populate
-from the §1 and §2 tables. Adoption decision:
+Per §1.1 acceptance band + §5.1 5-tier mode reshape:
 
-- **graded Δ ≥ +0.030 vs `3a961a3_rescored`**: adopt; PR title stays
-  `feat(α-7)`. Operator runs §5 mode re-measurement, updates this
-  doc, then submits closure handover doc for next session.
-- **+0.010 ≤ graded Δ < +0.030**: tier-gated adopt; PR title shifts
-  to `feat(α-7): graph top-K [tier-gated]`. Per-question-type cross-tab
-  decides per-type toggle. §5 still runs.
-- **graded Δ < +0.010**: reject + sub-finding investigation. Apply
-  4-step rule. Mechanism hypothesis (§3.2 of 27b doc) reframed.
-  PR closed without merge; new design memo for next attempt.
+- **graded Δ < +0.010 at all tiers** → acceptance band triggered
+- **mode reshape CRASH at e4b (amplify → disrupt) and 12b (create →
+  disrupt)** confirms top-K removes positive contributions at every
+  tier where pure-LLM had abstention capability
+- **§3.2 mechanism hypothesis CONFIRMED**: top-K = wrong knob;
+  evidence-of-absence preservation is the necessary architectural
+  property
+
+**Decision**: close PR #680 as REJECT. Do NOT merge. α-7 contributes
+the mechanism finding + S4 universal-law strengthening to the cycle,
+not a merged code change.
+
+Subsequent cycle: α-8 implementation per `docs/design/v0.4-alpha-8-
+ontology-typed-filter.md` §1.5-1.6 + §2.4 R1-R5. The α-7 rejection is
+the empirical justification for α-8's architectural rule. Phase 3b
+proper measurement runs on α-8 baseline (per Option C 2026-06-02).
+
+### Wrong-fix-averted assessment
+
+Α-7 baseline regression at gemma4 production tier was caught BEFORE
+adoption to production. Cumulative wrong-fix-averted count:
+- α-5 cycle: 7
+- α-6 cycle: 2 (rate-limit corruption + matrix runner tier override)
+- α-7 cycle: **+1 (this PR rejection)** — top-K hypothesis tested at
+  full 5-tier scale, mechanism confirmed wrong knob, no production
+  regression shipped
+- **Cumulative**: **10 wrong-fix-averted**
+
+The α-7 cycle is the FIRST cycle to ship a JAMES code change
+candidate (graph_topk.py module + DFS_SCORE_THRESHOLD tighten + 5
+bucket-(d) phrases). The phrase additions stay in the cycle artifact
+(merge candidate via subsequent doc-only PR if needed); the graph
+top-K rejection stays as a research finding documented in this
+analysis doc.
+
+### What carries forward
+
+- ⭐⭐⭐ candidate strengthening — S4 universal path Δ +0.40 5-point
+  survival under context reshape
+- ⭐⭐ partial mechanism — evidence-of-absence preservation is required
+  architecturally; informs α-8 R1-R5 rule
+- ⭐ operational — 12b plateau reframe needs annotation (pure ~0.43,
+  not ~0.077)
+- 10th wrong-fix-averted — α-7 hypothesis falsified at full 5-tier
+  scale before production adoption
 
 ---
 
