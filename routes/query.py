@@ -129,7 +129,16 @@ async def query(
     else:
         trace_id = start_trace()
 
-    question   = data.question.strip()
+    # Track 2c bidi input gate (2026-06-02) — strip Unicode bidirectional
+    # formatting + zero-width controls before the LLM sees the query.
+    # See core/input_normalization.py and
+    # reports/research-runs/bidi-normalization-audit-20260602.md §7.2 for
+    # the runtime-gate vs test-fixture-preservation discipline.
+    from core.input_normalization import normalize_user_input
+    _raw_question = data.question.strip()
+    question, _norm_audit = normalize_user_input(_raw_question)
+    if _norm_audit["chars_dropped"]:
+        log_stage("input_normalize", role=role, **_norm_audit)
     session_id = data.session_id or "default"
     if not question:
         log_stage("auth", role=role, allowed=False, reason="empty_question")

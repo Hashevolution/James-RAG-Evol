@@ -760,6 +760,64 @@ input produces byte-identical output across runs.
   `gold_signals` + `abstention_truth` (PR #551)
 - `docs/design/v0.4-qvt-alpha-non-saturating-oracle.md` — full design
 
+### 5.7.11 User-Input Bidi Normalization Gate (Track 2c follow-up, v0.4, 2026-06-02)
+
+Strips a small explicit set of Unicode bidirectional + zero-width
+formatting characters from user input at the `/query/` HTTP edge
+before the question reaches retrieval / graph / reasoning / LLM
+prompt construction.
+
+Triggered by the Track 2c X3 finding (Ali Afana / Provia 2026-06-01) —
+empirically confirmed at JAMES via the 2026-06-02 audit
+(`reports/research-runs/bidi-normalization-audit-20260602.md`):
+JAMES had **zero** bidi normalization in any layer. U+202E
+(RIGHT-TO-LEFT OVERRIDE) and other directional formatting controls
+flowed through unchanged. Provia observed in `bidi_03` that the
+concealed instruction reached the model's reasoning despite the
+visible greeting being benign; the same payload would land
+identically at JAMES.
+
+Implementation:
+
+1. **`core/input_normalization.py`** — new module (~5 KB) exposing
+   `normalize_user_input(s) -> (normalized, audit_dict)`. Strips 11
+   bidi formatting code points (LRM/RLM/LRE/RLE/PDF/LRO/RLO/LRI/RLI/
+   FSI/PDI) + 4 invisible / zero-width code points (ZWSP/ZWNJ/ZWJ/BOM),
+   then applies NFC canonicalisation. Returns audit dict with per-
+   class counts + `nfc_applied` flag. Pure function; no I/O.
+2. **`routes/query.py:132`** wire — after `.strip()` (whitespace),
+   call `normalize_user_input` and feed the result to `rag_engine`.
+   When `audit_dict["chars_dropped"] > 0`, emit a `log_stage(
+   "input_normalize", role=role, **audit_dict)` row so the forensic
+   trail exists.
+
+Trust zone: this is a defensive input gate. The strip is logged per
+request via `core.observability.log_stage` so an audit trail exists
+for any future incident.
+
+**Scope discipline** (cross-reference: audit doc §7.2):
+
+- This is a **runtime defence against user input**. It does NOT
+  modify the test fixture path.
+  `eval/adversarial/ar_ecommerce-*.yaml` preserve U+202E byte-exact
+  because those characters are the payload the test cases exercise.
+- `scripts/adversarial_sweep.py::_post_query` carries a parallel
+  warning comment: do NOT normalize input in the runner. The fixture
+  → server boundary is exactly what's under test.
+- Confusing the runtime gate with test fixture normalization would
+  silently break the `bidi_01-04` cases.
+
+Module size: `core/input_normalization.py` ≈ 5 KB (well under the
+20 KB gate). Does **not** extend `core/graph_engine.py` (currently
+at 20.4 KB, above the gate — α-7's separate concern).
+
+Pointers:
+
+- Audit doc + recommended PR shape: `reports/research-runs/bidi-normalization-audit-20260602.md`
+- Track 2c integration design memo: `docs/design/v0.4-track-2c-arabic-adversarial-integration.md`
+- Ali `bidi_01-04` test cases: `eval/adversarial/ar_ecommerce-v1.1-pending.yaml`
+- Unit tests (29 cases): `tests/test_input_normalization.py`
+
 ---
 
 ## 6. Data Lifecycle (W7-A, 2026-05-11)
