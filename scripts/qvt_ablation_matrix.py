@@ -206,11 +206,26 @@ _SECTOR_CELL_ENVS: Dict[str, Dict[str, str]] = {
     "C_rag-graph": {
         # S1 + S2 + S3 + S4 on; S5 + S6 off.
         # S3 stays ON (row's defaults: ENTITY_ANCHOR=1, QUERY_REWRITE=1).
+        # α-8: typed filter disabled here so the cell is a pure pre-α-8
+        # graph baseline; comparison reference for C_rag-ontology.
         "JAMES_DISABLE_ABSTENTION":       "1",
         "JAMES_DISABLE_COGNITIVE_STAGES": "1",
+        "JAMES_DISABLE_TYPED_FILTER":     "1",
+    },
+    "C_rag-ontology": {
+        # α-8 Phase A/B: C_rag-graph + typed entity filter (R1-R5
+        # evidence-of-absence preservation per design memo §2.4).
+        # All other layers identical to C_rag-graph so Δ measures the
+        # typed filter contribution in isolation.
+        "JAMES_DISABLE_ABSTENTION":       "1",
+        "JAMES_DISABLE_COGNITIVE_STAGES": "1",
+        # JAMES_DISABLE_TYPED_FILTER intentionally NOT set → filter ON.
     },
     "C_rag-full": {
         # Equivalent to α-5 L1 — all sectors on, no routing layers.
+        # α-8: typed filter ON here too (matches default production state
+        # once α-8 is wired; only C_rag-graph keeps the pre-α-8 path for
+        # baseline comparison).
         # No sector disable flag; row's L1 default applies.
     },
     "C_rag-routed": {
@@ -229,8 +244,9 @@ _SECTOR_CELL_LABELS: Dict[str, str] = {
     "C_minus":      "pure LLM (no JAMES)",
     "C_rag-basic":  "+ RAG only",
     "C_rag-cited":  "+ RAG + citation (S4)",
-    "C_rag-graph":  "+ RAG + graph + S3 preproc + citation",
-    "C_rag-full":   "JAMES full stack (= α-5 L1)",
+    "C_rag-graph":  "+ RAG + graph + S3 preproc + citation (pre-α-8)",
+    "C_rag-ontology": "+ typed filter (α-8 R1-R5 evidence-of-absence)",
+    "C_rag-full":   "JAMES full stack (= α-5 L1; α-8 typed filter ON)",
     "C_rag-routed": "JAMES + routing layers (= α-5 L5)",
 }
 

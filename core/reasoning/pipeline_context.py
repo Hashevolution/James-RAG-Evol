@@ -29,6 +29,15 @@ from __future__ import annotations
 import time
 from typing import Any, Dict, Tuple
 
+# α-8 Phase B — typed entity filter overlay (R1-R5 evidence-of-absence
+# preservation). Default flag OFF (filter ON when wired); set
+# JAMES_DISABLE_TYPED_FILTER=1 to bypass for byte-identical pre-α-8 path
+# during sector cell measurement.
+from core.graph_typed_filter import (
+    apply_typed_filter,
+    is_typed_filter_disabled,
+)
+
 # Relevance gate threshold — mirrors the local constant pre-extraction
 # and the ``_RELEVANCE_THRESHOLD`` in ``core.reasoning.evidence_scope``
 # (kept synchronized; a single-source consolidation refactor would
@@ -97,7 +106,30 @@ def build_unified_context(
             graph_pth,
             unified_score=unified_score,
         )
-        final_context = loop_state["doc_context"] + graph_ctx_str
+
+        # α-8 Phase B — prepend typed entity summary BEFORE the existing
+        # graph context. This is byte-additive (the original block is
+        # preserved verbatim); the typed summary lands as a structural
+        # evidence-of-absence signal per design memo §1.6 / §2.4 R1-R5.
+        # When JAMES_DISABLE_TYPED_FILTER=1 the prefix is skipped, making
+        # the C_rag-graph sector cell byte-identical to pre-α-8.
+        typed_prefix = ""
+        if not is_typed_filter_disabled():
+            expanded_query = loop_state.get("expanded_query", "") or ""
+            try:
+                typed_prefix, _groups = apply_typed_filter(
+                    expanded_query,
+                    graph_ctx,
+                )
+                typed_prefix = "\n" + typed_prefix + "\n"
+            except Exception:
+                # Defensive: never let typed filter formatting fail the
+                # entire context build. Log via engine and fall through
+                # with empty prefix (= byte-identical to pre-α-8).
+                engine._log("typed_filter_overlay_error", None, user_role)
+                typed_prefix = ""
+
+        final_context = loop_state["doc_context"] + typed_prefix + graph_ctx_str
         gate_label = "pass" if avg_vec >= _RELEVANCE_GATE else "fail"
         print(
             f"[CONTEXT] unified={unified_score:.3f} "

@@ -42,14 +42,30 @@ m = _load_module()
 
 
 class SectorCellsRegistryTests(unittest.TestCase):
-    def test_six_standard_sector_cells_exist(self):
+    def test_seven_standard_sector_cells_exist(self):
+        # α-8 Phase B added C_rag-ontology between C_rag-graph and C_rag-full.
         expected = {"C_minus", "C_rag-basic", "C_rag-cited",
-                    "C_rag-graph", "C_rag-full", "C_rag-routed"}
+                    "C_rag-graph", "C_rag-ontology", "C_rag-full",
+                    "C_rag-routed"}
         self.assertEqual(set(m._SECTOR_CELL_ENVS.keys()), expected)
 
     def test_each_sector_cell_has_a_label(self):
         for cell in m._SECTOR_CELL_ENVS:
             self.assertIn(cell, m._SECTOR_CELL_LABELS)
+
+    def test_c_rag_graph_disables_typed_filter(self):
+        """C_rag-graph is the α-7 (pre-α-8) graph baseline — typed filter MUST be off."""
+        self.assertEqual(
+            m._SECTOR_CELL_ENVS["C_rag-graph"].get("JAMES_DISABLE_TYPED_FILTER"),
+            "1",
+        )
+
+    def test_c_rag_ontology_does_not_set_disable_typed_filter(self):
+        """C_rag-ontology is the α-8 cell — typed filter ON (flag intentionally absent)."""
+        self.assertNotIn(
+            "JAMES_DISABLE_TYPED_FILTER",
+            m._SECTOR_CELL_ENVS["C_rag-ontology"],
+        )
 
 
 class CellEnvOverlayTests(unittest.TestCase):
