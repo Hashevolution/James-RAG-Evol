@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -204,6 +205,27 @@ def _parse_path_nodes(path_strs) -> set:
     return nodes
 
 
+# Slug normalizer for path_metrics — mirror of `eval/qvt/oracle.py:_slug_for_match`.
+# Keep in sync with that helper. Exists here to avoid bench → eval/qvt
+# import dependency (oracle imports from bench output, not the other way).
+# Lowercase ASCII-alphanumeric-dash, capped at 80 chars; drops
+# `multihop_<id>_` prefix and `.txt`/`.pdf` suffix on source filenames.
+_PATH_SLUG_PREFIX_RE = re.compile(r"^multihop_\d+_")
+_PATH_SLUG_BAD_RE = re.compile(r"[^a-z0-9\-]+")
+
+
+def _slug_for_path_match(s: str) -> str:
+    if not s:
+        return ""
+    s = s.strip()
+    s = _PATH_SLUG_PREFIX_RE.sub("", s)
+    if s.lower().endswith((".txt", ".pdf")):
+        s = s[:-4]
+    s = s.lower()
+    s = _PATH_SLUG_BAD_RE.sub("-", s).strip("-")
+    return s[:80]
+
+
 def _path_metrics(actual_paths, expected_nodes) -> Optional[Dict]:
     """Compute Path Recall / Precision against the suite's expected nodes.
 
@@ -212,16 +234,23 @@ def _path_metrics(actual_paths, expected_nodes) -> Optional[Dict]:
         query's answer should traverse. Per-query Recall = how many of
         those nodes appear in the actual graph_paths returned by /query.
 
+    Slug normalization (2026-06-03 bug 2 fix): both sides slug-normalized
+    via `_slug_for_path_match` so fixture titles (e.g., "The FTX trial is
+    bigger than Sam Bankman-Fried") match graph entity names (e.g.,
+    "the-ftx-trial-is-bigger-than-sam-bankman-fried"). Pre-fix this used
+    raw exact string match, which failed systematically on multihop_rag
+    (last 35 runs all reported mean_path_recall=0.0).
+
     Returns None when `expected_nodes` is empty (skip metric — caller
     omits the field from the per-query row). Otherwise returns a dict:
 
         {
           "expected_count": int,
           "actual_node_count": int,    # unique nodes across all paths
-          "hits": int,                 # |expected ∩ actual|
+          "hits": int,                 # |expected ∩ actual| (slug-based)
           "path_recall": float,        # hits / expected_count, [0, 1]
           "path_precision": float,     # hits / actual_node_count, [0, 1]
-          "missed": list[str],         # expected nodes NOT found
+          "missed": list[str],         # expected nodes NOT found (original form)
         }
 
     Path Precision is reported but interpreted with care — `actual` is
@@ -232,18 +261,27 @@ def _path_metrics(actual_paths, expected_nodes) -> Optional[Dict]:
     if not expected_nodes:
         return None
     actual = _parse_path_nodes(actual_paths)
-    expected = set(expected_nodes)
-    hits = actual & expected
-    actual_count = len(actual)
+    actual_slug_map = {_slug_for_path_match(n): n for n in actual if n}
+    actual_slugs = set(actual_slug_map.keys())
+    actual_slugs.discard("")
+    expected_slug_map = {_slug_for_path_match(n): n for n in expected_nodes if n}
+    expected_slugs = set(expected_slug_map.keys())
+    expected_slugs.discard("")
+    hit_slugs = actual_slugs & expected_slugs
+    miss_slugs = expected_slugs - actual_slugs
+    actual_count = len(actual)  # report unique node count, not slug count
     return {
-        "expected_count": len(expected),
+        "expected_count": len(expected_slugs),
         "actual_node_count": actual_count,
-        "hits": len(hits),
-        "path_recall": round(len(hits) / len(expected), 3),
-        "path_precision": (
-            round(len(hits) / actual_count, 3) if actual_count else 0.0
+        "hits": len(hit_slugs),
+        "path_recall": (
+            round(len(hit_slugs) / len(expected_slugs), 3)
+            if expected_slugs else 0.0
         ),
-        "missed": sorted(expected - actual),
+        "path_precision": (
+            round(len(hit_slugs) / actual_count, 3) if actual_count else 0.0
+        ),
+        "missed": sorted(expected_slug_map[s] for s in miss_slugs),
     }
 
 
