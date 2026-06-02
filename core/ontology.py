@@ -1,12 +1,35 @@
 """
-PROJECT JAMES - Ontology (Phase 4)
+PROJECT JAMES - Ontology (Phase 4 → α-8)
 
 Phase 3.5: weight, sensitive, compute_graph_score 추가
 Phase 4:   [P4-ONT-1] allowed_head/tail 타입 제약
            validate_relation_types(), is_valid_relation_triple()
+α-8 Phase A (2026-06-02): horizontal types extension —
+           4 existing types + 5 new (event/date/location/quantity/project)
+           + 6 new relations (OCCURRED_AT/HAPPENED_ON/LOCATED_IN/
+           INVOLVES/MEASURED_AS/WORKED_ON). Additive-only; no migration.
 """
 
 from typing import Dict, List, Optional, Set, Tuple
+
+# ─── α-8: abstract root + entity types registry ───────────────────────
+# Existing 4 types kept; 5 new horizontal types added. Mother-platform
+# rule #1 compliance verified per design memo §2.3 (only horizontal types;
+# no legal/food/retail/finance-specific types). v0.5 domain packs extend
+# this dict via plugin mechanism (forward compat hook per design memo §3.4).
+ENTITY_TYPES: Dict[str, Dict] = {
+    # Existing (unchanged contracts; gain `parent` field only)
+    "person":   {"parent": "Entity", "active": True, "since": "v0.1"},
+    "org":      {"parent": "Entity", "active": True, "since": "v0.1"},
+    "concept":  {"parent": "Entity", "active": True, "since": "v0.1"},
+    "document": {"parent": "Entity", "active": True, "since": "v0.1"},
+    # α-8 additions (horizontal only)
+    "event":    {"parent": "Entity", "active": True, "since": "v0.4-α-8"},
+    "date":     {"parent": "Entity", "active": True, "since": "v0.4-α-8"},
+    "location": {"parent": "Entity", "active": True, "since": "v0.4-α-8"},
+    "quantity": {"parent": "Entity", "active": True, "since": "v0.4-α-8"},
+    "project":  {"parent": "Entity", "active": True, "since": "v0.4-α-8"},
+}
 
 RELATION_TYPES: Dict[str, Dict] = {
     "STUDIES":     {"label":"공부",  "inverse":"STUDIED_BY",   "transitive":False, "weight":1.0, "sensitive":False, "allowed_head":{"person"},         "allowed_tail":{"concept"}},
@@ -26,6 +49,13 @@ RELATION_TYPES: Dict[str, Dict] = {
     "KNOWS_PASSWORD": {"label":"암호보유","inverse":"PASSWORD_OF",  "transitive":False,"weight":0.0,"sensitive":True, "allowed_head":None,"allowed_tail":None},
     "HAS_CREDENTIAL": {"label":"자격증명","inverse":"CREDENTIAL_OF","transitive":False,"weight":0.0,"sensitive":True, "allowed_head":None,"allowed_tail":None},
     "OWNS_PRIVATE":   {"label":"비공개소유","inverse":"PRIVATE_OF", "transitive":False,"weight":0.0,"sensitive":True, "allowed_head":None,"allowed_tail":None},
+    # ─── α-8 Phase A: 6 new relations for horizontal types ───
+    "OCCURRED_AT":  {"label":"발생장소","inverse":"HOSTED",      "transitive":False, "weight":1.0, "sensitive":False, "allowed_head":{"event"},                      "allowed_tail":{"location"}},
+    "HAPPENED_ON":  {"label":"발생일",  "inverse":"DATE_OF",     "transitive":False, "weight":1.0, "sensitive":False, "allowed_head":{"event"},                      "allowed_tail":{"date"}},
+    "LOCATED_IN":   {"label":"위치",    "inverse":"CONTAINS",    "transitive":True,  "weight":0.9, "sensitive":False, "allowed_head":{"event","org","person"},       "allowed_tail":{"location"}},
+    "INVOLVES":     {"label":"참여",    "inverse":"PARTICIPATED","transitive":False, "weight":0.9, "sensitive":False, "allowed_head":{"event","project"},            "allowed_tail":{"person","org","concept"}},
+    "MEASURED_AS":  {"label":"수치",    "inverse":"MEASURES",    "transitive":False, "weight":0.8, "sensitive":False, "allowed_head":None,                           "allowed_tail":{"quantity"}},
+    "WORKED_ON":    {"label":"수행",    "inverse":"WORKED_BY",   "transitive":False, "weight":1.0, "sensitive":False, "allowed_head":{"person","org"},               "allowed_tail":{"project"}},
 }
 
 LABEL_TO_TYPE: Dict[str, str] = {
@@ -33,13 +63,23 @@ LABEL_TO_TYPE: Dict[str, str] = {
     "근무":"WORKS_AT","분류":"IS_A","구성":"PART_OF","관련":"RELATED_TO",
     "생산":"PRODUCES","산업":"OPERATES_IN","분야":"BELONGS_TO_INDUSTRY","설립됨":"FOUNDED_BY",
     "비밀보유":"HAS_SECRET","암호보유":"KNOWS_PASSWORD","관계":"RELATED_TO","연결":"RELATED_TO",
+    # α-8 Phase A
+    "발생장소":"OCCURRED_AT","발생일":"HAPPENED_ON","위치":"LOCATED_IN",
+    "참여":"INVOLVES","수치":"MEASURED_AS","수행":"WORKED_ON",
 }
 
 ALLOWED_RELATIONS: Dict[str, Set[str]] = {
-    "person":   {"STUDIES","RESEARCHES","TEACHES","BELONGS_TO","WORKS_AT","RELATED_TO","HAS_SECRET","HAS_CREDENTIAL"},
-    "org":      {"BELONGS_TO","OPERATES_IN","PRODUCES","RELATED_TO","FOUNDED_BY"},
-    "concept":  {"IS_A","PART_OF","RELATED_TO","BELONGS_TO_INDUSTRY"},
+    # Existing 4 types unchanged (preserve superset semantics)
+    "person":   {"STUDIES","RESEARCHES","TEACHES","BELONGS_TO","WORKS_AT","RELATED_TO","HAS_SECRET","HAS_CREDENTIAL","LOCATED_IN","WORKED_ON","INVOLVES"},
+    "org":      {"BELONGS_TO","OPERATES_IN","PRODUCES","RELATED_TO","FOUNDED_BY","LOCATED_IN","WORKED_ON","INVOLVES"},
+    "concept":  {"IS_A","PART_OF","RELATED_TO","BELONGS_TO_INDUSTRY","INVOLVES"},
     "document": {"RELATED_TO","BELONGS_TO","OWNS_PRIVATE"},
+    # α-8 Phase A: 5 new horizontal types
+    "event":    {"OCCURRED_AT","HAPPENED_ON","INVOLVES","LOCATED_IN","RELATED_TO"},
+    "date":     {"HAPPENED_ON","RELATED_TO"},
+    "location": {"LOCATED_IN","RELATED_TO"},
+    "quantity": {"MEASURED_AS","RELATED_TO"},
+    "project":  {"WORKED_ON","INVOLVES","PRODUCES","RELATED_TO"},
 }
 
 CONCEPT_HIERARCHY: Dict[str, Optional[str]] = {
@@ -159,6 +199,23 @@ def validate_entity_schema(entity: dict) -> List[str]:
         if conf <= 0 or conf > 1: issues.append(f"confidence 범위 오류: {conf}")
     return issues
 
+# ─── α-8 Phase A: entity types registry helpers ─────────────────────
+
+def is_active_entity_type(entity_type: str) -> bool:
+    """ENTITY_TYPES 레지스트리에 등록되고 active=True 인지."""
+    info = ENTITY_TYPES.get(entity_type)
+    return bool(info and info.get("active", False))
+
+
+def get_entity_type_info(entity_type: str) -> Dict:
+    """ENTITY_TYPES 레지스트리 메타데이터 lookup. 미등록 시 빈 dict."""
+    return dict(ENTITY_TYPES.get(entity_type, {}))
+
+
+def list_active_entity_types() -> List[str]:
+    """Active=True 인 entity type 이름 리스트 (선언 순서 보존)."""
+    return [t for t, info in ENTITY_TYPES.items() if info.get("active", False)]
+
 
 if __name__ == "__main__":
     print("=== Ontology Phase 4 자가 테스트 ===\n")
@@ -174,6 +231,23 @@ if __name__ == "__main__":
     ]
     for head,rel,tail,exp in cases:
         ok,_ = validate_relation_types(head,rel,tail,strict=False)
-        icon = "✅" if ok==exp else "❌"
+        icon = "[OK]" if ok==exp else "[XX]"
         print(f"  {icon} {head:8s} -[{rel:12s}]→ {tail:8s} valid={ok} (기대={exp})")
-    print("\n✅ 완료")
+
+    print("\n=== α-8 Phase A: new horizontal types ===\n")
+    print("  ENTITY_TYPES (active):", list_active_entity_types())
+    print()
+    a8_cases = [
+        ("event","OCCURRED_AT","location",True),
+        ("event","HAPPENED_ON","date",True),
+        ("person","WORKED_ON","project",True),
+        ("event","INVOLVES","person",True),
+        ("date","HAPPENED_ON","date",False),  # date is tail-only for HAPPENED_ON
+        ("location","LOCATED_IN","event",False),  # tail must be location
+    ]
+    for head,rel,tail,exp in a8_cases:
+        ok,_ = validate_relation_types(head,rel,tail,strict=False)
+        icon = "[OK]" if ok==exp else "[XX]"
+        print(f"  {icon} {head:8s} -[{rel:12s}]→ {tail:8s} valid={ok} (기대={exp})")
+
+    print("\n[DONE]")
