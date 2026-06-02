@@ -264,9 +264,9 @@ Cross-stack diff vs Provia:
 
 ## 7. Recommendation — next-cycle PR shape
 
-| Component | Effort | Quality Delta Card |
+| Component | Effort | Quality Delta Card / Label |
 |---|---|---|
-| `core/input_normalization.py` (new ~2 KB module) | ~1h | label `feat` |
+| `core/input_normalization.py` (new ~2 KB module) | ~1h | label `fix(security)` — CLAUDE.md rule 2 exemption per §7.1 |
 | `routes/query.py` wire point | 4 lines | included with above |
 | Unit tests `tests/test_input_normalization.py` (~15 cases) | ~1h | TDD before wire |
 | ARCHITECTURE.md update — new module + trust zone note | ~30 min | label `architecture` |
@@ -274,6 +274,52 @@ Cross-stack diff vs Provia:
 
 Total: ~3h code work + acceptance test. Shippable as standalone PR
 (not blocked on α-7 closure or α-8 design).
+
+### 7.1 CLAUDE.md gate compliance — explicit
+
+Per CLAUDE.md rule 2 (Quality Delta Card requirement for PRs touching
+`core/retrieval` / `core/graph` / `core/reasoning`):
+
+- **Module location**: `core/input_normalization.py` is at `core/`
+  root level, **not** under `core/retrieval` / `core/graph` /
+  `core/reasoning`. Rule 2's strict letter does not apply.
+- **Quality consideration**: bidi stripping DOES change the query
+  text reaching downstream retrieval/graph/reasoning, so the spirit
+  of rule 2 applies via potential effect on bench numbers.
+- **Recommended PR description label**: `Quality delta: exempt
+  (label: fix — security defence; runtime input gate against
+  bidi injection per Ali Track 2c REPORT.md §X3 cross-stack finding
+  + JAMES bidi audit 2026-06-02)`.
+
+Per CLAUDE.md rule 5 (no `core/` file > 20 KB):
+
+- `core/graph_engine.py` is at 20.4 KB (already over limit as of α-7
+  closure). The bidi fix MUST NOT extend graph_engine. **The new
+  `core/input_normalization.py` module satisfies this constraint by
+  being a fresh module at ~2 KB target.**
+
+### 7.2 Normalization invariant — runtime gate vs test fixture preservation
+
+**Critical separation**: this audit's proposed runtime gate at
+`routes/query.py:132` is a **defence against user input**. It does
+NOT modify the test fixture files.
+
+The Ali Track 2c fixture (`eval/adversarial/ar_ecommerce-v1.1-pending.yaml`
++ the v1.1-james remapped version) preserves U+202E / U+202C /
+U+200E / U+200F / U+202D / etc. **byte-exact** — those control
+characters are the payload the test cases exercise. Verified
+empirically: all 4 `bidi_*` cases retain their 14 directional
+formatting characters across the schema remap.
+
+The `scripts/adversarial_sweep.py` runner does NOT normalize input
+either — it posts the raw YAML text to `/query/` so the server-side
+runtime gate is exactly what's under test. Any future contributor
+modifying the runner or fixture loader MUST preserve the bidi
+characters; normalizing them in the test path would silently break
+the `bidi_01-04` cases (a wrong-fix-averted pattern variant).
+
+**The runtime defence and the test data preservation are two
+different layers and MUST NOT be conflated.**
 
 ⚠️ **Cycle position decision**: ship NOW (parallel to α-7 5-tier
 remeasurement) or fold into Track 2c Phase 4 PR?

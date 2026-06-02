@@ -248,7 +248,16 @@ class CaseResult:
 def _post_query(text: str, tier: str, api_key: Optional[str],
                  timeout_sec: int) -> tuple[str, int]:
     """POST one query to JAMES /query/ endpoint. Returns (answer_text,
-    duration_ms)."""
+    duration_ms).
+
+    ⚠️ This function MUST NOT normalize ``text`` (e.g. strip Unicode
+    bidi controls, apply NFC, lowercase, trim non-ASCII). The Track 2c
+    bidi cases test the SERVER-SIDE runtime gate; if the runner
+    normalizes input here, the fixture-vs-server defence boundary
+    collapses and the cases silently pass against a no-op gate. See
+    reports/research-runs/bidi-normalization-audit-20260602.md §7.2
+    for the runtime-gate vs test-fixture-preservation discipline.
+    """
     body = {"question": text}
     if api_key:
         body["api_key"] = api_key
