@@ -93,13 +93,26 @@ the band are not interpretable.
 
 ### 3.1 Pure-LLM abst_f1 across the gemma3 ladder (4-step rule applied)
 
-| Tier | Pure abst_f1 (raw) | Pure abst_f1 (oracle-corrected) | Notes |
-|---|---:|---:|---|
-| 1b (gemma3) | 0.000 | 0.000 | 25/25 hallucinations |
-| 4b (gemma3) | 0.074 | ~0.074 | 2/25 caught refusal |
-| 12b (gemma3) | 0.000 | **~0.077** | **24/25 hallucinations + 1 missed `doesn't link` pattern** (4-step rule check, `scripts/research/audit_12b_null_query_refusal_shape.py`) |
-| 27b (gemma3) | **0.258** | 0.258 | 4 TP / 21 FN — first emergence above family floor |
-| e4b (gemma4) | 0.558 | 0.558 | 14 TP / 11 FN — gemma4 grounding-trained refusal |
+⚠️ **2026-06-02 annotation (post-α-7 5-tier expanded-oracle measurement)**: the
+12b "oracle-corrected ~0.077" estimate below was **under-corrected**.
+α-7 5-tier remeasurement with the expanded oracle (5 α-7 PR phrases +
+2 follow-up phrases for `cannot be completed` / `is/are/was/were not
+available`) measured 12b pure abst_f1 at **0.429** — similar to e4b's
+~0.59, not similar to 4b's ~0.074. The "12b plateau with 4b" framing
+was a partial artifact of oracle phrase coverage gaps specific to
+12b's refusal vocabulary. See `memory/feedback_12b_pure_capability_misclassified_as_plateau`
+for the full reframe. The mode framing for 12b (originally "create")
+also re-classifies as "mild disrupt" under the expanded oracle — the
+α-6 "creation" mode was the JAMES context partially restoring what
+oracle gaps had hidden, not creating from scratch.
+
+| Tier | Pure abst_f1 (raw) | Pure abst_f1 (oracle-corrected) | α-7 5-tier (expanded oracle) | Notes |
+|---|---:|---:|---:|---|
+| 1b (gemma3) | 0.000 | 0.000 | 0.000 | 25/25 hallucinations |
+| 4b (gemma3) | 0.074 | ~0.074 | 0.067 | 2/25 caught refusal |
+| 12b (gemma3) | 0.000 | ~0.077 *(under-corrected)* | **0.429** | α-6 4-step rule audit caught 1 phrase; α-7 expanded oracle catches the full refusal vocabulary |
+| 27b (gemma3) | **0.258** | 0.258 | 0.359 | 4 TP / 21 FN at α-6; expanded oracle catches more |
+| e4b (gemma4) | 0.558 | 0.558 | 0.591 | gemma4 grounding-trained refusal; stable across oracles |
 
 **Reshaped framing — "plateau + late emergence" (replaces earlier
 "12b dip" claim)**:
