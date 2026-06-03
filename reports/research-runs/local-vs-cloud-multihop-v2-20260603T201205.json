@@ -1,0 +1,46 @@
+{
+  "local_model": "gemma3:4b",
+  "num_ctx": 8192,
+  "cloud": "claude-max-headless",
+  "judge": "claude-blinded-AB",
+  "design": "reasoning-isolated (full gold evidence, LLM-judge)",
+  "caveat": "judge is Claude; self-preference possible — confirm vs raw answers",
+  "rows": [
+    {
+      "id": 1,
+      "type": "inference_query",
+      "hops": 3,
+      "resolved": 3,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Sam Bankman-Fried",
+      "cloud_answer": "Sam Bankman-Fried, the founder of FTX and co-founder of Alameda Research, is the individual associated with the cryptocurrency industry facing a criminal trial on seven counts of fraud and conspiracy charges (two counts of wire fraud and five counts of conspiracy charges). According to prosecutors, he is accused of misappropriating billions of dollars in FTX customer deposits for personal gain, including using the funds to buy more than $200 million of real estate for himself, make billions of dollars of investments for his own interest, repay Alameda's lenders, and make more than $100 million in political contributions. The SEC alleges FTX was a fraud \"from the start,\" and John J. Ray III referred to Bankman-Fried's conduct as \"really just old-fashioned embezzlement.\""
+    },
+    {
+      "id": 26,
+      "type": "comparison_query",
+      "hops": 2,
+      "resolved": 2,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, both articles report an increase in revenue related to payment and subscription models.\n\n*   **TechCrunch article:** Rainforest has seen impressive growth, securing client commitments representing more than $500 million in processing, with much of the volume guaranteed.\n*   **Hacker News article:** The Epoch Times has amassed a fortune, growing its revenue by a staggering 685% in two years, to $122 million in 2021.",
+      "cloud_answer": "Yes. The TechCrunch article reports that Rainforest, which helps software companies embed payments, has seen impressive growth in a short period of time, securing client commitments representing more than $500 million in processing, and notes that software companies want to \"generate more revenue\" from being able to accept payments. The Hacker News/NBC News article on The Epoch Times reports that the organization, powered in part by its subscription-based newspaper model (claiming to be the country's fourth-largest newspaper by subscriber count), grew its revenue \"by a staggering 685% in two years, to $122 million in 2021,\" according to its most recent tax records."
+    },
+    {
+      "id": 76,
+      "type": "temporal_query",
+      "hops": 2,
+      "resolved": 2,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, there was a significant change in the nature of the events reported. The initial report (October 7th) detailed Dave Clark’s angry response to Flexport’s leadership and subsequent reporting. The follow-up article (October 30th) revealed that Ryan Petersen, Flexport’s new CEO, had taken steps to correct what he perceived as misleading reporting and was actively working to stabilize the company’s finances after Clark’s departure. This meant the story shifted from a narrative of a disgruntled former CEO attacking the company to one of a new leadership team attempting to salvage a struggling business.",
+      "cloud_answer": "Yes. The October 7, 2023 report focused on Dave Clark, the ousted former CEO, firing back at Flexport's founder and board on social media site X, calling recent reporting on the logistics company \"deeply concerning,\" following a CNBC report about his last days at Flexport (valued at $8 billion).\n\nThe October 30, 2023 report shifted to actions by Ryan Petersen, who had taken back the CEO title after his hand-picked successor (Clark) was pushed out. The nature of events changed to Petersen's operational moves: criticizing Clark for overspending on hiring and expansion, cutting costs by laying off about 20% of workers (roughly 600 people), and entering talks to acquire the technology of Convoy, the shuttered digital freight startup — with plans to restore Convoy's trucking services for customers and partners.\n\nSo the reporting shifted from a public dispute between the ousted CEO and the company to the returning founder-CEO's cost-cutting measures and a potential acquisition — though the article notes this acquisition spending raised the question of whether \"Petersen's reign of financial frugality already over.\""
+    }
+  ]
+}

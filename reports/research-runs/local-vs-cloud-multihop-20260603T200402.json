@@ -1,0 +1,45 @@
+{
+  "local_model": "gemma3:4b",
+  "cloud": "claude-max-headless",
+  "design": "reasoning-isolated (gold evidence provided to both)",
+  "local_mean": 0.3333,
+  "cloud_mean": 0.2223,
+  "rows": [
+    {
+      "id": 1,
+      "type": "inference_query",
+      "hops": 3,
+      "resolved": 3,
+      "gold_n": 3,
+      "local_score": 0.667,
+      "cloud_score": 0.667,
+      "delta": 0.0,
+      "local_answer": "Sam Bankman-Fried is the individual facing a criminal trial on fraud and conspiracy charges, as reported by both The Verge and TechCrunch. Prosecutors accuse him of misappropriating customer funds for personal gain.",
+      "cloud_answer": "Sam Bankman-Fried, the founder of failed cryptocurrency exchange FTX, is facing a criminal trial on seven counts of wire fraud and conspiracy charges."
+    },
+    {
+      "id": 26,
+      "type": "comparison_query",
+      "hops": 2,
+      "resolved": 2,
+      "gold_n": 3,
+      "local_score": 0.333,
+      "cloud_score": 0.0,
+      "delta": -0.333,
+      "local_answer": "Yes, both articles report an increase in revenue. The TechCrunch article details Rainforest’s $8.5 million seed round and revenue growth, while the Hacker News article describes The Epoch Times’ revenue increase of 685% to $122 million.",
+      "cloud_answer": "I don't know."
+    },
+    {
+      "id": 76,
+      "type": "temporal_query",
+      "hops": 2,
+      "resolved": 2,
+      "gold_n": 3,
+      "local_score": 0.0,
+      "cloud_score": 0.0,
+      "delta": 0.0,
+      "local_answer": "I don't know",
+      "cloud_answer": "I don't know."
+    }
+  ]
+}
