@@ -197,15 +197,17 @@ class ClaudeCliSubprocessTests(unittest.TestCase):
         self.assertIn(evil, stdin_arg)
 
     def test_env_whitelist_does_not_leak_secrets(self):
-        """SECURITY: only PATH / HOME / ANTHROPIC_API_KEY /
-        CLAUDE_CONFIG_DIR pass through. A secret stashed in some other
-        env var must NOT reach the child.
+        """SECURITY: only the whitelist passes through. A secret stashed
+        in some other env var (`JAMES_API_KEY`, `AWS_*`, `GCP_*`) must
+        NOT reach the child. The whitelist is documented in the
+        module docstring §"Security posture" #3.
         """
         b = self._backend()
         proc = self._mock_popen()
         secret_env = {
             "JAMES_API_KEY": "leak-me",
             "AWS_SECRET_ACCESS_KEY": "also-leak",
+            "GCP_CREDENTIALS_JSON": "also-also-leak",
             "ANTHROPIC_API_KEY": "ok-to-forward",
             "PATH": os.environ.get("PATH", ""),
         }
@@ -215,8 +217,67 @@ class ClaudeCliSubprocessTests(unittest.TestCase):
         env_passed = p.call_args.kwargs.get("env", {})
         self.assertIn("ANTHROPIC_API_KEY", env_passed)
         self.assertIn("PATH", env_passed)
-        self.assertNotIn("JAMES_API_KEY", env_passed)
-        self.assertNotIn("AWS_SECRET_ACCESS_KEY", env_passed)
+        for leaked in ("JAMES_API_KEY", "AWS_SECRET_ACCESS_KEY",
+                       "GCP_CREDENTIALS_JSON"):
+            self.assertNotIn(leaked, env_passed,
+                             f"{leaked!r} leaked through whitelist")
+
+    def test_env_whitelist_includes_windows_essentials(self):
+        """S5c — Windows runtime essentials are forwarded so claude.CMD
+        wrapper actually runs. Without `SystemRoot` on Windows the Node
+        wrapper exits with returncode 1 + empty stderr (caught by S4
+        smoke 2026-06-03). The list (SystemRoot, APPDATA, LOCALAPPDATA,
+        USERPROFILE, TEMP, TMP) is a Windows baseline runtime set, not
+        app-specific secrets.
+        """
+        b = self._backend()
+        proc = self._mock_popen()
+        windows_env = {
+            "SystemRoot": "C:\\Windows",
+            "APPDATA": "C:\\Users\\test\\AppData\\Roaming",
+            "LOCALAPPDATA": "C:\\Users\\test\\AppData\\Local",
+            "USERPROFILE": "C:\\Users\\test",
+            "TEMP": "C:\\Users\\test\\AppData\\Local\\Temp",
+            "TMP": "C:\\Users\\test\\AppData\\Local\\Temp",
+            "PATH": os.environ.get("PATH", ""),
+        }
+        with patch.dict(os.environ, windows_env, clear=False), \
+             patch("subprocess.Popen", return_value=proc) as p:
+            b.complete("x")
+        env_passed = p.call_args.kwargs.get("env", {})
+        for required in ("SystemRoot", "APPDATA", "LOCALAPPDATA",
+                         "USERPROFILE", "TEMP", "TMP"):
+            self.assertIn(required, env_passed,
+                          f"Windows essential {required!r} not forwarded")
+
+    def test_default_cwd_is_neutral_not_project(self):
+        """S5c — default cwd is `tempfile.gettempdir()`, NOT the project
+        directory. Spawning `claude -p` inside the project loads the
+        project CLAUDE.md and puts the CLI into coding-agent mode
+        (responds to the briefing, not the prompt). Caught by S4 smoke
+        2026-06-03.
+        """
+        import tempfile
+        b = self._backend()
+        proc = self._mock_popen()
+        with patch("subprocess.Popen", return_value=proc) as p:
+            b.complete("x")
+        cwd_passed = p.call_args.kwargs.get("cwd")
+        self.assertEqual(cwd_passed, tempfile.gettempdir())
+        # And cwd is definitely NOT the project root or current dir
+        self.assertNotEqual(cwd_passed, os.getcwd())
+
+    def test_explicit_cwd_kwarg_overrides_default(self):
+        """Operators wanting a project-context call pass `cwd=` explicitly.
+        Default neutral cwd is the safe default; explicit override is
+        the documented escape hatch."""
+        b = self._backend()
+        proc = self._mock_popen()
+        custom = "C:\\some\\other\\path" if os.name == "nt" else "/some/other/path"
+        with patch("subprocess.Popen", return_value=proc) as p:
+            b.complete("x", cwd=custom)
+        cwd_passed = p.call_args.kwargs.get("cwd")
+        self.assertEqual(cwd_passed, custom)
 
     def test_model_flag_passed_to_argv(self):
         """User-selected model string DOES appear in argv (after the

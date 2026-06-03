@@ -364,9 +364,13 @@ def aggregate(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
     def rate(field: str, value: str) -> float:
         return sum(1 for q in per_q if q[field] == value) / n_q
 
+    # n_runs_per_question: max(run_idx) + 1, since run_idx is 0-based.
+    # Old form `rows[0].get("run", 0) and max(...) + 1` short-circuited
+    # to 0 whenever run_idx=0 (every --n-runs=1 invocation), printing
+    # `n_runs/q=0` in the summary header. Caught by S4 smoke 2026-06-03.
     summary = {
         "n_questions": n_q,
-        "n_runs_per_question": rows[0].get("run", 0) and max(r["run"] for r in rows) + 1,
+        "n_runs_per_question": max(r["run"] for r in rows) + 1,
         "local_correct_rate": round(rate("local_majority", "CORRECT"), 3),
         "cloud_correct_rate": round(rate("cloud_majority", "CORRECT"), 3),
         "local_abstain_rate": round(rate("local_majority", "ABSTAINED"), 3),
