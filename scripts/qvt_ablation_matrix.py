@@ -251,14 +251,57 @@ _SECTOR_CELL_LABELS: Dict[str, str] = {
 }
 
 
-# Model tier → Ollama tag (memo §2.2; α-6 Phase 3a adds M_XS / M_XL)
+# Model tier → Ollama tag (memo §2.2; α-6 Phase 3a adds M_XS / M_XL;
+# α-8 cloud tier extension 2026-06-04 adds M_CLOUD — see
+# `docs/design/v0.4-alpha-8-cloud-tier-extension.md` §2.1).
+#
+# For Ollama tiers the value IS the routing key (passed to
+# JAMES_LLM_MODEL). For M_CLOUD the value is an empty sentinel: the
+# claude_code_cli backend ignores JAMES_LLM_MODEL; routing happens via
+# _TIER_BACKEND_OVERRIDE below.
 _TIER_MODELS: Dict[str, str] = {
     "M_XS": "gemma3:1b",   # α-6 Phase 3a — extreme small (capability floor probe)
     "M_S": "gemma3:4b",
     "M_M": "gemma4:e4b",   # production default; α-3 baseline tier
     "M_L": "gemma3:12b",
     "M_XL": "gemma3:27b",  # α-6 Phase 3a — large (saturation point probe)
+    "M_CLOUD": "",         # α-8 cloud tier — Claude default model (CLI picks)
 }
+
+
+# α-8 cloud tier (2026-06-04) — tiers that route through a non-Ollama
+# backend need extra env vars set at server-spawn time. Per design memo
+# §2.1 (Option B): kept as a sibling dict so the existing 5 local tiers
+# stay byte-identical (no struct change to _TIER_MODELS values).
+#
+# Tier id → dict of env vars to apply ON TOP OF the row env in
+# `_cell_env`. For tiers not in this dict, `_cell_env` falls back to
+# the pre-α-8-cloud `JAMES_LLM_MODEL = _TIER_MODELS[tier]` path
+# (regression-safe).
+_TIER_BACKEND_OVERRIDE: Dict[str, Dict[str, str]] = {
+    "M_CLOUD": {
+        # S5 (PR #702) wire — trace_synth_call detects this triplet and
+        # routes synth-stage calls through core.abstraction.run_cloud_egress
+        # → claude_code_cli backend → real `claude -p` headless CLI.
+        # PR #704 fix added Windows env essentials + neutral cwd default
+        # to the backend itself.
+        "JAMES_ENABLE_CLAUDE_BACKEND": "1",  # opt-in registry switch
+        "JAMES_FORCE_CLOUD":            "1",  # synth wrap gate
+        "JAMES_REASONING_BACKEND":      "claude_code_cli",  # backend resolution default
+    },
+}
+
+
+def _tier_backend_id(tier: str) -> str:
+    """Resolve the backend id that a tier's cell will run under.
+
+    M_CLOUD → "claude_code_cli". Local tiers (no override) → the
+    legacy default "ollama_local". Used by `_run_cell` payload's new
+    `backend_id` field (cell JSON v4) so cloud cells are
+    unambiguously identifiable in the output dir alongside local cells.
+    """
+    override = _TIER_BACKEND_OVERRIDE.get(tier, {})
+    return override.get("JAMES_REASONING_BACKEND", "ollama_local")
 
 
 # ---------------------------------------------------------------------------
@@ -431,7 +474,20 @@ def _cell_env(row: str, tier: str,
     env = os.environ.copy()
     env.update(_FIXED_ENV)
     env.update(_ROW_ENVS[row])
-    env["JAMES_LLM_MODEL"] = _TIER_MODELS[tier]
+    # α-8 cloud tier (2026-06-04) — tiers in _TIER_BACKEND_OVERRIDE
+    # route through a non-Ollama backend; JAMES_LLM_MODEL is
+    # meaningless for the claude_code_cli backend (CLI picks the
+    # model). Apply the cloud env triplet INSTEAD of JAMES_LLM_MODEL.
+    # Local tiers (default branch) unchanged — regression-safe.
+    if tier in _TIER_BACKEND_OVERRIDE:
+        env.update(_TIER_BACKEND_OVERRIDE[tier])
+        # Explicitly remove JAMES_LLM_MODEL inherited from the OS env —
+        # leaving an Ollama tag in the environment of a cloud-routed
+        # run is confusing in the spawn log (the value is unused but
+        # would show in env dumps).
+        env.pop("JAMES_LLM_MODEL", None)
+    else:
+        env["JAMES_LLM_MODEL"] = _TIER_MODELS[tier]
     if think_override is True:
         env["JAMES_GEMMA4_E4B_THINK_OFF"] = "1"
     elif think_override is False:
@@ -662,15 +718,20 @@ def _run_cell(row: str, tier: str, n_runs: int, fixture: Dict[str, Any],
         effective_env.update(_SECTOR_CELL_ENVS[sector_cell])
 
     payload = {
-        # v3 adds optional sector_cell + sector_cell_label fields. Cells
-        # without --sector-cells stay schema-v2 compatible.
-        "schema": "qvt-ablation-cell-v3" if sector_cell else "qvt-ablation-cell-v2",
+        # Schema versioning (additive, forward-compat):
+        #   v2 — base cell shape
+        #   v3 — adds sector_cell + sector_cell_label (α-6)
+        #   v4 — adds backend_id (α-8 cloud tier extension, 2026-06-04)
+        #        — old renderers fall back to "ollama_local" for the
+        #        missing field; new renderers distinguish cloud cells.
+        "schema": "qvt-ablation-cell-v4",
         "captured_at": datetime.now(timezone.utc).isoformat(),
         "git_sha": sha,
         "row": row,
         "row_label": _ROW_LABELS[row],
         "tier": tier,
         "model": _TIER_MODELS[tier],
+        "backend_id": _tier_backend_id(tier),  # α-8 cloud tier extension
         "env": effective_env,
         "fixed_env": _FIXED_ENV,
         # Step 9 — sanity cell flag travels in the JSON so the report
@@ -857,9 +918,17 @@ def _render_report(out_path: Path) -> int:
             else:
                 deltas[axis] = round(med[axis] - base_med[axis], 4)
         verdict = _classify_five_axis_delta(deltas, base_noise)
+        # α-8 cloud tier (2026-06-04) — local cells show model tag;
+        # cloud cells (empty model + non-default backend_id) show the
+        # backend id instead so the row is informative either way.
+        # Pre-v4 cells (missing backend_id) read as "ollama_local" by
+        # the .get default — backward compatible.
+        model_tag = c.get("model") or ""
+        backend_tag = c.get("backend_id", "ollama_local")
+        tier_label = f"`{model_tag}`" if model_tag else f"`{backend_tag}`"
         rows.append(
             f"| {c['row']} ({c['row_label']}) | {c['tier']} | "
-            f"`{c['model']}` | {deltas['path_coverage']:+.3f} | "
+            f"{tier_label} | {deltas['path_coverage']:+.3f} | "
             f"{deltas['graded_answer']:+.3f} | "
             f"{deltas['abstention_f1']:+.3f} | "
             f"{deltas['token_cost']:+.0f} | "
@@ -1166,7 +1235,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     parser.add_argument(
         "--tiers", type=str, default=None,
-        help="Comma-separated subset of M_XS/M_S/M_M/M_L/M_XL (default: all).",
+        help="Comma-separated subset of M_XS/M_S/M_M/M_L/M_XL/M_CLOUD "
+             "(default: all 5 local; M_CLOUD opt-in via explicit list "
+             "and requires JAMES_ENABLE_CLAUDE_BACKEND=1).",
     )
     parser.add_argument(
         "--resume", action="store_true",
@@ -1245,10 +1316,63 @@ def main(argv: Optional[List[str]] = None) -> int:
         args.rows = "L1"
 
     rows = _parse_subset(args.rows, list(_ROW_ENVS.keys()), "rows")
-    tiers = _parse_subset(args.tiers, list(_TIER_MODELS.keys()), "tiers")
+    # α-8 cloud tier (2026-06-04) — tier opt-in discipline:
+    #   • --tiers explicit (any subset, including M_CLOUD) → as listed
+    #   • --tiers omitted                                  → default to
+    #     LOCAL tiers only (M_CLOUD requires explicit opt-in to avoid
+    #     a stray "run everything" command burning the operator's Max-
+    #     plan quota).
+    _local_tier_universe = [
+        t for t in _TIER_MODELS if t not in _TIER_BACKEND_OVERRIDE
+    ]
+    if args.tiers:
+        tiers = _parse_subset(args.tiers, list(_TIER_MODELS.keys()), "tiers")
+    else:
+        tiers = _local_tier_universe
     sha = _current_git_sha() or "unknown"
     fixture_path = _resolve_fixture(args.suite)
     out_dir = _resolve_output_dir()
+
+    # α-8 cloud tier (2026-06-04) — pre-flight cost guard. When any
+    # tier in this run routes to a non-Ollama backend (cloud), estimate
+    # the cloud API call count and refuse to start if it exceeds the
+    # operator's declared budget. Per design memo §4.
+    cloud_tiers = [t for t in tiers if t in _TIER_BACKEND_OVERRIDE]
+    if cloud_tiers:
+        try:
+            fixture_data = json.loads(fixture_path.read_text(encoding="utf-8"))
+            queries_count = len(
+                fixture_data.get("queries", fixture_data)
+                if isinstance(fixture_data, dict) else fixture_data
+            )
+        except Exception as e:
+            print(f"[error] cloud tier cost guard: cannot read fixture "
+                  f"{fixture_path} ({type(e).__name__}: {e})")
+            return 8
+        # cells × runs × queries — each query is one cloud call on the
+        # synth stage (no judge; oracle is deterministic).
+        n_cloud_cells = (len(sector_cells) if sector_cells else len(rows)) * len(cloud_tiers)
+        estimated_calls = n_cloud_cells * args.n_runs * queries_count
+        # Operator budget — env override; default is conservative
+        # (Max-plan daily quota safe zone per
+        # `memory/feedback_direction_alpha_max_plan_research_cloud`).
+        budget_env = os.environ.get("JAMES_CLOUD_CALL_BUDGET", "").strip()
+        try:
+            budget = int(budget_env) if budget_env else 200
+        except ValueError:
+            print(f"[error] JAMES_CLOUD_CALL_BUDGET={budget_env!r} is not an integer")
+            return 8
+        print(f"[cloud-cost] cloud tiers in run: {cloud_tiers}")
+        print(f"[cloud-cost] estimated cloud API calls: "
+              f"{n_cloud_cells} cells × {args.n_runs} runs × "
+              f"{queries_count} queries = {estimated_calls}")
+        print(f"[cloud-cost] budget (JAMES_CLOUD_CALL_BUDGET): {budget}")
+        if estimated_calls > budget:
+            print(f"[error] estimated {estimated_calls} cloud calls "
+                  f"> budget {budget}. Raise JAMES_CLOUD_CALL_BUDGET or "
+                  f"trim scope (--tiers / --rows / --sector-cells / "
+                  f"--n-runs / smaller --suite).")
+            return 8
 
     # Cell count includes sector cells (α-6) when in sector mode.
     n_grid_cells = (len(sector_cells) if sector_cells else len(rows)) * len(tiers)
@@ -1262,7 +1386,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"sector_cells: {sector_cells} (base row: L1)")
     else:
         print(f"rows:       {rows}")
-    print(f"tiers:      {tiers}  → {[_TIER_MODELS[t] for t in tiers]}")
+    # Display tier → routing target. For local tiers this is the
+    # Ollama model tag; for cloud tiers (M_CLOUD) it's the backend id
+    # (model is empty since the cloud backend picks its own model).
+    tier_display = [
+        f"{t}={_TIER_MODELS[t] or _tier_backend_id(t)}" for t in tiers
+    ]
+    print(f"tiers:      {tier_display}")
     print(f"n_runs:     {args.n_runs}")
     print(f"resume:     {args.resume}")
     print(f"sanity:     {'YES (M_M/L1 think=ON extra cell)' if args.sanity_think_on else 'no'}")
