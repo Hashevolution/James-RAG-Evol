@@ -39,6 +39,12 @@ def split_chunks(text: str, chunk_size: int = 500, overlap: int = 50) -> list:
     """
     Heading → 문단 → 문장 → 고정크기 순서로 분할
     overlap 적용, rag_engine.py와 동일 로직
+
+    γ cycle reverted (2026-06-03): chunk_size 2048 실측 결과 — step7
+    regression + multihop no help + latency +1.4s. 500 chars 원복.
+    학계 기지 hypothesis ("bigger chunks help multi-hop") 가 JAMES
+    corpus + 현 pipeline 에서 작동 안 함 confirmation. 자세한 내용은
+    `memory/feedback_gamma_chunk_size_no_improvement.md` 참조.
     """
     import re as _re
     if not isinstance(text, str) or not text.strip():

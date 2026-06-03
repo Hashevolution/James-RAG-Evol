@@ -66,6 +66,42 @@ reports/bench_*.json
 # Per-trace observability files (Issue #47) — one JSONL per request, kept locally
 reports/trace/
 
+# Per-model chroma directories (BL-9 swap pattern) — chroma_db_bge_m3/ etc.
+# Existing `chroma_db/` line above covers the legacy MiniLM default.
+# This wildcard covers any future embedding-model swap.
+chroma_db_*/
+
+# Benchmark workspace caches (regeneratable from upstream fixture sources)
+workspaces/hotpot_eval/eval/
+
+# QVT measurement cell JSONs — large (~50-250 KB each), regeneratable via
+# `scripts/qvt_ablation_matrix.py --resume`. Committed baseline references
+# stay in eval/qvt/. Workspace-scoped variants under workspaces/*/ also
+# stay local-only.
+reports/research-runs/qvt-ablation-cells/
+workspaces/*/reports/research-runs/qvt-ablation-cells/
+
+# Smoke test outputs (ephemeral, prefixed `_smoke-*`)
+reports/research-runs/_smoke-*.md
+
+# ChromaDB snapshot JSONs (history backups before re-chunk experiments;
+# regeneratable but large). Restore via
+# `scripts/research/restore_chroma_from_snapshot.py`.
+reports/research-runs/chroma-snapshot-*.json
+
+# Internal drafts (DM drafts, joint-piece skeletons, cross-stack drafts,
+# cleanup decision docs) — must not appear in public git history before
+# 3-author meeting consensus per
+# `memory/feedback_intent_vehicle_gap_collective_archival` +
+# `memory/feedback_dm_collab_response_eagerness_trap`.
+# Specific prefixes only (NOT general `*-draft-*.md` — that pattern would
+# catch e.g. `architecture-md-...-draft-DEFERRED.md` which is meant to
+# document deferred-state in repo for future revival).
+reports/research-runs/ali-*-draft-*.md
+reports/research-runs/m9-*-draft-*.md
+reports/research-runs/track-2c-phase-5-cross-stack-draft-*.md
+reports/research-runs/untracked-cleanup-decision-*.md
+
 # 사용자 PDF에서 추출된 wiki entity (개인 데이터, repo에 푸시 X)
 # [W7-hotfix 2026-05-10, W1 진단 §2-C] 이전엔 5 카테고리 한정 패턴이라
 # food/event/relation 등 신규 카테고리 추가 시 자동으로 ignored 되지 않아
