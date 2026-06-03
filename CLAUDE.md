@@ -40,15 +40,32 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
     metric artifact). Cloud-tier value must be *proven* alongside the
     build, not assumed. See memory
     `project_direction_alpha_local_vs_cloud_quality_thread`.
-  - **Next (cloud tier code, gated open)**: (1) `core/reasoning/
-    backends/claude_code_cli` provider, (2) resolver cloud-routing
-    (cloud tag → skip Ollama), (3) abstraction PoC → `core/` module on
-    the cloud route, (4) register cloud tier in the UI picker (picker
-    already exists, Ollama-only today), (5) local-vs-cloud quality
-    measurement integrated as an α-8 test-line extension. Cloud =
-    Max-plan headless `claude -p` for free research measurement; a
-    production tier needs the Anthropic API key (memory
-    `feedback_direction_alpha_max_plan_research_cloud`).
+  - **Cloud-tier build S0–S5 closed (2026-06-03 evening, 6 PRs)**:
+    §5.7.13 abstraction module trust contract (#698) + `core/abstraction/`
+    production module (#699, 4-file split, 34 tests) +
+    `run_cloud_egress` orchestrator with runner-side keep_local refusal
+    (#700, 16 tests) + `local_vs_cloud_paired.py` measurement harness
+    (#701, paired n=3 + 6-key caveat block + 17 smoke tests) +
+    `JAMES_FORCE_CLOUD` synth wire at `trace_synth_call` (#702, 4-branch
+    decision tree + 9 tests, byte-identical OFF). Live wire works:
+    `JAMES_ENABLE_CLAUDE_BACKEND=1 + JAMES_FORCE_CLOUD=1 +
+    JAMES_BACKEND_SYNTH=claude_code_cli` → every synth call routes
+    through abstraction + real Claude. (1)-(5) of the prior "Next" queue
+    all closed except (4) UI picker — deferred to S5b (env-flag pattern
+    sufficient until measurement gates the UX investment). See memory
+    `project_direction_alpha_cloud_tier_build_state`. Cloud = Max-plan
+    headless `claude -p` for research; production needs Anthropic API
+    key (`feedback_direction_alpha_max_plan_research_cloud`).
+  - **Next (measurement-driven)**: operator-run the S4 harness
+    (`scripts/research/local_vs_cloud_paired.py --n-per-type 3
+    --n-runs 3`, ~15-25 min, ~243 Max-plan calls) → α-8 test-line
+    extension data accumulates → S6 (hard problem ① difficulty
+    routing) and S7 (hard problem ② full egress masking policy) are
+    designed from the data, not from speculation. Decision per
+    2026-06-03: "S6/S7는 α-8 연장선상 성능 비교 과정에서 구현" —
+    measurement-gated, no premature design. Without data, S6/S7 risk
+    repeating the 6/3 literature-confirm pattern
+    (`feedback_alpha_cycle_discovery_loop_end`).
   Domain pilot (v0.5) still gated. α-7 closed REJECT (PR #680, 10th
   wrong-fix-averted); α-6 closed 2026-06-01.
 - **Strategic frame**: We are still building a **mother platform**;
@@ -138,9 +155,13 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
-| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/design/v0.4-direction-alpha-hybrid-cloud-tier.md`** (Direction α design; §4.1 has the local-vs-cloud ① finding) |
+| **🟢 NEXT SESSION ENTRY (read this first)** | **memory `project_direction_alpha_cloud_tier_build_state`** (S0–S5 closed 2026-06-03 evening; next = operator-run S4 measurement → S6/S7 design from data) |
+| Direction α design memo (§4.1 local-vs-cloud ①) | `docs/design/v0.4-direction-alpha-hybrid-cloud-tier.md` |
 | Direction α local-vs-cloud premise + sequencing | memory `project_direction_alpha_local_vs_cloud_quality_thread` |
 | Cloud egress trust contract (rule #4 gate) | `docs/ARCHITECTURE.md` §5.7.12 |
+| **Abstraction module trust contract (§5.7.13) + `core/abstraction/` API** | `docs/ARCHITECTURE.md` §5.7.13 + `core/abstraction/__init__.py` |
+| Operator: live cloud routing | `JAMES_ENABLE_CLAUDE_BACKEND=1 + JAMES_FORCE_CLOUD=1 + JAMES_BACKEND_SYNTH=claude_code_cli` |
+| Operator: S4 measurement run | `python scripts/research/local_vs_cloud_paired.py --n-per-type 3 --n-runs 3` |
 | Previous entry (2026-06-02 evening — sealed) | `docs/handovers/v0.4-next-session-entry-2026-06-02-evening.md` |
 | Previous entry (2026-06-02 post-tracks — now sealed) | `docs/handovers/v0.4-next-session-entry-2026-06-02-post-tracks.md` |
 | Previous session entry (α-7 launch — sealed) | `docs/handovers/v0.4-next-session-entry-2026-06-02-alpha7.md` |
@@ -204,4 +225,4 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 자메스는 **v1.0까지 "범용 모체"로만** 강화합니다. 도메인 분화(법률·식품·유통·여행 등)는 v1.0 이후에만 시작합니다. 이 세션에서 도메인 코드를 추가하지 마세요.
 
-**현재 위치 (2026-06-03)**: α-measurement cycle 종료 + **forced discovery hunt END**. α-8 closed = ⭐ operational only (n=3). Track 2c JAMES측 closed, Ali 검증 답신 발송됨 (joint piece = mid-June 3-author). **Direction α (hybrid cloud reasoning tier) 진입**: 설계 메모 + 추상화 PoC + 실Claude e2e 루프 + **§5.7.12 Cloud Egress Trust Zone merged (PR #695)** = rule #4 게이트 OPEN. 핵심 발견 = local-vs-cloud reasoning-isolated 측정에서 근거만 충분하면 local gemma3:4b 9/9 = Claude 9/9 → "로컬 추론 천장" 전제 **미입증** (retrieval+메트릭 아티팩트 가능성). cloud 가치는 build와 병행 입증. **다음 세션 = cloud tier 코드** (claude_code_cli provider → resolver cloud-routing → 추상화 core 승격 → picker 등록 → local-vs-cloud 측정 α-8 연장 통합). 측정용 무료 cloud = Max-plan `claude -p` headless. v0.5 도메인 (기업 내부지식, 수평) 여전히 gated. 자세한 내용은 `docs/design/v0.4-direction-alpha-hybrid-cloud-tier.md` + memory `project_direction_alpha_local_vs_cloud_quality_thread`.
+**현재 위치 (2026-06-03 저녁)**: α-measurement cycle 종료 + **forced discovery hunt END**. α-8 closed = ⭐ operational only (n=3). Track 2c JAMES측 closed, Ali 검증 답신 발송됨 (joint piece = mid-June 3-author). **Direction α cloud-tier 빌드 S0–S5 closed (6 PRs)**: §5.7.13 abstraction trust contract (#698) + `core/abstraction/` 4-file production 모듈 (#699, 34 tests) + `run_cloud_egress` orchestrator + keep_local refusal (#700, 16 tests) + `local_vs_cloud_paired.py` 측정 harness (#701, 17 tests, paired n=3 + 6-key caveat) + `JAMES_FORCE_CLOUD` synth wire at `trace_synth_call` (#702, 9 tests, 4-branch decision tree, byte-identical OFF). 라이브 동작 = `JAMES_ENABLE_CLAUDE_BACKEND=1 + JAMES_FORCE_CLOUD=1 + JAMES_BACKEND_SYNTH=claude_code_cli` 세 env로 모든 synth call이 abstraction wrap된 real Claude로 라우팅. 핵심 발견 = local-vs-cloud reasoning-isolated 측정에서 근거만 충분하면 local gemma3:4b 9/9 = Claude 9/9 → "로컬 추론 천장" 전제 **미입증** (retrieval+메트릭 아티팩트 가능성). **다음 자연 단계 = operator-run S4 measurement** (`python scripts/research/local_vs_cloud_paired.py --n-per-type 3 --n-runs 3`, ~15-25 min, ~243 Max-plan calls) → α-8 연장선 데이터 누적 → S6 (난이도 라우터) + S7 (full egress masking) **measurement-driven 설계** (데이터 없이 강행하면 6/3 literature-confirm 패턴 재발). UI picker (S5b)는 env-flag로 충분 = deferred. v0.5 도메인 (기업 내부지식, 수평) 여전히 gated. 자세한 내용은 memory `project_direction_alpha_cloud_tier_build_state` + `docs/design/v0.4-direction-alpha-hybrid-cloud-tier.md`.
