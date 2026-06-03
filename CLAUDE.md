@@ -56,16 +56,22 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
     `project_direction_alpha_cloud_tier_build_state`. Cloud = Max-plan
     headless `claude -p` for research; production needs Anthropic API
     key (`feedback_direction_alpha_max_plan_research_cloud`).
-  - **Next (measurement-driven)**: operator-run the S4 harness
-    (`scripts/research/local_vs_cloud_paired.py --n-per-type 3
-    --n-runs 3`, ~15-25 min, ~243 Max-plan calls) → α-8 test-line
-    extension data accumulates → S6 (hard problem ① difficulty
-    routing) and S7 (hard problem ② full egress masking policy) are
-    designed from the data, not from speculation. Decision per
-    2026-06-03: "S6/S7는 α-8 연장선상 성능 비교 과정에서 구현" —
-    measurement-gated, no premature design. Without data, S6/S7 risk
-    repeating the 6/3 literature-confirm pattern
-    (`feedback_alpha_cycle_discovery_loop_end`).
+  - **Direction α 2026-06-04 cycle closure — premise 측정상 미입증.**
+    α-8 cloud tier extension (Stage 1-5 closed, 4 PRs #705/#706/#707
+    + cell measurements) 결과: 3 측정 모두 cloud reasoning ceiling
+    신호 없음 — (1) v2 reasoning-isolated 9/9=9/9 차이 0, (2) Stage 4
+    Run 1 fair evidence-grounded Δ -0.037 (magnitude tiny), (3)
+    Stage 4b cloud raw invalid (Claude 학습-지식 leak, multihop=2023
+    뉴스). 결과 보고서: `reports/research-runs/alpha-8-cloud-tier-
+    extension-20260604.md`. **결정**: cloud-tier 인프라 (S0-S5c +
+    Stage 1-2, 10 PR) **보존** (라이브 wire 검증됨, 미래 다른 cloud
+    LLM / leak-controlled fixture / 한국어 fixture에서 재활용),
+    **S6/S7 무기한 보류** (cloud 가치 자체 미입증), **다음 cycle =
+    mother platform 강화 / v0.5 도메인 pilot redirection**. 이번
+    cycle 5건 사용자 catch가 박은 measurement-side 룰 (`feedback_
+    methodological_chain_before_plan` + `feedback_fixture_fitness_
+    before_verdict` + `feedback_evidence_grounded_validity_check`)은
+    다음 cycle 진입 시 의무 reading.
   Domain pilot (v0.5) still gated. α-7 closed REJECT (PR #680, 10th
   wrong-fix-averted); α-6 closed 2026-06-01.
 - **Strategic frame**: We are still building a **mother platform**;
@@ -155,7 +161,7 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
-| **🟢 NEXT SESSION ENTRY (read this first)** | **memory `project_direction_alpha_cloud_tier_build_state`** (S0–S5 closed 2026-06-03 evening; next = operator-run S4 measurement → S6/S7 design from data) |
+| **🟢 NEXT SESSION ENTRY (read this first)** | **`reports/research-runs/alpha-8-cloud-tier-extension-20260604.md`** (Direction α 측정 closure — premise 미입증, S6/S7 무기한 보류, 다음 cycle = mother platform 강화) + 5 measurement-side rules (methodological chain / fixture fitness / evidence-grounded validity) |
 | Direction α design memo (§4.1 local-vs-cloud ①) | `docs/design/v0.4-direction-alpha-hybrid-cloud-tier.md` |
 | Direction α local-vs-cloud premise + sequencing | memory `project_direction_alpha_local_vs_cloud_quality_thread` |
 | Cloud egress trust contract (rule #4 gate) | `docs/ARCHITECTURE.md` §5.7.12 |
@@ -225,4 +231,4 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 자메스는 **v1.0까지 "범용 모체"로만** 강화합니다. 도메인 분화(법률·식품·유통·여행 등)는 v1.0 이후에만 시작합니다. 이 세션에서 도메인 코드를 추가하지 마세요.
 
-**현재 위치 (2026-06-03 저녁)**: α-measurement cycle 종료 + **forced discovery hunt END**. α-8 closed = ⭐ operational only (n=3). Track 2c JAMES측 closed, Ali 검증 답신 발송됨 (joint piece = mid-June 3-author). **Direction α cloud-tier 빌드 S0–S5 closed (6 PRs)**: §5.7.13 abstraction trust contract (#698) + `core/abstraction/` 4-file production 모듈 (#699, 34 tests) + `run_cloud_egress` orchestrator + keep_local refusal (#700, 16 tests) + `local_vs_cloud_paired.py` 측정 harness (#701, 17 tests, paired n=3 + 6-key caveat) + `JAMES_FORCE_CLOUD` synth wire at `trace_synth_call` (#702, 9 tests, 4-branch decision tree, byte-identical OFF). 라이브 동작 = `JAMES_ENABLE_CLAUDE_BACKEND=1 + JAMES_FORCE_CLOUD=1 + JAMES_BACKEND_SYNTH=claude_code_cli` 세 env로 모든 synth call이 abstraction wrap된 real Claude로 라우팅. 핵심 발견 = local-vs-cloud reasoning-isolated 측정에서 근거만 충분하면 local gemma3:4b 9/9 = Claude 9/9 → "로컬 추론 천장" 전제 **미입증** (retrieval+메트릭 아티팩트 가능성). **다음 자연 단계 = operator-run S4 measurement** (`python scripts/research/local_vs_cloud_paired.py --n-per-type 3 --n-runs 3`, ~15-25 min, ~243 Max-plan calls) → α-8 연장선 데이터 누적 → S6 (난이도 라우터) + S7 (full egress masking) **measurement-driven 설계** (데이터 없이 강행하면 6/3 literature-confirm 패턴 재발). UI picker (S5b)는 env-flag로 충분 = deferred. v0.5 도메인 (기업 내부지식, 수평) 여전히 gated. 자세한 내용은 memory `project_direction_alpha_cloud_tier_build_state` + `docs/design/v0.4-direction-alpha-hybrid-cloud-tier.md`.
+**현재 위치 (2026-06-04 저녁)**: **Direction α cycle closure — premise 측정상 미입증**. α-8 cloud tier extension 완료 (Stage 1-5, 4 PRs #705/#706/#707 + measurements). 3 측정 모두 cloud reasoning ceiling 신호 없음: (1) v2 reasoning-isolated 9/9=9/9 차이 0, (2) Stage 4 Run 1 fair evidence-grounded Δ -0.037 graded (cloud + JAMES 0.290 vs local + JAMES 0.327, magnitude tiny + n=1), (3) Stage 4b cloud raw **invalid** — Claude 학습-지식 leak (multihop=2023 뉴스가 학습 분포에 포함). cloud-tier 인프라 (S0-S5c 8 PR + Stage 1-2 2 PR, 총 10 PR) **보존** (라이브 wire 검증됨, 미래 재활용). **S6/S7 무기한 보류** (cloud 가치 자체 미입증). **다음 cycle = mother platform 강화 / v0.5 도메인 pilot redirection**. 이번 cycle **5 사용자 catch** (인수인계 fact 무시 패턴) → measurement-side 룰 3개 박힘 (methodological chain / fixture fitness / evidence-grounded validity). α-measurement cycle + **forced discovery hunt END** 룰 재확인. Track 2c JAMES측 closed, Ali 검증 답신 발송됨 (joint piece = mid-June 3-author). v0.5 도메인 (기업 내부지식, 수평) 여전히 gated. 자세한 내용은 `reports/research-runs/alpha-8-cloud-tier-extension-20260604.md` + memory `project_direction_alpha_cloud_tier_build_state` (closure 항목).
