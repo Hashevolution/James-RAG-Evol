@@ -15,31 +15,42 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   QVT α track. v0.2.0 (Foundation Hardening) and v0.3.0
   (Platform Skeleton) both fully closed; v0.4.0 (Layer 4 Lifecycle:
   T1+T7+T2 first bundle) shipped 2026-05-27.
-- **Active theme**: **α-8 ontology typed-filter** (R1-R5 evidence-of-
-  absence preservation, architectural fix for α-7's wrong-knob). Phase
-  A (PR #688 `fcf343d`) + Phase B (PR #689 `6d6698e`) landed
-  2026-06-02:
-  - `core/ontology.py` +5 horizontal types (event/date/location/
-    quantity/project) + 6 relations (OCCURRED_AT/HAPPENED_ON/
-    LOCATED_IN/INVOLVES/MEASURED_AS/WORKED_ON)
-  - `core/graph_typed_filter.py` new module + `JAMES_DISABLE_TYPED_FILTER`
-    flag (disable-polarity, default OFF = filter ON)
-  - Matrix cell `C_rag-ontology` between `C_rag-graph` (now pre-α-8
-    baseline with flag forced) and `C_rag-full`
-  - `pipeline_context.build_unified_context` prepends typed entity
-    summary BEFORE graph context (byte-additive)
-  - 137 tests pass; ruff clean
-  - Default behavior post-merge: typed filter ACTIVE in `/query/`
-  
-  Phase C N=3 baseline at M_M background launched 2026-06-02 (ETA
-  2.2h). Phase C 5-tier remeasurement + Phase D closure analysis +
-  `docs/ARCHITECTURE.md §5.7` typed filter section = 다음 세션.
-  α-7 cycle closed as REJECT 2026-06-02 (PR #680, 10th wrong-fix-
-  averted). α-6 closed 2026-06-01 PM (PR #678). Track 2c Phase 4
-  M_M sweep complete 2026-06-02 (0 breach / 11 resisted / 6 partial /
-  1 manual_review — α-8 acceptance test target poison_01 identified).
-  Sequence resumes: α-8 Phase C+D → 5-tier remeasurement → Phase 3b
-  proper on α-8 baseline. Domain pilot (v0.5) still gated.
+- **Active theme**: **Direction α — hybrid cloud reasoning tier**
+  (entered 2026-06-03). The α-measurement cycle (α-6/7/8) is closed and
+  the **forced discovery hunt has ended** (see memory
+  `feedback_alpha_cycle_discovery_loop_end`); emergent CASCADE-class
+  findings are still pursued, but we no longer mine measurement cycles
+  for breakthroughs.
+  - **α-8 closed** = ⭐ operational only (n=3 paired collapsed n=1's
+    apparent ⭐⭐); typed filter default ON, no regression. Did NOT
+    move the graded-answer ceiling.
+  - **Track 2c closed** (JAMES side): Phase 6 α-8 retest = poison_01
+    promotion failed (typed filter doesn't generalize to catalog
+    poisoning); Ali validation reply **sent 2026-06-03** (cross-stack
+    comparison); next Ali action = mid-June 3-author joint-piece.
+  - **Direction α landed (2026-06-03)**: design memo
+    `docs/design/v0.4-direction-alpha-hybrid-cloud-tier.md`;
+    abstraction-layer PoC + real-Claude e2e loop
+    (`scripts/research/abstraction_*`); **§5.7.12 Cloud Egress Trust
+    Zone** merged (PR #695) = rule #4 gate now OPEN for cloud code.
+  - **Premise re-examination**: a reasoning-isolated local-vs-cloud
+    measurement (full gold evidence + blinded judge) gave local
+    gemma3:4b 9/9 = Claude 9/9 → the "local reasoning ceiling" that
+    motivates the cloud tier is **unproven** (likely a retrieval +
+    metric artifact). Cloud-tier value must be *proven* alongside the
+    build, not assumed. See memory
+    `project_direction_alpha_local_vs_cloud_quality_thread`.
+  - **Next (cloud tier code, gated open)**: (1) `core/reasoning/
+    backends/claude_code_cli` provider, (2) resolver cloud-routing
+    (cloud tag → skip Ollama), (3) abstraction PoC → `core/` module on
+    the cloud route, (4) register cloud tier in the UI picker (picker
+    already exists, Ollama-only today), (5) local-vs-cloud quality
+    measurement integrated as an α-8 test-line extension. Cloud =
+    Max-plan headless `claude -p` for free research measurement; a
+    production tier needs the Anthropic API key (memory
+    `feedback_direction_alpha_max_plan_research_cloud`).
+  Domain pilot (v0.5) still gated. α-7 closed REJECT (PR #680, 10th
+  wrong-fix-averted); α-6 closed 2026-06-01.
 - **Strategic frame**: We are still building a **mother platform**;
   v1.0 vertical domain branching remains the only authorised
   specialisation point. The 2026-06-01 strategic discussion narrowed
@@ -127,7 +138,10 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
-| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/handovers/v0.4-next-session-entry-2026-06-02-evening.md`** |
+| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/design/v0.4-direction-alpha-hybrid-cloud-tier.md`** (Direction α design; §4.1 has the local-vs-cloud ① finding) |
+| Direction α local-vs-cloud premise + sequencing | memory `project_direction_alpha_local_vs_cloud_quality_thread` |
+| Cloud egress trust contract (rule #4 gate) | `docs/ARCHITECTURE.md` §5.7.12 |
+| Previous entry (2026-06-02 evening — sealed) | `docs/handovers/v0.4-next-session-entry-2026-06-02-evening.md` |
 | Previous entry (2026-06-02 post-tracks — now sealed) | `docs/handovers/v0.4-next-session-entry-2026-06-02-post-tracks.md` |
 | Previous session entry (α-7 launch — sealed) | `docs/handovers/v0.4-next-session-entry-2026-06-02-alpha7.md` |
 | Previous-previous (Phase 3a launch — sealed) | `docs/handovers/v0.4-next-session-entry-2026-06-01-PM.md` |
@@ -190,4 +204,4 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 자메스는 **v1.0까지 "범용 모체"로만** 강화합니다. 도메인 분화(법률·식품·유통·여행 등)는 v1.0 이후에만 시작합니다. 이 세션에서 도메인 코드를 추가하지 마세요.
 
-**현재 위치 (2026-06-02 mid-cycle)**: α-7 cycle implementation + N=3 baseline 완료, 5-tier mode remeasurement 진행 중 (백그라운드). α-7 PR #680 draft. Baseline 결과: gemma4 production tier 에서 null_query abst_f1 -0.107 (noise edge 밖). Mechanism = top-K=10 이 evidence-of-absence signal 제거. → α-8 architectural fix 가 필요 (typed filter + 빈 type rows 명시). Track 2c (Ali Arabic adversarial) Phase 1-3 완료 (PR #681 draft). Bidi runtime gate 구현 (PR #682 draft). Ali ack + Robin Direction 3 share DM 둘 다 2026-06-02 발송됨. 다음 세션 entry: `docs/handovers/v0.4-next-session-entry-2026-06-02-post-tracks.md`. v0.5 첫 도메인 후보 = 기업 내부지식 ontology (수평). 자세한 내용은 `docs/PLATFORM_READINESS.md` + `ROADMAP.md`.
+**현재 위치 (2026-06-03)**: α-measurement cycle 종료 + **forced discovery hunt END**. α-8 closed = ⭐ operational only (n=3). Track 2c JAMES측 closed, Ali 검증 답신 발송됨 (joint piece = mid-June 3-author). **Direction α (hybrid cloud reasoning tier) 진입**: 설계 메모 + 추상화 PoC + 실Claude e2e 루프 + **§5.7.12 Cloud Egress Trust Zone merged (PR #695)** = rule #4 게이트 OPEN. 핵심 발견 = local-vs-cloud reasoning-isolated 측정에서 근거만 충분하면 local gemma3:4b 9/9 = Claude 9/9 → "로컬 추론 천장" 전제 **미입증** (retrieval+메트릭 아티팩트 가능성). cloud 가치는 build와 병행 입증. **다음 세션 = cloud tier 코드** (claude_code_cli provider → resolver cloud-routing → 추상화 core 승격 → picker 등록 → local-vs-cloud 측정 α-8 연장 통합). 측정용 무료 cloud = Max-plan `claude -p` headless. v0.5 도메인 (기업 내부지식, 수평) 여전히 gated. 자세한 내용은 `docs/design/v0.4-direction-alpha-hybrid-cloud-tier.md` + memory `project_direction_alpha_local_vs_cloud_quality_thread`.
