@@ -192,6 +192,29 @@ def test_aggregate_empty_rows_safe(harness):
     assert agg["summary"] == {}
 
 
+def test_aggregate_n_runs_per_question_correct_with_single_run(harness):
+    """S5c regression — aggregate reported `n_runs/q=0` whenever
+    --n-runs=1 because the old form `rows[0].get("run", 0) and max(...)+1`
+    short-circuited on the falsy run_idx=0. Caught by S4 smoke
+    2026-06-03; fixed in same PR."""
+    rows = [
+        _row("q1", "inference_query", 0, "CORRECT", "CORRECT"),
+        _row("q2", "comparison_query", 0, "CORRECT", "CORRECT"),
+    ]
+    agg = harness.aggregate(rows)
+    assert agg["summary"]["n_runs_per_question"] == 1
+
+
+def test_aggregate_n_runs_per_question_correct_with_three_runs(harness):
+    rows = [
+        _row("q1", "inference_query", 0, "CORRECT", "CORRECT"),
+        _row("q1", "inference_query", 1, "CORRECT", "CORRECT"),
+        _row("q1", "inference_query", 2, "CORRECT", "CORRECT"),
+    ]
+    agg = harness.aggregate(rows)
+    assert agg["summary"]["n_runs_per_question"] == 3
+
+
 # ─── Caveat block presence ──────────────────────────────────────────
 
 

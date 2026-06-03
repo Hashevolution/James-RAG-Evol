@@ -11,11 +11,28 @@ Security posture (L0 MVP):
      reach the subprocess argv.
   2. Argv is a fixed list — `[cli_path, "-p", "--output-format", "text"]`.
      No user-controlled string ever joins argv.
-  3. Environment passed to the child is a **whitelist** — PATH, HOME,
-     and the explicit ``ANTHROPIC_API_KEY`` / ``CLAUDE_CONFIG_DIR``
-     forwards. os.environ is not handed over wholesale.
-  4. Output is size-capped (1 MiB) and the child is killed on timeout.
-  5. Cli path can be overridden via ``JAMES_CLAUDE_CLI_PATH`` (defaults
+  3. Environment passed to the child is a **whitelist**. The whitelist
+     splits into:
+       * Cross-platform Claude-specific: ``PATH``, ``HOME``,
+         ``ANTHROPIC_API_KEY``, ``CLAUDE_CONFIG_DIR``.
+       * Windows essentials: ``SystemRoot``, ``APPDATA``,
+         ``LOCALAPPDATA``, ``USERPROFILE``, ``TEMP``, ``TMP``.
+         Without these the Node-based ``claude.CMD`` wrapper exits
+         with returncode 1 + empty stderr on Windows (caught by S4
+         smoke 2026-06-03). The list is conservative — only Windows
+         baseline runtime vars, no app-specific secrets.
+     ``os.environ`` is not handed over wholesale; secrets stashed in
+     other env vars (``JAMES_API_KEY`` / ``AWS_*`` / ``GCP_*`` etc.)
+     stay local.
+  4. Default working directory is a **neutral temp dir**
+     (``tempfile.gettempdir()``), NOT the project directory. Spawning
+     ``claude -p`` inside the project loads the project ``CLAUDE.md``
+     and puts the CLI into coding-agent mode, where it responds to
+     the briefing instead of the prompt (caught by S4 smoke).
+     Operators wanting a project-context call pass an explicit
+     ``cwd=`` to ``complete``.
+  5. Output is size-capped (1 MiB) and the child is killed on timeout.
+  6. Cli path can be overridden via ``JAMES_CLAUDE_CLI_PATH`` (defaults
      to looking up ``claude`` on PATH); a missing CLI surfaces as
      ``error="cli not found"`` rather than a crash.
 """
@@ -24,6 +41,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import tempfile
 import time
 from typing import List, Optional
 
@@ -31,7 +49,22 @@ from core.reasoning.backends import BackendCapability, CompletionResult
 
 
 _MAX_OUTPUT_BYTES = 1 * 1024 * 1024   # 1 MiB
-_ENV_WHITELIST = ("PATH", "HOME", "ANTHROPIC_API_KEY", "CLAUDE_CONFIG_DIR")
+
+# Cross-platform Claude-specific env passthrough.
+_ENV_WHITELIST_CORE = ("PATH", "HOME", "ANTHROPIC_API_KEY", "CLAUDE_CONFIG_DIR")
+
+# Windows runtime essentials. Empirically required on Windows (S4 smoke
+# 2026-06-03): without `SystemRoot` the Node-based `claude.CMD` wrapper
+# exits with returncode 1 and empty stderr. The others (APPDATA et al.)
+# are Claude's config / cache lookup paths. Cross-platform — these are
+# Windows-only names, but reading them on POSIX is harmless (empty
+# value → dropped by _build_env).
+_ENV_WHITELIST_WINDOWS = (
+    "SystemRoot", "APPDATA", "LOCALAPPDATA",
+    "USERPROFILE", "TEMP", "TMP",
+)
+
+_ENV_WHITELIST = _ENV_WHITELIST_CORE + _ENV_WHITELIST_WINDOWS
 
 
 def _resolve_cli_path() -> Optional[str]:
@@ -93,6 +126,7 @@ class ClaudeCodeCliBackend:
         timeout: float = 60.0,
         model: Optional[str] = None,
         temperature: Optional[float] = None,   # accepted per R4, ignored — CLI no flag
+        cwd: Optional[str] = None,
         **opts,
     ) -> CompletionResult:
         t0 = time.time()
@@ -114,6 +148,12 @@ class ClaudeCodeCliBackend:
         # avoids handing a pathological prompt to the subprocess
         composed = composed[: _MAX_OUTPUT_BYTES]
 
+        # Neutral cwd default (§"Security posture" #4): spawn in temp,
+        # not the project dir, so `claude -p` doesn't pick up the
+        # project CLAUDE.md and switch to coding-agent mode. Operators
+        # wanting a project-context call pass `cwd=` explicitly.
+        spawn_cwd = cwd if cwd is not None else tempfile.gettempdir()
+
         try:
             proc = subprocess.Popen(
                 argv,
@@ -121,6 +161,7 @@ class ClaudeCodeCliBackend:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 env=_build_env(),
+                cwd=spawn_cwd,
                 # text mode with utf-8 to match JAMES's encoding convention
                 text=True,
                 encoding="utf-8",
