@@ -875,6 +875,114 @@ Validation to date (design-stage, no production code):
 5/5) and `scripts/research/abstraction_e2e_claude.py` (full
 mask → real-Claude → unmask loop, no leak).
 
+### 5.7.13 Abstraction Module (Direction α, v0.4+, design-stage)
+
+> **Status: design-stage, gated.** Module-level trust contract for the
+> abstraction code that will land at `core/abstraction/`. §5.7.12 defines
+> the cloud-egress trust zone (the *boundary*); this section pins down
+> what the *module enforcing* that boundary must guarantee, before any
+> production code lands (CLAUDE.md rule #4, design memo §8.5b).
+
+The abstraction module is the single place where sensitive entity strings
+are deterministically replaced with typed placeholders on the way *out*
+to a cloud reasoner, and where the reply is reversed on the way *in*.
+Everything in §5.7.12 reduces to "the abstraction module did its job and
+the audit log proves it." Promoting it from the design-stage PoC
+(`scripts/research/abstraction_*`) into the production path therefore
+requires its own architecture contract — not just code review.
+
+**Module location & API surface** — `core/abstraction/`, public API
+exposed via `core/abstraction/__init__.py`. Internal modules (mask
+implementation, decision policy, audit hook) are private (`_`-prefixed)
+and not part of the contract. The public surface is minimal so callers
+have a small attack surface to reason about:
+
+| Symbol | Purpose | Notes |
+|---|---|---|
+| `Decision` (enum) | per-entity outcome: `MASK` / `PASS` / `KEEP_LOCAL` | matches §5.7.12 three-way policy |
+| `AbstractionMap` | the local-only real↔placeholder mapping for one egress | constructed per-query, never persisted across queries |
+| `build_map(entities, decider)` | builds an `AbstractionMap` from typed graph entities | deterministic in declaration order |
+| `mask_text(text, amap)` | replaces real names with placeholders before egress | substring-safe (longest-first), Korean-particle-safe |
+| `unmask_text(text, amap) → (text, flagged)` | reverses on the reply; returns hallucinated placeholders separately | hallucinated tokens are **never silently restored** |
+
+**Module invariants (the trust contract)**
+
+1. **Determinism** — same `(entities, decider)` input → byte-identical
+   `AbstractionMap.forward`. Required so audit replay (T7 + §5.7.2 trace
+   schema) reproduces exactly what was egressed at time T.
+2. **Substring safety** — masking `"김철"` and `"김철수"` in the same
+   payload never corrupts either replacement (PoC §5 case). Enforced by
+   longest-name-first iteration.
+3. **Particle/boundary safety** — placeholder regex uses non-alnum
+   lookbehind + not-a-digit lookahead so `PERSON_3의` unmasks correctly
+   and `PERSON_12` is never split into `PERSON_1` + `2` (PoC `_PLACEHOLDER_RE`).
+4. **Hallucination flagging** — any placeholder token in the cloud's
+   reply that is **shaped like ours** (known ontology TYPE + integer)
+   but **absent from the local map** is returned in `flagged` and left
+   verbatim in the restored string. Silent de-abstraction of an
+   unmapped placeholder is a **bug**, not a feature — it would let the
+   cloud inject content under a real name.
+5. **Local-only map** — `AbstractionMap.reverse` lives in process
+   memory for one query and is never persisted, serialized, or sent
+   over any wire. The audit row records *what got masked* (entity ids
+   + placeholder ids), not the map itself; replay reconstructs the
+   map from the same entity set.
+6. **No-egress purity** — `mask_text` and `unmask_text` are pure
+   functions of `(text, amap)`. They make no network calls and have no
+   side effects. The cloud egress is the *caller's* responsibility
+   (cloud backend in §5.7.8), not the abstraction module's. This keeps
+   the security-critical code easy to audit in isolation.
+
+**Caller obligations** (rules the router/pipeline must follow when
+invoking the module)
+
+- The egress decision (whether *to* call cloud at all) MUST pass through
+  `PolicyEngine` *before* `build_map` runs. Abstraction is the
+  enforcement of the egress, not the authorization for it. Bypassing
+  PolicyEngine to call `mask_text` directly is a §5.7.12 invariant
+  violation.
+- Every `build_map` → `mask_text` → (cloud call) → `unmask_text`
+  sequence emits one `reason:egress` row to `audit_bridge` (per §5.7.2
+  trace schema): masked-entity ids, placeholder ids, the cloud backend
+  id, and the `flagged` list on return. Failure to audit is treated
+  the same as a failure to mask — the call MUST NOT proceed.
+- `flagged` entries on return are surfaced to the user-facing reply
+  (visible "the model referenced an entity we couldn't verify"
+  treatment) and are **never** stripped from the response without
+  operator review.
+
+**Non-goals (what this module deliberately does NOT do)**
+
+- **Does not classify sensitivity.** That is a property of the entity
+  / chunk metadata (`sensitive` flag, chunk `sensitivity` tag), set by
+  the ingestion / wiki pipeline. The decider function reads those
+  flags; it does not infer them.
+- **Does not decide closed-world vs open-world.** The decider takes
+  explicit `open_world_types` / `open_world_names` sets (PoC) or, in
+  the production path, a query-conditioned classifier passed in by the
+  router. The module is policy-agnostic.
+- **Does not perform the cloud call.** That is a §5.7.8 backend
+  (`core/reasoning/backends/claude_code_cli` etc.). Separation keeps
+  the security-critical surface (mask/unmask) testable without a
+  cloud dependency.
+- **Does not persist the map.** One `AbstractionMap` per query,
+  garbage-collected after `unmask_text`. Cross-query consistency is
+  not a goal (and would be a privacy liability — same `PERSON_1`
+  across queries is a re-identification risk).
+
+**Module-size discipline** (CLAUDE.md rule #5) — the production module
+splits into `_mask.py` (mask/unmask + `AbstractionMap`), `_policy.py`
+(`Decision` + `default_decider`), `_audit.py` (the `reason:egress`
+emit), each well under the 20 KB ceiling. The public façade
+(`__init__.py`) re-exports the contracted surface and stays minimal.
+
+**Validation to date (design-stage)** — same as §5.7.12:
+`scripts/research/abstraction_layer_poc.py` 5/5 (closed-world reasoning
+survives, hallucinated placeholder flagged, open-world keep-local,
+determinism, substring safety) and `abstraction_e2e_claude.py` full
+mask → real-Claude → unmask loop with no leak. Production promotion is
+the next PR (test parity required against the PoC self-tests).
+
 ---
 
 ## 6. Data Lifecycle (W7-A, 2026-05-11)
