@@ -85,6 +85,27 @@ def _auto_router_enabled() -> bool:
     return os.getenv("JAMES_AUTO_ROUTER", "0").strip().lower() in _FLAG_ON_VALUES
 
 
+def force_cloud_enabled() -> bool:
+    """Direction α — operator-explicit cloud routing gate.
+
+    Default OFF — `JAMES_FORCE_CLOUD=1` (or `true` / `yes` / `on`)
+    instructs `trace_synth_call` (and any other call site that opts in)
+    to wrap synth-stage egress through `core.abstraction.run_cloud_egress`
+    instead of calling `backend.complete` directly.
+
+    Self-policing: when the flag is ON but the resolved backend's
+    capability is not `provider="cloud"`, the caller logs a warning and
+    proceeds with the normal `backend.complete` path — wrapping a local
+    backend in abstraction would be a confusing no-op.
+
+    Public (unprefixed) name so external callers — e.g. the planner /
+    verify / reflect call sites — can opt in symmetrically once the
+    end-to-end shape is proven on synth. Mirrors the public surface of
+    `core.retrieval.query_rewriter.adaptive_budget_enabled`.
+    """
+    return os.getenv("JAMES_FORCE_CLOUD", "0").strip().lower() in _FLAG_ON_VALUES
+
+
 def _legacy_backend_id() -> str:
     """Return the registry backend ID for the pre-D5 default path.
 
