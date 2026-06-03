@@ -25,6 +25,8 @@ Module layout (private, not part of contract):
   - `_policy.py` — Decision + default_decider
   - `_mask.py`   — AbstractionMap + build_map + mask_text + unmask_text
   - `_audit.py`  — emit_egress_event
+  - `_runner.py` — run_cloud_egress (mask → call → unmask → audit
+                    orchestrator + runner-side keep_local refusal)
 
 The split honors rule #5 (module-size discipline) — each private file
 stays well under the 20 KB ceiling and is independently testable
@@ -40,6 +42,7 @@ from core.abstraction._mask import (
     unmask_text,
 )
 from core.abstraction._policy import Decision, default_decider
+from core.abstraction._runner import run_cloud_egress
 
 __all__ = [
     "Decision",
@@ -49,4 +52,5 @@ __all__ = [
     "mask_text",
     "unmask_text",
     "emit_egress_event",
+    "run_cloud_egress",
 ]
