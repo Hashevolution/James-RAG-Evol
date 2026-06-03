@@ -818,6 +818,63 @@ Pointers:
 - Ali `bidi_01-04` test cases: `eval/adversarial/ar_ecommerce-v1.1-pending.yaml`
 - Unit tests (29 cases): `tests/test_input_normalization.py`
 
+### 5.7.12 Cloud Egress Trust Zone (Direction α, v0.4+, design-stage)
+
+> **Status: design-stage, gated.** No cloud egress code has landed. This
+> section defines the trust contract any cloud-tier implementation must
+> satisfy **before** it ships (CLAUDE.md rule #4). Full design:
+> `docs/design/v0.4-direction-alpha-hybrid-cloud-tier.md`.
+
+JAMES is local-first by default (§7). Direction α adds an **opt-in** tier
+that routes *only the reasoning step* of a query to a stronger external
+model when the local model is judged insufficient — intent
+classification, retrieval, and evidence selection always stay local (they
+are local-solved; see the α-cycle S4 path-invariance finding). The
+external model never sees un-abstracted sensitive content.
+
+**Trust zone**
+
+| Edge | Trust | Hardening |
+|---|---|---|
+| Router → cloud egress decision | enforced (PolicyEngine) | the per-query "may this egress?" decision routes through `PolicyEngine`; bypass is a regression |
+| Selected evidence → external LLM | untrusted boundary | sensitive entities are replaced with typed deterministic placeholders by the abstraction layer **before** egress; the real→placeholder map is local-only and never leaves the machine |
+| External LLM → de-abstraction | medium | the reply is unmasked via the local map; a placeholder absent from the map (hallucinated entity) is **flagged, never silently restored** |
+| Egress transform → audit | enforced | every mask / egress / unmask emits a row to `audit_bridge` (per §5.7.2 trace schema); "what left the machine" must be replayable |
+
+**Egress masking policy** — per entity, driven by the `sensitivity` tag ×
+ontology type × the query's semantic dependence on that entity:
+
+- **mask** — sensitive + *closed-world* (answer derivable from the
+  provided documents' structure; identity is just a label) → typed
+  placeholder. Relationship structure survives consistent masking, so
+  closed-world reasoning is correct over placeholders.
+- **pass-through** — not sensitive → real value.
+- **keep-local** — sensitive + *open-world* (reasoning needs the entity's
+  real-world meaning, e.g. a drug-interaction question) → never egress;
+  answer locally or require explicit operator/user consent via
+  `PolicyEngine`.
+
+**Invariants**
+
+- Default is **local**. Cloud is opt-in and gated per query; the
+  escalate-readiness threshold is an **operator dial**, not a constant.
+- **No un-abstracted egress** of `sensitivity`-tagged content, ever.
+- The egress decision MUST pass through `PolicyEngine` (no-bypass).
+- A cloud-introduced placeholder absent from the local map is flagged,
+  never silently de-abstracted.
+
+**Backend**: the cloud tier extends the §5.7.8 D5 backend router + §5.7.9
+model authority chain with a cloud-class backend, via a named adapter in
+`core/reasoning/backends/` (`claude_code_cli` for research / Max-plan, an
+API provider for production) per the §5.7.2 registry-only rule. The
+abstraction layer sits between the router and the backend on the cloud
+route; on the local route it is a no-op.
+
+Validation to date (design-stage, no production code):
+`scripts/research/abstraction_layer_poc.py` (deterministic mask/unmask,
+5/5) and `scripts/research/abstraction_e2e_claude.py` (full
+mask → real-Claude → unmask loop, no leak).
+
 ---
 
 ## 6. Data Lifecycle (W7-A, 2026-05-11)
@@ -1090,7 +1147,9 @@ explicitly approves it. Auto-approval is a bug, not a feature.
 
 - Q&A over private document corpora with role-restricted access
 - Auditable reasoning over ontology-rich domains (legal, compliance, internal knowledge)
-- Local-only environments with no acceptable cloud egress
+- Local-only environments with no acceptable cloud egress (the default;
+  an opt-in, abstraction-gated cloud reasoning tier exists per §5.7.12
+  for deployments that permit controlled egress)
 - Domains where "why this answer?" matters as much as the answer
 
 ### Poor fits
