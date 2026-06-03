@@ -7,6 +7,16 @@ site through the registered backend instead of calling
 the default backend (``ollama_local``) runs — that backend wraps
 ``RouterWrapper.call_gemma`` with the same kwargs.
 
+S5 (Direction α, 2026-06-03): when `JAMES_FORCE_CLOUD=1` AND the
+resolved backend is `provider="cloud"`, the synth call is wrapped
+through `core.abstraction.run_cloud_egress` — mask→complete→unmask→
+audit per §5.7.12 / §5.7.13. The wrap is self-policing: flag-on with a
+non-cloud backend logs a warning and proceeds with the normal path
+(wrapping local in abstraction would be a confusing no-op). Optional
+`entities` kwarg lets call sites that have typed graph entities pipe
+them in for actual masking; default `entities=()` makes the wrap a
+mask-no-op but exercises the audit + call path end-to-end.
+
 Call shape:
 
     raw = trace_synth_call(
@@ -44,6 +54,7 @@ from typing import Any, Dict, Optional
 from core.reasoning.backends import (
     CompletionResult,
     get_backend,
+    get_backend_capability,
     resolve_backend_for_stage,
 )
 from core.reasoning.trace_schema import (
@@ -97,6 +108,7 @@ def trace_synth_call(
     model: Optional[str] = None,
     temperature: Optional[float] = None,
     extras: Optional[Dict[str, Any]] = None,
+    entities: Optional[Any] = None,
     **opts: Any,
 ) -> str:
     """Run one synth call through the registered backend, emit one
@@ -213,16 +225,72 @@ def trace_synth_call(
         evidence_scope=scope_breakdown,
     )
 
-    result: CompletionResult = backend.complete(
-        prompt,
-        system=system,
-        max_tokens=max_tokens,
-        timeout=timeout,
-        model=model,
-        use_cache=use_cache,
-        temperature=temperature,
-        **opts,
-    )
+    # S5 — Direction α cloud routing. When JAMES_FORCE_CLOUD=1 AND the
+    # resolved backend is provider="cloud", wrap the egress through
+    # `core.abstraction.run_cloud_egress` (§5.7.12 / §5.7.13). Flag OFF
+    # → byte-identical to pre-S5 main (no abstraction import, no extra
+    # audit row, no runner overhead).
+    #
+    # Self-policing: flag ON + non-cloud backend → log + fall through.
+    # Wrapping a local backend in abstraction would be a no-op (mask
+    # never leaves the machine on the local route by construction) and
+    # would mislead operators reading the audit log.
+    result: Optional[CompletionResult] = None
+    try:
+        from core.reasoning.router import force_cloud_enabled
+        if force_cloud_enabled():
+            cap = get_backend_capability(backend_id)
+            if cap.provider == "cloud":
+                from core.abstraction import (
+                    default_decider,
+                    run_cloud_egress,
+                )
+                # Future S7 will pass a query-conditioned decider;
+                # default_decider() with empty open-world sets is the
+                # safer-egress default (every sensitive entity → MASK).
+                result, _flagged = run_cloud_egress(
+                    backend=backend,
+                    prompt=prompt,
+                    entities=list(entities or ()),
+                    decider=default_decider(),
+                    stage=stage,
+                    system=system,
+                    max_tokens=max_tokens,
+                    timeout=timeout,
+                    model=model,
+                    use_cache=use_cache,
+                    temperature=temperature,
+                    **opts,
+                )
+            else:
+                print(
+                    f"[FORCE_CLOUD] backend {backend_id!r} is provider="
+                    f"{cap.provider!r}, not 'cloud' — JAMES_FORCE_CLOUD=1 "
+                    f"falling through to direct backend.complete. "
+                    f"Set JAMES_BACKEND_SYNTH to a cloud-tier backend "
+                    f"(e.g. claude_code_cli) to enable cloud routing."
+                )
+    except Exception as e:  # noqa: BLE001
+        # The force-cloud wrap is best-effort. Any failure (import,
+        # capability lookup, runner-side refusal in a future change)
+        # should NOT take down the synth path — log to stderr and fall
+        # through to the normal backend.complete so the user query still
+        # gets an answer.
+        print(f"[FORCE_CLOUD] wrap failed ({type(e).__name__}: {e}) "
+              f"— falling through to direct backend.complete")
+        result = None
+
+    if result is None:
+        result = backend.complete(
+            prompt,
+            system=system,
+            max_tokens=max_tokens,
+            timeout=timeout,
+            model=model,
+            use_cache=use_cache,
+            temperature=temperature,
+            **opts,
+        )
 
     text_str = result.text if isinstance(result.text, str) else ""
     err = result.error or ""
