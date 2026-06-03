@@ -214,6 +214,72 @@ class PathCoverageTests(unittest.TestCase):
         self.assertEqual(axis.per_query[0].hits, 0)
         self.assertEqual(axis.per_query[0].recall, 0.0)
 
+    # 2026-06-02 — step7 bench-schema drift fix. Bench stops emitting
+    # raw `graph_paths` (only `graph_paths_count`); oracle's slug-match
+    # over sources fails on entity-name expected_path because sources
+    # are PDF filenames. Before fix: pre-dedup union_hits = 0 even
+    # though bench's own `path_metrics.hits = 1`. After fix: trust
+    # bench's graph-side hit count as a floor.
+    def test_bench_path_metrics_floor_when_graph_paths_dropped(self):
+        bench = {"results": [{
+            "id": 2, "status": "ok",
+            # No raw graph_paths — only count + path_metrics.hits.
+            "graph_paths_count": 19,
+            "sources": [
+                "08_MCP_(Model_Context_Protocol).pdf",
+                "02_컨텍스트_엔지니어링.pdf",
+            ],
+            "path_metrics": {"expected_count": 1, "hits": 1, "path_recall": 1.0},
+        }]}
+        fixture = {"queries": [{
+            "id": 2, "category": "retrieve",
+            "expected_path": {"nodes": ["Anthropic"], "min_recall": 1.0},
+        }]}
+        axis = score_path_coverage(bench, fixture)
+        self.assertEqual(axis.per_query[0].hits, 1)
+        self.assertEqual(axis.per_query[0].via_graph, 1)
+        self.assertAlmostEqual(axis.per_query[0].recall, 1.0, places=4)
+
+    def test_bench_path_metrics_floor_caps_at_expected(self):
+        """A noisy bench path_metrics.hits > expected_count must not push
+        recall above 1.0."""
+        bench = {"results": [{
+            "id": 3, "status": "ok",
+            "graph_paths_count": 50,
+            "sources": ["unrelated.pdf"],
+            "path_metrics": {"expected_count": 2, "hits": 99, "path_recall": 1.0},
+        }]}
+        fixture = {"queries": [{
+            "id": 3, "category": "retrieve",
+            "expected_path": {"nodes": ["NodeA", "NodeB"], "min_recall": 1.0},
+        }]}
+        axis = score_path_coverage(bench, fixture)
+        self.assertEqual(axis.per_query[0].hits, 2)
+        self.assertAlmostEqual(axis.per_query[0].recall, 1.0, places=4)
+
+    def test_oracle_source_match_still_credits_when_bench_lower(self):
+        """When oracle's source-side slug-match already finds the hit,
+        the bench floor (which is graph-only) must NOT shrink credit."""
+        bench = {"results": [{
+            "id": 4, "status": "ok",
+            "sources": [
+                "multihop_0010_SBF-s-trial-starts-soon-but-how-did-he-and-FTX-get-here.txt",
+            ],
+            # Bench's path matcher saw zero (it's graph-only and the
+            # answer came from the source citation).
+            "path_metrics": {"expected_count": 1, "hits": 0, "path_recall": 0.0},
+        }]}
+        fixture = {"queries": [{
+            "id": 4, "category": "test",
+            "expected_path": {"nodes": [
+                "SBF's trial starts soon, but how did he — and FTX — get here?",
+            ], "min_recall": 1.0},
+        }]}
+        axis = score_path_coverage(bench, fixture)
+        self.assertEqual(axis.per_query[0].hits, 1)
+        self.assertEqual(axis.per_query[0].via_sources, 1)
+        self.assertAlmostEqual(axis.per_query[0].recall, 1.0, places=4)
+
 
 # ---------------------------------------------------------------------------
 # score_graded_answer

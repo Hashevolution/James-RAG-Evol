@@ -45,7 +45,8 @@ def handle_wiki_edit(
             '{"action": "append|update|delete|create|read",'
             ' "target": "entity이름",'
             ' "detail": "변경할 내용",'
-            ' "entity_type": "person|org|concept|document"}\n\n'
+            ' "entity_type": "person|org|concept|document'
+            '|event|date|location|quantity|project"}\n\n'
             "JSON만 출력:"
         )
         raw = trace_synth_call(
