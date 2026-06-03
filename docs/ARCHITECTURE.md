@@ -900,10 +900,13 @@ have a small attack surface to reason about:
 | Symbol | Purpose | Notes |
 |---|---|---|
 | `Decision` (enum) | per-entity outcome: `MASK` / `PASS` / `KEEP_LOCAL` | matches §5.7.12 three-way policy |
+| `default_decider(...)` | builds the per-entity decision function (open-world TYPE/NAME sets in, callable out) | swap with a query-conditioned classifier in S7 — module is policy-agnostic |
 | `AbstractionMap` | the local-only real↔placeholder mapping for one egress | constructed per-query, never persisted across queries |
 | `build_map(entities, decider)` | builds an `AbstractionMap` from typed graph entities | deterministic in declaration order |
 | `mask_text(text, amap)` | replaces real names with placeholders before egress | substring-safe (longest-first), Korean-particle-safe |
 | `unmask_text(text, amap) → (text, flagged)` | reverses on the reply; returns hallucinated placeholders separately | hallucinated tokens are **never silently restored** |
+| `emit_egress_event(stage, prompt, backend_id, amap, *, flagged, reason)` | writes one `reason:egress` row to `audit_log` via `audit_bridge` | no real names leak into the row (only placeholder ids + type histogram + flagged list); never raises |
+| `run_cloud_egress(*, backend, prompt, entities, decider, stage, ...)` | orchestrator: `build_map → mask_text → backend.complete → unmask_text → emit_egress_event` in one call | returns `(CompletionResult, flagged)`. Refuses egress if a `keep_local` name appears in the prompt (runner-side defense-in-depth) |
 
 **Module invariants (the trust contract)**
 

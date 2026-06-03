@@ -60,6 +60,7 @@ def test_public_api_surface_matches_init():
     expected = {
         "Decision", "AbstractionMap", "default_decider",
         "build_map", "mask_text", "unmask_text", "emit_egress_event",
+        "run_cloud_egress",
     }
     assert set(ab.__all__) == expected
     for name in expected:
