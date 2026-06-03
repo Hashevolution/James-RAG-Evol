@@ -1,0 +1,118 @@
+{
+  "local_model": "gemma3:4b",
+  "num_ctx": 8192,
+  "cloud": "claude-max-headless",
+  "judge": "claude-blinded-AB",
+  "design": "reasoning-isolated (full gold evidence, LLM-judge)",
+  "caveat": "judge is Claude; self-preference possible — confirm vs raw answers",
+  "rows": [
+    {
+      "id": 1,
+      "type": "inference_query",
+      "hops": 3,
+      "resolved": 3,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Sam Bankman-Fried",
+      "cloud_answer": "Sam Bankman-Fried, the founder of FTX and co-founder of Alameda Research, is the individual associated with the cryptocurrency industry facing a criminal trial on seven counts of fraud and conspiracy charges (two counts of wire fraud and five counts of conspiracy), as reported by both The Verge and TechCrunch. Prosecutors accuse him of committing fraud for personal gain, including allegedly using \"billions of dollars in misappropriated FTX customer deposits\" to buy more than $200 million of real estate for himself, make billions of dollars of investments for his own interest, repay Alameda's lenders, and use more than $100 million of customer funds to make political contributions."
+    },
+    {
+      "id": 2,
+      "type": "inference_query",
+      "hops": 2,
+      "resolved": 2,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Donald Trump is implicated in both inflating the value of his Manhattan penthouse to a figure not yet achieved in New York City’s real estate history, and is accused of adjusting this apartment’s valuation to compensate for a loss in another asset’s worth (Mar-a-Lago).",
+      "cloud_answer": "Donald Trump"
+    },
+    {
+      "id": 3,
+      "type": "inference_query",
+      "hops": 2,
+      "resolved": 2,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Sam Altman is the figure associated with generative AI technology whose departure from OpenAI was considered shocking according to Fortune, and is also the subject of a prevailing theory suggesting a lack of full truthfulness with the board as reported by TechCrunch.",
+      "cloud_answer": "Sam Altman"
+    },
+    {
+      "id": 26,
+      "type": "comparison_query",
+      "hops": 2,
+      "resolved": 2,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, both articles report an increase in revenue related to payment and subscription models.\n\n*   **TechCrunch article:** Rainforest has seen impressive growth, securing client commitments representing more than $500 million in processing, with much of the volume guaranteed.\n*   **Hacker News article:** The Epoch Times has amassed a fortune, growing its revenue by a staggering 685% in two years, to $122 million in 2021.",
+      "cloud_answer": "No. The Hacker News/NBC article on The Epoch Times explicitly reports a revenue increase, stating the nonprofit grew \"its revenue by a staggering 685% in two years, to $122 million in 2021,\" and notes it \"boasts to be the country's fourth-largest newspaper by subscriber count.\"\n\nThe TechCrunch article on Rainforest, however, does not report an actual increase in revenue tied to a payment model. It reports that Rainforest secured \"client commitments representing more than $500 million in processing, with much of the volume guaranteed\" — which is processing volume, not a reported revenue increase. It also mentions, generally, that software companies \"want to be able to accept payments and generate more revenue from being able to do so,\" but this is a description of motivation, not a reported revenue gain."
+    },
+    {
+      "id": 27,
+      "type": "comparison_query",
+      "hops": 2,
+      "resolved": 2,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, the TechCrunch articles present significantly different monetization strategies.\n\nThe Twitch article details Twitch’s attempt to incentivize creators to utilize ad revenue through the Partner Plus program, offering a 70/30 split on the first $100,000 earned, and a points-based system to reward higher subscription tiers. This focuses on shifting revenue streams towards advertising.\n\nConversely, the Beeper Mini article describes a straightforward monthly subscription model ($1.99) for accessing iMessage functionality on Android, with no mention of advertising or alternative revenue streams.",
+      "cloud_answer": "Yes. The Twitch article describes a multi-pronged monetization strategy centered on subscription revenue splits (a 70/30 split on the first $100,000 for Partner Plus creators, with a points-based eligibility system), prioritizing ad revenue (with an increased rev share and an ad incentive program), and growing sponsorship opportunities through Amazon advertising — all aimed at monetizing a livestreaming creator community.\n\nIn contrast, the Beeper article indicates that Beeper Mini was originally a paid subscription app at $1.99 per month for bringing iMessage to Android users, but due to the \"chaotic\" disruption caused by Apple's attempts to shut it down, Beeper decided to make Beeper Mini free for the time being, stating \"As soon as things stabilize (we hope they will), we'll look at turning on subscriptions again.\" Beeper's strategy is a single flat-rate consumer subscription that has been temporarily suspended, with no mention of ads, revenue splits, or sponsorships.\n\nSo the strategies differ significantly: Twitch is expanding and diversifying creator-focused monetization across subs, ads, and sponsorships, while Beeper has paused its simple consumer subscription model entirely in response to platform instability."
+    },
+    {
+      "id": 28,
+      "type": "comparison_query",
+      "hops": 2,
+      "resolved": 2,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, the provided context indicates that both articles highlight different aspects of their respective teams. The New York Times article specifically attributes the Buffalo Bills’ defensive success to Jordan Poyer’s transformation and newfound sobriety, while the Sporting News article identifies the Baltimore Ravens’ defense as an area needing improvement before their upcoming game against the Cincinnati Bengals.",
+      "cloud_answer": "Yes. The New York Times article highlights Jordan Poyer's significant contributions to the Buffalo Bills' defense, noting he is \"the only player in the NFL to have 500 or more tackles, 20 or more interceptions and 10 or more sacks in that time frame,\" a Bills captain for the fourth time, a Pro Bowl safety, and an All-Pro. The Sporting News article states about the Ravens: \"The defense needs to pick up the pieces, too, stat, ahead of facing the Bengals on a short week.\""
+    },
+    {
+      "id": 76,
+      "type": "temporal_query",
+      "hops": 2,
+      "resolved": 2,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, there was a significant change in the nature of the events reported. The initial report (October 7th) detailed Dave Clark’s angry response to Flexport’s leadership and subsequent reporting. The follow-up article (October 30th) revealed that Ryan Petersen, Flexport’s new CEO, had taken steps to correct what he perceived as misleading reporting and was actively working to stabilize the company’s finances after Clark’s departure. This meant the story shifted from a narrative of a disgruntled former CEO attacking the company to one of a new leadership team attempting to salvage a struggling business.",
+      "cloud_answer": "Yes. The October 7, 2023 report focused on Dave Clark, the ousted former CEO, firing back at Flexport's founder and board following a CNBC report about his last days at the company, calling the reporting \"deeply concerning.\" By the October 30, 2023 report, the nature of events had shifted to Ryan Petersen — who had taken back the CEO title after his hand-picked successor (Clark) was pushed out — actively running the company: criticizing Clark for overspending (particularly on hiring and rapid expansion), cutting costs, laying off about 20% of workers (around 600 people), and entering talks to acquire the technology of Convoy, the shuttered digital freight startup, with plans to restore Convoy's trucking services for customers and partners.\n\nSo the reporting shifted from public conflict and recriminations between the ousted CEO and Flexport's leadership to the returning founder-CEO's operational actions — cost-cutting, layoffs, and a potential acquisition — though the article notes this acquisition raised the question of whether \"Petersen's reign of financial frugality\" was already over."
+    },
+    {
+      "id": 77,
+      "type": "temporal_query",
+      "hops": 3,
+      "resolved": 3,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, there was a significant change in the portrayal of Google’s influence. The Verge’s article highlighted how SEO experts were manipulating search results to create “search-optimized hellholes” and profiting from user misery. The TechCrunch article, however, focuses on a class action lawsuit alleging Google’s anticompetitive behavior regarding AI’s impact on news publishers’ revenue, shifting the focus from individual manipulation of search results to a broader antitrust concern about Google’s control over content and advertising.",
+      "cloud_answer": "No, there was a change in portrayal. The Verge article from November 1, 2023 portrays Google's influence primarily through the lens of search quality degradation, focusing on how SEO practitioners exploit Google's algorithms to fill search results with low-quality, advertising-driven content — framing Google as a \"trillion-dollar corporation with a 90 percent market share for online search\" whose results have become \"absolutely unusable,\" \"garbage,\" and \"a nightmare,\" with blame shared between Google itself and the SEO industry manipulating it.\n\nThe later TechCrunch article from December 15, 2023 shifts the portrayal to frame Google as the subject of formal legal action for anticompetitive behavior, where Google is accused of violating the Sherman Act and other antitrust laws by \"siphon[ing] off\" news publishers' content, readers, and ad revenue. This portrayal specifically cites AI's harms to publishers' bottom line, representing a shift from a cultural/quality critique of Google's search ecosystem to a legal/economic accusation of antitrust violations harming news publishers, with AI introduced as a new dimension of harm not present in the earlier Verge piece."
+    },
+    {
+      "id": 78,
+      "type": "temporal_query",
+      "hops": 3,
+      "resolved": 3,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Based solely on the provided context, the answer is:\n\nYes, the advice provided by Sporting News includes reading requirements for bonus offers, focusing on betting on the favored Eagles, and capitalizing on hype surrounding events like the Travis Kelce and Taylor Swift relationship. The context details how FanDuel offers bonus codes for the Eagles vs. Seahawks game, highlights the popularity of Kelce and Swift, and discusses the importance of understanding the terms and conditions of promotions.",
+      "cloud_answer": "Yes. Between September 28, 2023, and December 18, 2023, Sporting News advised bettors to read the requirements for any available promotions and offers before accepting them (from the October 4, 2023 NBA ROTY article), and to go with the favored Eagles when wagering on the Monday Night Football moneyline bet (from the December 18, 2023 article). However, the provided context does not contain advice from Sporting News about \"focusing on hype\" as part of evaluating betting opportunities."
+    }
+  ]
+}
