@@ -184,12 +184,12 @@ def test_default_tiers_excludes_m_cloud_opt_in_safety(monkeypatch):
         # printed planning instead — but easier to test the logic
         # directly through a synthetic argv.
 
-    # Direct test: simulate the branch by checking that
-    # _local_tier_universe equals all non-cloud tiers.
-    expected_local = {"M_XS", "M_S", "M_M", "M_L", "M_XL"}
-    actual = set(t for t in runner._TIER_MODELS
-                 if t not in runner._TIER_BACKEND_OVERRIDE)
-    assert actual == expected_local
+    # Direct test: default tier universe (--tiers omitted) = 5 gemma
+    # scale ladder. M_MIXTRAL (paper control) and M_CLOUD (cloud) are
+    # opt-in only, so neither is in the default set.
+    assert set(runner._DEFAULT_TIERS) == {"M_XS", "M_S", "M_M", "M_L", "M_XL"}
+    assert "M_CLOUD" not in runner._DEFAULT_TIERS
+    assert "M_MIXTRAL" not in runner._DEFAULT_TIERS
 
 
 def test_explicit_tiers_m_cloud_passes_through():

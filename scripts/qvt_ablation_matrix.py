@@ -265,8 +265,16 @@ _TIER_MODELS: Dict[str, str] = {
     "M_M": "gemma4:e4b",   # production default; α-3 baseline tier
     "M_L": "gemma3:12b",
     "M_XL": "gemma3:27b",  # α-6 Phase 3a — large (saturation point probe)
+    "M_MIXTRAL": "mixtral:8x7b",  # paper-baseline control (MultiHop-RAG
+                                  # Table 6: Mixtral-8x7B retrieved 0.32)
     "M_CLOUD": "",         # α-8 cloud tier — Claude default model (CLI picks)
 }
+
+# Default tier universe when --tiers is omitted = the 5 gemma scale
+# ladder only. M_MIXTRAL (paper-baseline control, ~26GB CPU-offload slow)
+# and M_CLOUD (cloud, Max-plan quota) are **opt-in** via explicit
+# --tiers so a stray run doesn't pull a 26GB model or burn cloud quota.
+_DEFAULT_TIERS: Tuple[str, ...] = ("M_XS", "M_S", "M_M", "M_L", "M_XL")
 
 
 # α-8 cloud tier (2026-06-04) — tiers that route through a non-Ollama
@@ -1322,13 +1330,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     #     LOCAL tiers only (M_CLOUD requires explicit opt-in to avoid
     #     a stray "run everything" command burning the operator's Max-
     #     plan quota).
-    _local_tier_universe = [
-        t for t in _TIER_MODELS if t not in _TIER_BACKEND_OVERRIDE
-    ]
     if args.tiers:
         tiers = _parse_subset(args.tiers, list(_TIER_MODELS.keys()), "tiers")
     else:
-        tiers = _local_tier_universe
+        # Default = 5 gemma scale ladder. M_MIXTRAL / M_CLOUD opt-in only.
+        tiers = list(_DEFAULT_TIERS)
     sha = _current_git_sha() or "unknown"
     fixture_path = _resolve_fixture(args.suite)
     out_dir = _resolve_output_dir()
