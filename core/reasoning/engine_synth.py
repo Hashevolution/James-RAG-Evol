@@ -13,6 +13,7 @@ delegator so external callers (notably
 """
 from __future__ import annotations
 
+import os
 from typing import List
 
 from core.reasoning.trace_helpers import trace_synth_call
@@ -85,6 +86,17 @@ def generate_rag_answer(
     """
     style = resolve_style(response_style)
 
+    # Evidence char budget injected into the synth prompt. Historically
+    # hardcoded at 1000, which truncates multi-hop evidence (a 2-fact
+    # question whose second supporting chunk sits past char 1000 loses
+    # it → the model can't synthesize → over-abstains "insufficient").
+    # Env-gated so production stays byte-identical (default 1000) while
+    # measurement / multi-hop configs can widen it. See experiment log
+    # §14 (2026-06-05): this cap, not num_ctx, was the over-abstention
+    # root cause — num_ctx never mattered because the cut happens here,
+    # at prompt assembly, before the model sees anything.
+    _ctx_chars = int(os.environ.get("JAMES_SYNTH_CONTEXT_CHARS", "1000"))
+
     safe_q = RetrievalEngine._sanitize(question, 300)
     sys_block = f"{system_prompt}\n\n" if system_prompt else ""
 
@@ -114,7 +126,7 @@ def generate_rag_answer(
         if style.force_two_sections:
             prompt = (
                 f"{sys_block}"
-                f"[{'Internal Data' if is_en else '내부 자료'}]\n{context[:1000]}\n\n"
+                f"[{'Internal Data' if is_en else '내부 자료'}]\n{context[:_ctx_chars]}\n\n"
                 f"[{'Question' if is_en else '질문'}]\n{safe_q}\n\n"
                 f"{rule_txt}\n"
                 f"{'Answer' if is_en else '답변'}:\n"
@@ -126,7 +138,7 @@ def generate_rag_answer(
             # not from a token budget.
             prompt = (
                 f"{sys_block}"
-                f"[{'Internal Data' if is_en else '내부 자료'}]\n{context[:1000]}\n\n"
+                f"[{'Internal Data' if is_en else '내부 자료'}]\n{context[:_ctx_chars]}\n\n"
                 f"[{'Question' if is_en else '질문'}]\n{safe_q}\n\n"
                 f"{rule_txt}"
                 f"{'Answer' if is_en else '답변'}:\n"
