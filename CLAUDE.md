@@ -161,7 +161,8 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
-| **🟢 NEXT SESSION ENTRY (read this first)** | **`reports/research-runs/alpha-8-cloud-tier-extension-20260604.md`** (Direction α 측정 closure — premise 미입증, S6/S7 무기한 보류, 다음 cycle = mother platform 강화) + 5 measurement-side rules (methodological chain / fixture fitness / evidence-grounded validity) |
+| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/handovers/v0.4-multihop-synth-context-fix-2026-06-05.md`** (BIG: synth `context[:1000]` truncation이 multi-hop 추론 장기 불구화 → env-gate fix. PM-12 mixtral 확인 + 최종보고 + default 결정만 남음) |
+| Prev entry (Direction α 측정 closure) | `reports/research-runs/alpha-8-cloud-tier-extension-20260604.md` (premise 미입증, S6/S7 보류) + 5 measurement-side rules |
 | Direction α design memo (§4.1 local-vs-cloud ①) | `docs/design/v0.4-direction-alpha-hybrid-cloud-tier.md` |
 | Direction α local-vs-cloud premise + sequencing | memory `project_direction_alpha_local_vs_cloud_quality_thread` |
 | Cloud egress trust contract (rule #4 gate) | `docs/ARCHITECTURE.md` §5.7.12 |
