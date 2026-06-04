@@ -29,6 +29,7 @@ from eval.qvt.oracle import (  # noqa: E402
     score_five_axis,
     score_graded_answer,
     score_latency_cost,
+    score_paper_aligned_accuracy,
     score_path_coverage,
     score_three_axis,
     score_token_cost,
@@ -742,6 +743,118 @@ class FiveAxisResultTests(unittest.TestCase):
         self.assertEqual(result.suite, "multihop_rag")
         self.assertEqual(result.fixture_version, "multihop-rag-test")
         self.assertEqual(result.n_queries, 2)
+
+
+# ---------------------------------------------------------------------------
+# score_paper_aligned_accuracy (P1 — MultiHop-RAG paper metric 근사)
+# ---------------------------------------------------------------------------
+
+class PaperAlignedAccuracyTests(unittest.TestCase):
+    """Binary exact-match approximation against the MultiHop-RAG paper
+    metric. answerable = gold_signals match (primary=signal[0],
+    strict=all); null = abstain."""
+
+    def _fixture(self):
+        return {
+            "version": "test",
+            "queries": [
+                {"id": 1, "question_type": "inference_query",
+                 "abstention_truth": "present",
+                 "gold_signals": [{"term": "Sam Bankman-Fried", "aliases": ["SBF"]},
+                                  {"term": "FTX", "aliases": []}]},
+                {"id": 2, "question_type": "comparison_query",
+                 "abstention_truth": "present",
+                 "gold_signals": [{"term": "Yes", "aliases": []}]},
+                {"id": 3, "question_type": "null_query",
+                 "abstention_truth": "absent",
+                 "gold_signals": [{"term": "irrelevant", "aliases": []}]},
+            ],
+        }
+
+    def _bench(self, answers):
+        # answers: {id: answer_text}
+        return {
+            "results": [
+                {"id": qid, "status": "ok", "blocked": False,
+                 "answer_preview": ans, "answer_len": len(ans)}
+                for qid, ans in answers.items()
+            ]
+        }
+
+    def test_primary_hit_counts_first_signal_only(self):
+        # id1: only SBF (primary) hit, FTX missing → primary correct, strict wrong
+        bench = self._bench({
+            1: "The person is Sam Bankman-Fried.",
+            2: "Yes, both increased.",
+            3: "There is insufficient information to answer.",
+        })
+        axis = score_paper_aligned_accuracy(bench, self._fixture())
+        # id1 primary hit (SBF), id2 primary hit (Yes), id3 null abstain → 3/3 primary
+        self.assertEqual(axis.correct_primary, 3)
+        self.assertEqual(axis.accuracy_primary, 1.0)
+        # strict: id1 missing FTX → not all_hit. id2 single signal hit = all_hit.
+        # id3 abstain = correct for both.  → id2 + id3 = 2/3 strict
+        self.assertEqual(axis.correct_strict, 2)
+
+    def test_alias_match_counts(self):
+        bench = self._bench({
+            1: "It was SBF and FTX both.",   # alias SBF + FTX → all hit
+            2: "No.",                          # 'Yes' not present → miss
+            3: "There is insufficient information to answer.",  # abstain → correct
+        })
+        axis = score_paper_aligned_accuracy(bench, self._fixture())
+        # id1 primary(SBF alias) + strict(FTX too) ; id2 miss ; id3 correct
+        self.assertEqual(axis.correct_primary, 2)   # id1 + id3
+        self.assertEqual(axis.correct_strict, 2)    # id1 (all) + id3
+
+    def test_null_query_must_abstain(self):
+        # id3 null query but system hallucinated an answer → wrong
+        bench = self._bench({
+            1: "Sam Bankman-Fried, FTX.",
+            2: "Yes.",
+            3: "The answer is definitely Paris.",   # not abstain → wrong
+        })
+        axis = score_paper_aligned_accuracy(bench, self._fixture())
+        self.assertEqual(axis.n_null, 1)
+        # id3 should be incorrect (didn't abstain)
+        null_row = [r for r in axis.per_query if r.id == 3][0]
+        self.assertFalse(null_row.correct)
+        self.assertEqual(null_row.rule, "miss")
+
+    def test_by_question_type_breakdown(self):
+        bench = self._bench({
+            1: "Sam Bankman-Fried FTX",
+            2: "Yes",
+            3: "insufficient information",
+        })
+        axis = score_paper_aligned_accuracy(bench, self._fixture())
+        bt = axis.by_question_type
+        self.assertEqual(bt["inference_query"]["accuracy_primary"], 1.0)
+        self.assertEqual(bt["null_query"]["accuracy_primary"], 1.0)
+        self.assertEqual(int(bt["comparison_query"]["n"]), 1)
+
+    def test_counts_partition(self):
+        bench = self._bench({1: "x", 2: "y", 3: "z"})
+        axis = score_paper_aligned_accuracy(bench, self._fixture())
+        self.assertEqual(axis.n_queries, 3)
+        self.assertEqual(axis.n_answerable, 2)
+        self.assertEqual(axis.n_null, 1)
+
+    def test_real_fixture_smoke(self):
+        # Runs against the real multihop fixture + a trivial all-miss bench;
+        # just ensures no crash + sane partition (75 answerable / 25 null).
+        mh = _ROOT / "workspaces" / "hotpot_eval" / "eval" / "multihop_rag_queries.json"
+        if not mh.exists():
+            self.skipTest("multihop fixture not present")
+        fixture = json.loads(mh.read_text(encoding="utf-8"))
+        bench = {"results": [{"id": q["id"], "status": "ok", "blocked": False,
+                              "answer_preview": "", "answer_len": 0}
+                             for q in fixture["queries"]]}
+        axis = score_paper_aligned_accuracy(bench, fixture)
+        self.assertEqual(axis.n_answerable, 75)
+        self.assertEqual(axis.n_null, 25)
+        # empty answers → null queries abstain (correct), answerable all miss
+        self.assertEqual(axis.correct_primary, 25)  # only the 25 null abstains
 
 
 if __name__ == "__main__":
