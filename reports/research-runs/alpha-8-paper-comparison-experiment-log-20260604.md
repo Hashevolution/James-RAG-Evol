@@ -560,3 +560,155 @@ ablation(인지/rerank/graph) 모두 answerable 회복 실패 → 코드 읽기�
 ### 채택된 코드 변경
 - `core/reasoning/engine_synth.py`: `context[:1000]` → `context[:JAMES_SYNTH_CONTEXT_CHARS]`
   (default 1000 byte-identical). commit `fix(synth): env-gate evidence char budget`.
+
+## 18. temporal 0.20→0.08 하락 origin — answer-format drift (2026-06-05)
+
+cap=1000→8000 변경 시 temporal 5/25 → 2/25. 같은 25 query 매핑하면 flipped 5
+(1 win + 4 loss). 4 loss 모두 동일 패턴:
+
+- e4b가 cap↑로 풀린 evidence를 **self-critique/revision 메타 모드**로 활용 ("This
+  revision focuses on improving the professional tone...", "## Revised Answer",
+  "Hello, I am JAMES. I will follow your plan..."). 답이 분석적 서술이 되어
+  yes/no 결론이 lead 60자 밖으로 밀림 → matcher (P3 yes/no word-boundary,
+  `_YESNO_LEAD_CHARS=60`) 미스.
+
+| qid | cap1k correct | cap8k correct | cap8k 답 lead 양상 |
+|---|---|---|---|
+| 77 | False | True | "Direct Answer: No, ..." (lead에 명시 — win) |
+| 78 | True | False | "### Step 1: Search Sporting News..." (계획 서술, yes/no 없음) |
+| 83 | True | False | "This revision assumes the review critique was..." (메타) |
+| 84 | True | False | "This revision addresses the review by..." (메타) |
+| 96 | True | False | "### 1. CBSSports.com Report..." (구조 서술) |
+
+- **noise가 아니라 systemic**: 5/25에서 4 동일 양식 변화. e4b는 짧은 context는
+  결론 우선("Yes,..." / "No,..."), 긴 context는 분석/메타 모드.
+- **실제 품질 변화는 모호**: 사람이 본문 끝까지 읽으면 4개 중 일부는 yes/no
+  결론이 본문 안에 있을 수 있음 (사람 채점 필요). metric 기준엔 진짜 미스.
+- **matcher 약점**: lead 60자 yes/no 강제는 단답 fixture를 가정. long-context
+  분석 서술에 불리. (수정 후보 = whole-answer + 위치 가중, 단 substring noise
+  재유입 위험 — 별도 cycle.)
+- **함의**: temporal score는 cap↑ 후 줄어들지만 **inference 0.56→0.80 효과는
+  실재**(open-ended entity, format-drift 영향 적음). default 결정 시 temporal
+  loss는 metric artifact로 해석, 핵심 평가는 inference + answerable-only.
+
+## 20. 두 번째 ROOT CAUSE — session episodic context drift (2026-06-05)
+
+§18 temporal drift 추적이 두 번째 platform-wide hidden defect 후보 발굴.
+
+### 진단
+
+`engine_memory.py:153-200` (Cognitive Phase 3 PR-9b)이 같은 세션 prior turn
+의 plan/reflect/verify summaries를 `system_prompt`에 inject:
+
+```python
+events = get_episodic_memory().recent_events(
+    session_id_ep, limit=12, stages=("plan","reflect","verify"))
+# 최근 3 turns × 3 stages × summary[:120]
+lines = ["[이전 추론 흔적 (이 세션)]"]
+for slot in recent_turns:
+    for stage in ("plan","reflect","verify"):
+        lines.append(f"- [{stage}] {ev.summary[:120]}")
+system_prompt = f"{system_prompt}\n\n{episodic_block}".strip()
+```
+
+### Smoking gun (DB inspection)
+
+`./james_episodic.db` SQL 조회:
+- `pm1-terse` session **4,947 events 누적** (711 plan + 1319 reflect + 2100
+  verify + 817 synth). 100 query × 평균 ~50 events.
+- reflect summary가 **본질적으로 메타-critique 톤**으로 생성됨:
+  - `**1. Contradiction / factual error:** The answer is structurally sound,
+    but it relies on the phrase...`
+  - `**Contradiction / factual error:** The answer is overly procedural and
+    academic, detailing the steps taken rather than providing a direct...`
+- 이게 system_prompt에 inject되면 모델 입장에서 "이 세션 = 답 만들고 →
+  contradiction 찾기 → revise" 라는 강력한 framing.
+
+### 왜 §15 cap[:1000] fix 후에야 드러났나
+
+cap=1000일 땐 evidence가 짧아 모델이 발산 못 함 → 메타 cue 본문 반영 X.
+cap=8000으로 풀자 모델이 답을 길게 발산할 여유 생김 → episodic critique
+framing을 그대로 따라가 답 본문이 "## Revised Answer" / "This revision
+focuses on improving..." / "review critique" 모드 진입. cap[:1000]과
+정확히 동일한 두-결함-상호-mask 패턴.
+
+### 영향 범위
+
+- **측정**: PM-1~PM-12 모두 same-session ("pm1-terse") → episodic 누적
+  conditioning 노출. e4b·mixtral·cap 무관 전부 영향.
+- **production**: 사용자가 같은 세션에서 여러 query → episodic trail 누적
+  → 답이 점진적 "revision draft" 메타 모드로 drift. 대화 길어질수록 심함.
+  (단 production은 보통 query 다양성 + 일반 chat 흐름이라 측정만큼
+  amplify되진 않음 — 정량은 후속 cycle.)
+
+### 채택 fix (측정-side, production byte-identical)
+
+`scripts/research/multihop_terse_run.py` 1줄: `session_id="pm1-terse"` →
+`session_id=f"pm-terse-q{q['id']}"`. 매 query가 세션 첫 turn이 되어
+`engine_memory.py:164` gate (`if hist_ctx and ...`)가 자동으로 episodic
+inject skip. **코드 변경 없이 측정 환경만 정정.**
+
+### 검증 (PM-13/PM-14)
+
+| 측정 | 환경 | 기대 |
+|---|---|---|
+| PM-13 | e4b + cap=8000 + per-query session | qid 78/83/84/96 4 flip 풀림 → temporal 회복 0.08→? + comparison/inference 추가 회복 가능 |
+| PM-14 | mixtral + cap=8000 + per-query session | answerable 0.29 → raw 0.65 방향 회복 + null 유지 → §11 "스택 = abstention 다이얼" 가설 재검증 |
+
+### Platform-side fix 후보 (검증 후 사용자 결정)
+
+| 옵션 | 범위 | 위험 |
+|---|---|---|
+| (A) reflect/verify summary tone 정화 | summary 생성 단계에서 critique 헤더 제거/중립화 | reflect/verify 본질 design 영향 |
+| (B) episodic inject 양식 paraphrase | 입력 시 critique-tone 원문 X, 중립 fact-only 변환 | 추가 cost + 정보 손실 |
+| (C) synth stage는 episodic 비주입 | `engine_memory.py:162` stage 조건 추가 | conversational follow-up 약화 가능 |
+| (D) JAMES_EPISODIC_CONTEXT default 1→0 | 이미 env-gate 존재, default 뒤집기 | conversational session에서 PR-9b 의도 손실 |
+
+권고 = PM-13/PM-14 결과 + production session 누적 정량 측정 후 결정.
+
+## 19. 최종 verdict matrix (PM-12 완료 후 마감)
+
+PM-12 (mixtral + fix cap=8000, 100Q) 결과로 6칸 매트릭스 완성. 핵심 verdict:
+
+| 구성 | primary | answerable-only | inference | comparison | temporal | null |
+|---|---|---|---|---|---|---|
+| paper-Mixtral | 0.32 | — | — | — | — | — |
+| RAW e4b | 0.52 | 0.39 | 0.60 | 0.40 | 0.16 | 0.92 |
+| full e4b cap1000 | 0.45 | 0.293 | 0.56 | 0.12 | 0.20 | 0.92 |
+| **full+fix e4b cap8000** | **0.48** | **0.347** | **0.80** | 0.16 | 0.08 | 0.88 |
+| RAW mixtral | 0.55 | **0.65** | 0.92 | 0.72 | 0.32 | 0.24 |
+| full mixtral cap1000 | 0.46 | 0.29 | 0.56 | 0.20 | 0.12 | 0.96 |
+| **full+fix mixtral cap8000 (PM-12)** | _대기_ | _대기_ | _대기_ | _대기_ | _대기_ | _대기_ |
+
+(PM-12 partial 40Q 부분 결과: primary 0.525, inference 0.80, comparison 0.067
+— inference에서 e4b+fix와 동일하면 "fix 후 모델 무관성 유지" 추가 확증.
+comparison/temporal/null 미측정 → 재실행 진행 중, 결과 대기.)
+
+### verdict 후보 (PM-12로 분기)
+
+- **case A — mixtral+fix가 raw mixtral answerable(0.65)에 근접 + null 유지(≥0.88)**:
+  "raw 답변력 + full 회피력 동시 달성" 확정. JAMES 스택의 진짜 가치 입증
+  (자신만만 모델 환각 억제 + 답변력 보존). default 변경 적극 권고 (8000).
+- **case B — mixtral+fix가 e4b+fix와 비슷 (answerable ~0.30대 천장)**:
+  cap-fix는 inference 풀어주지만 yes/no 합성에선 스택이 여전히 답을 죽임.
+  추가 stage 진단 필요(synth 프롬프트 추가 cut 또는 reflect/verify의 yes/no
+  특이성). default 변경은 e4b 근거로만 정당화 (보수적).
+- **case C — partial 40Q comparison 0.067이 100Q에서도 유지**:
+  cap8000이 mixtral comparison을 해침 (e4b temporal과 동일 양식 drift 패턴
+  mixtral comparison에도). default 권고 = 4000 (knee 보수치).
+
+### default 권고 (예비, PM-12 후 확정)
+
+권고 = **`JAMES_SYNTH_CONTEXT_CHARS` default 1000 → 4000 또는 8000으로 상향**.
+
+| 후보 | 근거 | 위험 |
+|---|---|---|
+| 8000 | e4b answerable +0.057, inference +0.24, null −0.04 (floor 유지) | latency 증가 (프롬프트 7k자 더), e4b temporal drift |
+| 4000 | answerable +0.027, inference +0.20, null −0.04 (knee 직전) | 8000 대비 answerable 0.027 손실 |
+| 1000 유지 | byte-identical, 위험 0 | **장기 platform 버그 그대로 — production 답변 품질 ↓** |
+
+- production 변경은 사용자 확정 필수 (mother-platform 영향).
+- 적용 시 별도 PR + Quality Delta Card (intent axis = "multi-hop reasoning
+  unlock" + regression axis = latency/null) + ROADMAP 등재.
+- 측정 워크플로우는 env-gate로 이미 가능 — default 변경은 production 사용자
+  편익 결정.
