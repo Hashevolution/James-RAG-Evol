@@ -366,6 +366,46 @@ class GradedAnswerAxis:
     per_query: List[GradedAnswerQueryRow] = field(default_factory=list)
 
 
+@dataclass
+class PaperAlignedRow:
+    id: int
+    question_type: str
+    correct: bool
+    rule: str   # "primary_hit" / "all_hit" / "null_abstain" / "miss"
+
+
+@dataclass
+class PaperAlignedAccuracyAxis:
+    """MultiHop-RAG (Tang & Yang 2024, COLM) exact-match accuracy 근사.
+
+    논문 Table 6 metric = binary exact match on simple responses
+    (entity / yes-no / before-after), null query = "insufficient
+    information" 류면 correct. 자메스 fixture (`gold_signals` +
+    `abstention_truth`)로 두 변형 산출:
+
+      - ``primary`` (lenient): answerable query는 gold_signals[0]
+        (primary answer term + aliases) 매칭 시 correct. 논문의
+        single-answer exact-match에 가장 근접.
+      - ``strict``: answerable query는 모든 gold_signal 매칭 시
+        correct (multi-hop 답의 모든 측면 요구 — 논문보다 엄격).
+
+    null query (abstention_truth == "absent")는 둘 다 abstain 시
+    correct (hallucination 안 함 = 논문 null 기준).
+
+    두 값을 [strict, primary] band로 보고 — 논문 matching logic이
+    명시 안 됐으므로 정확한 단일 값 대신 band가 honest.
+    """
+    accuracy_primary: float    # lenient bound
+    accuracy_strict: float     # strict bound
+    n_queries: int
+    n_answerable: int
+    n_null: int
+    correct_primary: int
+    correct_strict: int
+    by_question_type: Dict[str, Dict[str, float]] = field(default_factory=dict)
+    per_query: List[PaperAlignedRow] = field(default_factory=list)
+
+
 def _answer_text(result_row: Dict[str, Any]) -> str:
     """Pick the best available answer string from a bench result row.
 
@@ -527,6 +567,121 @@ class AbstentionF1Axis:
     tn_answer: int             # truth=present AND answered  (correct answer)
     n_queries: int
     per_query: List[AbstentionQueryRow] = field(default_factory=list)
+
+
+def score_paper_aligned_accuracy(
+    bench_results: Dict[str, Any],
+    fixture: Dict[str, Any],
+) -> PaperAlignedAccuracyAxis:
+    """MultiHop-RAG 논문 (arXiv:2401.15391) exact-match accuracy 근사.
+
+    See ``PaperAlignedAccuracyAxis`` docstring for the metric definition.
+    Enables apples-to-apples-ish comparison against the paper's Table 6
+    (GPT-4 0.56 / Claude-2.1 0.52 / PaLM 0.47 / ChatGPT 0.44 /
+    Mixtral-8x7B 0.32 / Llama-2-70b 0.28 on retrieved chunks).
+
+    NOTE — comparison caveats (per `feedback_evidence_grounded_validity_check`):
+    metric is an *approximation* of the paper's (the paper does not
+    publish its exact matching logic), JAMES gold_signals are
+    multi-term where the paper's answers are single, and the model /
+    corpus-size differ. Use the [strict, primary] band as a positional
+    signal, not an exact rank.
+    """
+    fixture_map: Dict[int, Dict[str, Any]] = {
+        int(q["id"]): q for q in fixture.get("queries", [])
+    }
+    rows: List[PaperAlignedRow] = []
+    n_answerable = n_null = 0
+    correct_primary = correct_strict = 0
+    # per-question_type tallies: {qtype: [correct_primary, correct_strict, total]}
+    by_type: Dict[str, List[int]] = {}
+
+    for r in bench_results.get("results", []):
+        qid = int(r.get("id", -1))
+        fq = fixture_map.get(qid)
+        if not fq:
+            continue
+        qtype = fq.get("question_type", "unknown")
+        truth = fq.get("abstention_truth")
+        by_type.setdefault(qtype, [0, 0, 0])
+        by_type[qtype][2] += 1
+
+        # Null query (no answer exists) — correct iff system abstained.
+        if truth == "absent":
+            n_null += 1
+            if r.get("status") != "ok":
+                abstained = True
+            elif r.get("blocked") is True:
+                abstained = True
+            else:
+                abstained = detect_abstention(_answer_text(r))
+            is_correct = bool(abstained)
+            rows.append(PaperAlignedRow(
+                id=qid, question_type=qtype, correct=is_correct,
+                rule="null_abstain" if is_correct else "miss",
+            ))
+            if is_correct:
+                correct_primary += 1
+                correct_strict += 1
+                by_type[qtype][0] += 1
+                by_type[qtype][1] += 1
+            continue
+
+        # Answerable query — gold_signals match.
+        signals = fq.get("gold_signals") or []
+        if not signals:
+            # No gold to score against — skip (not counted in either bucket).
+            continue
+        n_answerable += 1
+        answer_lower = _answer_text(r).lower()
+        hits = 0
+        primary_hit = False
+        for i, sig in enumerate(signals):
+            ok, _ = _matches_signal(answer_lower, sig)
+            if ok:
+                hits += 1
+                if i == 0:
+                    primary_hit = True
+        all_hit = (hits == len(signals))
+
+        if primary_hit:
+            correct_primary += 1
+            by_type[qtype][0] += 1
+        if all_hit:
+            correct_strict += 1
+            by_type[qtype][1] += 1
+
+        rule = ("all_hit" if all_hit
+                else "primary_hit" if primary_hit
+                else "miss")
+        rows.append(PaperAlignedRow(
+            id=qid, question_type=qtype,
+            correct=primary_hit, rule=rule,
+        ))
+
+    n_total = n_answerable + n_null
+    acc_primary = round(correct_primary / n_total, 4) if n_total else 0.0
+    acc_strict = round(correct_strict / n_total, 4) if n_total else 0.0
+
+    by_qt: Dict[str, Dict[str, float]] = {}
+    for qt, (cp, cs, tot) in sorted(by_type.items()):
+        by_qt[qt] = {
+            "accuracy_primary": round(cp / tot, 4) if tot else 0.0,
+            "accuracy_strict": round(cs / tot, 4) if tot else 0.0,
+            "n": tot,
+        }
+
+    return PaperAlignedAccuracyAxis(
+        accuracy_primary=acc_primary,
+        accuracy_strict=acc_strict,
+        n_queries=n_total,
+        n_answerable=n_answerable,
+        n_null=n_null,
+        correct_primary=correct_primary,
+        correct_strict=correct_strict,
+        by_question_type=by_qt,
+        per_query=rows,
+    )
 
 
 def score_abstention_f1(
