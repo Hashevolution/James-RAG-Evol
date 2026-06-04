@@ -109,6 +109,60 @@ ChatGPT급. 확실한 것 = **자메스가 70b open 모델과 비교 가능한 l
 P1 결론: **자메스 general-news 경쟁력 입증 (작은 모델로 open 70b league).
 품질 lever는 모델 아니라 도메인 데이터/온톨로지. 다음 = domain pack.**
 
+## 9. P3 — metric 정밀화 + answer-format mismatch 발견 (2026-06-04 추가)
+
+P1의 0.44 (ChatGPT급) 결론이 metric 정밀화 후 흔들림. **진짜 confound는
+metric이 아니라 answer-format mismatch** 발견.
+
+### P3.1 — yes/no word-boundary 정밀화
+
+P1 `accuracy_primary`의 yes/no 매칭이 substring이라 거짓 hit 위험
+("no" in "not"/"now"/"nothing", "yes" 답 중간 등장). word-boundary +
+answer-lead(60자) 정밀화 (`_primary_answer_match`):
+
+| System | primary (substring, P1) | primary (word-boundary, P3) |
+|---|---:|---:|
+| JAMES+gemma4:e4b (n=3) | 0.44-0.45 | **0.29-0.35** |
+| JAMES+Claude(Opus) | 0.47 | **0.26** |
+| Claude RAW (leak) | 0.72 | 0.56 |
+
+→ P1 0.44는 yes/no substring 거짓 hit 과대평가. 정밀하면 0.29-0.35.
+
+### P3.2 — 진짜 원인: answer-format mismatch
+
+자메스 comparison 답 실제 형태 (서술형, 1400-2000자):
+- "Source files: ... [분석] ..." 로 시작
+- "We cannot definitively compare..." / "do not necessarily align..."
+- **yes/no를 명시 안 함**
+
+논문 모델 = 단답 ("Yes"/"No"). → **같은 metric 비교가 자메스 서술형 답에
+부당** (yes/no 앞에 없으니 word-boundary lead에서 miss).
+
+= P1 substring (0.44) = 과대 / P3 word-boundary (0.29) = 과소. 진실은
+**answer-format 통제 후**.
+
+### P3.3 — 단답 모드 일시 적용 가능 확정 (코드 0)
+
+측정용 fixture suffix ("Answer with ONLY 'Yes'/'No', no explanation")
+smoke (comparison 3Q, gemma4:e4b):
+
+| id | gold | 자메스 답 (단답 모드) |
+|---|---|---|
+| 26/27/28 | Yes | "No" / "No" / "No." (ans_len 2-3) |
+
+→ **fixture suffix만으로 자메스 단답 produce 확정** (production 코드 0
+변경, NATURAL preset 무시하고 단답). 단 comparison 3개 다 틀림 (gold
+Yes, 답 No) = **자메스 comparison query 약점이 단답 모드로 명확히 드러남**.
+
+### P3 결론
+
+- P3 precision metric (`score_paper_aligned_accuracy` + `_primary_answer_match`)
+  은 **단답 모드 답에 적용해야 정확**. 서술형 답에 적용하면 과소평가.
+- **fair 우수성 확정 = 단답 모드 full 측정 (100Q) 필수** (fixture suffix
+  로 일시, 코드 0). + 모델 통제 (Mixtral 또는 gemma4:e4b).
+- answer-format mismatch = measurement-side 신규 confound
+  (`feedback_evidence_grounded_validity_check` 계열 확장).
+
 ## 8. 재현
 
 ```

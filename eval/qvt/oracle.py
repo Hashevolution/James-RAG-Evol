@@ -569,6 +569,45 @@ class AbstentionF1Axis:
     per_query: List[AbstentionQueryRow] = field(default_factory=list)
 
 
+_YESNO_RE = {
+    "yes": _re.compile(r"\byes\b"),
+    "no": _re.compile(r"\bno\b"),
+}
+# Where to look for the yes/no verdict — the lead of the answer. MultiHop-RAG
+# answers are simple ("Yes, ...", "No. ..."); the verdict is at the front.
+# A trailing "no" buried in prose ("...there is no doubt") shouldn't flip a
+# "Yes"-gold answer. 60 chars covers "Yes/No" + a short clause.
+_YESNO_LEAD_CHARS = 60
+
+
+def _primary_answer_match(
+    answer_lower: str,
+    primary_signal: Dict[str, Any],
+    question_type: str,
+) -> bool:
+    """P3 precision matcher for the PRIMARY (canonical) answer signal.
+
+    The fixture's gold_signals[0] is the paper's single canonical answer:
+      - inference_query  → an entity name  ("Sam Bankman-Fried")
+      - comparison_query → "Yes" / "No"
+      - temporal_query   → "Yes" / "No" (fixture uses yes/no, not before/after)
+
+    Entity answers keep the substring+negation matcher (`_matches_signal`).
+    Yes/No answers use a **word-boundary match restricted to the answer
+    lead** so substring noise ("no" inside "not"/"now"/"nothing"; a "yes"
+    buried deep in prose) doesn't create false hits — this is the main
+    precision gain over the generic matcher (closes the wide [strict,
+    primary] band toward the paper's exact-match metric).
+    """
+    term = (primary_signal.get("term") or "").strip().lower()
+    if term in ("yes", "no"):
+        lead = answer_lower[:_YESNO_LEAD_CHARS]
+        return bool(_YESNO_RE[term].search(lead))
+    # Entity / other — generic substring + negation-aware matcher.
+    ok, _ = _matches_signal(answer_lower, primary_signal)
+    return ok
+
+
 def score_paper_aligned_accuracy(
     bench_results: Dict[str, Any],
     fixture: Dict[str, Any],
@@ -637,7 +676,16 @@ def score_paper_aligned_accuracy(
         hits = 0
         primary_hit = False
         for i, sig in enumerate(signals):
-            ok, _ = _matches_signal(answer_lower, sig)
+            if i == 0:
+                # P3 precision — primary signal IS the paper's canonical
+                # single answer (inference→entity, comparison/temporal→
+                # yes/no, confirmed by fixture inspection). Use a
+                # question-type-aware matcher so a yes/no answer isn't
+                # falsely hit by substring noise ("no" in "not"/"now"/
+                # "nothing", or a "yes" buried mid-answer).
+                ok = _primary_answer_match(answer_lower, sig, qtype)
+            else:
+                ok, _ = _matches_signal(answer_lower, sig)
             if ok:
                 hits += 1
                 if i == 0:
