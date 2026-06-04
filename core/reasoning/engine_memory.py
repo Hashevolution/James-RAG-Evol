@@ -37,6 +37,7 @@ def build_memory_context(
     safe_query: str,
     user_role: str,
     kwargs: Dict[str, Any],
+    response_style: str = "",
 ) -> Tuple[str, str, str]:
     """Build the (memory_context, system_prompt, hist_ctx) triple that
     feeds the rest of ReasoningEngine.query().
@@ -102,15 +103,25 @@ def build_memory_context(
         engine._log("memory_context", e, user_role)
 
     # ── [P1-10] 성향 캐릭터 modifier → system_prompt 주입 ─
+    # 2026-06-04: gated on the resolved style's answer-format contract.
+    # NATURAL (default) → inject (production byte-identical). TERSE and
+    # any future single-answer style → skip, so the 16-trait persona
+    # does not re-introduce verbose scaffolding the user opted out of.
     try:
-        from core.character_profile import CharacterProfile
-        cp = CharacterProfile()
-        modifier = cp.get_prompt_modifiers()
-        if modifier and modifier.strip():
-            system_prompt = (system_prompt + "\n\n" + modifier).strip()
-            print(f"[CHARACTER] 성향 주입: {modifier[:60]}")
-    except Exception as e:
-        engine._log("character_profile", e, user_role)
+        from core.response_style import resolve_style
+        _inject_character = resolve_style(response_style).inject_character_directives
+    except Exception:
+        _inject_character = True
+    if _inject_character:
+        try:
+            from core.character_profile import CharacterProfile
+            cp = CharacterProfile()
+            modifier = cp.get_prompt_modifiers()
+            if modifier and modifier.strip():
+                system_prompt = (system_prompt + "\n\n" + modifier).strip()
+                print(f"[CHARACTER] 성향 주입: {modifier[:60]}")
+        except Exception as e:
+            engine._log("character_profile", e, user_role)
 
     # ── [P1-5] 페르소나 명령 감지 → 장기기억 즉시 저장 ──
     try:

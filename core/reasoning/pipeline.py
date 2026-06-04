@@ -203,6 +203,7 @@ def run_retrieval_pipeline(
     )
     safe_context = apply_post_check_and_sources_header(
         engine, loop_state, final_context, user_role,
+        response_style=response_style,
     )
 
     # ── LEO L.C — evidence-scope measurement + scope-context bind ───

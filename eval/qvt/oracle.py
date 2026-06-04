@@ -579,6 +579,24 @@ _YESNO_RE = {
 # "Yes"-gold answer. 60 chars covers "Yes/No" + a short clause.
 _YESNO_LEAD_CHARS = 60
 
+# CoT terse-mode marker. The CoT+final-answer fixture variant
+# (scripts/research/build_terse_fixture.py) asks the model to reason
+# freely then put the canonical answer on a final "ANSWER:" line. When
+# present, only that line is the answer for scoring (reasoning preserved
+# for the model, single answer extracted for the paper-aligned metric).
+# Absent → whole answer is used (back-compat with verbose/non-terse runs).
+_ANSWER_LINE_RE = _re.compile(r"ANSWER:\s*(.+?)\s*$", _re.IGNORECASE | _re.MULTILINE)
+
+
+def _extract_terse_answer(answer_text: str) -> str:
+    """Return the CoT 'ANSWER:' line content if present, else the whole
+    answer. Uses the LAST ANSWER: line (model may write the marker mid-
+    reasoning; the final one is the verdict)."""
+    matches = _ANSWER_LINE_RE.findall(answer_text or "")
+    if matches:
+        return matches[-1].strip()
+    return answer_text or ""
+
 
 def _primary_answer_match(
     answer_lower: str,
@@ -645,6 +663,11 @@ def score_paper_aligned_accuracy(
         by_type.setdefault(qtype, [0, 0, 0])
         by_type[qtype][2] += 1
 
+        # Terse-mode extraction: if the answer carries a CoT 'ANSWER:'
+        # line, score only that line (reasoning kept for the model,
+        # canonical answer extracted). Absent → whole answer (back-compat).
+        terse_answer = _extract_terse_answer(_answer_text(r))
+
         # Null query (no answer exists) — correct iff system abstained.
         if truth == "absent":
             n_null += 1
@@ -653,7 +676,7 @@ def score_paper_aligned_accuracy(
             elif r.get("blocked") is True:
                 abstained = True
             else:
-                abstained = detect_abstention(_answer_text(r))
+                abstained = detect_abstention(terse_answer)
             is_correct = bool(abstained)
             rows.append(PaperAlignedRow(
                 id=qid, question_type=qtype, correct=is_correct,
@@ -672,7 +695,7 @@ def score_paper_aligned_accuracy(
             # No gold to score against — skip (not counted in either bucket).
             continue
         n_answerable += 1
-        answer_lower = _answer_text(r).lower()
+        answer_lower = terse_answer.lower()
         hits = 0
         primary_hit = False
         for i, sig in enumerate(signals):

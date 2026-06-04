@@ -300,7 +300,19 @@ class GemmaClient:
                                 if temperature is not None
                                 else __import__("config").LLM_TEMPERATURE
                             ),
-                            "num_ctx":     8192,   # [#A8-5] 4096 → 8192 (긴 답변 토큰까지 수용)
+                            # [#A8-5] 4096 → 8192 (긴 답변 토큰까지 수용).
+                            # JAMES_NUM_CTX env override (default 8192 =
+                            # production byte-identical). Benchmark eval may
+                            # raise it (e.g. 16384) so large retrieval
+                            # evidence + a full CoT answer both fit without
+                            # truncating the answer — gemma4:e4b supports
+                            # up to 131072. Measurement-only; production
+                            # unchanged when the env is unset.
+                            "num_ctx": int(
+                                __import__("os").environ.get(
+                                    "JAMES_NUM_CTX", "8192"
+                                )
+                            ),
                         }
                 resp = requests.post(
                     OLLAMA_API_URL,

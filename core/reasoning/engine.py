@@ -193,7 +193,7 @@ class ReasoningEngine:
         # ``kwargs["session_language"]``).
         from core.reasoning.engine_memory import build_memory_context
         memory_context, system_prompt, hist_ctx = build_memory_context(
-            self, safe_query, user_role, kwargs,
+            self, safe_query, user_role, kwargs, response_style=response_style,
         )
 
         # ── Query Router (STEP 0.5a) ─────────────────────────

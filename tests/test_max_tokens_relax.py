@@ -55,13 +55,18 @@ class GemmaClientDefaultsTests(unittest.TestCase):
             f"num_predict fallback {fallback} — must be ≥4096")
 
     def test_num_ctx_increased(self):
-        # Context window must be at least as large as the default
-        # max_tokens, otherwise tokens get clamped.
-        m = re.search(r'"num_ctx":\s*(\d+)', self.src)
-        self.assertIsNotNone(m, "couldn't locate num_ctx literal")
+        # Context window default must be ≥8192 (else tokens clamp).
+        # 2026-06-04: num_ctx became env-overridable
+        # (JAMES_NUM_CTX, default "8192") for benchmark eval — the
+        # default literal is the fallback string in os.environ.get.
+        m = re.search(r'JAMES_NUM_CTX",\s*"(\d+)"', self.src)
+        if m is None:
+            # back-compat: plain literal form
+            m = re.search(r'"num_ctx":\s*(\d+)', self.src)
+        self.assertIsNotNone(m, "couldn't locate num_ctx default")
         ctx = int(m.group(1))
         self.assertGreaterEqual(ctx, 8192,
-            f"num_ctx {ctx} — must be ≥8192 to fit the longer answers")
+            f"num_ctx default {ctx} — must be ≥8192 to fit longer answers")
 
 
 class CallSiteUnchangedTests(unittest.TestCase):

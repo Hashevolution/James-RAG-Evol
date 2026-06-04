@@ -875,6 +875,52 @@ class PaperAlignedAccuracyTests(unittest.TestCase):
         b2 = self._bench({1: filler + "so the answer would be yes eventually."})
         self.assertEqual(score_paper_aligned_accuracy(b2, fixture).correct_primary, 0)
 
+    def test_cot_answer_line_extracted(self):
+        """CoT 'ANSWER:' line is extracted; reasoning before it ignored.
+        A 'No' buried in reasoning must not flip a final 'ANSWER: Yes'."""
+        from eval.qvt.oracle import _extract_terse_answer
+        cot = ("Looking at the evidence, there is no clear contradiction "
+               "between the two sources, so the comparison holds.\n"
+               "ANSWER: Yes")
+        self.assertEqual(_extract_terse_answer(cot), "Yes")
+
+        fixture = {
+            "version": "test",
+            "queries": [
+                {"id": 1, "question_type": "comparison_query",
+                 "abstention_truth": "present",
+                 "gold_signals": [{"term": "Yes", "aliases": []}]},
+            ],
+        }
+        # reasoning has 'no' but final ANSWER is Yes → correct
+        bench = self._bench({1: cot})
+        self.assertEqual(score_paper_aligned_accuracy(bench, fixture).correct_primary, 1)
+
+    def test_cot_last_answer_line_wins(self):
+        from eval.qvt.oracle import _extract_terse_answer
+        s = "ANSWER: maybe\nactually reconsidering\nANSWER: No"
+        self.assertEqual(_extract_terse_answer(s), "No")
+
+    def test_no_answer_line_uses_whole_text(self):
+        from eval.qvt.oracle import _extract_terse_answer
+        s = "Sam Bankman-Fried was the person."
+        self.assertEqual(_extract_terse_answer(s), s)
+
+    def test_cot_null_abstain_extracted(self):
+        """CoT 'ANSWER: insufficient information' → abstain correct."""
+        fixture = {
+            "version": "test",
+            "queries": [
+                {"id": 1, "question_type": "null_query",
+                 "abstention_truth": "absent",
+                 "gold_signals": [{"term": "x", "aliases": []}]},
+            ],
+        }
+        cot = "The documents discuss X but not the asked relation.\nANSWER: insufficient information"
+        bench = self._bench({1: cot})
+        axis = score_paper_aligned_accuracy(bench, fixture)
+        self.assertEqual(axis.correct_primary, 1)
+
     def test_entity_answer_keeps_substring_match(self):
         """P3 precision applies word-boundary ONLY to yes/no; entity
         answers (inference) keep the substring+negation matcher."""
