@@ -311,3 +311,79 @@ recovery-curve `M_M e4b pure graded 0.347/abst_f1 0.558`.)
 ### 한 줄
 과거 숫자가 틀린 게 아니라, 현재 측정(platform 수정 + terse exact-match)이
 그 숫자의 **구성을 설명**한다. 다음: mixtral 행 추가 시 "모델 통제" 완성.
+
+## 10. PM-3: 모델 통제 (paper 동일 Mixtral-8x7B) — 모델 무관성 확정
+
+base fixture + response_style=terse + num_ctx 16384, mixtral:8x7b 100Q.
+(smoke 60s/q, 본run ~73min, evidence-retrieved 100/100.)
+
+| type | e4b (4B) | mixtral (47B) |
+|---|---|---|
+| primary | 0.45 | **0.46** |
+| strict | 0.26 | 0.26 |
+| inference | 0.56 | **0.56** (동일) |
+| comparison | 0.12 | 0.20 |
+| temporal | 0.20 | 0.12 |
+| null | 0.92 | 0.96 |
+| answerable-only | 0.29 | **0.29** (동일) |
+
+### 핵심 — 모델 12배 키워도 거의 불변
+- 4B→47B (12× params)인데 primary 0.45→0.46, answerable 0.29=0.29, inference
+  0.56=0.56. **JAMES 위에서 모델 무관성 확정** (§3 가설을 paper 모델 +
+  exact-match로 입증).
+- 제 이전 가설(큰 모델이면 yes/no 과잉회피 풀림) **반증**: comparison/temporal
+  mixtral에서도 낮음 (0.20/0.12). → answerable 천장(~0.29)은 **모델 추론력이
+  아니라 retrieval 완전성 or JAMES 추론 스택**이 원인.
+- vs paper: JAMES+Mixtral 0.46 > paper-Mixtral 0.32 (+0.14). 단 차이는 주로
+  abstention/null 구성 + 우리 retrieval이지 answerable 추론 아님 (answerable
+  양쪽 0.29). composition + 근사 caveat 유지.
+
+### 다음 — raw(vanilla RAG)가 천장 원인 가른다
+PM-4(e4b raw) / PM-5(mixtral raw): JAMES 추론 스택 제거, 같은 retrieval chunk.
+- raw ≈ full → 스택이 이 벤치에서 무의미 (가치=retrieval).
+- raw < full → 스택이 가치 더함.
+- raw > full (특히 answerable) → 스택이 과잉회피로 **해침** (tradeoff 위치 확정).
+raw: `reports/multihop_terse_mixtral-8x7b_20260604_204351.json`.
+
+## 11. PM-4/PM-5: raw(vanilla RAG) vs JAMES-full — abstention이 지배
+
+raw = retrieval(top-5) + 단일 LLM 호출, JAMES 추론 스택 제거. terse 동일,
+num_ctx 16384. validity guard: 양쪽 75/75 answerable evidence (leak 없음).
+
+### 3×2 (primary / answerable-only / null)
+| 구성 | primary | answerable-only | null |
+|---|---|---|---|
+| paper-Mixtral | 0.32 | — | — |
+| RAW e4b | 0.52 | 0.39 | 0.92 |
+| JAMES-full e4b | 0.45 | 0.29 | 0.92 |
+| RAW mixtral | 0.55 | **0.65** | **0.24** |
+| JAMES-full mixtral | 0.46 | 0.29 | **0.96** |
+
+### type별 (mixtral)
+| type | RAW | full | Δ(full-raw) |
+|---|---|---|---|
+| inference | 0.92 | 0.56 | −0.36 |
+| comparison | 0.72 | 0.20 | −0.52 |
+| temporal | 0.32 | 0.12 | −0.20 |
+| null | 0.24 | 0.96 | +0.72 |
+
+### 결론 (사용자 직감 "abstention 과잉" 확정)
+1. **JAMES 스택 = abstention 다이얼.** answerable↔null 맞바꿈. mixtral
+   answerable 0.65→0.29, null 0.24→0.96. 스택이 답을 죽이고 회피를 살림.
+2. **"모델 무관성"은 스택 착시.** 스택이 answerable을 ~0.29 천장에 가둠.
+   제거 시 모델 능력 드러남: raw mixtral 0.65 ≫ raw e4b 0.39.
+3. **모델 성격**: e4b 천성 소심(raw null 0.92, ans 0.39); mixtral 천성
+   자신만만(raw ans 0.65, null 0.24 환각) → JAMES 회피 규율 필수(0.24→0.96).
+4. **JAMES 진짜 가치 = 자신만만 모델의 환각 억제** (mixtral null 0.24→0.96).
+   단 현재 과잉 교정 → answerable 동반 사망.
+5. **이상 = raw 답변력(0.65) + full 회피력(0.96).** 현재 어느 설정도 둘 다
+   못 가짐. §8 게이트-조건부 decoupling이 타깃.
+6. **paper 대비**: 같은 모델 raw mixtral answerable 0.65 ≫ paper 0.32 →
+   **우리 retrieval 강함.** "+0.14 우위(full 0.46 vs paper 0.32)"의 정체 =
+   abstention 구성, 추론 스택은 answerable에 음의 기여.
+raw: `reports/multihop_raw_{gemma4-e4b,mixtral-8x7b}_20260604_*.json`
+
+### 후속 (필요 확정)
+- 천장 원인 = 추론 스택의 과잉 abstention. **다음 = 스택 stage-localization**
+  (reflect/verify/relevance-gate/graph 중 어디가 answerable 죽이나) →
+  게이트-조건부 decoupling 설계 → null≥0.9 유지하며 answerable 회복 측정.
