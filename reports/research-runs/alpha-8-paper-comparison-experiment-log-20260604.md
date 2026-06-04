@@ -241,3 +241,73 @@ honest framing:
   (26GB CPU-offload, 100Q 수 시간.)
 - 재현: `scripts/research/multihop_terse_run.py`
   (`PROOF_MODEL`/`FIXTURE` 환경변수, default = base fixture)
+
+## 8. 과잉 abstention 감소 가능성 조사 (2026-06-04, 사용자 발의)
+
+질문: 과잉 abstention(comparison/temporal said_insufficient)을 줄여 추론을
+늘릴 수 있나? abstention 강점(null 0.92)은 유지하면서.
+
+### JAMES abstention 4층
+| 층 | 위치 | 동작 |
+|---|---|---|
+| ① 관련성 게이트 | `pipeline_context.py` `_RELEVANCE_GATE=0.45` | avg_vec<0.45 → 근거없음 |
+| ② unified 라우팅 | `pipeline_synth.py` | context 없으면 web-fallback |
+| ③ 모델 자기-회피 | `response_style.py` terse rule | "근거없으면 insufficient" 출구 |
+| ④ retry 소프트너 | `pipeline_synth.py:244` | "자료에 없음" → persona 재시도 (abstention 줄임) |
+
+### 진단
+- e4b said_insufficient는 **sources>0(①② 통과)** 상태에서 발생 → 원인은 ③
+  (모델이 프롬프트 출구 택함), 게이트 아님.
+- ④ 소프트너는 한국어 "자료에 없음" 접두사만 잡음 → 영어 "insufficient
+  information" 통과 (측정모드 사각지대).
+
+### 결론 — 감소 가능 (decoupling), 단 모델 능력이 상한
+- JAMES가 이미 answerable vs null을 가르는 신호(게이트 0.45) 보유 →
+  **게이트 통과 시 abstention 출구 제거(best-effort 강제), 실패 시 허용**으로
+  분리 가능. null 강점 보존하며 answerable 회복 = tradeoff-최소 경로.
+- 레버(surgical 순): (1) 게이트-조건부 프롬프트 (2) synth think=ON 조건부
+  (3) 소프트너 ④ 영어 마커 확장.
+- **상한**: 4B는 출구 막아도 합성 불가 시 said_insufficient→wrong로 바뀔 뿐.
+  실익은 모델 추론력 비례 → mixtral(PM-3)이 정량 검증 (said_insufficient가
+  correct로 바뀌면 = 레버 유효 + 병목=모델 확정).
+- 기존 env `JAMES_DISABLE_ABSTENTION=1`은 ④를 끄는(=abstention 늘리는) 측정용,
+  방향 반대. "줄이는" 전용 knob 부재.
+- 영역 겹침: 보류 S6 난이도 라우터 + memory `feedback_abstention_dial_vs_pareto`.
+- **구현은 미정** (mixtral 결과 보고 가치 판단). 본 절은 조사 기록.
+
+## 9. 과거 e4b vs 현재 e4b 비교 (2026-06-04, 사용자 요청)
+
+주의: 메트릭 다름 — 과거 graded(부분점수)+verbose, 현재 exact-match+terse.
+직접 숫자 비교 아니라 "구성 설명"으로 읽을 것.
+
+### 축 비교
+| 축 | 과거 (α-5/6) | 현재 (PM-1b) |
+|---|---|---|
+| 모델/fixture | e4b / MultiHop-RAG | 동일 |
+| 답변 형식 | 서술형 (NATURAL, 결함) | 단답 (terse, 수정 후) |
+| 정답 메트릭 | graded substring 부분점수 | paper-aligned exact-match |
+
+### JAMES+e4b 수치
+| 지표 | 과거 | 현재 | 비고 |
+|---|---|---|---|
+| 정답 | graded 0.343 | primary 0.45 / answerable 0.29 | 메트릭 달라 직접비교 불가 |
+| abstention | abst_f1 0.609 | null-acc 0.92 | 둘 다 강함 일관 |
+| path(인용) | +0.404 (S4 universal) | PM 미측정 | 과거 고유 |
+
+(출처: α-6 27b baseline `M_M e4b path 0.404/graded 0.343/abst_f1 0.609`,
+recovery-curve `M_M e4b pure graded 0.347/abst_f1 0.558`.)
+
+### 통찰 3
+1. **사용자 가설 확증 — 과거 graded noisy.** 서술형 답에 gold 조각 우연
+   포함 = substring 부분점수 noise ("점수 들쭉날쭉"). terse exact-match
+   answerable 0.29 = 깨끗한 진짜 값. 0.343→0.29는 하락 아니라 noise 제거.
+2. **과거 abst_f1 0.609 분해됨.** 단일 F1로 뭉쳐 있던 게 → null 0.92(탁월)
+   + answerable 과잉회피(F1 끌어내린 숨은 페널티)로 분리. 즉 과거 0.609의
+   원인 = 방금 발견한 과잉 abstention. 새 측정이 과거 숫자를 설명.
+3. **JAMES 기여 패턴 일관.** 과거: graded 거의 안 바꾸고 path +0.40 더함
+   (S4). 현재: inference 0.56로 끌어올림(4B 단독 불가). 둘 다 "모델 능력
+   변경보다 retrieval/구조로 작은 모델 떠받침" 동일 메커니즘.
+
+### 한 줄
+과거 숫자가 틀린 게 아니라, 현재 측정(platform 수정 + terse exact-match)이
+그 숫자의 **구성을 설명**한다. 다음: mixtral 행 추가 시 "모델 통제" 완성.
