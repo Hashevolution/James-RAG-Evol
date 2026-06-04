@@ -52,9 +52,18 @@ def main():
     print(f"=== PM-1 multihop terse: model={MODEL} n={len(queries)} ===", flush=True)
     for i, q in enumerate(queries, 1):
         try:
+            # 2026-06-05 §20 finding: a single shared session_id accumulates
+            # plan/reflect/verify episodic events across queries; engine_memory
+            # then injects the last 3 turns' critique-tone summaries into
+            # system_prompt, which (post cap[:1000] fix) leaks into the
+            # answer body as "## Revised Answer" / "This revision focuses on…"
+            # meta-mode, pushing yes/no verdicts past the lead-60-char matcher.
+            # Per-query session_id means hist_ctx="" → engine_memory line 164
+            # gate skips episodic inject automatically (each query is the
+            # session's first turn). Code change=1 line, production unchanged.
             out = eng.query(q["text"], user_role="admin", response_style="terse",
                             selected_model=MODEL, mode_override="retrieval",
-                            session_id="pm1-terse")
+                            session_id=f"pm-terse-q{q['id']}")
             ans = out.get("answer", "") if isinstance(out, dict) else str(out)
             srcs = (out.get("sources") or out.get("docs") or []) if isinstance(out, dict) else []
             n_src = len(srcs) if isinstance(srcs, (list, tuple)) else 0
