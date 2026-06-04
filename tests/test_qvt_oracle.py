@@ -840,6 +840,55 @@ class PaperAlignedAccuracyTests(unittest.TestCase):
         self.assertEqual(axis.n_answerable, 2)
         self.assertEqual(axis.n_null, 1)
 
+    def test_yesno_precision_no_substring_false_positive(self):
+        """P3 precision — gold 'no' must NOT match 'nothing'/'not'/'now'
+        substring. Word-boundary + answer-lead restriction."""
+        fixture = {
+            "version": "test",
+            "queries": [
+                {"id": 1, "question_type": "comparison_query",
+                 "abstention_truth": "present",
+                 "gold_signals": [{"term": "No", "aliases": []}]},
+            ],
+        }
+        # answer says "nothing" — substring 'no' present but NOT a 'No' verdict
+        bench = self._bench({1: "There is nothing conclusive in the sources."})
+        axis = score_paper_aligned_accuracy(bench, fixture)
+        self.assertEqual(axis.correct_primary, 0)   # 'nothing' != 'No' verdict
+
+    def test_yesno_precision_lead_window(self):
+        """P3 precision — a 'Yes' verdict at the front counts; a stray
+        'yes' buried deep in prose does not flip a different verdict."""
+        fixture = {
+            "version": "test",
+            "queries": [
+                {"id": 1, "question_type": "comparison_query",
+                 "abstention_truth": "present",
+                 "gold_signals": [{"term": "Yes", "aliases": []}]},
+            ],
+        }
+        # 'Yes' at front → hit
+        b1 = self._bench({1: "Yes, both reports confirm the increase."})
+        self.assertEqual(score_paper_aligned_accuracy(b1, fixture).correct_primary, 1)
+        # 'yes' only deep in long prose past the lead window → no hit
+        filler = "The provided documents discuss many topics in detail. " * 3
+        b2 = self._bench({1: filler + "so the answer would be yes eventually."})
+        self.assertEqual(score_paper_aligned_accuracy(b2, fixture).correct_primary, 0)
+
+    def test_entity_answer_keeps_substring_match(self):
+        """P3 precision applies word-boundary ONLY to yes/no; entity
+        answers (inference) keep the substring+negation matcher."""
+        fixture = {
+            "version": "test",
+            "queries": [
+                {"id": 1, "question_type": "inference_query",
+                 "abstention_truth": "present",
+                 "gold_signals": [{"term": "Sam Bankman-Fried", "aliases": []}]},
+            ],
+        }
+        bench = self._bench({1: "The trial concerns Sam Bankman-Fried and FTX."})
+        self.assertEqual(score_paper_aligned_accuracy(bench, fixture).correct_primary, 1)
+
     def test_real_fixture_smoke(self):
         # Runs against the real multihop fixture + a trivial all-miss bench;
         # just ensures no crash + sane partition (75 answerable / 25 null).
