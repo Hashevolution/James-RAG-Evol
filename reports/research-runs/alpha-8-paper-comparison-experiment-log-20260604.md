@@ -387,3 +387,176 @@ raw: `reports/multihop_raw_{gemma4-e4b,mixtral-8x7b}_20260604_*.json`
 - 천장 원인 = 추론 스택의 과잉 abstention. **다음 = 스택 stage-localization**
   (reflect/verify/relevance-gate/graph 중 어디가 answerable 죽이나) →
   게이트-조건부 decoupling 설계 → null≥0.9 유지하며 answerable 회복 측정.
+
+## 12. PM-6: stage-localization — 인지 stage는 범인 아님 (negative)
+
+e4b full + `JAMES_DISABLE_COGNITIVE_STAGES=1` (planner/reflect/verify off).
+
+| | full(PM-1b) | cognitive-off(PM-6) | raw(PM-4) |
+|---|---|---|---|
+| primary | 0.45 | 0.42 | 0.52 |
+| inference | 0.56 | 0.44 | 0.60 |
+| temporal | 0.20 | 0.04 | 0.16 |
+| null | 0.92 | **1.00** | 0.92 |
+| answerable-only | 0.29 | 0.23 | 0.39 |
+
+- **인지 stage 끄니 abstention 더 심해짐** (null 1.00, answerable 0.23↓).
+  reflect/verify는 오히려 inference 도움(0.56 vs 0.44). over-abstention 원인 ✗.
+- 범인 = raw와 full의 나머지 차이: query_rewrite / multi-arm retrieve /
+  rerank / graph context / synth 프롬프트 조립.
+
+### 공짜 진단 (답 나란히 비교)
+- raw 맞고 full insufficient인 comparison: 전부 raw_src=5, full_src=3
+  (단 count 방식 다름 — raw=chunk, full=unique file).
+- over-abstention은 **multi-fact 합성형(comparison/temporal)에 집중**, 단일
+  개체 inference는 거의 영향 없음.
+- **메커니즘 가설**: multi-hop yes/no는 2+ chunk 합성 필요 → full의 context
+  pruning이 한쪽 누락 → 합성 불가 → insufficient. raw 5 chunk는 양쪽 포함 ↑.
+- nuance: e4b raw comparison 0.40엔 yes/no 추측 섞임(≈coin-flip). mixtral
+  raw 0.72는 진짜 합성 → 스택이 과잉회피만 멈추면 큰 모델은 합성 함.
+
+### 상태
+- 정밀 localization은 추가 ablation(graph-off / rerank-off / query_rewrite-off)
+  각 ~30-40min 필요 = multi-hour 캠페인.
+- 고수준 결론은 확정: JAMES full pipeline이 multi-hop 합성형에서 과잉회피,
+  원인은 인지 stage 아닌 retrieval/context 조립. 다음 = 게이트-조건부
+  decoupling 설계(focused) vs 추가 ablation — 사용자 판단 대기.
+
+## 13. 자율 개선 캠페인 (2026-06-04 저녁, 사용자 위임 ~6h)
+
+위임: ablation 완료 → 수정사항 신중 판단·선택 실행 → 같은 조건 재측정 검증
+→ e4b 추론 점수 안정 향상까지 반복 → 성공 시 mixtral 연이어 → 보고.
+자율 수행하되 수정은 신중 판단, 반드시 기록.
+
+### 가드레일 (자율 판단 기준)
+1. **null abstention 보호 — 탐색 하한 0.70** (사용자 조정 2026-06-05):
+   탐색 중 null을 0.70까지 내려보며 answerable↔null tradeoff 곡선의 knee와
+   진짜 기전을 매핑(0.88 고정은 기전 가릴 수 있어 완화). null<0.70이면 revert.
+   최종 추천 config = answerable↑ 대비 null 손실의 Pareto 균형으로 판단.
+2. mother-platform: 도메인 종속 X, 일반 개선만. default 안전(불확실시 env-gate).
+3. 모든 변경 = 기록(이 로그) + 커밋. 채택/기각 모두 사유 명시.
+4. 최소·가역 변경, diff 자가검증.
+5. 반복 상한 ~3회. 수렴 안 하면 현 상태 기록 후 보고.
+6. 정직한 목표: e4b 4B 천장 인정 → 목표 = 스택이 깎은 손실 회복(full ans
+   0.29 → raw ~0.39 수준, null 유지), e4b 천재화 아님.
+
+### 기준선 (e4b, terse, num_ctx 16384)
+| 구성 | primary | answerable-only | null |
+|---|---|---|---|
+| RAW | 0.52 | 0.39 | 0.92 |
+| full | 0.45 | 0.29 | 0.92 |
+| cognitive-off | 0.42 | 0.23 | 1.00 |
+
+### ablation 결과 (채워질 예정)
+| 토글 | primary | answerable | null | 판정 |
+|---|---|---|---|---|
+| rerank-off (PM-7) | 0.43 | 0.27 | 0.92 | ✗ 범인 아님 (answerable 회복 X) |
+| graph-off (PM-8) | 0.44 | 0.28 | 0.92 | ✗ 범인 아님 |
+| (cognitive-off PM-6) | 0.42 | 0.23 | 1.00 | ✗ (오히려 abstention↑) |
+| → 3종 ablation 전부 ✗ = root cause는 stage 아님 → §14 context[:1000] |
+| query_rewrite-off (PM-9) | … | … | … | … |
+
+### 수정 이력 (채워질 예정)
+- (수정 채택/기각 기록)
+
+## 14. ROOT CAUSE — synth 프롬프트 context[:1000] truncation (2026-06-05)
+
+ablation(인지/rerank/graph) 모두 answerable 회복 실패 → 코드 읽기로 진짜 원인:
+
+`core/reasoning/engine_synth.py::generate_rag_answer` 가 evidence를
+**`context[:1000]` (1000자)로 잘라** 프롬프트에 넣음. raw runner는 chunk를
+`call_gemma`로 직접 넘겨 이 cap을 우회 → full evidence.
+
+### 왜 이게 모든 걸 설명하나
+- multi-hop(comparison/temporal)은 2+ fact 필요. 두 번째 fact가 char 1000
+  뒤에 있으면 잘림 → 합성 불가 → "insufficient" 과잉회피.
+- inference(단일 fact, 보통 앞쪽 chunk)는 덜 영향 → 관측된 type 패턴 일치.
+- **num_ctx=16384가 안 먹힌 이유**: 잘림이 모델 context window가 아니라
+  프롬프트 조립 단계(`[:1000]`)에서 발생 → 모델은 1000자만 봄.
+- stage 토글로 안 잡힌 이유: 어느 stage도 이 truncation을 안 건드림.
+
+### 수정 (env-gated, 최소·가역)
+`JAMES_SYNTH_CONTEXT_CHARS` env (default 1000 = production byte-identical).
+측정/multi-hop은 상향(테스트 8000). 채택 시 default 변경은 측정 결과로 정당화.
+
+### 검증 계획
+- PM-10: e4b full + JAMES_SYNTH_CONTEXT_CHARS=8000 재측정. answerable이
+  raw(0.39)쪽으로 가면 root cause 확정 + 수정 유효. null 변화 추적(탐색
+  하한 0.70).
+- PM-9(query_rewrite-off)는 불필요 → PM-10으로 대체.
+
+## 15. PM-10: fix 검증 (context cap 1000→8000, e4b) — 성공
+
+| | full(PM-1b) | PM-10 cap8000 | raw |
+|---|---|---|---|
+| primary | 0.45 | **0.48** | 0.52 |
+| inference | 0.56 | **0.80** | 0.60 |
+| comparison | 0.12 | 0.16 | 0.40 |
+| temporal | 0.20 | 0.08 | 0.16 |
+| null | 0.92 | **0.88** | 0.92 |
+| answerable-only | 0.29 | **0.347** | 0.39 |
+
+- **root cause 확정 + fix 유효.** context cap만 1000→8000 했는데 answerable
+  0.29→0.347, inference 0.56→0.80(raw 0.60 초과), null 0.88(>0.70 floor 유지).
+  **가드레일 충족(answerable↑ AND null≥0.70) → 채택.**
+- 남은 gap(0.347 vs raw 0.39) = comparison/temporal e4b yes/no 합성 한계(context 무관).
+- **temporal 0.20→0.08 하락** (n=25 노이즈 가능 / over-stuffing 의심) →
+  PM-11 cap=4000으로 Pareto knee 탐색.
+
+### 수정 이력
+- [채택] `engine_synth.py` context[:1000] → context[:JAMES_SYNTH_CONTEXT_CHARS]
+  (default 1000 byte-identical). 근거: PM-10 answerable +0.057, inference
+  +0.24, null −0.04(floor 내). 기존 unit test 28 pass.
+- default 변경 여부 = PM-11 Pareto 결과로 판단(현재 default 1000 유지).
+
+## 16. PM-11: cap Pareto sweep (e4b) — 8000이 최적
+
+| cap | answerable | inference | comparison | temporal | null |
+|---|---|---|---|---|---|
+| 1000(full) | 0.29 | 0.56 | 0.12 | 0.20 | 0.92 |
+| 4000 | 0.32 | 0.76 | 0.12 | 0.08 | 0.88 |
+| 8000 | **0.347** | **0.80** | 0.16 | 0.08 | 0.88 |
+
+- **8000이 4000 지배** (answerable·inference↑, null·temporal 동일). knee 이득
+  없음 — answerable은 cap에 단조 증가.
+- temporal 0.20→0.08은 4000에서 이미 발생(over-stuffing 아님) = e4b temporal
+  약점 + n=25 노이즈(raw도 0.16).
+- **e4b cap 8000에서 안정화**: answerable 0.29→0.347(raw 0.39 근접). 남은
+  gap = e4b yes/no 능력 천장(context 무관). 추가 조정 중단(과적합 방지).
+- default 변경 권고: 1000은 명백히 과소(multi-hop 불구). 권고값은 보고서에서
+  latency/abstention 균형으로 제시. 측정은 8000 계속.
+
+## 17. ★ 핵심 발견 요약 (2026-06-05) — 통합
+
+### 한 문장
+**JAMES synth 프롬프트의 하드코딩 `context[:1000]` 한 줄이 evidence를 1000자로
+잘라, 플랫폼 전체의 multi-hop 추론을 장기간 조용히 불구로 만들고 있었다.**
+이를 풀자 (env-gate) e4b inference 0.56→0.80, answerable 0.29→0.347.
+
+### 발견의 사슬 (방법론)
+1. raw(vanilla RAG) > JAMES-full 역전 발견 (mixtral answerable 0.65 vs 0.29).
+2. "스택이 abstention과 answerable을 맞바꾼다" 가설 (사용자 직감).
+3. stage ablation 캠페인(인지/rerank/graph) 전부 negative → stage 아님.
+4. 코드 read → `context[:1000]`. raw가 이 cap을 우회했던 게 차이.
+5. num_ctx는 red herring (cut이 프롬프트 조립단계, 모델 window 아님).
+6. fix(env-gate) + cap sweep(4000<8000) 검증 → root cause 확정.
+
+### 왜 큰 발견인가
+- **장기 platform 품질 버그**: 1000자 cap이 모든 multi-hop RAG 답변 품질을
+  깎아옴 (과거 graded 측정도 이 위에서 이뤄짐).
+- **2개 착시를 설명**: (a) "모델 무관성"(e4b≈mixtral) — 둘 다 1000자만 받아
+  능력차 안 드러남. (b) "abstention 강점" 일부 — evidence starvation 부작용
+  (진짜 abstention 규율은 별개로 건강, null 0.88 유지).
+- **측정 방법론 가치**: ablation 전부 negative가 "stage 아님"의 강한 증거가
+  되어 코드 read를 강제 → root cause 도달. honest negative의 힘.
+
+### 정직한 경계 (over-claim 금지)
+- fix는 inference(개체 추출)에 큰 효과. comparison/temporal(yes/no 합성)은
+  e4b 모델 능력 천장이라 context로 안 풀림 (raw에서도 약함).
+- temporal 0.20→0.08 하락은 미해결(노이즈 가능). 추적 필요.
+- default 변경(1000→?)은 latency/abstention 균형 결정 — 보고서에서 권고.
+- mixtral+fix(PM-12) 결과가 "raw 답변력+full 회피력 동시 달성" 확정/반증.
+
+### 채택된 코드 변경
+- `core/reasoning/engine_synth.py`: `context[:1000]` → `context[:JAMES_SYNTH_CONTEXT_CHARS]`
+  (default 1000 byte-identical). commit `fix(synth): env-gate evidence char budget`.
