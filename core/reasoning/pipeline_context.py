@@ -150,6 +150,7 @@ def apply_post_check_and_sources_header(
     loop_state: Dict[str, Any],
     final_context: str,
     user_role: str,
+    response_style: str = "",
 ) -> str:
     """Security post_check + [관련 자료 목록] sources-header prepend.
 
@@ -182,7 +183,18 @@ def apply_post_check_and_sources_header(
             s_disp = s.split("/")[-1].split("\\")[-1]
             source_names.append(s_disp[:60])
             seen_sources.add(s)
-    if safe_context.strip() and source_names:
+    # 2026-06-04: header gated on the resolved style's answer-format
+    # contract. NATURAL (default) → prepend (byte-identical). TERSE and
+    # any future single-answer style → omit, since the header pushes the
+    # LLM toward the verbose "Source files:" opening the user opted out
+    # of. Header omission does not change retrieval — only the citation
+    # hint injected into context.
+    try:
+        from core.response_style import resolve_style
+        _inject_header = resolve_style(response_style).inject_sources_header
+    except Exception:
+        _inject_header = True
+    if _inject_header and safe_context.strip() and source_names:
         sources_header = (
             "[관련 자료 목록]\n"
             + "\n".join(f"- {s}" for s in source_names)

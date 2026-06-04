@@ -178,5 +178,99 @@ class ChatParagraphPreservationTests(unittest.TestCase):
                       "v2 must collapse 3+ newlines to 2, preserving paragraphs")
 
 
+class StyleOverrideTests(unittest.TestCase):
+    """2026-06-04 — restore user/operator style override (v2 hardcode
+    blocked it = platform defect). default stays NATURAL byte-identical;
+    explicit/env 'terse' diverges to TERSE_PRESET."""
+
+    def setUp(self):
+        from core import response_style
+        self.rs = response_style
+        self._saved_env = os.environ.get("JAMES_RESPONSE_STYLE")
+        os.environ.pop("JAMES_RESPONSE_STYLE", None)
+
+    def tearDown(self):
+        if self._saved_env is None:
+            os.environ.pop("JAMES_RESPONSE_STYLE", None)
+        else:
+            os.environ["JAMES_RESPONSE_STYLE"] = self._saved_env
+
+    def test_default_is_natural_byte_identical(self):
+        # No explicit, no env → NATURAL (production unchanged).
+        self.assertIs(self.rs.resolve_style(), self.rs.NATURAL_PRESET)
+        self.assertIs(self.rs.resolve_style(""), self.rs.NATURAL_PRESET)
+        self.assertIs(self.rs.resolve_style(None or ""), self.rs.NATURAL_PRESET)
+
+    def test_explicit_terse_resolves_terse(self):
+        self.assertIs(self.rs.resolve_style("terse"), self.rs.TERSE_PRESET)
+        self.assertIs(self.rs.resolve_style("TERSE"), self.rs.TERSE_PRESET)
+        self.assertIs(self.rs.resolve_style(" terse "), self.rs.TERSE_PRESET)
+
+    def test_env_terse_resolves_terse(self):
+        os.environ["JAMES_RESPONSE_STYLE"] = "terse"
+        self.assertIs(self.rs.resolve_style(), self.rs.TERSE_PRESET)
+
+    def test_explicit_overrides_env(self):
+        os.environ["JAMES_RESPONSE_STYLE"] = "natural"
+        # explicit terse wins over env natural
+        self.assertIs(self.rs.resolve_style("terse"), self.rs.TERSE_PRESET)
+
+    def test_v1_presets_still_natural(self):
+        # brief/standard/detailed NOT resurrected (no token-cut) → NATURAL
+        for s in ("brief", "standard", "detailed"):
+            self.assertIs(self.rs.resolve_style(s), self.rs.NATURAL_PRESET)
+
+    def test_unknown_falls_back_to_natural(self):
+        self.assertIs(self.rs.resolve_style("nonsense-style"), self.rs.NATURAL_PRESET)
+
+    def test_terse_preset_rule_text_demands_answer_line(self):
+        # TERSE rule_text must instruct ANSWER: line + forbid Source files
+        for rt in (self.rs.TERSE_PRESET.rule_text_ko, self.rs.TERSE_PRESET.rule_text_en):
+            self.assertIn("ANSWER:", rt)
+        # forbids the NATURAL scaffolding
+        self.assertIn("Source files", self.rs.TERSE_PRESET.rule_text_en)  # mentioned as "do NOT"
+
+
+class AnswerFormatContractTests(unittest.TestCase):
+    """2026-06-04 — the StylePreset is the single source of truth for the
+    *whole* answer shape across all 3 forcing layers (L1 character
+    directives, L2 rule_text, L3 sources header). NATURAL keeps every
+    layer ON (byte-identical); TERSE collapses all three."""
+
+    def test_natural_keeps_all_layers_on(self):
+        from core.response_style import NATURAL_PRESET
+        self.assertTrue(NATURAL_PRESET.inject_character_directives,
+                        "NATURAL must keep L1 character injection (default)")
+        self.assertTrue(NATURAL_PRESET.inject_sources_header,
+                        "NATURAL must keep L3 sources header (default)")
+
+    def test_terse_collapses_all_layers(self):
+        from core.response_style import TERSE_PRESET
+        self.assertFalse(TERSE_PRESET.inject_character_directives,
+                         "TERSE must suppress L1 character persona")
+        self.assertFalse(TERSE_PRESET.inject_sources_header,
+                         "TERSE must suppress L3 sources header")
+
+    def test_l1_callsite_gates_on_contract(self):
+        # build_memory_context must read the resolved style's
+        # inject_character_directives flag (not inject unconditionally).
+        import core.reasoning.engine_memory as em
+        import inspect
+        src = inspect.getsource(em.build_memory_context)
+        self.assertIn("inject_character_directives", src)
+        self.assertIn("response_style", src,
+                      "L1 must receive response_style to resolve the style")
+
+    def test_l3_callsite_gates_on_contract(self):
+        # apply_post_check_and_sources_header must read the resolved
+        # style's inject_sources_header flag.
+        import core.reasoning.pipeline_context as pc
+        import inspect
+        src = inspect.getsource(pc.apply_post_check_and_sources_header)
+        self.assertIn("inject_sources_header", src)
+        self.assertIn("response_style", src,
+                      "L3 must receive response_style to resolve the style")
+
+
 if __name__ == "__main__":
     unittest.main()

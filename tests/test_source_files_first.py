@@ -145,8 +145,11 @@ class PipelineSourcePrependTests(unittest.TestCase):
     def test_skip_when_no_context(self):
         # If safe_context is empty (no retrieval result), prepending
         # the header would mislead the model. Source prepend is gated
-        # on safe_context.strip().
-        self.assertIn("if safe_context.strip() and source_names", self.src,
+        # on safe_context.strip() AND a non-empty source list. (As of
+        # 2026-06-04 the condition also includes an _inject_header style
+        # gate — TERSE suppresses the header — so match the substring
+        # that survives the added gate rather than the whole if-line.)
+        self.assertIn("safe_context.strip() and source_names", self.src,
                       "source-prepend must be gated on non-empty context "
                       "AND non-empty source list")
 

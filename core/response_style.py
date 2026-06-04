@@ -71,6 +71,20 @@ class StylePreset:
     force_two_sections: bool
     rule_text_ko:       str
     rule_text_en:       str
+    # ── Answer-format contract (2026-06-04) ──────────────────────────
+    # The preset is the single source of truth for the *whole* answer
+    # shape, not just the synth-layer rule_text. Two upstream layers
+    # also force verbose output and must honor the resolved style:
+    #   inject_character_directives — L1: the 16-trait character-profile
+    #       persona/directive block (engine_memory.build_memory_context).
+    #   inject_sources_header       — L3: the "[관련 자료 목록]" header
+    #       prepended to context (pipeline_context.apply_post_check_…).
+    # Default True/True = NATURAL = production byte-identical. TERSE sets
+    # both False so a single style request ("terse") collapses all three
+    # layers to single-answer mode. See memory
+    # feedback_response_style_hardcode_platform_defect.
+    inject_character_directives: bool = True
+    inject_sources_header:       bool = True
 
 
 # The one natural-flow preset. All public ids resolve to this.
@@ -153,21 +167,80 @@ NATURAL_PRESET = StylePreset(
 )
 
 
+# Terse preset — single canonical answer, no NATURAL flow scaffolding.
+# Added 2026-06-04 to (a) restore user style override (the v2 hardcode
+# blocked it — platform defect, see memory
+# feedback_response_style_hardcode_platform_defect) and (b) enable
+# benchmark single-answer measurement (paper-aligned exact-match).
+#
+# Opt-in only: default (no explicit / no env) stays NATURAL =
+# production byte-identical. Operators/users request terse via the
+# QueryRequest.response_style field or JAMES_RESPONSE_STYLE=terse.
+TERSE = "terse"
+
+TERSE_PRESET = StylePreset(
+    name="terse",
+    max_tokens=8192,
+    force_two_sections=False,
+    rule_text_ko=(
+        "답변 작성 가이드 (간결 모드):\n"
+        "- 추론은 자유롭게 하되, 마지막 줄에 'ANSWER:' 뒤에 직접 답만 "
+        "쓰세요 (개체명, 또는 'Yes'/'No').\n"
+        "- '관련 자료:' / 'Source files:' 헤더, 다음 작업 제안, 보고서 "
+        "형식(## 섹션)을 쓰지 마세요.\n"
+        "- 제공된 자료에 답이 없으면 'ANSWER: insufficient information'.\n"
+    ),
+    rule_text_en=(
+        "Answer guide (terse mode):\n"
+        "- Reason freely, but on the LAST line write 'ANSWER:' followed "
+        "by ONLY the direct answer (entity name, or 'Yes'/'No').\n"
+        "- Do NOT add a 'Source files:' header, next-action suggestions, "
+        "or report-format (## sections).\n"
+        "- If the context lacks the answer: 'ANSWER: insufficient information'.\n"
+    ),
+    # Collapse the two upstream verbose layers too — otherwise the
+    # character persona (L1) and sources header (L3) re-introduce the
+    # scaffolding the terse rule_text (L2) just forbade.
+    inject_character_directives=False,
+    inject_sources_header=False,
+)
+
+
+# Style id → preset registry. default (unmatched / empty) → NATURAL.
+_STYLE_REGISTRY = {
+    "terse": TERSE_PRESET,
+    "natural": NATURAL_PRESET,
+    # brief / standard / detailed keep resolving to NATURAL (v2 decision:
+    # the v1 token-cutting presets were rejected by user feedback; we
+    # do NOT resurrect token-cut behavior, only style/format variants).
+    "brief": NATURAL_PRESET,
+    "standard": NATURAL_PRESET,
+    "detailed": NATURAL_PRESET,
+}
+
+
 def resolve_style(explicit: str = "") -> StylePreset:
-    """Resolve the active style preset.
+    """Resolve the active style preset, honoring user/operator override.
 
-    v2: ignores `explicit` (and the `JAMES_RESPONSE_STYLE` env) — all
-    inputs resolve to NATURAL_PRESET. Kept as a function so the call
-    sites don't need to change. The signature also documents that
-    explicit style ids are accepted (for forward compat if a future
-    pack-level override resurrects the preset distinction).
+    Resolution order:
+      1. ``explicit`` arg (QueryRequest.response_style API field)
+      2. ``JAMES_RESPONSE_STYLE`` env
+      3. default → NATURAL_PRESET (production byte-identical)
 
-    The env var is still read so an unrecognised value here doesn't
-    silently differ from the v1 behavior — but since all values now
-    map to NATURAL, the read is informational only.
+    2026-06-04 fix — restore override (the v2 hardcode ignored both
+    inputs and forced NATURAL, blocking any user style request = mother
+    platform defect, see memory
+    feedback_response_style_hardcode_platform_defect). Default behavior
+    is unchanged: with no explicit and no env, returns NATURAL exactly
+    as before. Only an explicit/env style id (e.g. "terse") diverges.
+
+    Unrecognized ids fall through to NATURAL (forgiving — a typo
+    shouldn't break the answer path). The v1 token-cutting presets
+    (brief/standard/detailed) are NOT resurrected; they map to NATURAL.
     """
-    # Read but ignore — preserves the v1 API surface for any caller
-    # that introspects this function's behavior.
-    _ = (explicit or "").strip().lower()
-    _ = (os.getenv("JAMES_RESPONSE_STYLE", "") or "").strip().lower()
-    return NATURAL_PRESET
+    requested = (explicit or "").strip().lower()
+    if not requested:
+        requested = (os.getenv("JAMES_RESPONSE_STYLE", "") or "").strip().lower()
+    if not requested:
+        return NATURAL_PRESET
+    return _STYLE_REGISTRY.get(requested, NATURAL_PRESET)
