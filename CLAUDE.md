@@ -161,8 +161,9 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
-| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/handovers/v0.4-mother-platform-6-principles-cycle-2026-06-05.md`** (BIG: cap[:1000] fix Default flip (PR-A b59e7ee) + mother-platform 평가 6 원칙 정립 + V2/P-1 cycle β auto-selection 후보. PM-12-final mixtral 진행 중 + cycle β 진입 결정만 남음) |
-| Prev entry (cap[:1000] discovery) | `docs/handovers/v0.4-multihop-synth-context-fix-2026-06-05.md` |
+| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/handovers/v0.4-cycle-beta-entry-2026-06-06.md`** (BIG: cycle 마감 + cycle β 진입. 6 원칙 + 4-layer matrix + persona = 단축 손해 진짜 source 확정. 첫 작업 = engine_memory persona 옵션화 Phase A-E. 의무 reading 4-doc 묶음 명시.) |
+| Prev entry (cycle 마감 + 6 원칙) | `docs/handovers/v0.4-mother-platform-6-principles-cycle-2026-06-05.md` |
+| Prev-prev entry (cap[:1000] discovery) | `docs/handovers/v0.4-multihop-synth-context-fix-2026-06-05.md` |
 | Prev entry (Direction α 측정 closure) | `reports/research-runs/alpha-8-cloud-tier-extension-20260604.md` (premise 미입증, S6/S7 보류) + 5 measurement-side rules |
 | Direction α design memo (§4.1 local-vs-cloud ①) | `docs/design/v0.4-direction-alpha-hybrid-cloud-tier.md` |
 | Direction α local-vs-cloud premise + sequencing | memory `project_direction_alpha_local_vs_cloud_quality_thread` |
