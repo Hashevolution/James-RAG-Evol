@@ -280,13 +280,52 @@ chroma + corpus 인덱싱) 위에 simple LLM call** (no advanced stack).
 | 모델 size 흡수 | 4B Default 0.480 ≈ 47B Default 0.450 | PM-10 vs PM-12-final |
 | cap fix Default 회복 | primary +0.030 / graded +0.077 / abst_F1 +0.088 | PM-1b vs PM-10 |
 
-## 누락 측정 list (정합성 점검 2026-06-05, 사용자 catch 후 추가)
+## JAMES 바닐라 (알맹이) 정의 + 5-layer 비교 구조 (2026-06-05 사용자 catch 후 추가)
+
+### JAMES 바닐라 두 정의
+
+| 정의 | 의미 | 측정 cell |
+|---|---|---|
+| **(a) 좁은 정의** | JAMES retrieval + simple LLM call (engine_synth / engine_memory 우회). raw runner 가 측정 | PM-4 / PM-5 (JAMES terse prompt), **PM-LL / PM-LL-e4b** (paper prompt) |
+| **(b) 넓은 정의** | JAMES default minimum path. advanced OFF + engine_synth + engine_memory + response_style + audit 포함 (production minimum) | **빠진 cell** — 모든 JAMES_ENABLE_* OFF + cap=8000 + terse + same-session 측정 없음 |
+
+→ (a) 좁은 = framework 자체 비교에 적합. (b) 넓은 = production minimum
+baseline. 두 정의 모두 측정 시 모든 layer contribution 완전 분해 가능.
+
+### 비교 5-layer 구조
+
+| Layer | LlamaIndex 측 | JAMES 측 | 통제 변수 | 측정 의미 | 현 상태 |
+|---|---|---|---|---|---|
+| A | paper 그대로 | JAMES Default full | model 만 | system-as-deployed | PM-12-final vs paper |
+| B | (paper measurement 그대로) | JAMES corpus + paper prompt + advanced OFF (= JAMES 바닐라 좁은) | corpus + model + prompt + top-K + reranker | JAMES 바닐라 좁은 vs paper | **PM-LL vs paper (현재)** |
+| **C** | JAMES corpus + LlamaIndex 그대로 (chunk 256 + voyage-02 + LlamaIndex VectorStoreIndex) | JAMES Default | corpus + chunking + embedding + retrieval engine + model | 진짜 framework comparison | ⏳ cycle β publication 직전 |
+| D | C 단계 + LlamaIndex SubQuestionQueryEngine + CohereRerank + ChatEngine | JAMES Default | + 양 framework advanced 컴포넌트 | advanced vs advanced design philosophy | ⏳ cycle β publication 직전 |
+| **E (빠짐)** | LlamaIndex 바닐라 (paper measurement 그대로) | **JAMES 바닐라 넓은 정의** (advanced OFF + engine_synth + memory + response_style 활성) | 양쪽 production minimum core path | 두 framework 의 진짜 "바닐라 대 바닐라" production-realistic 비교 | ⏳ 측정 가능 (~25-100min) |
+
+### JAMES 바닐라 vs LlamaIndex 바닐라 비교 (이미 측정 완료, 좁은 정의)
+
+| Cell | 정체 | 측정 값 |
+|---|---|---|
+| LlamaIndex 바닐라 mixtral 47B | paper everything | **0.320** |
+| LlamaIndex 바닐라 Llama 70b | paper everything | 0.280 |
+| JAMES 바닐라 (a) mixtral 47B + paper prompt | JAMES retrieval + paper prompt + top-10 | **PM-LL-mixtral 0.500** |
+| JAMES 바닐라 (a) e4b 4B + paper prompt | JAMES retrieval + paper prompt + top-10 | **PM-LL-e4b 0.530** |
+| JAMES 바닐라 (a) e4b + JAMES terse prompt | JAMES retrieval + JAMES terse + top-5 | PM-4 raw 0.520 |
+| JAMES 바닐라 (a) mixtral + JAMES terse prompt | JAMES retrieval + JAMES terse + top-5 | PM-5 raw ~0.55 (partial) |
+
+→ **JAMES 바닐라 (좁은 정의) > LlamaIndex 바닐라 (+0.18-0.21)** 양 모델
+모두. 진짜 양 framework "바닐라 대 바닐라" 의 부분 통제 비교.
+
+### 누락 측정 list (정합성 점검 2026-06-05, 사용자 catch 후 추가)
 
 cycle β scope 의 측정 보강 후보. priority 별 정리.
 
 | 누락 측정 | 의미 | priority | cycle / cost |
 |---|---|---|---|
 | **PM-10' (e4b stripper 적용 후 재측정)** | 양 모델 stripper-included Default 완성 | ⭐⭐⭐ | **즉시 (~25min, 진행 중 b2qb4xj5s)** |
+| **JAMES 바닐라 넓은 정의 측정 (b)** | advanced OFF + engine_synth/memory 활성 = production minimum baseline | ⭐⭐ | cycle β (~25-100min per model) |
+| **Layer C strict (chunk 256 + voyage-02 + LlamaIndex VectorStoreIndex)** | 진짜 framework comparison | ⭐⭐ | cycle β publication 직전 |
+| **Layer D (advanced vs advanced)** | 두 framework design philosophy 비교 | ⭐ | cycle β publication 직전 |
 | **NATURAL 모드 측정** | production 핵심 use case (대부분 사용자 NATURAL chat) | ⭐⭐⭐ | cycle β NATURAL-grade oracle 후 |
 | **AnswerStyleClassifier 활성 측정** | cycle β 핵심 작업 1 의 효과 정량 | ⭐⭐⭐ | cycle β |
 | **closed-book (no retrieval)** | 진짜 모델 자체 능력 + learning leak 분리 | ⭐⭐ | cycle β publication 준비 |
