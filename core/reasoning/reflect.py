@@ -105,6 +105,19 @@ _META_NARRATIVE_PATTERNS = (
     r'^\s*Below\s+is\s+the\s+revised',
     r'^\s*Thank\s+you\s+for\s+the\s+(feedback|review|critique)',
     r'^\s*\[?Core\s+strategy\]?',
+    # 2026-06-05 §22 extension — PM-13 yielded 29/100 e4b meta-mode
+    # answers post cap[:1000] fix; none matched the original 6 EN
+    # patterns above. The post-cap-fix Gemma 4 revision openings are
+    # different: heading-style ("## Revised Answer"), reflexive-style
+    # ("This revision focuses on..."), and persona ("Hello, I am JAMES.
+    # I will follow the plan"). These are clearly meta — the model is
+    # describing its revision, not answering — but they sit outside
+    # the original opener vocabulary.
+    r'^\s*\*?\*?##?\s*Revised\s+(Answer|Draft|Version)\*?\*?:?',
+    r'^\s*\*\*\s*Revised\s+(Answer|Draft|Version)\s*\*?\*?:?',
+    r'^\s*This\s+revision\s+(focuses|addresses|maintains|assumes|adopts|tightens|reflects|incorporates)',
+    r'^\s*This\s+revised\s+(answer|draft|version|response)',
+    r'^\s*Hello,?\s+I\s+am\s+JAMES\.\s*I\s+will\s+follow',
 )
 
 
@@ -200,7 +213,13 @@ REVISE_PROMPT_EN = (
     "Do NOT explain what you changed.\n"
     "- Forbidden openings: 'Based on the review', 'I have revised', "
     "'Here is the revised version', 'Thank you for the feedback', "
-    "'The critique correctly pointed out', '[Core strategy]'.\n"
+    "'The critique correctly pointed out', '[Core strategy]', "
+    "'## Revised Answer', '**Revised Answer:**', '## Revised Draft', "
+    "'This revision focuses on...', 'This revision addresses...', "
+    "'This revised answer...', 'Hello, I am JAMES. I will follow the plan'.\n"
+    "- Do NOT open with a heading (`## Revised Answer`, `### Step 1:`, "
+    "`### 1. Analysis`, `### 1. Summary`) — the user wants the answer "
+    "itself, not a report structure.\n"
     "- The response must directly answer the user's original question "
     "(if the question is 'what is NVIDIA?', the response starts with "
     "'NVIDIA is...' or a similar answer sentence).\n\n"

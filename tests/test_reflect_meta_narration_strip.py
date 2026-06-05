@@ -65,6 +65,20 @@ from core.reasoning.reflect import (
     "Thank you for the feedback. Here is the revision.",
     "Thank you for the critique — updated answer follows.",
     "[Core strategy] tone adjustment + structure",
+    # 2026-06-05 §22 — PM-13 post cap[:1000] fix observed openings
+    "## Revised Answer",
+    "## Revised Draft",
+    "**Revised Answer:**",
+    "**Revised Answer**: The company is Meta.",
+    "This revision focuses on improving the professional tone, "
+    "tightening the language, and synthesizing the findings.",
+    "This revision addresses the structural concerns raised by the review.",
+    "This revision maintains the detailed, step-by-step structure while "
+    "explicitly addressing the ambiguity.",
+    "This revision assumes the review critique was that the answer was too academic.",
+    "This revision adopts a more formal, academic, and polished tone.",
+    "This revised answer addresses the specific points raised.",
+    "Hello, I am JAMES. I will follow the plan step-by-step.",
 ])
 def test_detector_flags_known_meta_openings(text):
     assert _looks_like_meta_narration(text), (
@@ -200,7 +214,15 @@ def test_revise_prompt_ko_forbids_meta_phrases_explicitly():
 
 def test_revise_prompt_en_forbids_meta_phrases_explicitly():
     src = REVISE_PROMPT_EN
-    for phrase in ("Based on", "I have revised", "Here is"):
+    for phrase in (
+        "Based on",
+        "I have revised",
+        "Here is",
+        # 2026-06-05 §22 extension — PM-13 post cap[:1000] meta openings
+        "## Revised Answer",
+        "This revision focuses on",
+        "Hello, I am JAMES",
+    ):
         assert phrase in src, (
             f"REVISE_PROMPT_EN should explicitly forbid {phrase!r}"
         )
