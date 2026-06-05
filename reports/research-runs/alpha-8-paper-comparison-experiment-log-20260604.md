@@ -1442,6 +1442,116 @@ mixtral cap fix 효과:
 
 다음 cycle β 진입 시 의무 reading.
 
+## 29. Mother-platform 6 원칙 + 진짜 Default verdict (2026-06-05)
+
+§26-§28 의 모든 측정/진단/framing 을 사용자 6 원칙 으로 정합화.
+
+### 6 원칙
+
+| # | 원칙 | 이번 cycle 적용 |
+|---|---|---|
+| 1 | 코드 끼워 맞춘 옵션형 거둬내기 + 추론 다이얼 조정 | cap[:1000] env-gate + default flip ✓ |
+| 2 | 평가 metric 맞춘 단답 specific 구조 추가 = X | V2 가 정확히 이것 = Default 부적합 |
+| 3 | 단답 needed 시 specific 옵션 layer 로 setting | V2 env-gate OFF, P-1 terse 가드 |
+| 4 | 기존 옵션형 코드 → 사용자 답변 방식 옵션 | NATURAL rule_text 보고서 강제 / planner directive 등 옵션화 후보 (cycle β) |
+| **5** | **NATURAL 답에 지장 없는 개선 = Default 인정** | cap fix + stripper 둘 다 Default 통합 |
+| **6** | **JAMES 가 단답 query 자동 파악 → 단답 specific 자동 장착 = Default 인정** | IntentClassifier 확장 + auto-selection (cycle β 큰 작업) |
+
+### Fix 6 원칙 매핑 (최종)
+
+| Fix | 원칙 매핑 | Default? |
+|---|---|---|
+| cap[:1000] → 8000 | 1 + 5 (추론 다이얼 + NATURAL 다축 ↑) | ✅ Default flip (**PR-A 완료, commit `b59e7ee`**) |
+| stripper 확장 + REVISE_PROMPT_EN forbidden | 1 + 5 (결함 정화, NATURAL 영향 zero/positive) | ✅ Default 유지 (이미 land commit `2d96192`) |
+| V2 (critique 비노출) | 3 (단답 specific 옵션) | ❌ env-gate OFF, terse opt-in (cycle β 에서 원칙 6 적용 시 단답 query 자동 활성 후보) |
+| P-1 (planner terse-skip) | 3 (단답 specific 옵션) | ❌ terse 가드 conditional (cycle β 에서 보강) |
+| per-query session | 측정 isolation | ❌ runner-only env-gate (commit `ec84348`) |
+
+### 진짜 production Default verdict cell
+
+| Cell | 환경 | primary | graded | abst_F1 | 의미 |
+|---|---|---|---|---|---|
+| PM-1b | cap=1000, same-sess, V2 OFF (legacy) | 0.450 | 0.413 | 0.523 | **현 production Default (PR-A 전)** |
+| **PM-10** | cap=8000, same-sess, V2 OFF | **0.480** | **0.490** | **0.611** | **PR-A 후 Default — e4b (4B)** |
+| **PM-12-final** | cap=8000, same-sess, V2 OFF, mixtral | 진행 중 | | | **PR-A 후 Default — mixtral (47B)** |
+| (raw e4b) | no JAMES stack | 0.520 | 0.403 | 0.561 | 스택 contribution baseline |
+
+⚠️ **PM-10 caveat**: stripper 확장 (commit 2d96192) 적용 전 측정. 현재
+production code 에 stripper 포함 → PM-10 측정 값은 약간 underestimate
+(메타 답 정화 안 됨).
+
+### JAMES 스택 contribution (PR-A 후 Default)
+
+| 차원 | raw e4b | PM-10 Default | Δ |
+|---|---|---|---|
+| primary | 0.520 | 0.480 | −0.04 (단축 단답 약간 손해) |
+| graded | 0.403 | 0.490 | **+0.087** (multi-fact 명확 ↑) |
+| abst_F1 | 0.561 | 0.611 | **+0.05** (회피 정확도 ↑) |
+
+→ **JAMES 모체 진짜 가치 = multi-fact completeness + abstention discipline**
+(다축). 단답 단축 정확도 아님. mother-platform 평가 의미 = 다축 score
+변화, 단축 over-claim 거부.
+
+### vs Paper baseline (외부 비교)
+
+| Cell | params | primary | 비교 |
+|---|---|---|---|
+| Paper Llama-2-70b | 70B | 0.28 | external |
+| Paper Mixtral-8x7B | 47B | 0.32 | external |
+| Paper ChatGPT/3.5 | ~175B | 0.44 | external |
+| Paper PaLM | 540B | 0.47 | external |
+| **PM-10 JAMES Default e4b (4B)** | 4B | **0.480** | **paper Mixtral·Llama-70b·ChatGPT 초과** |
+| Paper Claude-2.1 | ? | 0.52 | external |
+| Paper GPT-4 | ~1.7T | 0.56 | external |
+
+**4B 로컬 모델 + JAMES Default + cap fix 가 paper Mixtral-8x7B / Llama-
+70b / ChatGPT 초과.** 단답 primary 한정. GPT-4 / Claude-2.1 / PaLM 미달
+— 정직. mixtral PM-12-final 결과로 동일 모델 통제 비교 추가 예정.
+
+### Framing B‴ → B⁴ (최종, 6 원칙 정합)
+
+> "**JAMES Default + cap fix 후** (PR-A flip), 4B 로컬 모델 (gemma4:e4b)
+> 가 단답 fixture 에서 paper Mixtral-8x7B (0.32) / Llama-70b (0.28) /
+> ChatGPT (0.44) 초과. **JAMES 모체 진짜 가치 = 다축** (graded +0.087,
+> abst_F1 +0.05 over raw vanilla RAG) — multi-fact answer completeness
+> + abstention discipline. 단축 primary 에서 raw 약간 손해 (-0.04) 는
+> 자메스 모체 추론 능력 평가의 한 축일 뿐. V2 같은 단답 specific
+> 옵션 (terse 옵션 활성 시 primary +0.10 but graded −0.11) 은 별도
+> opt-in layer — cycle β 에서 원칙 6 (auto-selection) 적용 가능."
+
+### PR queue (이번 cycle 마감)
+
+| PR | 상태 |
+|---|---|
+| **PR-A**: cap default 1000 → 8000 | ✅ commit `b59e7ee` |
+| PR-D: stripper 확장 + REVISE_PROMPT_EN forbidden | ✅ commit `2d96192` (이미 land) |
+| PR-B: V2 env-gate (이미 OFF) | ✅ commit `9ed1af7` (opt-in 가이드) |
+| PR-C: P-1 (이미 terse conditional) | ✅ commit `bc2ddae` |
+| env-gate (session mode) | ✅ commit `ec84348` |
+
+### Cycle β scope (6 원칙 후속)
+
+| 작업 | 원칙 |
+|---|---|
+| NATURAL-grade oracle 신설 (LLM-judge / multi-axis) | 5 (NATURAL 측정 인프라) |
+| **IntentClassifier → response_style auto-selection** (원칙 6 구현) | **6** (단답 query 자동 V2 활성 — V2 의 graded tradeoff 해결) |
+| 기존 옵션형 코드 옵션화 (NATURAL rule_text / planner directive / character / source header) | 4 (mother-platform 더 minimal Default) |
+| Hidden defect audit (cap[:1000] 패턴 N개) | 1 |
+| runner sources count → list (path coverage) | 측정 인프라 |
+| production-mirror measurement stack | 측정 / production 통일 |
+
+### 이번 cycle 의 최종 의미
+
+이번 cycle 의 가장 큰 finding 은 단일 fix 효과가 아니라 **mother-platform
+평가 6 원칙 정립**. 사용자 통찰 4 (Default vs Option 분리) → 5 (NATURAL
+지장 없는 개선 Default 인정) → 6 (단답 query 자동 인식 시 단답 specific
+auto-mount Default 인정) 가 cycle β 이후 모든 fix 의 평가 기준.
+
+이 6 원칙으로 보면:
+- ✅ cap[:1000] fix = 진짜 모체 향상 (원칙 1 + 5 동시 정합)
+- ⚠️ V2 = 평가-fitting 단답 옵션 (원칙 3 적용, 단 cycle β 원칙 6 으로 Default 통합 가능)
+- 📐 다음 mother-platform 진화 = 원칙 6 의 IntentClassifier auto-selection
+
 ## 19. 최종 verdict matrix (PM-12 완료 후 마감)
 
 PM-12 (mixtral + fix cap=8000, 100Q) 결과로 6칸 매트릭스 완성. 핵심 verdict:
