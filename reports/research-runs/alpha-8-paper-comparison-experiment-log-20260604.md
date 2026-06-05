@@ -1842,6 +1842,132 @@ mixtral PR-A 후 진짜 production Default 측정 (cap=8000 + same-session
 1. **cap[:1000] systemic fix (양 모델 정량 입증)**
 2. **mother-platform 평가 6 원칙 정립** (cycle β 이후 모든 fix 의 기준)
 
+## 33. Paper RAG setup 확인 + framing B⁵ → B⁶ 보강 (2026-06-05)
+
+사용자 질문 "paper 의 RAG 가 자체 개발인가 vs vanilla baseline 인가"
+확인. GitHub repo `yixuantt/MultiHop-RAG` 의 `simple_retrieval.py` +
+`qa_llama.py` 소스 read.
+
+### Paper RAG = LlamaIndex baseline (자체 개발 X)
+
+**Framework**: LlamaIndex (오픈소스, vanilla RAG)
+
+**Default settings** (`simple_retrieval.py`):
+- `--chunk_size 256` (SentenceSplitter)
+- `--chunk_overlap_ratio 0.1` (10% overlap)
+- `--topk 10` (top-10 retrieval)
+- `--context_window 2048`
+- `--num_output 256`
+
+**Embedding 옵션** (paper 비교): OpenAI `text-embedding-ada-002`,
+`voyage-02`, Cohere `embed-english-v3.0`, HuggingFace `BAAI/bge-base-
+en-v1.5` / `BAAI/llm-embedder`
+
+**Reranker**: optional `--rerank`, default OFF (FlagEmbeddingReranker /
+BAAI/bge-reranker-base)
+
+**Answer generation prompt** (`qa_llama.py`):
+```
+prefix = "Below is a question followed by some context from different
+sources. Please answer the question based on the context. The answer to
+the question is a word or entity. If the provided information is
+insufficient to answer the question, respond 'Insufficient Information'.
+Answer directly without explanation."
+
+prompt = f"{prefix}\n\nQuestion:{query}\n\nContext:\n\n{context}"
+context = '--------------'.join(chunk['text'] for chunk in retrieval_list)
+```
+
+→ paper 답 = **단답 강제 (entity / yes-no / "Insufficient Information")**
++ reasoning 금지.
+
+**모델 별 비교 = LLM swap 만, RAG 동일** (LlamaIndex chunk=256, top-10,
+no reranker by default).
+
+### JAMES 와 비교
+
+| 차원 | Paper LlamaIndex baseline | JAMES |
+|---|---|---|
+| RAG framework | LlamaIndex (vanilla) | 자체 구축 |
+| Chunk size | 256 | (workspace 별도 설정) |
+| Top-K | 10 | 8 (multi-arm 3×8=24 → dedup ~18 → rerank) |
+| Reranker | optional, default OFF | always on (cross-encoder) |
+| Embedding | text-ada-002 / voyage-02 등 | bge-m3 (한국어/영어 multilingual) |
+| 답 prompt | "Answer directly, Insufficient Information" | NATURAL rule_text 보고서 양식 / terse rule_text 단답 |
+| Reflect/Verify | 없음 | critique → revise + fact_check |
+| Planner | 없음 | sub-tasks 분해 + prepend |
+| Graph integration | 없음 | DFS graph 탐색 |
+| Episodic memory | 없음 | session 누적 |
+
+→ **fair-comparison 아님**. 다른 RAG framework + 다른 prompt + 다른
+컴포넌트. 단 같은 모델 통제 가능 = **JAMES advanced 스택 vs LlamaIndex
+vanilla 비교 정량**.
+
+### "+0.13 contribution" 의 정확한 의미
+
+이전 §28-§32 framing "JAMES 스택 contribution +0.13" 의 정확한 의미:
+
+- ❌ "JAMES 가 mixtral 모델 자체 능력 +0.13 향상" (잘못된 framing)
+- ✅ "**JAMES advanced 스택 (planner + reflect + verify + graph +
+  multi-arm retrieval + custom prompt + bge-m3 embedding) 이 LlamaIndex
+  vanilla 보다 같은 모델 (mixtral 47B) 에서 +0.13 (paper 0.32 → JAMES
+  Default 0.45)**"
+
+paper 의 vanilla RAG (chunk 256 / top-10 / no reranker / 단답 prompt) 가
+baseline. JAMES 는 advanced 스택 multiple layer 추가 → +0.13 회복.
+
+### Framing B⁵ → B⁶ (최종, RAG framework caveat 추가)
+
+> "**JAMES Default + cap fix** (PR-A) 가 양 모델 (4B e4b / 47B mixtral)
+> 에서 multi-axis 회복 확정. **같은 모델 통제 (mixtral 47B) = JAMES
+> advanced 스택 vs LlamaIndex vanilla baseline 비교 +0.13**
+> (paper Mixtral 0.32 → JAMES Default 0.45). **4B Default 가 47B
+> Default 와 동등 또는 약간 우위** (primary 0.480 vs 0.450) = JAMES
+> 스택이 모델 size 영향 흡수. paper 와의 비교는 **다른 RAG framework**
+> 위에서 같은 모델 — JAMES advanced 스택 (planner / reflect / verify /
+> graph / bge-m3 / multi-arm retrieval) 이 LlamaIndex vanilla baseline
+> 보다 우위. **JAMES 모체 진짜 가치 = advanced RAG 스택 (다축: multi-fact
+> + abstention discipline + size 흡수)** vs vanilla RAG baseline.
+> terse 단답 fixture 한정 측정, NATURAL 모드 + 한국어 fixture + paired
+> n=3 모두 cycle β scope."
+
+### mother-platform 가치 입증의 정합성 평가
+
+**유효한 입증**:
+- ✅ cap[:1000] fix = JAMES 모체 systemic 결함 fix (양 모델 multi-axis 회복)
+- ✅ 4B Default ≈ 47B Default = JAMES 스택이 모델 size 영향 흡수 (JAMES
+  내부 비교, RAG framework 변수 없음)
+- ✅ JAMES Default 가 raw vanilla RAG 보다 multi-fact + abstention 우위
+  (JAMES 자체 raw runner 와 비교, framework 변수 작음)
+
+**Caveat 필요**:
+- ⚠️ "JAMES vs paper" 는 다른 RAG framework — JAMES advanced 스택 vs
+  LlamaIndex vanilla. 모델 자체 능력 비교 아님.
+- ⚠️ paper LlamaIndex vanilla 가 ablation baseline (planner/reflect/
+  verify/graph 없음, simple chunk+top-K+LLM)
+- ⚠️ JAMES 의 advanced 스택의 어느 컴포넌트가 +0.13 contribution 어떻게
+  분할인지 미분리 (planner 기여? reflect 기여? graph 기여?). Ablation
+  cells (PM-6/7/8) 가 일부 분리 evidence 제공:
+  - PM-6 cognitive-off (planner/reflect/verify off): primary 0.42 vs PM-10 0.48 (-0.06)
+  - PM-7 rerank-off: primary 0.43 vs PM-10 0.48 (-0.05)
+  - PM-8 graph-off: primary 0.44 vs PM-10 0.48 (-0.04)
+  - 합 ~-0.15 ≈ +0.13 contribution과 비슷 규모 (단 ablation cell 도
+    per-query session 측정이라 episodic 영향 차이 caveat)
+
+### 다음 정합 작업 (cycle β scope)
+
+추가로 paper 와 동일 RAG framework 측정 가능성 검토 (보다 fair-
+comparison):
+- LlamaIndex baseline 구축 (JAMES corpus 위에 paper 와 동일 설정 — chunk
+  256, top-10, voyage-02 or bge-base) → JAMES corpus 의 vanilla baseline
+- JAMES advanced 스택 vs JAMES corpus LlamaIndex vanilla 비교
+- 이게 진짜 "JAMES 스택 contribution" 측정 (corpus + RAG framework 통제,
+  스택 layer 만 차이)
+
+단 priority: cycle β 의 NATURAL oracle / AnswerStyleClassifier 가 더
+중요. LlamaIndex baseline 측정은 cycle γ 또는 별도 (publication 준비
+시점에).
+
 ## 19. 최종 verdict matrix (PM-12 완료 후 마감)
 
 PM-12 (mixtral + fix cap=8000, 100Q) 결과로 6칸 매트릭스 완성. 핵심 verdict:
