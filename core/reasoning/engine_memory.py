@@ -57,10 +57,22 @@ def build_memory_context(
     # 모드 핸들러가 continuity directive 발동 여부를 정확히 판단할
     # 수 있도록 try 바깥에서 미리 초기화.
     hist_ctx = ""
+    # 2026-06-06 cycle β Phase A — resolve the persona gate up-front so
+    # both the initial `store.get_system_prompt()` injection (L1b in
+    # the answer-format contract) and the later persona-command refresh
+    # honor the same contract. Default True keeps NATURAL byte-identical;
+    # terse style returns False and the L1b hardcoded prefix ("당신의
+    # 이름은 JAMES입니다.") is skipped, eliminating the 68-69% answer
+    # leak rate measured in the Phase A diagnostic.
+    try:
+        from core.response_style import resolve_style as _resolve_style_persona
+        _inject_persona = _resolve_style_persona(response_style).inject_persona
+    except Exception:
+        _inject_persona = True
     try:
         from core.memory import MemoryStore
         store = MemoryStore()
-        system_prompt = store.get_system_prompt()
+        system_prompt = store.get_system_prompt() if _inject_persona else ""
         pref_context = store.get_context(user_role)
 
         # [P7-1] 단기: 현재 세션 최근 5턴
@@ -144,8 +156,12 @@ def build_memory_context(
                 elif p_type == "persona_style":
                     _ms.save_preference({"style_hint": persona_data.get("style", "")})
                     print(f"[PERSONA_UPDATE] 스타일 변경: {persona_data.get('style', '')}")
-                # system_prompt 즉시 갱신 (언어 제외)
-                if p_type != "persona_language":
+                # system_prompt 즉시 갱신 (언어 제외).
+                # 2026-06-06 Phase A — terse 같은 persona-off style 에서는
+                # 갱신도 skip (위 _inject_persona gate 와 self-consistent).
+                # 운영자가 명시 terse 요청한 단답 path 에서 persona 명령이
+                # 도착해도 답 양식은 단답 유지.
+                if p_type != "persona_language" and _inject_persona:
                     system_prompt = _ms.get_system_prompt()
     except Exception as e:
         engine._log("persona_command", e, user_role)

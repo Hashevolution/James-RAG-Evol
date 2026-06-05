@@ -2338,3 +2338,238 @@ comparison/temporal/null 미측정 → 재실행 진행 중, 결과 대기.)
   unlock" + regression axis = latency/null) + ROADMAP 등재.
 - 측정 워크플로우는 env-gate로 이미 가능 — default 변경은 production 사용자
   편익 결정.
+
+
+## 37. Cycle β #1 — engine_memory persona 옵션화 (Phase A 진단 + Phase B fix + PM-19 측정) (2026-06-06)
+
+cycle β 첫 작업 = §36 4-layer build-up 의 핵심 finding "engine_memory
+persona injection = 단축 손해 진짜 source" 직접 fix. 양 모델 동일
+pattern (-0.15~-0.22) 단축 손해 회복 시도.
+
+### Phase A 진단 (1-2h) — 사실 확인
+
+Phase A diagnostic script (`scripts/research/persona_leak_diagnostic.py`,
+LLM 호출 없이 system_prompt 조립 dump + bench JSON answer 패턴 scan)
+실행. 결과:
+
+#### (a) Terse + 영어 query 의 final system_prompt — 87자 3줄
+```
+L1: 'Always respond in English. This is the highest priority instruction.'
+L2: ''
+L3: '당신의 이름은 JAMES입니다.'
+```
+
+| 줄 | 출처 | 코드 위치 |
+|---|---|---|
+| L1 | `lang_directive_en` | `engine_memory.py:248-260` |
+| L3 | **`MemoryStore.get_system_prompt()` persona name prefix** | `engine_memory.py:63` + `store.py:216` |
+
+`inject_character_directives=False` gate (terse) 가 character_profile
+312자 modifier 차단 정상 작동 ✅. **다만 별도 path** (MemoryStore
+persona name 1줄) 가 system_prompt 에 박힘 — 2026-06-04 P1-10 fix 가
+이 path 까지 닫지 않음.
+
+#### (b) Bench JSON answer 의 leak 빈도 (terse + 넓은 정의 production)
+
+| Pattern | e4b 4B | mixtral 47B |
+|---|---|---|
+| `JAMES` 멘션 | **68%** | **69%** |
+| `As JAMES,` 답 시작 | 23% | 23% |
+| `I have analyzed` | 22% | 18% |
+| `Hello, I am` | 11% | 7% |
+
+양 모델 동일 빈도 → 4B/47B 모두 system_prompt 단일 line 의 동일 영향
+받음 (모델-무관).
+
+#### (c) vs raw runner (좁은 정의, engine_memory 우회)
+
+```
+JAMES leak  → 0% (양 모델)
+답 sample   → "Sam Bankman-Fried" / "Trump" / "Sam Altman"
+```
+
+정확히 paper-aligned exact-match. terse rule 완벽 준수. engine_memory
+1 path 차이로 답 형태 완전 분기.
+
+#### (d) Leak 경로 라벨링
+
+| Path | terse 영향 | 우선순위 |
+|---|---|---|
+| (i) `MemoryStore.get_system_prompt()` persona name | ⭐ 가장 큰 source (68-69% leak) | **Phase B 타겟** |
+| (ii) `lang_directive` (영어 → "Always respond in English…") | 영어 답에 자연 — 단축 손해 작을 가능성 | 별도 측정 후보 (옵션 C) |
+| (iii) `character_profile` 16-trait modifier | **차단됨** ✅ (inject_character_directives=False) | 무관 |
+| (iv) `episodic_block` | hist_ctx="" → SKIP, terse measurement (per-query) 무관 | 무관 |
+
+### Phase B 코드 변경 (옵션 B 권고: `StylePreset.inject_persona` field)
+
+#### Design rationale
+
+3 후보 중 옵션 B 선택:
+- (A) env-gate `JAMES_INJECT_PERSONA` — 단축 change, 단 response_style
+  contract 분산
+- **(B) `StylePreset.inject_persona: bool=True` 추가 + TERSE_PRESET False
+  — 권고**. character_directives / sources_header 와 동일 패턴. 원칙
+  4 정합. cycle β #2 AnswerStyleClassifier 의 직접 layer.
+- (C) 옵션 B + lang_directive 동시 gate — 사용자 가설 검증용, Phase C
+  측정 후 결정
+
+#### 변경 file
+
+| File | 변경 |
+|---|---|
+| `core/response_style.py` | `StylePreset.inject_persona: bool=True` field 추가, TERSE_PRESET 에 `inject_persona=False`. 답-양식 contract 3-layer → 4-layer 확장 |
+| `core/reasoning/engine_memory.py` | `_inject_persona` gate 신설 (line 60 부근 resolve_style 호출 + L63 의 store.get_system_prompt() 호출 + L148 의 persona_command 갱신 모두 적용) |
+| `tests/test_response_style.py` | 4 test 추가 — `inject_persona` field 보장 / L1b callsite gate / behavioral guarantee (terse 시 persona name 없음 + NATURAL 시 byte-identical) |
+| `scripts/research/persona_leak_diagnostic.py` | Phase A 진단 script (LLM 호출 없이 system_prompt + bench JSON inspect) |
+| `scripts/research/multihop_score_axes.py` | 3-axis scoring helper (paired Δ 비교 지원) |
+
+#### Test 결과
+
+| Suite | tests | result |
+|---|---|---|
+| `tests/test_response_style.py` (확장) | 25 | 25/25 PASS |
+| `tests/test_engine_memory_language_unified` | 7 | 7/7 PASS |
+| `tests/test_character_prompt_cleanup` | 4 | 4/4 PASS |
+
+#### 진단 재실행 직접 검증
+
+| Mode | system_prompt 길이 | persona name 줄 |
+|---|---|---|
+| terse + EN (PM-19 env) | **68자** (이전 87자, -19자) | 사라짐 ✅ |
+| NATURAL + KO (default) | **362자** (byte-identical) | 보존 ✅ |
+
+### Phase C 측정 (양 모델, PM-19)
+
+#### baseline (§36 PM-Step 2/4, persona ON, advanced OFF)
+
+| 모델 | primary | graded | abst_f1 |
+|---|---|---|---|
+| e4b | 0.310 | 0.400 | 0.520 |
+| mixtral | 0.350 | 0.410 | 0.571 |
+
+#### PM-19 측정 환경 (§36 mirror + Phase B fix 자동 발동)
+
+```bash
+JAMES_WORKSPACE=./workspaces/hotpot_eval \
+JAMES_RESPONSE_STYLE=terse \
+JAMES_NUM_CTX=16384 \
+JAMES_ENABLE_PLANNER=0 \
+JAMES_ENABLE_REFLECT=0 \
+JAMES_ENABLE_VERIFY=0 \
+JAMES_ENABLE_QUERY_REWRITE=0 \
+JAMES_ENABLE_ENTITY_ANCHOR=0 \
+JAMES_TERSE_SESSION_MODE=fixed-shared \
+JAMES_GEMMA4_E4B_THINK_OFF=1 \
+PROOF_MODEL=<model> \
+python scripts/research/multihop_terse_run.py
+```
+
+#### PM-19 verdict — case C confirmed (e4b n=1, mixtral deferred)
+
+| 측정 | primary | graded | abst_f1 | Δ vs baseline |
+|---|---|---|---|---|
+| **PM-19 e4b** | **0.340** | **0.407** | **0.560** | **+0.030 / +0.007 / +0.040** |
+| PM-19 mixtral | deferred to cycle β #1.5 v2 통합 측정 | — | — | — |
+
+**Δ 모두 noise band 안** (n=3 paired multihop historic: graded ±0.060,
+abst_f1 ±0.418). target +0.14~+0.22 의 1/5 미만.
+
+**case C confirmed (rule `feedback_finding_size_honest_framing` 적용)**:
+- ⭐ tier — operational only (NOT ⭐⭐)
+- mechanism 차단 100% ✅ (Phase A 진단의 leak 4 path 모두 0%)
+- 단축 magnitude 회복 작음 → **"persona = 단축 손해 진짜 source"
+  framing 은 partial true**. persona name 은 양식 prefix 1줄 영향 =
+  작은 magnitude. 단축 -0.22 의 majority 는 다른 path
+
+**By question_type breakdown (e4b)**:
+
+| question_type | n | ANSWER: line 준수 | primary |
+|---|---|---|---|
+| comparison_query | 25 | 4/25 (16%) | **0.00** |
+| temporal_query | 25 | 4/25 (16%) | **0.00** |
+| inference_query | 25 | 4/25 (16%) | 0.80 |
+| null_query | 25 | 13/25 (52%) | 0.56 |
+
+→ answerable query 84% 가 1500-2800자 multi-paragraph synthesis.
+TERSE rule `"on the LAST line write 'ANSWER:' followed by ONLY the
+direct answer"` **강제 실패**. null query 만 hard rule
+(`'ANSWER: insufficient information'`) 준수율 52%. inference_query
+0.80 은 paper-aligned scoring 이 synthesis 안 첫 entity 매치 인정
+때문.
+
+**진짜 단축 손해 -0.22 의 source 재정정**:
+
+| Path | magnitude (실측) | mechanism |
+|---|---|---|
+| (a) persona name path (Phase B fix 타겟) | **small (+0.030)** | 양식 prefix 1줄 ("As JAMES, I have analyzed") 차단 ✅ |
+| (b) **rule_text 강제력 약함 (진짜 main)** | **large (-0.20+ 가량)** | answerable 84% multi-paragraph synthesis, ANSWER: rule ignored |
+| (c) max_tokens=8192 | medium | 단답 force 안 함 (same direction) |
+| (d) lang_directive (옵션 C) | _unmeasured_ | 측정 후보 |
+
+→ cycle β entry doc framing 정정: "persona = 단축 손해 진짜 source"
+는 partial true. 진짜 main = **rule_text/max_tokens 의 단답 강제력
+부족**. cycle β #1.5 (NEW) 가 진짜 fix.
+
+**mixtral deferred rationale**:
+- Phase A 진단: 양 모델 leak 빈도 정확히 동일 (e4b 68% vs mixtral 69%,
+  As JAMES 23% vs 23%). Phase B fix 도 양 모델 동일 mechanism 차단
+- 양 모델 같은 magnitude 거의 확실 (noise band 안 동일)
+- mixtral 측정 cost (~75-100min) 를 cycle β #1.5 v2 fix 후 통합 측정
+  으로 합침 (한 번에 양 모델 검증)
+
+### Phase D Default 결정 (case C verdict 후)
+
+**결정**: TERSE_PRESET inject_persona=False, NATURAL_PRESET inject_persona=
+True 그대로 유지. production byte-identical (NATURAL default). cycle β
+#2 (AnswerStyleClassifier) 시 단답 query 자동 mount → persona 자동
+OFF 자연 연쇄. Default flip 별도 결정 불필요.
+
+| 선택 | 결과 |
+|---|---|
+| TERSE 시 inject_persona=False | ✅ 유지 — mechanism 차단 + cycle β #2 path 마련 |
+| NATURAL 시 inject_persona=True | ✅ 유지 — byte-identical 보장 |
+
+### Phase E docs + commit + push (PM-19 verdict 후)
+
+- §37 doc 측정 결과 섹션 채우기 (case A/B/C 결정 보강)
+- handover doc cycle β #1 완료 entry
+- memory entry: `feedback_engine_memory_persona_name_leak` 신규 (Phase
+  A 진단 + Phase B fix 룰)
+- CLAUDE.md "Where to look next" 첫 행 갱신
+- PR-B (commit message + Quality Delta Card 포함 description)
+
+### 사용자 박은 룰 적용
+
+- **`feedback_finding_size_honest_framing`**: n=1 결과 → trivial/partial/
+  novel tier. n=3 paired 전 ⭐⭐ adopt 금지
+- **`feedback_n1_verdict_inflation_n3_caught`**: PM-19 n=1 caveat 명시.
+  closure doc / memory / 협업자 share 보류
+- **`feedback_fixture_fitness_before_verdict`**: terse fixture 한정
+  verdict. NATURAL mode persona 영향은 별도 oracle 필요
+- **`feedback_evidence_grounded_validity_check`**: 답 sample inspection
+  (이미 Phase A 에서 적용 — leak 패턴 정량)
+- **`feedback_methodological_chain_before_plan`**: verdict Q / diagnostic
+  Q / fixture role 라벨링 / logical 순서 모두 명시 (Phase A.5 결과)
+- **`feedback_mother_platform_6_principles`**: 원칙 4 (옵션화) + 원칙
+  5 (NATURAL 지장 없는 개선) + 원칙 6 (auto-selection layer 마련) 정합
+
+### Cycle β 다음 작업 자연 연결 + scope 재정렬
+
+Phase B fix 가 cycle β #2 (AnswerStyleClassifier hybrid, §31 design)
+의 직접 layer. classifier가 "단답" 분류 시 즉시 `response_style="terse"`
+auto-set → persona / character_directives / sources_header 모두 자동
+collapse (원칙 6 완성).
+
+**PM-19 정성 inspect 결과 cycle β scope 재정렬**:
+
+| # | 작업 | priority | rationale |
+|---|---|---|---|
+| **#1.5 NEW** | **TERSE rule_text 강제력 강화** (`MAXIMUM <30 words. NO multi-paragraph synthesis.`) 또는 max_tokens cap (8192 → 100) | **⭐⭐⭐** | 진짜 단축 source — answerable 84% multi-paragraph synthesis |
+| #1 (Phase B 이번) | persona 옵션화 — stable + small | ⭐⭐ → ⭐ closure | mechanism 차단 ✅ + 양식 prefix 차단, magnitude noise band 안 |
+| #2 | AnswerStyleClassifier hybrid (auto-mount) | ⭐⭐⭐ 유지 | #1.5 + #1 모두 auto-mount path |
+| #3 | NATURAL-grade oracle | ⭐⭐⭐ 유지 | 원칙 5 검증 인프라 |
+
+→ cycle β #1.5 가 #2 의 기반 (terse mode 자체 강화 후 auto-mount).
+#1.5 먼저 자연 순서. mixtral PM-19 측정도 #1.5 v2 fix 후 통합 진행
+(양 모델 양 fix 한 번에).
+

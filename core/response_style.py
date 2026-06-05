@@ -71,19 +71,33 @@ class StylePreset:
     force_two_sections: bool
     rule_text_ko:       str
     rule_text_en:       str
-    # ── Answer-format contract (2026-06-04) ──────────────────────────
+    # ── Answer-format contract (2026-06-04, extended 2026-06-06) ─────
     # The preset is the single source of truth for the *whole* answer
-    # shape, not just the synth-layer rule_text. Two upstream layers
+    # shape, not just the synth-layer rule_text. Three upstream layers
     # also force verbose output and must honor the resolved style:
     #   inject_character_directives — L1: the 16-trait character-profile
     #       persona/directive block (engine_memory.build_memory_context).
+    #   inject_persona              — L1b: the MemoryStore persona name
+    #       prefix ("당신의 이름은 JAMES입니다.") emitted by
+    #       MemoryStore.get_system_prompt(). Added 2026-06-06 (cycle β
+    #       Phase A) — Phase A persona-leak diagnostic measured 68-69%
+    #       of terse-mode answers leaking "JAMES" / "As JAMES, I have
+    #       analyzed" prefixes from this single hardcoded line, the
+    #       biggest single contributor to the -0.15/-0.22 single-line
+    #       primary-axis loss between the narrow and broad JAMES
+    #       vanilla definitions. character_directives blocks the
+    #       16-trait block but this line lives on a separate path
+    #       (engine_memory.py L63 — store.get_system_prompt() return)
+    #       and survived the 2026-06-04 fix. See memory
+    #       feedback_engine_memory_persona_name_leak.
     #   inject_sources_header       — L3: the "[관련 자료 목록]" header
     #       prepended to context (pipeline_context.apply_post_check_…).
-    # Default True/True = NATURAL = production byte-identical. TERSE sets
-    # both False so a single style request ("terse") collapses all three
-    # layers to single-answer mode. See memory
+    # Default True/True/True = NATURAL = production byte-identical.
+    # TERSE sets all three False so a single style request ("terse")
+    # collapses all four layers to single-answer mode. See memory
     # feedback_response_style_hardcode_platform_defect.
     inject_character_directives: bool = True
+    inject_persona:              bool = True
     inject_sources_header:       bool = True
 
 
@@ -198,10 +212,12 @@ TERSE_PRESET = StylePreset(
         "or report-format (## sections).\n"
         "- If the context lacks the answer: 'ANSWER: insufficient information'.\n"
     ),
-    # Collapse the two upstream verbose layers too — otherwise the
-    # character persona (L1) and sources header (L3) re-introduce the
-    # scaffolding the terse rule_text (L2) just forbade.
+    # Collapse the three upstream verbose layers too — otherwise the
+    # character persona (L1), the MemoryStore persona name (L1b), and
+    # the sources header (L3) re-introduce the scaffolding the terse
+    # rule_text (L2) just forbade.
     inject_character_directives=False,
+    inject_persona=False,
     inject_sources_header=False,
 )
 

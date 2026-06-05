@@ -233,14 +233,22 @@ class StyleOverrideTests(unittest.TestCase):
 
 class AnswerFormatContractTests(unittest.TestCase):
     """2026-06-04 — the StylePreset is the single source of truth for the
-    *whole* answer shape across all 3 forcing layers (L1 character
-    directives, L2 rule_text, L3 sources header). NATURAL keeps every
-    layer ON (byte-identical); TERSE collapses all three."""
+    *whole* answer shape across all forcing layers. NATURAL keeps every
+    layer ON (byte-identical); TERSE collapses them.
+
+    2026-06-06 cycle β Phase A: L1b (MemoryStore persona name prefix
+    "당신의 이름은 JAMES입니다.") added as a separately-gated layer
+    after the persona-leak diagnostic measured 68-69% answer leak rate
+    on terse-mode runs — character_directives blocked the 16-trait
+    block but the persona name prefix lived on a separate path and
+    survived the 2026-06-04 fix."""
 
     def test_natural_keeps_all_layers_on(self):
         from core.response_style import NATURAL_PRESET
         self.assertTrue(NATURAL_PRESET.inject_character_directives,
                         "NATURAL must keep L1 character injection (default)")
+        self.assertTrue(NATURAL_PRESET.inject_persona,
+                        "NATURAL must keep L1b persona name prefix (default)")
         self.assertTrue(NATURAL_PRESET.inject_sources_header,
                         "NATURAL must keep L3 sources header (default)")
 
@@ -248,6 +256,8 @@ class AnswerFormatContractTests(unittest.TestCase):
         from core.response_style import TERSE_PRESET
         self.assertFalse(TERSE_PRESET.inject_character_directives,
                          "TERSE must suppress L1 character persona")
+        self.assertFalse(TERSE_PRESET.inject_persona,
+                         "TERSE must suppress L1b MemoryStore persona name")
         self.assertFalse(TERSE_PRESET.inject_sources_header,
                          "TERSE must suppress L3 sources header")
 
@@ -261,6 +271,16 @@ class AnswerFormatContractTests(unittest.TestCase):
         self.assertIn("response_style", src,
                       "L1 must receive response_style to resolve the style")
 
+    def test_l1b_callsite_gates_on_contract(self):
+        # build_memory_context must read the resolved style's
+        # inject_persona flag and skip MemoryStore.get_system_prompt()
+        # when False (cycle β Phase B, 2026-06-06).
+        import core.reasoning.engine_memory as em
+        import inspect
+        src = inspect.getsource(em.build_memory_context)
+        self.assertIn("inject_persona", src,
+                      "L1b must gate on the resolved style's inject_persona flag")
+
     def test_l3_callsite_gates_on_contract(self):
         # apply_post_check_and_sources_header must read the resolved
         # style's inject_sources_header flag.
@@ -270,6 +290,54 @@ class AnswerFormatContractTests(unittest.TestCase):
         self.assertIn("inject_sources_header", src)
         self.assertIn("response_style", src,
                       "L3 must receive response_style to resolve the style")
+
+
+class PersonaInjectionBehaviorTests(unittest.TestCase):
+    """2026-06-06 cycle β Phase B — behavioral guarantee that L1b gate
+    actually suppresses the MemoryStore persona name in terse mode while
+    keeping NATURAL byte-identical.
+
+    Phase A diagnostic evidence: under the prior code, terse-mode
+    English MultiHop-RAG answers leaked 'As JAMES, I have analyzed' /
+    'Hello, I am JAMES' prefixes at 68-69% — directly traced to the
+    hardcoded 'L3: 당신의 이름은 JAMES입니다.' line in the final
+    system_prompt that survived the inject_character_directives gate.
+    """
+
+    def _build(self, response_style: str) -> str:
+        from core.reasoning.engine_memory import build_memory_context
+
+        class _Stub:
+            def _log(self, *a, **kw): pass
+
+        # English query → exercises the persona-name path without the
+        # Korean lang_directive being stripped by the regex sweep.
+        _, system_prompt, _ = build_memory_context(
+            _Stub(),
+            safe_query="What was the FTX trial verdict?",
+            user_role="admin",
+            kwargs={"session_id": f"test-persona-{response_style or 'default'}"},
+            response_style=response_style,
+        )
+        return system_prompt
+
+    def test_terse_strips_persona_name_prefix(self):
+        sp = self._build("terse")
+        # The exact hardcoded prefix the Phase A diagnostic identified
+        # as the dominant leak source. Must be absent under terse.
+        self.assertNotIn("당신의 이름은", sp,
+                         "terse mode must not inject MemoryStore persona name")
+        self.assertNotIn("JAMES입니다", sp,
+                         "terse mode must not leak the JAMES introduction")
+        # Lang directive may still appear (separately gated) — that's
+        # the next investigation, not this one.
+
+    def test_natural_keeps_persona_name_prefix(self):
+        sp = self._build("")  # default → NATURAL
+        # Production byte-identical: the persona name prefix is the
+        # MemoryStore-default `당신의 이름은 <name>입니다.` line.
+        self.assertIn("당신의 이름은", sp,
+                      "NATURAL must preserve the production persona name path")
 
 
 if __name__ == "__main__":
