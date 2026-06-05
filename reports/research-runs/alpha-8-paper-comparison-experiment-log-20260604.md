@@ -1552,6 +1552,200 @@ auto-mount Default 인정) 가 cycle β 이후 모든 fix 의 평가 기준.
 - ⚠️ V2 = 평가-fitting 단답 옵션 (원칙 3 적용, 단 cycle β 원칙 6 으로 Default 통합 가능)
 - 📐 다음 mother-platform 진화 = 원칙 6 의 IntentClassifier auto-selection
 
+## 30. JAMES Default + e4b 위치 분석 (2026-06-05)
+
+PR-A flip 후 JAMES Default + e4b 의 측정 위치를 raw e4b 와 paper
+baseline 과 비교.
+
+### Primary axis landscape (terse fixture)
+
+```
+0.56  GPT-4 (~1.7T)             ← paper top
+0.52  Claude-2.1
+0.520 raw e4b (4B, no stack)
+0.480 PM-10 JAMES Default e4b   🎯
+0.47  PaLM (540B)
+0.450 PM-1b legacy (PR-A 전)
+0.44  ChatGPT/3.5 (~175B)
+0.32  Mixtral-8x7B (47B)
+0.28  Llama-2-70b (70B)
+```
+
+→ 4B 로컬 모델 + JAMES Default 가 **paper PaLM 540B 거의 동등 +
+ChatGPT 175B / Mixtral 47B / Llama 70b 초과**. Claude-2.1 / GPT-4 미달.
+
+### Type 별 비교 (PM-10 vs raw e4b)
+
+| type | raw | PM-10 | Δ | 해석 |
+|---|---|---|---|---|
+| inference | 0.60 | **0.80** | **+0.20** | JAMES 큰 이득 (multi-hop entity 합성) |
+| comparison | 0.40 | 0.16 | **−0.24** | JAMES 손해 (reflect critique-노출, cycle β V2 통합 회복 가능) |
+| temporal | 0.16 | 0.08 | −0.08 | 비슷 |
+| null | 0.92 | 0.88 | −0.04 | 비슷 |
+
+비대칭 분명. cycle β IntentClassifier auto-selection 으로 comparison
+query 에 V2 자동 활성 시 comparison 0.16 → 0.48 회복 → primary 0.48
+→ 0.58 도달 예상 (PaLM 초과 + Claude-2.1 league 접근).
+
+### 스택 contribution (raw vs PM-10)
+
+| 차원 | raw | PM-10 | Δ |
+|---|---|---|---|
+| primary | 0.520 | 0.480 | −0.04 |
+| graded | 0.403 | 0.490 | **+0.087** |
+| abst_F1 | 0.561 | 0.611 | **+0.05** |
+| 다축 평균 | 0.495 | 0.527 | **+0.032** |
+
+### 위치 verdict
+
+| 차원 | 위치 |
+|---|---|
+| vs paper top (GPT-4) | -0.08 미달 |
+| vs paper mid (PaLM/ChatGPT) | **동등~약간 초과** |
+| vs paper low (Mixtral/Llama) | **명확 초과** (+0.16~+0.20) |
+| vs raw e4b (same model) | 단축 -0.04, **다축 +0.032** |
+| 강점 type | inference (+0.20 over raw) |
+| 약점 type | comparison (-0.24 over raw) — cycle β V2 통합 회복 가능 |
+
+### 결론 한 문장
+
+**JAMES Default + 4B e4b = paper 중간 league (ChatGPT 175B ~ PaLM
+540B 사이) 도달. 다축 (multi-fact + abstention) 면에서 raw vanilla RAG
+명확 우위. cycle β IntentClassifier auto-selection 으로 comparison
+axis 회복 시 PaLM 초과 + Claude-2.1 league 접근 예상.**
+
+### Caveat (의무)
+
+- terse 단답 fixture 한정, NATURAL 모드 미입증
+- n=100 single-shot, paired n=3 미완료
+- approximation metric, composition caveat (null 25%)
+- stripper underestimate (PM-10 측정 시점 미적용)
+- mixtral 무관성 PM-12-final 진행 중
+
+## 31. AnswerStyleClassifier hybrid design (cycle β scope, 2026-06-05)
+
+원칙 6 (단답 query auto-selection) 의 implementation 방향성. 사용자
+질문 "하드코딩으로 커버 가능? LLM 자동 분류 힘들어?" 분석 후 design
+정합화.
+
+### 3 옵션 비교
+
+| 옵션 | 커버율 | Latency | 정확도 |
+|---|---|---|---|
+| (A) 하드코딩 regex 단독 | 60-80% (명확 fixture 100%, 일반 사용자 query ambiguous 미해결) | 0 | regex 매치 100%, fallback 정확도 의문 |
+| (B) LLM 자동 분류 단독 | 100% | ~0.5-1s/query 추가 (모든 query LLM call) | ~95%+ |
+| **(C) Hybrid (regex + LLM fallback) — 권고** | **100%** (regex ~70% + LLM ~30%) | **~0.3s 평균** | 높음 + 효율 |
+
+### Hybrid 권고 이유 = IntentClassifier 검증된 패턴
+
+`core/intent_classifier.py` 의 `classify_fast()` + `classify_llm()`
+hybrid 가 step7 14/14 = 100% 정확도 검증 (memory `feedback_intent_
+classifier_audit_clean`). 같은 구조로 AnswerStyleClassifier 신설.
+
+```python
+# core/answer_style_classifier.py (cycle β 신규)
+FAST_PATTERNS = {
+    "terse_factual": [
+        r"^(who|what|when|where|which|how many)\s+(is|are|did|was|were)\b",
+        r"^(is|are|does|do|did)\s+\S+\?",
+        r"(언제|어디|누가|몇|어느|얼마)",
+        # KO+EN ~20개
+    ],
+    "analytical": [
+        r"\b(compare|analyze|evaluate|why|explain)\b",
+        r"(비교|분석|평가|왜|설명|차이|관계)",
+    ],
+    "report": [
+        r"\b(report|summarize|breakdown|outline)\b",
+        r"(보고서|요약|정리|개요)",
+    ],
+}
+
+def classify(query):
+    fast = classify_fast(query)
+    if fast:
+        return fast, "fast"           # ~70% queries
+    return classify_llm(query), "llm" # ~30% ambiguous
+```
+
+### Ambiguous 케이스 (LLM 필요)
+
+regex 어려운 패턴:
+- "Tell me about X" — 단답? 분석? 보고서?
+- "What about X?" — context dependent
+- "X" 단어만 — 양식 불분명
+- "X 어때?" / "X 알려줘" — KO ambiguity
+- Multi-clause query 혼합
+
+→ production 사용자 query 의 ~20-30%. LLM fallback 필수.
+
+### LLM 단독 cost 분석 (왜 비효율)
+
+- query당 0.5-1s LLM call 추가
+- 1000 queries/day → +10-15min/day
+- "Is X Y?" 같은 명백 단답 도 LLM call → 낭비
+- production scale 누적 cost 큼
+
+### 단계 implementation 시간 (cycle β 안)
+
+| Phase | 작업 | 시간 |
+|---|---|---|
+| 1 | regex FAST_PATTERNS 박기 (~30 패턴, KO+EN) | 30min |
+| 2 | classify_llm() — IntentClassifier 패턴 copy | 30min |
+| 3 | wiring (engine.py / pipeline_synth.py) — V2/P-1 hook | 1h |
+| 4 | unit test (regex 검증 + mock LLM) | 30min |
+| 5 | accuracy 측정 (fixture 별 분류 정확도) | 30min |
+| 6 | PM-18 측정 (auto-selection 활성, e4b cap=8000) | 30min |
+
+총 ~3-4h. cycle β 의 1-day 작업.
+
+### wiring 후 동작 예측
+
+| query 예 | classify | activate |
+|---|---|---|
+| "Who is the CEO of TechCorp?" | terse_factual (fast) | V2 + P-1 → 단답 답 |
+| "Compare X and Y. Why differ?" | analytical (fast) | NATURAL 유지 → multi-fact 보고서 |
+| "Tell me about X" | (fast 미매치) → LLM | LLM 분류 결과 따름 |
+| "Summarize TechCrunch report" | report (fast) | NATURAL + 보고서 양식 |
+
+### 사용자 override 보존
+
+```python
+if not response_style:  # 사용자 explicit 없을 때만 auto-selection
+    style, _ = classify_answer_style(query)
+    # auto-select response_style
+```
+
+→ 사용자가 `response_style="natural"` 명시 시 auto-selection 무시.
+advanced override 가능.
+
+### V2 graded tradeoff 해결의 진짜 길
+
+현재 (cycle 마감):
+- V2 default OFF → 모든 query 에 reflect critique 노출 → primary 0.48
+- V2 explicit ON → 모든 query 에 critique 비노출 → primary 0.58 (단답
+  query 강함) but graded -0.11 (multi-fact 약화)
+
+cycle β 후 (AnswerStyleClassifier auto-selection):
+- terse_factual query (단답) → V2 자동 활성 → primary 0.58 수준
+- analytical query (분석) → V2 자동 비활성 → multi-fact graded 보존
+- ambiguous query → LLM 분류 → 적절한 양식
+- **graded tradeoff 0** → V2 Default 통합 가능
+
+### Cycle β 우선순위 (갱신)
+
+| # | 작업 | 원칙 | priority |
+|---|---|---|---|
+| 1 | NATURAL-grade oracle 신설 (LLM-judge / multi-axis) | 5 | ⭐⭐⭐ |
+| 2 | **AnswerStyleClassifier hybrid + auto-selection wiring** | **6** | **⭐⭐⭐** |
+| 3 | 기존 옵션형 코드 옵션화 (NATURAL rule_text 등) | 4 | ⭐⭐ |
+| 4 | Hidden defect audit (cap[:1000] 패턴 N개) | 1 | ⭐⭐ |
+| 5 | runner sources count → list (path coverage) | 측정 | ⭐ |
+| 6 | production-mirror measurement stack | 측정 / production 통일 | ⭐ |
+
+→ 1+2 가 mother-platform 의 진짜 지능 완성 (NATURAL 측정 + auto-adaptive
+default).
+
 ## 19. 최종 verdict matrix (PM-12 완료 후 마감)
 
 PM-12 (mixtral + fix cap=8000, 100Q) 결과로 6칸 매트릭스 완성. 핵심 verdict:
