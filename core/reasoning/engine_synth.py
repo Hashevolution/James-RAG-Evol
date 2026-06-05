@@ -87,15 +87,24 @@ def generate_rag_answer(
     style = resolve_style(response_style)
 
     # Evidence char budget injected into the synth prompt. Historically
-    # hardcoded at 1000, which truncates multi-hop evidence (a 2-fact
-    # question whose second supporting chunk sits past char 1000 loses
-    # it → the model can't synthesize → over-abstains "insufficient").
-    # Env-gated so production stays byte-identical (default 1000) while
-    # measurement / multi-hop configs can widen it. See experiment log
-    # §14 (2026-06-05): this cap, not num_ctx, was the over-abstention
-    # root cause — num_ctx never mattered because the cut happens here,
-    # at prompt assembly, before the model sees anything.
-    _ctx_chars = int(os.environ.get("JAMES_SYNTH_CONTEXT_CHARS", "1000"))
+    # hardcoded at 1000, which truncated multi-hop evidence (a 2-fact
+    # question whose second supporting chunk sat past char 1000 lost
+    # it → the model couldn't synthesize → over-abstained "insufficient").
+    #
+    # 2026-06-05 §15-16 (eb871c3): env-gated, default 1000 (production
+    # byte-identical) while measurement / multi-hop configs widen via
+    # JAMES_SYNTH_CONTEXT_CHARS=8000.
+    # 2026-06-05 §29 (PR-A): default flipped 1000 → 8000 after
+    # measurement-side validation on MultiHop-RAG fixture (n=100):
+    #   PM-1b cap=1000 (legacy):  primary 0.450 / graded 0.413 / abst_F1 0.523
+    #   PM-10 cap=8000 (new):     primary 0.480 / graded 0.490 / abst_F1 0.611
+    #   Δ:                        +0.030    / +0.077    / +0.088
+    # Multi-axis recovery (no regression in null query handling).
+    # Mother-platform principles 1 + 5 satisfied: cap adjustment is a
+    # reasoning dial (not a single-metric optimization) and NATURAL
+    # answer mode is positively affected (multi-fact completeness ↑).
+    # Legacy 1000 byte-identical via JAMES_SYNTH_CONTEXT_CHARS=1000.
+    _ctx_chars = int(os.environ.get("JAMES_SYNTH_CONTEXT_CHARS", "8000"))
 
     safe_q = RetrievalEngine._sanitize(question, 300)
     sys_block = f"{system_prompt}\n\n" if system_prompt else ""
