@@ -69,19 +69,37 @@ def generate_answer(
     # informs synth phrasing, but does NOT yet drive retrieval / tool
     # routing (future PR-7 follow-up). Trivial plans (1 subtask) are
     # skipped to avoid prompt noise.
+    #
+    # 2026-06-05 §24 — terse mode skip. The plan prepend includes a
+    # Korean directive ("위 계획에 따라 단계별로 답변하라" = "answer
+    # step-by-step following the plan above") which structurally forces
+    # the model to open with `### Step 1:`, `### 1. Analysis`, `Hello,
+    # I am JAMES. I will follow the plan step-by-step`. PM-15 confirmed
+    # this is the source of 23/28 unstrippable meta-mode answers under
+    # cap=8000 (the "synth draft (c2)" branch of the reflect-revise
+    # finding). For terse mode (single-answer measurement / UX) the
+    # plan directive is structurally incompatible with the format
+    # contract ("ANSWER: <one line>") — skip the prepend.
+    # Non-terse paths preserve byte-identical behavior.
     try:
-        from core.reasoning.planner import get_planner
-        _plan = get_planner().plan(safe_query, user_role=user_role)
-        if _plan and not _plan.is_trivial():
-            _steps = "\n".join(
-                f"{i + 1}. {s}" for i, s in enumerate(_plan.subtasks)
-            )
-            system_prompt = (
-                f"[추론 계획]\n{_steps}\n\n위 계획에 따라 단계별로 답변하라.\n\n"
-                + system_prompt
-            )
-    except Exception as e:
-        engine._log("planner", e, user_role)
+        from core.response_style import resolve_style as _resolve_style
+        _style_is_terse = _resolve_style(response_style).name == "terse"
+    except Exception:
+        _style_is_terse = False
+    if not _style_is_terse:
+        try:
+            from core.reasoning.planner import get_planner
+            _plan = get_planner().plan(safe_query, user_role=user_role)
+            if _plan and not _plan.is_trivial():
+                _steps = "\n".join(
+                    f"{i + 1}. {s}" for i, s in enumerate(_plan.subtasks)
+                )
+                system_prompt = (
+                    f"[추론 계획]\n{_steps}\n\n위 계획에 따라 단계별로 답변하라.\n\n"
+                    + system_prompt
+                )
+        except Exception as e:
+            engine._log("planner", e, user_role)
 
     try:
         sys_prefix = f"{system_prompt}\n\n" if system_prompt else ""
