@@ -35,16 +35,45 @@ MODEL = os.environ.get("PROOF_MODEL", "gemma4:e4b")
 TOP_K = int(os.environ.get("RAW_TOP_K", "5"))
 FIX = os.environ.get("FIXTURE") or os.path.join(
     ROOT, "workspaces", "hotpot_eval", "eval", "multihop_rag_queries.json")
+# 2026-06-05 §34 — PROMPT_STYLE env-gate for Layer B framework comparison.
+#   james_terse (default) — TERSE_PRESET rule_text_en + [Evidence]/[Question]
+#                            sections (JAMES-style raw, terse contract)
+#   paper                 — exact paper-style prompt (qa_llama.py prefix +
+#                            "Question:/Context:" + '--------------' chunk
+#                            separator). Used for Layer B (LlamaIndex-style
+#                            baseline approximation on JAMES corpus).
+PROMPT_STYLE = (os.environ.get("PROMPT_STYLE", "james_terse")
+                .strip().lower())
+
+OUT_TAG = f"raw{'_paper' if PROMPT_STYLE == 'paper' else ''}"
 OUT = os.path.join(ROOT, "reports",
-                   f"multihop_raw_{MODEL.replace(':', '-')}_{time.strftime('%Y%m%d_%H%M%S')}.json")
+                   f"multihop_{OUT_TAG}_{MODEL.replace(':', '-')}_{time.strftime('%Y%m%d_%H%M%S')}.json")
 
 PAPER = {"GPT-4": 0.56, "Claude-2.1": 0.52, "PaLM": 0.47,
          "ChatGPT/3.5": 0.44, "Mixtral-8x7B": 0.32, "Llama-2-70b": 0.28}
 
 
+# Exact paper-style prompt from yixuantt/MultiHop-RAG qa_llama.py
+_PAPER_PREFIX = (
+    "Below is a question followed by some context from different sources. "
+    "Please answer the question based on the context. "
+    "The answer to the question is a word or entity. "
+    "If the provided information is insufficient to answer the question, "
+    "respond 'Insufficient Information'. "
+    "Answer directly without explanation."
+)
+
+
 def build_prompt(context: str, question: str) -> str:
-    # Same terse contract as JAMES-full (response_style="terse"), so the
-    # answer FORMAT matches; only the reasoning stack differs.
+    if PROMPT_STYLE == "paper":
+        # Exact paper format (qa_llama.py): prefix + Question + Context.
+        # Context joined with '--------------' separator (paper convention).
+        return (
+            f"{_PAPER_PREFIX}\n\n"
+            f"Question:{question}\n\n"
+            f"Context:\n\n{context}"
+        )
+    # JAMES-style raw — same terse contract as JAMES-full.
     return (
         f"{TERSE_PRESET.rule_text_en}\n"
         f"[Evidence]\n{context}\n\n"
@@ -66,7 +95,10 @@ def main():
         try:
             chunks = vs.search(q["text"], top_k=TOP_K, source_type=None)
             n_src = len(chunks)
-            context = "\n\n".join(c.get("text", "") for c in chunks)
+            # paper style uses '--------------' separator (qa_llama.py),
+            # james_terse style uses '\n\n'
+            _sep = "--------------" if PROMPT_STYLE == "paper" else "\n\n"
+            context = _sep.join(c.get("text", "") for c in chunks)
             if not context.strip():
                 no_evidence.append(q["id"])
             ans = gc.call_gemma(
