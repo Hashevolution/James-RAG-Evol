@@ -161,7 +161,8 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
-| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/handovers/v0.4-multihop-synth-context-fix-2026-06-05.md`** (BIG: synth `context[:1000]` truncation이 multi-hop 추론 장기 불구화 → env-gate fix. PM-12 mixtral 확인 + 최종보고 + default 결정만 남음) |
+| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/handovers/v0.4-mother-platform-6-principles-cycle-2026-06-05.md`** (BIG: cap[:1000] fix Default flip (PR-A b59e7ee) + mother-platform 평가 6 원칙 정립 + V2/P-1 cycle β auto-selection 후보. PM-12-final mixtral 진행 중 + cycle β 진입 결정만 남음) |
+| Prev entry (cap[:1000] discovery) | `docs/handovers/v0.4-multihop-synth-context-fix-2026-06-05.md` |
 | Prev entry (Direction α 측정 closure) | `reports/research-runs/alpha-8-cloud-tier-extension-20260604.md` (premise 미입증, S6/S7 보류) + 5 measurement-side rules |
 | Direction α design memo (§4.1 local-vs-cloud ①) | `docs/design/v0.4-direction-alpha-hybrid-cloud-tier.md` |
 | Direction α local-vs-cloud premise + sequencing | memory `project_direction_alpha_local_vs_cloud_quality_thread` |
