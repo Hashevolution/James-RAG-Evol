@@ -666,6 +666,340 @@ inject skip. **코드 변경 없이 측정 환경만 정정.**
 
 권고 = PM-13/PM-14 결과 + production session 누적 정량 측정 후 결정.
 
+## 21. PM-13 결과 — §20 진단 부분 기각, honest 정정 (2026-06-05)
+
+§20 "두 번째 ROOT CAUSE = episodic context drift" framing은 over-claim.
+PM-13 (e4b cap=8000 + per-query session, episodic 자동 skip) 결과로 일부
+기각.
+
+### 결과 비교
+
+| metric | PM-1b cap1k same-sess | PM-10 cap8k same-sess | **PM-13 cap8k per-query** |
+|---|---|---|---|
+| primary | 0.45 | 0.48 | **0.41** ↓ |
+| answerable-only | 0.293 | 0.347 | **0.280** ↓ |
+| inference | 0.56 | 0.80 | **0.68** ↓ |
+| comparison | 0.12 | 0.16 | **0.12** = |
+| temporal | 0.20 | 0.08 | **0.04** ↓↓ |
+| null | 0.92 | 0.88 | **0.80** ↓↓ |
+| meta-mode marker (lead 300) | — | 37/100 | **29/100** (−22%) |
+
+### 진단 정정
+
+1. **메타 모드 풀리지 않음.** per-query session_id로 episodic을 끊었는데도
+   29/100 답이 여전히 "## Revised Answer" / "This revision focuses on..."
+   양식. 예: qid 77 PM-13 답 lead = "This revision focuses on adopting a
+   more formal, academic, and polished tone..." — episodic 끊어도 동일
+   메타 양식. **episodic은 main driver 아니라 partial contributor (8/100
+   메타 모드 감소만)**.
+
+2. **episodic의 net positive 효과.** 끄니 inference 0.80→0.68, null 0.88→
+   0.80, primary 0.48→0.41 모두 하락. episodic의 cross-turn reasoning +
+   critique-tone abstention 강화가 multi-hop fixture에서 일정 가치 있었음.
+   단순 "결함 제거" 아니라 **양면 효과** (drift 8% 감소 vs primary 0.07
+   regression — net 손해).
+
+3. **진짜 root cause 후보 (미규명, 잠정 4)**:
+   - (a) e4b 모델 자체 long-context 답변 양식 (Gemma4 prior, training data
+     영향)
+   - (b) `rule_text_en` NATURAL 잔재가 측정 어딘가 inject
+   - (c) synth prompt가 long-context에서 분석/report 양식 자체-유도
+   - (d) `system_prompt` 다른 layer (persona / character / preference)
+     잔재
+
+### 사용자 박은 룰 모두 trigger됨
+
+- `feedback_finding_size_honest_framing`: §20 "ROOT CAUSE" framing이
+  over-claim. 진단 가설 부분 기각.
+- `feedback_fixture_fitness_before_verdict`: multi-hop fixture가
+  episodic의 양쪽 효과를 정확히 측정 못 함 (cross-turn reasoning이 단발
+  multi-hop에선 정의상 의미 약함).
+- `feedback_evidence_grounded_validity_check`: fix가 가설을 약하게 지지
+  (-8 메타) + 다른 축에서 명확히 해침 (-0.07 primary). 가설 부분 기각이
+  정확한 결론.
+- `feedback_n1_verdict_inflation_n3_caught`: §20을 n=1 SQL 검사 +
+  진단으로 "확정 수준" 표현. n=100 measurement에서 약화.
+
+### 진단의 정직한 잔존 가치
+
+- pm1-terse session 4,947 events 누적은 사실. cross-turn episodic inject
+  가 시스템에 있다는 점도 사실. 영향이 메타 모드 8/100 + abstention
+  강화 ~+0.08 / inference 강화 +0.12 로 quantified됨 — 이건 가치 있는
+  observation (production 사용 패턴 영향 측정 자료).
+- platform-side fix 옵션 (A/B/C/D)은 더 이상 권고 안 함. episodic의
+  net positive 효과 때문에 끄는 fix는 손해. 다른 fix (예: critique-tone
+  summary 자체를 중립화 = option A) 만 유효 후보.
+
+### 다음
+
+- PM-14 (mixtral cap=8000 + per-query session) → 메타 모드 패턴이 모델
+  무관인지 (e4b만의 특질인지) 확인. 진행 중 (task baz0a36u2).
+- mixtral에서도 같은 양식이면 → (c)/(d) layer-side 또는 prompt-side
+  잔재 후보 강화. e4b만이면 → (a) 모델 양식 천장.
+- 진짜 root cause는 별도 cycle 또는 후속 코드 read 필요 (이번 cycle
+  scope 외, honest framing).
+
+## 22. 진단 (c) — reflect engine의 critique→revise + stripper 패턴 부족 (2026-06-05)
+
+§21 honest 정정 후 (a)/(b)/(d) 다 약화 또는 기각. (c) reflect engine
+이 진짜 source 라는 evidence chain.
+
+### Evidence chain (4 단계)
+
+1. **(a) 기각 — raw e4b 0/100**: `multihop_raw_*.json` (JAMES 스택 우회,
+   직접 call_gemma) 답 100/100 중 메타 marker 0. e4b pure model 은
+   long-context evidence 받아도 "## Revised Answer" 양식 절대 안 만듦.
+   **JAMES 스택이 유도** 하는 것.
+
+2. **(b)/(d) 약화**: `response_style="terse"` 정상 동작 (resolve_style
+   확인). system_prompt 87자 ("Always respond in English. JAMES")
+   메타 cue 없음. memory_context 438자 "[사용자 설정] / [반복 패턴]"
+   단순 preference. persona.style 은 deprecated (memory dump 확인).
+   per-query session 이라 episodic 도 skip.
+
+3. **(c) 확정 — reflect engine 코드 자체 명명**: `reflect.py` line 73-88
+   주석:
+   > "Even with the REVISE_PROMPT directives explicitly forbidding
+   > meta-text, Gemma 4 occasionally opens the revision with the model
+   > commenting on the critique it just received..."
+   이미 2026-05-26 A3.1 NVIDIA 사건 때 같은 현상 발견 + stripper
+   추가. 영어 6 패턴 (Korean 7 vs EN 6 빈약). PM-13 29/100 메타 답
+   전부 (29/29) 기존 6개 EN 패턴에 미스.
+
+4. **`.env` 확인**: 루트 `.env` 에 `JAMES_ENABLE_REFLECT=1` 박혀있어
+   측정 시 reflect 활성. PM-13 log 에 `[reason:reflect] reasoning.
+   reflect.critique` + `.revised` 매 query 마다 호출 확인.
+
+### Type 분포 일치 (causal coherence)
+
+| type | meta-marker | 가설 |
+|---|---|---|
+| temporal | 14/25 (56%) | yes/no 합성형 → critique "Missing core" 빈발 → revise → 메타 양식 |
+| comparison | 9/25 (36%) | 동일 |
+| inference | 5/25 (20%) | single fact → critique 깔끔 → revise 적음 |
+| null | 1/25 (4%) | abstention 답 → critique "NO_ISSUES" → revise skip |
+
+### Band-aid fix (즉시 적용, commit `2d96192`)
+
+- `_META_NARRATIVE_PATTERNS` 영어 5 패턴 추가:
+  - `^\s*\*?\*?##?\s*Revised\s+(Answer|Draft|Version)\*?\*?:?`
+  - `^\s*\*\*\s*Revised\s+(Answer|Draft|Version)\s*\*?\*?:?`
+  - `^\s*This\s+revision\s+(focuses|addresses|maintains|assumes|...)`
+  - `^\s*This\s+revised\s+(answer|draft|version|response)`
+  - `^\s*Hello,?\s+I\s+am\s+JAMES\.\s*I\s+will\s+follow`
+- `REVISE_PROMPT_EN` forbidden openings list 확장 + heading 금지 명시
+- Tests 50/50 pass (39 기존 + 11 신규)
+- PM-13 retrofit: 14/29 추가 caught (heading 양식 15/29 는 prompt 만)
+
+### PM-15 검증 (e4b cap=8000 + per-query + band-aid 활성)
+
+| metric | PM-10 no-fix | PM-13 ep-fix | **PM-15 +stripper** |
+|---|---|---|---|
+| primary | 0.480 | 0.410 | **0.460** (+0.05) |
+| answerable | 0.347 | 0.280 | **0.333** (+0.05) |
+| inference | 0.800 | 0.680 | **0.760** (+0.08) |
+| comparison | 0.160 | 0.120 | **0.160** (+0.04) |
+| temporal | 0.080 | 0.040 | **0.080** (+0.04) |
+| null | 0.880 | 0.800 | **0.840** (+0.04) |
+| meta-marker | 38/100 | 30/100 | **28/100** (-2) |
+
+- 모든 axis 회복, 단 메타 marker 감소 약함 (30→28). band-aid 효과는
+  체감 작음. 핵심 metric (answerable / inference) 회복은 의미 있음.
+
+### (c) 의 정밀화 — (c1) reflect / (c2) synth draft
+
+PM-15 메타 답 28/100 분해:
+- **(c1) 5/28 = stripper 패턴 매치** (revise pass 산물). separator
+  뒤 body 추출 또는 draft fallback 작동.
+- **(c2) 23/28 = stripper 미스** = **synth draft 자체가 메타 양식**.
+  예:
+  - qid 7: "### Step 1: Search TechCrunch and The Verge..." (planner
+    sub-task 양식)
+  - qid 30: "**[Revised Answer]** / Thank you for the detailed..."
+    (bracket 변형 + thank you)
+  - qid 35: "Hello, I am JAMES. Based on the provided internal data,
+    here is the step-by-step analysis..."
+
+→ (c) 가 두 층:
+  - (c1) reflect revise pass — stripper + Option B (V2) 로 fix 가능
+  - (c2) synth draft 자체 — **planner sub-task leak** 또는 **NATURAL
+    rule_text "report format with ## section headers" cue 가 모델
+    prior 활성화** 가능성. stripper 무관. **별도 cycle β scope**.
+
+## 23. Option B systemic fix (PM-16 검증 진행 중, 2026-06-05)
+
+(c1) 의 진짜 systemic fix — critique 본문 비노출.
+
+### Design
+
+`REVISE_PROMPT_V2_{EN,KO}` 추가 (commit `9ed1af7`):
+- v1: `revise_prompt = "Revise the draft to address the review.\n[Review]\n{critique}\n..."` → 모델이 critique 본문 봄 → 메타 양식 자연 유도
+- **v2**: `revise_prompt = "Write the best possible answer. An earlier attempt had a quality flag (type: {issue_type}). [Question] [Earlier attempt]..."` → critique 본문 비노출, "answer-write" task 로 framing
+- `_extract_issue_flag(critique_text)` regex 가 critique → 4-tag 압축
+  (factual_error / missing_core / ambiguity / general)
+- v2 prompt 본문에 `critique` / `review` 단어 자체 미등장 (test 로 enforce)
+- env-gate `JAMES_REVISE_PROMPT_V2=1` 활성. default OFF = production
+  byte-identical. 검증 후 default flip = 후속 PR.
+
+### 왜 systemic 인가
+
+band-aid (stripper + forbidden list 확장) 는 무한 패치 게임. v2 는
+**메타-format 공간 자체를 닫음** — 모델이 critique 본문을 안 보면
+revision-speak 양식 자체가 응답 후보로 활성화 안 됨. critique pass
+는 그대로 (audit trail 보존), 오직 revise-side framing 만 변경.
+
+### PM-16 검증 (진행 중, task bb77a7kmv)
+
+- e4b cap=8000 + per-query + stripper + V2 활성 100Q
+- 기대: 메타 marker 28 → ?(target <10/100, redesign 효과)
+- answerable / inference 추가 회복 (V2 가 답을 단순화 시키면 yes/no
+  lead matcher 더 작동)
+- 결과 양호 시 V2 default flip 후속 PR + mixtral PM-14 retry
+
+### Scope 외 (cycle β)
+
+- (c2) synth draft 메타 cue (planner sub-task leak / NATURAL rule_text
+  cue) 는 별도 cycle. 이번 cycle 은 reflect 차원 까지만.
+- mother-platform 의 self-healing pattern: hidden defect 발견 →
+  진단 → patch (band-aid) → systemic redesign → measurement 검증 →
+  default flip. cap[:1000] / episodic / reflect 모두 같은 패턴.
+
+## 24. (c2) 정밀 진단 — planner plan-prepend leak + P-1 fix (2026-06-05)
+
+§23 V2 redesign 후에도 PM-15 28/100 메타 답 중 23/28 이 stripper
+미스. 추적 결과 `pipeline_synth.generate_answer:73-84`:
+
+```python
+_plan = get_planner().plan(safe_query, user_role=user_role)
+if _plan and not _plan.is_trivial():
+    _steps = "\n".join(
+        f"{i + 1}. {s}" for i, s in enumerate(_plan.subtasks)
+    )
+    system_prompt = (
+        f"[추론 계획]\n{_steps}\n\n위 계획에 따라 단계별로 답변하라.\n\n"
+        + system_prompt
+    )
+```
+
+`JAMES_ENABLE_PLANNER=1` (루트 `.env`) 활성 → 매 query 마다 planner
+가 sub-tasks 분해 → numbered list 로 `[추론 계획]` 헤더와 함께
+system_prompt 앞에 prepend → **"위 계획에 따라 단계별로 답변하라"**
+한국어 directive 가 모델에 step-by-step report 양식 강제. PM-13
+reflect summary dump 와 정확히 일치 (`[plan] 3 subtasks: Identify
+companies reported by TechCrunc / Filter the list...`).
+
+raw e4b (no JAMES stack) PM-4 0/100 메타 vs JAMES-full 28-30/100 →
+JAMES 측 prompt 결함 확정 → planner prepend 추적 → (c2) systemic
+fix scope 안에 들어옴.
+
+### P-1 fix (commit `bc2ddae`)
+
+terse 모드에서 plan prepend skip. response_style 이 `terse` 일 때만
+차단, 나머지 (NATURAL chat / 보고서) 는 byte-identical 보존:
+
+```python
+_style_is_terse = _resolve_style(response_style).name == "terse"
+if not _style_is_terse:
+    _plan = get_planner().plan(...)
+    # ... legacy prepend
+```
+
+resolve_style 실패 시 `_style_is_terse=False` fallback (안전). Tests:
+6 new (resolve_style 호출 / non-terse 가드 / 호출 순서 / fallback /
+non-terse byte-identical / design rationale source anchor) — 73 + 6 =
+79/79 pass.
+
+더 systemic 한 redesign (plan 을 retrieval routing 에만 사용, model
+prompt 비노출, planner.py MVP 다음 design intent) 은 cycle β scope.
+
+## 25. PM-16 측정 + validity check — V2 효과 강력 (2026-06-05)
+
+### 5-way 측정 매트릭스 (e4b cap=8000, 100Q)
+
+| metric | PM-10 no-fix | PM-13 +ep-fix | PM-15 +stripper | **PM-16 +V2** | PM-17 +V2+P-1 |
+|---|---|---|---|---|---|
+| primary | 0.480 | 0.410 | 0.460 | **0.580** | 진행 중 |
+| answerable-only | 0.347 | 0.280 | 0.333 | **0.533** | 진행 중 |
+| inference | 0.800 | 0.680 | 0.760 | **0.840** | 진행 중 |
+| comparison | 0.160 | 0.120 | 0.160 | **0.480** | 진행 중 |
+| temporal | 0.080 | 0.040 | 0.080 | **0.280** | 진행 중 |
+| null | 0.880 | 0.800 | 0.840 | 0.720 | 진행 중 |
+| **meta-marker** | 38 | 30 | 28 | **3/100** | 진행 중 |
+
+### 신뢰성 검증 (PM-16 결과의 합리성)
+
+사용자 박은 룰들 다 trigger 후 검증:
+- `feedback_n1_verdict_inflation_n3_caught` — n=100 single-shot 이라
+  paired confirmation 없음. 단 axis 별 변화량 정확히 산술 일치
+  (comparison Δ +0.32 = 8/25; +8 cases identifiable by qid).
+- `feedback_evidence_grounded_validity_check` — 답 sample inspection
+  으로 진짜 신호인지 확인.
+
+**comparison axis 11 WIN / 3 LOSS 답 sample 확인**:
+
+| qid | gold | PM-15 답 lead | PM-16 답 lead | 평가 |
+|---|---|---|---|---|
+| 27 | Yes | `### 1. Identify the monetization...` (메타) | `Yes, the two articles indicate fundamentally different monetization strategies.` | WIN 진짜 |
+| 32 | Yes | `### 1. Determine if the TechCrunch...` (메타) | `Yes, the TechCrunch article suggests that Amazon's LLM is not trained on children's responses.` | WIN 진짜 |
+| 33 | no | `Based on the analysis... **No**.` (lead 깊은 곳) | `No. The CNBC report on Nike's Latin America...` (lead 직접) | WIN matcher 회복 |
+| 47 | Yes | (lead 깊은 곳 Yes) | `No, only the article from The Verge...` | LOSS — 실제 잘못 답 |
+| 49 | Yes | `Yes, the Yardbarker...` (정답) | `No.` (단답 잘못) | LOSS — V2 가 hallucination 유도 |
+| 50 | Yes | (lead "explicitly states") | `**Step 1: Determine from the CBSSports.com...**` | LOSS — 1/100 잔존 메타 |
+
+**verdict**: **결과 진짜.** measurement artifact 아님. V2 가 답 lead 에
+yes/no 를 두는 양식 활성화 → matcher 정확히 작동. LOSS 3개 = 예측
+가능한 tradeoff (1 hallucination + 1 노이즈 + 1 잔존 메타).
+
+### V2 가 (c2) planner-leak 까지 흡수한 이유
+
+PM-16 은 P-1 미적용 (planner 여전히 활성, plan prepend 됨). 그런데도
+meta marker 28→3. 원인 가설:
+
+- PM-15: synth draft 가 `### Step 1:` 양식 → critique pass 가 "Missing
+  core" 지적 → revise pass 가 critique 본문 봄 → critique 안에 있는
+  `### Step 1:` 양식을 critic 하면서 revise 가 다시 `### Step 1:`
+  양식으로 답을 *강화* (양식 echo loop)
+- PM-16 V2: critique 비노출 → revise 가 "fresh answer 작성" framing →
+  synth draft 양식 안 따라가고 깨끗한 새 답 작성 → planner-leak 양식
+  까지 흡수
+
+즉 V2 가 reflect-revise leak 뿐 아니라 **synth draft → critique echo
+→ revise 강화** 의 incident chain 까지 차단. P-1 (PM-17) 은 추가 마진
+만 줄 가능성.
+
+### answerable 0.533 의 의미
+
+raw e4b answerable-only = 0.39 (PM-4 vanilla RAG). PM-16 = 0.533. **JAMES
+스택이 raw 초과 — V2 활성 시 처음.** §11 결론 (스택이 답 죽이고 회피
+살림) 의 정밀한 정정: **스택의 reflect engine 만 답을 죽이고 있었음**.
+V2 가 그 사망 메커니즘 차단 → 스택의 진짜 가치 (retrieval rerank +
+graph) 드러남.
+
+### Honest framing (cycle 마감 톤 정렬)
+
+- **claim**: V2 가 reflect-revise 메타 양식 + synth draft echo 강화
+  을 한 번에 차단해 answerable 0.347→0.533 (n=100 single-shot)
+- **caveat 1**: n=1 single-shot 이라 paired n=3 confirm 필요 (over-claim
+  방지). 단 axis 별 산술 일치 + 답 inspection 신뢰성 ↑.
+- **caveat 2**: null −0.12 tradeoff. 적용 시 design 결정 필요 (cap
+  default 결정 패턴).
+- **caveat 3**: mixtral 모델 무관성 미확인. PM-14 redo 필요.
+- **이번 cycle 의 가장 큰 finding**: cap[:1000] discovery 만큼 큰
+  systemic platform defect. 단 cycle β 진입 정당화 보다는 **이번 cycle
+  안에서 P-1 + V2 둘 다 land + design 결정** 까지 마무리.
+
+### 진행 매트릭스 (작업 과정 기록)
+
+| Phase | 발견 | Fix | 효과 | commit |
+|---|---|---|---|---|
+| 0 (어제) | cap[:1000] truncation | env-gate JAMES_SYNTH_CONTEXT_CHARS | answerable +0.057, inference +0.24 | eb871c3 |
+| 1 (오전) | episodic critique drift 가설 | per-query session (runner-side) | -0.07 primary (가설 부분 기각) | af1b529 + ba938bc |
+| 2a | temporal drift origin 추적 | — (진단만) | (c)/(c1)/(c2) 분기 발견 | (uncommitted, §22) |
+| 2b | reflect critique→revise + stripper 부족 (c1) | stripper 5 패턴 + REVISE_PROMPT_EN 확장 | +0.05 axis, meta 30→28 | 2d96192 |
+| 2c | reflect critique-노출 자체 결함 (systemic c1) | Option B V2 prompt + env-gate | meta 28→3 (-92%), answerable 0.333→0.533 | 9ed1af7 |
+| 2d | planner plan-prepend leak (c2) | terse-mode skip + tests | 측정 PM-17 진행 중 | bc2ddae |
+| 3 (대기) | PM-17 결과 + mixtral PM-14 retry + 종합 verdict + design 결정 | — | — | — |
+
 ## 19. 최종 verdict matrix (PM-12 완료 후 마감)
 
 PM-12 (mixtral + fix cap=8000, 100Q) 결과로 6칸 매트릭스 완성. 핵심 verdict:
