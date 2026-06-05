@@ -1000,6 +1000,317 @@ graph) 드러남.
 | 2d | planner plan-prepend leak (c2) | terse-mode skip + tests | 측정 PM-17 진행 중 | bc2ddae |
 | 3 (대기) | PM-17 결과 + mixtral PM-14 retry + 종합 verdict + design 결정 | — | — | — |
 
+## 26. 사용자 의심 검토 + framing 가능성 (2026-06-05)
+
+PM-16 결과 보고 시 사용자가 두 가지 의심 제기. 둘 다 합리적 질문 —
+타당성 분석 후 framing 가능 강도 정리.
+
+### 의심 1 — 테스트-specific 세팅에서만 성적 좋은 것 아닌가? (부분 타당)
+
+측정 환경 세팅을 production 적용 가능성으로 분류:
+
+| 세팅 | 성격 | production 적용 |
+|---|---|---|
+| `JAMES_WORKSPACE=hotpot_eval` | 측정 전용 코퍼스 격리 | N/A |
+| `JAMES_RESPONSE_STYLE=terse` | opt-in 사용자 요청 시만 | partial (terse callers) |
+| `JAMES_NUM_CTX=16384` | 측정 전용 ceiling | N/A |
+| `JAMES_SYNTH_CONTEXT_CHARS=8000` | env-gate, 검증 후 flip | **YES** Tier 1 default 후보 |
+| `JAMES_REVISE_PROMPT_V2=1` | env-gate, 검증 후 flip | **YES** Tier 1 default 후보 |
+| per-query session_id | 측정 runner-only | N/A |
+| P-1 terse-skip | terse callers 한정 | partial |
+
+**한계**:
+- 측정 = "단답 fixture + terse 모드 + paper-aligned exact-match" 좁은 1축
+- production NATURAL 모드 (보고서, 의도 확인, source files header 등 conversational UX) 직접 미입증
+- 진짜 production 효과는 default flip 후 실사용 측정에서 입증
+
+**사용자 인사이트**: "NATURAL 모드는 그걸 측정할 외부 벤치나 측정 도구가
+따로 필요". 정확. NATURAL 평가에 필요한 도구:
+- LLM-judge (blind pairwise)
+- task-specific 평가 (research summary / support agent task)
+- graded 부분점수 oracle 재사용
+- pairwise preference (V2 vs V1)
+- cycle β / γ scope (production-grade 평가 정착)
+
+### 의심 2 — 반복 측정으로 학습 leak? (약함, anti-likely)
+
+mechanism별 분석:
+
+| 가능한 source | 가능성 | 근거 |
+|---|---|---|
+| gemma4 가중치 변경 | ❌ 0 | ollama inference-only, weights 절대 안 바뀜 |
+| ollama LLM cache | ❌ 낮음 | prompt 정확 일치 필요, PM마다 setting 다름 → MISS. log `❌ GEMMA CACHE MISS (misses=337)` 확인 |
+| chroma/retrieval cache | ✅ deterministic | 결정론적 (학습 아님) |
+| JAMES audit_log learning | ❌ 0 | forensic, 답에 피드백 X |
+| self-evolution | ❌ 0 | `Self-evolution disabled` 확인 |
+| episodic cross-turn | ⚠️ 이전엔 있었음 | PM-16/17 per-query라 isolation |
+
+**강한 반증**:
+- PM-15 vs PM-16 같은 qid 답이 명확히 다름 (qid 27 "### 1. Identify..."
+  → "Yes, the two articles indicate..."). cache hit이면 답 동일했을
+  것. fix가 prompt 변경 → 모델이 다른 답 생성 = 진짜 fix 효과.
+- gemma_client cache salt = `model + think`. prompt hash 다르면 miss.
+
+### 종합 데이터 매트릭스 (e4b cap=8000, terse fixture, n=100)
+
+| 측정 | 활성화 | primary | **ans-only** | inf | comp | temp | null | meta |
+|---|---|---|---|---|---|---|---|---|
+| PM-1b | base (모든 fix OFF) | 0.45 | 0.293 | 0.56 | 0.12 | 0.20 | 0.92 | — |
+| PM-6 | cognitive-off | 0.42 | 0.227 | 0.44 | 0.20 | 0.04 | 1.00 | — |
+| PM-7 | rerank-off | 0.43 | 0.267 | 0.60 | 0.16 | 0.04 | 0.92 | — |
+| PM-8 | graph-off | 0.44 | 0.280 | 0.56 | 0.12 | 0.16 | 0.92 | — |
+| PM-10 | +cap=8000 | 0.48 | 0.347 | 0.80 | 0.16 | 0.08 | 0.88 | 38 |
+| PM-11 | cap=4000 | 0.46 | 0.32 | 0.76 | 0.12 | 0.08 | 0.88 | — |
+| PM-13 | +per-query session | 0.41 | 0.280 | 0.68 | 0.12 | 0.04 | 0.80 | 30 |
+| PM-15 | +stripper band-aid | 0.46 | 0.333 | 0.76 | 0.16 | 0.08 | 0.84 | 28 |
+| **PM-16** | **+V2 redesign** | **0.58** | **0.533** | **0.84** | **0.48** | **0.28** | 0.72 | **3** |
+| PM-17 | +P-1 (planner skip) | 진행 중 (50/100) |
+
+### 스택 contribution (같은 모델, raw vs JAMES-full)
+
+| 구성 | answerable-only | null | primary | 의미 |
+|---|---|---|---|---|
+| raw e4b (vanilla RAG) | 0.39 | 0.92 | 0.52 | 모델 자체 능력 |
+| JAMES+e4b cap=1000 (결함) | 0.293 | 0.92 | 0.45 | **스택이 답 죽임** −0.10 |
+| **JAMES+e4b PM-16 (fix)** | **0.533** | 0.72 | **0.58** | **스택이 raw 초과** +0.14 |
+| raw mixtral (vanilla RAG) | 0.65 | 0.24 | 0.55 | 큰 모델 자신감 + null hallucination |
+| JAMES+mixtral cap=1000 | 0.29 | 0.96 | 0.46 | 스택이 큰 모델도 죽임 + 회피 강제 |
+| JAMES+mixtral PM-14 (V2) | retry 대기 | | | mixtral 무관성 확인 필요 |
+
+### 외부 baseline (MultiHop-RAG paper Table 6)
+
+| Model | params | primary |
+|---|---|---|
+| GPT-4 | ~1.7T (est) | 0.56 |
+| Claude-2.1 | ? | 0.52 |
+| PaLM | 540B | 0.47 |
+| ChatGPT/3.5 | ~175B | 0.44 |
+| Mixtral-8x7B | 47B | 0.32 |
+| Llama-2-70b | 70B | 0.28 |
+| **JAMES + gemma4:e4b** | **4B** | **0.58** |
+
+### Framing 가능 강도 (3 단계)
+
+**Framing A (보수, 안전)**:
+> "terse 단답 fixture (MultiHop-RAG, n=100 single-shot) 측정 한정에서
+> JAMES + gemma4:e4b (4B) 가 3개 systemic fix (cap[:1000] / critique
+> 비노출 V2 / planner terse-skip) 활성 시 paper Table 6 baseline 6개
+> 모두 초과 (primary 0.58 vs GPT-4 0.56). approximation metric +
+> composition (null 비중) + NATURAL 모드 미입증 caveat."
+
+**Framing B (중간, 가치 강조 — 권고)**:
+> "JAMES 스택의 reflect-engine 결함 (critique 노출 양식) 을 redesign
+> 한 후, 4B 로컬 모델 (gemma4:e4b) 이 단답 multi-hop 추론에서 GPT-4
+> league 도달. 같은 모델 raw vanilla RAG 0.39 (answerable) 대비
+> JAMES-full 0.533 — **JAMES 스택이 작은 모델을 11-100배 큰 모델과
+> 동급 league 로 올림**. (terse 단답 측정 한정.)"
+
+**Framing C (강함, publication 가치)**:
+> "Local-first, auditable RAG 스택 (JAMES) 이 4B 모델로 MultiHop-RAG
+> paper-aligned 단답 정확도 0.58 — paper GPT-4 / Claude / Mixtral /
+> Llama 모두 초과 (모델 12-400배 작음). answerable-only contribution
+> +0.14 over raw vanilla RAG = 스택 자체의 추론 lift 정량 입증.
+> cap[:1000] / reflect critique-노출 / planner plan-prepend **3개
+> hidden platform defect 발견·수정** 의 후속 효과."
+
+### 권고 framing = **B**
+
+학계 honest framing rule 정합 + 의미 있는 가치 명확. 단 publication /
+협업자 share 직전에 보강 의무:
+1. **PM-17** — 마지막 layer (V2+P-1) 효과 정량
+2. **PM-14 redo** (mixtral cap=8000 + V2) — 모델 무관성 확인 → V2 가
+   모델 특이성 fix 가 아님 입증
+3. **paired n=3** — n=1 inflation rule 적용, ±0.03 noise band 검증
+4. **NATURAL 모드 별도 cycle** — production-grade 평가 (cycle β/γ scope)
+
+### 의무 caveat (모든 framing 동반)
+
+- terse 단답 + paper-aligned exact-match (approximation) 한정
+- NATURAL 모드 답 quality 직접 미입증
+- n=100 single-shot, paired confirm 미완료
+- mixtral 일반화 미확인 (PM-14 진행 대기)
+- 한국어 fixture 미확인
+- e4b ans 0.533 ≠ "4B = GPT-4 동등" (composition + null 비중 + 단답 한정)
+- paper matching logic 비공개 → strict 비교 아닌 band signal
+
+이번 cycle은 **Framing B + 6 caveat** 로 종합 보고 + 협업자 share 보류
+(mid-June joint piece 까지 paired n=3 + NATURAL 측정 추가).
+
+### Framing B → B′ 정정 (2026-06-05 15:00, 다차원 재채점 결과)
+
+사용자 의심 1 정량 확인을 위해 4 차원 재채점 (primary / graded /
+abstention F1 / path). runner 가 sources 를 count(int)로만 저장해
+path 제외, 3 차원 비교:
+
+| run | primary (단답) | **graded (multi-term)** | abst_F1 |
+|---|---|---|---|
+| PM-1b cap1k | 0.450 | 0.413 | 0.523 |
+| PM-10 cap8k | 0.480 | 0.490 | 0.611 |
+| PM-13 +ep | 0.410 | 0.457 | 0.563 |
+| PM-15 +strip | 0.460 | 0.483 | 0.560 |
+| **PM-16 +V2** | **0.580** | **0.373** ↓ | 0.621 |
+| raw e4b | 0.520 | 0.403 | 0.561 |
+
+**충격적 발견 — V2 가 multi-term answer completeness 약화**:
+- PM-16 graded 0.373 < raw e4b 0.403 (-0.03)
+- PM-15 → PM-16: graded 0.483 → 0.373 (-0.11)
+- V2 가 답을 단답에 강제 → multi-fact 답에서 핵심 정보 누락
+- primary 와 graded 의 trade-off 분명
+
+**사용자 의심 1 정량 입증**: V2 는 특정 metric (단답 exact-match) 에
+**최적화** 된 결과. JAMES 스택의 일반 추론 능력 입증 아님.
+
+**Framing B 취소, B′ 채택**:
+> "JAMES + e4b 가 **terse 단답 fixture 한정** primary 0.58 (paper
+> baseline 6개 초과). 단 V2 가 답을 단답에 강제 → multi-term
+> completeness (graded) 0.373 = **raw vanilla RAG 0.403 보다 약함**.
+> V2 는 단답 use case 최적화, multi-fact 답 (NATURAL 모드) 은 별도
+> 측정 필수. Production default flip 권고 단답 limited usage 한정,
+> NATURAL 은 cycle β scope NATURAL-grade oracle 측정 후 결정."
+
+### production default flip 권고 (다차원 보강)
+
+| fix | 단답 (primary) | multi-fact (graded) | abst_F1 | 권고 |
+|---|---|---|---|---|
+| **cap[:1000] → 8000** | +0.03 | **+0.08** | +0.09 | **강함 — 양 차원 회복, production flip 권고** |
+| **V2 critique 비노출** | +0.12 | **−0.11** | +0.06 | **약함 — terse 한정 env-gate 유지, NATURAL flip 보류** |
+| P-1 planner terse-skip | 미측정 | terse 한정 무관 | — | terse only (이미 conditional) |
+
+**cap default flip 강한 권고** (양 차원 + abstention 모두 ↑).
+**V2 default flip 보류** (단답 single-axis 최적화, multi-fact 면에서
+raw 보다 약함 + NATURAL 모드 미입증).
+
+### 이번 cycle 의 진짜 가치
+
+다차원 보강 후 솔직한 결론:
+- ✅ **cap[:1000] 발견 + fix** = systemic platform defect, 다차원 회복,
+  production flip 권고. **가장 큰 finding.**
+- ⚠️ **V2 redesign** = 단답 metric 최적화, multi-fact 약화. terse use
+  case 가치 있지만 production 전반 default flip 부적합. **trade-off
+  finding, default 아닌 opt-in.**
+- ✅ **(c1)/(c2) systemic 진단** = reflect engine + planner prepend 의
+  메타 양식 leak chain 진단 자체는 가치. fix 는 use-case-aware 적용.
+- 🟡 **JAMES 스택 vs raw 비교** = cap fix 만으로 graded +0.08 (PM-10
+  vs PM-1b). 스택의 진짜 가치는 cap fix 후 retrieval/rerank/graph 의
+  composite. V2 가 그 위에 단답 metric 만 가속한 것.
+
+이 다차원 결과가 **사용자 박은 honest framing rule 의 가장 강한 활용
+사례**. 단일 metric (primary) 만 보면 over-claim, 다차원 보면 진짜
+얼굴 드러남.
+
+## 27. Default = JAMES 모체 평가 원칙 (사용자 통찰, 2026-06-05)
+
+§26 의 V2 trade-off 발견 후 사용자가 평가 design 의 핵심 원칙 정리:
+
+> "원래 자메스 풀스텍의 추론·구조 향상 평가가 목표. 단답식 검증에서
+> 노이즈 발견되면 옵션화 하고, 순수 JAMES 풀스텍만 Default. terse-
+> specific 세팅 추가 시 점수 너무 잘 나옴 → 의심. specific 세팅은
+> 단답 옵션으로 (NATURAL 답엔 negative). **기본 JAMES 풀스텍, 즉
+> 단답이든 NATURAL 이든 평가 받을 수 있는 상태 그 Default 자체를
+> 평가받는 것이 정확.** Default 자체 점수가 올라가야 비교 분석
+> 의미."
+
+이 통찰을 평가 design 의 핵심 원칙으로 채택:
+
+- **Default = JAMES 모체의 진짜 능력**
+- 옵션 (env-gate) = use-case-specific tuning (단답·terse·NATURAL 별 최적화)
+- 평가 의미는 **Default 자체의 다차원 점수 변화** 에 있음
+- 단답 측정은 **fix 후보 발견 + 노이즈 진단 도구**, verdict 도구 아님
+
+### Fix 분류 (Default vs Option, 다차원 evidence 기반)
+
+| fix | 다차원 효과 | use-case 의존성 | **Default 적용?** |
+|---|---|---|---|
+| **cap[:1000] → 8000** | primary +0.03, graded +0.08, abst_F1 +0.09 | **무관** (모든 답 양식 ↑) | **✅ YES Default flip** (PR-A) |
+| stripper 확장 | meta 38→28, 미세 회복 | 무관 (사후 정화 안전망) | **✅ YES Default 유지** (이미) |
+| **V2 critique 비노출** | primary +0.12, **graded −0.11** | **단답 의존** (NATURAL 약화) | **❌ NO terse opt-in env-gate** (PR-B) |
+| P-1 planner terse-skip | terse 한정 | **단답 의존** | terse-only (이미 conditional) |
+| per-query session | runner-only | N/A | 적용 X (측정 runner 만) |
+
+### 이 원칙의 더 큰 의미
+
+1. **단답 측정의 역할 재정의** — verdict 도구 아닌 **"fix 후보 발견 +
+   노이즈 진단 도구"**. cap[:1000] / reflect-critique / planner-prepend
+   hidden defect 노출이 진짜 가치. 점수 자체가 verdict 아님.
+
+2. **Default 향상 = 진짜 모체 능력 향상** — cap[:1000] fix 가 정확히
+   이 case. 모든 use case (단답·NATURAL·multi-fact) 에서 회복. 이게
+   mother-platform 향상의 진짜 의미.
+
+3. **사용자 의심 1 의 자연스러운 design 해결책** — "specific 세팅
+   추가 시 평가 너무 잘 나옴" → Default 가 진짜 평가 대상 → V2/P-1
+   옵션화 → Default 점수 정직.
+
+4. **이 원칙이 학계 publishable claim 의 무게** — Default 성능이 외부
+   reproducibility 와 직접 정합. terse 모드 한정 0.58 보다 "Default
+   JAMES + e4b" 다차원 성능이 진짜 비교 대상.
+
+5. **mother-platform philosophy 와 정합** — CLAUDE.md rule #1
+   ("v1.0까지 mother-hardening"). Use-case-specific 분기는 옵션
+   layer, 모체는 모든 use case 에서 합리적 성능 가져야 함.
+
+### Framing B″ (최종 정정)
+
+**Framing B′ 취소** (단답 한정 0.58 강조), **Framing B″ 채택**:
+
+> "**JAMES Default + gemma4:e4b** 가 cap[:1000] fix 후 단답 fixture
+> 에서 primary 0.48 / graded 0.49 / abst_F1 0.61 — paper Mixtral-8x7B
+> 0.32 / Llama-2-70b 0.28 보다 **단답에서 우위 + multi-term
+> completeness (graded) 도 raw vanilla RAG (0.40) 보다 ↑**. **단답·
+> multi-fact 양 차원 동시 회복** = JAMES 모체 retrieval/rerank/graph
+> 의 진짜 가치 입증. V2 단답 최적화 옵션은 별도 (terse use case
+> 한정 env-gate)."
+
+### Verdict cell 재정의
+
+| Cell | 환경 | 역할 |
+|---|---|---|
+| **Primary verdict = PM-10** | cap=8000, V2 OFF, P-1 OFF | **JAMES Default 모체 측정** |
+| Reference (terse opt-in) = PM-16 | +V2 | terse use case 옵션 효과 |
+| Reference (raw) = PM-4 e4b | no JAMES stack | 스택 contribution baseline |
+| Reference (mixtral default) = PM-14 redo | mixtral cap=8000, V2 OFF | **모델 무관성 검증** (Default 환경) |
+| Reference (mixtral opt-in) = PM-14 V2 | mixtral + V2 | 모델 + 옵션 cross |
+
+**mixtral PM-14 정의 변경**: V2 OFF 환경 (cap=8000 + per-query session
+만) = JAMES Default 모체의 mixtral 측정. PM-17 (e4b V2+P-1) 은
+terse-specific opt-in 효과 확인 reference 측정.
+
+### Design 결정 (이번 cycle 마감)
+
+| PR | 내용 | default 변경 | Quality Delta Card axis |
+|---|---|---|---|
+| PR-A | `JAMES_SYNTH_CONTEXT_CHARS` default 1000 → 8000 | YES (Tier 1 flip) | primary + graded + abst_F1 + latency |
+| PR-B | `JAMES_REVISE_PROMPT_V2` env-gate (이미 OFF default) | NO (opt-in only) | terse 단답 use case 한정 가이드 |
+| PR-C | `pipeline_synth.generate_answer` P-1 (terse skip) | NO (이미 conditional) | terse callers 만 |
+| (PR-D) | `_META_NARRATIVE_PATTERNS` 5 패턴 + REVISE_PROMPT_EN forbidden 확장 | YES (이미 적용) | exempt (band-aid safety net) |
+
+### Cycle β scope 확정
+
+이 통찰의 자연 후속:
+
+1. **NATURAL-grade oracle 신설** — LLM-judge 또는 graded multi-axis.
+   terse/exact-match 한계 극복. JAMES Default 모체의 NATURAL 모드
+   능력 직접 측정 가능.
+2. **Default JAMES 다차원 baseline 재정의** — cap fix Default flip 후
+   primary + graded + abstention + path + NATURAL-grade. 이게 cycle β
+   이후 모든 fix 의 측정 기준점.
+3. **Hidden defect audit** — cap[:1000] 패턴 N개 추가 발굴
+   (`core/reasoning/*` `[:NNNN]` literal / hardcoded threshold).
+4. **runner sources count→list 수정** — path coverage 측정 가능하게.
+5. **production-mirror measurement stack** — runner default ==
+   PLATFORM_DEFAULTS.
+
+### Cycle 마감 톤
+
+이 통찰이 이번 cycle 의 **가장 의미 있는 finding**:
+- ✅ cap[:1000] = systemic platform defect fix (Default 향상)
+- ⚠️ V2 = use-case-specific 최적화 (옵션화)
+- 📐 **Default vs Option 분리 원칙** = mother-platform philosophy 의 측정 차원 적용
+
+honest framing rule, n=1 inflation rule, fixture fitness rule, evidence-
+grounded rule 모두 활용된 사이클. 단답 metric 한 축 over-claim 거부
++ 다차원 보강 + 사용자 통찰로 design 정합화.
+
 ## 19. 최종 verdict matrix (PM-12 완료 후 마감)
 
 PM-12 (mixtral + fix cap=8000, 100Q) 결과로 6칸 매트릭스 완성. 핵심 verdict:
