@@ -80,13 +80,18 @@ PaLM (5400 억) 거의 비슷. ChatGPT (1750 억) 보다 우위.
 1. **길고 자세한 설명** (multi-fact 답)
 2. **모르는 건 모른다고 정직하게** (abstention discipline)
 
-## 진짜 fair 한 비교 (Layer B 측정)
+## 더 fair 한 비교 시도 (PM-LL 측정)
 
-큰 회사들과 자메스를 비교하면 **두 가지가 다름**:
-1. 자메스가 책 찾는 방법 (retrieval)
-2. 자메스가 답 만드는 방법 (advanced 스택)
+큰 회사들과 자메스를 비교하면 **다섯 가지가 다름**:
+1. 자메스가 책 찾는 방법 (retrieval framework)
+2. 책 자르는 방식 (chunking)
+3. 책 검색용 사전 (embedding)
+4. 답 만드는 방식 (advanced 스택)
+5. 답 시키는 말투 (prompt)
 
-이 두 가지 분리하기 위해 추가 시험 (paper 방식 + 자메스 책) 했음.
+이 중 **답 시키는 말투 + 답 찾는 갯수 (4 가지)** 만 같게 맞춰 시험
+했음 (책 찾는 방법 + 사전 + 자르기는 자메스 그대로). 진짜 strict
+비교는 아직 안 했고 (cycle β publication 직전 작업).
 
 ### 책 찾기 능력 (retrieval) — 자메스 명확 우위
 

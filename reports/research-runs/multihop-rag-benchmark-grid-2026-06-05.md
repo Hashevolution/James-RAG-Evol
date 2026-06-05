@@ -23,15 +23,24 @@
 
 ## 잣대 테스트 리스트
 
-### 1. paper-style baseline (Layer B framework comparison)
+### 1. LlamaIndex 핵심 변수 4 통제 baseline (PM-LL)
+
+**정명** (2026-06-05 정합성 점검): 기존 "Layer B framework comparison"
+은 부정확. 실제로는 LlamaIndex 의 **핵심 비교 변수 4 개 (prompt + top-K
++ reranker + model)** 만 통제, **chunking + embedding + retrieval
+framework** 은 JAMES 환경 그대로. 진짜 strict Layer B (paper chunk 256
++ voyage-02 + LlamaIndex VectorStoreIndex) = cycle β publication 직전
+작업.
 
 | 항목 | 값 |
 |---|---|
-| 목적 | JAMES corpus 위에 paper-equivalent baseline. JAMES advanced 스택의 framework-level contribution 분리 |
+| 목적 | LlamaIndex 핵심 변수 통제 baseline. JAMES advanced 스택의 marginal contribution 분리 |
 | Runner | `scripts/research/multihop_raw_run.py` |
 | Env | `PROMPT_STYLE=paper RAW_TOP_K=10` |
 | Model | 가변 (PROOF_MODEL) |
-| Stack | JAMES advanced 모두 OFF (raw runner = simple chunk + LLM call) |
+| Stack | JAMES advanced 모두 OFF (raw runner = simple chunk + LLM call, **engine_synth 우회 → cap[:1000] 영향 무관**) |
+| 통제 변수 | prompt (paper exact) / top-K (10) / reranker (OFF) / model |
+| 비통제 변수 (caveat) | chunking (JAMES 기존) / embedding (bge-m3) / retrieval framework (chroma vs LlamaIndex VectorStoreIndex) / corpus indexing 방식 |
 | Metric | primary / graded / abst_F1 |
 
 **baseline 값** (2026-06-05):
@@ -61,10 +70,16 @@
 
 **baseline 값** (2026-06-05, terse fixture 한정):
 
-| Model | primary | graded | abst_F1 | inf | comp | temp | null | n |
-|---|---|---|---|---|---|---|---|---|
-| gemma4:e4b (4B) PM-10 | 0.480 | 0.490 | 0.611 | 0.80 | 0.16 | 0.08 | 0.88 | 100 |
-| mixtral:8x7b (47B) PM-12-final | 0.450 | 0.450 | 0.667 | 0.76 | 0.16 | 0.16 | 0.72 | 100 |
+| Model | primary | graded | abst_F1 | inf | comp | temp | null | n | stripper |
+|---|---|---|---|---|---|---|---|---|---|
+| gemma4:e4b (4B) PM-10 (구) | 0.480 | 0.490 | 0.611 | 0.80 | 0.16 | 0.08 | 0.88 | 100 | ❌ 미적용 |
+| gemma4:e4b (4B) **PM-10'** (재측정) | 진행 중 | | | | | | | 100 | ✅ 적용 |
+| mixtral:8x7b (47B) PM-12-final | 0.450 | 0.450 | 0.667 | 0.76 | 0.16 | 0.16 | 0.72 | 100 | ✅ 적용 |
+
+**Caveat (PM-10 구 측정)**: 2026-06-05 02:36 측정, stripper 확장 commit
+`2d96192` 이전. 현 production code 는 stripper 포함 → PM-10 구 측정 값
+약간 underestimate. **PM-10' 재측정 (2026-06-05 evening, b2qb4xj5s)
+이 진짜 production Default 가까운 측정.**
 
 **비교 활용**:
 - 자메스 업그레이드 후 같은 환경 측정 → 다축 ±N 정량
@@ -90,15 +105,22 @@
 - PR-A 결정 정당화 evidence (cap=1000 → cap=8000 회복 정량)
 - 회귀 발생 시 측정값 ↓ → 결함 의심
 
-### 4. raw vanilla RAG (모델 자체 능력 baseline)
+### 4. JAMES retrieval engine + no advanced stack (구 명명: raw vanilla RAG)
+
+**정명** (2026-06-05 정합성 점검): 기존 "raw vanilla RAG = 모델 자체
+능력" 부정확. 실제로는 **JAMES retrieval engine (bge-m3 + chunking +
+chroma + corpus 인덱싱) 위에 simple LLM call** (no advanced stack).
+진짜 "모델 자체 능력" = closed-book (no retrieval) = **빠진 cell**
+(cycle β publication 준비).
 
 | 항목 | 값 |
 |---|---|
-| 목적 | JAMES 스택 우회 직접 retrieval + LLM call. 모델 자체 능력 baseline |
+| 목적 | JAMES retrieval engine + no advanced stack. JAMES 스택 contribution 분리 (스택만 추가/제거) |
 | Runner | `scripts/research/multihop_raw_run.py` |
 | Env | `PROMPT_STYLE=james_terse` (default) `RAW_TOP_K=5` (default) |
-| Stack | 0 (vanilla RAG, JAMES 스택 우회) |
-| Note | JAMES corpus + JAMES embedding 사용 — paper-style 과 다름 (corpus 변수 통제, prompt 변수만 다름) |
+| Stack | advanced 스택 0 (planner / reflect / verify / graph 모두 OFF) |
+| 인프라 | JAMES retrieval engine (bge-m3 + chroma + chunking + indexing) **유지** |
+| 정명 caveat | "raw vanilla RAG" 가 아니라 "JAMES retrieval + simple LLM call". 모델 자체 능력 측정 X (cycle β closed-book cell 필요). |
 
 **baseline 값** (2026-06-04):
 
@@ -111,14 +133,15 @@
 - 새 모델 자체 능력 측정 (스택 contribution 분리)
 - JAMES 스택 contribution = (JAMES Default) − (raw) per axis
 
-### 5. terse opt-in 옵션 (V2 활성)
+### 5. terse opt-in 옵션 (V2 활성, **episodic-isolated 측정**)
 
 | 항목 | 값 |
 |---|---|
 | 목적 | V2 critique 비노출 redesign 효과 — 단답 use case 최적화 옵션 |
 | Runner | `scripts/research/multihop_terse_run.py` |
-| Env | `JAMES_REVISE_PROMPT_V2=1` |
+| Env | `JAMES_REVISE_PROMPT_V2=1` + per-query session (default) |
 | Stack | JAMES advanced ON + V2 옵션 활성 |
+| **Caveat (정합성 점검)** | per-query session = 측정 isolation, production same-session 환경과 다름. PM-16 결과 = "V2 opt-in 효과 (**episodic-isolated**)" — production fit 아닌 mechanism isolation 측정 |
 
 **baseline 값** (2026-06-05):
 
@@ -149,21 +172,23 @@
 - V2 단독 vs +P-1 marginal contribution 측정
 - meta-marker 0 보장 use case (예: API consumer, deterministic output)
 
-### 7. 컴포넌트 ablation (advanced 스택 분리)
+### 7. 컴포넌트 ablation (advanced 스택 분리, **PM-15 baseline**)
 
 | 항목 | 값 |
 |---|---|
 | 목적 | 각 컴포넌트의 marginal contribution |
 | Runner | `scripts/research/multihop_terse_run.py` |
 | Env | `JAMES_DISABLE_COGNITIVE_STAGES=1` / `JAMES_DISABLE_GRAPH=1` / 기타 |
+| **Ablation baseline 명시** (정합성 점검): | **PM-15** (같은 per-query session + stripper 적용 후, primary 0.46) — 같은 환경 단지 각 컴포넌트 ON/OFF 차이만 측정 |
+| **Caveat**: | PM-6/7/8 측정 시점 = stripper commit 전 → 약간 underestimate. cycle β per-layer ablation cycle 시 stripper 적용 후 재측정 권고. |
 
-**baseline 값** (2026-06-05, e4b 4B):
+**baseline 값** (2026-06-05, e4b 4B, vs PM-15 0.46):
 
-| Cell | env | primary | graded | abst_F1 | n |
-|---|---|---|---|---|---|
-| cognitive-off PM-6 | JAMES_DISABLE_COGNITIVE_STAGES=1 | 0.42 | — | — | 100 |
-| rerank-off PM-7 | (별도 env) | 0.43 | — | — | 100 |
-| graph-off PM-8 | JAMES_DISABLE_GRAPH=1 | 0.44 | — | — | 100 |
+| Cell | env | primary | Δ vs PM-15 | n |
+|---|---|---|---|---|
+| cognitive-off PM-6 | JAMES_DISABLE_COGNITIVE_STAGES=1 | 0.42 | −0.04 | 100 |
+| rerank-off PM-7 | (별도 env) | 0.43 | −0.03 | 100 |
+| graph-off PM-8 | JAMES_DISABLE_GRAPH=1 | 0.44 | −0.02 | 100 |
 
 **비교 활용**:
 - cycle β per-layer ablation cycle 의 baseline
@@ -254,6 +279,46 @@
 | Advanced 스택 다축 contribution | graded +0.093-0.267 / abst_F1 +0.052-0.236 | PM-Default vs PM-LL |
 | 모델 size 흡수 | 4B Default 0.480 ≈ 47B Default 0.450 | PM-10 vs PM-12-final |
 | cap fix Default 회복 | primary +0.030 / graded +0.077 / abst_F1 +0.088 | PM-1b vs PM-10 |
+
+## 누락 측정 list (정합성 점검 2026-06-05, 사용자 catch 후 추가)
+
+cycle β scope 의 측정 보강 후보. priority 별 정리.
+
+| 누락 측정 | 의미 | priority | cycle / cost |
+|---|---|---|---|
+| **PM-10' (e4b stripper 적용 후 재측정)** | 양 모델 stripper-included Default 완성 | ⭐⭐⭐ | **즉시 (~25min, 진행 중 b2qb4xj5s)** |
+| **NATURAL 모드 측정** | production 핵심 use case (대부분 사용자 NATURAL chat) | ⭐⭐⭐ | cycle β NATURAL-grade oracle 후 |
+| **AnswerStyleClassifier 활성 측정** | cycle β 핵심 작업 1 의 효과 정량 | ⭐⭐⭐ | cycle β |
+| **closed-book (no retrieval)** | 진짜 모델 자체 능력 + learning leak 분리 | ⭐⭐ | cycle β publication 준비 |
+| **paired n=3 strict** | n=1 inflation rule, ±0.03 noise band 검증 | ⭐⭐ | cycle β publication 직전 |
+| **진짜 strict Layer B** (paper chunk 256 + voyage-02 + LlamaIndex 환경) | 완전 framework comparison | ⭐⭐ | cycle β publication 직전 |
+| **ablation cells stripper 적용 후 재측정** | PM-6/7/8 정확도 보강 | ⭐⭐ | cycle β per-layer ablation |
+| **path coverage** (retrieval quality 직접 측정) | retrieval 차원 정량 | ⭐ | cycle β runner sources list 수정 후 |
+| **확장 모델 측정** (gemma3:12b / 27b / Claude / GPT-4) | mother-platform universal value 입증 | ⭐ | cycle β |
+| **한국어 fixture** | 한국어 use case baseline | ⭐ | cycle β / v0.5 도메인 pilot |
+
+## 정합성 점검 verdict (2026-06-05 사용자 catch 후)
+
+### 강건한 부분 (그대로 유지)
+- ✅ paper external baseline (cell 1 — 외부 known)
+- ✅ legacy PR-A 전 (cell 4 — 정확 명시)
+- ✅ 양 모델 −0.05 동일 trade-off pattern (strict 정량 입증)
+- ✅ 6 원칙 정합성 (Default vs Option 분리)
+
+### 정정된 부분 (이 doc 2026-06-05 update)
+- ⚠️ "Layer B framework comparison" → "**LlamaIndex 핵심 변수 4 통제 baseline**" 정명 (chunking + embedding 통제 안 됨)
+- ⚠️ "raw vanilla RAG = 모델 자체 능력" → "**JAMES retrieval engine + no advanced stack**" 정명
+- ⚠️ PM-10 "Default" → "**pre-stripper Default 추정**" (PM-10' 재측정 후 정확)
+- ⚠️ PM-15/16/17 per-query session caveat 명시
+- ⚠️ ablation baseline = PM-15 명시
+
+### 측정-side 룰 적용 점검
+- ✅ `feedback_finding_size_honest_framing`: 단일 axis over-claim 거부, 다축 정량
+- ⚠️ `feedback_n1_verdict_inflation_n3_caught`: 모든 cell n=1, paired n=3 미완료 (publication 직전)
+- ⚠️ `feedback_fixture_fitness_before_verdict`: terse fixture 한정, NATURAL 측정 X (cycle β)
+- ✅ `feedback_evidence_grounded_validity_check`: raw runner sources>0 guard 적용
+- ✅ `feedback_methodological_chain_before_plan`: verdict / diagnostic / role 5종 라벨링
+- ✅ `feedback_mother_platform_6_principles`: Default vs Option 분리 + NATURAL 지장 없는 개선 Default
 
 ## 관련 docs
 
