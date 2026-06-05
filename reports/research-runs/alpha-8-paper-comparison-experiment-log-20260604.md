@@ -2175,6 +2175,123 @@ mother-platform 가치 정량 입증의 완성형.
 - ⚠️ 진짜 strict "framework as a whole" 비교 = cycle β publication 직전
   Layer C/D 측정 필요
 
+## 36. JAMES 바닐라 넓은 정의 측정 (양 모델) — 4-layer build-up 완성 + persona = 단답 손해 진짜 source 확정 (2026-06-06)
+
+cycle β scope 의 (b) JAMES 바닐라 넓은 정의 측정 양 모델 완료 (Step 2
++ Step 4). 10-cell complete matrix + 4-layer build-up 분해 + 양 모델
+동일 pattern 확정.
+
+### 10-cell complete matrix
+
+| Cell | e4b primary | e4b graded | e4b abst_F1 | mixtral primary | mixtral graded | mixtral abst_F1 |
+|---|---|---|---|---|---|---|
+| 좁은 정의 (PM-LL paper prompt) | **0.530** | 0.223 | 0.559 | **0.500** | 0.357 | 0.431 |
+| 좁은 정의 (PM-4 raw JAMES terse) | 0.520 | 0.403 | 0.561 | (PM-5 partial ~0.55) | — | — |
+| **넓은 정의 (Step 2/4 NEW)** | **0.310** | 0.400 | 0.520 | **0.350** | 0.410 | 0.571 |
+| Default (PM-10 장기 / PM-12-final) | 0.480 | 0.490 | 0.611 | 0.450 | 0.450 | 0.667 |
+| Default (PM-10' 새 session) | 0.370 | 0.423 | 0.627 | — | — | — |
+| Default + V2 opt-in (PM-16) | 0.580 | 0.373 | 0.621 | — | — | — |
+
+### 4-layer build-up 분해 (단축 primary)
+
+```
+e4b:
+  retrieval only (좁은 정의)    0.530
+  + persona (넓은 정의)         0.310  (Δ -0.220, persona 손해)
+  + advanced stack (Default)    0.480  (Δ +0.170, 회복)
+  + V2 opt-in                   0.580  (Δ +0.100, 단답 추가)
+
+mixtral:
+  retrieval only (좁은 정의)    0.500
+  + persona (넓은 정의)         0.350  (Δ -0.150, persona 손해)
+  + advanced stack (Default)    0.450  (Δ +0.100, 회복)
+```
+
+### 양 모델 동일 trade-off pattern 확정 (이전 -0.05 의 진짜 분해)
+
+| 변환 | e4b Δ | mixtral Δ |
+|---|---|---|
+| 좁은 → 넓은 (persona 추가) | primary −0.220 / graded +0.177 / abst_F1 −0.039 | primary −0.150 / graded +0.053 / abst_F1 +0.141 |
+| 넓은 → Default (advanced 추가) | primary +0.170 / graded +0.090 / abst_F1 +0.091 | primary +0.100 / graded +0.040 / abst_F1 +0.095 |
+| **net (좁은 → Default) = 이전 §34 의 -0.05 trade-off** | -0.050 (primary) | -0.050 (primary) |
+
+→ **이전 "advanced stack 단축 -0.05" 의 정확한 분해**:
+```
+e4b:     -0.050 (net) = -0.220 (persona 손해) + 0.170 (advanced 회복)
+mixtral: -0.050 (net) = -0.150 (persona 손해) + 0.100 (advanced 회복)
+```
+
+**단축 primary 손해의 진짜 source = engine_memory persona injection**.
+advanced stack 은 만회 역할 (양 모델 모든 차원 회복).
+
+### Persona 의 양면성 — 양 모델 동일 mechanism
+
+답 sample (e4b 넓은 정의):
+- "As JAMES, I have analyzed the provided data..."
+- "Hello. My name is JAMES."
+- "Hello. I am JAMES."
+- "As JAMES, I must inform you..."
+
+→ persona prefix 가 lead 60자 차지 → yes/no 답 (paper-aligned matcher
+가 lead-60-char yes/no 검색) 안 잡힘. comp 0.00 / temp 0.00 양 모델.
+
+단 본문에 multi-fact 답은 풍부 → graded +0.053 (mixtral) ~ +0.177 (e4b).
+mixtral abst_F1 +0.141 = persona 가 mixtral 의 자신만만 hallucination
+억제 (큰 모델 critical thinking 보조).
+
+### 진짜 mother-platform 가치 정합 (6 원칙 case study)
+
+| 원칙 | 적용 |
+|---|---|
+| 원칙 2 (단답 specific 차단 X) | persona 는 단답 metric 에 negative — 단답 fixture 한정 |
+| 원칙 5 (NATURAL 지장 없는 개선 Default) | persona 는 NATURAL 가치 (multi-fact graded + abstention discipline) 부분 ↑ — NATURAL 측정 직접 검증 cycle β NATURAL oracle 후 |
+| 원칙 4 옵션화 | **persona 를 옵션 layer 로 이동 가능 후보** — 이번 측정의 진짜 cycle β 작업 |
+| 원칙 6 auto-selection | 단답 query 에 persona 자동 비활성, NATURAL/대화에 persona 활성 |
+
+### Cycle β scope 재편 (이번 chain 후 priority 갱신)
+
+| # | 작업 | 변경 |
+|---|---|---|
+| 1 | AnswerStyleClassifier hybrid + auto-selection (원칙 6) | ⭐⭐⭐ 유지 |
+| 2 | NATURAL-grade oracle 신설 (원칙 5) | ⭐⭐⭐ 유지 |
+| **3** | **engine_memory persona 옵션화 (원칙 4) NEW** | **⭐⭐⭐ PROMOTED** — 양 모델 -0.15~-0.22 primary 손해의 진짜 source 확정 |
+| 4 | Per-layer ablation cycle | ⭐⭐ 유지 |
+| 5 | 기존 옵션형 코드 옵션화 (NATURAL rule_text 등) | ⭐⭐ |
+| 6 | Hidden defect audit | ⭐⭐ |
+
+### Framing B⁷ → B⁸ (이번 chain 정밀화)
+
+> "JAMES contribution 의 4-layer 완전 분해 (양 모델 동일 pattern):
+> (1) **retrieval engine 자체** = 단축 primary 최고 (0.530 e4b / 0.500
+> mixtral), 다축 약함 (graded 0.22-0.36).
+> (2) **engine_memory persona** = 단축 primary -0.15~-0.22 (lead 양식
+> 차지) but graded +0.05~+0.18 / abst_F1 mixed (mixtral 큰 회복 +0.14).
+> (3) **advanced stack** (planner / reflect / verify / query rewriter /
+> entity anchor) = 양 모델 모든 차원 회복 (primary +0.10~+0.17 / graded
+> +0.04~+0.09 / abst_F1 +0.09~+0.11).
+> (4) **V2 opt-in** = 단답 use case 추가 최적화 (단축 +0.10, graded -0.04
+> tradeoff, abst +0.01).
+>
+> 이전 PM-LL 비교 'advanced -0.05 단축 trade-off' 의 정확한 source:
+> persona 가 -0.15~-0.22 손해 + advanced 가 +0.10~+0.17 회복 = net -0.05.
+> cycle β 원칙 4 (persona 옵션화) + 원칙 6 (단답 query 에 persona
+> auto-skip) 이 양 모델 -0.05 단축 손해의 진짜 해결 길.
+>
+> JAMES Default + cap fix 가 paper Mixtral 0.32 / Llama 70b 0.28 양 모델
+> 모두 초과. mixtral 47B Default 0.45 = paper 같은 모델 +0.13.
+> 4B Default ≈ 47B Default (size 흡수 입증).
+> Terse 단답 fixture 한정 측정 caveat 유지 — NATURAL 모드는 cycle β
+> NATURAL-grade oracle 후 직접 검증."
+
+### 측정 cost
+
+- Step 1 (PM-10' e4b) ~90min
+- Step 2 (JAMES 바닐라 넓은 e4b) ~57min
+- Step 4 (JAMES 바닐라 넓은 mixtral) ~75min
+- 총 ~3.7h chain
+- 산출: 10-cell complete matrix + 4-layer 정량 + persona source 확정 +
+  cycle β scope 재편
+
 ## 19. 최종 verdict matrix (PM-12 완료 후 마감)
 
 PM-12 (mixtral + fix cap=8000, 100Q) 결과로 6칸 매트릭스 완성. 핵심 verdict:

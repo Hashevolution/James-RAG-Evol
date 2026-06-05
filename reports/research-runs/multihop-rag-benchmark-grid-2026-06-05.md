@@ -78,8 +78,31 @@ framework** 은 JAMES 환경 그대로. 진짜 strict Layer B (paper chunk 256
 
 **Caveat (PM-10 구 측정)**: 2026-06-05 02:36 측정, stripper 확장 commit
 `2d96192` 이전. 현 production code 는 stripper 포함 → PM-10 구 측정 값
-약간 underestimate. **PM-10' 재측정 (2026-06-05 evening, b2qb4xj5s)
-이 진짜 production Default 가까운 측정.**
+약간 underestimate.
+
+**PM-10' 재측정 (2026-06-06 새벽)** 결과 (e4b cap=8000 + same-session
+fresh "pm10p-e4b-shared" + V2 OFF + stripper 적용):
+- primary 0.370 / graded 0.423 / abst_F1 0.627 / meta 10/100
+- vs PM-10 구: primary -0.110 (session 누적 effect 큰 차이), abst_F1
+  +0.016, meta 38 → 10
+- **session 효과 큰 변수**: PM-10 (pm1-terse 4947 events 누적) vs
+  PM-10' (새 session pm10p-e4b-shared) — production scenario 두 극단
+- 두 값 모두 valid (장기 누적 사용자 vs 첫 세션 사용자)
+
+**JAMES 바닐라 넓은 정의 측정 (2026-06-06, Step 2 + Step 4)** —
+양 모델 production minimum baseline:
+
+| Model | primary | graded | abst_F1 | inf | comp | temp | null | n |
+|---|---|---|---|---|---|---|---|---|
+| gemma4:e4b (4B) Step 2 | 0.310 | 0.400 | 0.520 | 0.72 | 0.00 | 0.00 | 0.52 | 100 |
+| mixtral:8x7b (47B) Step 4 | 0.350 | 0.410 | 0.571 | 0.76 | 0.08 | 0.00 | 0.56 | 100 |
+
+→ 양 모델 동일 pattern: **persona injection 이 단축 primary -0.15~-0.22
+손해, multi-fact graded +0.05~+0.18 + abst_F1 mixed**. 이전 §34 의
+"advanced stack -0.05 trade-off" 의 정확한 분해 = persona (-0.15~-0.22)
++ advanced (+0.10~+0.17) = net -0.05.
+
+자세한 4-layer build-up + cycle β scope 재편 = §36.
 
 **비교 활용**:
 - 자메스 업그레이드 후 같은 환경 측정 → 다축 ±N 정량
