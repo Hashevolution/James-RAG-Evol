@@ -32,6 +32,7 @@ answer, optionally route through reflect() before returning.
 from __future__ import annotations
 
 import os
+import re as _re
 import threading
 import time
 from typing import Optional
@@ -200,6 +201,113 @@ REVISE_PROMPT_KO = (
     "비슷한 답변 첫 문장으로 시작).\n\n"
     "개정된 답변:"
 )
+
+# ─── REVISE_PROMPT v2 (Option B, 2026-06-05 §23) ─────────────────
+#
+# Why v2 exists. The v1 REVISE_PROMPT_* templates inline the full
+# critique text into the prompt the model sees ("[Review]\n{critique}").
+# That exposure structurally invites a meta-format response: the model
+# reads a review and naturally answers in revision-speak ("Here is my
+# revised answer...", "## Revised Answer", "This revision focuses
+# on..."). PM-13 (e4b cap=8000 + per-query session, 2026-06-05) showed
+# 29/100 answers in this meta mode even with the forbidden-openings
+# list + post-process stripper — the meta-format space is open-ended,
+# patches are infinite.
+#
+# v2 closes the meta space at the source: the revise call no longer
+# sees the critique text. The critique pass still runs (full audit
+# trail preserved in the trace store) and its result is compressed to
+# a one-word issue tag (factual_error / missing_core / ambiguity /
+# general). The model receives only the draft + query + tag and is
+# framed as writing a fresh answer, not as revising. The meta-format
+# vocabulary the v1 prompt invites simply has no place to land.
+#
+# Opt-in via JAMES_REVISE_PROMPT_V2=1 (default OFF = byte-identical to
+# v1 path). Promoted to default after PM-16 validation on the same
+# fixture that surfaced the meta-mode regression (cap=8000 + per-query
+# session). The post-process stripper remains active as a safety net
+# under both paths.
+REVISE_PROMPT_V2_EN = (
+    "Write the best possible answer to the question below. An earlier "
+    "attempt had a quality flag (type: {issue_type}) — improve on it.\n\n"
+    "[Question]\n{query}\n\n"
+    "[Earlier attempt]\n{draft}\n\n"
+    "Output rules:\n"
+    "- Output ONLY the answer. No preface, no commentary, no description "
+    "of what changed.\n"
+    "- Start directly with the answer to the question (e.g. for "
+    "'what is NVIDIA?' → 'NVIDIA is...'; for a yes/no question → "
+    "'Yes,' or 'No,').\n"
+    "- Do NOT start with: 'Revised', 'This revision', 'This revised', "
+    "'Here is', 'Below is', 'Based on', '## Revised Answer', "
+    "'**Revised Answer**', '## Revised Draft', '### Step 1:', "
+    "'### 1. Analysis', '### 1. Summary', 'Hello, I am JAMES'.\n"
+    "- Preserve facts from the earlier attempt; do not invent new ones.\n\n"
+    "Answer:"
+)
+
+REVISE_PROMPT_V2_KO = (
+    "아래 질문에 가능한 한 가장 좋은 답을 작성하라. 이전 시도에 품질 "
+    "플래그가 있었음 (유형: {issue_type}) — 개선해서 답하라.\n\n"
+    "[질문]\n{query}\n\n"
+    "[이전 시도]\n{draft}\n\n"
+    "출력 규칙:\n"
+    "- 오직 답변만 출력. 머리말·해설·변경사항 설명 금지.\n"
+    "- 사용자의 질문에 바로 답하는 문장으로 시작 (예: 'NVIDIA가 뭐야?' "
+    "→ 'NVIDIA는...'; yes/no 질문 → '예,' 또는 '아니오,').\n"
+    "- 다음 시작어 금지: '개정', '재작성', '검토 반영', '제시해주신', "
+    "'지적해주신', '## 개정된 답변', '## 수정된 답변', '### 1단계:', "
+    "'### 1. 분석', '### 1. 요약', '[핵심 전략]'.\n"
+    "- 이전 시도의 사실을 보존하고 새 사실을 만들지 마라.\n\n"
+    "답변:"
+)
+
+
+# ─── Issue-type extractor (critique → tag) ───────────────────────
+#
+# Maps the free-form critique text to one of the four canonical issue
+# tags surfaced to REVISE_PROMPT_V2_*. The categories mirror the three
+# dimensions enumerated in CRITIQUE_PROMPT_* (contradiction / missing
+# core / ambiguity) plus 'general' as the catch-all. Order matters —
+# earlier patterns win, so factual_error (most actionable) is checked
+# before missing_core (which can appear as a side-comment in any
+# critique). 'general' is the fallback when no specific term hit.
+_ISSUE_TYPE_PATTERNS: tuple[tuple[_re.Pattern, str], ...] = (
+    (_re.compile(
+        r'(contradiction|factual\s+error|incorrect|wrong|inaccura|'
+        r'사실\s*오류|모순|틀린|잘못)',
+        _re.IGNORECASE), 'factual_error'),
+    (_re.compile(
+        r'(missing\s+core|not\s+answered|omitted|key\s+information|'
+        r'incomplete|누락|빠진|답하지\s*않|핵심\s*누락)',
+        _re.IGNORECASE), 'missing_core'),
+    (_re.compile(
+        r'(ambiguit|ambiguous|unclear|misread|vague|misleading|'
+        r'모호|애매|오해)',
+        _re.IGNORECASE), 'ambiguity'),
+)
+
+
+def _extract_issue_flag(critique_text: str) -> str:
+    """Compress a free-form critique to one of four canonical tags
+    (factual_error / missing_core / ambiguity / general).
+
+    The tag is what reaches REVISE_PROMPT_V2_* — the critique text
+    itself is never shown to the revise call. This is the structural
+    fix for the meta-format problem (Option B, §23): the revise model
+    cannot speak revision-speak when it does not see a review.
+
+    'general' is the deliberate fallback when the critique mentions
+    none of the three canonical dimensions — the revise call still
+    knows there is some issue, but the prompt remains an answer-write
+    task rather than a critique-acknowledgement task.
+    """
+    head = (critique_text or "")[:500]
+    for pat, tag in _ISSUE_TYPE_PATTERNS:
+        if pat.search(head):
+            return tag
+    return 'general'
+
 
 REVISE_PROMPT_EN = (
     "Revise the draft to address the review.\n\n"
@@ -399,9 +507,24 @@ class ReflectionLoop:
             return draft
 
         # ── revise pass ──────────────────────────────────────
-        revise_prompt = rev_tmpl.format(
-            query=query, draft=draft, critique=critique_text
-        )
+        # 2026-06-05 §23 — Option B redesign: when JAMES_REVISE_PROMPT_V2=1
+        # the revise call no longer sees the critique text. Critique is
+        # compressed to a one-word issue tag and the prompt frames the
+        # model as writing a fresh answer (not as revising). This closes
+        # the meta-format space at the source — the model cannot speak
+        # revision-speak when it never sees a review. Default OFF for
+        # production byte-identical. Critique still runs (audit trail
+        # preserved); only the revise-side framing changes.
+        if os.environ.get("JAMES_REVISE_PROMPT_V2", "0") == "1":
+            issue_type = _extract_issue_flag(critique_text)
+            rev_v2_tmpl = REVISE_PROMPT_V2_KO if is_ko else REVISE_PROMPT_V2_EN
+            revise_prompt = rev_v2_tmpl.format(
+                query=query, draft=draft, issue_type=issue_type
+            )
+        else:
+            revise_prompt = rev_tmpl.format(
+                query=query, draft=draft, critique=critique_text
+            )
         revised_text, revised_err = self._call(
             backend,
             revise_prompt,

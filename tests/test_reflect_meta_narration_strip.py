@@ -293,3 +293,112 @@ def test_reflect_exposes_strip_helpers():
     src = inspect.getsource(m)
     assert "def _strip_meta_narration" in src
     assert "def _looks_like_meta_narration" in src
+
+
+# ─── §23 Option B — REVISE_PROMPT_V2 (critique non-exposure) ─────
+
+
+@pytest.mark.parametrize("critique,expected", [
+    # English critique terms
+    ("1. Contradiction / factual error: The answer says X but data says Y.",
+     "factual_error"),
+    ("Incorrect statement about the founding year.", "factual_error"),
+    ("The numbers are inaccurate.", "factual_error"),
+    ("2. Missing core: the question asks about Z but answer omits it.",
+     "missing_core"),
+    ("Key information omitted from the response.", "missing_core"),
+    ("The draft is incomplete on the second part of the question.",
+     "missing_core"),
+    ("3. Ambiguity: the phrase X could be misread as Y.", "ambiguity"),
+    ("The wording is vague.", "ambiguity"),
+    ("Statement is misleading.", "ambiguity"),
+    # Korean critique terms
+    ("답변에 사실 오류가 있습니다.", "factual_error"),
+    ("모순된 부분이 있습니다.", "factual_error"),
+    ("틀린 정보가 포함되어 있습니다.", "factual_error"),
+    ("핵심이 누락되어 있습니다.", "missing_core"),
+    ("질문에 답하지 않은 부분이 있습니다.", "missing_core"),
+    ("표현이 모호합니다.", "ambiguity"),
+    ("애매한 부분이 있습니다.", "ambiguity"),
+    # Catch-all
+    ("NO_ISSUES", "general"),
+    ("Just stylistic polish needed.", "general"),
+    ("", "general"),
+])
+def test_extract_issue_flag_categorizes(critique, expected):
+    from core.reasoning.reflect import _extract_issue_flag
+    got = _extract_issue_flag(critique)
+    assert got == expected, (
+        f"expected {expected!r} for critique {critique[:50]!r}, got {got!r}"
+    )
+
+
+def test_revise_prompt_v2_does_not_leak_critique_word():
+    """The whole point of v2 (§23 Option B) is that the revise call
+    does NOT see the critique text. The prompt itself must therefore
+    avoid the words 'critique' and 'review' — otherwise the model is
+    still primed to answer in revision-speak even without seeing the
+    review body."""
+    from core.reasoning.reflect import REVISE_PROMPT_V2_EN, REVISE_PROMPT_V2_KO
+    en = REVISE_PROMPT_V2_EN.format(query="Q", draft="D", issue_type="X")
+    ko = REVISE_PROMPT_V2_KO.format(query="Q", draft="D", issue_type="X")
+    assert "critique" not in en.lower(), (
+        "REVISE_PROMPT_V2_EN must not prime the model with 'critique'"
+    )
+    assert "review" not in en.lower(), (
+        "REVISE_PROMPT_V2_EN must not prime the model with 'review'"
+    )
+    # KO: 검토 단어가 등장하면 forbidden 리스트 안에서만 (= '검토 반영' 금지어).
+    # 자유롭게 등장하면 안 됨.
+    ko_excluding_forbidden = ko.replace("검토 반영", "")
+    assert "검토" not in ko_excluding_forbidden, (
+        "REVISE_PROMPT_V2_KO must not use 검토 outside the forbidden list"
+    )
+
+
+def test_revise_prompt_v2_keeps_forbidden_list():
+    """V2 still enumerates the meta-format openers it forbids — the
+    list is the prior even when the critique body is hidden. Must
+    include the post-cap8k vocab discovered in PM-13 (§22)."""
+    from core.reasoning.reflect import REVISE_PROMPT_V2_EN, REVISE_PROMPT_V2_KO
+    en = REVISE_PROMPT_V2_EN
+    for phrase in (
+        "Revised",
+        "This revision",
+        "Here is",
+        "## Revised Answer",
+        "### Step 1:",
+        "Hello, I am JAMES",
+    ):
+        assert phrase in en, (
+            f"REVISE_PROMPT_V2_EN must forbid {phrase!r} explicitly"
+        )
+    ko = REVISE_PROMPT_V2_KO
+    for phrase in ("개정", "재작성", "## 개정된 답변", "### 1단계:"):
+        assert phrase in ko, (
+            f"REVISE_PROMPT_V2_KO must forbid {phrase!r} explicitly"
+        )
+
+
+def test_revise_prompt_v2_frames_as_fresh_answer_task():
+    """V2 must NOT frame the call as 'revise a draft' — that frame is
+    exactly what invites revision-speak. It must frame as 'write the
+    best answer to the question', with the earlier draft as a
+    reference rather than the subject of edit."""
+    from core.reasoning.reflect import REVISE_PROMPT_V2_EN, REVISE_PROMPT_V2_KO
+    en = REVISE_PROMPT_V2_EN.lower()
+    # Must NOT say "revise the draft" / "address the review"
+    assert "revise the" not in en, (
+        "v2 prompt must not frame as 'revise the draft' — that is the v1 frame"
+    )
+    assert "address the review" not in en
+    # Must frame as answer-write
+    assert "write" in en or "answer" in en
+
+
+def test_revise_prompt_v2_has_three_placeholders():
+    from core.reasoning.reflect import REVISE_PROMPT_V2_EN, REVISE_PROMPT_V2_KO
+    for tmpl in (REVISE_PROMPT_V2_EN, REVISE_PROMPT_V2_KO):
+        assert "{query}" in tmpl
+        assert "{draft}" in tmpl
+        assert "{issue_type}" in tmpl
