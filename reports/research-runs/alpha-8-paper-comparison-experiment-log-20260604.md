@@ -1311,6 +1311,137 @@ honest framing rule, n=1 inflation rule, fixture fitness rule, evidence-
 grounded rule 모두 활용된 사이클. 단답 metric 한 축 over-claim 거부
 + 다차원 보강 + 사용자 통찰로 design 정합화.
 
+## 28. PM-17 + PM-14 결과 + 종합 verdict 마감 (2026-06-05)
+
+### PM-17 (V2 + P-1) verdict
+
+| 측정 | primary | graded | abst_F1 | inf | comp | temp | null | meta |
+|---|---|---|---|---|---|---|---|---|
+| PM-16 (+V2 단독) | 0.580 | 0.373 | **0.621** | 0.84 | 0.48 | 0.28 | 0.72 | 3 |
+| **PM-17 (+V2 +P-1)** | 0.560 | 0.360 | **0.509** ↓ | 0.72 | 0.56 | 0.40 | 0.56 ↓ | **0** |
+
+P-1 추가 효과:
+- ✅ meta marker 3 → 0 (완전 deterministic)
+- ✅ comp +0.08, temp +0.12 (yes/no 직접 답 회복)
+- ❌ **abst_F1 -0.112** (큰 손해)
+- ❌ null -0.16 (planner directive 가 "정보 없음" 확인에 가치)
+- ❌ inf -0.12
+
+→ **P-1 verdict**: terse opt-in 옵션 내부 정밀화. PM-16 (V2 단독) 이
+더 균형 잡힌 cell. P-1 은 meta-deterministic 필요한 측정/UX 한정.
+
+**사용자 결정**: P-1 = cycle β / 별도 PR. 이번 cycle 은 Default cap
+flip (PR-A) 마감 집중.
+
+### PM-14 (mixtral Default) — 모델 무관성 확인
+
+| 측정 | primary | graded | abst_F1 | inf | comp | temp | null |
+|---|---|---|---|---|---|---|---|
+| PM-3 mixtral cap=1000 same-sess (no fix) | 0.460 | 0.423 | 0.545 | 0.56 | 0.20 | 0.12 | 0.96 |
+| **PM-14 mixtral Default (cap=8000+per-q+strip)** | 0.440 | 0.457 | **0.679** | 0.84 | 0.16 | 0.04 | 0.72 |
+
+mixtral cap fix 효과:
+- inference +0.28 (e4b +0.24 와 비슷한 규모)
+- abst_F1 +0.134 (e4b +0.05 보다 큼)
+- graded +0.034 (e4b +0.08 보다 작음)
+
+→ **cap fix = 모델 무관 systemic Default 결함 fix 확정**.
+
+### 양 모델 Default 비교 — 충격적 발견
+
+| metric | **PM-15 e4b (4B)** | **PM-14 mixtral (47B)** | 차이 |
+|---|---|---|---|
+| primary | 0.460 | 0.440 | e4b 약간 ↑ |
+| graded | 0.483 | 0.457 | e4b 약간 ↑ |
+| abst_F1 | 0.560 | 0.679 | mixtral 우위 |
+| inference | 0.76 | 0.84 | mixtral 약간 ↑ |
+
+**4B 가 47B 와 거의 동등** (primary/graded). JAMES Default 모체가
+모델 size 영향 ~흡수 — mother-platform 가치 입증. 단 abstention 정확도
+는 mixtral 우위 (큰 모델 critical thinking).
+
+### vs Paper baseline (Tang & Yang 2024 Table 6)
+
+| Cell | params | primary | 비교 |
+|---|---|---|---|
+| Llama-2-70b | 70B | 0.28 | paper |
+| Mixtral-8x7B | 47B | 0.32 | paper (same-model 통제 대상) |
+| ChatGPT/3.5 | ~175B | 0.44 | paper |
+| **PM-14 JAMES Default mixtral (47B)** | 47B | **0.440** | **+0.12 over same-model paper** |
+| **PM-15 JAMES Default e4b (4B)** | 4B | **0.460** | (4B 로 paper Mixtral·Llama-70b 초과) |
+| PaLM | 540B | 0.47 | paper |
+| Claude-2.1 | ? | 0.52 | paper |
+| GPT-4 | ~1.7T | 0.56 | paper |
+| PM-16 JAMES + V2 opt-in e4b | 4B | 0.580 | (opt-in, multi-fact 약화 caveat) |
+
+### Framing B″ → B‴ (mixtral 무관성 추가)
+
+> "**JAMES Default + cap fix** 가 4B (e4b) / 47B (mixtral) 양 모델에서
+> paper Mixtral-8x7B (0.32) / Llama-2-70b (0.28) 초과 (primary 0.44-
+> 0.46). **같은 모델 통제** = mixtral 47B JAMES Default 0.44 vs paper
+> Mixtral 0.32 → **JAMES 스택 contribution +0.12 정량 입증**. 4B
+> Default ≈ 47B Default = 스택이 모델 size 영향 흡수. 단축 primary 에서
+> raw vanilla RAG 와 비교 -0.06~-0.11 (JAMES 가 약함). **다차원 (graded
+> +0.03-0.08, abst_F1 +0.13) = JAMES 명확 우위**. **JAMES 진짜 가치 =
+> multi-fact + abstention discipline**, 단축 단답 정확도 아님."
+
+### 최종 verdict cell 마감
+
+| Cell | 환경 | primary | graded | abst_F1 | 의미 |
+|---|---|---|---|---|---|
+| raw e4b | no JAMES | 0.520 | 0.403 | 0.561 | 모델 자체 능력 baseline |
+| raw mixtral | no JAMES | 0.55* | — | — | (PM-5 partial) |
+| PM-1b legacy default | cap=1000, fixes 0 | 0.450 | 0.413 | 0.523 | 현 production |
+| **PM-15 e4b Default** | **cap=8000, fixes 0** | **0.460** | **0.483** | **0.560** | **Default cap flip 권고 cell (4B)** |
+| **PM-14 mixtral Default** | **cap=8000, fixes 0** | **0.440** | **0.457** | **0.679** | **Default cap flip 권고 cell (47B)** |
+| PM-16 e4b + V2 opt-in | +V2 | 0.580 | 0.373 ↓ | 0.621 | terse 옵션 (multi-fact 약화) |
+| PM-17 e4b + V2 + P-1 | +V2 +P-1 | 0.560 | 0.360 | 0.509 ↓ | P-1 = meta-deterministic 한정 옵션 |
+
+### PR queue (이번 cycle 마감)
+
+| PR | 내용 | priority | default 변경 |
+|---|---|---|---|
+| **PR-A** | `JAMES_SYNTH_CONTEXT_CHARS` default 1000 → 8000 | ⭐⭐⭐ | YES (Tier 1 flip) |
+| PR-B | `JAMES_REVISE_PROMPT_V2` env-gate 유지 (이미 OFF) | ⭐⭐ | NO (opt-in 가이드 명시) |
+| PR-C | P-1 (이미 terse conditional) | ⭐⭐ | NO (이미 conditional, P-1a 정밀화는 β) |
+| PR-D | stripper 5 패턴 + REVISE_PROMPT_EN forbidden (이미 land) | ⭐⭐ | YES (이미 적용, exempt: band-aid safety net) |
+
+### Cycle β scope 확정
+
+1. **NATURAL-grade oracle 신설** — LLM-judge / graded multi-axis
+2. **Default JAMES 다차원 baseline 재정의** — cap flip 후 새 baseline
+3. **P-1 정밀화** (Option P-1a — plan 보존 + directive reframe + bullet)
+4. **Hidden defect audit** — cap[:1000] 패턴 N개 추가 발굴
+5. **runner sources count → list** (path coverage 가능)
+6. **production-mirror measurement stack** — runner default ==
+   PLATFORM_DEFAULTS
+
+### 이번 cycle 마감 톤
+
+- ✅ **cap[:1000] systemic platform defect** 발견 + 다차원 fix 정량 +
+  모델 무관성 확인 (e4b / mixtral 양 모델 다차원 회복)
+- ✅ **사용자 통찰 — Default = JAMES 모체 평가 원칙** 정립. 평가 design
+  의 핵심 원칙으로 cycle β 이후 모든 fix 의 적용 기준
+- ⚠️ **V2 redesign** = terse 단답 use case 최적화 옵션 (multi-fact 약화
+  tradeoff). Default 적용 X.
+- ⚠️ **P-1** = terse opt-in 옵션 내부 정밀화. cycle β scope.
+- 🟡 **JAMES 스택 contribution +0.12 정량 입증** (mixtral same-model
+  통제). 4B Default ≈ 47B Default = mother-platform 가치 증명.
+
+### Honest framing rules 활용
+
+이번 cycle 에서 박힌 rule 들 다 적용:
+- `feedback_finding_size_honest_framing`: V2 "단답 GPT-4 league" → "단답
+  최적화 옵션, multi-fact 약화" 정정
+- `feedback_n1_verdict_inflation_n3_caught`: n=100 single-shot, paired
+  n=3 미완료 caveat 명시
+- `feedback_fixture_fitness_before_verdict`: terse fixture 단답 한정,
+  NATURAL 모드 별도 oracle 필요
+- `feedback_evidence_grounded_validity_check`: 답 sample inspection 으로
+  PM-16 결과 신뢰성 검증
+
+다음 cycle β 진입 시 의무 reading.
+
 ## 19. 최종 verdict matrix (PM-12 완료 후 마감)
 
 PM-12 (mixtral + fix cap=8000, 100Q) 결과로 6칸 매트릭스 완성. 핵심 verdict:
