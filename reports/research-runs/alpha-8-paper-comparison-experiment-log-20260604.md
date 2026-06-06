@@ -3136,6 +3136,97 @@ cycle β #2 closure 후 진입 sequence:
 총 cost = ~1-2 주. design-planned 인프라 다 갖춘 후 publication-grade
 evidence 확보.
 
+
+## 41. Cycle β #7 — multihop_terse_run.py sources field count → list (path coverage prerequisite, 2026-06-06)
+
+cycle β #2 closure 직후 Path 1 sequence 의 첫 step. runner 가 sources
+를 `int (count)` 만 저장하던 것을 `list of citation names` 로 변경.
+`score_path_coverage` 의 `via_sources` 가 항상 0 이었던 platform-wide
+defect 차단 — cycle γ 의 MuSiQue / 2WikiMultiHopQA support fact
+accuracy 측정 prerequisite.
+
+### Phase A 진단
+
+- `scripts/research/multihop_terse_run.py:94` — `"sources": n_src`
+  (int count 만)
+- `eval/qvt/oracle.py:301-303` `score_path_coverage` 의 `r.get("sources")`
+  → string list 필요 (`if isinstance(s, str)`)
+- 결과: `via_sources` 항상 0 → `path_recall` 가 graph-only 한정
+
+### Phase B 코드 변경
+
+```python
+# Before
+"sources": n_src   # int
+
+# After
+source_names = []
+for s in srcs:
+    if isinstance(s, dict):
+        name = (s.get("source") or s.get("title") or
+                s.get("filename") or s.get("file") or "")
+    elif isinstance(s, str):
+        name = s
+    name = (name or "").strip()
+    if name:
+        source_names.append(name)
+"sources": source_names,     # list of strings
+"sources_count": len(source_names),  # 호환 (evidence-retrieved print)
+```
+
+호환성:
+- `score_path_coverage` legacy fallback (line 272 `if not fq` branch) =
+  historic JSON 의 `sources: int` 호환 유지
+- `multihop_score_axes.py` 의 evidence-retrieved 출력 = `sources_count`
+  사용으로 갱신
+
+### Phase C smoke 검증 (PM-22 n=5 e4b)
+
+`workspaces/hotpot_eval/eval/multihop_rag_queries_smoke5.json` 신규
+(첫 5 inference_query). 측정 cost ~4-5min.
+
+**sources field shape check**:
+
+| qid | type | len | sample (first 2) |
+|---|---|---|---|
+| 1 | list | 3 | `['multihop_0175_The-FTX-trial...', 'multihop_0086_Sam-Bankman-Fried...']` |
+| 2 | list | 3 | `['multihop_0530_The-777-million-surprise...', 'multihop_0530_The-777-million-surprise...']` |
+| 3 | list | 3 | `['multihop_0332_OpenAI-s-ex-chairman...', 'multihop_0516_Sam-Altman-ousted...']` |
+| 4 | list | 3 | `['multihop_0072_Vermont-Sportsbook-Promos...', 'multihop_0072_Vermont-Sportsbook-Promos...']` |
+| 5 | list | 3 | `['multihop_0031_Is-Sam-Bankman-Fried...', 'multihop_0010_SBF-s-trial-starts-soon...']` |
+
+→ 모두 `list of strings`, 정상 ✅
+
+**score_path_coverage check (via_sources 0 → positive 변환)**:
+
+| qid | expected | hits | recall | via_graph | **via_sources** |
+|---|---|---|---|---|---|
+| 1 | 3 | 1 | 0.333 | 0 | **1** |
+| 2 | 2 | 1 | 0.500 | 0 | **1** |
+| **3** | **2** | **2** | **1.000** | **0** | **2** |
+| 4 | 3 | 1 | 0.333 | 0 | **1** |
+| 5 | 2 | 1 | 0.500 | 0 | **1** |
+
+→ mean_recall = **0.5333**, queries_at_full_recall = 1/5.
+**via_sources 0 → positive 정상 변환 ✅**. qid=3 full recall (2/2) 달성.
+
+### Mechanism verdict
+
+| 변경 전 | 변경 후 |
+|---|---|
+| `sources: int` | `sources: list of strings` + `sources_count: int` 호환 |
+| `via_sources` 항상 0 | `via_sources` positive (1-2/expected) |
+| `path_recall` = graph-only | `path_recall` = graph + source union |
+| MuSiQue/2Wiki 측정 불가 | MuSiQue/2Wiki support fact accuracy 측정 가능 |
+
+→ cycle β #7 = measurement infra prerequisite 완료. cycle γ 의 외부
+벤치 측정 prerequisite 첫 항목 ✅.
+
+### Path 1 sequence 다음 step
+
+cycle β #6 (Hidden defect audit) — cap[:1000] 같은 1-line hardcoded
+defect 추가 발굴. ~2-4h.
+
 ### Mother-platform 6 원칙 매핑
 
 | 원칙 | 평가 |

@@ -78,6 +78,7 @@ def main():
     _eff_style = "" if _runner_style.lower() == "auto" else _runner_style
 
     for i, q in enumerate(queries, 1):
+        source_names: list = []
         try:
             session_id = (_shared_session if _session_mode == "fixed-shared"
                           else f"pm-terse-q{q['id']}")
@@ -86,12 +87,39 @@ def main():
                             session_id=session_id)
             ans = out.get("answer", "") if isinstance(out, dict) else str(out)
             srcs = (out.get("sources") or out.get("docs") or []) if isinstance(out, dict) else []
-            n_src = len(srcs) if isinstance(srcs, (list, tuple)) else 0
+            # cycle β #7 (2026-06-06) — emit sources as a list of
+            # citation names (was an int count) so the unified
+            # `score_path_coverage` axis can credit source-side hits
+            # against `fixture.expected_path.nodes`. Without this, the
+            # scorer's `r.get("sources")` slug set is always empty and
+            # `via_sources` is always 0, leaving MuSiQue / 2WikiMultiHopQA
+            # support-fact accuracy unmeasurable.
+            #
+            # Each `srcs` entry can be a dict (engine path) or a string
+            # (legacy / web path). Extract the most filename-like field
+            # available; preserve insertion order; drop empties.
+            if isinstance(srcs, (list, tuple)):
+                for s in srcs:
+                    if isinstance(s, dict):
+                        name = (s.get("source") or s.get("title") or
+                                s.get("filename") or s.get("file") or "")
+                    elif isinstance(s, str):
+                        name = s
+                    else:
+                        name = ""
+                    name = (name or "").strip()
+                    if name:
+                        source_names.append(name)
             status = "ok"
         except Exception as e:
-            ans, n_src, status = f"[ERROR] {e}", 0, "error"
+            ans, status = f"[ERROR] {e}", "error"
         results.append({"id": q["id"], "status": status, "answer": ans,
-                        "question_type": q["question_type"], "sources": n_src})
+                        "question_type": q["question_type"],
+                        # list of citation names — score_path_coverage uses this
+                        "sources": source_names,
+                        # int count preserved for back-compat with the
+                        # evidence-retrieved print + any legacy reader
+                        "sources_count": len(source_names)})
         if i % 10 == 0 or i == len(queries):
             json.dump({"model": MODEL, "results": results},
                       open(OUT, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
@@ -105,7 +133,7 @@ def main():
     print(f"accuracy_strict            : {axis.accuracy_strict:.3f}  "
           f"({axis.correct_strict}/{axis.n_queries})")
     print(f"answerable / null          : {axis.n_answerable} / {axis.n_null}")
-    print(f"evidence-retrieved         : {sum(1 for r in results if r['sources']>0)}/{len(results)} "
+    print(f"evidence-retrieved         : {sum(1 for r in results if r.get('sources_count', len(r.get('sources') or []))>0)}/{len(results)} "
           f"(null queries expected 0)")
     print("\nby question_type:")
     for t, d in sorted(axis.by_question_type.items()):
