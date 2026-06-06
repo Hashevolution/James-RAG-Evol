@@ -161,8 +161,8 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
-| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/handovers/v0.4-cycle-beta-closure-2026-06-06.md`** (BIG: cycle β #1+#1.5 closure = ⭐ stable + small. cycle β #2 (AnswerStyleClassifier + rule_text v4) 진행 중. **재정렬 Path 1 sequence (사용자 catch 적용)**: cycle β #2 closure → #7 path coverage → #6 hidden defect → #3 NATURAL oracle → v0.4.2 T5 (Replayable Audit Graph) → Cycle γ (4 외부 벤치 통합) → v0.5 진입. 의무 reading 9-룰 + cycle γ design memo prerequisite 표.) |
-| **🟢 Next-cycle design (Cycle γ — prerequisite 있음)** | `docs/design/v0.4-cycle-gamma-external-benchmark-integration.md` (4 외부 벤치 통합 + 진입 조건 §7 — cycle β #3/#6/#7 + v0.4.2 T5 필수) |
+| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/handovers/v0.4-cycle-beta-closure-2026-06-06.md`** (BIG: cycle β #1+#1.5+#2+#6+#7 closure ✅ PR #713-#717. **재정정 Path 1 sequence (사용자 catch 2026-06-06 PM)**: cycle β #3 NATURAL oracle = **skip** (self-eval 함정 — JAMES 자체 oracle = publication 인정 X). v0.4.2 T5 (Replayable Audit Graph) → Cycle γ (4 외부 벤치 = 진짜 publication evidence) → v0.5 진입. 의무 reading 10-룰 + cycle γ design memo + self-eval 함정 룰.) |
+| **🟢 Next-cycle design (Cycle γ)** | `docs/design/v0.4-cycle-gamma-external-benchmark-integration.md` (4 외부 벤치 통합 + 진입 조건 §7 — cycle β #6/#7 + v0.4.2 T5 필수. #3 skip = self-eval 함정 catch) |
 | Prev entry (cycle β 진입 framing — 정정됨) | `docs/handovers/v0.4-cycle-beta-entry-2026-06-06.md` |
 | Prev entry (cycle 마감 + 6 원칙) | `docs/handovers/v0.4-mother-platform-6-principles-cycle-2026-06-05.md` |
 | Prev-prev entry (cap[:1000] discovery) | `docs/handovers/v0.4-multihop-synth-context-fix-2026-06-05.md` |
