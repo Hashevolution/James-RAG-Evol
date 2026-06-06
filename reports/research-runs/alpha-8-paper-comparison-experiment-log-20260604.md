@@ -3227,6 +3227,88 @@ for s in srcs:
 cycle β #6 (Hidden defect audit) — cap[:1000] 같은 1-line hardcoded
 defect 추가 발굴. ~2-4h.
 
+
+## 42. Cycle β #6 — Hidden defect audit (cap[:N] 패턴 grep) (2026-06-06)
+
+cycle β #7 (path coverage runner) 직후 Path 1 두 번째 step.
+core/ 폴더 grep 으로 cap[:1000] pattern 같은 1-line hardcoded defect
+잠재 발굴. cycle γ measurement 정합성 + production UX risk 평가.
+
+### Phase A — grep audit 결과
+
+#### Numeric slice patterns (`\[:\d{3,5}\]`) 40+ 발견
+
+대부분 (35+) = **audit/log/error truncation** (의도된 cap, OK):
+- error detail messages (gemma_client / engine / backends)
+- log records (audit_bridge / orchestrator / observability)
+- LLM prompt query truncation (intent_classifier / answer_style_classifier)
+- policy_engine / retrieval_engine / pipeline log records
+
+→ 이 영역 cap 은 log/snippet 용도, 답 양식 / 측정 영향 없음.
+
+#### Hidden defect candidates 발견 (5+1)
+
+| Tier | File:Line | Defect | 영향 (production UX) | 측정 영향 (multihop) |
+|---|---|---|---|---|
+| **⭐⭐⭐** | `core/memory/conversation.py:31-32` | `question/answer[:2000]` DB save cap | 답 ≥ 2000자 시 DB 저장 시 잘림. multi-turn 답 손실 | per-query session 이면 무관 (multihop fixture) |
+| **⭐⭐** | `core/memory/conversation.py:80` | `t['content'][:800]` history display cap | multi-turn prior context loss (LLM prompt 주입 시) | per-query session 이면 무관 |
+| **⭐⭐** | `core/reasoning/pipeline_synth.py:151` | `web_context[:1000]` web summary cap | web fallback path 의 multi-source 정보 제한 | web fallback 사용 안 함 (multihop fixture 한정) |
+| ⭐ | `core/memory/store.py:73` | `[:500]` MemoryStore value cap | preferences UX 미세 | 무관 |
+| ⭐ | `core/knowledge_tracker.py:122` | `content[:500]` domain classify input | domain classifier accuracy 미세 | 무관 |
+| ✅ done | `core/reasoning/engine_synth.py:107` | `context[:1000]` (PR-A 2026-06-05) | env-gate `JAMES_SYNTH_CONTEXT_CHARS` default 8000 | (이미 fix) |
+
+#### Doc-comment 박힌 의도 분석 (conversation.py)
+
+`conversation.py:20-22` (DB save cap = 2000):
+> "2000 chars holds a typical 2-3 paragraph response without blowing
+>  up the SQLite row size."
+
+`conversation.py:65-72` (history display cap = 800):
+> "per-turn slice widened from 200 → 800 chars... The previous slice
+>  chopped any non-trivial answer... 800 chars is roughly one
+>  paragraph — enough to anchor anaphora without ballooning the prompt."
+
+→ 의도된 trade-off (DB size / prompt size 보호). 단 cycle β #2 의 답
+양식 (1500-3000자 elaboration) 시 부분 손실 확실.
+
+### Phase B — Fix sequencing 결정
+
+Hidden defect 5 candidates 의 fix 는 **별도 cycle 에서 처리** (이번
+cycle β #6 = audit list 만):
+
+| Defect | Fix sequence |
+|---|---|
+| ⭐⭐⭐ conversation.py:31-32 | env-gate `JAMES_CONVERSATION_CONTENT_CHARS` (default 2000 → flip 검토) — **production UX 측정 evidence 후** 별도 PR |
+| ⭐⭐ conversation.py:80 | env-gate `JAMES_HISTORY_DISPLAY_CHARS` (default 800 → flip 검토) — 같은 sequence |
+| ⭐⭐ pipeline_synth.py:151 | env-gate `JAMES_WEB_SUMMARY_CONTEXT_CHARS` (default 1000 → 검토) — web fallback UX evidence 후 |
+| ⭐ store.py:73, knowledge_tracker.py:122 | low priority, 별도 |
+
+### Cycle γ measurement 정합성 평가
+
+**핵심 finding**: 발견 5 hidden defects **모두 multihop measurement
+정합성 영향 없음** (per-query session_id 또는 query-independent fixture).
+
+→ **cycle γ 4 외부 벤치 측정 (RGB / ALCE / MuSiQue / 2WikiMultiHopQA)
+신뢰성 prerequisite 만족 ✅** — multihop_terse_run.py 가 per-query 또는
+fixed-shared session 사용, 외부 벤치 fixture 도 single-turn 위주.
+
+### Mother-platform 6 원칙 매핑
+
+- 원칙 1 (옵션형 거둬내기 + 다이얼 조정): audit list 작성 = 다이얼
+  후보 식별. fix 는 별도 cycle (production UX evidence 후)
+- 원칙 5 (NATURAL 지장 없는 개선): 발견 5 defects 의 fix 가 production
+  UX 영향 평가 필요. 단순 cap-flip 위험 (DB size / prompt size)
+- 원칙 6 (auto-selection): 향후 답 양식 (response_style) 별 다른 cap
+  적용 가능 (terse: 짧음, natural: 길음) — cycle β #2 extension 가능
+
+### Phase C — Path 1 다음 step 진입
+
+cycle β #6 audit 완료. cycle β #3 (NATURAL-grade oracle) — Path 1
+세 번째 step 진입. ~4-8h.
+
+ALCE 의 long-form QA citation precision/recall 채점 인프라 신설 →
+cycle γ 외부 벤치 ALCE measurement prerequisite.
+
 ### Mother-platform 6 원칙 매핑
 
 | 원칙 | 평가 |
