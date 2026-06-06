@@ -423,6 +423,40 @@ reasoning, 2026-05-14 brief). The invariant is testable: a future
 the answer's decision tree. Any column the trace needs but cannot find
 is a regression.
 
+#### Graph replay invariant (v0.4.2 T5 extension)
+
+The trace replay invariant above answers "why did the system answer
+X?" against the *reasoning round*. The graph state that the round was
+answered on top of is governed by a parallel invariant (`core/lifecycle/
+replay_graph.py`):
+
+> ∀ t. `reconstruct_graph_at(t)` = replay of every lifecycle event
+> row in `audit_log` whose timestamp ≤ t.
+
+Lifecycle mutations (T1 expiration, T2 dispatch, T2.D ingest dispatch,
+T6 cascade invalidate, T7 supersede edge_created / chain_extended) each
+emit one `audit_log` row with `event_type` in `LIFECYCLE_EVENT_TYPES`
+(`core/lifecycle/replay_audit.py`). The read-side primitive
+`reconstruct_graph_at(t)` folds the event stream into a deterministic
+`GraphSnapshot`. The fold is a **pure function** of the audit_log
+events — no wiki file read, no graph engine state access. That is the
+"audit-only invariant": an operator can ship the audit_log JSON to a
+third party and the third party can reproduce the graph state at any
+past `t` with no other artifact.
+
+Cross-chain integration: `view_from_snapshot(snap, head_id, t)` is the
+audit-only equivalent of `core/lifecycle/supersede_chain.
+reconstruct_view_at` (the v0.4.0 single-chain primitive). Cross-chain
+consistency is pinned by
+`tests/test_t5_cross_chain_consistency.py` — every edge the view
+helper returns is in the snapshot's edges dict.
+
+Together the two invariants (trace replay + graph replay) make the
+**ABAC + replay** claim from the corpus retrieval analysis (PR #712 §6)
+externally demonstrable: an operator can pin "this answer was given on
+this graph state at this time, ran through these reasoning steps" with
+nothing but the audit_log.
+
 ### 5.7.3 Multi-agent invariant (anti-sprawl)
 
 The middleware is allowed at most **five named agent roles**:

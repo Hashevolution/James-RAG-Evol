@@ -421,7 +421,102 @@ def reconstruct_graph_at(
     )
 
 
+# ─── PR-T5.C — cross-chain integration helper ──────────────────────
+
+
+def view_from_snapshot(
+    snapshot: GraphSnapshot,
+    head_id: str,
+    t: datetime,
+) -> Optional[Dict[str, Any]]:
+    """Single-chain projection of a graph snapshot — the audit-only
+    equivalent of :func:`core.lifecycle.supersede_chain.reconstruct_view_at`.
+
+    Walks the supersede chain rooted at ``head_id`` inside ``snapshot``
+    (built by :func:`reconstruct_graph_at`) and returns the edge whose
+    ``validity`` window contained ``t``, **excluding** edges in
+    ``snapshot.invalidated_ids`` (same semantics as
+    ``reconstruct_view_at`` — CASCADE invalidations remove the edge
+    even when it would otherwise match the interval).
+
+    Args:
+        snapshot: the snapshot produced by ``reconstruct_graph_at``.
+        head_id: chain root id (same shape as the head dict's id used
+            with the live primitive).
+        t: UTC-aware ``datetime``.
+
+    Returns:
+        The first chain edge (in chain order) whose
+        ``validity.from <= t < validity.to`` (``None`` on either bound
+        means "open"). ``None`` if no chain edge matches or the head
+        is not in the snapshot.
+
+    Cross-chain integration contract (memo §5):
+        view_from_snapshot(snapshot, head_id, t) ∈ snapshot.edges.values()
+        ∪ {None}
+
+        i.e. when this helper returns an edge, the edge IS in the
+        snapshot's edges dict. This pins the live ↔ replay equivalence
+        once mutation-site wiring lands (PR-T5.A.b → PR-T5.D I4).
+
+    Why a snapshot-side helper, not a live re-call of
+    ``reconstruct_view_at``? The live primitive takes a
+    ``lookup: Callable[[str], dict]`` that resolves ids against the
+    on-disk wiki. The audit-only invariant (I1) forbids that for
+    replay — we must walk the chain using only the snapshot. This
+    helper IS the audit-only equivalent.
+    """
+    if not isinstance(head_id, str) or not head_id:
+        return None
+    chain_ids = snapshot.supersede_chains.get(head_id)
+    if not chain_ids:
+        return None
+
+    invalidated = snapshot.invalidated_ids
+    match: Optional[Dict[str, Any]] = None
+
+    # Walk in chain order and keep the latest matching edge — mirrors
+    # the "iterate forward + return last match" semantics of the live
+    # reconstruct_view_at (it walks the supersede order from oldest to
+    # newest; the most-recent interval that contains t is the answer).
+    for edge_id in chain_ids:
+        if edge_id in invalidated:
+            continue
+        edge = snapshot.edges.get(edge_id)
+        if not edge:
+            continue
+        validity = edge.get("validity") or {}
+        if _validity_contains(validity, t):
+            match = edge
+    return match
+
+
+def _validity_contains(validity: Dict[str, Any], t: datetime) -> bool:
+    """``validity.from <= t < validity.to`` with ``None``-as-open
+    semantics. Matches the live ``supersede_chain._validity_contains``
+    so the two reconstructions stay byte-equivalent on edge selection.
+    """
+    from_str = validity.get("from")
+    to_str = validity.get("to")
+    if from_str is not None:
+        try:
+            vf = datetime.fromisoformat(str(from_str).replace("Z", "+00:00"))
+        except ValueError:
+            return False
+        if t < vf:
+            return False
+    if to_str is not None:
+        try:
+            vt = datetime.fromisoformat(str(to_str).replace("Z", "+00:00"))
+        except ValueError:
+            return False
+        if t >= vt:
+            return False
+    return True
+
+
 __all__ = [
     "GraphSnapshot",
     "reconstruct_graph_at",
+    "view_from_snapshot",
 ]
