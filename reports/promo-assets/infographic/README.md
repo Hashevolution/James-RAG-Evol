@@ -7,20 +7,27 @@ filled entirely from the project's real code / docs / roadmap (v0.4.1).
 
 | File | What |
 |---|---|
-| `generate_infographic.py` | Reproducible generator (pure Python stdlib, no deps) |
-| `james_architecture_en.svg` | English poster (1640×1993) |
-| `james_architecture_ko.svg` | Korean poster (1640×1965) |
+| `generate_infographic.py` | Reproducible generator (stdlib for SVG; `cairosvg` optional for PNG/PDF) |
+| `james_architecture_en.{svg,png,pdf}` | English poster (1640×1993; PNG @ 3280px) |
+| `james_architecture_ko.{svg,png,pdf}` | Korean poster (1640×1965; PNG @ 3280px) |
 | `index.html` | Side-by-side viewer for both SVGs |
 
 ## Regenerate
 
 ```bash
+pip install cairosvg            # optional — only for PNG/PDF
 python reports/promo-assets/infographic/generate_infographic.py
 ```
 
-This rewrites both `*.svg` files. Edit the `content()` function in the
+This rewrites the `*.svg` files (always) and the `*.png` / `*.pdf` files
+(when `cairosvg` is importable). Edit the `content()` function in the
 generator to change copy; edit the geometry/theme constants at the top to
 restyle.
+
+> Korean PNG/PDF rasterization needs a Hangul font visible to fontconfig
+> (e.g. `apt-get install fonts-noto-cjk`); the generator's Korean font
+> stack leads with `Noto Sans CJK KR`. Browsers do per-glyph fallback, so
+> the committed SVG renders Korean wherever any Hangul font is installed.
 
 ## Panels (and their source of truth)
 

@@ -51,7 +51,8 @@ PAL = {
 }
 
 FONT_EN = "Inter, 'Helvetica Neue', Arial, sans-serif"
-FONT_KO = "'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"
+FONT_KO = ("'Noto Sans CJK KR', 'Noto Sans KR', 'Apple SD Gothic Neo', "
+           "'Malgun Gothic', 'Nanum Gothic', sans-serif")
 
 
 # ---------------------------------------------------------------------------
@@ -534,12 +535,22 @@ def _stack(blocks: list[Block], w: float, gap: float) -> Block:
 
 def main() -> None:
     here = os.path.dirname(os.path.abspath(__file__))
+    try:
+        import cairosvg  # optional: only needed for PNG/PDF rasterization
+    except Exception:
+        cairosvg = None
     for lang in ("en", "ko"):
         svg = build(lang)
-        path = os.path.join(here, f"james_architecture_{lang}.svg")
-        with open(path, "w", encoding="utf-8") as fh:
+        base = os.path.join(here, f"james_architecture_{lang}")
+        with open(base + ".svg", "w", encoding="utf-8") as fh:
             fh.write(svg)
-        print(f"wrote {path} ({len(svg)} bytes)")
+        print(f"wrote {base}.svg ({len(svg)} bytes)")
+        if cairosvg is not None:
+            cairosvg.svg2png(url=base + ".svg", write_to=base + ".png", output_width=3280)
+            cairosvg.svg2pdf(url=base + ".svg", write_to=base + ".pdf")
+            print(f"wrote {base}.png + {base}.pdf")
+        else:
+            print("  (cairosvg not installed — skipped PNG/PDF; `pip install cairosvg`)")
 
 
 if __name__ == "__main__":
