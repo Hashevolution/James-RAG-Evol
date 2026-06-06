@@ -2573,3 +2573,264 @@ collapse (원칙 6 완성).
 #1.5 먼저 자연 순서. mixtral PM-19 측정도 #1.5 v2 fix 후 통합 진행
 (양 모델 양 fix 한 번에).
 
+
+## 38. Cycle β #1.5 — TERSE rule_text v2 strict + max_tokens cap (2026-06-06)
+
+#1.5 작업 = §37 PM-19 정성 inspect 가 발견한 진짜 단축 source
+("Reason freely" license + rule_text 강제력 약함) 직접 fix.
+
+### Phase A 진단 — License 가설 직접 evidence
+
+#### Answer length 분포 (PM-19 e4b, n=100)
+
+| question_type | n | median | mean | min | max |
+|---|---|---|---|---|---|
+| comparison_query | 25 | 1573 | 1534 | 32 | 2677 |
+| inference_query | 25 | 1590 | 1434 | 8 | 2836 |
+| null_query | 25 | 473 | 1198 | 32 | 3248 |
+| temporal_query | 25 | 1522 | 1443 | 32 | 2805 |
+
+answerable median ~1550자 = ~300 words. 단축 "ANSWER: <one entity>"
+rule 와 정반대.
+
+#### Failing sample 직접 evidence (rule `feedback-evidence-grounded-validity-check`)
+
+**qid=26 comparison_query (primary 0)** 답 head:
+```
+"Based on the provided text and data context, here is a summary..."
+"### Summary of The Epoch Times' Growth and Influence"   ← rule 명시 금지 ## headers
+"**Financial and Political Trajectory:** *"              ← markdown bullets/bold
+*ANSWER: 줄 없음*
+```
+
+**qid=76 temporal_query (primary 0)** 답 head:
+```
+"This digest summarizes the major developments across technology..."
+"### **Key Tech Highlights**"                            ← ## headers
+"**1. AI and Startup Funding:** *"
+*ANSWER: 줄 없음*
+```
+
+→ 두 sample 모두 (a) ## headers + (b) markdown 합성 양식 + (c) ANSWER:
+누락. **TERSE v1 rule_text 의 negative-list constraints
+("Do NOT add ... or report-format (## sections)") 완전 무시**,
+**positive "Reason freely" license 만 따름**.
+
+### Phase B 코드 변경 — License 제거 + positive format strict
+
+#### TERSE rule_text v1 → v2 (license 제거)
+
+v1 (2026-06-04):
+```
+"- Reason freely, but on the LAST line write 'ANSWER:' ..."
+"- Do NOT add a 'Source files:' header, ... or report-format (## sections)."
+```
+
+v2 (2026-06-06):
+```
+"Answer format (strict):"
+"- Output EXACTLY one line: 'ANSWER: <answer>'"
+"- <answer> = entity name (e.g., 'Sam Bankman-Fried'), 'Yes', 'No', "
+"  or 'insufficient information'"
+"- MAXIMUM 30 words. No preamble, no synthesis, no ## headers, "
+"  no bullet lists, no follow-up sentences."
+"- If the context lacks the answer: 'ANSWER: insufficient information'."
+```
+
+차이:
+- "Reason freely" license 완전 제거 ✅
+- "Output EXACTLY one line" — positive hard rule
+- "MAXIMUM 30 words" — quantitative constraint
+- "no ## headers, no bullet lists, no follow-up sentences" — explicit negative list 강화
+
+#### max_tokens — 8192 유지 (cap 철회, 사용자 catch 적용)
+
+**Phase B 초안**: max_tokens 8192 → 150 cap (decoding-ceiling
+enforcement) — rule_text v2 의 "MAXIMUM 30 words" 를 decoding 단계
+에서도 강제.
+
+**사용자 catch (2026-06-06)**: max_tokens cap 자체가 결론 ANSWER 를
+자를 risk. PM-19 e4b 답 분포 정밀 분석:
+
+| Bin | count | 양식 |
+|---|---|---|
+| [0-50) | 14 | qid=4 'ESPN Bet' (8자, ANSWER 누락) + qid=12 'ANSWER: Elon Musk' + 12 null insufficient |
+| [200-430) | 10 | **"짧은 reasoning + ANSWER: insufficient information" 양식 (~60-100 words)** |
+| [430-500) | 2 | 같은 양식 |
+| [500-1000) | 4 | 중간 reasoning |
+| [1000-2000) | 43 | long synthesis (target 양식 아님) |
+| [2000-5000) | 27 | very long synthesis |
+
+200-430자 답 sample evidence:
+```
+qid=23 (389자): "The provided text offers general information... However, the text does not
+                 mention any specific group... ANSWER: insufficient information"
+qid=29 (240자): "ANSWER: insufficient information\n\n(Verification: ...)"
+```
+
+→ **legitimate "짧은 reasoning + 결론 ANSWER" 양식 = 60-100 words**.
+max_tokens=150 (~75-90 words) cap 시 **결론 ANSWER 직전에서 잘릴
+risk** — rule_text 가 요구하는 양식 자체를 cap 이 제거.
+
+**판단**: rule_text 강화 = 자연 다이얼 ✅. max_tokens cap = 강제
+절단 ⚠️. 두 개 분리.
+
+**최종**:
+- rule_text v2 strict 유지
+- max_tokens 8192 (NATURAL parity) 유지
+- 만약 PM-20 측정 시 여전히 long synthesis 가 dominant 면 별도 cycle
+  에서 tail-bounding (8192 → 2000 등) 측정 — body 가 아니라 tail
+  자르는 값으로
+
+### Phase C 측정 (PM-20)
+
+#### 측정 환경 (PM-19 와 동일 + v2 fix 자동 발동)
+
+```bash
+JAMES_WORKSPACE=./workspaces/hotpot_eval \
+JAMES_RESPONSE_STYLE=terse \
+JAMES_NUM_CTX=16384 \
+JAMES_ENABLE_PLANNER=0 \
+JAMES_ENABLE_REFLECT=0 \
+JAMES_ENABLE_VERIFY=0 \
+JAMES_ENABLE_QUERY_REWRITE=0 \
+JAMES_ENABLE_ENTITY_ANCHOR=0 \
+JAMES_TERSE_SESSION_MODE=fixed-shared \
+PROOF_MODEL=<model> \
+python scripts/research/multihop_terse_run.py
+```
+
+#### Verdict — case C confirmed (e4b n=1, mixtral deferred to next cycle)
+
+| Cell | primary | graded | abst_f1 |
+|---|---|---|---|
+| §36 baseline e4b (v1 + persona ON) | 0.310 | 0.400 | 0.520 |
+| PM-19 e4b (#1 persona fix only) | 0.340 | 0.407 | 0.560 |
+| **PM-20 e4b (#1 + #1.5 rule_text v2)** | **0.370** | **0.380** | **0.578** |
+| **Δ vs PM-19 (#1.5 marginal)** | **+0.030** | **-0.027** | **+0.018** |
+| **Δ vs §36 cumulative (#1 + #1.5)** | **+0.060** | -0.020 | +0.058 |
+
+**모든 Δ noise band 안** (n=3 paired multihop historic: graded ±0.060,
+abst_f1 ±0.418, primary ~±0.03-0.05).
+
+**by question_type breakdown (PM-19 → PM-20)**:
+
+| type | PM-19 | PM-20 | Δ | 분석 |
+|---|---|---|---|---|
+| comparison_query | 0.00 | **0.08** | **+0.08** | 양식 강제로 일부 회복 |
+| inference_query | 0.80 | **0.88** | **+0.08** | 단답 양식 → entity match 더 명확 |
+| null_query | 0.56 | 0.52 | -0.04 | 부분 noise |
+| temporal_query | **0.00** | **0.00** | **변화 없음** | rule_text 무관, **다른 root cause** |
+
+**case C confirmed** (rule `feedback-finding-size-honest-framing`):
+⭐ operational only.
+
+### Phase D depth diagnosis — temporal_query 0.00 root cause 발견
+
+#### Fixture gold 양식 분석
+
+모든 temporal_query 의 fixture gold = `[{'term': 'Yes/no', 'aliases':
+[]}, {'term': '<specific term>', 'aliases': []}]`. 정답 = **Yes/No
+결정 + 특정 entity**.
+
+#### PM-20 답 양식 직접 inspect
+
+| qid | Gold | PM-20 답 | 길이 | 분석 |
+|---|---|---|---|---|
+| 76 | Yes + Turmoil | `'ANSWER: insufficient information'` | 32자 | Yes 결정 못함 → 회피 |
+| 77 | no + company | `'Based on the provided internal data...'` | 2244자 | long synthesis, "no" 없음 |
+| 78 | no + urge | `'Based on the provided internal data...'` | 2926자 | long synthesis, "no" 없음 |
+| 79 | no + Jada | `'ANSWER: insufficient information'` | 32자 | 회피 |
+| 80 | no + Anti-Hero | `'Based on the provided internal data...'` | 1516자 | long synthesis, "no" 없음 |
+
+→ **temporal_query 의 진짜 problem**:
+- (a) Yes/No 결정 자체를 못 함
+- (b) 또는 회피 (`insufficient information`)
+- (c) 또는 long synthesis 로 직접 답 회피
+
+rule_text v2 의 "Yes/No" 명시 있어도 **모델이 yes/no 추론 자체 못함**.
+"Was X consistent with Y after date1 and Z after date2?" 류 multi-
+clause temporal yes/no question = e4b 4B 추론 ceiling.
+
+### 진짜 단축 source 정밀화 (cumulative diagnosis)
+
+| Path | Magnitude (실측) | Mechanism | Fix |
+|---|---|---|---|
+| persona name (Phase B #1) | **+0.030 small** | 양식 prefix 1줄 차단 ✅ | inject_persona field |
+| rule_text license (#1.5) | **+0.030 cumulative** | comparison/inference 양식 강제 (0→2, 20→22), but yes/no 무관 | rule_text v2 strict |
+| **advanced 스택 OFF** | **-0.10~-0.17 (§36 측정)** | yes/no/comparison query 의 진짜 손실 — production Default 회복 | (production = advanced ON) |
+| **model capability ceiling** | **-0.05~-0.10 (추정)** | e4b 4B 의 yes/no/multi-clause 추론 능력 약함 | (model upgrade or planner help) |
+
+→ **단축 -0.22 의 majority = advanced 스택 OFF + model capability**.
+persona + rule_text = 두 small fix 의 cumulative +0.06 = **27% 만 cover**.
+남은 73% = advanced 스택 OFF + model capability ceiling.
+
+### Cycle β 의 진짜 발견 (depth diagnosis 후 framing)
+
+| 발견 | tier |
+|---|---|
+| **§36 양 모델 4-layer build-up** (이미 cycle 마감 doc 박힘) — advanced 스택 +0.10-0.17 양 모델 + 4B Default ≈ 47B Default | ⭐⭐⭐ mother-platform 가치 정량 입증 |
+| persona 옵션화 (#1) — mechanism 차단 ✅ + magnitude small | ⭐ stable + small |
+| rule_text v2 (#1.5) — comparison/inference 일부 회복 + temporal 무관 | ⭐ stable + small |
+| temporal_query yes/no ceiling — model capability + advanced OFF 손실 | depth diagnosis finding |
+
+→ "단축 손해 진짜 source" framing 의 정정: persona / rule_text =
+양식 layer 정리 (marginal), **진짜 source = advanced 스택 OFF
+자체** (production Default 가 회복 mechanism = mother-platform 가치).
+
+### Mother-platform 6 원칙 매핑 (depth diagnosis 적용 후)
+
+| 원칙 | 평가 |
+|---|---|
+| 원칙 1 (옵션형 거둬내기 + 다이얼 조정) | ✅ persona + rule_text 양식 다이얼 강화. max_tokens cap 철회 |
+| 원칙 2 (NATURAL 차단 극단 다이얼 X) | ✅ TERSE 안에서만 변경, NATURAL byte-identical |
+| 원칙 3 (단답 specific 옵션 layer) | ✅ TERSE_PRESET 한정 |
+| 원칙 5 (NATURAL 지장 없는 개선) | ✅ NATURAL byte-identical |
+| 원칙 6 (auto-selection layer) | ✅ cycle β #2 path 마련 — 단 #1+#1.5 small 이라 #2 marginal 가능성 |
+
+### 다음 step decision (사용자 추천 판단)
+
+**PR-C 마감 (cycle β #1.5 closure, e4b only) → v0.5 진입 게이트 평가
+(Path B) → cycle β #2 optional 후속**
+
+근거:
+1. cycle β 의 진짜 finding = §36 양 모델 mother-platform 가치 입증 (이미 박힘, publish-ready)
+2. #1+#1.5 = small + stable, framing 정정 후 PR-C 마감 가치 있음
+3. CLAUDE.md = "mother-hardening + v0.5 domain pilot" 자연 단계
+4. mixtral = v0.5 진입 후 또는 cycle β #2 시점에 통합 측정 (cost-efficient)
+
+### 사용자 박은 룰 (#1.5 추가)
+
+- **답변 품질 우선 vs 단축 강제 우선**: 단답 query 에 맞는 답변 품질
+  ↑ 이 목적 — 답변 방식 자체가 길이 자르는 강제는 risk 키움. 답
+  sample 양식 분석으로 cap risk 사전 catch + 철회.
+- **rule_text 강화 (자연 다이얼) vs max_tokens cap (강제 절단) 분리**:
+  같은 fix path 후보라도 mechanism 차원 분리. 다이얼은 OK, 절단은
+  risk.
+- **양식 forcing fix = marginal contribution 의 evidence**: persona +
+  rule_text 두 양식 layer fix 의 cumulative +0.06 = 단축 손해의 27%
+  만 cover. 73% 는 advanced 스택 + model capability — production
+  Default 가 진짜 회복 mechanism.
+
+### Mother-platform 6 원칙 매핑
+
+| 원칙 | 평가 |
+|---|---|
+| 원칙 1 (옵션형 거둬내기 + 다이얼 조정) | ✅ TERSE rule_text 다이얼 강화 (license 약화 + positive format strict). max_tokens cap 는 다이얼 아닌 절단 — 철회 |
+| 원칙 2 (NATURAL 차단 극단 다이얼 X) | ✅ TERSE 안에서만 변경, NATURAL_PRESET 영향 0. cap 철회로 결론 자르는 risk 차단 |
+| 원칙 3 (단답 specific 옵션 layer) | ✅ TERSE_PRESET 한정 변경 |
+| 원칙 5 (NATURAL 지장 없는 개선) | ✅ NATURAL byte-identical 보장 |
+| 원칙 6 (auto-selection layer) | ✅ cycle β #2 AnswerStyleClassifier 의 단답 query auto-mount path 강화 |
+
+### 사용자 박은 룰 (#1.5 추가)
+
+- **답변 품질 우선 vs 단축 강제 우선**: 단답 query 에 맞는 답변 품질
+  ↑ 이 목적 — 답변 방식 자체가 길이 자르는 강제는 risk 키움. 답
+  sample 양식 분석으로 cap risk 사전 catch + 철회.
+- **rule_text 강화 (자연 다이얼) vs max_tokens cap (강제 절단) 분리**:
+  같은 fix path 후보라도 mechanism 차원 분리. 다이얼은 OK, 절단은
+  risk.
+- 본 catch 가 cycle β 다음 작업 fix design 시 의무 reading:
+  hard-constraint 후보는 "원래 정상 답을 자를 가능성" 사전 분석 →
+  fix 선택지 narrowing
+

@@ -223,12 +223,41 @@ class StyleOverrideTests(unittest.TestCase):
     def test_unknown_falls_back_to_natural(self):
         self.assertIs(self.rs.resolve_style("nonsense-style"), self.rs.NATURAL_PRESET)
 
-    def test_terse_preset_rule_text_demands_answer_line(self):
-        # TERSE rule_text must instruct ANSWER: line + forbid Source files
+    def test_terse_preset_rule_text_v2_strict_single_line(self):
+        # v2 (cycle β #1.5, 2026-06-06) — TERSE rule_text flips from
+        # "Reason freely, end with ANSWER:" license (which PM-19 e4b
+        # measured as 16% answerable compliance, 84% multi-paragraph
+        # synthesis with ## headers) to a positive format-first contract.
+        # Each rule_text must:
+        #   - demand a single ANSWER: line
+        #   - state the EXACTLY-one-line positive format constraint
+        #   - cap length quantitatively (30 words / 30단어)
+        #   - NOT contain the v1 "Reason freely" license phrase
         for rt in (self.rs.TERSE_PRESET.rule_text_ko, self.rs.TERSE_PRESET.rule_text_en):
             self.assertIn("ANSWER:", rt)
-        # forbids the NATURAL scaffolding
-        self.assertIn("Source files", self.rs.TERSE_PRESET.rule_text_en)  # mentioned as "do NOT"
+            self.assertNotIn("Reason freely", rt,
+                             "v2 must remove the v1 multi-paragraph license phrase")
+        # positive format + quantitative cap (each language wording)
+        self.assertIn("EXACTLY one line", self.rs.TERSE_PRESET.rule_text_en)
+        self.assertIn("MAXIMUM 30 words", self.rs.TERSE_PRESET.rule_text_en)
+        self.assertIn("정확히 한 줄", self.rs.TERSE_PRESET.rule_text_ko)
+        self.assertIn("최대 30단어", self.rs.TERSE_PRESET.rule_text_ko)
+
+    def test_terse_preset_keeps_max_tokens_at_natural_parity(self):
+        # v2 — TERSE keeps max_tokens=8192 (NATURAL parity). An initial
+        # Phase B draft capped it at 150 (~75-90 words) to hard-enforce
+        # the 30-word rule at decoding, but the PM-19 e4b length analysis
+        # showed legitimate "short reasoning + ANSWER: insufficient
+        # information" answers run 200-430 chars (~60-100 words) and
+        # would be cut mid-conclusion under a 150-token cap, losing the
+        # ANSWER: line itself. rule_text v2 stays strict as a prompt-side
+        # instruction; the decoding ceiling stays generous so the model
+        # is never forced to truncate the conclusion the rule just asked
+        # it to write.
+        self.assertEqual(self.rs.TERSE_PRESET.max_tokens, 8192,
+                         "TERSE max_tokens must stay at 8192 (no hard truncation)")
+        self.assertEqual(self.rs.NATURAL_PRESET.max_tokens, 8192,
+                         "NATURAL must keep 8192 (production byte-identical)")
 
 
 class AnswerFormatContractTests(unittest.TestCase):
