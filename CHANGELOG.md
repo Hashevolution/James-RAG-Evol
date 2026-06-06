@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.2] — 2026-06-06 — T5 Replayable Audit Graph (full event-sourced reconstruction)
+
+**Theme**: v0.4.0 shipped `reconstruct_view_at` — a single-supersede-chain replay primitive. v0.4.2 extends that to **graph-wide event-sourced reconstruction**: a pure-function `reconstruct_graph_at(t)` that rebuilds the full graph snapshot at any past time using only `audit_log` event rows, with no wiki / knowledge_tracker / graph-engine read. That is the **audit-only invariant** — the foundation that makes the "ABAC + replay" claim (corpus retrieval analysis, PR #712 §6) externally demonstrable: ship the `audit_log` JSON → third party reproduces the graph state at any past `t` and the answer's decision tree on top, with no other artifact.
+
+**Default-off invariant preserved**. No new env flag in this cycle. The two new `audit_log` columns (`event_type` / `event_payload`) default NULL on existing rows; mutation-site wiring (T1/T2/T2.D/T6/T7 call sites → `emit_lifecycle_event`) is intentionally a follow-up cycle (cross-cutting change kept out of v0.4.2 so the read-side primitive can land independently). Production `audit_log` keeps emitting only reasoning trace rows until wiring lands.
+
+### T5 — 5-PR sequence (#719 → #720 → #721 → #722 → PR-T5.D)
+
+Per `docs/design/v0.4.2-t5-replayable-audit-graph.md`:
+
+- **#719 T5 design memo** — 15 sections covering partial-vs-full scope, audit-only invariant, event-type taxonomy, API design, cross-chain integration, 5-PR phase plan, 5 Decision LOCKs, cross-cutting impact analysis, closure conditions.
+- **#720 PR-T5.A — event taxonomy + emit helper + audit_log migration**. `core/lifecycle/replay_audit.py` (`LIFECYCLE_EVENT_TYPES` with 7 entries: T7 supersede ×2, T6 cascade, T1 expiration, T2 dispatch, T2.D ingest dispatch, migration backfill; `EVT_*` constants; `is_lifecycle_event` exact-match predicate; `emit_lifecycle_event` synchronous in-transaction insert — never raises). LOCK 1 (event_payload = JSON string column) + LOCK 2 (synchronous in-transaction emit). `scripts/migrate_v042_replay_audit.py` (idempotent ALTER TABLE adding `event_type` + `event_payload` columns; `--dry-run` / `--apply` / `--verify` / `--no-snapshot`; pre-write snapshot at `<db>.pre-v042-migration`). 19 contract tests.
+- **#721 PR-T5.B — `reconstruct_graph_at` audit-only primitive**. `core/lifecycle/replay_graph.py` (frozen `GraphSnapshot` dataclass: edges / supersede_chains / invalidated_ids / replayed_at / event_count; `reconstruct_graph_at(t, *, audit_log_path=None, include_event_types=None)`). Per-event-type handlers for every `LIFECYCLE_EVENT_TYPES` entry; import-time assert `set(_HANDLERS) == set(LIFECYCLE_EVENT_TYPES)` makes any drift a load-time error. LOCK 4 (pure function — only side-channel is the audit_log SELECT). Defence-in-depth (malformed JSON / unknown event_type / pre-migration DB / non-existent file all return the empty snapshot). 20 contract tests + 4 invariants (I1 audit-only / I2 supersede-preserved / I3 cascade-respected / I4 replay-equality weak form).
+- **#722 PR-T5.C — cross-chain integration + ARCHITECTURE §5.7.2 extension**. `view_from_snapshot(snap, head_id, t)` snapshot-side equivalent of `reconstruct_view_at`. Same iterate-forward + last-match + validity-window + invalidated-edge-skip semantics as the live primitive; `_validity_contains` private helper mirrors the live primitive byte-for-byte on edge selection. Cross-chain consistency contract: `view_from_snapshot(snap, head, t) ∈ snap.edges.values() ∪ {None}`. `ARCHITECTURE.md` §5.7.2 gets a "Graph replay invariant" subsection alongside the trace replay invariant. 11 contract tests.
+- **PR-T5.D — release-gating invariants + closure**. `tests/test_t5_release_gating_invariants.py` (5 release-gating tests against in-memory SQLite fixtures with real emit/reconstruct code: `test_graph_replay_at_t_matches_event_log`, `test_replay_audit_only_no_db_scan`, `test_replay_preserves_supersede_chain`, `test_replay_respects_cascade_invalidate`, `test_reasoning_trace_replay_invariant`). CHANGELOG `[0.4.2]` (this entry), `.zenodo.json` v0.4.2, `docs/release_notes_v0.4.2.md`.
+
+### Verification
+
+- `tests/test_t5_event_taxonomy`:           19/19 PASS
+- `tests/test_t5_reconstruct_graph_at`:     20/20 PASS
+- `tests/test_t5_cross_chain_consistency`:  11/11 PASS
+- `tests/test_t5_release_gating_invariants`: 5/5 PASS
+- `tests/test_replay_trace` (§5.7.2):       16/16 PASS — no regression on the v0.4.1 reasoning trace invariant.
+- **T5 lifecycle suite + replay regression: 71/71 PASS.**
+
+### What v0.4.2 does NOT do
+
+- No mutation-site wiring (T1/T2/T2.D/T6/T7 → `emit_lifecycle_event`). Production `audit_log` keeps emitting only reasoning trace rows; `reconstruct_graph_at(now)` returns the empty snapshot until wiring lands. The wiring is a cross-cutting cycle (lifecycle / graph / audit_log all touched) kept out of v0.4.2.
+- No I4 against the live wiki (strong form requires wiring + live-state fixture). The round-trip form (every emit becomes exactly one fold step) is what PR-T5.D pins.
+- No T3 Evidence Aging, no T4 Reviewer Authority Hierarchy. Both stay deferred to v0.4.3+.
+
+---
+
 ## [0.4.1] — 2026-05-28 — T6 Causality Chain (CASCADE extension) — derived-fact propagation
 
 **Theme**: v0.4.1 closes the CASCADE pillar that v0.4.0 only half-finished. When `cascade_remove_doc_from_sources` empties a base fact's sources, edges whose `derived_from` references that base now auto-invalidate via `invalidate_derived_facts` — the derivation chain stays internally consistent without manual operator intervention. Per-derivation-type semantics (T6.C.b refinement): `transitive` / `inferred` are hard deps (any base empty → invalidate); `operator` is corroborative (only invalidates when no hard deps AND all operator bases empty). Plus the v0.4.0 carry-over `dispatch_contradiction` wiring (T2.D-1/2/2.b/3) lands as flag-gated default-OFF, the QVT α track ships end-to-end (oracle + canonical baseline JSON + PR-gate template), and `tests/test_t6_release_gating_invariants.py` provides 4 release-gating invariants against real wiki fixtures.
