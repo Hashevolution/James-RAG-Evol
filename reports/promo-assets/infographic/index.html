@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROJECT JAMES — Architecture Infographic</title>
+<style>
+  body { margin: 0; background: #e2e8f0; font-family: Inter, system-ui, sans-serif; }
+  header { padding: 20px 28px; background: #4338CA; color: #fff; }
+  header h1 { margin: 0 0 4px; font-size: 20px; }
+  header p { margin: 0; opacity: .85; font-size: 13px; }
+  .tabs { display: flex; gap: 8px; padding: 16px 28px 0; }
+  .tabs button { border: 0; padding: 8px 18px; border-radius: 8px 8px 0 0;
+    background: #cbd5e1; color: #334155; font-weight: 600; cursor: pointer; }
+  .tabs button.active { background: #fff; color: #4338CA; }
+  .stage { padding: 0 28px 40px; }
+  .panel { display: none; background: #fff; border-radius: 0 12px 12px 12px;
+    padding: 20px; box-shadow: 0 8px 24px rgba(15,23,42,.12); overflow: auto; }
+  .panel.active { display: block; }
+  .panel object, .panel img { width: 100%; height: auto; display: block; }
+</style>
+</head>
+<body>
+<header>
+  <h1>PROJECT JAMES — Architecture Infographic</h1>
+  <p>Generated from the project's real code / docs / roadmap (v0.4.1). Source: generate_infographic.py</p>
+</header>
+<div class="tabs">
+  <button class="active" data-t="en">English</button>
+  <button data-t="ko">한국어</button>
+</div>
+<div class="stage">
+  <div class="panel active" id="en">
+    <object type="image/svg+xml" data="james_architecture_en.svg"></object>
+  </div>
+  <div class="panel" id="ko">
+    <object type="image/svg+xml" data="james_architecture_ko.svg"></object>
+  </div>
+</div>
+<script>
+  document.querySelectorAll('.tabs button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('.tabs button').forEach(function (x) { x.classList.remove('active'); });
+      document.querySelectorAll('.panel').forEach(function (x) { x.classList.remove('active'); });
+      b.classList.add('active');
+      document.getElementById(b.dataset.t).classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>
