@@ -193,7 +193,43 @@ NATURAL_PRESET = StylePreset(
 TERSE = "terse"
 
 TERSE_PRESET = StylePreset(
-    # v2 (2026-06-06 cycle β #1.5) — strict single-line via rule_text only.
+    # v4 (2026-06-06 cycle β #2) — answer-first with free-form evidence.
+    #
+    # v1 (2026-06-04): "Reason freely, end with ANSWER:" license —
+    #   PM-19 e4b measured 16% compliance, 84% multi-paragraph synthesis.
+    #
+    # v2 (cycle β #1.5): "EXACTLY one line" + "MAXIMUM 30 words" +
+    #   "no follow-up sentences" — successfully removed synthesis but
+    #   over-strict. Banned the natural "answer + brief evidence" UX
+    #   shape solely for measurement-side exact-match convenience.
+    #
+    # v3 (this cycle, intermediate): "First line ANSWER:" + "1-2 short
+    #   evidence sentences" + "MAXIMUM 60 words". User caught the
+    #   `MAXIMUM 60 words` and `1-2 sentences` quantitative gates as
+    #   the *same* measurement-fitting pattern v2 was just rolled back
+    #   for: the fixture scorer hits on entity match regardless of
+    #   length, so any quantitative cap is enforcement against a
+    #   ceiling that never required it.
+    #
+    # v4 lands the principled shape — keep the *structural* bans that
+    # actually prevent the synthesis-shape regression, drop every
+    # *quantitative* clamp:
+    #   - First line: ANSWER: <answer>           (structural lead)
+    #   - Then a brief grounded explanation if it helps   (free-form)
+    #   - Avoid multi-paragraph synthesis        (structural ban)
+    #   - Avoid ## headers, bullet lists, preamble before ANSWER:
+    #     (structural bans)
+    #   - No word count cap, no sentence count cap
+    #
+    # The hypothesis under v4 is that the structural bans alone are
+    # what stop the PM-19 84% synthesis-shape regression. If a future
+    # measurement shows long synthesis re-emerging, the next dial is
+    # structural (e.g. "single short paragraph"), not quantitative —
+    # quantitative caps just clip the very answer the rule asks for.
+    #
+    # Below comment block is retained for v2 historical context only.
+    #
+    # v2 (cycle β #1.5) — strict single-line via rule_text only.
     # The 2026-06-04 v1 rule_text was a "reason freely, end with ANSWER:"
     # license; the PM-19 e4b answer-shape inspection measured only 16%
     # ANSWER:-line compliance on answerable queries (4/25 each in
@@ -224,21 +260,27 @@ TERSE_PRESET = StylePreset(
     max_tokens=8192,
     force_two_sections=False,
     rule_text_ko=(
-        "답변 형식 (엄격):\n"
-        "- 정확히 한 줄만 출력: 'ANSWER: <답>'\n"
+        "답변 형식 (답 먼저, 자료 근거 설명):\n"
+        "- 첫 줄에 'ANSWER: <답>' 형식으로 직접 답을 적으세요.\n"
         "- <답> = 개체명 (예: '샘 뱅크먼-프라이드'), 'Yes', 'No', "
         "또는 'insufficient information'\n"
-        "- 최대 30단어. 서론, 합성, ## 헤더, 불릿 리스트, 후속 문장 금지.\n"
-        "- 자료에 답이 없으면 'ANSWER: insufficient information'.\n"
+        "- 그 다음 자료에 근거한 짧은 설명을 적으세요 (필요할 때만).\n"
+        "- ## 헤더, 불릿 리스트, 다단락 합성, ANSWER 줄 앞 서론은 "
+        "쓰지 마세요.\n"
+        "- 자료에 답이 없으면 첫 줄 'ANSWER: insufficient information' "
+        "만 출력하세요.\n"
     ),
     rule_text_en=(
-        "Answer format (strict):\n"
-        "- Output EXACTLY one line: 'ANSWER: <answer>'\n"
+        "Answer format (answer first, grounded explanation):\n"
+        "- First line: 'ANSWER: <answer>' — give the direct answer.\n"
         "- <answer> = entity name (e.g., 'Sam Bankman-Fried'), 'Yes', "
         "'No', or 'insufficient information'\n"
-        "- MAXIMUM 30 words. No preamble, no synthesis, no ## headers, "
-        "no bullet lists, no follow-up sentences.\n"
-        "- If the context lacks the answer: 'ANSWER: insufficient information'.\n"
+        "- Then a brief grounded explanation from the context, if it "
+        "helps.\n"
+        "- Avoid ## headers, bullet lists, multi-paragraph synthesis, "
+        "and preamble before the ANSWER: line.\n"
+        "- If the context lacks the answer: output only the first line "
+        "'ANSWER: insufficient information'.\n"
     ),
     # Collapse the three upstream verbose layers too — otherwise the
     # character persona (L1), the MemoryStore persona name (L1b), and

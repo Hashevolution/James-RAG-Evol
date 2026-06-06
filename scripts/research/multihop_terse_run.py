@@ -66,11 +66,22 @@ def main():
     _shared_session = (os.environ.get("JAMES_TERSE_SESSION_ID", "")
                        or f"pm-terse-shared-{MODEL.replace(':', '-')}")
 
+    # 2026-06-06 cycle β #2 — env-gate for response_style measurement
+    # mode. PM-19/20 = explicit "terse" (4-layer collapse manual).
+    # PM-21 = empty "" so AnswerStyleClassifier auto-mount fires per
+    # query — production-realistic measurement of the auto-selection
+    # layer.
+    #   JAMES_RUNNER_RESPONSE_STYLE=terse (default) — PM-19/20 mirror
+    #   JAMES_RUNNER_RESPONSE_STYLE=auto            — empty, auto-mount
+    #   JAMES_RUNNER_RESPONSE_STYLE=<any other>     — passed through
+    _runner_style = os.environ.get("JAMES_RUNNER_RESPONSE_STYLE", "terse").strip()
+    _eff_style = "" if _runner_style.lower() == "auto" else _runner_style
+
     for i, q in enumerate(queries, 1):
         try:
             session_id = (_shared_session if _session_mode == "fixed-shared"
                           else f"pm-terse-q{q['id']}")
-            out = eng.query(q["text"], user_role="admin", response_style="terse",
+            out = eng.query(q["text"], user_role="admin", response_style=_eff_style,
                             selected_model=MODEL, mode_override="retrieval",
                             session_id=session_id)
             ans = out.get("answer", "") if isinstance(out, dict) else str(out)

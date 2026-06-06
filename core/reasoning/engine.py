@@ -169,6 +169,33 @@ class ReasoningEngine:
             return self._blocked_result("보안 검사 실패")
         self._elapsed(t0, "STEP0 pre_check")
 
+        # ── STEP 0.3: AnswerStyleClassifier auto-mount (cycle β #2) ──
+        # response_style 미명시 시 query intent 정량 인식 → 양식
+        # auto-mount. 단답 query → "terse" (TERSE_PRESET 4 layer collapse
+        # + rule_text v2 strict + pipeline_synth P-1 자동 발동). 분석/
+        # 보고서 query → "natural" (production default 그대로).
+        #
+        # 사용자가 explicit response_style ("terse" / "natural" / etc)
+        # 넘기면 본 step 우회 — UX override 보존.
+        #
+        # advanced 스택 (planner/reflect/verify) 의 env-gate 와는 별도
+        # axis. production Default = advanced ON 그대로 유지. 본 step
+        # 은 양식 layer 만 다룬다.
+        #
+        # 분류 자체 비활성화: env JAMES_AUTO_STYLE=0 (classifier 내부
+        # gate). 분류 실패 (예외) 시 response_style 빈 채로 진행 =
+        # NATURAL_PRESET resolve = 기존 동작 byte-identical.
+        if not (response_style or "").strip():
+            try:
+                from core.answer_style_classifier import classify_answer_style
+                _auto_style, _method = classify_answer_style(safe_query)
+                response_style = _auto_style
+                print(f"[STYLE] auto-mount '{safe_query[:30]}' → "
+                      f"{_auto_style} ({_method})")
+            except Exception as e:
+                # 분류 실패는 non-fatal — response_style 빈 채로 진행
+                self._log("auto_style_classify", e, user_role)
+
         # ── Session ContextVar — Cognitive Phase 3 PR-9b ────
         # Bind (session_id, turn_id) to the current async/threading
         # context so cognitive stages (planner / reflect / verify /

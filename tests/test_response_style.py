@@ -223,25 +223,47 @@ class StyleOverrideTests(unittest.TestCase):
     def test_unknown_falls_back_to_natural(self):
         self.assertIs(self.rs.resolve_style("nonsense-style"), self.rs.NATURAL_PRESET)
 
-    def test_terse_preset_rule_text_v2_strict_single_line(self):
-        # v2 (cycle β #1.5, 2026-06-06) — TERSE rule_text flips from
-        # "Reason freely, end with ANSWER:" license (which PM-19 e4b
-        # measured as 16% answerable compliance, 84% multi-paragraph
-        # synthesis with ## headers) to a positive format-first contract.
-        # Each rule_text must:
-        #   - demand a single ANSWER: line
-        #   - state the EXACTLY-one-line positive format constraint
-        #   - cap length quantitatively (30 words / 30단어)
-        #   - NOT contain the v1 "Reason freely" license phrase
+    def test_terse_preset_rule_text_v4_structural_only(self):
+        # v4 (cycle β #2, 2026-06-06) — TERSE rule_text drops the
+        # *quantitative* caps that v3 kept ("MAXIMUM 60 words" /
+        # "1-2 short evidence sentences") after a user catch:
+        # those quantitative gates are the same measurement-fitting
+        # pattern v2 was just rolled back for. The fixture scorer
+        # hits on entity match regardless of length, so any
+        # quantitative cap clamps the very answer the rule asks for.
+        #
+        # v4 keeps only the *structural* contract:
+        #   - First line: ANSWER: <answer>           (lead)
+        #   - Then a brief grounded explanation if helpful  (free form)
+        #   - Avoid multi-paragraph synthesis, ## headers, bullet
+        #     lists, preamble before ANSWER:         (structural bans)
+        # No word count, no sentence count.
         for rt in (self.rs.TERSE_PRESET.rule_text_ko, self.rs.TERSE_PRESET.rule_text_en):
             self.assertIn("ANSWER:", rt)
             self.assertNotIn("Reason freely", rt,
-                             "v2 must remove the v1 multi-paragraph license phrase")
-        # positive format + quantitative cap (each language wording)
-        self.assertIn("EXACTLY one line", self.rs.TERSE_PRESET.rule_text_en)
-        self.assertIn("MAXIMUM 30 words", self.rs.TERSE_PRESET.rule_text_en)
-        self.assertIn("정확히 한 줄", self.rs.TERSE_PRESET.rule_text_ko)
-        self.assertIn("최대 30단어", self.rs.TERSE_PRESET.rule_text_ko)
+                             "v4 must not regress to v1 license phrase")
+            self.assertNotIn("EXACTLY one line", rt,
+                             "v4 must not regress to v2 single-line clamp")
+            self.assertNotIn("no follow-up sentences", rt,
+                             "v4 must not regress to v2 sentence ban")
+        # v4 specifically drops quantitative caps from v3
+        self.assertNotIn("MAXIMUM 60 words", self.rs.TERSE_PRESET.rule_text_en,
+                         "v4 must drop the v3 word-count cap")
+        self.assertNotIn("최대 60단어", self.rs.TERSE_PRESET.rule_text_ko,
+                         "v4 must drop the v3 word-count cap (KO)")
+        self.assertNotIn("1-2", self.rs.TERSE_PRESET.rule_text_en,
+                         "v4 must drop the v3 sentence-count cap")
+        # Structural bans must still be present (these are what
+        # actually stop the synthesis regression)
+        self.assertIn("First line", self.rs.TERSE_PRESET.rule_text_en)
+        self.assertIn("Avoid", self.rs.TERSE_PRESET.rule_text_en)
+        for ban in ("## headers", "bullet lists", "multi-paragraph"):
+            self.assertIn(ban, self.rs.TERSE_PRESET.rule_text_en,
+                          f"structural ban '{ban}' must stay")
+        self.assertIn("첫 줄", self.rs.TERSE_PRESET.rule_text_ko)
+        for ban in ("## 헤더", "불릿 리스트", "다단락"):
+            self.assertIn(ban, self.rs.TERSE_PRESET.rule_text_ko,
+                          f"structural ban '{ban}' must stay (KO)")
 
     def test_terse_preset_keeps_max_tokens_at_natural_parity(self):
         # v2 — TERSE keeps max_tokens=8192 (NATURAL parity). An initial
