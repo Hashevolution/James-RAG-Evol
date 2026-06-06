@@ -161,7 +161,8 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
-| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/handovers/v0.4-cycle-beta-entry-2026-06-06.md`** (BIG: cycle 마감 + cycle β 진입. 6 원칙 + 4-layer matrix + persona = 단축 손해 진짜 source 확정. 첫 작업 = engine_memory persona 옵션화 Phase A-E. 의무 reading 4-doc 묶음 명시.) |
+| **🟢 NEXT SESSION ENTRY (read this first)** | **`docs/handovers/v0.4-cycle-beta-closure-2026-06-06.md`** (BIG: cycle β #1+#1.5 closure = ⭐ stable + small. depth diagnosis = 진짜 단축 source 는 advanced 스택 OFF + model capability ceiling (cycle 마감 §36 이미 측정). framing 정정. 다음 = Path B v0.5 진입 게이트 평가. 의무 reading 9-룰 묶음 명시.) |
+| Prev entry (cycle β 진입 framing — 정정됨) | `docs/handovers/v0.4-cycle-beta-entry-2026-06-06.md` |
 | Prev entry (cycle 마감 + 6 원칙) | `docs/handovers/v0.4-mother-platform-6-principles-cycle-2026-06-05.md` |
 | Prev-prev entry (cap[:1000] discovery) | `docs/handovers/v0.4-multihop-synth-context-fix-2026-06-05.md` |
 | Prev entry (Direction α 측정 closure) | `reports/research-runs/alpha-8-cloud-tier-extension-20260604.md` (premise 미입증, S6/S7 보류) + 5 measurement-side rules |

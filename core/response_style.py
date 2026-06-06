@@ -193,23 +193,51 @@ NATURAL_PRESET = StylePreset(
 TERSE = "terse"
 
 TERSE_PRESET = StylePreset(
+    # v2 (2026-06-06 cycle β #1.5) — strict single-line via rule_text only.
+    # The 2026-06-04 v1 rule_text was a "reason freely, end with ANSWER:"
+    # license; the PM-19 e4b answer-shape inspection measured only 16%
+    # ANSWER:-line compliance on answerable queries (4/25 each in
+    # comparison/temporal/inference) — 84% produced 1500-2800 char
+    # multi-paragraph synthesis with ## headers and markdown bullets
+    # that the negative-list "Do NOT add ## sections" clause completely
+    # failed to suppress. The "Reason freely" clause was the dominant
+    # license; explicit `## headers` in the failing samples is direct
+    # evidence the negative constraints were ignored. v2 flips to
+    # positive format-first: "Output EXACTLY one line: ANSWER: <answer>"
+    # plus a quantitative `MAXIMUM 30 words` cap.
+    #
+    # max_tokens stays at 8192 (NATURAL parity). An initial Phase B
+    # draft tightened max_tokens to 150 (~75-90 words) to enforce the
+    # 30-word rule at the decoding ceiling, but the PM-19 e4b length
+    # distribution showed 10/100 answerable answers in the 200-430 char
+    # range follow the legitimate "short reasoning + 'ANSWER:
+    # insufficient information'" shape (~60-100 words) and would be
+    # truncated mid-conclusion under a 150-token cap, losing the final
+    # ANSWER: line itself. The user catch was: rule_text strengthening
+    # is a natural dial, max_tokens cap is hard truncation — the second
+    # raises the risk of cutting the very answer the rule_text just
+    # asked for. We keep the prompt-side instruction strict and trust
+    # the model not to overrun by hundreds of words; if measurement
+    # later shows long synthesis still leaks past 8192 frequently, we
+    # revisit with a value that bounds the *tail*, not the *body*.
     name="terse",
     max_tokens=8192,
     force_two_sections=False,
     rule_text_ko=(
-        "답변 작성 가이드 (간결 모드):\n"
-        "- 추론은 자유롭게 하되, 마지막 줄에 'ANSWER:' 뒤에 직접 답만 "
-        "쓰세요 (개체명, 또는 'Yes'/'No').\n"
-        "- '관련 자료:' / 'Source files:' 헤더, 다음 작업 제안, 보고서 "
-        "형식(## 섹션)을 쓰지 마세요.\n"
-        "- 제공된 자료에 답이 없으면 'ANSWER: insufficient information'.\n"
+        "답변 형식 (엄격):\n"
+        "- 정확히 한 줄만 출력: 'ANSWER: <답>'\n"
+        "- <답> = 개체명 (예: '샘 뱅크먼-프라이드'), 'Yes', 'No', "
+        "또는 'insufficient information'\n"
+        "- 최대 30단어. 서론, 합성, ## 헤더, 불릿 리스트, 후속 문장 금지.\n"
+        "- 자료에 답이 없으면 'ANSWER: insufficient information'.\n"
     ),
     rule_text_en=(
-        "Answer guide (terse mode):\n"
-        "- Reason freely, but on the LAST line write 'ANSWER:' followed "
-        "by ONLY the direct answer (entity name, or 'Yes'/'No').\n"
-        "- Do NOT add a 'Source files:' header, next-action suggestions, "
-        "or report-format (## sections).\n"
+        "Answer format (strict):\n"
+        "- Output EXACTLY one line: 'ANSWER: <answer>'\n"
+        "- <answer> = entity name (e.g., 'Sam Bankman-Fried'), 'Yes', "
+        "'No', or 'insufficient information'\n"
+        "- MAXIMUM 30 words. No preamble, no synthesis, no ## headers, "
+        "no bullet lists, no follow-up sentences.\n"
         "- If the context lacks the answer: 'ANSWER: insufficient information'.\n"
     ),
     # Collapse the three upstream verbose layers too — otherwise the
