@@ -74,6 +74,14 @@ chroma_db_*/
 # Benchmark workspace caches (regeneratable from upstream fixture sources)
 workspaces/hotpot_eval/eval/
 
+# Cycle γ external benchmark caches + run reports (regeneratable from
+# upstream fixture sources; ALCE/MuSiQue/2Wiki licensed, RGB GitHub-raw).
+# The loaders re-fetch on demand. Cycle γ reports live alongside the
+# code so per-PR reviewers can read them inline, but the raw JSON is
+# large (~MB) and bench result deltas land in summary docs anyway.
+eval/external/_fixtures/
+reports/cycle_gamma/
+
 # QVT measurement cell JSONs — large (~50-250 KB each), regeneratable via
 # `scripts/qvt_ablation_matrix.py --resume`. Committed baseline references
 # stay in eval/qvt/. Workspace-scoped variants under workspaces/*/ also
