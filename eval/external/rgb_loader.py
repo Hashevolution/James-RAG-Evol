@@ -167,6 +167,44 @@ def _ensure_fixture(
     return path
 
 
+# The published RGB fixtures are JSONL (one JSON object per line) —
+# not a top-level JSON array — for the ``en`` / ``zh`` / ``*_int`` /
+# ``*_fact`` variants. The ``*_refine`` variants are a single JSON
+# list. Phase B smoke (2026-06-08) caught this: the loader's
+# original ``json.load`` raised ``Extra data`` on the first newline.
+# This helper accepts both formats so the loader stays oblivious to
+# the per-variant wire shape.
+def _load_rgb_fixture(path: Path, *, variant: str) -> List[Dict[str, Any]]:
+    """Return a list of dict entries from an RGB fixture file.
+
+    Detection rule (cheap, no second pass): strip leading whitespace
+    and look at the first non-whitespace character. ``[`` → JSON
+    array; anything else → JSONL (one object per non-empty line).
+
+    Empty / whitespace-only lines are skipped silently so a trailing
+    newline does not raise.
+    """
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    head = text.lstrip()[:1]
+    if head == "[":
+        raw = json.loads(text)
+        if not isinstance(raw, list):
+            raise ValueError(
+                f"RGB {variant!r} fixture must be a JSON list; "
+                f"got {type(raw).__name__}"
+            )
+        return raw
+    # JSONL fallback.
+    out: List[Dict[str, Any]] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        out.append(json.loads(line))
+    return out
+
+
 # ─── Schema mapping ────────────────────────────────────────────────
 
 
@@ -309,14 +347,7 @@ class RGBLoader(ExternalBenchFixture):
             self._cache_dir,
             allow_download=self._allow_download,
         )
-        with open(path, encoding="utf-8") as f:
-            raw = json.load(f)
-
-        if not isinstance(raw, list):
-            raise ValueError(
-                f"RGB {self._variant!r} fixture must be a JSON list; "
-                f"got {type(raw).__name__}"
-            )
+        raw = _load_rgb_fixture(path, variant=self._variant)
 
         queries = [_entry_to_query(e, variant=self._variant)
                    for e in raw if isinstance(e, dict)]

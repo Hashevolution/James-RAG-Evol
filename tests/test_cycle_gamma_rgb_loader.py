@@ -223,16 +223,55 @@ class TakeSampleIntegrationTests(unittest.TestCase):
 class CorruptFixtureTests(unittest.TestCase):
     """Malformed JSON / non-list root / non-dict rows surface cleanly."""
 
-    def test_non_list_root_raises_value_error(self):
+    def test_dict_root_treated_as_single_jsonl_entry(self):
+        """Phase B smoke (2026-06-08) showed the published RGB
+        fixtures are JSONL (one JSON object per line), not a JSON
+        array. The loader now accepts either shape. A bare dict
+        therefore becomes a 1-entry JSONL stream rather than an
+        error — and the per-row validation (id, benchmark match,
+        etc.) is what catches malformed entries downstream."""
         from eval.external.rgb_loader import RGBLoader
         with tempfile.TemporaryDirectory() as td:
             cache = Path(td)
             cache.mkdir(parents=True, exist_ok=True)
+            entry = {
+                "id":       99,
+                "query":    "smoke?",
+                "answer":   "smoke",
+                "positive": ["evidence"],
+                "negative": [],
+            }
             with open(cache / "en.json", "w", encoding="utf-8") as f:
-                json.dump({"not": "a list"}, f)
+                json.dump(entry, f)
             loader = RGBLoader(variant="en", cache_dir=cache)
-            with self.assertRaises(ValueError):
-                loader.iter_queries()
+            queries = loader.iter_queries()
+            self.assertEqual(len(queries), 1)
+            self.assertEqual(queries[0].id, "rgb-en-99")
+
+    def test_jsonl_file_loads_one_query_per_line(self):
+        """The on-disk format for the official ``en`` / ``zh`` /
+        ``*_int`` / ``*_fact`` variants is JSONL; round-trip pin."""
+        from eval.external.rgb_loader import RGBLoader
+        with tempfile.TemporaryDirectory() as td:
+            cache = Path(td)
+            cache.mkdir(parents=True, exist_ok=True)
+            entries = [
+                {"id": 0, "query": "a?", "answer": "a",
+                 "positive": ["p"], "negative": []},
+                {"id": 1, "query": "b?", "answer": "b",
+                 "positive": [], "negative": ["n"]},
+                {"id": 2, "query": "c?", "answer": "c",
+                 "positive": ["p"], "negative": []},
+            ]
+            with open(cache / "en.json", "w", encoding="utf-8") as f:
+                for e in entries:
+                    f.write(json.dumps(e) + "\n")
+                f.write("\n")    # trailing blank line — must be tolerated
+            loader = RGBLoader(variant="en", cache_dir=cache)
+            queries = loader.iter_queries()
+            self.assertEqual(len(queries), 3)
+            self.assertEqual([q.id for q in queries],
+                              ["rgb-en-0", "rgb-en-1", "rgb-en-2"])
 
     def test_corrupt_json_raises_json_decode_error(self):
         from eval.external.rgb_loader import RGBLoader
