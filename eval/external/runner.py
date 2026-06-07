@@ -238,6 +238,7 @@ class ClosedCorpusGemmaProducer:
         think: bool = False,
         use_cache: bool = False,
         context_separator: str = "\n\n",
+        max_prompt_chars: int = 200_000,
     ):
         self._model = model
         self._max_tokens = max_tokens
@@ -245,6 +246,13 @@ class ClosedCorpusGemmaProducer:
         self._think = think
         self._use_cache = use_cache
         self._sep = context_separator
+        # Lift the GemmaClient prompt cap for external-bench runs;
+        # default 4000 in the client silently truncates multi-doc
+        # evidence (cycle γ Phase B smoke #2, 2026-06-08). The runner
+        # passes this through the env var GemmaClient now reads
+        # (JAMES_GEMMA_MAX_PROMPT_CHARS) — production callers that
+        # never construct this producer keep the original 4000.
+        self._max_prompt_chars = max_prompt_chars
 
     def _prompt(self, query: ExternalQuery) -> str:
         ctx = self._sep.join(query.context)
@@ -258,6 +266,13 @@ class ClosedCorpusGemmaProducer:
 
     def produce(self, query: ExternalQuery) -> Dict[str, Any]:
         from core.gemma_client import GemmaClient   # late import
+        # Lift the cap for this call. The env var is read per-call by
+        # _resolve_max_prompt_len so the override is scoped to this
+        # process; no global mutation that could leak to other
+        # GemmaClient consumers.
+        os.environ["JAMES_GEMMA_MAX_PROMPT_CHARS"] = str(
+            self._max_prompt_chars
+        )
         client = GemmaClient()
         ans = client.call_gemma(
             self._prompt(query),
