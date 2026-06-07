@@ -34,9 +34,15 @@ from eval.external.base import (
     ExternalBenchFixture,
     ExternalQuery,
 )
+from eval.external.scorer_base import (
+    ExternalScorer,
+    ScoreAxis,
+)
 
 
 __all__ = [
     "ExternalBenchFixture",
     "ExternalQuery",
+    "ExternalScorer",
+    "ScoreAxis",
 ]
