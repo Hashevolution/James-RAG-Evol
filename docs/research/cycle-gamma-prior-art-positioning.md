@@ -205,22 +205,65 @@ which our broad framing fails.
 
 ---
 
-## 5. What this means for the mid-June joint piece
+## 5. Scope: JAMES-internal evaluation, NOT joint piece content
 
-### Safe claims (publishable)
+**★ Correction 2026-06-08 (user catch) ★**: an earlier version of
+this section framed cycle γ Phase B+C findings as "joint piece
+evidence" and proposed a "joint piece safe framing" subsection.
+That was a **scope creep + co-author pre-agreement violation**.
+Removed. See `memory/feedback_eval_cycle_vs_collab_arc_separation.md`
+for the rule it violated.
 
-1. "JAMES Track 1 (substitution determinism, PR #440 + Robin's
-   26B extension) is a measurement contribution — reproducible
-   substitution-vs-synthesis mode gradient with cap-invariance."
-2. "On RGB-en, JAMES exhibits the published RAG-as-scaffolding
-   pattern (weak-base lifter, ceiling convergence) — adds 4-model
-   paired data + per-query overlap evidence to the existing
-   literature."
-3. "Per-query identical JAMES abstention set across mixtral and
-   llama on RGB-en suggests the AbstentionBench convergent-
-   abstention finding holds at the per-query level on this stack."
+### Why this doc does NOT feed into the mid-June joint piece
 
-### Claims to AVOID
+The mid-June joint piece is a **separate collaborative arc** with
+its own 4-week+ negotiation history and pre-committed structure:
+
+- **Topic (locked)**: "Two operating modes, one model" — substitution
+  vs synthesis cap-floor mechanism in LLM cognitive scaffolds.
+- **Headline (3-author locked)**: *"Substitution is free. Synthesis
+  costs in proportion to what it has to invent."*
+- **3 axes (pre-committed)**:
+  1. Mode split (Robin, 26b sovereign)
+  2. Workload gradient (JAMES PR #440 V3'.e on e4b)
+  3. Model-scale efficiency (Robin 26b finding)
+- **4-way contributors (pre-committed)**: Robin Converse / Ali Afana
+  / Vadym Arnaut / Jiwon (JAMES)
+- **Evidence pile (pre-committed)**: PR #440 V3'.e + Robin 26b
+  companion repo + Ali e-commerce walk-back + Robin DOI
+  10.5281/zenodo.20570701 (2026-06-08 arrival)
+- **Prior art anchor (pre-committed)**: arxiv:2605.09104 Yang et al.
+  2026 Token Economics (CES factor substitution framework)
+
+**Cycle γ Phase B+C (this doc's subject)** = JAMES-internal RGB-en
+evaluation, completely separate research arc:
+
+- **Topic**: RGB-en abstention F1 + noise robustness on JAMES stack
+- **Mechanism claim** (narrowed): empirical re-confirmation of
+  published RAG-as-scaffolding pattern
+- **Bench**: RGB-en (Chen et al. 2024 EMNLP) — different fixture
+  from V3'.e e-commerce / Robin 26b sovereign
+- **Contributors**: JAMES solo (no Ali/Robin/Vadym pre-agreement
+  on this arc)
+- **Time arc**: 2026-06-08 only
+
+Adding cycle γ findings as "joint piece evidence" without explicit
+Ali/Robin/Vadym pre-agreement = **vehicle mismatch + scope creep**.
+That's prohibited by the rule in
+`feedback_eval_cycle_vs_collab_arc_separation.md` (4 questions
+checklist: vehicle / publication target / scope / framing-link).
+
+### Where cycle γ findings DO belong
+
+| Vehicle | Appropriate framing |
+|---|---|
+| Solo Zenodo DOI (future v0.4.x release) | "JAMES-side RGB-en evaluation dataset + measurement protocol on the JAMES stack" — same template as v0.3.1/v0.3.2/v0.3.3 metadata (see `zenodo_metadata_reframing_drafts.md`) |
+| Internal handover docs | "cycle γ Phase B+C — JAMES-internal evaluation arc" |
+| Mother-platform engineering record | Internal eval evidence for v0.5 readiness gate (D2 evidence), NOT publication |
+
+### Claims to AVOID (regardless of vehicle)
+
+The honesty-framing claims from §4 still apply:
 
 1. ❌ "JAMES discovered cross-model abstention convergence" —
    AbstentionBench precedes this with much larger evidence.
@@ -229,25 +272,22 @@ which our broad framing fails.
    all precede.
 3. ❌ "JAMES emits a model-independent abstention signal" — basic
    claim covered under "scaffold provides external signal" framings.
-4. ❌ "⭐⭐⭐ universal-law candidate" — mechanism is published;
-   JAMES is reproduction-grade empirical, not theory-grade.
+4. ❌ "⭐⭐⭐ universal-law candidate" — mechanism is published.
+5. ❌ **(new) "joint piece evidence / publishable for mid-June
+   piece"** — separate collab arc, not pre-agreed.
 
-### Joint piece angle that could work
+### What about Robin's just-arrived DOI?
 
-**"Reproducibility + per-query method": JAMES Track 1 (PR #440 +
-Robin's 26B) provides byte-identical cross-model reproduction with
-public artifacts (DOI, scripts, data). JAMES cycle γ Phase B+C
-provides 4-model paired RGB-en data with per-query overlap analysis
-that adds granularity to the AbstentionBench aggregate finding.
-Neither is mechanism discovery; both are measurement infrastructure
-contributions.**
+Robin's 26B byte-identical + cap-invariant reproduction
+(DOI 10.5281/zenodo.20570701) extends PR #440 V3'.e Track 1 —
+that **is** joint piece evidence (already pre-agreed scope).
+That is a separate matter from this cycle γ doc.
 
-This framing:
-- Honestly bounds the contribution
-- Highlights what's unique (reproducibility + per-query method)
-- Cites the actual prior art (AbstentionBench, RAG-scaffolding)
-- Sets up future cycle γ work (cross-bench, mechanistic ablation)
-  as the path to genuine novelty
+The Robin DOI integration into the joint piece deposit happens via
+the M9 prep ledger track (see
+`docs/handovers/v0.4.x-session-2026-05-29-collaboration-checkpoint.md`
+§5 M9 + `feedback_ali_resume_notice_june6.md`), NOT via this cycle
+γ doc.
 
 ---
 
