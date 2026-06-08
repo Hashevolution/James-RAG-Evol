@@ -80,6 +80,8 @@ def build_loader(
     split: Optional[str] = None,
     cache_dir: Optional[Path] = None,
     allow_download: bool = False,
+    setting_filter: Optional[str] = None,
+    abstention_mode: bool = True,
 ) -> ExternalBenchFixture:
     """Construct one of the four cycle γ loaders by name.
 
@@ -92,6 +94,14 @@ def build_loader(
         cache_dir: Optional cache directory; loader-specific.
         allow_download: Only honoured by the RGB loader (the rest
             require the fixture to be pre-downloaded).
+        setting_filter: RGB-only — restrict the emitted query stream
+            to one axis (``"noise_robustness"`` or
+            ``"negative_rejection"``). Cycle γ Phase B JAMES-engine
+            experiments use this to pair an axis-specific workspace
+            with an axis-specific query slice.
+        abstention_mode: RGB-only — emit the negative-rejection
+            variant alongside the noise-robustness query (default
+            True; the dual-axis evaluation).
 
     Raises:
         ValueError: unknown bench / missing required variant or split.
@@ -103,6 +113,8 @@ def build_loader(
             variant=variant or "en",
             cache_dir=cache_dir,
             allow_download=allow_download,
+            abstention_mode=abstention_mode,
+            setting_filter=setting_filter,
         )
     if bench == "alce":
         from eval.external.alce_loader import ALCELoader
