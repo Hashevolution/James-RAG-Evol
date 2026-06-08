@@ -1,0 +1,112 @@
+{
+  "_DRAFT_WARNING": "INTERNAL DRAFT — NOT FOR SUBMISSION WITHOUT ALI CONFIRM. See README.md publish gates.",
+  "_TBD_4WAY": "Vadym Arnaut as 4th creator depends on Phase 1 (Robin confirm primary citation) + Phase 2 (Ali ack). Current default: 4-author. Drop Vadym row if Ali prefers 3-author.",
+  "title": "Substitution is free. Synthesis costs in proportion to what it has to invent. — three contexts, two architectures, two mechanisms with task-weight gradient",
+  "description": "This record archives the joint discovery of a cap-floor mechanism in LLM cognitive scaffolds. Three independent sovereign stacks (Triava Labs gemma4:26b sovereign-Ollama / JAMES gemma4:e4b local-stack with wiki corpus / Provia Arabic e-commerce refund fixture on gemma4:e4b) converged on a single architectural property: substitution mode operates as a verbatim-retrieval floor-immune path with byte-identical determinism across model scales, while synthesis mode incurs a task-weight-proportional token cost that scales gradient-wise with what the model has to invent.\n\nThe 3-axis structure: (1) mode split (substitution vs synthesis), confirmed by Robin Converse on 26b sovereign infrastructure; (2) workload gradient (heavy / light / no synthesis), measured by JAMES on e4b via V3'.e refined Pattern S (PR #440); (3) model-scale efficiency (synthesis token cost ∝ 1/parameter-count), discovered by Robin during the cross-stack invariance test itself. Each axis is reproducible against the same V3' protocol on different stacks.\n\n10-word headline (3-author locked): \"Substitution is free. Synthesis costs in proportion to what it has to invent.\"\n\nPrior-art anchor: Yang et al. 2026 \"Token Economics for LLM Agents\" (arXiv:2605.09104) provides the framework-level CES factor substitution M_int / M_ext model; this joint deposit fills the empirical layer that framework left as future work.\n\nRelated JAMES-side measurement records (per-stack engineering records): v0.3.1 / v0.3.2 / v0.3.3 / v0.4.0 / v0.4.1 / v0.4.2 solo Zenodo DOIs. Related Triava Labs reproduction track: DOI 10.5281/zenodo.20570701 (Robin Converse, 26B byte-identical substitution determinism + cap-invariance, 2026-06-08). Related Provia track: Ali Afana walk-back article + ar_ecommerce.yaml fixture set (Track 2c).\n\nContributors (alphabetical by surname): Ali Afana (Provia) — architectural framer + walk-back hero; Vadym Arnaut (independent) — substitution-vs-decision boundary phrasing (\"each variant has its own tax\"); Robin Converse (Triava Labs) — mode split observer + 26b sovereign executor + 3rd axis (model-scale) discoverer; Seo Jiwon (Hashevolution) — V3' protocol owner + methodology + ~500-token floor measurement + 10-word headline.",
+  "version": "joint-2026-06-mid",
+  "upload_type": "publication",
+  "publication_type": "preprint",
+  "creators": [
+    {
+      "name": "Afana, Ali",
+      "_orcid_tbd": "Ali ORCID — confirm via Ali resume DM",
+      "affiliation": "Provia"
+    },
+    {
+      "name": "Arnaut, Vadym",
+      "_attribution_status": "Phase 2 PENDING — gated on Ali ack per memory/feedback_m6_vadym_attribution_3way_timing.md. If Ali prefers 3-author, drop this row.",
+      "_orcid_tbd": "Vadym ORCID — confirm via Robin natural-trigger piggyback",
+      "affiliation": "Independent"
+    },
+    {
+      "name": "Converse, Robin",
+      "_orcid_tbd": "Robin ORCID — confirm via next outgoing Robin DM",
+      "affiliation": "Triava Labs"
+    },
+    {
+      "name": "Seo, Jiwon",
+      "orcid": "0009-0002-0007-7860",
+      "affiliation": "Hashevolution"
+    }
+  ],
+  "keywords": [
+    "llm-cognitive-scaffold",
+    "cap-floor-mechanism",
+    "substitution-vs-synthesis",
+    "workload-gradient",
+    "model-scale-efficiency",
+    "sovereign-infrastructure",
+    "v3-prime-protocol",
+    "cross-stack-reproduction",
+    "token-economics",
+    "audit-trail-framing",
+    "joint-discovery-record",
+    "three-stacks-one-mechanism",
+    "byte-identical-determinism",
+    "cap-invariant-substitution"
+  ],
+  "license": "CC-BY-4.0",
+  "_license_note": "Default for joint publication = CC-BY-4.0 (text + data). Switch to MIT if Ali / Robin prefer. Solo Zenodo records stay MIT.",
+  "access_right": "open",
+  "language": "eng",
+  "related_identifiers": [
+    {
+      "identifier": "10.5281/zenodo.20570701",
+      "relation": "isReferencedBy",
+      "resource_type": "software",
+      "_note": "Robin Converse Triava Labs 26B byte-identical substitution determinism + cap-invariance, 2026-06-08"
+    },
+    {
+      "identifier": "10.5281/zenodo.20411354",
+      "relation": "isReferencedBy",
+      "resource_type": "software",
+      "_note": "JAMES v0.4.0 — QVT + Lifecycle Semantics record"
+    },
+    {
+      "identifier": "10.5281/zenodo.20426719",
+      "relation": "isReferencedBy",
+      "resource_type": "software",
+      "_note": "JAMES v0.4.1 — T6 Causality Chain record"
+    },
+    {
+      "identifier": "10.5281/zenodo.20374227",
+      "relation": "isReferencedBy",
+      "resource_type": "software",
+      "_note": "JAMES v0.3.3 — D6 retry-wiring closure"
+    },
+    {
+      "identifier": "10.5281/zenodo.20372649",
+      "relation": "isReferencedBy",
+      "resource_type": "software",
+      "_note": "JAMES v0.3.2 — Direction 5 Auto-routing"
+    },
+    {
+      "identifier": "10.5281/zenodo.20363998",
+      "relation": "isReferencedBy",
+      "resource_type": "software",
+      "_note": "JAMES v0.3.1 — V3' Direction 1 measurement dataset & protocol"
+    },
+    {
+      "identifier": "arXiv:2605.09104",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-article",
+      "_note": "Yang et al. 2026 Token Economics — framework-level prior art anchor"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/440",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other",
+      "_note": "JAMES V3'.e refined Pattern S — workload gradient evidence"
+    },
+    {
+      "identifier": "https://github.com/triavalabs/gemma4-26b-mode-split",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other",
+      "_note": "Triava Labs companion repo — 26b sovereign 2×2 matrix raw data"
+    },
+    {
+      "_TBD": "Provia ar_ecommerce.yaml + walk-back article URLs to add once Ali confirms exact archived links"
+    }
+  ],
+  "notes": "Three-stack joint discovery record extending the audit-trail framing to LLM cognitive-scaffold cap-floor measurement. Pre-committed scope: substitution-vs-synthesis mode separation + workload gradient + model-scale efficiency. Phase R6 (2026-05-24) Robin commitment: \"lightweight joint deposit before the outline\". Ali 2026-05-28 commitment: \"the joint record is what I'd pick up first\" upon 6/7+ resume. Vadym Arnaut attribution per Phase 2 sequencing (memory/feedback_m6_vadym_attribution_3way_timing.md): authorship row may shift to 3-author if Ali prefers. Cycle γ Phase B+C RGB-en abstention findings (JAMES-internal evaluation arc, 2026-06-08) are NOT included in this scope per memory/feedback_eval_cycle_vs_collab_arc_separation.md."
+}
