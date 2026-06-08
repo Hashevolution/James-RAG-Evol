@@ -289,6 +289,65 @@ the M9 prep ledger track (see
 §5 M9 + `feedback_ali_resume_notice_june6.md`), NOT via this cycle
 γ doc.
 
+### Path D decision (2026-06-08, 7th honest-framing catch): do NOT chase HALT-RAG
+
+After Phase D execution + the speculative "+0.050 from disabling
+3 components" framing was caught (rule
+`memory/feedback_single_axis_ablation_misframing.md`), a natural
+follow-up question was raised: "should JAMES try to match HALT-RAG
+abstention F1 0.978?" The four candidate paths considered:
+
+| Path | What | Effort | Predicted F1 lift |
+|---|---|---|---|
+| A | Integrate NLI verifier (RoBERTa/DeBERTa ensemble) — HALT-RAG's core mechanism | 1-2 weeks | 0.387 → ~0.7 |
+| B | Train HALT-RAG-style meta-classifier on labeled JAMES outputs | Months (ML cycle + data labeling) | 0.387 → ~0.978 |
+| C | Add cascade abstention threshold (LLM Cascades style) | 1-2 PR | 0.387 → ~0.5 |
+| **D** | **Don't chase HALT-RAG; preserve JAMES category** | 0 | unchanged |
+
+**User decision 2026-06-08: Path D selected.** Recorded as
+`memory/feedback_path_d_james_not_specialty_verifier.md`.
+
+Reasoning:
+- HALT-RAG = post-hoc verification specialty system
+- JAMES = full-RAG + replayable audit + mother-platform 6-dim
+  readiness
+- Different categories. Single-axis (abst_f1) chase would dilute
+  JAMES's unique strengths (replayable audit / per-query overlap
+  method / open reproducibility / full pipeline integration)
+- The HALT-RAG 0.978 vs JAMES 0.387 comparison was already
+  on **different benchmarks** (HaluEval QA vs RGB-en negrej) —
+  so the "2.5x gap" framing in earlier session summaries was
+  not even apples-to-apples
+- Path D preserves JAMES's actual contribution boundary as
+  defined by this positioning doc
+
+What Path D rejects:
+- ❌ Path A NLI verifier integration (for the purpose of
+  abst_f1 chase)
+- ❌ Path B meta-classifier training
+- ❌ Path C abstention-specific cascade threshold (for the
+  purpose of abst_f1 chase)
+- ❌ "JAMES is bad at abstention" framing (apples-to-oranges)
+- ❌ Even Step 1 (NLI re-scoring of existing JAMES outputs) —
+  that measurement was for deciding among Paths A/B/C, so it
+  is also moot under Path D
+
+What Path D allows (because motivated by axes OTHER than abst_f1):
+- ✅ NLI used for noise robustness or graded improvement
+- ✅ Cascade used for multi-hop reasoning improvement
+- ✅ Cross-bench (ALCE/MuSiQue/2Wiki) — preserves JAMES's per-query
+  overlap method as a methodology contribution
+- ✅ Phase E multi-axis ablation — measures JAMES's actual axis
+  bundle (not single abst_f1 chase)
+- ✅ Mother platform 6-dim work (T3/T4/T5+ Lifecycle Semantics,
+  ABAC, etc.)
+- ✅ M9 joint deposit prep — separate collab arc, independent
+
+This decision is the natural endpoint of the prior-art search
+in this doc + the layer-intent-axis discipline in cycle β/γ:
+**JAMES's contribution is the full-RAG + audit category, not a
+specialty axis. Don't try to win at someone else's axis.**
+
 ---
 
 ## 6. What would need to change to reach ⭐⭐⭐
