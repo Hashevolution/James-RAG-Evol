@@ -206,8 +206,14 @@ class EndToEndStubRunTests(unittest.TestCase):
                 loader=loader, scorer=scorer, producer=sp,
             )
             self.assertEqual(result["benchmark"], "rgb-en")
-            self.assertEqual(result["n_queries"], 2)
-            self.assertEqual(result["n_rows"], 2)
+            # Phase B #3 (2026-06-08): the loader now emits two
+            # queries per row that carries positive evidence (one
+            # noise-robustness + one negative-rejection). The first
+            # fixture row has positive=["Paris..."] → 2 queries; the
+            # second has positive=[] → 1 query (negrej clone
+            # skipped). Total = 3.
+            self.assertEqual(result["n_queries"], 3)
+            self.assertEqual(result["n_rows"], 3)
             self.assertEqual(result["n_errors"], 0)
             self.assertEqual(result["producer"], "stub")
             self.assertIn("axes", result)

@@ -238,6 +238,11 @@ def _entry_to_query(
     *,
     variant: str,
 ) -> ExternalQuery:
+    """Single-query mapping — produces ONLY the noise-robustness
+    query for one fixture entry. Kept for back-compat (callers that
+    construct queries directly) and re-used internally by
+    :func:`_entries_to_queries`.
+    """
     orig_id = str(entry.get("id", "")).strip()
     if not orig_id:
         # Fall back to a positional id only when the source row truly
@@ -254,19 +259,102 @@ def _entry_to_query(
         "answer_aliases":  aliases,
         "variant":         variant,
         "language":        ("zh" if variant.startswith("zh") else "en"),
+        "setting":         "noise_robustness",
     }
     # _fact variant carries an extra distractor list.
     if positive_wrong:
         metadata["positive_wrong"] = positive_wrong
 
     return ExternalQuery(
-        id=f"rgb-{variant}-{orig_id}",
+        id=f"rgb-{variant}-{orig_id}-noise",
         benchmark=f"rgb-{variant}",
         question=str(entry.get("query", "")),
         context=tuple(str(p) for p in (positive + negative)),
         gold_answer=primary,
         metadata=metadata,
     )
+
+
+def _entry_to_negative_rejection_query(
+    entry: Dict[str, Any],
+    *,
+    variant: str,
+) -> ExternalQuery:
+    """Negative-rejection variant of one fixture entry — strips the
+    positive passages so the model sees only distractors.
+
+    Implements the RGB paper's negative-rejection setting (Chen et
+    al. 2024 EMNLP, §3.2): given irrelevant docs only, does the
+    model abstain? ``positive_count=0`` in metadata routes the row
+    onto the scorer's abstention branch automatically.
+
+    Cycle γ Phase B smoke (2026-06-08) discovered the published
+    fixture has no rows with ``positive=[]`` natively — the
+    negative-rejection axis is a *setting* the runner constructs,
+    not a class of rows in the file. This helper builds that
+    setting per row.
+    """
+    orig_id = str(entry.get("id", "")).strip() or "noid"
+    primary, aliases = _flatten_answer(entry.get("answer"))
+    negative = list(entry.get("negative") or [])
+
+    metadata: Dict[str, Any] = {
+        "positive_count":  0,         # → scorer routes to abstention
+        "negative_count":  len(negative),
+        # The original gold + aliases stay under metadata so a
+        # downstream forensic step can confirm whether the model
+        # somehow guessed the right answer from negative docs
+        # alone (a learning-leak signal).
+        "answer_aliases":  aliases,
+        "variant":         variant,
+        "language":        ("zh" if variant.startswith("zh") else "en"),
+        "setting":         "negative_rejection",
+        # Cross-link back to the paired noise-robustness query for
+        # per-question analysis downstream.
+        "paired_id":       f"rgb-{variant}-{orig_id}-noise",
+    }
+
+    return ExternalQuery(
+        id=f"rgb-{variant}-{orig_id}-negrej",
+        benchmark=f"rgb-{variant}",
+        question=str(entry.get("query", "")),
+        context=tuple(str(n) for n in negative),
+        # Empty gold so the scorer's noise-robustness branch (which
+        # is gated on positive_count > 0 anyway) cannot accidentally
+        # score this row.
+        gold_answer="",
+        metadata=metadata,
+    )
+
+
+def _entries_to_queries(
+    entry: Dict[str, Any],
+    *,
+    variant: str,
+    abstention_mode: bool,
+) -> List[ExternalQuery]:
+    """Emit one or two queries per fixture entry.
+
+    Always emits the noise-robustness query. When
+    ``abstention_mode=True`` AND the entry has at least one positive
+    passage to strip, also emits the negative-rejection variant — so
+    the same fixture row drives both axes of the cycle γ table.
+
+    The negative-rejection variant is suppressed when there are no
+    positive passages to remove (the resulting query would be
+    identical to the noise-robustness one, doubling cost without
+    new evidence).
+    """
+    noise_q = _entry_to_query(entry, variant=variant)
+    if not abstention_mode:
+        return [noise_q]
+    positive = entry.get("positive") or []
+    if not positive:
+        # Nothing to strip — negative-rejection would be a clone.
+        return [noise_q]
+    return [noise_q, _entry_to_negative_rejection_query(
+        entry, variant=variant,
+    )]
 
 
 # ─── Loader ────────────────────────────────────────────────────────
@@ -298,7 +386,15 @@ class RGBLoader(ExternalBenchFixture):
         variant: str = "en",
         cache_dir: Optional[Path] = None,
         allow_download: bool = False,
+        abstention_mode: bool = True,
     ):
+        """``abstention_mode`` controls whether the loader emits the
+        negative-rejection variant alongside the noise-robustness
+        query (default: True, which mirrors the RGB paper's dual-axis
+        evaluation). Set to False to halve cost when only
+        noise-robustness is needed (e.g. a cost-sensitive smoke run
+        or a single-axis ablation).
+        """
         if variant not in RGB_VARIANTS:
             raise ValueError(
                 f"unknown RGB variant: {variant!r}. "
@@ -307,6 +403,11 @@ class RGBLoader(ExternalBenchFixture):
         self._variant = variant
         self._cache_dir = Path(cache_dir) if cache_dir else None
         self._allow_download = allow_download
+        self._abstention_mode = abstention_mode
+
+    @property
+    def abstention_mode(self) -> bool:
+        return self._abstention_mode
 
     @property
     def benchmark_id(self) -> str:
@@ -349,9 +450,21 @@ class RGBLoader(ExternalBenchFixture):
         )
         raw = _load_rgb_fixture(path, variant=self._variant)
 
-        queries = [_entry_to_query(e, variant=self._variant)
-                   for e in raw if isinstance(e, dict)]
+        queries: List[ExternalQuery] = []
+        for e in raw:
+            if not isinstance(e, dict):
+                continue
+            queries.extend(_entries_to_queries(
+                e,
+                variant=self._variant,
+                abstention_mode=self._abstention_mode,
+            ))
         self.validate_queries(queries)
+        # ``n_samples`` is applied to the *output* query stream — so a
+        # caller asking for 50 queries gets 50 queries, regardless of
+        # whether the loader expanded each fixture row 1× or 2×. This
+        # matches the rest of the cycle γ runners' semantics (the cap
+        # is on producer calls, not fixture rows).
         return self.take_sample(queries, n_samples)
 
 
