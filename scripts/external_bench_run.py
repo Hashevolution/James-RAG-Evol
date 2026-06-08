@@ -124,6 +124,16 @@ def _parse_args(argv=None) -> argparse.Namespace:
                     help="output JSON path (parents created if needed)")
     p.add_argument("--progress-every", type=int, default=10,
                     help="print progress every N queries (default 10)")
+    p.add_argument("--setting-filter", default=None,
+                    choices=(None, "noise_robustness",
+                              "negative_rejection"),
+                    help="RGB only — restrict emitted queries to one "
+                          "axis. Cycle γ Phase B JAMES-engine "
+                          "experiments pair an axis-specific workspace "
+                          "with an axis-specific query slice.")
+    p.add_argument("--no-abstention-mode", action="store_true",
+                    help="RGB only — suppress negative-rejection "
+                          "variant queries (default: dual-axis on)")
     return p.parse_args(argv)
 
 
@@ -135,6 +145,8 @@ def main(argv=None) -> int:
         split=args.split,
         cache_dir=Path(args.cache_dir) if args.cache_dir else None,
         allow_download=args.allow_download,
+        setting_filter=args.setting_filter,
+        abstention_mode=not args.no_abstention_mode,
     )
     scorer = build_scorer(args.bench, variant=args.variant)
     producer = _build_producer(args)

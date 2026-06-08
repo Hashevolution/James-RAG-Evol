@@ -355,6 +355,71 @@ class AbstentionModeTests(unittest.TestCase):
         self.assertTrue(loader.abstention_mode)
 
 
+class SettingFilterTests(unittest.TestCase):
+    """Phase B Option A (2026-06-08) — the JAMES-engine experiment
+    needs to pair an axis-specific workspace (full vs negrej-only)
+    with an axis-specific query slice. setting_filter does that
+    routing without re-loading the fixture twice."""
+
+    def setUp(self):
+        self._td = tempfile.TemporaryDirectory()
+        self.cache = Path(self._td.name)
+        _write_synthetic(self.cache, "en", [
+            {"id": "x1", "query": "Q?", "answer": "A",
+             "positive": ["p"], "negative": ["n"]},
+        ])
+
+    def tearDown(self):
+        self._td.cleanup()
+
+    def test_filter_none_emits_both(self):
+        from eval.external.rgb_loader import RGBLoader
+        loader = RGBLoader(variant="en", cache_dir=self.cache,
+                            setting_filter=None)
+        out = loader.iter_queries()
+        self.assertEqual(len(out), 2)
+
+    def test_filter_noise_keeps_only_noise(self):
+        from eval.external.rgb_loader import RGBLoader
+        loader = RGBLoader(variant="en", cache_dir=self.cache,
+                            setting_filter="noise_robustness")
+        out = loader.iter_queries()
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0].metadata["setting"],
+                          "noise_robustness")
+
+    def test_filter_negrej_keeps_only_negrej(self):
+        from eval.external.rgb_loader import RGBLoader
+        loader = RGBLoader(variant="en", cache_dir=self.cache,
+                            setting_filter="negative_rejection")
+        out = loader.iter_queries()
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0].metadata["setting"],
+                          "negative_rejection")
+
+    def test_filter_invalid_raises(self):
+        from eval.external.rgb_loader import RGBLoader
+        with self.assertRaises(ValueError):
+            RGBLoader(variant="en", setting_filter="bogus")
+
+    def test_filter_default_is_none(self):
+        from eval.external.rgb_loader import RGBLoader
+        loader = RGBLoader(variant="en")
+        self.assertIsNone(loader.setting_filter)
+
+    def test_filter_negrej_with_abstention_mode_false_emits_zero(self):
+        """When abstention_mode is False AND filter requests negrej,
+        nothing comes through (the negrej variant isn't emitted in
+        the first place). This is a degenerate but defensible
+        combination — the loader doesn't crash on it."""
+        from eval.external.rgb_loader import RGBLoader
+        loader = RGBLoader(variant="en", cache_dir=self.cache,
+                            abstention_mode=False,
+                            setting_filter="negative_rejection")
+        out = loader.iter_queries()
+        self.assertEqual(len(out), 0)
+
+
 class CorruptFixtureTests(unittest.TestCase):
     """Malformed JSON / non-list root / non-dict rows surface cleanly."""
 

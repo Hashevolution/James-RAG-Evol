@@ -387,6 +387,7 @@ class RGBLoader(ExternalBenchFixture):
         cache_dir: Optional[Path] = None,
         allow_download: bool = False,
         abstention_mode: bool = True,
+        setting_filter: Optional[str] = None,
     ):
         """``abstention_mode`` controls whether the loader emits the
         negative-rejection variant alongside the noise-robustness
@@ -394,20 +395,43 @@ class RGBLoader(ExternalBenchFixture):
         evaluation). Set to False to halve cost when only
         noise-robustness is needed (e.g. a cost-sensitive smoke run
         or a single-axis ablation).
+
+        ``setting_filter`` (``None`` / ``"noise_robustness"`` /
+        ``"negative_rejection"``) post-filters the emitted query
+        stream to one axis only. Cycle γ Phase B JAMES-engine
+        experiments need this so each measurement can target the
+        workspace tuned for that axis: workspace #1 has full
+        positive+negative ingestion (run with
+        ``setting_filter="noise_robustness"``); workspace #2 has
+        negative-only ingestion (run with
+        ``setting_filter="negative_rejection"``). When ``None``,
+        every emitted query passes through unchanged.
         """
         if variant not in RGB_VARIANTS:
             raise ValueError(
                 f"unknown RGB variant: {variant!r}. "
                 f"Valid: {RGB_VARIANTS}"
             )
+        if setting_filter is not None and setting_filter not in (
+            "noise_robustness", "negative_rejection",
+        ):
+            raise ValueError(
+                f"setting_filter must be None / 'noise_robustness' / "
+                f"'negative_rejection'; got {setting_filter!r}"
+            )
         self._variant = variant
         self._cache_dir = Path(cache_dir) if cache_dir else None
         self._allow_download = allow_download
         self._abstention_mode = abstention_mode
+        self._setting_filter = setting_filter
 
     @property
     def abstention_mode(self) -> bool:
         return self._abstention_mode
+
+    @property
+    def setting_filter(self) -> Optional[str]:
+        return self._setting_filter
 
     @property
     def benchmark_id(self) -> str:
@@ -459,6 +483,11 @@ class RGBLoader(ExternalBenchFixture):
                 variant=self._variant,
                 abstention_mode=self._abstention_mode,
             ))
+        # Apply setting_filter BEFORE id-uniqueness validation so a
+        # narrow run does not need both halves of every paired row.
+        if self._setting_filter is not None:
+            queries = [q for q in queries
+                        if q.metadata.get("setting") == self._setting_filter]
         self.validate_queries(queries)
         # ``n_samples`` is applied to the *output* query stream — so a
         # caller asking for 50 queries gets 50 queries, regardless of
