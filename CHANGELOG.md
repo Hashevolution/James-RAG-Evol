@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.3] — 2026-06-10 — RAB v0.1.1 (Replayable-Audit Benchmark) + Cycle γ multi-hop arc closure
+
+**Theme**: v0.4.3 ships **RAB v0.1.1** — the first replayable-audit benchmark for RAG / agent systems whose 3 metrics (AC / RF / PC) are operationalisations of EU AI Act Articles 10, 12, 19 (in force 2026-08-02). Same cycle closes the cycle γ multi-hop arc (7 probes, 6 honest nulls, 2 self-corrections — `multi-hop improvement` reframed out of the JAMES roadmap; **graph build O(N²) finding** lifted into RAB as the RF-cost axis). No JAMES production runtime change — RAB measures the existing audit / lifecycle / graph paths via a workspace-scoped adapter; production `audit.db` is untouched.
+
+**Default-off invariant preserved**. The cycle γ measurement gates (`JAMES_RETRIEVE_TOP_K`, `JAMES_RERANK_TOP_K`) default to the existing values (8 / 5) and are byte-identical when unset.
+
+### RAB v0.1.1 — R1.0 → R1.5 sequence
+
+- **R1.0 prior-art + EU AI Act anchors (#758 / #760 / #761)** — vacancy confirmed (no replayable-audit benchmark exists); arXiv 2606.04990 (Mathkar et al.) names "realistic execution-trace benchmarks" as an open challenge → RAB responds to a published gap. ActiveGraph (arXiv 2605.21997, 2026-05-21) is independent co-invention of the event-sourced log + replay architecture → **contribution is the benchmark, not the architecture**. EU AI Act Art. 12(1) + 12(2)(b) + 10(2)(b) + 19 verbatim verified; Art. 113 fixes effective date 2026-08-02.
+- **R1.1 SPEC v0.1.1 FROZEN (#762)** — `eval/rab/SPEC-v0.1.md`. Abstract log interface (§1, JSONL + canonical event types), three deterministic metrics (§2: AC / RF / PC), scenario contract (§3), reporting format (§4 incl. log_sha + mapping_table_sha for re-verification), 5 baselines (§5: reference / Baseline-0 / Baseline-1 / JAMES / invited audit-native runtimes), 6 honesty clauses (§6). v0.1.1 = v0.1.0 + PC's origin-bearing event rule widened from `INGEST` only to `INGEST | SUPERSEDE` (defect caught by the reference adapter implementation before any measurement was taken; changelog in the SPEC itself).
+- **R1.2 scenario-S1 fixture (#763)** — `eval/rab/scenarios/s1_lifecycle_small.json`. 40 ops (11 INGEST / 4 UPDATE / 3 SUPERSEDE / 2 DELETE / 20 QUERY) + 10 checkpoints over a synthetic Northbridge Labs lifecycle. Public-domain content, deterministic ids.
+- **R1.3 driver + scorer + reference adapter (#764)** — `eval/rab/{driver,scorer}.py` + `eval/rab/adapters/reference.py` + `tests/test_rab_benchmark.py` (14 tests pinning reference 1.0×3 self-verification + 3 fault-injection variants that drop exactly the targeted metric).
+- **R1.4 pre-registration + JAMES adapter + Baseline-0 adapter + measurement (#766 / #767)** — pre-registration `docs/research/r1-4-preregistration-2026-06-10.md` LOCKED before any adapter code or measurement ran (R5 rule). `eval/rab/adapters/baseline0.py` (vanilla in-memory RAG + Python-logging-style records — the floor). `eval/rab/adapters/james.py` (workspace-isolated; SUPERSEDE calls real `core.lifecycle.replay_audit.emit_lifecycle_event` and is cross-verified against `core.lifecycle.replay_graph.reconstruct_graph_at` — JAMES's production code path is actually exercised). `scripts/research/rab_run.py` CLI writes the SPEC §4 re-verification triple (`result.json` + `log.jsonl` + `mapping.json`) per SUT. **31 tests green** across all three test files. Gap-table handover: `docs/handovers/v0.4-r1-4-gap-table-2026-06-10.md`.
+- **R1.5 = this release** — packaged for external review (CHANGELOG, `.zenodo.json` v0.4.3, README RAB section, release notes).
+
+### Gap table (RAB SPEC v0.1.1 / scenario-S1)
+
+| SUT | AC | AC INGEST | AC UPDATE | AC SUPERSEDE | AC DELETE | AC ANSWER | RF-exact | RF-graded | PC | events |
+|---|---|---|---|---|---|---|---|---|---|---|
+| reference (self-verify gate) | **1.000** | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | **1.000** | 1.000 | **1.000** | 80 |
+| **JAMES** | **1.000** | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | **1.000** | 1.000 | **1.000** | 80 |
+| **Baseline-0** (floor) | **0.275** | 1.00 | 0.00 | 0.00 | 0.00 | 0.00 | **0.000** | 0.000 | **0.000** | 40 |
+
+Honest tier: **⭐⭐ scenario-S1 audit-native vs floor gap confirmed** (deterministic, re-runnable from artifacts under `reports/rab/`). ⭐⭐⭐ cross-scenario remains ungated until a future cycle ships additional scenarios. JAMES = reference on S1 is **expected** per SPEC §6.5 — the headline is the gap structure across SUTs, not any single system's score.
+
+### Cycle γ multi-hop arc closure (companion track)
+
+PRs #752 → #757. Cycle γ's MuSiQue probes concluded that "multi-hop improvement" is not a JAMES roadmap item: the wall is unsupervised supporting-paragraph selection, not retrieval breadth and not model ceiling. Top-8 retrieval recall is 0.76 (both R0 and ablated); oracle-grounded performance jumps 8% → 72% (9×) when supporting paragraphs are given directly. The cycle's secondary finding — **graph build O(N²)** — has been lifted out of MuSiQue scope (where it had no leverage) into RAB as the RF-cost axis (SPEC §2.2 `cost_s_per_1k_events`). Memory: `project_cycle_gamma_phase_c2_retrieval_bottleneck`. ★ selector-tuning rabbit hole closed.
+
+Env-gate hooks added: `JAMES_RETRIEVE_TOP_K`, `JAMES_RERANK_TOP_K` (defaults 8 / 5; byte-identical when unset).
+
+### R0 P0 (cycle-pre disciplinary + security)
+
+- **#750** — R5 pre-registration rules + R2 measurement-discipline rules checked into `docs/rules/` as repo-side audit trail (previously memory-only — bus-factor + auditability fix from 2026-06-09 external review action R2).
+- **#751** — `starlette` 1.0.1 (CVE) + `chromadb` risk-accept note (`docs/security/`).
+
+### Verification
+
+- `tests/test_rab_benchmark.py` — 14/14 PASS (reference 1.0×3 + 3 fault-injection variants)
+- `tests/test_rab_baseline0.py` — 8/8 PASS (floor pinned: AC 0.275 / RF 0 / PC 0)
+- `tests/test_rab_james_adapter.py` — 9/9 PASS (audit-native 1.0×3 + workspace isolation + real `emit_lifecycle_event` bridge + `reconstruct_graph_at` agreement + log-only replay invariant)
+- **RAB test suite: 31/31 PASS**
+- No JAMES core test regression — no `core/` change.
+- RAB measurement artifacts committed under `reports/rab/`:
+  - `reference-S1-*.{result.json,log.jsonl,mapping.json}`
+  - `james-S1-*.{result.json,log.jsonl,mapping.json}`
+  - `baseline0-S1-*.{result.json,log.jsonl,mapping.json}`
+
+### What v0.4.3 does NOT do
+
+- No production runtime change in JAMES core.
+- No cross-scenario RAB result (S1 only).
+- No Baseline-1 (LangSmith/OTel adapter) — separate SUT, future cycle.
+- No mutation-site wiring follow-up to v0.4.2 (T1/T2/T2.D/T6/T7 → `emit_lifecycle_event` still deferred).
+- No multi-hop retrieval improvement (cycle γ closure re-framed it as not a JAMES roadmap item).
+- No regulatory compliance certification claim (SPEC §6.3).
+
+---
+
 ## [0.4.2] — 2026-06-06 — T5 Replayable Audit Graph (full event-sourced reconstruction)
 
 **Theme**: v0.4.0 shipped `reconstruct_view_at` — a single-supersede-chain replay primitive. v0.4.2 extends that to **graph-wide event-sourced reconstruction**: a pure-function `reconstruct_graph_at(t)` that rebuilds the full graph snapshot at any past time using only `audit_log` event rows, with no wiki / knowledge_tracker / graph-engine read. That is the **audit-only invariant** — the foundation that makes the "ABAC + replay" claim (corpus retrieval analysis, PR #712 §6) externally demonstrable: ship the `audit_log` JSON → third party reproduces the graph state at any past `t` and the answer's decision tree on top, with no other artifact.

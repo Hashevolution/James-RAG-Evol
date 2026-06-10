@@ -16,10 +16,11 @@
 > API, and the deterministic 4-rule contradiction tree.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-v0.4.1-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/releases/tag/v0.4.1)
+[![Status](https://img.shields.io/badge/Status-v0.4.3-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/releases/tag/v0.4.3)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12806/badge)](https://www.bestpractices.dev/projects/12806)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20426719.svg)](https://doi.org/10.5281/zenodo.20426719)
+[![RAB SPEC](https://img.shields.io/badge/RAB%20SPEC-v0.1.1-green.svg)](eval/rab/SPEC-v0.1.md)
 
 ![PROJECT JAMES — 3D ontology graph visualizer](reports/promo-assets/screenshots/06-3d-graph.jpg)
 
@@ -42,14 +43,23 @@ The numbers below come from the current `main` branch — not aspirational, not 
 | **Module size discipline** | 20 KB cap enforced on every `core/` file. Largest current: `core/lifecycle/schema.py` at 18.9 KB | CLAUDE.md rule 5 + module-size CI gate |
 | **Default-off invariant** | Every routing layer added since v0.3 (D5 / LEO / D1 / T2.D / T6 LLM) defaults OFF — production fleets pulling v0.4.1 see byte-identical retrieval to v0.3.3 unless they opt in | `JAMES_*` env audit (CHANGELOG `[0.4.x]` table) |
 | **Deterministic contradiction arbitration** | `classify_contradiction` is an LLM-free 4-rule decision tree (~10.2 KB pure function). Audit-replay-safe by construction. | `core/lifecycle/contradiction_arbiter.py` |
+| **RAB v0.1.1 — Replayable-Audit Benchmark** | **JAMES AC/RF/PC = 1.000 / 1.000 / 1.000 vs Baseline-0 (vanilla quickstart + default logging) = 0.275 / 0.000 / 0.000** on scenario-S1. Deterministic scorer (no LLM judge); 3 metrics map to EU AI Act Art. 10/12/19 (in force 2026-08-02). | `eval/rab/SPEC-v0.1.md` + `python scripts/research/rab_run.py --sut {reference,baseline0,james}` |
 
 **What is NOT yet headline-verified**: a single-page ablation card showing **Graph-RAG vs flat RAG** on the same fixture. The infrastructure to produce it (`scripts/qvt_capture_baseline.py` + the 18-cell ablation matrix design from QVT memo §5) is wired; the operator-run capture is the late-June deliverable. Until then, the graph contribution is measurable via `graph_paths_count` per query in any STEP 7 bench output, but not summarized in one table.
 
 ---
 
-## Project Status: v0.4.1 — T6 Causality Chain (CASCADE extension)
+## Project Status: v0.4.3 — RAB v0.1.1 (Replayable-Audit Benchmark) + Cycle γ multi-hop arc closure
 
-Released **2026-05-28**. v0.4.1 closes the CASCADE pillar that v0.4.0 only half-finished: when a base fact's sources are fully removed, edges whose `derived_from` references that base now auto-invalidate via `invalidate_derived_facts` — the derivation chain stays internally consistent without manual operator intervention. Per-derivation-type semantics (T6.C.b refinement): `transitive` / `inferred` are structural chain links (any base empty → invalidate); `operator` is corroborative (only invalidates when no hard deps AND all operator bases empty).
+Released **2026-06-10**. v0.4.3 ships **RAB v0.1.1** — the first replayable-audit benchmark for RAG / agent systems whose 3 deterministic metrics (AC / RF / PC) are operationalisations of EU AI Act Articles 10, 12, 19 (in force 2026-08-02). The full SPEC, scenario fixture, scorer, reference / JAMES / Baseline-0 adapters, and 9 measurement artifacts (reports/rab/) are committed. Headline = the **gap structure** across SUTs (JAMES audit-native = 1.000 / 1.000 / 1.000 vs Baseline-0 default-logging floor = 0.275 / 0.000 / 0.000 on scenario-S1), not JAMES's score — SPEC §6.5 explicitly disclaims JAMES-wins framing. Honest framing: **the benchmark is the contribution, not the architecture** — ActiveGraph (arXiv 2605.21997) is independent co-invention of the audit-native runtime; the unfilled gap was the measurement, not the system.
+
+Companion track in the same cycle closes the **Cycle γ multi-hop arc** (PRs #752 → #757) with 6 honest nulls: multi-hop improvement reframed out of the JAMES roadmap; the **graph build O(N²)** secondary finding lifted into RAB as the RF-cost axis.
+
+No JAMES production runtime change — RAB measures the existing audit / lifecycle / graph paths via a workspace-scoped adapter; production `audit.db` is untouched. Default-off invariant preserved.
+
+Pre-v0.4.3: **v0.4.2** (2026-06-06) shipped T5 Replayable Audit Graph — full event-sourced graph-wide reconstruction (`reconstruct_graph_at(t)` audit-only primitive, the building block RAB measures the quality of).
+
+Pre-v0.4.2: **v0.4.1** (2026-05-28) closed the CASCADE pillar that v0.4.0 only half-finished: when a base fact's sources are fully removed, edges whose `derived_from` references that base now auto-invalidate via `invalidate_derived_facts` — the derivation chain stays internally consistent without manual operator intervention. Per-derivation-type semantics (T6.C.b refinement): `transitive` / `inferred` are structural chain links (any base empty → invalidate); `operator` is corroborative (only invalidates when no hard deps AND all operator bases empty).
 
 Pre-v0.4.1: **v0.4.0** (2026-05-27) shipped the Layer 4 first
 bundle — **T1 Temporal Validity + T7 Supersede Chain + T2
@@ -91,6 +101,56 @@ travel, etc.) can branch off **only at v1.0**. Until then:
 See [`docs/PLATFORM_READINESS.md`](docs/PLATFORM_READINESS.md) for
 the 6 dimensions, 4 gates (v0.2 / v0.3 / v0.4 / v1.0), and 3
 branching forms (Domain Pack / Distribution / Vertical Product).
+
+---
+
+## RAB — Replayable-Audit Benchmark (new in v0.4.3)
+
+**RAB v0.1.1** is a frozen benchmark spec + scenario fixture +
+deterministic scorer + adapter contract for systems that claim
+audit-replayable RAG / agent state. Three metrics, all deterministic
+(no LLM judge anywhere):
+
+* **AC — Audit Completeness** (EU AI Act Art. 12(1)/(2))
+* **RF — Replay Fidelity** (Art. 12(2)(b) post-market reconstruction)
+* **PC — Provenance Coverage** (Art. 10(2)(b) + W3C PROV)
+
+**Why a new benchmark**: the Mathkar et al. 2026 agent-trace survey
+(arXiv 2606.04990) names "realistic execution-trace benchmarks" as
+an open challenge; RAB responds to that gap. The benchmark — not the
+audit-native runtime — is the contribution: ActiveGraph (arXiv
+2605.21997) independently published the event-sourced log + replay
+architecture; **RAB is what was missing**.
+
+**Headline = gap structure**, not JAMES's score. Scenario-S1 v0.4.3
+result:
+
+| SUT | AC | RF-exact | RF-graded | PC |
+|---|---|---|---|---|
+| reference (self-verify gate) | 1.000 | 1.000 | 1.000 | 1.000 |
+| **JAMES** (audit-native) | **1.000** | **1.000** | 1.000 | **1.000** |
+| **Baseline-0** (vanilla quickstart + default logging) | **0.275** | **0.000** | 0.000 | **0.000** |
+
+JAMES = reference on S1 is **expected** (SPEC §6.5). The audit-native
+vs default-logging delta is the finding. Honest tier: ⭐⭐
+scenario-S1 confirmed. Re-verification triple committed to
+`reports/rab/` (SPEC §4 bit-for-bit determinism).
+
+**Not a regulatory certification.** RAB operationalises the AI Act's
+*concepts* into measurable form; SPEC §6.3 says so wherever scores
+are published.
+
+Reproduce:
+
+```bash
+python scripts/research/rab_run.py --sut reference  # 1.000 / 1.000 / 1.000 (gate)
+python scripts/research/rab_run.py --sut james      # 1.000 / 1.000 / 1.000
+python scripts/research/rab_run.py --sut baseline0  # 0.275 / 0.000 / 0.000
+```
+
+See [`eval/rab/SPEC-v0.1.md`](eval/rab/SPEC-v0.1.md),
+[`docs/handovers/v0.4-r1-4-gap-table-2026-06-10.md`](docs/handovers/v0.4-r1-4-gap-table-2026-06-10.md),
+[`docs/research/r1-4-preregistration-2026-06-10.md`](docs/research/r1-4-preregistration-2026-06-10.md).
 
 ---
 
