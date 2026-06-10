@@ -82,6 +82,25 @@ def run_loop_0_retrieve(
     # measurement (MuSiQue gain vs RGB abstention loss) licenses a flip.
     retrieve_top_k = _env_int("JAMES_RETRIEVE_TOP_K", 8)
     rerank_top_k = _env_int("JAMES_RERANK_TOP_K", 5)
+
+    # Cycle γ D1 — multi-hop query decomposition (opt-in). Flag off →
+    # decompose returns [] → orch_retrieve sees no extra paths → the
+    # retrieval query set is byte-identical to pre-D1 behaviour. The
+    # sub-questions add hop-2 retrieval paths the original query cannot
+    # reach (Phase C.2 bottleneck finding).
+    sub_questions = []
+    try:
+        from core.retrieval.query_decomposer import (
+            decompose, query_decomp_enabled,
+        )
+        if query_decomp_enabled():
+            sub_questions = decompose(safe_query)
+            if sub_questions:
+                print(f"  [D1] decomposed into {len(sub_questions)} "
+                      f"sub-question(s)")
+    except Exception as e:
+        engine._log("query_decompose", e, user_role)
+
     try:
         from core.orchestrator import retrieve as orch_retrieve
         docs = orch_retrieve(
@@ -91,6 +110,7 @@ def run_loop_0_retrieve(
             user_role       = user_role,
             source_type     = source_type,
             top_k           = retrieve_top_k,
+            extra_queries   = sub_questions,
         )
     except Exception as e:
         engine._log("loop0_orchestrator", e, user_role)
