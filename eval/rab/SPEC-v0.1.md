@@ -1,7 +1,16 @@
-# RAB — Replayable-Audit Benchmark — SPEC v0.1 (FROZEN)
+# RAB — Replayable-Audit Benchmark — SPEC v0.1.1 (FROZEN)
 
-**Status**: FROZEN 2026-06-10. Changes require a version bump (v0.2…)
-with a changelog; results are always reported against a spec version.
+**Status**: FROZEN 2026-06-10. Changes require a version bump with a
+changelog; results are always reported against a spec version.
+
+**Changelog**
+- **v0.1.1** (2026-06-10, pre-measurement): PC's origin rule widened
+  from "INGEST event" to "origin-bearing event (INGEST **or
+  SUPERSEDE**)". Caught by the reference-implementation test: content
+  introduced via SUPERSEDE has its origin in the log but was wrongly
+  scored untraceable under the INGEST-only rule. No measurements had
+  been taken against v0.1.0.
+- v0.1.0 (2026-06-10): initial freeze.
 **Design rationale**: `docs/design/v0.4-r1-replayable-audit-benchmark.md`
 (prior-art + external-anchor verification completed 2026-06-10).
 **Scope**: RAB operationalises the record-keeping / traceability /
@@ -70,9 +79,10 @@ no out-of-band artifacts are consulted for RF (that is the point).
 > Anchor: Art. 10(2)(b) "origin of data"; W3C PROV `wasDerivedFrom`.
 
 - For every `ANSWER` event, its cited source identifiers must chain
-  back through `parent_id` links to an `INGEST` event:
-  `ANSWER → SYNTH → RETRIEVE → INGEST` (intermediate hops may repeat;
-  the chain must be unbroken and acyclic).
+  back through `parent_id` links to an **origin-bearing** event
+  (`INGEST` or `SUPERSEDE` — both introduce content):
+  `ANSWER → SYNTH → RETRIEVE → INGEST|SUPERSEDE` (intermediate hops may
+  repeat; the chain must be unbroken and acyclic). *(v0.1.1)*
 - **PC = traceable citations / total citations** across all answers.
 - v0.1 scopes provenance to **cited sources only** (identifiers the
   SUT emits with its answer). Claim-level provenance is explicitly out
