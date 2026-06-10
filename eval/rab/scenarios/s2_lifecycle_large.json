@@ -1,0 +1,3598 @@
+{
+  "scenario": "S2",
+  "name": "lifecycle-large",
+  "spec": "v0.1.1",
+  "description": "Deterministic 400-op lifecycle scenario with a larger graph for activating the RF-cost axis. 110 INGEST, 40 UPDATE, 30 SUPERSEDE (9 chains; avg length 3.33, max 5), 20 DELETE, 200 QUERY; K=40 checkpoints. Synthetic public-domain English prose about a fictional city's operations (departments, projects, contracts, incidents, policies). Doc texts mention other doc_ids explicitly to give graph builders a non-trivial cross-reference density.",
+  "ops": [
+    {
+      "op_id": "s2-001",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-dep-001",
+        "title": "Department of Public Works",
+        "text": "The Department of Public Works (doc co-dep-001) is led by Lena Ortiz per appointment co-app-001. Operating budget: co-bud-001. Active projects: co-prj-001, co-prj-002, co-prj-003. Department policies: co-pol-010, co-pol-020."
+      }
+    },
+    {
+      "op_id": "s2-002",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who is the director of the Department of Public Works?"
+      }
+    },
+    {
+      "op_id": "s2-003",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-dep-002",
+        "title": "Department of Parks and Recreation",
+        "text": "The Department of Parks and Recreation (doc co-dep-002) is led by Marcus Chen per appointment co-app-002. Operating budget: co-bud-002. Active projects: co-prj-004, co-prj-005, co-prj-006. Department policies: co-pol-007, co-pol-017."
+      }
+    },
+    {
+      "op_id": "s2-004",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which doc id holds the appointment of Lena Ortiz?"
+      }
+    },
+    {
+      "op_id": "s2-005",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-dep-003",
+        "title": "Department of Transport",
+        "text": "The Department of Transport (doc co-dep-003) is led by Priya Anand per appointment co-app-003. Operating budget: co-bud-003. Active projects: co-prj-007, co-prj-008, co-prj-009. Department policies: co-pol-006, co-pol-016."
+      }
+    },
+    {
+      "op_id": "s2-006",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "How many active projects does the Department of Public Works oversee?"
+      }
+    },
+    {
+      "op_id": "s2-007",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-dep-004",
+        "title": "Department of Permits and Inspections",
+        "text": "The Department of Permits and Inspections (doc co-dep-004) is led by Sofia Reyes per appointment co-app-004. Operating budget: co-bud-004. Active projects: co-prj-010, co-prj-011, co-prj-012. Department policies: co-pol-003, co-pol-013."
+      }
+    },
+    {
+      "op_id": "s2-008",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the FY2024 budget doc id for the Department of Public Works?"
+      }
+    },
+    {
+      "op_id": "s2-009",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-dep-005",
+        "title": "Department of Records",
+        "text": "The Department of Records (doc co-dep-005) is led by Daniel Okoye per appointment co-app-005. Operating budget: co-bud-005. Active projects: co-prj-013, co-prj-014, co-prj-015. Department policies: co-pol-002, co-pol-012."
+      }
+    },
+    {
+      "op_id": "s2-010",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Which policy v1 belongs to the Department of Public Works?"
+      }
+    },
+    {
+      "op_id": "s2-011",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-dep-006",
+        "title": "Office of Procurement",
+        "text": "The Office of Procurement (doc co-dep-006) is led by Tomas Eriksen per appointment co-app-006. Operating budget: co-bud-006. Active projects: co-prj-016, co-prj-017, co-prj-018. Department policies: co-pol-001, co-pol-011."
+      }
+    },
+    {
+      "op_id": "s2-012",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who is the director of the Department of Parks and Recreation?"
+      }
+    },
+    {
+      "op_id": "s2-013",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-dep-007",
+        "title": "Office of Public Safety",
+        "text": "The Office of Public Safety (doc co-dep-007) is led by Hana Park per appointment co-app-007. Operating budget: co-bud-007. Active projects: co-prj-019, co-prj-020, co-prj-021. Department policies: co-pol-009, co-pol-019."
+      }
+    },
+    {
+      "op_id": "s2-014",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which doc id holds the appointment of Marcus Chen?"
+      }
+    },
+    {
+      "op_id": "s2-015",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-dep-008",
+        "title": "Office of Code Enforcement",
+        "text": "The Office of Code Enforcement (doc co-dep-008) is led by Idris Mwangi per appointment co-app-008. Operating budget: co-bud-008. Active projects: co-prj-022, co-prj-023, co-prj-024. Department policies: co-pol-008, co-pol-018."
+      }
+    },
+    {
+      "op_id": "s2-016",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "How many active projects does the Department of Parks and Recreation oversee?"
+      }
+    },
+    {
+      "op_id": "s2-017",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-dep-009",
+        "title": "Department of Housing",
+        "text": "The Department of Housing (doc co-dep-009) is led by Junko Watanabe per appointment co-app-009. Operating budget: co-bud-009. Active projects: co-prj-025, co-prj-026, co-prj-027. Department policies: co-pol-004, co-pol-014."
+      }
+    },
+    {
+      "op_id": "s2-018",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the FY2024 budget doc id for the Department of Parks and Recreation?"
+      }
+    },
+    {
+      "op_id": "s2-019",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-dep-010",
+        "title": "Department of Public Health",
+        "text": "The Department of Public Health (doc co-dep-010) is led by Karim El-Sayed per appointment co-app-010. Operating budget: co-bud-010. Active projects: co-prj-028, co-prj-029, co-prj-030. Department policies: co-pol-005, co-pol-015."
+      }
+    },
+    {
+      "op_id": "s2-020",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Which policy v1 belongs to the Department of Parks and Recreation?"
+      }
+    },
+    {
+      "op_id": "s2-021",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-app-001",
+        "title": "Appointment Department of Public Works — Director Lena Ortiz",
+        "text": "Per record co-app-001, Lena Ortiz is appointed director of the Department of Public Works (doc co-dep-001). Budget authority: co-bud-001. Oversees projects co-prj-001, co-prj-002, co-prj-003 and policies co-pol-010, co-pol-020."
+      }
+    },
+    {
+      "op_id": "s2-022",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who is the director of the Department of Transport?"
+      }
+    },
+    {
+      "op_id": "s2-023",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-app-002",
+        "title": "Appointment Department of Parks and Recreation — Director Marcus Chen",
+        "text": "Per record co-app-002, Marcus Chen is appointed director of the Department of Parks and Recreation (doc co-dep-002). Budget authority: co-bud-002. Oversees projects co-prj-004, co-prj-005, co-prj-006 and policies co-pol-007, co-pol-017."
+      }
+    },
+    {
+      "op_id": "s2-024",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which doc id holds the appointment of Priya Anand?"
+      }
+    },
+    {
+      "op_id": "s2-025",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-app-003",
+        "title": "Appointment Department of Transport — Director Priya Anand",
+        "text": "Per record co-app-003, Priya Anand is appointed director of the Department of Transport (doc co-dep-003). Budget authority: co-bud-003. Oversees projects co-prj-007, co-prj-008, co-prj-009 and policies co-pol-006, co-pol-016."
+      }
+    },
+    {
+      "op_id": "s2-026",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "How many active projects does the Department of Transport oversee?"
+      }
+    },
+    {
+      "op_id": "s2-027",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-app-004",
+        "title": "Appointment Department of Permits and Inspections — Director Sofia Reyes",
+        "text": "Per record co-app-004, Sofia Reyes is appointed director of the Department of Permits and Inspections (doc co-dep-004). Budget authority: co-bud-004. Oversees projects co-prj-010, co-prj-011, co-prj-012 and policies co-pol-003, co-pol-013."
+      }
+    },
+    {
+      "op_id": "s2-028",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the FY2024 budget doc id for the Department of Transport?"
+      }
+    },
+    {
+      "op_id": "s2-029",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-app-005",
+        "title": "Appointment Department of Records — Director Daniel Okoye",
+        "text": "Per record co-app-005, Daniel Okoye is appointed director of the Department of Records (doc co-dep-005). Budget authority: co-bud-005. Oversees projects co-prj-013, co-prj-014, co-prj-015 and policies co-pol-002, co-pol-012."
+      }
+    },
+    {
+      "op_id": "s2-030",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Which policy v1 belongs to the Department of Transport?"
+      }
+    },
+    {
+      "op_id": "s2-031",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-app-006",
+        "title": "Appointment Office of Procurement — Director Tomas Eriksen",
+        "text": "Per record co-app-006, Tomas Eriksen is appointed director of the Office of Procurement (doc co-dep-006). Budget authority: co-bud-006. Oversees projects co-prj-016, co-prj-017, co-prj-018 and policies co-pol-001, co-pol-011."
+      }
+    },
+    {
+      "op_id": "s2-032",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who is the director of the Department of Permits and Inspections?"
+      }
+    },
+    {
+      "op_id": "s2-033",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-app-007",
+        "title": "Appointment Office of Public Safety — Director Hana Park",
+        "text": "Per record co-app-007, Hana Park is appointed director of the Office of Public Safety (doc co-dep-007). Budget authority: co-bud-007. Oversees projects co-prj-019, co-prj-020, co-prj-021 and policies co-pol-009, co-pol-019."
+      }
+    },
+    {
+      "op_id": "s2-034",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which doc id holds the appointment of Sofia Reyes?"
+      }
+    },
+    {
+      "op_id": "s2-035",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-app-008",
+        "title": "Appointment Office of Code Enforcement — Director Idris Mwangi",
+        "text": "Per record co-app-008, Idris Mwangi is appointed director of the Office of Code Enforcement (doc co-dep-008). Budget authority: co-bud-008. Oversees projects co-prj-022, co-prj-023, co-prj-024 and policies co-pol-008, co-pol-018."
+      }
+    },
+    {
+      "op_id": "s2-036",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "How many active projects does the Department of Permits and Inspections oversee?"
+      }
+    },
+    {
+      "op_id": "s2-037",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-app-009",
+        "title": "Appointment Department of Housing — Director Junko Watanabe",
+        "text": "Per record co-app-009, Junko Watanabe is appointed director of the Department of Housing (doc co-dep-009). Budget authority: co-bud-009. Oversees projects co-prj-025, co-prj-026, co-prj-027 and policies co-pol-004, co-pol-014."
+      }
+    },
+    {
+      "op_id": "s2-038",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the FY2024 budget doc id for the Department of Permits and Inspections?"
+      }
+    },
+    {
+      "op_id": "s2-039",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-app-010",
+        "title": "Appointment Department of Public Health — Director Karim El-Sayed",
+        "text": "Per record co-app-010, Karim El-Sayed is appointed director of the Department of Public Health (doc co-dep-010). Budget authority: co-bud-010. Oversees projects co-prj-028, co-prj-029, co-prj-030 and policies co-pol-005, co-pol-015."
+      }
+    },
+    {
+      "op_id": "s2-040",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Which policy v1 belongs to the Department of Permits and Inspections?"
+      }
+    },
+    {
+      "op_id": "s2-041",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-001",
+        "title": "Budget Public Works FY2024",
+        "text": "Budget record co-bud-001 allocates funds to the Department of Public Works (doc co-dep-001, director Lena Ortiz per co-app-001). Funded projects: co-prj-001, co-prj-002, co-prj-003. Active contracts: co-ctr-001, co-ctr-002."
+      }
+    },
+    {
+      "op_id": "s2-042",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who is the director of the Department of Records?"
+      }
+    },
+    {
+      "op_id": "s2-043",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-002",
+        "title": "Budget Parks FY2024",
+        "text": "Budget record co-bud-002 allocates funds to the Department of Parks and Recreation (doc co-dep-002, director Marcus Chen per co-app-002). Funded projects: co-prj-004, co-prj-005, co-prj-006. Active contracts: co-ctr-003, co-ctr-004."
+      }
+    },
+    {
+      "op_id": "s2-044",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which doc id holds the appointment of Daniel Okoye?"
+      }
+    },
+    {
+      "op_id": "s2-045",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-003",
+        "title": "Budget Transport FY2024",
+        "text": "Budget record co-bud-003 allocates funds to the Department of Transport (doc co-dep-003, director Priya Anand per co-app-003). Funded projects: co-prj-007, co-prj-008, co-prj-009. Active contracts: co-ctr-005, co-ctr-006."
+      }
+    },
+    {
+      "op_id": "s2-046",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "How many active projects does the Department of Records oversee?"
+      }
+    },
+    {
+      "op_id": "s2-047",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-004",
+        "title": "Budget Permits FY2024",
+        "text": "Budget record co-bud-004 allocates funds to the Department of Permits and Inspections (doc co-dep-004, director Sofia Reyes per co-app-004). Funded projects: co-prj-010, co-prj-011, co-prj-012. Active contracts: co-ctr-007, co-ctr-008."
+      }
+    },
+    {
+      "op_id": "s2-048",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the FY2024 budget doc id for the Department of Records?"
+      }
+    },
+    {
+      "op_id": "s2-049",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-005",
+        "title": "Budget Records FY2024",
+        "text": "Budget record co-bud-005 allocates funds to the Department of Records (doc co-dep-005, director Daniel Okoye per co-app-005). Funded projects: co-prj-013, co-prj-014, co-prj-015. Active contracts: co-ctr-009, co-ctr-010."
+      }
+    },
+    {
+      "op_id": "s2-050",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Which policy v1 belongs to the Department of Records?"
+      }
+    },
+    {
+      "op_id": "s2-051",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-006",
+        "title": "Budget Procurement FY2024",
+        "text": "Budget record co-bud-006 allocates funds to the Office of Procurement (doc co-dep-006, director Tomas Eriksen per co-app-006). Funded projects: co-prj-016, co-prj-017, co-prj-018. Active contracts: co-ctr-011, co-ctr-012."
+      }
+    },
+    {
+      "op_id": "s2-052",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who is the director of the Office of Procurement?"
+      }
+    },
+    {
+      "op_id": "s2-053",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-007",
+        "title": "Budget Safety FY2024",
+        "text": "Budget record co-bud-007 allocates funds to the Office of Public Safety (doc co-dep-007, director Hana Park per co-app-007). Funded projects: co-prj-019, co-prj-020, co-prj-021. Active contracts: co-ctr-013, co-ctr-014."
+      }
+    },
+    {
+      "op_id": "s2-054",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which doc id holds the appointment of Tomas Eriksen?"
+      }
+    },
+    {
+      "op_id": "s2-055",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-008",
+        "title": "Budget Code FY2024",
+        "text": "Budget record co-bud-008 allocates funds to the Office of Code Enforcement (doc co-dep-008, director Idris Mwangi per co-app-008). Funded projects: co-prj-022, co-prj-023, co-prj-024. Active contracts: co-ctr-015, co-ctr-016."
+      }
+    },
+    {
+      "op_id": "s2-056",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "How many active projects does the Office of Procurement oversee?"
+      }
+    },
+    {
+      "op_id": "s2-057",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-009",
+        "title": "Budget Housing FY2024",
+        "text": "Budget record co-bud-009 allocates funds to the Department of Housing (doc co-dep-009, director Junko Watanabe per co-app-009). Funded projects: co-prj-025, co-prj-026, co-prj-027. Active contracts: co-ctr-017, co-ctr-018."
+      }
+    },
+    {
+      "op_id": "s2-058",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the FY2024 budget doc id for the Office of Procurement?"
+      }
+    },
+    {
+      "op_id": "s2-059",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-010",
+        "title": "Budget Health FY2024",
+        "text": "Budget record co-bud-010 allocates funds to the Department of Public Health (doc co-dep-010, director Karim El-Sayed per co-app-010). Funded projects: co-prj-028, co-prj-029, co-prj-030. Active contracts: co-ctr-019, co-ctr-020."
+      }
+    },
+    {
+      "op_id": "s2-060",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Which policy v1 belongs to the Office of Procurement?"
+      }
+    },
+    {
+      "op_id": "s2-061",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-001",
+        "title": "Policy Procurement code v1",
+        "text": "Policy co-pol-001 (Policy Procurement code v1) is owned by the Office of Procurement (doc co-dep-006, director Tomas Eriksen per co-app-006) and is funded under budget co-bud-006. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-062",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who is the director of the Office of Public Safety?"
+      }
+    },
+    {
+      "op_id": "s2-063",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-002",
+        "title": "Policy Records retention v1",
+        "text": "Policy co-pol-002 (Policy Records retention v1) is owned by the Department of Records (doc co-dep-005, director Daniel Okoye per co-app-005) and is funded under budget co-bud-005. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-064",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which doc id holds the appointment of Hana Park?"
+      }
+    },
+    {
+      "op_id": "s2-065",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-003",
+        "title": "Policy Inspection escalation v1",
+        "text": "Policy co-pol-003 (Policy Inspection escalation v1) is owned by the Department of Permits and Inspections (doc co-dep-004, director Sofia Reyes per co-app-004) and is funded under budget co-bud-004. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-066",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "How many active projects does the Office of Public Safety oversee?"
+      }
+    },
+    {
+      "op_id": "s2-067",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-004",
+        "title": "Policy Tenant eviction guidance v1",
+        "text": "Policy co-pol-004 (Policy Tenant eviction guidance v1) is owned by the Department of Housing (doc co-dep-009, director Junko Watanabe per co-app-009) and is funded under budget co-bud-009. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-068",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the FY2024 budget doc id for the Office of Public Safety?"
+      }
+    },
+    {
+      "op_id": "s2-069",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-005",
+        "title": "Policy Vector control protocol v1",
+        "text": "Policy co-pol-005 (Policy Vector control protocol v1) is owned by the Department of Public Health (doc co-dep-010, director Karim El-Sayed per co-app-010) and is funded under budget co-bud-010. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-070",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Which policy v1 belongs to the Office of Public Safety?"
+      }
+    },
+    {
+      "op_id": "s2-071",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-006",
+        "title": "Policy Bus lane enforcement v1",
+        "text": "Policy co-pol-006 (Policy Bus lane enforcement v1) is owned by the Department of Transport (doc co-dep-003, director Priya Anand per co-app-003) and is funded under budget co-bud-003. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-072",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who is the director of the Office of Code Enforcement?"
+      }
+    },
+    {
+      "op_id": "s2-073",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-007",
+        "title": "Policy Park ranger conduct v1",
+        "text": "Policy co-pol-007 (Policy Park ranger conduct v1) is owned by the Department of Parks and Recreation (doc co-dep-002, director Marcus Chen per co-app-002) and is funded under budget co-bud-002. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-074",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which doc id holds the appointment of Idris Mwangi?"
+      }
+    },
+    {
+      "op_id": "s2-075",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-008",
+        "title": "Policy Public hearing notice v1",
+        "text": "Policy co-pol-008 (Policy Public hearing notice v1) is owned by the Office of Code Enforcement (doc co-dep-008, director Idris Mwangi per co-app-008) and is funded under budget co-bud-008. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-076",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "How many active projects does the Office of Code Enforcement oversee?"
+      }
+    },
+    {
+      "op_id": "s2-077",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-009",
+        "title": "Policy Hydrant inspection v1",
+        "text": "Policy co-pol-009 (Policy Hydrant inspection v1) is owned by the Office of Public Safety (doc co-dep-007, director Hana Park per co-app-007) and is funded under budget co-bud-007. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-078",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the FY2024 budget doc id for the Office of Code Enforcement?"
+      }
+    },
+    {
+      "op_id": "s2-079",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-010",
+        "title": "Policy Storm response v1",
+        "text": "Policy co-pol-010 (Policy Storm response v1) is owned by the Department of Public Works (doc co-dep-001, director Lena Ortiz per co-app-001) and is funded under budget co-bud-001. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-080",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Which policy v1 belongs to the Office of Code Enforcement?"
+      }
+    },
+    {
+      "op_id": "s2-081",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-011",
+        "title": "Policy Vendor disqualification v1",
+        "text": "Policy co-pol-011 (Policy Vendor disqualification v1) is owned by the Office of Procurement (doc co-dep-006, director Tomas Eriksen per co-app-006) and is funded under budget co-bud-006. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-082",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-012",
+        "title": "Policy Archive access v1",
+        "text": "Policy co-pol-012 (Policy Archive access v1) is owned by the Department of Records (doc co-dep-005, director Daniel Okoye per co-app-005) and is funded under budget co-bud-005. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-083",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-013",
+        "title": "Policy Permit appeals v1",
+        "text": "Policy co-pol-013 (Policy Permit appeals v1) is owned by the Department of Permits and Inspections (doc co-dep-004, director Sofia Reyes per co-app-004) and is funded under budget co-bud-004. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-084",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-014",
+        "title": "Policy Voucher fraud reporting v1",
+        "text": "Policy co-pol-014 (Policy Voucher fraud reporting v1) is owned by the Department of Housing (doc co-dep-009, director Junko Watanabe per co-app-009) and is funded under budget co-bud-009. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-085",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-015",
+        "title": "Policy Clinic data sharing v1",
+        "text": "Policy co-pol-015 (Policy Clinic data sharing v1) is owned by the Department of Public Health (doc co-dep-010, director Karim El-Sayed per co-app-010) and is funded under budget co-bud-010. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-086",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-016",
+        "title": "Policy Ferry safety drills v1",
+        "text": "Policy co-pol-016 (Policy Ferry safety drills v1) is owned by the Department of Transport (doc co-dep-003, director Priya Anand per co-app-003) and is funded under budget co-bud-003. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-087",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-017",
+        "title": "Policy Trail closure protocol v1",
+        "text": "Policy co-pol-017 (Policy Trail closure protocol v1) is owned by the Department of Parks and Recreation (doc co-dep-002, director Marcus Chen per co-app-002) and is funded under budget co-bud-002. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-088",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-018",
+        "title": "Policy Sign permit fee schedule v1",
+        "text": "Policy co-pol-018 (Policy Sign permit fee schedule v1) is owned by the Office of Code Enforcement (doc co-dep-008, director Idris Mwangi per co-app-008) and is funded under budget co-bud-008. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-089",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-019",
+        "title": "Policy Mutual aid agreement v1",
+        "text": "Policy co-pol-019 (Policy Mutual aid agreement v1) is owned by the Office of Public Safety (doc co-dep-007, director Hana Park per co-app-007) and is funded under budget co-bud-007. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-090",
+      "op": "INGEST",
+      "checkpoint": true,
+      "args": {
+        "doc_id": "co-pol-020",
+        "title": "Policy Snow plough priority v1",
+        "text": "Policy co-pol-020 (Policy Snow plough priority v1) is owned by the Department of Public Works (doc co-dep-001, director Lena Ortiz per co-app-001) and is funded under budget co-bud-001. Applies to all department operations."
+      }
+    },
+    {
+      "op_id": "s2-091",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-001",
+        "title": "Project Riverwalk Renewal",
+        "text": "Project Riverwalk Renewal (doc co-prj-001) is run by the Department of Public Works (doc co-dep-001, director per co-app-001, budget co-bud-001). Lead: Lena Ortiz. Coordinates with sibling projects co-prj-002, co-prj-003. Active contract(s): co-ctr-001."
+      }
+    },
+    {
+      "op_id": "s2-092",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-002",
+        "title": "Project Pothole Survey",
+        "text": "Project Pothole Survey (doc co-prj-002) is run by the Department of Public Works (doc co-dep-001, director per co-app-001, budget co-bud-001). Lead: Marcus Chen. Coordinates with sibling projects co-prj-001, co-prj-003."
+      }
+    },
+    {
+      "op_id": "s2-093",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-003",
+        "title": "Project Storm Drain Mapping",
+        "text": "Project Storm Drain Mapping (doc co-prj-003) is run by the Department of Public Works (doc co-dep-001, director per co-app-001, budget co-bud-001). Lead: Priya Anand. Coordinates with sibling projects co-prj-001, co-prj-002. Active contract(s): co-ctr-002."
+      }
+    },
+    {
+      "op_id": "s2-094",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-004",
+        "title": "Project Arboretum Expansion",
+        "text": "Project Arboretum Expansion (doc co-prj-004) is run by the Department of Parks and Recreation (doc co-dep-002, director per co-app-002, budget co-bud-002). Lead: Sofia Reyes. Coordinates with sibling projects co-prj-005, co-prj-006. Active contract(s): co-ctr-003."
+      }
+    },
+    {
+      "op_id": "s2-095",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-005",
+        "title": "Project Playground Audit",
+        "text": "Project Playground Audit (doc co-prj-005) is run by the Department of Parks and Recreation (doc co-dep-002, director per co-app-002, budget co-bud-002). Lead: Daniel Okoye. Coordinates with sibling projects co-prj-004, co-prj-006. Active contract(s): co-ctr-004."
+      }
+    },
+    {
+      "op_id": "s2-096",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-006",
+        "title": "Project Trail Wayfinding",
+        "text": "Project Trail Wayfinding (doc co-prj-006) is run by the Department of Parks and Recreation (doc co-dep-002, director per co-app-002, budget co-bud-002). Lead: Tomas Eriksen. Coordinates with sibling projects co-prj-004, co-prj-005. Active contract(s): co-ctr-003."
+      }
+    },
+    {
+      "op_id": "s2-097",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-007",
+        "title": "Project Bus Lane Modernisation",
+        "text": "Project Bus Lane Modernisation (doc co-prj-007) is run by the Department of Transport (doc co-dep-003, director per co-app-003, budget co-bud-003). Lead: Hana Park. Coordinates with sibling projects co-prj-008, co-prj-009."
+      }
+    },
+    {
+      "op_id": "s2-098",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-008",
+        "title": "Project Ferry Terminal Upgrade",
+        "text": "Project Ferry Terminal Upgrade (doc co-prj-008) is run by the Department of Transport (doc co-dep-003, director per co-app-003, budget co-bud-003). Lead: Idris Mwangi. Coordinates with sibling projects co-prj-007, co-prj-009. Active contract(s): co-ctr-006."
+      }
+    },
+    {
+      "op_id": "s2-099",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-009",
+        "title": "Project Signal Retiming Phase 1",
+        "text": "Project Signal Retiming Phase 1 (doc co-prj-009) is run by the Department of Transport (doc co-dep-003, director per co-app-003, budget co-bud-003). Lead: Junko Watanabe. Coordinates with sibling projects co-prj-007, co-prj-008. Active contract(s): co-ctr-005."
+      }
+    },
+    {
+      "op_id": "s2-100",
+      "op": "INGEST",
+      "checkpoint": true,
+      "args": {
+        "doc_id": "co-prj-010",
+        "title": "Project Permit Portal Rebuild",
+        "text": "Project Permit Portal Rebuild (doc co-prj-010) is run by the Department of Permits and Inspections (doc co-dep-004, director per co-app-004, budget co-bud-004). Lead: Karim El-Sayed. Coordinates with sibling projects co-prj-011, co-prj-012. Active contract(s): co-ctr-007."
+      }
+    },
+    {
+      "op_id": "s2-101",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-011",
+        "title": "Project Inspection Backlog Clear",
+        "text": "Project Inspection Backlog Clear (doc co-prj-011) is run by the Department of Permits and Inspections (doc co-dep-004, director per co-app-004, budget co-bud-004). Lead: Lucia Bianchi. Coordinates with sibling projects co-prj-010, co-prj-012."
+      }
+    },
+    {
+      "op_id": "s2-102",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who is the director of the Department of Housing?"
+      }
+    },
+    {
+      "op_id": "s2-103",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-001",
+        "title": "Budget Public Works FY2024 (mid-year revision)",
+        "text": "Mid-year revision of co-bud-001. Reallocates funds between Department of Public Works (doc co-dep-001) projects: co-prj-001, co-prj-002, co-prj-003."
+      }
+    },
+    {
+      "op_id": "s2-104",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-012",
+        "title": "Project Historic Plaque Survey",
+        "text": "Project Historic Plaque Survey (doc co-prj-012) is run by the Department of Permits and Inspections (doc co-dep-004, director per co-app-004, budget co-bud-004). Lead: Mehmet Aydin. Coordinates with sibling projects co-prj-010, co-prj-011. Active contract(s): co-ctr-008."
+      }
+    },
+    {
+      "op_id": "s2-105",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which doc id holds the appointment of Junko Watanabe?"
+      }
+    },
+    {
+      "op_id": "s2-106",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-002",
+        "title": "Budget Parks FY2024 (mid-year revision)",
+        "text": "Mid-year revision of co-bud-002. Reallocates funds between Department of Parks and Recreation (doc co-dep-002) projects: co-prj-004, co-prj-005, co-prj-006."
+      }
+    },
+    {
+      "op_id": "s2-107",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-013",
+        "title": "Project Records Digitisation",
+        "text": "Project Records Digitisation (doc co-prj-013) is run by the Department of Records (doc co-dep-005, director per co-app-005, budget co-bud-005). Lead: Nadia Hassan. Coordinates with sibling projects co-prj-014, co-prj-015. Active contract(s): co-ctr-009."
+      }
+    },
+    {
+      "op_id": "s2-108",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "How many active projects does the Department of Housing oversee?"
+      }
+    },
+    {
+      "op_id": "s2-109",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-003",
+        "title": "Budget Transport FY2024 (mid-year revision)",
+        "text": "Mid-year revision of co-bud-003. Reallocates funds between Department of Transport (doc co-dep-003) projects: co-prj-007, co-prj-008, co-prj-009."
+      }
+    },
+    {
+      "op_id": "s2-110",
+      "op": "INGEST",
+      "checkpoint": true,
+      "args": {
+        "doc_id": "co-prj-014",
+        "title": "Project Archive Climate Control",
+        "text": "Project Archive Climate Control (doc co-prj-014) is run by the Department of Records (doc co-dep-005, director per co-app-005, budget co-bud-005). Lead: Oscar Lindgren. Coordinates with sibling projects co-prj-013, co-prj-015. Active contract(s): co-ctr-010."
+      }
+    },
+    {
+      "op_id": "s2-111",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the FY2024 budget doc id for the Department of Housing?"
+      }
+    },
+    {
+      "op_id": "s2-112",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-004",
+        "title": "Budget Permits FY2024 (mid-year revision)",
+        "text": "Mid-year revision of co-bud-004. Reallocates funds between Department of Permits and Inspections (doc co-dep-004) projects: co-prj-010, co-prj-011, co-prj-012."
+      }
+    },
+    {
+      "op_id": "s2-113",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-015",
+        "title": "Project FOIA Workflow Reform",
+        "text": "Project FOIA Workflow Reform (doc co-prj-015) is run by the Department of Records (doc co-dep-005, director per co-app-005, budget co-bud-005). Lead: Pia Novak. Coordinates with sibling projects co-prj-013, co-prj-014."
+      }
+    },
+    {
+      "op_id": "s2-114",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which policy v1 belongs to the Department of Housing?"
+      }
+    },
+    {
+      "op_id": "s2-115",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-005",
+        "title": "Budget Records FY2024 (mid-year revision)",
+        "text": "Mid-year revision of co-bud-005. Reallocates funds between Department of Records (doc co-dep-005) projects: co-prj-013, co-prj-014, co-prj-015."
+      }
+    },
+    {
+      "op_id": "s2-116",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-016",
+        "title": "Project Vendor Onboarding",
+        "text": "Project Vendor Onboarding (doc co-prj-016) is run by the Office of Procurement (doc co-dep-006, director per co-app-006, budget co-bud-006). Lead: Quentin Aubert. Coordinates with sibling projects co-prj-017, co-prj-018. Active contract(s): co-ctr-011."
+      }
+    },
+    {
+      "op_id": "s2-117",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who is the director of the Department of Public Health?"
+      }
+    },
+    {
+      "op_id": "s2-118",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-006",
+        "title": "Budget Procurement FY2024 (mid-year revision)",
+        "text": "Mid-year revision of co-bud-006. Reallocates funds between Office of Procurement (doc co-dep-006) projects: co-prj-016, co-prj-017, co-prj-018."
+      }
+    },
+    {
+      "op_id": "s2-119",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-017",
+        "title": "Project Contract Templates Refresh",
+        "text": "Project Contract Templates Refresh (doc co-prj-017) is run by the Office of Procurement (doc co-dep-006, director per co-app-006, budget co-bud-006). Lead: Rosa Delgado. Coordinates with sibling projects co-prj-016, co-prj-018."
+      }
+    },
+    {
+      "op_id": "s2-120",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Which doc id holds the appointment of Karim El-Sayed?"
+      }
+    },
+    {
+      "op_id": "s2-121",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-007",
+        "title": "Budget Safety FY2024 (mid-year revision)",
+        "text": "Mid-year revision of co-bud-007. Reallocates funds between Office of Public Safety (doc co-dep-007) projects: co-prj-019, co-prj-020, co-prj-021."
+      }
+    },
+    {
+      "op_id": "s2-122",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-018",
+        "title": "Project Spend Analytics Dashboard",
+        "text": "Project Spend Analytics Dashboard (doc co-prj-018) is run by the Office of Procurement (doc co-dep-006, director per co-app-006, budget co-bud-006). Lead: Samir Khoury. Coordinates with sibling projects co-prj-016, co-prj-017. Active contract(s): co-ctr-012."
+      }
+    },
+    {
+      "op_id": "s2-123",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "How many active projects does the Department of Public Health oversee?"
+      }
+    },
+    {
+      "op_id": "s2-124",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-008",
+        "title": "Budget Code FY2024 (mid-year revision)",
+        "text": "Mid-year revision of co-bud-008. Reallocates funds between Office of Code Enforcement (doc co-dep-008) projects: co-prj-022, co-prj-023, co-prj-024."
+      }
+    },
+    {
+      "op_id": "s2-125",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-019",
+        "title": "Project Fire Station Siting",
+        "text": "Project Fire Station Siting (doc co-prj-019) is run by the Office of Public Safety (doc co-dep-007, director per co-app-007, budget co-bud-007). Lead: Tara Joshi. Coordinates with sibling projects co-prj-020, co-prj-021."
+      }
+    },
+    {
+      "op_id": "s2-126",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the FY2024 budget doc id for the Department of Public Health?"
+      }
+    },
+    {
+      "op_id": "s2-127",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-bud-009",
+        "title": "Budget Housing FY2024 (mid-year revision)",
+        "text": "Mid-year revision of co-bud-009. Reallocates funds between Department of Housing (doc co-dep-009) projects: co-prj-025, co-prj-026, co-prj-027."
+      }
+    },
+    {
+      "op_id": "s2-128",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-020",
+        "title": "Project Emergency Comms Upgrade",
+        "text": "Project Emergency Comms Upgrade (doc co-prj-020) is run by the Office of Public Safety (doc co-dep-007, director per co-app-007, budget co-bud-007). Lead: Ulrich Bauer. Coordinates with sibling projects co-prj-019, co-prj-021. Active contract(s): co-ctr-013."
+      }
+    },
+    {
+      "op_id": "s2-129",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which policy v1 belongs to the Department of Public Health?"
+      }
+    },
+    {
+      "op_id": "s2-130",
+      "op": "UPDATE",
+      "checkpoint": true,
+      "args": {
+        "doc_id": "co-bud-010",
+        "title": "Budget Health FY2024 (mid-year revision)",
+        "text": "Mid-year revision of co-bud-010. Reallocates funds between Department of Public Health (doc co-dep-010) projects: co-prj-028, co-prj-029, co-prj-030."
+      }
+    },
+    {
+      "op_id": "s2-131",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-021",
+        "title": "Project Hydrant Inventory",
+        "text": "Project Hydrant Inventory (doc co-prj-021) is run by the Office of Public Safety (doc co-dep-007, director per co-app-007, budget co-bud-007). Lead: Vivian Cho. Coordinates with sibling projects co-prj-019, co-prj-020. Active contract(s): co-ctr-014."
+      }
+    },
+    {
+      "op_id": "s2-132",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Riverwalk Renewal?"
+      }
+    },
+    {
+      "op_id": "s2-133",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-001",
+        "title": "Policy Procurement code v1.1",
+        "text": "Revision v1.1 of policy co-pol-001. Clarifies enforcement under the Office of Procurement (doc co-dep-006)."
+      }
+    },
+    {
+      "op_id": "s2-134",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-022",
+        "title": "Project Vacant Lot Registry",
+        "text": "Project Vacant Lot Registry (doc co-prj-022) is run by the Office of Code Enforcement (doc co-dep-008, director per co-app-008, budget co-bud-008). Lead: Wei Tan. Coordinates with sibling projects co-prj-023, co-prj-024. Active contract(s): co-ctr-015."
+      }
+    },
+    {
+      "op_id": "s2-135",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Pothole Survey?"
+      }
+    },
+    {
+      "op_id": "s2-136",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-002",
+        "title": "Policy Records retention v1.1",
+        "text": "Revision v1.1 of policy co-pol-002. Clarifies enforcement under the Department of Records (doc co-dep-005)."
+      }
+    },
+    {
+      "op_id": "s2-137",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-023",
+        "title": "Project Noise Complaint Triage",
+        "text": "Project Noise Complaint Triage (doc co-prj-023) is run by the Office of Code Enforcement (doc co-dep-008, director per co-app-008, budget co-bud-008). Lead: Xochitl Mendez. Coordinates with sibling projects co-prj-022, co-prj-024. Active contract(s): co-ctr-016."
+      }
+    },
+    {
+      "op_id": "s2-138",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Storm Drain Mapping?"
+      }
+    },
+    {
+      "op_id": "s2-139",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-003",
+        "title": "Policy Inspection escalation v1.1",
+        "text": "Revision v1.1 of policy co-pol-003. Clarifies enforcement under the Department of Permits and Inspections (doc co-dep-004)."
+      }
+    },
+    {
+      "op_id": "s2-140",
+      "op": "INGEST",
+      "checkpoint": true,
+      "args": {
+        "doc_id": "co-prj-024",
+        "title": "Project Sign Code Modernisation",
+        "text": "Project Sign Code Modernisation (doc co-prj-024) is run by the Office of Code Enforcement (doc co-dep-008, director per co-app-008, budget co-bud-008). Lead: Yusuf Demir. Coordinates with sibling projects co-prj-022, co-prj-023."
+      }
+    },
+    {
+      "op_id": "s2-141",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Arboretum Expansion?"
+      }
+    },
+    {
+      "op_id": "s2-142",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-004",
+        "title": "Policy Tenant eviction guidance v1.1",
+        "text": "Revision v1.1 of policy co-pol-004. Clarifies enforcement under the Department of Housing (doc co-dep-009)."
+      }
+    },
+    {
+      "op_id": "s2-143",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-025",
+        "title": "Project Affordable Units Census",
+        "text": "Project Affordable Units Census (doc co-prj-025) is run by the Department of Housing (doc co-dep-009, director per co-app-009, budget co-bud-009). Lead: Zara Khan. Coordinates with sibling projects co-prj-026, co-prj-027."
+      }
+    },
+    {
+      "op_id": "s2-144",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Playground Audit?"
+      }
+    },
+    {
+      "op_id": "s2-145",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-005",
+        "title": "Policy Vector control protocol v1.1",
+        "text": "Revision v1.1 of policy co-pol-005. Clarifies enforcement under the Department of Public Health (doc co-dep-010)."
+      }
+    },
+    {
+      "op_id": "s2-146",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-026",
+        "title": "Project Voucher Programme Reform",
+        "text": "Project Voucher Programme Reform (doc co-prj-026) is run by the Department of Housing (doc co-dep-009, director per co-app-009, budget co-bud-009). Lead: Aiko Tanaka. Coordinates with sibling projects co-prj-025, co-prj-027. Active contract(s): co-ctr-017."
+      }
+    },
+    {
+      "op_id": "s2-147",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Trail Wayfinding?"
+      }
+    },
+    {
+      "op_id": "s2-148",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-006",
+        "title": "Policy Bus lane enforcement v1.1",
+        "text": "Revision v1.1 of policy co-pol-006. Clarifies enforcement under the Department of Transport (doc co-dep-003)."
+      }
+    },
+    {
+      "op_id": "s2-149",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-027",
+        "title": "Project Tenant Helpline Expansion",
+        "text": "Project Tenant Helpline Expansion (doc co-prj-027) is run by the Department of Housing (doc co-dep-009, director per co-app-009, budget co-bud-009). Lead: Bjorn Holm. Coordinates with sibling projects co-prj-025, co-prj-026. Active contract(s): co-ctr-018."
+      }
+    },
+    {
+      "op_id": "s2-150",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Who leads Project Bus Lane Modernisation?"
+      }
+    },
+    {
+      "op_id": "s2-151",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-007",
+        "title": "Policy Park ranger conduct v1.1",
+        "text": "Revision v1.1 of policy co-pol-007. Clarifies enforcement under the Department of Parks and Recreation (doc co-dep-002)."
+      }
+    },
+    {
+      "op_id": "s2-152",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-028",
+        "title": "Project Clinic Site Survey",
+        "text": "Project Clinic Site Survey (doc co-prj-028) is run by the Department of Public Health (doc co-dep-010, director per co-app-010, budget co-bud-010). Lead: Camila Souza. Coordinates with sibling projects co-prj-029, co-prj-030. Active contract(s): co-ctr-019."
+      }
+    },
+    {
+      "op_id": "s2-153",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Ferry Terminal Upgrade?"
+      }
+    },
+    {
+      "op_id": "s2-154",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-008",
+        "title": "Policy Public hearing notice v1.1",
+        "text": "Revision v1.1 of policy co-pol-008. Clarifies enforcement under the Office of Code Enforcement (doc co-dep-008)."
+      }
+    },
+    {
+      "op_id": "s2-155",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-029",
+        "title": "Project Vector Control Mapping",
+        "text": "Project Vector Control Mapping (doc co-prj-029) is run by the Department of Public Health (doc co-dep-010, director per co-app-010, budget co-bud-010). Lead: Devon Pratt. Coordinates with sibling projects co-prj-028, co-prj-030. Active contract(s): co-ctr-020."
+      }
+    },
+    {
+      "op_id": "s2-156",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Signal Retiming Phase 1?"
+      }
+    },
+    {
+      "op_id": "s2-157",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-009",
+        "title": "Policy Hydrant inspection v1.1",
+        "text": "Revision v1.1 of policy co-pol-009. Clarifies enforcement under the Office of Public Safety (doc co-dep-007)."
+      }
+    },
+    {
+      "op_id": "s2-158",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-030",
+        "title": "Project Health Data Lake",
+        "text": "Project Health Data Lake (doc co-prj-030) is run by the Department of Public Health (doc co-dep-010, director per co-app-010, budget co-bud-010). Lead: Eitan Levy. Coordinates with sibling projects co-prj-028, co-prj-029."
+      }
+    },
+    {
+      "op_id": "s2-159",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Permit Portal Rebuild?"
+      }
+    },
+    {
+      "op_id": "s2-160",
+      "op": "UPDATE",
+      "checkpoint": true,
+      "args": {
+        "doc_id": "co-pol-010",
+        "title": "Policy Storm response v1.1",
+        "text": "Revision v1.1 of policy co-pol-010. Clarifies enforcement under the Department of Public Works (doc co-dep-001)."
+      }
+    },
+    {
+      "op_id": "s2-161",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-001",
+        "title": "Contract Helios Cells — battery storage pilot",
+        "text": "Contract Helios Cells — battery storage pilot (doc co-ctr-001) is administered by the Department of Public Works (doc co-dep-001, director per co-app-001) under budget co-bud-001. Covers project(s) co-prj-001."
+      }
+    },
+    {
+      "op_id": "s2-162",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Inspection Backlog Clear?"
+      }
+    },
+    {
+      "op_id": "s2-163",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-002",
+        "title": "Contract Vento Group — drainage equipment",
+        "text": "Contract Vento Group — drainage equipment (doc co-ctr-002) is administered by the Department of Public Works (doc co-dep-001, director per co-app-001) under budget co-bud-001. Covers project(s) co-prj-003."
+      }
+    },
+    {
+      "op_id": "s2-164",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Historic Plaque Survey?"
+      }
+    },
+    {
+      "op_id": "s2-165",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-003",
+        "title": "Contract Arborwise — tree health survey",
+        "text": "Contract Arborwise — tree health survey (doc co-ctr-003) is administered by the Department of Parks and Recreation (doc co-dep-002, director per co-app-002) under budget co-bud-002. Covers project(s) co-prj-004, co-prj-006."
+      }
+    },
+    {
+      "op_id": "s2-166",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Records Digitisation?"
+      }
+    },
+    {
+      "op_id": "s2-167",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-004",
+        "title": "Contract PlayCheck Ltd — safety audit",
+        "text": "Contract PlayCheck Ltd — safety audit (doc co-ctr-004) is administered by the Department of Parks and Recreation (doc co-dep-002, director per co-app-002) under budget co-bud-002. Covers project(s) co-prj-005."
+      }
+    },
+    {
+      "op_id": "s2-168",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Archive Climate Control?"
+      }
+    },
+    {
+      "op_id": "s2-169",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-005",
+        "title": "Contract MetroSignal — signal hardware",
+        "text": "Contract MetroSignal — signal hardware (doc co-ctr-005) is administered by the Department of Transport (doc co-dep-003, director per co-app-003) under budget co-bud-003. Covers project(s) co-prj-009."
+      }
+    },
+    {
+      "op_id": "s2-170",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Who leads Project FOIA Workflow Reform?"
+      }
+    },
+    {
+      "op_id": "s2-171",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-006",
+        "title": "Contract Marinex — ferry electrical refit",
+        "text": "Contract Marinex — ferry electrical refit (doc co-ctr-006) is administered by the Department of Transport (doc co-dep-003, director per co-app-003) under budget co-bud-003. Covers project(s) co-prj-008."
+      }
+    },
+    {
+      "op_id": "s2-172",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Vendor Onboarding?"
+      }
+    },
+    {
+      "op_id": "s2-173",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-007",
+        "title": "Contract CodeForge — portal development",
+        "text": "Contract CodeForge — portal development (doc co-ctr-007) is administered by the Department of Permits and Inspections (doc co-dep-004, director per co-app-004) under budget co-bud-004. Covers project(s) co-prj-010."
+      }
+    },
+    {
+      "op_id": "s2-174",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Contract Templates Refresh?"
+      }
+    },
+    {
+      "op_id": "s2-175",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-008",
+        "title": "Contract Heritage Studio — plaque fabrication",
+        "text": "Contract Heritage Studio — plaque fabrication (doc co-ctr-008) is administered by the Department of Permits and Inspections (doc co-dep-004, director per co-app-004) under budget co-bud-004. Covers project(s) co-prj-012."
+      }
+    },
+    {
+      "op_id": "s2-176",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Spend Analytics Dashboard?"
+      }
+    },
+    {
+      "op_id": "s2-177",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-009",
+        "title": "Contract DigiScan — archive digitisation",
+        "text": "Contract DigiScan — archive digitisation (doc co-ctr-009) is administered by the Department of Records (doc co-dep-005, director per co-app-005) under budget co-bud-005. Covers project(s) co-prj-013."
+      }
+    },
+    {
+      "op_id": "s2-178",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Fire Station Siting?"
+      }
+    },
+    {
+      "op_id": "s2-179",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-010",
+        "title": "Contract Climacore — HVAC for archives",
+        "text": "Contract Climacore — HVAC for archives (doc co-ctr-010) is administered by the Department of Records (doc co-dep-005, director per co-app-005) under budget co-bud-005. Covers project(s) co-prj-014."
+      }
+    },
+    {
+      "op_id": "s2-180",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Who leads Project Emergency Comms Upgrade?"
+      }
+    },
+    {
+      "op_id": "s2-181",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-011",
+        "title": "Contract Talenta — vendor onboarding tooling",
+        "text": "Contract Talenta — vendor onboarding tooling (doc co-ctr-011) is administered by the Office of Procurement (doc co-dep-006, director per co-app-006) under budget co-bud-006. Covers project(s) co-prj-016."
+      }
+    },
+    {
+      "op_id": "s2-182",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Hydrant Inventory?"
+      }
+    },
+    {
+      "op_id": "s2-183",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-001",
+        "title": "Project Riverwalk Renewal (status update)",
+        "text": "Status update on Project Riverwalk Renewal (doc co-prj-001) under the Department of Public Works (doc co-dep-001). Active contract(s): co-ctr-001."
+      }
+    },
+    {
+      "op_id": "s2-184",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-001",
+        "doc_id": "co-pol-001-r1",
+        "title": "Revision r1 of co-pol-001",
+        "text": "This revision (doc co-pol-001-r1) supersedes co-pol-001; the lineage originates at co-pol-001. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-185",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-012",
+        "title": "Contract DataLense — spend analytics platform",
+        "text": "Contract DataLense — spend analytics platform (doc co-ctr-012) is administered by the Office of Procurement (doc co-dep-006, director per co-app-006) under budget co-bud-006. Covers project(s) co-prj-018."
+      }
+    },
+    {
+      "op_id": "s2-186",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Vacant Lot Registry?"
+      }
+    },
+    {
+      "op_id": "s2-187",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-002",
+        "title": "Project Pothole Survey (status update)",
+        "text": "Status update on Project Pothole Survey (doc co-prj-002) under the Department of Public Works (doc co-dep-001)."
+      }
+    },
+    {
+      "op_id": "s2-188",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-001-r1",
+        "doc_id": "co-pol-001-r2",
+        "title": "Revision r2 of co-pol-001",
+        "text": "This revision (doc co-pol-001-r2) supersedes co-pol-001-r1; the lineage originates at co-pol-001. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-189",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-013",
+        "title": "Contract FireRadio — emergency comms hardware",
+        "text": "Contract FireRadio — emergency comms hardware (doc co-ctr-013) is administered by the Office of Public Safety (doc co-dep-007, director per co-app-007) under budget co-bud-007. Covers project(s) co-prj-020."
+      }
+    },
+    {
+      "op_id": "s2-190",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Who leads Project Noise Complaint Triage?"
+      }
+    },
+    {
+      "op_id": "s2-191",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-003",
+        "title": "Project Storm Drain Mapping (status update)",
+        "text": "Status update on Project Storm Drain Mapping (doc co-prj-003) under the Department of Public Works (doc co-dep-001). Active contract(s): co-ctr-002."
+      }
+    },
+    {
+      "op_id": "s2-192",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-001-r2",
+        "doc_id": "co-pol-001-r3",
+        "title": "Revision r3 of co-pol-001",
+        "text": "This revision (doc co-pol-001-r3) supersedes co-pol-001-r2; the lineage originates at co-pol-001. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-193",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-014",
+        "title": "Contract HydroMap — hydrant survey services",
+        "text": "Contract HydroMap — hydrant survey services (doc co-ctr-014) is administered by the Office of Public Safety (doc co-dep-007, director per co-app-007) under budget co-bud-007. Covers project(s) co-prj-021."
+      }
+    },
+    {
+      "op_id": "s2-194",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Sign Code Modernisation?"
+      }
+    },
+    {
+      "op_id": "s2-195",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-004",
+        "title": "Project Arboretum Expansion (status update)",
+        "text": "Status update on Project Arboretum Expansion (doc co-prj-004) under the Department of Parks and Recreation (doc co-dep-002). Active contract(s): co-ctr-003."
+      }
+    },
+    {
+      "op_id": "s2-196",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-001-r3",
+        "doc_id": "co-pol-001-r4",
+        "title": "Revision r4 of co-pol-001",
+        "text": "This revision (doc co-pol-001-r4) supersedes co-pol-001-r3; the lineage originates at co-pol-001. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-197",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-015",
+        "title": "Contract LotTrack — vacant lot registry tooling",
+        "text": "Contract LotTrack — vacant lot registry tooling (doc co-ctr-015) is administered by the Office of Code Enforcement (doc co-dep-008, director per co-app-008) under budget co-bud-008. Covers project(s) co-prj-022."
+      }
+    },
+    {
+      "op_id": "s2-198",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Affordable Units Census?"
+      }
+    },
+    {
+      "op_id": "s2-199",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-005",
+        "title": "Project Playground Audit (status update)",
+        "text": "Status update on Project Playground Audit (doc co-prj-005) under the Department of Parks and Recreation (doc co-dep-002). Active contract(s): co-ctr-004."
+      }
+    },
+    {
+      "op_id": "s2-200",
+      "op": "SUPERSEDE",
+      "checkpoint": true,
+      "args": {
+        "old_doc_id": "co-pol-001-r4",
+        "doc_id": "co-pol-001-r5",
+        "title": "Revision r5 of co-pol-001",
+        "text": "This revision (doc co-pol-001-r5) supersedes co-pol-001-r4; the lineage originates at co-pol-001. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-201",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-016",
+        "title": "Contract Quietworks — acoustic monitoring",
+        "text": "Contract Quietworks — acoustic monitoring (doc co-ctr-016) is administered by the Office of Code Enforcement (doc co-dep-008, director per co-app-008) under budget co-bud-008. Covers project(s) co-prj-023."
+      }
+    },
+    {
+      "op_id": "s2-202",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Voucher Programme Reform?"
+      }
+    },
+    {
+      "op_id": "s2-203",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-006",
+        "title": "Project Trail Wayfinding (status update)",
+        "text": "Status update on Project Trail Wayfinding (doc co-prj-006) under the Department of Parks and Recreation (doc co-dep-002). Active contract(s): co-ctr-003."
+      }
+    },
+    {
+      "op_id": "s2-204",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-002",
+        "doc_id": "co-pol-002-r1",
+        "title": "Revision r1 of co-pol-002",
+        "text": "This revision (doc co-pol-002-r1) supersedes co-pol-002; the lineage originates at co-pol-002. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-205",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-017",
+        "title": "Contract HomeBridge — voucher case management",
+        "text": "Contract HomeBridge — voucher case management (doc co-ctr-017) is administered by the Department of Housing (doc co-dep-009, director per co-app-009) under budget co-bud-009. Covers project(s) co-prj-026."
+      }
+    },
+    {
+      "op_id": "s2-206",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Tenant Helpline Expansion?"
+      }
+    },
+    {
+      "op_id": "s2-207",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-007",
+        "title": "Project Bus Lane Modernisation (status update)",
+        "text": "Status update on Project Bus Lane Modernisation (doc co-prj-007) under the Department of Transport (doc co-dep-003)."
+      }
+    },
+    {
+      "op_id": "s2-208",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-002-r1",
+        "doc_id": "co-pol-002-r2",
+        "title": "Revision r2 of co-pol-002",
+        "text": "This revision (doc co-pol-002-r2) supersedes co-pol-002-r1; the lineage originates at co-pol-002. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-209",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-018",
+        "title": "Contract LineTwo — tenant helpline staffing",
+        "text": "Contract LineTwo — tenant helpline staffing (doc co-ctr-018) is administered by the Department of Housing (doc co-dep-009, director per co-app-009) under budget co-bud-009. Covers project(s) co-prj-027."
+      }
+    },
+    {
+      "op_id": "s2-210",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Who leads Project Clinic Site Survey?"
+      }
+    },
+    {
+      "op_id": "s2-211",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-008",
+        "title": "Project Ferry Terminal Upgrade (status update)",
+        "text": "Status update on Project Ferry Terminal Upgrade (doc co-prj-008) under the Department of Transport (doc co-dep-003). Active contract(s): co-ctr-006."
+      }
+    },
+    {
+      "op_id": "s2-212",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-002-r2",
+        "doc_id": "co-pol-002-r3",
+        "title": "Revision r3 of co-pol-002",
+        "text": "This revision (doc co-pol-002-r3) supersedes co-pol-002-r2; the lineage originates at co-pol-002. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-213",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-019",
+        "title": "Contract MapClinic — clinic siting analytics",
+        "text": "Contract MapClinic — clinic siting analytics (doc co-ctr-019) is administered by the Department of Public Health (doc co-dep-010, director per co-app-010) under budget co-bud-010. Covers project(s) co-prj-028."
+      }
+    },
+    {
+      "op_id": "s2-214",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Vector Control Mapping?"
+      }
+    },
+    {
+      "op_id": "s2-215",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-009",
+        "title": "Project Signal Retiming Phase 1 (status update)",
+        "text": "Status update on Project Signal Retiming Phase 1 (doc co-prj-009) under the Department of Transport (doc co-dep-003). Active contract(s): co-ctr-005."
+      }
+    },
+    {
+      "op_id": "s2-216",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-002-r3",
+        "doc_id": "co-pol-002-r4",
+        "title": "Revision r4 of co-pol-002",
+        "text": "This revision (doc co-pol-002-r4) supersedes co-pol-002-r3; the lineage originates at co-pol-002. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-217",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-020",
+        "title": "Contract VectorOps — mosquito surveillance",
+        "text": "Contract VectorOps — mosquito surveillance (doc co-ctr-020) is administered by the Department of Public Health (doc co-dep-010, director per co-app-010) under budget co-bud-010. Covers project(s) co-prj-029."
+      }
+    },
+    {
+      "op_id": "s2-218",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Who leads Project Health Data Lake?"
+      }
+    },
+    {
+      "op_id": "s2-219",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-prj-010",
+        "title": "Project Permit Portal Rebuild (status update)",
+        "text": "Status update on Project Permit Portal Rebuild (doc co-prj-010) under the Department of Permits and Inspections (doc co-dep-004). Active contract(s): co-ctr-007."
+      }
+    },
+    {
+      "op_id": "s2-220",
+      "op": "SUPERSEDE",
+      "checkpoint": true,
+      "args": {
+        "old_doc_id": "co-pol-002-r4",
+        "doc_id": "co-pol-002-r5",
+        "title": "Revision r5 of co-pol-002",
+        "text": "This revision (doc co-pol-002-r5) supersedes co-pol-002-r4; the lineage originates at co-pol-002. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-221",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-001",
+        "title": "Incident Riverwalk segment closure",
+        "text": "Incident Riverwalk segment closure (doc co-inc-001) was filed against the Department of Public Works (doc co-dep-001, director per co-app-001). Related records: co-prj-001, co-ctr-001."
+      }
+    },
+    {
+      "op_id": "s2-222",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which project(s) does co-ctr-001 cover?"
+      }
+    },
+    {
+      "op_id": "s2-223",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-001",
+        "title": "Contract Helios Cells — battery storage pilot (amendment 1)",
+        "text": "Amendment 1 to co-ctr-001. Extends scope to additional work under the Department of Public Works (doc co-dep-001). Affected project(s): co-prj-001."
+      }
+    },
+    {
+      "op_id": "s2-224",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-003",
+        "doc_id": "co-pol-003-r1",
+        "title": "Revision r1 of co-pol-003",
+        "text": "This revision (doc co-pol-003-r1) supersedes co-pol-003; the lineage originates at co-pol-003. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-225",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-002",
+        "title": "Incident Bus lane signal conflict",
+        "text": "Incident Bus lane signal conflict (doc co-inc-002) was filed against the Department of Transport (doc co-dep-003, director per co-app-003). Related records: co-prj-007, co-prj-009."
+      }
+    },
+    {
+      "op_id": "s2-226",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which project(s) does co-ctr-002 cover?"
+      }
+    },
+    {
+      "op_id": "s2-227",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-002",
+        "title": "Contract Vento Group — drainage equipment (amendment 1)",
+        "text": "Amendment 1 to co-ctr-002. Extends scope to additional work under the Department of Public Works (doc co-dep-001). Affected project(s): co-prj-003."
+      }
+    },
+    {
+      "op_id": "s2-228",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-003-r1",
+        "doc_id": "co-pol-003-r2",
+        "title": "Revision r2 of co-pol-003",
+        "text": "This revision (doc co-pol-003-r2) supersedes co-pol-003-r1; the lineage originates at co-pol-003. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-229",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-003",
+        "title": "Incident Ferry refit schedule slip",
+        "text": "Incident Ferry refit schedule slip (doc co-inc-003) was filed against the Department of Transport (doc co-dep-003, director per co-app-003). Related records: co-prj-008, co-ctr-006."
+      }
+    },
+    {
+      "op_id": "s2-230",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Which project(s) does co-ctr-003 cover?"
+      }
+    },
+    {
+      "op_id": "s2-231",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-003",
+        "title": "Contract Arborwise — tree health survey (amendment 1)",
+        "text": "Amendment 1 to co-ctr-003. Extends scope to additional work under the Department of Parks and Recreation (doc co-dep-002). Affected project(s): co-prj-004, co-prj-006."
+      }
+    },
+    {
+      "op_id": "s2-232",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-003-r2",
+        "doc_id": "co-pol-003-r3",
+        "title": "Revision r3 of co-pol-003",
+        "text": "This revision (doc co-pol-003-r3) supersedes co-pol-003-r2; the lineage originates at co-pol-003. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-233",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-004",
+        "title": "Incident Permit portal outage",
+        "text": "Incident Permit portal outage (doc co-inc-004) was filed against the Department of Permits and Inspections (doc co-dep-004, director per co-app-004). Related records: co-prj-010, co-ctr-007."
+      }
+    },
+    {
+      "op_id": "s2-234",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which project(s) does co-ctr-004 cover?"
+      }
+    },
+    {
+      "op_id": "s2-235",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-004",
+        "title": "Contract PlayCheck Ltd — safety audit (amendment 1)",
+        "text": "Amendment 1 to co-ctr-004. Extends scope to additional work under the Department of Parks and Recreation (doc co-dep-002). Affected project(s): co-prj-005."
+      }
+    },
+    {
+      "op_id": "s2-236",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-003-r3",
+        "doc_id": "co-pol-003-r4",
+        "title": "Revision r4 of co-pol-003",
+        "text": "This revision (doc co-pol-003-r4) supersedes co-pol-003-r3; the lineage originates at co-pol-003. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-237",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-005",
+        "title": "Incident Archive HVAC alarm",
+        "text": "Incident Archive HVAC alarm (doc co-inc-005) was filed against the Department of Records (doc co-dep-005, director per co-app-005). Related records: co-prj-014, co-ctr-010."
+      }
+    },
+    {
+      "op_id": "s2-238",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which project(s) does co-ctr-005 cover?"
+      }
+    },
+    {
+      "op_id": "s2-239",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-005",
+        "title": "Contract MetroSignal — signal hardware (amendment 1)",
+        "text": "Amendment 1 to co-ctr-005. Extends scope to additional work under the Department of Transport (doc co-dep-003). Affected project(s): co-prj-009."
+      }
+    },
+    {
+      "op_id": "s2-240",
+      "op": "SUPERSEDE",
+      "checkpoint": true,
+      "args": {
+        "old_doc_id": "co-pol-004",
+        "doc_id": "co-pol-004-r1",
+        "title": "Revision r1 of co-pol-004",
+        "text": "This revision (doc co-pol-004-r1) supersedes co-pol-004; the lineage originates at co-pol-004. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-241",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-006",
+        "title": "Incident Emergency radio dead zone",
+        "text": "Incident Emergency radio dead zone (doc co-inc-006) was filed against the Office of Public Safety (doc co-dep-007, director per co-app-007). Related records: co-prj-020, co-ctr-013."
+      }
+    },
+    {
+      "op_id": "s2-242",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which project(s) does co-ctr-006 cover?"
+      }
+    },
+    {
+      "op_id": "s2-243",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-007",
+        "title": "Incident Hydrant pressure failure",
+        "text": "Incident Hydrant pressure failure (doc co-inc-007) was filed against the Office of Public Safety (doc co-dep-007, director per co-app-007). Related records: co-prj-021, co-ctr-014."
+      }
+    },
+    {
+      "op_id": "s2-244",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which project(s) does co-ctr-007 cover?"
+      }
+    },
+    {
+      "op_id": "s2-245",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-008",
+        "title": "Incident Voucher payment delay",
+        "text": "Incident Voucher payment delay (doc co-inc-008) was filed against the Department of Housing (doc co-dep-009, director per co-app-009). Related records: co-prj-026, co-ctr-017."
+      }
+    },
+    {
+      "op_id": "s2-246",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which project(s) does co-ctr-008 cover?"
+      }
+    },
+    {
+      "op_id": "s2-247",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-009",
+        "title": "Incident Mosquito surveillance gap",
+        "text": "Incident Mosquito surveillance gap (doc co-inc-009) was filed against the Department of Public Health (doc co-dep-010, director per co-app-010). Related records: co-prj-029, co-ctr-020."
+      }
+    },
+    {
+      "op_id": "s2-248",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which project(s) does co-ctr-009 cover?"
+      }
+    },
+    {
+      "op_id": "s2-249",
+      "op": "INGEST",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-010",
+        "title": "Incident Clinic siting public comment",
+        "text": "Incident Clinic siting public comment (doc co-inc-010) was filed against the Department of Public Health (doc co-dep-010, director per co-app-010). Related records: co-prj-028, co-ctr-019."
+      }
+    },
+    {
+      "op_id": "s2-250",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Which project(s) does co-ctr-010 cover?"
+      }
+    },
+    {
+      "op_id": "s2-251",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which project(s) does co-ctr-011 cover?"
+      }
+    },
+    {
+      "op_id": "s2-252",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which project(s) does co-ctr-012 cover?"
+      }
+    },
+    {
+      "op_id": "s2-253",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which project(s) does co-ctr-013 cover?"
+      }
+    },
+    {
+      "op_id": "s2-254",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which project(s) does co-ctr-014 cover?"
+      }
+    },
+    {
+      "op_id": "s2-255",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which project(s) does co-ctr-015 cover?"
+      }
+    },
+    {
+      "op_id": "s2-256",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which project(s) does co-ctr-016 cover?"
+      }
+    },
+    {
+      "op_id": "s2-257",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which project(s) does co-ctr-017 cover?"
+      }
+    },
+    {
+      "op_id": "s2-258",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which project(s) does co-ctr-018 cover?"
+      }
+    },
+    {
+      "op_id": "s2-259",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which project(s) does co-ctr-019 cover?"
+      }
+    },
+    {
+      "op_id": "s2-260",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Which project(s) does co-ctr-020 cover?"
+      }
+    },
+    {
+      "op_id": "s2-261",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which department filed co-inc-001?"
+      }
+    },
+    {
+      "op_id": "s2-262",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which department filed co-inc-002?"
+      }
+    },
+    {
+      "op_id": "s2-263",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which department filed co-inc-003?"
+      }
+    },
+    {
+      "op_id": "s2-264",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which department filed co-inc-004?"
+      }
+    },
+    {
+      "op_id": "s2-265",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which department filed co-inc-005?"
+      }
+    },
+    {
+      "op_id": "s2-266",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which department filed co-inc-006?"
+      }
+    },
+    {
+      "op_id": "s2-267",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which department filed co-inc-007?"
+      }
+    },
+    {
+      "op_id": "s2-268",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which department filed co-inc-008?"
+      }
+    },
+    {
+      "op_id": "s2-269",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Which department filed co-inc-009?"
+      }
+    },
+    {
+      "op_id": "s2-270",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Which department filed co-inc-010?"
+      }
+    },
+    {
+      "op_id": "s2-271",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the current revision in the co-pol-001 lineage?"
+      }
+    },
+    {
+      "op_id": "s2-272",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the current revision in the co-pol-002 lineage?"
+      }
+    },
+    {
+      "op_id": "s2-273",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the current revision in the co-pol-003 lineage?"
+      }
+    },
+    {
+      "op_id": "s2-274",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the current revision in the co-pol-004 lineage?"
+      }
+    },
+    {
+      "op_id": "s2-275",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the current revision in the co-pol-005 lineage?"
+      }
+    },
+    {
+      "op_id": "s2-276",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the current revision in the co-pol-006 lineage?"
+      }
+    },
+    {
+      "op_id": "s2-277",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the current revision in the co-ctr-011 lineage?"
+      }
+    },
+    {
+      "op_id": "s2-278",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the current revision in the co-ctr-014 lineage?"
+      }
+    },
+    {
+      "op_id": "s2-279",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What is the current revision in the co-ctr-019 lineage?"
+      }
+    },
+    {
+      "op_id": "s2-280",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Name one project run by the Department of Public Works."
+      }
+    },
+    {
+      "op_id": "s2-281",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Parks and Recreation."
+      }
+    },
+    {
+      "op_id": "s2-282",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-006",
+        "title": "Contract Marinex — ferry electrical refit (amendment 1)",
+        "text": "Amendment 1 to co-ctr-006. Extends scope to additional work under the Department of Transport (doc co-dep-003). Affected project(s): co-prj-008."
+      }
+    },
+    {
+      "op_id": "s2-283",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-004-r1",
+        "doc_id": "co-pol-004-r2",
+        "title": "Revision r2 of co-pol-004",
+        "text": "This revision (doc co-pol-004-r2) supersedes co-pol-004-r1; the lineage originates at co-pol-004. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-284",
+      "op": "DELETE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-001"
+      }
+    },
+    {
+      "op_id": "s2-285",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Transport."
+      }
+    },
+    {
+      "op_id": "s2-286",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-007",
+        "title": "Contract CodeForge — portal development (amendment 1)",
+        "text": "Amendment 1 to co-ctr-007. Extends scope to additional work under the Department of Permits and Inspections (doc co-dep-004). Affected project(s): co-prj-010."
+      }
+    },
+    {
+      "op_id": "s2-287",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-004-r2",
+        "doc_id": "co-pol-004-r3",
+        "title": "Revision r3 of co-pol-004",
+        "text": "This revision (doc co-pol-004-r3) supersedes co-pol-004-r2; the lineage originates at co-pol-004. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-288",
+      "op": "DELETE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-002"
+      }
+    },
+    {
+      "op_id": "s2-289",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Permits and Inspections."
+      }
+    },
+    {
+      "op_id": "s2-290",
+      "op": "UPDATE",
+      "checkpoint": true,
+      "args": {
+        "doc_id": "co-ctr-008",
+        "title": "Contract Heritage Studio — plaque fabrication (amendment 1)",
+        "text": "Amendment 1 to co-ctr-008. Extends scope to additional work under the Department of Permits and Inspections (doc co-dep-004). Affected project(s): co-prj-012."
+      }
+    },
+    {
+      "op_id": "s2-291",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-004-r3",
+        "doc_id": "co-pol-004-r4",
+        "title": "Revision r4 of co-pol-004",
+        "text": "This revision (doc co-pol-004-r4) supersedes co-pol-004-r3; the lineage originates at co-pol-004. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-292",
+      "op": "DELETE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-003"
+      }
+    },
+    {
+      "op_id": "s2-293",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Records."
+      }
+    },
+    {
+      "op_id": "s2-294",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-009",
+        "title": "Contract DigiScan — archive digitisation (amendment 1)",
+        "text": "Amendment 1 to co-ctr-009. Extends scope to additional work under the Department of Records (doc co-dep-005). Affected project(s): co-prj-013."
+      }
+    },
+    {
+      "op_id": "s2-295",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-005",
+        "doc_id": "co-pol-005-r1",
+        "title": "Revision r1 of co-pol-005",
+        "text": "This revision (doc co-pol-005-r1) supersedes co-pol-005; the lineage originates at co-pol-005. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-296",
+      "op": "DELETE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-004"
+      }
+    },
+    {
+      "op_id": "s2-297",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Office of Procurement."
+      }
+    },
+    {
+      "op_id": "s2-298",
+      "op": "UPDATE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-010",
+        "title": "Contract Climacore — HVAC for archives (amendment 1)",
+        "text": "Amendment 1 to co-ctr-010. Extends scope to additional work under the Department of Records (doc co-dep-005). Affected project(s): co-prj-014."
+      }
+    },
+    {
+      "op_id": "s2-299",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-005-r1",
+        "doc_id": "co-pol-005-r2",
+        "title": "Revision r2 of co-pol-005",
+        "text": "This revision (doc co-pol-005-r2) supersedes co-pol-005-r1; the lineage originates at co-pol-005. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-300",
+      "op": "DELETE",
+      "checkpoint": true,
+      "args": {
+        "doc_id": "co-inc-005"
+      }
+    },
+    {
+      "op_id": "s2-301",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Office of Public Safety."
+      }
+    },
+    {
+      "op_id": "s2-302",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-005-r2",
+        "doc_id": "co-pol-005-r3",
+        "title": "Revision r3 of co-pol-005",
+        "text": "This revision (doc co-pol-005-r3) supersedes co-pol-005-r2; the lineage originates at co-pol-005. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-303",
+      "op": "DELETE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-006"
+      }
+    },
+    {
+      "op_id": "s2-304",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Office of Code Enforcement."
+      }
+    },
+    {
+      "op_id": "s2-305",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-006",
+        "doc_id": "co-pol-006-r1",
+        "title": "Revision r1 of co-pol-006",
+        "text": "This revision (doc co-pol-006-r1) supersedes co-pol-006; the lineage originates at co-pol-006. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-306",
+      "op": "DELETE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-007"
+      }
+    },
+    {
+      "op_id": "s2-307",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Housing."
+      }
+    },
+    {
+      "op_id": "s2-308",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-006-r1",
+        "doc_id": "co-pol-006-r2",
+        "title": "Revision r2 of co-pol-006",
+        "text": "This revision (doc co-pol-006-r2) supersedes co-pol-006-r1; the lineage originates at co-pol-006. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-309",
+      "op": "DELETE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-008"
+      }
+    },
+    {
+      "op_id": "s2-310",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Name one project run by the Department of Public Health."
+      }
+    },
+    {
+      "op_id": "s2-311",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-pol-006-r2",
+        "doc_id": "co-pol-006-r3",
+        "title": "Revision r3 of co-pol-006",
+        "text": "This revision (doc co-pol-006-r3) supersedes co-pol-006-r2; the lineage originates at co-pol-006. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-312",
+      "op": "DELETE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-009"
+      }
+    },
+    {
+      "op_id": "s2-313",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Public Works."
+      }
+    },
+    {
+      "op_id": "s2-314",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-ctr-011",
+        "doc_id": "co-ctr-011-r1",
+        "title": "Revision r1 of co-ctr-011",
+        "text": "This revision (doc co-ctr-011-r1) supersedes co-ctr-011; the lineage originates at co-ctr-011. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-315",
+      "op": "DELETE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-inc-010"
+      }
+    },
+    {
+      "op_id": "s2-316",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Parks and Recreation."
+      }
+    },
+    {
+      "op_id": "s2-317",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-ctr-011-r1",
+        "doc_id": "co-ctr-011-r2",
+        "title": "Revision r2 of co-ctr-011",
+        "text": "This revision (doc co-ctr-011-r2) supersedes co-ctr-011-r1; the lineage originates at co-ctr-011. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-318",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Transport."
+      }
+    },
+    {
+      "op_id": "s2-319",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-ctr-014",
+        "doc_id": "co-ctr-014-r1",
+        "title": "Revision r1 of co-ctr-014",
+        "text": "This revision (doc co-ctr-014-r1) supersedes co-ctr-014; the lineage originates at co-ctr-014. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-320",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Name one project run by the Department of Permits and Inspections."
+      }
+    },
+    {
+      "op_id": "s2-321",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-ctr-014-r1",
+        "doc_id": "co-ctr-014-r2",
+        "title": "Revision r2 of co-ctr-014",
+        "text": "This revision (doc co-ctr-014-r2) supersedes co-ctr-014-r1; the lineage originates at co-ctr-014. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-322",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Records."
+      }
+    },
+    {
+      "op_id": "s2-323",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-ctr-019",
+        "doc_id": "co-ctr-019-r1",
+        "title": "Revision r1 of co-ctr-019",
+        "text": "This revision (doc co-ctr-019-r1) supersedes co-ctr-019; the lineage originates at co-ctr-019. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-324",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Office of Procurement."
+      }
+    },
+    {
+      "op_id": "s2-325",
+      "op": "SUPERSEDE",
+      "checkpoint": false,
+      "args": {
+        "old_doc_id": "co-ctr-019-r1",
+        "doc_id": "co-ctr-019-r2",
+        "title": "Revision r2 of co-ctr-019",
+        "text": "This revision (doc co-ctr-019-r2) supersedes co-ctr-019-r1; the lineage originates at co-ctr-019. The revision adjusts the underlying record while preserving the SUPERSEDE chain."
+      }
+    },
+    {
+      "op_id": "s2-326",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Office of Public Safety."
+      }
+    },
+    {
+      "op_id": "s2-327",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Office of Code Enforcement."
+      }
+    },
+    {
+      "op_id": "s2-328",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Housing."
+      }
+    },
+    {
+      "op_id": "s2-329",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Public Health."
+      }
+    },
+    {
+      "op_id": "s2-330",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Name one project run by the Department of Public Works."
+      }
+    },
+    {
+      "op_id": "s2-331",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Parks and Recreation."
+      }
+    },
+    {
+      "op_id": "s2-332",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Transport."
+      }
+    },
+    {
+      "op_id": "s2-333",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Permits and Inspections."
+      }
+    },
+    {
+      "op_id": "s2-334",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Records."
+      }
+    },
+    {
+      "op_id": "s2-335",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Office of Procurement."
+      }
+    },
+    {
+      "op_id": "s2-336",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Office of Public Safety."
+      }
+    },
+    {
+      "op_id": "s2-337",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Office of Code Enforcement."
+      }
+    },
+    {
+      "op_id": "s2-338",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Housing."
+      }
+    },
+    {
+      "op_id": "s2-339",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Public Health."
+      }
+    },
+    {
+      "op_id": "s2-340",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Name one project run by the Department of Public Works."
+      }
+    },
+    {
+      "op_id": "s2-341",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Parks and Recreation."
+      }
+    },
+    {
+      "op_id": "s2-342",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Transport."
+      }
+    },
+    {
+      "op_id": "s2-343",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Permits and Inspections."
+      }
+    },
+    {
+      "op_id": "s2-344",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Records."
+      }
+    },
+    {
+      "op_id": "s2-345",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Office of Procurement."
+      }
+    },
+    {
+      "op_id": "s2-346",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Office of Public Safety."
+      }
+    },
+    {
+      "op_id": "s2-347",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Office of Code Enforcement."
+      }
+    },
+    {
+      "op_id": "s2-348",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Housing."
+      }
+    },
+    {
+      "op_id": "s2-349",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Public Health."
+      }
+    },
+    {
+      "op_id": "s2-350",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "Name one project run by the Department of Public Works."
+      }
+    },
+    {
+      "op_id": "s2-351",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Parks and Recreation."
+      }
+    },
+    {
+      "op_id": "s2-352",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Transport."
+      }
+    },
+    {
+      "op_id": "s2-353",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Permits and Inspections."
+      }
+    },
+    {
+      "op_id": "s2-354",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Records."
+      }
+    },
+    {
+      "op_id": "s2-355",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Office of Procurement."
+      }
+    },
+    {
+      "op_id": "s2-356",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Office of Public Safety."
+      }
+    },
+    {
+      "op_id": "s2-357",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Office of Code Enforcement."
+      }
+    },
+    {
+      "op_id": "s2-358",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "Name one project run by the Department of Housing."
+      }
+    },
+    {
+      "op_id": "s2-359",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Lena Ortiz direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-360",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "What department does Marcus Chen direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-361",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Priya Anand direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-362",
+      "op": "DELETE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-001-r1"
+      }
+    },
+    {
+      "op_id": "s2-363",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Sofia Reyes direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-364",
+      "op": "DELETE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-002-r1"
+      }
+    },
+    {
+      "op_id": "s2-365",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Daniel Okoye direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-366",
+      "op": "DELETE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-003-r1"
+      }
+    },
+    {
+      "op_id": "s2-367",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Tomas Eriksen direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-368",
+      "op": "DELETE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-004-r1"
+      }
+    },
+    {
+      "op_id": "s2-369",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Hana Park direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-370",
+      "op": "DELETE",
+      "checkpoint": true,
+      "args": {
+        "doc_id": "co-pol-005-r1"
+      }
+    },
+    {
+      "op_id": "s2-371",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Idris Mwangi direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-372",
+      "op": "DELETE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-pol-006-r1"
+      }
+    },
+    {
+      "op_id": "s2-373",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Junko Watanabe direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-374",
+      "op": "DELETE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-011-r1"
+      }
+    },
+    {
+      "op_id": "s2-375",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Karim El-Sayed direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-376",
+      "op": "DELETE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-014-r1"
+      }
+    },
+    {
+      "op_id": "s2-377",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Lucia Bianchi direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-378",
+      "op": "DELETE",
+      "checkpoint": false,
+      "args": {
+        "doc_id": "co-ctr-019-r1"
+      }
+    },
+    {
+      "op_id": "s2-379",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Mehmet Aydin direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-380",
+      "op": "DELETE",
+      "checkpoint": true,
+      "args": {
+        "doc_id": "co-bud-010"
+      }
+    },
+    {
+      "op_id": "s2-381",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Nadia Hassan direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-382",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Oscar Lindgren direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-383",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Pia Novak direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-384",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Quentin Aubert direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-385",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Rosa Delgado direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-386",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Samir Khoury direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-387",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Tara Joshi direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-388",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Ulrich Bauer direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-389",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Vivian Cho direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-390",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "What department does Wei Tan direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-391",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Xochitl Mendez direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-392",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Yusuf Demir direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-393",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Zara Khan direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-394",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Aiko Tanaka direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-395",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Bjorn Holm direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-396",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Camila Souza direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-397",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Devon Pratt direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-398",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Eitan Levy direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-399",
+      "op": "QUERY",
+      "checkpoint": false,
+      "args": {
+        "q": "What department does Lena Ortiz direct or work for?"
+      }
+    },
+    {
+      "op_id": "s2-400",
+      "op": "QUERY",
+      "checkpoint": true,
+      "args": {
+        "q": "What department does Marcus Chen direct or work for?"
+      }
+    }
+  ]
+}

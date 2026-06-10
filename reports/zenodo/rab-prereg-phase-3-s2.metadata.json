@@ -1,0 +1,43 @@
+{
+  "metadata": {
+    "title": "Pre-Registration: Replayable-Audit Benchmark (RAB) Phase 3 — scenario-S2 'lifecycle-large'",
+    "upload_type": "publication",
+    "publication_type": "preprint",
+    "publication_date": "2026-06-10",
+    "creators": [
+      {
+        "name": "Seo, Ji Won",
+        "affiliation": "JAMES (Hashevolution)"
+      }
+    ],
+    "description": "<p>This deposit is the locked pre-registration for Phase 3 (scenario-S2) of the Replayable-Audit Benchmark (RAB). It specifies the scenario shape (400 ops; 110 INGEST / 40 UPDATE / 30 SUPERSEDE / 20 DELETE / 200 QUERY; 40 checkpoints; supersede chain length avg &ge; 3, longest &ge; 5; cross-reference density &ge; 2.5), the four systems under test (Reference, JAMES, Baseline-0, Baseline-1), the RF-cost activation hypothesis, the honest-tier gate, and the result-reporting protocol &mdash; all committed BEFORE the scenario fixture is constructed and any measurement is executed. The frozen SPEC v0.1.1 that the pre-registration commits to test is included as evidence.</p><p>Source repository: <a href='https://github.com/Hashevolution/James-RAG-Evol'>Hashevolution/James-RAG-Evol</a>. Locking commit: <code>d21c680a51ba455f6712cca21db38af310b5868f</code> (2026-06-10, PR #774). RAB software archive at locking time: <a href='https://doi.org/10.5281/zenodo.20625533'>10.5281/zenodo.20625533</a> (v0.4.3).</p><p>This deposit is the priority-date anchor for any RAB Phase 3 result subsequently reported against scenario-S2.</p>",
+    "keywords": [
+      "RAB",
+      "Replayable-Audit Benchmark",
+      "pre-registration",
+      "EU AI Act",
+      "audit-log",
+      "RAG",
+      "provenance",
+      "scenario-S2",
+      "JAMES"
+    ],
+    "access_right": "open",
+    "license": "cc-by-4.0",
+    "related_identifiers": [
+      {
+        "identifier": "10.5281/zenodo.20625533",
+        "relation": "isSupplementTo",
+        "resource_type": "software",
+        "scheme": "doi"
+      },
+      {
+        "identifier": "https://github.com/Hashevolution/James-RAG-Evol/commit/d21c680a51ba455f6712cca21db38af310b5868f",
+        "relation": "isDerivedFrom",
+        "resource_type": "publication-other",
+        "scheme": "url"
+      }
+    ],
+    "notes": "The locking commit hash is the in-git priority evidence; this Zenodo deposit is the external timestamped anchor. Any RAB scenario-S2 result that cites this DOI must report spec version, scenario sha, and re-verification artifacts per RAB SPEC v0.1.1 §4."
+  }
+}
