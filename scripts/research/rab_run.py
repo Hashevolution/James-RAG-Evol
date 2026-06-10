@@ -76,6 +76,14 @@ def _build_adapter(sut: str, *, use_engine: bool, workspace: Path):
         from eval.rab.adapters.baseline0 import Baseline0Adapter
         adapter = Baseline0Adapter()
         return adapter, Baseline0Adapter.MAPPING_TABLE
+    if sut == "baseline1":
+        from eval.rab.adapters.baseline1 import Baseline1Adapter
+        adapter = Baseline1Adapter()
+        # The Baseline-1 mapping table lives in a hash-pinned JSON
+        # file (eval/rab/mappings/otel_genai_to_rab.json); the
+        # adapter caches it. Surface a copy here so the result.json
+        # records the in-effect mapping for the run.
+        return adapter, adapter.MAPPING_TABLE
     if sut == "james":
         from eval.rab.adapters.james import JamesAdapter
         adapter = JamesAdapter(workspace=workspace, use_engine=use_engine)
@@ -94,7 +102,7 @@ def _runner_env() -> dict:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="rab_run")
     p.add_argument("--sut", required=True,
-                    choices=["reference", "baseline0", "james"])
+                    choices=["reference", "baseline0", "baseline1", "james"])
     p.add_argument("--scenario", default="S1",
                     help="scenario id (only S1 v0.1 ships today)")
     p.add_argument("--out-dir", default=str(ROOT / "reports" / "rab"))

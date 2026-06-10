@@ -1,0 +1,11 @@
+{
+  "chat": "ANSWER",
+  "create_agent": "OTHER",
+  "embeddings": "OTHER",
+  "execute_tool": "OTHER",
+  "invoke_agent": "OTHER",
+  "invoke_workflow": "OTHER",
+  "rerank": "RERANK",
+  "retrieval": "RETRIEVE",
+  "text_completion": "ANSWER"
+}

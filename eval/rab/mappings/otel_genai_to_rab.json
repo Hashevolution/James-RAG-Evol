@@ -1,0 +1,34 @@
+{
+  "$comment": "RAB SPEC §1 mapping table for Baseline-1 SUT. Maps OpenTelemetry GenAI semantic-conventions span operation.name onto RAB canonical event types. This file is a normative artefact of every Baseline-1 RAB result and is hash-pinned in the result.json's mapping_table_sha field.",
+  "spec_version": "rab-v0.1.1",
+  "mapping_source": "OpenTelemetry GenAI semantic conventions",
+  "mapping_source_url": "https://opentelemetry.io/docs/specs/semconv/gen-ai/",
+  "mapping_source_version_note": "Snapshot as of 2026-06-10. The GenAI SIG semconv is evolving; future SPEC releases may add columns to this table as the source spec adds attributes.",
+  "mapping": {
+    "embeddings": "OTHER",
+    "retrieval": "RETRIEVE",
+    "rerank": "RERANK",
+    "chat": "ANSWER",
+    "text_completion": "ANSWER",
+    "execute_tool": "OTHER",
+    "create_agent": "OTHER",
+    "invoke_agent": "OTHER",
+    "invoke_workflow": "OTHER"
+  },
+  "lifecycle_canonicals_not_in_source": [
+    "INGEST",
+    "UPDATE",
+    "SUPERSEDE",
+    "DELETE",
+    "SYNTH",
+    "VERIFY"
+  ],
+  "rationale": {
+    "chat_to_ANSWER": "OTel chat span carries the final output the system returns to the user. RAB SYNTH (the LLM call as an event in its own right) is not separately addressable in OTel semconv: one chat span carries both the LLM-call event and the answer event, but Spec §1 requires a 1:1 mapping table. We pick ANSWER because the user-visible final output is the more observable side of the chat span. The unmapped SYNTH will show as 0 in AC per-type — that is the honest report.",
+    "retrieval_to_RETRIEVE": "Direct 1:1 — OTel retrieval is the same canonical concept as RAB RETRIEVE (RAG retrieval step).",
+    "rerank_to_RERANK": "Direct 1:1 when the host emits a rerank span. Not every OTel-instrumented stack does.",
+    "embeddings_to_OTHER": "Embedding generation is a runtime call, not a corpus-lifecycle event. It would be wrong to map it to INGEST.",
+    "tool_and_agent_to_OTHER": "Tool invocations and agent lifecycle spans are observable but do not correspond to any RAB canonical category. They count as decision-bearing-but-unmapped — i.e. against AC for whichever RAB canonical they were intended to satisfy, which in this scenario is 0 satisfactions.",
+    "lifecycle_absence": "INGEST / UPDATE / SUPERSEDE / DELETE are explicitly absent from OTel GenAI semconv (the source spec targets LLM-call observability, not corpus lifecycle). Any RAG / agent system relying exclusively on OTel GenAI for audit will therefore score 0 on these AC per-types. This is not a defect of the mapping; it is a true gap in the source spec for record-keeping purposes, and is exactly the kind of structural finding RAB is designed to surface."
+  }
+}
