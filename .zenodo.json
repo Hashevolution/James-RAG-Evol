@@ -1,7 +1,7 @@
 {
-  "title": "PROJECT JAMES — v0.4.2 (T5 Replayable Audit Graph — full event-sourced graph-wide reconstruction; audit-only invariant; cross-chain integration)",
-  "description": "JAMES is a local-first, auditable knowledge reasoning system. v0.4.2 ships the T5 Replayable Audit Graph — full event-sourced graph-wide reconstruction. v0.4.0 shipped reconstruct_view_at (single-supersede-chain replay primitive); v0.4.2 extends it to graph-wide reconstruct_graph_at(t) — a pure-function rebuild of the graph snapshot at any past time using only audit_log event rows, with no wiki / knowledge_tracker / graph-engine read. That is the audit-only invariant — the foundation that makes the ABAC + replay claim (corpus retrieval analysis, PR #712 §6) externally demonstrable: ship the audit_log JSON → third party reproduces the graph state at any past t and the answer's decision tree on top, with no other artifact.\n\nT5 5-PR sequence:\n- #719 T5 design memo — 15 sections covering partial-vs-full scope, audit-only invariant, event-type taxonomy, API design, cross-chain integration, 5-PR phase plan, 5 Decision LOCKs, cross-cutting impact analysis, closure conditions.\n- #720 PR-T5.A — event taxonomy + emit helper + audit_log migration. core/lifecycle/replay_audit.py (LIFECYCLE_EVENT_TYPES with 7 entries: T7 supersede ×2, T6 cascade, T1 expiration, T2 dispatch, T2.D ingest dispatch, migration backfill; EVT_* constants; is_lifecycle_event exact-match predicate; emit_lifecycle_event synchronous in-transaction insert — never raises). LOCK 1 (event_payload = JSON string column) + LOCK 2 (synchronous in-transaction emit). scripts/migrate_v042_replay_audit.py (idempotent ALTER TABLE adding event_type + event_payload columns; --dry-run/--apply/--verify/--no-snapshot; pre-write snapshot at <db>.pre-v042-migration). 19 contract tests.\n- #721 PR-T5.B — reconstruct_graph_at audit-only primitive. core/lifecycle/replay_graph.py (frozen GraphSnapshot dataclass: edges / supersede_chains / invalidated_ids / replayed_at / event_count; reconstruct_graph_at(t, *, audit_log_path=None, include_event_types=None)). Per-event-type handlers for every LIFECYCLE_EVENT_TYPES entry; import-time assert set(_HANDLERS) == set(LIFECYCLE_EVENT_TYPES) makes any drift a load-time error. LOCK 4 (pure function — only side-channel is the audit_log SELECT). Defence-in-depth (malformed JSON / unknown event_type / pre-migration DB / non-existent file all return the empty snapshot). 20 contract tests + 4 invariants (I1 audit-only / I2 supersede-preserved / I3 cascade-respected / I4 replay-equality weak form).\n- #722 PR-T5.C — cross-chain integration + ARCHITECTURE §5.7.2 extension. view_from_snapshot(snap, head_id, t) snapshot-side equivalent of reconstruct_view_at. Same iterate-forward + last-match + validity-window + invalidated-edge-skip semantics as the live primitive; _validity_contains private helper mirrors the live primitive byte-for-byte on edge selection. Cross-chain consistency contract: view_from_snapshot(snap, head, t) ∈ snap.edges.values() ∪ {None}. ARCHITECTURE.md §5.7.2 gets a \"Graph replay invariant\" subsection alongside the trace replay invariant. 11 contract tests.\n- PR-T5.D — release-gating invariants + closure. tests/test_t5_release_gating_invariants.py (5 release-gating tests against in-memory SQLite fixtures with real emit/reconstruct code: test_graph_replay_at_t_matches_event_log, test_replay_audit_only_no_db_scan, test_replay_preserves_supersede_chain, test_replay_respects_cascade_invalidate, test_reasoning_trace_replay_invariant). CHANGELOG [0.4.2], .zenodo.json v0.4.2, docs/release_notes_v0.4.2.md.\n\nDefault-off invariant preserved. No new env flag in this cycle. The two new audit_log columns (event_type / event_payload) default NULL on existing rows; mutation-site wiring (T1/T2/T2.D/T6/T7 call sites → emit_lifecycle_event) is intentionally a follow-up cycle (cross-cutting change kept out of v0.4.2 so the read-side primitive can land independently). Production audit_log keeps emitting only reasoning trace rows until wiring lands.\n\nVerification: tests/test_t5_event_taxonomy 19/19 PASS; tests/test_t5_reconstruct_graph_at 20/20 PASS; tests/test_t5_cross_chain_consistency 11/11 PASS; tests/test_t5_release_gating_invariants 5/5 PASS; tests/test_replay_trace (§5.7.2 v0.4.1 regression) 16/16 PASS. T5 lifecycle suite + replay regression: 71/71 PASS.\n\nWhat v0.4.2 does NOT do: no mutation-site wiring (T1/T2/T2.D/T6/T7 → emit_lifecycle_event), so production audit_log keeps emitting only reasoning trace rows and reconstruct_graph_at(now) returns the empty snapshot until wiring lands; no I4 against the live wiki (strong form requires wiring + live-state fixture); no T3 Evidence Aging, no T4 Reviewer Authority Hierarchy (both stay deferred to v0.4.3+).",
-  "version": "v0.4.2",
+  "title": "PROJECT JAMES — v0.4.3 (RAB v0.1.1: Replayable-Audit Benchmark + Cycle γ multi-hop arc closure)",
+  "description": "JAMES is a local-first, auditable knowledge reasoning system. v0.4.3 ships RAB v0.1.1 (Replayable-Audit Benchmark) — the first replayable-audit benchmark for RAG / agent systems whose 3 metrics (AC / RF / PC) are operationalisations of EU AI Act Articles 10, 12, 19 (in force 2026-08-02). Companion track: Cycle γ multi-hop arc closure (7 probes, 6 honest nulls, 2 self-corrections — multi-hop improvement reframed out of the JAMES roadmap; the graph build O(N²) finding lifted into RAB as the RF-cost axis). No JAMES production runtime change — RAB measures the existing audit / lifecycle / graph paths via a workspace-scoped adapter; production audit.db is untouched.\n\nRAB v0.1.1 — frozen spec + scenario fixture + deterministic scorer + reference / JAMES / Baseline-0 adapters + first gap-table measurement. Authority externalised across 4 axes: (1) Anchors — EU AI Act Art. 10(2)(b) + 12(1)(2)(b) + 19 verbatim + W3C PROV + NIST AI RMF + Mathkar et al. agent-trace survey (arXiv 2606.04990) which explicitly names execution-trace benchmarks as an open challenge → RAB responds to a published gap. (2) Scoring — deterministic only; no LLM judge anywhere in the scorer. (3) Application — generic audit-log JSONL interface; any system that can export an append-only log is scoreable; Baseline-0 (vanilla quickstart + Python logging) scored alongside JAMES; the gap structure across SUTs is the headline (SPEC §5 / §6.5). (4) Verification — every result ships with the SPEC §4 re-verification triple (result.json, exported audit log JSONL, mapping table JSON), committed to reports/rab/ for bit-for-bit re-runs.\n\nR1.0 → R1.5 sequence:\n- #758 / #760 / #761 R1.0 prior-art + EU AI Act anchors — vacancy confirmed; ActiveGraph (arXiv 2605.21997) is independent co-invention of the audit-native architecture → contribution is the benchmark, not the architecture.\n- #762 R1.1 SPEC v0.1.1 FROZEN — eval/rab/SPEC-v0.1.md. v0.1.1 = v0.1.0 + PC's origin-bearing event widened from INGEST only to INGEST | SUPERSEDE (defect caught by reference adapter before any measurement; changelog in the SPEC itself).\n- #763 R1.2 scenario-S1 fixture — eval/rab/scenarios/s1_lifecycle_small.json (40 ops + 10 checkpoints, synthetic Northbridge Labs lifecycle, public domain).\n- #764 R1.3 driver + scorer + reference adapter — eval/rab/{driver,scorer}.py + adapters/reference.py + tests/test_rab_benchmark.py (14 tests pinning reference 1.0×3 self-verification + 3 fault-injection variants).\n- #766 R1.4 pre-registration LOCKED before any adapter code or measurement (R5 rule).\n- #767 R1.4 JAMES adapter (workspace-isolated; SUPERSEDE calls real core.lifecycle.replay_audit.emit_lifecycle_event; cross-verified against core.lifecycle.replay_graph.reconstruct_graph_at — production code path actually exercised) + Baseline-0 adapter (vanilla in-memory RAG + Python-logging-style records = the floor) + scripts/research/rab_run.py CLI writing the SPEC §4 re-verification triple + 17 new tests + 9 measurement artifacts committed to reports/rab/.\n- R1.5 = this release.\n\nGap table (RAB SPEC v0.1.1 / scenario-S1): reference 1.000 / 1.000,1.000 / 1.000; JAMES 1.000 / 1.000,1.000 / 1.000; Baseline-0 0.275 / 0.000,0.000 / 0.000. AC INGEST = 1.0 across all three (default logging covers add-doc); AC UPDATE/SUPERSEDE/DELETE/ANSWER = 0 for Baseline-0 (vanilla logger has no lifecycle taxonomy); RF = 0 for Baseline-0 (logs carry strings, not payload — replay has nothing to fold); PC = 0 for Baseline-0 (no parent_id chain). JAMES = reference on S1 is expected per SPEC §6.5 — the headline is the audit-native vs default-logging gap, not JAMES's score. Honest tier ⭐⭐ scenario-S1 audit-native vs floor gap confirmed; ⭐⭐⭐ cross-scenario remains ungated until additional scenarios ship.\n\nCycle γ multi-hop arc closure (companion track, PRs #752 → #757): MuSiQue probes concluded that multi-hop improvement is not a JAMES roadmap item — the wall is unsupervised supporting-paragraph selection, not retrieval breadth, not model ceiling. Top-8 retrieval recall is 0.76 (both R0 and ablated); oracle-grounded performance jumps 8% → 72% (9×) when supporting paragraphs are given directly. The secondary finding — graph build O(N²) — lifted out of MuSiQue scope (where it had no leverage) into RAB as the RF-cost axis (SPEC §2.2 cost_s_per_1k_events). Env-gates JAMES_RETRIEVE_TOP_K + JAMES_RERANK_TOP_K added (defaults 8 / 5; byte-identical when unset). Selector-tuning rabbit hole closed.\n\nVerification: tests/test_rab_benchmark 14/14 PASS, tests/test_rab_baseline0 8/8 PASS, tests/test_rab_james_adapter 9/9 PASS — RAB test suite 31/31 PASS. No JAMES core test regression — no core/ change in this cycle.\n\nWhat v0.4.3 does NOT do: no production runtime change in JAMES core; no cross-scenario RAB result (S1 only); no Baseline-1 (LangSmith/OTel adapter — separate SUT, future cycle); no mutation-site wiring follow-up to v0.4.2 (T1/T2/T2.D/T6/T7 → emit_lifecycle_event still deferred); no multi-hop retrieval improvement (cycle γ closure re-framed it as not a JAMES roadmap item); no regulatory compliance certification claim (SPEC §6.3).",
+  "version": "v0.4.3",
   "upload_type": "software",
   "creators": [
     {
@@ -57,7 +57,18 @@
     "foundational-vs-corroborative",
     "non-saturating-quality-oracle",
     "pr-gate-quality-delta-card",
-    "replayable-rag"
+    "replayable-rag",
+    "rab",
+    "replayable-audit-benchmark",
+    "eu-ai-act",
+    "audit-completeness",
+    "replay-fidelity",
+    "provenance-coverage",
+    "audit-native",
+    "deterministic-scorer",
+    "pre-registration",
+    "gap-table",
+    "event-sourced-log"
   ],
   "license": "MIT",
   "access_right": "open",
@@ -69,8 +80,13 @@
       "resource_type": "software"
     },
     {
-      "identifier": "10.5281/zenodo.20411354",
+      "identifier": "10.5281/zenodo.20426719",
       "relation": "isNewVersionOf",
+      "resource_type": "software"
+    },
+    {
+      "identifier": "10.5281/zenodo.20411354",
+      "relation": "isDerivedFrom",
       "resource_type": "software"
     },
     {
@@ -94,100 +110,65 @@
       "resource_type": "software"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/548",
+      "identifier": "arXiv:2606.04990",
+      "relation": "cites",
+      "resource_type": "publication-article"
+    },
+    {
+      "identifier": "arXiv:2605.21997",
+      "relation": "cites",
+      "resource_type": "publication-article"
+    },
+    {
+      "identifier": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj",
+      "relation": "references",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://www.w3.org/TR/prov-overview/",
+      "relation": "references",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/758",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/549",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/760",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/550",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/761",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/551",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/762",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/552",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/763",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/553",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/764",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/554",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/766",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     },
     {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/555",
-      "relation": "isDocumentedBy",
-      "resource_type": "publication-other"
-    },
-    {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/556",
-      "relation": "isDocumentedBy",
-      "resource_type": "publication-other"
-    },
-    {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/557",
-      "relation": "isDocumentedBy",
-      "resource_type": "publication-other"
-    },
-    {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/558",
-      "relation": "isDocumentedBy",
-      "resource_type": "publication-other"
-    },
-    {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/559",
-      "relation": "isDocumentedBy",
-      "resource_type": "publication-other"
-    },
-    {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/560",
-      "relation": "isDocumentedBy",
-      "resource_type": "publication-other"
-    },
-    {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/561",
-      "relation": "isDocumentedBy",
-      "resource_type": "publication-other"
-    },
-    {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/562",
-      "relation": "isDocumentedBy",
-      "resource_type": "publication-other"
-    },
-    {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/563",
-      "relation": "isDocumentedBy",
-      "resource_type": "publication-other"
-    },
-    {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/564",
-      "relation": "isDocumentedBy",
-      "resource_type": "publication-other"
-    },
-    {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/565",
-      "relation": "isDocumentedBy",
-      "resource_type": "publication-other"
-    },
-    {
-      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/566",
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/767",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
     }
   ],
-  "notes": "v0.4.1 closes the CASCADE pillar v0.4.0 only half-finished. T6 Causality Chain ships as a 5-PR sequence (T6.A schema + cycle validator + migration → T6.B derivation extraction → T6.C invalidate_derived_facts cascade → T6.C.b foundational-vs-corroborative refinement → T6.D cascade integration + 4 release-gating invariants). Plus the v0.4.0 carry-over dispatch_contradiction wiring (T2.D-1/2/2.b/3) lands as flag-gated default-OFF. Plus the QVT α track ships end-to-end (3-axis non-saturating oracle + canonical baseline_2a31b20.json + PR-gate template + ARCHITECTURE §5.7.10). All decisions back-traceable to the T6.C.b user-clarified semantics during T6.C review. The isNewVersionOf chain back to v0.4.0 (10.5281/zenodo.20411354) makes the DOI lineage explicit; the chain back to v0.4.0-alpha.3 (10.5281/zenodo.20391100) and v0.3.x stays via isDerivedFrom. Three-author joint-piece collaboration with Robin Converse (Triava Labs) and Ali Afana (Provia) on the substitution/synthesis cost-asymmetry finding remains the mid-June trajectory."
+  "notes": "v0.4.3 ships RAB v0.1.1 — the first replayable-audit benchmark for RAG / agent systems with 3 deterministic metrics (AC / RF / PC) operationalising EU AI Act Articles 10, 12, 19. Companion track closes the cycle γ multi-hop arc with 6 honest nulls (multi-hop improvement reframed out of the JAMES roadmap). The full RAB SPEC + scenario + scorer + adapters + 9 measurement artifacts are committed to this repo. The headline is the AUDIT-NATIVE vs DEFAULT-LOGGING gap on scenario-S1 (JAMES = reference = 1.0×3 / Baseline-0 = 0.275, 0.0, 0.0), not JAMES's score — SPEC §6.5 explicitly disclaims JAMES-wins framing. The benchmark, not the architecture, is the contribution: ActiveGraph (arXiv 2605.21997) is independent co-invention of the event-sourced log + deterministic replay. The isNewVersionOf chain pins v0.4.1 (10.5281/zenodo.20426719) as immediate predecessor; v0.4.0 (10.5281/zenodo.20411354) and earlier chained via isDerivedFrom. Three-author joint-piece with Robin Converse (Triava Labs) and Ali Afana (Provia) on the substitution/synthesis cost-asymmetry finding remains the mid-June trajectory (separate collab arc — not auto-linked to this release per feedback_eval_cycle_vs_collab_arc_separation)."
 }
