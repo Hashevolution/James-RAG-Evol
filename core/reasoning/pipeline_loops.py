@@ -29,6 +29,21 @@ from typing import Any, Dict
 from core.observability import log_stage
 
 
+def _env_int(name: str, default: int) -> int:
+    """Read a positive int from the environment, falling back to
+    ``default`` on unset / malformed / non-positive values. Used for
+    the retrieval / rerank breadth knobs so production stays at 8/5
+    unless an operator explicitly overrides for a measurement."""
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    try:
+        val = int(raw)
+    except (TypeError, ValueError):
+        return default
+    return val if val > 0 else default
+
+
 def run_loop_0_retrieve(
     engine,
     loop_state: Dict[str, Any],
@@ -59,6 +74,14 @@ def run_loop_0_retrieve(
                   source_type=source_type, sector_disabled=True)
         print("  docs=0 (S1 disabled — JAMES_DISABLE_RAG_RETRIEVAL=1)")
         return
+    # Retrieval / rerank breadth. Default 8/5 (byte-identical to prior
+    # behaviour when the env vars are unset). Cycle γ Phase C.2 uses
+    # these to test whether widening retrieval lifts multi-hop
+    # supporting-paragraph coverage (MuSiQue R0 floor diagnosis,
+    # 2026-06-10). Production default is unchanged until a multi-axis
+    # measurement (MuSiQue gain vs RGB abstention loss) licenses a flip.
+    retrieve_top_k = _env_int("JAMES_RETRIEVE_TOP_K", 8)
+    rerank_top_k = _env_int("JAMES_RERANK_TOP_K", 5)
     try:
         from core.orchestrator import retrieve as orch_retrieve
         docs = orch_retrieve(
@@ -67,13 +90,13 @@ def run_loop_0_retrieve(
             hybrid_search_fn= engine.retrieval.hybrid_search,
             user_role       = user_role,
             source_type     = source_type,
-            top_k           = 8,
+            top_k           = retrieve_top_k,
         )
     except Exception as e:
         engine._log("loop0_orchestrator", e, user_role)
         # fallback: 기존 방식
         docs = engine.retrieval.hybrid_search(
-            safe_query, top_k=8,
+            safe_query, top_k=retrieve_top_k,
             user_role=user_role,
             source_type=source_type,
         )
@@ -90,10 +113,10 @@ def run_loop_0_retrieve(
     pre_rerank_count = len(docs)
     try:
         from core.retrieval.rerank import get_reranker
-        docs = get_reranker().rerank(safe_query, docs, top_k=5)
+        docs = get_reranker().rerank(safe_query, docs, top_k=rerank_top_k)
     except Exception as e:
         engine._log("loop0_rerank", e, user_role)
-        docs = docs[:5]
+        docs = docs[:rerank_top_k]
     rerank_ms = int((time.time() - t_rerank) * 1000)
 
     # Emit one trace step for the rerank stage so the replay
