@@ -1,0 +1,1223 @@
+{
+  "AC": {
+    "matched": 200,
+    "overall": 0.5,
+    "per_type": {
+      "ANSWER": {
+        "ac": 1.0,
+        "matched": 200,
+        "total": 200
+      },
+      "DELETE": {
+        "ac": 0.0,
+        "matched": 0,
+        "total": 20
+      },
+      "INGEST": {
+        "ac": 0.0,
+        "matched": 0,
+        "total": 110
+      },
+      "SUPERSEDE": {
+        "ac": 0.0,
+        "matched": 0,
+        "total": 30
+      },
+      "UPDATE": {
+        "ac": 0.0,
+        "matched": 0,
+        "total": 40
+      }
+    },
+    "total": 400
+  },
+  "PC": {
+    "pc": 0.0,
+    "per_answer": [
+      {
+        "citations": 1,
+        "event_id": "ot-00002",
+        "traceable": 0
+      },
+      {
+        "citations": 2,
+        "event_id": "ot-00004",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00006",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00008",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00010",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00012",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00014",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00016",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00018",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00020",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00022",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00024",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00026",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00028",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00030",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00032",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00034",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00036",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00038",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00040",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00042",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00044",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00046",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00048",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00050",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00052",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00054",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00056",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00058",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00060",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00062",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00064",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00066",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00068",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00070",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00072",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00074",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00076",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00078",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00080",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00082",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00084",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00086",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00088",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00090",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00092",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00094",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00096",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00098",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00100",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00102",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00104",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00106",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00108",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00110",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00112",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00114",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00116",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00118",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00120",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00122",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00124",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00126",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00128",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00130",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00132",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00134",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00136",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00138",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00140",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00142",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00144",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00146",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00148",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00150",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00152",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00154",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00156",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00158",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00160",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00162",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00164",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00166",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00168",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00170",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00172",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00174",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00176",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00178",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00180",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00182",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00184",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00186",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00188",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00190",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00192",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00194",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00196",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00198",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00200",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00202",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00204",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00206",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00208",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00210",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00212",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00214",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00216",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00218",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00220",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00222",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00224",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00226",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00228",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00230",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00232",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00234",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00236",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00238",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00240",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00242",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00244",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00246",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00248",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00250",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00252",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00254",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00256",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00258",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00260",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00262",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00264",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00266",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00268",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00270",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00272",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00274",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00276",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00278",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00280",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00282",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00284",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00286",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00288",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00290",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00292",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00294",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00296",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00298",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00300",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00302",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00304",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00306",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00308",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00310",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00312",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00314",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00316",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00318",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00320",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00322",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00324",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00326",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00328",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00330",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00332",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00334",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00336",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00338",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00340",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00342",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00344",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00346",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00348",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00350",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00352",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00354",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00356",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00358",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00360",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00362",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00364",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00366",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00368",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00370",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00372",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00374",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00376",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00378",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00380",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00382",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00384",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00386",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00388",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00390",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00392",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00394",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00396",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00398",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00400",
+        "traceable": 0
+      }
+    ],
+    "total_citations": 597,
+    "traceable": 0
+  },
+  "RF": {
+    "cost_s_per_1k_events": 0.0,
+    "exact": 0.0,
+    "graded": 0.0,
+    "k": 40,
+    "per_checkpoint": {
+      "1": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "10": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "11": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "12": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "13": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "14": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "15": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "16": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "17": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "18": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "19": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "2": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "20": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "21": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "22": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "23": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "24": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "25": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "26": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "27": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "28": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "29": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "3": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "30": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "31": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "32": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "33": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "34": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "35": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "36": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "37": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "38": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "39": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "4": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "40": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "5": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "6": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "7": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "8": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "9": {
+        "exact": false,
+        "jaccard": 0.0
+      }
+    }
+  },
+  "engine_mode": false,
+  "log_sha": "4aa6caf261a984eca1476a1140426d86b0db525cae42ed8cc825fe702b45d9e2",
+  "mapping_table_sha": "88b5c868f954efba0abae61e64cc442504df2f3d535385cc3b35d9db8f1d6959",
+  "n_log_events": 400,
+  "runner_env": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.14.4",
+    "ts_utc": "2026-06-10T23:26:45.367662+00:00"
+  },
+  "scenario": "S2",
+  "scenario_sha": "1a91c256e9e58a7b89d1b94f605a2f727e373f52aecace9f0af2f4cebb3b7614",
+  "spec": "v0.1.1",
+  "sut": "baseline1",
+  "sut_version": "aeb44c6540f9c0cf0164b9a90e954f3e4cea50c5"
+}

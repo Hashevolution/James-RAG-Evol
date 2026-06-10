@@ -1,0 +1,1223 @@
+{
+  "AC": {
+    "matched": 400,
+    "overall": 1.0,
+    "per_type": {
+      "ANSWER": {
+        "ac": 1.0,
+        "matched": 200,
+        "total": 200
+      },
+      "DELETE": {
+        "ac": 1.0,
+        "matched": 20,
+        "total": 20
+      },
+      "INGEST": {
+        "ac": 1.0,
+        "matched": 110,
+        "total": 110
+      },
+      "SUPERSEDE": {
+        "ac": 1.0,
+        "matched": 30,
+        "total": 30
+      },
+      "UPDATE": {
+        "ac": 1.0,
+        "matched": 40,
+        "total": 40
+      }
+    },
+    "total": 400
+  },
+  "PC": {
+    "pc": 1.0,
+    "per_answer": [
+      {
+        "citations": 1,
+        "event_id": "jms-00004",
+        "traceable": 1
+      },
+      {
+        "citations": 2,
+        "event_id": "jms-00008",
+        "traceable": 2
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00012",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00016",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00020",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00024",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00028",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00032",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00036",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00040",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00044",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00048",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00052",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00056",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00060",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00064",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00068",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00072",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00076",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00080",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00084",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00088",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00092",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00096",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00100",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00104",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00108",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00112",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00116",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00120",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00124",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00128",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00132",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00136",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00140",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00144",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00148",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00152",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00156",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00160",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00184",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00189",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00194",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00199",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00204",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00209",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00214",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00219",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00224",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00229",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00234",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00239",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00244",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00249",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00254",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00259",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00264",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00269",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00274",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00279",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00284",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00288",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00292",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00296",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00300",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00304",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00308",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00312",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00316",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00320",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00324",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00330",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00336",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00342",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00348",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00354",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00360",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00366",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00372",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00378",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00384",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00390",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00396",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00402",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00408",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00414",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00418",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00422",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00426",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00430",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00433",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00436",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00439",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00442",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00445",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00448",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00451",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00454",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00457",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00460",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00463",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00466",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00469",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00472",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00475",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00478",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00481",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00484",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00487",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00490",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00493",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00496",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00499",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00502",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00505",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00508",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00511",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00514",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00517",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00520",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00523",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00529",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00535",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00541",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00547",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00553",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00558",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00563",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00568",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00573",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00578",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00582",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00586",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00590",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00594",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00598",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00601",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00604",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00607",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00610",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00613",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00616",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00619",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00622",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00625",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00628",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00631",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00634",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00637",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00640",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00643",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00646",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00649",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00652",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00655",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00658",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00661",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00664",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00667",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00670",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00673",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00676",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00679",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00682",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00685",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00688",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00691",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00694",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00697",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00700",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00703",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00707",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00711",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00715",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00719",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00723",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00727",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00731",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00735",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00739",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00743",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00746",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00749",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00752",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00755",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00758",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00761",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00764",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00767",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00770",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00773",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00776",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00779",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00782",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00785",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00788",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00791",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00794",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00797",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "jms-00800",
+        "traceable": 3
+      }
+    ],
+    "total_citations": 597,
+    "traceable": 597
+  },
+  "RF": {
+    "cost_s_per_1k_events": 0.1081,
+    "exact": 1.0,
+    "graded": 1.0,
+    "k": 40,
+    "per_checkpoint": {
+      "1": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "10": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "11": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "12": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "13": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "14": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "15": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "16": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "17": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "18": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "19": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "2": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "20": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "21": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "22": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "23": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "24": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "25": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "26": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "27": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "28": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "29": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "3": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "30": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "31": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "32": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "33": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "34": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "35": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "36": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "37": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "38": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "39": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "4": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "40": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "5": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "6": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "7": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "8": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "9": {
+        "exact": true,
+        "jaccard": 1.0
+      }
+    }
+  },
+  "engine_mode": false,
+  "log_sha": "2271cdfcdd801d84b49ce11021ecbecc7802387fafe7ce128d18c6a5afae5a91",
+  "mapping_table_sha": "4c81ae50a60e1854c11b81e46f6634f11015ecee35c1d318f93709e956c22c29",
+  "n_log_events": 800,
+  "runner_env": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.14.4",
+    "ts_utc": "2026-06-10T23:26:38.633948+00:00"
+  },
+  "scenario": "S2",
+  "scenario_sha": "1a91c256e9e58a7b89d1b94f605a2f727e373f52aecace9f0af2f4cebb3b7614",
+  "spec": "v0.1.1",
+  "sut": "james",
+  "sut_version": "aeb44c6540f9c0cf0164b9a90e954f3e4cea50c5"
+}

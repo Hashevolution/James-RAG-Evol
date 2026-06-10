@@ -1,0 +1,1223 @@
+{
+  "AC": {
+    "matched": 400,
+    "overall": 1.0,
+    "per_type": {
+      "ANSWER": {
+        "ac": 1.0,
+        "matched": 200,
+        "total": 200
+      },
+      "DELETE": {
+        "ac": 1.0,
+        "matched": 20,
+        "total": 20
+      },
+      "INGEST": {
+        "ac": 1.0,
+        "matched": 110,
+        "total": 110
+      },
+      "SUPERSEDE": {
+        "ac": 1.0,
+        "matched": 30,
+        "total": 30
+      },
+      "UPDATE": {
+        "ac": 1.0,
+        "matched": 40,
+        "total": 40
+      }
+    },
+    "total": 400
+  },
+  "PC": {
+    "pc": 1.0,
+    "per_answer": [
+      {
+        "citations": 1,
+        "event_id": "ref-00004",
+        "traceable": 1
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00008",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00012",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00016",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00020",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00024",
+        "traceable": 3
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00028",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00032",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00036",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00040",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00044",
+        "traceable": 3
+      },
+      {
+        "citations": 2,
+        "event_id": "ref-00048",
+        "traceable": 2
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00052",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00056",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00060",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00064",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00068",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00072",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00076",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00080",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00084",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00088",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00092",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00096",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00100",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00104",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00108",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00112",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00116",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00120",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00124",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00128",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00132",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00136",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00140",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00144",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00148",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00152",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00156",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00160",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00184",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00189",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00194",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00199",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00204",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00209",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00214",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00219",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00224",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00229",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00234",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00239",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00244",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00249",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00254",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00259",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00264",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00269",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00274",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00279",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00284",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00288",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00292",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00296",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00300",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00304",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00308",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00312",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00316",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00320",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00324",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00330",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00336",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00342",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00348",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00354",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00360",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00366",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00372",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00378",
+        "traceable": 3
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00384",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00390",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00396",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00402",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00408",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00414",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00418",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00422",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00426",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00430",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00433",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00436",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00439",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00442",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00445",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00448",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00451",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00454",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00457",
+        "traceable": 0
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00460",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00463",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00466",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00469",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00472",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00475",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00478",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00481",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00484",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00487",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00490",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00493",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00496",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00499",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00502",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00505",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00508",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00511",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00514",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00517",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00520",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00523",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00529",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00535",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00541",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00547",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00553",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00558",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00563",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00568",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00573",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00578",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00582",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00586",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00590",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00594",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00598",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00601",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00604",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00607",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00610",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00613",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00616",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00619",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00622",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00625",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00628",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00631",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00634",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00637",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00640",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00643",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00646",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00649",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00652",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00655",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00658",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00661",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00664",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00667",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00670",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00673",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00676",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00679",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00682",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00685",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00688",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00691",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00694",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00697",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00700",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00703",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00707",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00711",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00715",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00719",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00723",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00727",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00731",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00735",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00739",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00743",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00746",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00749",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00752",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00755",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00758",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00761",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00764",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00767",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00770",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00773",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00776",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00779",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00782",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00785",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00788",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00791",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00794",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00797",
+        "traceable": 3
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00800",
+        "traceable": 3
+      }
+    ],
+    "total_citations": 531,
+    "traceable": 531
+  },
+  "RF": {
+    "cost_s_per_1k_events": 0.0051,
+    "exact": 1.0,
+    "graded": 1.0,
+    "k": 40,
+    "per_checkpoint": {
+      "1": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "10": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "11": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "12": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "13": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "14": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "15": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "16": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "17": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "18": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "19": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "2": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "20": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "21": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "22": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "23": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "24": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "25": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "26": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "27": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "28": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "29": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "3": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "30": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "31": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "32": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "33": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "34": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "35": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "36": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "37": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "38": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "39": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "4": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "40": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "5": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "6": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "7": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "8": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "9": {
+        "exact": true,
+        "jaccard": 1.0
+      }
+    }
+  },
+  "engine_mode": false,
+  "log_sha": "0d606df35a26aff52d7ec1188132b91d8f43bf743d077b9d10c598f40de6c1a5",
+  "mapping_table_sha": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "n_log_events": 800,
+  "runner_env": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.14.4",
+    "ts_utc": "2026-06-10T23:26:29.384138+00:00"
+  },
+  "scenario": "S2",
+  "scenario_sha": "1a91c256e9e58a7b89d1b94f605a2f727e373f52aecace9f0af2f4cebb3b7614",
+  "spec": "v0.1.1",
+  "sut": "reference",
+  "sut_version": "aeb44c6540f9c0cf0164b9a90e954f3e4cea50c5"
+}

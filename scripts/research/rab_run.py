@@ -48,6 +48,11 @@ sys.path.insert(0, str(ROOT))
 
 from eval.rab.driver import load_scenario, run_scenario, score_run
 
+SCENARIO_PATHS = {
+    "S1": ROOT / "eval" / "rab" / "scenarios" / "s1_lifecycle_small.json",
+    "S2": ROOT / "eval" / "rab" / "scenarios" / "s2_lifecycle_large.json",
+}
+
 
 def _sha256_text(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
@@ -104,7 +109,9 @@ def main(argv=None) -> int:
     p.add_argument("--sut", required=True,
                     choices=["reference", "baseline0", "baseline1", "james"])
     p.add_argument("--scenario", default="S1",
-                    help="scenario id (only S1 v0.1 ships today)")
+                    choices=sorted(SCENARIO_PATHS.keys()),
+                    help="scenario id (S1 lifecycle-small or "
+                         "S2 lifecycle-large)")
     p.add_argument("--out-dir", default=str(ROOT / "reports" / "rab"))
     p.add_argument("--engine", action="store_true",
                     help="(james only) route query() through real "
@@ -113,11 +120,7 @@ def main(argv=None) -> int:
                     help="(james only) workspace dir; default = tmp")
     args = p.parse_args(argv)
 
-    scenario_path = ROOT / "eval" / "rab" / "scenarios" \
-                       / "s1_lifecycle_small.json"
-    if args.scenario != "S1":
-        raise SystemExit("only S1 ships in v0.1")
-
+    scenario_path = SCENARIO_PATHS[args.scenario]
     scenario = load_scenario(scenario_path)
     scenario_sha = _sha256_file(scenario_path)
 
