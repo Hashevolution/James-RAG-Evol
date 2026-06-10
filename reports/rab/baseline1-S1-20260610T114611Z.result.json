@@ -1,0 +1,203 @@
+{
+  "AC": {
+    "matched": 20,
+    "overall": 0.5,
+    "per_type": {
+      "ANSWER": {
+        "ac": 1.0,
+        "matched": 20,
+        "total": 20
+      },
+      "DELETE": {
+        "ac": 0.0,
+        "matched": 0,
+        "total": 2
+      },
+      "INGEST": {
+        "ac": 0.0,
+        "matched": 0,
+        "total": 11
+      },
+      "SUPERSEDE": {
+        "ac": 0.0,
+        "matched": 0,
+        "total": 3
+      },
+      "UPDATE": {
+        "ac": 0.0,
+        "matched": 0,
+        "total": 4
+      }
+    },
+    "total": 40
+  },
+  "PC": {
+    "pc": 0.0,
+    "per_answer": [
+      {
+        "citations": 3,
+        "event_id": "ot-00002",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00004",
+        "traceable": 0
+      },
+      {
+        "citations": 2,
+        "event_id": "ot-00006",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00008",
+        "traceable": 0
+      },
+      {
+        "citations": 1,
+        "event_id": "ot-00010",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00012",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00014",
+        "traceable": 0
+      },
+      {
+        "citations": 2,
+        "event_id": "ot-00016",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00018",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00020",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00022",
+        "traceable": 0
+      },
+      {
+        "citations": 2,
+        "event_id": "ot-00024",
+        "traceable": 0
+      },
+      {
+        "citations": 1,
+        "event_id": "ot-00026",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00028",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00030",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00032",
+        "traceable": 0
+      },
+      {
+        "citations": 1,
+        "event_id": "ot-00034",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00036",
+        "traceable": 0
+      },
+      {
+        "citations": 1,
+        "event_id": "ot-00038",
+        "traceable": 0
+      },
+      {
+        "citations": 3,
+        "event_id": "ot-00040",
+        "traceable": 0
+      }
+    ],
+    "total_citations": 49,
+    "traceable": 0
+  },
+  "RF": {
+    "cost_s_per_1k_events": 0.0,
+    "exact": 0.0,
+    "graded": 0.0,
+    "k": 10,
+    "per_checkpoint": {
+      "1": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "10": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "2": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "3": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "4": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "5": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "6": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "7": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "8": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "9": {
+        "exact": false,
+        "jaccard": 0.0
+      }
+    }
+  },
+  "engine_mode": false,
+  "log_sha": "cf2842c1782ce3db64c8ab3448b1fd3c9e9551cef2095aa99ad46db5a4308ed4",
+  "mapping_table_sha": "88b5c868f954efba0abae61e64cc442504df2f3d535385cc3b35d9db8f1d6959",
+  "n_log_events": 40,
+  "runner_env": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.14.4",
+    "ts_utc": "2026-06-10T11:46:11.640329+00:00"
+  },
+  "scenario": "S1",
+  "scenario_sha": "efb2811b4243ece8ae6b0e05b2c0088d26728b4ba97fab846dca32f430e0882b",
+  "spec": "v0.1.1",
+  "sut": "baseline1",
+  "sut_version": "59727c12bb4574432b1a5477050402761c3c7716"
+}
