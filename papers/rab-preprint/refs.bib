@@ -111,3 +111,68 @@
   url          = {https://martinfowler.com/eaaDev/EventSourcing.html},
   note         = {Background terminology used throughout the spec.}
 }
+
+@misc{reflow2026dfah,
+  title         = {{DFAH}: A Determinism-Fidelity Harness for Replayable Financial Agents},
+  author        = {{Reflow Research}},
+  year          = {2026},
+  eprint        = {2601.15322},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.AI},
+  url           = {https://arxiv.org/abs/2601.15322},
+  note          = {Measures behavioral determinism (same input \(\to\) same output reproducibility)
+                   across 4{,}700+ runs on three financial benchmarks. Adjacent axis to RAB:
+                   DFAH scores what the agent outputs; RAB scores the audit-log artifact the
+                   agent emits. The two are independently failable.}
+}
+
+@misc{eth2024complai,
+  title         = {{COMPL-AI}: Operationalising the {EU AI Act} into a Benchmarking Suite},
+  author        = {{ETH Z\"{u}rich and INSAIT and LatticeFlow}},
+  year          = {2024},
+  eprint        = {2410.07959},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CY},
+  url           = {https://arxiv.org/abs/2410.07959},
+  note          = {First publication to operationalise the EU AI Act into 12 technical
+                   requirements + 27 benchmarks at the MODEL level (robustness, fairness,
+                   training-data traceability). RAB targets the SYSTEM-LEVEL record-keeping
+                   obligations of Articles 10/12/19 that COMPL-AI does not score; the two
+                   are complementary tracks of a single Act.}
+}
+
+@misc{veritaschain2025vcp,
+  title        = {{VeritasChain Verifiable Compliance Protocol (VCP)}: Cryptographic audit trails for {EU AI Act} compliance},
+  author       = {{VeritasChain}},
+  year         = {2025},
+  howpublished = {Industry specification},
+  url          = {https://veritaschain.example/vcp},
+  note         = {Industry-side cryptographic audit-trail protocol --- a format
+                   specification rather than a scoring benchmark. A natural candidate
+                   future SUT under RAB's adapter contract.}
+}
+
+@misc{otel2024genaisemconv,
+  title        = {{OpenTelemetry GenAI Semantic Conventions}},
+  author       = {{OpenTelemetry GenAI Working Group}},
+  year         = {2024},
+  howpublished = {Semantic-convention specification},
+  url          = {https://opentelemetry.io/docs/specs/semconv/gen-ai/},
+  note         = {Industry de-facto trace schema for LLM-based systems. Provides the
+                   span vocabulary that an RAB Baseline-1 adapter maps onto Spec §1's
+                   canonical event types --- the bolt-on tracing comparison point named
+                   in Spec §5.}
+}
+
+@misc{traceelephant2026,
+  title         = {{TraceElephant}: An {LLM}-as-debugger for agent execution traces},
+  author        = {{TraceElephant authors}},
+  year          = {2026},
+  howpublished = {Industry/preprint},
+  url          = {https://arxiv.org/abs/2604.00001},
+  note          = {Uses an LLM to read a trace and diagnose failure attribution. Measures
+                   the LLM's debugging capability, not the trace's audit quality ---
+                   orthogonal to RAB and explicitly compatible with RAB's H1 (no LLM
+                   judge in scoring): an LLM may consume an RAB-scoreable log without
+                   being part of the scorer.}
+}
