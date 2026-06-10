@@ -7,6 +7,13 @@
 fastapi>=0.110.0
 uvicorn[standard]>=0.27.0
 python-multipart>=0.0.27  # GHSA / Dependabot alerts #5,#6 (DoS via unbounded multipart headers; 0.0.27 raises the floor past the newer disclosure)
+# Dependabot alerts #15/#16 — GHSA-86qp-5c8j-p5mr / CVE-2026-48710
+# (badhost): unvalidated Host header poisons request.url.path,
+# bypassing path-based security middleware. Patched in starlette
+# 1.0.1. Pulled in transitively by fastapi; pin the floor here so a
+# fresh install with a stale wheel cache cannot regress us, matching
+# the urllib3 / python-multipart / idna approach above.
+starlette>=1.0.1
 pydantic>=2.5.0
 
 # ── Authentication / Security ──────────────────────────────────
@@ -31,6 +38,24 @@ urllib3>=2.7.0
 idna>=3.15
 
 # ── Vector DB / Embeddings / Search ────────────────────────────
+# Dependabot alerts #13/#14 — GHSA-f4j7-r4q5-qw2c / CVE-2026-45829
+# (chromatoast): pre-auth code injection in the chromadb HTTP server's
+# /api/v2/tenants/{tenant}/databases/{db}/collections endpoint when
+# the request body sets trust_remote_code=true on a malicious model
+# repository. Vulnerable range 1.0.0–1.5.9 with NO patched version
+# published as of 2026-06-10.
+#
+# JAMES risk acceptance: not exploitable in this deployment.
+#   - core/vector_store.py uses chromadb.PersistentClient (embedded
+#     local mode); the HTTP server is never started.
+#   - No JAMES code path calls trust_remote_code or constructs
+#     chromadb collections from user-controlled model repositories.
+#   - JAMES is local-first per CLAUDE.md / docs/ARCHITECTURE.md.
+# Floor kept at 0.4.22 (no advisory ≥ patched version exists to
+# raise to). Track upstream chroma-core/chroma#6717 and bump when
+# a fixed release ships. See
+# docs/security/dependabot-2026-06-10-risk-assessment.md for the
+# full assessment + dismissal rationale.
 chromadb>=0.4.22
 sentence-transformers>=2.5.0
 rank-bm25>=0.2.2
