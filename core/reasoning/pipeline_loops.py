@@ -116,25 +116,53 @@ def run_loop_0_retrieve(
     except Exception as e:
         engine._log("query_decompose", e, user_role)
 
+    # Cycle γ D3 — multi-hop evidence selection (opt-in). Flag off →
+    # docs stays None → the normal orch_retrieve + rerank path runs
+    # (byte-identical). Flag on → build a small clean per-sub-question
+    # context and SKIP the wide rerank (the retrieval-arc closure found
+    # synth drowns in distractors; the fix is a small clean context).
+    docs = None
+    evidence_selected = False
     try:
-        from core.orchestrator import retrieve as orch_retrieve
-        docs = orch_retrieve(
-            original_query  = safe_query,
-            expanded_query  = loop_state["expanded_query"],
-            hybrid_search_fn= engine.retrieval.hybrid_search,
-            user_role       = user_role,
-            source_type     = source_type,
-            top_k           = retrieve_top_k,
-            extra_queries   = sub_questions,
+        from core.retrieval.evidence_selector import (
+            evidence_select_enabled, select_evidence,
         )
+        if evidence_select_enabled():
+            from core.retrieval.query_decomposer import decomp_model
+            sel = select_evidence(
+                safe_query, engine.retrieval.hybrid_search,
+                model=decomp_model(), user_role=user_role,
+                source_type=source_type,
+            )
+            if sel:
+                docs = sel
+                evidence_selected = True
+                print(f"  [D3] evidence-select: {len(docs)} docs "
+                      f"(rerank bypassed)")
     except Exception as e:
-        engine._log("loop0_orchestrator", e, user_role)
-        # fallback: 기존 방식
-        docs = engine.retrieval.hybrid_search(
-            safe_query, top_k=retrieve_top_k,
-            user_role=user_role,
-            source_type=source_type,
-        )
+        engine._log("evidence_select", e, user_role)
+        docs = None
+
+    if docs is None:
+        try:
+            from core.orchestrator import retrieve as orch_retrieve
+            docs = orch_retrieve(
+                original_query  = safe_query,
+                expanded_query  = loop_state["expanded_query"],
+                hybrid_search_fn= engine.retrieval.hybrid_search,
+                user_role       = user_role,
+                source_type     = source_type,
+                top_k           = retrieve_top_k,
+                extra_queries   = sub_questions,
+            )
+        except Exception as e:
+            engine._log("loop0_orchestrator", e, user_role)
+            # fallback: 기존 방식
+            docs = engine.retrieval.hybrid_search(
+                safe_query, top_k=retrieve_top_k,
+                user_role=user_role,
+                source_type=source_type,
+            )
 
     # ── Phase 1 PR-1: cross-encoder rerank ─────────
     # orchestrator returns 8 docs by vector score; the reranker
@@ -146,13 +174,19 @@ def run_loop_0_retrieve(
     # returns docs[:top_k] unchanged → byte-identical to v0.3.0.
     t_rerank = time.time()
     pre_rerank_count = len(docs)
-    try:
-        from core.retrieval.rerank import get_reranker
-        docs = get_reranker().rerank(safe_query, docs, top_k=rerank_top_k)
-    except Exception as e:
-        engine._log("loop0_rerank", e, user_role)
-        docs = docs[:rerank_top_k]
-    rerank_ms = int((time.time() - t_rerank) * 1000)
+    if evidence_selected:
+        # D3: the per-sub-question winners are already a small clean
+        # set; reranking by the original query would re-introduce the
+        # hop-2 down-ranking we're trying to avoid. Skip it.
+        rerank_ms = 0
+    else:
+        try:
+            from core.retrieval.rerank import get_reranker
+            docs = get_reranker().rerank(safe_query, docs, top_k=rerank_top_k)
+        except Exception as e:
+            engine._log("loop0_rerank", e, user_role)
+            docs = docs[:rerank_top_k]
+        rerank_ms = int((time.time() - t_rerank) * 1000)
 
     # Emit one trace step for the rerank stage so the replay
     # tool sees the cognitive-layer step alongside synth rows.
