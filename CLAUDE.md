@@ -10,11 +10,18 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 ## Where we are right now
 
-- **Current version**: **v0.4.1 closed** (2026-05-28, DOI
-  `10.5281/zenodo.20426719`) — T6 Causality Chain + T2.D ingestion +
-  QVT α track. v0.2.0 (Foundation Hardening) and v0.3.0
-  (Platform Skeleton) both fully closed; v0.4.0 (Layer 4 Lifecycle:
-  T1+T7+T2 first bundle) shipped 2026-05-27.
+- **Current version**: **v0.4.3 closed** (2026-06-10, DOI
+  `10.5281/zenodo.20625533`) — RAB v0.1.1 (Replayable-Audit Benchmark
+  for RAG / agent systems; 3 deterministic metrics AC/RF/PC mapped to
+  EU AI Act Art. 10/12/19 in force 2026-08-02) + Cycle γ multi-hop arc
+  closure (multi-hop improvement reframed out of the JAMES roadmap;
+  graph build O(N²) finding lifted into RAB as the RF-cost axis).
+  v0.4.2 (T5 Replayable Audit Graph, 2026-06-06) shipped the
+  `reconstruct_graph_at(t)` primitive that RAB measures the quality
+  of. v0.4.1 (2026-05-28, DOI `10.5281/zenodo.20426719`) closed T6
+  Causality Chain + T2.D ingestion + QVT α track. v0.2.0 / v0.3.0
+  fully closed; v0.4.0 (Layer 4 Lifecycle: T1+T7+T2 first bundle)
+  shipped 2026-05-27.
 - **Active theme**: **Direction α — hybrid cloud reasoning tier**
   (entered 2026-06-03). The α-measurement cycle (α-6/7/8) is closed and
   the **forced discovery hunt has ended** (see memory
