@@ -61,19 +61,25 @@ def decompose(
     model: str | None = None,
     max_sub: int = 4,
     timeout: int = 60,
+    force: bool = False,
 ) -> List[str]:
     """Return ordered sub-questions for ``query``, or ``[]``.
 
     ``[]`` is returned (no-op, byte-identical retrieval) when:
-      - the flag is off,
+      - the flag is off (and ``force`` is False),
       - the query is empty,
       - the LLM call fails,
       - the model echoes the question unchanged (single-hop),
       - the output is empty/garbage.
 
+    ``force=True`` bypasses the ``JAMES_ENABLE_QUERY_DECOMP`` flag check
+    so the iterative-retrieval path (D1b, gated on its own
+    ``JAMES_ENABLE_ITER_RETRIEVAL``) can reuse the decomposer without
+    also enabling the static-decomposition path.
+
     Never raises — decomposition must not block retrieval.
     """
-    if not query_decomp_enabled():
+    if not force and not query_decomp_enabled():
         return []
     q = (query or "").strip()
     if not q:
@@ -108,4 +114,12 @@ def decompose(
     return subs
 
 
-__all__ = ["decompose", "query_decomp_enabled"]
+def decomp_model() -> str:
+    """Public accessor for the decompose/extract model selection
+    (``JAMES_DECOMP_MODEL`` → ``JAMES_LLM_MODEL`` → ``gemma4:e4b``).
+    Reused by the iterative retriever so decompose + extract share a
+    model."""
+    return _decomp_model()
+
+
+__all__ = ["decompose", "query_decomp_enabled", "decomp_model"]

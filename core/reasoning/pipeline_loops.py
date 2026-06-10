@@ -83,17 +83,32 @@ def run_loop_0_retrieve(
     retrieve_top_k = _env_int("JAMES_RETRIEVE_TOP_K", 8)
     rerank_top_k = _env_int("JAMES_RERANK_TOP_K", 5)
 
-    # Cycle γ D1 — multi-hop query decomposition (opt-in). Flag off →
-    # decompose returns [] → orch_retrieve sees no extra paths → the
-    # retrieval query set is byte-identical to pre-D1 behaviour. The
-    # sub-questions add hop-2 retrieval paths the original query cannot
-    # reach (Phase C.2 bottleneck finding).
+    # Cycle γ D1 / D1b — multi-hop retrieval (opt-in). Both flags off →
+    # sub_questions stays [] → orch_retrieve sees no extra paths → the
+    # retrieval query set is byte-identical to pre-D1 behaviour.
+    #   D1  (JAMES_ENABLE_QUERY_DECOMP):  static sub-questions.
+    #   D1b (JAMES_ENABLE_ITER_RETRIEVAL): iterative — answer hop-1 from
+    #       its own retrieval, substitute into hop-2 (resolves the
+    #       anaphora that left D1 INSUFFICIENT). Takes precedence.
     sub_questions = []
     try:
         from core.retrieval.query_decomposer import (
-            decompose, query_decomp_enabled,
+            decompose, query_decomp_enabled, decomp_model,
         )
-        if query_decomp_enabled():
+        from core.retrieval.iterative_retriever import (
+            iter_retrieval_enabled, iterative_resolve,
+        )
+        if iter_retrieval_enabled():
+            raw = decompose(safe_query, force=True)
+            if raw:
+                sub_questions = iterative_resolve(
+                    raw, engine.retrieval.hybrid_search,
+                    model=decomp_model(), user_role=user_role,
+                    source_type=source_type, top_k=retrieve_top_k,
+                )
+                print(f"  [D1b] iterative: {len(sub_questions)} "
+                      f"resolved sub-question(s)")
+        elif query_decomp_enabled():
             sub_questions = decompose(safe_query)
             if sub_questions:
                 print(f"  [D1] decomposed into {len(sub_questions)} "
