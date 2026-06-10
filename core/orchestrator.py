@@ -72,6 +72,7 @@ def retrieve(
     user_role:       str  = "external",
     source_type:     Optional[str] = "prod",
     top_k:           int  = 8,
+    extra_queries:   Optional[List[str]] = None,
 ) -> List[Dict]:
     """
     multi-path 수집 → 단순 merge → dedup.
@@ -80,6 +81,10 @@ def retrieve(
       1. original_query  → hybrid_search
       2. expanded_query  → hybrid_search (query_expander 성공 시 다름, 실패 시 동일)
       3. keyword_query   → hybrid_search
+      4. extra_queries   → hybrid_search (cycle γ D1 query-decomposition
+         sub-questions; ``None`` / ``[]`` → byte-identical to the 3-path
+         behaviour. Each sub-question becomes a "subq{i}" path so the
+         hop-2 query surfaces what the original cannot.)
 
     결과 merge: 단순 concat → deduplicate
     ❌ rerank 없음 / ❌ 점수 재계산 없음 / ❌ 순서 변경 없음
@@ -89,6 +94,9 @@ def retrieve(
         ("expanded",  expanded_query),
         ("keyword",   _extract_keywords(original_query)),
     ]
+    for i, sq in enumerate(extra_queries or []):
+        if isinstance(sq, str) and sq.strip():
+            queries.append((f"subq{i+1}", sq))
 
     # expanded == original인 경우 중복 쿼리 제거
     seen_queries, unique_queries = set(), []
