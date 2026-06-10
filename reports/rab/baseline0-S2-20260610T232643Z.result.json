@@ -1,0 +1,222 @@
+{
+  "AC": {
+    "matched": 110,
+    "overall": 0.275,
+    "per_type": {
+      "ANSWER": {
+        "ac": 0.0,
+        "matched": 0,
+        "total": 200
+      },
+      "DELETE": {
+        "ac": 0.0,
+        "matched": 0,
+        "total": 20
+      },
+      "INGEST": {
+        "ac": 1.0,
+        "matched": 110,
+        "total": 110
+      },
+      "SUPERSEDE": {
+        "ac": 0.0,
+        "matched": 0,
+        "total": 30
+      },
+      "UPDATE": {
+        "ac": 0.0,
+        "matched": 0,
+        "total": 40
+      }
+    },
+    "total": 400
+  },
+  "PC": {
+    "pc": 0.0,
+    "per_answer": [],
+    "total_citations": 0,
+    "traceable": 0
+  },
+  "RF": {
+    "cost_s_per_1k_events": 0.0,
+    "exact": 0.0,
+    "graded": 0.0,
+    "k": 40,
+    "per_checkpoint": {
+      "1": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "10": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "11": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "12": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "13": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "14": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "15": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "16": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "17": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "18": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "19": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "2": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "20": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "21": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "22": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "23": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "24": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "25": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "26": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "27": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "28": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "29": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "3": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "30": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "31": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "32": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "33": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "34": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "35": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "36": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "37": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "38": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "39": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "4": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "40": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "5": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "6": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "7": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "8": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "9": {
+        "exact": false,
+        "jaccard": 0.0
+      }
+    }
+  },
+  "engine_mode": false,
+  "log_sha": "9bf7f9c11a58520f7e7d0c7b555c3a734e54e91bf67eb01c3fe6f57e5ea44f28",
+  "mapping_table_sha": "0ff2a1ee55056a54d0e9da8e278201c5beb0dcd21363fc0f6eaa43710460b1c2",
+  "n_log_events": 400,
+  "runner_env": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.14.4",
+    "ts_utc": "2026-06-10T23:26:43.591233+00:00"
+  },
+  "scenario": "S2",
+  "scenario_sha": "1a91c256e9e58a7b89d1b94f605a2f727e373f52aecace9f0af2f4cebb3b7614",
+  "spec": "v0.1.1",
+  "sut": "baseline0",
+  "sut_version": "aeb44c6540f9c0cf0164b9a90e954f3e4cea50c5"
+}
