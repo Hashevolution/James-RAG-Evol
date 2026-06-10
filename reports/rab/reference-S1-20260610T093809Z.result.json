@@ -1,0 +1,203 @@
+{
+  "AC": {
+    "matched": 40,
+    "overall": 1.0,
+    "per_type": {
+      "ANSWER": {
+        "ac": 1.0,
+        "matched": 20,
+        "total": 20
+      },
+      "DELETE": {
+        "ac": 1.0,
+        "matched": 2,
+        "total": 2
+      },
+      "INGEST": {
+        "ac": 1.0,
+        "matched": 11,
+        "total": 11
+      },
+      "SUPERSEDE": {
+        "ac": 1.0,
+        "matched": 3,
+        "total": 3
+      },
+      "UPDATE": {
+        "ac": 1.0,
+        "matched": 4,
+        "total": 4
+      }
+    },
+    "total": 40
+  },
+  "PC": {
+    "pc": 1.0,
+    "per_answer": [
+      {
+        "citations": 1,
+        "event_id": "ref-00013",
+        "traceable": 1
+      },
+      {
+        "citations": 2,
+        "event_id": "ref-00016",
+        "traceable": 2
+      },
+      {
+        "citations": 1,
+        "event_id": "ref-00019",
+        "traceable": 1
+      },
+      {
+        "citations": 2,
+        "event_id": "ref-00022",
+        "traceable": 2
+      },
+      {
+        "citations": 1,
+        "event_id": "ref-00026",
+        "traceable": 1
+      },
+      {
+        "citations": 2,
+        "event_id": "ref-00030",
+        "traceable": 2
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00034",
+        "traceable": 3
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00037",
+        "traceable": 0
+      },
+      {
+        "citations": 2,
+        "event_id": "ref-00041",
+        "traceable": 2
+      },
+      {
+        "citations": 1,
+        "event_id": "ref-00045",
+        "traceable": 1
+      },
+      {
+        "citations": 2,
+        "event_id": "ref-00049",
+        "traceable": 2
+      },
+      {
+        "citations": 1,
+        "event_id": "ref-00053",
+        "traceable": 1
+      },
+      {
+        "citations": 1,
+        "event_id": "ref-00056",
+        "traceable": 1
+      },
+      {
+        "citations": 1,
+        "event_id": "ref-00060",
+        "traceable": 1
+      },
+      {
+        "citations": 1,
+        "event_id": "ref-00064",
+        "traceable": 1
+      },
+      {
+        "citations": 3,
+        "event_id": "ref-00067",
+        "traceable": 3
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00071",
+        "traceable": 0
+      },
+      {
+        "citations": 1,
+        "event_id": "ref-00074",
+        "traceable": 1
+      },
+      {
+        "citations": 0,
+        "event_id": "ref-00077",
+        "traceable": 0
+      },
+      {
+        "citations": 2,
+        "event_id": "ref-00080",
+        "traceable": 2
+      }
+    ],
+    "total_citations": 27,
+    "traceable": 27
+  },
+  "RF": {
+    "cost_s_per_1k_events": 0.0013,
+    "exact": 1.0,
+    "graded": 1.0,
+    "k": 10,
+    "per_checkpoint": {
+      "1": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "10": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "2": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "3": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "4": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "5": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "6": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "7": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "8": {
+        "exact": true,
+        "jaccard": 1.0
+      },
+      "9": {
+        "exact": true,
+        "jaccard": 1.0
+      }
+    }
+  },
+  "engine_mode": false,
+  "log_sha": "07f5fc08b3182438655307d9a0ac1e8c92eca019022a62fde6482c5887f27e68",
+  "mapping_table_sha": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "n_log_events": 80,
+  "runner_env": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.14.4",
+    "ts_utc": "2026-06-10T09:38:09.716007+00:00"
+  },
+  "scenario": "S1",
+  "scenario_sha": "efb2811b4243ece8ae6b0e05b2c0088d26728b4ba97fab846dca32f430e0882b",
+  "spec": "v0.1.1",
+  "sut": "reference",
+  "sut_version": "8a35deec83e6e54498126b92ed94ae00e3005000"
+}

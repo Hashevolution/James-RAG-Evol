@@ -1,0 +1,102 @@
+{
+  "AC": {
+    "matched": 11,
+    "overall": 0.275,
+    "per_type": {
+      "ANSWER": {
+        "ac": 0.0,
+        "matched": 0,
+        "total": 20
+      },
+      "DELETE": {
+        "ac": 0.0,
+        "matched": 0,
+        "total": 2
+      },
+      "INGEST": {
+        "ac": 1.0,
+        "matched": 11,
+        "total": 11
+      },
+      "SUPERSEDE": {
+        "ac": 0.0,
+        "matched": 0,
+        "total": 3
+      },
+      "UPDATE": {
+        "ac": 0.0,
+        "matched": 0,
+        "total": 4
+      }
+    },
+    "total": 40
+  },
+  "PC": {
+    "pc": 0.0,
+    "per_answer": [],
+    "total_citations": 0,
+    "traceable": 0
+  },
+  "RF": {
+    "cost_s_per_1k_events": 0.0,
+    "exact": 0.0,
+    "graded": 0.0,
+    "k": 10,
+    "per_checkpoint": {
+      "1": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "10": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "2": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "3": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "4": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "5": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "6": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "7": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "8": {
+        "exact": false,
+        "jaccard": 0.0
+      },
+      "9": {
+        "exact": false,
+        "jaccard": 0.0
+      }
+    }
+  },
+  "engine_mode": false,
+  "log_sha": "0954ed4457170fcdba661a29353545354658d383b52e26302f11241ceeaea93f",
+  "mapping_table_sha": "0ff2a1ee55056a54d0e9da8e278201c5beb0dcd21363fc0f6eaa43710460b1c2",
+  "n_log_events": 40,
+  "runner_env": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.14.4",
+    "ts_utc": "2026-06-10T09:38:17.432010+00:00"
+  },
+  "scenario": "S1",
+  "scenario_sha": "efb2811b4243ece8ae6b0e05b2c0088d26728b4ba97fab846dca32f430e0882b",
+  "spec": "v0.1.1",
+  "sut": "baseline0",
+  "sut_version": "8a35deec83e6e54498126b92ed94ae00e3005000"
+}
