@@ -1,0 +1,239 @@
+% RAB v0.1.1 — arXiv preprint
+% Minimal arXiv-friendly skeleton: article class + booktabs + hyperref.
+% Build:  pdflatex main && bibtex main && pdflatex main && pdflatex main
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{amsmath}
+\usepackage{caption}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  citecolor=blue!50!black,
+  urlcolor=blue!50!black,
+  pdftitle={RAB: A Replayable-Audit Benchmark for RAG and Agent Systems},
+  pdfauthor={Jiwon Seo},
+  pdfkeywords={EU AI Act, audit log, event sourcing, RAG, agent benchmark, replay}
+}
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  columns=fullflexible,
+  frame=single,
+  framerule=0.3pt,
+  xleftmargin=4pt,
+  xrightmargin=4pt
+}
+
+\title{RAB: A Replayable-Audit Benchmark for RAG and Agent Systems Operationalising EU AI Act Articles 10, 12, 19\thanks{Pre-registration locked before any measurement: \texttt{docs/research/r1-4-preregistration-2026-06-10.md} in the JAMES repository, commit \texttt{8a35dee}.}}
+
+\author{
+  Jiwon Seo\thanks{Hashevolution, Republic of Korea. ORCID 0009-0002-0007-7860. Correspondence: \texttt{karu-7@hanmail.net}.}
+}
+
+\date{2026-06-10}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+The EU AI Act enters force on 2~August~2026, requiring high-risk AI systems to keep automatic event logs (Art.~12), trace data origins (Art.~10), and retain logs for at least six months (Art.~19). An open survey on agentic systems~\cite{mathkar2026tracebench} explicitly names \emph{realistic execution-trace benchmarks} as a missing piece of the audit ecosystem. Independently, recent runtimes such as ActiveGraph~\cite{nakajima2026activegraph} and JAMES T5 demonstrate that event-sourced logs with deterministic replay are constructible; what has been missing is the measurement.
+
+We present \textbf{RAB} (Replayable-Audit Benchmark) v0.1.1: a frozen benchmark specification, a deterministic scorer, a published lifecycle scenario, and an adapter contract through which any RAG or agent system that can export an append-only audit log is scoreable. RAB defines three metrics --- \textbf{AC} (Audit Completeness), \textbf{RF} (Replay Fidelity, with a separate cost column), and \textbf{PC} (Provenance Coverage) --- each anchored verbatim to EU AI Act provisions and the W3C PROV vocabulary, each computed without invoking any language model. The headline of a RAB release is a \emph{gap table} across system-under-test categories; no single system's score is the headline. We measure three SUTs on scenario-S1: a self-verifying reference adapter (AC/RF/PC $=1.0$, $1.0$, $1.0$), the JAMES audit-native runtime ($1.0$, $1.0$, $1.0$), and a vanilla quickstart + default-logging baseline ($0.275$, $0$, $0$). The gap is the audit-native vs.\ default-logging delta operationalised. RAB does not certify compliance, does not claim the audit-native architecture is novel, and does not present JAMES's score as a finding. The benchmark, with its honesty clauses and a pre-registered reporting protocol, is the contribution. All artefacts (spec, scenario, scorer, adapters, three result triples) are released under Zenodo DOI~\href{https://doi.org/10.5281/zenodo.20625533}{10.5281/zenodo.20625533} and reproducible bit-for-bit from the JAMES repository at tag \texttt{v0.4.3}.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+Article~12 of Regulation~(EU)~2024/1689~\cite{aiact2024} requires that high-risk AI systems \emph{``allow for the automatic recording of events (logs) over the lifetime of the system''} that are \emph{``traceable in terms of the functioning of the system''}, with logs facilitating ex-post monitoring (Art.~12(2)(b)) and retained at least six months (Art.~19). Article~10(2)(b) requires that data preparation operations record \emph{``origin of data''}. These requirements apply from 2~August~2026 (Art.~113). Operators of RAG-based assistants, agentic systems, and decision-support tools therefore face a measurable obligation: can their system, given only the exported log, reconstruct what was indexed, what was retrieved, what was synthesised, and what was answered?
+
+The relevant runtimes exist. Event sourcing~\cite{eventsourcing} as a design pattern is decades old, and recent agent runtimes have ported it: ActiveGraph~\cite{nakajima2026activegraph} centers an append-only event log as the source of truth and projects a graph from it; JAMES~\cite{seo2026jamesv043} ships an \texttt{audit\_log} schema with deterministic \texttt{reconstruct\_graph\_at(t)} replay. What is missing is the \emph{measurement}: in the absence of a benchmark, neither a regulator nor a user can compare an audit-native runtime to a quickstart with default logging, nor compare two audit-native runtimes to each other. The agentic-systems survey of~\cite{mathkar2026tracebench} names exactly this gap.
+
+We make four contributions:
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{RAB v0.1.1 specification (§\ref{sec:spec}).} An abstract audit-log interface, three deterministic metrics, a scenario contract, a reporting format, five baselines, and six frozen honesty clauses (no LLM judge anywhere, log-only RF, operationalise-not-certify, re-verification artefacts, gap-as-headline, spec-versioning).
+  \item \textbf{Scenario-S1 fixture (§\ref{sec:scenario}).} A 40-operation, 10-checkpoint synthetic-prose corpus lifecycle (11 ingest, 4 update, 3 supersede, 2 delete, 20 query), deterministic and public-domain.
+  \item \textbf{Adapter contract and reference / JAMES / Baseline-0 implementations (§\ref{sec:adapters}).} Reference is a perfectly-audited in-memory SUT that pins the driver and scorer ($1.0\times 3$); JAMES exercises real production code paths (\texttt{emit\_lifecycle\_event} and \texttt{reconstruct\_graph\_at}), workspace-isolated from production state; Baseline-0 is a vanilla in-memory RAG with Python-\texttt{logging}-style records.
+  \item \textbf{Pre-registered measurement and gap table (§\ref{sec:results}).} The reporting protocol, the cell-validity gates, the prohibitions (no post-hoc spec tweaks, no JAMES-wins framing, no Baseline-0 augmentation), and the honest tier ceiling were locked before any adapter code was written or any measurement was taken. The pre-registration commit is the timestamped evidence.
+\end{enumerate}
+
+The benchmark is the contribution. The audit-native architectural class is \emph{not} ours to claim --- ActiveGraph published the same architectural primitives independently three weeks before RAB R1.0~\cite{nakajima2026activegraph}; JAMES's relevant code (\texttt{core/lifecycle/replay\_audit.py}, \texttt{core/lifecycle/replay\_graph.py}) shipped in v0.4.2. What we provide is the missing measurement instrument and the first 3-SUT data point against it.
+
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Audit-native agent runtimes.} ActiveGraph~\cite{nakajima2026activegraph} explicitly identifies the append-only log as the source of truth, with the working graph as a deterministic projection. JAMES v0.4.2~\cite{seo2026jamesv043} ships \texttt{reconstruct\_graph\_at(t)} with the audit-only invariant pinned by a release-gating test. Both publications describe the same architectural class. RAB measures it.
+
+\paragraph{Agentic-system trace surveys.} The survey of~\cite{mathkar2026tracebench} categorises trace-related work across reproducibility, auditability, and provenance, and names the open challenge of realistic execution-trace benchmarks. The benchmark category we occupy is the one the survey identifies as empty.
+
+\paragraph{AI Act benchmarking and auditing.} Audit Cards~\cite{salaudeen2025auditcards} document \emph{how} an audit is contextualised; RAB measures \emph{what} the audit can reproduce. AIReg-Bench~\cite{airegbench2025} benchmarks LLM \emph{judges} of regulation compliance; RAB has no LLM judge anywhere in scoring (honesty clause~1). Casper et~al.~\cite{casper2024blackbox} argue that black-box access is insufficient for rigorous audits; RAB is a white-box instrument over the exported log and quantifies the gap that white-box access enables. The AI Act Evaluation Benchmark~\cite{aiactevalbench2026} evaluates classification triggers in the AI Act (manipulative AI, biometric ID, social scoring) at the system-categorisation level; RAB operates at the per-system audit-quality level. The two are orthogonal.
+
+\paragraph{Provenance and risk-management frameworks.} The W3C PROV \texttt{wasDerivedFrom} relation~\cite{w3cprov2013} is the anchor for RAB's PC metric. The NIST AI~RMF~\cite{nist2023airmf} provides the broader governance vocabulary; RAB does not implement RMF function controls, but its scores are designed to feed an RMF \textsc{Measure} step.
+
+\paragraph{RAG evaluation.} Most existing RAG benchmarks (cf.\ retrieval-augmented generation as introduced by~\cite{lewis2020rag} and the many domain-specific extensions) measure \emph{answer quality}. RAB measures \emph{audit quality} of the system that produced the answer. The two axes are complementary; a system can score well on RAG quality and fail RAB, or vice versa.
+
+\section{RAB v0.1.1 Specification}
+\label{sec:spec}
+
+The full spec is part of the release archive (\texttt{eval/rab/SPEC-v0.1.md}). We summarise its load-bearing pieces; the spec itself, not this paper, is the normative artefact.
+
+\subsection{Abstract audit-log interface (Spec~§1)}
+A system under test (SUT) is scoreable iff it can export its audit log as JSONL, one event per line, each line containing \texttt{event\_id}, ISO-8601 \texttt{ts}, \texttt{event\_type} (from the SUT's vocabulary; mapped once to RAB's canonical types via a declared mapping table that is part of the submission), \texttt{parent\_id} (provenance edge), \texttt{inputs\_hash}, and \texttt{payload}. RAB's canonical event vocabulary is \{\texttt{INGEST}, \texttt{UPDATE}, \texttt{SUPERSEDE}, \texttt{DELETE}, \texttt{RETRIEVE}, \texttt{RERANK}, \texttt{SYNTH}, \texttt{VERIFY}, \texttt{ANSWER}, \texttt{OTHER}\}. Unmapped decision-bearing events count against AC --- they were executed but not auditable in canonical terms.
+
+\subsection{Metrics (Spec~§2)}
+
+\paragraph{AC --- Audit Completeness (Art.~12(1)/(2)).} The RAB driver executes the published scenario against the SUT, recording ground truth $E_{\mathrm{exec}}$: every decision-bearing action requested. The SUT's exported log yields $E_{\mathrm{audit}}$. Matching is greedy, in time order: each executed op matches the first unconsumed log event of the same canonical type whose timestamp falls inside the op's $[t_{\mathrm{start}}, t_{\mathrm{end}}]$ window.
+\[\mathrm{AC} = \frac{|E_{\mathrm{matched}}|}{|E_{\mathrm{exec}}|}\quad \text{reported overall and per canonical type.}\]
+
+\paragraph{RF --- Replay Fidelity (Art.~12(2)(b)).} The scenario defines checkpoints $k = 1\ldots K$; at each checkpoint the driver snapshots ground-truth state $S_k$ via the SUT's live query interface. After the run, the SUT's \emph{replayer} is given only the exported log and must produce $R_k$.
+\[
+\mathrm{RF\text{-}exact} = \frac{|\{k : \mathrm{canon}(R_k) = \mathrm{canon}(S_k)\}|}{K}, \quad
+\mathrm{RF\text{-}graded} = \frac{1}{K} \sum_k \mathrm{Jaccard}(\mathrm{items}(R_k), \mathrm{items}(S_k))
+\]
+A separate \textbf{RF-cost} column reports wall-clock seconds per~1000 log events folded during replay. It is reported alongside but never blended into the score; this is where the cost of audit-native scale enters the picture.
+
+\paragraph{PC --- Provenance Coverage (Art.~10(2)(b), W3C PROV).} For every \texttt{ANSWER} event, its cited source identifiers must chain back through \texttt{parent\_id} links to an origin-bearing event (\texttt{INGEST} or \texttt{SUPERSEDE}, since both introduce content):
+\[
+\mathrm{ANSWER} \to \mathrm{SYNTH} \to \mathrm{RETRIEVE} \to (\mathrm{INGEST}\,|\,\mathrm{SUPERSEDE}).
+\]
+$\mathrm{PC} = \text{traceable citations} / \text{total citations}$. v0.1 scopes provenance to cited sources only; claim-level provenance is explicit future work.
+
+\paragraph{Canonical form (Spec~§2.4).} State snapshots serialise as JSON with sorted keys, entity/edge arrays sorted by identifier, UTC ISO-8601 timestamps, floats fixed to 6~decimal places. The scorer's \texttt{canon()} function is identical for $S$ and $R$. RF-exact is byte-equality after canonicalisation; RF-graded uses the Jaccard on the item set (entity ids and \texttt{(src,dst,type)} edge triples).
+
+\subsection{Honesty clauses (Spec~§6, frozen)}
+\begin{enumerate}[label=H\arabic*,leftmargin=*]
+  \item No LLM judge anywhere in scoring.
+  \item RF consumes the exported log only --- no live-state access.
+  \item RAB operationalises Art.~10/12/19 \emph{concepts}; it does not certify compliance, and the spec says so wherever scores are published.
+  \item Scores published only with their re-verification artefacts (log, mapping, scorer version).
+  \item The benchmark author's system scoring well is expected and is not the headline.
+  \item Spec changes never retro-apply: results carry their spec version.
+\end{enumerate}
+Clause~H6 is what we used when correcting v0.1.0 to v0.1.1 during the reference-adapter implementation (Section~\ref{sec:adapters}).
+
+\section{Scenario-S1}
+\label{sec:scenario}
+
+Scenario-S1 (\emph{lifecycle-small}) is a 40-operation, 10-checkpoint lifecycle over a synthetic public-domain corpus about a fictional research lab (Northbridge Labs). Operations are 11 \texttt{INGEST}, 4 \texttt{UPDATE}, 3 \texttt{SUPERSEDE}, 2 \texttt{DELETE}, and 20 \texttt{QUERY}; identifiers are deterministic; the supersede chain produces both ``new-replaces-old'' and ``later-replaces-earlier-replaces-original'' shapes; deletes touch both ingested and ingested-then-updated documents. Scenarios are versioned and SHA-pinned; results cite \texttt{(spec~v0.1.1, scenario~S1, scenario-sha)}.
+
+\section{Adapters}
+\label{sec:adapters}
+
+\subsection{Reference adapter}
+A perfectly-audited in-memory SUT (Spec~§5). Its only purpose is to pin the driver and scorer: a system that logs every event with full payload and reconstructs state purely from its log \emph{must} score AC/RF-exact/PC $= 1.0$. Fault-injection variants (\texttt{drop\_audit\_types}, \texttt{corrupt\_replay}, \texttt{break\_provenance}) drop exactly the targeted metric, demonstrating that the three axes are independently observable. The reference adapter implementation surfaced a v0.1.0 defect in the PC origin-bearing rule (the original wording allowed \texttt{INGEST} only, marking supersede-born content untraceable). The defect was caught \emph{before} any measurement was taken; the spec changelog records the correction as v0.1.1. This is honesty clause~H6 in action.
+
+\subsection{JAMES adapter}
+The JAMES adapter (\texttt{eval/rab/adapters/james.py}) is workspace-isolated: every artefact (RAB log JSONL, lifecycle-event sqlite, optional vector store) lives under a constructor-supplied directory; production audit databases are never touched. Each \texttt{SUPERSEDE} additionally calls the real production code path \texttt{core.lifecycle.replay\_audit.emit\_lifecycle\_event} with \texttt{EVT\_SUPERSEDE\_EDGE\_CREATED}. Two cross-verification tests pin this bridge: the count of \texttt{SUPERSEDE} JSONL rows equals the count of \texttt{lifecycle.supersede.edge\_created} rows in the workspace sqlite; and \texttt{core.lifecycle.replay\_graph.reconstruct\_graph\_at(t)} reproduces the same supersede edges as the JSONL replay. The adapter therefore demonstrates that the published v0.4.3 JAMES code path actually scores what the gap table reports.
+
+\subsection{Baseline-0 adapter}
+Baseline-0 is the floor (Spec~§5). It is a vanilla in-memory RAG with Python-\texttt{logging}-style records: each operation emits a human string (e.g.~\texttt{"Indexed document nb-doc-001"}) with no structured payload, no \texttt{parent\_id} chain, and a mapping table that maps \texttt{doc\_added}~$\to$~\texttt{INGEST} but cannot distinguish updates, supersedes, deletes, or answers. Its \texttt{replay\_at} returns the empty state because the log carries no payload to fold. This is the honest representation of what most ``default logging'' looks like.
+
+\section{Pre-registration}
+\label{sec:prereg}
+
+The R1.4 measurement was pre-registered before any adapter code was written. The pre-registration document (\texttt{docs/research/r1-4-preregistration-2026-06-10.md}, repository commit \texttt{8a35dee}) locks the SUTs, the result-JSON shape (including \texttt{log\_sha}, \texttt{mapping\_table\_sha}, \texttt{scenario\_sha}), the cell-validity gates (reference must hit $1.0\times 3$ before publishing other SUTs' numbers; scenario errors recorded, not papered over), and six prohibitions: no post-hoc spec tweaks, no JAMES-wins framing, no Baseline-0 augmentation, no LLM judge anywhere, no live-state reads in RF, no auto-linking of the measurement to unrelated collaboration scopes. The honest tier ceiling for single-scenario evidence ($\star\star$) was declared before any number was produced.
+
+\section{Results}
+\label{sec:results}
+
+\begin{table}[t]
+\centering
+\caption{Gap table on RAB SPEC~v0.1.1 / scenario-S1. AC \texttt{INGEST} is 1.0 for all three SUTs; UPDATE/SUPERSEDE/DELETE/ANSWER all degrade to 0 for Baseline-0 because vanilla logging does not distinguish them. RF is 0 for Baseline-0 because the log carries strings, not payload. PC is 0 for Baseline-0 because there is no \texttt{parent\_id} chain. JAMES = Reference on S1 is expected; the headline is the audit-native vs.\ default-logging gap.}
+\label{tab:gap}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrrrrrr}
+\toprule
+\textbf{SUT} & \textbf{AC} & \textbf{INGEST} & \textbf{UPDATE} & \textbf{SUPERSEDE} & \textbf{DELETE} & \textbf{ANSWER} & \textbf{RF-exact} & \textbf{RF-graded} & \textbf{PC} & \textbf{events} \\
+\midrule
+Reference (gate) & 1.000 & 1.00 & 1.00 & 1.00 & 1.00 & 1.00 & 1.000 & 1.000 & 1.000 & 80 \\
+JAMES (audit-native) & \textbf{1.000} & 1.00 & 1.00 & 1.00 & 1.00 & 1.00 & \textbf{1.000} & 1.000 & \textbf{1.000} & 80 \\
+Baseline-0 (floor) & \textbf{0.275} & 1.00 & 0.00 & 0.00 & 0.00 & 0.00 & \textbf{0.000} & 0.000 & \textbf{0.000} & 40 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:gap} is the v0.4.3 result. Reading from left to right tells the story:
+\begin{itemize}[leftmargin=*]
+  \item \texttt{INGEST} AC is $1.0$ for all three SUTs --- the obvious thing every logger captures.
+  \item For Baseline-0, AC drops to $0$ on every other canonical type. A vanilla logger does not distinguish update from ingest, has no supersede taxonomy, often does not record deletes structurally, and emits no canonical \texttt{ANSWER} event. Overall AC is $0.275$.
+  \item RF is $0$ for Baseline-0 because the log carries no payload from which to reconstruct state. The bolt-on tax that retrofit-tracing would have to pay is the difference between $0$ here and $1.000$ at JAMES / Reference.
+  \item PC is $0$ for Baseline-0 because the log has no \texttt{parent\_id} chain. Citations may exist but cannot be traced.
+  \item JAMES on S1 reproduces the reference's $1.0 \times 3$. This is \emph{expected} per honesty clause~H5: the audit-native vs.\ default-logging gap is the contribution of the measurement, not JAMES's score in isolation.
+\end{itemize}
+
+\textbf{Honest tier:} $\star\star$ scenario-S1 audit-native vs.\ floor gap confirmed (deterministic, re-runnable from artefacts under \texttt{reports/rab/} in the release archive). $\star\star\star$ cross-scenario confirmation remains ungated; we declare this ceiling in the pre-registration to make the ceiling itself reportable.
+
+\section{Limitations and Threats to Validity}
+\label{sec:limits}
+
+We declare the limitations of v0.1.1 deliberately and in advance of release, per honesty clause~H5:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Single scenario.} Scenario-S1 is a 40-operation synthetic-English-prose corpus. Generalisation to long-running production traces, multilingual content, very large graphs, or adversarial inputs is future work. Adding scenarios is the path to $\star\star\star$.
+  \item \textbf{Two SUT classes.} The gap is currently audit-native vs.\ default-logging, with no point in between. Spec~§5 names Baseline-1 (default-quickstart + LangSmith/OTel tracing mapped to Spec~§1) for exactly this purpose; it is a separate future SUT.
+  \item \textbf{Cited-source provenance, not claim-level.} PC v0.1 traces source identifiers, not the claim a citation supports. Claim-level provenance is a future spec version with its own honesty review.
+  \item \textbf{Synthetic prose.} Northbridge Labs prose is public-domain and licence-friendly but does not exercise PII redaction, multilingual disambiguation, or table-and-figure citation. The benchmark is designed to be extended, not assumed to cover these axes today.
+  \item \textbf{Author-of-benchmark SUT.} JAMES is one of three SUTs we measure. Honesty clauses~H3 and H5, and the gap-as-headline reporting protocol, together control for this conflict of interest. A peer-replication track is anticipated (R1.6, separate scope).
+\end{itemize}
+
+\section{Reproducibility}
+\label{sec:repro}
+
+All artefacts are released under Zenodo concept DOI \href{https://doi.org/10.5281/zenodo.20625533}{10.5281/zenodo.20625533} (v0.4.3 version-specific DOI). The release archive contains:
+\begin{itemize}[leftmargin=*]
+  \item \texttt{eval/rab/SPEC-v0.1.md} --- the frozen specification.
+  \item \texttt{eval/rab/scenarios/s1\_lifecycle\_small.json} --- scenario-S1, hash-pinned.
+  \item \texttt{eval/rab/\{driver,scorer\}.py}, \texttt{eval/rab/adapters/\{reference,baseline0,james\}.py} --- the deterministic driver, scorer, and adapters.
+  \item \texttt{reports/rab/<sut>-S1-<ts>.\{result.json,log.jsonl,mapping.json\}} --- the SPEC~§4 re-verification triple for each SUT. Re-running the scorer on the same artefacts reproduces the numbers bit-for-bit.
+  \item \texttt{tests/test\_rab\_\{benchmark,baseline0,james\_adapter\}.py} --- 31 tests pinning self-verification, the floor, and the audit-native bridge.
+\end{itemize}
+The minimal reproduction recipe is:
+\begin{lstlisting}
+git clone https://github.com/Hashevolution/James-RAG-Evol
+cd James-RAG-Evol && git checkout v0.4.3
+python -m pytest tests/test_rab_benchmark.py \
+                 tests/test_rab_baseline0.py \
+                 tests/test_rab_james_adapter.py
+python scripts/research/rab_run.py --sut reference
+python scripts/research/rab_run.py --sut james
+python scripts/research/rab_run.py --sut baseline0
+\end{lstlisting}
+
+\section{Future Work}
+\label{sec:future}
+
+Three explicit tracks are queued but intentionally out of scope for v0.1.1:
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Baseline-1.} A LangSmith / OpenTelemetry adapter that maps default tracing outputs onto Spec~§1. This is the data point that would let us quantify how far bolt-on tracing closes the gap that Table~\ref{tab:gap} reports.
+  \item \textbf{Scenario-S2 and beyond.} A larger graph, a multilingual corpus, an adversarial-input track. Each scenario unlocks one step of the honest-tier ceiling.
+  \item \textbf{Replication invites.} We will invite the authors of ActiveGraph~\cite{nakajima2026activegraph} and other audit-native runtimes to submit SUT adapters and contribute results. This is a separate collaboration scope; results from such replications, when they arrive, will be reported under the same Spec~§4 protocol.
+\end{enumerate}
+
+\section{Conclusion}
+
+RAB v0.1.1 is the missing measurement instrument for replayable-audit RAG and agent systems. It does not introduce a new architecture; ActiveGraph and JAMES T5 already realise the architectural class, independently. What it introduces is a deterministic, pre-registered, externally-anchored benchmark with a frozen specification and a published re-verification protocol, just before the EU AI Act's high-risk obligations enter force. The gap table is the headline. The benchmark is the contribution.
+
+\section*{Author contributions and conflicts of interest}
+Single-author work by Jiwon Seo (Hashevolution). The author is also the maintainer of PROJECT JAMES, one of the SUTs measured. Honesty clauses~H3 and H5, the pre-registered reporting protocol, the workspace-isolated JAMES adapter (production audit databases not touched), and the inclusion of a self-verifying reference SUT together control for this conflict of interest. The same benchmark applied to other audit-native runtimes is explicitly invited (Section~\ref{sec:future}).
+
+\section*{Data and code availability}
+All code, the specification, the scenario fixture, the deterministic scorer, the three adapters, the pre-registration document, the cross-verification tests, and the 9 measurement artefacts are publicly available under the MIT license at the JAMES repository, release tag \texttt{v0.4.3}, and mirrored on Zenodo at \href{https://doi.org/10.5281/zenodo.20625533}{10.5281/zenodo.20625533}.
+
+\section*{Acknowledgements}
+This work was developed in dialogue with Claude (Anthropic) as a pair-collaborator. The author thanks LEO~(Younghu, AIS Edu HK) for the foundational research collaboration that shaped the JAMES platform on which RAB's audit-native SUT is built.
+
+\bibliographystyle{alpha}
+\bibliography{refs}
+
+\end{document}
