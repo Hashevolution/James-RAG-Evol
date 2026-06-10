@@ -133,7 +133,21 @@ Run this checklist once more before clicking submit:
       benchmark that scores the exported audit-log artifact …" rather
       than the unqualified "first replayable-audit benchmark". DFAH
       already uses the "replayable" word in a sibling category.
-      (Currently: ✅, paper v1.1 abstract + conclusion)
+      (Currently: ✅, paper v1.2 abstract + conclusion)
+- [ ] **Baseline-1 (OTel GenAI bolt-on) is in Results, not Future
+      Work.** The 4-SUT gap table (Reference / JAMES / Baseline-1 /
+      Baseline-0) is the headline; the two-fail-modes analysis is a
+      named §Results subsection. (Currently: ✅, paper v1.2 §7)
+- [ ] **"Two fail-modes" framing explicit.** Baseline-0 fails at
+      INGEST coverage of ANSWER; Baseline-1 fails at INGEST coverage
+      of corpus lifecycle. Both fail at RF/PC entirely. The AC overall
+      column is explicitly disclaimed as not the headline. (Currently:
+      ✅, paper v1.2 §7 + Conclusion)
+- [ ] **OTel GenAI source-spec gap is named honestly.** The absence
+      of INGEST/UPDATE/SUPERSEDE/DELETE in OTel GenAI is a property of
+      the source spec, not of the adapter; the mapping table's
+      rationale paragraph documents this and the paper repeats it.
+      (Currently: ✅, paper v1.2 §5.3 + mapping-table file)
 
 ## What this preprint does NOT do
 
