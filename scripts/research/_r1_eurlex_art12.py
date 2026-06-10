@@ -1,6 +1,10 @@
-"""R1.0 final item — fetch EU AI Act (Reg. 2024/1689) Articles 10 & 12
-verbatim from EUR-Lex so the spec's mapping table cites exact clause
-text, not memory."""
+"""R1.0 final item — fetch EU AI Act Articles 10/12/19 verbatim.
+
+v2: EUR-Lex CELEX HTML defeated simple regex (heading not found), so
+use the AI Act Explorer's per-article pages (artificialintelligenceact.eu)
+which serve one clean article per URL. Cross-check the key phrases
+against EUR-Lex manually before final spec citation.
+"""
 import re
 import sys
 
@@ -8,28 +12,44 @@ import requests
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-URL = ("https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/"
-       "?uri=CELEX:32024R1689")
+ARTICLES = {
+    "10": "https://artificialintelligenceact.eu/article/10/",
+    "12": "https://artificialintelligenceact.eu/article/12/",
+    "19": "https://artificialintelligenceact.eu/article/19/",
+}
 
-r = requests.get(URL, timeout=60,
-                 headers={"User-Agent": "Mozilla/5.0 (research fetch)"})
-r.raise_for_status()
-html = r.text
-# crude de-tag
-text = re.sub(r"<[^>]+>", " ", html)
-text = re.sub(r"&nbsp;?", " ", text)
-text = re.sub(r"\s+", " ", text)
+HDRS = {"User-Agent": "Mozilla/5.0 (research fetch)"}
 
-for art in ("Article 10", "Article 12", "Article 19"):
-    # find the article heading followed by its body up to the next Article
-    m = re.search(rf"{art}\s+([A-Z][a-zA-Z\- ]{{3,60}})\s", text)
-    if not m:
-        print(f"!! {art}: heading not found")
-        continue
-    start = m.start()
-    nxt = re.search(r"Article \d+\s+[A-Z]", text[start + 20:])
-    end = start + 20 + (nxt.start() if nxt else 4000)
-    body = text[start:min(end, start + 4500)]
-    print("=" * 80)
-    print(body.strip()[:4200])
-    print()
+
+def clean(html: str) -> str:
+    html = re.sub(r"<script[\s\S]*?</script>", " ", html)
+    html = re.sub(r"<style[\s\S]*?</style>", " ", html)
+    text = re.sub(r"<[^>]+>", " ", html)
+    text = re.sub(r"&nbsp;?", " ", text)
+    text = re.sub(r"&amp;", "&", text)
+    text = re.sub(r"\s+", " ", text)
+    return text
+
+
+def main() -> int:
+    for art, url in ARTICLES.items():
+        print("=" * 80)
+        print(f"### Article {art}  ({url})")
+        try:
+            r = requests.get(url, timeout=60, headers=HDRS)
+            print(f"HTTP {r.status_code}, {len(r.text)} chars")
+            text = clean(r.text)
+            # The article title appears in the nav/TOC first and again
+            # at the body heading — take the LAST occurrence.
+            matches = list(re.finditer(rf"Article {art}[: ]", text))
+            start = matches[-1].start() if matches else 0
+            body = text[start:start + 4500]
+            print(body.strip())
+        except Exception as e:
+            print("  error:", e)
+        print()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
