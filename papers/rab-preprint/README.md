@@ -111,13 +111,29 @@ Run this checklist once more before clicking submit:
       (Currently: ✅)
 - [ ] Limitations section lists single-scenario + single-baseline-class
       + cited-source-only PC + synthetic-prose + author-of-benchmark
-      conflict. (Currently: ✅)
+      conflict + **scenario-system co-design risk** +
+      **mutation-site wiring partial** (7 items total). (Currently: ✅,
+      paper v1.1)
 - [ ] Zenodo DOI present in abstract + §Reproducibility + bib.
       (Currently: ✅)
 - [ ] No language model is invoked anywhere in scoring (H1 honesty
       clause stated explicitly). (Currently: ✅)
 - [ ] "RAB does not certify compliance" appears in abstract + §Spec.
       (Currently: ✅)
+- [ ] **DFAH (arXiv 2601.15322) cited + "behavioural determinism vs
+      log-artifact quality" disambiguation paragraph in §Related Work.**
+      DFAH and RAB share "replayable" / "audit" terminology; the paper
+      must say they measure orthogonal axes explicitly, or a reviewer
+      will. (Currently: ✅, paper v1.1)
+- [ ] **COMPL-AI (arXiv 2410.07959) cited + "model-level vs
+      system-level AI Act" paragraph in §Related Work.** COMPL-AI is
+      the AI-Act-benchmark precedent RAB inherits; not citing it would
+      look like an oversight. (Currently: ✅, paper v1.1)
+- [ ] **"First" framing is precise**: "to our knowledge, the first
+      benchmark that scores the exported audit-log artifact …" rather
+      than the unqualified "first replayable-audit benchmark". DFAH
+      already uses the "replayable" word in a sibling category.
+      (Currently: ✅, paper v1.1 abstract + conclusion)
 
 ## What this preprint does NOT do
 
