@@ -1,0 +1,17 @@
+{
+  "benchmark": "musique-ans-track-c-smoke",
+  "split": "dev",
+  "sut": "naive-supersede",
+  "model": "mixtral:8x7b",
+  "k": 5,
+  "n_queries": 10,
+  "honest_tier": "Track C MuSiQue smoke; deterministic axes (EM/F1/support_recall, no LLM judge). n=10 too small for tier landing; full sweep + cross-model + cross-bench needed.",
+  "axes": {
+    "EM": 0,
+    "F1": 0.043169,
+    "n": 10,
+    "n_empty_pred": 0,
+    "support_recall_mean": 0.55
+  },
+  "started_at": "2026-06-11T16:28:48.490032+00:00"
+}
