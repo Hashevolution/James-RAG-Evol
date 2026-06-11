@@ -105,3 +105,10 @@ class VanillaRagAdapter:
     def retrieved_text_length(self, doc_ids: List[str]) -> int:
         return sum(len(self._docs[d][1]) for d in doc_ids
                    if d in self._docs)
+
+    def get_doc(self, doc_id: str):
+        """Read-only accessor used by cross-model rerank wrapper. Returns
+        ``(title, text)`` or ``None``. Time-validity is *not* enforced
+        — the wrapper feeds doc_ids that the adapter already filtered
+        through ``retrieve_at``."""
+        return self._docs.get(doc_id)
