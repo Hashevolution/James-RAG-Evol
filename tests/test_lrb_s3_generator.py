@@ -222,6 +222,39 @@ class NoDuplicateIdsTests(unittest.TestCase):
         self.assertEqual(len(ids), len(set(ids)))
 
 
+class ContractDiversityTests(unittest.TestCase):
+    """S3.1 fix — contract titles must be distinguishable at the
+    retrieval-index level (BM25 / embedding). The pre-S3.1 single
+    template ``"{verb} Services Contract"`` cluster-collapsed all 200
+    contracts into a single retrieval bucket (current-contract R@10 =
+    0.0 across all 3 SUTs at S3 publication). The fix uses 30 domains
+    × 7 types so titles are unique up to 210 contracts (>200 needed)."""
+
+    def test_publication_contract_titles_are_unique(self):
+        plan = build_corpus_plan(PRESETS["publication"])
+        # contracts = (cid, ctitle, dept_idx, vendor)
+        titles = [c[1] for c in plan.contracts]
+        self.assertEqual(len(set(titles)), len(titles),
+                         f"contract titles collided ({len(titles)} "
+                         f"total, {len(set(titles))} unique)")
+
+    def test_publication_contract_titles_do_not_share_services_contract(self):
+        # The pre-S3.1 template all ended in "Services Contract"; the
+        # fix replaces that with a domain × type combination. Most
+        # titles should NOT share the exact phrase "Services Contract"
+        # (a few will — "Inspection Services Agreement" etc. — but the
+        # phrase frequency should drop below the pre-S3.1 100%).
+        plan = build_corpus_plan(PRESETS["publication"])
+        titles = [c[1] for c in plan.contracts]
+        services_contract_frac = sum(
+            "Services Contract" in t for t in titles) / max(1, len(titles))
+        # Pre-S3.1: 100%. Post-fix expected < 30%.
+        self.assertLess(services_contract_frac, 0.30,
+                        f"too many contracts retain the pre-S3.1 "
+                        f"'Services Contract' phrase: "
+                        f"{services_contract_frac:.2%}")
+
+
 class ScaleProportionsTests(unittest.TestCase):
     """Scale presets must produce monotonically-increasing counts so
     operators can rely on smoke < dev < publication."""
