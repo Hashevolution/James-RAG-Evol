@@ -1,0 +1,120 @@
+% LRB v0.2 — bibliography. Shares many entries with RAB preprint
+% (../rab-preprint/refs.bib) plus LRB-specific (TimeQA, TempReason,
+% MuSiQue, 2WikiMultiHop, ALCE, TSQL bitemporal).
+
+@misc{nakajima2026activegraph,
+  title         = {The Log is the Agent: Event-Sourced Reactive Graphs for Auditable, Forkable Agentic Systems},
+  author        = {Nakajima, Yohei},
+  year          = {2026},
+  eprint        = {2605.21997},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.AI},
+  url           = {https://arxiv.org/abs/2605.21997},
+  note          = {Independent co-invention of the event-sourced log + deterministic replay architecture that JAMES also implements; LRB measures the retrieval quality of this architectural class.}
+}
+
+@misc{seo2026rab,
+  title         = {RAB: A Replayable-Audit Benchmark for RAG and Agent Systems Operationalising EU AI Act Articles 10, 12, 19},
+  author        = {Seo, Jiwon},
+  year          = {2026},
+  note          = {Sibling submission. v0.1.1 spec frozen; Zenodo DOI 10.5281/zenodo.20625533 (v0.4.3 software archive). LRB shares the pre-registration / deterministic scoring / gap-table-headline discipline.}
+}
+
+@inproceedings{trivedi2022musique,
+  title         = {MuSiQue: Multihop Questions via Single-hop Question Composition},
+  author        = {Trivedi, Harsh and Balasubramanian, Niranjan and Khot, Tushar and Sabharwal, Ashish},
+  booktitle     = {Transactions of the Association for Computational Linguistics (TACL)},
+  year          = {2022},
+  note          = {Apache 2.0 licensed; LRB cross-bench reproducibility check uses MuSiQue-Ans dev split.}
+}
+
+@inproceedings{ho2020wikimultihop,
+  title         = {Constructing a multi-hop QA dataset for comprehensive evaluation of reasoning steps},
+  author        = {Ho, Xanh and Duong Nguyen, Anh-Khoa and Sugawara, Saku and Aizawa, Akiko},
+  booktitle     = {Proceedings of the 28th International Conference on Computational Linguistics (COLING)},
+  year          = {2020},
+}
+
+@inproceedings{gao2023alce,
+  title         = {Enabling Large Language Models to Generate Text with Citations},
+  author        = {Gao, Tianyu and Yen, Howard and Yu, Jiatong and Chen, Danqi},
+  booktitle     = {Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing (EMNLP)},
+  year          = {2023},
+  note          = {ALCE benchmark; HR axis inspired by ALCE's citation entailment formulation.}
+}
+
+@inproceedings{chen2021timeqa,
+  title         = {A Dataset for Answering Time-Sensitive Questions},
+  author        = {Chen, Wenhu and Wang, Xinyi and Wang, William Yang},
+  booktitle     = {Advances in Neural Information Processing Systems (NeurIPS) Datasets and Benchmarks},
+  year          = {2021},
+  url           = {https://github.com/wenhuchen/Time-Sensitive-QA},
+  note          = {TimeQA; Track C primary temporal bench, measurement pending operator data download.}
+}
+
+@inproceedings{tan2023tempreason,
+  title         = {Towards Benchmarking and Improving the Temporal Reasoning Capability of Large Language Models},
+  author        = {Tan, Qingyu and Ng, Hwee Tou and Bing, Lidong},
+  booktitle     = {Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (ACL)},
+  year          = {2023},
+  url           = {https://github.com/DAMO-NLP-SG/TempReason},
+}
+
+@inproceedings{chu2024timebench,
+  title         = {TimeBench: A Comprehensive Evaluation of Temporal Reasoning Abilities in Large Language Models},
+  author        = {Chu, Zheng and Chen, Jingchang and Chen, Qianglong and Yu, Weijiang and He, Tao and Wang, Haotian and Peng, Weihua and Liu, Ming and Qin, Bing and Liu, Ting},
+  booktitle     = {Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (ACL)},
+  year          = {2024},
+}
+
+@article{snodgrass1995tsql,
+  title         = {The {TSQL2 Temporal Query Language}},
+  author        = {Snodgrass, Richard T.},
+  journal       = {Kluwer Academic Publishers},
+  year          = {1995},
+  note          = {Bitemporal database foundation; LRB's (query\_time, valid\_time) pair mirrors the bitemporal axis.}
+}
+
+@misc{reflow2026dfah,
+  title         = {Determinism for Hyper-Stochastic Pipelines: Behavioural Replay over 4,700 Runs},
+  author        = {Reflow Research},
+  year          = {2026},
+  eprint        = {2601.15322},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.SE},
+  note          = {DFAH; behavioural determinism axis. Complementary to LRB's retrieval-quality axis.}
+}
+
+@misc{traceelephant2024,
+  title         = {{TraceElephant}: LLM-as-Debugger for Agent Execution Traces},
+  author        = {{Anonymous}},
+  year          = {2024},
+  note          = {LLM-as-debugger observability surface; LRB measures the retrieval surface upstream.}
+}
+
+@misc{liu2019roberta,
+  title         = {{RoBERTa}: A Robustly Optimized BERT Pretraining Approach},
+  author        = {Liu, Yinhan and Ott, Myle and Goyal, Naman and Du, Jingfei and Joshi, Mandar and Chen, Danqi and Levy, Omer and Lewis, Mike and Zettlemoyer, Luke and Stoyanov, Veselin},
+  year          = {2019},
+  eprint        = {1907.11692},
+  archivePrefix = {arXiv},
+  note          = {RoBERTa-large-MNLI primary HR-axis verifier checkpoint.}
+}
+
+@misc{laurer2024deberta,
+  title         = {{DeBERTa-v3-large-mnli-fever-anli-ling-wanli}},
+  author        = {Laurer, Moritz},
+  year          = {2024},
+  howpublished = {HuggingFace model card},
+  url          = {https://huggingface.co/MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli},
+  note          = {Secondary HR-axis verifier checkpoint for cross-verifier agreement.}
+}
+
+@misc{jamesrepo,
+  title         = {{JAMES}: A Local-First Auditable Knowledge Reasoning System},
+  author        = {Seo, Jiwon},
+  year          = {2026},
+  howpublished = {GitHub},
+  url           = {https://github.com/Hashevolution/James-RAG-Evol},
+  note          = {Reference implementation of the audit-native SUT measured in this paper.}
+}
