@@ -187,7 +187,7 @@ def main() -> None:
     ts = utc_stamp()
 
     rows = load_musique_dev(args.n)
-    print(f"\n=== Track C MuSiQue smoke ===")
+    print("\n=== Track C MuSiQue smoke ===")
     print(f"  fixture: {FIXTURE.name}  n={len(rows)}  k={args.k}  "
           f"model={args.model}")
 
@@ -238,7 +238,7 @@ def main() -> None:
 
     # Cross-SUT comparison
     if len(summary) > 1:
-        print(f"\n=== CROSS-SUT GAP (MuSiQue smoke) ===")
+        print("\n=== CROSS-SUT GAP (MuSiQue smoke) ===")
         for sut, axes in summary:
             print(f"  {sut:15s}  EM={axes['EM']:.4f}  F1={axes['F1']:.4f}  "
                   f"support_recall={axes['support_recall_mean']:.4f}")

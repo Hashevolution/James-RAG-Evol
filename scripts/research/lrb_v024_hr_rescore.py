@@ -22,7 +22,7 @@ import glob
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from eval.external.lrb.hr_scorer import (
     HrAggregateResult, HrPerQueryResult, aggregate_to_axes)
@@ -156,7 +156,7 @@ def main() -> None:
         print(f"    HR={s['HR_mean']:.4f}  claims={s['n_claims']}  "
               f"entailed={s['n_entailed']}  elapsed={s['elapsed_s']}s")
 
-    print(f"\n=== SUMMARY ===")
+    print("\n=== SUMMARY ===")
     for s in summary:
         print(f"  {s['input']:60s} → HR={s['HR_mean']:.4f}")
 

@@ -402,7 +402,6 @@ def evolution_events() -> List[dict]:
     # updates don't perturb temporal-accuracy gold.
     for week in range(1, 13):
         for i, (app_id, app_title, dep_key) in enumerate(APPOINTMENTS):
-            person = PERSONS[i]
             base = _app_body(app_id, app_title, dep_key, i)
             new_text = base + f" Weekly review note: week {week}; status active."
             emit(week, "UPDATE", {

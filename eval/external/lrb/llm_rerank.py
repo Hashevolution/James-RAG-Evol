@@ -26,10 +26,9 @@ from __future__ import annotations
 import json
 import re
 import subprocess
-import time
 import urllib.error
 import urllib.request
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import List, Sequence, Tuple
 
 # ──────────────────────────────────────────────────────────────────────
 # Public API

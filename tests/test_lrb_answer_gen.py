@@ -1,12 +1,10 @@
 """LRB answer generation tests — prompt build + dispatch + adapter wiring."""
 from __future__ import annotations
 
-from typing import List, Tuple
 
-import pytest
 
 from eval.external.lrb.adapters import (
-    JamesValidityAdapter, NaiveSupersedeAdapter, VanillaRagAdapter)
+    JamesValidityAdapter, VanillaRagAdapter)
 from eval.external.lrb.answer_gen import (
     GenerationResult, _is_claude_model, _is_ollama_model,
     answer_from_adapter, build_prompt, generate_answer)

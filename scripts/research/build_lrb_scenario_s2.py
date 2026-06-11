@@ -554,7 +554,6 @@ def build_scenario() -> dict:
 
     # Gold reachability check (each gold doc_id must exist at its valid_time)
     initial_ids = {d["doc_id"] for d in initial}
-    by_event_t: Dict[int, set] = {0: set(initial_ids)}
     state = set(initial_ids)
     # Walk events in order tracking which doc_ids exist at each week
     sorted_events = sorted(events, key=lambda e: (e["week"], e["event_id"]))
@@ -581,7 +580,6 @@ def build_scenario() -> dict:
     week_states[0] = set(initial_ids)
 
     for q in queries:
-        vt = q["valid_time"]
         # JAMES validity-window keeps superseded versions alive at
         # earlier valid_time, so for the gold check we expand the
         # reachable set with all doc_ids that existed at any time

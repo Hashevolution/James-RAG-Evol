@@ -21,7 +21,7 @@ import json
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Protocol
+from typing import Callable, List, Optional, Protocol
 
 from .scorer import score_axes
 

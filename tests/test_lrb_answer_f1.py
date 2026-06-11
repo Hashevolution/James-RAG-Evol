@@ -1,7 +1,6 @@
 """LRB answer_f1 tests — SQuAD norm + EM + F1 + multi-alias."""
 from __future__ import annotations
 
-import pytest
 
 from eval.external.lrb.answer_f1 import (
     _normalize_answer, exact_match, max_em, max_f1, score_answer_f1,

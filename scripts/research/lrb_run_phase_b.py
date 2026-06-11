@@ -7,7 +7,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from statistics import mean
-from typing import Any, Callable, Dict, List
+from typing import Any, Dict, List
 
 from eval.external.lrb.adapters import (
     JamesValidityAdapter, NaiveSupersedeAdapter, VanillaRagAdapter)
@@ -231,14 +231,14 @@ def main() -> None:
         s2_v = cross["S2"]["vanilla"]["axes"]["overall"][ts_axis]
         s2_n = cross["S2"]["naive-supersede"]["axes"]["overall"][ts_axis]
         s2_j = cross["S2"]["james"]["axes"]["overall"][ts_axis]
-        print(f"\n  temporal_accuracy:")
+        print("\n  temporal_accuracy:")
         print(f"    S1: V={s1_v:.4f}  N={s1_n:.4f}  J={s1_j:.4f}  "
               f"(J-N={s1_j - s1_n:+.4f})")
         print(f"    S2: V={s2_v:.4f}  N={s2_n:.4f}  J={s2_j:.4f}  "
               f"(J-N={s2_j - s2_n:+.4f})")
 
         # Per-category S2 historical (the differentiator)
-        print(f"\n  S2 historical-* categories (time-travel diff):")
+        print("\n  S2 historical-* categories (time-travel diff):")
         s2_cats = cross["S2"]["james"]["axes"]["per_category"]
         for cat in sorted(c for c in s2_cats if c.startswith("historical")):
             v_c = cross["S2"]["vanilla"]["axes"]["per_category"][cat]["R@10"]

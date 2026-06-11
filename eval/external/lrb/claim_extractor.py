@@ -19,7 +19,7 @@ import json
 import re
 from typing import List, Optional
 
-from .llm_rerank import _call_ollama, _is_claude_model, _is_ollama_model
+from .llm_rerank import _call_ollama, _is_ollama_model
 
 # ──────────────────────────────────────────────────────────────────────
 # Rule-based decomposition
