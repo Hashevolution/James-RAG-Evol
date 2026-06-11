@@ -160,7 +160,7 @@ def main(argv=None) -> int:
 
     metadata = _load_metadata()
 
-    print(f"[zenodo] creating draft deposit …")
+    print("[zenodo] creating draft deposit …")
     r = _post(token, "/deposit/depositions", json_body={})
     _check(r, expected_status=201, step="create draft")
     dep = r.json()
@@ -169,7 +169,7 @@ def main(argv=None) -> int:
     print(f"[zenodo]   deposit id: {deposit_id}")
     print(f"[zenodo]   bucket    : {bucket_url}")
 
-    print(f"[zenodo] setting metadata …")
+    print("[zenodo] setting metadata …")
     r = _put(token, f"/deposit/depositions/{deposit_id}",
              json_body=metadata)
     _check(r, expected_status=200, step="set metadata")
@@ -205,7 +205,7 @@ def main(argv=None) -> int:
         print(f"[zenodo] audit record: {AUDIT_PATH}")
         return 0
 
-    print(f"[zenodo] publishing …")
+    print("[zenodo] publishing …")
     r = _post(token, f"/deposit/depositions/{deposit_id}/actions/publish")
     _check(r, expected_status=202, step="publish")
     pub = r.json()
@@ -238,10 +238,10 @@ def main(argv=None) -> int:
     print(f"[zenodo] Audit:     {AUDIT_PATH}")
     print()
     print("Next steps (semi-automated):")
-    print(f"  - replace <PREREG_DOI> placeholders in papers/rab-preprint/")
+    print("  - replace <PREREG_DOI> placeholders in papers/rab-preprint/")
     print(f"    with: {doi}")
-    print(f"  - update memory + MEMORY.md with the prereg DOI")
-    print(f"  - revoke the access token at "
+    print("  - update memory + MEMORY.md with the prereg DOI")
+    print("  - revoke the access token at "
           "https://zenodo.org/account/settings/applications/tokens/")
     return 0
 

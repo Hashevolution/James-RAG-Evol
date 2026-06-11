@@ -89,7 +89,7 @@ class ExternalScorerContractTests(unittest.TestCase):
 
 class IndexRowsByIdTests(unittest.TestCase):
     def _make(self):
-        from eval.external import ExternalScorer, ScoreAxis
+        from eval.external import ExternalScorer
 
         class T(ExternalScorer):
             @property

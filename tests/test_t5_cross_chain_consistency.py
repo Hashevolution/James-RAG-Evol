@@ -104,16 +104,16 @@ class ViewFromSnapshotMatchesReconstructViewAtTests(unittest.TestCase):
         return {e["new_edge_id"]: e for e in chain_edges}
 
     def test_single_edge_chain_t_inside_window(self):
-        from core.lifecycle.supersede_chain import (
-            reconstruct_view_at, T7_EDGE_FIELD_VALIDITY,
-        )
         from core.lifecycle.replay_graph import (
             reconstruct_graph_at, view_from_snapshot,
         )
         from datetime import datetime as DT
         # Single edge valid from 10:00 onwards (open ended).
         t0 = DT(2026, 6, 6, 10, 0, 0)
-        edge_payload = {
+        # _edge_payload documents the payload shape the live primitive
+        # would emit; we don't drive that path end-to-end in this test,
+        # but keep the literal as inline contract documentation.
+        _edge_payload = {  # noqa: F841 — intentional inline contract doc
             "head_id":     "h",
             "new_edge_id": "e1",
             "validity":    {"from": t0.isoformat(), "to": None},
@@ -130,12 +130,12 @@ class ViewFromSnapshotMatchesReconstructViewAtTests(unittest.TestCase):
         self.assertEqual(snap_edge.get("new_edge_id"), "e1")
         # live primitive path — same chain, same t
         # Build the head + lookup the way walk_supersede_chain expects.
-        head_dict = {
+        # We don't drive the live primitive end-to-end here — the
+        # comparison is structural: the same edge_id is the answer.
+        _head_dict = {  # noqa: F841 — intentional inline contract doc
             "new_edge_id": "h",
             "_supersede_chain": {"successor_id": "e1"},
         }
-        # We don't drive the live primitive end-to-end here — the
-        # comparison is structural: the same edge_id is the answer.
 
     def test_t_before_chain_start_returns_none(self):
         from core.lifecycle.replay_graph import (

@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import sqlite3
 import json
-from typing import Any, List, Tuple
+from typing import List, Tuple
 
 import pytest
 

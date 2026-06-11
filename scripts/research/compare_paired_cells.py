@@ -239,7 +239,7 @@ def main(argv=None):
         if rescued:
             add("### Rescued queries (candidate caught what baseline missed)")
             add("")
-            add(f"| id | intent | Δrefusals | query |")
+            add("| id | intent | Δrefusals | query |")
             add("|---:|---|---:|---|")
             for qid, delta, d in rescued[:15]:
                 add(f"| {qid} | `{d['intent']}` | +{delta} | {d['label']!r} |")
@@ -247,7 +247,7 @@ def main(argv=None):
         if regressed:
             add("### Regressed queries (candidate broke what baseline caught)")
             add("")
-            add(f"| id | intent | Δrefusals | query |")
+            add("| id | intent | Δrefusals | query |")
             add("|---:|---|---:|---|")
             for qid, delta, d in regressed[:15]:
                 add(f"| {qid} | `{d['intent']}` | {delta} | {d['label']!r} |")

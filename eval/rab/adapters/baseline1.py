@@ -47,7 +47,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 
 _MAPPING_PATH = Path(__file__).resolve().parents[1] / "mappings" \

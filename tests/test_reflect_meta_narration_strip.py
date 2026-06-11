@@ -385,7 +385,7 @@ def test_revise_prompt_v2_frames_as_fresh_answer_task():
     exactly what invites revision-speak. It must frame as 'write the
     best answer to the question', with the earlier draft as a
     reference rather than the subject of edit."""
-    from core.reasoning.reflect import REVISE_PROMPT_V2_EN, REVISE_PROMPT_V2_KO
+    from core.reasoning.reflect import REVISE_PROMPT_V2_EN
     en = REVISE_PROMPT_V2_EN.lower()
     # Must NOT say "revise the draft" / "address the review"
     assert "revise the" not in en, (

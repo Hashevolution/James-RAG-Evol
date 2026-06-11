@@ -463,7 +463,7 @@ def main() -> int:
     print(f"local={args.local_model} (num_ctx={NUM_CTX})  "
           f"cloud=claude-cli-abstraction-wired  judge=claude-blinded-AB  "
           f"queries={len(queries)}  n_runs={args.n_runs}")
-    print(f"design=reasoning-isolated  fixture=multihop_rag\n")
+    print("design=reasoning-isolated  fixture=multihop_rag\n")
 
     rows: List[Dict[str, Any]] = []
     for i, q in enumerate(queries, 1):

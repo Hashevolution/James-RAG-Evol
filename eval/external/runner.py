@@ -54,7 +54,6 @@ import json
 import os
 import time
 import traceback
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 

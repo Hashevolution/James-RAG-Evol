@@ -30,10 +30,9 @@ from __future__ import annotations
 import argparse
 import io
 import json
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 
 def _load(path: Path) -> Dict[str, Any]:

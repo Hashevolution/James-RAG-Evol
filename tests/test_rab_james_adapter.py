@@ -97,7 +97,6 @@ def test_james_reconstruct_graph_at_agrees_on_supersede_chain(tmp_path):
     must agree on the chain shape (the JSONL replay's edges set must be
     a superset; reconstruct_graph_at only sees lifecycle events, RAB
     JSONL also has INGEST/UPDATE/DELETE)."""
-    import os
     adapter = JamesAdapter(workspace=tmp_path / "ws", use_engine=False)
     adapter.ingest("d1", "Original", "Body")
     adapter.supersede("d1", "d2", "Replacement", "Body2")

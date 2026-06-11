@@ -1,6 +1,5 @@
 """R1.0 step 2 — fetch full abstracts of the candidate prior-art papers."""
 import sys
-import urllib.parse
 import xml.etree.ElementTree as ET
 
 import requests

@@ -51,10 +51,9 @@ import json
 import math
 import re
 import sys
-from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
@@ -267,7 +266,7 @@ def render_single(bench_path: str, fixture_path: str, k: int = 5) -> str:
     add("")
     add("## Per-query")
     add("")
-    add(f"| id | ndcg | rr | hits | gold | retrieved |")
+    add("| id | ndcg | rr | hits | gold | retrieved |")
     add("|---:|---:|---:|---:|---:|---:|")
     for pq in result["per_query"]:
         if pq.get("skipped"):
@@ -327,7 +326,7 @@ def render_compare(
         elif d_ndcg < -0.05:
             regressed.append((qid, d_ndcg, pq_b[qid], pq_c[qid]))
 
-    add(f"## Per-query Δ (NDCG threshold ±0.05)")
+    add("## Per-query Δ (NDCG threshold ±0.05)")
     add("")
     add(f"- ✅ improved (NDCG+0.05+): **{len(improved)}** queries")
     add(f"- ❌ regressed (NDCG−0.05+): **{len(regressed)}** queries")
@@ -336,7 +335,7 @@ def render_compare(
     if improved:
         add("### Top improved")
         add("")
-        add(f"| id | Δndcg | base ndcg | cand ndcg | base rr | cand rr |")
+        add("| id | Δndcg | base ndcg | cand ndcg | base rr | cand rr |")
         add("|---:|---:|---:|---:|---:|---:|")
         for qid, d, b, c in sorted(improved, key=lambda x: -x[1])[:10]:
             add(f"| {qid} | {d:+.3f} | {b['ndcg']:.3f} | {c['ndcg']:.3f} | "
@@ -345,7 +344,7 @@ def render_compare(
     if regressed:
         add("### Top regressed")
         add("")
-        add(f"| id | Δndcg | base ndcg | cand ndcg | base rr | cand rr |")
+        add("| id | Δndcg | base ndcg | cand ndcg | base rr | cand rr |")
         add("|---:|---:|---:|---:|---:|---:|")
         for qid, d, b, c in sorted(regressed, key=lambda x: x[1])[:10]:
             add(f"| {qid} | {d:+.3f} | {b['ndcg']:.3f} | {c['ndcg']:.3f} | "

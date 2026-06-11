@@ -119,7 +119,7 @@ def main():
     # ── Evidence-grounded validity guard (the Stage 4b lesson) ──
     answerable = [r for r in results if r["question_type"] != "null_query"]
     ans_no_ev = [r["id"] for r in answerable if r["sources"] == 0]
-    print(f"\n=== VALIDITY GUARD ===")
+    print("\n=== VALIDITY GUARD ===")
     print(f"answerable with evidence: {len(answerable)-len(ans_no_ev)}/{len(answerable)}")
     if ans_no_ev:
         print(f"!! WARNING: {len(ans_no_ev)} answerable queries got NO evidence "
@@ -136,7 +136,7 @@ def main():
     print("\nby question_type:")
     for t, d in sorted(axis.by_question_type.items()):
         print(f"  {t:18s} primary={d['accuracy_primary']:.2f} strict={d['accuracy_strict']:.2f} (n={d['n']})")
-    print(f"\nRAW vs JAMES-full vs paper — fill from multihop_terse_run.py result")
+    print("\nRAW vs JAMES-full vs paper — fill from multihop_terse_run.py result")
     print(f"  {'paper-Mixtral':16s} 0.32")
     print(f"  {'RAW '+MODEL:16s} {axis.accuracy_primary:.2f} (primary)")
     print(f"\nsaved: {os.path.relpath(OUT, ROOT)}")

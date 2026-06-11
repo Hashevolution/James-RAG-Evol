@@ -45,7 +45,6 @@ from eval.external.wikimulti_loader import WIKIMULTI_TYPES
 # (musique_scorer) avoids drift; a future refactor may pull them
 # into eval/external/_squad_norm.py.
 from eval.external.musique_scorer import (
-    _f1 as _squad_f1,
     _max_em,
     _max_f1,
     _resolve_model_answer,

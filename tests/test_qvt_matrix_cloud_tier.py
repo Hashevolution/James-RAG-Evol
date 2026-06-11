@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import importlib
 import json
-import os
 import sys
 from pathlib import Path
 from unittest.mock import patch
