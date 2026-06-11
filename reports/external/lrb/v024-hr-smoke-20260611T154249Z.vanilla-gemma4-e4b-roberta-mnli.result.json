@@ -1,0 +1,23 @@
+{
+  "benchmark": "lrb-v024-hr-smoke",
+  "scenario": "S1",
+  "sut": "vanilla",
+  "model": "gemma4:e4b",
+  "nli_verifier": "roberta-mnli",
+  "n_queries": 5,
+  "t_week": 12,
+  "honest_tier": "v0.2.4 HR smoke (n=<=20). Validates end-to-end pipeline (answer gen + claim extract + NLI). NOT publication. Cross-NLI agreement check requires running both verifiers.",
+  "axes": {
+    "HR_mean": 1.0,
+    "n_queries": 5,
+    "n_claims_total": 0,
+    "n_entailed": 0,
+    "n_neutral": 0,
+    "n_contradicted": 0,
+    "n_empty_answers": 5,
+    "context_truncated_count": 0,
+    "nli_verifier_id": "RobertaMnliVerifier",
+    "elapsed_s": 0.0
+  },
+  "started_at": "2026-06-11T15:44:02.798810+00:00"
+}

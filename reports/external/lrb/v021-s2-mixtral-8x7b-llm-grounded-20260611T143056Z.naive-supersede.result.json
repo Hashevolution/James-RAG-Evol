@@ -1,0 +1,146 @@
+{
+  "benchmark": "lrb",
+  "version": "v0.2.1",
+  "scenario": "S2",
+  "scenario_spec": "v0.1.0-draft-phase-b",
+  "sut": "naive-supersede",
+  "model": "mixtral:8x7b",
+  "mode": "llm-grounded",
+  "n_evaluations": 80,
+  "elapsed_s": 1437.2766,
+  "fixture_sha": "9f40d2e0a16f4a8e776858ec5191626c6b09f32f2394dd3dd1e71c73427bb98d",
+  "honest_tier": "v0.2.1 cross-model cell; deterministic scoring (RAB H1). NOT publication. Pre-reg: docs/research/lrb-v021-cross-model-preregistration-2026-06-11.md",
+  "axes": {
+    "overall": {
+      "R@5": 0.7625,
+      "R@10": 0.7625,
+      "P@5": 0.1525,
+      "P@10": 0.07625,
+      "latency_s_mean": 17.965876,
+      "token_cost_mean": 366.6406,
+      "temporal_accuracy": 0.7625,
+      "n": 80,
+      "exploratory": {
+        "R@1": 0.625,
+        "P@1": 0.625,
+        "temporal_accuracy_strict_top1": 0.625
+      }
+    },
+    "per_timestamp": {
+      "qt=24/vt=0": {
+        "R@5": 0.0,
+        "R@10": 0.0,
+        "P@5": 0.0,
+        "P@10": 0.0,
+        "temporal_accuracy": 0.0,
+        "latency_s_mean": 18.163005,
+        "token_cost_mean": 374.3,
+        "n": 10
+      },
+      "qt=24/vt=24": {
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "latency_s_mean": 17.776849,
+        "token_cost_mean": 365.15,
+        "n": 50
+      },
+      "qt=24/vt=8": {
+        "R@5": 0.55,
+        "R@10": 0.55,
+        "P@5": 0.11,
+        "P@10": 0.055,
+        "temporal_accuracy": 0.55,
+        "latency_s_mean": 18.33988,
+        "token_cost_mean": 366.5375,
+        "n": 20
+      }
+    },
+    "per_category": {
+      "current-director": {
+        "n": 20,
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 0.95
+      },
+      "current-policy": {
+        "n": 8,
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 0.875
+      },
+      "current-project-lead": {
+        "n": 12,
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 1.0
+      },
+      "historical-early-contract": {
+        "n": 4,
+        "R@5": 0.0,
+        "R@10": 0.0,
+        "P@5": 0.0,
+        "P@10": 0.0,
+        "temporal_accuracy": 0.0,
+        "R@1": 0.0
+      },
+      "historical-early-director": {
+        "n": 6,
+        "R@5": 0.0,
+        "R@10": 0.0,
+        "P@5": 0.0,
+        "P@10": 0.0,
+        "temporal_accuracy": 0.0,
+        "R@1": 0.0
+      },
+      "historical-mid-director": {
+        "n": 10,
+        "R@5": 0.6,
+        "R@10": 0.6,
+        "P@5": 0.12,
+        "P@10": 0.06,
+        "temporal_accuracy": 0.6,
+        "R@1": 0.1
+      },
+      "historical-mid-policy": {
+        "n": 4,
+        "R@5": 0.25,
+        "R@10": 0.25,
+        "P@5": 0.05,
+        "P@10": 0.025,
+        "temporal_accuracy": 0.25,
+        "R@1": 0.0
+      },
+      "historical-mid-project-lead": {
+        "n": 6,
+        "R@5": 0.666667,
+        "R@10": 0.666667,
+        "P@5": 0.133333,
+        "P@10": 0.066667,
+        "temporal_accuracy": 0.666667,
+        "R@1": 0.666667
+      },
+      "never-stale-budget": {
+        "n": 10,
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 0.7
+      }
+    }
+  },
+  "started_at": "2026-06-11T15:18:48.919863+00:00"
+}

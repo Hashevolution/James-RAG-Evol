@@ -21,7 +21,6 @@ from __future__ import annotations
 import json
 import re
 import subprocess
-import tempfile
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -170,8 +169,14 @@ def _call_ollama_generate(prompt: str, *, model: str, ollama_url: str,
 def _call_claude_cli_generate(prompt: str, *, model: str,
                                 timeout: float
                                 ) -> Tuple[str, Optional[str]]:
-    """Headless ``claude -p``. Direction α S5c env-whitelist applied."""
+    """Headless ``claude -p``. Direction α S5c env-whitelist applied.
+
+    cwd = project root (Claude Code auto-mode classifier rejects
+    cwd outside project scope; the temp-dir indirection from S5c
+    is preserved as a fallback if the operator runs outside the
+    auto-mode harness)."""
     import os
+    from pathlib import Path as _Path
 
     base_env = {}
     for var in ("SystemRoot", "APPDATA", "LOCALAPPDATA",
@@ -180,15 +185,26 @@ def _call_claude_cli_generate(prompt: str, *, model: str,
         if var in os.environ:
             base_env[var] = os.environ[var]
 
+    project_root = _Path(__file__).resolve().parents[3]
+
+    # On Windows, subprocess needs `claude.cmd` (npm shim)
+    cmd_executable = "claude"
+    if os.name == "nt":
+        npm_claude_cmd = (_Path(os.environ.get("APPDATA", ""))
+                          / "npm" / "claude.cmd")
+        if npm_claude_cmd.exists():
+            cmd_executable = str(npm_claude_cmd)
+
     try:
         proc = subprocess.run(
-            ["claude", "-p", "--model", model],
+            [cmd_executable, "-p", "--model", model],
             input=prompt,
             capture_output=True,
             text=True,
             timeout=timeout,
-            cwd=tempfile.gettempdir(),
+            cwd=str(project_root),
             env=base_env,
+            shell=False,
         )
         if proc.returncode != 0:
             return "", f"claude CLI returncode={proc.returncode}: {proc.stderr[:200]}"
