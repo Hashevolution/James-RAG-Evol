@@ -166,7 +166,7 @@ def _dropbox_download(
 
     try:
         if verbose:
-            print(f"[2wiki] downloading official Dropbox archive")
+            print("[2wiki] downloading official Dropbox archive")
             print(f"[2wiki]   url  → {DROPBOX_URL}")
             print(f"[2wiki]   tmp  → {tmp_zip}")
         req = urllib.request.Request(
@@ -248,7 +248,7 @@ def main(argv=None) -> int:
         print(f"[2wiki] mirror {repo!r} failed; trying next.",
               file=sys.stderr)
 
-    print(f"[2wiki] all HF mirrors exhausted; falling back to Dropbox.")
+    print("[2wiki] all HF mirrors exhausted; falling back to Dropbox.")
     if _dropbox_download(args.split, target):
         return 0
 

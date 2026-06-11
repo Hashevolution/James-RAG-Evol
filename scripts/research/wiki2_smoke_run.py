@@ -75,7 +75,7 @@ def main(argv=None) -> int:
     fixture_sha = _fixture_sha(loader.cache_path)
 
     print(f"[2wiki-smoke] model    = {args.model}")
-    print(f"[2wiki-smoke] split    = dev")
+    print("[2wiki-smoke] split    = dev")
     print(f"[2wiki-smoke] n        = {args.n}")
     print(f"[2wiki-smoke] producer = {producer.name}")
     print(f"[2wiki-smoke] fixture  = {loader.cache_path.name}")
