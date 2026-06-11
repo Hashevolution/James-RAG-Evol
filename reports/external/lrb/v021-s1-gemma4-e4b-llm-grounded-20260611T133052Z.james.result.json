@@ -1,0 +1,146 @@
+{
+  "benchmark": "lrb",
+  "version": "v0.2.1",
+  "scenario": "S1",
+  "scenario_spec": "v0.1.0-draft",
+  "sut": "james",
+  "model": "gemma4:e4b",
+  "mode": "llm-grounded",
+  "n_evaluations": 180,
+  "elapsed_s": 622.1068,
+  "fixture_sha": "f5e5e022fae0a38eba9e6a2c9527651b0b10c2a7bbbc1b5cacc9a102c3597c3b",
+  "honest_tier": "v0.2.1 cross-model cell; deterministic scoring (RAB H1). NOT publication. Pre-reg: docs/research/lrb-v021-cross-model-preregistration-2026-06-11.md",
+  "axes": {
+    "overall": {
+      "R@5": 0.833333,
+      "R@10": 0.883333,
+      "P@5": 0.166667,
+      "P@10": 0.088333,
+      "latency_s_mean": 3.456117,
+      "token_cost_mean": 338.2014,
+      "temporal_accuracy": 0.883333,
+      "n": 180,
+      "exploratory": {
+        "R@1": 0.705556,
+        "P@1": 0.705556,
+        "temporal_accuracy_strict_top1": 0.705556
+      }
+    },
+    "per_timestamp": {
+      "T=0": {
+        "R@5": 0.833333,
+        "R@10": 0.866667,
+        "P@5": 0.166667,
+        "P@10": 0.086667,
+        "temporal_accuracy": 0.866667,
+        "latency_s_mean": 3.497153,
+        "token_cost_mean": 330.3042,
+        "n": 60
+      },
+      "T=12w": {
+        "R@5": 0.85,
+        "R@10": 0.916667,
+        "P@5": 0.17,
+        "P@10": 0.091667,
+        "temporal_accuracy": 0.916667,
+        "latency_s_mean": 3.431989,
+        "token_cost_mean": 341.4917,
+        "n": 60
+      },
+      "T=6w": {
+        "R@5": 0.816667,
+        "R@10": 0.866667,
+        "P@5": 0.163333,
+        "P@10": 0.086667,
+        "temporal_accuracy": 0.866667,
+        "latency_s_mean": 3.439209,
+        "token_cost_mean": 342.8083,
+        "n": 60
+      }
+    },
+    "per_category": {
+      "budget-update": {
+        "n": 24,
+        "R@5": 0.708333,
+        "R@10": 0.958333,
+        "P@5": 0.141667,
+        "P@10": 0.095833,
+        "temporal_accuracy": 0.958333,
+        "R@1": 0.541667
+      },
+      "contract-record-lookup": {
+        "n": 30,
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 0.9
+      },
+      "contract-vendor-shift": {
+        "n": 12,
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 1.0
+      },
+      "deleted-project-negative": {
+        "n": 6,
+        "R@5": 0.333333,
+        "R@10": 0.333333,
+        "P@5": 0.066667,
+        "P@10": 0.033333,
+        "temporal_accuracy": 0.333333,
+        "R@1": 0.333333
+      },
+      "director-shift": {
+        "n": 30,
+        "R@5": 0.966667,
+        "R@10": 0.966667,
+        "P@5": 0.193333,
+        "P@10": 0.096667,
+        "temporal_accuracy": 0.966667,
+        "R@1": 0.9
+      },
+      "new-project-existence": {
+        "n": 18,
+        "R@5": 0.5,
+        "R@10": 0.5,
+        "P@5": 0.1,
+        "P@10": 0.05,
+        "temporal_accuracy": 0.5,
+        "R@1": 0.333333
+      },
+      "policy-amend": {
+        "n": 12,
+        "R@5": 0.833333,
+        "R@10": 1.0,
+        "P@5": 0.166667,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 0.583333
+      },
+      "project-lead-shift": {
+        "n": 18,
+        "R@5": 0.888889,
+        "R@10": 0.888889,
+        "P@5": 0.177778,
+        "P@10": 0.088889,
+        "temporal_accuracy": 0.888889,
+        "R@1": 0.777778
+      },
+      "project-record-lookup": {
+        "n": 30,
+        "R@5": 0.833333,
+        "R@10": 0.866667,
+        "P@5": 0.166667,
+        "P@10": 0.086667,
+        "temporal_accuracy": 0.866667,
+        "R@1": 0.633333
+      }
+    }
+  },
+  "started_at": "2026-06-11T13:41:14.310717+00:00"
+}
