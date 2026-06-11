@@ -1,0 +1,175 @@
+% LRB v0.2 — arXiv preprint draft
+% Build:  pdflatex main && bibtex main && pdflatex main && pdflatex main
+% Mirrors papers/rab-preprint/main.tex structure.
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{amsmath}
+\usepackage{caption}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  citecolor=blue!50!black,
+  urlcolor=blue!50!black,
+  pdftitle={LRB: A Lifecycle Retrieval Benchmark for Temporal RAG},
+  pdfauthor={Jiwon Seo},
+  pdfkeywords={RAG, lifecycle, temporal retrieval, validity window, audit log, benchmark}
+}
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  columns=fullflexible,
+  frame=single,
+  framerule=0.3pt,
+  xleftmargin=4pt,
+  xrightmargin=4pt
+}
+
+\title{LRB: A Lifecycle Retrieval Benchmark for Temporal RAG\thanks{Pre-registrations locked before any measurement: Phase A protocol at \texttt{docs/research/lrb-phase-a-smoke-preregistration-2026-06-11.md}; Phase B (time-travel axis + 3-SUT) at \texttt{docs/research/lrb-phase-b-time-travel-preregistration-2026-06-11.md}; v0.2.1 cross-model at \texttt{docs/research/lrb-v021-cross-model-preregistration-2026-06-11.md}; v0.2.4 HR axis at \texttt{docs/research/v024-hr-nli-axis-preregistration-2026-06-11.md}. All references in the JAMES repository.}}
+
+\author{
+  Jiwon Seo\thanks{Hashevolution, Republic of Korea. ORCID 0009-0002-0007-7860. Correspondence: \texttt{karu-7@hanmail.net}.}
+}
+
+\date{2026-06-12}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Real-world enterprise corpora change over time: policies are amended, directors are replaced, contracts are renegotiated. Standard retrieval-augmented generation (RAG) benchmarks (MuSiQue, 2WikiMultiHop, ALCE, TimeQA) evaluate on \emph{frozen} corpora and therefore cannot measure whether a system retrieves the \emph{time-valid} version of a document. We present \textbf{LRB} (Lifecycle Retrieval Benchmark) v0.2, a pre-registered deterministic benchmark for the \emph{temporal validity} axis of RAG. LRB ships two scenarios (S1 lifecycle-quarterly, S2 lifecycle-yearly-with-time-travel) with 100/200 documents undergoing 160/564 INGEST/UPDATE/SUPERSEDE/DELETE events across 12/24 weeks. Each query carries a \texttt{(query\_time, valid\_time)} pair so the benchmark can score \emph{current-state} retrieval (\texttt{query\_time = valid\_time}) and \emph{time-travel} retrieval (\texttt{query\_time > valid\_time}) on the same fixture. We score seven deterministic axes (R@5, R@10, P@5, P@10, latency, token cost, temporal\_accuracy) and three exploratory top-1 axes; an optional Hallucination Resistance (HR) axis is computed via NLI entailment with two checkpoint-pinned verifiers. We measure three SUTs: a vanilla append-only RAG (Baseline-0), a naive supersede-aware RAG that removes superseded documents (Baseline-1), and JAMES, an audit-native runtime with per-document validity windows. \textbf{Headline gap (S2, R@1)}: token-mode 0.225/0.5375/0.7125 across V/N/J; under LLM-grounded rerank, the V $<$ N $<$ J rank order is preserved across four models (gemma4:e4b 4B, gemma3:12b 12B, mixtral:8x7b 47B, claude-haiku-4-5). The benchmark, the four pre-registrations, and all 30+ measurement artefacts are committed in the JAMES repository; the headline is the \emph{gap structure}, not any single system's score. LRB does not claim the validity-window architecture is novel (cf.~\cite{nakajima2026activegraph}); the benchmark, the lifecycle-versus-current decomposition, and the two-scenario / four-model / two-NLI cross-validation are the contribution.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+A growing fraction of enterprise RAG deployments operates over corpora that change continuously: legal contracts get amended, organisational directors get replaced, compliance policies get superseded, vendor agreements get renegotiated. The de-facto evaluation pipeline for RAG --- frozen-fixture multi-hop QA --- cannot measure whether a system retrieves the \emph{time-valid} document. A vanilla append-only retriever may surface both old and new versions of a superseded document; the user sees a confused mixture. A naive supersede-aware retriever that removes the old version on update is correct on \emph{current-state} queries but loses the ability to answer historical ones (``what was the policy when the contract was signed?''). An audit-native runtime with per-document validity windows can answer both. Today there is no public benchmark to discriminate these three regimes.
+
+LRB fills this gap. The benchmark is the \emph{measurement infrastructure}, not the system; LRB does not claim that any one of the three SUT regimes is novel (an event-sourced-log architecture with deterministic replay was independently demonstrated by \cite{nakajima2026activegraph}; lifecycle-aware retrieval is well-established in industry data warehouses). The contribution is:
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Two pre-registered scenarios} (S1 lifecycle-quarterly, S2 lifecycle-yearly-with-time-travel), with deterministic generators reproducible from the JAMES repository.
+  \item \textbf{An explicit \texttt{(query\_time, valid\_time)} query interface} that separates current-state retrieval from time-travel retrieval on the same fixture.
+  \item \textbf{Seven deterministic scoring axes} plus three exploratory top-1 axes, with no LLM judge anywhere in the scoring pipeline.
+  \item \textbf{Cross-model validation across four model families} (gemma4:e4b, gemma3:12b, mixtral:8x7b, claude-haiku-4-5) under both token-overlap-only and LLM-grounded retrieval modes.
+  \item \textbf{An optional HR (Hallucination Resistance) axis} with two NLI verifiers (RoBERTa-large-MNLI primary, DeBERTa-v3-large-mnli-fever-anli-ling-wanli secondary) for cross-verifier agreement.
+  \item \textbf{Cross-bench reproducibility check} against MuSiQue (Trivedi et al.~2022) to verify the SUT differentiation \emph{is} task-specific (LRB lifecycle queries) vs.~\emph{is not} task-specific (closed-book multi-hop).
+\end{enumerate}
+
+LRB is positioned as a sibling axis to RAB~\cite{seo2026rab}, which measures the \emph{audit log} the system exports rather than the \emph{retrieval quality} the system delivers. The two benchmarks share a discipline (pre-registration, deterministic scoring, gap-table headline) and a research framing (operationalising EU AI Act-style record-keeping requirements in measurable benchmarks).
+
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Multi-hop and closed-book QA benchmarks.} MuSiQue~\cite{trivedi2022musique} and 2WikiMultiHop~\cite{ho2020wikimultihop} measure multi-step reasoning on frozen Wikipedia paragraphs. ALCE~\cite{gao2023alce} measures citation faithfulness on ASQA-style answers. These benchmarks do not vary the corpus across queries; the validity-window axis is not on their evaluation grid. We re-run MuSiQue dev (n=20) on the three LRB SUTs as a \emph{cross-bench reproducibility check} in Section~\ref{sec:cross_bench}: all three SUTs produce bit-for-bit identical EM/F1/support\_recall scores at gemma3:12b, confirming that LRB's SUT differentiation is task-specific (closed-book questions don't activate the lifecycle mechanism).
+
+\paragraph{Temporal QA benchmarks.} TimeQA~\cite{chen2021timeqa}, TempReason~\cite{tan2023tempreason}, and TimeBench~\cite{chu2024timebench} measure temporal reasoning on Wikidata-derived time-stamped facts. These benchmarks focus on \emph{when the question is asked} (the LLM's temporal reasoning over given facts), not \emph{when the corpus is valid} (the retrieval system's lifecycle awareness). LRB's \texttt{(query\_time, valid\_time)} pair is closer to the bitemporal axis used in temporal databases~\cite{snodgrass1995tsql} than to the timestamp-stamped question axis of TimeQA.
+
+\paragraph{Audit and replay benchmarks.} RAB~\cite{seo2026rab} measures audit-log quality (AC/RF/PC). DFAH~\cite{reflow2026dfah} measures behavioural determinism of agentic systems. AuditBench (the LLM-as-investigator benchmark, distinct name reused) and TraceElephant~\cite{traceelephant2024} measure observability surfaces. These all measure the artefacts a system \emph{exports} after running, not the retrieval quality \emph{during} the run. LRB's HR axis is the closest overlap, measuring whether generated answers are entailed by retrieved context, but the primary LRB axes are retrieval-side.
+
+\paragraph{Lifecycle-aware runtimes.} ActiveGraph~\cite{nakajima2026activegraph} demonstrates an event-sourced log with deterministic replay. JAMES~\cite{jamesrepo} ships a similar architecture (independently developed, per RAB paper~\cite{seo2026rab} \S2). LRB is benchmark-neutral and treats both ActiveGraph and JAMES as candidate audit-native SUTs; the present paper measures only the JAMES adapter for the audit-native SUT row (ActiveGraph requires a separate adapter; we list this as future work \S\ref{sec:future}).
+
+\section{Benchmark Specification}
+\label{sec:spec}
+
+% TODO: full spec — scenario fixture shape, event types, query format,
+% scoring axes, honest tier ladder.
+% Reference: docs/design/v0.4-lrb-lifecycle-retrieval-benchmark-design.md
+% + all four pre-reg docs.
+
+\paragraph{Scenarios.} LRB v0.2 ships two scenarios:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{S1 (lifecycle-quarterly)}: 100 initial documents, 12 weeks, 160 lifecycle events, 60 queries $\times$ 3 timestamps (T=0, T=6w, T=12w) = 180 evaluations. Designed for \emph{current-state} retrieval evaluation.
+  \item \textbf{S2 (lifecycle-yearly-with-time-travel)}: 200 initial documents, 24 weeks, 564 lifecycle events, 80 queries with explicit \texttt{(query\_time, valid\_time)} pairs covering four query types (current 40, historical-mid 20, historical-early 10, never-stale 10).
+\end{itemize}
+
+Both fixtures derive their vocabulary from the RAB scenario-S2 city-operations corpus (license friction 0), with sha-pinned JSON outputs reproducible from \texttt{scripts/research/build\_lrb\_scenario\_s\{1,2\}.py}.
+
+\paragraph{Lifecycle event types.} INGEST (add document), UPDATE (in-place revision), SUPERSEDE (replace document at a specific week; the old version remains valid up to week-1 of the supersede, the new version becomes valid from the supersede week), DELETE (mark document invalid from a week). The SUTs differ in how they handle SUPERSEDE: Vanilla keeps both versions; Naive removes the old version on supersede; JAMES annotates per-document validity windows and applies the time-travel filter at query time.
+
+\paragraph{Scoring axes (seven deterministic).} R@5, R@10, P@5, P@10, retrieval latency, retrieved-context token cost (proxy: characters $/$ 4), temporal\_accuracy (strict: R@k $= 1.0$ for the query's gold-at-valid\_time set). All axes are pure-functional on the per-query rows; no LLM judge.
+
+\paragraph{Exploratory top-1 axes (three).} R@1, P@1, temporal\_accuracy\_strict\_top1. Critical for evaluating the user-visible top result.
+
+\paragraph{HR axis (optional, v0.2.4).} Atomic claim extraction from the LLM-generated answer (rule-based plus optional LLM augmentation), per-claim NLI entailment against the retrieved-context premise, fraction of claims labelled \emph{entailment} as HR score. Two checkpoint-pinned verifiers (RoBERTa-large-MNLI primary, DeBERTa-v3-large-mnli-fever-anli-ling-wanli secondary) for cross-verifier agreement. The HR axis is the only LRB axis that touches an LLM, and only at the scoring step (not the retrieval step), preserving RAB-H1 (no LLM judge in scoring pipeline) at the level of the retrieval and SUT contract.
+
+\section{SUTs}
+\label{sec:suts}
+
+% Vanilla / Naive / JAMES adapter contract + retrieve_at signature
+% TODO: fill from eval/external/lrb/adapters/*.py
+% TODO: fill from docs/handovers/v0.4-lrb-phase-b-cross-scenario-2026-06-11.md
+
+\section{Experiments}
+\label{sec:experiments}
+
+% TODO: 4-model cross-model × 3-SUT × 2-scenario sweep
+% Reference: docs/handovers/v0.4-lrb-v021-cross-model-partial-2026-06-11.md
+% Reference: PR #790-#807 measurement artifacts.
+
+\subsection{Phase A: current-state retrieval (S1)}
+% TODO: 3-SUT N≈J finding; capability emergence 4B → 12B
+
+\subsection{Phase B: time-travel retrieval (S2)}
+% TODO: V<N<J rank order on R@1; cross-model preserved
+
+\subsection{Cross-model (v0.2.1)}
+% TODO: 4-model table
+
+\subsection{HR axis (v0.2.4)}
+% TODO: cross-NLI agreement, mxtral verbosity
+
+\subsection{Cross-bench reproducibility (MuSiQue)}
+\label{sec:cross_bench}
+
+% TODO: 3-SUT identical EM/F1 on MuSiQue gemma3:12b n=20
+
+\section{Discussion}
+\label{sec:discussion}
+
+% TODO: validity-window contribution; orthogonality to multi-hop reasoning;
+% mother-platform positioning.
+
+\section{Limitations}
+\label{sec:limitations}
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Synthetic fixtures.} Both S1 and S2 use deterministic synthetic city-operations corpora. Real enterprise corpora may exhibit different lifecycle event distributions (e.g.~UPDATE-heavy financial filings vs.~SUPERSEDE-heavy policy documents).
+  \item \textbf{Single audit-native SUT.} The JAMES adapter is the only audit-native point in the gap table. ActiveGraph~\cite{nakajima2026activegraph} adapter would strengthen the within-class comparison; we list this as future work \S\ref{sec:future}.
+  \item \textbf{Token-overlap retrieval baseline.} Vanilla, Naive, and JAMES all use the same TF-IDF base retriever in this paper. A learned dense retriever (e.g.~ColBERT, DPR) could change the absolute scores but is orthogonal to the lifecycle/time-travel axis we measure.
+  \item \textbf{HR axis n.} v0.2.4 HR measurements use n=10 LRB-S1 cells. Full sweep (n=100+) is in the operator-attended queue.
+  \item \textbf{TimeQA and TempReason measurements absent.} The Track C cross-bench measurements (TimeQA primary, TempReason secondary) require data download and license confirmation; we list these as the next milestones and report the MuSiQue cross-bench reproducibility check as the only currently-completed external-bench validation.
+  \item \textbf{Single-author measurement.} All measurements were performed in a single repository by a single author. External reproduction is invited; the artefacts are committed and deterministic.
+\end{enumerate}
+
+\section{Future Work}
+\label{sec:future}
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{ActiveGraph adapter.} Within-class second audit-native SUT; mitigates the single-audit-native-row concern \S\ref{sec:limitations}.2.
+  \item \textbf{TimeQA and TempReason measurement.} Track C primary and secondary benches once operator-action license / download gate clears.
+  \item \textbf{HR full sweep (n=100+).} v0.2.4 full sweep across LRB-S1 + LRB-S2 + Track C benches; cross-NLI agreement at publication scale.
+  \item \textbf{S3 publication-scale scenario.} 1000+ documents, 10K events, 200 queries $\times$ 5 timestamps; extends the cross-scenario reproducibility check.
+  \item \textbf{Microsoft GraphRAG SUT.} Fourth SUT for cross-architecture gap structure.
+  \item \textbf{Korean / cross-lingual scenario.} LRB v0.3 candidate; addresses the English-only fixture limitation.
+\end{enumerate}
+
+\section*{Acknowledgements}
+% TODO
+
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\end{document}
