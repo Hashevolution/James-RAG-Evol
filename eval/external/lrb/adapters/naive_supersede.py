@@ -124,3 +124,7 @@ class NaiveSupersedeAdapter:
     def retrieved_text_length(self, doc_ids: List[str]) -> int:
         return sum(len(self._docs[d][1]) for d in doc_ids
                    if d in self._docs)
+
+    def get_doc(self, doc_id: str):
+        """Read-only accessor used by cross-model rerank wrapper."""
+        return self._docs.get(doc_id)

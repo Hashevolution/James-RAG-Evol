@@ -151,3 +151,13 @@ class JamesValidityAdapter:
     def retrieved_text_length(self, doc_ids: List[str]) -> int:
         return sum(len(self._records[d].text) for d in doc_ids
                    if d in self._records)
+
+    def get_doc(self, doc_id: str):
+        """Read-only accessor used by cross-model rerank wrapper.
+        Returns ``(title, text)`` regardless of validity window — the
+        wrapper feeds doc_ids that the adapter already filtered via
+        ``retrieve_at``, so the validity check has already happened."""
+        rec = self._records.get(doc_id)
+        if rec is None:
+            return None
+        return (rec.title, rec.text)
