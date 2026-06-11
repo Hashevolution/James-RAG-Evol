@@ -2,10 +2,8 @@
 scorer math."""
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-import pytest
 
 from eval.external.lrb.adapters import (
     JamesValidityAdapter, VanillaRagAdapter)

@@ -14,10 +14,9 @@ import pytest
 from eval.external.lrb.claim_extractor import (
     MAX_CLAIMS_PER_ANSWER, extract_claims)
 from eval.external.lrb.hr_scorer import (
-    HrAggregateResult, aggregate_to_axes, score_hr)
+    aggregate_to_axes, score_hr)
 from eval.external.lrb.nli_verifier import (
-    DebertaV3NliVerifier, NliLabel, NliResult, NliVerifier,
-    RobertaMnliVerifier, get_verifier)
+    DebertaV3NliVerifier, NliLabel, NliResult, RobertaMnliVerifier, get_verifier)
 
 
 # ── Claim extractor: rule-based path ────────────────────────────────

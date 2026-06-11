@@ -11,10 +11,9 @@ from eval.external.lrb.adapters import (
 from eval.external.lrb.cross_model import retrieve_at_cross_model
 from eval.external.lrb.driver import fixture_sha, load_scenario
 from eval.external.lrb.driver_phase_b import (
-    run_sut_phase_b, score_run)
+    score_run)
 from eval.external.lrb.llm_rerank import (
-    _build_prompt, _is_claude_model, _is_ollama_model, _parse_scores,
-    rerank)
+    _build_prompt, _is_claude_model, _is_ollama_model, _parse_scores)
 
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURE_S1 = ROOT / "eval" / "external" / "_fixtures" / "lrb" / \

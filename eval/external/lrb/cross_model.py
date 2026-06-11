@@ -19,7 +19,7 @@ pure rerank — scoring math stays in the deterministic scorer.
 """
 from __future__ import annotations
 
-from typing import List, Sequence, Tuple
+from typing import List, Tuple
 
 from .llm_rerank import rerank
 

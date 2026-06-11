@@ -27,7 +27,7 @@ import argparse
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 from eval.external.lrb.adapters import (
     JamesValidityAdapter, NaiveSupersedeAdapter, VanillaRagAdapter)

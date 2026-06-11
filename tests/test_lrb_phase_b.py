@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 
 from eval.external.lrb.adapters import (
     JamesValidityAdapter, NaiveSupersedeAdapter, VanillaRagAdapter)

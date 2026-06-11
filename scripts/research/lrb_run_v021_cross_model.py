@@ -319,8 +319,6 @@ def main() -> None:
                 effective_model = ("token-baseline"
                                    if mode == "token" else model)
                 # Skip duplicate token cells across models
-                seen_key = (scn, "_token_only_"
-                            if mode == "token" else model, mode)
                 if mode == "token" and any(
                         c["model"] == "token-baseline" and
                         c["scenario"] == scn and c["mode"] == "token"

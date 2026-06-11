@@ -20,7 +20,7 @@ from __future__ import annotations
 import re
 import string
 from statistics import mean
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List
 
 
 # ─── SQuAD v1.1 normalization (matches musique_scorer byte-for-byte) ──
