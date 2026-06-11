@@ -81,6 +81,7 @@ def measure_one_cell(rows: List[Dict[str, Any]], sut_name: str,
                       model: str, *, k: int = 5,
                       use_llm_rerank: bool = False,
                       rerank_pool: int = 20,
+                      cot: bool = False,
                       ollama_url: str = "http://localhost:11434",
                       timeout: float = 60.0) -> Dict[str, Any]:
     factory = SUT_FACTORIES[sut_name]
@@ -125,9 +126,11 @@ def measure_one_cell(rows: List[Dict[str, Any]], sut_name: str,
             title, text = rec
             snippets.append((doc_id, title, text))
 
-        # Generate answer
+        # Generate answer (CoT optionally requires larger max_tokens)
         gen = generate_answer(row["question"], snippets, model=model,
-                                ollama_url=ollama_url, timeout=timeout)
+                                ollama_url=ollama_url, timeout=timeout,
+                                cot=cot,
+                                max_tokens=1024 if cot else 512)
 
         # Support-fact recall
         gold_support = {idx_to_doc_id[p["idx"]]
@@ -172,6 +175,9 @@ def main() -> None:
                          help="Two-stage retrieval: token-overlap "
                          "top-N → LLM rerank → top-k")
     parser.add_argument("--rerank-pool", type=int, default=20)
+    parser.add_argument("--cot", action="store_true",
+                         help="Chain-of-thought prompt + extract final"
+                         " answer from response")
     parser.add_argument("--ollama-url",
                          default="http://localhost:11434")
     parser.add_argument("--timeout", type=float, default=60.0)
@@ -192,6 +198,7 @@ def main() -> None:
         result = measure_one_cell(rows, sut, args.model, k=args.k,
                                     use_llm_rerank=args.use_llm_rerank,
                                     rerank_pool=args.rerank_pool,
+                                    cot=args.cot,
                                     ollama_url=args.ollama_url,
                                     timeout=args.timeout)
         axes = result["axes"]
@@ -200,7 +207,8 @@ def main() -> None:
               f"n_empty={axes['n_empty_pred']}")
 
         mode_label = "llm-rerank" if args.use_llm_rerank else "token"
-        cell_label = f"track-c-musique-smoke-{ts}.{sut}-{args.model.replace(':', '-')}-k{args.k}-{mode_label}"
+        prompt_label = "cot" if args.cot else "direct"
+        cell_label = f"track-c-musique-smoke-{ts}.{sut}-{args.model.replace(':', '-')}-k{args.k}-{mode_label}-{prompt_label}"
         out = {
             "benchmark":     "musique-ans-track-c-smoke",
             "split":         "dev",
