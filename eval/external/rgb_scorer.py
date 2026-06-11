@@ -43,8 +43,7 @@ prompts ("I cannot find" / "I don't know" / 中文 "无法回答" etc.).
 """
 from __future__ import annotations
 
-import re
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
 
 from eval.external import ScoreAxis
 from eval.external.scorer_base import ExternalScorer

@@ -143,7 +143,7 @@ def _run_one_ablation(
         print(f"  cmd  : {' '.join(cmd)}", flush=True)
         print(f"  env  : JAMES_WORKSPACE={env['JAMES_WORKSPACE']} "
               f"{knob}=1", flush=True)
-        print(f"  DRY RUN — not executed.", flush=True)
+        print("  DRY RUN — not executed.", flush=True)
         return out_path
 
     t0 = time.time()
@@ -272,7 +272,7 @@ def main(argv=None) -> int:
     ref_path = _reference_path(args.model)
     if not ref_path.exists() and not args.dry_run:
         print(f"!! Reference file missing: {ref_path}", file=sys.stderr)
-        print(f"   Run Phase C full-JAMES negrej first:",
+        print("   Run Phase C full-JAMES negrej first:",
               file=sys.stderr)
         print(f"   JAMES_WORKSPACE={workspace} python scripts/"
               f"external_bench_run.py --bench rgb --variant en --mode "
@@ -281,7 +281,7 @@ def main(argv=None) -> int:
               file=sys.stderr)
         return 2
 
-    print(f"=== cycle γ Phase D ablation matrix ===")
+    print("=== cycle γ Phase D ablation matrix ===")
     print(f"  model     : {args.model}")
     print(f"  workspace : {workspace}")
     print(f"  out_dir   : {out_dir}")

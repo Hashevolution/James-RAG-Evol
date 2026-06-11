@@ -15,9 +15,7 @@ file is the gate.
 """
 from __future__ import annotations
 
-import os
 import sqlite3
-import tempfile
 from typing import List
 
 import pytest

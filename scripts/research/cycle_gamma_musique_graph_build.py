@@ -83,7 +83,7 @@ def main(argv=None) -> int:
     g = GraphEngine()
     wg = g.wiki_generator
 
-    print(f"=== cycle γ MuSiQue graph build ===")
+    print("=== cycle γ MuSiQue graph build ===")
     print(f"  workspace : {os.environ['JAMES_WORKSPACE']}")
     print(f"  fixture   : {fixture}  (rows={len(rows)})")
     print(f"  model     : {os.environ.get('JAMES_LLM_MODEL', 'default')}")
@@ -124,7 +124,7 @@ def main(argv=None) -> int:
 
     el = time.time() - t0
     print()
-    print(f"=== GRAPH BUILD COMPLETE ===")
+    print("=== GRAPH BUILD COMPLETE ===")
     print(f"  rows={len(rows)}  paragraphs={n_para}  entities={n_entities}")
     print(f"  elapsed={el:.0f}s ({el/60:.1f} min)")
     return 0

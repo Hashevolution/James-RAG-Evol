@@ -36,7 +36,7 @@ reference adapter as the "what bolt-on minimum looks like" data point.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 
 def _now() -> str:

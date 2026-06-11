@@ -232,17 +232,24 @@ class IdentityCollisionTests(unittest.TestCase):
 
 
 class WikiGeneratorLiftTests(unittest.TestCase):
-    """Sanity check: after the lift, the production class's entity_types
-    starts with the legacy 4 and ends with `event`. This is the contract
-    create_event_node relies on (event directory pre-created)."""
+    """Sanity check: after the PR-11a-2 lift, the production class's
+    entity_types starts with the legacy 4 and contains `event`. This is
+    the contract create_event_node relies on (event directory
+    pre-created). α-8 (2026-06-03) extended the tuple with 4 more
+    horizontal types after `event`, so `event` is no longer the last
+    element — what matters for create_event_node is membership and the
+    ordering vs the legacy 4."""
 
-    def test_production_entity_types_includes_event_last(self):
+    def test_production_entity_types_legacy_four_then_event(self):
         # Import the production class directly. Construction is
         # heavyweight, so just assert the constant at the wire-up site.
         from core.relations_schema import ENTITY_TYPES_CORE
         # This is what wiki_generator.py:132 lifts to (post-PR-11a-2):
         self.assertIn("event", ENTITY_TYPES_CORE)
-        self.assertEqual(ENTITY_TYPES_CORE[-1], "event")
+        # `event` is the 5th type, directly after the legacy 4.
+        self.assertEqual(ENTITY_TYPES_CORE[4], "event")
+        legacy_four = ("person", "concept", "org", "document")
+        self.assertEqual(ENTITY_TYPES_CORE[: len(legacy_four)], legacy_four)
 
 
 if __name__ == "__main__":

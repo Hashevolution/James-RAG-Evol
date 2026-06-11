@@ -349,7 +349,7 @@ def format_report(
         add("No UNRESOLVED relation targets found.")
     else:
         add(f"**Total distinct unresolved targets: {len(unresolved)}**  ")
-        add(f"Top 30 by reference count:")
+        add("Top 30 by reference count:")
         add("")
         add("| Target name | Ref count | Referenced by (sample) |")
         add("|---|---:|---|")
@@ -396,7 +396,7 @@ def format_report(
         add("No type-relation mismatches found. Ingest layer respects ")
         add("`ALLOWED_RELATIONS` per entity_type.")
     else:
-        add(f"Entities using a relation not in `ALLOWED_RELATIONS` for ")
+        add("Entities using a relation not in `ALLOWED_RELATIONS` for ")
         add(f"their `entity_type`. Sample of {len(mismatches)}:")
         add("")
         add("| Entity | Type | Relation (not allowed) | Target | Path |")

@@ -148,10 +148,10 @@ def main(argv=None) -> int:
 
     if out_path.exists() and not args.force:
         print(f"=== EXISTS (skip): {out_path}")
-        print(f"    pass --force to overwrite.")
+        print("    pass --force to overwrite.")
         return 0
 
-    print(f"=== Loading MuSiQue from HF mirror ===")
+    print("=== Loading MuSiQue from HF mirror ===")
     print(f"  hf_repo : {args.hf_repo}")
     print(f"  config  : {_hf_config_name(args.variant)}")
     print(f"  split   : {args.split}")
@@ -174,7 +174,7 @@ def main(argv=None) -> int:
     config = _hf_config_name(args.variant)
     try:
         ds = load_dataset(args.hf_repo, config, split=hf_split)
-    except Exception as e:
+    except Exception:
         # Some mirrors use no-config layout. Retry.
         try:
             ds = load_dataset(args.hf_repo, split=hf_split)
@@ -182,10 +182,10 @@ def main(argv=None) -> int:
             print(f"!! HuggingFace load failed: {e2}", file=sys.stderr)
             print(f"   Tried: {args.hf_repo} / config={config} / "
                     f"split={hf_split}", file=sys.stderr)
-            print(f"   Manual fallback: clone "
-                    f"https://github.com/StonyBrookNLP/musique "
-                    f"and run bash download_data.sh, then copy "
-                    f"the matching .jsonl into --dest.",
+            print("   Manual fallback: clone "
+                    "https://github.com/StonyBrookNLP/musique "
+                    "and run bash download_data.sh, then copy "
+                    "the matching .jsonl into --dest.",
                     file=sys.stderr)
             return 3
 

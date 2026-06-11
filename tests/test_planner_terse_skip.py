@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import inspect
 import re
-import textwrap
 
 
 def _read_pipeline_synth() -> str:

@@ -175,7 +175,7 @@ def main(argv=None) -> int:
     if args.max_rows is not None:
         rows = rows[:args.max_rows]
 
-    print(f"=== cycle γ RGB-en corpus build ===")
+    print("=== cycle γ RGB-en corpus build ===")
     print(f"  workspace : {workspace}")
     print(f"  fixture   : {fixture_path}  (rows={len(rows)})")
     print(f"  mode      : {args.mode}")

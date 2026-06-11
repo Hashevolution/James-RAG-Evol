@@ -57,7 +57,7 @@ def main() -> int:
     reports = ROOT / "reports"
 
     print(f"fixture: {FIXTURE.name} ({len(fixture['queries'])} queries)")
-    print(f"metric: paper-aligned binary accuracy [strict, primary] band")
+    print("metric: paper-aligned binary accuracy [strict, primary] band")
     print("=" * 78)
 
     results = []

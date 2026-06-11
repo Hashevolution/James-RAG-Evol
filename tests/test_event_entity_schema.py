@@ -32,18 +32,33 @@ from core.relations_schema import (  # noqa: E402
 
 
 class EntityTypeVocabularyTests(unittest.TestCase):
-    """The 5-element tuple is the truth source for graph-valid entity
-    types. wiki_generator.py still uses a 4-element literal at this
-    point in the rollout — that drift is intentional and removed in
-    PR-11a-2."""
-
-    def test_entity_types_core_has_five_members_event_last(self):
-        self.assertEqual(len(ENTITY_TYPES_CORE), 5)
-        self.assertEqual(ENTITY_TYPES_CORE[-1], "event")
+    """The truth source for graph-valid entity types. PR-11a-1 shipped
+    a 5-element tuple (legacy 4 + `event`); α-8 (2026-06-03,
+    `project_alpha_8_phase_a_b_landed`) extended it with 4 more
+    horizontal types (date, location, quantity, project) to give the
+    extractor enough type slots for evidence-of-absence preservation
+    (R1-R5 rules). `wiki_generator.py` was lifted to the constant at
+    PR-11a-2, so production and schema agree on whatever the tuple
+    holds today."""
 
     def test_entity_types_core_preserves_legacy_four(self):
         legacy_four = ("person", "concept", "org", "document")
         self.assertEqual(ENTITY_TYPES_CORE[: len(legacy_four)], legacy_four)
+
+    def test_entity_types_core_has_event_immediately_after_legacy_four(self):
+        # PR-11a-1 contract: `event` is the 5th element (first non-legacy
+        # type). α-8's later additions sit after `event`.
+        self.assertEqual(ENTITY_TYPES_CORE[4], "event")
+
+    def test_entity_types_core_matches_alpha8_horizontal_extension(self):
+        # α-8 added 4 horizontal (non-vertical) types after event; the
+        # ordering matters because evidence-of-absence row emission
+        # walks ENTITY_TYPES_CORE in declaration order.
+        self.assertEqual(
+            ENTITY_TYPES_CORE,
+            ("person", "concept", "org", "document",
+             "event", "date", "location", "quantity", "project"),
+        )
 
     def test_event_like_entity_types_baseline_is_just_event(self):
         # OntologyPack loader (PR-11e) extends this set at startup.

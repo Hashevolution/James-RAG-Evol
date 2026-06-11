@@ -75,7 +75,6 @@ either lands in :class:`ExternalQuery` directly or under
 from __future__ import annotations
 
 import json
-import os
 import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple

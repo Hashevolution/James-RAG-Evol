@@ -223,7 +223,7 @@ def diagnose_sample_answers(json_paths: list[str]) -> None:
                 print(f"    {label:18s} → 0")
 
         # Pick 3 representative answer samples (first non-empty)
-        section(f"  → 3 answer samples")
+        section("  → 3 answer samples")
         shown = 0
         for r in results:
             ans = r.get("answer", "")

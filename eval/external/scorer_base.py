@@ -42,7 +42,7 @@ from __future__ import annotations
 
 import abc
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List
 
 
 # ─── ScoreAxis (frozen) ────────────────────────────────────────────

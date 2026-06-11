@@ -162,7 +162,7 @@ def main(argv=None) -> int:
 
     rows = _read_musique_fixture(fixture_path, max_rows=args.max_rows)
 
-    print(f"=== cycle γ MuSiQue corpus build ===")
+    print("=== cycle γ MuSiQue corpus build ===")
     print(f"  workspace : {workspace}")
     print(f"  fixture   : {fixture_path}  (rows={len(rows)})")
     print(f"  variant   : {args.variant}  split: {args.split}")
@@ -189,7 +189,7 @@ def main(argv=None) -> int:
     elapsed = time.time() - t0
     final_count = vector_store.count()
     print()
-    print(f"=== INGESTION COMPLETE ===")
+    print("=== INGESTION COMPLETE ===")
     print(f"  rows processed   : {len(rows)}")
     print(f"  paragraphs added : {n_para_total}")
     print(f"  vector store count: {final_count}")

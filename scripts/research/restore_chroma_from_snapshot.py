@@ -44,7 +44,7 @@ def main(argv=None):
     before = coll.count()
     print(f"[chroma] current count: {before}")
 
-    print(f"[wipe] deleting collection…")
+    print("[wipe] deleting collection…")
     client.delete_collection(name=CHROMA_COLLECTION)
     coll = client.get_or_create_collection(
         name=CHROMA_COLLECTION, metadata={"hnsw:space": "cosine"}
