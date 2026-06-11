@@ -1,0 +1,20 @@
+{
+  "benchmark": "lrb-v024-hr-rescore",
+  "source_bench": "v024-hr-smoke-20260611T154529Z.naive-supersede-gemma3-12b-roberta-mnli.bench.jsonl",
+  "nli_verifier": "deberta-v3-anli",
+  "n_queries": 10,
+  "axes": {
+    "HR_mean": 0.7,
+    "n_queries": 10,
+    "n_claims_total": 10,
+    "n_entailed": 7,
+    "n_neutral": 0,
+    "n_contradicted": 3,
+    "n_empty_answers": 0,
+    "context_truncated_count": 0,
+    "nli_verifier_id": "DebertaV3NliVerifier",
+    "elapsed_s": 77.7178
+  },
+  "honest_tier": "v0.2.4 HR cross-NLI re-score (cached answers, no re-generation). Validates cross-verifier agreement without burning Ollama time.",
+  "started_at": "2026-06-11T15:55:02.448942+00:00"
+}
