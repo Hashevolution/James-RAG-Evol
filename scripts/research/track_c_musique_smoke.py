@@ -46,6 +46,7 @@ from eval.external.lrb.adapters import (
     JamesValidityAdapter, NaiveSupersedeAdapter, VanillaRagAdapter)
 from eval.external.lrb.answer_f1 import score_answer_f1
 from eval.external.lrb.answer_gen import generate_answer
+from eval.external.lrb.llm_rerank import rerank as llm_rerank_call
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 FIXTURE = ROOT / "eval" / "external" / "_fixtures" / "musique" / \
@@ -78,6 +79,8 @@ def load_musique_dev(n: int) -> List[Dict[str, Any]]:
 
 def measure_one_cell(rows: List[Dict[str, Any]], sut_name: str,
                       model: str, *, k: int = 5,
+                      use_llm_rerank: bool = False,
+                      rerank_pool: int = 20,
                       ollama_url: str = "http://localhost:11434",
                       timeout: float = 60.0) -> Dict[str, Any]:
     factory = SUT_FACTORIES[sut_name]
@@ -92,9 +95,26 @@ def measure_one_cell(rows: List[Dict[str, Any]], sut_name: str,
             adapter.ingest(doc_id, para["title"],
                             para["paragraph_text"], 0)
 
-        # Retrieve top-k for this question
-        retrieved = adapter.retrieve_at(
-            row["question"], k=k, query_time=0, valid_time=0)
+        if use_llm_rerank:
+            # Two-stage: retrieve top-N → LLM rerank → top-k
+            pool = adapter.retrieve_at(
+                row["question"], k=rerank_pool,
+                query_time=0, valid_time=0)
+            candidates = []
+            for doc_id in pool:
+                rec = adapter.get_doc(doc_id)
+                if rec is None:
+                    continue
+                title, text = rec
+                candidates.append((doc_id, title, text))
+            reranked = llm_rerank_call(
+                row["question"], candidates,
+                model=model, ollama_url=ollama_url, timeout=timeout)
+            retrieved = [doc_id for doc_id, _ in reranked[:k]]
+        else:
+            # Single-stage token-overlap retrieval
+            retrieved = adapter.retrieve_at(
+                row["question"], k=k, query_time=0, valid_time=0)
 
         # Gather snippets for answer gen
         snippets = []
@@ -148,6 +168,10 @@ def main() -> None:
                         choices=list(SUT_FACTORIES) + ["all"])
     parser.add_argument("--model", default="gemma3:12b")
     parser.add_argument("--k", type=int, default=5)
+    parser.add_argument("--use-llm-rerank", action="store_true",
+                         help="Two-stage retrieval: token-overlap "
+                         "top-N → LLM rerank → top-k")
+    parser.add_argument("--rerank-pool", type=int, default=20)
     parser.add_argument("--ollama-url",
                          default="http://localhost:11434")
     parser.add_argument("--timeout", type=float, default=60.0)
@@ -166,6 +190,8 @@ def main() -> None:
     for sut in suts:
         print(f"\n  SUT: {sut}")
         result = measure_one_cell(rows, sut, args.model, k=args.k,
+                                    use_llm_rerank=args.use_llm_rerank,
+                                    rerank_pool=args.rerank_pool,
                                     ollama_url=args.ollama_url,
                                     timeout=args.timeout)
         axes = result["axes"]
@@ -173,7 +199,8 @@ def main() -> None:
               f"support_recall={axes['support_recall_mean']:.4f}  "
               f"n_empty={axes['n_empty_pred']}")
 
-        cell_label = f"track-c-musique-smoke-{ts}.{sut}-{args.model.replace(':', '-')}"
+        mode_label = "llm-rerank" if args.use_llm_rerank else "token"
+        cell_label = f"track-c-musique-smoke-{ts}.{sut}-{args.model.replace(':', '-')}-k{args.k}-{mode_label}"
         out = {
             "benchmark":     "musique-ans-track-c-smoke",
             "split":         "dev",
