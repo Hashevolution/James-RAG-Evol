@@ -245,13 +245,57 @@ def make_project(dept_idx: int, prj_idx: int) -> Tuple[str, str]:
     return f"prj-{global_idx:06d}", f"Project {noun} {verb}"
 
 
+# Contract title vocabulary — 30 domains × 7 types = 210 unique titles
+# (more than the publication preset's 200 contracts so no collision).
+# Single-template "{verb} Services Contract" naming (pre-S3.1) caused
+# retrieval cluster collapse: all 200 contracts had "Services Contract"
+# substring, so BM25 / embedding retrieval couldn't disambiguate among
+# them, driving current-contract R@10 to 0.0 across all SUTs. Per-domain
+# distinctive nouns + multiple agreement types restore retrieval
+# distinguishability without touching the rest of the generator.
+CONTRACT_DOMAINS: Tuple[str, ...] = (
+    "Asphalt Resurfacing", "Bridge Maintenance", "Lawn Care",
+    "Tree Pruning", "Bus Fleet", "Traffic Signal Repair",
+    "Software Licensing", "Inspection Services", "Document Storage",
+    "Scanning Services", "Office Supply", "IT Hardware",
+    "Vehicle Lease", "Body Camera", "Mowing Operations",
+    "Demolition", "Property Management", "Translation Services",
+    "Medical Supply", "Clinic Staffing", "Snowplow Operations",
+    "Tree Census", "Transit App Development", "Records Audit",
+    "Vendor Performance Monitoring", "Mobile Inspection",
+    "Classroom Devices", "Tax Portal", "Air Sensor Network",
+    "Branch WiFi Provisioning",
+)
+
+CONTRACT_TYPES: Tuple[str, ...] = (
+    "Contract", "Agreement", "Purchase Order",
+    "Master Service Agreement", "Statement of Work",
+    "Maintenance Agreement", "Service Order",
+)
+
+
 def make_contract(dept_idx: int, con_idx: int,
-                  vendor: str) -> Tuple[str, str]:
-    """Returns (con_id, con_title) for the con_idx-th contract in dept_idx."""
-    global_idx = dept_idx * 1000 + con_idx + 1
-    suffix_a = PROJECT_VERBS[(dept_idx * 5 + con_idx) % len(PROJECT_VERBS)]
-    return (f"con-{global_idx:06d}",
-            f"{suffix_a} Services Contract")
+                  vendor: str,
+                  contracts_per_dept: int = 2) -> Tuple[str, str]:
+    """Returns (con_id, con_title) for the con_idx-th contract in dept_idx.
+
+    Title format: ``{DOMAIN} {TYPE}`` where the global contract index
+    ``(dept_idx * contracts_per_dept + con_idx)`` enumerates the unique
+    (domain, type) pairs deterministically. With 30 domains × 7 types
+    = 210 pairs, scenarios up to 210 contracts get unique titles.
+
+    Replaces the pre-S3.1 single-template ``"{verb} Services Contract"``
+    which caused retrieval cluster collapse on current-contract queries
+    (R@10=0.0 across all 3 SUTs at S3 publication; see
+    `docs/research/lrb-v023-s3-publication-scale-results-2026-06-12.md`
+    §4).
+    """
+    global_idx_doc = dept_idx * 1000 + con_idx + 1
+    global_idx_pair = dept_idx * contracts_per_dept + con_idx
+    domain = CONTRACT_DOMAINS[global_idx_pair % len(CONTRACT_DOMAINS)]
+    ctype = CONTRACT_TYPES[(global_idx_pair // len(CONTRACT_DOMAINS))
+                           % len(CONTRACT_TYPES)]
+    return (f"con-{global_idx_doc:06d}", f"{domain} {ctype}")
 
 
 def make_vendor(idx: int) -> str:
@@ -373,7 +417,9 @@ def build_corpus_plan(preset: ScalePreset) -> CorpusPlan:
     for di in range(preset.n_dept):
         for ci in range(preset.contracts_per_dept):
             vendor = make_vendor(di * preset.contracts_per_dept + ci)
-            cid, ctitle = make_contract(di, ci, vendor)
+            cid, ctitle = make_contract(
+                di, ci, vendor,
+                contracts_per_dept=preset.contracts_per_dept)
             contracts.append((cid, ctitle, di, vendor))
 
     budgets: List[Tuple[str, str, int]] = []
