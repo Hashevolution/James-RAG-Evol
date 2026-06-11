@@ -198,7 +198,7 @@ def _call_claude_cli(prompt: str, *, model: str,
     pre-flighted via Direction α S4 measurement.
     """
     import os
-    import tempfile
+    from pathlib import Path as _Path
 
     # Minimal env whitelist for Windows + claude CLI (Node-wrapped)
     base_env = {}
@@ -208,15 +208,30 @@ def _call_claude_cli(prompt: str, *, model: str,
         if var in os.environ:
             base_env[var] = os.environ[var]
 
+    # cwd = project root (Claude Code auto-mode classifier rejects
+    # cwd outside project scope as "scope escalation").
+    project_root = _Path(__file__).resolve().parents[3]
+
+    # On Windows, subprocess Popen can't find `claude` (which is a
+    # shim) — it needs `claude.cmd` or shell=True. Use the .cmd
+    # extension when on Windows + npm shim path.
+    cmd_executable = "claude"
+    if os.name == "nt":
+        npm_claude_cmd = (_Path(os.environ.get("APPDATA", ""))
+                          / "npm" / "claude.cmd")
+        if npm_claude_cmd.exists():
+            cmd_executable = str(npm_claude_cmd)
+
     try:
         proc = subprocess.run(
-            ["claude", "-p", "--model", model],
+            [cmd_executable, "-p", "--model", model],
             input=prompt,
             capture_output=True,
             text=True,
             timeout=timeout,
-            cwd=tempfile.gettempdir(),
+            cwd=str(project_root),
             env=base_env,
+            shell=False,
         )
         if proc.returncode != 0:
             return []
