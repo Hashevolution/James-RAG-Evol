@@ -45,9 +45,29 @@ Question: {question}
 Answer:"""
 
 
+_BENCH_ANSWER_PROMPT_COT = """Answer the question using ONLY the provided context.
+
+Think step by step:
+1. Identify what entity / fact the question asks about.
+2. Find the relevant passage(s) in the context.
+3. If multiple hops are needed, chain the facts.
+4. Give the final answer on the last line, prefixed with "Answer:".
+
+If the context does not contain the answer, give "Answer: Insufficient Information." as the last line.
+
+Context:
+{context}
+
+Question: {question}
+
+Let me think step by step.
+"""
+
+
 def build_prompt(question: str,
                  doc_snippets: List[Tuple[str, str, str]],
-                 *, max_chars_per_doc: int = 800) -> str:
+                 *, max_chars_per_doc: int = 800,
+                 cot: bool = False) -> str:
     """Build the answer prompt.
 
     Args:
@@ -62,8 +82,28 @@ def build_prompt(question: str,
         snippet = text[:max_chars_per_doc].replace("\n", " ").strip()
         blocks.append(f"[{i}] {title} ({doc_id}): {snippet}")
     context = "\n".join(blocks) if blocks else "(no documents retrieved)"
-    return _BENCH_ANSWER_PROMPT.format(
-        context=context, question=question)
+    tpl = _BENCH_ANSWER_PROMPT_COT if cot else _BENCH_ANSWER_PROMPT
+    return tpl.format(context=context, question=question)
+
+
+_ANSWER_PREFIX_RE = re.compile(r"(?:Answer|ANSWER)\s*:\s*(.+?)(?:\n|$)",
+                                re.IGNORECASE | re.DOTALL)
+
+
+def extract_answer_from_cot(raw: str) -> str:
+    """Extract the final answer from a CoT response.
+
+    Picks the LAST "Answer: ..." line; falls back to last non-empty
+    line if no such marker found.
+    """
+    if not raw:
+        return ""
+    matches = list(_ANSWER_PREFIX_RE.finditer(raw))
+    if matches:
+        return matches[-1].group(1).strip().split("\n")[0].strip()
+    # Fallback: last non-empty line
+    lines = [l.strip() for l in raw.strip().split("\n") if l.strip()]
+    return lines[-1] if lines else ""
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -106,15 +146,19 @@ def generate_answer(question: str,
                      model: str,
                      ollama_url: str = "http://localhost:11434",
                      timeout: float = 60.0,
-                     max_tokens: int = 512) -> GenerationResult:
+                     max_tokens: int = 512,
+                     cot: bool = False) -> GenerationResult:
     """Generate an answer.
 
     Returns ``GenerationResult`` with empty ``answer`` and an ``error``
     string on failure — caller decides how to score (per LRB v0.2.4
     prereg §2.3 empty answer → HR=1.0 abstention).
+
+    If ``cot=True``, uses the chain-of-thought prompt + extracts the
+    final answer from the response.
     """
     import time
-    prompt = build_prompt(question, doc_snippets)
+    prompt = build_prompt(question, doc_snippets, cot=cot)
     start = time.perf_counter()
 
     if _is_ollama_model(model):
@@ -130,8 +174,11 @@ def generate_answer(question: str,
                                  elapsed_s=time.perf_counter() - start,
                                  error=f"unsupported model {model!r}")
 
+    raw = text.strip() if text else ""
+    # For CoT, extract final answer from response
+    final = extract_answer_from_cot(raw) if (cot and raw) else raw
     return GenerationResult(
-        answer=text.strip() if text else "",
+        answer=final,
         model=model,
         elapsed_s=round(time.perf_counter() - start, 4),
         error=err,
