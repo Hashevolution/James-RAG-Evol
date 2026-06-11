@@ -1,5 +1,11 @@
 # R1 Phase 3 — scenario-S2 사전 등록 (Pre-registration)
 
+> **Zenodo deposit (priority anchor)**:
+> [10.5281/zenodo.20635130](https://doi.org/10.5281/zenodo.20635130)
+> — published 2026-06-11. The locking commit `d21c680` (2026-06-10)
+> is the in-git priority evidence; this DOI is the external
+> third-party timestamped record of that lock.
+
 **Date**: 2026-06-10 (구현 + 측정 **전** 커밋 — R5 의무)
 **Status**: LOCKED. 이 문서 commit 이후 시나리오 op 개수 / 어휘 basis /
 보고 프로토콜 / honest-tier 게이트 변경 금지. 변경이 필요하면 사유를

@@ -1,0 +1,14 @@
+{
+  "deposit_id": 20635130,
+  "html_url": "https://zenodo.org/records/20635130",
+  "bucket_url": "https://zenodo.org/api/files/ce9b22a5-a556-41ea-a73f-5fe188340b11",
+  "draft_only": false,
+  "uploaded_file": "rab-prereg-phase-3-s2.zip",
+  "uploaded_sha": "md5:b87343f9b75db59a3c9a289235903a14",
+  "ts_utc": "2026-06-11T01:03:03.377767+00:00",
+  "doi": "10.5281/zenodo.20635130",
+  "doi_url": "https://doi.org/10.5281/zenodo.20635130",
+  "record_url": "https://zenodo.org/record/20635130",
+  "published_ts": "2026-06-11T01:08:23.120903+00:00",
+  "published_state": "done"
+}

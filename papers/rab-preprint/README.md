@@ -54,10 +54,12 @@ The abstract is ~250 words and front-loads:
 
 ### Comments field (suggested)
 
-> 10 pages, 1 table. Spec, scenario, scorer, adapters, and 9
-> re-verification artefacts at
-> https://doi.org/10.5281/zenodo.20625533. Pre-registered before
-> measurement.
+> 11 pages, 2 tables. Spec v0.1.1, two pre-registered scenarios
+> (S1 40 ops, S2 400 ops), deterministic scorer, four adapters,
+> and 12 re-verification artefacts at
+> https://doi.org/10.5281/zenodo.20625533 (software) +
+> https://doi.org/10.5281/zenodo.20635130 (Phase 3 pre-registration).
+> Both measurements pre-registered before fixture/measurement.
 
 ### License
 
@@ -148,15 +150,44 @@ Run this checklist once more before clicking submit:
       the source spec, not of the adapter; the mapping table's
       rationale paragraph documents this and the paper repeats it.
       (Currently: ✅, paper v1.2 §5.3 + mapping-table file)
+- [ ] **Scenario-S2 cross-scenario evidence is in Results, not Future
+      Work.** Table 2 (S2 gap table) sits in §7 with its own subsection
+      after Table 1; the two-fail-modes structure reproduces to 3
+      decimal places; the conclusion that the gap structure is not a
+      function of corpus size is stated explicitly. (Currently: ✅,
+      paper v1.3 §7.2 + Conclusion)
+- [ ] **RF-cost claim withheld honestly.** Phase 3 pre-registration
+      §4 locked two thresholds; only the first cleared (S2 ratio
+      2.79× < 5× locked); the paper reports the numbers and applies
+      the locked decision rule rather than tightening the claim
+      post-hoc. (Currently: ✅, paper v1.3 §7.2 + §6)
+- [ ] **Honest tier landing matches the locked ladder.** The paper
+      reports against the second rung of the pre-registered ladder
+      ($\star\star$ cross-scenario partial); $\star\star\star$ remains
+      ungated because the locked ladder required both the gap and the
+      RF-cost leg, and only the first cleared. The pre-registration is
+      the citation for "ladder as written." (Currently: ✅, paper v1.3
+      §6 + §7 + Conclusion)
+- [ ] **Scenario-S2 pre-registration DOI present in title footnote
+      and §6.** The Phase 3 pre-registration is separately archived
+      at Zenodo (DOI placeholder until minted) and cited in the title
+      thanks block, §6, and §9. (Currently: ⏳ awaiting DOI mint;
+      placeholder `10.5281/zenodo.20635130` in paper source.)
 
 ## What this preprint does NOT do
 
-- It does not benchmark Baseline-1 (LangSmith / OTel) — explicit
-  future work (§Future Work track 1).
-- It does not present cross-scenario results — explicit limitation,
-  $\star\star\star$ tier ungated.
+- It does not benchmark a third audit-native runtime — replication
+  track is separate collaboration scope (§Future Work track 2).
+- It does not present cross-vocabulary-basis cross-scenario results
+  — S2 reproduces the gap at $10\times$ scale but uses the same
+  canonical event set as S1; scenario-S3 (cross-lingual) is queued
+  in §Future Work track 1.
+- It does not claim the RF-cost $O(N^2)$ candidate finding — the
+  pre-registration locked a $5\times$ threshold that the S2 ratio
+  ($2.79\times$) does not clear; a third scenario at $\ge 4\times$
+  S2 op count is the cleanest next data point (§Future Work track 1).
 - It does not benchmark ActiveGraph — replication track is separate
-  collaboration scope (§Future Work track 3).
+  collaboration scope (§Future Work track 2).
 - It does not propose new architectural primitives — the spec is the
   contribution.
 
