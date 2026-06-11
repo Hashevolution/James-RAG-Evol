@@ -1,0 +1,145 @@
+{
+  "benchmark": "lrb",
+  "phase": "A",
+  "scenario": "LRB-S1",
+  "scenario_label": "S1",
+  "spec": "v0.1.0-draft",
+  "sut": "naive-supersede",
+  "n_evaluations": 180,
+  "elapsed_s": 0.0783,
+  "fixture_sha": "f5e5e022fae0a38eba9e6a2c9527651b0b10c2a7bbbc1b5cacc9a102c3597c3b",
+  "honest_tier": "Phase A cross-scenario smoke; deterministic axes only (RAB H1). NOT publication. Pre-reg: docs/research/lrb-phase-b-time-travel-preregistration-2026-06-11.md",
+  "axes": {
+    "overall": {
+      "R@5": 0.844444,
+      "R@10": 0.916667,
+      "P@5": 0.168889,
+      "P@10": 0.091667,
+      "latency_s_mean": 0.000414,
+      "token_cost_mean": 334.5861,
+      "temporal_accuracy": 0.916667,
+      "n": 180,
+      "exploratory": {
+        "R@1": 0.738889,
+        "P@1": 0.738889,
+        "temporal_accuracy_strict_top1": 0.738889
+      }
+    },
+    "per_timestamp": {
+      "T=0": {
+        "R@5": 0.85,
+        "R@10": 0.9,
+        "P@5": 0.17,
+        "P@10": 0.09,
+        "temporal_accuracy": 0.9,
+        "latency_s_mean": 0.000404,
+        "token_cost_mean": 323.3625,
+        "n": 60
+      },
+      "T=12w": {
+        "R@5": 0.866667,
+        "R@10": 0.95,
+        "P@5": 0.173333,
+        "P@10": 0.095,
+        "temporal_accuracy": 0.95,
+        "latency_s_mean": 0.000424,
+        "token_cost_mean": 339.4458,
+        "n": 60
+      },
+      "T=6w": {
+        "R@5": 0.816667,
+        "R@10": 0.9,
+        "P@5": 0.163333,
+        "P@10": 0.09,
+        "temporal_accuracy": 0.9,
+        "latency_s_mean": 0.000414,
+        "token_cost_mean": 340.95,
+        "n": 60
+      }
+    },
+    "per_category": {
+      "budget-update": {
+        "n": 24,
+        "R@5": 0.625,
+        "R@10": 1.0,
+        "P@5": 0.125,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 0.125
+      },
+      "contract-record-lookup": {
+        "n": 30,
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 1.0
+      },
+      "contract-vendor-shift": {
+        "n": 12,
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 1.0
+      },
+      "deleted-project-negative": {
+        "n": 6,
+        "R@5": 0.333333,
+        "R@10": 0.333333,
+        "P@5": 0.066667,
+        "P@10": 0.033333,
+        "temporal_accuracy": 0.333333,
+        "R@1": 0.333333
+      },
+      "director-shift": {
+        "n": 30,
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 0.8
+      },
+      "new-project-existence": {
+        "n": 18,
+        "R@5": 0.5,
+        "R@10": 0.5,
+        "P@5": 0.1,
+        "P@10": 0.05,
+        "temporal_accuracy": 0.5,
+        "R@1": 0.5
+      },
+      "policy-amend": {
+        "n": 12,
+        "R@5": 0.666667,
+        "R@10": 1.0,
+        "P@5": 0.133333,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 0.583333
+      },
+      "project-lead-shift": {
+        "n": 18,
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 1.0
+      },
+      "project-record-lookup": {
+        "n": 30,
+        "R@5": 0.933333,
+        "R@10": 0.933333,
+        "P@5": 0.186667,
+        "P@10": 0.093333,
+        "temporal_accuracy": 0.933333,
+        "R@1": 0.933333
+      }
+    }
+  },
+  "started_at": "2026-06-11T12:19:34.650069+00:00"
+}
