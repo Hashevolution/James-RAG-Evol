@@ -35,6 +35,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
+from eval.external.wikimulti_cited_producer import WikiMultiCitedProducer
 from eval.external.wikimulti_loader import WikiMultiLoader
 from eval.external.wikimulti_scorer import WikiMultiScorer
 from eval.external.runner import (
@@ -61,16 +62,35 @@ def main(argv=None) -> int:
     p.add_argument("--max-tokens", type=int, default=1024)
     p.add_argument("--out-dir",
                    default=str(ROOT / "reports" / "external" / "2wiki"))
+    p.add_argument(
+        "--cited", action="store_true",
+        help=("Use the D-2wiki supporting-fact-aware producer "
+              "(WikiMultiCitedProducer) instead of the C.4 closed-"
+              "corpus baseline. Emits predicted_supporting_facts so "
+              "the support_fact_f1 axis is measured (research-tier; "
+              "NOT publication-grade -- small-model citation accuracy "
+              "is a known weak axis). See "
+              "docs/research/cycle-gamma-d-2wiki-supporting-fact-"
+              "preregistration-2026-06-12.md"),
+    )
     args = p.parse_args(argv)
 
     loader = WikiMultiLoader(split="dev")
     scorer = WikiMultiScorer()
-    producer = ClosedCorpusGemmaProducer(
-        model=args.model,
-        max_tokens=args.max_tokens,
-        # 2Wiki's 10 paragraphs total well under the 100k char cap
-        # already in the base producer; no need to override.
-    )
+    if args.cited:
+        producer = WikiMultiCitedProducer(
+            model=args.model,
+            max_tokens=args.max_tokens,
+        )
+        producer_grade = "research-tier-cited"
+    else:
+        producer = ClosedCorpusGemmaProducer(
+            model=args.model,
+            max_tokens=args.max_tokens,
+            # 2Wiki's 10 paragraphs total well under the 100k char cap
+            # already in the base producer; no need to override.
+        )
+        producer_grade = "infrastructure-only-uncited"
 
     fixture_sha = _fixture_sha(loader.cache_path)
 
@@ -98,19 +118,40 @@ def main(argv=None) -> int:
     )
 
     # Pre-reg-annotated metadata so the result JSON is self-describing.
-    result["honest_tier"] = (
-        "infrastructure-only: smoke n=" + str(args.n) + " with "
-        "ClosedCorpusGemmaProducer. NOT publication. "
-        "Pre-reg: docs/research/cycle-gamma-c4-2wiki-smoke-"
-        "preregistration-2026-06-11.md"
-    )
+    if args.cited:
+        result["honest_tier"] = (
+            "research-tier: smoke n=" + str(args.n) + " with "
+            "WikiMultiCitedProducer (supporting-fact emission). "
+            "STRONGER than C.4 closed-corpus baseline (support_fact_f1 "
+            "now measured), but NOT publication-grade — small-model "
+            "citation accuracy is a known weak axis (E-2wiki cycle "
+            "will measure larger / instruction-tuned cited models). "
+            "Pre-reg: docs/research/cycle-gamma-d-2wiki-supporting-"
+            "fact-preregistration-2026-06-12.md"
+        )
+        result["scope"] = {
+            "producer_emits_supporting_facts": True,
+            "support_fact_f1_axis": "measured (research-tier)",
+            "comparable_to_musique_magnitude": False,
+            "cross_bench_claim": ("multi-hop floor pattern qualitative "
+                                  "agreement + 2Wiki citation-emission "
+                                  "validated for small open model"),
+        }
+    else:
+        result["honest_tier"] = (
+            "infrastructure-only: smoke n=" + str(args.n) + " with "
+            "ClosedCorpusGemmaProducer. NOT publication. "
+            "Pre-reg: docs/research/cycle-gamma-c4-2wiki-smoke-"
+            "preregistration-2026-06-11.md"
+        )
+        result["scope"] = {
+            "producer_emits_supporting_facts": False,
+            "support_fact_f1_axis": "not measured by design",
+            "comparable_to_musique_magnitude": False,
+            "cross_bench_claim": "multi-hop floor pattern qualitative agreement only",
+        }
     result["fixture_sha"] = fixture_sha
-    result["scope"] = {
-        "producer_emits_supporting_facts": False,
-        "support_fact_f1_axis": "not measured by design",
-        "comparable_to_musique_magnitude": False,
-        "cross_bench_claim": "multi-hop floor pattern qualitative agreement only",
-    }
+    result["producer_grade"] = producer_grade
 
     stamp = _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     out_dir = Path(args.out_dir)
