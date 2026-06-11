@@ -277,6 +277,28 @@ The v0.2.1 pre-registration locked four leg conditions for the publication-tier 
 
 All four legs cleared; the publication-tier landing is preserved across the model spectrum and is not a single-model artefact.
 
+\subsection{Cross-scale reproducibility (v0.2.3 S3)}
+\label{sec:cross_scale}
+
+The S2 fixture is a hand-curated $\approx$200-doc city-operations corpus. To rule out the V $<$ N $<$ J ordering being an artefact of that specific document count or hand-curated vocabulary, we extended LRB with a deterministic programmatic generator (\texttt{build\_lrb\_scenario\_s3.py}) that produces three scale presets schema-identical to S2: \emph{smoke} (100 docs, 282 events, 100 queries), \emph{dev} (300 docs, 1.2k events, 300 queries), and \emph{publication} (1000 docs, 5.6k events, 1000 queries). The generator uses templated vocabulary primitives (20 dept adjectives, 10 domains, 50 first names, 40 last names, 30 contract domains, 7 contract types) so the publication-tier 1000-doc fixture has no hand-curated bottleneck. All three fixtures are SHA-pinned (operators regenerate byte-identically).
+
+Phase B (time-travel) measurement of all three scale presets through the deterministic token-mode driver yields the following 4-point ladder:
+
+\begin{center}
+\begin{tabular}{lccc|c}
+\toprule
+Scenario & V R@1 & N R@1 & J R@1 & V $<$ N $<$ J \\
+\midrule
+S2 token (frozen)     & 0.225 & 0.538 & 0.713 & yes \\
+S3 smoke              & 0.510 & 0.730 & 0.930 & yes \\
+S3 dev                & 0.530 & 0.737 & 0.913 & yes \\
+\textbf{S3 publication} & \textbf{0.502} & \textbf{0.721} & \textbf{0.845} & \textbf{yes} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The R@1 V $<$ N $<$ J inequality is preserved at every scale point across the 12.5$\times$ scale range, and the JAMES $-$ Naive gap remains above $+$0.10 at every point (+0.175 / +0.200 / +0.176 / +0.124). Absolute magnitudes are scenario-sensitive: the synthetic vocabularies have lower retrieval ambiguity than the hand-curated S2 city-operations text, so all three SUTs achieve higher absolute R@1 on S3. Cross-scenario claims are therefore limited to ordering and gap structure, not absolute magnitude. The pre-registration locked this verdict matrix before measurement; the result doc \texttt{lrb-v023-s3-publication-scale-results-2026-06-12.md} pins the full per-category breakdown and the post-hoc S3.1 contract-vocabulary fix that closed a pre-S3.1 measurement artefact (\texttt{current-contract R@10}$=$0 across all SUTs from single-template title cluster collapse).
+
 \section{Discussion}
 \label{sec:discussion}
 
@@ -288,11 +310,13 @@ All four legs cleared; the publication-tier landing is preserved across the mode
 
 \paragraph{The HR axis is a v0.2.4 extension, not the core LRB contract.} The HR axis touches an LLM at the scoring step (NLI verifier classification). This is the only LRB axis that does so. The retrieval-side axes (Sections~\ref{sec:phase_a}, \ref{sec:phase_b}, \ref{sec:cross_model}) remain LLM-judge-free at the scoring layer. The cross-NLI agreement protocol (RoBERTa $+$ DeBERTa argmax classification) was locked in the v0.2.4 pre-registration to mitigate single-verifier artefacts. T5-XXL TRUE NLI Mixture (the ALCE-standard verifier~\cite{gao2023alce}) is deferred to v0.2 publication tier; the present results use only RoBERTa-large-MNLI and DeBERTa-v3.
 
+\paragraph{Pattern robustness vs.~magnitude sensitivity.} The cross-scale ladder (Section~\ref{sec:cross_scale}) demonstrates a separation between two kinds of claim: the V $<$ N $<$ J \emph{ordering} and the JAMES $-$ Naive \emph{gap structure} survive a 12.5$\times$ scale jump (S2 N=80 $\to$ S3 publication N=1000) and a vocabulary swap (hand-curated city-operations $\to$ programmatic 30-domain templates), while the absolute R@1 magnitudes do not. We read this as evidence that the validity-window mechanism's contribution is a structural property of the architecture, not a coincidence of one corpus size or vocabulary distribution; correspondingly, we frame the cross-scenario result as a pattern-and-gap finding and explicitly do not claim cross-scenario magnitude propagation.
+
 \section{Limitations}
 \label{sec:limitations}
 
 \begin{enumerate}[leftmargin=*]
-  \item \textbf{Synthetic fixtures.} Both S1 and S2 use deterministic synthetic city-operations corpora. Real enterprise corpora may exhibit different lifecycle event distributions (e.g.~UPDATE-heavy financial filings vs.~SUPERSEDE-heavy policy documents).
+  \item \textbf{Synthetic fixtures.} S1, S2, and S3 all use deterministic synthetic city-operations corpora. Real enterprise corpora may exhibit different lifecycle event distributions (e.g.~UPDATE-heavy financial filings vs.~SUPERSEDE-heavy policy documents). The cross-scale check (\S\ref{sec:cross_scale}) addresses scale-attribution within the same domain class; cross-domain generalisation remains future work.
   \item \textbf{Single audit-native SUT.} The JAMES adapter is the only audit-native point in the gap table. ActiveGraph~\cite{nakajima2026activegraph} adapter would strengthen the within-class comparison; we list this as future work \S\ref{sec:future}.
   \item \textbf{Token-overlap retrieval baseline.} Vanilla, Naive, and JAMES all use the same TF-IDF base retriever in this paper. A learned dense retriever (e.g.~ColBERT, DPR) could change the absolute scores but is orthogonal to the lifecycle/time-travel axis we measure.
   \item \textbf{HR axis n.} v0.2.4 HR measurements use n=10 LRB-S1 cells. Full sweep (n=100+) is in the operator-attended queue.
@@ -307,7 +331,7 @@ All four legs cleared; the publication-tier landing is preserved across the mode
   \item \textbf{ActiveGraph adapter.} Within-class second audit-native SUT; mitigates the single-audit-native-row concern \S\ref{sec:limitations}.2.
   \item \textbf{TimeQA and TempReason measurement.} Track C primary and secondary benches once operator-action license / download gate clears.
   \item \textbf{HR full sweep (n=100+).} v0.2.4 full sweep across LRB-S1 + LRB-S2 + Track C benches; cross-NLI agreement at publication scale.
-  \item \textbf{S3 publication-scale scenario.} 1000+ documents, 10K events, 200 queries $\times$ 5 timestamps; extends the cross-scenario reproducibility check.
+  \item \textbf{LLM-grounded S3 publication run.} Section~\ref{sec:cross_scale} reports token-mode only; an LLM-grounded re-run (claude / mxtral / gemma3:12b / gemma4:e4b) at N$=$1000 would extend the v0.2.1 cross-model leg-clear to publication-scale evidence.
   \item \textbf{Microsoft GraphRAG SUT.} Fourth SUT for cross-architecture gap structure.
   \item \textbf{Korean / cross-lingual scenario.} LRB v0.3 candidate; addresses the English-only fixture limitation.
 \end{enumerate}
