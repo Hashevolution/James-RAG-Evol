@@ -1,0 +1,235 @@
+{
+  "benchmark": "alce-asqa",
+  "loader": "alce-asqa",
+  "producer": "alce-closed-corpus",
+  "split": "dev",
+  "n_queries": 20,
+  "n_rows": 20,
+  "n_errors": 0,
+  "elapsed_s": 41.096,
+  "started_at": "2026-06-11T05:19:02.183428+00:00",
+  "axes": [
+    {
+      "name": "citation_precision",
+      "score": 0.8168,
+      "n_queries": 20,
+      "per_query": {
+        "alce-asqa--7013890438520559398": 0.5714,
+        "alce-asqa-7089015503030534342": 1.0,
+        "alce-asqa-8793099883447006698": 0.8333,
+        "alce-asqa--881464876144297194": 1.0,
+        "alce-asqa-1650309494326541834": 1.0,
+        "alce-asqa-2378678654868379935": 0.0,
+        "alce-asqa--3322598412088356524": 0.1667,
+        "alce-asqa--4633355453516911545": 1.0,
+        "alce-asqa--7464414779466400769": 1.0,
+        "alce-asqa-1562758409663917015": 0.2857,
+        "alce-asqa-7813254335895169912": 1.0,
+        "alce-asqa-732619765350082410": 0.5,
+        "alce-asqa-6962706727076805207": 1.0,
+        "alce-asqa-3127369420834732535": 0.875,
+        "alce-asqa--8056895208806271453": 1.0,
+        "alce-asqa-4131723857510142703": 1.0,
+        "alce-asqa--6617858863213285972": 1.0,
+        "alce-asqa--7031499911070053371": 1.0,
+        "alce-asqa--2419910984507145175": 1.0,
+        "alce-asqa-3228155858422343609": 1.0
+      },
+      "notes": "verifier=string-containment(min_overlap=0.5); is_alce_grade=False. DEFAULT FALLBACK — NOT ALCE-grade. Pass a real NLI verifier (e.g. T5-XXL TRUE NLI Mixture) for publishable ALCE scores."
+    },
+    {
+      "name": "citation_recall",
+      "score": 0.9067,
+      "n_queries": 20,
+      "per_query": {
+        "alce-asqa--7013890438520559398": 0.8,
+        "alce-asqa-7089015503030534342": 1.0,
+        "alce-asqa-8793099883447006698": 1.0,
+        "alce-asqa--881464876144297194": 1.0,
+        "alce-asqa-1650309494326541834": 1.0,
+        "alce-asqa-2378678654868379935": 0.0,
+        "alce-asqa--3322598412088356524": 0.5,
+        "alce-asqa--4633355453516911545": 1.0,
+        "alce-asqa--7464414779466400769": 1.0,
+        "alce-asqa-1562758409663917015": 0.6667,
+        "alce-asqa-7813254335895169912": 1.0,
+        "alce-asqa-732619765350082410": 0.5,
+        "alce-asqa-6962706727076805207": 1.0,
+        "alce-asqa-3127369420834732535": 1.0,
+        "alce-asqa--8056895208806271453": 1.0,
+        "alce-asqa-4131723857510142703": 1.0,
+        "alce-asqa--6617858863213285972": 1.0,
+        "alce-asqa--7031499911070053371": 1.0,
+        "alce-asqa--2419910984507145175": 1.0,
+        "alce-asqa-3228155858422343609": 1.0
+      },
+      "notes": "verifier=string-containment(min_overlap=0.5); is_alce_grade=False. DEFAULT FALLBACK — NOT ALCE-grade. Pass a real NLI verifier (e.g. T5-XXL TRUE NLI Mixture) for publishable ALCE scores."
+    }
+  ],
+  "rows": [
+    {
+      "id": "alce-asqa--7013890438520559398",
+      "answer": "The search results provide varying information regarding the highest number of goals scored in world football [1][2][5]. For instance, Pelé's 1281 goals are recognized by FIFA as the highest total for a professional footballer, though the Soccer Statistic Foundation (rssf) only acknowledges 767 goals, placing him third behind Josef Bican and Romario [1].\n\nJosef Bican, a Czech-Austrian professional footballer, is estimated by the Rec.Sport.Soccer Statistics Foundation (RSSSF) to have scored at least 805 goals in all competitive matches, which would make him the most prolific scorer of all time [5]. Furthermore, the International Federation of Football History & Statistics (IFFHS) awarded Bican the \"Golden Ball\" for being the greatest goalscorer of the last century [5].\n\nOther records mentioned include Godfrey Chitalu's claim of scoring 116 goals during the 1972 calendar year, though FIFA stated they would not ratify his or Lionel Messi's records because they do not track domestic competitions [2].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-7089015503030534342",
+      "answer": "\"The Sound of Silence,\" which was initially titled \"The Sounds of Silence,\" is a song by the American music duo Simon & Garfunkel [1][3]. Paul Simon wrote the song over several months spanning 1963 and 1964 [1][3]. The recording for the song took place in March 1964 at Columbia Studios in New York City, intended for their debut album, *Wednesday Morning, 3 A.M.* [1][3].\n\nThe title of Simon & Garfunkel's second studio album was a minor alteration of the title of their initial major hit, \"The Sound of Silence,\" which had originally been released as \"The Sounds of Silence\" [2][5]. An acoustic version of the song appeared on *Wednesday Morning, 3 A.M.* and later on the soundtrack for the film *The Graduate* [2]. Electric guitars, bass, and drums were added to the track by Columbia Records staff producer Tom Wilson without the knowledge of Paul Simon or Art Garfunkel [2]. Furthermore, electric overdubs for \"The Sound of Silence\" were recorded at Columbia's \"Studio A\" on June 15, 1965 [5].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-8793099883447006698",
+      "answer": "The first Apple iPhone was officially announced on January 9, 2007 [1][2][4]. Subsequently, the initial version of the iPhone became publicly available on June 29, 2007, in select markets [3][5]. This device combined Apple's first widescreen iPod with an internet communicator and the world's first mobile phone featuring visual voicemail capabilities [3].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa--881464876144297194",
+      "answer": "James and Oliver Phelps are identical twin British actors who are recognized for portraying Fred and George Weasley in the *Harry Potter* film series [1][4]. The twins were born on February 25, 1986, in the Sutton Coldfield area of Birmingham, England [1]. In 2000, at age 14, they auditioned for the role and were cast as Fred and George Weasley in *Harry Potter and the Philosopher's Stone*, a role they continued throughout subsequent films [3].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-1650309494326541834",
+      "answer": "Virginia has 34 state parks [1][2]. Additionally, the Commonwealth maintains 17 state forests that are managed by the Department of Forestry and the Department of Conservation and Recreation [1][2].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-2378678654868379935",
+      "answer": "The provided search results contain information regarding several UEFA Champions League Finals but do not offer a single answer addressing all aspects of the question, such as who performed at the 2018 final or details about the 2016 final's performers [1][2][4].\n\nFor instance:\n*   The 2018 UEFA Champions League Final took place on May 26, 2018, at the NSC Olimpiyskiy Stadium in Kiev, Ukraine, featuring a match between Liverpool and Real Madrid [4].\n*   In contrast, the 2017 final was held at the Millennium Stadium in Cardiff, Wales, where Real Madrid defeated Juventus 4–1 [5].\n*   Regarding performances, Alicia Keys performed at the opening ceremony before the 2016 event, and Andrea Bocelli sang the UEFA Champions League Anthem [1]. Other performers mentioned for various finals include Lipa and Sean Paul preceding a final [2], and Andrea Bocelli performing at multiple finals in different years [3].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa--3322598412088356524",
+      "answer": "The provided search results do not contain information detailing who killed a man in *Thelma & Louise* [1][2][3][4][5]. However, one document mentions that the killer at the scene of Lindsay's death was Richard Thompson, whose real name is Marcus Andrews, and this individual killed both Thelma and police Captain Howard Cheney [4].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa--4633355453516911545",
+      "answer": "Charlie Kelly, whose real name is Charles Rutherford Kelly, is a fictional character featured on the FX series *It's Always Sunny in Philadelphia* [1][2]. This role is portrayed by Charlie Day [1][2]. In the show, he is depicted as an easily excitable man-child who often has emotional outbursts and struggles with various harmful substances, such as glue and alcohol [1]. Kelly was a co-owner at Paddy's Pub, which is run by \"The Gang,\" a group of friends in South Philadelphia [1][3][2]. Despite his flaws, some sources have noted that his childlike energy makes him surprisingly likable within the context of the show [2].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa--7464414779466400769",
+      "answer": "The provided search results indicate that the Lakers have won a total of 16 NBA championships [1][2]. Specifically, the sources mention the Lakers winning in 2008 and 2010 [1][2]. Furthermore, one source notes that the two teams with the most championships are the Celtics with 17 and the Lakers with 16 [1][2].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-1562758409663917015",
+      "answer": "The provided search results do not contain information detailing how many states are currently under Congress rule or if any specific state is governed by a particular party [1][2][3][4][5]. However, one source notes that Congress (INC) holds majority support in the states of Punjab, Chhattisgarh, Rajasthan, and Madhya Pradesh [2]. Furthermore, it mentions that in Karnataka and Puducherry, the party shares power with its alliance partner, Janata Dal (Secular), and Dravida [2].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-7813254335895169912",
+      "answer": "The search results mention two different actresses who played the role of Fruma Sarah in *Fiddler on the Roof*. In 1971, Ruth Madoc portrayed Fruma Sarah in the film version of the musical [1]. Separately, another actress played Fruma Sarah during the 2015-2016 Broadway Revival of *Fiddler on the Roof* [4].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-732619765350082410",
+      "answer": "The provided search results do not contain information stating that Toronto hosted the MLB All-Star Game [1]. However, the 1991 Major League Baseball All-Star Game was played at SkyDome in Toronto, which is the home stadium for the American League's Toronto Blue Jays [1].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-6962706727076805207",
+      "answer": "Law enforcement agencies utilize specialized vehicles known as bait cars, which can also be called decoy cars, hot cars, or trap cars [1][3]. These cars are designed to capture thieves who steal items from automobiles or car thieves generally [1][3]. The vehicles are equipped with audio and video surveillance technology, allowing them to be remotely controlled and monitored [1][2][3].\n\nWhen set up to catch thieves, these bait cars may include GPS tracking [1][3]. Furthermore, a \"kill switch\" might be installed, giving police the ability to remotely lock all doors or disable the engine to prevent escape [1][3]. For thefts involving items from cars, the vehicle can be disabled so that it cannot be started and will contain specially prepared \"bait property\" [2]. If the car is stolen, officers receive immediate alerts and can monitor the vehicle while sending commands such as locking doors, disabling the engine, or sounding the horn [2]. Additionally, bait cars can be part of a sting operation, where criminals are lured into exposing themselves [4].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-3127369420834732535",
+      "answer": "*Jersey Shore* is an American reality television show that aired on MTV from December 3, 2009, until December 20, 2012 [1][2]. The program followed eight housemates who spent their summers together at a vacation home [1][2]. These locations varied across seasons: Seaside Heights, New Jersey, was used for seasons one, three, five, and six; South Beach, Florida, was the setting for season two; and Florence, Italy, hosted season four [1][2]. The series debuted amid controversy concerning its use of terms like \"Guido/Guidette\" and allegations regarding the perpetuation of stereotypes about Italian-Americans [1][2].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa--8056895208806271453",
+      "answer": "The plane crash storyline appeared in multiple seasons of *Grey's Anatomy*. Specifically, a plane crash was featured in \"Flight,\" which is the twenty-fourth and final episode of the eighth season [4]. Additionally, the eleventh season included an episode titled \"One Flight Down\" that depicted a plane crash in Seattle and revisited memories of the tragic plane crash from season 8, which resulted in the deaths of Mark Sloan and Lexie Grey [2][3].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-4131723857510142703",
+      "answer": "The Oriental Bank Corporation has a history dating back to the 19th century when it operated as a bank in India [4][5]. Specifically, it was established in Bombay, India, in 1842 under the name Bank of Western India [4][5]. Following the relocation of its headquarters to London in 1845, the name was changed to Oriental Bank Corporation [4][5]. The bank received a charter in 1851, which was intended to allow competition with the East India Company's opium billing monopoly, an activity that was unpopular in England at the time [4][5]. Furthermore, it holds the distinction of being the first bank in Hong Kong and the first bank there to issue banknotes [4][5].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa--6617858863213285972",
+      "answer": "The Rams relocated from Los Angeles to St. Louis in 1995 [2][3]. Specifically, owner Georgia Frontiere announced the move on January 15, 1995 [5]. This move occurred after the team had been without an NFL franchise since the Cardinals moved to Phoenix, Arizona in 1988 [2][3]. The Rams played as the St. Louis Rams from 1995 through the 2015 seasons [2][3].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa--7031499911070053371",
+      "answer": "The concept for a youth movement among Afrikaners was first formulated by Dr. C.F. Visser in 1913 in Bloemfontein [1]. The official establishment of the Voortrekker movement is dated to September 30, 1931 [2]. Later developments included Dr. C.F. Visser leading the Voortrekkers in 1940 [4], and the organization's members celebrating the completion of the Voortrekker monument in 1949 [4].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa--2419910984507145175",
+      "answer": "Heath Ledger portrayed the character of Patrick in the film *10 Things I Hate About You* [3][4]. In the movie, Cameron attempts to convince Patrick to help him get around Bianca's father's dating restrictions [4]. The character Patrick is modeled after Petruchio, and his surname Verona references a relative character named Petruchio [2].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-3228155858422343609",
+      "answer": "Windows Movie Maker was a video editing program from Microsoft [1][2]. It was initially included with Windows ME on September 14, 2000 [2]. The software was part of the Windows Essentials suite and allowed users to create and edit videos, as well as publish them to platforms like YouTube, Facebook, Vimeo, OneDrive, and Flickr [1][2].\n\nOver time, the software evolved; for instance, a standalone product called Windows Live Movie Maker 2009 was released on August 19, 2009, which used a ribbon toolbar interface and could not read projects from older versions [4]. Later iterations included features like webcam capture and support for high-definition video with the release of Live Movie Maker 2011 [3]. However, the software was officially discontinued on January 10, 2017, and has since been replaced by \"Windows Story Remix\" built into Microsoft Photos in Windows 10 [1][2].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    }
+  ],
+  "honest_tier": "infrastructure-only: smoke n=20 with StringContainmentVerifier fallback. NOT ALCE-grade. Pre-reg: docs/research/cycle-gamma-c3-alce-smoke-preregistration-2026-06-11.md",
+  "verifier_grade": "fallback-string-containment",
+  "fixture_sha": "d72737ce7d46629d3504fc508f29ec0c270e0ddd5cff3fad69625d2c0e4be35b",
+  "n_docs_per_query": 5
+}
