@@ -34,6 +34,8 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
 from eval.external.alce_loader import ALCELoader
+from eval.external.alce_nli_adapter import (ALCE_ADAPTER_NAMES,
+                                            get_alce_adapter)
 from eval.external.alce_producer import ALCEClosedCorpusProducer
 from eval.external.alce_scorer import ALCEScorer, StringContainmentVerifier
 from eval.external.runner import run_external_bench, write_result
@@ -53,10 +55,31 @@ def main(argv=None) -> int:
                    help="top-k passages per question (ALCE default 5)")
     p.add_argument("--max-tokens", type=int, default=1024)
     p.add_argument("--out-dir", default=str(ROOT / "reports" / "external" / "alce"))
+    p.add_argument(
+        "--verifier",
+        default="string-containment",
+        choices=("string-containment",) + ALCE_ADAPTER_NAMES,
+        help=("citation entailment verifier. "
+              "'string-containment' (default, no-deps) is the smoke "
+              "fallback. 'roberta-mnli' / 'deberta-v3-anli' load the "
+              "v0.2.4 HR NLI checkpoints (transformers+torch on first "
+              "call) and re-grade citations at research-tier. T5-XXL "
+              "TRUE NLI (ALCE-official) remains deferred (GPU-only)."),
+    )
+    p.add_argument(
+        "--device", default="cpu",
+        help="HF device for NLI adapter (cpu/cuda); ignored for fallback.",
+    )
     args = p.parse_args(argv)
 
     loader = ALCELoader(variant="asqa")
-    verifier = StringContainmentVerifier(min_overlap=0.5)
+    verifier_grade: str
+    if args.verifier == "string-containment":
+        verifier = StringContainmentVerifier(min_overlap=0.5)
+        verifier_grade = "fallback-string-containment"
+    else:
+        verifier = get_alce_adapter(args.verifier, device=args.device)
+        verifier_grade = f"research-tier-{args.verifier}"
     scorer = ALCEScorer(variant="asqa", verifier=verifier)
     producer = ALCEClosedCorpusProducer(
         model=args.model,
@@ -93,13 +116,26 @@ def main(argv=None) -> int:
     # Annotate result with pre-reg gate info so the JSON is self-
     # describing without operators needing to cross-reference the
     # pre-reg doc.
-    result["honest_tier"] = (
-        "infrastructure-only: smoke n=" + str(args.n) +
-        " with StringContainmentVerifier fallback. NOT ALCE-grade. "
-        "Pre-reg: docs/research/cycle-gamma-c3-alce-smoke-"
-        "preregistration-2026-06-11.md"
-    )
-    result["verifier_grade"] = "fallback-string-containment"
+    if verifier_grade.startswith("research-tier"):
+        result["honest_tier"] = (
+            "research-tier: smoke n=" + str(args.n) +
+            f" with NLI adapter ({args.verifier}). "
+            "STRONGER than string-containment fallback, but NOT "
+            "ALCE-official-grade (T5-XXL TRUE NLI Mixture, GPU-only, "
+            "remains deferred). Useful for cross-checking the fallback "
+            "result and for paper methods cross-verifier robustness "
+            "claims. Pre-reg: docs/research/cycle-gamma-c3-alce-smoke-"
+            "preregistration-2026-06-11.md + docs/research/v024-hr-nli-"
+            "axis-preregistration-2026-06-11.md (verifier provenance)."
+        )
+    else:
+        result["honest_tier"] = (
+            "infrastructure-only: smoke n=" + str(args.n) +
+            " with StringContainmentVerifier fallback. NOT ALCE-grade. "
+            "Pre-reg: docs/research/cycle-gamma-c3-alce-smoke-"
+            "preregistration-2026-06-11.md"
+        )
+    result["verifier_grade"] = verifier_grade
     result["fixture_sha"] = fixture_sha
     result["n_docs_per_query"] = args.n_docs
 
