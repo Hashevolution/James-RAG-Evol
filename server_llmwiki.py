@@ -151,6 +151,36 @@ async def no_cache_static(request: Request, call_next):
     return response
 
 
+# v0.5 — enterprise security headers (CSP report-only by default +
+# X-Frame-Options / X-Content-Type-Options / Referrer-Policy /
+# Permissions-Policy). HSTS opt-in via env. See
+# `core/security/headers.py` for the env-driven config table and
+# `docs/reviews/v0.5-ui-6-inline-style-audit.md` §4 for the CSP
+# graduation path.
+from core.security.headers import build_security_headers  # noqa: E402
+
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    """Apply enterprise security headers to every response.
+
+    Headers are computed once per request via
+    `core.security.headers.build_security_headers()` (which reads
+    env config). The middleware does NOT overwrite headers that
+    earlier middleware / route handlers have already set — this
+    keeps the API contract additive (existing /healthz responses
+    etc. don't see Content-Type rewrites).
+    """
+    response = await call_next(request)
+    for name, value in build_security_headers().items():
+        # `Response.headers` is a MutableHeaders — `setdefault` is
+        # the safe primitive (no overwrite if a downstream layer
+        # already set the same header).
+        if name not in response.headers:
+            response.headers[name] = value
+    return response
+
+
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def serve_index():
     index = os.path.join(FRONTEND_DIR, "index.html")
