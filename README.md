@@ -29,6 +29,103 @@
 
 ---
 
+## Why JAMES? (60-second scan)
+
+Most production RAG stacks today (LangChain, LlamaIndex, vanilla retrieval-augmented quickstarts) optimise for **answer quality on a frozen corpus**. JAMES is built for the next two axes those frameworks leave unmeasured:
+
+| Axis | LangChain / LlamaIndex / vanilla RAG | **JAMES** |
+|---|---|---|
+| **Audit-native lifecycle** | `logger.info()` strings; no canonical event taxonomy; replay impossible from logs alone | Event-sourced `audit_log` schema; `reconstruct_graph_at(t)` replays system state byte-identically from log alone — measured on **RAB v0.1.1** (AC/RF/PC = 1.0 × 3 vs Baseline-0 default-logging floor = 0.275/0/0) |
+| **Time-valid retrieval** | Latest version only; cannot answer *"what was this contract's clause 6 months ago?"* without an external versioned store | Per-document validity windows (T1) + supersede chain (T7); time-travel queries return the version valid at `query_time` — measured on **LRB v0.2.3** (R@1 V<N<J preserved across 4 models × 4 scales, JAMES − Naive gap > +0.10 throughout) |
+| **Local-first execution** | Cloud-default (OpenAI / Anthropic API calls in every retrieval) | Runs on local Ollama (gemma4:e4b 4B → mxtral 47B); cloud is opt-in per query; data never leaves the host without explicit consent |
+| **EU AI Act 2026-08 alignment** | "Compliance" is a TODO | RAB's 3 metrics map verbatim to Articles 10/12/19; the benchmark is the audit instrument the Act assumes exists |
+
+What JAMES does **not** claim:
+- **Better answer quality on closed-book QA** — verified equivalent on MuSiQue (3-SUT identical EM/F1 by construction; *§ honest negative* in [LRB preprint](papers/lrb-preprint/main.pdf) §5)
+- **Novel architecture** — ActiveGraph ([arXiv:2605.21997](https://arxiv.org/abs/2605.21997)) demonstrates the same event-sourced runtime class independently; the benchmark, not the runtime, is the contribution
+- **Drop-in LangChain replacement** — JAMES is a *platform* with a different operational model (audit-first); migration is an integration project, not a one-line `pip install`
+
+If your use case is *audit / lifecycle / time-travel / on-prem* — JAMES is built for it, measured for it, and citeable for it. If your use case is *fastest possible answer on a fixed corpus* — use LangChain.
+
+---
+
+## 📑 Papers & Reproducibility
+
+Two benchmarks released as a sibling pair, both pre-registered before measurement, both deterministic-scorer-only, both committed in this repository.
+
+### RAB v0.1.1 — Replayable-Audit Benchmark
+[📄 PDF (10 pages)](papers/rab-preprint/main.pdf) · [📋 SPEC](eval/rab/SPEC-v0.1.md) · [🧪 Reproduce](#reproduce-in-60-seconds)
+
+> *RAB scores the exported audit-log artifact (Audit Completeness / Replay Fidelity / Provenance Coverage) of any RAG or agent system that can dump an append-only log. Three metrics map verbatim to EU AI Act Articles 10, 12, 19. Headline: 4-SUT gap structure (Reference / JAMES audit-native / OpenTelemetry-GenAI bolt-on / vanilla default-logging) — not JAMES's score.*
+
+### LRB v0.2.3 — Lifecycle Retrieval Benchmark
+[📄 PDF (11 pages)](papers/lrb-preprint/main.pdf) · [🧪 Reproduce](#reproduce-in-60-seconds)
+
+> *LRB scores temporal validity (`query_time`, `valid_time`) retrieval quality across three deterministic scenarios (S1 quarterly, S2 yearly-with-time-travel, S3 publication-scale 1000 docs). Three SUTs (Vanilla append-only / Naive-supersede / JAMES validity-window) compared on 7 deterministic axes + 3 exploratory top-1 axes. Headline: V < N < J on R@1 preserved across **4 model families × 4 scale points** (12.5× scale span) with JAMES − Naive gap > +0.10 throughout.*
+
+### Citation (BibTeX)
+
+<details>
+<summary>Click to expand</summary>
+
+```bibtex
+@misc{seo2026jamesv044,
+  author    = {Seo, Jiwon},
+  title     = {{PROJECT JAMES} v0.4.4 (LRB v0.2.3 S3 publication-scale + cycle $\gamma$ 4-bench infrastructure closure)},
+  year      = {2026},
+  month     = {6},
+  doi       = {10.5281/zenodo.20652679},
+  url       = {https://doi.org/10.5281/zenodo.20652679},
+  version   = {v0.4.4},
+  publisher = {Zenodo},
+  note      = {Source: https://github.com/Hashevolution/James-RAG-Evol}
+}
+
+@misc{seo2026rab,
+  author        = {Seo, Jiwon},
+  title         = {{RAB}: A Replayable-Audit Benchmark for {RAG} and Agent Systems Operationalising {EU AI Act} Articles 10, 12, 19},
+  year          = {2026},
+  howpublished  = {Preprint v0.1.1},
+  url           = {papers/rab-preprint/main.pdf},
+  note          = {Data: \href{https://doi.org/10.5281/zenodo.20652679}{10.5281/zenodo.20652679}}
+}
+
+@misc{seo2026lrb,
+  author        = {Seo, Jiwon},
+  title         = {{LRB}: A Lifecycle Retrieval Benchmark for Temporal {RAG}},
+  year          = {2026},
+  howpublished  = {Preprint v0.2.5},
+  url           = {papers/lrb-preprint/main.pdf},
+  note          = {Data: \href{https://doi.org/10.5281/zenodo.20652679}{10.5281/zenodo.20652679}}
+}
+```
+
+</details>
+
+### Reproduce in 60 seconds
+
+```bash
+git clone https://github.com/Hashevolution/James-RAG-Evol.git
+cd James-RAG-Evol
+python -m pip install -r requirements.txt
+
+# RAB scenario-S1 (deterministic; no LLM call; ~5 seconds)
+python scripts/research/rab_run.py --sut reference     # AC/RF/PC = 1.000/1.000/1.000
+python scripts/research/rab_run.py --sut baseline0     # AC/RF/PC = 0.275/0.000/0.000
+python scripts/research/rab_run.py --sut james         # AC/RF/PC = 1.000/1.000/1.000
+
+# LRB Phase B (S2 time-travel) token-mode (deterministic; no LLM; ~30 seconds)
+PYTHONPATH=. python scripts/research/lrb_run_phase_b.py --scenarios S1,S2
+
+# LRB S3 publication-scale (1000 docs / 5.6k events / 1000 queries; ~3 minutes)
+python scripts/research/build_lrb_scenario_s3.py --scale publication
+python scripts/research/lrb_run_s3.py --scale publication
+```
+
+Every `result.json` + `bench.jsonl` artifact in `reports/external/lrb/` and `reports/rab/` is SHA-pinned against the scenario fixture; **byte-identical re-runs are the verification protocol**.
+
+---
+
 ## What's Verified (one-screen summary)
 
 The numbers below come from the current `main` branch — not aspirational, not from an older release. Every value is reproducible by cloning + running the listed command.
