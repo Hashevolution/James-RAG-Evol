@@ -2,7 +2,11 @@
 
 ## Project Status
 
-PROJECT JAMES is in **alpha — v0.3.0 (Platform Skeleton)** — security-focused by design, but **not production-ready**.
+PROJECT JAMES is at **v0.4.4 (LRB v0.2.3 S3 publication-scale + cycle γ 4-bench infrastructure closure)** — security-focused by design, with the v0.3 platform skeleton complete (`PolicyEngine` as single source of policy decisions, sandbox capability bridge, OpenSSF silver-tier evidence track) and v0.4 lifecycle semantics shipped (T1 temporal validity / T2 contradiction arbitration / T5 replayable audit graph / T6 causality cascade / T7 supersede chain). **Not yet production-ready** — operational maturity (HTTPS / SSO / multi-tenancy / backup CLI) is the v1.0 deliverable; see [`docs/PLATFORM_READINESS.md`](docs/PLATFORM_READINESS.md) for the 6-dimension readiness framework.
+
+Two pre-registered, deterministic benchmarks operationalise the audit and lifecycle axes:
+- **RAB v0.1.1** ([`papers/rab-preprint/main.pdf`](papers/rab-preprint/main.pdf)) maps audit-log quality (Audit Completeness / Replay Fidelity / Provenance Coverage) to EU AI Act Articles 10, 12, 19 (apply from 2026-08-02 per Art. 113); JAMES scores 1.000 / 1.000 / 1.000 vs Baseline-0 default-logging floor 0.275 / 0.000 / 0.000 on scenario-S1.
+- **LRB v0.2.3** ([`papers/lrb-preprint/main.pdf`](papers/lrb-preprint/main.pdf)) scores temporal-validity retrieval (`query_time`, `valid_time`) preservation across 4 model families × 4 scale points.
 
 This document describes:
 - The security model and threat assumptions
@@ -284,6 +288,26 @@ JAMES_JWT_SECRET=<random-32-char-string>
   silver-tier evidence track: CLA (#340), governance/CoC/roles (#353),
   bandit SAST gate (#356), security assurance case (PR #360), access
   continuity + bus factor documented (PR #362).
+- **v0.4.0 → v0.4.2** (2026-05-27 → 2026-06-06): Layer 4 lifecycle —
+  T1 temporal validity + T2 contradiction arbitration + T6 causality
+  cascade + T7 supersede chain + T5 replayable audit graph
+  (`reconstruct_graph_at(t)` audit-only primitive). All lifecycle
+  invariants release-gated by per-pillar invariant tests on real
+  wiki fixtures (not mocks).
+- **v0.4.3** (2026-06-10): RAB v0.1.1 — first replayable-audit
+  benchmark for RAG / agent systems. Three deterministic metrics
+  (AC / RF / PC) map verbatim to EU AI Act Articles 10, 12, 19
+  (apply from 2026-08-02 per Art. 113). Cycle γ multi-hop arc closed
+  (6 honest nulls + graph build O(N²) finding lifted into RAB as
+  RF-cost axis). DOI [`10.5281/zenodo.20625533`](https://doi.org/10.5281/zenodo.20625533).
+- **v0.4.4** (2026-06-12): LRB v0.2.3 S3 publication-scale extension
+  (R@1 V<N<J preserved across 4 models × 4 scale points; 12.5× scale
+  span) + cycle γ 4-bench measurement infrastructure closure
+  (D-alce research-tier NLI adapter; D-2wiki supporting-fact-aware
+  producer). The **first self-catch** in the project's 12 wrong-fix-
+  averted instances (broken-category artefact discovered via per-
+  category audit; honest verdict re-graded before any external
+  reviewer reading). DOI [`10.5281/zenodo.20652679`](https://doi.org/10.5281/zenodo.20652679).
 
 ---
 

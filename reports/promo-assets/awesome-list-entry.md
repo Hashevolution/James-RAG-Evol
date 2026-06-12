@@ -8,17 +8,17 @@
 ## 기본 엔트리 (변형용 베이스)
 
 ```
-- [JAMES](https://github.com/Hashevolution/James-RAG-Evol) - Security-first, locally-runnable Graph-RAG engine with ontology, 3-stage access control (RBAC+ABAC+instruction isolation), and a self-evolution scaffold. `MIT`
+- [JAMES](https://github.com/Hashevolution/James-RAG-Evol) - Local-first audit-native Graph-RAG platform with replayable lifecycle (T1-T7), validity-window time-travel retrieval, and two pre-registered deterministic benchmarks (RAB + LRB, Zenodo DOI 10.5281/zenodo.20652679) operationalising EU AI Act Art. 10/12/19. `MIT`
 ```
 
-## 리포별 변형
+## 리포별 변형 (v0.4.4 기준)
 
-### 1. `Hannibal046/Awesome-LLM` (또는 RAG 카테고리)
+### 1. `Hannibal046/Awesome-LLM` (RAG / Benchmarks 카테고리)
 
-권장 섹션: "Open-Source RAG" 또는 "Frameworks"
+권장 섹션: "Open-Source RAG" 또는 "Benchmarks"
 
 ```
-- [JAMES](https://github.com/Hashevolution/James-RAG-Evol) - Security-first, locally-runnable Graph-RAG engine with a 12-relation ontology and a self-evolution scaffold. `MIT`
+- [JAMES](https://github.com/Hashevolution/James-RAG-Evol) - Audit-native Graph-RAG platform with two pre-registered benchmarks: RAB (Replayable-Audit, EU AI Act Art. 10/12/19) and LRB (Lifecycle Retrieval, temporal validity). `MIT`
 ```
 
 ### 2. `awesome-selfhosted/awesome-selfhosted`
@@ -27,7 +27,7 @@
 주의: 이 리포는 **반드시 마침표 끝, 라이선스 태그 별도 컬럼** 규칙. CONTRIBUTING.md 재확인.
 
 ```
-- [JAMES](https://github.com/Hashevolution/James-RAG-Evol) - Security-first, locally-runnable Graph-RAG knowledge engine with explicit ontology and a self-evolution scaffold. (Source Code) `MIT` `Python`
+- [JAMES](https://github.com/Hashevolution/James-RAG-Evol) - Local-first Graph-RAG knowledge platform with explicit ontology, replayable audit log (`reconstruct_graph_at(t)`), and validity-window time-travel retrieval. (Source Code) `MIT` `Python`
 ```
 
 ### 3. Awesome RAG / Awesome Graph-RAG 류
@@ -35,7 +35,21 @@
 권장 섹션: "Frameworks" 또는 "Tools"
 
 ```
-- [JAMES](https://github.com/Hashevolution/James-RAG-Evol) - Graph-RAG engine with 12 typed relations, 3-stage security model (RBAC+ABAC+instruction isolation), and a self-evolution scaffold. 100% local via Ollama. `MIT`
+- [JAMES](https://github.com/Hashevolution/James-RAG-Evol) - Audit-native Graph-RAG with 12 typed relations, validity-window time-travel retrieval (LRB v0.2.3, R@1 V<N<J across 4 models × 4 scales), and EU AI Act Art. 10/12/19 anchor (RAB v0.1.1). 100% local via Ollama. `MIT`
+```
+
+### 4. Awesome AI Safety / Awesome AI Audit 류 (신규)
+
+권장 섹션: "AI Auditing" 또는 "Benchmarks"
+
+```
+- [JAMES + RAB](https://github.com/Hashevolution/James-RAG-Evol) - First replayable-audit benchmark for RAG / agent systems; 3 deterministic metrics (Audit Completeness / Replay Fidelity / Provenance Coverage) map verbatim to EU AI Act Articles 10, 12, 19. `MIT`
+```
+
+### 5. Awesome NLP / Korean NLP 류 (신규)
+
+```
+- [JAMES](https://github.com/Hashevolution/James-RAG-Evol) - Korean-first Graph-RAG platform with BAAI/bge-m3 embedder, Ollama gemma4:e4b default, and two pre-registered deterministic benchmarks. `MIT`
 ```
 
 ### 4. Awesome Self-Hosted AI / Awesome LocalLLaMA 류
