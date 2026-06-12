@@ -1,9 +1,15 @@
-# JAMES 1-페이지 요약 (법무 도메인 pilot, 2026-06-12)
+# JAMES 1-페이지 요약 (법무 도메인 pilot, v0.4.4 / 2026-06-12)
 
 > **JAMES = 시간 인지 + 감사 추적 가능한 로컬-퍼스트 RAG 시스템**.
 > 계약 체결 시점의 정확한 규정 / 본문 / 책임자 정보를 추적 가능하며,
 > 모든 검색·답변 chain을 자체 감사 가능. v0.5 pilot은 법률 도메인에서
 > 6 개월 측정으로 회사 사용 적합성 검증.
+>
+> **v0.4.4 update (2026-06-12)**: 본 자료의 측정 기반이 LRB v0.2.1 (4-model
+> cross-check) → **LRB v0.2.3 cross-scale ladder** 로 확장. 12.5× 스케일
+> 폭 (S2 N=80 → S3 N=1000) 에서 V<N<J 모두 보존 + J-N gap > +0.10 유지
+> = **단일 모델 fluke 도 단일 corpus 크기 fluke 도 아님** 입증. Zenodo
+> DOI = `10.5281/zenodo.20652679` (v0.4.4 archive, 외부 재실행 가능).
 
 ---
 
@@ -27,8 +33,10 @@ log 만으로 graph 상태 완전 재구성. EU AI Act 발효 (2026-08-02) Art.1
 
 ### ② 시간 인지 검색 — LRB benchmark ⭐⭐⭐ tier ✓
 
-**Lifecycle Retrieval Benchmark (LRB v0.2.1)** 측정 결과 (4 모델 × 3 SUT
-× 시간여행 시나리오):
+**Lifecycle Retrieval Benchmark (LRB v0.2.3)** 측정 결과 (4 모델 × 4 스케일
+× 3 SUT × 시간여행 시나리오):
+
+**Cross-model (claude 모델)**:
 
 | 시스템 | 첫 결과 정확도 (R@1) — claude 모델 |
 |---|---|
@@ -36,9 +44,16 @@ log 만으로 graph 상태 완전 재구성. EU AI Act 발효 (2026-08-02) Art.1
 | Naive supersede | 0.7750 |
 | **JAMES** | **0.9750** |
 
+**Cross-scale (v0.2.3 신규)**: V<N<J 부등호가 12.5× 스케일 폭에서 모두 보존:
+
+| 시나리오 | N (문서/이벤트/쿼리) | V R@1 | N R@1 | **J R@1** | J − N gap |
+|---|---|---|---|---|---|
+| S2 token (frozen) | 200 / 564 / 80 | 0.225 | 0.538 | **0.713** | +0.175 |
+| S3 publication (신규) | **1000 / 5620 / 1000** | 0.502 | 0.721 | **0.845** | +0.124 |
+
 → "체결 시점 정책 본문은?" / "발령 시점 부서장은?" 같은 시간 시점 질의에
-**JAMES만 정확히 답변 가능**. 4 모델 (4B/12B/47B/claude) 모두에서 동일
-순위 유지 → 단일 모델 fluke 아님.
+**JAMES만 정확히 답변 가능**. 4 모델 (4B/12B/47B/claude) × 4 스케일 모두에서
+동일 순위 유지 → **단일 모델 fluke 도 단일 corpus 크기 fluke 도 아님**.
 
 ### ③ 로컬-퍼스트 + 격리 — 보안 / 영업비밀 / 변호사-의뢰인 비밀특권
 
@@ -103,15 +118,17 @@ log 만으로 graph 상태 완전 재구성. EU AI Act 발효 (2026-08-02) Art.1
 
 * **Email**: karu-7@hanmail.net
 * **GitHub**: https://github.com/Hashevolution/James-RAG-Evol
-* **Zenodo (RAB DOI)**: https://doi.org/10.5281/zenodo.20625533
+* **Zenodo (v0.4.4 archive)**: https://doi.org/10.5281/zenodo.20652679
+* **Zenodo (v0.4.3 RAB sibling)**: https://doi.org/10.5281/zenodo.20625533
+* **Preprints**: `papers/rab-preprint/main.pdf` (10pg) + `papers/lrb-preprint/main.pdf` (11pg)
 * **Reference**: 본 docs 의 모든 측정 결과는 위 repo에서 재실행 가능
 
 ---
 
 *Disclaimer: 이 자료의 측정-evidenced 주장 (RAB AC/RF/PC = 1.000 / 0.275;
-LRB S2 R@1 J=0.975) 은 commit된 result.json artefacts에서 추적 가능
-하며, 사전 등록된 시나리오 fixture로 귀사 환경에서 bit-for-bit 재현
-가능합니다. JAMES는 local-first auditable knowledge reasoning system
+LRB S2 token R@1 J=0.713; LRB S3 publication R@1 J=0.845; LRB cross-model
+J@claude=0.975) 은 commit된 result.json artefacts에서 추적 가능하며,
+사전 등록된 시나리오 fixture로 귀사 환경에서 bit-for-bit 재현 가능합니다. JAMES는 local-first auditable knowledge reasoning system
 이며, pilot 의 목적은 측정 evidence를 실제 도메인 workflow에서 검증
 하는 것이지 어떤 규제 프레임워크에 대한 compliance 인증이 아닙니다.
 EU AI Act 인용은 descriptive 이지 prescriptive 가 아닙니다.*
