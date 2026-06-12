@@ -76,6 +76,50 @@
   --font-ui:      'Inter', 'Pretendard', system-ui, -apple-system, sans-serif;
 }
 
+/* ── A11y/CSP — small utility classes (v0.5 UI #6) ──
+ * Pure utility CSS for the most-repeated inline `style="..."`
+ * patterns. NOT a full Tailwind-style system — only the 3 patterns
+ * that repeat ≥4 times across the 4 HTML pages were promoted; the
+ * rest stay inline (one-off layout tweaks would create more class-
+ * noise than they remove).
+ *
+ * These classes also unblock the JS-side visibility toggle pattern:
+ * `el.classList.toggle('is-hidden')` is the preferred replacement
+ * for `el.style.display = 'none' / 'block'`. The classList variant
+ * preserves the element's original display value (`flex` / `grid`
+ * / `inline-flex`) without the caller having to remember it.
+ *
+ * Migration is incremental — pages may continue to carry inline
+ * `style="..."` for one-off layouts; CSP strict-mode (`style-src
+ * 'self'`) is not yet a v0.5 deliverable (see
+ * `docs/reviews/v0.5-ui-6-inline-style-audit.md` §4 for the
+ * documented path forward).
+ */
+
+/* Hide an element while preserving its natural display value when
+ * the class is removed. Replacement for `style="display:none"`. */
+.is-hidden {
+  display: none !important;
+}
+
+/* The "field label" pattern — small uppercase mono caption above
+ * an input. Repeated 5× in admin + 3× in graph. */
+.field-label {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  font-family: var(--font-mono);
+  margin-bottom: 6px;
+}
+
+/* The "muted footnote" pattern — 11-12 px muted body text used in
+ * card sub-labels, meta strips. Repeated 5× in admin + 4× in
+ * workspace. */
+.muted-12 {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 /* ── Brand mark ──
  * Long-form product name shown in headers, modals, welcome screens.
  * The first line ("Secure Enterprise Knowledge") carries the primary
