@@ -1,7 +1,7 @@
 {
-  "title": "PROJECT JAMES — v0.4.3 (RAB v0.1.1: Replayable-Audit Benchmark + Cycle γ multi-hop arc closure)",
-  "description": "JAMES is a local-first, auditable knowledge reasoning system. v0.4.3 ships RAB v0.1.1 (Replayable-Audit Benchmark) — the first replayable-audit benchmark for RAG / agent systems whose 3 metrics (AC / RF / PC) are operationalisations of EU AI Act Articles 10, 12, 19 (in force 2026-08-02). Companion track: Cycle γ multi-hop arc closure (7 probes, 6 honest nulls, 2 self-corrections — multi-hop improvement reframed out of the JAMES roadmap; the graph build O(N²) finding lifted into RAB as the RF-cost axis). No JAMES production runtime change — RAB measures the existing audit / lifecycle / graph paths via a workspace-scoped adapter; production audit.db is untouched.\n\nRAB v0.1.1 — frozen spec + scenario fixture + deterministic scorer + reference / JAMES / Baseline-0 adapters + first gap-table measurement. Authority externalised across 4 axes: (1) Anchors — EU AI Act Art. 10(2)(b) + 12(1)(2)(b) + 19 verbatim + W3C PROV + NIST AI RMF + Mathkar et al. agent-trace survey (arXiv 2606.04990) which explicitly names execution-trace benchmarks as an open challenge → RAB responds to a published gap. (2) Scoring — deterministic only; no LLM judge anywhere in the scorer. (3) Application — generic audit-log JSONL interface; any system that can export an append-only log is scoreable; Baseline-0 (vanilla quickstart + Python logging) scored alongside JAMES; the gap structure across SUTs is the headline (SPEC §5 / §6.5). (4) Verification — every result ships with the SPEC §4 re-verification triple (result.json, exported audit log JSONL, mapping table JSON), committed to reports/rab/ for bit-for-bit re-runs.\n\nR1.0 → R1.5 sequence:\n- #758 / #760 / #761 R1.0 prior-art + EU AI Act anchors — vacancy confirmed; ActiveGraph (arXiv 2605.21997) is independent co-invention of the audit-native architecture → contribution is the benchmark, not the architecture.\n- #762 R1.1 SPEC v0.1.1 FROZEN — eval/rab/SPEC-v0.1.md. v0.1.1 = v0.1.0 + PC's origin-bearing event widened from INGEST only to INGEST | SUPERSEDE (defect caught by reference adapter before any measurement; changelog in the SPEC itself).\n- #763 R1.2 scenario-S1 fixture — eval/rab/scenarios/s1_lifecycle_small.json (40 ops + 10 checkpoints, synthetic Northbridge Labs lifecycle, public domain).\n- #764 R1.3 driver + scorer + reference adapter — eval/rab/{driver,scorer}.py + adapters/reference.py + tests/test_rab_benchmark.py (14 tests pinning reference 1.0×3 self-verification + 3 fault-injection variants).\n- #766 R1.4 pre-registration LOCKED before any adapter code or measurement (R5 rule).\n- #767 R1.4 JAMES adapter (workspace-isolated; SUPERSEDE calls real core.lifecycle.replay_audit.emit_lifecycle_event; cross-verified against core.lifecycle.replay_graph.reconstruct_graph_at — production code path actually exercised) + Baseline-0 adapter (vanilla in-memory RAG + Python-logging-style records = the floor) + scripts/research/rab_run.py CLI writing the SPEC §4 re-verification triple + 17 new tests + 9 measurement artifacts committed to reports/rab/.\n- R1.5 = this release.\n\nGap table (RAB SPEC v0.1.1 / scenario-S1): reference 1.000 / 1.000,1.000 / 1.000; JAMES 1.000 / 1.000,1.000 / 1.000; Baseline-0 0.275 / 0.000,0.000 / 0.000. AC INGEST = 1.0 across all three (default logging covers add-doc); AC UPDATE/SUPERSEDE/DELETE/ANSWER = 0 for Baseline-0 (vanilla logger has no lifecycle taxonomy); RF = 0 for Baseline-0 (logs carry strings, not payload — replay has nothing to fold); PC = 0 for Baseline-0 (no parent_id chain). JAMES = reference on S1 is expected per SPEC §6.5 — the headline is the audit-native vs default-logging gap, not JAMES's score. Honest tier ⭐⭐ scenario-S1 audit-native vs floor gap confirmed; ⭐⭐⭐ cross-scenario remains ungated until additional scenarios ship.\n\nCycle γ multi-hop arc closure (companion track, PRs #752 → #757): MuSiQue probes concluded that multi-hop improvement is not a JAMES roadmap item — the wall is unsupervised supporting-paragraph selection, not retrieval breadth, not model ceiling. Top-8 retrieval recall is 0.76 (both R0 and ablated); oracle-grounded performance jumps 8% → 72% (9×) when supporting paragraphs are given directly. The secondary finding — graph build O(N²) — lifted out of MuSiQue scope (where it had no leverage) into RAB as the RF-cost axis (SPEC §2.2 cost_s_per_1k_events). Env-gates JAMES_RETRIEVE_TOP_K + JAMES_RERANK_TOP_K added (defaults 8 / 5; byte-identical when unset). Selector-tuning rabbit hole closed.\n\nVerification: tests/test_rab_benchmark 14/14 PASS, tests/test_rab_baseline0 8/8 PASS, tests/test_rab_james_adapter 9/9 PASS — RAB test suite 31/31 PASS. No JAMES core test regression — no core/ change in this cycle.\n\nWhat v0.4.3 does NOT do: no production runtime change in JAMES core; no cross-scenario RAB result (S1 only); no Baseline-1 (LangSmith/OTel adapter — separate SUT, future cycle); no mutation-site wiring follow-up to v0.4.2 (T1/T2/T2.D/T6/T7 → emit_lifecycle_event still deferred); no multi-hop retrieval improvement (cycle γ closure re-framed it as not a JAMES roadmap item); no regulatory compliance certification claim (SPEC §6.3).",
-  "version": "v0.4.3",
+  "title": "PROJECT JAMES — v0.4.4 (LRB v0.2.3 S3 publication-scale + cycle γ 4-bench infrastructure closure)",
+  "description": "JAMES is a local-first, auditable knowledge reasoning system. v0.4.4 extends the v0.4.3 software archive with the v0.2.3 release of LRB (Lifecycle Retrieval Benchmark) — the temporal-validity-axis sibling to RAB v0.1.1 — plus the cycle γ 4-bench measurement infrastructure closure. No JAMES core runtime change; this release adds benchmark code, scenario fixtures, measurement artefacts, and a pre-registration trail for an LRB arXiv preprint that cites this DOI for data availability.\n\nLRB v0.2.3 — cross-scale reproducibility extension. The v0.2.1 cross-model leg-clear (gemma4:e4b 4B / gemma3:12b 12B / mixtral:8x7b 47B / claude-haiku-4-5 cloud) demonstrated that R@1 V<N<J on Phase B (S2 time-travel) is not a single-model artefact. v0.2.3 adds the SCALE axis: a programmatic-vocabulary S3 scenario generator producing three preset scales (smoke 100 docs / 282 events / 100 queries, dev 300 / ~1.2k / 300, publication 1000 / ~5.6k / 1000) and a 4-point measurement ladder spanning a 12.5× scale jump (S2 N=80 → S3 publication N=1000). R@1 V<N<J inequality is preserved at every cell of the ladder (J = 0.7125 → 0.930 → 0.913 → 0.845); the JAMES − Naive gap remains above +0.10 at every cell (+0.175 / +0.200 / +0.176 / +0.124). Pattern + gap are scale-robust (⭐⭐⭐); absolute magnitudes are scenario-sensitive (⭐⭐; synthetic templated vocabulary has lower retrieval ambiguity than hand-curated S2 city-operations text, producing higher absolute R@1 ceilings). Cross-scenario claims are therefore limited to ordering and gap structure, not absolute magnitude — this honest framing is locked in the §5 Discussion of the preprint.\n\nA pre-S3.1 measurement (PR #824) reported an apparent ‘within ±0.05 magnitude band' claim, which a per-category audit caught as an artefact of one broken category (current-contract R@10 = 0 across all 3 SUTs from single-template title cluster collapse). PR #825 fixed the generator vocabulary (30 contract domains × 7 contract types = 210 unique title pairs, distinguishable for BM25 / embedding retrieval), restored the broken category, revealed the honest magnitude (J = 0.845 at S3 publication, +0.132 vs S2 token), and retracted the over-tight verdict. This is the 12th wrong-fix-averted in the JAMES cycle history and the first self-catch (the prior 11 were all user-catches). The S3.1 fix → preprint §5 honest framing → arXiv abstract update self-correction loop is the strongest applied evidence of the feedback_oracle_phrase_artifacts measurement-side artefact rule.\n\nCycle γ 4-bench promise — infrastructure closure. The v0.4.3 release closed RGB and MuSiQue measurement; ALCE and 2Wiki were ⭐ infra-only (string-containment fallback citation scoring for ALCE; em/f1/f1_by_type-only for 2Wiki). v0.4.4 ships the D-alce research-tier NLI adapter (RoBERTa-large-MNLI + DeBERTa-v3-large-mnli-fever-anli-ling-wanli, 19 unit tests; T5-XXL TRUE NLI Mixture remains deferred to GPU-attended cycle) and the D-2wiki supporting-fact-aware producer (WikiMultiCitedProducer with [Title #sent_id] citation prompt + parser + 24 unit tests). Both prereg-LOCKED before any measurement, both operator-gated on the actual run (HF model cache + Ollama). After v0.4.4 the cycle γ 4-bench promise is research-tier-ready infrastructure for 4 of 4 cells; the v0.4.3 ⭐ infra-only caveat is closed.\n\nLLM-grounded S3 cross-model runner. PR #827 ships scripts/research/lrb_run_v023b_s3_cross_model.py — a pure-reuse wrapper of the v0.2.1 cross-model run_cell pointed at S3 fixtures. Token-mode smoke verified (V=0.51 / N=0.73 / J=0.93 matches PR #825 ladder cell exactly). LLM-grounded execution operator-gated (~4-6h wall for 12 cells × 4 models). Pre-reg LOCKED.\n\nRepository health. PR #822 closed 39 pre-existing F-class ruff violations across LRB / Track C / cycle γ scripts and tests. 178 tests green across all LRB + cycle γ + D-alce + D-2wiki test modules.\n\nThe headline of v0.4.4 is the SCALE-axis extension of the V<N<J finding (LRB), not a JAMES win — gap structure is the headline per LRB SPEC §4.6. ActiveGraph (arXiv 2605.21997) is independent co-invention of the audit-native validity-window architecture; LRB does not claim novelty of the architecture, only of the benchmark and the cross-scale measurement.\n\nWhat v0.4.4 does NOT do: no JAMES core runtime change; no LLM-grounded S3 publication measurement (operator-gated, separate cycle); no T5-XXL ALCE-official-grade NLI (separate cycle); no HR full sweep n=100 (operator-attended); no TimeQA / TempReason / GraphRAG SUT (operator data-download gated). The arXiv preprint LRB v0.2.5 is a separate artefact and not yet submitted (pre-flight in progress).",
+  "version": "v0.4.4",
   "upload_type": "software",
   "creators": [
     {
@@ -68,7 +68,17 @@
     "deterministic-scorer",
     "pre-registration",
     "gap-table",
-    "event-sourced-log"
+    "event-sourced-log",
+    "lifecycle-retrieval-benchmark",
+    "lrb",
+    "cross-scale-reproducibility",
+    "validity-window",
+    "time-travel-retrieval",
+    "temporal-rag",
+    "alce",
+    "2wikimultihop",
+    "nli-citation-verification",
+    "supporting-fact-citation"
   ],
   "license": "MIT",
   "access_right": "open",
@@ -80,8 +90,13 @@
       "resource_type": "software"
     },
     {
-      "identifier": "10.5281/zenodo.20426719",
+      "identifier": "10.5281/zenodo.20625533",
       "relation": "isNewVersionOf",
+      "resource_type": "software"
+    },
+    {
+      "identifier": "10.5281/zenodo.20426719",
+      "relation": "isDerivedFrom",
       "resource_type": "software"
     },
     {
@@ -168,7 +183,62 @@
       "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/767",
       "relation": "isDocumentedBy",
       "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/819",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/820",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/821",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/822",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/823",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/824",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/825",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/826",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/827",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/828",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
+    },
+    {
+      "identifier": "https://github.com/Hashevolution/James-RAG-Evol/pull/829",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-other"
     }
   ],
-  "notes": "v0.4.3 ships RAB v0.1.1 — the first replayable-audit benchmark for RAG / agent systems with 3 deterministic metrics (AC / RF / PC) operationalising EU AI Act Articles 10, 12, 19. Companion track closes the cycle γ multi-hop arc with 6 honest nulls (multi-hop improvement reframed out of the JAMES roadmap). The full RAB SPEC + scenario + scorer + adapters + 9 measurement artifacts are committed to this repo. The headline is the AUDIT-NATIVE vs DEFAULT-LOGGING gap on scenario-S1 (JAMES = reference = 1.0×3 / Baseline-0 = 0.275, 0.0, 0.0), not JAMES's score — SPEC §6.5 explicitly disclaims JAMES-wins framing. The benchmark, not the architecture, is the contribution: ActiveGraph (arXiv 2605.21997) is independent co-invention of the event-sourced log + deterministic replay. The isNewVersionOf chain pins v0.4.1 (10.5281/zenodo.20426719) as immediate predecessor; v0.4.0 (10.5281/zenodo.20411354) and earlier chained via isDerivedFrom. Three-author joint-piece with Robin Converse (Triava Labs) and Ali Afana (Provia) on the substitution/synthesis cost-asymmetry finding remains the mid-June trajectory (separate collab arc — not auto-linked to this release per feedback_eval_cycle_vs_collab_arc_separation)."
+  "notes": "v0.4.4 extends v0.4.3 with the LRB v0.2.3 release (cross-scale reproducibility: 4-point S2→S3 ladder spanning 12.5× scale, R@1 V<N<J preserved at every cell, J−N gap > +0.10 throughout) plus the cycle γ 4-bench measurement infrastructure closure (D-alce research-tier NLI adapter; D-2wiki supporting-fact-aware producer). The S3.1 contract-vocabulary fix retracted a pre-S3.1 over-tight ‘within ±0.05 magnitude band' verdict (broken-category artefact) — this is the 12th wrong-fix-averted in the JAMES cycle history and the first self-catch (the prior 11 were user-catches). Pattern + gap are scale-robust ⭐⭐⭐; absolute magnitudes are scenario-sensitive ⭐⭐ (honest framing locked in preprint §5). The arXiv preprint LRB v0.2.5 (papers/lrb-preprint/main.tex) cites this v0.4.4 DOI for data availability; the LLM-grounded S3 cross-model 12-cell sweep is operator-gated and runs in a separate cycle. The isNewVersionOf chain pins v0.4.3 (10.5281/zenodo.20625533) as immediate predecessor; v0.4.1 (10.5281/zenodo.20426719) and earlier chained via isDerivedFrom. The mid-June joint-piece collab arc with Robin Converse (Triava Labs) and Ali Afana (Provia) on the substitution/synthesis cost-asymmetry finding remains a separate trajectory (not auto-linked to this release per feedback_eval_cycle_vs_collab_arc_separation rule)."
 }
