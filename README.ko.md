@@ -28,6 +28,103 @@
 
 ---
 
+## JAMES 가 다른 RAG 와 다른 점 (60초 스캔)
+
+LangChain, LlamaIndex, 일반 RAG 스택은 대부분 **고정된 corpus 위 답변 품질** 을 최적화합니다. JAMES 는 그 프레임워크들이 측정하지 않는 두 축에 맞춰 설계되었습니다:
+
+| 축 | LangChain / LlamaIndex / vanilla RAG | **JAMES** |
+|---|---|---|
+| **Audit-native lifecycle** | `logger.info()` 문자열; canonical event taxonomy 없음; 로그만으로 replay 불가 | Event-sourced `audit_log` 스키마; `reconstruct_graph_at(t)` 가 로그만으로 시점 T 의 시스템 상태를 바이트-동일하게 재생 — **RAB v0.1.1** 에서 측정 (AC/RF/PC = 1.0 × 3 vs Baseline-0 default-logging 바닥 = 0.275/0/0) |
+| **Time-valid retrieval** | 최신 버전만; *"6개월 전 이 계약 6조 항이 어떻게 돼 있었지?"* 같은 질문 외부 versioned store 없이 답 불가 | 문서별 validity window (T1) + supersede chain (T7); time-travel query 는 `query_time` 시점 유효 버전 반환 — **LRB v0.2.3** 에서 측정 (R@1 V<N<J 가 4 모델 × 4 스케일 모두에서 보존, JAMES − Naive gap 모든 cell 에서 +0.10 이상) |
+| **Local-first 실행** | Cloud 기본 (OpenAI / Anthropic API 가 모든 retrieval 호출) | Local Ollama 위 동작 (gemma4:e4b 4B → mxtral 47B); cloud 는 query 별 opt-in; 명시 동의 없이 host 밖으로 데이터 안 나감 |
+| **EU AI Act 2026-08 정합** | "Compliance" 가 TODO | RAB 3 metric 이 Article 10/12/19 와 verbatim 매핑; AI Act 가 존재한다고 전제하는 audit 측정 도구 자체 |
+
+JAMES 가 **주장하지 않는 것**:
+- **closed-book QA 답변 품질이 더 좋다** — MuSiQue 에서 3-SUT EM/F1 동일 검증 (*§ honest negative* in [LRB preprint](papers/lrb-preprint/main.pdf) §5)
+- **새 아키텍처 발명** — ActiveGraph ([arXiv:2605.21997](https://arxiv.org/abs/2605.21997)) 가 동일 event-sourced runtime class 독립 co-invention; 벤치마크 자체가 contribution
+- **LangChain 의 drop-in 대체** — JAMES 는 다른 운영 모델 (audit-first) 의 *플랫폼*; 통합은 `pip install` 한 줄이 아니라 integration project
+
+audit / lifecycle / time-travel / on-prem 이 용도라면 — JAMES 가 그것을 위해 만들어졌고, 측정됐고, 인용 가능합니다. *고정 corpus 에서 가장 빠른 답변* 이 용도라면 LangChain 쓰세요.
+
+---
+
+## 📑 Papers & Reproducibility
+
+두 벤치마크를 sibling 으로 release. 둘 다 측정 전 pre-registration LOCK, 둘 다 결정론적 scorer only, 둘 다 본 repo 에 commit.
+
+### RAB v0.1.1 — Replayable-Audit Benchmark
+[📄 PDF (10페이지)](papers/rab-preprint/main.pdf) · [📋 SPEC](eval/rab/SPEC-v0.1.md) · [🧪 Reproduce](#60초-안에-재현)
+
+> *RAB 는 RAG / agent 시스템이 export 한 audit log 의 품질 (Audit Completeness / Replay Fidelity / Provenance Coverage) 을 측정. 3 metric 이 EU AI Act Article 10, 12, 19 와 verbatim 매핑. Headline 은 4-SUT gap (Reference / JAMES audit-native / OpenTelemetry-GenAI bolt-on / vanilla default-logging) 의 구조 — JAMES 점수 자체가 아님.*
+
+### LRB v0.2.3 — Lifecycle Retrieval Benchmark
+[📄 PDF (11페이지)](papers/lrb-preprint/main.pdf) · [🧪 Reproduce](#60초-안에-재현)
+
+> *LRB 는 temporal validity (`query_time`, `valid_time`) retrieval 품질을 3 결정론 시나리오 (S1 quarterly, S2 yearly-with-time-travel, S3 publication-scale 1000 docs) 에서 측정. 3 SUT (Vanilla append-only / Naive-supersede / JAMES validity-window) 를 7 결정론 axis + 3 exploratory top-1 axis 로 비교. Headline: R@1 V < N < J 가 **4 모델 × 4 스케일** (12.5× 스케일 폭) 모두에서 보존, JAMES − Naive gap +0.10 이상.*
+
+### Citation (BibTeX)
+
+<details>
+<summary>클릭하여 펼치기</summary>
+
+```bibtex
+@misc{seo2026jamesv044,
+  author    = {Seo, Jiwon},
+  title     = {{PROJECT JAMES} v0.4.4 (LRB v0.2.3 S3 publication-scale + cycle $\gamma$ 4-bench infrastructure closure)},
+  year      = {2026},
+  month     = {6},
+  doi       = {10.5281/zenodo.20652679},
+  url       = {https://doi.org/10.5281/zenodo.20652679},
+  version   = {v0.4.4},
+  publisher = {Zenodo},
+  note      = {Source: https://github.com/Hashevolution/James-RAG-Evol}
+}
+
+@misc{seo2026rab,
+  author        = {Seo, Jiwon},
+  title         = {{RAB}: A Replayable-Audit Benchmark for {RAG} and Agent Systems Operationalising {EU AI Act} Articles 10, 12, 19},
+  year          = {2026},
+  howpublished  = {Preprint v0.1.1},
+  url           = {papers/rab-preprint/main.pdf},
+  note          = {Data: \href{https://doi.org/10.5281/zenodo.20652679}{10.5281/zenodo.20652679}}
+}
+
+@misc{seo2026lrb,
+  author        = {Seo, Jiwon},
+  title         = {{LRB}: A Lifecycle Retrieval Benchmark for Temporal {RAG}},
+  year          = {2026},
+  howpublished  = {Preprint v0.2.5},
+  url           = {papers/lrb-preprint/main.pdf},
+  note          = {Data: \href{https://doi.org/10.5281/zenodo.20652679}{10.5281/zenodo.20652679}}
+}
+```
+
+</details>
+
+### 60초 안에 재현
+
+```bash
+git clone https://github.com/Hashevolution/James-RAG-Evol.git
+cd James-RAG-Evol
+python -m pip install -r requirements.txt
+
+# RAB scenario-S1 (결정론; LLM 호출 없음; ~5초)
+python scripts/research/rab_run.py --sut reference     # AC/RF/PC = 1.000/1.000/1.000
+python scripts/research/rab_run.py --sut baseline0     # AC/RF/PC = 0.275/0.000/0.000
+python scripts/research/rab_run.py --sut james         # AC/RF/PC = 1.000/1.000/1.000
+
+# LRB Phase B (S2 time-travel) token-mode (결정론; LLM 없음; ~30초)
+PYTHONPATH=. python scripts/research/lrb_run_phase_b.py --scenarios S1,S2
+
+# LRB S3 publication-scale (1000 docs / 5.6k events / 1000 queries; ~3분)
+python scripts/research/build_lrb_scenario_s3.py --scale publication
+python scripts/research/lrb_run_s3.py --scale publication
+```
+
+`reports/external/lrb/` 와 `reports/rab/` 의 모든 `result.json` + `bench.jsonl` artifact 가 scenario fixture 의 SHA 에 pin 됨; **바이트-동일 재실행이 검증 protocol** 입니다.
+
+---
+
 ## 프로젝트 상태: v0.4.4 — LRB v0.2.3 S3 publication-scale + cycle γ 4-벤치 인프라 마감
 
 **2026-06-12 릴리스**. v0.4.4 는 v0.4.3 (RAB v0.1.1) 에 **LRB v0.2.3** — *Lifecycle Retrieval Benchmark* 의 cross-scale 재현성 확장 + RAB 의 sibling axis — 을 더합니다. v0.2.1 cross-model (gemma4:e4b 4B / gemma3:12b 12B / mixtral:8x7b 47B / claude-haiku-4-5) 가 Phase B (S2 time-travel) 의 **R@1 V<N<J** 가 single-model artefact 가 아님을 입증했고, **v0.2.3 가 scale 축을 추가**: **12.5× 스케일 점프** (S2 N=80 → S3 publication N=1000) 의 4-point ladder 모든 cell 에서 V<N<J 부등호 + JAMES − Naive gap +0.10 이상 유지. **Pattern + gap 은 scale-robust ⭐⭐⭐, 절대 magnitude 는 scenario-sensitive ⭐⭐** (honest framing 은 preprint §5 에 lock — 12번째 wrong-fix-averted 이자 **첫 self-catch** 의 S3.1 contract-vocabulary fix 가 pre-S3.1 over-tight verdict 를 retract).
