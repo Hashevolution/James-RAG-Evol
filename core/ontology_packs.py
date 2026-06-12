@@ -348,6 +348,94 @@ def _reset_for_tests() -> None:
     _mounted.clear()
 
 
+# ─── v0.6 G8.b — read-side lookup helpers (B.3 §4.2) ──────────────────
+#
+# These helpers merge the mother ontology (`core/ontology.py`) with
+# every currently-mounted pack, returning a unified read-only view.
+# Existing call sites that import `DOCUMENT_SUBTYPES` / `RELATION_TYPES`
+# / `ENTERPRISE_ROLES` directly from `core/ontology.py` continue to
+# see ONLY the mother set — these helpers are the new opt-in surface
+# for pack-aware code paths.
+#
+# Lookup-time merging (not registration-time):
+#   - When a pack mounts, the mother dicts are NOT mutated.
+#   - The lookup helpers do the merge on each call.
+#   - Cheap because the dicts are small (mother ~10 subtypes ×
+#     ~few packs × ~10 subtypes each = ~50 entries max).
+#   - Determinism: same mother state + same mount order yields the
+#     same merged view byte-identical.
+#
+# Mother takes precedence on duplicate names. `register_pack`'s
+# collision check (§ above) prevents this in practice — but the
+# defensive ordering means a future race / hot-reload would still
+# fail-safe to mother behaviour.
+
+
+def _merge_packs(field_name: str) -> Dict[str, Any]:
+    """Merge mother + mounted-pack entries for the given field.
+
+    Args:
+        field_name: one of ``"subtypes"`` / ``"relation_types"``
+            / ``"enterprise_roles"``.
+
+    Returns:
+        A fresh dict (callers can mutate without affecting the
+        registry). Mother entries first, then each mounted pack
+        in registration order. Mother takes precedence on key
+        collisions (defensive — `register_pack` already blocks
+        collisions at mount time).
+    """
+    from core.ontology import (
+        DOCUMENT_SUBTYPES,
+        ENTERPRISE_ROLES,
+        RELATION_TYPES,
+    )
+    mother_map = {
+        "subtypes":         DOCUMENT_SUBTYPES,
+        "relation_types":   RELATION_TYPES,
+        "enterprise_roles": ENTERPRISE_ROLES,
+    }
+    mother = mother_map.get(field_name, {})
+    merged: Dict[str, Any] = {}
+    # Packs first, then mother — mother last write wins on conflict.
+    for pack in _mounted:
+        pack_entries = getattr(pack, field_name, {})
+        for name, definition in pack_entries.items():
+            merged[name] = definition
+    for name, definition in mother.items():
+        merged[name] = definition
+    return merged
+
+
+def all_document_subtypes() -> Dict[str, Mapping[str, Any]]:
+    """Mother DOCUMENT_SUBTYPES merged with every mounted pack's
+    subtypes.
+
+    Existing callers that import ``DOCUMENT_SUBTYPES`` from
+    ``core.ontology`` directly continue to see only the mother set
+    — those callers are pack-unaware by design. This helper is the
+    new opt-in surface for pack-aware code (e.g. a future ingestion
+    pipeline that wants to classify documents against vertical
+    pack subtypes once an LOI scopes a pack).
+    """
+    return _merge_packs("subtypes")
+
+
+def all_relation_types() -> Dict[str, Mapping[str, Any]]:
+    """Mother RELATION_TYPES merged with every mounted pack's
+    relation_types. Same opt-in semantic as
+    :func:`all_document_subtypes`.
+    """
+    return _merge_packs("relation_types")
+
+
+def all_enterprise_roles() -> Dict[str, Mapping[str, Any]]:
+    """Mother ENTERPRISE_ROLES merged with every mounted pack's
+    enterprise_roles. Same opt-in semantic.
+    """
+    return _merge_packs("enterprise_roles")
+
+
 __all__ = (
     "JAMES_CAPABILITIES_ENV",
     "CapabilityNotGrantedError",
@@ -358,4 +446,8 @@ __all__ = (
     "register_pack",
     "unmount_pack",
     "mounted_packs",
+    # v0.6 G8.b — read-side helpers
+    "all_document_subtypes",
+    "all_relation_types",
+    "all_enterprise_roles",
 )

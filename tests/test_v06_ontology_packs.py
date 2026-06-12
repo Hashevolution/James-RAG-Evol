@@ -312,5 +312,124 @@ class MotherPlatformInvariantTests(unittest.TestCase):
             self.assertEqual(granted_capabilities(), frozenset())
 
 
+# ─── v0.6 G8.b — read-side lookup helpers tests ───────────────────────
+
+
+class G8bLookupHelperTests(unittest.TestCase):
+    """Per B.3 §4.2. Helpers merge mother + mounted packs at lookup."""
+
+    def setUp(self):
+        from core.ontology_packs import _reset_for_tests
+        _reset_for_tests()
+
+    def test_all_document_subtypes_returns_mother_by_default(self):
+        # No packs mounted → result == mother DOCUMENT_SUBTYPES.
+        from core.ontology import DOCUMENT_SUBTYPES
+        from core.ontology_packs import all_document_subtypes
+        result = all_document_subtypes()
+        for key in DOCUMENT_SUBTYPES:
+            self.assertIn(key, result)
+        # Result has at least the mother set.
+        self.assertGreaterEqual(len(result), len(DOCUMENT_SUBTYPES))
+
+    def test_all_relation_types_returns_mother_by_default(self):
+        from core.ontology import RELATION_TYPES
+        from core.ontology_packs import all_relation_types
+        result = all_relation_types()
+        for key in RELATION_TYPES:
+            self.assertIn(key, result)
+        self.assertGreaterEqual(len(result), len(RELATION_TYPES))
+
+    def test_all_enterprise_roles_returns_mother_by_default(self):
+        from core.ontology import ENTERPRISE_ROLES
+        from core.ontology_packs import all_enterprise_roles
+        result = all_enterprise_roles()
+        for key in ENTERPRISE_ROLES:
+            self.assertIn(key, result)
+        self.assertGreaterEqual(len(result), len(ENTERPRISE_ROLES))
+
+    def test_mounted_pack_subtypes_appear_in_lookup(self):
+        from core.ontology_packs import (
+            all_document_subtypes,
+            register_pack,
+        )
+        with _patched_env(JAMES_CAPABILITIES="cap_x"):
+            register_pack(_make_pack(
+                pack_id="lookup-test-pack",
+                subtypes={
+                    "lookup_subtype_a": {
+                        "parent": "document", "since": "v0.6",
+                    },
+                    "lookup_subtype_b": {
+                        "parent": "document", "since": "v0.6",
+                    },
+                },
+            ))
+            result = all_document_subtypes()
+        self.assertIn("lookup_subtype_a", result)
+        self.assertIn("lookup_subtype_b", result)
+        # Mother set is still present.
+        self.assertIn("contract", result)
+
+    def test_mother_takes_precedence_defensively(self):
+        # The collision check prevents mother-shadowing at register
+        # time, but the helper's merge order (packs first, mother
+        # last) means even a future race would fall back to mother.
+        from core.ontology import DOCUMENT_SUBTYPES
+        from core.ontology_packs import _mounted, all_document_subtypes, OntologyPack
+        # Bypass register_pack to force a collision directly into
+        # the registry (simulating a race / hot-reload bug).
+        rogue = OntologyPack(
+            pack_id="rogue",
+            requires_capability="cap_x",
+            subtypes={
+                "contract": {  # MOTHER key
+                    "parent": "document",
+                    "since":  "rogue-v1",
+                    "rogue":  True,
+                },
+            },
+        )
+        _mounted.append(rogue)
+        try:
+            result = all_document_subtypes()
+            # Mother's `contract` definition wins (no `rogue: True`).
+            self.assertEqual(
+                result["contract"], DOCUMENT_SUBTYPES["contract"],
+            )
+        finally:
+            _mounted.remove(rogue)
+
+    def test_unmount_pack_removes_from_lookup(self):
+        from core.ontology_packs import (
+            all_document_subtypes,
+            register_pack,
+            unmount_pack,
+        )
+        with _patched_env(JAMES_CAPABILITIES="cap_x"):
+            register_pack(_make_pack(
+                pack_id="ephemeral",
+                subtypes={
+                    "ephemeral_subtype": {
+                        "parent": "document", "since": "v0.6",
+                    },
+                },
+            ))
+            self.assertIn("ephemeral_subtype", all_document_subtypes())
+            unmount_pack("ephemeral")
+            self.assertNotIn(
+                "ephemeral_subtype", all_document_subtypes(),
+            )
+
+    def test_lookup_returns_fresh_dict(self):
+        # Caller mutating the returned dict must NOT affect future
+        # lookups (registry remains the source of truth).
+        from core.ontology_packs import all_document_subtypes
+        result = all_document_subtypes()
+        result["INJECTED_BY_TEST"] = "should not persist"
+        # Next call must NOT carry the injection.
+        self.assertNotIn("INJECTED_BY_TEST", all_document_subtypes())
+
+
 if __name__ == "__main__":
     unittest.main()
