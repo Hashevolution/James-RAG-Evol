@@ -33,6 +33,62 @@
 
 <main id="main" class="main">
   <aside>
+    <!-- v0.5 Track F.1 TT.a — Time-Travel timestamp picker.
+         Surfaces the G3 corpus_reconstruct_view_at primitive (PR #849)
+         as a date/time picker. State syncs with URL hash (`#t=<ISO>`)
+         so a deep-link replays the same moment. Backend call wired
+         in TT.b; this PR ships the UI shell + event-dispatch only. -->
+    <div class="ctrl" id="time-travel-panel">
+      <span class="panel-title" data-i18n="graph.timetravel.title">
+        Time-Travel
+      </span>
+      <label for="time-travel-input" class="field-label"
+             data-i18n="graph.timetravel.pick">
+        Pick a moment
+      </label>
+      <input id="time-travel-input"
+             type="datetime-local"
+             aria-label="Time-travel timestamp"
+             style="width:100%;background:var(--bg);
+                    border:1px solid var(--border);border-radius:7px;
+                    padding:9px 12px;color:var(--text);
+                    font-family:var(--font-mono);font-size:12px;
+                    outline:none">
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button id="time-travel-apply" type="button"
+                data-action="time-travel-apply"
+                aria-label="Replay graph state at picked time"
+                data-i18n="graph.timetravel.apply"
+                style="flex:1;padding:7px 10px;
+                       background:var(--accent);color:var(--on-accent);
+                       border:none;border-radius:6px;cursor:pointer;
+                       font-size:11px;font-weight:600;
+                       font-family:var(--font-mono);letter-spacing:.4px">
+          Apply
+        </button>
+        <button id="time-travel-now" type="button"
+                data-action="time-travel-now"
+                aria-label="Return to current graph state"
+                data-i18n="graph.timetravel.now"
+                style="flex:1;padding:7px 10px;
+                       background:var(--surface-2);color:var(--text-soft);
+                       border:1px solid var(--border);border-radius:6px;
+                       cursor:pointer;font-size:11px;font-weight:600;
+                       font-family:var(--font-mono);letter-spacing:.4px">
+          Now
+        </button>
+      </div>
+      <!-- v0.5 UI #2 — aria-live polite so screen readers announce
+           the active replay moment without yanking focus. -->
+      <div id="time-travel-state"
+           role="status" aria-live="polite"
+           class="stat"
+           style="margin-top:8px;font-size:11px;line-height:1.5;
+                  font-family:var(--font-mono);color:var(--muted)">
+        <span data-i18n="graph.timetravel.now_label">Viewing: NOW</span>
+      </div>
+    </div>
+
     <div class="ctrl">
       <span class="panel-title" data-i18n="graph.filter.source">Source</span>
       <select id="src-select">
@@ -377,5 +433,9 @@
 <script src="/static/graph_editor.js"></script>
 <script src="/static/graph_node_editor.js"></script>
 <script src="/static/a11y-modal.js" defer></script>
+<!-- v0.5 Track F.1 TT.a — Time-Travel picker UI shell (event-dispatch
+     only; TT.b wires the backend call). Loads last so the picker's
+     wire() runs after graph.js has populated the DOM. -->
+<script src="/static/time-travel.js"></script>
 </body>
 </html>

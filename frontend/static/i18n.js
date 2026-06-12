@@ -19,6 +19,13 @@ const TRANSLATIONS = {
     // v0.5 UI #5 — sensitivity badge (surfaces ontology sensitive=True)
     'badge.sensitive':       'Sensitive content referenced',
     'badge.sensitive_title': 'This answer references sensitive content tracked by JAMES ontology (HAS_SECRET / KNOWS_PASSWORD / HAS_CREDENTIAL / OWNS_PRIVATE / APPROVED_BY).',
+    // v0.5 Track F.1 TT.a — Time-Travel picker
+    'graph.timetravel.title':         'Time-Travel',
+    'graph.timetravel.pick':          'Pick a moment',
+    'graph.timetravel.apply':         'Apply',
+    'graph.timetravel.now':           'Now',
+    'graph.timetravel.now_label':     'Viewing: NOW',
+    'graph.timetravel.viewing_label': 'Viewing: ',
     'common.confirm':        'Confirm',
     'common.save':           'Save',
     'common.delete':         'Delete',
@@ -863,6 +870,13 @@ const TRANSLATIONS = {
     // v0.5 UI #5 — sensitivity badge
     'badge.sensitive':       '민감 정보 포함',
     'badge.sensitive_title': '이 답변은 JAMES 온톨로지가 추적하는 민감 관계(HAS_SECRET / KNOWS_PASSWORD / HAS_CREDENTIAL / OWNS_PRIVATE / APPROVED_BY)를 참조합니다.',
+    // v0.5 Track F.1 TT.a — Time-Travel picker
+    'graph.timetravel.title':         '타임 트래블',
+    'graph.timetravel.pick':          '시점 선택',
+    'graph.timetravel.apply':         '재생',
+    'graph.timetravel.now':           '현재',
+    'graph.timetravel.now_label':     '재생 시점: 현재',
+    'graph.timetravel.viewing_label': '재생 시점: ',
     'common.confirm':        '확인',
     'common.save':           '저장',
     'common.delete':         '삭제',
