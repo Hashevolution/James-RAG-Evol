@@ -353,6 +353,7 @@ def reconstruct_graph_at(
     *,
     audit_log_path: Optional[str] = None,
     include_event_types: Optional[Tuple[str, ...]] = None,
+    tenant_id: Optional[str] = None,
 ) -> GraphSnapshot:
     """Replay every lifecycle event row whose ``timestamp ≤ t`` and
     return the resulting :class:`GraphSnapshot`.
@@ -367,6 +368,14 @@ def reconstruct_graph_at(
             types are considered. Default: every member of
             :data:`LIFECYCLE_EVENT_TYPES`. Mostly useful for
             cross-chain integration in PR-T5.C.
+        tenant_id: **v0.5 G1.b** — optional tenant scope. When set,
+            only rows whose payload-stamped ``tenant_id`` matches
+            this value are folded into the snapshot. ``None``
+            (default) preserves byte-identical pre-G1.b behaviour —
+            every row is visible regardless of stamp. Rows that do
+            NOT carry a ``tenant_id`` field are EXCLUDED when this
+            argument is set (the explicit-tenant filter is strict —
+            "no tenant stamp" is treated as "not my tenant").
 
     Returns:
         :class:`GraphSnapshot` — deterministic projection of the
@@ -377,6 +386,14 @@ def reconstruct_graph_at(
     knowledge_tracker, the graph engine, or any other module's
     state — so an audit_log JSON dump alone is enough to reproduce
     the snapshot on any machine.
+
+    Tenant-filter contract (G1.b): the filter is applied AFTER
+    JSON parse (not in the SQL WHERE clause) so the determinism
+    contract is preserved — a `tenant_id` filter applied to the
+    same audit_log + same `t` always yields the same snapshot. The
+    SQL pre-filter optimisation is left out intentionally — clarity
+    over micro-optimisation, and the post-parse filter pairs
+    naturally with G1.a's payload-stamping pattern.
     """
     path = audit_log_path or _default_db_path()
     rows = _read_lifecycle_events(path, t, include_event_types)
@@ -406,6 +423,12 @@ def reconstruct_graph_at(
             continue
         if not isinstance(payload, dict):
             continue
+        # v0.5 G1.b — tenant filter. Applied AFTER parse + dict
+        # check so the upstream rows still load with the same
+        # determinism, but only matching rows are folded in.
+        if tenant_id is not None:
+            if payload.get("tenant_id") != tenant_id:
+                continue
         handler = _HANDLERS.get(evt)
         if handler is None:
             continue
