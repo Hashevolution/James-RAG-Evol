@@ -3,16 +3,27 @@
 > 사이트: https://news.ycombinator.com/submit
 > 형식: 제목 + URL + 본문(text)
 > 발행 시점 권장: 한국 시간 23:00~01:00 (PST 오전 6~8시), 평일
-> **D-Day: 2026-05-26 (E1)**
-> **v0.3.0 refresh: 2026-05-19** — v0.1.0-alpha → v0.3.0 / Cognitive Middleware Phase 2 코드 안착 / Track 1 (Provider contract L1 wiring + conformance + plugin loader) 안착 / Ali Afana 외부 협업 / OpenSSF passing 뱃지 반영
+> **D-Day: TBD (v0.5 outreach 시점 이후 — 본인 회사 enterprise 폼 갖춘 후)**
+
+> ⚠️ **v0.4.4 refresh (2026-06-12)** — 헤드라인 우선순위 = RAB + LRB benchmarks + EU AI Act anchor.
+> 이전 v0.3.0 refresh (2026-05-19) 의 narrative 는 body 에 보존 (cognitive middleware / provider contract / Ali Afana 외부 협업).
+> 새 핵심 자료: 2 preprint PDF + Zenodo DOI [10.5281/zenodo.20652679](https://doi.org/10.5281/zenodo.20652679).
 
 ---
 
 ## 제목 (택1, HN 규칙: 마케팅 형용사 금지, 사실 위주)
 
-- (A) **Show HN: JAMES v0.3.0 – a laptop-runnable Graph-RAG engine with typed ontology, 3-stage security, and a swappable LLM provider contract** ← 추천
-- (B) Show HN: JAMES – a local Graph-RAG engine with verification engine, planner, and tool router shipping on main
-- (C) Show HN: JAMES v0.3.0 – Graph-RAG + cognitive middleware (verification / planner / tool router) running on Ollama
+### v0.4.4 권장 (최신)
+
+- (A) **Show HN: JAMES v0.4.4 – an audit-native Graph-RAG with two pre-registered benchmarks (RAB + LRB) operationalising EU AI Act Article 10/12/19** ← 추천
+- (B) Show HN: JAMES v0.4.4 – Graph-RAG with replayable lifecycle (`reconstruct_graph_at(t)`) and validity-window time-travel retrieval
+- (C) Show HN: I scored my own RAG's audit-log quality against EU AI Act record-keeping requirements (RAB v0.1.1) — JAMES 1.0/1.0/1.0 vs vanilla default-logging 0.275/0/0
+
+### v0.3.0 (구 — 보존)
+
+- (D) Show HN: JAMES v0.3.0 – a laptop-runnable Graph-RAG engine with typed ontology, 3-stage security, and a swappable LLM provider contract
+- (E) Show HN: JAMES – a local Graph-RAG engine with verification engine, planner, and tool router shipping on main
+- (F) Show HN: JAMES v0.3.0 – Graph-RAG + cognitive middleware (verification / planner / tool router) running on Ollama
 
 **추천: (A)** — "v0.3.0"으로 vaporware 의심 차단, "laptop-runnable" + "swappable LLM provider"가 HN audience의 두 가지 trigger.
 

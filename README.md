@@ -126,6 +126,84 @@ Every `result.json` + `bench.jsonl` artifact in `reports/external/lrb/` and `rep
 
 ---
 
+## Architecture (one-page Mermaid view)
+
+```mermaid
+flowchart TB
+    classDef user fill:#fde7e7,stroke:#c33,color:#000
+    classDef sec fill:#fff7d6,stroke:#b8860b,color:#000
+    classDef pipe fill:#e0f2fe,stroke:#0369a1,color:#000
+    classDef life fill:#dcfce7,stroke:#15803d,color:#000
+    classDef store fill:#f3e8ff,stroke:#7e22ce,color:#000
+    classDef bench fill:#ffedd5,stroke:#c2410c,color:#000
+
+    USER[/"User query<br/>(REST / CLI / UI)"/]:::user
+
+    SEC["3-Stage Security<br/>RBAC + ABAC + Instruction Isolation<br/>(core/security/)"]:::sec
+
+    subgraph RETRIEVAL["Retrieval pipeline (core/)"]
+      direction TB
+      RETR["Hybrid Retrieval<br/>BM25 + dense embed (BAAI/bge-m3)<br/>core/retrieval/"]:::pipe
+      GRAPH["Graph-RAG ontology walk<br/>12 typed relations<br/>core/graph_engine.py"]:::pipe
+      REASON["Reasoning loop<br/>plan → retrieve → reflect → verify → synth<br/>core/reasoning/engine.py"]:::pipe
+    end
+
+    subgraph LIFECYCLE["Layer 4 Lifecycle (T1-T7)"]
+      direction TB
+      T1["T1 Temporal validity<br/>(valid_from, valid_to)"]:::life
+      T2["T2 Contradiction arbitration<br/>4-rule deterministic tree<br/>core/lifecycle/contradiction_arbiter.py"]:::life
+      T5["T5 Replayable Audit Graph<br/>reconstruct_graph_at(t)<br/>core/lifecycle/replay_graph.py"]:::life
+      T6["T6 Causality cascade<br/>invalidate_derived_facts"]:::life
+      T7["T7 Supersede chain<br/>supersede_by + supersede_at"]:::life
+    end
+
+    subgraph STORE["Storage (default local)"]
+      direction TB
+      CHROMA[("ChromaDB<br/>vector store")]:::store
+      WIKI[("wiki/<br/>doc + metadata")]:::store
+      AUDIT[("audit.db<br/>append-only audit log")]:::store
+      MEM[("memory/<br/>session state")]:::store
+    end
+
+    subgraph LLM["LLM backends (default local)"]
+      direction LR
+      OLLAMA["Ollama<br/>gemma4:e4b default"]
+      CLOUD["Cloud (opt-in)<br/>claude / openai / gemini"]
+    end
+
+    subgraph BENCHES["Pre-registered deterministic benchmarks (v0.4.3 / v0.4.4)"]
+      direction LR
+      RAB["RAB v0.1.1<br/>Audit Completeness / Replay Fidelity / Provenance Coverage<br/>EU AI Act Art. 10/12/19 anchor<br/>papers/rab-preprint/"]:::bench
+      LRB["LRB v0.2.3<br/>Temporal validity (query_time, valid_time)<br/>R@1 V&lt;N&lt;J × 4 model × 4 scale<br/>papers/lrb-preprint/"]:::bench
+    end
+
+    USER --> SEC
+    SEC --> RETR
+    RETR --> GRAPH
+    GRAPH --> REASON
+    REASON --> CHROMA
+    REASON --> WIKI
+    REASON --> AUDIT
+
+    REASON <--> LIFECYCLE
+    AUDIT --> T5
+    T1 --> T7
+    T2 --> T6
+    T7 --> T6
+
+    REASON --> OLLAMA
+    REASON -.opt-in.-> CLOUD
+
+    AUDIT -."scored by".-> RAB
+    GRAPH -."scored by".-> RAB
+    RETR -."scored by".-> LRB
+    LIFECYCLE -."scored by".-> LRB
+```
+
+**The flow in one sentence**: a user query passes through 3-stage security (RBAC + ABAC + instruction isolation), enters the retrieval pipeline (hybrid BM25 + dense embed → Graph-RAG ontology walk → reasoning loop), reads + writes the Layer 4 lifecycle store (T1-T7), and is replayable from the audit log via `reconstruct_graph_at(t)`. RAB scores the audit log; LRB scores the retrieval quality on time-travel queries. Both benchmarks are external deterministic instruments — JAMES does not score itself.
+
+---
+
 ## What's Verified (one-screen summary)
 
 The numbers below come from the current `main` branch — not aspirational, not from an older release. Every value is reproducible by cloning + running the listed command.
