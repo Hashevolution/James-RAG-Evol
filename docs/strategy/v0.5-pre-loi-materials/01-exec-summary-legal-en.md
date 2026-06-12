@@ -1,10 +1,18 @@
-# JAMES — Executive Summary for Legal Domain Pilot (English, 2026-06-12)
+# JAMES — Executive Summary for Legal Domain Pilot (English, v0.4.4 / 2026-06-12)
 
 > **JAMES = a temporally-aware, audit-traceable, local-first RAG system**.
 > Tracks the exact version of regulations / contracts / decision-makers
 > valid at any historical point in time, and audits every retrieval +
 > answer chain. v0.5 pilot validates company-use suitability in the
 > legal contract review domain through six months of evidence-gathering.
+>
+> **v0.4.4 update (2026-06-12)**: LRB measurement axis extended from
+> v0.2.1 (cross-model) to **v0.2.3 cross-scale**: the V<N<J inequality
+> is preserved across a 4-point scale ladder spanning **12.5× scale**
+> (S2 N=80 → S3 publication N=1000) with the JAMES − Naive gap above
+> +0.10 throughout — pattern is neither a single-model fluke nor a
+> single-corpus-size fluke. Zenodo DOI = `10.5281/zenodo.20652679`
+> (v0.4.4 archive, externally reproducible).
 
 This is the English-language companion to `01-exec-summary-legal-ko.md`
 (the authoritative Korean version). Intended for foreign-affiliate

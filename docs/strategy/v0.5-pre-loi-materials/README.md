@@ -1,10 +1,19 @@
 # v0.5 Pre-LOI Customer-Facing Materials
 
-> **Status**: solo-drafted (autonomous loop). External-facing assets
-> for the v0.5 first-domain pilot outreach. Each document is a Korean
-> + English pair targeting the Primary domain (legal contract review)
-> identified in `docs/strategy/v0.5-domain-candidate-evaluation-
-> 2026-06-11.md`.
+> **Status**: solo-drafted (autonomous loop) + v0.4.4 refresh 2026-06-12.
+> External-facing assets for the v0.5 first-domain pilot outreach.
+> Each document is a Korean + English pair targeting the Primary domain
+> (legal contract review) identified in `docs/strategy/v0.5-domain-
+> candidate-evaluation-2026-06-11.md`.
+>
+> **v0.4.4 refresh (2026-06-12)**: All 6 child docs (01-en + 01-ko +
+> 02 + 03 + 04 + 05) updated with v0.4.4 callout blocks reflecting
+> LRB v0.2.3 cross-scale evidence + Zenodo DOI 20652679 + S3.1 self-
+> catch trust signal. New Hashevolution own-company pilot scenario
+> doc (08) added — operator's own company as first-customer
+> possibility. The v0.5 entry handover doc (`docs/handovers/v0.5-entry-
+> 2026-06-12.md`) makes the cycle entry explicit and scopes the
+> "enterprise ontology mount" track.
 >
 > **Predecessors**:
 > - `v0.5-domain-candidate-evaluation-2026-06-11.md` (legal contract 86%

@@ -1,10 +1,14 @@
-# JAMES v0.5 Pilot Proposal Template (2026-06-12 draft)
+# JAMES v0.5 Pilot Proposal Template (v0.4.4 / 2026-06-12)
 
 > Template for pilot negotiation. Customer-specific addenda (NDA / DPA
 > / MSA / SLA) sit outside this template — those are operator's legal
 > counsel's domain. This template lays out scope / metrics / responsibilities
 > / pricing / termination terms for a 6-month JAMES pilot in the legal
 > contract review domain.
+>
+> **v0.4.4 update (2026-06-12)**: Success metric thresholds in §3.3
+> updated to reflect LRB v0.2.3 cross-scale evidence (S3 publication
+> J@token = 0.845; J@claude S2 cell = 0.975). Zenodo DOI = `10.5281/zenodo.20652679`.
 
 ---
 

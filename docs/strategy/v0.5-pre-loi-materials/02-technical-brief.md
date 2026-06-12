@@ -1,4 +1,4 @@
-# JAMES Technical Brief for v0.5 Pilot — RAB + LRB Measurement Evidence (2026-06-12)
+# JAMES Technical Brief for v0.5 Pilot — RAB + LRB Measurement Evidence (v0.4.4 / 2026-06-12)
 
 > Target audience: customer IT / architecture / security review team.
 >
@@ -6,6 +6,15 @@
 > artefacts in the JAMES repository
 > (`https://github.com/Hashevolution/James-RAG-Evol`). Reproducible
 > bit-for-bit from pre-registered scenario fixtures.
+>
+> **v0.4.4 update (2026-06-12)**: LRB axis extended from v0.2.1
+> (cross-model V<N<J across 4 models) to **v0.2.3 cross-scale**
+> (V<N<J preserved across 4-point scale ladder, 12.5× scale span,
+> S2 N=80 → S3 N=1000). The cross-scale finding strengthens the
+> evidence that the JAMES advantage on time-travel queries is an
+> **architectural property of the validity-window mechanism**, not a
+> single-model or single-corpus-size artefact. Reference: `papers/lrb-
+> preprint/main.pdf` §4.6 + Zenodo DOI [`10.5281/zenodo.20652679`](https://doi.org/10.5281/zenodo.20652679).
 
 ---
 

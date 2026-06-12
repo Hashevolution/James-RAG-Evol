@@ -1,4 +1,4 @@
-# JAMES v0.5 Pilot Risk + Mitigation Matrix (2026-06-12 draft)
+# JAMES v0.5 Pilot Risk + Mitigation Matrix (v0.4.4 / 2026-06-12)
 
 > Target audience: customer 측 security officer, compliance officer,
 > CISO, 법무팀장.
@@ -7,6 +7,15 @@
 > evidence-evaluable. 본 doc 은 10 row risk matrix + customer-facing
 > mitigation + post-mitigation residual risk 명시. Risks 의 일부는
 > customer 측 controllable, 일부는 mutual.
+>
+> **v0.4.4 update (2026-06-12)**: Trust signal 추가 — 본 프로젝트는
+> measurement-side artefact 의 self-catch 사례 1건 (2026-06-12, LRB
+> S3.1 contract-vocabulary 수정 PR #825) 공개 commit. 12번째
+> wrong-fix-averted 이자 **첫 self-catch** (이전 11건은 사용자 catch).
+> 이는 customer 측 risk 평가에 가장 강한 신뢰 신호 — 외부 reviewer
+> 없이도 over-claim 을 catch + retract + 공개 재산정 했다는 commit
+> evidence. Reference: `papers/lrb-preprint/main.pdf` §5 + DOI
+> `10.5281/zenodo.20652679`.
 
 ---
 
