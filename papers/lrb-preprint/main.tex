@@ -336,8 +336,13 @@ The R@1 V $<$ N $<$ J inequality is preserved at every scale point across the 12
   \item \textbf{Korean / cross-lingual scenario.} LRB v0.3 candidate; addresses the English-only fixture limitation.
 \end{enumerate}
 
+\section*{Data and Code Availability}
+
+The LRB scenario generators (S1 / S2 / S3), the 3-SUT adapter implementations (Vanilla / Naive-supersede / JAMES validity-window), the deterministic scorer, the cross-model and cross-scale runners, the v0.2.4 HR NLI adapter, the eight pre-registration LOCK documents, and every \texttt{result.json} + \texttt{bench.jsonl} measurement artefact reported in this paper are archived at Zenodo DOI \href{https://doi.org/10.5281/zenodo.20652679}{\texttt{10.5281/zenodo.20652679}} (PROJECT~JAMES v0.4.4, 2026-06-12). The same DOI bundles the sibling RAB v0.1.1 software (the RAB axes operationalising EU AI Act Art.~10/12/19) so the two benchmarks can be cited from a single data-availability anchor. Every scenario fixture is byte-deterministic given the generator commit; LLM-grounded mode inherits the $\approx$10pp claude-API reproducibility band documented separately in \texttt{docs/research/lrb-v021-s2-vanilla-reproducibility-band-2026-06-12.md}. External reproduction is invited.
+
 \section*{Acknowledgements}
-% TODO
+
+The author thanks the open-source maintainers of Ollama, HuggingFace Transformers, the RoBERTa-large-MNLI checkpoint (Facebook AI) and the DeBERTa-v3-large-mnli-fever-anli-ling-wanli checkpoint (Laurer et al.) for the verifiers used in the v0.2.4 HR axis cross-NLI agreement protocol, and the authors of MuSiQue, 2WikiMultiHop, and ALCE for releasing the cross-bench measurement fixtures used in \S\ref{sec:cross_bench} as a reproducibility check. The honest-framing self-correction reported in \S\ref{sec:cross_scale} (the S3.1 contract-vocabulary fix that retracted a pre-S3.1 over-tight verdict) is the strongest applied evidence of the project's measurement-side-artefact rule and was caught by per-category audit before any external reviewer reading.
 
 \bibliographystyle{plain}
 \bibliography{refs}
