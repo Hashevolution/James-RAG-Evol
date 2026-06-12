@@ -54,7 +54,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple
 
 from core.lifecycle.etag import (
     assign_edge_etag,
@@ -356,6 +356,76 @@ def _validity_contains(validity: dict, t: datetime) -> bool:
         if t >= vt:
             return False
     return True
+
+
+# ─── v0.5 G3 — corpus-wide replay convenience (streaming) ─────────────
+
+
+def reconstruct_corpus_view_at(
+    heads: Iterable[dict],
+    lookup: Callable[[str], Optional[dict]],
+    t: datetime,
+    *,
+    limit: Optional[int] = None,
+) -> Iterator[Tuple[str, Optional[dict]]]:
+    """Stream the entire corpus state at time ``t``.
+
+    Per `docs/reviews/v0.5-b1-ontology-surface-audit.md` G3: the
+    edge-level :func:`reconstruct_view_at` answers "what was edge
+    X at time T?" — replaying an entire corpus requires the caller
+    to enumerate all chain heads and call it for each. This
+    convenience yields one tuple per head so an auditor can ask
+    "show me the entire corpus state at audit cutoff T" without
+    materializing the full result set in memory first.
+
+    Args:
+        heads: iterable of chain links — typically the result of
+            the caller's enumeration over the wiki's currently-
+            active edges (chain heads), but any chain link works
+            (this function walks via ``walk_supersede_chain``
+            internally). Generator-friendly; consumed lazily.
+        lookup: same id-to-edge resolver used by
+            :func:`reconstruct_view_at` and
+            :func:`walk_supersede_chain`. Receives chain-link IDs
+            and returns the corresponding edge dict, or ``None``
+            if the link is missing from the caller's snapshot.
+        t: UTC-aware ``datetime`` — the moment to reconstruct.
+        limit: maximum number of heads to yield. ``None`` (default)
+            means "yield all". The cap is a hygiene guard for
+            unbounded enumerations; production callers should pick
+            a page size that fits their downstream buffer.
+
+    Yields:
+        ``(head_id, edge_at_t_or_None)`` tuples in the order the
+        ``heads`` iterable produced them. ``head_id`` is the
+        ``id`` field of the input head dict — useful for caller-
+        side deduplication. ``edge_at_t`` is the chain edge whose
+        ``validity`` window contained ``t`` (per
+        :func:`reconstruct_view_at`), or ``None`` if no chain
+        edge matched (e.g., ``t`` is before the chain began, or
+        every link was CASCADE-invalidated).
+
+    Asymptotic cost (operator hint):
+        O(N × avg_chain_length) where N = number of heads yielded.
+        Each per-head reconstruction is O(chain_length). The
+        function does NOT cache walks across heads — a head that
+        appears twice in ``heads`` will be walked twice.
+
+    Why generator: at corpus > 10⁵ heads the materialized result
+    set is hundreds of MB. Streaming lets the caller page into
+    its downstream buffer (file write, HTTP response, archive
+    table) without holding the full result in memory.
+    """
+    count = 0
+    for head in heads:
+        if limit is not None and count >= limit:
+            return
+        if not isinstance(head, dict):
+            continue
+        head_id = head.get("id") or ""
+        edge_at_t = reconstruct_view_at(head, lookup, t)
+        yield (str(head_id), edge_at_t)
+        count += 1
 
 
 __all__ = [
