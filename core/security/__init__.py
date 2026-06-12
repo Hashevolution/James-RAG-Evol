@@ -8,13 +8,12 @@ check-items:
     Strict-Transport-Security, X-Content-Type-Options,
     Referrer-Policy, Permissions-Policy) with env-driven config
     and a default report-only CSP mode.
-
-Future additions (B.2 design memo):
   * `approval_evidence` — verified-approver-principal binding for
-    self-evolution change requests (G2; deferred to v0.6).
+    self-evolution change requests (G2.a primitive — POSIX +
+    explicit override resolution; OIDC + SSH paths in G2.b/c).
 """
 from __future__ import annotations
 
-from core.security import headers
+from core.security import approval_evidence, headers
 
-__all__ = ["headers"]
+__all__ = ["approval_evidence", "headers"]
