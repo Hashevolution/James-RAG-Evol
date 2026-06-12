@@ -477,6 +477,204 @@
     }
   }
 
+  // v0.5 Track F.2 CR.d — Approve / Reject buttons + fetch wire.
+  //
+  // Fills `#cr-detail-actions-slot` with a reviewer-name input
+  // + Approve + Reject buttons. The buttons call the backend
+  // endpoint (`POST /admin/change-requests/<id>/merge|reject`);
+  // on 404 (endpoint not yet wired), the UI falls back to mock
+  // behaviour so the operator sees the round-trip pattern.
+  //
+  // The reviewer string is captured client-side. The actual
+  // `ApprovalEvidence` resolution (POSIX / explicit / OIDC) per
+  // G2.a (`core/security/approval_evidence.py`) happens
+  // server-side when the real endpoint lands — the UI just sends
+  // the reviewer name; the server binds it to its current
+  // principal.
+  //
+  // CR.e customer-specific theming (e.g. "Compliance Officer"
+  // button label, vertical-specific reject reasons) is
+  // LOI-conditional and lives under Track D.
+
+  function _readReviewerHint() {
+    // Best-effort default for the reviewer name input. Reads
+    // the existing admin localStorage keys; falls back to empty.
+    try {
+      var role = localStorage.getItem('james_role') || '';
+      if (role) return role;
+    } catch (_) {}
+    return '';
+  }
+
+  function _renderActionsSlot(cr) {
+    var slot = $('cr-detail-actions-slot');
+    if (!slot) return;
+    // CR is not open → show terminal state, no actions.
+    if (cr.status !== 'open') {
+      slot.innerHTML = (
+        '<span class="muted-12" style="font-family:var(--font-mono)">' +
+        'CR is ' + escHtml(cr.status) + ' — no actions available.' +
+        '</span>'
+      );
+      return;
+    }
+    var hint = _readReviewerHint();
+    slot.innerHTML = [
+      '<div style="display:flex;gap:8px;align-items:center;',
+      'width:100%;flex-wrap:wrap">',
+      '<input id="cr-reviewer-input" type="text"',
+      ' value="' + escHtml(hint) + '"',
+      ' placeholder="reviewer username"',
+      ' aria-label="Reviewer username"',
+      ' style="flex:1;min-width:140px;padding:7px 10px;',
+      'background:var(--bg);border:1px solid var(--border);',
+      'border-radius:6px;color:var(--text);font-size:12px;',
+      'font-family:var(--font-mono)">',
+      '<button class="btn btn-approve"',
+      ' data-action="cr-approve"',
+      ' data-cr-id="' + escHtml(cr.cr_id) + '"',
+      ' aria-label="Approve change request"',
+      ' style="padding:7px 14px;font-size:12px;background:rgba(76,175,125,.15);',
+      'color:#4caf7d;border:1px solid rgba(76,175,125,.45);',
+      'border-radius:6px;cursor:pointer;font-weight:600;',
+      'font-family:var(--font-mono);letter-spacing:.4px">',
+      'Approve',
+      '</button>',
+      '<button class="btn btn-reject"',
+      ' data-action="cr-reject"',
+      ' data-cr-id="' + escHtml(cr.cr_id) + '"',
+      ' aria-label="Reject change request"',
+      ' style="padding:7px 14px;font-size:12px;background:rgba(239,68,68,.10);',
+      'color:#fca5a5;border:1px solid rgba(239,68,68,.45);',
+      'border-radius:6px;cursor:pointer;font-weight:600;',
+      'font-family:var(--font-mono);letter-spacing:.4px">',
+      'Reject',
+      '</button>',
+      '</div>',
+      '<div id="cr-action-status"',
+      ' role="status" aria-live="polite"',
+      ' style="margin-top:8px;font-size:11px;line-height:1.5;',
+      'font-family:var(--font-mono);color:var(--muted);',
+      'min-height:14px"></div>',
+    ].join('');
+  }
+
+  function _setActionStatus(msg, isError) {
+    var el = $('cr-action-status');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.style.color = isError ? '#fca5a5' : 'var(--muted)';
+  }
+
+  function _getReviewer() {
+    var input = $('cr-reviewer-input');
+    if (!input) return '';
+    return (input.value || '').trim();
+  }
+
+  function _markMock(crId, status) {
+    // Mutate the in-memory mock so the next list refresh shows
+    // the new state (until the real backend lands).
+    for (var i = 0; i < _MOCK_CRS.length; i++) {
+      if (_MOCK_CRS[i].cr_id === crId) {
+        _MOCK_CRS[i] = Object.assign({}, _MOCK_CRS[i], {
+          status: status,
+        });
+        break;
+      }
+    }
+    _lastFetch = null;
+  }
+
+  function _approveCr(crId) {
+    var reviewer = _getReviewer();
+    if (!reviewer) {
+      _setActionStatus('Reviewer required.', true);
+      return;
+    }
+    _setActionStatus('Submitting…', false);
+    var body = JSON.stringify({ reviewer: reviewer });
+    fetch('/admin/change-requests/' + encodeURIComponent(crId) +
+          '/merge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: body,
+    }).then(function (r) {
+      if (r.status === 404) {
+        // Backend endpoint not yet wired — fall back to mock.
+        _markMock(crId, 'merged');
+        _setActionStatus('Merged (mock — backend not wired)', false);
+        setTimeout(function () {
+          _closeDetail();
+          refresh();
+        }, 700);
+        return;
+      }
+      if (!r.ok) {
+        return r.text().then(function (t) {
+          _setActionStatus('Merge failed: ' + (t || r.status), true);
+        });
+      }
+      _markMock(crId, 'merged');
+      _setActionStatus('Merged.', false);
+      setTimeout(function () {
+        _closeDetail();
+        refresh();
+      }, 500);
+    }).catch(function (err) {
+      _setActionStatus('Merge error: ' + err.message, true);
+    });
+  }
+
+  function _rejectCr(crId) {
+    var reviewer = _getReviewer();
+    if (!reviewer) {
+      _setActionStatus('Reviewer required.', true);
+      return;
+    }
+    var reason = window.prompt('Reason for rejection (optional):', '');
+    if (reason === null) {
+      // User cancelled the prompt.
+      _setActionStatus('Rejection cancelled.', false);
+      return;
+    }
+    _setActionStatus('Submitting…', false);
+    var body = JSON.stringify({
+      reviewer: reviewer, reason: reason,
+    });
+    fetch('/admin/change-requests/' + encodeURIComponent(crId) +
+          '/reject', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: body,
+    }).then(function (r) {
+      if (r.status === 404) {
+        _markMock(crId, 'rejected');
+        _setActionStatus(
+          'Rejected (mock — backend not wired)', false,
+        );
+        setTimeout(function () {
+          _closeDetail();
+          refresh();
+        }, 700);
+        return;
+      }
+      if (!r.ok) {
+        return r.text().then(function (t) {
+          _setActionStatus('Reject failed: ' + (t || r.status), true);
+        });
+      }
+      _markMock(crId, 'rejected');
+      _setActionStatus('Rejected.', false);
+      setTimeout(function () {
+        _closeDetail();
+        refresh();
+      }, 500);
+    }).catch(function (err) {
+      _setActionStatus('Reject error: ' + err.message, true);
+    });
+  }
+
   function _openDetail(crId) {
     var cr = _findCr(crId);
     if (!cr) return;
@@ -494,6 +692,8 @@
     if (after) after.textContent = diff.after;
     // CR.c — render arbiter slot.
     _renderArbiterSlot(cr);
+    // CR.d — render actions slot (Approve / Reject + reviewer input).
+    _renderActionsSlot(cr);
     // Reveal — a11y-modal.js auto-wires focus trap + Escape.
     modal.style.display = 'flex';
   }
@@ -508,7 +708,8 @@
       var crId = ev.detail && ev.detail.cr_id;
       if (crId) _openDetail(crId);
     });
-    // Close button + CR.c arbiter toggle use data-action; delegate.
+    // Close button + CR.c arbiter toggle + CR.d approve/reject use
+    // data-action; delegate via single document-level handler.
     document.addEventListener('click', function (ev) {
       var el = ev.target;
       while (el && el !== document) {
@@ -520,6 +721,16 @@
         if (action === 'cr-arbiter-toggle') {
           var target = el.getAttribute('data-target');
           if (target) _toggleArbiterExplanation(target);
+          return;
+        }
+        if (action === 'cr-approve') {
+          var crId = el.getAttribute('data-cr-id');
+          if (crId) _approveCr(crId);
+          return;
+        }
+        if (action === 'cr-reject') {
+          var crId2 = el.getAttribute('data-cr-id');
+          if (crId2) _rejectCr(crId2);
           return;
         }
         el = el.parentNode;
@@ -537,6 +748,9 @@
     EVENT_VIEW: EVENT_VIEW,
     openDetail: _openDetail,
     closeDetail: _closeDetail,
+    // v0.5 CR.d
+    approveCr: _approveCr,
+    rejectCr: _rejectCr,
     _setMockItems: function (items) {
       _MOCK_CRS = items;
       _lastFetch = null;
