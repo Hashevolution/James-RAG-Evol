@@ -1485,6 +1485,50 @@ function appendJamesMsg(data) {
     }
   }
 
+  // v0.5 UI #5 — Sensitivity badge.
+  //
+  // Mother-platform surface for the existing ontology `sensitive`
+  // field (5 long-standing sensitive relations: HAS_SECRET /
+  // KNOWS_PASSWORD / HAS_CREDENTIAL / OWNS_PRIVATE — plus v0.5
+  // B.5.b APPROVED_BY). When the backend marks the answer as
+  // having traversed any sensitive relation OR carrying sensitive
+  // source content, the bubble surfaces a red-tinted badge so the
+  // operator immediately sees the EU AI Act Art. 19 evidence cue.
+  //
+  // Reads ANY of these fields (back-compat with future server work):
+  //   data.sensitive                  (top-level bool)
+  //   data.sensitive_path_used        (graph traversal touched a
+  //                                    sensitive relation)
+  //   data.sensitivity_level == 'high'
+  //
+  // Default off: when none are set, no badge. UI is ready;
+  // backend can wire any one of the field names without further
+  // frontend work. ARIA live=polite + role=note so screen readers
+  // announce the cue without yanking focus.
+  let sensitivityBadge = '';
+  const sens = data.sensitive === true
+            || data.sensitive_path_used === true
+            || data.sensitivity_level === 'high';
+  if (sens) {
+    const sensLabel = (typeof t === 'function')
+      ? t('badge.sensitive') : 'Sensitive content referenced';
+    const sensTitle = (typeof t === 'function')
+      ? t('badge.sensitive_title')
+      : 'This answer references sensitive content tracked by JAMES ontology.';
+    sensitivityBadge = `
+      <div role="note" aria-live="polite"
+           style="display:inline-flex;align-items:center;gap:6px;
+                  margin-top:6px;padding:4px 10px;border-radius:6px;
+                  background:rgba(239,68,68,.10);
+                  border:1px solid rgba(239,68,68,.45);
+                  font-size:11px;color:#fca5a5;
+                  font-family:var(--font-mono);letter-spacing:.3px"
+           title="${escHtml(sensTitle)}">
+        <span aria-hidden="true">🔒</span>
+        <span>${escHtml(sensLabel)}</span>
+      </div>`;
+  }
+
   // [3-B] unified_score → 신뢰도 배지 ([#A8-6 통합] score는 위에서 이미 읽음)
   let confidenceBadge = '';
   if (score != null) {
@@ -1642,6 +1686,7 @@ function appendJamesMsg(data) {
       <div class="bubble">${formatAnswerWithParagraphs(cleanAnswer)}${pathsHtml}</div>
       ${webBadge}
       ${saveWikiChip}
+      ${sensitivityBadge}
       ${confidenceBadge}
       ${metaHtml}
       ${forceWebChip}
@@ -2092,7 +2137,12 @@ function appendTyping(traceId) {
   div.innerHTML = `
     <div class="avatar james">🧠</div>
     <div class="bubble" style="min-width:220px">
-      <div id="thinking-${traceId}" class="thinking-stream">
+      <!-- v0.5 UI #5 — aria-live=polite + role=log so screen readers
+           announce reasoning stages as they arrive without yanking
+           focus. aria-label gives context for what's being streamed. -->
+      <div id="thinking-${traceId}" class="thinking-stream"
+           role="log" aria-live="polite" aria-atomic="false"
+           aria-label="Reasoning timeline (retrieve → expand → verify)">
         <div class="thinking-placeholder">
           ${brainPulseSvg(true)}
           <span class="thinking-shimmer-text thinking-label thinking-placeholder-text"
@@ -2177,8 +2227,12 @@ function appendTyping(traceId) {
     phase.className = 'thinking-phase thinking-phase-active';
     phase.setAttribute('data-phase', phaseKey);
     phase.setAttribute('data-order', String(meta.order));
+    // v0.5 UI #5 — role=region + aria-label for SR phase navigation.
+    phase.setAttribute('role', 'region');
+    phase.setAttribute('aria-label',
+      'Reasoning phase ' + String(meta.order) + ': ' + meta.label);
     phase.innerHTML = `
-      <div class="thinking-phase-header">
+      <div class="thinking-phase-header" aria-hidden="true">
         <span class="thinking-phase-icon">${meta.icon}</span>
         <span class="thinking-phase-label">${escHtml(meta.label)}</span>
       </div>

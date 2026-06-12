@@ -16,6 +16,9 @@ const TRANSLATIONS = {
     'common.cancel':         'Cancel',
     // v0.5 UI #4 — WCAG 2.4.1 skip link
     'a11y.skip_to_main':     'Skip to main content',
+    // v0.5 UI #5 — sensitivity badge (surfaces ontology sensitive=True)
+    'badge.sensitive':       'Sensitive content referenced',
+    'badge.sensitive_title': 'This answer references sensitive content tracked by JAMES ontology (HAS_SECRET / KNOWS_PASSWORD / HAS_CREDENTIAL / OWNS_PRIVATE / APPROVED_BY).',
     'common.confirm':        'Confirm',
     'common.save':           'Save',
     'common.delete':         'Delete',
@@ -857,6 +860,9 @@ const TRANSLATIONS = {
     'common.cancel':         '취소',
     // v0.5 UI #4 — WCAG 2.4.1 skip link
     'a11y.skip_to_main':     '본문으로 건너뛰기',
+    // v0.5 UI #5 — sensitivity badge
+    'badge.sensitive':       '민감 정보 포함',
+    'badge.sensitive_title': '이 답변은 JAMES 온톨로지가 추적하는 민감 관계(HAS_SECRET / KNOWS_PASSWORD / HAS_CREDENTIAL / OWNS_PRIVATE / APPROVED_BY)를 참조합니다.',
     'common.confirm':        '확인',
     'common.save':           '저장',
     'common.delete':         '삭제',
