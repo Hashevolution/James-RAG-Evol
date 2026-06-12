@@ -14,6 +14,8 @@ const TRANSLATIONS = {
     'common.error':          'Error',
     'common.success':        'Success',
     'common.cancel':         'Cancel',
+    // v0.5 UI #4 — WCAG 2.4.1 skip link
+    'a11y.skip_to_main':     'Skip to main content',
     'common.confirm':        'Confirm',
     'common.save':           'Save',
     'common.delete':         'Delete',
@@ -853,6 +855,8 @@ const TRANSLATIONS = {
     'common.error':          '오류',
     'common.success':        '성공',
     'common.cancel':         '취소',
+    // v0.5 UI #4 — WCAG 2.4.1 skip link
+    'a11y.skip_to_main':     '본문으로 건너뛰기',
     'common.confirm':        '확인',
     'common.save':           '저장',
     'common.delete':         '삭제',

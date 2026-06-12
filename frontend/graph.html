@@ -13,6 +13,9 @@
 </head>
 <body>
 
+<!-- v0.5 UI #4 — WCAG 2.4.1 skip link (first focusable element) -->
+<a href="#main" class="skip-link" data-i18n="a11y.skip_to_main">Skip to main content</a>
+
 <header>
   <div class="logo">
     <span class="brand">Secure Enterprise Knowledge<span class="brand-tail">Operating System</span></span>
@@ -28,7 +31,7 @@
   </div>
 </header>
 
-<div class="main">
+<main id="main" class="main">
   <aside>
     <div class="ctrl">
       <span class="panel-title" data-i18n="graph.filter.source">Source</span>
@@ -121,7 +124,7 @@
          JS 가 prepend (renderEntitySummary). 질문 입력은 /chat 으로 이관. -->
     <div class="neighbor-panel" id="neighbor-panel"></div>
   </div>
-</div>
+</main>
 
 <!-- Admin login modal — same flow as admin.html -->
 <div class="modal-overlay" id="login-modal"
