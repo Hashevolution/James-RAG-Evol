@@ -139,6 +139,7 @@ def emit_lifecycle_event(
     timestamp: Optional[str] = None,
     db_path: Optional[str] = None,
     retention_class: Optional[str] = None,
+    tenant_id: Optional[str] = None,
 ) -> bool:
     """Insert one ``audit_log`` row with the given lifecycle
     ``event_type`` + JSON-encoded ``payload``.
@@ -196,6 +197,28 @@ def emit_lifecycle_event(
         # Copy to avoid mutating the caller's dict.
         payload = dict(payload)
         payload["retention_class"] = retention_class
+
+    # v0.5 G1.a — resolve + stamp tenant_id into the payload.
+    # Resolution order: explicit kwarg → with_tenant_id() override →
+    # JAMES_TENANT_ID env. When `is_tenant_isolation_enforced()` is
+    # true AND resolution yields no tenant_id, emit fails fast
+    # (returns False without inserting) — keeps a multi-tenant
+    # deploy from accidentally writing tenant-anonymous rows.
+    from core.lifecycle.tenant import (
+        current_tenant_id,
+        is_tenant_isolation_enforced,
+    )
+    resolved_tenant = (
+        tenant_id if tenant_id is not None else current_tenant_id()
+    )
+    if is_tenant_isolation_enforced() and not resolved_tenant:
+        return False
+    if resolved_tenant:
+        # Defensive copy if we haven't already (the G4 branch above
+        # may already have copied). dict() on a dict is cheap; the
+        # invariant is "never mutate the caller's dict in place".
+        payload = dict(payload)
+        payload["tenant_id"] = resolved_tenant
 
     ts = timestamp or datetime.now().isoformat()
     try:
