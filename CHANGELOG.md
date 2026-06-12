@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.4] — 2026-06-12 — LRB v0.2.3 S3 publication-scale + cycle γ 4-bench infrastructure closure
+
+**Theme**: v0.4.4 extends v0.4.3 with **LRB v0.2.3** — the *Lifecycle Retrieval Benchmark*'s cross-scale reproducibility extension and a sibling axis to RAB v0.1.1. The v0.2.1 cross-model leg-clear (gemma4:e4b 4B / gemma3:12b 12B / mixtral:8x7b 47B / claude-haiku-4-5 cloud) established that **R@1 V<N<J on Phase B (S2 time-travel)** is not a single-model artefact; **v0.2.3 adds the scale axis**: a 4-point ladder spanning a **12.5× scale jump** (S2 N=80 → S3 publication N=1000) preserves the V<N<J inequality at every cell with JAMES − Naive gap above +0.10 throughout. **Pattern + gap are scale-robust ⭐⭐⭐; absolute magnitudes are scenario-sensitive ⭐⭐** (honest framing locked in preprint §5).
+
+Same cycle ships the **cycle γ 4-bench measurement infrastructure closure**: D-alce research-tier NLI adapter + D-2wiki supporting-fact-aware producer promote ALCE and 2Wiki cells from ⭐ infra-only (v0.4.3) to research-tier-ready infrastructure for 4-of-4 cycle γ benches.
+
+**No JAMES production runtime change** — v0.4.4 ships generators, scorers, runners, NLI adapters, 8 pre-registration LOCK documents, and 2 arXiv preprints (papers/rab-preprint, papers/lrb-preprint). The arXiv preprints cite Zenodo DOI [`10.5281/zenodo.20652679`](https://doi.org/10.5281/zenodo.20652679) for data availability.
+
+### LRB v0.2.3 — cross-scale reproducibility extension
+
+- **#823 S3 publication-scale generator** — programmatic vocabulary; three presets (smoke 100 docs / 282 events / 100 queries; dev 300 / 1.2k / 300; publication 1000 / 5.6k / 1000); SHA-deterministic; 25 unit tests.
+- **#824 S3 token-mode 4-point ladder measurement** — initial verdict.
+- **#825 S3.1 contract-vocabulary fix + honest-framing self-correction** — broken `current-contract` category caught via per-category audit; generator fix → honest J magnitude 0.845 (delta +0.132 vs S2 token); re-graded verdict ⭐⭐⭐ pattern + gap / ⭐⭐ magnitude. **First self-catch in the JAMES cycle history's 12 wrong-fix-averted instances**.
+- **#826 preprint integration** — papers/lrb-preprint/main.tex §4.6 + §5 + §6.1 + §7.4.
+- **#827 v0.2.3b cross-model LLM-grounded runner** — pure-reuse wrapper; operator-gated; pre-reg LOCKED.
+- **#829 preprint typo + abstract S3 integration** — 4 fixes.
+
+### Cycle γ 4-bench infrastructure closure
+
+- **#819 audit-trail closure** — canonical claude S2 vanilla R@1=0.6125 committed + ⭐ reproducibility band finding (~10pp claude API non-determinism between ~1.5min-apart runs).
+- **#820 D-alce research-tier NLI adapter** — RoBERTa-MNLI + DeBERTa-v3-large-mnli-fever-anli-ling-wanli; T5-XXL deferred; 19 tests.
+- **#821 D-2wiki supporting-fact-aware producer** — `[Title #sent_id]` citation prompt + tolerant parser; 24 tests.
+
+### Repository health + papers pre-flight
+
+- **#822 ruff F-class CI hygiene** — 39 → 0 violations; 178 tests green.
+- **#828 next-session entry handover**.
+- **#830 Zenodo v0.4.4 mint prep** → DOI `10.5281/zenodo.20652679` minted via GitHub Release webhook.
+- **#831 preprint Data Availability + Acknowledgements** — DOI inserted.
+- **#832 refs.bib citation corrections + LRB \thanks{} commit-hash insertion** — 6 LLM-fabricated citation patterns caught (4 wrong-author + 2 fabricated URLs).
+- **#833 Stage-2 deep audit cleanup** — EU AI Act precision, "JAMES T5" → "JAMES", attribution fix.
+
+### Self-correction narrative (12th wrong-fix-averted, first self-catch)
+
+PR #824 originally claimed ⭐⭐⭐ "JAMES R@1 within ±0.05 of S2 token reference". A per-category audit revealed `current-contract R@10 = 0.0` across all 3 SUTs from single-template title cluster collapse. PR #825 fixed the generator, revealed the honest J magnitude (0.845, delta +0.132), and re-graded the verdict. **Strongest applied evidence of the `feedback_oracle_phrase_artifacts` measurement-side-artefact rule**. The prior 11 wrong-fix-averted instances were all user-catches; this is the first self-catch.
+
+### What v0.4.4 does NOT include (separate cycles)
+
+- LLM-grounded S3 publication run (v0.2.3b operator-gated)
+- D-alce / D-2wiki research-tier measurement (operator-gated)
+- T5-XXL TRUE NLI Mixture integration (GPU-attended)
+- HR full sweep n=100 (operator-attended)
+- TimeQA / TempReason / GraphRAG SUT (operator data-download gated)
+- arXiv preprint submission (pre-flight complete; endorsement = operator-gated last step)
+
+### Verification
+
+After v0.4.4: **~200+ tests pass**. New: `test_alce_nli_adapter.py` (19), `test_wikimulti_cited_producer.py` (24), `test_lrb_s3_generator.py` (27). Existing: 0 regressions.
+
+---
+
 ## [0.4.3] — 2026-06-10 — RAB v0.1.1 (Replayable-Audit Benchmark) + Cycle γ multi-hop arc closure
 
 **Theme**: v0.4.3 ships **RAB v0.1.1** — the first replayable-audit benchmark for RAG / agent systems whose 3 metrics (AC / RF / PC) are operationalisations of EU AI Act Articles 10, 12, 19 (in force 2026-08-02). Same cycle closes the cycle γ multi-hop arc (7 probes, 6 honest nulls, 2 self-corrections — `multi-hop improvement` reframed out of the JAMES roadmap; **graph build O(N²) finding** lifted into RAB as the RF-cost axis). No JAMES production runtime change — RAB measures the existing audit / lifecycle / graph paths via a workspace-scoped adapter; production `audit.db` is untouched.
