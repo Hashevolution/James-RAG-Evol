@@ -31,6 +31,40 @@ ENTITY_TYPES: Dict[str, Dict] = {
     "project":  {"parent": "Entity", "active": True, "since": "v0.4-α-8"},
 }
 
+# ─── v0.5 B.5: Enterprise document subtypes (mother-level) ────────────
+# Per `docs/design/v0.5-enterprise-document-ontology.md` §3.1.
+# 10 generic enterprise document classes; each passes the 4-vertical test
+# (legal / food / retail / finance applicability documented in design memo).
+# Vertical-specific subtypes (NDA, force_majeure, recipe, 10_K, treatment_
+# protocol, etc.) are explicitly REJECTED here and deferred to v1.0
+# vertical-pack plugins extending this dict via the parent-pointer chain
+# (e.g., NDA → contract → document → Entity).
+DOCUMENT_SUBTYPES: Dict[str, Dict] = {
+    "contract":        {"parent": "document", "since": "v0.5"},
+    "policy":          {"parent": "document", "since": "v0.5"},
+    "procedure":       {"parent": "document", "since": "v0.5"},
+    "memo":            {"parent": "document", "since": "v0.5"},
+    "report":          {"parent": "document", "since": "v0.5"},
+    "specification":   {"parent": "document", "since": "v0.5"},
+    "meeting_minutes": {"parent": "document", "since": "v0.5"},
+    "standard":        {"parent": "document", "since": "v0.5"},
+    "form":            {"parent": "document", "since": "v0.5"},
+    "record":          {"parent": "document", "since": "v0.5"},
+}
+
+# ─── v0.5 B.5: Enterprise roles for documents ─────────────────────────
+# Per design memo §3.4. Document-relationship roles; orthogonal to the
+# baseline RBAC (admin / manager / employee / external in core/security/).
+# Permission tokens are suggestive at this registry layer — actual
+# enforcement lives in the existing security pipeline. B.5 contributes
+# the *contract*, not the *enforcer*.
+ENTERPRISE_ROLES: Dict[str, Dict] = {
+    "AUTHOR":   {"perms_over_doc": {"read", "edit", "submit_review"}, "since": "v0.5"},
+    "REVIEWER": {"perms_over_doc": {"read", "comment", "reject"},      "since": "v0.5"},
+    "APPROVER": {"perms_over_doc": {"read", "approve", "reject"},      "since": "v0.5"},
+    "READER":   {"perms_over_doc": {"read"},                            "since": "v0.5"},
+}
+
 RELATION_TYPES: Dict[str, Dict] = {
     "STUDIES":     {"label":"공부",  "inverse":"STUDIED_BY",   "transitive":False, "weight":1.0, "sensitive":False, "allowed_head":{"person"},         "allowed_tail":{"concept"}},
     "RESEARCHES":  {"label":"연구",  "inverse":"RESEARCHED_BY","transitive":False, "weight":1.0, "sensitive":False, "allowed_head":{"person","org"},    "allowed_tail":{"concept"}},
@@ -56,6 +90,14 @@ RELATION_TYPES: Dict[str, Dict] = {
     "INVOLVES":     {"label":"참여",    "inverse":"PARTICIPATED","transitive":False, "weight":0.9, "sensitive":False, "allowed_head":{"event","project"},            "allowed_tail":{"person","org","concept"}},
     "MEASURED_AS":  {"label":"수치",    "inverse":"MEASURES",    "transitive":False, "weight":0.8, "sensitive":False, "allowed_head":None,                           "allowed_tail":{"quantity"}},
     "WORKED_ON":    {"label":"수행",    "inverse":"WORKED_BY",   "transitive":False, "weight":1.0, "sensitive":False, "allowed_head":{"person","org"},               "allowed_tail":{"project"}},
+    # ─── v0.5 B.5: document-specific relations ──────────────────────
+    # Per design memo §3.3. AUTHORED_BY / APPROVED_BY / REFERENCES /
+    # DERIVED_FROM. SUPERSEDES already exists in the T7 supersede chain
+    # layer (core/lifecycle/supersede_chain.py) — not added here.
+    "AUTHORED_BY":  {"label":"작성자",  "inverse":"AUTHORED",     "transitive":False, "weight":1.0, "sensitive":False, "allowed_head":{"document"},                     "allowed_tail":{"person"}},
+    "APPROVED_BY":  {"label":"승인자",  "inverse":"APPROVED",     "transitive":False, "weight":1.0, "sensitive":True,  "allowed_head":{"document"},                     "allowed_tail":{"person"}},
+    "REFERENCES":   {"label":"참조함",  "inverse":"REFERENCED_BY","transitive":False, "weight":0.8, "sensitive":False, "allowed_head":{"document"},                     "allowed_tail":{"document"}},
+    "DERIVED_FROM": {"label":"유래",    "inverse":"DERIVED_INTO", "transitive":True,  "weight":0.9, "sensitive":False, "allowed_head":{"document"},                     "allowed_tail":{"document"}},
 }
 
 LABEL_TO_TYPE: Dict[str, str] = {
@@ -66,6 +108,9 @@ LABEL_TO_TYPE: Dict[str, str] = {
     # α-8 Phase A
     "발생장소":"OCCURRED_AT","발생일":"HAPPENED_ON","위치":"LOCATED_IN",
     "참여":"INVOLVES","수치":"MEASURED_AS","수행":"WORKED_ON",
+    # v0.5 B.5: document relations
+    "작성자":"AUTHORED_BY","승인자":"APPROVED_BY",
+    "참조함":"REFERENCES","유래":"DERIVED_FROM",
 }
 
 ALLOWED_RELATIONS: Dict[str, Set[str]] = {
@@ -73,7 +118,9 @@ ALLOWED_RELATIONS: Dict[str, Set[str]] = {
     "person":   {"STUDIES","RESEARCHES","TEACHES","BELONGS_TO","WORKS_AT","RELATED_TO","HAS_SECRET","HAS_CREDENTIAL","LOCATED_IN","WORKED_ON","INVOLVES"},
     "org":      {"BELONGS_TO","OPERATES_IN","PRODUCES","RELATED_TO","FOUNDED_BY","LOCATED_IN","WORKED_ON","INVOLVES"},
     "concept":  {"IS_A","PART_OF","RELATED_TO","BELONGS_TO_INDUSTRY","INVOLVES"},
-    "document": {"RELATED_TO","BELONGS_TO","OWNS_PRIVATE"},
+    "document": {"RELATED_TO","BELONGS_TO","OWNS_PRIVATE",
+                 # v0.5 B.5: document-specific relations
+                 "AUTHORED_BY","APPROVED_BY","REFERENCES","DERIVED_FROM"},
     # α-8 Phase A: 5 new horizontal types
     "event":    {"OCCURRED_AT","HAPPENED_ON","INVOLVES","LOCATED_IN","RELATED_TO"},
     "date":     {"HAPPENED_ON","RELATED_TO"},
