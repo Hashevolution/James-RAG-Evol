@@ -9,15 +9,15 @@
   note          = {Independent co-invention of the event-sourced log + deterministic replay architecture that JAMES T5 also implements; RAB measures this architectural class.}
 }
 
-@misc{mathkar2026tracebench,
-  title         = {From Agent Traces to Trust: A Survey of Reproducibility, Auditability, and Provenance for Agentic Systems},
-  author        = {Mathkar, A. and others},
+@misc{wang2026evidencetrace,
+  title         = {From Agent Traces to Trust: Evidence Tracing and Execution Provenance in {LLM} Agents},
+  author        = {Wang, Yiqi and others},
   year          = {2026},
   eprint        = {2606.04990},
   archivePrefix = {arXiv},
   primaryClass  = {cs.AI},
   url           = {https://arxiv.org/abs/2606.04990},
-  note          = {Explicitly names ``realistic execution-trace benchmarks'' as an open challenge; RAB is the response.}
+  note          = {Survey of evidence tracing and execution provenance in LLM agents; its ``open challenges'' list explicitly names ``realistic execution-trace benchmarks'' alongside unified trace schemas, claim-level / semantic provenance, provenance-aware safety mechanisms, recovery-oriented evaluation, and privacy-aware audit infrastructure. RAB is a response to the execution-trace-benchmark item.}
 }
 
 @misc{aiact2024,
@@ -46,9 +46,9 @@
   url          = {https://doi.org/10.6028/NIST.AI.100-1}
 }
 
-@inproceedings{salaudeen2025auditcards,
-  title     = {Audit Cards: Contextualizing AI Evaluations},
-  author    = {Salaudeen, Akinkunmi and others},
+@inproceedings{staufer2025auditcards,
+  title     = {Audit Cards: Contextualizing {AI} Evaluations},
+  author    = {Staufer, Leon and others},
   year      = {2025},
   eprint    = {2504.13839},
   archivePrefix = {arXiv},
@@ -112,44 +112,26 @@
   note         = {Background terminology used throughout the spec.}
 }
 
-@misc{reflow2026dfah,
-  title         = {{DFAH}: A Determinism-Fidelity Harness for Replayable Financial Agents},
-  author        = {{Reflow Research}},
+@misc{khatchadourian2026dfah,
+  title         = {Replayable Financial Agents: A Determinism-Faithfulness Assurance Harness ({DFAH}) for Tool-Using {LLM} Agents},
+  author        = {Khatchadourian, Raffi and others},
   year          = {2026},
   eprint        = {2601.15322},
   archivePrefix = {arXiv},
   primaryClass  = {cs.AI},
   url           = {https://arxiv.org/abs/2601.15322},
-  note          = {Measures behavioral determinism (same input \(\to\) same output reproducibility)
-                   across 4{,}700+ runs on three financial benchmarks. Adjacent axis to RAB:
-                   DFAH scores what the agent outputs; RAB scores the audit-log artifact the
-                   agent emits. The two are independently failable.}
+  note          = {DFAH: measures behavioral determinism (decision determinism / trajectory determinism: same input \(\to\) same output reproducibility) across 4{,}700+ agentic runs on three financial benchmarks (compliance triage, portfolio constraints, DataOps exceptions). Key finding: decision determinism and task accuracy are not detectably correlated. Adjacent axis to RAB: DFAH scores what the agent outputs; RAB scores the audit-log artifact the agent emits. The two are independently failable.}
 }
 
-@misc{eth2024complai,
-  title         = {{COMPL-AI}: Operationalising the {EU AI Act} into a Benchmarking Suite},
-  author        = {{ETH Z\"{u}rich and INSAIT and LatticeFlow}},
+@misc{guldimann2024complai,
+  title         = {{COMPL-AI} Framework: A Technical Interpretation and {LLM} Benchmarking Suite for the {EU} Artificial Intelligence Act},
+  author        = {Guldimann, Philipp and others},
   year          = {2024},
   eprint        = {2410.07959},
   archivePrefix = {arXiv},
   primaryClass  = {cs.CY},
   url           = {https://arxiv.org/abs/2410.07959},
-  note          = {First publication to operationalise the EU AI Act into 12 technical
-                   requirements + 27 benchmarks at the MODEL level (robustness, fairness,
-                   training-data traceability). RAB targets the SYSTEM-LEVEL record-keeping
-                   obligations of Articles 10/12/19 that COMPL-AI does not score; the two
-                   are complementary tracks of a single Act.}
-}
-
-@misc{veritaschain2025vcp,
-  title        = {{VeritasChain Verifiable Compliance Protocol (VCP)}: Cryptographic audit trails for {EU AI Act} compliance},
-  author       = {{VeritasChain}},
-  year         = {2025},
-  howpublished = {Industry specification},
-  url          = {https://veritaschain.example/vcp},
-  note         = {Industry-side cryptographic audit-trail protocol --- a format
-                   specification rather than a scoring benchmark. A natural candidate
-                   future SUT under RAB's adapter contract.}
+  note          = {ETH Z\"{u}rich + INSAIT + LatticeFlow collaboration. First technical interpretation of the EU AI Act translated into measurable requirements at the MODEL level (robustness, safety, diversity, fairness). RAB targets the SYSTEM-LEVEL record-keeping obligations of Articles 10/12/19 that COMPL-AI does not score; the two are complementary tracks of a single Act.}
 }
 
 @misc{otel2024genaisemconv,
@@ -164,15 +146,3 @@
                    in Spec §5.}
 }
 
-@misc{traceelephant2026,
-  title         = {{TraceElephant}: An {LLM}-as-debugger for agent execution traces},
-  author        = {{TraceElephant authors}},
-  year          = {2026},
-  howpublished = {Industry/preprint},
-  url          = {https://arxiv.org/abs/2604.00001},
-  note          = {Uses an LLM to read a trace and diagnose failure attribution. Measures
-                   the LLM's debugging capability, not the trace's audit quality ---
-                   orthogonal to RAB and explicitly compatible with RAB's H1 (no LLM
-                   judge in scoring): an LLM may consume an RAB-scoreable log without
-                   being part of the scorer.}
-}
