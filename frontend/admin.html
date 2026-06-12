@@ -86,6 +86,10 @@
       <div class="nav-item" data-action="show-page" data-page="audit">
         <span class="nav-icon">📋</span> <span data-i18n="admin.audit_log">감사 로그</span>
       </div>
+      <!-- v0.5 Track F.2 CR.a — Change Review Workspace entry -->
+      <div class="nav-item" data-action="show-page" data-page="change-requests">
+        <span class="nav-icon">📝</span> <span data-i18n="admin.change_requests">Change Requests</span>
+      </div>
       <a class="nav-item" href="/admin/graph" style="text-decoration:none">
         <span class="nav-icon">🌐</span> <span data-i18n="graph.title">Reasoning Graph</span>
       </a>
@@ -719,6 +723,66 @@
       </div>
     </div>
 
+    <!-- v0.5 Track F.2 CR.a — Change Review Workspace (list page).
+         Surfaces `core/change_request.py` CR primitive as a non-
+         developer review surface. CR.b/c/d/e land detail diff +
+         contradiction-arbiter visualisation + approve/reject buttons
+         + customer-specific theming (LOI-conditional).
+         UI shell only — no HTTP endpoint exists yet for the CR list;
+         JS uses a deterministic mock fallback so the operator can
+         see the table shape pre-backend-wiring. CR-list HTTP endpoint
+         lands in a separate PR alongside CR.b. -->
+    <div class="page" id="page-change-requests">
+      <div class="page-title">
+        <span data-i18n="cr.page_title">📝 Change Requests</span>
+        <span class="badge" data-i18n="cr.preview_badge"
+              title="UI shell; backend HTTP endpoint lands in CR.b">PREVIEW</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5"
+           data-i18n="cr.page_hint">
+        Non-developer review surface for the JAMES change-request primitive (`core/change_request.py`). Approve/reject captures forensic principal evidence via the G2.a `current_approval_evidence` resolver (POSIX or explicit). Diff renderer + arbiter visualisation in CR.b/c.
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+        <select id="cr-status-filter"
+                style="padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+          <option value="all"        data-i18n="cr.status_all">All</option>
+          <option value="open"       data-i18n="cr.status_open" selected>Open</option>
+          <option value="merged"     data-i18n="cr.status_merged">Merged</option>
+          <option value="rejected"   data-i18n="cr.status_rejected">Rejected</option>
+          <option value="superseded" data-i18n="cr.status_superseded">Superseded</option>
+        </select>
+        <input id="cr-search" type="text"
+               data-i18n-placeholder="cr.search_ph"
+               placeholder="Search proposer / title / target"
+               style="flex:1;min-width:200px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px"
+               aria-label="Search change requests">
+        <span id="cr-counter" class="muted-12"
+              style="font-family:var(--font-mono)"
+              aria-live="polite"
+              role="status"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th data-i18n="cr.col_id">CR ID</th>
+            <th data-i18n="cr.col_title">Title</th>
+            <th data-i18n="cr.col_target">Target</th>
+            <th data-i18n="cr.col_proposer">Proposer</th>
+            <th data-i18n="cr.col_age">Age</th>
+            <th data-i18n="cr.col_status">Status</th>
+            <th data-i18n="cr.col_actions">Actions</th>
+          </tr></thead>
+          <tbody id="cr-list-body"
+                 aria-live="polite" aria-relevant="additions"
+                 aria-label="Change request list">
+            <tr><td colspan="7" class="muted-12"
+                    style="text-align:center;padding:18px"
+                    data-i18n="common.loading">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- 업로드 이력 [#7-C] -->
     <div class="page" id="page-uploads">
       <div class="page-title">
@@ -1064,6 +1128,9 @@
 <script src="/static/llm-install.js"></script>
 <script src="/static/admin.js"></script>
 <script src="/static/a11y-modal.js" defer></script>
+<!-- v0.5 Track F.2 CR.a — Change Review list page (UI shell). Loads
+     after admin.js so the SPA page-toggle wiring is already in place. -->
+<script src="/static/change-requests.js"></script>
 
 <!-- ── Admin 로그인 모달 ── -->
 <div class="modal-overlay" id="admin-login-modal"
