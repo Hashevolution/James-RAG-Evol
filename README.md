@@ -51,6 +51,29 @@ If your use case is *audit / lifecycle / time-travel / on-prem* — JAMES is bui
 
 ---
 
+## 🔬 What does Graph-RAG contribute?
+
+A single 4-cell ablation on the `multihop_rag` fixture (N=100, n=3 paired, M_M = gemma4:e4b 4B, git_sha `b686f35`):
+
+| Cell | path_coverage | graded_answer | abstention_f1 | token_cost | latency |
+|---|---|---|---|---|---|
+| C_minus (no RAG) | 0.000 | 0.213 | 0.356 | 675 | 9.8s |
+| C_rag-basic (+ vector) | 0.000 | 0.260 | 0.306 | 783 | 12.5s |
+| **C_rag-graph (+ graph)** | **0.4056** | 0.203 | 0.400 | 1675 | 32.4s |
+| C_rag-ontology (+ typed filter) | 0.4056 | 0.230 | 0.4286 | 1695 | 32.4s |
+
+**Graph-RAG contribution** (C_rag-basic → C_rag-graph):
+- **path_coverage +0.41** (load-bearing win, noise band 0.02) — vector-only retrieval recovers 0% of gold supporting-doc paths on multi-hop queries; graph traversal recovers ~40%.
+- abstention_f1 +0.094 (graph evidence improves "when to say I don't know" calibration).
+- graded_answer −0.057 (honest loss — graph evidence adds noise to short-answer queries; typed-filter recovers +0.027).
+- **2.1× token cost, 2.6× latency** (the path-coverage win is not free).
+
+**Cross-time reproducibility**: the α-6 cycle (2026-06-01, n=1) measured path_coverage 0.408; this Step 1 rerun (2026-06-13, n=3 median) confirms 0.4056. **Stable across 12 days of oracle revisions.**
+
+Full table + LRB V<N<J architecture ablation + RAB AC/RF/PC audit ablation + honest negatives (closed-book QA, cycle γ deep-multi-hop floor, cost trade-offs) all in [`docs/evaluation/v0.5-graph-rag-contribution.md`](docs/evaluation/v0.5-graph-rag-contribution.md).
+
+---
+
 ## 📑 Papers & Reproducibility
 
 Two benchmarks released as a sibling pair, both pre-registered before measurement, both deterministic-scorer-only, both committed in this repository.
