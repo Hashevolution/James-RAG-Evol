@@ -56,6 +56,10 @@ import uuid
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
+from core.lifecycle.etag import (
+    assign_edge_etag,
+    check_edge_etag,
+)
 from core.lifecycle.schema import (
     T1_MUTATION_INVALIDATED,
     T1_MUTATION_SUPERSEDED,
@@ -109,6 +113,8 @@ def supersede_edge(
     old_edge: dict,
     new_fact: dict,
     supersede_ts: datetime,
+    *,
+    expected_old_etag: Optional[str] = None,
 ) -> tuple[dict, dict]:
     """Create the new edge from ``new_fact`` + mark ``old_edge`` as
     superseded by it.
@@ -127,16 +133,28 @@ def supersede_edge(
         supersede_ts: UTC-aware ``datetime`` of the supersede event.
             Written into ``old_edge.status.superseded_at`` AND used
             as the new edge's ``validity.from``.
+        expected_old_etag: **optimistic-concurrency token** (v0.5 G7,
+            keyword-only). When set, the caller asserts that
+            ``old_edge["etag"]`` equals this value at the moment of
+            supersede. If the stored etag differs (a concurrent writer
+            mutated the edge first), raises :class:`EtagMismatchError`
+            BEFORE any mutation — the old edge is untouched and the
+            caller can safely retry with the fresh head. Default
+            ``None`` preserves byte-identical pre-G7 behaviour.
 
     Returns:
         ``(new_edge, old_edge)`` — both mutated. ``new_edge`` is a
         fresh dict (built from ``new_fact``), ``old_edge`` is the
-        same object passed in.
+        same object passed in. Both carry a freshly-assigned ``etag``
+        field reflecting their post-mutation state.
 
     Raises:
         ValueError if either dict fails ``validate_edge_v04_fields``
         after mutation — defends against the caller passing partial
         v0.4 shapes that would produce an inconsistent chain.
+        :class:`EtagMismatchError` if ``expected_old_etag`` is set
+        and does not match ``old_edge["etag"]`` — the supersede did
+        NOT happen, no fields were mutated.
 
     What this function does NOT do:
         - **No I/O.** Caller writes both edges back to the wiki.
@@ -155,6 +173,11 @@ def supersede_edge(
         raise ValueError(
             f"supersede_ts must be datetime, got {type(supersede_ts).__name__}"
         )
+
+    # v0.5 G7 — optimistic-concurrency check FIRST (before any mutation).
+    # Raises EtagMismatchError on mismatch; old_edge stays untouched.
+    if expected_old_etag is not None:
+        check_edge_etag(old_edge, expected_old_etag)
 
     # Build the new edge. apply_v04_edge_defaults is idempotent so the
     # caller may pass either a raw v0.3 dict or a partially-v0.4 dict.
@@ -187,6 +210,12 @@ def supersede_edge(
     status["superseded_at"] = supersede_ts.isoformat()
     old_edge[T7_EDGE_FIELD_STATUS] = status
     old_edge[T7_EDGE_FIELD_MUTATION_TYPE] = T1_MUTATION_SUPERSEDED
+
+    # v0.5 G7 — assign fresh etag to BOTH edges so the next caller
+    # has an up-to-date concurrency token. Assigned BEFORE validation
+    # so the etag field is part of the validated shape.
+    assign_edge_etag(new_edge)
+    assign_edge_etag(old_edge)
 
     # Validate both — surface a partial-shape caller bug immediately.
     validate_edge_v04_fields(new_edge)

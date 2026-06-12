@@ -72,6 +72,13 @@ T7_EDGE_FIELD_VALIDITY:      Final[str] = "validity"
 T7_EDGE_FIELD_STATUS:        Final[str] = "status"
 T7_EDGE_FIELD_MUTATION_TYPE: Final[str] = "mutation_type"
 
+# v0.5 G7 — optimistic-concurrency etag on edge mutations. Optional;
+# absence means "no etag tracking" (backwards-compatible with v0.4
+# edges that were never touched by the etag layer). When set, must
+# be a non-empty string. See ``core/lifecycle/etag.py`` for the
+# canonical hash recipe.
+T7_EDGE_FIELD_ETAG: Final[str] = "etag"
+
 # ─── T6 Causality Chain (v0.4.1, 2026-05-28) ─────────────────────
 #
 # Edge-level ``derived_from`` field tracks the base facts that an
@@ -226,6 +233,19 @@ def validate_edge_v04_fields(edge: dict) -> None:
             f"edge.mutation_type must be one of "
             f"{sorted(VALID_MUTATION_TYPES)}, got {mt!r}"
         )
+
+    # ─── v0.5 G7 etag (optimistic concurrency token) ─────────────
+    # Optional. Absence = "no etag tracking" (v0.4-compatible).
+    # When present, must be a non-empty string.
+    etag = edge.get(T7_EDGE_FIELD_ETAG)
+    if etag is not None:
+        if not isinstance(etag, str):
+            raise ValueError(
+                f"edge.etag must be str or absent, got "
+                f"{type(etag).__name__}"
+            )
+        if not etag:
+            raise ValueError("edge.etag must be a non-empty string")
 
     # ─── Cross-field consistency (T7 invariant) ──────────────────
     if isinstance(status, dict) and mt is not None:
