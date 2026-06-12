@@ -59,7 +59,7 @@ What this module is NOT
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Literal, Optional
+from typing import Any, List, Literal, Optional, Sequence, Tuple
 
 from core.lifecycle.schema import (
     T7_EDGE_FIELD_VALIDITY,
@@ -265,7 +265,102 @@ def classify_contradiction(
     return "B_supersede"
 
 
+# ─── v0.5 G5 — batched classifier + audit batch correlation ──────────
+#
+# Per `docs/reviews/v0.5-b1-ontology-surface-audit.md` G5: enterprise
+# bulk-ingest pipelines process N (old_edge, new_fact) pairs at once.
+# The existing per-call classifier is correct but doesn't expose a
+# natural batch trace-id for audit correlation.
+#
+# This is a thin convenience wrapper — same per-pair semantics, no
+# state shared between pairs. The only added value is:
+#
+#   1. A single `now` shared across the batch so all decisions
+#      "see" the same wall-clock moment (avoids edge cases where
+#      a long-running batch crosses a `valid_until` boundary
+#      mid-loop).
+#   2. An optional `audit_batch_id` that callers can correlate with
+#      audit-log rows downstream. The classifier itself does not
+#      emit audit rows; the id is a return-value pass-through so
+#      the caller can stamp its emitted rows uniformly.
+#
+# No new dispatch logic; rule-1..rule-4 priority is the per-pair
+# classifier verbatim.
+
+
+def classify_contradiction_batch(
+    pairs: Sequence[Tuple[dict, dict]],
+    *,
+    now: datetime,
+    audit_batch_id: Optional[str] = None,
+) -> List[ContradictionClass]:
+    """Batched form of :func:`classify_contradiction`.
+
+    Args:
+        pairs: sequence of ``(old_edge, new_fact)`` tuples. Same
+            shapes accepted by the per-pair classifier.
+        now: UTC-aware ``datetime`` shared across the entire batch.
+            Passing one shared timestamp is the load-bearing
+            invariant — it guarantees that any (rule-1 cutoff,
+            rule-2 timestamp) comparison evaluates against the
+            same wall-clock moment for every pair in the batch.
+        audit_batch_id: optional caller-supplied id. Not used by
+            this function; returned via :func:`get_last_batch_id`
+            so a downstream audit-emitter can stamp every row
+            with the same correlation token.
+
+    Returns:
+        List of labels in the same order as ``pairs``. Empty input
+        yields an empty list. The function does NOT short-circuit
+        on errors — a per-pair ``ValueError`` from a malformed
+        timestamp propagates up; partial results are discarded
+        (the batch is treated as atomic at the caller level —
+        either all decisions are taken or none are).
+
+    Raises:
+        ValueError — same conditions as
+        :func:`classify_contradiction` (now not tz-aware, etc.).
+    """
+    if not isinstance(now, datetime):
+        raise ValueError(f"now must be datetime, got {type(now).__name__}")
+    if now.tzinfo is None:
+        raise ValueError("now must be timezone-aware (UTC recommended)")
+
+    global _LAST_BATCH_ID
+    _LAST_BATCH_ID = audit_batch_id
+
+    labels: List[ContradictionClass] = []
+    for old_edge, new_fact in pairs:
+        labels.append(
+            classify_contradiction(old_edge, new_fact, now=now)
+        )
+    return labels
+
+
+# Module-level "last batch id" — accessed via the getter below. The
+# value is the audit_batch_id of the most recent batch call (or
+# None if none yet / the call passed None). Kept module-level rather
+# than threaded through every return because the audit-emitter is a
+# downstream callable, not a peer in the batch's call chain.
+_LAST_BATCH_ID: Optional[str] = None
+
+
+def get_last_batch_id() -> Optional[str]:
+    """Return the ``audit_batch_id`` of the most recent batch call.
+
+    Returns ``None`` if no batch has run yet, or if the most recent
+    batch passed ``audit_batch_id=None``. The downstream audit
+    emitter reads this to stamp rows with the batch correlation
+    token. Not thread-safe — batched ingest is expected to run on
+    one writer at a time per workspace.
+    """
+    return _LAST_BATCH_ID
+
+
 __all__ = [
     "ContradictionClass",
     "classify_contradiction",
+    # v0.5 G5
+    "classify_contradiction_batch",
+    "get_last_batch_id",
 ]
