@@ -64,8 +64,8 @@ python <relevant_test>.py
 
 ## Before Picking a Task — Current Cycle Constraints
 
-JAMES is in a deliberate **mother-hardening cycle** (v0.2 → v0.4).
-Some otherwise-attractive contributions are out of scope **until v1.0**:
+JAMES is in a deliberate **mother-hardening cycle** (v0.2 → v0.4 → v0.5 → v1.0).
+Currently at **v0.4.4** (LRB v0.2.3 + RAB v0.1.1 benchmarks shipped, cycle γ 4-bench infrastructure closed). Some otherwise-attractive contributions are out of scope **until v1.0**:
 
 - ❌ **Domain-specific features** (legal-only, food-only, retail-only,
   travel-only, government-only, etc.) — these belong in domain packs,

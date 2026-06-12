@@ -1,7 +1,7 @@
 # PROJECT JAMES — Governance
 
-> **Status**: v0.3.x (Platform Skeleton phase)
-> **Adopted**: 2026-05-20
+> **Status**: v0.4.x (Layer 4 lifecycle + RAB v0.1.1 + LRB v0.2.3 benchmarks)
+> **Adopted**: 2026-05-20 (revised 2026-06-12 for v0.4.4)
 > **Companion documents**:
 > - [`CLAUDE.md`](CLAUDE.md) — session-level operating rules (always-on)
 > - [`CONTRIBUTING.md`](CONTRIBUTING.md) — contributor workflow + CLA
@@ -11,10 +11,11 @@
 > - [`docs/LICENSE_PLAN.md`](docs/LICENSE_PLAN.md) — license-evolution triggers
 
 This document describes how decisions get made on PROJECT JAMES. It is
-deliberately short: the project is in alpha (v0.3.x), the maintainer count
-is one, and the rules below favor clarity over ceremony. Governance scales
-with the project; this document will be revisited at each gate
-(v0.4, v1.0).
+deliberately short: the project is in v0.4.x (Layer 4 lifecycle + two
+sibling benchmarks shipped), the maintainer count is one, and the rules
+below favor clarity over ceremony. Governance scales with the project;
+this document will be revisited at each gate (v0.5 first-domain pilot,
+v1.0 production readiness).
 
 ---
 
