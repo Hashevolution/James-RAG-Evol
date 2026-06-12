@@ -354,6 +354,129 @@
     };
   }
 
+  // v0.5 Track F.2 CR.c — Contradiction-arbiter visualisation.
+  //
+  // Surfaces the 4-rule deterministic classifier output (rules 1..4
+  // from `core/lifecycle/contradiction_arbiter.py::classify_contradiction`)
+  // as a visible badge + a toggle-expandable explanation panel.
+  //
+  // Without a backend call, this synthesises a deterministic
+  // classification per `target_type` so the operator can see the
+  // visualisation shape pre-backend wiring. When the real HTTP
+  // endpoint lands (alongside CR.d's merge button), replace
+  // `_syntheticArbiterResult` with the real fetch.
+  //
+  // The 4 labels per `ContradictionClass` Literal in the arbiter:
+  //   B_supersede  — world genuinely changed; new edge created,
+  //                  old preserved for replay
+  //   A_invalidate — retroactive correction; old edge was wrong
+  //                  even in its own time window
+  //   ignore       — duplicate / equivalent observation
+  //   B_supersede  — default (rule 4, safer-than-CASCADE)
+
+  function _syntheticArbiterResult(cr) {
+    // Deterministic per target_type so re-renders are stable.
+    var classifications = {
+      entity:   { rule: 'B_supersede', why: 'rule_1_new_validity_after_old' },
+      policy:   { rule: 'A_invalidate', why: 'rule_2_retroactive_correction' },
+      graph:    { rule: 'B_supersede', why: 'rule_4_default_safer_than_cascade' },
+    };
+    return classifications[cr.target_type] ||
+      { rule: 'B_supersede', why: 'rule_4_default_safer_than_cascade' };
+  }
+
+  function _arbiterRuleExplanation(why) {
+    // i18n-friendly later; static for now.
+    var map = {
+      rule_1_new_validity_after_old:
+        'Rule 1 (B_supersede): the proposed change\'s valid_from ' +
+        'is strictly later than the current edge\'s valid_until. ' +
+        'The world moved on — preserve the old edge for replay; ' +
+        'the new one is the current truth.',
+      rule_2_retroactive_correction:
+        'Rule 2 (A_invalidate): the proposed change carries ' +
+        'higher-confidence sources AND its timestamp is at-or-' +
+        'before the existing edge\'s valid_from. The old edge ' +
+        'was wrong even in its own time window.',
+      rule_3_duplicate:
+        'Rule 3 (ignore): the proposed change\'s timestamp falls ' +
+        'inside the existing edge\'s validity window with no ' +
+        'confidence delta. Duplicate observation, not a ' +
+        'contradiction.',
+      rule_4_default_safer_than_cascade:
+        'Rule 4 (B_supersede, default): edge cases (missing ' +
+        'timestamps, missing confidence) fall through to a safer-' +
+        'than-CASCADE default. History preserved; trivial rollback.',
+    };
+    return map[why] || '(no explanation available)';
+  }
+
+  function _ruleBadgeStyle(rule) {
+    if (rule === 'A_invalidate') {
+      return 'background:rgba(239,68,68,.12);color:#fca5a5;' +
+             'border:1px solid rgba(239,68,68,.45);';
+    }
+    if (rule === 'ignore') {
+      return 'background:rgba(138,141,153,.12);color:var(--muted);' +
+             'border:1px solid rgba(138,141,153,.35);';
+    }
+    // B_supersede — accent-tinted (the most common path)
+    return 'background:rgba(107,231,208,.10);color:var(--accent-fg);' +
+           'border:1px solid rgba(107,231,208,.30);';
+  }
+
+  function _renderArbiterSlot(cr) {
+    var slot = $('cr-detail-arbiter-slot');
+    if (!slot) return;
+    var result = _syntheticArbiterResult(cr);
+    var explanation = _arbiterRuleExplanation(result.why);
+    var badgeStyle = _ruleBadgeStyle(result.rule);
+    var explanationId = 'cr-arbiter-explanation-' + cr.cr_id;
+    slot.innerHTML = [
+      '<div style="display:flex;align-items:center;gap:10px;',
+      'flex-wrap:wrap;font-family:var(--font-mono);font-size:11px">',
+      '<span class="muted-12" style="font-family:var(--font-mono)">',
+      'Contradiction classifier:',
+      '</span>',
+      '<span style="' + badgeStyle + 'padding:3px 10px;',
+      'border-radius:6px;font-weight:600;letter-spacing:.4px">',
+      escHtml(result.rule),
+      '</span>',
+      '<button data-action="cr-arbiter-toggle"',
+      ' data-target="' + explanationId + '"',
+      ' aria-label="Toggle arbiter explanation"',
+      ' aria-expanded="false"',
+      ' style="padding:3px 8px;background:transparent;',
+      'border:1px solid var(--border);border-radius:4px;',
+      'color:var(--muted);cursor:pointer;font-size:10px;',
+      'font-family:var(--font-mono)">',
+      'Why?',
+      '</button>',
+      '</div>',
+      '<div id="' + explanationId + '"',
+      ' style="display:none;margin-top:8px;padding:8px 10px;',
+      'background:var(--surface);border:1px solid var(--border-2);',
+      'border-radius:6px;font-size:11px;line-height:1.6;',
+      'color:var(--text-soft);font-family:var(--font-ui)">',
+      escHtml(explanation),
+      '</div>',
+    ].join('');
+  }
+
+  function _toggleArbiterExplanation(targetId) {
+    var el = document.getElementById(targetId);
+    if (!el) return;
+    var btn = document.querySelector(
+      '[data-action="cr-arbiter-toggle"][data-target="' +
+      targetId + '"]'
+    );
+    var isHidden = el.style.display === 'none';
+    el.style.display = isHidden ? 'block' : 'none';
+    if (btn) {
+      btn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+    }
+  }
+
   function _openDetail(crId) {
     var cr = _findCr(crId);
     if (!cr) return;
@@ -369,6 +492,8 @@
     var after = $('cr-detail-diff-after');
     if (before) before.textContent = diff.before;
     if (after) after.textContent = diff.after;
+    // CR.c — render arbiter slot.
+    _renderArbiterSlot(cr);
     // Reveal — a11y-modal.js auto-wires focus trap + Escape.
     modal.style.display = 'flex';
   }
@@ -383,13 +508,18 @@
       var crId = ev.detail && ev.detail.cr_id;
       if (crId) _openDetail(crId);
     });
-    // Close button uses data-action; delegate.
+    // Close button + CR.c arbiter toggle use data-action; delegate.
     document.addEventListener('click', function (ev) {
       var el = ev.target;
       while (el && el !== document) {
-        if (el.getAttribute &&
-            el.getAttribute('data-action') === 'cr-detail-close') {
+        var action = el.getAttribute && el.getAttribute('data-action');
+        if (action === 'cr-detail-close') {
           _closeDetail();
+          return;
+        }
+        if (action === 'cr-arbiter-toggle') {
+          var target = el.getAttribute('data-target');
+          if (target) _toggleArbiterExplanation(target);
           return;
         }
         el = el.parentNode;
