@@ -258,12 +258,155 @@
     init();
   }
 
+  // ─── v0.5 Track F.2 CR.b — Detail modal + side-by-side diff ─────
+  //
+  // Listens for `james:cr:view` (dispatched by the row's View button)
+  // and opens the modal with the CR's metadata + before/after diff.
+  // Pure UI shell — no backend fetch. For the mock CRs, generates a
+  // deterministic synthetic before/after string per `target_type` so
+  // the operator can see the diff renderer's two-column layout.
+  //
+  // ARIA: the modal carries role=dialog + aria-modal + aria-labelledby
+  // (set in the HTML); `a11y-modal.js` (UI #1 PR #852) auto-wires
+  // focus-trap + Escape close + focus restoration via MutationObserver
+  // on `display:none` → `display:flex`. No extra wiring here.
+
+  function _findCr(crId) {
+    for (var i = 0; i < _MOCK_CRS.length; i++) {
+      if (_MOCK_CRS[i].cr_id === crId) return _MOCK_CRS[i];
+    }
+    return null;
+  }
+
+  function _isoFromUnix(ms) {
+    try {
+      return new Date(ms).toISOString();
+    } catch (_) {
+      return String(ms);
+    }
+  }
+
+  function _renderMetaRow(label, value) {
+    return (
+      '<div class="muted-12">' + escHtml(label) + '</div>' +
+      '<div style="color:var(--text);word-break:break-all">' +
+      escHtml(value) + '</div>'
+    );
+  }
+
+  function _renderMeta(cr) {
+    var meta = $('cr-detail-meta');
+    if (!meta) return;
+    meta.innerHTML = (
+      _renderMetaRow('CR ID',       cr.cr_id) +
+      _renderMetaRow('Target',      cr.target_type + '/' + cr.target_id) +
+      _renderMetaRow('Proposer',    cr.proposer) +
+      _renderMetaRow('Status',      cr.status) +
+      _renderMetaRow('Created',     _isoFromUnix(cr.created_at)) +
+      _renderMetaRow('Labels',      cr.labels || '(none)')
+    );
+  }
+
+  // Mock-only synthetic diff. When the backend lands, the real CR's
+  // `proposed_diff` JSON + the loaded base version provide the
+  // before/after content; this synth path goes away.
+  function _syntheticDiff(cr) {
+    if (cr.target_type === 'entity') {
+      return {
+        before: '{\n  "entity_id": "' + cr.target_id + '",\n' +
+                '  "name": "Alice",\n' +
+                '  "affiliation": "Acme Corp"\n}',
+        after: '{\n  "entity_id": "' + cr.target_id + '",\n' +
+               '  "name": "Alice",\n' +
+               '  "affiliation": "Acme Corp"\n' +
+               '  "title": "Founder"\n}'
+      };
+    }
+    if (cr.target_type === 'policy') {
+      return {
+        before: 'retention_days: 365\n' +
+                'pii_redact: false\n' +
+                'audit_class: standard',
+        after: 'retention_days: 2555  # 7y per GDPR Art. 17\n' +
+               'pii_redact: true\n' +
+               'audit_class: standard\n' +
+               'retention_class: 7y     # v0.5 G4'
+      };
+    }
+    if (cr.target_type === 'graph') {
+      return {
+        before: '# (no edge present)',
+        after: 'source: e_acme_corp\n' +
+               'type:   FOUNDED_BY\n' +
+               'target: e_jiwon\n' +
+               'weight: 1.0\n' +
+               'sensitive: false'
+      };
+    }
+    return {
+      before: '(before content)\n' + JSON.stringify({
+        title: cr.title, proposer: cr.proposer
+      }, null, 2),
+      after: '(after content)\n' + JSON.stringify({
+        title: cr.title, proposer: cr.proposer,
+        proposed: true
+      }, null, 2)
+    };
+  }
+
+  function _openDetail(crId) {
+    var cr = _findCr(crId);
+    if (!cr) return;
+    var modal = $('cr-detail-modal');
+    if (!modal) return;
+    _renderMeta(cr);
+    var desc = $('cr-detail-description');
+    if (desc) {
+      desc.textContent = cr.title;
+    }
+    var diff = _syntheticDiff(cr);
+    var before = $('cr-detail-diff-before');
+    var after = $('cr-detail-diff-after');
+    if (before) before.textContent = diff.before;
+    if (after) after.textContent = diff.after;
+    // Reveal — a11y-modal.js auto-wires focus trap + Escape.
+    modal.style.display = 'flex';
+  }
+
+  function _closeDetail() {
+    var modal = $('cr-detail-modal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  function _wireDetailModal() {
+    window.addEventListener(EVENT_VIEW, function (ev) {
+      var crId = ev.detail && ev.detail.cr_id;
+      if (crId) _openDetail(crId);
+    });
+    // Close button uses data-action; delegate.
+    document.addEventListener('click', function (ev) {
+      var el = ev.target;
+      while (el && el !== document) {
+        if (el.getAttribute &&
+            el.getAttribute('data-action') === 'cr-detail-close') {
+          _closeDetail();
+          return;
+        }
+        el = el.parentNode;
+      }
+    });
+  }
+
+  _wireDetailModal();
+
   // Expose for tests + downstream consumers.
   window.JAMES_ChangeRequests = {
     refresh: refresh,
     applyFilter: applyFilter,
     renderTable: renderTable,
     EVENT_VIEW: EVENT_VIEW,
+    openDetail: _openDetail,
+    closeDetail: _closeDetail,
     _setMockItems: function (items) {
       _MOCK_CRS = items;
       _lastFetch = null;
