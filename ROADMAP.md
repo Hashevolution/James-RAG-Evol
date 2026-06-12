@@ -1168,6 +1168,51 @@ forward-compat hooks), no domain-specific types.
 
 ---
 
+## v0.5.x — Entry state (2026-06-12)
+
+**v0.5 entry declared 2026-06-12** after v0.4.4 closure (LRB v0.2.3
+S3 publication-scale + cycle γ 4-bench infrastructure closure; Zenodo
+DOI [`10.5281/zenodo.20652679`](https://doi.org/10.5281/zenodo.20652679)).
+
+Operator decision: *"이제는 진짜 엔터프라이즈 온톨로지 장착으로 간다"*
+([entry handover](handovers/v0.5-entry-2026-06-12.md)).
+
+### Four work streams (CLAUDE.md rule #1 preserved)
+
+| Stream | Scope | Status |
+|---|---|---|
+| **A** — Pre-LOI materials + Hashevolution dogfooding | Customer-facing 자료 v0.4.4 sync (7 docs) + Hashevolution own-company scenario (시나리오 C: internal dogfooding + external outreach 병행) | A.1 / A.2 ✅; A.3 / A.4 operator-action |
+| **B** — Enterprise ontology framework (mother-level) | Audit / multi-tenant / plugin API review + **enterprise document ontology** (B.5: 10 generic subtypes + 7 lifecycle states + 5 relations + 4 roles) | B.5.a design memo LOCKED (this PR); B.5.b code next; B.1-B.4 / B.6-B.7 pending |
+| **C** — Measurement infra carry-over | v0.2.3b S3 cross-model + D-alce + D-2wiki + HR full sweep + arXiv submission | All operator-attended; arXiv Path A defer |
+| **D** — LOI-gated (blocked) | Customer-specific NDA/DPA/MSA + ingestion + pilot kickoff + vertical pack (legal) | Blocked until LOI |
+
+### Rule discipline (preserved + new)
+
+| Rule | Status |
+|---|---|
+| **CLAUDE.md rule #1** (no domain features until v1.0) | **PRESERVED** — v0.5 = pilot prep; vertical-pack code blocks until LOI scope or v1.0 |
+| **#2** (bench numbers + Quality Delta Card on core/ PRs) | Preserved |
+| **#3** (self-evolution opt-in) | Preserved |
+| **#4** (architecture changes require `architecture` label) | Preserved |
+| **#5** (`core/` 20KB module size) | Preserved |
+| **NEW #6** Dogfooding evidence ≠ Dim F evidence | Hashevolution own-use = iteration feedback; Dim F still requires external customer pilot |
+| **NEW #7** Enterprise ontology = mother-level | Vertical-pack (legal etc.) waits for LOI or v1.0 |
+| **NEW #8** External-facing claims gated on measurement evidence | Zenodo DOI + result.json refs mandatory; no aspirational claims |
+
+### Cycle entry deliverables
+
+- [x] v0.5 entry handover doc (`docs/handovers/v0.5-entry-2026-06-12.md`)
+- [x] Pre-LOI material refresh (7 docs, PR #840)
+- [x] Hashevolution own-company scenario doc (PR #840)
+- [x] **B.5.a enterprise document ontology design memo** (`docs/design/v0.5-enterprise-document-ontology.md`, this PR)
+- [ ] B.5.b code implementation (next PR; design memo §8)
+- [ ] B.5.c test fixture + tests (next PR)
+- [ ] Stream A.3 operator: Hashevolution dogfooding start (operator action)
+- [ ] Stream A.4 operator: Tier S contact list + outreach (operator action)
+- [ ] B.1-B.4 enterprise framework reviews (sequence after dogfooding 1+ month)
+
+---
+
 ## v0.5.0 — First Domain Pilot (~6 months after v0.4)
 
 **Theme**: prove the platform contract by running ONE real domain

@@ -4,7 +4,9 @@
 > what it deliberately is not, and the trust boundaries that govern
 > all design decisions.
 >
-> Status: living document. Last updated: v0.4.0 (Layer 4 Lifecycle Semantics first bundle, 2026-05-27).
+> Status: living document. Last updated: **v0.4.4 closure + v0.5 entry** (2026-06-12).
+>
+> v0.4.4 ships LRB v0.2.3 S3 publication-scale + cycle γ 4-bench infrastructure closure; v0.5 entry declared 2026-06-12 with enterprise document ontology design LOCK (see [`docs/design/v0.5-enterprise-document-ontology.md`](design/v0.5-enterprise-document-ontology.md)). Previous milestones: v0.4.2 (T5 Replayable Audit Graph 2026-06-06), v0.4.1 (T6 Causality Chain 2026-05-28), v0.4.0 (Layer 4 Lifecycle Semantics first bundle 2026-05-27).
 
 ---
 
