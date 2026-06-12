@@ -138,6 +138,7 @@ def emit_lifecycle_event(
     user_role: str = "system",
     timestamp: Optional[str] = None,
     db_path: Optional[str] = None,
+    retention_class: Optional[str] = None,
 ) -> bool:
     """Insert one ``audit_log`` row with the given lifecycle
     ``event_type`` + JSON-encoded ``payload``.
@@ -153,6 +154,14 @@ def emit_lifecycle_event(
             from CASCADE / EVENT machinery, not from an HTTP role.
         timestamp: ISO-8601 string. Defaults to ``datetime.now()``.
         db_path: optional override. Production code omits it.
+        retention_class: **v0.5 G4** — optional machine-readable
+            retention tag. When set, stamped into the row's
+            ``event_payload`` JSON under ``retention_class`` so
+            ``core.lifecycle.retention.pending_retention_review`` can
+            find rows past their window. Must be a value accepted by
+            :func:`core.lifecycle.retention.validate_retention_class`
+            — malformed values cause the emit to return ``False``
+            (safer than silently stamping garbage).
 
     Returns:
         ``True`` on insert, ``False`` on any failure. **Never raises**
@@ -167,11 +176,26 @@ def emit_lifecycle_event(
         * ``endpoint`` is set to ``event_type`` so existing operator
           audit views (``/admin/audit/list``) surface lifecycle rows
           without a separate filter.
+        * **No schema migration** is needed for ``retention_class`` —
+          it lives inside the ``event_payload`` JSON column.
     """
     if not is_lifecycle_event(event_type):
         return False
     if not isinstance(payload, dict):
         return False
+
+    # v0.5 G4 — validate + stamp retention_class into the payload.
+    if retention_class is not None:
+        # Local import to avoid a circular at module-import time
+        # (retention.py imports nothing from replay_audit.py — this
+        # keeps the dependency one-way, even though replay_audit only
+        # consults retention.validate at runtime).
+        from core.lifecycle.retention import validate_retention_class
+        if not validate_retention_class(retention_class):
+            return False
+        # Copy to avoid mutating the caller's dict.
+        payload = dict(payload)
+        payload["retention_class"] = retention_class
 
     ts = timestamp or datetime.now().isoformat()
     try:
