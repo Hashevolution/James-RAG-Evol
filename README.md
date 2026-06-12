@@ -47,6 +47,8 @@ What JAMES does **not** claim:
 
 If your use case is *audit / lifecycle / time-travel / on-prem* — JAMES is built for it, measured for it, and citeable for it. If your use case is *fastest possible answer on a fixed corpus* — use LangChain.
 
+> **Looking for MRR / NDCG / RAGAS / hallucination-rate coverage?** See [`docs/evaluation/v0.5-evaluation-coverage-mapping.md`](docs/evaluation/v0.5-evaluation-coverage-mapping.md) — a full mapping of standard RAG / IR metrics to what JAMES measures (and what it deliberately doesn't), including code paths and procurement-ready answers.
+
 ---
 
 ## 📑 Papers & Reproducibility
