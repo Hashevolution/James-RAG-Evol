@@ -498,12 +498,26 @@
   }
 
   /* 상세 modal / 세션 turns modal — 풀화면 */
+  /* v0.5 UI #3 — extended to cover admin auxiliary modals + graph
+   * edge/node edit modals. The existing rule only covered 4 modals;
+   * pages have 15 modals total. Single selector list keeps the rule
+   * declarative — adding a new modal id later means appending here. */
   #entity-detail-modal, #session-turns-modal,
-  #login-modal, #admin-login-modal {
+  #login-modal, #admin-login-modal,
+  /* admin auxiliary modals (signup, password, key/token display, wizard) */
+  #signup-modal, #forgot-password-modal,
+  #api-key-display-modal, #reset-token-display-modal,
+  #firstrun-wizard-modal,
+  /* graph editor modals */
+  #edge-edit-modal, #node-edit-modal {
     padding: 12px !important;
   }
   #entity-detail-modal > div, #session-turns-modal > div,
-  #login-modal > div, #admin-login-modal > div {
+  #login-modal > div, #admin-login-modal > div,
+  #signup-modal > div, #forgot-password-modal > div,
+  #api-key-display-modal > div, #reset-token-display-modal > div,
+  #firstrun-wizard-modal > div,
+  #edge-edit-modal > div, #node-edit-modal > div {
     max-width: 100% !important;
     max-height: 92vh !important;
     padding: 14px !important;
@@ -512,6 +526,18 @@
   #entity-detail-body, #session-turns-body {
     font-size: 12px;
     max-height: 65vh !important;
+  }
+
+  /* v0.5 UI #3 — skip-link touch target on mobile.
+   * Focused state must be ≥ 44×44px per Apple HIG / Material
+   * guidelines. The default desktop padding (8px 14px) is too
+   * narrow on phones; bump only when the link is actually
+   * visible (i.e. focused). */
+  .skip-link:focus,
+  .skip-link:focus-visible {
+    min-height: 44px;
+    padding: 12px 18px;
+    font-size: 15px;
   }
 
   /* dashboard 차트 — 너비 100% */
