@@ -134,13 +134,22 @@
     <!-- 대시보드 -->
     <div class="page active" id="page-dashboard">
       <div class="page-title"><span data-i18n="dash.page_title">📊 대시보드</span> <span class="badge" data-i18n="dash.live">LIVE</span></div>
-      <div class="cards" id="dash-cards">
+      <!-- v0.5 UI #2 — aria-live polite for dashboard refresh
+           announcements (WCAG 4.1.3). -->
+      <div class="cards" id="dash-cards"
+           aria-live="polite" aria-atomic="false"
+           aria-label="Dashboard cards">
         <div class="loading" data-i18n="common.loading">로딩 중...</div>
       </div>
       <!-- [3-A] 응답 시간 그래프 -->
       <div id="dash-chart"></div>
       <div class="section-title" style="margin-top:16px">▸ <span data-i18n="dash.recent_logs">최근 쿼리 로그</span></div>
-      <div class="log-box" id="dash-logs"><div class="loading" data-i18n="common.loading">로딩 중...</div></div>
+      <!-- v0.5 UI #2 — aria-live polite so screen readers
+           announce new log entries on refresh (WCAG 4.1.3). -->
+      <div class="log-box" id="dash-logs"
+           aria-live="polite" aria-relevant="additions"
+           aria-atomic="false"
+           aria-label="Recent query log"><div class="loading" data-i18n="common.loading">로딩 중...</div></div>
     </div>
 
     <!-- 사용자 -->
