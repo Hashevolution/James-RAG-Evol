@@ -14,10 +14,12 @@
 > 모순 트리 등도 모두 first-class 차별점.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-v0.4.1-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/releases/tag/v0.4.1)
+[![Status](https://img.shields.io/badge/Status-v0.4.4-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/releases/tag/v0.4.4)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12806/badge)](https://www.bestpractices.dev/projects/12806)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20625533.svg)](https://doi.org/10.5281/zenodo.20625533)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20652679.svg)](https://doi.org/10.5281/zenodo.20652679)
+[![RAB SPEC](https://img.shields.io/badge/RAB%20SPEC-v0.1.1-green.svg)](eval/rab/SPEC-v0.1.md)
+[![LRB Benchmark](https://img.shields.io/badge/LRB-v0.2.3-green.svg)](papers/lrb-preprint/main.pdf)
 
 ![PROJECT JAMES — 3D 온톨로지 그래프 시각화](reports/promo-assets/screenshots/06-3d-graph.jpg)
 
@@ -26,9 +28,29 @@
 
 ---
 
-## 프로젝트 상태: v0.4.1 — T6 Causality Chain (CASCADE extension)
+## 프로젝트 상태: v0.4.4 — LRB v0.2.3 S3 publication-scale + cycle γ 4-벤치 인프라 마감
 
-**2026-05-28 릴리스**. v0.4.1 은 v0.4.0 이 절반만 마친 CASCADE
+**2026-06-12 릴리스**. v0.4.4 는 v0.4.3 (RAB v0.1.1) 에 **LRB v0.2.3** — *Lifecycle Retrieval Benchmark* 의 cross-scale 재현성 확장 + RAB 의 sibling axis — 을 더합니다. v0.2.1 cross-model (gemma4:e4b 4B / gemma3:12b 12B / mixtral:8x7b 47B / claude-haiku-4-5) 가 Phase B (S2 time-travel) 의 **R@1 V<N<J** 가 single-model artefact 가 아님을 입증했고, **v0.2.3 가 scale 축을 추가**: **12.5× 스케일 점프** (S2 N=80 → S3 publication N=1000) 의 4-point ladder 모든 cell 에서 V<N<J 부등호 + JAMES − Naive gap +0.10 이상 유지. **Pattern + gap 은 scale-robust ⭐⭐⭐, 절대 magnitude 는 scenario-sensitive ⭐⭐** (honest framing 은 preprint §5 에 lock — 12번째 wrong-fix-averted 이자 **첫 self-catch** 의 S3.1 contract-vocabulary fix 가 pre-S3.1 over-tight verdict 를 retract).
+
+같은 cycle 에서 **cycle γ 4-벤치 measurement 인프라 마감**: D-alce research-tier NLI adapter (RoBERTa-MNLI + DeBERTa-v3-ANLI) + D-2wiki supporting-fact-aware producer 가 ALCE / 2Wiki 셀을 v0.4.3 의 ⭐ infra-only 에서 4-of-4 research-tier-ready 로 격상.
+
+**Papers 제출 준비 완료** (pre-flight 마감, arXiv endorsement 대기):
+- **RAB preprint** (10페이지): [papers/rab-preprint/main.pdf](papers/rab-preprint/main.pdf) — *EU AI Act Art. 10/12/19 를 측정 가능 audit-quality 벤치마크로 operationalise.*
+- **LRB preprint** (11페이지): [papers/lrb-preprint/main.pdf](papers/lrb-preprint/main.pdf) — *RAG 의 temporal validity 축; 4 모델 × 4 스케일에서 V<N<J 보존.*
+
+JAMES production runtime 변경 없음 — v0.4.4 는 generator, scorer, runner, NLI adapter, 8 pre-registration LOCK 문서 만 ship. arXiv preprint 는 Zenodo DOI [10.5281/zenodo.20652679](https://doi.org/10.5281/zenodo.20652679) 를 data availability 로 인용.
+
+---
+
+## 프로젝트 상태: v0.4.3 — RAB v0.1.1 (Replayable-Audit Benchmark) + Cycle γ multi-hop arc 마감
+
+**2026-06-10 릴리스**. v0.4.3 는 **RAB v0.1.1** 출시 — RAG / agent 시스템의 audit log 품질을 측정하는 최초 replayable-audit benchmark. 3 결정론적 metric (AC / RF / PC) 는 EU AI Act Art. 10/12/19 (Art. 113 에 따라 2026-08-02 부터 적용) 의 operationalisation. JAMES AC/RF/PC = 1.000 / 1.000 / 1.000 vs Baseline-0 (vanilla quickstart + default logging) = 0.275 / 0.000 / 0.000 (scenario-S1). Headline 은 SUT 간 **gap structure** — JAMES 점수 자체가 아님 (SPEC §6.5 가 JAMES-wins framing 명시 거부). Honest framing: **벤치마크 자체가 contribution, 아키텍처 아님** — ActiveGraph (arXiv 2605.21997) 가 audit-native runtime 의 독립 co-invention; 빈 곳은 측정이지 시스템이 아님.
+
+같은 cycle 의 companion track 이 **Cycle γ multi-hop arc** 마감 (PR #752 → #757) — 6 honest null: multi-hop improvement 가 JAMES 로드맵에서 reframe out; **graph build O(N²)** secondary finding 이 RAB 의 RF-cost 축으로 lift.
+
+이전: **v0.4.2** (2026-06-06) 가 T5 Replayable Audit Graph 출시 — 전체 event-sourced graph-wide 재구성 (`reconstruct_graph_at(t)` audit-only primitive, RAB 가 측정하는 품질의 building block).
+
+이전: **v0.4.1** (2026-05-28) 가 v0.4.0 이 절반만 마친 CASCADE
 pillar 를 마감합니다. base fact 의 sources 가 모두 제거되면,
 `derived_from` 이 그 base 를 가리키는 edge 들이
 `invalidate_derived_facts` 로 자동 무효화 — 파생 체인이 운영자

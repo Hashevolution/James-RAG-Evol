@@ -16,11 +16,12 @@
 > API, and the deterministic 4-rule contradiction tree.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-v0.4.3-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/releases/tag/v0.4.3)
+[![Status](https://img.shields.io/badge/Status-v0.4.4-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/releases/tag/v0.4.4)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12806/badge)](https://www.bestpractices.dev/projects/12806)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20625533.svg)](https://doi.org/10.5281/zenodo.20625533)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20652679.svg)](https://doi.org/10.5281/zenodo.20652679)
 [![RAB SPEC](https://img.shields.io/badge/RAB%20SPEC-v0.1.1-green.svg)](eval/rab/SPEC-v0.1.md)
+[![LRB Benchmark](https://img.shields.io/badge/LRB-v0.2.3-green.svg)](papers/lrb-preprint/main.pdf)
 
 ![PROJECT JAMES — 3D ontology graph visualizer](reports/promo-assets/screenshots/06-3d-graph.jpg)
 
@@ -43,9 +44,24 @@ The numbers below come from the current `main` branch — not aspirational, not 
 | **Module size discipline** | 20 KB cap enforced on every `core/` file. Largest current: `core/lifecycle/schema.py` at 18.9 KB | CLAUDE.md rule 5 + module-size CI gate |
 | **Default-off invariant** | Every routing layer added since v0.3 (D5 / LEO / D1 / T2.D / T6 LLM) defaults OFF — production fleets pulling v0.4.1 see byte-identical retrieval to v0.3.3 unless they opt in | `JAMES_*` env audit (CHANGELOG `[0.4.x]` table) |
 | **Deterministic contradiction arbitration** | `classify_contradiction` is an LLM-free 4-rule decision tree (~10.2 KB pure function). Audit-replay-safe by construction. | `core/lifecycle/contradiction_arbiter.py` |
-| **RAB v0.1.1 — Replayable-Audit Benchmark** | **JAMES AC/RF/PC = 1.000 / 1.000 / 1.000 vs Baseline-0 (vanilla quickstart + default logging) = 0.275 / 0.000 / 0.000** on scenario-S1. Deterministic scorer (no LLM judge); 3 metrics map to EU AI Act Art. 10/12/19 (in force 2026-08-02). | `eval/rab/SPEC-v0.1.md` + `python scripts/research/rab_run.py --sut {reference,baseline0,james}` |
+| **RAB v0.1.1 — Replayable-Audit Benchmark** | **JAMES AC/RF/PC = 1.000 / 1.000 / 1.000 vs Baseline-0 (vanilla quickstart + default logging) = 0.275 / 0.000 / 0.000** on scenario-S1. Deterministic scorer (no LLM judge); 3 metrics map to EU AI Act Art. 10/12/19 (applies from 2026-08-02 per Art. 113). | `eval/rab/SPEC-v0.1.md` + `python scripts/research/rab_run.py --sut {reference,baseline0,james}` |
+| **LRB v0.2.3 — Lifecycle Retrieval Benchmark** | **R@1 V<N<J preserved across a 4-point scale ladder** (S2 N=80 → S3 publication N=1000, **12.5× scale**) and **across 4 model families** (gemma4:e4b / gemma3:12b / mixtral / claude). S3 publication R@1: V/N/J = 0.502 / 0.721 / **0.845**. JAMES − Naive gap > +0.10 at every scale point. Pattern + gap scale-robust ⭐⭐⭐; absolute magnitude scenario-sensitive ⭐⭐. | `papers/lrb-preprint/main.pdf` + `python scripts/research/lrb_run_s3.py --scale publication` |
 
 **What is NOT yet headline-verified**: a single-page ablation card showing **Graph-RAG vs flat RAG** on the same fixture. The infrastructure to produce it (`scripts/qvt_capture_baseline.py` + the 18-cell ablation matrix design from QVT memo §5) is wired; the operator-run capture is the late-June deliverable. Until then, the graph contribution is measurable via `graph_paths_count` per query in any STEP 7 bench output, but not summarized in one table.
+
+---
+
+## Project Status: v0.4.4 — LRB v0.2.3 S3 publication-scale + cycle γ 4-bench infrastructure closure
+
+Released **2026-06-12**. v0.4.4 extends v0.4.3 with **LRB v0.2.3** — the *Lifecycle Retrieval Benchmark*'s cross-scale reproducibility extension and a sibling axis to RAB v0.1.1. v0.2.1 cross-model (gemma4:e4b 4B / gemma3:12b 12B / mixtral:8x7b 47B / claude-haiku-4-5) established that **R@1 V<N<J on Phase B (S2 time-travel)** is not a single-model artefact; **v0.2.3 adds the scale axis**: a 4-point ladder spanning a **12.5× scale jump** (S2 N=80 → S3 publication N=1000) preserves the V<N<J inequality at every cell with the JAMES − Naive gap above +0.10 throughout. **Pattern + gap are scale-robust ⭐⭐⭐; absolute magnitudes are scenario-sensitive ⭐⭐** (honest framing locked in preprint §5; the S3.1 contract-vocabulary fix retracted a pre-S3.1 over-tight verdict — first **self-catch** in the JAMES cycle history's 12 wrong-fix-averted instances).
+
+Same cycle ships the **cycle γ 4-bench measurement infrastructure closure**: D-alce research-tier NLI adapter (RoBERTa-MNLI + DeBERTa-v3-ANLI) and D-2wiki supporting-fact-aware producer promote ALCE and 2Wiki cells from ⭐ infra-only (v0.4.3) to research-tier-ready infrastructure for 4-of-4 cycle γ benches.
+
+**Papers ready for submission** (pre-flight complete, arXiv endorsement pending):
+- **RAB preprint** (10 pages): [papers/rab-preprint/main.pdf](papers/rab-preprint/main.pdf) — *Operationalising EU AI Act Articles 10/12/19 into a measurable audit-quality benchmark.*
+- **LRB preprint** (11 pages): [papers/lrb-preprint/main.pdf](papers/lrb-preprint/main.pdf) — *Temporal validity axis for RAG; V<N<J across 4 model families × 4 scale points.*
+
+No JAMES production runtime change — v0.4.4 ships generators, scorers, runners, NLI adapters, and 8 pre-registration LOCK documents. The arXiv preprints cite Zenodo DOI [10.5281/zenodo.20652679](https://doi.org/10.5281/zenodo.20652679) for data availability.
 
 ---
 
