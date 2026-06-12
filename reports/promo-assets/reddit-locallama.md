@@ -4,6 +4,8 @@
 > 보조 서브: r/selfhosted, r/MachineLearning (Project flair)
 > 발행 시점 권장: 주중 미국 동부 오전 9~11시 / 한국 시간 22:00~24:00
 
+> ⚠️ **v0.4.4 refresh (2026-06-12)** — 헤드라인 = RAB + LRB benchmarks + EU AI Act anchor. body 는 v0.1.0-alpha 시점 narrative 보존; 최신 자료 = 2 preprint PDF + DOI [10.5281/zenodo.20652679](https://doi.org/10.5281/zenodo.20652679).
+
 ---
 
 ## 사전 확인 (필수)
@@ -14,6 +16,20 @@
 - [ ] 게시 빈도: 같은 프로젝트 30일 1회 권장
 
 ## 제목
+
+### v0.4.4 권장 (최신)
+
+```
+[Project] JAMES v0.4.4: local-first Graph-RAG with two pre-registered benchmarks (RAB + LRB) anchored to EU AI Act Art. 10/12/19 (MIT)
+```
+
+또는
+
+```
+[Project] I built a local RAG that scores its own audit-log quality against EU AI Act articles (RAB v0.1.1) and preserves R@1 V<N<J across 4 model × 4 scale (LRB v0.2.3). Two preprint PDFs shipped.
+```
+
+### v0.1.0-alpha (구 — 보존)
 
 ```
 [Project] JAMES: a security-first, locally-runnable Graph-RAG engine with explicit ontology (MIT, v0.1.0-alpha)

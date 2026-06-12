@@ -1,12 +1,37 @@
-# Launch tracker — v0.2.0 promotion-readiness cycle
+# Launch tracker — v0.2.0 → v0.4.4 promotion-readiness cycle
 
-> Active monitoring log for the v0.2.0 promotion cycle. PR URLs, tweet URLs,
-> external badges, and channel D-Days live here.
-> Update this file whenever a PR is merged, a tweet posts, or a channel goes live.
+> Active monitoring log. PR URLs, tweet URLs, external badges, channel
+> D-Days live here.
+> Update this file whenever a PR is merged, a tweet posts, or a channel
+> goes live.
+
+> ⚠️ **v0.4.4 status (2026-06-12)**: launch posture changed.
+> v0.2.0-v0.3.0 cycle was 'broadcast / awesome-list / dev.to' style.
+> v0.4.4 cycle is **build-then-LOI**: enterprise polish complete +
+> 2 preprint PDFs + DOI [20652679](https://doi.org/10.5281/zenodo.20652679)
+> ready, but **not yet broadcast** — outreach gated on v0.5 pilot path
+> (operator-attended; enterprise polish reaching customer-LOI-ready
+> threshold first). All public posts in this tracker pre-date v0.4.0.
 
 ---
 
-## Status snapshot
+## v0.4.4 cycle milestones (2026-06-10 → 2026-06-12)
+
+| Date | Milestone | Outcome |
+|---|---|---|
+| 2026-06-10 | RAB v0.1.1 release (PRs #758-#767) — first replayable-audit benchmark for RAG / agent systems anchored to EU AI Act Art. 10/12/19 | ✅ Released as v0.4.3 + Zenodo DOI 20625533 |
+| 2026-06-11 | 6h autonomous loop (#797-#818) — 33 PRs covering LRB v0.2.1 4/4 model cross-check + Track C MuSiQue 5-variant honest negative + v0.5 pilot path 4-doc materials | ✅ Landed |
+| 2026-06-12 | LRB v0.2.3 S3 publication-scale (PRs #823-#827 + #829) — 4-point scale ladder R@1 V<N<J preserved at every cell, S3.1 self-correction (first self-catch in 12 wrong-fix-averted history) | ✅ Released as v0.4.4 + Zenodo DOI 20652679 |
+| 2026-06-12 | Cycle γ 4-bench infrastructure closure (PRs #819 / #820 / #821) — D-alce + D-2wiki research-tier adapters | ✅ Landed |
+| 2026-06-12 | refs.bib citation audit (PR #832) — 6 LLM-fabricated citation patterns caught in RAB + LRB preprint bibliographies; renamed keys (mathkar→wang, reflow→khatchadourian, salaudeen→staufer, eth→guldimann) + removed (veritaschain, traceelephant) | ✅ Merged |
+| 2026-06-12 | Stage-2 deep audit (PR #833) — EU AI Act 'enters force' → 'applies from' precision; 'JAMES T5' internal jargon → 'JAMES'; LRB Acknowledgements over-attribution fix | ✅ Merged |
+| 2026-06-12 | Enterprise polish (PRs #834 / #835 / #836 / #837) — README v0.4.4 + 'Why JAMES?' hero + Papers & Reproducibility section + SUMMARY + SECURITY + GOVERNANCE + HANDOVER + release_notes_v0.4.4.md all synced | ✅ Merged |
+| 2026-06-12 | **arXiv submission** | ⏸️ Deferred (Path A chosen: customer pilot priority over academic publish; endorsement-and-submit kept warm in <1 week reactivation) |
+| 2026-06-12 | **External outreach** | ⏸️ Deferred until enterprise-polish + v0.5 customer-LOI-ready threshold |
+
+---
+
+## Historical: v0.2.0 promotion-readiness snapshot
 
 | Date | Milestone | Outcome |
 |---|---|---|

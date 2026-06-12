@@ -1,14 +1,19 @@
 ---
-title: "Building a Mini Palantir: A Local Graph-RAG Engine with Ontology, Security, and Self-Evolution (Alpha)"
+title: "Building an Audit-Native Local Graph-RAG: Two Pre-Registered Benchmarks Anchored to EU AI Act Articles 10/12/19"
 published: false
-description: "How I built PROJECT JAMES — a security-focused, locally-runnable Graph-RAG knowledge engine in Python, MIT-licensed. Inspired by Palantir's ontology approach, but 100% local and open source."
-tags: rag, llm, python, opensource
+description: "How I built PROJECT JAMES v0.4.4 — a local-first Graph-RAG platform whose audit-log quality and temporal-validity retrieval are deterministically measured against EU AI Act record-keeping requirements. Two preprint PDFs + Zenodo DOI shipped."
+tags: rag, llm, aiact, audit
 cover_image:
 canonical_url:
 ---
 
-> **TL;DR**
-> [PROJECT JAMES](https://github.com/Hashevolution/James-RAG-Evol) is a security-focused, locally-runnable Graph-RAG knowledge engine in Python. It combines an explicit 12-type ontology, 3-stage access control (RBAC + ABAC + instruction isolation), a self-evolution scaffold with audit log, and 100% local execution via Ollama. MIT-licensed, alpha v0.2.0, [OpenSSF Best Practices passing](https://www.bestpractices.dev/projects/12806).
+> ⚠️ **v0.4.4 update (2026-06-12)** — This post's body was originally written at v0.2.0. The current release ships **two pre-registered deterministic benchmarks** (RAB + LRB) + **two arXiv preprints** ([papers/](https://github.com/Hashevolution/James-RAG-Evol/tree/main/papers)) anchored to **EU AI Act Articles 10, 12, 19** (apply from 2026-08-02 per Article 113). DOI: [10.5281/zenodo.20652679](https://doi.org/10.5281/zenodo.20652679). The body's 'self-evolution / ontology / 3-stage security' narrative is preserved as historical foundation material — current headline is benchmark-led (see RAB AC/RF/PC = 1.000/1.000/1.000 vs vanilla 0.275/0/0 and LRB R@1 V<N<J across 4 model × 4 scale).
+
+> **TL;DR (v0.4.4 headline)**
+> RAB: JAMES vs Baseline-0 (vanilla default-logging) = 1.000/1.000/1.000 vs 0.275/0/0 (AC/RF/PC) on scenario-S1 — three metrics map verbatim to EU AI Act Articles 10/12/19. LRB: R@1 V<N<J preserved across 4 model families × 4 scale points (12.5× scale span); S3 publication V/N/J = 0.502/0.721/0.845.
+
+> **TL;DR (original v0.2.0 narrative — body preserved as foundation context)**
+> [PROJECT JAMES](https://github.com/Hashevolution/James-RAG-Evol) is a security-focused, locally-runnable Graph-RAG knowledge engine in Python. It combines an explicit 12-type ontology, 3-stage access control (RBAC + ABAC + instruction isolation), a self-evolution scaffold with audit log, and 100% local execution via Ollama. MIT-licensed, [OpenSSF Best Practices passing](https://www.bestpractices.dev/projects/12806).
 
 ## Why I built this
 
