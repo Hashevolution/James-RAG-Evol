@@ -291,15 +291,17 @@ def register_pack(pack: OntologyPack) -> None:
     Side effects on success:
       * Pack appended to the in-memory registry (registration
         order preserved).
-      * G8.c will additionally emit a
-        ``lifecycle.ontology.pack_mounted`` audit row; this G8.a
-        implementation does NOT yet emit (the audit-event type is
-        added in G8.c).
+      * **v0.6 G8.c** — a ``lifecycle.ontology.pack_mounted`` audit
+        row is emitted via
+        :func:`core.lifecycle.replay_audit.emit_lifecycle_event`.
+        The audit emit failure (e.g. DB unreachable) does NOT block
+        the mount — the emit helper swallows exceptions per its
+        own contract.
 
-    All failures are fatal — a silent half-mount would break the
-    audit-replay contract (G8.c). The caller catches the exception
-    if the failure is recoverable (e.g. operator typo in
-    ``pack_id``).
+    All pre-condition failures are fatal — a silent half-mount
+    would break the audit-replay contract (G8.c). The caller
+    catches the exception if the failure is recoverable (e.g.
+    operator typo in ``pack_id``).
     """
     if pack.requires_capability not in granted_capabilities():
         raise CapabilityNotGrantedError(
@@ -313,6 +315,28 @@ def register_pack(pack: OntologyPack) -> None:
     _validate_schema(pack)
     _check_no_collision(pack)
     _mounted.append(pack)
+    # v0.6 G8.c — audit-replay event. Local import keeps the
+    # dependency edge-of-graph (replay_audit imports nothing from
+    # this module). Emit failure must NOT undo the mount — the
+    # emit helper already swallows its own exceptions per LOCK 2.
+    try:
+        from core.lifecycle.replay_audit import (
+            EVT_ONTOLOGY_PACK_MOUNTED,
+            emit_lifecycle_event,
+        )
+        emit_lifecycle_event(
+            EVT_ONTOLOGY_PACK_MOUNTED,
+            {
+                "pack_id":             pack.pack_id,
+                "requires_capability": pack.requires_capability,
+                "since":               pack.since,
+                "provenance":          pack.provenance,
+            },
+        )
+    except Exception:
+        # Defence-in-depth: any import / runtime issue must not
+        # roll back the in-memory mount.
+        pass
 
 
 def unmount_pack(pack_id: str) -> None:
@@ -323,11 +347,29 @@ def unmount_pack(pack_id: str) -> None:
     Existing audit rows referencing pack-defined subtypes /
     relations are NOT mutated — replay at a time when the pack was
     mounted continues to honor the pack's definitions via the G8.c
-    event stream (separate PR).
+    event stream.
+
+    Side effects on success:
+      * Pack removed from the in-memory registry.
+      * **v0.6 G8.c** — a ``lifecycle.ontology.pack_unmounted`` audit
+        row is emitted. Emit failures do NOT roll back the unmount.
     """
     for i, pack in enumerate(_mounted):
         if pack.pack_id == pack_id:
             del _mounted[i]
+            # v0.6 G8.c — audit-replay event. Same defensive pattern
+            # as register_pack: emit failure must NOT undo unmount.
+            try:
+                from core.lifecycle.replay_audit import (
+                    EVT_ONTOLOGY_PACK_UNMOUNTED,
+                    emit_lifecycle_event,
+                )
+                emit_lifecycle_event(
+                    EVT_ONTOLOGY_PACK_UNMOUNTED,
+                    {"pack_id": pack_id},
+                )
+            except Exception:
+                pass
             return
     raise KeyError(f"no mounted pack with pack_id={pack_id!r}")
 
