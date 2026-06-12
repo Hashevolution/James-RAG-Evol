@@ -1,0 +1,227 @@
+{
+  "_meta": {
+    "schema_version": "v0.5",
+    "description": "Generic enterprise document corpus — 10 docs, one per DOCUMENT_SUBTYPE. Vertical-agnostic per CLAUDE.md rule #1. Exercises every primitive added in B.5.b: subtypes, 4 new relations (AUTHORED_BY/APPROVED_BY/REFERENCES/DERIVED_FROM), 4 ENTERPRISE_ROLES, all 7 DocumentLifecycleStates, T1+T7 frontmatter (valid_from/valid_to/supersede_by). NO vertical content (no NDA/recipe/10-K/treatment-protocol).",
+    "since": "v0.5",
+    "design_ref": "docs/design/v0.5-enterprise-document-ontology.md §3.4",
+    "owners": "platform"
+  },
+  "persons": [
+    {"person_id": "p_alex", "name": "Alex"},
+    {"person_id": "p_blair", "name": "Blair"},
+    {"person_id": "p_cam", "name": "Cam"},
+    {"person_id": "p_dale", "name": "Dale"}
+  ],
+  "documents": [
+    {
+      "doc_id": "doc_001_contract_alpha",
+      "subtype": "contract",
+      "title": "Service agreement — Project Alpha",
+      "lifecycle_state": "PUBLISHED",
+      "frontmatter": {
+        "valid_from": "2026-01-15T00:00:00+00:00",
+        "valid_to": null,
+        "supersede_by": null,
+        "approved_at": "2026-01-10T00:00:00+00:00",
+        "in_review": false,
+        "revoked": false
+      },
+      "relations": [
+        {"type": "AUTHORED_BY", "target_id": "p_alex", "role_at_target": "AUTHOR"},
+        {"type": "APPROVED_BY", "target_id": "p_blair", "role_at_target": "APPROVER"}
+      ],
+      "body": "Effective from 2026-01-15. Scope, deliverables, and acceptance criteria for Project Alpha."
+    },
+    {
+      "doc_id": "doc_002_policy_data_retention",
+      "subtype": "policy",
+      "title": "Data retention policy",
+      "lifecycle_state": "PUBLISHED",
+      "frontmatter": {
+        "valid_from": "2025-12-01T00:00:00+00:00",
+        "valid_to": null,
+        "supersede_by": null,
+        "approved_at": "2025-11-20T00:00:00+00:00",
+        "in_review": false,
+        "revoked": false
+      },
+      "relations": [
+        {"type": "AUTHORED_BY", "target_id": "p_blair", "role_at_target": "AUTHOR"},
+        {"type": "APPROVED_BY", "target_id": "p_cam", "role_at_target": "APPROVER"}
+      ],
+      "body": "Records held 7 years from creation. Reviewed annually."
+    },
+    {
+      "doc_id": "doc_003_procedure_onboarding",
+      "subtype": "procedure",
+      "title": "Employee onboarding procedure",
+      "lifecycle_state": "APPROVED",
+      "frontmatter": {
+        "valid_from": null,
+        "valid_to": null,
+        "supersede_by": null,
+        "approved_at": "2026-06-01T00:00:00+00:00",
+        "in_review": false,
+        "revoked": false
+      },
+      "relations": [
+        {"type": "AUTHORED_BY", "target_id": "p_cam", "role_at_target": "AUTHOR"},
+        {"type": "APPROVED_BY", "target_id": "p_blair", "role_at_target": "APPROVER"},
+        {"type": "REFERENCES", "target_id": "doc_002_policy_data_retention"}
+      ],
+      "body": "Step-by-step onboarding for new hires. References data retention policy."
+    },
+    {
+      "doc_id": "doc_004_memo_quarterly_update",
+      "subtype": "memo",
+      "title": "Q2 internal update",
+      "lifecycle_state": "PUBLISHED",
+      "frontmatter": {
+        "valid_from": "2026-04-30T00:00:00+00:00",
+        "valid_to": null,
+        "supersede_by": null,
+        "approved_at": "2026-04-29T00:00:00+00:00",
+        "in_review": false,
+        "revoked": false
+      },
+      "relations": [
+        {"type": "AUTHORED_BY", "target_id": "p_alex", "role_at_target": "AUTHOR"}
+      ],
+      "body": "Q2 results summary distributed to all staff."
+    },
+    {
+      "doc_id": "doc_005_report_annual_2025",
+      "subtype": "report",
+      "title": "Annual report 2025",
+      "lifecycle_state": "ARCHIVED",
+      "frontmatter": {
+        "valid_from": "2026-02-01T00:00:00+00:00",
+        "valid_to": "2026-12-31T00:00:00+00:00",
+        "supersede_by": null,
+        "approved_at": "2026-01-25T00:00:00+00:00",
+        "in_review": false,
+        "revoked": false
+      },
+      "relations": [
+        {"type": "AUTHORED_BY", "target_id": "p_dale", "role_at_target": "AUTHOR"},
+        {"type": "APPROVED_BY", "target_id": "p_alex", "role_at_target": "APPROVER"},
+        {"type": "REFERENCES", "target_id": "doc_002_policy_data_retention"}
+      ],
+      "body": "Calendar-year 2025 results. Validity period ends with publication of the 2026 annual report."
+    },
+    {
+      "doc_id": "doc_006_specification_api_v1",
+      "subtype": "specification",
+      "title": "Internal API specification v1",
+      "lifecycle_state": "SUPERSEDED",
+      "frontmatter": {
+        "valid_from": "2025-09-01T00:00:00+00:00",
+        "valid_to": null,
+        "supersede_by": "doc_007_specification_api_v2",
+        "approved_at": "2025-08-25T00:00:00+00:00",
+        "in_review": false,
+        "revoked": false
+      },
+      "relations": [
+        {"type": "AUTHORED_BY", "target_id": "p_cam", "role_at_target": "AUTHOR"},
+        {"type": "APPROVED_BY", "target_id": "p_dale", "role_at_target": "APPROVER"}
+      ],
+      "body": "v1 of the internal HTTP API spec — replaced by v2."
+    },
+    {
+      "doc_id": "doc_007_specification_api_v2",
+      "subtype": "specification",
+      "title": "Internal API specification v2",
+      "lifecycle_state": "PUBLISHED",
+      "frontmatter": {
+        "valid_from": "2026-03-15T00:00:00+00:00",
+        "valid_to": null,
+        "supersede_by": null,
+        "approved_at": "2026-03-10T00:00:00+00:00",
+        "in_review": false,
+        "revoked": false
+      },
+      "relations": [
+        {"type": "AUTHORED_BY", "target_id": "p_cam", "role_at_target": "AUTHOR"},
+        {"type": "APPROVED_BY", "target_id": "p_dale", "role_at_target": "APPROVER"},
+        {"type": "DERIVED_FROM", "target_id": "doc_006_specification_api_v1"}
+      ],
+      "body": "v2 with added pagination + idempotency. Derived from v1."
+    },
+    {
+      "doc_id": "doc_008_meeting_minutes_strategy",
+      "subtype": "meeting_minutes",
+      "title": "Strategy review — meeting minutes",
+      "lifecycle_state": "DRAFT",
+      "frontmatter": {
+        "valid_from": null,
+        "valid_to": null,
+        "supersede_by": null,
+        "approved_at": null,
+        "in_review": false,
+        "revoked": false
+      },
+      "relations": [
+        {"type": "AUTHORED_BY", "target_id": "p_blair", "role_at_target": "AUTHOR"}
+      ],
+      "body": "Draft minutes — pending circulation."
+    },
+    {
+      "doc_id": "doc_009_standard_naming_convention",
+      "subtype": "standard",
+      "title": "Internal naming convention standard",
+      "lifecycle_state": "IN_REVIEW",
+      "frontmatter": {
+        "valid_from": null,
+        "valid_to": null,
+        "supersede_by": null,
+        "approved_at": null,
+        "in_review": true,
+        "revoked": false
+      },
+      "relations": [
+        {"type": "AUTHORED_BY", "target_id": "p_dale", "role_at_target": "AUTHOR"}
+      ],
+      "body": "Proposed naming convention for repos / artefacts. Under review."
+    },
+    {
+      "doc_id": "doc_010_form_access_request",
+      "subtype": "form",
+      "title": "Access request form",
+      "lifecycle_state": "PUBLISHED",
+      "frontmatter": {
+        "valid_from": "2026-05-01T00:00:00+00:00",
+        "valid_to": null,
+        "supersede_by": null,
+        "approved_at": "2026-04-25T00:00:00+00:00",
+        "in_review": false,
+        "revoked": false
+      },
+      "relations": [
+        {"type": "AUTHORED_BY", "target_id": "p_alex", "role_at_target": "AUTHOR"},
+        {"type": "APPROVED_BY", "target_id": "p_blair", "role_at_target": "APPROVER"},
+        {"type": "REFERENCES", "target_id": "doc_002_policy_data_retention"}
+      ],
+      "body": "Form template for system access requests."
+    },
+    {
+      "doc_id": "doc_011_record_decision_log",
+      "subtype": "record",
+      "title": "Decision log — Project Alpha kickoff",
+      "lifecycle_state": "REVOKED",
+      "frontmatter": {
+        "valid_from": "2026-01-20T00:00:00+00:00",
+        "valid_to": null,
+        "supersede_by": null,
+        "approved_at": "2026-01-18T00:00:00+00:00",
+        "in_review": false,
+        "revoked": true
+      },
+      "relations": [
+        {"type": "AUTHORED_BY", "target_id": "p_alex", "role_at_target": "AUTHOR"},
+        {"type": "REFERENCES", "target_id": "doc_001_contract_alpha"}
+      ],
+      "body": "Original decision log — formally revoked after a clerical error was found in the date stamps."
+    }
+  ]
+}
