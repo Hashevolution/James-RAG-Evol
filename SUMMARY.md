@@ -63,6 +63,7 @@ Both papers cite **Zenodo DOI [10.5281/zenodo.20652679](https://doi.org/10.5281/
 ## Status + provenance
 
 - Current release: **v0.4.4** (LRB v0.2.3 S3 publication-scale + cycle γ 4-bench infrastructure closure) — DOI [`10.5281/zenodo.20652679`](https://doi.org/10.5281/zenodo.20652679)
+- **Current cycle**: **v0.5 entry** (2026-06-12) — first-domain pilot path; enterprise document ontology design LOCK ([entry handover](docs/handovers/v0.5-entry-2026-06-12.md))
 - Predecessor: v0.4.3 (RAB v0.1.1 + Cycle γ multi-hop arc closure) — DOI [`10.5281/zenodo.20625533`](https://doi.org/10.5281/zenodo.20625533)
 - License: MIT
 - Entry: `README.md` → `docs/ARCHITECTURE.md` → `docs/PLATFORM_READINESS.md`

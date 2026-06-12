@@ -76,10 +76,15 @@ Currently at **v0.4.4** (LRB v0.2.3 + RAB v0.1.1 benchmarks shipped, cycle γ 4-
 - ❌ **Marketing claims** about specific verticals beyond the
   "domain candidates" table.
 
-Read these two documents before opening a domain-flavored PR:
+Read these documents before opening a domain-flavored PR:
 
-- `docs/handovers/v0.2.0-platform-track.md` — engineering priorities
-  for the current cycle (PolicyEngine, RAGAS, trace_id, STEP 7 lock)
+- **`docs/handovers/v0.5-entry-2026-06-12.md`** — current v0.5 cycle
+  entry; defines 4 work streams (A pre-LOI + dogfooding / B mother
+  enterprise framework / C measurement carry-over / D LOI-gated
+  blocked) and 3 new rules carry-over CLAUDE.md rule #1 (no vertical
+  code until v1.0)
+- `docs/handovers/v0.2.0-platform-track.md` — historical v0.2 cycle
+  engineering priorities (PolicyEngine, RAGAS, trace_id, STEP 7 lock)
 - `docs/handovers/v0.2.1-business-track.md` §3 — the
   "no parallel domains" rule and what it forbids
 
