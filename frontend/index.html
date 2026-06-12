@@ -244,7 +244,11 @@
 
   <!-- ── 챗 영역 ── -->
   <section class="chat-area">
-    <div class="messages" id="messages">
+    <!-- v0.5 UI #2 — aria-live polite so screen readers announce
+         new chat messages without yanking focus (WCAG 4.1.3). -->
+    <div class="messages" id="messages"
+         aria-live="polite" aria-relevant="additions"
+         aria-atomic="false" aria-label="Chat conversation">
       <div class="welcome" id="welcome">
         <!-- [#A8-9] welcome reframed: knowledge + security + report
              intelligence (was generic "Graph-RAG 지식 추론 엔진"). -->

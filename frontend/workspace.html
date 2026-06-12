@@ -435,7 +435,10 @@
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<!-- v0.5 UI #2 — role=status + aria-live polite so screen readers
+     announce toast notifications (success / error). WCAG 4.1.3. -->
+<div class="toast" id="toast" role="status" aria-live="polite"
+     aria-atomic="true"></div>
 
 <script src="/static/i18n.js"></script>
 <script src="/static/auth.js"></script>
