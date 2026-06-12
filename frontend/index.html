@@ -356,72 +356,12 @@
 <script src="/static/chat.js"></script>
 <script src="/static/upload.js"></script>
 <script src="/static/a11y-modal.js" defer></script>
-<script>
-  window.addEventListener('DOMContentLoaded', () => {
-    restoreHistory();
-    // W5: restore last-selected sidebar mode (default = upload).
-    try {
-      const saved = localStorage.getItem('james_sidebar_mode');
-      if (saved && saved !== 'upload') switchSidebarMode(saved);
-    } catch (_) {}
-  });
-
-  function toggleSidebar() {
-    const sb  = document.getElementById('sidebar');
-    const btn = document.getElementById('sidebar-open-btn');
-    const tog = sb.querySelector('.sidebar-toggle');
-    const collapsed = sb.classList.toggle('collapsed');
-    btn.classList.toggle('visible', collapsed);
-    if (tog) tog.textContent = collapsed ? '▶' : '◀';
-  }
-
-  /* W5: sidebar rail mode switcher.
-     Public entry point — W6 will call this on drag-enter to flip the
-     panel to "upload" so the user sees the drop zone even if they
-     were browsing the recent / search modes.
-     Selection persists across reloads via localStorage. */
-  function switchSidebarMode(modeId) {
-    if (!modeId) return;
-    const rail   = document.querySelectorAll('.sidebar-rail-item');
-    const panels = document.querySelectorAll('.sidebar-panel-mode');
-    let matched = false;
-    rail.forEach(el => {
-      const on = el.dataset.mode === modeId;
-      el.classList.toggle('active', on);
-      if (on) matched = true;
-    });
-    if (!matched) return;  // unknown mode → ignore
-    panels.forEach(el => {
-      el.classList.toggle('active', el.dataset.mode === modeId);
-    });
-    // W8-B: lazy-load the "내 자료" list when switching into recent.
-    if (modeId === 'recent' && typeof loadMineSidebar === 'function') {
-      loadMineSidebar();
-    }
-    // P3-4 → sidebar: lazy-load the "대화 이력" list when switching
-    // into sessions (was: floating panel toggle).
-    if (modeId === 'sessions' && typeof loadSessionList === 'function') {
-      loadSessionList();
-    }
-    // Update the panel header title from the matching rail tip so
-    // i18n stays in one place.
-    const titleEl = document.getElementById('sidebar-title');
-    const ral = document.querySelector(
-      `.sidebar-rail-item[data-mode="${modeId}"] .sidebar-rail-tip`
-    );
-    if (titleEl && ral) {
-      titleEl.innerHTML = '▸ <span>' + ral.textContent.trim() + '</span>';
-    }
-    // If collapsed, opening the rail also expands the sidebar so the
-    // user sees the new mode's content — otherwise the click feels
-    // dead.
-    const sb = document.getElementById('sidebar');
-    if (sb.classList.contains('collapsed')) {
-      toggleSidebar();
-    }
-    try { localStorage.setItem('james_sidebar_mode', modeId); } catch (_) {}
-  }
-</script>
+<!-- v0.5 UI #4 — inline <script> block extracted to /static/index-init.js
+     so the chat page's CSP can drop script-src 'unsafe-inline'. No
+     behaviour change — functions are exposed on `window` for
+     existing call sites in chat.js / upload.js / data-action
+     delegation. -->
+<script src="/static/index-init.js"></script>
 
 <!-- ── 로그인 모달 ── -->
 <div class="modal-overlay hidden" id="login-modal"
