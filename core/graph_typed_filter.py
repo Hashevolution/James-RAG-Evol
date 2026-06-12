@@ -37,7 +37,7 @@ import os
 import re
 from typing import Dict, Iterable, List, Sequence, Tuple
 
-from core.ontology import ENTITY_TYPES
+from core.ontology import DOCUMENT_SUBTYPES, ENTITY_TYPES
 
 
 # ─── Runtime flag ──────────────────────────────────────────────────────
@@ -283,10 +283,246 @@ def apply_typed_filter(
     return rendered, groups
 
 
+# ─── v0.5 B.5.d — Document-subtype intent layer ───────────────────────
+#
+# Parallel to the entity-type classifier above, but operating on
+# DOCUMENT_SUBTYPES (10 horizontal subtypes added in B.5.b). For
+# enterprise queries like "which policy is in force?", the
+# entity-type-level classifier would return ["org"] or fall through to
+# "concept" — losing the structural cue that the user is asking about a
+# specific document KIND. This layer fills that gap with the same
+# R1-R5 contract preserved at the subtype level.
+#
+# This layer is additive — existing callers of `classify_query_intent`
+# / `apply_typed_filter` are unchanged. Callers that ingest document
+# entities can opt in to `apply_document_subtype_filter` for an extra
+# typed-context block. The same `JAMES_DISABLE_TYPED_FILTER` env var
+# disables both layers.
+#
+# Vertical-agnostic per CLAUDE.md rule #1 — keywords are generic
+# horizontal terms (no NDA / recipe / 10-K / treatment-protocol).
+
+_SUBTYPE_KEYWORDS: Dict[str, Tuple[str, ...]] = {
+    "contract": (
+        "contract", "agreement", "sla", "service agreement", "mou",
+        "계약", "계약서", "협약", "서비스 계약",
+    ),
+    "policy": (
+        "policy", "policies", "guideline", "guidelines", "rule book",
+        "정책", "지침", "방침",
+    ),
+    "procedure": (
+        "procedure", "process", "sop", "workflow", "how to",
+        "절차", "프로세스", "업무 절차", "표준 작업",
+    ),
+    "memo": (
+        "memo", "memorandum", "internal note", "announcement",
+        "메모", "공지", "사내 공지", "안내",
+    ),
+    "report": (
+        "report", "summary", "review document", "analysis",
+        "보고서", "리포트", "분석 보고",
+    ),
+    "specification": (
+        "specification", "spec", "design doc", "design document",
+        "requirements", "api spec",
+        "명세", "사양", "스펙", "설계 문서", "요구사항",
+    ),
+    "meeting_minutes": (
+        "minutes", "meeting minutes", "meeting notes", "회의록",
+        "회의 기록", "회의 메모",
+    ),
+    "standard": (
+        "standard", "convention", "norm", "baseline document",
+        "표준", "규약", "규격", "준칙",
+    ),
+    "form": (
+        "form", "template", "request form", "intake form",
+        "양식", "서식", "신청서", "템플릿",
+    ),
+    "record": (
+        "record", "log", "logbook", "ledger", "decision log",
+        "기록", "이력", "로그", "장부",
+    ),
+}
+
+
+def classify_document_subtype_intent(query: str) -> List[str]:
+    """Heuristic classifier → ranked list of expected DOCUMENT_SUBTYPES.
+
+    Mirror of `classify_query_intent` but operating on the v0.5 document
+    subtype layer. Returns subtypes whose keywords appear in the query
+    (case-insensitive substring match), ordered by keyword-count
+    descending. Ties broken by DOCUMENT_SUBTYPES declaration order.
+
+    No fallback: if no subtype keyword matches, returns ``[]`` (the
+    document-subtype layer is OPT-IN per-query — the entity-type
+    classifier has its own "concept" fallback for general queries).
+
+    Cap: at most 10 subtypes (R5). The 10 horizontal subtypes registered
+    in B.5.b naturally fit under the cap.
+    """
+    if not query:
+        return []
+
+    q_lower = query.lower()
+    counts: Dict[str, int] = {}
+    for subtype_name, keywords in _SUBTYPE_KEYWORDS.items():
+        for kw in keywords:
+            if kw.lower() in q_lower:
+                counts[subtype_name] = counts.get(subtype_name, 0) + 1
+
+    if not counts:
+        return []
+
+    declaration_order = {t: i for i, t in enumerate(DOCUMENT_SUBTYPES)}
+    ranked = sorted(
+        counts.items(),
+        key=lambda kv: (-kv[1], declaration_order.get(kv[0], 999)),
+    )
+    return [t for t, _ in ranked[:10]]
+
+
+def _document_subtype_of(doc: dict) -> str:
+    """Recover a document's subtype using the conventional field names."""
+    return (
+        doc.get("subtype")
+        or doc.get("document_subtype")
+        or ""
+    )
+
+
+def group_documents_by_subtype(
+    documents: Iterable[dict],
+    query_subtypes: Sequence[str],
+    cap: int = 10,
+) -> List[Tuple[str, List[dict], bool]]:
+    """Group documents by SUBTYPE, emitting empty rows per R1-R5.
+
+    Subtype-level parallel of `group_entities_by_type`. Same R1-R5
+    contract:
+
+      R1. Never silently drop a query-relevant subtype slot.
+      R2. Empty subtype rows are first-class context.
+      R3. Documents whose subtype is not in ``query_subtypes`` are
+          ONLY included as non-empty extra slots (no empty extras).
+      R4. Subtype slots are ordered by query intent rank first.
+      R5. Total slots capped at ``cap`` (default 10).
+
+    Documents with an empty / unknown subtype are silently skipped at
+    bucketing time (they cannot anchor a subtype slot).
+    """
+    if cap < 1:
+        cap = 1
+
+    buckets: Dict[str, List[dict]] = {}
+    for doc in documents:
+        if not isinstance(doc, dict):
+            continue
+        sub = _document_subtype_of(doc)
+        if not sub:
+            continue
+        buckets.setdefault(sub, []).append(doc)
+
+    out: List[Tuple[str, List[dict], bool]] = []
+    used: set = set()
+
+    # Phase 1 — query-relevant subtypes in intent order (R1+R4)
+    for s in query_subtypes:
+        if len(out) >= cap:
+            break
+        docs = buckets.get(s, [])
+        out.append((s, docs, bool(docs)))
+        used.add(s)
+
+    # Phase 2 — non-empty registered subtypes not yet covered (R3 inverse)
+    for s in DOCUMENT_SUBTYPES:
+        if len(out) >= cap:
+            break
+        if s in used:
+            continue
+        docs = buckets.get(s, [])
+        if docs:
+            out.append((s, docs, True))
+
+    return out
+
+
+def _document_label(doc: dict) -> str:
+    """Pick a readable label for a document dict."""
+    return (
+        doc.get("title")
+        or doc.get("name")
+        or doc.get("doc_id", "")
+        or "?"
+    )
+
+
+def format_subtype_context(
+    groups: List[Tuple[str, List[dict], bool]],
+    *,
+    none_phrase: str = "(none found in graph for this query)",
+    header: str = "[DOCUMENTS BY SUBTYPE]",
+    entity_separator: str = ", ",
+) -> str:
+    """Render subtype-grouped documents to the LLM-readable string.
+
+    Format:
+        [DOCUMENTS BY SUBTYPE]
+          [Policy]:    Data retention policy
+          [Procedure]: (none found in graph for this query)
+          [Report]:    Annual report 2025
+          ...
+
+    Empty-slot phrase is the structural evidence-of-absence signal (R2).
+    """
+    lines: List[str] = [header]
+    for subtype_name, docs, present in groups:
+        if present:
+            labels = [_document_label(d) for d in docs]
+            rendered = entity_separator.join(labels)
+        else:
+            rendered = none_phrase
+        # Title-case multi-word subtypes (meeting_minutes → Meeting_Minutes)
+        # using simple capitalize on each '_'-separated part for readability.
+        display = " ".join(p.capitalize() for p in subtype_name.split("_"))
+        lines.append(f"  [{display}]: {rendered}")
+    return "\n".join(lines)
+
+
+def apply_document_subtype_filter(
+    query: str,
+    documents: Iterable[dict],
+    cap: int = 10,
+) -> Tuple[str, List[Tuple[str, List[dict], bool]]]:
+    """Subtype-level convenience: classify + group + render in one call.
+
+    Returns ``(rendered_string, groups)``. When the query contains no
+    subtype keywords, returns ``("", [])`` — the caller should fall back
+    to the existing entity-type-level context.
+
+    Disabled-state behaviour: same as `apply_typed_filter` — callers
+    check `is_typed_filter_disabled()` at the call site rather than this
+    function auto-disabling, so the A/B comparison stays clean at the
+    integration layer.
+    """
+    query_subtypes = classify_document_subtype_intent(query)
+    if not query_subtypes:
+        return "", []
+    groups = group_documents_by_subtype(documents, query_subtypes, cap=cap)
+    rendered = format_subtype_context(groups)
+    return rendered, groups
+
+
 __all__ = (
     "is_typed_filter_disabled",
     "classify_query_intent",
     "group_entities_by_type",
     "format_typed_context",
     "apply_typed_filter",
+    # v0.5 B.5.d — document subtype layer
+    "classify_document_subtype_intent",
+    "group_documents_by_subtype",
+    "format_subtype_context",
+    "apply_document_subtype_filter",
 )
