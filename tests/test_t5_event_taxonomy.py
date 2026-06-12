@@ -79,7 +79,8 @@ class EventTypeTaxonomyTests(unittest.TestCase):
         from core.lifecycle import replay_audit as ra
         # Memo §3 table: T7 supersede (2), T6 cascade (1), T1 expiration (1),
         # T2 contradiction (1), T2.D ingest (1), migration backfill (1) = 7.
-        self.assertEqual(len(ra.LIFECYCLE_EVENT_TYPES), 7)
+        # v0.6 G8.c (B.3 §4.4): + ontology pack mounted (1) + unmounted (1) = 9.
+        self.assertEqual(len(ra.LIFECYCLE_EVENT_TYPES), 9)
         # Each entry must be a string starting with 'lifecycle.'.
         for evt in ra.LIFECYCLE_EVENT_TYPES:
             self.assertIsInstance(evt, str)

@@ -83,6 +83,13 @@ EVT_T2D_INGEST_DISPATCH = "lifecycle.t2d.ingest_dispatch"
 # these as a one-shot bootstrap event.
 EVT_BACKFILL_SNAPSHOT = "lifecycle.backfill.snapshot"
 
+# v0.6 G8.c — ontology pack mount/unmount lifecycle events. Emitted
+# by `core/ontology_packs.py::register_pack` / `unmount_pack` so
+# `reconstruct_graph_at(t)` can rebuild the pack registry as it was
+# at time T. Per B.3 §4.4.
+EVT_ONTOLOGY_PACK_MOUNTED   = "lifecycle.ontology.pack_mounted"
+EVT_ONTOLOGY_PACK_UNMOUNTED = "lifecycle.ontology.pack_unmounted"
+
 
 LIFECYCLE_EVENT_TYPES: tuple[str, ...] = (
     EVT_SUPERSEDE_EDGE_CREATED,
@@ -92,6 +99,8 @@ LIFECYCLE_EVENT_TYPES: tuple[str, ...] = (
     EVT_T2_DISPATCH_CONTRADICTION,
     EVT_T2D_INGEST_DISPATCH,
     EVT_BACKFILL_SNAPSHOT,
+    EVT_ONTOLOGY_PACK_MOUNTED,
+    EVT_ONTOLOGY_PACK_UNMOUNTED,
 )
 
 
@@ -255,6 +264,9 @@ __all__ = [
     "EVT_T2_DISPATCH_CONTRADICTION",
     "EVT_T2D_INGEST_DISPATCH",
     "EVT_BACKFILL_SNAPSHOT",
+    # v0.6 G8.c
+    "EVT_ONTOLOGY_PACK_MOUNTED",
+    "EVT_ONTOLOGY_PACK_UNMOUNTED",
     "is_lifecycle_event",
     "emit_lifecycle_event",
 ]

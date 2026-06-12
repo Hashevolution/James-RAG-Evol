@@ -51,6 +51,8 @@ from typing import Any, Callable, Dict, FrozenSet, List, Optional, Tuple
 from core.lifecycle.replay_audit import (
     EVT_BACKFILL_SNAPSHOT,
     EVT_CASCADE_INVALIDATE,
+    EVT_ONTOLOGY_PACK_MOUNTED,
+    EVT_ONTOLOGY_PACK_UNMOUNTED,
     EVT_SUPERSEDE_CHAIN_EXTENDED,
     EVT_SUPERSEDE_EDGE_CREATED,
     EVT_T1_EXPIRATION_CASCADE,
@@ -91,6 +93,13 @@ class GraphSnapshot:
     invalidated_ids:   FrozenSet[str]
     replayed_at:       datetime
     event_count:       int
+    # v0.6 G8.c — ontology pack registry as it was at `replayed_at`.
+    # ``pack_id → pack provenance dict`` (carries the pack's
+    # capability + since + provenance string at the moment it was
+    # mounted; does NOT carry the pack's subtypes / relations /
+    # roles because those are content the pack owns + would bloat
+    # the snapshot). Empty when no packs are mounted at `t`.
+    mounted_pack_ids:  Tuple[str, ...] = ()
 
 
 # Empty snapshot — returned when the audit_log has no lifecycle rows
@@ -98,7 +107,7 @@ class GraphSnapshot:
 def _empty_snapshot(t: datetime) -> GraphSnapshot:
     return GraphSnapshot(
         edges={}, supersede_chains={}, invalidated_ids=frozenset(),
-        replayed_at=t, event_count=0,
+        replayed_at=t, event_count=0, mounted_pack_ids=(),
     )
 
 
@@ -253,6 +262,19 @@ def _h_backfill_snapshot(
                 invalidated.add(eid)
 
 
+# v0.6 G8.c — pack mount/unmount handlers + dispatch helper live
+# in core/lifecycle/replay_packs.py so this file doesn't grow over
+# the (already-grandfathered) 20 KB cap further. The handlers are
+# no-ops (mounted-packs tracking happens in the dispatch loop via
+# apply_pack_event), but the registry needs an entry for each
+# LIFECYCLE_EVENT_TYPES member.
+from core.lifecycle.replay_packs import (  # noqa: E402
+    apply_pack_event,
+    handle_ontology_pack_mounted,
+    handle_ontology_pack_unmounted,
+)
+
+
 _HANDLERS: Dict[str, Callable[..., None]] = {
     EVT_SUPERSEDE_EDGE_CREATED:    _h_supersede_edge_created,
     EVT_SUPERSEDE_CHAIN_EXTENDED:  _h_supersede_chain_extended,
@@ -261,6 +283,9 @@ _HANDLERS: Dict[str, Callable[..., None]] = {
     EVT_T2_DISPATCH_CONTRADICTION: _h_t2_dispatch_contradiction,
     EVT_T2D_INGEST_DISPATCH:       _h_t2d_ingest_dispatch,
     EVT_BACKFILL_SNAPSHOT:         _h_backfill_snapshot,
+    # v0.6 G8.c — handlers imported from replay_packs (no-ops)
+    EVT_ONTOLOGY_PACK_MOUNTED:     handle_ontology_pack_mounted,
+    EVT_ONTOLOGY_PACK_UNMOUNTED:   handle_ontology_pack_unmounted,
 }
 
 
@@ -401,6 +426,11 @@ def reconstruct_graph_at(
     edges: Dict[str, Dict[str, Any]] = {}
     chains: Dict[str, List[str]] = {}
     invalidated: set = set()
+    # v0.6 G8.c — mounted-packs projection. Tracked separately from
+    # the edge state because pack mount/unmount events do not touch
+    # edges/chains. Insertion order is preserved (a pack mounted
+    # earlier shows up first in the snapshot tuple).
+    mounted_pack_ids: List[str] = []
     n = 0
 
     for evt, payload_json in rows:
@@ -429,6 +459,8 @@ def reconstruct_graph_at(
         if tenant_id is not None:
             if payload.get("tenant_id") != tenant_id:
                 continue
+        # v0.6 G8.c — pack mount/unmount tracking via helper module.
+        apply_pack_event(evt, payload, mounted_pack_ids)
         handler = _HANDLERS.get(evt)
         if handler is None:
             continue
@@ -441,6 +473,9 @@ def reconstruct_graph_at(
         invalidated_ids=frozenset(invalidated),
         replayed_at=t,
         event_count=n,
+        # v0.6 G8.c — tuple to freeze the projection (deterministic
+        # snapshot field).
+        mounted_pack_ids=tuple(mounted_pack_ids),
     )
 
 
