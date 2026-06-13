@@ -157,7 +157,10 @@
     </div>
 
     <div>
-      <div class="panel-title" style="margin-bottom:8px" data-i18n="graph.legend.title">Legend</div>
+      <div class="panel-title" style="margin-bottom:8px"
+           data-i18n="graph.legend.title">
+        <span data-glossary="entity">Legend</span>
+      </div>
       <div class="legend">
         <div class="legend-row"><span class="legend-dot" style="background:var(--t-person)"></span>   <span data-i18n="graph.legend.person">person</span></div>
         <div class="legend-row"><span class="legend-dot" style="background:var(--t-org)"></span>      <span data-i18n="graph.legend.org">org</span></div>
@@ -510,5 +513,9 @@
      it can hook the picker button + the `james:timetravel:*`
      events the prior shells dispatch. -->
 <script src="/static/time-travel-diff.js"></script>
+<!-- v0.6 Phase 4 P4.4 — universal glossary tooltip script.
+     Scans the page for elements with `data-glossary="<term>"` and
+     attaches hover/focus tooltips with plain-Korean definitions. -->
+<script src="/static/glossary.js"></script>
 </body>
 </html>

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#04060a">
+<title data-i18n="glossary.page_title">JAMES — 용어 설명</title>
+<link rel="stylesheet" href="/static/tokens.css">
+<link rel="stylesheet" href="/static/onboarding.css">
+<link rel="stylesheet" href="/static/glossary.css">
+<link rel="stylesheet" href="/static/mobile.css">
+</head>
+<body>
+
+<a href="#main" class="skip-link" data-i18n="a11y.skip_to_main">Skip to main content</a>
+
+<header>
+  <div class="logo">
+    <span class="brand">Secure Enterprise Knowledge<span class="brand-tail">Operating System</span></span>
+    <span style="color:var(--muted);font-size:11px;margin-left:6px"
+          data-i18n="glossary.header_subtitle">· 용어 설명</span>
+  </div>
+  <div class="header-right">
+    <button class="nav-btn" data-lang-toggle data-action="toggle-lang"
+            title="Language / 언어"
+            aria-label="언어 전환 / Toggle language"
+            style="font-size:12px;font-weight:600;background:var(--surface-2);
+                   border:1px solid var(--border);border-radius:6px;
+                   padding:5px 10px;cursor:pointer;color:var(--text-soft)"></button>
+    <a href="/admin" class="nav-btn"
+       data-i18n="glossary.back_to_admin">← 관리자 페이지</a>
+  </div>
+</header>
+
+<main id="main" class="glossary-main">
+  <h1 class="glossary-h1" data-i18n="glossary.title">용어 설명</h1>
+  <p class="glossary-intro" data-i18n="glossary.intro">
+    JAMES 의 화면에 등장하는 기술 용어들을 평이한 한국어로 설명합니다.
+    모르는 용어가 보이면 이 페이지에서 검색하거나, 다른 페이지에서 점선 밑줄이
+    그어진 단어 위에 마우스를 올리면 같은 설명이 툴팁으로 나타납니다.
+  </p>
+
+  <div class="glossary-search">
+    <input id="glossary-search-input"
+           type="text"
+           autocomplete="off"
+           placeholder="용어 검색…"
+           data-i18n-placeholder="glossary.search.placeholder"
+           aria-label="용어 검색"
+           class="glossary-input">
+  </div>
+
+  <!-- ── Category: Core concepts ── -->
+  <section class="glossary-section" data-category="core">
+    <h2 data-i18n="glossary.cat.core">기본 개념</h2>
+    <dl class="glossary-list">
+
+      <div class="glossary-entry" data-term="rag" tabindex="0">
+        <dt>RAG <span class="term-en">(Retrieval-Augmented Generation)</span></dt>
+        <dd data-i18n="glossary.def.rag">
+          질문에 답할 때, LLM 이 가진 지식만 쓰지 않고
+          <strong>먼저 사내 문서를 검색</strong>한 뒤 그 결과를 근거로
+          답을 만드는 방식. JAMES 가 기본적으로 동작하는 방식입니다.
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="graph-rag" tabindex="0">
+        <dt>Graph-RAG <span class="term-en">(그래프 기반 RAG)</span></dt>
+        <dd data-i18n="glossary.def.graph_rag">
+          단순 문서 검색에 더해 <strong>온톨로지 그래프 (개념 간 관계망)</strong>
+          를 통해 답을 찾는 방식. 여러 문서에 흩어진 정보를 연결해서
+          답할 수 있습니다.
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="entity" tabindex="0">
+        <dt>Entity <span class="term-en">(엔티티)</span></dt>
+        <dd data-i18n="glossary.def.entity">
+          시스템이 알고 있는 <strong>한 개의 "것"</strong> — 사람, 조직, 개념,
+          문서 등. 예: "앤스로픽" / "휴가 정책 v3" / "김철수".
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="relation" tabindex="0">
+        <dt>Relation <span class="term-en">(관계)</span></dt>
+        <dd data-i18n="glossary.def.relation">
+          엔티티들 사이의 <strong>연결</strong>. 예: "앤스로픽 ─CEO─ 다리오 아모데이",
+          "휴가 정책 v3 ─supersedes─ 휴가 정책 v2".
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="ontology" tabindex="0">
+        <dt>Ontology <span class="term-en">(온톨로지)</span></dt>
+        <dd data-i18n="glossary.def.ontology">
+          엔티티의 <strong>종류 + 관계 종류</strong> 의 정의 체계. 예: 회사 도메인은
+          "사람 / 조직 / 문서 / 정책" 같은 엔티티 종류, "WORKS_AT / SUPERSEDES /
+          APPROVED_BY" 같은 관계 종류로 구성.
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="embedding" tabindex="0">
+        <dt>Embedding <span class="term-en">(임베딩)</span></dt>
+        <dd data-i18n="glossary.def.embedding">
+          텍스트를 <strong>숫자 벡터로 변환</strong>한 것. 이를 통해 "비슷한 의미"
+          를 가진 문서를 빠르게 찾을 수 있습니다.
+        </dd>
+      </div>
+
+    </dl>
+  </section>
+
+  <!-- ── Category: Audit + Time ── -->
+  <section class="glossary-section" data-category="audit">
+    <h2 data-i18n="glossary.cat.audit">감사 + 시점</h2>
+    <dl class="glossary-list">
+
+      <div class="glossary-entry" data-term="audit-log" tabindex="0">
+        <dt>Audit log <span class="term-en">(감사 로그)</span></dt>
+        <dd data-i18n="glossary.def.audit_log">
+          시스템에서 일어난 <strong>모든 동작의 기록</strong>. 누가 언제 어떤
+          질문을 했는지, 어떤 문서를 봤는지, 어떤 변경을 했는지 모두 저장됩니다.
+          위조 불가능 (append-only).
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="trace-id" tabindex="0">
+        <dt>trace_id <span class="term-en">(추적 ID)</span></dt>
+        <dd data-i18n="glossary.def.trace_id">
+          한 번의 질문/답변 흐름 전체를 <strong>고유하게 식별하는 ID</strong>.
+          나중에 "이 답이 어떻게 만들어졌지?" 추적할 때 사용. 모든 audit log
+          행에 함께 기록됩니다.
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="replay" tabindex="0">
+        <dt>Replay <span class="term-en">(재생)</span></dt>
+        <dd data-i18n="glossary.def.replay">
+          과거 어떤 시점의 시스템 상태를 <strong>바이트 단위로 똑같이 재구성</strong>
+          하는 기능. audit log 만 있으면 어느 시점이든 재현 가능.
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="time-travel" tabindex="0">
+        <dt>Time-travel <span class="term-en">(시점 복원)</span></dt>
+        <dd data-i18n="glossary.def.time_travel">
+          관리자 → 그래프 페이지에서 시점 선택 → 그 시점의 시스템 상태를 보거나
+          되돌리는 기능. 실수 복구 + forensic 분석에 사용.
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="supersede" tabindex="0">
+        <dt>Supersede <span class="term-en">(관계 갱신)</span></dt>
+        <dd data-i18n="glossary.def.supersede">
+          예: "휴가 정책 v3 가 v2 를 supersede 한다" = 더 새로운 버전이 이전
+          버전을 대체. <strong>이전 버전은 지워지지 않고</strong> 체인 형태로
+          보존되어, 시점 복원이 가능합니다.
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="cascade" tabindex="0">
+        <dt>Cascade <span class="term-en">(연쇄 무효화)</span></dt>
+        <dd data-i18n="glossary.def.cascade">
+          한 문서를 삭제했을 때 그 문서를 근거로 한 다른 정보들을
+          <strong>자동으로 비활성화</strong>하는 동작. "이 정보의 근거였던 문서가
+          없어졌으니 정보도 의심스러움" 표시.
+        </dd>
+      </div>
+
+    </dl>
+  </section>
+
+  <!-- ── Category: Answer quality ── -->
+  <section class="glossary-section" data-category="quality">
+    <h2 data-i18n="glossary.cat.quality">답변 품질</h2>
+    <dl class="glossary-list">
+
+      <div class="glossary-entry" data-term="abstention" tabindex="0">
+        <dt>Abstention <span class="term-en">(회피)</span></dt>
+        <dd data-i18n="glossary.def.abstention">
+          시스템이 답을 모를 때 <strong>"정보가 없습니다" 라고 솔직하게 답하는 것</strong>.
+          추측해서 잘못된 답을 만드는 것보다 회피가 옳은 행동입니다.
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="hallucination" tabindex="0">
+        <dt>Hallucination <span class="term-en">(환각)</span></dt>
+        <dd data-i18n="glossary.def.hallucination">
+          LLM 이 사실이 아닌 내용을 <strong>그럴듯하게 만들어내는 현상</strong>.
+          JAMES 는 회피 + 근거 표시로 환각을 최소화합니다.
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="citation" tabindex="0">
+        <dt>Citation <span class="term-en">(근거 인용)</span></dt>
+        <dd data-i18n="glossary.def.citation">
+          답변에 <strong>어떤 문서의 어느 부분을 사용했는지</strong> 출처를 함께
+          표시하는 것. 답을 검증 + 재확인할 수 있게 합니다.
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="path-coverage" tabindex="0">
+        <dt>Path coverage <span class="term-en">(경로 적중률)</span></dt>
+        <dd data-i18n="glossary.def.path_coverage">
+          질문에 답하는 데 필요한 <strong>실제 근거 문서를 시스템이 얼마나
+          찾았는지</strong> 측정한 비율. JAMES Graph-RAG = 0.41 (벡터 검색만
+          쓰면 0.00).
+        </dd>
+      </div>
+
+    </dl>
+  </section>
+
+  <!-- ── Category: Security / Auth ── -->
+  <section class="glossary-section" data-category="security">
+    <h2 data-i18n="glossary.cat.security">보안 + 권한</h2>
+    <dl class="glossary-list">
+
+      <div class="glossary-entry" data-term="rbac" tabindex="0">
+        <dt>RBAC <span class="term-en">(역할 기반 접근 제어)</span></dt>
+        <dd data-i18n="glossary.def.rbac">
+          사용자의 <strong>역할에 따라</strong> 무엇을 볼 수 있는지 결정.
+          예: "admin / employee / external" 역할별로 접근 가능 자료가 다름.
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="abac" tabindex="0">
+        <dt>ABAC <span class="term-en">(속성 기반 접근 제어)</span></dt>
+        <dd data-i18n="glossary.def.abac">
+          역할 + 문서 속성 (예: "기밀 등급") 의 조합으로 접근을 결정.
+          RBAC 보다 세밀한 통제.
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="oidc" tabindex="0">
+        <dt>OIDC <span class="term-en">(OpenID Connect)</span></dt>
+        <dd data-i18n="glossary.def.oidc">
+          회사의 SSO (Single Sign-On) 시스템과 JAMES 를 <strong>연동</strong>
+          하는 표준. JAMES 직접 비밀번호를 받지 않고 회사 IdP 에 위임.
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="approval-evidence" tabindex="0">
+        <dt>Approval evidence <span class="term-en">(승인 증거)</span></dt>
+        <dd data-i18n="glossary.def.approval_evidence">
+          변경 승인 시 <strong>운영자의 신원을 암호학적으로 기록</strong>한
+          정보 (SSO 토큰 또는 OS 사용자 ID 의 해시). 사후 위조 불가능.
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="csp" tabindex="0">
+        <dt>CSP <span class="term-en">(Content Security Policy)</span></dt>
+        <dd data-i18n="glossary.def.csp">
+          브라우저가 어떤 스크립트/스타일을 실행할 수 있는지 <strong>제한
+          하는 보안 정책</strong>. XSS 공격 방어.
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="tenant" tabindex="0">
+        <dt>Tenant <span class="term-en">(테넌트)</span></dt>
+        <dd data-i18n="glossary.def.tenant">
+          한 JAMES 인스턴스에 <strong>여러 고객사가 들어 있을 때 각 고객사</strong>.
+          예: SaaS 운영 시 acme / globex 가 같은 서버를 쓰지만 데이터는 분리.
+        </dd>
+      </div>
+
+    </dl>
+  </section>
+
+  <!-- ── Category: Operator action ── -->
+  <section class="glossary-section" data-category="ops">
+    <h2 data-i18n="glossary.cat.ops">운영자 동작</h2>
+    <dl class="glossary-list">
+
+      <div class="glossary-entry" data-term="change-request" tabindex="0">
+        <dt>Change Request (CR) <span class="term-en">(변경 요청)</span></dt>
+        <dd data-i18n="glossary.def.change_request">
+          직원이 정보를 수정하고 싶을 때 만드는 <strong>"제안" 상태의 변경</strong>.
+          운영자가 검토 후 승인/거부할 때까지 실제 시스템에는 적용되지 않습니다.
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="rollback" tabindex="0">
+        <dt>Rollback <span class="term-en">(롤백)</span></dt>
+        <dd data-i18n="glossary.def.rollback">
+          잘못된 변경을 <strong>되돌리는 동작</strong>. JAMES 에는 (a) "최근 변경
+          되돌리기" + (b) "특정 시점으로 복원" 두 가지가 있습니다.
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="contradiction-arbiter" tabindex="0">
+        <dt>Contradiction arbiter <span class="term-en">(모순 중재)</span></dt>
+        <dd data-i18n="glossary.def.contradiction_arbiter">
+          새로 들어온 정보가 기존 정보와 충돌할 때 <strong>4 가지 규칙으로
+          어떻게 처리할지 결정</strong>하는 모듈. LLM 호출 없이 결정론적.
+        </dd>
+      </div>
+
+      <div class="glossary-entry" data-term="reasoning-trace" tabindex="0">
+        <dt>Reasoning trace <span class="term-en">(추론 흔적)</span></dt>
+        <dd data-i18n="glossary.def.reasoning_trace">
+          한 번의 질문/답변에서 시스템이 <strong>어떤 단계들을 거쳤는지</strong>
+          의 기록. 관리자 → 추론 흐름 보기 페이지에서 시각화하여 볼 수 있음.
+        </dd>
+      </div>
+
+    </dl>
+  </section>
+
+  <div id="glossary-no-results"
+       class="empty-state"
+       hidden
+       data-i18n="glossary.search.no_results">
+    검색 결과가 없습니다.
+  </div>
+
+  <p class="glossary-footer-note" data-i18n="glossary.footer_note">
+    💡 다른 페이지에서 <span class="glossary-term-demo">점선 밑줄</span> 이
+    그어진 단어 위에 마우스를 올리면 같은 설명이 툴팁으로 나타납니다.
+  </p>
+</main>
+
+<script src="/static/i18n.js"></script>
+<script src="/static/auth.js"></script>
+<script src="/static/glossary.js"></script>
+</body>
+</html>

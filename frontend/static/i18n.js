@@ -280,6 +280,22 @@ const TRANSLATIONS = {
     'admin.onboarding_link':   'Operator guide',
     'admin.rollback_link':     'Knowledge rollback',
     'admin.flow_link':         'Reasoning flow',
+    'admin.glossary_link':     'Glossary',
+
+    // v0.6 Phase 4 P4.4 — glossary page
+    'glossary.page_title':          'JAMES — Glossary',
+    'glossary.header_subtitle':     '· Glossary',
+    'glossary.back_to_admin':       '← Admin',
+    'glossary.title':               'Glossary',
+    'glossary.intro':               'Plain-language explanations of the technical terms used throughout the JAMES interface. Search or hover over any dotted-underlined term on other pages to see the same tooltip.',
+    'glossary.search.placeholder':  'Search terms…',
+    'glossary.search.no_results':   'No results match your search.',
+    'glossary.cat.core':            'Core concepts',
+    'glossary.cat.audit':           'Audit + time',
+    'glossary.cat.quality':         'Answer quality',
+    'glossary.cat.security':        'Security + access',
+    'glossary.cat.ops':             'Operator actions',
+    'glossary.footer_note':         '💡 On other pages, hover over any dotted-underlined word to see the same explanation as a tooltip.',
 
     // v0.6 Phase 4 P4.3 — reasoning flow visualization
     'flow.page_title':             'JAMES — Reasoning flow',
@@ -1343,6 +1359,22 @@ const TRANSLATIONS = {
     'admin.onboarding_link':   '운영자 안내',
     'admin.rollback_link':     '지식 롤백',
     'admin.flow_link':         '추론 흐름',
+    'admin.glossary_link':     '용어 설명',
+
+    // v0.6 Phase 4 P4.4 — glossary page
+    'glossary.page_title':          'JAMES — 용어 설명',
+    'glossary.header_subtitle':     '· 용어 설명',
+    'glossary.back_to_admin':       '← 관리자 페이지',
+    'glossary.title':               '용어 설명',
+    'glossary.intro':               'JAMES 의 화면에 등장하는 기술 용어들을 평이한 한국어로 설명합니다. 이 페이지에서 검색하거나, 다른 페이지에서 점선 밑줄이 그어진 단어 위에 마우스를 올리면 같은 설명이 툴팁으로 나타납니다.',
+    'glossary.search.placeholder':  '용어 검색…',
+    'glossary.search.no_results':   '검색 결과가 없습니다.',
+    'glossary.cat.core':            '기본 개념',
+    'glossary.cat.audit':           '감사 + 시점',
+    'glossary.cat.quality':         '답변 품질',
+    'glossary.cat.security':        '보안 + 권한',
+    'glossary.cat.ops':             '운영자 동작',
+    'glossary.footer_note':         '💡 다른 페이지에서 점선 밑줄이 그어진 단어 위에 마우스를 올리면 같은 설명이 툴팁으로 나타납니다.',
 
     // v0.6 Phase 4 P4.3 — reasoning flow visualization
     'flow.page_title':             'JAMES — 추론 흐름 보기',

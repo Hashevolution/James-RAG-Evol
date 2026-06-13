@@ -1,0 +1,218 @@
+/* v0.6 Phase 4 P4.4 — glossary page + universal tooltip stylesheet.
+ *
+ * Two surfaces:
+ *   1. /glossary page — searchable entry list grouped by category
+ *   2. Universal hover tooltip — any element with `data-glossary` on
+ *      ANY page across JAMES gets a dotted underline + hover tooltip
+ *      that surfaces the same plain-Korean definition
+ */
+
+/* ── page layout (same shell as onboarding/rollback/flow) ──── */
+
+.glossary-main {
+  max-width: 900px;
+  margin: 32px auto;
+  padding: 0 24px 64px;
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+.glossary-h1 {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--accent-fg);
+  margin: 0 0 8px;
+  letter-spacing: .2px;
+}
+
+.glossary-intro {
+  color: var(--text-soft);
+  font-size: 15px;
+  line-height: 1.65;
+  margin: 0 0 24px;
+}
+
+.glossary-search {
+  margin-bottom: 24px;
+}
+
+.glossary-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+  min-height: 44px;
+  box-sizing: border-box;
+  transition: border-color .15s;
+}
+
+.glossary-input:focus { border-color: var(--accent); }
+
+/* ── section per category ───────────────────────────────────── */
+
+.glossary-section {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.glossary-section h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-fg);
+  margin: 0 0 14px;
+  letter-spacing: .3px;
+}
+
+.glossary-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.glossary-entry {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 14px 18px;
+  border-left: 3px solid transparent;
+  transition: border-left-color .15s, transform .1s;
+  cursor: default;
+}
+
+.glossary-entry:hover,
+.glossary-entry:focus-within {
+  border-left-color: var(--accent);
+  outline: none;
+}
+
+.glossary-entry dt {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 6px;
+}
+
+.glossary-entry .term-en {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  letter-spacing: .2px;
+  margin-left: 6px;
+}
+
+.glossary-entry dd {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-soft);
+}
+
+.glossary-entry dd strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.empty-state {
+  padding: 20px;
+  text-align: center;
+  color: var(--muted);
+  font-style: italic;
+  background: var(--bg);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.glossary-footer-note {
+  margin-top: 36px;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-soft);
+  text-align: center;
+}
+
+.glossary-term-demo {
+  border-bottom: 1px dotted var(--accent);
+  cursor: help;
+  padding: 1px 0;
+}
+
+/* ── universal hover-tooltip mechanism (any page) ──────────── */
+
+/* Any element with `data-glossary` gets a dotted underline. The
+ * tooltip itself is a single floating div that glossary.js positions
+ * absolutely on hover. */
+[data-glossary] {
+  border-bottom: 1px dotted var(--accent);
+  cursor: help;
+  text-decoration: none;
+}
+
+[data-glossary]:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.glossary-tooltip {
+  position: absolute;
+  z-index: 100;
+  max-width: 320px;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-soft);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .5);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity .12s, transform .12s;
+}
+
+.glossary-tooltip[data-shown="true"] {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.glossary-tooltip strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.glossary-tooltip .tooltip-term {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-fg);
+  margin-bottom: 4px;
+}
+
+.glossary-tooltip .tooltip-link {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+
+@media (max-width: 600px) {
+  .glossary-main { padding: 0 16px 48px; }
+  .glossary-section { padding: 18px; }
+  .glossary-entry { padding: 12px 14px; }
+  .glossary-tooltip { max-width: 280px; font-size: 12px; }
+}
