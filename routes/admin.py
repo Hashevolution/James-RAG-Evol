@@ -737,6 +737,105 @@ async def admin_graph_snapshot(
         include_sensitive = include_sens,
     )
 
+@router.get(
+    "/admin/graph/reconstruct-at",
+    summary="Audit-only graph state at time T [v0.5 Track F.1 TT.b]",
+)
+async def admin_graph_reconstruct_at(
+    api_key:   str,
+    t:         str,
+    limit:     int = 1000,
+    tenant_id: Optional[str] = None,
+    role:      str = Depends(get_role_from_request),
+):
+    """Replay the lifecycle event stream up to time ``t`` and return the
+    resulting :class:`core.lifecycle.replay_graph.GraphSnapshot` as JSON.
+
+    Surfaces the v0.4.2 T5 ``reconstruct_graph_at`` primitive — the
+    audit-only invariant (I1): the snapshot depends solely on the
+    ``audit_log`` row stream, never on the live wiki. This is what the
+    Time-Travel Dashboard (Track F.1 §5.6) repaints from.
+
+    Query params:
+      - ``t``: ISO-8601 cutoff timestamp. Accepts ``...Z`` (UTC) or an
+        explicit offset (``+00:00``). 400 on parse failure.
+      - ``limit``: maximum number of edges / chain heads to surface in
+        the response (hygiene cap for very large audit logs). Default
+        1000. Counts in ``event_count`` and ``invalidated_count`` are
+        always full-stream and unaffected by this cap.
+      - ``tenant_id``: optional v0.5 G1.b filter (strict-exclusion).
+        ``None`` (default) preserves single-tenant behaviour.
+
+    Returns:
+      ``{"ok": true, "replayed_at": "<iso>", "event_count": N,
+         "edges": {edge_id: {...}, ...},
+         "supersede_chains": {head_id: [edge_id, ...], ...},
+         "invalidated_ids": [edge_id, ...],
+         "invalidated_count": N,
+         "mounted_pack_ids": [pack_id, ...],
+         "truncated": bool}``
+
+      ``edges`` / ``supersede_chains`` / ``invalidated_ids`` are
+      truncated to ``limit``; ``truncated`` flags whether any cap fired.
+
+    Pure-function contract: this handler is a read-only projection of
+    the audit log. No DB write, no module-state mutation, no live-wiki
+    read — same audit_log + same ``t`` always returns byte-identical
+    JSON.
+    """
+    _require_feature(api_key, role, "admin.data")
+
+    from datetime import datetime
+    from core.lifecycle.replay_graph import reconstruct_graph_at
+
+    raw = (t or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="missing 't' query param")
+    try:
+        cutoff = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="'t' must be an ISO-8601 timestamp (e.g. 2026-06-13T05:00:00Z)",
+        )
+
+    cap = max(1, min(int(limit or 1000), 10000))
+
+    snap = reconstruct_graph_at(cutoff, tenant_id=tenant_id)
+
+    truncated = False
+    edges_out: dict = {}
+    for i, (eid, edge) in enumerate(snap.edges.items()):
+        if i >= cap:
+            truncated = True
+            break
+        edges_out[eid] = edge
+
+    chains_out: dict = {}
+    for i, (head_id, chain) in enumerate(snap.supersede_chains.items()):
+        if i >= cap:
+            truncated = True
+            break
+        chains_out[head_id] = list(chain)
+
+    invalid_list = list(snap.invalidated_ids)
+    invalid_count = len(invalid_list)
+    if invalid_count > cap:
+        truncated = True
+        invalid_list = invalid_list[:cap]
+
+    return {
+        "ok":                  True,
+        "replayed_at":         snap.replayed_at.isoformat(),
+        "event_count":         snap.event_count,
+        "edges":               edges_out,
+        "supersede_chains":    chains_out,
+        "invalidated_ids":     invalid_list,
+        "invalidated_count":   invalid_count,
+        "mounted_pack_ids":    list(snap.mounted_pack_ids),
+        "truncated":           truncated,
+    }
+
 @router.get("/admin/graph/events",
          summary="event 노드 시간 윈도우 조회 [PR-11c]")
 async def admin_graph_events_get(
