@@ -1168,57 +1168,107 @@ forward-compat hooks), no domain-specific types.
 
 ---
 
-## v0.5.x — Entry state (2026-06-12)
+## v0.5.x — Cycle close + post-close consolidation (2026-06-12 → 2026-06-13)
 
 **v0.5 entry declared 2026-06-12** after v0.4.4 closure (LRB v0.2.3
 S3 publication-scale + cycle γ 4-bench infrastructure closure; Zenodo
 DOI [`10.5281/zenodo.20652679`](https://doi.org/10.5281/zenodo.20652679)).
 
-Operator decision: *"이제는 진짜 엔터프라이즈 온톨로지 장착으로 간다"*
+Operator decision at entry: *"이제는 진짜 엔터프라이즈 온톨로지 장착으로 간다"*
 ([entry handover](handovers/v0.5-entry-2026-06-12.md)).
 
-### Four work streams (CLAUDE.md rule #1 preserved)
+**v0.5 closed 2026-06-12 PM** with 21 PRs (#841 – #861) per the
+[v0.5 close handover](handovers/v0.5-close-2026-06-12.md). 23
+additional PRs (#863 – #886) landed between cycle close and
+2026-06-13 implementing most of the close handover §5 work queue —
+see the [v0.6 entry skeleton](handovers/v0.6-entry-skeleton-2026-06-13.md)
+for the post-close work-queue status sweep.
 
-| Stream | Scope | Status |
+### Four work streams (CLAUDE.md rule #1 preserved — actual status at 2026-06-13)
+
+| Stream | Scope | Status at 2026-06-13 |
 |---|---|---|
-| **A** — Pre-LOI materials + Hashevolution dogfooding | Customer-facing 자료 v0.4.4 sync (7 docs) + Hashevolution own-company scenario (시나리오 C: internal dogfooding + external outreach 병행) | A.1 / A.2 ✅; A.3 / A.4 operator-action |
-| **B** — Enterprise ontology framework (mother-level) | Audit / multi-tenant / plugin API review + **enterprise document ontology** (B.5: 10 generic subtypes + 7 lifecycle states + 5 relations + 4 roles) | B.5.a design memo LOCKED (this PR); B.5.b code next; B.1-B.4 / B.6-B.7 pending |
-| **C** — Measurement infra carry-over | v0.2.3b S3 cross-model + D-alce + D-2wiki + HR full sweep + arXiv submission | All operator-attended; arXiv Path A defer |
-| **D** — LOI-gated (blocked) | Customer-specific NDA/DPA/MSA + ingestion + pilot kickoff + vertical pack (legal) | Blocked until LOI |
+| **A** — Pre-LOI materials + Hashevolution dogfooding | Customer-facing 자료 v0.4.4 sync (7 docs) + Hashevolution own-company scenario (시나리오 C: internal dogfooding + external outreach 병행) + G1.a/G1.b/G1.c tenant-id contract + G2.a/G2.b/G2.c approval-evidence contract | A.1 / A.2 ✅; A.3 / A.4 **operator-pending**; G1+G2 SaaS-readiness trio ✅ (#860 / #861 / #869 / #870 / #882 / #883) |
+| **B** — Enterprise ontology framework (mother-level) | B.1 audit + B.2 multi-tenant + B.3 plugin API + B.5 enterprise document ontology + G8.a-c mount + SDK.a-c trio | B.5.a-d ✅; B.1 audit + G3/G4/G5/G7 ✅; B.2/B.3 design memos ✅; G8.a-c ✅; SDK.a-c trio ✅ (#875 / #876 / #881); G8.d **LOI-blocked** |
+| **C** — Measurement infra carry-over | v0.2.3b S3 cross-model + D-alce + D-2wiki + HR full sweep + arXiv submission + graph-RAG synthesis | Graph-RAG Step 1 ✅ (#864 / #877, +0.41 path_coverage ⭐⭐⭐ n=3); Step 2 driver scaffold ✅ (#885); all others **operator-attended** |
+| **D** — LOI-gated (blocked) | Customer-specific NDA/DPA/MSA + ingestion + pilot kickoff + vertical pack (legal) + G8.d capability grant workflow + F.2 CR.e customer theming | **BLOCKED** until LOI signed (Fork A of v0.6 entry contract) |
+
+### Additional surfaces landed post-close (not in original v0.5 stream definitions)
+
+- **Track F.1 — Time-Travel Dashboard quartet** (#865 / #878 / #879 / #880): TT.a timestamp picker + TT.b corpus-state diff renderer (audit replay overlay) + TT.c reasoning trail replay at time T + TT.d now-vs-T diff view modal. Surfaces v0.4.2 T5 `reconstruct_graph_at` + v0.5 G3 `reconstruct_corpus_view_at` + `replay_audit` primitives as a single operator dashboard.
+- **Track F.2 — Change Review Workspace quartet** (#866 / #867 / #873 / #874): CR.a list page + CR.b detail modal with diff renderer + CR.c contradiction-arbiter visualisation + CR.d approve/reject buttons with G2.a evidence capture wire.
+- **Track C — CSP nonce middleware** (#884): `core/security/csp_nonce.py` per-request nonce primitive + `build_security_headers` composition seam + `request.state.csp_nonce` middleware wire-in. `script-src` flag safe today; `style-src` flag reserved for UI #6 inline-style migration.
 
 ### Rule discipline (preserved + new)
 
-| Rule | Status |
+| Rule | Status at 2026-06-13 |
 |---|---|
-| **CLAUDE.md rule #1** (no domain features until v1.0) | **PRESERVED** — v0.5 = pilot prep; vertical-pack code blocks until LOI scope or v1.0 |
-| **#2** (bench numbers + Quality Delta Card on core/ PRs) | Preserved |
+| **CLAUDE.md rule #1** (no domain features until v1.0) | **PRESERVED across all 44 cycle + post-close PRs** — 4-layer protection contract (code-level capability gate + doc-level "Out of scope" + naming-level domain-agnostic + trigger-level LOI tagging) held throughout |
+| **#2** (bench numbers + Quality Delta Card on core/ PRs) | Preserved (all 44 PRs touch UI / lifecycle primitives / security / SDK packaging / docs — none touch `core/retrieval` / `core/graph` traversal / `core/reasoning`) |
 | **#3** (self-evolution opt-in) | Preserved |
 | **#4** (architecture changes require `architecture` label) | Preserved |
-| **#5** (`core/` 20KB module size) | Preserved |
+| **#5** (`core/` 20 KB module size) | Preserved for NEW files; five legacy modules grandfathered (largest `core/reasoning/reflect.py` at 29.2 KB — split planned, tracked in v0.6 entry skeleton §5 NEW solo-doable items) |
 | **NEW #6** Dogfooding evidence ≠ Dim F evidence | Hashevolution own-use = iteration feedback; Dim F still requires external customer pilot |
-| **NEW #7** Enterprise ontology = mother-level | Vertical-pack (legal etc.) waits for LOI or v1.0 |
-| **NEW #8** External-facing claims gated on measurement evidence | Zenodo DOI + result.json refs mandatory; no aspirational claims |
+| **NEW #7** Enterprise ontology = mother-level | Vertical-pack (legal etc.) waits for LOI or v1.0; B.5 horizontal subtypes ✅ landed |
+| **NEW #8** External-facing claims gated on measurement evidence | Zenodo DOI + result.json refs mandatory; Step 1 graph-RAG finding cites n=3 paired evidence per `feedback_n1_verdict_inflation_n3_caught` |
 
-### Cycle entry deliverables
+### Cycle entry → close deliverables (actual status)
 
 - [x] v0.5 entry handover doc (`docs/handovers/v0.5-entry-2026-06-12.md`)
 - [x] Pre-LOI material refresh (7 docs, PR #840)
 - [x] Hashevolution own-company scenario doc (PR #840)
-- [x] **B.5.a enterprise document ontology design memo** (`docs/design/v0.5-enterprise-document-ontology.md`, this PR)
-- [ ] B.5.b code implementation (next PR; design memo §8)
-- [ ] B.5.c test fixture + tests (next PR)
-- [ ] Stream A.3 operator: Hashevolution dogfooding start (operator action)
-- [ ] Stream A.4 operator: Tier S contact list + outreach (operator action)
-- [ ] B.1-B.4 enterprise framework reviews (sequence after dogfooding 1+ month)
+- [x] B.5.a-d enterprise document ontology (4 PRs, #841 / #842 / #843 / #844)
+- [x] B.1 audit + 4 gap closures (G3 / G4 / G5 / G7) — 5 PRs (#845 – #849)
+- [x] B.2 / B.3 design memos (G1+G2 multi-tenant contract / G8 plugin-API stability — 2 PRs, #850 / #851)
+- [x] UI improvement stream (6 PRs, #852 – #858)
+- [x] External evaluation disclosure (PR #857)
+- [x] Server-side hardening (3 PRs, #859 – #861 — security headers + G1.a tenant-id + G2.a approval-evidence)
+- [x] v0.5 close handover (PR #862, [2026-06-12 PM](handovers/v0.5-close-2026-06-12.md))
+- [x] **Track A** G1.b replay-side tenant filter + G2.b CR merge wire-in + G1.c deployment guide + G2.c OIDC + asyncio variant (4 PRs, #869 / #870 / #882 / #883)
+- [x] **Track B** G8.a-c ontology pack mount + SDK.a-c trio (6 PRs, #868 / #871 / #872 / #875 / #876 / #881)
+- [x] **Track C** CSP nonce middleware (PR #884)
+- [x] **Track F.1** Time-Travel Dashboard quartet (4 PRs, #865 / #878 / #879 / #880)
+- [x] **Track F.2** Change Review Workspace quartet (4 PRs, #866 / #867 / #873 / #874)
+- [x] Graph-RAG synthesis Step 1 + Step 2 scaffold (3 PRs, #864 / #877 / #885)
+- [x] v0.6 entry preparation skeleton (PR #886) — bridges v0.5 close → v0.6 entry under 2-fork contract
+- [ ] Stream A.3 operator: Hashevolution dogfooding start (**operator action**)
+- [ ] Stream A.4 operator: Tier S contact list + outreach (**operator action**)
+- [ ] Graph-RAG synthesis Step 2 cross-model measurement (~14 h wall, **operator-launchable** via `scripts/research/graph_rag_synth_step2_cross_model.py`)
+- [ ] v0.2.3b LLM-grounded S3 cross-model run (**operator-attended**)
+- [ ] D-alce real NLI verifier + paper v1.4 (**operator-attended**)
+- [ ] HR full sweep n=100 (**operator-attended**)
+- [ ] arXiv preprint submission (Path A defer; **pending operator outreach outcome**)
+
+### v0.5 → v0.6 gate (Dim F)
+
+**Dim F gate** (≥6 month external customer pilot + measured success
+metrics per `docs/PLATFORM_READINESS.md` §3) is **NOT cleared**.
+The 2-fork v0.6 entry contract from the
+[v0.6 entry skeleton §4](handovers/v0.6-entry-skeleton-2026-06-13.md) governs:
+
+- **Fork A** — LOI signed → Track D vertical pack scoping begins. G8.d capability grant workflow + F.2 CR.e customer theming unblock.
+- **Fork B** — 6-month no-LOI → reassess strategy. v0.5 mother-platform work stays the baseline; v0.6 cycle re-scopes around the next strategic direction.
+
+Until one resolves, mother-platform hardening continues; vertical content stays BLOCKED per CLAUDE.md rule #1.
 
 ---
 
-## v0.5.0 — First Domain Pilot (~6 months after v0.4)
+## v0.5.0 — First Domain Pilot (Fork A of v0.6 entry contract)
 
 **Theme**: prove the platform contract by running ONE real domain
 in production for 6 months with one external customer. **Moved here
 from v0.4** so Layer 4 governance lands first — see v0.4 retarget
 rationale above.
+
+> **Status note (2026-06-13)**: this section describes **Fork A** of
+> the v0.6 entry contract (LOI signed → vertical pack scoping
+> begins). v0.5 cycle close (above) shipped the **mother-platform
+> infrastructure** that this fork builds on — G8.a-c ontology pack
+> mount mechanism, G1/G2 SaaS-readiness primitives, SDK.a-c trio
+> for third-party pack authors, Time-Travel Dashboard surface for
+> audit operators. **The Dim F gate clock starts only when a
+> customer LOI is signed**; until then, v0.6 cycle entry waits on
+> the operator's decision per the [v0.6 entry skeleton §4](handovers/v0.6-entry-skeleton-2026-06-13.md).
 
 **Required for**: a second domain pack (forbidden until this gate passes).
 

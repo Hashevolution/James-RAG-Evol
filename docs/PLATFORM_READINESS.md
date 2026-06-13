@@ -4,7 +4,10 @@
 > which domain packs (legal, food, retail, etc.) can branch off
 > safely without breaking the core.
 
-Status: living document. Last updated: v0.1.4 (planning v0.2 entry).
+Status: living document. Last reviewed for accuracy: v0.5 close + post-close
+consolidation (2026-06-13). The 6 dimensions and 4 gates are stable since
+v0.1.4; the Dim F gate (≥6 month external customer pilot) is the active
+v0.5 → v0.6 boundary per the [v0.6 entry skeleton](handovers/v0.6-entry-skeleton-2026-06-13.md).
 
 ---
 

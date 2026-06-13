@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.0-close] — 2026-06-12 → 2026-06-13 — v0.5 cycle close + post-close mother-platform consolidation (UNRELEASED)
+
+**Status**: `main`-branch cycle close + post-close consolidation. **No Zenodo DOI mint** — the v0.5 → v0.6 gate (Dim F: ≥6 month external customer pilot) is not yet cleared, and the 2-fork v0.6 entry contract (LOI signed → Track D / 6-month no-LOI → reassess; see [v0.6 entry skeleton](docs/handovers/v0.6-entry-skeleton-2026-06-13.md)) is the canonical state pointer. This entry documents the cumulative `main`-branch state at the close + post-close interval boundary.
+
+**Theme**: enterprise document ontology mount (B.5 series) + SaaS-readiness primitives (G1 + G2) + Time-Travel Dashboard surface (F.1) + Change Review Workspace surface (F.2) + Pack SDK trio (G8.a-c + SDK.a-c) + CSP nonce middleware (Track C). **Streak preserved across 44 PRs**: zero vertical content, zero `core/retrieval` / `core/graph` traversal / `core/reasoning` lines changed, 4-layer rule #1 protection contract held throughout.
+
+### v0.5 cycle (21 PRs, #841 – #861) — see [`docs/handovers/v0.5-close-2026-06-12.md`](docs/handovers/v0.5-close-2026-06-12.md) for the full PR table
+
+- **B.5 enterprise document ontology** (#841 – #844) — design memo LOCK + 10 horizontal `DOCUMENT_SUBTYPES` + 4 enterprise `RELATION_TYPES` (`AUTHORED_BY` / `APPROVED_BY` sensitive / `REFERENCES` / `DERIVED_FROM`) + 4 `ENTERPRISE_ROLES` + 7-state `DocumentLifecycleState` enum + typed-filter R1-R5 at subtype level + 11-doc generic test fixture. **B.5 series total ~83 tests**.
+- **B.1 ontology surface audit + 4 gap closures** (#845 – #849) — audit doc with 8 gaps triaged (3 must-address / 3 strongly-recommended / 2 v1.0-deferred); G7 etag optimistic concurrency, G5 batched contradiction classifier, G4 retention-class metadata, G3 corpus-wide `reconstruct_corpus_view_at` streaming generator. **G3-G7 total ~88 tests**.
+- **B.2 / B.3 design memos** (#850 / #851) — multi-tenant isolation contract (G1 tenant-scoped audit + G2 verified approver) + plugin API stability (G8 ontology-pack mount surface for v1.0 plugin-API-freeze gate input).
+- **UI improvement stream** (#852 – #856 / #858) — WCAG 2.4.1 skip-link + global `:focus-visible` ring + `<main id="main">` landmark + i18n; `aria-live` regions on `#messages` / `#toast` / `#dash-cards` / `#dash-logs`; mobile responsive (7 newly-covered modals + 44×44 touch target); inline `<script>` extraction → `static/index-init.js` (CSP `script-src 'self'` ready); sensitivity badge + reasoning-panel ARIA + 3-phase landmark; inline `<style>` audit + 3 utility classes (`.is-hidden` / `.field-label` / `.muted-12`) + CSP path-forward doc.
+- **External evaluation disclosure** (#857) — `docs/evaluation/v0.5-evaluation-coverage-mapping.md` 13-row standard-metric × JAMES-surface mapping + procurement-readiness checklist (corrects 1 reviewer miss: MRR / NDCG present at `scripts/research/retrieval_quality.py` — research-tier, not headline).
+- **Server-side hardening** (#859 – #861) — security headers middleware (`core/security/headers.py`: CSP report-only default + X-Frame-Options / X-Content-Type-Options / Referrer-Policy / Permissions-Policy / HSTS opt-in) + G1.a tenant-id primitive (`core/lifecycle/tenant.py`) + G2.a approval-evidence primitive (`core/security/approval_evidence.py`).
+
+### v0.5 close handover (#862) — single source of truth for the cycle deliverables
+
+[`docs/handovers/v0.5-close-2026-06-12.md`](docs/handovers/v0.5-close-2026-06-12.md) — 21 PR enumeration + B.1 gap status sweep (4 LANDED + 2 primitive LANDED + 2 contract-locked + 1 v1.0-deferred) + v0.5 → v0.6 gate definition (Dim F not yet cleared) + 6-track v0.6 work queue (A SaaS-readiness / B SDK + G8 / C CSP / D Dim F LOI-required / E operator-pending / F mother-level UI).
+
+### Post-close consolidation (23 PRs, #863 – #886)
+
+Between v0.5 close (2026-06-12 PM) and 2026-06-13, 23 additional PRs landed implementing most of the close handover §5 work queue:
+
+- **Track F.1 — Time-Travel Dashboard quartet** (#865 / #878 / #879 / #880): TT.a timestamp picker UI shell + `:set` / `:clear` event dispatch; TT.b `GET /admin/graph/reconstruct-at` audit-replay summary overlay (10 tests); TT.c `GET /admin/graph/trace-replay` 3-phase reasoning trail panel matching chat.js `STAGE_META` (8 tests); TT.d `GET /admin/graph/diff-vs-now` side-by-side modal with `chain_extended` projection + audit-evidence deep links (10 tests).
+- **Track F.2 — Change Review Workspace quartet** (#866 / #867 / #873 / #874): CR.a list page UI shell + CR.b detail modal with side-by-side diff renderer + CR.c contradiction-arbiter visualisation + CR.d approve/reject buttons + G2.a evidence capture wire.
+- **Track A — v0.5 G1 + G2 SaaS-readiness follow-ups** (#869 / #870 / #882 / #883): G1.b `reconstruct_graph_at(t, *, tenant_id=None)` strict-exclusion filter + G2.b `apply_change_request(..., approval_evidence=None)` CR merge wire-in + G1.c [`docs/deployment/v0.6-saas-tenant-isolation.md`](docs/deployment/v0.6-saas-tenant-isolation.md) operator deployment guide + G2.c OIDC resolver hook surface (`register_oidc_validator` + `JAMES_OIDC_ISSUER` / `_TOKEN` / `_AUDIENCE`) + `with_tenant_id_async` contextvars variant (18 tests).
+- **Track B — v0.6 Pack SDK trio + G8 mount mechanism** (#868 / #871 / #872 / #875 / #876 / #881): G8.a `core/ontology_packs.py` mount skeleton + `rule_one_exemption_granted` capability gate; G8.b read-side lookup helpers (`all_document_subtypes()` / `all_relation_types()` merging mother + mounted packs); G8.c `EVT_ONTOLOGY_PACK_{MOUNTED,UNMOUNTED}` + `reconstruct_graph_at` dispatch; SDK.a `python -m james.pack init <pack_id>` CLI scaffolder; SDK.b [`docs/ONTOLOGY_PACK_AUTHORING.md`](docs/ONTOLOGY_PACK_AUTHORING.md); SDK.c `pyproject.toml` for `james-pack-sdk` PyPI distribution + [`docs/SDK_VERSIONING.md`](docs/SDK_VERSIONING.md) SemVer 12-month deprecation policy (15 tests).
+- **Track C — CSP nonce middleware** (#884): `core/security/csp_nonce.py` per-request `new_nonce()` (16 bytes urlsafe → 22-char base64url) + `JAMES_CSP_USE_NONCE_SCRIPT` (safe to set today — `script-src` already strict-mode-clean per UI #4 PR #855) + `JAMES_CSP_USE_NONCE_STYLE` (reserved for the inline-style migration; sets BREAK the UI without it under CSP3 §6.6.2.4); `build_security_headers(*, script_nonce=None, style_nonce=None)` composition seam + `request.state.csp_nonce` middleware wire-in (20 tests).
+- **Graph-RAG synthesis** (#864 / #877 / #885): pre-measurement skeleton ([`docs/evaluation/v0.5-graph-rag-contribution.md`](docs/evaluation/v0.5-graph-rag-contribution.md)) + Step 1 n=3 paired result (**Graph-RAG contributes +0.41 path_coverage** on `multihop_rag` × M_M = gemma4:e4b 4B, noise band 0.02 ⭐⭐⭐ load-bearing; cross-time agreement with α-6 cycle 0.408 → 0.4056 stable across 12 days of oracle revisions) + Step 2 cross-model driver scaffold (`scripts/research/graph_rag_synth_step2_cross_model.py`; pre-agreed interpretation rules in synthesis-doc §3.2; ~14 h wall operator-launchable).
+- **v0.6 entry skeleton** (#886): [`docs/handovers/v0.6-entry-skeleton-2026-06-13.md`](docs/handovers/v0.6-entry-skeleton-2026-06-13.md) — bridges v0.5 close → v0.6 entry with: 23-PR post-close enumeration + close handover §5 work-queue status sweep (20 LANDED + 4 LOI-blocked + 6 operator-pending + 2 prerequisite-gated) + 2-fork v0.6 entry contract restated + 4 NEW solo-doable items (TT.b `paintLinks` auto-activation after T5.A.b mutation-site wiring / UI #6 partial Option B / CSP script-flag deploy doc / entry-doc staleness meta-test) + updated mechanical entry checklist + CLAUDE.md "Where to look next" first row pointer updated.
+
+### Default-off invariant preserved across every new flag
+
+| Flag | Default | Verification |
+|---|---|---|
+| `JAMES_TENANT_ID` (G1.a, PR #860) | unset | `current_tenant_id()` returns `None`; `emit_lifecycle_event` does not stamp `tenant_id` |
+| `JAMES_REQUIRE_TENANT_ID` (G1.a, PR #860) | unset | `is_tenant_isolation_enforced()` returns `False`; pre-G1.a emit behaviour preserved |
+| `JAMES_REQUIRE_APPROVAL_EVIDENCE` (G2.a, PR #861) | unset | `require_approval_evidence()` returns `False`; `apply_change_request` does not gate on evidence |
+| `JAMES_OIDC_ISSUER` / `_TOKEN` / `_AUDIENCE` (G2.c, PR #883) | unset | `_resolve_oidc()` returns `None` without env vars; without a registered validator, `_resolve_oidc()` still returns `None` even if env vars set |
+| `JAMES_CSP_USE_NONCE_SCRIPT` / `_STYLE` (Track C, PR #884) | unset | `build_security_headers()` no-kwargs path byte-identical to pre-v0.6 output |
+| Time-Travel `paintLinks` link decoration (TT.b, PR #878) | inert | auto-call NOT wired; the helper is exported but waits on T5.A.b mutation-site wiring to populate `link.edge_id` |
+| `JAMES_CSP_MODE=enforce` graduate flip (handover §5.3) | NOT shipped | gated on inline-style migration completion (UI #6 audit Option A / B) |
+
+### What this cycle close does NOT do
+
+- **No new Zenodo DOI**. v0.4.4 DOI [`10.5281/zenodo.20652679`](https://doi.org/10.5281/zenodo.20652679) remains the most recent published release. v0.5 close is documented on `main` only; DOI mint waits on either Fork A entry (vertical pack release point) or Fork B reassess (strategy-pivot release point).
+- **No JAMES production runtime change in the retrieval / graph traversal / reasoning paths.** All 44 cycle PRs touch UI / lifecycle primitives / security / SDK packaging / docs only. The pre-v0.5 routing and inference behaviour is byte-identical when no new env flag is set.
+- **Dim F gate (≥6 month external customer pilot) NOT cleared.** The v0.5 → v0.6 gate stays open; the 2-fork entry contract (LOI signed OR 6-month no-LOI reassess) governs the next session's posture.
+- **No vertical pack content.** G8.d capability grant workflow is LOI-gated; F.2 CR.e customer-specific theming is LOI-gated; Track D (vertical pack build) is LOI-gated. CLAUDE.md rule #1 4-layer protection contract preserved across all 44 PRs.
+
+### Verification
+
+- **4632 tests** collected across `tests/` (308 test files) — up from ~3290 at v0.4.4. **~420 new tests** added across v0.5 cycle (~290) + post-close (~130).
+- B.5 (83) + G3-G7 (88) + UI (0) + security headers (33) + tenant (23) + approval (18) + F.1 TT.b/c/d (28) + F.2 CR.d (verified) + SDK.c (15) + G2.c (18) + Track C (20) + Step 2 scaffold (11) tests all pass on `main`.
+- `core/retrieval` / `core/graph` traversal / `core/reasoning` lines changed: **0**.
+
+---
+
 ## [0.4.4] — 2026-06-12 — LRB v0.2.3 S3 publication-scale + cycle γ 4-bench infrastructure closure
 
 **Theme**: v0.4.4 extends v0.4.3 with **LRB v0.2.3** — the *Lifecycle Retrieval Benchmark*'s cross-scale reproducibility extension and a sibling axis to RAB v0.1.1. The v0.2.1 cross-model leg-clear (gemma4:e4b 4B / gemma3:12b 12B / mixtral:8x7b 47B / claude-haiku-4-5 cloud) established that **R@1 V<N<J on Phase B (S2 time-travel)** is not a single-model artefact; **v0.2.3 adds the scale axis**: a 4-point ladder spanning a **12.5× scale jump** (S2 N=80 → S3 publication N=1000) preserves the V<N<J inequality at every cell with JAMES − Naive gap above +0.10 throughout. **Pattern + gap are scale-robust ⭐⭐⭐; absolute magnitudes are scenario-sensitive ⭐⭐** (honest framing locked in preprint §5).

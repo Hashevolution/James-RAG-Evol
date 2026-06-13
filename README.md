@@ -16,7 +16,7 @@
 > API, and the deterministic 4-rule contradiction tree.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-v0.4.4-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/releases/tag/v0.4.4)
+[![Status](https://img.shields.io/badge/Status-v0.5%20closed-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/blob/main/docs/handovers/v0.5-close-2026-06-12.md)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12806/badge)](https://www.bestpractices.dev/projects/12806)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20652679.svg)](https://doi.org/10.5281/zenodo.20652679)
@@ -235,19 +235,31 @@ The numbers below come from the current `main` branch — not aspirational, not 
 
 | Surface | Verified | Where to check |
 |---|---|---|
-| **Test suite** | **3290 tests** collected across `tests/` (224 test files), all green on PR CI | `python -m pytest tests/ --collect-only -q` |
+| **Test suite** | **4632 tests** collected across `tests/` (308 test files), all green on PR CI | `python -m pytest tests/ --collect-only -q` |
 | **CASCADE / EVENT separation** | Provable end-to-end via 5 release-gating invariants run against a real wiki fixture (not mocks) | `tests/test_t7_release_gating_invariants.py` |
 | **T6 causality cascade** | 4 additional release-gating invariants pin foundational vs corroborative semantics | `tests/test_t6_release_gating_invariants.py` |
 | **QVT 3-axis quality baseline** | path_recall **1.00** / graded_answer **0.58** / abstention_f1 **0.67** (median, post-calibration, N=3 paired reruns) | `eval/qvt/baseline_2a31b20.json` |
 | **STEP 7 regression** | 17-query suite with `gold_signals` + `abstention_truth` + `expected_path.nodes` ground truth on 5 queries | `eval/regression/step7_queries.json` v6 |
 | **F9 entity-anchor q15 fix** | q15 ("David Soria Parra가 누구야?") path_recall **0.00 → 1.00** after `JAMES_ENABLE_ENTITY_ANCHOR=1` + `JAMES_EMBEDDING_MODEL=BAAI/bge-m3` + `JAMES_ENABLE_QUERY_REWRITE=1` | `reports/research-runs/step7-bench-baseline-run*.json` |
-| **Module size discipline** | 20 KB cap enforced on every `core/` file. Largest current: `core/lifecycle/schema.py` at 18.9 KB | CLAUDE.md rule 5 + module-size CI gate |
-| **Default-off invariant** | Every routing layer added since v0.3 (D5 / LEO / D1 / T2.D / T6 LLM) defaults OFF — production fleets pulling v0.4.1 see byte-identical retrieval to v0.3.3 unless they opt in | `JAMES_*` env audit (CHANGELOG `[0.4.x]` table) |
+| **Module size discipline** | 20 KB cap enforced on every NEW `core/` file (CLAUDE.md rule #5). Five legacy modules are grandfathered above the cap (largest: `core/reasoning/reflect.py` at 29.2 KB); split plans are tracked in the v0.6 entry skeleton | CLAUDE.md rule 5 + `docs/handovers/v0.6-entry-skeleton-2026-06-13.md` |
+| **Default-off invariant** | Every routing layer added since v0.3 (D5 / LEO / D1 / T2.D / T6 LLM) defaults OFF, plus the v0.5/v0.6 SaaS-readiness primitives (`JAMES_TENANT_ID` / `JAMES_REQUIRE_TENANT_ID` / `JAMES_REQUIRE_APPROVAL_EVIDENCE` / `JAMES_OIDC_*` / `JAMES_CSP_USE_NONCE_SCRIPT` / `_STYLE`) — production fleets pulling current main see byte-identical retrieval to v0.4.4 unless they opt in | `JAMES_*` env audit (CHANGELOG `[0.5.0]` section) |
 | **Deterministic contradiction arbitration** | `classify_contradiction` is an LLM-free 4-rule decision tree (~10.2 KB pure function). Audit-replay-safe by construction. | `core/lifecycle/contradiction_arbiter.py` |
 | **RAB v0.1.1 — Replayable-Audit Benchmark** | **JAMES AC/RF/PC = 1.000 / 1.000 / 1.000 vs Baseline-0 (vanilla quickstart + default logging) = 0.275 / 0.000 / 0.000** on scenario-S1. Deterministic scorer (no LLM judge); 3 metrics map to EU AI Act Art. 10/12/19 (applies from 2026-08-02 per Art. 113). | `eval/rab/SPEC-v0.1.md` + `python scripts/research/rab_run.py --sut {reference,baseline0,james}` |
 | **LRB v0.2.3 — Lifecycle Retrieval Benchmark** | **R@1 V<N<J preserved across a 4-point scale ladder** (S2 N=80 → S3 publication N=1000, **12.5× scale**) and **across 4 model families** (gemma4:e4b / gemma3:12b / mixtral / claude). S3 publication R@1: V/N/J = 0.502 / 0.721 / **0.845**. JAMES − Naive gap > +0.10 at every scale point. Pattern + gap scale-robust ⭐⭐⭐; absolute magnitude scenario-sensitive ⭐⭐. | `papers/lrb-preprint/main.pdf` + `python scripts/research/lrb_run_s3.py --scale publication` |
 
-**What is NOT yet headline-verified**: a single-page ablation card showing **Graph-RAG vs flat RAG** on the same fixture. The infrastructure to produce it (`scripts/qvt_capture_baseline.py` + the 18-cell ablation matrix design from QVT memo §5) is wired; the operator-run capture is the late-June deliverable. Until then, the graph contribution is measurable via `graph_paths_count` per query in any STEP 7 bench output, but not summarized in one table.
+**What is NOT yet headline-verified**: a **cross-model** Graph-RAG ablation card. Step 1 (#877) confirmed the +0.41 path_coverage finding on `M_M = gemma4:e4b 4B` only. Step 2 cross-model (M_S + M_L × 3 cells × n=3, ~14 h wall) is scaffolded as a one-command driver (`scripts/research/graph_rag_synth_step2_cross_model.py`, PR #885) with pre-agreed interpretation rules locked in [`docs/evaluation/v0.5-graph-rag-contribution.md §3.2`](docs/evaluation/v0.5-graph-rag-contribution.md). Operator-launchable; awaits a free overnight GPU schedule.
+
+---
+
+## Project Status: v0.5 closed — Time-Travel Dashboard + SaaS-readiness + Pack SDK + CSP nonce
+
+Released **2026-06-12** (v0.5 close handover [PR #862](https://github.com/Hashevolution/James-RAG-Evol/pull/862)). The v0.5 cycle shipped 21 PRs (#841 – #861) closing the enterprise document ontology (B.5 series), the B.1 audit gap implementation (G3 / G4 / G5 / G7 LANDED + G1.a / G2.a primitive), the B.2 / B.3 multi-tenant / plugin-API design memos, the UI improvement stream (a11y + aria-live + responsive + CSP path), the procurement-readiness evaluation coverage mapping, and the server-side security headers middleware + tenant-id + approval-evidence primitives.
+
+After v0.5 close, **23 additional PRs (#863 – #886) landed on `main`** between 2026-06-12 PM and 2026-06-13. The post-close session shipped the **Time-Travel Dashboard quartet** (TT.a / b / c / d — audit-replay overlay + 3-phase reasoning trail panel + side-by-side now-vs-T diff modal), the **v0.6 Pack SDK trio** (CLI scaffolder + author guide + `james-pack-sdk` PyPI packaging with SemVer 12-month deprecation policy), the **v0.5 G1 + G2 SaaS-readiness trio** (replay-side tenant filter + CR merge wire-in + SaaS deployment guide + OIDC resolver hook + async-task-aware `with_tenant_id`), the **Track C CSP nonce middleware** (script-flag safe-to-set today + style-flag reserved for inline-style migration), and the **graph-RAG synthesis Step 1 + Step 2 driver** (+0.41 path_coverage n=3 ⭐⭐⭐ + cross-model scaffold).
+
+The **v0.5 → v0.6 gate (Dim F: ≥6 month external customer pilot)** is NOT cleared. The project sits in a productive **"v0.5 closed, v0.6 not yet entered"** interval governed by the 2-fork entry contract in the [v0.6 entry skeleton (PR #886)](docs/handovers/v0.6-entry-skeleton-2026-06-13.md): Fork A = LOI signed → Track D vertical pack scoping / Fork B = no-LOI 6-month reassess. Until one resolves, mother-platform hardening continues; vertical content stays BLOCKED per CLAUDE.md rule #1.
+
+Across all 23 post-close PRs the streak holds: **zero vertical tokens, zero `core/retrieval` / `core/graph` traversal / `core/reasoning` lines touched, 4-layer rule #1 protection contract (code-level capability gate + doc-level "Out of scope" + naming-level domain-agnostic + trigger-level LOI tagging) preserved** on every PR.
 
 ---
 
