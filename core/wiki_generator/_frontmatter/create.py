@@ -1,236 +1,28 @@
-"""Wiki generator — frontmatter, indexing, single-entity write path.
+"""``create_entity_file`` writer — sub-mixin of
+``WikiFrontmatterMixin``.
 
-Holds the ``WikiFrontmatterMixin`` (Layers 0–2 in the dependency
-graph): instance state via ``__init__``, the entity-id index build,
-ID generation, name normalization, frontmatter read, duplicate
-detection, single-file ``create_entity_file`` writer, the
-``update_index`` summary, ``resolve_pending_relations`` UNRESOLVED
-sweep, and ``get_entity_statistics``.
-
-The ``WIKI_DIR`` binding is late-imported from ``core.wiki_generator``
-inside ``__init__`` so the test pattern
-``import core.wiki_generator as wg_mod; wg_mod.WIKI_DIR = tmp``
-keeps working after the Stage C.1 split.
+Extracted from the legacy single-file
+``core/wiki_generator/_frontmatter.py`` during the v0.6 oversize-module
+split (CLAUDE.md rule #5). Behaviour is byte-identical; only the
+location moved.
 """
 from __future__ import annotations
 
-import hashlib
 import re
 from datetime import datetime
-from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import yaml
 
 from core.relations_schema import (
-    ENTITY_TYPES_CORE,
     compute_confidence_from_sources,
     validate_occurred_at,
 )
-from core.vector_store import VectorStore
-from llm.router import RouterWrapper
-from utils.metadata import MetadataGenerator
 
-from ._aliases import _expand_alias_candidates
+from core.wiki_generator._aliases import _expand_alias_candidates
 
 
-class WikiFrontmatterMixin:
-
-    def __init__(self, source_type: str = "prod"):
-        """
-        [P4.5-1] source_type 분리
-          source_type='prod' → wiki/entity/prod/{type}/
-          source_type='test' → wiki/entity/test/{type}/
-        """
-        # Late-bind WIKI_DIR: tests do ``wg_mod.WIKI_DIR = tmp`` between
-        # instantiations, so reading the binding at __init__ time
-        # (rather than at module import) is the load-bearing invariant.
-        from core.wiki_generator import WIKI_DIR
-
-        self.gemma_client = RouterWrapper("extract")
-        self.metadata_gen = MetadataGenerator()
-        self.vector_store = VectorStore()
-
-        # [P4.5-1] source_type에 따라 entity 경로 분리
-        self.source_type    = source_type if source_type in ("prod", "test") else "prod"
-        self.wiki_base_path = Path(WIKI_DIR)
-        self.entity_path    = self.wiki_base_path / "entity" / self.source_type
-
-        # ENTITY_TYPES_CORE = 5 types (event 5th, PR-11). LLM extraction
-        # prompt below still emits only 3 types (person/org/concept);
-        # `document` is post-processor source-attribution; `event` is
-        # admin POST path (PR-11a-2). Directory listing / index build /
-        # search default to all 5 — empty event/ dir is a no-op until
-        # the first admin event creation.
-        self.entity_types = list(ENTITY_TYPES_CORE)
-
-        for t in self.entity_types:
-            (self.entity_path / t).mkdir(parents=True, exist_ok=True)
-
-        self.index_path = self.wiki_base_path / "index.md"
-        if not self.index_path.exists():
-            self._create_index_template()
-
-        self.entity_id_index: Dict[str, Path] = {}
-        self._build_entity_id_index()
-
-
-    def _create_index_template(self):
-        """index.md 초기 템플릿 생성"""
-
-        content = (
-            "---\n"
-            f'updated_at: "{datetime.now().isoformat()}"\n'
-            "total_entities: 0\n"
-            "---\n\n"
-            "# 자메스 Wiki Index\n\n"
-            "## person (0)\n\n"
-            "## concept (0)\n\n"
-            "## org (0)\n\n"
-            "## document (0)\n\n"
-            "## event (0)\n"
-        )
-
-        self.index_path.write_text(content, encoding="utf-8")
-
-    # =========================
-    # INDEX BUILD
-    # =========================
-
-    def _build_entity_id_index(self):
-        self.entity_id_index.clear()
-
-        for t in self.entity_types:
-            d = self.entity_path / t
-            if not d.exists():
-                continue
-
-            for f in d.glob("*.md"):
-                fm = self._read_frontmatter(f)
-                if fm and fm.get("entity_id"):
-                    self.entity_id_index[fm["entity_id"]] = f
-
-        print(f"[INDEX] {len(self.entity_id_index)} entities loaded")
-
-    def refresh_entity_map(self):
-        self._build_entity_id_index()
-
-    def _register_entity_id(self, entity_id: str, filepath: Path):
-        self.entity_id_index[entity_id] = filepath
-
-    # =========================
-    # ID GENERATION (SECURE)
-    # =========================
-
-    def _generate_entity_id(self, name: str, entity_type: str) -> str:
-        normalized = self._normalize_name(name)
-
-        # 🔐 보안: SALT 추가
-        SALT = "JAMES_SECURE_V1"
-        raw = f"{normalized}_{entity_type}_{SALT}"
-
-        h = hashlib.sha256(raw.encode()).hexdigest()[:8]   # graph_rag_engine 정규식 {8} 일치
-        return f"e_{entity_type}_{h}"
-
-    def _normalize_name(self, name: str) -> str:
-        return re.sub(r"[^\w가-힣]", "_", name.strip().lower())
-
-    def _build_overlap_snapshot(self):
-        """Return `{normalized_name: (canonical_name, entity_id, entity_type)}`
-        for every existing wiki entity (any type), aliases included.
-
-        v0.4 Sprint 1 #1 addition — used by ingestion's entity-name
-        overlap detection (`_infer_overlap_relations` in `_merge.py`)
-        so a newly-ingested event named *"비트코인 spot ETF 11개
-        일괄 승인"* automatically gets a RELATED_TO relation to the
-        existing "비트코인" concept entity when its normalized name
-        appears as a token in the new entity's name.
-
-        First-write-wins: if two entities share a normalized name
-        (e.g. one canonical + one alias on a different entity), the
-        earlier one in `entity_id_index` iteration order takes
-        precedence. Tests pin this — production rarely has the
-        collision because aliases that match another canonical name
-        would already trip `_find_existing_entity_id` during ingest.
-        """
-        from pathlib import Path
-        snapshot = {}
-        for eid, filepath in self.entity_id_index.items():
-            try:
-                fm = self._read_frontmatter(Path(filepath))
-            except Exception:
-                continue
-            if not fm:
-                continue
-            canonical = fm.get("name", "")
-            norm = fm.get("normalized_name", "") or self._normalize_name(canonical)
-            etype = fm.get("entity_type", "concept")
-            if norm and norm not in snapshot:
-                snapshot[norm] = (canonical, eid, etype)
-            for alias in fm.get("aliases", []) or []:
-                alias_norm = self._normalize_name(alias)
-                if alias_norm and alias_norm not in snapshot:
-                    snapshot[alias_norm] = (canonical, eid, etype)
-        return snapshot
-
-    # =========================
-    # ENTITY SEARCH (FIXED)
-    # =========================
-
-    def _find_existing_entity_id(
-        self,
-        name: str,
-        entity_type: Optional[str]
-    ) -> Optional[str]:
-
-        normalized = self._normalize_name(name)
-
-        # 🔥 핵심 FIX: None 대응
-        if entity_type:
-            search_types = [entity_type]
-        else:
-            search_types = self.entity_types
-
-        for t in search_types:
-            d = self.entity_path / t
-            if not d.exists():
-                continue
-
-            for f in d.glob("*.md"):
-                fm = self._read_frontmatter(f)
-                if not fm:
-                    continue
-
-                if fm.get("normalized_name") == normalized:
-                    return fm.get("entity_id")
-
-                for alias in fm.get("aliases", []):
-                    if self._normalize_name(alias) == normalized:
-                        return fm.get("entity_id")
-
-        return None
-
-    # =========================
-    # FRONTMATTER
-    # =========================
-
-    def _read_frontmatter(self, path: Path) -> Optional[Dict]:
-        try:
-            content = path.read_text(encoding="utf-8")
-            if not content.startswith("---"):
-                return None
-
-            end = content.find("---", 3)
-            if end < 0:
-                return None
-
-            return yaml.safe_load(content[3:end]) or {}
-        except Exception:
-            return None
-
-    # =========================
-    # CREATE ENTITY
-    # =========================
+class WikiCreateMixin:
 
     def create_entity_file(
         self,
@@ -492,45 +284,5 @@ class WikiFrontmatterMixin:
 
         return str(path)
 
-    # =========================
-    # SENSITIVITY DEFAULT (ABAC)
-    # =========================
 
-    @staticmethod
-    def _default_sensitivity(entity_type: str) -> str:
-        """entity_type별 기본 민감도 등급 반환"""
-        mapping = {
-            "person":   "confidential",  # 개인정보 → 기밀
-            "org":      "internal",      # 조직정보 → 내부
-            "document": "confidential",  # 문서 → 기밀
-            "concept":  "public",        # 개념/지식 → 공개
-            "event":    "internal",      # 시간 축 사건 → 내부 (PR-11b)
-        }
-        return mapping.get(entity_type, "internal")
-
-    # =========================
-    # DUPLICATE CHECK
-    # =========================
-
-    def find_duplicate_entities(self, entity: Dict) -> Optional[str]:
-
-        name = entity.get("name", "")
-        normalized = self._normalize_name(name)
-
-        t = entity.get("type", "concept")
-        d = self.entity_path / t
-
-        if not d.exists():
-            return None
-
-        for f in d.glob("*.md"):
-            fm = self._read_frontmatter(f)
-            if not fm:
-                continue
-
-            if fm.get("normalized_name") == normalized:
-                return str(f)
-
-        return None
-
-__all__ = ["WikiFrontmatterMixin"]
+__all__ = ["WikiCreateMixin"]
