@@ -1387,6 +1387,138 @@ async def admin_graph_trace_replay(
         "stages":         stages,
     }
 
+@router.get(
+    "/admin/graph/diff-vs-now",
+    summary="Now-vs-T graph state diff [v0.5 Track F.1 TT.d]",
+)
+async def admin_graph_diff_vs_now(
+    api_key:   str,
+    t:         str,
+    limit:     int = 500,
+    tenant_id: Optional[str] = None,
+    role:      str = Depends(get_role_from_request),
+):
+    """Compute the audit-only graph state diff between time ``t`` and
+    "now" — the canonical Time-Travel "now-vs-T" view (Track F.1
+    §5.6 TT.d).
+
+    Calls :func:`core.lifecycle.replay_graph.reconstruct_graph_at`
+    twice (once at ``t``, once at the current UTC moment) and returns
+    a structured diff:
+
+      * ``added_edges``: edge_ids present in NOW but not in T (newly
+        created since ``t``)
+      * ``removed_edges``: edge_ids present in T but not in NOW
+        (typically cascade-invalidated since ``t``; can also be a
+        chain extension that buried an older link in the new head's
+        invalidated set)
+      * ``invalidated_since``: edge_ids that moved into the
+        invalidated set between T and NOW
+      * ``chain_extended``: ``head_id`` → ``{at_t: [...], at_now:
+        [...]}`` for chains whose link order or membership grew
+      * ``mounted_packs_added`` / ``mounted_packs_removed``: pack_ids
+        that mounted or unmounted between T and NOW
+
+    Query params:
+      - ``t``: ISO-8601 cutoff (the "T" past moment to diff against).
+      - ``limit``: per-collection cap (default 500, max 5000). When
+        any collection exceeds the cap, ``truncated`` is true.
+      - ``tenant_id``: optional v0.5 G1.b strict-exclusion filter
+        applied to BOTH snapshots — so the diff reflects only rows
+        the operator's tenant could have seen.
+
+    Returns:
+      ``{"ok": true, "t": "<iso>", "now": "<iso>",
+         "event_count_at_t": N, "event_count_at_now": M,
+         "added_edges": [...], "removed_edges": [...],
+         "invalidated_since": [...],
+         "chain_extended": {head_id: {at_t, at_now}, ...},
+         "mounted_packs_added": [...],
+         "mounted_packs_removed": [...],
+         "truncated": bool}``
+
+    Pure-function contract: read-only over the audit_log; same
+    audit_log + same ``t`` + the same wall-clock moment returns the
+    same body. Note "now" advances each request, so the diff grows
+    as new lifecycle events land — this is the intended semantics
+    ("show me what changed since T").
+    """
+    _require_feature(api_key, role, "admin.data")
+
+    from datetime import datetime, timezone
+    from core.lifecycle.replay_graph import reconstruct_graph_at
+
+    raw = (t or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="missing 't' query param")
+    try:
+        cutoff = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="'t' must be an ISO-8601 timestamp (e.g. 2026-06-13T05:00:00Z)",
+        )
+
+    cap = max(1, min(int(limit or 500), 5000))
+
+    now_dt = datetime.now(timezone.utc)
+    snap_t = reconstruct_graph_at(cutoff, tenant_id=tenant_id)
+    snap_now = reconstruct_graph_at(now_dt, tenant_id=tenant_id)
+
+    edges_t_keys = set(snap_t.edges.keys())
+    edges_now_keys = set(snap_now.edges.keys())
+    added = sorted(edges_now_keys - edges_t_keys)
+    removed = sorted(edges_t_keys - edges_now_keys)
+
+    invalidated_t = set(snap_t.invalidated_ids)
+    invalidated_now = set(snap_now.invalidated_ids)
+    invalidated_since = sorted(invalidated_now - invalidated_t)
+
+    chain_diffs: dict = {}
+    all_heads = set(snap_t.supersede_chains) | set(snap_now.supersede_chains)
+    for head_id in all_heads:
+        at_t = list(snap_t.supersede_chains.get(head_id, []))
+        at_now = list(snap_now.supersede_chains.get(head_id, []))
+        if at_t != at_now:
+            chain_diffs[head_id] = {"at_t": at_t, "at_now": at_now}
+
+    packs_t = set(snap_t.mounted_pack_ids)
+    packs_now = set(snap_now.mounted_pack_ids)
+    packs_added = sorted(packs_now - packs_t)
+    packs_removed = sorted(packs_t - packs_now)
+
+    truncated = False
+    if len(added) > cap:
+        truncated = True
+        added = added[:cap]
+    if len(removed) > cap:
+        truncated = True
+        removed = removed[:cap]
+    if len(invalidated_since) > cap:
+        truncated = True
+        invalidated_since = invalidated_since[:cap]
+    if len(chain_diffs) > cap:
+        truncated = True
+        # Keep insertion-ordered slice of the dict — dict preserves
+        # insertion order in 3.7+, so itertools.islice is fine.
+        from itertools import islice
+        chain_diffs = dict(islice(chain_diffs.items(), cap))
+
+    return {
+        "ok":                    True,
+        "t":                     snap_t.replayed_at.isoformat(),
+        "now":                   snap_now.replayed_at.isoformat(),
+        "event_count_at_t":      snap_t.event_count,
+        "event_count_at_now":    snap_now.event_count,
+        "added_edges":           added,
+        "removed_edges":         removed,
+        "invalidated_since":     invalidated_since,
+        "chain_extended":        chain_diffs,
+        "mounted_packs_added":   packs_added,
+        "mounted_packs_removed": packs_removed,
+        "truncated":             truncated,
+    }
+
 @router.get("/admin/episodic/{session_id}",
          summary="Cognitive Phase 3 PR-9b — 세션의 episodic events 조회")
 async def admin_episodic_get(
