@@ -7,7 +7,7 @@ Verifies that the 9 horizontal entity types declared in
      graph-valid types, drives wiki dir auto-creation)
   2. `core/graph_node_editor.py:NODE_ALLOWED_ENTITY_TYPES` (admin
      entity POST/PUT validator)
-  3. `core/wiki_generator/_ingestion.py:_llm_extract_document_entities`
+  3. `core/wiki_generator/_ingestion/prompts.py:build_extract_prompt`
      (LLM extraction prompt — without all 9 in the prompt, the wiki
      never gets entities of the new types, leaving the typed filter's
      "(none found)" signal systematically uninformative — see
@@ -70,7 +70,8 @@ class TestExtractionPromptHasAllTypes(unittest.TestCase):
     in the wiki regardless of document content."""
 
     def test_ingest_prompt_lists_9_types(self):
-        src = (ROOT / "core/wiki_generator/_ingestion.py").read_text(encoding="utf-8")
+        # v0.6 split — prompt text moved into _ingestion/prompts.py.
+        src = (ROOT / "core/wiki_generator/_ingestion/prompts.py").read_text(encoding="utf-8")
         # All 9 should appear in the prompt string (substring is fine —
         # the prompt enumerates them as `type:"person|org|..."` and
         # in the per-type rule lines below).
@@ -88,7 +89,8 @@ class TestExtractionPromptHasAllTypes(unittest.TestCase):
         """Beyond just listing types, the prompt should give the LLM
         a one-line definition per type so it knows when to use each.
         Mirrors design memo §2.1 — heuristic classifier signal floor."""
-        src = (ROOT / "core/wiki_generator/_ingestion.py").read_text(encoding="utf-8")
+        # v0.6 split — prompt text moved into _ingestion/prompts.py.
+        src = (ROOT / "core/wiki_generator/_ingestion/prompts.py").read_text(encoding="utf-8")
         # Look for the per-type definition section: each new type should
         # have a `<type>  =` or `<type>     =` pattern indicating its rule.
         # Existing 4 already have this; new 5 must as well.
