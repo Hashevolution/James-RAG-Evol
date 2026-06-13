@@ -48,6 +48,8 @@ What JAMES does **not** claim:
 If your use case is *audit / lifecycle / time-travel / on-prem* — JAMES is built for it, measured for it, and citeable for it. If your use case is *fastest possible answer on a fixed corpus* — use LangChain.
 
 > **Looking for MRR / NDCG / RAGAS / hallucination-rate coverage?** See [`docs/evaluation/v0.5-evaluation-coverage-mapping.md`](docs/evaluation/v0.5-evaluation-coverage-mapping.md) — a full mapping of standard RAG / IR metrics to what JAMES measures (and what it deliberately doesn't), including code paths and procurement-ready answers.
+>
+> **Looking for a one-page comparison vs LangChain / LlamaIndex / Haystack / R2R / ActiveGraph?** See [`docs/evaluation/v0.5-industry-comparison.md`](docs/evaluation/v0.5-industry-comparison.md) — three matrices (architectural capability presence / public benchmark headline coverage / reproducibility tier) with every JAMES cell pinned to a committed artifact and every competitor cell pinned to their public docs as of 2026-06-13.
 
 ---
 

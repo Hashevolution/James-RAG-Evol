@@ -46,6 +46,10 @@ JAMES 가 **주장하지 않는 것**:
 
 audit / lifecycle / time-travel / on-prem 이 용도라면 — JAMES 가 그것을 위해 만들어졌고, 측정됐고, 인용 가능합니다. *고정 corpus 에서 가장 빠른 답변* 이 용도라면 LangChain 쓰세요.
 
+> **MRR / NDCG / RAGAS / 환각률 coverage 찾으시면**: [`docs/evaluation/v0.5-evaluation-coverage-mapping.md`](docs/evaluation/v0.5-evaluation-coverage-mapping.md) — 표준 RAG / IR metric 이 JAMES 의 어디서 측정되는지 (그리고 어떤 metric 은 의도적으로 측정 안 하는지) 의 full mapping + code path + procurement-ready 답변.
+>
+> **LangChain / LlamaIndex / Haystack / R2R / ActiveGraph 와 1 페이지 비교**: [`docs/evaluation/v0.5-industry-comparison.md`](docs/evaluation/v0.5-industry-comparison.md) — 3 개 매트릭스 (architectural capability presence / public benchmark headline coverage / reproducibility tier), 모든 JAMES cell 은 committed artifact 에 pin, 모든 경쟁사 cell 은 2026-06-13 기준 public docs 에 pin. 외부 reviewer 60 초 스캔 + 5 분 reproduce command.
+
 ---
 
 ## 📑 Papers & Reproducibility
