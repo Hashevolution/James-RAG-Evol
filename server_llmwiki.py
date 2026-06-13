@@ -178,6 +178,13 @@ from core.security.csp_nonce import (  # noqa: E402
 from core.security.forwarded import (  # noqa: E402
     TrustedForwardedHeadersMiddleware,
 )
+# v0.6 Phase 3 P3.1 — per-request tenant resolution from a signed
+# `X-Tenant-Id` header. Default-off (no secret configured) → no-op
+# pass-through; preserves single-tenant v0.5 behaviour byte-identical.
+# Operator config: see `docs/deployment/v0.6-saas-tenant-isolation.md`.
+from core.security.tenant_request import (  # noqa: E402
+    TenantHeaderMiddleware,
+)
 
 
 @app.middleware("http")
@@ -555,6 +562,17 @@ async def rate_limit_middleware(request: Request, call_next):
 # byte-identical: when `JAMES_TRUSTED_PROXIES` is unset the
 # middleware is a no-op pass-through.
 app.add_middleware(TrustedForwardedHeadersMiddleware)
+
+# v0.6 Phase 3 P3.1 — install the per-request tenant resolution
+# middleware. Registered AFTER the forwarded middleware so that
+# Starlette's outer-most-LIFO order puts forwarded outside tenant:
+# the inbound request flows forwarded → tenant → rest of app, so by
+# the time tenant resolution runs, scope["client"] has the true
+# end-client IP overlay (though the trust check inside the tenant
+# middleware re-validates against the ORIGINAL ASGI peer). Default
+# behaviour preserved byte-identical: when `JAMES_TENANT_HEADER_SECRET`
+# is unset the middleware is a no-op pass-through.
+app.add_middleware(TenantHeaderMiddleware)
 
 
 # ─── API ─────────────────────────────────────────────────────
