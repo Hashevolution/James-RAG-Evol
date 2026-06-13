@@ -182,13 +182,15 @@ function selectTab(tab) {
   // [v0.2.x CR-C] cr tab joins the rotation; keeping the id list
   // explicit so an unknown tab doesn't silently leave another panel
   // visible.
-  for (const id of ['tab-data', 'tab-jobs', 'tab-search', 'tab-cr']) {
+  for (const id of ['tab-data', 'tab-jobs', 'tab-search', 'tab-cr',
+                    'tab-templates']) {
     const el = document.getElementById(id);
     if (el) el.style.display = id === `tab-${tab}` ? '' : 'none';
   }
-  if (tab === 'data') reloadData();
-  if (tab === 'jobs') reloadJobs();
-  if (tab === 'cr')   reloadCrs();
+  if (tab === 'data')      reloadData();
+  if (tab === 'jobs')      reloadJobs();
+  if (tab === 'cr')        reloadCrs();
+  if (tab === 'templates') reloadTemplates();
 }
 
 function onDataSearchInput() {
@@ -774,6 +776,239 @@ async function _crPost(path, body) {
   return r.json();
 }
 
+/* ── [v0.6 template-formatting engine] Templates tab ──
+ *
+ * Backend contract (routes/templating.py):
+ *   POST   /templates/                        register
+ *   GET    /templates/mine/list               list (owner-scoped)
+ *   GET    /templates/{id}                     detail + parsed spec
+ *   DELETE /templates/{id}                     delete
+ *   POST   /templates/{id}/apply               reshape raw → output
+ *   GET    /templates/{id}/output/{out_id}     download
+ *
+ * All endpoints take api_key in the query and the JWT in the
+ * Authorization header (same shape as the data / jobs / cr tabs).
+ * GETs go through _apiFetch; the register/apply POSTs are hand-built
+ * so the JSON body matches the FastAPI request models, and the
+ * download goes through a blob fetch like downloadJob.
+ */
+let _currentTplId = null;
+let _lastTplOutId = null;
+
+async function reloadTemplates() {
+  const body = document.getElementById('tpl-body');
+  if (!_token) {
+    body.innerHTML =
+      `<tr><td colspan="4" class="empty">${t('workspace.login_to_view')}</td></tr>`;
+    return;
+  }
+  body.innerHTML = `<tr><td colspan="4" class="empty">${t('common.loading')}</td></tr>`;
+  try {
+    const data = await _apiFetch('/templates/mine/list');
+    const items = data.items || [];
+    document.getElementById('tpl-counter').textContent = `${items.length}`;
+    if (!items.length) {
+      body.innerHTML =
+        `<tr><td colspan="4" class="empty">${t('workspace.tpl_empty')}</td></tr>`;
+      return;
+    }
+    body.innerHTML = items.map(it => `
+      <tr style="cursor:pointer" data-action="tpl-open"
+          data-tpl-id="${_esc(it.id)}" data-tpl-name="${_esc(it.name)}">
+        <td>${_esc(it.name)}</td>
+        <td class="mono" style="font-size:11px">${_esc(it.mode || 'text')}</td>
+        <td class="mono">${_fmtTs(_tsToSec(it.created_at))}</td>
+        <td>
+          <button data-action="tpl-delete" data-tpl-id="${_esc(it.id)}"
+                  style="padding:4px 10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:4px;cursor:pointer;font-size:11px"
+                  >${t('common.delete')}</button>
+        </td>
+      </tr>`).join('');
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="4" class="empty">${_esc(e.message)}</td></tr>`;
+  }
+}
+
+/* created_at is an ISO-ish "%Y-%m-%dT%H:%M:%S" string from the store;
+   _fmtTs wants epoch seconds, so convert (fall back gracefully). */
+function _tsToSec(iso) {
+  if (!iso) return 0;
+  const ms = Date.parse(iso);
+  return Number.isNaN(ms) ? 0 : Math.floor(ms / 1000);
+}
+
+function onTplFileChange() {
+  const inp = document.getElementById('tpl-form-file');
+  const f = inp && inp.files && inp.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    document.getElementById('tpl-form-raw').value = String(reader.result || '');
+    if (!document.getElementById('tpl-form-name').value.trim()) {
+      document.getElementById('tpl-form-name').value =
+        f.name.replace(/\.[^.]+$/, '');
+    }
+  };
+  reader.readAsText(f);
+}
+
+async function createTemplate() {
+  const msg = document.getElementById('tpl-form-msg');
+  msg.textContent = '';
+  const name = document.getElementById('tpl-form-name').value.trim();
+  const raw  = document.getElementById('tpl-form-raw').value;
+  if (!name || !raw.trim()) {
+    msg.textContent = `❌ ${t('workspace.tpl_need_name_raw')}`;
+    return;
+  }
+  try {
+    const meta = await _crPost('/templates/', {
+      name, raw_text: raw, mode: 'text',
+    });
+    msg.textContent = `✅ ${meta.id}`;
+    document.getElementById('tpl-form-name').value = '';
+    document.getElementById('tpl-form-raw').value = '';
+    const fileInp = document.getElementById('tpl-form-file');
+    if (fileInp) fileInp.value = '';
+    reloadTemplates();
+  } catch (e) {
+    msg.textContent = `❌ ${e.message}`;
+  }
+}
+
+async function openTemplate(tplId, tplName) {
+  _currentTplId = tplId;
+  _lastTplOutId = null;
+  const panel = document.getElementById('tpl-apply-panel');
+  panel.style.display = 'block';
+  document.getElementById('tpl-apply-name').textContent = tplName || tplId;
+  document.getElementById('tpl-apply-id').textContent = tplId;
+  document.getElementById('tpl-apply-msg').textContent = '';
+  document.getElementById('tpl-result').style.display = 'none';
+  document.getElementById('tpl-apply-content').value = '';
+  const ph = document.getElementById('tpl-apply-placeholders');
+  ph.innerHTML = `<span style="color:var(--muted);font-size:11px">${t('common.loading')}</span>`;
+  try {
+    const data = await _apiFetch(`/templates/${encodeURIComponent(tplId)}`);
+    const placeholders = (data.spec && data.spec.placeholders) || [];
+    ph.innerHTML = placeholders.length
+      ? placeholders.map(p => `<span class="chip">${_esc(p)}</span>`).join('')
+      : `<span style="color:var(--muted);font-size:11px">${t('workspace.tpl_no_placeholders')}</span>`;
+    _renderTplOutputs(data.outputs || []);
+  } catch (e) {
+    ph.innerHTML = `<span style="color:var(--muted);font-size:11px">${_esc(e.message)}</span>`;
+  }
+}
+
+function _renderTplOutputs(outputs) {
+  const el = document.getElementById('tpl-apply-outputs');
+  if (!outputs.length) {
+    el.innerHTML = `<span style="color:var(--muted);font-size:11px">${t('workspace.tpl_no_outputs')}</span>`;
+    return;
+  }
+  el.innerHTML = outputs.map(o => `
+    <div style="display:flex;justify-content:space-between;align-items:center;
+                background:var(--bg);border:1px solid var(--border-2);
+                border-radius:6px;padding:6px 10px">
+      <span class="mono" style="font-size:11px">${_esc(o.filename)}
+        <span style="color:var(--muted)">· ${_fmtBytes(o.size)}</span></span>
+      <button data-action="tpl-download-out" data-out-id="${_esc(o.out_id)}"
+              style="padding:4px 10px;background:#1e7a3e;color:#fff;border:0;border-radius:4px;cursor:pointer;font-size:11px"
+              >${t('workspace.tpl_download')}</button>
+    </div>`).join('');
+}
+
+function closeTplApply() {
+  _currentTplId = null;
+  _lastTplOutId = null;
+  document.getElementById('tpl-apply-panel').style.display = 'none';
+}
+
+async function applyTemplate() {
+  if (!_currentTplId) return;
+  const btn = document.getElementById('tpl-apply-btn');
+  const msg = document.getElementById('tpl-apply-msg');
+  msg.textContent = '';
+  const raw_content = document.getElementById('tpl-apply-content').value;
+  const fmt = document.getElementById('tpl-apply-fmt').value;
+  if (!raw_content.trim()) {
+    msg.textContent = `❌ ${t('workspace.tpl_need_content')}`;
+    return;
+  }
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = '⏳';
+  try {
+    const r = await _crPost(
+      `/templates/${encodeURIComponent(_currentTplId)}/apply`,
+      { raw_content, fmt },
+    );
+    _lastTplOutId = r.out_id;
+    document.getElementById('tpl-result-preview').textContent = r.preview || '';
+    document.getElementById('tpl-result').style.display = 'block';
+    msg.textContent = `✅ ${r.filename}`;
+    // Refresh outputs list so the new file shows up.
+    const data = await _apiFetch(`/templates/${encodeURIComponent(_currentTplId)}`);
+    _renderTplOutputs(data.outputs || []);
+  } catch (e) {
+    msg.textContent = `❌ ${e.message}`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+async function downloadTemplateOutput(outId) {
+  const id = outId || _lastTplOutId;
+  if (!_currentTplId || !id) return;
+  const path = `/templates/${encodeURIComponent(_currentTplId)}/output/${encodeURIComponent(id)}` +
+               `?api_key=${encodeURIComponent(_apiKey || '')}`;
+  try {
+    const r = await fetch(path, {
+      headers: _token ? { Authorization: `Bearer ${_token}` } : {},
+    });
+    if (!r.ok) {
+      let detail = `${r.status}`;
+      try { detail = (await r.json()).detail || detail; } catch (_) {}
+      throw new Error(detail);
+    }
+    const blob = await r.blob();
+    const cd = r.headers.get('Content-Disposition') || '';
+    const m  = /filename="?([^"]+)"?/.exec(cd);
+    const name = m ? m[1] : `${id}.bin`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    toast(`❌ ${e.message}`, 'error');
+  }
+}
+
+async function deleteTemplate(tplId) {
+  if (!tplId) return;
+  if (!confirm(t('workspace.tpl_confirm_delete'))) return;
+  try {
+    const r = await fetch(
+      `/templates/${encodeURIComponent(tplId)}?api_key=${encodeURIComponent(_apiKey || '')}`,
+      {
+        method: 'DELETE',
+        headers: _token ? { Authorization: `Bearer ${_token}` } : {},
+      });
+    if (!r.ok) {
+      let detail = `${r.status}`;
+      try { detail = (await r.json()).detail || detail; } catch (_) {}
+      throw new Error(detail);
+    }
+    toast('✅ 삭제 완료', 'success');
+    if (_currentTplId === tplId) closeTplApply();
+    reloadTemplates();
+  } catch (e) {
+    toast(`❌ ${e.message}`, 'error');
+  }
+}
+
 /* ── lang toggle (chat.js pattern) ── */
 function toggleLang() {
   const cur = localStorage.getItem('james_lang') || 'ko';
@@ -831,6 +1066,23 @@ function _bindFrontendEvents() {
       case 'cr-submit-approve':  submitCrApprove(); break;
       case 'cr-submit-reject':   submitCrReject(); break;
       case 'cr-submit-comment':  submitCrComment(); break;
+      /* ── [v0.6 template-formatting engine] actions ── */
+      case 'tpl-reload':         reloadTemplates(); break;
+      case 'tpl-create':         createTemplate(); break;
+      case 'tpl-open':
+        openTemplate(t.getAttribute('data-tpl-id'),
+                     t.getAttribute('data-tpl-name'));
+        break;
+      case 'tpl-delete':
+        e.stopPropagation();
+        deleteTemplate(t.getAttribute('data-tpl-id'));
+        break;
+      case 'tpl-close-apply':    closeTplApply(); break;
+      case 'tpl-apply':          applyTemplate(); break;
+      case 'tpl-download':       downloadTemplateOutput(null); break;
+      case 'tpl-download-out':
+        downloadTemplateOutput(t.getAttribute('data-out-id'));
+        break;
     }
   });
 }
@@ -855,6 +1107,9 @@ function _bindStableInputs() {
   if (crStatus) crStatus.addEventListener('change', () => reloadCrs());
   const crTarget = document.getElementById('cr-filter-target');
   if (crTarget) crTarget.addEventListener('change', () => reloadCrs());
+  /* [v0.6 template engine] file picker fills the TEMPLATE textarea. */
+  const tplFile = document.getElementById('tpl-form-file');
+  if (tplFile) tplFile.addEventListener('change', () => onTplFileChange());
 }
 
 /* ── boot ── */

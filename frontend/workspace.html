@@ -57,6 +57,13 @@
       <span class="nav-icon">📝</span>
       <span data-i18n="workspace.tab_cr">변경 요청</span>
     </div>
+    <!-- [v0.6 template-formatting engine] horizontal document-shaping
+         tab — register a template (user data), apply pasted content,
+         download the reshaped file. Ships zero templates. -->
+    <div class="nav-item" data-tab="templates" data-action="select-tab">
+      <span class="nav-icon">📄</span>
+      <span data-i18n="workspace.tab_templates">양식</span>
+    </div>
   </nav>
 
   <section class="content">
@@ -385,6 +392,141 @@
         <div id="cr-detail-msg"
              style="font-size:11px;color:var(--muted);
                     font-family:var(--font-mono);margin-top:6px;min-height:14px"></div>
+      </div>
+    </div>
+
+    <!-- [v0.6 template-formatting engine] Templates tab.
+         Backend: routes/templating.py + core/templating/.
+         Horizontal — JAMES ships zero templates; every row here is
+         runtime workspace user data owned by the JWT subject. See
+         docs/design/v0.6-template-formatting-ui.md + ARCHITECTURE
+         §5.7.14. Flow: register a template → pick it → paste raw
+         content → JAMES reshapes onto the structure → download. -->
+    <div id="tab-templates" style="display:none">
+      <div class="page-title">
+        📄 <span data-i18n="workspace.tpl_title">양식</span>
+      </div>
+      <div class="hint" data-i18n="workspace.tpl_hint">
+        양식(서식)을 등록하고, raw 내용을 붙여넣으면 JAMES 가 양식 구조에 맞춰 재작성해 파일로 제시합니다.
+        모든 양식은 본인 소유의 워크스페이스 데이터입니다 — JAMES 는 기본 제공 양식이 없습니다.
+      </div>
+
+      <!-- Register form -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:10px 12px;align-items:start">
+          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:8px"
+                 data-i18n="workspace.tpl_form_name">NAME</label>
+          <input id="tpl-form-name" type="text"
+                 data-i18n-placeholder="workspace.tpl_form_name_ph"
+                 placeholder="양식 이름 (예: 주간 보고서)"
+                 style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+
+          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:8px"
+                 data-i18n="workspace.tpl_form_raw">TEMPLATE</label>
+          <textarea id="tpl-form-raw" rows="6"
+                    data-i18n-placeholder="workspace.tpl_form_raw_ph"
+                    placeholder="양식 본문 — 제목/섹션/플레이스홀더({{이름}}, [날짜] 등)를 포함한 구조"
+                    style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:var(--font-mono);resize:vertical"></textarea>
+
+          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:8px"
+                 data-i18n="workspace.tpl_form_file">FROM FILE</label>
+          <div>
+            <input id="tpl-form-file" type="file" accept=".txt,.md,.markdown,text/plain"
+                   style="font-size:12px;color:var(--text)">
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--font-mono)"
+                 data-i18n="workspace.tpl_form_file_hint">텍스트/마크다운 파일을 선택하면 위 TEMPLATE 칸이 채워집니다.</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:10px">
+          <button class="modal-btn primary" data-action="tpl-create"
+                  data-i18n="workspace.tpl_register">양식 등록</button>
+        </div>
+        <div id="tpl-form-msg"
+             style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:6px;min-height:14px"></div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <span class="counter" id="tpl-counter"></span>
+        <button class="header-btn" data-action="tpl-reload" style="margin-left:auto"
+                data-i18n="workspace.refresh">새로고침</button>
+      </div>
+
+      <!-- Template list -->
+      <table>
+        <thead><tr>
+          <th data-i18n="workspace.tpl_col_name">이름</th>
+          <th data-i18n="workspace.tpl_col_mode">소스</th>
+          <th data-i18n="workspace.tpl_col_created">생성</th>
+          <th data-i18n="workspace.tpl_col_actions">액션</th>
+        </tr></thead>
+        <tbody id="tpl-body">
+          <tr><td colspan="4" class="empty" data-i18n="common.loading">로딩 중...</td></tr>
+        </tbody>
+      </table>
+
+      <!-- Apply panel — fills when a template row is selected. -->
+      <div id="tpl-apply-panel" style="display:none;margin-top:14px;
+           background:var(--surface);border:1px solid var(--border);
+           border-radius:8px;padding:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    border-bottom:1px solid var(--border-2);padding-bottom:8px;margin-bottom:10px">
+          <div>
+            <span style="font-size:14px;font-weight:600" id="tpl-apply-name"></span>
+            <span class="mono" style="font-size:11px;color:var(--muted);margin-left:6px" id="tpl-apply-id"></span>
+          </div>
+          <button class="header-btn" data-action="tpl-close-apply" aria-label="닫기">×</button>
+        </div>
+
+        <!-- Parsed structure preview -->
+        <div class="detail-row">
+          <div class="label" data-i18n="workspace.tpl_placeholders">PLACEHOLDERS</div>
+          <div id="tpl-apply-placeholders" class="detail-entities"></div>
+        </div>
+
+        <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);display:block;margin:10px 0 4px"
+               data-i18n="workspace.tpl_raw_content">RAW CONTENT</label>
+        <textarea id="tpl-apply-content" rows="6"
+                  data-i18n-placeholder="workspace.tpl_raw_content_ph"
+                  placeholder="여기에 원문 내용을 붙여넣으세요 — JAMES 가 양식에 맞춰 재구성합니다."
+                  style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;resize:vertical"></textarea>
+
+        <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
+          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"
+                 data-i18n="workspace.tpl_format">FORMAT</label>
+          <select id="tpl-apply-fmt"
+                  style="padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+            <option value="md">md</option>
+            <option value="txt">txt</option>
+            <option value="html">html</option>
+          </select>
+          <button class="modal-btn primary" data-action="tpl-apply"
+                  id="tpl-apply-btn" style="margin-left:auto"
+                  data-i18n="workspace.tpl_generate">생성</button>
+        </div>
+        <div id="tpl-apply-msg"
+             style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:6px;min-height:14px"></div>
+
+        <!-- Result preview + download -->
+        <div id="tpl-result" style="display:none;margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span class="label" style="font-family:var(--font-mono);font-size:11px;color:var(--muted)"
+                  data-i18n="workspace.tpl_preview">PREVIEW</span>
+            <button class="modal-btn primary" data-action="tpl-download"
+                    data-i18n="workspace.tpl_download">다운로드</button>
+          </div>
+          <pre id="tpl-result-preview"
+               style="background:var(--bg);border:1px solid var(--border);
+                      border-radius:6px;padding:10px;font-size:11px;
+                      max-height:320px;overflow:auto;white-space:pre-wrap;
+                      word-break:break-word;font-family:var(--font-mono)"></pre>
+        </div>
+
+        <!-- Past outputs for this template -->
+        <div class="detail-row" style="margin-top:12px">
+          <div class="label" data-i18n="workspace.tpl_outputs">OUTPUTS</div>
+          <div id="tpl-apply-outputs" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
       </div>
     </div>
   </section>
