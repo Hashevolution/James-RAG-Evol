@@ -194,6 +194,55 @@ def new_output_id() -> str:
     return f"out-{uuid.uuid4().hex[:10]}"
 
 
+def save_output(template_id: str, out_id: str, ext: str, data: bytes) -> Path:
+    """Write rendered output bytes; returns the on-disk path.
+
+    ``out_id`` is validated path-safe; ``ext`` is a file extension with
+    leading dot (from ``render.extension_for``). Caller is responsible
+    for owner-scoping (verify via :func:`get_template` first).
+    """
+    _validate_id(out_id, what="out_id")
+    if not isinstance(ext, str) or not ext.startswith("."):
+        raise TemplateStoreError("ext must be a '.<ext>' string")
+    path = output_dir(template_id) / f"{out_id}{ext}"
+    path.write_bytes(data)
+    return path
+
+
+def read_output(template_id: str, out_id: str):
+    """Return ``(bytes, filename)`` for a stored output, or ``None``.
+
+    Looks up ``out/<out_id>.*`` under the template. ``out_id`` is
+    validated path-safe so a request value cannot traverse.
+    """
+    _validate_id(out_id, what="out_id")
+    out_d = _tpl_dir(template_id) / "out"
+    if not out_d.is_dir():
+        return None
+    for child in out_d.iterdir():
+        if child.is_file() and child.stem == out_id:
+            return child.read_bytes(), child.name
+    return None
+
+
+def list_outputs(template_id: str) -> List[dict]:
+    """List rendered outputs for a template (newest-first by mtime)."""
+    out_d = _tpl_dir(template_id) / "out"
+    if not out_d.is_dir():
+        return []
+    items = []
+    for child in out_d.iterdir():
+        if child.is_file():
+            items.append({
+                "out_id": child.stem,
+                "filename": child.name,
+                "size": child.stat().st_size,
+                "mtime": child.stat().st_mtime,
+            })
+    items.sort(key=lambda m: m.get("mtime", 0), reverse=True)
+    return items
+
+
 __all__ = [
     "TemplateStoreError",
     "VALID_MODES",
@@ -203,4 +252,7 @@ __all__ = [
     "delete_template",
     "output_dir",
     "new_output_id",
+    "save_output",
+    "read_output",
+    "list_outputs",
 ]

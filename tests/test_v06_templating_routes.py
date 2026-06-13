@@ -1,0 +1,132 @@
+"""v0.6 — routes/templating.py tests (PR-3).
+
+Builds a minimal FastAPI app with just the templating router, overrides
+the role dependency, stubs the JWT subject + the LLM call, and isolates
+the workspace to a temp dir. Covers the full lifecycle + owner scoping +
+login gate + the server registers the routes.
+
+Run:
+  python -m unittest tests.test_v06_templating_routes
+"""
+from __future__ import annotations
+
+import os
+import sys
+import tempfile
+import unittest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def _make_client(user="alice", role="admin"):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    import routes.templating as tr
+    from routes._helpers import get_role_from_request
+
+    app = FastAPI()
+    app.include_router(tr.router)
+    app.dependency_overrides[get_role_from_request] = lambda: role
+    tr._bearer_username = lambda request: user  # noqa: stub JWT subject
+    return TestClient(app), tr
+
+
+class TemplatingRoutesTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp(prefix="james_tpl_routes_")
+        self._prev = os.environ.get("JAMES_WORKSPACE")
+        os.environ["JAMES_WORKSPACE"] = self._tmp
+        # Stub the LLM so apply() is deterministic + offline.
+        import llm.router as router
+        self._orig_call = router.call_router
+        router.call_router = lambda prompt, **kw: "# Filled\nfrom raw content"
+        self._router = router
+
+    def tearDown(self):
+        self._router.call_router = self._orig_call
+        if self._prev is None:
+            os.environ.pop("JAMES_WORKSPACE", None)
+        else:
+            os.environ["JAMES_WORKSPACE"] = self._prev
+
+    def test_full_lifecycle(self):
+        client, _ = _make_client(user="alice")
+        # create
+        r = client.post("/templates/", json={
+            "name": "My Report", "raw_text": "# Title\n{{author}}\n",
+            "mode": "text"})
+        self.assertEqual(r.status_code, 200, r.text)
+        tid = r.json()["id"]
+        self.assertTrue(tid.startswith("my-report-"))
+
+        # list
+        r = client.get("/templates/mine/list")
+        self.assertEqual([m["id"] for m in r.json()["items"]], [tid])
+
+        # detail w/ parsed spec
+        r = client.get(f"/templates/{tid}")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("author", r.json()["spec"]["placeholders"])
+
+        # apply
+        r = client.post(f"/templates/{tid}/apply", json={
+            "raw_content": "author is Jane", "fmt": "md"})
+        self.assertEqual(r.status_code, 200, r.text)
+        out_id = r.json()["out_id"]
+        self.assertIn("Filled", r.json()["preview"])
+
+        # download
+        r = client.get(f"/templates/{tid}/output/{out_id}")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("attachment", r.headers.get("content-disposition", ""))
+        self.assertIn(b"Filled", r.content)
+
+        # delete
+        r = client.delete(f"/templates/{tid}")
+        self.assertEqual(r.status_code, 200)
+        r = client.get(f"/templates/{tid}")
+        self.assertEqual(r.status_code, 404)
+
+    def test_owner_scoping_404_for_other_user(self):
+        client_a, _ = _make_client(user="alice")
+        tid = client_a.post("/templates/", json={
+            "name": "t", "raw_text": "# A\n"}).json()["id"]
+        client_b, _ = _make_client(user="bob")
+        self.assertEqual(client_b.get(f"/templates/{tid}").status_code, 404)
+        self.assertEqual(client_b.get("/templates/mine/list").json()["items"], [])
+
+    def test_login_required(self):
+        client, tr = _make_client(user="alice")
+        tr._bearer_username = lambda request: None  # no JWT subject
+        r = client.get("/templates/mine/list")
+        self.assertEqual(r.status_code, 401)
+
+    def test_bad_fmt_rejected(self):
+        client, _ = _make_client(user="alice")
+        tid = client.post("/templates/", json={
+            "name": "t", "raw_text": "# A\n"}).json()["id"]
+        r = client.post(f"/templates/{tid}/apply", json={
+            "raw_content": "x", "fmt": "pdf"})
+        self.assertEqual(r.status_code, 400)
+
+    def test_traversal_id_rejected(self):
+        client, _ = _make_client(user="alice")
+        # path-encoded traversal won't match the route; a literal bad id
+        # that does route is rejected 400 by the store validator.
+        r = client.get("/templates/BAD_UPPER")
+        self.assertEqual(r.status_code, 400)
+
+
+class ServerRegistrationTests(unittest.TestCase):
+    def test_routes_registered_on_app(self):
+        import server_llmwiki
+        paths = {getattr(r, "path", None) for r in server_llmwiki.app.routes}
+        for p in ("/templates/", "/templates/mine/list",
+                  "/templates/{template_id}",
+                  "/templates/{template_id}/apply",
+                  "/templates/{template_id}/output/{out_id}"):
+            self.assertIn(p, paths, f"missing template route: {p}")
+
+
+if __name__ == "__main__":
+    unittest.main()
