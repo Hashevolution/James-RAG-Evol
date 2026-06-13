@@ -1,15 +1,23 @@
 # Dependabot risk assessment — 2026-06-10
 
+> **Update 2026-06-13**: §3 added for two new low-severity torch
+> advisories (#17 / #18, CVE-2025-3000, `torch.jit.script` memory
+> corruption). Same risk-accept pattern as chromadb: no JAMES call
+> site exercises the vulnerable function. Original §1/§2 unchanged.
+
 Open alerts on `main` at the time of this assessment:
 
 | # | Package | Severity | CVE | Manifest | Disposition |
 |---|---|---|---|---|---|
+| 18 | torch | low | CVE-2025-3000 | `requirements.txt` (transitive) | **Risk-accept** (not reachable; awaiting upstream patch) — §3 |
+| 17 | torch | low | CVE-2025-3000 | `requirements_pinned.txt` | **Risk-accept** (same) — §3 |
 | 16 | starlette | medium | CVE-2026-48710 | `requirements.txt` | **Fix** (floor pin → 1.0.1) |
 | 15 | starlette | medium | CVE-2026-48710 | `requirements_pinned.txt` | **Fix** (pin 1.0.0 → 1.0.1) |
 | 14 | chromadb | critical | CVE-2026-45829 | `requirements.txt` | **Risk-accept** (not exploitable; awaiting upstream patch) |
 | 13 | chromadb | critical | CVE-2026-45829 | `requirements_pinned.txt` | **Risk-accept** (same) |
 
-Two distinct advisories; each fires once per manifest.
+Three distinct advisories; each fires once per manifest where the
+package surfaces.
 
 ---
 
@@ -107,7 +115,66 @@ such code path exists, and adding one would be a separate review).
 
 ---
 
-## 3. Auditability note
+## 3. torch — CVE-2025-3000 (jit.script memory corruption)
+
+> Added 2026-06-13. Alerts #17 / #18 surfaced after the original
+> 2026-06-10 assessment.
+
+**GHSA-rrmf-rvhw-rf47.** Memory corruption in `torch.jit.script`
+when passed maliciously crafted input. Severity: **low** (local-host
+attack, requires the attacker to supply Python source / a serialized
+JIT module to a process that calls `torch.jit.script` on it).
+Vulnerable range: torch ≤ 2.12.0. **No patched version published as
+of 2026-06-13.**
+
+### JAMES exposure — risk-accept rationale
+
+The vulnerable function is **not called** from any JAMES code path:
+
+1. **Zero `torch.jit.script` call sites.** Repo-wide grep for
+   `torch.jit.script` / `torch.jit.load` / `jit.script` returns
+   zero matches. No JAMES module compiles or loads a JIT module.
+2. **Single direct torch import** — `eval/external/lrb/nli_verifier.py`
+   uses only `torch.no_grad()` (context manager for inference) and
+   `torch.softmax()` (numeric op). Neither is the vulnerable
+   surface.
+3. **Transitive usage only otherwise.** torch is pulled in by
+   `sentence-transformers` and `transformers` for embedding /
+   reranker model forward passes. Those libraries call the
+   high-level `model(...)` interface, not `torch.jit.script`. They
+   may use JIT *internally* on pretrained weights they bundle, but
+   the attack model (CVE-2025-3000) requires attacker-controlled
+   JIT source to reach the corruption — JAMES never accepts
+   user-controlled JIT input.
+4. **Local-host attack model.** The CVE describes "possible to
+   launch the attack on the local host." An attacker who already
+   has local execution against the JAMES process has higher-
+   privilege paths than corrupting `torch.jit` parser state.
+
+### Disposition
+
+**Risk-accept until upstream patch ships.** Concrete action:
+
+- torch is **transitive only** in `requirements.txt` (pulled in by
+  `sentence-transformers>=2.5.0`); no direct pin to add there. The
+  Dependabot scanner attributes the alert to `requirements.txt`
+  via dependency-graph inference.
+- `requirements_pinned.txt` stays at `torch==2.11.0` /
+  `torchvision==0.26.0`. No patched torch release exists to bump
+  to; bumping forward into the still-vulnerable 2.12.0 range
+  would change nothing.
+- **Re-evaluation trigger**: any PR that introduces
+  `torch.jit.script`, `torch.jit.load`, `torch.jit.trace`, or any
+  code path that passes user-supplied Python source / serialized
+  modules into a JIT call MUST revisit this assessment in the same
+  PR. The torch advisory becomes live exposure the moment any of
+  those land.
+- Dependabot alerts #17 and #18 follow the same dismissal
+  treatment as #13 / #14 (`not_used` with this document URL).
+
+---
+
+## 4. Auditability note
 
 This assessment lives in the repository at
 `docs/security/dependabot-2026-06-10-risk-assessment.md` and is

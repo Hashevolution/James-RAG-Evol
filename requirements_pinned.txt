@@ -132,6 +132,16 @@ threadpoolctl==3.6.0
 tifffile==2026.3.3
 tiktoken==0.12.0
 tokenizers==0.22.2
+# Dependabot alerts #17/#18 — GHSA-rrmf-rvhw-rf47 / CVE-2025-3000:
+# torch.jit.script memory corruption (low). Vulnerable ≤ 2.12.0
+# with NO patched version published as of 2026-06-13.
+# JAMES risk acceptance: not reachable. Repo-wide grep for
+# torch.jit.script / torch.jit.load / jit.script returns zero
+# matches; the only direct torch import (eval/external/lrb/
+# nli_verifier.py) uses torch.no_grad() + torch.softmax() only.
+# transformers / sentence-transformers consume torch via the
+# high-level model interface, not JIT. See
+# docs/security/dependabot-2026-06-10-risk-assessment.md §3.
 torch==2.11.0
 torchvision==0.26.0
 tqdm==4.67.3
