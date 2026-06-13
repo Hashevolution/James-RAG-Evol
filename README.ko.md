@@ -14,7 +14,7 @@
 > 모순 트리 등도 모두 first-class 차별점.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-v0.4.4-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/releases/tag/v0.4.4)
+[![Status](https://img.shields.io/badge/Status-v0.5%20closed-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/blob/main/docs/handovers/v0.5-close-2026-06-12.md)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12806/badge)](https://www.bestpractices.dev/projects/12806)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20652679.svg)](https://doi.org/10.5281/zenodo.20652679)
@@ -122,6 +122,41 @@ python scripts/research/lrb_run_s3.py --scale publication
 ```
 
 `reports/external/lrb/` 와 `reports/rab/` 의 모든 `result.json` + `bench.jsonl` artifact 가 scenario fixture 의 SHA 에 pin 됨; **바이트-동일 재실행이 검증 protocol** 입니다.
+
+---
+
+## 프로젝트 상태: v0.5 마감 — Time-Travel Dashboard + SaaS-readiness + Pack SDK + CSP nonce
+
+**2026-06-12 릴리스** (v0.5 close handover [PR #862](https://github.com/Hashevolution/James-RAG-Evol/pull/862)). v0.5 cycle 은 21 PR (#841 – #861) 로 enterprise document ontology (B.5 시리즈), B.1 audit gap 구현 (G3 / G4 / G5 / G7 LANDED + G1.a / G2.a primitive), B.2 / B.3 multi-tenant / plugin-API design memo, UI 개선 stream (a11y + aria-live + responsive + CSP 경로), 평가 외부 노출 mapping, 그리고 server-side security headers middleware + tenant-id + approval-evidence primitive 를 마감했습니다.
+
+v0.5 마감 이후 **23 PR (#863 – #886) 가 main 에 추가**되어 (2026-06-12 PM – 2026-06-13), **Time-Travel Dashboard quartet** (TT.a/b/c/d — audit-replay overlay + 3-phase reasoning trail panel + side-by-side now-vs-T diff modal), **v0.6 Pack SDK trio** (CLI scaffolder + author guide + `james-pack-sdk` PyPI packaging with SemVer 12개월 deprecation 정책), **v0.5 G1 + G2 SaaS-readiness trio** (replay-side tenant filter + CR merge wire-in + SaaS 배포 가이드 + OIDC resolver hook + async-task-aware `with_tenant_id`), **Track C CSP nonce middleware** (script-flag 안전 즉시 적용 / style-flag 는 inline-style migration 대기), **graph-RAG synthesis Step 1 + Step 2 driver** (+0.41 path_coverage n=3 ⭐⭐⭐ + cross-model scaffold) 가 ship.
+
+**v0.5 → v0.6 gate (Dim F: ≥6 개월 external customer pilot)** 는 **미통과**. 프로젝트는 [v0.6 entry skeleton (PR #886)](docs/handovers/v0.6-entry-skeleton-2026-06-13.md) 의 2-fork entry contract 가 지배하는 **"v0.5 closed, v0.6 not yet entered"** interval 에 있습니다: Fork A = LOI 서명 → Track D vertical pack scoping / Fork B = 6 개월 no-LOI → reassess. 둘 중 하나 해결될 때까지 mother-platform 강화 계속, vertical 콘텐츠는 CLAUDE.md rule #1 에 따라 BLOCKED.
+
+23 마감 후 PR 모두 streak 유지: **vertical 토큰 0, `core/retrieval` + `core/graph` traversal + `core/reasoning` 0 라인 변경, 4-layer rule #1 보호 contract** (code-level capability gate + doc-level "Out of scope" + naming-level domain-agnostic + trigger-level LOI tagging) 모든 PR 에서 유지.
+
+---
+
+## 🔬 Graph-RAG 가 실제로 얼마나 기여했나?
+
+`multihop_rag` fixture 위 단일 4-cell ablation (N=100, n=3 paired, M_M = gemma4:e4b 4B, git_sha `b686f35`):
+
+| Cell | path_coverage | graded_answer | abstention_f1 | token_cost | latency |
+|---|---|---|---|---|---|
+| C_minus (RAG 없음) | 0.000 | 0.213 | 0.356 | 675 | 9.8s |
+| C_rag-basic (+ vector) | 0.000 | 0.260 | 0.306 | 783 | 12.5s |
+| **C_rag-graph (+ graph)** | **0.4056** | 0.203 | 0.400 | 1675 | 32.4s |
+| C_rag-ontology (+ typed filter) | 0.4056 | 0.230 | 0.4286 | 1695 | 32.4s |
+
+**Graph-RAG 기여** (C_rag-basic → C_rag-graph):
+- **path_coverage +0.41** (load-bearing win, noise band 0.02) — vector-only retrieval 은 multi-hop 쿼리에서 gold supporting-doc 경로의 0% 만 회수; graph traversal 은 ~40% 회수.
+- abstention_f1 +0.094 (graph evidence 가 "모를 때 모른다" 보정 개선).
+- graded_answer −0.057 (honest loss — graph evidence 가 short-answer 쿼리에 noise 추가; typed-filter 가 +0.027 회복).
+- **2.1× token cost, 2.6× latency** (path-coverage win 은 공짜가 아님).
+
+**Cross-time 재현성**: α-6 cycle (2026-06-01, n=1) 은 path_coverage 0.408 측정; Step 1 재실행 (2026-06-13, n=3 median) 이 0.4056 확인. **oracle 12 일 revision 에 걸쳐 stable.**
+
+전체 table + LRB V<N<J 아키텍처 ablation + RAB AC/RF/PC audit ablation + honest negative (closed-book QA, cycle γ deep-multi-hop floor, cost trade-off) 모두 [`docs/evaluation/v0.5-graph-rag-contribution.md`](docs/evaluation/v0.5-graph-rag-contribution.md) 참조.
 
 ---
 
