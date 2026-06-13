@@ -51,7 +51,7 @@ EN-301-549 check-item:
 from __future__ import annotations
 
 import os
-from typing import Dict, Final, Literal
+from typing import Dict, Final, Literal, Optional
 
 
 # ─── CSP policy (report-only by default) ──────────────────────────────
@@ -110,17 +110,66 @@ def _read_csp_mode() -> CspMode:
     return "report-only"
 
 
-def _build_csp_value(report_uri: str = "") -> str:
+def _compose_directive(
+    base: str,
+    nonce: str,
+    replace_unsafe_inline: bool,
+) -> str:
+    """Append a ``'nonce-<value>'`` token to a CSP source list.
+
+    Per v0.6 Track C (CSP nonce middleware).
+
+    * ``script-src`` callers pass ``replace_unsafe_inline=False`` —
+      the directive doesn't carry ``'unsafe-inline'`` today, so the
+      nonce is purely additive.
+    * ``style-src`` callers pass ``replace_unsafe_inline=True`` so
+      ``'unsafe-inline'`` is stripped (modern browsers ignore it
+      when a nonce is present anyway, per CSP3 §6.6.2.4; stripping
+      it makes the intent explicit + keeps older browsers from
+      falling back to inline-anything).
+    """
+    if replace_unsafe_inline:
+        # Drop the `'unsafe-inline'` token. The split-rejoin keeps
+        # whitespace tidy and is robust to single / double quotes.
+        kept = [tok for tok in base.split() if tok != "'unsafe-inline'"]
+    else:
+        kept = base.split()
+    kept.append(f"'nonce-{nonce}'")
+    return " ".join(kept)
+
+
+def _build_csp_value(
+    report_uri: str = "",
+    *,
+    script_nonce: Optional[str] = None,
+    style_nonce: Optional[str] = None,
+) -> str:
     """Compose the CSP directive string from `CSP_DIRECTIVES_DEFAULT`.
 
     Directives are joined `key value; key value; ...`. Trailing
     `upgrade-insecure-requests` is appended (it has no source list).
     If `report_uri` is non-empty, a `report-uri <uri>` directive is
     appended too.
+
+    v0.6 Track C — per-request nonce composition:
+      * ``script_nonce`` (when set): adds ``'nonce-<value>'`` to
+        ``script-src``. ``script-src`` is already ``'self'``-only,
+        so this is additive and safe to enable today.
+      * ``style_nonce`` (when set): REPLACES ``'unsafe-inline'`` in
+        ``style-src`` with ``'nonce-<value>'``. Operator must
+        complete the inline-style migration first or the UI breaks.
     """
-    parts = [
-        f"{k} {v}" for k, v in CSP_DIRECTIVES_DEFAULT.items()
-    ]
+    parts = []
+    for key, value in CSP_DIRECTIVES_DEFAULT.items():
+        if key == "script-src" and script_nonce:
+            value = _compose_directive(
+                value, script_nonce, replace_unsafe_inline=False,
+            )
+        elif key == "style-src" and style_nonce:
+            value = _compose_directive(
+                value, style_nonce, replace_unsafe_inline=True,
+            )
+        parts.append(f"{key} {value}")
     parts.append("upgrade-insecure-requests")
     if report_uri:
         parts.append(f"report-uri {report_uri}")
@@ -193,7 +242,11 @@ _PERMISSIONS_POLICY: Final[str] = ", ".join([
 # ─── Public API ───────────────────────────────────────────────────────
 
 
-def build_security_headers() -> Dict[str, str]:
+def build_security_headers(
+    *,
+    script_nonce: Optional[str] = None,
+    style_nonce: Optional[str] = None,
+) -> Dict[str, str]:
     """Return the security-header dict for the current env config.
 
     Caller (the FastAPI middleware) iterates the dict and writes
@@ -205,6 +258,18 @@ def build_security_headers() -> Dict[str, str]:
     Empty values are returned for headers that env config has
     disabled (e.g., HSTS with `max-age=0`); the caller is expected
     to skip headers whose value is empty.
+
+    v0.6 Track C — per-request CSP nonce kwargs:
+      * ``script_nonce`` — when set, ``script-src`` carries
+        ``'nonce-<value>'`` (additive; ``script-src`` is already
+        strict-mode-clean per UI #4)
+      * ``style_nonce`` — when set, ``style-src`` REPLACES
+        ``'unsafe-inline'`` with ``'nonce-<value>'`` (operator
+        must complete the UI #6 inline-style migration first)
+
+    Both kwargs default to ``None`` → byte-identical pre-v0.6
+    behaviour. The middleware decides whether to pass them based
+    on ``JAMES_CSP_USE_NONCE_SCRIPT`` / ``_STYLE`` env flags.
     """
     out: Dict[str, str] = {}
 
@@ -212,7 +277,11 @@ def build_security_headers() -> Dict[str, str]:
     mode = _read_csp_mode()
     if mode != "off":
         report_uri = (os.environ.get("JAMES_CSP_REPORT_URI") or "").strip()
-        out[_csp_header_name(mode)] = _build_csp_value(report_uri)
+        out[_csp_header_name(mode)] = _build_csp_value(
+            report_uri,
+            script_nonce=script_nonce,
+            style_nonce=style_nonce,
+        )
 
     # Belt-and-suspenders / always-on
     out["X-Frame-Options"] = "DENY"
