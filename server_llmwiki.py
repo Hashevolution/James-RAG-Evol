@@ -163,6 +163,21 @@ from core.security.csp_nonce import (  # noqa: E402
     csp_use_nonce_for_styles,
     new_nonce,
 )
+# v0.6 Phase 1 P1.2 — trusted forwarded-headers middleware. MUST be
+# added BEFORE `security_headers_middleware` (which uses request
+# state) and BEFORE `rate_limit_middleware` (which calls
+# `get_client_ip`). FastAPI middleware execution order is LIFO of
+# registration (the LAST added runs FIRST on the inbound path), so
+# the explicit `add_middleware` call below appears AFTER the two
+# `@app.middleware("http")` decorators in source order — which is
+# correct: the class-based middleware ends up outermost (runs first
+# inbound, last outbound), overlaying the trusted forwarded headers
+# onto `request.scope` before any downstream middleware sees the
+# client IP or scheme. See `core/security/forwarded.py` for the env
+# config (`JAMES_TRUSTED_PROXIES`).
+from core.security.forwarded import (  # noqa: E402
+    TrustedForwardedHeadersMiddleware,
+)
 
 
 @app.middleware("http")
@@ -530,6 +545,17 @@ async def rate_limit_middleware(request: Request, call_next):
 
     response = await call_next(request)
     return response
+
+
+# v0.6 Phase 1 P1.2 — install the trusted forwarded-headers
+# middleware. `add_middleware` registers a class-based middleware
+# that wraps the entire app, so it runs FIRST on the inbound
+# request (before the `@app.middleware("http")` rate-limit + CSP
+# header middlewares above). Default behaviour preserved
+# byte-identical: when `JAMES_TRUSTED_PROXIES` is unset the
+# middleware is a no-op pass-through.
+app.add_middleware(TrustedForwardedHeadersMiddleware)
+
 
 # ─── API ─────────────────────────────────────────────────────
 
