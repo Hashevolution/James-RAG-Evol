@@ -70,7 +70,7 @@ COGNITIVE_FEATURE_FLAGS: Dict[str, Dict[str, Any]] = {
         "label":     "Reflection loop (draft → critique → revise)",
         "label_key": "set.cognitive_flag_reflect",
         "default":   False,
-        "module":    "core/reasoning/reflect.py",
+        "module":    "core/reasoning/reflect/",
     },
     "planner": {
         "env":       "JAMES_ENABLE_PLANNER",
