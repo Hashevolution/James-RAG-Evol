@@ -87,6 +87,42 @@
                   font-family:var(--font-mono);color:var(--muted)">
         <span data-i18n="graph.timetravel.now_label">Viewing: NOW</span>
       </div>
+
+      <!-- v0.5 Track F.1 TT.c — Reasoning trail replay. Operator
+           pastes a trace_id; the panel below renders that trace's
+           stages filtered to the time-travel cutoff. When no cutoff
+           is set, every stage is shown (equivalent to /admin/trace
+           but rendered in the same 3-phase chat.js STAGE_META
+           format). -->
+      <label for="time-travel-trace-input"
+             class="field-label"
+             style="margin-top:10px"
+             data-i18n="graph.timetravel.trace.label">
+        Trace replay
+      </label>
+      <input id="time-travel-trace-input"
+             type="text"
+             autocomplete="off"
+             spellcheck="false"
+             placeholder="trace_id"
+             aria-label="Trace ID to replay"
+             style="width:100%;background:var(--bg);
+                    border:1px solid var(--border);border-radius:7px;
+                    padding:7px 10px;color:var(--text);
+                    font-family:var(--font-mono);font-size:11px;
+                    outline:none">
+      <button id="time-travel-trace-apply" type="button"
+              data-action="time-travel-trace-apply"
+              aria-label="Replay trace at picked time"
+              data-i18n="graph.timetravel.trace.apply"
+              style="width:100%;margin-top:6px;padding:6px 10px;
+                     background:var(--surface-2);
+                     border:1px solid var(--border);border-radius:6px;
+                     color:var(--text-soft);cursor:pointer;
+                     font-size:11px;font-weight:600;
+                     font-family:var(--font-mono);letter-spacing:.4px">
+        Show trail
+      </button>
     </div>
 
     <div class="ctrl">
@@ -444,5 +480,11 @@
      (link.edge_id) that arrives with later T5 mutation-site wiring —
      until then the overlay is summary-only. -->
 <script src="/static/time-travel-renderer.js"></script>
+<!-- v0.5 Track F.1 TT.c — Reasoning trail replay. Renders one
+     trace_id's stages in the same 3-phase format chat.js uses
+     (RETRIEVE → EXPAND → VERIFY), filtered to the active time-travel
+     cutoff. Loads after the picker (TT.a) + corpus renderer (TT.b)
+     so the cutoff event has already wired the panel state. -->
+<script src="/static/time-travel-trace.js"></script>
 </body>
 </html>
