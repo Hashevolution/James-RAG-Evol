@@ -88,6 +88,20 @@ class IndustryComparisonDocStructureTests(unittest.TestCase):
         self.assertIn("AC/RF/PC", self.body)
         self.assertIn("V<N<J", self.body)
 
+    def test_verification_log_section_present(self):
+        # The §9 verification log records what was re-checked + when,
+        # locking the corrections from the 2026-06-13 audit so a
+        # future PR can't silently delete the audit trail.
+        self.assertIn("## 9. Verification log", self.body,
+                      "verification log section must be present")
+        for fixed_cell in (
+            "R2R audit log",       # logging API removal
+            "ActiveGraph license", # Apache-2.0 fix
+            "OpenSSF badge",        # 4 competitor badge state
+        ):
+            self.assertIn(fixed_cell, self.body,
+                          f"verification log must record cell: {fixed_cell!r}")
+
     def test_zenodo_dois_referenced(self):
         # Reproducibility tier matrix cites the two minted DOIs.
         self.assertIn("10.5281/zenodo.20652679", self.body)
