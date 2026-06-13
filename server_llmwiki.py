@@ -254,6 +254,25 @@ async def serve_admin():
     return HTMLResponse("<h1>Admin</h1><p>frontend/admin.html 없음</p>")
 
 
+@app.get("/onboarding", response_class=HTMLResponse, include_in_schema=False)
+async def serve_onboarding():
+    """v0.6 Phase 4 P4.1 — operator onboarding 5-step flow.
+
+    Non-developer operator quickstart: welcome / search / audit log /
+    change review / time-travel restore. State persistence via
+    localStorage (`james_onboarding_completed`); admin page (P4.4)
+    exposes a "restart onboarding" link that clears the flag.
+
+    Public route by design — the HTML doesn't carry secrets; the
+    downstream pages it points at (`/admin`, `/admin/graph`) gate
+    on JWT.
+    """
+    page = os.path.join(FRONTEND_DIR, "onboarding.html")
+    if os.path.exists(page):
+        return FileResponse(page)
+    return HTMLResponse("<h1>Onboarding</h1><p>frontend/onboarding.html 없음</p>")
+
+
 @app.get("/workspace", response_class=HTMLResponse, include_in_schema=False)
 async def serve_workspace():
     """[W7-B] Standalone workspace page — data explorer + (W8) jobs.

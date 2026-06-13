@@ -1,0 +1,300 @@
+/* v0.6 Phase 4 P4.1 — operator onboarding flow stylesheet.
+ *
+ * Visual goals (Mozilla design heuristics applied):
+ *   - "I am a non-developer; technical jargon scares me." Use the
+ *     mint/cyber palette but ZERO `trace_id` / `supersede chain` /
+ *     `audit_log` raw labels — plain Korean/English replacement.
+ *   - "I want to know how long this takes." Top progress indicator
+ *     with 5 visible dots; current dot pulses softly.
+ *   - "I might accidentally close this." Persistent "Skip" link
+ *     in the header (not a tiny X); browser tab title says
+ *     "JAMES — 비개발자 운영자 안내" so reopening is obvious.
+ *   - "Don't show me again forever" must be explicit + reversible
+ *     (the admin page exposes a "restart onboarding" link, P4.4 +).
+ *
+ * Tokens come from `tokens.css`; this file only adds layout +
+ * onboarding-specific rules.
+ */
+
+.onboarding-main {
+  max-width: 760px;
+  margin: 32px auto;
+  padding: 0 24px 64px;
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+/* ── progress indicator ─────────────────────────────────────── */
+
+.onboarding-progress {
+  margin-bottom: 32px;
+}
+
+.step-dots {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  position: relative;
+}
+
+/* connecting line behind the dots */
+.step-dots::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  height: 2px;
+  background: var(--border);
+  z-index: 0;
+}
+
+.step-dot {
+  flex: 1;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  cursor: default;
+}
+
+.step-dot::before {
+  content: "";
+  display: block;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  margin: 0 auto 8px;
+  transition: all .2s ease;
+}
+
+.step-dot[data-state="done"]::before {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb, 99, 102, 241), .15);
+}
+
+.step-dot[data-state="active"]::before,
+.step-dot[aria-current="step"]::before {
+  background: var(--surface);
+  border-color: var(--accent);
+  animation: dot-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb, 99, 102, 241), .35); }
+  50%      { box-shadow: 0 0 0 6px rgba(var(--accent-rgb, 99, 102, 241), 0); }
+}
+
+.dot-label {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  letter-spacing: .3px;
+}
+
+.step-dot[data-state="active"] .dot-label,
+.step-dot[aria-current="step"] .dot-label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ── step content ───────────────────────────────────────────── */
+
+.step {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+  min-height: 360px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Marker class the JS adds to the currently-visible step. Currently
+ * inert — the `hidden` attribute drives display. Reserved for future
+ * subtle entrance animation hooks (CSS-only).
+ */
+.step-active { /* hook for future entrance animations */ }
+
+.step h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent-fg);
+  margin: 0 0 16px;
+  letter-spacing: .2px;
+}
+
+.step-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.step-body p {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+.step-body strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* ── step 1 summary panel ───────────────────────────────────── */
+
+.step1-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+}
+
+@media (max-width: 600px) {
+  .step1-summary { grid-template-columns: 1fr; }
+}
+
+.summary-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.summary-item strong {
+  display: block;
+  color: var(--accent-fg);
+  font-size: 13px;
+  letter-spacing: .3px;
+  margin-bottom: 2px;
+}
+
+.summary-item span {
+  font-size: 12px;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+.summary-icon {
+  font-size: 20px;
+  flex: 0 0 28px;
+  line-height: 1.4;
+}
+
+/* ── example box (steps 2-5) ────────────────────────────────── */
+
+.example-box {
+  background: var(--bg);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  padding: 14px 18px;
+}
+
+.example-label {
+  display: block;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  letter-spacing: 1px;
+  color: var(--accent-fg);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.example-list {
+  margin: 0;
+  padding-left: 22px;
+  color: var(--text-soft);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.example-list li + li { margin-top: 4px; }
+
+/* ── step hint ──────────────────────────────────────────────── */
+
+.step-hint {
+  background: rgba(var(--accent-rgb, 99, 102, 241), .07);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text-soft);
+  margin-top: auto;
+}
+
+/* ── navigation buttons ─────────────────────────────────────── */
+
+.onboarding-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.onb-btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .4px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-soft);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;       /* WCAG 2.5.5 target size */
+  transition: background .15s, transform .05s;
+}
+
+.onb-btn:hover  { background: var(--surface); transform: translateY(-1px); }
+.onb-btn:active { transform: translateY(0); }
+
+.onb-btn:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.onb-btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.onb-btn-primary:hover { background: var(--accent); filter: brightness(1.1); }
+
+/* ── "dont show again" checkbox ─────────────────────────────── */
+
+.onboarding-checkbox {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.onboarding-checkbox input { margin-right: 6px; vertical-align: middle; }
+
+/* ── mobile tweaks ──────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .onboarding-main { padding: 0 16px 48px; margin-top: 16px; }
+  .step { padding: 20px; min-height: 320px; }
+  .step h1 { font-size: 19px; }
+  .step-body { font-size: 14px; }
+  .onb-btn { padding: 10px 16px; font-size: 12px; }
+  .dot-label { font-size: 10px; }
+}
