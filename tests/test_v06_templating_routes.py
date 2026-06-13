@@ -116,12 +116,38 @@ class TemplatingRoutesTests(unittest.TestCase):
         r = client.get("/templates/BAD_UPPER")
         self.assertEqual(r.status_code, 400)
 
+    def test_ingest_image_returns_ocr_text(self):
+        client, tr = _make_client(user="alice")
+        # Stub the OCR so the route is deterministic + offline.
+        orig = tr.ingest_image
+        tr.ingest_image = lambda path: "# Form\n{{name}}\n"
+        try:
+            r = client.post(
+                "/templates/ingest-image",
+                files={"file": ("form.png", b"\x89PNG\r\n", "image/png")},
+            )
+        finally:
+            tr.ingest_image = orig
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json()["mode"], "image")
+        self.assertIn("Form", r.json()["raw_text"])
+
+    def test_ingest_image_login_required(self):
+        client, tr = _make_client(user="alice")
+        tr._bearer_username = lambda request: None
+        r = client.post(
+            "/templates/ingest-image",
+            files={"file": ("form.png", b"\x89PNG\r\n", "image/png")},
+        )
+        self.assertEqual(r.status_code, 401)
+
 
 class ServerRegistrationTests(unittest.TestCase):
     def test_routes_registered_on_app(self):
         import server_llmwiki
         paths = {getattr(r, "path", None) for r in server_llmwiki.app.routes}
         for p in ("/templates/", "/templates/mine/list",
+                  "/templates/ingest-image",
                   "/templates/{template_id}",
                   "/templates/{template_id}/apply",
                   "/templates/{template_id}/output/{out_id}"):

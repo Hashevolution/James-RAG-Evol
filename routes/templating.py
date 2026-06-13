@@ -14,7 +14,15 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from pydantic import BaseModel
 
 from core.templating import (
@@ -23,6 +31,7 @@ from core.templating import (
     delete_template,
     format_content,
     get_template,
+    ingest_image,
     list_outputs,
     list_templates,
     new_output_id,
@@ -91,6 +100,59 @@ async def create_template_route(
         raise HTTPException(status_code=400, detail=str(e))
     _write_audit(role, "/templates/", query=f"create:{meta['id']}")
     return meta
+
+
+# Cap the OCR upload so a hostile client can't exhaust disk/CPU. 12 MB
+# is generous for a scanned form page; tune via the constant if needed.
+_MAX_IMAGE_BYTES = 12 * 1024 * 1024
+
+
+@router.post("/templates/ingest-image", summary="이미지 양식 → OCR 텍스트")
+async def ingest_image_route(
+    request: Request,
+    file: UploadFile = File(...),
+    role: str = Depends(get_role_from_request),
+):
+    """OCR an uploaded image to raw template text (image input mode).
+
+    Returns ``{"raw_text": ..., "mode": "image"}``. The caller reviews
+    the extracted text, then POSTs it to ``/templates/`` with
+    ``mode="image"`` to register the template. OCR runs on-box
+    (Tesseract) — the image bytes never leave the machine.
+    """
+    _owner_or_401(request, role)
+    import os
+    import tempfile
+
+    ext = os.path.splitext(file.filename or "")[1].lower() or ".png"
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="빈 파일입니다.")
+    if len(data) > _MAX_IMAGE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"이미지가 너무 큽니다 (최대 {_MAX_IMAGE_BYTES // (1024*1024)}MB).",
+        )
+
+    tmp_path = None
+    try:
+        fd, tmp_path = tempfile.mkstemp(suffix=ext, prefix="james_tpl_ocr_")
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(data)
+        try:
+            raw_text = ingest_image(tmp_path)
+        except TemplateStoreError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
+    _write_audit(role, "/templates/ingest-image",
+                 query=f"ocr:{file.filename or '?'}")
+    return {"raw_text": raw_text, "mode": "image"}
 
 
 @router.get("/templates/mine/list", summary="내 양식 목록")

@@ -436,6 +436,15 @@
             <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--font-mono)"
                  data-i18n="workspace.tpl_form_file_hint">텍스트/마크다운 파일을 선택하면 위 TEMPLATE 칸이 채워집니다.</div>
           </div>
+
+          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:8px"
+                 data-i18n="workspace.tpl_form_image">FROM IMAGE</label>
+          <div>
+            <input id="tpl-form-image" type="file" accept="image/*"
+                   style="font-size:12px;color:var(--text)">
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--font-mono)"
+                 data-i18n="workspace.tpl_form_image_hint">이미지를 선택하면 OCR(서버, Tesseract)로 텍스트를 추출해 위 칸을 채웁니다.</div>
+          </div>
         </div>
         <div style="display:flex;justify-content:flex-end;margin-top:10px">
           <button class="modal-btn primary" data-action="tpl-create"

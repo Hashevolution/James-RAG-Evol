@@ -794,6 +794,9 @@ async function _crPost(path, body) {
  */
 let _currentTplId = null;
 let _lastTplOutId = null;
+/* How the TEMPLATE box was last filled — recorded so create posts the
+   right `mode` (text / file / image). Reset to 'text' on manual edit. */
+let _tplMode = 'text';
 
 async function reloadTemplates() {
   const body = document.getElementById('tpl-body');
@@ -844,12 +847,56 @@ function onTplFileChange() {
   const reader = new FileReader();
   reader.onload = () => {
     document.getElementById('tpl-form-raw').value = String(reader.result || '');
+    _tplMode = 'file';
     if (!document.getElementById('tpl-form-name').value.trim()) {
       document.getElementById('tpl-form-name').value =
         f.name.replace(/\.[^.]+$/, '');
     }
   };
   reader.readAsText(f);
+}
+
+/* Image mode — POST the picked image to /templates/ingest-image; the
+   server OCRs it (Tesseract, on-box) and returns the extracted text,
+   which fills the TEMPLATE box for the operator to review + register. */
+async function onTplImageChange() {
+  const inp = document.getElementById('tpl-form-image');
+  const f = inp && inp.files && inp.files[0];
+  if (!f) return;
+  const msg = document.getElementById('tpl-form-msg');
+  msg.textContent = `⏳ OCR…`;
+  try {
+    const fd = new FormData();
+    fd.append('file', f);
+    const r = await fetch(
+      `/templates/ingest-image?api_key=${encodeURIComponent(_apiKey || '')}`,
+      {
+        method: 'POST',
+        headers: _token ? { Authorization: `Bearer ${_token}` } : {},
+        body: fd,
+      });
+    if (r.status === 401) {
+      _clearStored(); updateRoleBadge(); showLogin();
+      throw new Error('인증 만료 — 재로그인 필요');
+    }
+    if (!r.ok) {
+      let detail = `${r.status}`;
+      try { detail = (await r.json()).detail || detail; } catch (_) {}
+      throw new Error(detail);
+    }
+    const data = await r.json();
+    document.getElementById('tpl-form-raw').value = data.raw_text || '';
+    _tplMode = data.mode || 'image';
+    if (!document.getElementById('tpl-form-name').value.trim()) {
+      document.getElementById('tpl-form-name').value =
+        f.name.replace(/\.[^.]+$/, '');
+    }
+    msg.textContent = `✅ ${t('workspace.tpl_ocr_done')}`;
+  } catch (e) {
+    msg.textContent = `❌ ${e.message}`;
+  } finally {
+    inp.value = '';
+  }
 }
 
 async function createTemplate() {
@@ -863,13 +910,14 @@ async function createTemplate() {
   }
   try {
     const meta = await _crPost('/templates/', {
-      name, raw_text: raw, mode: 'text',
+      name, raw_text: raw, mode: _tplMode,
     });
     msg.textContent = `✅ ${meta.id}`;
     document.getElementById('tpl-form-name').value = '';
     document.getElementById('tpl-form-raw').value = '';
     const fileInp = document.getElementById('tpl-form-file');
     if (fileInp) fileInp.value = '';
+    _tplMode = 'text';
     reloadTemplates();
   } catch (e) {
     msg.textContent = `❌ ${e.message}`;
@@ -1107,9 +1155,14 @@ function _bindStableInputs() {
   if (crStatus) crStatus.addEventListener('change', () => reloadCrs());
   const crTarget = document.getElementById('cr-filter-target');
   if (crTarget) crTarget.addEventListener('change', () => reloadCrs());
-  /* [v0.6 template engine] file picker fills the TEMPLATE textarea. */
+  /* [v0.6 template engine] file / image pickers fill the TEMPLATE
+     textarea; a manual edit reverts the recorded source to 'text'. */
   const tplFile = document.getElementById('tpl-form-file');
   if (tplFile) tplFile.addEventListener('change', () => onTplFileChange());
+  const tplImage = document.getElementById('tpl-form-image');
+  if (tplImage) tplImage.addEventListener('change', () => onTplImageChange());
+  const tplRaw = document.getElementById('tpl-form-raw');
+  if (tplRaw) tplRaw.addEventListener('input', () => { _tplMode = 'text'; });
 }
 
 /* ── boot ── */

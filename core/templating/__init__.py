@@ -33,6 +33,11 @@ from core.templating.store import (  # noqa: F401
     read_output,
     save_output,
 )
+from core.templating.ingest import (  # noqa: F401
+    ingest_file,
+    ingest_image,
+    ingest_text,
+)
 from core.templating.formatter import (  # noqa: F401
     build_format_prompt,
     format_content,
@@ -58,6 +63,9 @@ __all__ = [
     "output_dir",
     "read_output",
     "save_output",
+    "ingest_text",
+    "ingest_file",
+    "ingest_image",
     "build_format_prompt",
     "format_content",
     "VALID_FORMATS",
