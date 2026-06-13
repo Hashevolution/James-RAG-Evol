@@ -92,6 +92,9 @@
       <span class="dot"></span>
       <span class="role-name" id="role-name" data-i18n="auth.login">로그인</span>
     </div>
+    <button class="nav-btn" data-action="tplc-open"
+            data-i18n-title="tplchat.open_title" title="양식 적용"
+            aria-label="양식 적용 / Apply template">📄 <span data-i18n="tplchat.open">양식</span></button>
     <a href="/workspace" class="nav-btn"
        data-i18n-title="workspace.nav_title" title="Workspace">📦 <span data-i18n="workspace.nav">Workspace</span></a>
     <a href="/admin" class="nav-btn">⚙ Admin</a>
@@ -362,6 +365,10 @@
      existing call sites in chat.js / upload.js / data-action
      delegation. -->
 <script src="/static/index-init.js"></script>
+<!-- v0.6 template-formatting engine — chat-side apply panel. Self-
+     contained (own auth read + own click delegation); does NOT touch
+     chat.js's send pipeline. -->
+<script src="/static/templating-chat.js"></script>
 
 <!-- ── 로그인 모달 ── -->
 <div class="modal-overlay hidden" id="login-modal"
@@ -496,6 +503,61 @@
     <div class="modal-actions">
       <button class="modal-btn cancel" data-action="close-signup" data-i18n="common.cancel">취소</button>
       <button class="modal-btn primary" data-action="do-signup" data-i18n="auth.signup_submit">가입 신청</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── [v0.6 template-formatting engine] Apply-template modal ──────────
+     Chat-side entry point for the formatting engine. The operator
+     registers templates in /workspace (file / image / pasted text);
+     here they pick one of their own templates, paste raw content, and
+     JAMES reshapes it into the template's structure as a downloadable
+     file. Apply-only — registration stays in the workspace tab. All
+     templates are runtime user data (no shipped templates), so this UI
+     is domain-agnostic. Wiring lives in templating-chat.js. -->
+<div class="modal-overlay hidden" id="tplc-modal"
+     role="dialog" aria-modal="true"
+     aria-labelledby="tplc-modal-title">
+  <div class="modal" style="max-width:560px;width:92vw">
+    <div class="modal-title" id="tplc-modal-title">▸ <span data-i18n="tplchat.title">양식에 맞춰 정리</span></div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5"
+         data-i18n="tplchat.hint">
+      워크스페이스에 등록한 양식을 골라 내용을 붙여넣으면 양식 구조에 맞춰 정리한 파일을 받을 수 있습니다.
+    </div>
+    <div class="modal-field">
+      <label data-i18n="tplchat.pick">양식 선택</label>
+      <select id="tplc-select"
+              style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-size:13px">
+      </select>
+    </div>
+    <div id="tplc-placeholders" style="display:flex;flex-wrap:wrap;gap:4px;margin:-4px 0 12px"></div>
+    <div class="modal-field">
+      <label data-i18n="tplchat.content">붙여넣을 내용</label>
+      <textarea id="tplc-content" rows="7"
+                data-i18n-placeholder="tplchat.content_ph"
+                placeholder="여기에 원문 내용을 붙여넣으세요…"
+                style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-size:13px;font-family:var(--font-ui);resize:vertical"></textarea>
+    </div>
+    <div class="modal-field" style="display:flex;align-items:center;gap:8px">
+      <label style="margin:0" data-i18n="tplchat.format">출력 형식</label>
+      <select id="tplc-fmt"
+              style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px 10px;border-radius:6px;font-size:12px">
+        <option value="md">Markdown (.md)</option>
+        <option value="txt">Text (.txt)</option>
+        <option value="html">HTML (.html)</option>
+      </select>
+    </div>
+    <div class="modal-error" id="tplc-msg" style="min-height:0"></div>
+    <div id="tplc-result" style="display:none;margin-bottom:10px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px" data-i18n="tplchat.preview">미리보기</div>
+      <pre id="tplc-preview"
+           style="max-height:200px;overflow:auto;background:var(--bg);border:1px solid var(--border-2);border-radius:6px;padding:10px;font-size:12px;white-space:pre-wrap;word-break:break-word"></pre>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" data-action="tplc-close" data-i18n="common.cancel">취소</button>
+      <button class="modal-btn" id="tplc-download-btn" data-action="tplc-download"
+              style="display:none" data-i18n="tplchat.download">다운로드</button>
+      <button class="modal-btn primary" id="tplc-apply-btn" data-action="tplc-apply" data-i18n="tplchat.generate">정리하기</button>
     </div>
   </div>
 </div>

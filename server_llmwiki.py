@@ -434,6 +434,10 @@ from routes.ops import router as ops_router
 from routes.ops import StatusResponse  # noqa: F401  back-compat
 app.include_router(ops_router)
 
+# [v0.6 template-formatting engine] horizontal document-shaping routes.
+from routes.templating import router as templating_router
+app.include_router(templating_router)
+
 
 
 @app.on_event("startup")
