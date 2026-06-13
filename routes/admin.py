@@ -1291,6 +1291,102 @@ async def admin_trace_get(
         "stages":   stages,
     }
 
+@router.get(
+    "/admin/graph/trace-replay",
+    summary="Reasoning trail replay at time T [v0.5 Track F.1 TT.c]",
+)
+async def admin_graph_trace_replay(
+    api_key:  str,
+    trace_id: str,
+    t:        str = "",
+    day:      str = "",
+    role:     str = Depends(get_role_from_request),
+):
+    """Reasoning trail replay for one ``trace_id`` filtered to events
+    that occurred at or before time ``t``.
+
+    Surfaces the per-stage JSONL trace file the chat panel renders
+    live (``chat.js`` STAGE_META) — but with a cutoff so the Time-
+    Travel Dashboard (Track F.1 §5.6) can show "what the reasoner
+    was doing at moment T."
+
+    Query params:
+      - ``trace_id``: uuid7 hex from the ``/query/`` response.
+      - ``t``: optional ISO-8601 cutoff. When empty, every stage is
+        returned (equivalent to ``/admin/trace/{trace_id}``). When
+        set, only stages whose ``ts_ns`` timestamp falls at or
+        before ``t`` are returned.
+      - ``day``: optional YYYY-MM-DD partition hint. Defaults to
+        today.
+
+    Returns:
+      ``{"ok": true, "trace_id": "...", "day": "...",
+         "t": "<iso or null>",
+         "total_count": N, "replayed_count": M,
+         "stages": [{stage, ts_ns, phase, ...}, ...]}``
+
+    The returned stages share the schema ``read_trace`` produces, so
+    the frontend can reuse its STAGE_META → 3-phase grouping
+    (retrieve / expand / verify) verbatim.
+
+    404 when no trace file exists for (trace_id, day). 400 on
+    malformed ``t``.
+
+    Pure-function contract: read-only over the trace JSONL files +
+    no module-state mutation. Same trace + same t + same day always
+    returns byte-identical JSON.
+    """
+    _require_feature(api_key, role, "admin.metrics")
+
+    from datetime import datetime
+    from core.observability import read_trace
+
+    day_arg = (day or "").strip() or None
+    stages = read_trace(trace_id, day=day_arg)
+    if not stages:
+        raise HTTPException(
+            status_code=404,
+            detail=f"trace not found: trace_id={trace_id} day={day_arg or 'today'}",
+        )
+
+    total_count = len(stages)
+    cutoff_iso: Optional[str] = None
+    raw_t = (t or "").strip()
+    if raw_t:
+        try:
+            cutoff_dt = datetime.fromisoformat(raw_t.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="'t' must be an ISO-8601 timestamp (e.g. 2026-06-13T05:00:00Z)",
+            )
+        # Convert cutoff to ns since epoch. ts_ns is stored as
+        # `time.time_ns()` which is naive UNIX ns — strip the
+        # cutoff's tz offset by converting to a UTC timestamp first
+        # so the comparison is meaningful for both naive and
+        # tz-aware ``cutoff_dt`` values.
+        if cutoff_dt.tzinfo is None:
+            from datetime import timezone
+            cutoff_dt = cutoff_dt.replace(tzinfo=timezone.utc)
+        cutoff_ns = int(cutoff_dt.timestamp() * 1_000_000_000)
+        filtered = []
+        for s in stages:
+            ts = s.get("ts_ns")
+            if isinstance(ts, (int, float)) and ts <= cutoff_ns:
+                filtered.append(s)
+        stages = filtered
+        cutoff_iso = cutoff_dt.isoformat()
+
+    return {
+        "ok":             True,
+        "trace_id":       trace_id,
+        "day":            day_arg or datetime.now().strftime("%Y-%m-%d"),
+        "t":              cutoff_iso,
+        "total_count":    total_count,
+        "replayed_count": len(stages),
+        "stages":         stages,
+    }
+
 @router.get("/admin/episodic/{session_id}",
          summary="Cognitive Phase 3 PR-9b — 세션의 episodic events 조회")
 async def admin_episodic_get(
