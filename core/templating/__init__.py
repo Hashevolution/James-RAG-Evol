@@ -30,6 +30,15 @@ from core.templating.store import (  # noqa: F401
     new_output_id,
     output_dir,
 )
+from core.templating.formatter import (  # noqa: F401
+    build_format_prompt,
+    format_content,
+)
+from core.templating.render import (  # noqa: F401
+    VALID_FORMATS,
+    extension_for,
+    render,
+)
 
 __all__ = [
     "Section",
@@ -43,4 +52,9 @@ __all__ = [
     "list_templates",
     "new_output_id",
     "output_dir",
+    "build_format_prompt",
+    "format_content",
+    "VALID_FORMATS",
+    "extension_for",
+    "render",
 ]
