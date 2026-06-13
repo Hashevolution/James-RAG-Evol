@@ -82,9 +82,28 @@ def _write_audit(
 # ─── Request introspection ──────────────────────────────────────────
 
 def get_client_ip(request: Request) -> str:
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    """Resolve the request's client IP for rate-limit + audit.
+
+    **v0.6 Phase 1 P1.2 security fix**: this helper previously
+    blindly trusted ``X-Forwarded-For`` from any client, letting
+    attackers bypass the per-IP rate limiter and spoof audit
+    `ip_address` rows. As of v0.6 the
+    :class:`core.security.forwarded.TrustedForwardedHeadersMiddleware`
+    runs first on every request and rewrites
+    ``request.client.host`` to the *true* client IP (the right-most
+    untrusted hop from ``X-Forwarded-For``) — but ONLY when the
+    immediate ASGI peer is in the operator-configured
+    ``JAMES_TRUSTED_PROXIES`` list.
+
+    With the middleware wired (production reverse-proxy
+    deployments), ``request.client.host`` is already correct and
+    this helper is a thin pass-through. With the middleware bypassed
+    (single-process dev, untrusted peer), the helper returns the
+    direct peer — which is the safe semantic.
+
+    See ``docs/deployment/v0.6-https-production.md`` for the
+    operator-side wire-in.
+    """
     return request.client.host if request.client else "unknown"
 
 
