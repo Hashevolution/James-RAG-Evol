@@ -43,11 +43,14 @@ deploy will pick.
 
 ## What this module is NOT
 
-- **Not an OIDC verifier.** The OIDC resolution path is documented
-  in §4.4 of the B.2 memo and lands in G2.c when a customer's IdP
-  is in scope. This PR's `current_approval_evidence` returns
-  evidence only when an explicit override OR the POSIX floor
-  resolves.
+- **Not a bundled OIDC verifier.** v0.6 G2.c ships the OIDC
+  *resolution surface* — the env-var contract + the pluggable
+  validator hook (:func:`register_oidc_validator`) — but no
+  built-in JWKS verifier. The signature-checking implementation
+  depends on which crypto library the operator's IdP is friendly
+  with (``python-jose`` / ``authlib`` / ``PyJWT`` / custom shim),
+  so we pin the contract here and the IdP integration ships in
+  the deployment layer.
 - **Not a credential store.** Evidence is stored as a hash, not
   recoverable plaintext. Key rotation is the IdP's concern.
 - **Not an approver-list enforcer.** "Who CAN approve" is RBAC at
@@ -65,7 +68,7 @@ import hashlib
 import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Final, Literal, Optional
+from typing import Any, Callable, Final, Literal, Mapping, Optional
 
 
 JAMES_APPROVAL_PRINCIPAL_ENV:       Final[str] = "JAMES_APPROVAL_PRINCIPAL"
@@ -73,6 +76,17 @@ JAMES_APPROVAL_EVIDENCE_B64_ENV:    Final[str] = "JAMES_APPROVAL_EVIDENCE_B64"
 JAMES_REQUIRE_APPROVAL_EVIDENCE_ENV: Final[str] = (
     "JAMES_REQUIRE_APPROVAL_EVIDENCE"
 )
+
+# v0.6 G2.c — OIDC discovery surface env vars. The OIDC validator
+# is a pluggable hook (see :func:`register_oidc_validator`) — until
+# a customer IdP is in scope, no built-in validator ships and
+# `_resolve_oidc` returns None even when these env vars are set.
+# That keeps the mother-platform contract free of an IdP dependency
+# while documenting the env surface the operator will wire up at
+# the first SaaS pilot.
+JAMES_OIDC_ISSUER_ENV:    Final[str] = "JAMES_OIDC_ISSUER"
+JAMES_OIDC_TOKEN_ENV:     Final[str] = "JAMES_OIDC_TOKEN"
+JAMES_OIDC_AUDIENCE_ENV:  Final[str] = "JAMES_OIDC_AUDIENCE"
 
 
 # Recognised source labels — locked here because the audit-row
@@ -142,6 +156,125 @@ def require_approval_evidence() -> bool:
 # ─── Resolvers ────────────────────────────────────────────────────────
 
 
+# ─── OIDC validator hook (G2.c) ─────────────────────────────────────
+#
+# `OIDCValidator` receives ``(token, issuer, audience)`` and returns
+# the validated claims dict (carrying at least ``sub`` and optionally
+# ``exp``) when verification succeeds, or ``None`` on any failure
+# (signature mismatch, expired token, audience mismatch, JWKS fetch
+# error). Implementations vary by IdP — Auth0, Okta, Google Workspace
+# all expose ``/.well-known/openid-configuration`` but the JWKS
+# format + claim shape diverges slightly. We pin the contract surface
+# here and ship NO built-in validator until a customer IdP is in
+# scope (per the v0.5 G2.a docstring + B.2 §4.4 design memo). Setting
+# the env vars without registering a validator returns None — the
+# mother-platform contract stays free of an IdP dependency.
+
+OIDCValidator = Callable[[str, str, str], Optional[Mapping[str, Any]]]
+
+_oidc_validator: Optional[OIDCValidator] = None
+
+
+def register_oidc_validator(validator: Optional[OIDCValidator]) -> None:
+    """Install (or remove with ``None``) the OIDC token validator.
+
+    The validator's contract:
+
+        ``validator(token, issuer, audience)`` →
+            ``None`` on any failure
+            ``Mapping[str, Any]`` carrying at minimum ``sub`` (str)
+            and optionally ``exp`` (int — seconds since epoch) on
+            success.
+
+    Why pluggable: the validator MUST do JWKS discovery + signature
+    verification + audience matching, and the implementation depends
+    on which crypto library the operator is willing to install
+    (``python-jose``, ``authlib``, ``PyJWT``, a custom shim for an
+    in-house IdP, ...). Bundling one would force a dependency the
+    mother-platform contract refuses to take until a customer
+    specifies their IdP.
+
+    Default: no validator. ``_resolve_oidc`` returns None until a
+    validator is registered.
+
+    Test/fake validators: pass any callable that returns the right
+    shape. The test suite uses an in-memory fake to exercise the
+    resolution path without HTTP / crypto.
+    """
+    global _oidc_validator
+    _oidc_validator = validator
+
+
+def _resolve_oidc() -> Optional[ApprovalEvidence]:
+    """Resolve from `JAMES_OIDC_ISSUER` + `_TOKEN` + `_AUDIENCE` env.
+
+    Requires (a) all three env vars set, and (b) an OIDC validator
+    registered via :func:`register_oidc_validator`. Without (b),
+    returns None even if (a) is satisfied — see the validator hook
+    docstring for why.
+
+    On success the evidence carries:
+      * principal: the ``sub`` claim
+      * source: ``"oidc"``
+      * evidence_hash: sha256 over the token's signature segment
+        (the third dot-separated segment of a JWS). The token's
+        header + payload are recoverable from the audit log if
+        operators wish; the signature alone is the irrecoverable
+        proof.
+      * captured_at: ISO-8601 now (UTC)
+      * expires_at: ISO-8601 of the ``exp`` claim if present (UTC)
+    """
+    issuer = (os.environ.get(JAMES_OIDC_ISSUER_ENV) or "").strip()
+    token = (os.environ.get(JAMES_OIDC_TOKEN_ENV) or "").strip()
+    audience = (os.environ.get(JAMES_OIDC_AUDIENCE_ENV) or "").strip()
+    if not (issuer and token and audience):
+        return None
+    validator = _oidc_validator
+    if validator is None:
+        return None
+
+    try:
+        claims = validator(token, issuer, audience)
+    except Exception:
+        # Validators may raise on transient JWKS failures. We treat
+        # any exception as "no evidence resolved" — matching the
+        # other resolvers' contract. The caller's enforce-mode gate
+        # decides whether absence is fatal.
+        return None
+    if not isinstance(claims, Mapping):
+        return None
+    principal = claims.get("sub")
+    if not isinstance(principal, str) or not principal:
+        return None
+
+    # Hash the token's signature segment (the third part of a JWS).
+    # When the token isn't dot-segmented in the standard shape, hash
+    # the entire token as a safe fallback.
+    parts = token.split(".")
+    if len(parts) >= 3 and parts[2]:
+        sig_blob = parts[2].encode("utf-8")
+    else:
+        sig_blob = token.encode("utf-8")
+
+    expires_at = ""
+    exp = claims.get("exp")
+    if isinstance(exp, (int, float)) and exp > 0:
+        try:
+            expires_at = datetime.fromtimestamp(
+                float(exp), tz=timezone.utc,
+            ).isoformat()
+        except (OverflowError, OSError, ValueError):
+            expires_at = ""
+
+    return ApprovalEvidence(
+        principal=principal,
+        source="oidc",
+        evidence_hash=_sha256_hex(sig_blob),
+        captured_at=_utc_now_iso(),
+        expires_at=expires_at,
+    )
+
+
 def _resolve_explicit() -> Optional[ApprovalEvidence]:
     """Resolve from `JAMES_APPROVAL_PRINCIPAL` + `_EVIDENCE_B64`.
 
@@ -209,12 +342,16 @@ def current_approval_evidence(
 
     Resolution order (first match wins):
 
-      1. **Explicit override** — `JAMES_APPROVAL_PRINCIPAL` + a
+      1. **OIDC** (v0.6 G2.c) — requires `JAMES_OIDC_ISSUER` +
+         `_TOKEN` + `_AUDIENCE` env vars set AND a validator
+         registered via :func:`register_oidc_validator`. Used by
+         SaaS deployments fronted by an enterprise IdP.
+      2. **Explicit override** — `JAMES_APPROVAL_PRINCIPAL` + a
          base64-encoded evidence blob in
          `JAMES_APPROVAL_EVIDENCE_B64`. Used by CI / automation /
          service-account approvals where a signed token is the
          evidence carrier.
-      2. **POSIX floor** — `getpass.getuser()` when
+      3. **POSIX floor** — `getpass.getuser()` when
          `allow_posix_fallback` is True (the default). Used by
          local-dev and single-tenant production where the operator
          is the principal.
@@ -223,11 +360,12 @@ def current_approval_evidence(
     typically a hard-rejection in enforce mode — is the
     `require_approval_evidence` gate's responsibility).
 
-    OIDC + SSH resolution paths land in G2.b / G2.c (separate PRs).
-    They will slot in as resolution steps 0 / 3 (OIDC ahead of
-    explicit; SSH after POSIX) without changing this function's
-    signature.
+    SSH-evidence resolution will slot in as resolution step 4 (after
+    POSIX) when a customer's bastion-host workflow is in scope.
     """
+    oidc = _resolve_oidc()
+    if oidc is not None:
+        return oidc
     explicit = _resolve_explicit()
     if explicit is not None:
         return explicit
@@ -238,8 +376,13 @@ __all__ = (
     "JAMES_APPROVAL_PRINCIPAL_ENV",
     "JAMES_APPROVAL_EVIDENCE_B64_ENV",
     "JAMES_REQUIRE_APPROVAL_EVIDENCE_ENV",
+    "JAMES_OIDC_ISSUER_ENV",
+    "JAMES_OIDC_TOKEN_ENV",
+    "JAMES_OIDC_AUDIENCE_ENV",
     "ApprovalEvidence",
     "ApprovalSource",
+    "OIDCValidator",
     "current_approval_evidence",
+    "register_oidc_validator",
     "require_approval_evidence",
 )
