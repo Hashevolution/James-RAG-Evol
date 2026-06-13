@@ -437,5 +437,12 @@
      only; TT.b wires the backend call). Loads last so the picker's
      wire() runs after graph.js has populated the DOM. -->
 <script src="/static/time-travel.js"></script>
+<!-- v0.5 Track F.1 TT.b — Time-Travel corpus-state renderer.
+     Listens for the CustomEvents TT.a dispatches, fetches
+     /admin/graph/reconstruct-at, and paints a summary overlay on the
+     /graph stage. Edge colour-decoration is gated on a join key
+     (link.edge_id) that arrives with later T5 mutation-site wiring —
+     until then the overlay is summary-only. -->
+<script src="/static/time-travel-renderer.js"></script>
 </body>
 </html>
