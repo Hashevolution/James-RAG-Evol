@@ -1,0 +1,99 @@
+# v0.6 SDK.c — `james-pack-sdk` packaging metadata.
+#
+# Per `docs/handovers/v0.5-close-2026-06-12.md` §5.2 Track B SDK.c +
+# `PLATFORM_READINESS.md` §3 v1.0 gate "Public SDK + plugin author
+# guide" + the v0.6 strategy review's "JAMES Pack SDK" proposal.
+#
+# What this packages
+# ------------------
+# *Only* the `james/` subtree — the pack-author surface:
+#
+#   * `james.pack` — runtime re-exports of `OntologyPack` + register
+#     / unmount helpers (requires JAMES core on the import path).
+#   * `james.pack.scaffold` — pure-function template generator
+#     (stdlib-only; works standalone after `pip install
+#     james-pack-sdk` without a JAMES install).
+#   * `james.pack.__main__` — the `python -m james.pack init <id>`
+#     CLI entry. Also exposed as `james-pack` console script.
+#
+# What this does NOT package
+# --------------------------
+# The full JAMES application (`server_llmwiki.py`, `core/`,
+# `routes/`, `frontend/`, etc.) is **not** included in this wheel.
+# JAMES ships as a git repo + run-from-source for now; the SDK
+# wheel is a developer-facing build artifact for pack authors who
+# want to import `james.pack` without cloning the full repo.
+#
+# When the JAMES runtime itself ships as a pip package (future
+# milestone, post v1.0), the runtime API re-exports in `james.pack`
+# will gain a dependency on that package. Until then, runtime use
+# requires the user to have the JAMES `core/` modules on PYTHONPATH.
+#
+# Rule #1 alignment
+# -----------------
+# CLAUDE.md rule #1 (no vertical code until v1.0) is preserved by
+# `core.ontology_packs.register_pack` refusing to mount any pack
+# whose `requires_capability` is not in `granted_capabilities()`.
+# Default `granted_capabilities()` is the empty frozenset; G8.d
+# (the capability grant workflow) is LOI-gated. So a third party
+# can `pip install james-pack-sdk`, scaffold a pack, write a
+# vertical schema — and the pack will NOT mount on their JAMES
+# install until an operator explicitly grants the capability.
+# Packaging the SDK does not relax this gate.
+
+[build-system]
+requires      = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name            = "james-pack-sdk"
+# Keep version in lockstep with `james/__init__.py::__version__`
+# so a `pip install` and a `from james import __version__` agree.
+version         = "0.6.0a1"
+description     = "Authoring SDK + CLI scaffolder for JAMES ontology packs (v0.6 G8 surface)."
+readme          = "docs/SDK_README.md"
+requires-python = ">=3.10"
+license         = { file = "LICENSE" }
+keywords        = ["james", "knowledge-graph", "ontology", "rag", "plugin", "sdk"]
+authors         = [
+    { name = "Hashevolution" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    # Stdlib-only. Runtime `from james.pack import OntologyPack`
+    # requires JAMES core on the import path (not yet a separate
+    # pip package — see the module docstring above).
+]
+
+[project.urls]
+Homepage      = "https://github.com/Hashevolution/James-RAG-Evol"
+Documentation = "https://github.com/Hashevolution/James-RAG-Evol/blob/main/docs/ONTOLOGY_PACK_AUTHORING.md"
+Versioning    = "https://github.com/Hashevolution/James-RAG-Evol/blob/main/docs/SDK_VERSIONING.md"
+Issues        = "https://github.com/Hashevolution/James-RAG-Evol/issues"
+
+[project.scripts]
+# `pip install james-pack-sdk` exposes the CLI as `james-pack
+# init <pack_id>` so authors don't need `python -m james.pack`.
+james-pack = "james.pack.__main__:main"
+
+[tool.setuptools.packages.find]
+# Whitelist only the `james` namespace to keep the full app
+# (`core`, `routes`, `frontend`, `tests`, etc.) OUT of the wheel.
+include = ["james", "james.*"]
+exclude = ["james.__pycache__*", "james.*.__pycache__*"]
+
+[tool.setuptools.package-data]
+# No bundled binary assets yet. If the scaffolder grows file
+# templates that live outside python source modules, add them
+# here with `"james.pack" = ["templates/*.py.in"]`.
