@@ -254,6 +254,23 @@ async def serve_admin():
     return HTMLResponse("<h1>Admin</h1><p>frontend/admin.html 없음</p>")
 
 
+@app.get("/admin/knowledge-rollback", response_class=HTMLResponse, include_in_schema=False)
+async def serve_knowledge_rollback():
+    """v0.6 Phase 4 P4.2 — knowledge rollback affordance.
+
+    Non-developer operator surface for "Undo recent change" / "Restore
+    to past moment". HTML is public (no secrets); the backend endpoints
+    it calls (`/admin/graph/last-change`, `/admin/graph/diff-vs-now`,
+    `/admin/graph/log-rollback-intent`) all admin-gate.
+    """
+    page = os.path.join(FRONTEND_DIR, "knowledge-rollback.html")
+    if os.path.exists(page):
+        return FileResponse(page)
+    return HTMLResponse(
+        "<h1>Knowledge Rollback</h1><p>frontend/knowledge-rollback.html 없음</p>"
+    )
+
+
 @app.get("/onboarding", response_class=HTMLResponse, include_in_schema=False)
 async def serve_onboarding():
     """v0.6 Phase 4 P4.1 — operator onboarding 5-step flow.
