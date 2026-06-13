@@ -123,6 +123,24 @@
                      font-family:var(--font-mono);letter-spacing:.4px">
         Show trail
       </button>
+
+      <!-- v0.5 Track F.1 TT.d — Now-vs-T diff view. Disabled until
+           a cutoff is picked; the renderer enables it on TT.a's
+           `:set` event so the operator can compare the past moment
+           against the current state. -->
+      <button id="time-travel-diff" type="button"
+              data-action="time-travel-diff"
+              aria-label="Show graph state diff between time T and now"
+              data-i18n="graph.timetravel.diff.button"
+              disabled
+              style="width:100%;margin-top:8px;padding:7px 10px;
+                     background:var(--surface-2);
+                     border:1px solid var(--border);border-radius:6px;
+                     color:var(--text-soft);cursor:not-allowed;
+                     font-size:11px;font-weight:600;opacity:.5;
+                     font-family:var(--font-mono);letter-spacing:.4px">
+        Diff vs NOW
+      </button>
     </div>
 
     <div class="ctrl">
@@ -486,5 +504,11 @@
      cutoff. Loads after the picker (TT.a) + corpus renderer (TT.b)
      so the cutoff event has already wired the panel state. -->
 <script src="/static/time-travel-trace.js"></script>
+<!-- v0.5 Track F.1 TT.d — Now-vs-T diff view. Renders a side-by-side
+     modal comparing the audit-replay snapshot at the picker's T
+     against the live audit-replay snapshot at "now". Loads last so
+     it can hook the picker button + the `james:timetravel:*`
+     events the prior shells dispatch. -->
+<script src="/static/time-travel-diff.js"></script>
 </body>
 </html>
