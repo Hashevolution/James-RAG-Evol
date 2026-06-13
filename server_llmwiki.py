@@ -158,6 +158,11 @@ async def no_cache_static(request: Request, call_next):
 # `docs/reviews/v0.5-ui-6-inline-style-audit.md` §4 for the CSP
 # graduation path.
 from core.security.headers import build_security_headers  # noqa: E402
+from core.security.csp_nonce import (  # noqa: E402
+    csp_use_nonce_for_scripts,
+    csp_use_nonce_for_styles,
+    new_nonce,
+)
 
 
 @app.middleware("http")
@@ -170,9 +175,31 @@ async def security_headers_middleware(request: Request, call_next):
     earlier middleware / route handlers have already set — this
     keeps the API contract additive (existing /healthz responses
     etc. don't see Content-Type rewrites).
+
+    v0.6 Track C — per-request CSP nonce: a fresh nonce is minted
+    on every request and stashed on ``request.state.csp_nonce`` so
+    downstream template renderers can interpolate it into
+    ``<style nonce="X">`` / ``<script nonce="X">`` blocks. Whether
+    the nonce appears in the CSP directive itself depends on the
+    operator-facing env flags
+    ``JAMES_CSP_USE_NONCE_SCRIPT`` / ``_STYLE`` — both default off
+    so the response headers are byte-identical to pre-v0.6 until
+    an operator opts in. See ``core/security/csp_nonce.py`` for
+    the readiness rationale (script-src safe today; style-src
+    blocked on the UI #6 inline-style migration).
     """
+    nonce = new_nonce()
+    # Always attach the nonce to request state, even when neither
+    # flag is on — costs ~22 bytes per request and makes the
+    # template-render path uniform regardless of CSP mode.
+    request.state.csp_nonce = nonce
+
     response = await call_next(request)
-    for name, value in build_security_headers().items():
+    headers = build_security_headers(
+        script_nonce=(nonce if csp_use_nonce_for_scripts() else None),
+        style_nonce=(nonce if csp_use_nonce_for_styles() else None),
+    )
+    for name, value in headers.items():
         # `Response.headers` is a MutableHeaders — `setdefault` is
         # the safe primitive (no overwrite if a downstream layer
         # already set the same header).
