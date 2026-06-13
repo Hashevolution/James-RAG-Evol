@@ -699,6 +699,115 @@ async def admin_wiki_resolve_relations(
     }
 
 @router.get(
+    "/admin/audit/recent-traces",
+    summary="Recent reasoning trace IDs for the operator flow viewer [v0.6 Phase 4 P4.3]",
+)
+async def admin_audit_recent_traces(
+    api_key: str,
+    limit:   int = 20,
+    day:     str = "",
+    role:    str = Depends(get_role_from_request),
+):
+    """List the most recent reasoning trace IDs for the non-developer
+    operator's flow-visualisation page (`/admin/reasoning-flow`).
+
+    Returns one summary row per trace: trace_id, first/last timestamps,
+    stage count, and the question text (when present in the `auth` or
+    `retrieve` stage payloads). The page renders these into a
+    selector + clicking a row loads the full trace via the existing
+    `GET /admin/trace/{trace_id}` endpoint.
+
+    Empty trace root → ``{"ok": true, "traces": []}`` (the safe
+    "no traces yet" branch the UI handles).
+
+    Query params:
+      - ``limit``: max trace rows to return (default 20, max 100).
+      - ``day``: optional YYYY-MM-DD partition hint. Empty → today.
+
+    Pure-function contract: read-only over the trace JSONL files. No
+    DB write, no module-state mutation.
+    """
+    _require_feature(api_key, role, "admin.metrics")
+
+    from pathlib import Path as _Path
+    from datetime import datetime as _dt
+    from core.observability import _trace_root
+
+    cap = max(1, min(int(limit or 20), 100))
+
+    day_str = (day or "").strip()
+    if not day_str:
+        day_str = _dt.now().strftime("%Y-%m-%d")
+    try:
+        _dt.strptime(day_str, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="'day' must be YYYY-MM-DD",
+        )
+
+    day_dir = _trace_root() / day_str
+    if not day_dir.exists() or not day_dir.is_dir():
+        return {"ok": True, "traces": [], "day": day_str}
+
+    files = []
+    try:
+        for entry in day_dir.iterdir():
+            if entry.is_file() and entry.suffix == ".jsonl":
+                files.append(entry)
+    except OSError:
+        return {"ok": True, "traces": [], "day": day_str}
+
+    # Sort by mtime descending — most recent first.
+    files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    files = files[:cap]
+
+    out = []
+    for path in files:
+        trace_id = path.stem
+        summary = {
+            "trace_id":     trace_id,
+            "stage_count":  0,
+            "first_ts_ns":  None,
+            "last_ts_ns":   None,
+            "question":     "",
+            "user":         "",
+        }
+        try:
+            with path.open("r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        entry = json.loads(line)
+                    except Exception:
+                        continue
+                    summary["stage_count"] += 1
+                    ts = entry.get("ts_ns")
+                    if isinstance(ts, (int, float)):
+                        if summary["first_ts_ns"] is None or ts < summary["first_ts_ns"]:
+                            summary["first_ts_ns"] = ts
+                        if summary["last_ts_ns"] is None or ts > summary["last_ts_ns"]:
+                            summary["last_ts_ns"] = ts
+                    if not summary["question"]:
+                        for key in ("query", "question", "user_question"):
+                            v = entry.get(key)
+                            if isinstance(v, str) and v.strip():
+                                summary["question"] = v.strip()[:200]
+                                break
+                    if not summary["user"]:
+                        v = entry.get("user_role") or entry.get("user")
+                        if isinstance(v, str) and v.strip():
+                            summary["user"] = v.strip()[:64]
+        except OSError:
+            pass
+        out.append(summary)
+
+    return {"ok": True, "traces": out, "day": day_str}
+
+
+@router.get(
     "/admin/graph/last-change",
     summary="Most recent lifecycle event for the 'Undo recent change' UI [v0.6 Phase 4 P4.2]",
 )

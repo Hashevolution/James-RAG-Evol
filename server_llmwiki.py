@@ -254,6 +254,23 @@ async def serve_admin():
     return HTMLResponse("<h1>Admin</h1><p>frontend/admin.html 없음</p>")
 
 
+@app.get("/admin/reasoning-flow", response_class=HTMLResponse, include_in_schema=False)
+async def serve_reasoning_flow():
+    """v0.6 Phase 4 P4.3 — non-developer reasoning flow visualization.
+
+    3-swimlane horizontal flow viewer (RETRIEVE / EXPAND / VERIFY) for
+    audit traces. Reuses the existing `/admin/trace/{trace_id}`
+    primitive + the new `/admin/audit/recent-traces` listing endpoint.
+    HTML is public; backend endpoints admin-gate.
+    """
+    page = os.path.join(FRONTEND_DIR, "reasoning-flow.html")
+    if os.path.exists(page):
+        return FileResponse(page)
+    return HTMLResponse(
+        "<h1>Reasoning flow</h1><p>frontend/reasoning-flow.html 없음</p>"
+    )
+
+
 @app.get("/admin/knowledge-rollback", response_class=HTMLResponse, include_in_schema=False)
 async def serve_knowledge_rollback():
     """v0.6 Phase 4 P4.2 — knowledge rollback affordance.
