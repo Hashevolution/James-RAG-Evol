@@ -121,8 +121,132 @@ def workspace_path(*parts: str, env: Optional[dict] = None) -> Path:
     return root.joinpath(*parts)
 
 
+# ─── v0.6 Phase 3 P3.2 — per-tenant workspace isolation ─────────────
+
+
+import re
+
+# Tenant ids must be path-safe AND match the same identifier shape
+# the SDK scaffolder enforces for pack ids (see
+# `james/pack/scaffold.py::_PACK_ID_RE`). This rules out path
+# separators, dots, NUL bytes, shell metachars, and case-folding
+# ambiguity — all of which are well-known sources of path-traversal
+# CVEs in multi-tenant systems that derive on-disk paths from
+# user-controllable identifiers.
+_TENANT_ID_RE = re.compile(r"^[a-z][a-z0-9_-]*$")
+
+JAMES_WORKSPACE_PER_TENANT_ENV: str = "JAMES_WORKSPACE_PER_TENANT"
+
+
+def _tenant_per_tenant_enabled(env_map) -> bool:
+    raw = (env_map.get(JAMES_WORKSPACE_PER_TENANT_ENV) or "").strip().lower()
+    return raw in ("1", "true", "yes", "on", "enabled")
+
+
+def _validate_tenant_id_for_path(tenant_id: str) -> str:
+    """Return ``tenant_id`` iff it matches the path-safe identifier
+    pattern; raise :class:`PluginLoadError` otherwise.
+
+    The validation is **strict by design**: a tenant id that surfaces
+    in an on-disk path MUST NOT contain ``.`` or ``/`` or backslash
+    or NUL or whitespace, MUST start with a lowercase letter, and
+    MUST only use ``[a-z0-9_-]``. Loose validation invites
+    ``../`` traversal + shell-metachar injection in operator tooling
+    that ``ls`` over workspace paths.
+    """
+    if not isinstance(tenant_id, str) or not tenant_id:
+        raise PluginLoadError(
+            "per-tenant workspace requires a non-empty tenant_id"
+        )
+    if not _TENANT_ID_RE.match(tenant_id):
+        raise PluginLoadError(
+            f"tenant_id {tenant_id!r} is not path-safe; "
+            f"must match {_TENANT_ID_RE.pattern}"
+        )
+    return tenant_id
+
+
+def get_workspace_root_for_tenant(
+    tenant_id: Optional[str] = None,
+    *,
+    env: Optional[dict] = None,
+    base_dir: Optional[Path] = None,
+) -> Path:
+    """Resolve the workspace root for a specific tenant.
+
+    When ``JAMES_WORKSPACE_PER_TENANT`` is set (truthy) AND a
+    non-empty ``tenant_id`` is provided OR resolvable from the
+    active per-request tenant scope, returns
+    ``<workspace_root>/<tenant_id>/`` — a sibling directory under
+    the base workspace.
+
+    When the flag is unset OR no tenant_id resolves: returns the
+    base ``get_workspace_root()`` (byte-identical to pre-Phase-3
+    behaviour).
+
+    Args:
+        tenant_id: explicit tenant id. If ``None``, the function
+            asks :func:`core.lifecycle.tenant.current_tenant_id` for
+            the active per-request override (set by
+            :class:`core.security.tenant_request.TenantHeaderMiddleware`)
+            — so callers in the request path don't have to plumb
+            tenant_id through every function.
+        env: optional env-var dict override; defaults to
+            ``os.environ``.
+        base_dir: optional project-root anchor; defaults to
+            :data:`BASE_DIR`.
+
+    Returns:
+        Absolute :class:`pathlib.Path` to the (per-tenant or base)
+        workspace root.
+
+    Raises:
+        :class:`PluginLoadError` — when per-tenant mode is enabled
+        AND tenant_id is non-empty but does NOT pass the path-safe
+        validation pattern (``^[a-z][a-z0-9_-]*$``).
+
+    The directory is created if it does not exist (matching the
+    operator expectation that turning the flag on is sufficient to
+    start serving the tenant — they should not need a separate
+    ``mkdir`` step). Parent directory (the base workspace) MUST
+    exist; the base resolver raises if not.
+    """
+    env_map = os.environ if env is None else env
+
+    if not _tenant_per_tenant_enabled(env_map):
+        # Flag off → byte-identical to pre-Phase-3 behaviour. The
+        # tenant_id argument is ignored.
+        return get_workspace_root(env=env, base_dir=base_dir)
+
+    # Per-tenant mode. Resolve the tenant id from the explicit arg
+    # OR the per-request scope.
+    effective = tenant_id
+    if effective is None or effective == "":
+        try:
+            from core.lifecycle.tenant import current_tenant_id
+            effective = current_tenant_id()
+        except Exception:
+            effective = None
+    if not effective:
+        # Per-tenant mode enabled but no tenant resolved → fall
+        # back to the base root. This is the safe default for
+        # housekeeping paths that legitimately don't belong to any
+        # tenant; the audit-emit enforce gate
+        # (`JAMES_REQUIRE_TENANT_ID=1`) is the layer that catches
+        # unscoped tenant emits, not this resolver.
+        return get_workspace_root(env=env, base_dir=base_dir)
+
+    validated = _validate_tenant_id_for_path(effective)
+    base_root = get_workspace_root(env=env, base_dir=base_dir)
+    per_tenant = base_root / validated
+    per_tenant.mkdir(parents=True, exist_ok=True)
+    return per_tenant
+
+
 __all__ = [
     "BASE_DIR",
+    "JAMES_WORKSPACE_PER_TENANT_ENV",
     "get_workspace_root",
+    "get_workspace_root_for_tenant",
     "workspace_path",
 ]
