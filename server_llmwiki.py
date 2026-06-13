@@ -254,6 +254,22 @@ async def serve_admin():
     return HTMLResponse("<h1>Admin</h1><p>frontend/admin.html 없음</p>")
 
 
+@app.get("/glossary", response_class=HTMLResponse, include_in_schema=False)
+async def serve_glossary():
+    """v0.6 Phase 4 P4.4 — JAMES technical term glossary.
+
+    Public page (no auth) with plain-Korean explanations of every
+    technical term that appears in the admin / graph / workspace UI
+    surfaces. Also hosts the universal tooltip script
+    (`/static/glossary.js`) that other pages load to auto-attach
+    hover tooltips on elements with `data-glossary="<term-slug>"`.
+    """
+    page = os.path.join(FRONTEND_DIR, "glossary.html")
+    if os.path.exists(page):
+        return FileResponse(page)
+    return HTMLResponse("<h1>Glossary</h1><p>frontend/glossary.html 없음</p>")
+
+
 @app.get("/admin/reasoning-flow", response_class=HTMLResponse, include_in_schema=False)
 async def serve_reasoning_flow():
     """v0.6 Phase 4 P4.3 — non-developer reasoning flow visualization.
