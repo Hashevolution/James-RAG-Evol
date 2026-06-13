@@ -1,0 +1,279 @@
+/* v0.6 Phase 4 P4.2 — knowledge rollback affordance stylesheet.
+ * Pairs with `frontend/static/onboarding.css` for shared
+ * .onb-btn / .onb-btn-primary primitives.
+ */
+
+.rollback-h1 {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--accent-fg);
+  margin: 0 0 8px;
+  letter-spacing: .2px;
+}
+
+.rollback-intro {
+  color: var(--text-soft);
+  font-size: 15px;
+  line-height: 1.65;
+  margin: 0 0 28px;
+}
+
+.rollback-flow {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.rollback-flow h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
+.flow-icon {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  font-size: 28px;
+  color: var(--accent);
+  opacity: .8;
+}
+
+.flow-desc {
+  color: var(--text-soft);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 14px;
+  max-width: 90%;
+}
+
+.flow-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rollback-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 9px 12px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  outline: none;
+  min-height: 44px;
+}
+
+.field-label {
+  display: block;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--muted);
+  letter-spacing: .4px;
+  margin-bottom: 4px;
+}
+
+/* ── preview card ───────────────────────────────────────────── */
+
+.flow-preview { margin-top: 14px; }
+
+.preview-card {
+  background: var(--bg);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  padding: 14px 18px;
+}
+
+.preview-card h3 {
+  font-size: 13px;
+  font-family: var(--font-mono);
+  letter-spacing: 1px;
+  color: var(--accent-fg);
+  margin: 0 0 10px;
+  text-transform: uppercase;
+}
+
+.preview-card dl {
+  margin: 0 0 12px;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 14px;
+  font-size: 13px;
+}
+
+.preview-card dt {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .3px;
+}
+
+.preview-card dd {
+  margin: 0;
+  color: var(--text);
+}
+
+.diff-summary { font-size: 14px; }
+
+.loading,
+.empty-state,
+.rollback-error {
+  padding: 12px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.loading      { background: var(--bg); color: var(--muted); }
+.empty-state  { background: var(--bg); color: var(--text-soft);
+                font-style: italic; }
+.rollback-error {
+  background: rgba(224, 107, 107, .07);
+  border: 1px dashed var(--danger, #e06);
+  color: var(--danger, #e06);
+}
+
+/* ── modal ──────────────────────────────────────────────────── */
+
+.rollback-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .6);
+  z-index: 60;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.rollback-modal-overlay.show { display: flex; }
+.rollback-modal-overlay[hidden] { display: none !important; }
+
+.rollback-modal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px 28px;
+  width: 100%;
+  max-width: 520px;
+  color: var(--text);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .5);
+}
+
+.rollback-modal-card h2 {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--accent-fg);
+  margin: 0 0 10px;
+}
+
+.confirm-summary {
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.confirm-summary dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 8px 0 0;
+}
+
+.confirm-summary dt {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.confirm-summary dd { margin: 0; color: var(--text); }
+
+.rollback-textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font-body);
+  outline: none;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.rollback-modal-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+/* ── result panel ───────────────────────────────────────────── */
+
+.rollback-result {
+  margin: 24px 0;
+  background: rgba(74, 199, 173, .08);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 20px 24px;
+}
+
+.rollback-success h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-fg);
+  margin: 0 0 8px;
+}
+
+.rollback-success dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 14px;
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+.rollback-success dt {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.rollback-success dd { margin: 0; color: var(--text); }
+
+.rollback-pending-note {
+  margin-top: 14px;
+  padding: 10px 14px;
+  background: rgba(255, 200, 100, .08);
+  border-left: 3px solid #ffb74d;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-soft);
+  line-height: 1.55;
+}
+
+.rollback-footer-note {
+  margin-top: 36px;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-soft);
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .rollback-h1 { font-size: 22px; }
+  .rollback-flow { padding: 18px; }
+  .rollback-modal-card { padding: 18px; }
+}

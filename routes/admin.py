@@ -698,6 +698,223 @@ async def admin_wiki_resolve_relations(
         "source_type": src,
     }
 
+@router.get(
+    "/admin/graph/last-change",
+    summary="Most recent lifecycle event for the 'Undo recent change' UI [v0.6 Phase 4 P4.2]",
+)
+async def admin_graph_last_change(
+    api_key:   str,
+    tenant_id: Optional[str] = None,
+    role:      str = Depends(get_role_from_request),
+):
+    """Returns metadata for the most recent lifecycle event in the
+    audit_log — the data the non-developer operator's "Undo recent
+    change" affordance shows in its confirmation modal.
+
+    Empty audit log → ``{"ok": true, "no_changes": true}`` (the safe
+    "nothing to undo" branch the UI handles).
+
+    Non-empty audit log → ``{"ok": true, "no_changes": false,
+    "event_type": "...", "event_payload": {...},
+    "timestamp": "...", "audit_row_id": N}``.
+
+    Honest scoping: this endpoint is a READ over the audit log. The
+    actual graph-state rollback is gated on T5.A.b mutation-site
+    wiring (deferred from v0.4.2). Until that wiring lands, the UI
+    can SHOW what was last changed + record operator intent (via
+    ``/admin/graph/log-rollback-intent``) — actual graph mutation is
+    a follow-up cycle.
+    """
+    _require_feature(api_key, role, "admin.data")
+
+    import sqlite3 as _sql
+    try:
+        conn = _sql.connect(_AUDIT_DB)
+    except Exception:
+        return {"ok": True, "no_changes": True}
+    try:
+        cols = {r[1] for r in conn.execute(
+            "PRAGMA table_info(audit_log)"
+        ).fetchall()}
+        if "event_type" not in cols or "event_payload" not in cols:
+            return {"ok": True, "no_changes": True}
+        where = "event_type IS NOT NULL"
+        params: tuple = ()
+        if tenant_id:
+            # Post-parse filter is the safer pattern (matches G1.b
+            # strict-exclusion semantic), but for the "last change"
+            # query we use a SQL LIKE pre-filter to avoid a full
+            # table scan. Both yield the same row on a well-formed
+            # payload.
+            where += " AND event_payload LIKE ?"
+            params = ('%"tenant_id":' + json.dumps(tenant_id) + '%',)
+        row = conn.execute(
+            "SELECT id, timestamp, event_type, event_payload "
+            f"FROM audit_log WHERE {where} "
+            "ORDER BY id DESC LIMIT 1",
+            params,
+        ).fetchone()
+    except Exception:
+        return {"ok": True, "no_changes": True}
+    finally:
+        try: conn.close()
+        except Exception: pass
+
+    if not row:
+        return {"ok": True, "no_changes": True}
+
+    rid, ts, etype, epayload = row
+    try:
+        parsed = json.loads(epayload) if epayload else {}
+    except Exception:
+        parsed = {}
+    return {
+        "ok":            True,
+        "no_changes":    False,
+        "audit_row_id":  rid,
+        "timestamp":     ts,
+        "event_type":    etype,
+        "event_payload": parsed,
+    }
+
+
+class _RollbackIntentRequest(BaseModel):
+    api_key:  str
+    scope:    str           # "last" | "since"
+    target_t: Optional[str] = None   # ISO-8601 for scope="since"
+    note:     str           = ""     # operator's reason for the rollback
+
+
+@router.post(
+    "/admin/graph/log-rollback-intent",
+    summary="Record an operator rollback intent in audit log [v0.6 Phase 4 P4.2]",
+)
+async def admin_graph_log_rollback_intent(
+    body: _RollbackIntentRequest,
+    role: str = Depends(get_role_from_request),
+):
+    """Records the operator's rollback intent in the audit log.
+
+    Two scopes:
+
+      * ``scope=last`` — "undo the most recent change". UI calls
+        ``GET /admin/graph/last-change`` first to surface what's
+        about to be undone, then POSTs this with the operator's
+        confirmation note.
+      * ``scope=since`` — "restore the state at time T". UI calls
+        ``GET /admin/graph/diff-vs-now?t=...`` first to surface the
+        diff, then POSTs this with ``target_t`` set.
+
+    The endpoint writes a single audit row with
+    ``endpoint=/admin/graph/log-rollback-intent`` +
+    ``security_event=rollback_intent scope=... target=... by=...`` +
+    ``query=<operator note>``. The row makes the operator's
+    intent forensically attestable.
+
+    Honest scoping (v0.6 Phase 4): this endpoint records the intent
+    but does NOT yet mutate the graph state. T5.A.b mutation-site
+    wiring + an inverse-event emission helper land in a follow-up
+    cycle; until then, the UI surfaces the operator's intent to
+    auditors, but the graph state continues forward through the
+    standard ingestion + supersede path. The audit row is the
+    permanent record of "operator wanted to roll back at this time
+    for this reason."
+
+    The response carries ``audit_row_id`` so the UI can show the
+    operator "Your rollback intent has been recorded as audit row
+    #N." Auditors can later pull the row via
+    ``/admin/audit/list?q=rollback_intent``.
+    """
+    _require_feature(body.api_key, role, "admin.data")
+
+    scope = (body.scope or "").strip().lower()
+    if scope not in ("last", "since"):
+        raise HTTPException(
+            status_code=400,
+            detail="scope must be 'last' or 'since'",
+        )
+    if scope == "since":
+        if not body.target_t or not body.target_t.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="target_t is required when scope='since'",
+            )
+        try:
+            from datetime import datetime as _dt
+            _dt.fromisoformat(body.target_t.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="target_t must be an ISO-8601 timestamp",
+            )
+
+    # Resolve operator identity via G2.a approval-evidence (or POSIX
+    # floor when no IdP is configured). The audit row records WHO
+    # initiated the rollback intent, which is the forensic
+    # attestability point this endpoint exists for.
+    operator_principal = "unknown"
+    try:
+        from core.security.approval_evidence import current_approval_evidence
+        ev = current_approval_evidence()
+        if ev is not None and getattr(ev, "principal", None):
+            operator_principal = ev.principal
+    except Exception:
+        pass
+
+    scope_target = body.target_t if scope == "since" else "(most-recent)"
+    sec_event = (
+        f"rollback_intent scope={scope} target={scope_target} "
+        f"by={operator_principal}"
+    )
+
+    _write_audit(
+        user_role=role,
+        endpoint="/admin/graph/log-rollback-intent",
+        query=_truncate_audit_blob({
+            "scope":            scope,
+            "target_t":         body.target_t,
+            "operator_note":    body.note,
+            "operator_principal": operator_principal,
+        }),
+        security_event=sec_event,
+    )
+
+    # Look up the audit row id we just wrote so the UI can echo it.
+    import sqlite3 as _sql
+    audit_row_id: Optional[int] = None
+    try:
+        conn = _sql.connect(_AUDIT_DB)
+        cur = conn.execute(
+            "SELECT id FROM audit_log "
+            "WHERE endpoint=? ORDER BY id DESC LIMIT 1",
+            ("/admin/graph/log-rollback-intent",),
+        )
+        row = cur.fetchone()
+        if row:
+            audit_row_id = row[0]
+    except Exception:
+        pass
+    finally:
+        try: conn.close()
+        except Exception: pass
+
+    return {
+        "ok":                  True,
+        "scope":               scope,
+        "target_t":            body.target_t,
+        "operator_principal":  operator_principal,
+        "audit_row_id":        audit_row_id,
+        "graph_mutation_applied": False,
+        "graph_mutation_pending": True,
+        "note": (
+            "Intent recorded. Graph state mutation is gated on T5.A.b "
+            "mutation-site wiring (deferred from v0.4.2); the audit "
+            "row preserves the operator's rollback intent for "
+            "forensic review until that wiring lands."
+        ),
+    }
+
+
 @router.get("/admin/graph/snapshot", summary="Reasoning graph snapshot — nodes + edges [v0.2 Axis 3]")
 async def admin_graph_snapshot(
     api_key:           str,
