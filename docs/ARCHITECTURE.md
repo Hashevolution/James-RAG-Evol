@@ -1022,6 +1022,58 @@ determinism, substring safety) and `abstraction_e2e_claude.py` full
 mask → real-Claude → unmask loop with no leak. Production promotion is
 the next PR (test parity required against the PoC self-tests).
 
+### 5.7.14 Template Formatting Engine (v0.6, horizontal)
+
+> **Status: design-stage.** A *horizontal* document-shaping capability:
+> the operator supplies a template at runtime, pastes raw content, and
+> JAMES reshapes the content onto the template structure and returns a
+> downloadable file. Full design memo:
+> `docs/design/v0.6-template-formatting-ui.md`.
+
+**Rule #1 boundary (the load-bearing constraint).** JAMES ships **zero**
+templates. Templates are *user data*, created at runtime and stored under
+the workspace (`templates/`). The engine maps "raw content → the user's
+template structure" with no knowledge of what the template is *for*. A
+built-in template for any vertical (contract, chart, financial report)
+would be a domain pack and is forbidden until v1.0. Mechanical check:
+there must be no template content under `core/`, `frontend/`, or any
+seed/fixture path — only in a runtime workspace directory.
+
+**Module location & layout** — `core/templating/`, public API via
+`__init__.py`. Sub-modules (each < 20 KB, rule #5): `store.py` (workspace
+CRUD), `spec.py` (raw template text → `TemplateSpec`), `ingest.py` (three
+input modes: text / file / image-OCR), `formatter.py` (the LLM reshaping
+pass), `render.py` (formatted text → md/txt/html bytes). HTTP surface:
+`routes/templating.py` (create / list / detail / apply / download).
+
+**Trust contract**
+
+1. **Templates and raw content are untrusted data.** The formatter's
+   system instruction is fixed and not user-overridable; imperative text
+   inside a template or the pasted content is treated as content, never
+   as a command (prompt-injection defense).
+2. **Path safety.** Template ids and output ids must match the path-safe
+   identifier pattern used for tenant/pack ids
+   (`^[a-z][a-z0-9_-]*$` family) — no separators, dots, or traversal.
+3. **No new egress path.** The reshaping pass uses the existing
+   `llm.router` / synth path. With cloud egress enabled it routes through
+   the §5.7.12 abstraction trust zone like any other synth call; the
+   template engine introduces no direct cloud call of its own.
+4. **Audit.** Every `apply` writes one `_write_audit(...)` row (template
+   id, output artifact id, role) — never the raw-content body.
+5. **Owner-scoped.** Endpoints gate on `role` and scope templates/outputs
+   to the owner, mirroring the §6 data-artifact authority model (404 on
+   another user's id, not 403).
+
+**Grounding discipline.** The formatter redistributes the supplied
+content into the template's sections; it does **not** fabricate data for
+empty sections. A section without source content is left empty / marked,
+consistent with the abstention posture elsewhere in the reasoning path.
+
+**Non-goals** — ships no templates (rule #1); no `.docx` in v1; no
+template versioning/diff (replace-on-edit; Change Request is a separate
+surface); no automatic re-ingestion of output into the knowledge graph.
+
 ---
 
 ## 6. Data Lifecycle (W7-A, 2026-05-11)
