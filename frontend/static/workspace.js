@@ -858,9 +858,11 @@ function onTplFileChange() {
 
 /* Image mode — POST the picked image to /templates/ingest-image; the
    server OCRs it (Tesseract, on-box) and returns the extracted text,
-   which fills the TEMPLATE box for the operator to review + register. */
-async function onTplImageChange() {
-  const inp = document.getElementById('tpl-form-image');
+   which fills the TEMPLATE box for the operator to review + register.
+   v0.6 — 두 input (사진첩 picker / 모바일 카메라 capture) 공유. */
+async function onTplImageChange(srcId) {
+  const id = srcId || 'tpl-form-image';
+  const inp = document.getElementById(id);
   const f = inp && inp.files && inp.files[0];
   if (!f) return;
   const msg = document.getElementById('tpl-form-msg');
@@ -1160,7 +1162,10 @@ function _bindStableInputs() {
   const tplFile = document.getElementById('tpl-form-file');
   if (tplFile) tplFile.addEventListener('change', () => onTplFileChange());
   const tplImage = document.getElementById('tpl-form-image');
-  if (tplImage) tplImage.addEventListener('change', () => onTplImageChange());
+  if (tplImage) tplImage.addEventListener('change', () => onTplImageChange('tpl-form-image'));
+  // v0.6 — 모바일 카메라 직접 진입 input; 같은 OCR 파이프라인 공유.
+  const tplImageCam = document.getElementById('tpl-form-image-camera');
+  if (tplImageCam) tplImageCam.addEventListener('change', () => onTplImageChange('tpl-form-image-camera'));
   const tplRaw = document.getElementById('tpl-form-raw');
   if (tplRaw) tplRaw.addEventListener('input', () => { _tplMode = 'text'; });
 }

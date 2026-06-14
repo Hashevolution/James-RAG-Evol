@@ -153,6 +153,11 @@
                accept 무시되고 디렉토리 picker가 뜸. -->
           <input type="file" id="folder-input" multiple webkitdirectory directory
                  style="display:none">
+          <!-- v0.6 카메라 직접 진입 — 모바일에서 capture="environment" 시 후면
+               카메라가 열림. 별도 input 으로 분리해 기존 파일 피커의 사진첩
+               경유 경로는 그대로 보존 (iOS Safari 의 capture-only 거동 회피). -->
+          <input type="file" id="camera-input" accept="image/*" capture="environment"
+                 style="display:none">
           <div class="drop-icon">📂</div>
           <div class="drop-label">
             <span data-i18n="upload.drag_label">클릭하거나 드래그하여 파일 추가</span><br>
@@ -171,6 +176,18 @@
                        cursor:pointer;font-family:var(--font-ui)"
                 data-i18n="upload.folder_button">
           📁 폴더 선택
+        </button>
+        <!-- v0.6 모바일 카메라 직접 진입 버튼 — 폰에서는 후면 카메라가 즉시
+             열림, PC 에서는 파일 피커로 fallback. dogfooding "한 탭으로 자료
+             사진 보내기" 워크플로우의 첫 진입점. -->
+        <button type="button"
+                data-action="trigger-camera-input"
+                style="margin:6px 12px 0;padding:8px;
+                       background:var(--surface-2);border:1px solid var(--border);
+                       border-radius:6px;color:var(--text-soft);font-size:12px;
+                       cursor:pointer;font-family:var(--font-ui)"
+                data-i18n="upload.camera_button">
+          📷 사진 촬영
         </button>
 
         <div class="instruction-box">
