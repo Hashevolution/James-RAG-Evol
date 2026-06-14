@@ -133,6 +133,11 @@ function _bindFrontendEvents() {
       case 'save-cognitive-flags': saveCognitiveFlags(); break;
       case 'save-web-search-config': saveWebSearchConfig(); break;
 
+      /* ── v0.6.1 Phase D-1: agent allowed folders ──────────── */
+      case 'agent-register-path': registerAgentPath(); break;
+      case 'agent-reload':        loadAgentFolders(); break;
+      case 'agent-remove-path':   unregisterAgentPath(t.getAttribute('data-path')); break;
+
       /* ── login modal + signup/forgot anchors ──────────────────── */
       case 'toggle-admin-pw-visibility': toggleAdminPwVisibility(); break;
       case 'do-admin-login':      doAdminLogin(); break;
@@ -593,8 +598,126 @@ function showPage(id, el) {
     character:      loadCharacter,
     knowledge:      loadKnowledge,
     hardware:       loadHardware,    // [P3-1]
+    'agent-folders': loadAgentFolders,  // v0.6.1 Phase D-1
   };
   loaders[id]?.();
+}
+
+/* ── v0.6.1 Phase D-1: Agent allowed folders ─────────────── */
+
+async function loadAgentFolders() {
+  const list = document.getElementById('agent-paths-list');
+  const envBox = document.getElementById('agent-env-value');
+  if (!list) return;
+  const key = (localStorage.getItem('james_api_key') || '');
+  const tok = (localStorage.getItem('james_token') || '');
+  if (!key && !tok) {
+    list.innerHTML = `<div style="color:var(--muted)">${t('common.login_required') || 'Login required'}</div>`;
+    return;
+  }
+  list.innerHTML = `<div style="color:var(--muted)">${t('common.loading') || '…'}</div>`;
+  try {
+    const r = await fetch(
+      `/admin/agent/allowed-paths?api_key=${encodeURIComponent(key)}`,
+      { headers: tok ? { Authorization: `Bearer ${tok}` } : {} },
+    );
+    if (!r.ok) {
+      let detail = `${r.status}`;
+      try { detail = (await r.json()).detail || detail; } catch (_) {}
+      throw new Error(detail);
+    }
+    const data = await r.json();
+    if (envBox) {
+      envBox.textContent = data.env_value
+        ? `${data.env_name}=${data.env_value}`
+        : `${data.env_name}=(unset)`;
+    }
+    const items = data.registered_paths || [];
+    if (!items.length) {
+      list.innerHTML = `<div style="color:var(--muted)">${t('agent.empty') || '(등록된 폴더 없음)'}</div>`;
+      return;
+    }
+    list.innerHTML = items.map(p => `
+      <div style="display:flex;justify-content:space-between;align-items:center;
+                  background:var(--bg);border:1px solid var(--border);
+                  border-radius:6px;padding:6px 10px">
+        <span style="word-break:break-all">${_escAgent(p)}</span>
+        <button class="btn" data-action="agent-remove-path"
+                data-path="${_escAgent(p)}"
+                style="padding:3px 10px;font-size:11px"
+                title="${t('agent.remove_title') || '세션-스코프 제거 (재시작 시 env 가 다시 적용)'}"
+                >${t('agent.remove') || '✕'}</button>
+      </div>
+    `).join('');
+  } catch (e) {
+    list.innerHTML = `<div style="color:#f88">❌ ${_escAgent(e.message)}</div>`;
+  }
+}
+
+function _escAgent(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+async function registerAgentPath() {
+  const inp = document.getElementById('agent-path-input');
+  const msg = document.getElementById('agent-form-msg');
+  if (!inp || !msg) return;
+  const path = (inp.value || '').trim();
+  if (!path) {
+    msg.textContent = `❌ ${t('agent.need_path') || '경로를 입력하세요.'}`;
+    return;
+  }
+  const key = (localStorage.getItem('james_api_key') || '');
+  const tok = (localStorage.getItem('james_token') || '');
+  msg.textContent = `⏳ ${t('common.loading') || '…'}`;
+  try {
+    const r = await fetch('/admin/agent/allowed-paths', {
+      method: 'POST',
+      headers: Object.assign(
+        { 'Content-Type': 'application/json' },
+        tok ? { Authorization: `Bearer ${tok}` } : {},
+      ),
+      body: JSON.stringify({ api_key: key, path }),
+    });
+    if (!r.ok) {
+      let detail = `${r.status}`;
+      try { detail = (await r.json()).detail || detail; } catch (_) {}
+      throw new Error(detail);
+    }
+    msg.textContent = `✅ ${t('agent.registered') || '등록 완료'}`;
+    inp.value = '';
+    loadAgentFolders();
+  } catch (e) {
+    msg.textContent = `❌ ${e.message}`;
+  }
+}
+
+async function unregisterAgentPath(path) {
+  if (!path) return;
+  const msg = document.getElementById('agent-form-msg');
+  const key = (localStorage.getItem('james_api_key') || '');
+  const tok = (localStorage.getItem('james_token') || '');
+  try {
+    const r = await fetch('/admin/agent/allowed-paths/remove', {
+      method: 'POST',
+      headers: Object.assign(
+        { 'Content-Type': 'application/json' },
+        tok ? { Authorization: `Bearer ${tok}` } : {},
+      ),
+      body: JSON.stringify({ api_key: key, path }),
+    });
+    if (!r.ok) {
+      let detail = `${r.status}`;
+      try { detail = (await r.json()).detail || detail; } catch (_) {}
+      throw new Error(detail);
+    }
+    if (msg) msg.textContent = `✅ ${t('agent.removed') || '세션 제거 완료 (env 는 재시작 시 재적용)'}`;
+    loadAgentFolders();
+  } catch (e) {
+    if (msg) msg.textContent = `❌ ${e.message}`;
+  }
 }
 
 /* ── API 요청 (Bearer 토큰 포함) ── */
