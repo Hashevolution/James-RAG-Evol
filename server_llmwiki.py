@@ -426,6 +426,10 @@ from routes.feedback import router as feedback_router
 from routes.feedback import FeedbackRequest  # noqa: F401  back-compat
 app.include_router(feedback_router)
 
+# v0.6.1 — workspace info badge (frontend header display).
+from routes.workspace_info import router as workspace_info_router
+app.include_router(workspace_info_router)
+
 from routes.multimodal import router as multimodal_router
 from routes.multimodal import ScreenRequest  # noqa: F401  back-compat
 app.include_router(multimodal_router)

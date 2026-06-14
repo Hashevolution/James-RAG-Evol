@@ -23,6 +23,18 @@
     <span class="live-dot" aria-hidden="true" title="System live" style="margin-left:10px"></span>
   </div>
   <div class="header-right">
+    <!-- v0.6.1 — current workspace badge. Reasoning graph is workspace-
+         scoped (entities + audit log come from the active JAMES_WORKSPACE),
+         so the operator needs to see which workspace they're inspecting
+         the graph for. -->
+    <button class="nav-btn workspace-badge" id="workspace-badge"
+            type="button"
+            data-i18n-title="workspace.badge_title"
+            title="현재 워크스페이스"
+            aria-label="현재 워크스페이스"
+            style="display:none;font-size:11px">
+      📁 <span id="workspace-name">—</span>
+    </button>
     <button class="nav-btn" data-lang-toggle data-action="toggle-lang" title="Language / 언어"
             aria-label="언어 전환 / Toggle language"
             style="font-size:12px;font-weight:600;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;color:var(--text-soft)"></button>
@@ -517,5 +529,8 @@
      Scans the page for elements with `data-glossary="<term>"` and
      attaches hover/focus tooltips with plain-Korean definitions. -->
 <script src="/static/glossary.js"></script>
+<!-- v0.6.1 — workspace badge in header (reasoning graph is workspace-
+     scoped, see ARCHITECTURE / per-workspace data layout). -->
+<script src="/static/workspace-badge.js"></script>
 </body>
 </html>

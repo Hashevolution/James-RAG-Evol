@@ -23,6 +23,16 @@
     </span>
   </div>
   <div class="header-right">
+    <!-- v0.6.1 — workspace badge. Onboarding is operator-side; the
+         badge confirms which workspace they're onboarding INTO. -->
+    <button class="nav-btn workspace-badge" id="workspace-badge"
+            type="button"
+            data-i18n-title="workspace.badge_title"
+            title="현재 워크스페이스"
+            aria-label="현재 워크스페이스"
+            style="display:none;font-size:11px">
+      📁 <span id="workspace-name">—</span>
+    </button>
     <button class="nav-btn" data-lang-toggle data-action="toggle-lang"
             title="Language / 언어"
             aria-label="언어 전환 / Toggle language"
@@ -311,6 +321,8 @@
 <script src="/static/i18n.js"></script>
 <script src="/static/auth.js"></script>
 <script src="/static/onboarding.js"></script>
+<!-- v0.6.1 — workspace badge in header. -->
+<script src="/static/workspace-badge.js"></script>
 <!-- v0.6 Phase 4 P4.4 — universal glossary tooltip script. -->
 <script src="/static/glossary.js"></script>
 </body>

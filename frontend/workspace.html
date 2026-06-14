@@ -23,6 +23,15 @@
     <span class="live-dot" aria-hidden="true" title="System live" style="margin-left:10px"></span>
   </div>
   <div class="header-right">
+    <!-- v0.6.1 — current workspace badge. Stays hidden until logged in. -->
+    <button class="header-btn workspace-badge" id="workspace-badge"
+            type="button"
+            data-i18n-title="workspace.badge_title"
+            title="현재 워크스페이스"
+            aria-label="현재 워크스페이스"
+            style="display:none;font-size:11px">
+      📁 <span id="workspace-name">—</span>
+    </button>
     <span class="role-badge" id="role-badge" style="display:none">
       <span class="who" id="role-who"></span>
       <span id="role-name"></span>
@@ -630,5 +639,7 @@
 <script src="/static/auth.js"></script>
 <script src="/static/workspace.js"></script>
 <script src="/static/a11y-modal.js" defer></script>
+<!-- v0.6.1 — workspace badge in header. -->
+<script src="/static/workspace-badge.js"></script>
 </body>
 </html>
