@@ -141,6 +141,76 @@ class TemplatingRoutesTests(unittest.TestCase):
         )
         self.assertEqual(r.status_code, 401)
 
+    # ── v0.6.1 — instruction passthrough + .docx output + doc ingest ──
+
+    def test_apply_with_instruction_reaches_formatter(self):
+        """instruction in the request body must arrive in the LLM prompt."""
+        client, tr = _make_client(user="alice")
+        captured = {}
+        orig = self._router.call_router
+        self._router.call_router = lambda prompt, **kw: (
+            captured.update(prompt=prompt) or "# out"
+        )
+        try:
+            tid = client.post("/templates/", json={
+                "name": "t", "raw_text": "# A\n"}).json()["id"]
+            r = client.post(f"/templates/{tid}/apply", json={
+                "raw_content": "x", "fmt": "md",
+                "instruction": "use formal tone"})
+            self.assertEqual(r.status_code, 200, r.text)
+            self.assertIn("formal tone", captured["prompt"])
+            self.assertIn("===== USER GUIDANCE", captured["prompt"])
+        finally:
+            self._router.call_router = orig
+
+    def test_apply_docx_downloads_zip(self):
+        """fmt='docx' produces a downloadable .docx (ZIP magic header)."""
+        client, _ = _make_client(user="alice")
+        tid = client.post("/templates/", json={
+            "name": "t", "raw_text": "# A\n"}).json()["id"]
+        r = client.post(f"/templates/{tid}/apply", json={
+            "raw_content": "raw", "fmt": "docx"})
+        self.assertEqual(r.status_code, 200, r.text)
+        out_id = r.json()["out_id"]
+        self.assertTrue(r.json()["filename"].endswith(".docx"))
+        r = client.get(f"/templates/{tid}/output/{out_id}")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.content[:2], b"PK")
+
+    def test_ingest_document_returns_extracted_text(self):
+        client, tr = _make_client(user="alice")
+        orig = tr.ingest_document
+        tr.ingest_document = lambda path: "# 회의록\n{{date}}\n"
+        try:
+            r = tr.ingest_document  # noqa: silence
+            r = client.post(
+                "/templates/ingest-document",
+                files={"file": ("form.docx", b"PK\x03\x04binary",
+                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            )
+        finally:
+            tr.ingest_document = orig
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json()["mode"], "document")
+        self.assertIn("회의록", r.json()["raw_text"])
+
+    def test_ingest_document_login_required(self):
+        client, tr = _make_client(user="alice")
+        tr._bearer_username = lambda request: None
+        r = client.post(
+            "/templates/ingest-document",
+            files={"file": ("a.docx", b"PK\x03\x04", "application/octet-stream")},
+        )
+        self.assertEqual(r.status_code, 401)
+
+    def test_ingest_document_rejects_unknown_ext(self):
+        client, _ = _make_client(user="alice")
+        r = client.post(
+            "/templates/ingest-document",
+            files={"file": ("evil.exe", b"MZ\x00\x00", "application/octet-stream")},
+        )
+        self.assertEqual(r.status_code, 400)
+
 
 class ServerRegistrationTests(unittest.TestCase):
     def test_routes_registered_on_app(self):
@@ -148,6 +218,7 @@ class ServerRegistrationTests(unittest.TestCase):
         paths = {getattr(r, "path", None) for r in server_llmwiki.app.routes}
         for p in ("/templates/", "/templates/mine/list",
                   "/templates/ingest-image",
+                  "/templates/ingest-document",
                   "/templates/{template_id}",
                   "/templates/{template_id}/apply",
                   "/templates/{template_id}/output/{out_id}"):

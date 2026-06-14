@@ -33,7 +33,7 @@ from core.plugins.workspace import workspace_path
 # NUL, shell metachars, and case-folding ambiguity.
 _ID_RE = re.compile(r"^[a-z][a-z0-9_-]*$")
 
-VALID_MODES = ("text", "file", "image")
+VALID_MODES = ("text", "file", "image", "document")
 
 
 class TemplateStoreError(Exception):
