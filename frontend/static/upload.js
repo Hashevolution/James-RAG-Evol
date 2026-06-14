@@ -28,6 +28,16 @@ if (_folderInput) {
     e.target.value = '';
   });
 }
+// v0.6 — 모바일 카메라 직접 진입용 input (capture="environment"). 폰에선
+// 후면 카메라가 즉시 열리고 1장 캡처 후 큐에 add. PC 에선 일반 파일 피커.
+const _cameraInput = document.getElementById('camera-input');
+if (_cameraInput) {
+  _cameraInput.addEventListener('change', e => {
+    const files = Array.from(e.target.files).map(_captureRelPath);
+    addFiles(files);
+    e.target.value = '';
+  });
+}
 
 /* ── item #8: DataTransfer에서 파일 추출 (폴더 재귀 지원) ──
    dataTransfer.files는 폴더 안의 파일을 안 펼침. webkitGetAsEntry()로

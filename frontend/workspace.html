@@ -442,8 +442,14 @@
           <div>
             <input id="tpl-form-image" type="file" accept="image/*"
                    style="font-size:12px;color:var(--text)">
+            <!-- v0.6 모바일 후면 카메라 직접 진입 (양식 종이를 폰으로 찍기).
+                 PC 에서는 일반 파일 피커로 fallback. -->
+            <input id="tpl-form-image-camera" type="file" accept="image/*" capture="environment"
+                   style="font-size:12px;color:var(--text);margin-left:8px"
+                   data-i18n-title="workspace.tpl_form_image_camera_hint"
+                   title="📷 카메라로 양식 촬영">
             <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--font-mono)"
-                 data-i18n="workspace.tpl_form_image_hint">이미지를 선택하면 OCR(서버, Tesseract)로 텍스트를 추출해 위 칸을 채웁니다.</div>
+                 data-i18n="workspace.tpl_form_image_hint">이미지를 선택하거나 📷 로 촬영하면 OCR(서버, Tesseract)로 텍스트를 추출해 위 칸을 채웁니다.</div>
           </div>
         </div>
         <div style="display:flex;justify-content:flex-end;margin-top:10px">

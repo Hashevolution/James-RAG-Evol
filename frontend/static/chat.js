@@ -132,6 +132,13 @@ function _bindFrontendEvents() {
         e.stopPropagation();
         document.getElementById('folder-input').click();
         break;
+      case 'trigger-camera-input': {
+        // v0.6 — 모바일 후면 카메라 직접 진입. PC 에선 파일 피커로 fallback.
+        e.stopPropagation();
+        const camIn = document.getElementById('camera-input');
+        if (camIn) camIn.click();
+        break;
+      }
       case 'upload-files':              uploadFiles(); break;
       // Welcome chips
       case 'use-chip':                  useChip(t); break;
