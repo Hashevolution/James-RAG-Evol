@@ -41,6 +41,47 @@ class BuildPromptTests(unittest.TestCase):
         b = build_format_prompt("x", spec)
         self.assertEqual(a, b)
 
+    def test_prompt_omits_user_guidance_block_when_absent(self):
+        """v0.6.1 — empty / None instruction → no '===== USER GUIDANCE'
+        data-block header. The phrase still appears in _SYSTEM rules 4/5
+        as part of the contract, so test against the block delimiter."""
+        from core.templating.spec import parse_template
+        from core.templating.formatter import build_format_prompt
+        spec = parse_template("# A\n")
+        base = build_format_prompt("x", spec)
+        self.assertNotIn("===== USER GUIDANCE", base)
+        self.assertEqual(base, build_format_prompt("x", spec, instruction=None))
+        self.assertEqual(base, build_format_prompt("x", spec, instruction=""))
+        self.assertEqual(base, build_format_prompt("x", spec, instruction="   "))
+
+    def test_prompt_includes_user_guidance_block_when_present(self):
+        """v0.6.1 — non-empty instruction lands in its own data block
+        (not in _SYSTEM); Rules 1-4 in _SYSTEM still override it."""
+        from core.templating.spec import parse_template
+        from core.templating.formatter import build_format_prompt
+        spec = parse_template("# A\n")
+        prompt = build_format_prompt(
+            "x", spec, instruction="bullet style; formal tone"
+        )
+        self.assertIn("===== USER GUIDANCE", prompt)
+        self.assertIn("bullet style; formal tone", prompt)
+        # Rules 1-4 still present and ordered before the guidance block.
+        self.assertIn("Do not invent", prompt)
+        self.assertIn("Rules 1-4 above always override USER GUIDANCE", prompt)
+
+    def test_prompt_truncates_huge_instruction(self):
+        """v0.6.1 — defensive cap at 2 KB even if a direct caller bypasses
+        the Pydantic input layer."""
+        from core.templating.spec import parse_template
+        from core.templating.formatter import build_format_prompt
+        spec = parse_template("# A\n")
+        giant = "X" * 5000
+        prompt = build_format_prompt("x", spec, instruction=giant)
+        # The number of X's actually included is at most 2048.
+        x_count = prompt.count("X")
+        self.assertLessEqual(x_count, 2048)
+        self.assertGreater(x_count, 0)
+
 
 class FormatContentTests(unittest.TestCase):
     def _patch_router(self, fn):
@@ -101,12 +142,29 @@ class RenderTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             render("x", "pdf")
         with self.assertRaises(ValueError):
-            extension_for("docx")
+            extension_for("pdf")
 
     def test_extension_for(self):
         from core.templating.render import extension_for
         self.assertEqual(extension_for("md"), ".md")
         self.assertEqual(extension_for("html"), ".html")
+        # v0.6.1
+        self.assertEqual(extension_for("docx"), ".docx")
+
+    def test_docx_render_is_zip_format(self):
+        """v0.6.1 — .docx is a zip container; first two bytes must be PK."""
+        from core.templating.render import render
+        out = render("# 회의록\n\n참석자: 김지원\n\n결정: **v0.6** 진행.",
+                     fmt="docx", title="회의록")
+        self.assertGreater(len(out), 1000)  # non-empty docx
+        # ZIP magic — required by python-docx's docx output.
+        self.assertEqual(out[:2], b"PK")
+
+    def test_docx_render_handles_empty_text(self):
+        """v0.6.1 — empty body still produces a valid docx skeleton."""
+        from core.templating.render import render
+        out = render("", fmt="docx", title="empty")
+        self.assertEqual(out[:2], b"PK")
 
 
 if __name__ == "__main__":

@@ -555,6 +555,14 @@
                 placeholder="여기에 원문 내용을 붙여넣으세요…"
                 style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-size:13px;font-family:var(--font-ui);resize:vertical"></textarea>
     </div>
+    <!-- v0.6.1 — 사용자 프롬프트 (USER GUIDANCE) — 스타일 / 톤 / 길이 가이드 -->
+    <div class="modal-field">
+      <label data-i18n="tplchat.instruction">지시사항 (선택)</label>
+      <textarea id="tplc-instruction" rows="2" maxlength="2048"
+                data-i18n-placeholder="tplchat.instruction_ph"
+                placeholder="예: 결정사항은 bullet, 톤은 격식체로, 액션은 담당자별로 묶어."
+                style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-size:13px;font-family:var(--font-ui);resize:vertical"></textarea>
+    </div>
     <div class="modal-field" style="display:flex;align-items:center;gap:8px">
       <label style="margin:0" data-i18n="tplchat.format">출력 형식</label>
       <select id="tplc-fmt"
@@ -562,6 +570,7 @@
         <option value="md">Markdown (.md)</option>
         <option value="txt">Text (.txt)</option>
         <option value="html">HTML (.html)</option>
+        <option value="docx">Word (.docx)</option>
       </select>
     </div>
     <div class="modal-error" id="tplc-msg" style="min-height:0"></div>
@@ -572,6 +581,8 @@
     </div>
     <div class="modal-actions">
       <button class="modal-btn cancel" data-action="tplc-close" data-i18n="common.cancel">취소</button>
+      <button class="modal-btn" id="tplc-copy-btn" data-action="tplc-copy"
+              style="display:none" data-i18n="tplchat.copy">📋 복사</button>
       <button class="modal-btn" id="tplc-download-btn" data-action="tplc-download"
               style="display:none" data-i18n="tplchat.download">다운로드</button>
       <button class="modal-btn primary" id="tplc-apply-btn" data-action="tplc-apply" data-i18n="tplchat.generate">정리하기</button>

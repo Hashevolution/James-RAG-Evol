@@ -901,6 +901,50 @@ async function onTplImageChange(srcId) {
   }
 }
 
+/* v0.6.1 — Document mode: POST `.docx` / `.pdf` / `.pptx` / `.xlsx` /
+   `.hwp` to /templates/ingest-document; server (markitdown) extracts
+   text. `.hwp` may fail on builds without a parser — the server surfaces
+   an explicit "한글에서 .docx 로 저장 후 업로드" error rather than empty. */
+async function onTplDocChange() {
+  const inp = document.getElementById('tpl-form-doc');
+  const f = inp && inp.files && inp.files[0];
+  if (!f) return;
+  const msg = document.getElementById('tpl-form-msg');
+  msg.textContent = `⏳ ${t('workspace.tpl_doc_ingesting')}`;
+  try {
+    const fd = new FormData();
+    fd.append('file', f);
+    const r = await fetch(
+      `/templates/ingest-document?api_key=${encodeURIComponent(_apiKey || '')}`,
+      {
+        method: 'POST',
+        headers: _token ? { Authorization: `Bearer ${_token}` } : {},
+        body: fd,
+      });
+    if (r.status === 401) {
+      _clearStored(); updateRoleBadge(); showLogin();
+      throw new Error('인증 만료 — 재로그인 필요');
+    }
+    if (!r.ok) {
+      let detail = `${r.status}`;
+      try { detail = (await r.json()).detail || detail; } catch (_) {}
+      throw new Error(detail);
+    }
+    const data = await r.json();
+    document.getElementById('tpl-form-raw').value = data.raw_text || '';
+    _tplMode = data.mode || 'document';
+    if (!document.getElementById('tpl-form-name').value.trim()) {
+      document.getElementById('tpl-form-name').value =
+        f.name.replace(/\.[^.]+$/, '');
+    }
+    msg.textContent = `✅ ${t('workspace.tpl_doc_done')}`;
+  } catch (e) {
+    msg.textContent = `❌ ${e.message}`;
+  } finally {
+    inp.value = '';
+  }
+}
+
 async function createTemplate() {
   const msg = document.getElementById('tpl-form-msg');
   msg.textContent = '';
@@ -981,6 +1025,8 @@ async function applyTemplate() {
   msg.textContent = '';
   const raw_content = document.getElementById('tpl-apply-content').value;
   const fmt = document.getElementById('tpl-apply-fmt').value;
+  const instructionEl = document.getElementById('tpl-apply-instruction');
+  const instruction = (instructionEl && instructionEl.value || '').trim();
   if (!raw_content.trim()) {
     msg.textContent = `❌ ${t('workspace.tpl_need_content')}`;
     return;
@@ -989,9 +1035,11 @@ async function applyTemplate() {
   const orig = btn.textContent;
   btn.textContent = '⏳';
   try {
+    const payload = { raw_content, fmt };
+    if (instruction) payload.instruction = instruction;
     const r = await _crPost(
       `/templates/${encodeURIComponent(_currentTplId)}/apply`,
-      { raw_content, fmt },
+      payload,
     );
     _lastTplOutId = r.out_id;
     document.getElementById('tpl-result-preview').textContent = r.preview || '';
@@ -1129,6 +1177,7 @@ function _bindFrontendEvents() {
         break;
       case 'tpl-close-apply':    closeTplApply(); break;
       case 'tpl-apply':          applyTemplate(); break;
+      case 'tpl-copy':           copyTemplatePreview(); break;
       case 'tpl-download':       downloadTemplateOutput(null); break;
       case 'tpl-download-out':
         downloadTemplateOutput(t.getAttribute('data-out-id'));
@@ -1166,8 +1215,38 @@ function _bindStableInputs() {
   // v0.6 — 모바일 카메라 직접 진입 input; 같은 OCR 파이프라인 공유.
   const tplImageCam = document.getElementById('tpl-form-image-camera');
   if (tplImageCam) tplImageCam.addEventListener('change', () => onTplImageChange('tpl-form-image-camera'));
+  // v0.6.1 — 문서 양식 등록 (.docx / .pdf / .pptx / .xlsx / .hwp).
+  const tplDoc = document.getElementById('tpl-form-doc');
+  if (tplDoc) tplDoc.addEventListener('change', () => onTplDocChange());
   const tplRaw = document.getElementById('tpl-form-raw');
   if (tplRaw) tplRaw.addEventListener('input', () => { _tplMode = 'text'; });
+}
+
+/* v0.6.1 — copy the formatted preview text to clipboard. Falls back to
+   a hidden textarea + execCommand on contexts without clipboard API
+   (http:// without secure context). */
+async function copyTemplatePreview() {
+  const pre = document.getElementById('tpl-result-preview');
+  const msg = document.getElementById('tpl-apply-msg');
+  const text = pre && pre.textContent || '';
+  if (!text) return;
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    if (msg) msg.textContent = `📋 ${t('workspace.tpl_copy_done')}`;
+  } catch (e) {
+    if (msg) msg.textContent = `❌ ${e.message}`;
+  }
 }
 
 /* ── boot ── */

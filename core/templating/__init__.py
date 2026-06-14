@@ -34,6 +34,7 @@ from core.templating.store import (  # noqa: F401
     save_output,
 )
 from core.templating.ingest import (  # noqa: F401
+    ingest_document,
     ingest_file,
     ingest_image,
     ingest_text,
@@ -66,6 +67,7 @@ __all__ = [
     "ingest_text",
     "ingest_file",
     "ingest_image",
+    "ingest_document",
     "build_format_prompt",
     "format_content",
     "VALID_FORMATS",

@@ -94,6 +94,8 @@
     _setMsg('');
     document.getElementById('tplc-result').style.display = 'none';
     document.getElementById('tplc-download-btn').style.display = 'none';
+    var copyBtnInit = document.getElementById('tplc-copy-btn');
+    if (copyBtnInit) copyBtnInit.style.display = 'none';
     document.getElementById('tplc-placeholders').innerHTML = '';
     var sel = document.getElementById('tplc-select');
     sel.innerHTML = '<option value="">' + _esc(_tt('common.loading', '…')) + '</option>';
@@ -135,6 +137,8 @@
     _setMsg('');
     document.getElementById('tplc-result').style.display = 'none';
     document.getElementById('tplc-download-btn').style.display = 'none';
+    var copyBtnSel = document.getElementById('tplc-copy-btn');
+    if (copyBtnSel) copyBtnSel.style.display = 'none';
     ph.innerHTML = '';
     if (!_curId) return;
     try {
@@ -161,6 +165,8 @@
     }
     var content = document.getElementById('tplc-content').value;
     var fmt = document.getElementById('tplc-fmt').value;
+    var instEl = document.getElementById('tplc-instruction');
+    var instruction = (instEl && instEl.value || '').trim();
     if (!content.trim()) {
       _setMsg('❌ ' + _tt('tplchat.need_content', 'Paste some content first.'));
       return;
@@ -171,19 +177,46 @@
     btn.textContent = '⏳';
     _setMsg('');
     try {
+      var payload = { raw_content: content, fmt: fmt };
+      if (instruction) payload.instruction = instruction;
       var r = await _post(
         '/templates/' + encodeURIComponent(_curId) + '/apply',
-        { raw_content: content, fmt: fmt });
+        payload);
       _outId = r.out_id;
       document.getElementById('tplc-preview').textContent = r.preview || '';
       document.getElementById('tplc-result').style.display = 'block';
       document.getElementById('tplc-download-btn').style.display = '';
+      var copyBtn = document.getElementById('tplc-copy-btn');
+      if (copyBtn) copyBtn.style.display = '';
       _setMsg('✅ ' + (r.filename || ''));
     } catch (e) {
       _setMsg('❌ ' + e.message);
     } finally {
       btn.disabled = false;
       btn.textContent = orig;
+    }
+  }
+
+  async function copyPreview() {
+    var pre = document.getElementById('tplc-preview');
+    var text = pre && pre.textContent || '';
+    if (!text) return;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      _setMsg('📋 ' + _tt('tplchat.copy_done', 'Copied to clipboard.'));
+    } catch (e) {
+      _setMsg('❌ ' + e.message);
     }
   }
 
@@ -223,6 +256,7 @@
       case 'tplc-open':     e.preventDefault(); openModal(); break;
       case 'tplc-close':    closeModal(); break;
       case 'tplc-apply':    apply(); break;
+      case 'tplc-copy':     copyPreview(); break;
       case 'tplc-download': download(); break;
     }
   });

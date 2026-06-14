@@ -31,6 +31,7 @@ from core.templating import (
     delete_template,
     format_content,
     get_template,
+    ingest_document,
     ingest_image,
     list_outputs,
     list_templates,
@@ -62,6 +63,11 @@ class ApplyTemplateRequest(BaseModel):
     raw_content: str
     fmt: str = "md"
     max_tokens: int = 2048
+    # v0.6.1 — optional USER GUIDANCE (style / tone / length). Hard-
+    # capped at 2 KB by core.templating.formatter so a long prompt can't
+    # crowd out the template + raw content from the model's context
+    # window. None / empty preserves byte-identical v0.6.0 behaviour.
+    instruction: Optional[str] = None
 
 
 # ─── Helpers ────────────────────────────────────────────────────────
@@ -155,6 +161,79 @@ async def ingest_image_route(
     return {"raw_text": raw_text, "mode": "image"}
 
 
+# v0.6.1 — same upload ceiling as the image path (12 MB). Office files
+# are typically much smaller, but pinning the cap here protects against
+# a hostile client uploading an oversized PDF.
+_MAX_DOC_BYTES = 12 * 1024 * 1024
+
+# Office / PDF extensions the document ingest endpoint accepts. `.hwp`
+# / `.hwpx` are accepted at the validation layer but may fail at the
+# markitdown call; the extractor raises a clear "한글에서 .docx 로
+# 저장 후 업로드" error rather than silently returning empty text.
+_DOC_EXT_ALLOWED = (".docx", ".doc", ".pdf", ".pptx", ".xlsx", ".hwp", ".hwpx")
+
+
+@router.post("/templates/ingest-document", summary="문서 양식 → 텍스트")
+async def ingest_document_route(
+    request: Request,
+    file: UploadFile = File(...),
+    role: str = Depends(get_role_from_request),
+):
+    """Extract text from an uploaded `.docx` / `.pdf` / `.pptx` / `.xlsx`
+    / (`.hwp`) file for template-registration review (document mode).
+
+    Returns ``{"raw_text": ..., "mode": "document"}``. The caller
+    reviews the extracted text, then POSTs it to ``/templates/`` with
+    ``mode="document"`` to register the template. Extraction runs on-box
+    (markitdown) — the file bytes never leave the machine.
+
+    `.hwp` / `.hwpx`: many markitdown builds lack a `.hwp` parser. The
+    endpoint returns 400 with the explicit workaround "open in 한글 and
+    save as `.docx`, then upload" rather than a silent empty result.
+    """
+    import os
+    import tempfile
+
+    _owner_or_401(request, role)
+
+    ext = os.path.splitext(file.filename or "")[1].lower() or ""
+    if ext and ext not in _DOC_EXT_ALLOWED:
+        raise HTTPException(
+            status_code=400,
+            detail=f"문서 모드는 {_DOC_EXT_ALLOWED} 만 받습니다 (요청: {ext!r}).",
+        )
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="빈 파일입니다.")
+    if len(data) > _MAX_DOC_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"문서가 너무 큽니다 (최대 {_MAX_DOC_BYTES // (1024*1024)}MB).",
+        )
+
+    tmp_path: Optional[str] = None
+    try:
+        fd, tmp_path = tempfile.mkstemp(
+            suffix=ext or ".bin", prefix="james_tpl_doc_",
+        )
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(data)
+        try:
+            raw_text = ingest_document(tmp_path)
+        except TemplateStoreError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
+    _write_audit(role, "/templates/ingest-document",
+                 query=f"doc:{file.filename or '?'}")
+    return {"raw_text": raw_text, "mode": "document"}
+
+
 @router.get("/templates/mine/list", summary="내 양식 목록")
 async def list_templates_route(
     request: Request,
@@ -226,6 +305,7 @@ async def apply_template_route(
             body.raw_content,
             template_raw=tpl["raw"],
             max_tokens=max(256, min(int(body.max_tokens or 2048), 8192)),
+            instruction=body.instruction,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

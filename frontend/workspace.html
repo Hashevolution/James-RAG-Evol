@@ -451,6 +451,20 @@
             <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--font-mono)"
                  data-i18n="workspace.tpl_form_image_hint">이미지를 선택하거나 📷 로 촬영하면 OCR(서버, Tesseract)로 텍스트를 추출해 위 칸을 채웁니다.</div>
           </div>
+
+          <!-- v0.6.1 — 문서 양식 등록 (.docx / .pdf / .pptx / .xlsx / .hwp).
+               서버가 markitdown 으로 텍스트 추출. `.hwp` 는 빌드에 따라
+               실패할 수 있고, 실패 시 명시적 "한글에서 .docx 저장 후 업로드"
+               에러 메시지로 안내. -->
+          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:8px"
+                 data-i18n="workspace.tpl_form_doc">FROM DOCUMENT</label>
+          <div>
+            <input id="tpl-form-doc" type="file"
+                   accept=".docx,.doc,.pdf,.pptx,.xlsx,.hwp,.hwpx"
+                   style="font-size:12px;color:var(--text)">
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--font-mono)"
+                 data-i18n="workspace.tpl_form_doc_hint">.docx / .pdf / .pptx / .xlsx 를 선택하면 텍스트를 추출해 위 칸을 채웁니다. .hwp 는 실패 가능 — 한글에서 .docx 로 저장 후 업로드 권장.</div>
+          </div>
         </div>
         <div style="display:flex;justify-content:flex-end;margin-top:10px">
           <button class="modal-btn primary" data-action="tpl-create"
@@ -506,6 +520,15 @@
                   placeholder="여기에 원문 내용을 붙여넣으세요 — JAMES 가 양식에 맞춰 재구성합니다."
                   style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;resize:vertical"></textarea>
 
+        <!-- v0.6.1 — 사용자 프롬프트 (USER GUIDANCE). 스타일 / 톤 / 길이만
+             가이드. fact 변경 / 양식 무시는 _SYSTEM rule 1-4 가 우선 (formatter.py). -->
+        <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);display:block;margin:10px 0 4px"
+               data-i18n="workspace.tpl_instruction">USER GUIDANCE (선택)</label>
+        <textarea id="tpl-apply-instruction" rows="2" maxlength="2048"
+                  data-i18n-placeholder="workspace.tpl_instruction_ph"
+                  placeholder="예: 결정사항은 bullet 으로, 톤은 격식체로, 액션은 담당자별로 묶어."
+                  style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;resize:vertical"></textarea>
+
         <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
           <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"
                  data-i18n="workspace.tpl_format">FORMAT</label>
@@ -514,6 +537,7 @@
             <option value="md">md</option>
             <option value="txt">txt</option>
             <option value="html">html</option>
+            <option value="docx">docx</option>
           </select>
           <button class="modal-btn primary" data-action="tpl-apply"
                   id="tpl-apply-btn" style="margin-left:auto"
@@ -522,13 +546,18 @@
         <div id="tpl-apply-msg"
              style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:6px;min-height:14px"></div>
 
-        <!-- Result preview + download -->
+        <!-- Result preview + download + copy (v0.6.1) -->
         <div id="tpl-result" style="display:none;margin-top:12px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
             <span class="label" style="font-family:var(--font-mono);font-size:11px;color:var(--muted)"
                   data-i18n="workspace.tpl_preview">PREVIEW</span>
-            <button class="modal-btn primary" data-action="tpl-download"
-                    data-i18n="workspace.tpl_download">다운로드</button>
+            <div style="display:flex;gap:6px">
+              <button class="modal-btn" data-action="tpl-copy"
+                      id="tpl-copy-btn"
+                      data-i18n="workspace.tpl_copy">📋 복사</button>
+              <button class="modal-btn primary" data-action="tpl-download"
+                      data-i18n="workspace.tpl_download">다운로드</button>
+            </div>
           </div>
           <pre id="tpl-result-preview"
                style="background:var(--bg);border:1px solid var(--border);
