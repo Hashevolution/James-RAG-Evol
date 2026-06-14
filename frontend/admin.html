@@ -158,6 +158,12 @@
       <div class="nav-item" data-action="show-page" data-page="settings">
         <span class="nav-icon">⚙️</span> <span data-i18n="admin.settings">설정</span>
       </div>
+      <!-- v0.6.1 Phase D-1 — agent allowed folders (workspace-scoped path
+           registry for agent tools). Sits next to settings because
+           operator changes its scope when switching workspaces. -->
+      <div class="nav-item" data-action="show-page" data-page="agent-folders">
+        <span class="nav-icon">📂</span> <span data-i18n="admin.agent_folders">에이전트 폴더</span>
+      </div>
     </div>
   </nav>
 
@@ -1145,6 +1151,71 @@
         </div>
         <div style="padding: 16px 0; display:flex; justify-content:flex-end;">
           <button class="btn btn-primary" data-action="save-web-search-config" data-i18n="set.web_save_button">Save Web Search Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- v0.6.1 Phase D-1 — Agent Allowed Folders. The agent tools
+         (`tools/code/*` + the deferred Phase C LLM-tool-call loop) only
+         act on folders the operator opts in via env or this page. The
+         env `JAMES_AGENT_ALLOWED_PATHS` is the source of truth across
+         restarts; this page is the runtime UX. -->
+    <div class="page" id="page-agent-folders">
+      <div class="page-title">
+        <span data-i18n="agent.page_title">📂 에이전트 허용 폴더</span>
+      </div>
+
+      <div class="card" style="padding:18px;margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
+        <div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:10px"
+             data-i18n="agent.intro">
+          에이전트 도구가 작업 가능한 폴더 목록입니다. 등록된 폴더 안에서만
+          파일 읽기 / 편집이 가능합니다. 시스템 critical 경로 (<code>/etc</code>,
+          <code>C:\Windows</code> 등) 는 admin 도 등록 불가입니다.
+        </div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.55">
+          <span data-i18n="agent.permanent_hint">
+            영구 등록은 자메스 기동 시 <code>JAMES_AGENT_ALLOWED_PATHS</code> 환경
+            변수로 지정합니다 (콤마 분리, 절대 경로). 아래 등록은 세션-스코프
+            (재시작 시 env 가 다시 적용).
+          </span>
+        </div>
+      </div>
+
+      <!-- Register form -->
+      <div class="card" style="padding:18px;margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-family:var(--font-mono)"
+             data-i18n="agent.register_label">새 폴더 등록 (절대 경로)</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input id="agent-path-input" type="text"
+                 data-i18n-placeholder="agent.register_ph"
+                 placeholder="예: C:\Users\me\Documents\dogfood-2026-06"
+                 style="flex:1;min-width:280px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:var(--font-mono)">
+          <button class="btn btn-primary" data-action="agent-register-path"
+                  data-i18n="agent.register_btn">등록</button>
+        </div>
+        <div id="agent-form-msg"
+             style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:6px;min-height:14px"></div>
+      </div>
+
+      <!-- Env value (read-only) -->
+      <div class="card" style="padding:14px 18px;margin-bottom:14px;background:var(--surface);border:1px solid var(--border-2);border-radius:8px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-family:var(--font-mono)">
+          <span data-i18n="agent.env_label">JAMES_AGENT_ALLOWED_PATHS (환경 변수, 영구 source)</span>
+        </div>
+        <pre id="agent-env-value"
+             style="margin:0;font-size:11px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;white-space:pre-wrap;word-break:break-all">(loading…)</pre>
+      </div>
+
+      <!-- Registered list -->
+      <div class="card" style="padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:13px;font-weight:600" data-i18n="agent.registered_label">현재 등록된 폴더</span>
+          <button class="btn" data-action="agent-reload"
+                  data-i18n="agent.reload">새로고침</button>
+        </div>
+        <div id="agent-paths-list"
+             style="display:flex;flex-direction:column;gap:6px;min-height:24px;font-family:var(--font-mono);font-size:12px">
+          <div style="color:var(--muted)" data-i18n="common.loading">…</div>
         </div>
       </div>
     </div>

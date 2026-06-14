@@ -203,12 +203,71 @@ class AgentPathsRoutesTests(unittest.TestCase):
                               "path": "/no/such/path/ever"})
         self.assertEqual(r.status_code, 400)
 
+    # ── v0.6.1 Phase D-1: session-scoped DELETE ──
+
+    def test_remove_session_scoped(self):
+        client, _ = _make_client(role="admin")
+        # register first
+        r = client.post("/admin/agent/allowed-paths",
+                        json={"api_key": "dummy", "path": self._tmp})
+        self.assertEqual(r.status_code, 200)
+        # remove
+        r = client.post("/admin/agent/allowed-paths/remove",
+                        json={"api_key": "dummy", "path": self._tmp})
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        self.assertTrue(body["removed"])
+        self.assertTrue(body["session_scoped"])
+
+    def test_remove_unknown_is_idempotent_200(self):
+        client, _ = _make_client(role="admin")
+        # remove path that was never registered → 200 no-op
+        r = client.post("/admin/agent/allowed-paths/remove",
+                        json={"api_key": "dummy", "path": self._tmp})
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertIn("no-op", r.json()["message"].lower())
+
+    def test_remove_forbidden_for_non_admin(self):
+        client, _ = _make_client(role="user")
+        r = client.post("/admin/agent/allowed-paths/remove",
+                        json={"api_key": "dummy", "path": self._tmp})
+        self.assertEqual(r.status_code, 403)
+
 
 class ServerRegistrationTests(unittest.TestCase):
     def test_routes_wired_on_app(self):
         import server_llmwiki
         paths = {getattr(r, "path", None) for r in server_llmwiki.app.routes}
         self.assertIn("/admin/agent/allowed-paths", paths)
+        self.assertIn("/admin/agent/allowed-paths/remove", paths)
+
+
+class SandboxUnregisterTests(unittest.TestCase):
+    def setUp(self):
+        _reset_sandbox_state()
+        self._tmp = tempfile.mkdtemp(prefix="james_sb_u_")
+
+    def tearDown(self):
+        shutil.rmtree(self._tmp, ignore_errors=True)
+        _reset_sandbox_state()
+
+    def test_unregister_removes_from_list(self):
+        from tools.code.sandbox import (
+            register_user_path,
+            unregister_user_path,
+            get_user_registered_paths,
+        )
+        register_user_path(self._tmp)
+        self.assertEqual(len(get_user_registered_paths()), 1)
+        ok, msg = unregister_user_path(self._tmp)
+        self.assertTrue(ok, msg)
+        self.assertEqual(len(get_user_registered_paths()), 0)
+
+    def test_unregister_unknown_is_noop_ok(self):
+        from tools.code.sandbox import unregister_user_path
+        ok, msg = unregister_user_path(self._tmp)
+        self.assertTrue(ok)
+        self.assertIn("no-op", msg.lower())
 
 
 if __name__ == "__main__":

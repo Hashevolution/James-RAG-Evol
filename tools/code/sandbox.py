@@ -196,6 +196,28 @@ def get_user_registered_paths() -> list[str]:
     return list(_USER_REGISTERED_PATHS)
 
 
+def unregister_user_path(path: str) -> Tuple[bool, str]:
+    """Session-scoped remove from the in-memory registry. The next
+    process restart re-reads ``JAMES_AGENT_ALLOWED_PATHS`` env, so
+    paths persisted there will re-appear. This is intentional — see
+    `docs/design/v0.6-agent-tools-user-paths.md` §3: permanent revoke
+    requires editing the env.
+
+    Returns ``(ok, msg)``. ``ok=True`` even if the path was not in the
+    list (idempotent), with a message explaining the no-op.
+    """
+    if not path or not isinstance(path, str):
+        return False, "empty path"
+    abs_p = _norm_abs(path)
+    if not abs_p:
+        return False, f"path could not be resolved: {path!r}"
+    _ensure_user_paths_loaded()
+    if abs_p in _USER_REGISTERED_PATHS:
+        _USER_REGISTERED_PATHS.remove(abs_p)
+        return True, "removed (session-only; env restores on restart)"
+    return True, "not registered (no-op)"
+
+
 def _is_under_user_registered(abs_path: str) -> bool:
     """True if ``abs_path`` is at or under one of the user-registered
     paths. Re-checks `realpath` so a later symlink-escape attempt

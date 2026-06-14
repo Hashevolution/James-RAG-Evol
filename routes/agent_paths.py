@@ -99,3 +99,51 @@ async def register_allowed_path(
         "message": msg,
         "by": username,
     }
+
+
+class UnregisterPathRequest(BaseModel):
+    api_key: str
+    path: str
+
+
+@router.post(
+    "/admin/agent/allowed-paths/remove",
+    summary="에이전트 도구 허용 경로 제거 (세션 스코프) [v0.6.1 Phase D-1]",
+)
+async def unregister_allowed_path(
+    body: UnregisterPathRequest,
+    request: Request,
+    role: str = Depends(get_role_from_request),
+):
+    """Session-scoped remove from the in-memory registry.
+
+    **Not a permanent revoke.** Restarting the JAMES process re-reads
+    `JAMES_AGENT_ALLOWED_PATHS` env, so paths persisted there will
+    re-appear. To revoke permanently: edit the env and restart. See
+    `docs/design/v0.6-agent-tools-user-paths.md` §3.
+
+    Idempotent: removing a non-registered path returns 200 with a
+    no-op message rather than 404 — the UI's "X" button is meant to
+    be tap-and-forget.
+    """
+    _require_admin(body.api_key, role)
+    username = _bearer_username(request) or "admin"
+
+    from tools.code.sandbox import unregister_user_path
+
+    ok, msg = unregister_user_path(body.path)
+    _write_audit(
+        role,
+        "/admin/agent/allowed-paths/remove",
+        query=f"unregister:{body.path}",
+        answer=f"ok={ok}; {msg}",
+    )
+    if not ok:
+        raise HTTPException(status_code=400, detail=msg)
+    return {
+        "removed": True,
+        "path": body.path,
+        "message": msg,
+        "by": username,
+        "session_scoped": True,
+    }
