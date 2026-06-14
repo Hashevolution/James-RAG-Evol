@@ -430,6 +430,10 @@ app.include_router(feedback_router)
 from routes.workspace_info import router as workspace_info_router
 app.include_router(workspace_info_router)
 
+# v0.6.1 Phase B — agent-tool path permission admin endpoints.
+from routes.agent_paths import router as agent_paths_router
+app.include_router(agent_paths_router)
+
 from routes.multimodal import router as multimodal_router
 from routes.multimodal import ScreenRequest  # noqa: F401  back-compat
 app.include_router(multimodal_router)

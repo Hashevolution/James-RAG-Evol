@@ -1074,6 +1074,71 @@ consistent with the abstention posture elsewhere in the reasoning path.
 template versioning/diff (replace-on-edit; Change Request is a separate
 surface); no automatic re-ingestion of output into the knowledge graph.
 
+### 5.7.15 Agent Tools on User-Specified Paths (v0.6.1, Phase B)
+
+> **Status: Phase A (memo) + Phase B (path permission base) shipped;
+> Phase C/D/E (LLM tool-call dispatch / chat-side confirm UI / shell tool)
+> deferred until operator dogfooding flags the next bottleneck.** Full
+> memo: `docs/design/v0.6-agent-tools-user-paths.md`.
+
+**Why this trust zone exists.** JAMES Phase 5.5 already ships the
+`BaseTool` interface (`tools/base_tool.py`), the Mini Sandbox v2.2
+(`tools/code/sandbox.py`), the code tool set (`tools/code/*`), the
+`/code/*` HTTP surface (`routes/coding.py`), and the
+`policy_validate_path` chain through PolicyEngine — i.e. roughly 70% of
+the "Claude-Code-like" stack. What was missing: operators could not
+authorise the agent tools against *their own folders* (the sandbox
+hard-coded `ALLOWED_PATHS = ["./workspace"]` and the
+`BLOCKED_PATH_PATTERNS` rejected every Windows / POSIX absolute path
+by default). §5.7.15 closes that gap.
+
+**Trust contract (Phase B, this PR)**
+
+1. **Critical system roots are blocked for everyone, always.** The
+   constant `CRITICAL_BLOCKED_ROOTS` in `tools/code/sandbox.py`
+   enumerates `/etc`, `/proc`, `/sys`, `/boot`, `/dev`, `/root`,
+   `C:\Windows`, `C:\Program Files`, `C:\Program Files (x86)`,
+   `C:\ProgramData`. Admin override is **not** permitted; the same
+   spirit as `BLOCKED_COMMANDS`.
+2. **Operator opts in per path.** Default = empty. Paths register via
+   `JAMES_AGENT_ALLOWED_PATHS` env (comma-separated absolute paths,
+   read once on first sandbox call) or via the admin endpoint
+   `POST /admin/agent/allowed-paths`. Registered paths must (a) be
+   absolute, (b) exist, (c) not resolve under a critical root.
+3. **Realpath at registration + at validate.** Symlinks are resolved
+   so a later mount escape (`/home/op/safe → /etc`) still fails. The
+   normalised path is compared against the registry root for prefix
+   match.
+4. **Audit.** Every register call writes one `_write_audit` row
+   (registered path, by, ok/fail). Sandbox `log_security_event`
+   continues to mirror to `audit_bridge`.
+5. **No runtime-remove endpoint.** Revoking a registered path requires
+   editing the env + restart. Revoking against stale tool handles is
+   hard to reason about, so this is deliberate.
+6. **`user`/`employee`/`manager` cannot touch user-registered paths
+   yet.** Only admin reads/writes outside the in-repo workspace until
+   Phase C/D ship a per-call confirm UI (otherwise a chat session
+   could implicit-escalate).
+
+**HTTP surface** — `routes/agent_paths.py`:
+
+| Endpoint | Auth | Action |
+|---|---|---|
+| `GET /admin/agent/allowed-paths` | `_require_admin` | Returns `{registered_paths, count, env_name, env_value}` |
+| `POST /admin/agent/allowed-paths` `{api_key, path}` | `_require_admin` | Calls `register_user_path(path)`; audits; 400 with explicit reason on rejection |
+
+**Deferred (Phase C/D/E, intentionally not in this trust zone yet)** —
+LLM tool-call dispatch loop (Anthropic `tool_use` or Ollama function
+calling), chat-side confirm UI, and a `run_shell` tool with stronger
+`BLOCKED_COMMANDS`. These ship only after operator dogfooding flags
+their absence as the next bottleneck — the same Phase 5 evidence-
+driven discipline that closed Direction α and cycle γ.
+
+**Non-goals (this trust zone)** — no Windows ACL / POSIX capability
+integration (sandbox stays in-process); no per-user allowed-path
+overlay (Phase C+); no path auto-discovery (operator types explicitly;
+intentional friction).
+
 ---
 
 ## 6. Data Lifecycle (W7-A, 2026-05-11)
