@@ -187,6 +187,23 @@ reports/*.txt
 .pytest_cache/
 htmlcov/
 
+# ── LaTeX 빌드 산출물 (papers/) ───────────────────────────────
+# papers/<id>-preprint/ 내 main.tex / main.pdf / refs.bib / README.md 만
+# 추적. main.log 는 위 *.log 글롭이 이미 차단.
+papers/**/*.aux
+papers/**/*.bbl
+papers/**/*.blg
+papers/**/*.out
+papers/**/*.toc
+papers/**/*.lof
+papers/**/*.lot
+papers/**/*.fls
+papers/**/*.fdb_latexmk
+papers/**/*.synctex.gz
+
+# Preprint 배포 zip (release 트래커가 별도; repo 추적 X)
+*-preprint.zip
+
 # ── 한국어 내부 노트 (개인 작업 파일) ──────────────────────────
 자메스_프로젝트_*
 레이어별_*
