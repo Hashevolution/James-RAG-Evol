@@ -21,6 +21,18 @@
           data-i18n="rollback.header_subtitle">· 지식 롤백</span>
   </div>
   <div class="header-right">
+    <!-- v0.6.1 — workspace badge. Knowledge rollback is workspace-
+         scoped (undoes recent writes from THIS workspace's audit log),
+         so the badge is doubly important here — operator must not
+         rollback in the wrong workspace by accident. -->
+    <button class="nav-btn workspace-badge" id="workspace-badge"
+            type="button"
+            data-i18n-title="workspace.badge_title"
+            title="현재 워크스페이스"
+            aria-label="현재 워크스페이스"
+            style="display:none;font-size:11px">
+      📁 <span id="workspace-name">—</span>
+    </button>
     <button class="nav-btn" data-lang-toggle data-action="toggle-lang"
             title="Language / 언어"
             aria-label="언어 전환 / Toggle language"
@@ -150,6 +162,8 @@
 <script src="/static/i18n.js"></script>
 <script src="/static/auth.js"></script>
 <script src="/static/knowledge-rollback.js"></script>
+<!-- v0.6.1 — workspace badge in header (rollback is workspace-scoped). -->
+<script src="/static/workspace-badge.js"></script>
 <!-- v0.6 Phase 4 P4.4 — universal glossary tooltip script. -->
 <script src="/static/glossary.js"></script>
 </body>

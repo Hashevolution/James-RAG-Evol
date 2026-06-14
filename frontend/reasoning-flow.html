@@ -21,6 +21,17 @@
           data-i18n="flow.header_subtitle">· 추론 흐름 보기</span>
   </div>
   <div class="header-right">
+    <!-- v0.6.1 — current workspace badge. Reasoning-flow swimlanes show
+         per-trace replay data that's workspace-scoped, so the operator
+         needs to see which workspace they're inspecting. -->
+    <button class="nav-btn workspace-badge" id="workspace-badge"
+            type="button"
+            data-i18n-title="workspace.badge_title"
+            title="현재 워크스페이스"
+            aria-label="현재 워크스페이스"
+            style="display:none;font-size:11px">
+      📁 <span id="workspace-name">—</span>
+    </button>
     <button class="nav-btn" data-lang-toggle data-action="toggle-lang"
             title="Language / 언어"
             aria-label="언어 전환 / Toggle language"
@@ -150,5 +161,8 @@
 <script src="/static/reasoning-flow.js"></script>
 <!-- v0.6 Phase 4 P4.4 — universal glossary tooltip script. -->
 <script src="/static/glossary.js"></script>
+<!-- v0.6.1 — workspace badge in header (reasoning swimlanes are
+     workspace-scoped). -->
+<script src="/static/workspace-badge.js"></script>
 </body>
 </html>
