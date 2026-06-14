@@ -120,6 +120,19 @@ header {
 }
 .nav-btn:hover { background: var(--surface-2); color: var(--text); }
 
+/* v0.6.1 — workspace badge. Default = same surface as nav-btn. Custom
+   (non-default) workspace = accented border so the operator notices
+   they're on dogfood-* / cycle-γ / etc. instead of the main project. */
+.workspace-badge {
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.2px;
+  cursor: default;
+}
+.workspace-badge-custom {
+  border-color: var(--accent, #6cd) !important;
+  color: var(--accent, #6cd) !important;
+}
+
 /* ── 로그인 상태 배지 ── */
 .role-badge {
   display: flex; align-items: center; gap: 8px;

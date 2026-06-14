@@ -65,6 +65,15 @@
       // 자동 동기화되도록 동일 키 사용.
       localStorage.setItem('james_token', token);
       localStorage.setItem('james_role', role);
+      // v0.6.1 — refresh the workspace badge after a successful login
+      // so the operator sees the correct workspace immediately rather
+      // than after a full page reload.
+      try {
+        if (window.JAMES_WORKSPACE_BADGE &&
+            typeof window.JAMES_WORKSPACE_BADGE.refresh === 'function') {
+          window.JAMES_WORKSPACE_BADGE.refresh();
+        }
+      } catch (_) { /* badge wiring is optional */ }
       return { ok: true, token, role };
     } catch (e) {
       return { ok: false, error: `서버 오류: ${e.message || e}` };

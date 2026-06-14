@@ -23,6 +23,15 @@
     <span class="live-dot" aria-hidden="true" title="System live" style="margin-left:10px"></span>
   </div>
   <div class="header-right">
+    <!-- v0.6.1 — current workspace badge. Stays hidden until logged in. -->
+    <button class="nav-btn workspace-badge" id="workspace-badge"
+            type="button"
+            data-i18n-title="workspace.badge_title"
+            title="현재 워크스페이스"
+            aria-label="현재 워크스페이스"
+            style="display:none;font-size:11px">
+      📁 <span id="workspace-name">—</span>
+    </button>
     <!-- [STEP 5-A] 언어 토글 -->
     <button class="nav-btn" data-lang-toggle data-action="toggle-lang" title="Language / 언어"
             aria-label="언어 전환 / Toggle language"
@@ -1148,6 +1157,8 @@
 <script src="/static/llm-install.js"></script>
 <script src="/static/admin.js"></script>
 <script src="/static/a11y-modal.js" defer></script>
+<!-- v0.6.1 — workspace badge in header. -->
+<script src="/static/workspace-badge.js"></script>
 <!-- v0.5 Track F.2 CR.a — Change Review list page (UI shell). Loads
      after admin.js so the SPA page-toggle wiring is already in place. -->
 <script src="/static/change-requests.js"></script>

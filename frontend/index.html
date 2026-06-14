@@ -67,6 +67,18 @@
     </div>
   </div>
   <div class="header-right">
+    <!-- v0.6.1 — current workspace badge. Stays hidden until logged in
+         (workspace-badge.js fetches /workspace/info on boot). Helps the
+         operator notice when they're on dogfood-* vs the default
+         workspace in a multi-workspace setup. -->
+    <button class="nav-btn workspace-badge" id="workspace-badge"
+            type="button"
+            data-i18n-title="workspace.badge_title"
+            title="현재 워크스페이스"
+            aria-label="현재 워크스페이스"
+            style="display:none;font-size:11px">
+      📁 <span id="workspace-name">—</span>
+    </button>
     <div class="source-toggle">
       <button class="active" data-action="set-source" data-source="prod">PROD</button>
       <button data-action="set-source" data-source="test">TEST</button>
@@ -386,6 +398,8 @@
      contained (own auth read + own click delegation); does NOT touch
      chat.js's send pipeline. -->
 <script src="/static/templating-chat.js"></script>
+<!-- v0.6.1 — workspace badge in header. Self-contained boot fetch. -->
+<script src="/static/workspace-badge.js"></script>
 
 <!-- ── 로그인 모달 ── -->
 <div class="modal-overlay hidden" id="login-modal"
