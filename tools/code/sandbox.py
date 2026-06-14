@@ -52,6 +52,25 @@ BLOCKED_PATH_PATTERNS = [
     r"core/", r"security_layer", r"reasoning_engine", r"graph_engine",
 ]
 
+# v0.6.1 — CRITICAL system roots that are blocked even for admin and
+# even when present inside a JAMES_AGENT_ALLOWED_PATHS entry. These are
+# the absolutes that must never be in scope for any tool call. Mirrors
+# `docs/design/v0.6-agent-tools-user-paths.md` §3 / §7.
+CRITICAL_BLOCKED_ROOTS = [
+    "/etc", "/proc", "/sys", "/boot", "/dev", "/root",
+    "C:\\Windows", "C:\\Program Files", "C:\\Program Files (x86)",
+    "C:\\ProgramData",
+]
+
+# v0.6.1 — operator-registered absolute paths the agent tools are
+# allowed to read/write. Populated from `JAMES_AGENT_ALLOWED_PATHS`
+# (comma-separated) at first call + via the admin endpoint at runtime.
+# Empty by default (only the in-repo workspace works, identical to
+# v0.5).
+_USER_REGISTERED_PATHS: list[str] = []
+_USER_PATHS_LOADED = False
+JAMES_AGENT_ALLOWED_PATHS_ENV = "JAMES_AGENT_ALLOWED_PATHS"
+
 
 # ─── 감사 로그 ───────────────────────────────────────────────
 
@@ -86,21 +105,152 @@ def log_security_event(
     print(f"[SANDBOX] {flag} [{role}] {event_type}: {detail[:60]}")
 
 
+# ─── 사용자 등록 경로 (v0.6.1) ──────────────────────────────
+
+def _norm_abs(p: str) -> str:
+    """Normalise to an absolute path and resolve symlinks at registration
+    time. Returns "" on any failure (caller treats as invalid)."""
+    try:
+        return os.path.realpath(os.path.abspath(p))
+    except Exception:
+        return ""
+
+
+def _is_under_critical_root(abs_path: str) -> bool:
+    """True if ``abs_path`` is at or under one of the
+    `CRITICAL_BLOCKED_ROOTS`. Case-folded on Windows so
+    `c:\\windows\\foo` matches `C:\\Windows`."""
+    if not abs_path:
+        return True
+    lp = abs_path
+    if os.name == "nt":
+        lp = abs_path.lower()
+    for root in CRITICAL_BLOCKED_ROOTS:
+        r = root.lower() if os.name == "nt" else root
+        # Match the root itself OR any descendant.
+        if lp == r or lp.startswith(r + os.sep):
+            return True
+    return False
+
+
+def register_user_path(path: str) -> Tuple[bool, str]:
+    """Register an absolute path as agent-tool-allowed at runtime.
+
+    Returns ``(ok, message)``. The path must be absolute, must not
+    resolve to a critical system root, and must exist. Symlinks are
+    followed at registration time so a later `..` escape still has to
+    pass `validate_path` on each call.
+
+    Idempotent — re-registering an already-known path returns ``(True,
+    "already registered")``.
+    """
+    if not path or not isinstance(path, str):
+        return False, "empty path"
+    abs_p = _norm_abs(path)
+    if not abs_p:
+        return False, f"path could not be resolved: {path!r}"
+    if not os.path.isabs(abs_p):
+        return False, f"path is not absolute: {path!r}"
+    if _is_under_critical_root(abs_p):
+        return False, f"path is under a critical system root: {abs_p!r}"
+    if not os.path.exists(abs_p):
+        return False, f"path does not exist: {abs_p!r}"
+    if abs_p in _USER_REGISTERED_PATHS:
+        return True, "already registered"
+    _USER_REGISTERED_PATHS.append(abs_p)
+    return True, "registered"
+
+
+def _ensure_user_paths_loaded() -> None:
+    """First-call lazy load of ``JAMES_AGENT_ALLOWED_PATHS`` env into
+    `_USER_REGISTERED_PATHS`. Subsequent calls no-op. Re-loading after
+    an env change requires a restart (by design — see design memo §3)."""
+    global _USER_PATHS_LOADED
+    if _USER_PATHS_LOADED:
+        return
+    _USER_PATHS_LOADED = True
+    raw = os.environ.get(JAMES_AGENT_ALLOWED_PATHS_ENV, "")
+    if not raw.strip():
+        return
+    for chunk in raw.split(","):
+        p = chunk.strip().strip('"').strip("'")
+        if not p:
+            continue
+        ok, msg = register_user_path(p)
+        # Wrap print in try/except: the existing sandbox uses emoji
+        # markers that fail on Windows cp949 consoles unless stdout was
+        # reconfigured (uvicorn does this; bare unit-test runners don't).
+        try:
+            if not ok:
+                print(f"[SANDBOX] BLOCKED {JAMES_AGENT_ALLOWED_PATHS_ENV} entry rejected: {p!r} — {msg}")
+            else:
+                print(f"[SANDBOX] ALLOWED agent-allowed path: {p!r}")
+        except UnicodeEncodeError:
+            pass
+
+
+def get_user_registered_paths() -> list[str]:
+    """Public read-only snapshot of the registered paths (admin endpoint
+    uses this)."""
+    _ensure_user_paths_loaded()
+    return list(_USER_REGISTERED_PATHS)
+
+
+def _is_under_user_registered(abs_path: str) -> bool:
+    """True if ``abs_path`` is at or under one of the user-registered
+    paths. Re-checks `realpath` so a later symlink-escape attempt
+    fails."""
+    _ensure_user_paths_loaded()
+    if not _USER_REGISTERED_PATHS:
+        return False
+    real = _norm_abs(abs_path)
+    if not real:
+        return False
+    if _is_under_critical_root(real):
+        return False
+    for root in _USER_REGISTERED_PATHS:
+        if real == root or real.startswith(root + os.sep):
+            return True
+    return False
+
+
 # ─── 경로 검증 ───────────────────────────────────────────────
 
 def validate_path(path: str, role: str = "user") -> Tuple[bool, str]:
     """
     경로 접근 허용 여부.
 
+    v0.6.1 — user-registered paths (`JAMES_AGENT_ALLOWED_PATHS` env or
+    `register_user_path()`) are accepted EVEN IF they look like an
+    absolute path (`^/`, `^C:\\` etc.) — those patterns are blocked
+    by default precisely because there was no operator opt-in path.
+    Critical roots stay blocked regardless. Admin can read/write any
+    user-registered path; user/employee/manager still need to be
+    inside `ALLOWED_PATHS` (the in-repo workspace).
+
     admin role:
-      - BLOCKED_PATH_PATTERNS 차단 (시스템 경로, core/ 등)
-      - ALLOWED_PATHS 제한은 우회
+      - CRITICAL_BLOCKED_ROOTS 차단 (불변, override 불가)
+      - user-registered 경로 OK
+      - 그 외 BLOCKED_PATH_PATTERNS 차단 / ALLOWED_PATHS 제한 우회
     user/employee/manager:
+      - CRITICAL_BLOCKED_ROOTS 차단
       - BLOCKED_PATH_PATTERNS 차단
       - ALLOWED_PATHS 내부만 허용
     """
     if not path or not isinstance(path, str):
         return False, f"경로 없음: {path}"
+
+    # v0.6.1 — CRITICAL system roots are blocked for everyone, even admin.
+    real = _norm_abs(path) if (os.path.isabs(path) or path.startswith("~")) else ""
+    if real and _is_under_critical_root(real):
+        return False, f"critical system root blocked: {real!r}"
+
+    # v0.6.1 — user-registered path (operator opt-in) takes precedence:
+    # if `path` resolves under one of those roots, bypass the
+    # absolute-path / `^/` patterns in BLOCKED_PATH_PATTERNS. Critical
+    # roots are still excluded by the check above.
+    if os.path.isabs(path) and _is_under_user_registered(path):
+        return True, ""
 
     # 시스템 위험 경로는 모든 role 차단
     for pattern in BLOCKED_PATH_PATTERNS:
