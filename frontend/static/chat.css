@@ -1290,5 +1290,78 @@ aside.sidebar.collapsed { min-width: 0; }
  * sidebar's left edge and float above. Existing chat.js positioning
  * logic doesn't move the popover; just make sure z-index is high. */
 .model-popover { z-index: 100; }
+
+/* v0.6.1 (2026-06-15) Claude-style session list row — one tall card
+ * with title + meta + a tiny ⋯ menu on the right that opens
+ * #session-action-modal. Removed the inline ✏️ / 🗑️ row. */
+.session-item {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #333);
+  background: var(--bg, #0f172a);
+  transition: background .12s, border-color .12s;
+}
+.session-item:hover {
+  background: var(--surface-2, #1e293b);
+}
+.session-item.is-current {
+  border-color: var(--accent, #7c6af7);
+  background: rgba(124, 106, 247, 0.10);
+}
+.session-item-body {
+  flex: 1 1 auto;
+  min-width: 0;             /* enable text-overflow ellipsis */
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.session-item-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text, #e0e0e0);
+}
+.session-item.is-current .session-item-title { color: var(--accent, #7c6af7); }
+.session-pinned       { font-size: 11px; }
+.session-current-dot  { font-size: 11px; color: var(--accent, #7c6af7); }
+.session-title-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.session-item-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted, #8a8d99);
+}
+.session-item-menu {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted, #8a8d99);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+.session-item:hover .session-item-menu,
+.session-item-menu:focus {
+  border-color: var(--border, #333);
+  color: var(--text, #e0e0e0);
+  background: var(--surface, #1e293b);
+}
 </content>
 </invoke>

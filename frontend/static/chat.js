@@ -182,6 +182,26 @@ function _bindFrontendEvents() {
       case 'switch-session':            switchSession(t.getAttribute('data-sid')); break;
       case 'rename-session':            renameSession(t.getAttribute('data-sid'), e); break;
       case 'delete-session':            deleteSession(t.getAttribute('data-sid'), e); break;
+      // v0.6.1 (2026-06-15) — Claude-style ⋯ menu modal flow.
+      case 'session-open-menu':         openSessionActionMenu(
+                                          t.getAttribute('data-sid'),
+                                          t.getAttribute('data-title'), e); break;
+      case 'session-action-close':      closeSessionActionMenu(); break;
+      case 'session-action-rename': {
+        var sid = _selectedSessionSid();
+        closeSessionActionMenu();
+        if (sid) renameSession(sid, e);
+        break;
+      }
+      case 'session-action-delete': {
+        var sidD = _selectedSessionSid();
+        closeSessionActionMenu();
+        if (sidD) deleteSession(sidD, e);
+        break;
+      }
+      case 'session-action-archive':
+        // Disabled until the backend ships /history/sessions/{id}/archive.
+        break;
       // upload.js mini-thumbnails
       case 'chat-attach-click':         _chatAttachClick(); break;
       case 'remove-or-cancel':          removeOrCancel(t.getAttribute('data-item-id')); break;
@@ -2613,41 +2633,31 @@ async function loadSessionList() {
       const titleEsc  = titleText.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
       const sidAttr = escHtml(s.session_id);
+      const titleAttr = titleText.replace(/"/g, '&quot;');
+      // v0.6.1 (2026-06-15) Claude-style — inline rename / delete
+      // buttons replaced by a single ⋯ trigger that opens a modal
+      // dialog (rename / archive / delete actions, see #session-action-modal).
       return `
-        <div data-sid="${sidAttr}"
-             style="padding:10px;margin-bottom:6px;border-radius:8px;
-                    border:1px solid ${isCurrent ? 'var(--accent,#7c6af7)' : 'var(--border,#333)'};
-                    background:${isCurrent ? 'rgba(124,106,247,.1)' : 'var(--bg,#161616)'};
-                    transition:all .15s">
-          <div data-action="switch-session" data-sid="${sidAttr}" style="cursor:pointer">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-              ${s.name ? '<span style="font-size:11px">📌</span>' : ''}
-              <div style="flex:1;font-size:13px;font-weight:600;
-                          color:${isCurrent ? 'var(--accent,#7c6af7)' : 'var(--text,#e0e0e0)'};
-                          overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                ${isCurrent ? '● ' : ''}${titleEsc}
-              </div>
+        <div class="session-item ${isCurrent ? 'is-current' : ''}"
+             data-sid="${sidAttr}">
+          <div class="session-item-body"
+               data-action="switch-session" data-sid="${sidAttr}">
+            <div class="session-item-title">
+              ${s.name ? '<span class="session-pinned">📌</span>' : ''}
+              ${isCurrent ? '<span class="session-current-dot">●</span>' : ''}
+              <span class="session-title-text">${titleEsc}</span>
             </div>
-            <div style="font-size:11px;color:var(--muted,#888);display:flex;
-                        justify-content:space-between">
+            <div class="session-item-meta">
               <span>${s.turn_count || 0}턴</span>
               <span>${started}</span>
             </div>
           </div>
-          <!-- [3-D] 액션 버튼 -->
-          <div style="display:flex;gap:4px;margin-top:6px;
-                      padding-top:6px;border-top:1px solid var(--border,#333)">
-            <button data-action="rename-session" data-sid="${sidAttr}"
-                    style="flex:1;background:none;border:1px solid var(--border,#333);
-                           border-radius:4px;padding:3px 6px;font-size:10px;
-                           cursor:pointer;color:var(--muted,#888)"
-                    title="이름 변경">✏️ 이름</button>
-            <button data-action="delete-session" data-sid="${sidAttr}"
-                    style="flex:1;background:none;border:1px solid var(--border,#333);
-                           border-radius:4px;padding:3px 6px;font-size:10px;
-                           cursor:pointer;color:#f06292"
-                    title="삭제">🗑️ 삭제</button>
-          </div>
+          <button class="session-item-menu"
+                  data-action="session-open-menu"
+                  data-sid="${sidAttr}"
+                  data-title="${titleAttr}"
+                  title="${t('chat.session_actions') || '메뉴'}"
+                  aria-label="session actions">⋯</button>
         </div>`;
     }).join('');
   } catch(e) {
@@ -2781,3 +2791,41 @@ function newSession() {
   // refresh sidebar list so the new session appears at top.
   loadSessionList().catch(() => {});
 }
+
+/* v0.6.1 (2026-06-15) Claude-style session action modal — replaces
+ * the per-item inline rename / delete row. The ⋯ button in each list
+ * row calls openSessionActionMenu(sid, title); the modal stores the
+ * sid on its root via data-sid; action buttons read it back and route
+ * to the existing renameSession / deleteSession functions. */
+function _sessionActionModal() {
+  return document.getElementById('session-action-modal');
+}
+
+function _selectedSessionSid() {
+  var m = _sessionActionModal();
+  return m ? (m.getAttribute('data-sid') || '') : '';
+}
+
+function openSessionActionMenu(sid, title, e) {
+  if (e && e.stopPropagation) e.stopPropagation();
+  var m = _sessionActionModal();
+  if (!m) return;
+  m.setAttribute('data-sid', sid || '');
+  var nameEl = document.getElementById('session-action-name');
+  if (nameEl) nameEl.textContent = title || '';
+  m.classList.remove('hidden');
+}
+
+function closeSessionActionMenu() {
+  var m = _sessionActionModal();
+  if (!m) return;
+  m.classList.add('hidden');
+  m.setAttribute('data-sid', '');
+}
+
+// Click outside the modal card → dismiss (matches login-modal UX).
+document.addEventListener('click', function (ev) {
+  var m = _sessionActionModal();
+  if (!m || m.classList.contains('hidden')) return;
+  if (ev.target === m) closeSessionActionMenu();
+});
