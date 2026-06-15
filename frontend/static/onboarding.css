@@ -16,6 +16,21 @@
  * onboarding-specific rules.
  */
 
+/* v0.6.1 mobile dark-theme fix (2026-06-15): the page-level body had
+ * no explicit background-color, so phone browsers (which don't honour
+ * prefers-color-scheme as a default for plain documents) showed white
+ * around the dark cards. tokens.css §"Cyber background texture" warns
+ * "Pages must declare background-color: var(--bg);" — this rule
+ * satisfies that contract for every page that links onboarding.css
+ * (onboarding / glossary / knowledge-rollback / reasoning-flow). */
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  margin: 0;
+  min-height: 100vh;
+}
+
 .onboarding-main {
   max-width: 760px;
   margin: 32px auto;

@@ -2398,6 +2398,19 @@ function t(key, vars) {
   return text;
 }
 
+/* v0.6.1 (2026-06-15) — lookup without the "fall back to the key
+ * itself" final clause. applyTranslations uses this to decide whether
+ * to leave the DOM's inline fallback content alone (e.g. the Korean
+ * <dd> bodies inside glossary.html, which were getting overwritten
+ * with raw "glossary.def.rag" strings whenever the key wasn't
+ * defined). Returns null when the key is missing in BOTH dictionaries. */
+function _lookupOrNull(key) {
+  var dict = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+  if (dict[key] != null) return dict[key];
+  if (TRANSLATIONS.en && TRANSLATIONS.en[key] != null) return TRANSLATIONS.en[key];
+  return null;
+}
+
 function setLang(lang) {
   if (!TRANSLATIONS[lang]) return;
   currentLang = lang;
@@ -2432,22 +2445,35 @@ function applyTranslations() {
     var el = els[i];
     var key = el.getAttribute('data-i18n');
     if (key) {
+      // v0.6.1 — skip elements whose key is missing in both dicts;
+      // their inline DOM content is the operator-authored fallback
+      // (Korean glossary <dd> bodies, etc.). Without this guard the
+      // raw key string overwrites the fallback.
+      var translated = _lookupOrNull(key);
+      if (translated == null) continue;
       if (el.hasAttribute('data-i18n-html')) {
-        el.innerHTML = t(key);
+        el.innerHTML = translated;
       } else {
-        el.textContent = t(key);
+        el.textContent = translated;
       }
     }
   }
   var phs = document.querySelectorAll('[data-i18n-placeholder]');
   for (var i = 0; i < phs.length; i++) {
     var key = phs[i].getAttribute('data-i18n-placeholder');
-    if (key) phs[i].placeholder = t(key);
+    if (key) {
+      // v0.6.1 — same DOM-fallback guard.
+      var translated = _lookupOrNull(key);
+      if (translated != null) phs[i].placeholder = translated;
+    }
   }
   var titles = document.querySelectorAll('[data-i18n-title]');
   for (var i = 0; i < titles.length; i++) {
     var key = titles[i].getAttribute('data-i18n-title');
-    if (key) titles[i].title = t(key);
+    if (key) {
+      var translated = _lookupOrNull(key);
+      if (translated != null) titles[i].title = translated;
+    }
   }
   updateLangToggleDisplay();
 }
