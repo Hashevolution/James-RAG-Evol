@@ -434,6 +434,10 @@ app.include_router(workspace_info_router)
 from routes.agent_paths import router as agent_paths_router
 app.include_router(agent_paths_router)
 
+# v0.6.1 Phase C — agent chat (LLM tool-use loop).
+from routes.agent_chat import router as agent_chat_router
+app.include_router(agent_chat_router)
+
 from routes.multimodal import router as multimodal_router
 from routes.multimodal import ScreenRequest  # noqa: F401  back-compat
 app.include_router(multimodal_router)
