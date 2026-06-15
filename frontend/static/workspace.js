@@ -39,6 +39,9 @@ function _saveStored(token, role, apiKey) {
 }
 
 function _clearStored() {
+  // v0.6.1 — also drop the persisted api_key (auth.js writes it on
+  // successful login).
+  try { localStorage.removeItem('james_api_key'); } catch (_) {}
   _token = ''; _role = '';
   localStorage.removeItem('james_token');
   localStorage.removeItem('james_role');

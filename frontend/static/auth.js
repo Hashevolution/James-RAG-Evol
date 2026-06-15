@@ -65,6 +65,12 @@
       // 자동 동기화되도록 동일 키 사용.
       localStorage.setItem('james_token', token);
       localStorage.setItem('james_role', role);
+      // v0.6.1 (2026-06-15) — persist the api_key the operator typed
+      // so subsequent page navigations don't re-prompt for it.
+      // chat.js / workspace.js / admin.js / agent-chat.js all probe
+      // `localStorage.james_api_key`; before this line the login flow
+      // dropped it, forcing a re-login on every page change.
+      try { localStorage.setItem('james_api_key', apiKey || ''); } catch (_) {}
       // v0.6.1 — refresh the workspace badge after a successful login
       // so the operator sees the correct workspace immediately rather
       // than after a full page reload.
