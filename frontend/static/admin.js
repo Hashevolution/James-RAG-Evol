@@ -323,7 +323,28 @@ window.addEventListener('DOMContentLoaded', async () => {
     // The try/catch is just belt-and-suspenders so a non-auth
     // failure (network blip) doesn't pop the login modal.
   }
+  // v0.6.1 (2026-06-15) — chat-sidebar deep links (#agent-chat / #agent-
+  // folders / #...) jump straight to a page without going through the
+  // dashboard. The chat sidebar's "에이전트" / "추론 그래프" entries
+  // rely on this. Only fires for known page ids so a stray hash can't
+  // null-deref into a missing element.
+  _maybeApplyHashRoute();
 });
+
+function _maybeApplyHashRoute() {
+  const raw = (window.location.hash || '').replace(/^#/, '').trim();
+  if (!raw) return;
+  const pageEl = document.getElementById(`page-${raw}`);
+  if (!pageEl) return;
+  const navEl = document.querySelector(
+    `.nav-item[data-action="show-page"][data-page="${raw}"]`,
+  );
+  // showPage requires an element to mark .active; fall back to the
+  // page itself if no matching nav-item exists.
+  showPage(raw, navEl || pageEl);
+}
+
+window.addEventListener('hashchange', _maybeApplyHashRoute);
 
 /* [#A8-4] cross-tab sync — 다른 탭(chat 페이지)에서 로그인/로그아웃 →
    이 어드민 탭의 token/role 즉시 동기화. admin role 잃으면 모달 자동

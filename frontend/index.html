@@ -6,12 +6,14 @@
 <meta name="theme-color" content="#04060a">
 <title>Secure Enterprise Knowledge Operating System</title>
 <link rel="stylesheet" href="/static/tokens.css">
-<link rel="stylesheet" href="/static/chat.css">
+<!-- v=v6-20260615 cache-bust: forces phones with cached older chat.css /
+     mobile.css to refetch after the sidebar-top-nav flex-wrap + new
+     에이전트 / 추론 그래프 nav links landed. Pin both stylesheets to
+     the same buster so a half-cached state can't mismatch. -->
+<link rel="stylesheet" href="/static/chat.css?v=v6-20260615">
 <!-- mobile-responsive overrides — kept after inline styles so @media
-     rules win at narrow viewports without !important on every line.
-     v=v5-20260615 cache-bust: forces phones with cached older mobile.css
-     to refetch after the v5 bubble-width fortifications landed. -->
-<link rel="stylesheet" href="/static/mobile.css?v=v5-20260615">
+     rules win at narrow viewports without !important on every line. -->
+<link rel="stylesheet" href="/static/mobile.css?v=v6-20260615">
 </head>
 <body>
 
@@ -137,9 +139,16 @@
       </button>
     </div>
 
-    <!-- TOP FIXED — page nav (Workspace + Admin). Mint arrow in the
-         operator's screenshot pointed Workspace upward, so it
-         stays here under meta, ABOVE the 양식 button. -->
+    <!-- TOP FIXED — page nav (Workspace + Admin + Agent + Reasoning Graph).
+         v0.6.1 (2026-06-15) — operator request: Agent (에이전트 챗) +
+         Reasoning Graph were previously only reachable through the
+         Admin page's left nav. They're now first-class chat sidebar
+         destinations. The Admin link still surfaces all admin tools
+         (audit / policy / users / etc.); these two are shortcuts to
+         the most-used operator surfaces.
+           - Agent  → /admin#agent-chat  (hash routed by admin.js)
+           - Graph  → /admin/graph        (existing standalone route)
+         Layout wraps 2×2 on phones via .sidebar-top-nav flex-wrap. -->
     <nav class="sidebar-section sidebar-top-nav" aria-label="페이지 이동">
       <a href="/workspace" class="sidebar-top-link"
          data-i18n-title="workspace.nav_title" title="Workspace">
@@ -150,6 +159,18 @@
          title="Admin">
         <span aria-hidden="true">⚙</span>
         <span data-i18n="sidebar.nav_admin">Admin</span>
+      </a>
+      <a href="/admin#agent-chat" class="sidebar-top-link"
+         data-i18n-title="sidebar.nav_agent_title"
+         title="에이전트 챗 (자연어 도구 호출)">
+        <span aria-hidden="true">🤖</span>
+        <span data-i18n="sidebar.nav_agent">에이전트</span>
+      </a>
+      <a href="/admin/graph" class="sidebar-top-link"
+         data-i18n-title="sidebar.nav_graph_title"
+         title="추론 그래프 (3D 노드 시각화)">
+        <span aria-hidden="true">🌐</span>
+        <span data-i18n="sidebar.nav_graph">추론 그래프</span>
       </a>
     </nav>
 
