@@ -1283,8 +1283,71 @@ aside.sidebar.collapsed { min-width: 0; }
   min-height: 0;
 }
 
-/* chat-area now uses full viewport height. */
-.chat-area { height: 100vh; }
+/* v0.6.1 (2026-06-15) — Claude-parity reorder. Top-fixed nav row +
+ * "이전 대화" section title above the scrollable sessions list. */
+.sidebar-top-nav {
+  display: flex;
+  gap: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-2, var(--border));
+}
+.sidebar-top-link {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--surface-2, #1e293b);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text, #e0e0e0);
+  text-decoration: none;
+  font-size: 12px;
+  font-family: var(--font-ui);
+  line-height: 1;
+}
+.sidebar-top-link:hover {
+  background: var(--surface, #0f172a);
+  color: var(--accent, #6cd);
+  border-color: var(--accent, #6cd);
+}
+
+/* Section title (e.g., "이전 대화") above the scrollable list. */
+.sidebar-section-title {
+  padding: 10px 12px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted, #8a8d99);
+  font-family: var(--font-mono, monospace);
+}
+
+/* chat-area now uses full viewport height. v0.6.1 (2026-06-15) —
+ * use dynamic viewport height so the bottom input doesn't sit under
+ * the mobile browser chrome / virtual keyboard. Modern Safari /
+ * Chrome support `dvh`; fall back to `vh` for older. */
+.chat-area { height: 100vh; height: 100dvh; min-height: 0; }
+main.claude-shell { height: 100vh; height: 100dvh; }
+aside.sidebar { height: 100vh; height: 100dvh; }
+
+/* The bottom-anchored input area needs a hard sticky position on
+ * phones too: when the mobile keyboard opens iOS reduces the visual
+ * viewport, and a relatively-positioned input slides up off-screen
+ * if .messages flex hasn't shrunk yet. position:sticky keeps it
+ * pinned to the parent (chat-area)'s bottom edge. */
+@media (max-width: 768px) {
+  .input-area {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    background: var(--bg);
+  }
+  /* Reserve enough space at the bottom of .messages so the last
+   * message isn't covered by the sticky input. */
+  .messages { padding-bottom: 12px; }
+}
 
 /* Model popover when its trigger lives in the sidebar — anchor at the
  * sidebar's left edge and float above. Existing chat.js positioning
