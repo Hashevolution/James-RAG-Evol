@@ -8,8 +8,10 @@
 <link rel="stylesheet" href="/static/tokens.css">
 <link rel="stylesheet" href="/static/graph.css">
 <!-- mobile-responsive overrides — kept after page styles so @media
-     rules win at narrow viewports without !important on every line -->
-<link rel="stylesheet" href="/static/mobile.css">
+     rules win at narrow viewports without !important on every line.
+     v=v5-20260615 cache-bust: forces phones with cached older mobile.css
+     to refetch after the v5 bubble-width fortifications landed. -->
+<link rel="stylesheet" href="/static/mobile.css?v=v5-20260615">
 </head>
 <body>
 

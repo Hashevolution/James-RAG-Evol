@@ -392,21 +392,32 @@
    *     CJK + ASCII mixed text instead of stretching spaces only
    */
   .msg { max-width: 100%; gap: 8px; }
-  /* v0.6.1 v4 (2026-06-15 PM follow-up) — operator catch ("선으로
-   * 표시된 곳까지 확장"): on phone, `.msg display:flex` + `.bubble`
-   * without a flex setting meant the bubble only stretched to its
-   * content width, leaving a large ~25 % gap on the right of long
-   * answers (the screenshot shows this directly). Adding
-   *   flex: 1 1 auto;  min-width: 0;
-   * lets the bubble actually consume the remaining row width up to
-   * the existing `max-width`. min-width: 0 keeps long mono tokens
-   * from blowing past the row. text-align: justify also only takes
-   * effect once the bubble is at full width, so this fix unblocks
-   * the v3 justify rule too.
+  /* v0.6.1 v5 (2026-06-15 PM follow-up #2) — operator catch
+   * persists: bubble still not reaching the right edge. v4 set
+   * `.bubble flex: 1 1 auto;` but flex-basis: auto means the
+   * starting width is the content's intrinsic size, and the
+   * remaining row distributes from there — long Korean answers
+   * with many short lines still don't pull the bubble to the
+   * right edge in some engines.
+   *
+   * v5 fortifications:
+   *   1) flex: 1 1 0 — basis 0 so the bubble starts at zero
+   *      and absorbs ALL the remaining row width (avatar is
+   *      shrink:0, so it keeps its 28px; the bubble takes
+   *      everything else).
+   *   2) Explicit width: 100% on the .msg.james + .msg.user
+   *      selectors — same specificity (2,0) trumps the base
+   *      `.bubble` (1,0) so any browser cache of an older
+   *      mobile.css still gets overridden by this stronger
+   *      rule once the new file loads.
+   *   3) max-width raised to 100% — the avatar gap is already
+   *      handled by .msg `gap: 8px`, so the bubble doesn't need
+   *      a separate 36 px subtraction on top of that.
    */
   .bubble {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-width: 0;
+    width: 100%;
     padding: 12px 14px;
     font-size: 16px;
     border-radius: 12px;
@@ -417,8 +428,18 @@
     /* 양쪽 정렬 — 우측 edge 가 들쭉날쭉 안 되도록 */
     text-align: justify;
     text-justify: inter-character;
-    /* avatar 옆 gap 줄여 본문 폭 확보 */
-    max-width: calc(100% - 36px);
+    max-width: 100%;
+  }
+  /* v5 specificity bump — even when an older cached mobile.css
+   * still defines `.bubble max-width: calc(100% - 36px)`, these
+   * two rules (specificity 2,0 vs 1,0) win once this file does
+   * arrive. */
+  .msg.james .bubble,
+  .msg.user  .bubble {
+    flex: 1 1 0;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
   }
   .avatar { width: 28px; height: 28px; font-size: 12px; }
 
@@ -706,8 +727,15 @@
 
   /* v0.6.1 v3 (2026-06-15 PM) — keep the 16px font + readability
    * tweaks even on the narrowest devices (< 480 px). Padding only
-   * shrinks slightly so the bubble still fits, not the text. */
+   * shrinks slightly so the bubble still fits, not the text.
+   *
+   * v0.6.1 v5 (2026-06-15 PM follow-up #2) — same width
+   * fortification as the < 768 block for narrowest devices. */
   .bubble {
+    flex: 1 1 0;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
     font-size: 15.5px;
     padding: 11px 13px;
     line-height: 1.7;
@@ -715,6 +743,13 @@
     overflow-wrap: anywhere;
     text-align: justify;
     text-justify: inter-character;
+  }
+  .msg.james .bubble,
+  .msg.user  .bubble {
+    flex: 1 1 0;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
   }
 
   /* 어드민 nav-item 더 작게 */
