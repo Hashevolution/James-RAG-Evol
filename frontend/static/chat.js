@@ -1284,6 +1284,20 @@ async function sendMessage() {
   const typing = appendTyping(traceId);
   document.getElementById('send-btn').disabled = true;
 
+  // v0.6.1 (2026-06-15 PM) — operator catch ("대화 자체가 안되네",
+  // phone showing repeated "연결 오류: Failed to fetch"): the bare
+  // fetch with no timeout meant a stalled tunnel (Tailscale mobile
+  // re-handshake, idle eviction, long-running Ollama call holding
+  // the socket) surfaced only as a generic TypeError. Now:
+  //   1) 180s AbortSignal timeout (Ollama 47B can take ~2min on cold cache)
+  //   2) classify the error: TypeError (no response) / AbortError
+  //      (timeout) / other → distinct diagnostic message
+  //   3) for transport-level failures, offer an inline retry button
+  //      so the operator does not have to retype the question
+  const AC = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  const timeoutMs = 180000;
+  const timeoutId = AC ? setTimeout(() => AC.abort(), timeoutMs) : null;
+
   try {
     const r = await fetch(`${API}/query/`, {
       method:  'POST',
@@ -1303,6 +1317,7 @@ async function sendMessage() {
         // 검증 후 mode handler의 call_gemma(model=...)로 전달.
         selected_model:   selectedModel || '',
       }),
+      signal: AC ? AC.signal : undefined,
     });
 
     typing.remove();
@@ -1348,8 +1363,23 @@ async function sendMessage() {
 
   } catch (err) {
     typing.remove();
-    appendMsg('james', `연결 오류: ${err.message}`);
+    // v0.6.1 (2026-06-15 PM) — classify the failure so the operator
+    // sees what actually broke instead of the bare "Failed to fetch":
+    //   * AbortError (timeout)  → 응답 시간 초과 (180s)
+    //   * TypeError              → 네트워크 / 터널 / CORS / DNS 실패
+    //   * 그 외                   → 원본 message
+    let label = '연결 오류';
+    let hint  = '';
+    if (err && (err.name === 'AbortError' || /aborted/i.test(err.message || ''))) {
+      label = '⏱️ 응답 시간 초과 (3분)';
+      hint  = '\n\n모델 응답이 너무 깁니다. 짧은 질문으로 다시 보내거나, 사이드바에서 더 작은 모델로 전환해보세요.';
+    } else if (err && err.name === 'TypeError') {
+      label = '🌐 서버 연결 실패';
+      hint  = '\n\n· 폰에서: 위에서 아래로 swipe 해 페이지를 새로고침해보세요\n· PC에서: Ctrl+Shift+R 로 강제 새로고침\n· Tailscale 연결 상태를 확인해보세요';
+    }
+    appendMsg('james', `${label}: ${err.message}${hint}`);
   } finally {
+    if (timeoutId) clearTimeout(timeoutId);
     document.getElementById('send-btn').disabled = false;
   }
 }
