@@ -138,6 +138,11 @@ function _bindFrontendEvents() {
       case 'agent-reload':        loadAgentFolders(); break;
       case 'agent-remove-path':   unregisterAgentPath(t.getAttribute('data-path')); break;
 
+      /* ── v0.6.1 Phase D-2: agent chat ───────────────────── */
+      case 'agent-chat-send':     sendAgentChat(); break;
+      case 'agent-chat-cancel':   cancelAgentChat(); break;
+      case 'agent-chat-clear':    clearAgentChat(); break;
+
       /* ── login modal + signup/forgot anchors ──────────────────── */
       case 'toggle-admin-pw-visibility': toggleAdminPwVisibility(); break;
       case 'do-admin-login':      doAdminLogin(); break;
@@ -599,6 +604,7 @@ function showPage(id, el) {
     knowledge:      loadKnowledge,
     hardware:       loadHardware,    // [P3-1]
     'agent-folders': loadAgentFolders,  // v0.6.1 Phase D-1
+    'agent-chat':    loadAgentChat,     // v0.6.1 Phase D-2
   };
   loaders[id]?.();
 }
