@@ -148,12 +148,26 @@ POPPLER_PATH = _detect_poppler()
 # Ollama runs as a service — usually no need to specify binary path.
 # If you need to start it from JAMES, set OLLAMA_PATH env var.
 OLLAMA_PATH    = os.environ.get("OLLAMA_PATH", "")  # blank = use system 'ollama' on PATH
-GEMMA_MODEL    = os.environ.get("JAMES_LLM_MODEL", "gemma4:e4b")
+
+
+def _llm_setting(key: str, env_name: str, default: str) -> str:
+    """v0.6.1 — DB-first resolution via core.llm_settings, with the
+    historical env name as fallback. Import is lazy + try/except so
+    config.py stays importable even before the data DB exists (very
+    early boot / test fixtures)."""
+    try:
+        from core.llm_settings import get as _get
+        return _get(key, env_name, default)
+    except Exception:
+        return os.environ.get(env_name, default)
+
+
+GEMMA_MODEL    = _llm_setting("default_model", "JAMES_LLM_MODEL", "gemma4:e4b")
 # Coding-specialised model. Used by handle_coding via llm.router →
 # QwenCoderClient. Operators can swap to a smaller/faster model
 # (e.g. gemma4:e4b) if the 32B coder is too heavy for their tunnel
 # / reverse proxy timeout.
-CODING_MODEL   = os.environ.get("JAMES_CODING_MODEL", "qwen2.5-coder:32b")
+CODING_MODEL   = _llm_setting("coding_model", "JAMES_CODING_MODEL", "qwen2.5-coder:32b")
 OLLAMA_API_URL = os.environ.get("OLLAMA_API_URL", "http://127.0.0.1:11434/api/generate")
 
 # [Track 1 PR-C, 2026-05-19] LLM_TEMPERATURE — default sampling

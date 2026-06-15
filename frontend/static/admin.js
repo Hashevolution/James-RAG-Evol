@@ -143,6 +143,13 @@ function _bindFrontendEvents() {
       case 'agent-chat-cancel':   cancelAgentChat(); break;
       case 'agent-chat-clear':    clearAgentChat(); break;
 
+      /* ── v0.6.1: LLM Routing unified settings ──────────── */
+      case 'llm-settings-reload': loadLLMSettings(); break;
+      case 'llm-settings-save':   saveLLMSettings(); break;
+      case 'llm-settings-reset-row':
+        resetLLMSettingRow(t.getAttribute('data-llm-key'));
+        break;
+
       /* ── login modal + signup/forgot anchors ──────────────────── */
       case 'toggle-admin-pw-visibility': toggleAdminPwVisibility(); break;
       case 'do-admin-login':      doAdminLogin(); break;
@@ -2430,6 +2437,10 @@ function getProtectedFiles() {
 }
 
 async function loadSettings() {
+  // v0.6.1 — load the LLM Routing unified panel alongside the legacy
+  // settings call. They are independent endpoints; either may 401/404
+  // without breaking the other.
+  loadLLMSettings().catch(() => {});
   try {
     const data = await api('/admin/settings');
 
@@ -4324,6 +4335,142 @@ async function installLLM(modelName, btn) {
     btn.style.background = '#f06292';
     btn.disabled = false;
     alert(`Install failed: ${e.message}`);
+  }
+}
+
+
+/* ── v0.6.1 LLM Routing unified settings panel ─────────────────────
+ * Lives inside the Settings page. Renders one row per schema entry
+ * (key + current effective value + env hint + 'reset to env' button).
+ * Save button writes only the rows whose value differs from the
+ * snapshot (touched rows). */
+
+let _llmSnapshot = null;
+let _llmDirty    = {};
+
+async function loadLLMSettings() {
+  const list = document.getElementById('llm-settings-list');
+  if (!list) return;
+  const key = localStorage.getItem('james_api_key') || '';
+  const tok = localStorage.getItem('james_token')   || '';
+  list.innerHTML = '<div style="color:var(--muted)">' + (t('common.loading') || '…') + '</div>';
+  try {
+    const r = await fetch('/admin/llm-settings/?api_key=' + encodeURIComponent(key),
+                          { headers: tok ? { Authorization: 'Bearer ' + tok } : {} });
+    if (!r.ok) {
+      let d = '' + r.status;
+      try { d = (await r.json()).detail || d; } catch (_) {}
+      throw new Error(d);
+    }
+    _llmSnapshot = await r.json();
+    _llmDirty = {};
+    _renderLLMSettings();
+  } catch (e) {
+    list.innerHTML = '<div style="color:#f88">❌ ' + _escLLM(e.message) + '</div>';
+  }
+}
+
+function _escLLM(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+function _renderLLMSettings() {
+  const list = document.getElementById('llm-settings-list');
+  if (!list || !_llmSnapshot) return;
+  const snap = _llmSnapshot;
+  list.innerHTML = snap.schema.map(s => {
+    const k = s.key;
+    const val = snap.settings[k] || '';
+    const env = snap.env[k]      || '';
+    const def = snap.defaults[k] || '';
+    const dbVal = snap.db[k]     || '';
+    let input;
+    if (s.type === 'bool') {
+      input = '<select data-action="llm-settings-edit" data-llm-key="' + k +
+              '" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px">' +
+              ['1','0'].map(v => '<option value="' + v + '"' + (val === v ? ' selected' : '') + '>' +
+                (v === '1' ? 'on (1)' : 'off (0)') + '</option>').join('') +
+              '</select>';
+    } else if (s.type && s.type.indexOf('enum:') === 0) {
+      const opts = s.type.substring(5).split(',');
+      input = '<select data-action="llm-settings-edit" data-llm-key="' + k +
+              '" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px">' +
+              opts.map(v => '<option value="' + _escLLM(v) + '"' + (val === v ? ' selected' : '') + '>' + _escLLM(v) + '</option>').join('') +
+              '</select>';
+    } else {
+      input = '<input type="text" data-action="llm-settings-edit" data-llm-key="' + k +
+              '" value="' + _escLLM(val) + '" style="min-width:280px;padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;font-family:var(--font-mono)">';
+    }
+    const source = dbVal ? 'DB' : (env ? 'env (' + s.env + ')' : 'default');
+    return '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px">' +
+           '  <div style="flex:1;min-width:200px"><strong>' + _escLLM(k) + '</strong>' +
+           '  <span style="color:var(--muted);margin-left:8px;font-size:11px">source: ' + source + '</span></div>' +
+           '  ' + input +
+           '  <button class="btn" data-action="llm-settings-reset-row" data-llm-key="' + k +
+           '" style="padding:3px 10px;font-size:11px" title="' + (t('set.llm_reset_row') || 'env 로 되돌리기 (DB 행 삭제)') +
+           '">↺</button>' +
+           '</div>';
+  }).join('');
+  // Attach input listeners.
+  list.querySelectorAll('[data-action="llm-settings-edit"]').forEach(el => {
+    el.addEventListener('change', () => {
+      _llmDirty[el.getAttribute('data-llm-key')] = el.value;
+    });
+    el.addEventListener('input', () => {
+      _llmDirty[el.getAttribute('data-llm-key')] = el.value;
+    });
+  });
+}
+
+function resetLLMSettingRow(key) {
+  if (!key) return;
+  _llmDirty[key] = { __clear: true };
+  const msg = document.getElementById('llm-settings-msg');
+  if (msg) msg.textContent = '⚠️  ' + key + ' — ' + (t('set.llm_will_clear') || '저장 시 env 로 되돌립니다');
+}
+
+async function saveLLMSettings() {
+  const msg = document.getElementById('llm-settings-msg');
+  if (!Object.keys(_llmDirty).length) {
+    if (msg) msg.textContent = '— ' + (t('set.llm_no_changes') || '변경 없음');
+    return;
+  }
+  const key = localStorage.getItem('james_api_key') || '';
+  const tok = localStorage.getItem('james_token')   || '';
+  const settings = {};
+  const clearList = [];
+  for (const k of Object.keys(_llmDirty)) {
+    const v = _llmDirty[k];
+    if (v && typeof v === 'object' && v.__clear) clearList.push(k);
+    else settings[k] = String(v == null ? '' : v);
+  }
+  if (msg) msg.textContent = '⏳ ' + (t('common.loading') || '…');
+  try {
+    const r = await fetch('/admin/llm-settings/', {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' },
+                             tok ? { Authorization: 'Bearer ' + tok } : {}),
+      body: JSON.stringify({ api_key: key, settings: settings, clear: clearList }),
+    });
+    if (!r.ok) {
+      let d = '' + r.status;
+      try { d = (await r.json()).detail || d; } catch (_) {}
+      throw new Error(typeof d === 'string' ? d : JSON.stringify(d));
+    }
+    const data = await r.json();
+    _llmSnapshot = data.snapshot;
+    _llmDirty = {};
+    _renderLLMSettings();
+    const errs = data.errors || {};
+    const errCount = Object.keys(errs).length;
+    const baseMsg = '✅ ' + (t('set.llm_saved') || '저장 완료');
+    if (msg) msg.textContent = errCount
+      ? (baseMsg + ' · ' + errCount + ' error(s): ' + JSON.stringify(errs))
+      : baseMsg;
+  } catch (e) {
+    if (msg) msg.textContent = '❌ ' + e.message;
   }
 }
 
