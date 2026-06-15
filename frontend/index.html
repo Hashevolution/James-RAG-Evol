@@ -66,6 +66,20 @@
        All existing element ids preserved so chat.js / upload.js /
        index-init.js / workspace-badge.js handlers fire unchanged. -->
   <aside class="sidebar" id="sidebar">
+    <!-- v0.6.1 (2026-06-15) Claude-style reorder (operator catch
+         from Tailscale phone): the sidebar layout now mirrors
+         Claude.ai's exactly —
+            top    : brand header + closed ◀
+            fixed  : nav row (Workspace / Admin) + tabs row + + 새 대화 button
+            middle : sessions list (scrollable, flex:1 — fills everything)
+            bottom : compact footer (meta + settings + role pill)
+         The four legacy panel-mode blocks (upload / recent / search)
+         still live inside .sidebar-panel; switching to one of them
+         briefly hides the sessions list. The 📂 / 🕘 / 🔍 tabs are
+         intentionally KEPT near the top so they're reachable without
+         scrolling, but they sit OUTSIDE the scroll area so the
+         sessions list doesn't push them off-screen. -->
+
     <!-- Sidebar header — close button + brand mark (compact). -->
     <div class="sidebar-header">
       <div class="sidebar-title" id="sidebar-title">
@@ -75,48 +89,43 @@
               aria-label="사이드바 닫기">◀</button>
     </div>
 
-    <!-- Top action row — New chat + 양식 적용 (Claude-style primary
-         affordances right under the brand). -->
-    <div class="sidebar-section sidebar-actions">
-      <button class="sidebar-action sidebar-action-primary"
-              data-action="clear-history"
-              data-i18n-title="chat.clear_history"
-              title="새 대화">
-        <span aria-hidden="true">＋</span>
-        <span data-i18n="chat.new_chat">새 대화</span>
+    <!-- TOP FIXED — page nav (Workspace + Admin) — these are
+         high-frequency destinations, kept at the top of the sidebar
+         like Claude's "채팅 / 프로젝트 / 코드 / 디스패치" links. -->
+    <nav class="sidebar-section sidebar-top-nav" aria-label="페이지 이동">
+      <a href="/workspace" class="sidebar-top-link"
+         data-i18n-title="workspace.nav_title" title="Workspace">
+        <span aria-hidden="true">📦</span>
+        <span data-i18n="workspace.nav">Workspace</span>
+      </a>
+      <a href="/admin" class="sidebar-top-link"
+         title="Admin">
+        <span aria-hidden="true">⚙</span>
+        <span data-i18n="sidebar.nav_admin">Admin</span>
+      </a>
+    </nav>
+
+    <!-- Mode tabs (upload / recent / search) — kept fixed below the
+         page nav. Stay accessible regardless of sessions-list scroll
+         position. -->
+    <div class="sidebar-section sidebar-tabs">
+      <button class="sidebar-tab" data-mode="upload"
+              data-action="switch-sidebar-mode" aria-label="파일 업로드">
+        📂 <span data-i18n="sidebar.mode_upload">파일 업로드</span>
       </button>
-      <button class="sidebar-action"
-              data-action="tplc-open"
-              data-i18n-title="tplchat.open_title"
-              title="양식 적용">
-        <span aria-hidden="true">📄</span>
-        <span data-i18n="tplchat.open">양식</span>
+      <button class="sidebar-tab" data-mode="recent"
+              data-action="switch-sidebar-mode" aria-label="내 자료">
+        🕘 <span data-i18n="sidebar.mode_recent">내 자료</span>
+      </button>
+      <button class="sidebar-tab" data-mode="search"
+              data-action="switch-sidebar-mode" aria-label="전역 검색">
+        🔍 <span data-i18n="sidebar.mode_search">검색</span>
       </button>
     </div>
 
-    <!-- Model chip + workspace badge (moved from the deleted header). -->
-    <div class="sidebar-section sidebar-meta-row">
-      <button id="model-chip"
-              type="button"
-              class="model-chip"
-              data-action="toggle-model-popover"
-              data-i18n-title="model.chip_title"
-              title="현재 응답에 사용 중인 모델 — 클릭 시 변경"
-              aria-haspopup="listbox"
-              aria-expanded="false">
-        <span class="model-chip-icon" aria-hidden="true">🤖</span>
-        <span class="model-chip-tag" id="model-chip-tag">—</span>
-        <span class="model-chip-caret" aria-hidden="true">▾</span>
-      </button>
-      <button class="nav-btn workspace-badge" id="workspace-badge"
-              type="button"
-              data-i18n-title="workspace.badge_title"
-              title="현재 워크스페이스"
-              aria-label="현재 워크스페이스"
-              style="display:none;font-size:11px">
-        📁 <span id="workspace-name">—</span>
-      </button>
-    </div>
+    <!-- Section title — like Claude's "즐겨찾기" / "이전 대화" labels.
+         Sticks to the top of the scroll area visually. -->
+    <div class="sidebar-section-title" data-i18n="chat.previous">이전 대화</div>
 
     <!-- Single panel host. All four legacy panel-mode blocks live inside
          here; default the "sessions" mode is active (the Claude analogue)
@@ -234,35 +243,53 @@
       </div>
     </div>
 
-    <!-- Sidebar tabs — collapse the legacy 4-mode rail into small chip
-         row above the footer. switchSidebarMode is wired to data-mode
-         exactly like the old rail. Default mode 'sessions' (the Claude
-         analogue) so the operator lands on chat history, not the
-         upload drop zone. -->
-    <!-- v0.6.1 (2026-06-15) — Claude-style. The 💬 sessions tab was
-         removed because the sidebar main panel IS the sessions list.
-         Switching to upload / recent / search briefly replaces the
-         list; tapping the same tab again (or clicking "+ 새 대화"
-         which forces sessions mode) returns. -->
-    <div class="sidebar-section sidebar-tabs">
-      <button class="sidebar-tab" data-mode="upload"
-              data-action="switch-sidebar-mode" aria-label="파일 업로드">
-        📂 <span data-i18n="sidebar.mode_upload">파일 업로드</span>
-      </button>
-      <button class="sidebar-tab" data-mode="recent"
-              data-action="switch-sidebar-mode" aria-label="내 자료">
-        🕘 <span data-i18n="sidebar.mode_recent">내 자료</span>
-      </button>
-      <button class="sidebar-tab" data-mode="search"
-              data-action="switch-sidebar-mode" aria-label="전역 검색">
-        🔍 <span data-i18n="sidebar.mode_search">검색</span>
-      </button>
-    </div>
-
-    <!-- Sidebar footer — settings + nav + role badge. Stays at the
-         bottom (CSS flex). Order mirrors Claude.ai: settings (compact)
-         → nav links → profile pill. -->
+    <!-- BOTTOM FIXED FOOTER — Claude.ai parity. Top of the footer
+         carries the primary actions (+ 새 대화 / 양식), then a meta
+         line (model chip + workspace badge), then settings (source +
+         lang), then the profile pill. The 📂 / 🕘 / 🔍 tabs moved
+         to the top of the sidebar so the operator can hit them
+         without scrolling the (potentially long) sessions list. -->
     <div class="sidebar-section sidebar-footer">
+      <!-- Primary actions row. -->
+      <div class="sidebar-actions">
+        <button class="sidebar-action sidebar-action-primary"
+                data-action="clear-history"
+                data-i18n-title="chat.clear_history"
+                title="새 대화">
+          <span aria-hidden="true">＋</span>
+          <span data-i18n="chat.new_chat">새 대화</span>
+        </button>
+        <button class="sidebar-action"
+                data-action="tplc-open"
+                data-i18n-title="tplchat.open_title"
+                title="양식 적용">
+          <span aria-hidden="true">📄</span>
+          <span data-i18n="tplchat.open">양식</span>
+        </button>
+      </div>
+      <!-- Model chip + workspace badge — meta line. -->
+      <div class="sidebar-meta-row">
+        <button id="model-chip"
+                type="button"
+                class="model-chip"
+                data-action="toggle-model-popover"
+                data-i18n-title="model.chip_title"
+                title="현재 응답에 사용 중인 모델 — 클릭 시 변경"
+                aria-haspopup="listbox"
+                aria-expanded="false">
+          <span class="model-chip-icon" aria-hidden="true">🤖</span>
+          <span class="model-chip-tag" id="model-chip-tag">—</span>
+          <span class="model-chip-caret" aria-hidden="true">▾</span>
+        </button>
+        <button class="nav-btn workspace-badge" id="workspace-badge"
+                type="button"
+                data-i18n-title="workspace.badge_title"
+                title="현재 워크스페이스"
+                aria-label="현재 워크스페이스"
+                style="display:none;font-size:11px">
+          📁 <span id="workspace-name">—</span>
+        </button>
+      </div>
       <!-- Source toggle + lang toggle on one row. -->
       <div class="sidebar-settings-row">
         <div class="source-toggle">
@@ -274,14 +301,6 @@
                 aria-label="언어 전환 / Toggle language"
                 style="font-size:11px;font-weight:700;padding:4px 8px"></button>
       </div>
-      <!-- Nav links — go to other pages (workspace / admin). -->
-      <div class="sidebar-nav-row">
-        <a href="/workspace" class="sidebar-nav-link"
-           data-i18n-title="workspace.nav_title" title="Workspace">
-          📦 <span data-i18n="workspace.nav">Workspace</span>
-        </a>
-        <a href="/admin" class="sidebar-nav-link">⚙ Admin</a>
-      </div>
       <!-- Role badge — Claude-style profile pill at the very bottom. -->
       <div class="role-badge sidebar-role-pill" id="role-badge"
            data-action="show-login">
@@ -289,9 +308,8 @@
         <span class="role-name" id="role-name" data-i18n="auth.login">로그인</span>
       </div>
       <!-- Session count badge bound for #session-count-badge — kept
-           inside the footer-row as an invisible host so chat.js
-           updateSessionCountBadge() still finds it. The visible badge
-           is rendered next to the 💬 tab above when sessions exist. -->
+           hidden inside the footer-row so chat.js updateSessionCountBadge
+           still finds it. -->
       <span id="session-count-badge" hidden></span>
     </div>
   </aside>
