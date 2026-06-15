@@ -94,10 +94,24 @@
               aria-label="사이드바 닫기">◀</button>
     </div>
 
-    <!-- v0.6.1 (2026-06-15) — meta row moved UP (operator catch:
-         blue arrows pointed at model chip + workspace badge).
-         Keeps the "what model / what workspace am I in" info right
-         under the brand, before navigation choices. -->
+    <!-- v0.6.1 v2 (2026-06-15 PM) — operator catch (red circle + red
+         arrow): + 새 대화 was at the bottom, should be at the top
+         (most-clicked primary action under Claude.ai convention).
+         This is the single LARGE button right under the brand. -->
+    <div class="sidebar-section sidebar-actions">
+      <button class="sidebar-action sidebar-action-primary sidebar-action-newchat"
+              data-action="clear-history"
+              data-i18n-title="chat.clear_history"
+              title="새 대화">
+        <span aria-hidden="true">＋</span>
+        <span data-i18n="chat.new_chat">새 대화</span>
+      </button>
+    </div>
+
+    <!-- v0.6.1 (2026-06-15) — meta row stays under the primary
+         action (operator catch: blue circle around model chip +
+         blue arrow up). "what model / what workspace am I in"
+         info kept near the top, just below + 새 대화. -->
     <div class="sidebar-section sidebar-meta-row">
       <button id="model-chip"
               type="button"
@@ -121,24 +135,9 @@
       </button>
     </div>
 
-    <!-- v0.6.1 (2026-06-15) — 양식 (Templates) moved UP next to the
-         meta row (operator catch: blue arrow). The remaining
-         primary action (+ 새 대화) stays in the footer where it's
-         reachable with the thumb on a phone. -->
-    <div class="sidebar-section sidebar-actions">
-      <button class="sidebar-action"
-              data-action="tplc-open"
-              data-i18n-title="tplchat.open_title"
-              title="양식 적용"
-              style="flex:1">
-        <span aria-hidden="true">📄</span>
-        <span data-i18n="tplchat.open">양식</span>
-      </button>
-    </div>
-
-    <!-- TOP FIXED — page nav (Workspace + Admin) — these are
-         high-frequency destinations, kept at the top of the sidebar
-         like Claude's "채팅 / 프로젝트 / 코드 / 디스패치" links. -->
+    <!-- TOP FIXED — page nav (Workspace + Admin). Mint arrow in the
+         operator's screenshot pointed Workspace upward, so it
+         stays here under meta, ABOVE the 양식 button. -->
     <nav class="sidebar-section sidebar-top-nav" aria-label="페이지 이동">
       <a href="/workspace" class="sidebar-top-link"
          data-i18n-title="workspace.nav_title" title="Workspace">
@@ -151,6 +150,21 @@
         <span data-i18n="sidebar.nav_admin">Admin</span>
       </a>
     </nav>
+
+    <!-- v0.6.1 v2 (2026-06-15 PM) — 양식 (Templates) moved BELOW the
+         Workspace/Admin nav per the screenshot. Templates is a
+         tool, not a destination, so it sits in the secondary
+         action zone right above the mode tabs. -->
+    <div class="sidebar-section sidebar-actions sidebar-actions-secondary">
+      <button class="sidebar-action"
+              data-action="tplc-open"
+              data-i18n-title="tplchat.open_title"
+              title="양식 적용"
+              style="flex:1">
+        <span aria-hidden="true">📄</span>
+        <span data-i18n="tplchat.open">양식</span>
+      </button>
+    </div>
 
     <!-- Mode tabs (upload / recent / search) — kept fixed below the
          page nav. Stay accessible regardless of sessions-list scroll
@@ -290,11 +304,15 @@
       </div>
     </div>
 
-    <!-- BOTTOM FIXED FOOTER — v0.6.1 (2026-06-15) operator catch
-         (red circles around `+ 새 대화` + ADMIN role pill, red arrow
-         pointing down): keep only the thumb-reach primary action and
-         the profile pill at the bottom. Meta + 양식 moved to the
-         top of the sidebar (above). -->
+    <!-- BOTTOM FIXED FOOTER — v0.6.1 v2 (2026-06-15 PM):
+         + 새 대화 moved UP to the top of the sidebar (operator catch
+         from screenshot — red arrow). Footer is now:
+           1) PROD/TEST + KO|EN settings row (compact)
+           2) PROMINENT login/role pill (was a thin chip; now a
+              large, visible badge so the operator can see at a
+              glance whether they're logged in as ADMIN)
+         The session-count-badge bound element stays here so the
+         chat.js updateSessionCountBadge handler keeps working. -->
     <div class="sidebar-section sidebar-footer">
       <!-- Source toggle + lang toggle on one row. -->
       <div class="sidebar-settings-row">
@@ -307,16 +325,11 @@
                 aria-label="언어 전환 / Toggle language"
                 style="font-size:11px;font-weight:700;padding:4px 8px"></button>
       </div>
-      <!-- + 새 대화 — single primary action, large, thumb-friendly. -->
-      <button class="sidebar-action sidebar-action-primary sidebar-action-newchat"
-              data-action="clear-history"
-              data-i18n-title="chat.clear_history"
-              title="새 대화">
-        <span aria-hidden="true">＋</span>
-        <span data-i18n="chat.new_chat">새 대화</span>
-      </button>
-      <!-- Role badge — Claude-style profile pill at the very bottom. -->
-      <div class="role-badge sidebar-role-pill" id="role-badge"
+      <!-- Role badge — PROMINENT version (v0.6.1 v2). When logged out:
+           clear "로그인" call-to-action. When logged in: big role label
+           (ADMIN/USER), bigger green dot, more visible logout button. -->
+      <div class="role-badge sidebar-role-pill role-badge-prominent"
+           id="role-badge"
            data-action="show-login">
         <span class="dot"></span>
         <span class="role-name" id="role-name" data-i18n="auth.login">로그인</span>

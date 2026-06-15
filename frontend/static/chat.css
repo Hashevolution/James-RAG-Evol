@@ -161,28 +161,35 @@ header {
 }
 .role-badge .logout-btn:hover { color: var(--danger); }
 
-/* ── 로그인 모달 ── */
+/* ── 로그인 모달 ──
+ * v0.6.1 v2 (2026-06-15 PM) — operator catch (login modal 가시성
+ * 부족): 배경 더 짙은 dim 으로 바꿔 modal 내용에 시선 집중, accent
+ * border + ring shadow 로 modal 자체를 brand 색으로 강조. */
 .modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(4,6,10,.35);
+  background: rgba(4,6,10,.72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex; align-items: center; justify-content: center;
   z-index: 200;
   animation: fadeIn .15s ease;
 }
 .modal-overlay.hidden { display: none; }
 .modal {
-  background: rgba(7,9,14,.55);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 28px;
-  width: 360px;
+  background: rgba(7,9,14,.92);
+  border: 2px solid var(--accent);
+  border-radius: 14px;
+  padding: 32px;
+  width: 380px;
+  box-shadow: 0 12px 48px rgba(0,0,0,.6),
+              0 0 0 6px rgba(110, 231, 183, .12);
 }
 .modal-title {
-  font-size: 16px; font-weight: 600;
+  font-size: 18px; font-weight: 700;
   font-family: var(--font-ui);
   color: var(--text);
-  margin-bottom: 20px;
-  letter-spacing: 0;
+  margin-bottom: 22px;
+  letter-spacing: .2px;
 }
 .modal-field { margin-bottom: 14px; }
 .modal-field label {
@@ -1284,6 +1291,68 @@ aside.sidebar.collapsed { min-width: 0; }
   text-align: center;
 }
 .sidebar-role-pill:hover { background: var(--bg); }
+
+/* v0.6.1 v2 (2026-06-15 PM) — operator catch: ADMIN role pill 가시성
+ * 부족. 더 큰 글자 / 더 두꺼운 border / 로그인 안 됐을 때는 "로그인"
+ * call-to-action 처럼 accent 색 강조, 로그인 됐을 때는 success border
+ * + green dot 으로 한눈에 admin 상태 인지. */
+.role-badge-prominent {
+  padding: 10px 14px;
+  border-width: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .3px;
+  transition: border-color .2s, background .2s, box-shadow .2s;
+}
+
+/* Logged-out state — accent border, soft accent background. The pill
+ * IS the login call-to-action, so it should pull the eye. */
+.role-badge-prominent:not(.logged-in) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-fg);
+  animation: rolePillPulse 2.4s ease-in-out infinite;
+}
+.role-badge-prominent:not(.logged-in) .dot {
+  width: 9px; height: 9px;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+.role-badge-prominent:not(.logged-in) .role-name {
+  color: var(--accent-fg);
+  font-weight: 700;
+}
+
+/* Logged-in state — success border, green dot, role name in stronger
+ * color. Differentiates ADMIN visually from USER. */
+.role-badge-prominent.logged-in {
+  border-color: var(--success);
+  background: rgba(34, 197, 94, .08);
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, .15) inset;
+}
+.role-badge-prominent.logged-in .dot {
+  width: 10px; height: 10px;
+  background: var(--success);
+  box-shadow: 0 0 8px rgba(34, 197, 94, .6);
+}
+.role-badge-prominent.logged-in .role-name {
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: .5px;
+}
+.role-badge-prominent.logged-in .logout-btn {
+  font-size: 14px;
+  color: var(--text-soft);
+  padding: 0 0 0 6px;
+}
+.role-badge-prominent.logged-in .logout-btn:hover {
+  color: var(--danger);
+}
+
+@keyframes rolePillPulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-soft); }
+  50%      { box-shadow: 0 0 0 4px rgba(110, 231, 183, .12); }
+}
 
 /* The single .sidebar-panel host — fills the middle. The 4 panel-modes
  * still rotate via .active. */
