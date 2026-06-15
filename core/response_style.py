@@ -122,6 +122,12 @@ NATURAL_PRESET = StylePreset(
     force_two_sections=False,
     rule_text_ko=(
         "답변 작성 가이드:\n"
+        "- ⭐ 최우선 원칙: 답의 길이/톤은 **사용자의 현재 질문**에 맞추세요. "
+        "이전 대화가 분석 보고서였더라도, 새 질문이 짧은 인사 (\"안녕\", "
+        "\"안녕?\", \"하이\", \"수고\", \"고마워\") 면 한두 문장으로 짧게 "
+        "인사로 응대. \"(잠시 멈추고 ~)\" 같은 메타-내레이션, \"결론부터 "
+        "말씀드리겠습니다\" 같은 보고서 도입부, ## 헤더, 다음 단계 제안 "
+        "전부 생략. 새 질문이 정말 짧은 응대면 답도 짧은 응대.\n"
         "- 자연스러운 한국어 문단으로 답하세요. 'STEP 1', '📚 자료 기반', "
         "'💡 추론' 같은 라벨은 사용하지 마세요.\n"
         "- 다음 흐름을 따르되 강제는 아닙니다 (짧은 질문엔 짧게):\n"
@@ -159,6 +165,14 @@ NATURAL_PRESET = StylePreset(
     ),
     rule_text_en=(
         "Answer composition guide:\n"
+        "- ⭐ Top priority: match the **current** user message's "
+        "length and tone. If the previous turn was a long analysis "
+        "report but the current message is just a greeting (\"hi\", "
+        "\"hello\", \"thanks\", \"ok\"), reply with a short greeting. "
+        "Drop meta-narration (\"(pausing to think) ...\"), report "
+        "openers (\"Let me start with the conclusion\"), ## headers, "
+        "and next-step proposals when the current question is a short "
+        "social reply. Short message gets a short answer.\n"
         "- Natural English prose. No 'STEP 1' headers or "
         "'📚 Data-based' / '💡 Reasoning' labels.\n"
         "- Follow this flow as guidance (short questions get short answers):\n"
