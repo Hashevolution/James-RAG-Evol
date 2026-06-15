@@ -80,13 +80,60 @@
          scrolling, but they sit OUTSIDE the scroll area so the
          sessions list doesn't push them off-screen. -->
 
-    <!-- Sidebar header — close button + brand mark (compact). -->
+    <!-- Sidebar header — close button + brand mark (compact).
+         v0.6.1 (2026-06-15) — brand changed from "JAMES" (codename)
+         to "SEKOS" (Secure Enterprise Knowledge Operating System
+         acronym). The full phrase still surfaces in the welcome
+         hero of the main chat area; the sidebar header gets the
+         short, memorable form. -->
     <div class="sidebar-header">
       <div class="sidebar-title" id="sidebar-title">
-        ▸ <span class="brand" style="font-size:13px">JAMES</span>
+        ▸ <span class="brand" style="font-size:13px">SEKOS</span>
       </div>
       <button class="sidebar-toggle" data-action="toggle-sidebar" data-i18n-title="common.close" title="닫기"
               aria-label="사이드바 닫기">◀</button>
+    </div>
+
+    <!-- v0.6.1 (2026-06-15) — meta row moved UP (operator catch:
+         blue arrows pointed at model chip + workspace badge).
+         Keeps the "what model / what workspace am I in" info right
+         under the brand, before navigation choices. -->
+    <div class="sidebar-section sidebar-meta-row">
+      <button id="model-chip"
+              type="button"
+              class="model-chip"
+              data-action="toggle-model-popover"
+              data-i18n-title="model.chip_title"
+              title="현재 응답에 사용 중인 모델 — 클릭 시 변경"
+              aria-haspopup="listbox"
+              aria-expanded="false">
+        <span class="model-chip-icon" aria-hidden="true">🤖</span>
+        <span class="model-chip-tag" id="model-chip-tag">—</span>
+        <span class="model-chip-caret" aria-hidden="true">▾</span>
+      </button>
+      <button class="nav-btn workspace-badge" id="workspace-badge"
+              type="button"
+              data-i18n-title="workspace.badge_title"
+              title="현재 워크스페이스"
+              aria-label="현재 워크스페이스"
+              style="display:none;font-size:11px">
+        📁 <span id="workspace-name">—</span>
+      </button>
+    </div>
+
+    <!-- v0.6.1 (2026-06-15) — 양식 (Templates) moved UP next to the
+         meta row (operator catch: blue arrow). The remaining
+         primary action (+ 새 대화) stays in the footer where it's
+         reachable with the thumb on a phone. -->
+    <div class="sidebar-section sidebar-actions">
+      <button class="sidebar-action"
+              data-action="tplc-open"
+              data-i18n-title="tplchat.open_title"
+              title="양식 적용"
+              style="flex:1">
+        <span aria-hidden="true">📄</span>
+        <span data-i18n="tplchat.open">양식</span>
+      </button>
     </div>
 
     <!-- TOP FIXED — page nav (Workspace + Admin) — these are
@@ -243,53 +290,12 @@
       </div>
     </div>
 
-    <!-- BOTTOM FIXED FOOTER — Claude.ai parity. Top of the footer
-         carries the primary actions (+ 새 대화 / 양식), then a meta
-         line (model chip + workspace badge), then settings (source +
-         lang), then the profile pill. The 📂 / 🕘 / 🔍 tabs moved
-         to the top of the sidebar so the operator can hit them
-         without scrolling the (potentially long) sessions list. -->
+    <!-- BOTTOM FIXED FOOTER — v0.6.1 (2026-06-15) operator catch
+         (red circles around `+ 새 대화` + ADMIN role pill, red arrow
+         pointing down): keep only the thumb-reach primary action and
+         the profile pill at the bottom. Meta + 양식 moved to the
+         top of the sidebar (above). -->
     <div class="sidebar-section sidebar-footer">
-      <!-- Primary actions row. -->
-      <div class="sidebar-actions">
-        <button class="sidebar-action sidebar-action-primary"
-                data-action="clear-history"
-                data-i18n-title="chat.clear_history"
-                title="새 대화">
-          <span aria-hidden="true">＋</span>
-          <span data-i18n="chat.new_chat">새 대화</span>
-        </button>
-        <button class="sidebar-action"
-                data-action="tplc-open"
-                data-i18n-title="tplchat.open_title"
-                title="양식 적용">
-          <span aria-hidden="true">📄</span>
-          <span data-i18n="tplchat.open">양식</span>
-        </button>
-      </div>
-      <!-- Model chip + workspace badge — meta line. -->
-      <div class="sidebar-meta-row">
-        <button id="model-chip"
-                type="button"
-                class="model-chip"
-                data-action="toggle-model-popover"
-                data-i18n-title="model.chip_title"
-                title="현재 응답에 사용 중인 모델 — 클릭 시 변경"
-                aria-haspopup="listbox"
-                aria-expanded="false">
-          <span class="model-chip-icon" aria-hidden="true">🤖</span>
-          <span class="model-chip-tag" id="model-chip-tag">—</span>
-          <span class="model-chip-caret" aria-hidden="true">▾</span>
-        </button>
-        <button class="nav-btn workspace-badge" id="workspace-badge"
-                type="button"
-                data-i18n-title="workspace.badge_title"
-                title="현재 워크스페이스"
-                aria-label="현재 워크스페이스"
-                style="display:none;font-size:11px">
-          📁 <span id="workspace-name">—</span>
-        </button>
-      </div>
       <!-- Source toggle + lang toggle on one row. -->
       <div class="sidebar-settings-row">
         <div class="source-toggle">
@@ -301,6 +307,14 @@
                 aria-label="언어 전환 / Toggle language"
                 style="font-size:11px;font-weight:700;padding:4px 8px"></button>
       </div>
+      <!-- + 새 대화 — single primary action, large, thumb-friendly. -->
+      <button class="sidebar-action sidebar-action-primary sidebar-action-newchat"
+              data-action="clear-history"
+              data-i18n-title="chat.clear_history"
+              title="새 대화">
+        <span aria-hidden="true">＋</span>
+        <span data-i18n="chat.new_chat">새 대화</span>
+      </button>
       <!-- Role badge — Claude-style profile pill at the very bottom. -->
       <div class="role-badge sidebar-role-pill" id="role-badge"
            data-action="show-login">

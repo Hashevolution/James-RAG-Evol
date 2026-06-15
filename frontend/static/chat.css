@@ -1193,6 +1193,16 @@ aside.sidebar.collapsed { min-width: 0; }
 }
 .sidebar-action:hover { filter: brightness(1.1); }
 
+/* v0.6.1 (2026-06-15) — the footer-level + 새 대화 button is the
+ * single most-tapped affordance. Make it visibly larger than the
+ * other footer rows so it's hard to miss with a thumb. */
+.sidebar-action-newchat {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 14px;
+  border-radius: 10px;
+}
+
 /* Model chip + workspace badge row. */
 .sidebar-meta-row {
   display: flex;
