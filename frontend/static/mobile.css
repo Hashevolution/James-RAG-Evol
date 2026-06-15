@@ -342,6 +342,40 @@
     font-size: 18px;
   }
 
+  /* v0.6.1 mobile fix (2026-06-15) — backdrop overlay so tapping outside
+   * the sidebar dismisses it. Default hidden; index-init.js toggles the
+   * .show class. Below the sidebar's z-index (50) and above the chat
+   * surface. */
+  #sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 49;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #sidebar-backdrop.show { display: block; }
+
+  /* v0.6.1 mobile fix — the close button inside the sidebar header was
+   * the existing .sidebar-toggle (◀). On phones the default size was
+   * too small to find — promote it to 44×44 with an accent border so
+   * the operator can clearly tap it to close. */
+  aside.sidebar .sidebar-toggle {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 18px;
+    border-radius: 8px;
+    background: var(--surface-2, #1e293b);
+    border: 1px solid var(--accent, #6cd);
+    color: var(--accent, #6cd);
+    cursor: pointer;
+  }
+  aside.sidebar .sidebar-toggle:active {
+    background: var(--accent, #6cd);
+    color: var(--bg, #0f172a);
+  }
+
   /* 메시지 영역 — 패딩 줄이고 chat 가장자리까지 사용 */
   .messages {
     padding: 16px 12px 12px;
