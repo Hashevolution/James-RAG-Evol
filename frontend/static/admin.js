@@ -293,17 +293,35 @@ function _bindStableInputs() {
 window.addEventListener('DOMContentLoaded', async () => {
   _bindFrontendEvents();
   _bindStableInputs();
-  if (!apiKey) {
-    apiKey = prompt('JAMES API Key:') || '';
-    localStorage.setItem('james_api_key', apiKey);
-  }
-  // [#A8-4] localStorage에서 role 읽음 — chat에서 admin으로 로그인했다면
-  // 자동으로 dashboard 진입. 비-admin role이거나 token 없으면 modal.
-  const storedRole = localStorage.getItem('james_role') || '';
-  if (!token || storedRole !== 'admin') {
+
+  // v0.6.1 (2026-06-15) — operator catch "admin 페이지 돌아올 때마다
+  // 매번 로그인". The original boot had TWO forced auth prompts:
+  //   (1) `prompt('JAMES API Key:')` if apiKey was missing — a
+  //       phone-hostile native dialog left over from before the
+  //       login modal grew an api_key input.
+  //   (2) `if (!token || storedRole !== 'admin') showAdminLoginModal()`
+  //       — a strict client-side gate that fired whenever the
+  //       previously-stored role wasn't literally 'admin' (e.g. an
+  //       empty value during a localStorage hiccup, or the JWT
+  //       expiry window straddling a navigation).
+  //
+  // Both are replaced by lazy auth: if we have a token at all,
+  // optimistically call loadDashboard(); if the server returns
+  // 401 / 403, THEN show the modal. The server is the real
+  // admin-only enforcer (`_require_admin`); the client-side gate
+  // was duplicating it pessimistically. The api_key prompt is gone
+  // — the modal's existing api_key input covers that path now
+  // (parity with the v0.6.1 #928 chat-page persistence fix).
+  if (!token) {
     showAdminLoginModal();
-  } else {
-    loadDashboard();
+    return;
+  }
+  try {
+    await loadDashboard();
+  } catch (_) {
+    // loadDashboard's own _adminGuard handles 401/403 → modal.
+    // The try/catch is just belt-and-suspenders so a non-auth
+    // failure (network blip) doesn't pop the login modal.
   }
 });
 
@@ -753,6 +771,15 @@ async function api(path, method='GET', body=null) {
     alert(t('auth.expired_refresh'));
     location.reload();
     return {};
+  }
+  // v0.6.1 (2026-06-15) — non-admin role tries an admin endpoint →
+  // server returns 403. Don't reload (the chat-side login is still
+  // valid for non-admin pages); just surface the admin login modal so
+  // the operator can re-authenticate as admin without losing their
+  // chat session.
+  if (r.status === 403) {
+    showAdminLoginModal();
+    throw new Error('403');
   }
   if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
   return r.json();
