@@ -237,7 +237,7 @@ The numbers below come from the current `main` branch — not aspirational, not 
 
 | Surface | Verified | Where to check |
 |---|---|---|
-| **Test suite** | **4632 tests** collected across `tests/` (308 test files), all green on PR CI | `python -m pytest tests/ --collect-only -q` |
+| **Test suite** | **4998 tests** collected across `tests/` (333 test files), all green on PR CI | `python -m pytest tests/ --collect-only -q` |
 | **CASCADE / EVENT separation** | Provable end-to-end via 5 release-gating invariants run against a real wiki fixture (not mocks) | `tests/test_t7_release_gating_invariants.py` |
 | **T6 causality cascade** | 4 additional release-gating invariants pin foundational vs corroborative semantics | `tests/test_t6_release_gating_invariants.py` |
 | **QVT 3-axis quality baseline** | path_recall **1.00** / graded_answer **0.58** / abstention_f1 **0.67** (median, post-calibration, N=3 paired reruns) | `eval/qvt/baseline_2a31b20.json` |
@@ -262,6 +262,18 @@ After v0.5 close, **23 additional PRs (#863 – #886) landed on `main`** between
 The **v0.5 → v0.6 gate (Dim F: ≥6 month external customer pilot)** is NOT cleared. The project sits in a productive **"v0.5 closed, v0.6 not yet entered"** interval governed by the 2-fork entry contract in the [v0.6 entry skeleton (PR #886)](docs/handovers/v0.6-entry-skeleton-2026-06-13.md): Fork A = LOI signed → Track D vertical pack scoping / Fork B = no-LOI 6-month reassess. Until one resolves, mother-platform hardening continues; vertical content stays BLOCKED per CLAUDE.md rule #1.
 
 Across all 23 post-close PRs the streak holds: **zero vertical tokens, zero `core/retrieval` / `core/graph` traversal / `core/reasoning` lines touched, 4-layer rule #1 protection contract (code-level capability gate + doc-level "Out of scope" + naming-level domain-agnostic + trigger-level LOI tagging) preserved** on every PR.
+
+**2026-06-14 → 2026-06-15 operator-ergonomics sweep** (15 PRs, #911 – #925) shipped the operator-side groundwork for Stream A.3 dogfooding. The cycle state is unchanged (v0.5 closed / v0.6 not entered); these PRs are *operator UX + safety* on top of the existing platform, not new platform capabilities:
+
+- **Phone-friendly ingestion** — mobile camera capture (`capture="environment"`) + share-target setup runbook for iOS Shortcuts / Android HTTP Shortcuts (#915); mobile sidebar overlay default-collapses on phones + backdrop tap dismiss + 44×44 close button (#924).
+- **Template engine, end-to-end** — `.docx` output + `.hwp/.docx/.pdf/.pptx/.xlsx` document-mode register + USER GUIDANCE prompt slot + 📋 copy buttons (#916).
+- **Workspace switching UX** — header `📁 <workspace>` badge + interactive `start_james.{ps1,sh}` launcher (default / cycle-γ / new `dogfood-<YYYY-MM>` picker) + workspace-info endpoint (#917).
+- **Agent tools (Claude-Code-style file management), four-PR series** — `JAMES_AGENT_ALLOWED_PATHS` env + `register_user_path` + critical-root block (#918) → `📂 Agent Folders` admin UI + session-scoped remove (#919) → `core/agent_tools/` registry + dispatcher + 6 built-in tools (list/read/write/edit/glob/grep) + `POST /agent/chat/` LLM tool-use loop (Anthropic / Ollama toggle) (#920) → `🤖 Agent Chat` admin page with per-call tool cards + auto-allow gate + cancel button (#921).
+- **LLM Routing unified Settings** — `core/llm_settings.py` DB-first / env-fallback / default-last repository (10-key fixed taxonomy: default_model / coding_model / vision_model / auto_router / auto_style / backend_tier / backend_synth / agent_backend / agent_ollama_model / agent_anthropic_model). New `▸ LLM Routing` card inside the existing Settings page with per-row source label (`DB` / `env (JAMES_LLM_MODEL)` / `default`) + `↺ reset to env` button (#922).
+- **4 cross-PR conflict mitigations** caught by operator review (#923): `JAMES_SETTINGS_USE_DB=0` escape hatch for measurement runners + boot-time conflict warning (Risk #1); `AnthropicBackend` cloud-egress opt-in gate via `JAMES_AGENT_ALLOW_CLOUD=1` so §5.7.12 abstraction trust zone isn't silently bypassed (Risk #2); global-vs-workspace partition warning in the LLM Routing card (Risk #3); `_REPO_PROTECTED_SUBPATHS` blocks agent tools from touching `wiki/entity/{prod,test}` / `wiki/media` / `core/` / `eval/` / `scripts/` / `tests/` so `write_file` cannot bypass `core/wiki_generator/` or the 4-Gate self-evolution pipeline (Risk #4).
+- **External-reference mapping** — token-vs-capital thread mapped against JAMES design intent (4 STRONG + 2 PARTIAL + 1 explicitly rejected per Rule #3) (#925).
+
+Same streak invariant holds across all 15 operator-ergonomics PRs: **zero `core/retrieval` / `core/graph` traversal / `core/reasoning` lines, zero vertical tokens, 4-layer rule #1 protection contract preserved**.
 
 ---
 
