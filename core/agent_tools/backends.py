@@ -87,8 +87,10 @@ class AnthropicBackend(AgentBackend):
             raise BackendError(
                 f"{ENV_ANTHROPIC_KEY} env not set; cannot use anthropic backend"
             )
-        self.model = (model or os.environ.get(ENV_ANTHROPIC_MODEL)
-                      or _DEFAULT_ANTHROPIC_MODEL).strip()
+        self.model = (model
+                      or _settings_get("agent_anthropic_model",
+                                        ENV_ANTHROPIC_MODEL,
+                                        _DEFAULT_ANTHROPIC_MODEL)).strip()
         self.timeout = timeout
 
     def chat_with_tools(
@@ -168,8 +170,10 @@ class OllamaBackend(AgentBackend):
                  timeout: float = 120.0):
         self.host = (host or os.environ.get(ENV_OLLAMA_HOST)
                      or _DEFAULT_OLLAMA_HOST).rstrip("/")
-        self.model = (model or os.environ.get(ENV_OLLAMA_MODEL)
-                      or _DEFAULT_OLLAMA_MODEL).strip()
+        self.model = (model
+                      or _settings_get("agent_ollama_model",
+                                        ENV_OLLAMA_MODEL,
+                                        _DEFAULT_OLLAMA_MODEL)).strip()
         self.timeout = timeout
 
     def chat_with_tools(
@@ -247,11 +251,21 @@ class OllamaBackend(AgentBackend):
 
 # ── Factory ──────────────────────────────────────────────────────
 
+def _settings_get(key: str, env_name: str, default: str) -> str:
+    """v0.6.1 — DB-first via core.llm_settings, env fallback."""
+    try:
+        from core.llm_settings import get as _get
+        return _get(key, env_name, default)
+    except Exception:
+        return os.environ.get(env_name, default)
+
+
 def get_backend(name: Optional[str] = None) -> AgentBackend:
-    """Resolve the active backend from ``name`` (test override) or
-    ``JAMES_AGENT_BACKEND`` env. Defaults to ``ollama`` (local-first
-    is JAMES' identity)."""
-    selected = (name or os.environ.get(ENV_BACKEND) or "ollama").strip().lower()
+    """Resolve the active backend from ``name`` (test override) or the
+    unified LLM settings repository (DB-first, ``JAMES_AGENT_BACKEND``
+    env fallback). Defaults to ``ollama`` (local-first is JAMES'
+    identity)."""
+    selected = (name or _settings_get("agent_backend", ENV_BACKEND, "ollama")).strip().lower()
     if selected == "anthropic":
         return AnthropicBackend()
     if selected == "ollama":

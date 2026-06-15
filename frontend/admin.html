@@ -970,6 +970,37 @@
     <div class="page" id="page-settings">
       <div class="page-title"><span data-i18n="set.page_title">⚙️ 설정</span></div>
 
+      <!-- v0.6.1 — LLM Routing unified settings. DB-first, env-fallback.
+           See docs/design/v0.6-llm-routing-unification.md + ARCHITECTURE
+           §5.7.16. Operators can change models / auto-routers / backend
+           tier here instead of editing env + restarting. The "Reset to
+           env" button per row clears the DB row so the env value takes
+           over again. -->
+      <div class="section-title">
+        <span data-i18n="set.llm_title">▸ LLM Routing</span>
+      </div>
+      <div class="card" style="padding:14px 18px;margin-bottom:20px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
+        <div style="font-size:11px;color:var(--muted);line-height:1.55;margin-bottom:10px"
+             data-i18n="set.llm_intro">
+          모델 / 자동설정 / 라우팅 토글이 한 자리에 모인 통합 설정입니다.
+          DB 값이 우선이고, DB 가 비어 있으면 환경 변수 → 기본값 순으로
+          적용됩니다. 우측 "env 로 되돌리기" 버튼은 DB 행을 지워 환경
+          변수가 다시 작동하게 합니다.
+        </div>
+        <div id="llm-settings-list"
+             style="display:flex;flex-direction:column;gap:8px;font-family:var(--font-mono);font-size:12px">
+          <div style="color:var(--muted)" data-i18n="common.loading">…</div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button class="btn" data-action="llm-settings-reload"
+                  data-i18n="set.llm_reload">새로고침</button>
+          <button class="btn btn-primary" data-action="llm-settings-save"
+                  data-i18n="set.llm_save">변경사항 저장</button>
+        </div>
+        <div id="llm-settings-msg"
+             style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:6px;min-height:14px"></div>
+      </div>
+
       <!-- [P3 unified UX 2026-05-10] 페르소나 자유텍스트 섹션 제거 —
            '성향/역할' 과 '추가 지시' 자유 텍스트는 🎭 성향 캐릭터 페이지의
            radar UI 와 충돌하여 사용자 혼란 유발. 이름은 character 페이지의

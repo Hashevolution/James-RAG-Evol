@@ -1074,6 +1074,60 @@ consistent with the abstention posture elsewhere in the reasoning path.
 template versioning/diff (replace-on-edit; Change Request is a separate
 surface); no automatic re-ingestion of output into the knowledge graph.
 
+### 5.7.16 LLM Routing Unified Settings (v0.6.1)
+
+> **Status: shipped.** Operator catch 2026-06-15 — the LLM stack
+> had accumulated ~10 env vars across 4 dispatch layers
+> (`llm/router.py` task_type, `core/reasoning/router.py` AUTO_ROUTER,
+> `core/reasoning/backends/*` stage backends, `core/agent_tools/
+> backends.py` agent backend) with no single page that said "this is
+> the currently-active routing decision". Full memo:
+> `docs/design/v0.6-llm-routing-unification.md`.
+
+**Why this trust zone exists.** *Not* a new dispatch layer. The 4
+existing dispatch layers stay; what changes is **the source of the
+values they read**. A new `core/llm_settings.py` repository turns
+~10 separate env reads into a single DB-first / env-fallback /
+default resolution helper. The admin Settings UI writes to the DB
+row; the env stays as a boot-time default.
+
+**Trust contract**
+
+1. **DB-first, env-fallback, default-last.** `llm_settings.get(key,
+   env_name, default)` reads the `llm_settings` table in
+   `james_data.db`; on empty/error it reads `env_name`; on still-
+   empty it returns `default`. No dispatch layer reads env directly
+   anymore (subject to a single audit pass per change).
+2. **Closed key taxonomy.** The 10 keys in
+   `core/llm_settings.SETTINGS_SCHEMA` are the only ones the
+   repository acts on. Unknown keys are *stored* but never *read*
+   by the dispatch layers — future-proofing without a schema
+   migration.
+3. **Admin-only writes.** `POST /admin/llm-settings/` requires
+   `_require_admin` and audit-logs every change (`set=[...]` /
+   `clear=[...]`). Partial updates supported; per-key validation
+   surfaces as 400 with detail.
+4. **No mutable env from the UI.** Operators that want env-source-of-
+   truth keep the DB row empty (or click "↺" per row to clear).
+5. **No per-tenant overlay.** Settings are operator-global; per-
+   tenant routing belongs to v1.0 multi-tenant work (§5.7.11).
+6. **No live-swap mid-request.** A POST changes future calls; calls
+   already in flight finish on their original values.
+
+**HTTP surface** — `routes/llm_settings.py`:
+
+| Endpoint | Auth | Action |
+|---|---|---|
+| `GET /admin/llm-settings/` | `_require_admin` | snapshot `{settings, db, env, defaults, schema}` |
+| `POST /admin/llm-settings/` `{api_key, settings: {...}, clear: [...]}` | `_require_admin` | partial write + clear + audit |
+
+**Non-goals** — no telemetry / "routing decision explanation" surface
+(`audit_log` already has the rows). No automatic env mutation. No
+per-call routing overrides from the UI (those live in `#model-chip`
+per-session override which stays as-is).
+
+---
+
 ### 5.7.15 Agent Tools on User-Specified Paths (v0.6.1, Phase B)
 
 > **Status: Phase A (memo) + Phase B (path permission base) shipped;
