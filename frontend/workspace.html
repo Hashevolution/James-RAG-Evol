@@ -406,18 +406,18 @@
 
     <!-- [v0.6 template-formatting engine] Templates tab.
          Backend: routes/templating.py + core/templating/.
-         Horizontal — JAMES ships zero templates; every row here is
+         Horizontal — SEKOS ships zero templates; every row here is
          runtime workspace user data owned by the JWT subject. See
          docs/design/v0.6-template-formatting-ui.md + ARCHITECTURE
          §5.7.14. Flow: register a template → pick it → paste raw
-         content → JAMES reshapes onto the structure → download. -->
+         content → SEKOS reshapes onto the structure → download. -->
     <div id="tab-templates" style="display:none">
       <div class="page-title">
         📄 <span data-i18n="workspace.tpl_title">양식</span>
       </div>
       <div class="hint" data-i18n="workspace.tpl_hint">
-        양식(서식)을 등록하고, raw 내용을 붙여넣으면 JAMES 가 양식 구조에 맞춰 재작성해 파일로 제시합니다.
-        모든 양식은 본인 소유의 워크스페이스 데이터입니다 — JAMES 는 기본 제공 양식이 없습니다.
+        양식(서식)을 등록하고, raw 내용을 붙여넣으면 SEKOS 가 양식 구조에 맞춰 재작성해 파일로 제시합니다.
+        모든 양식은 본인 소유의 워크스페이스 데이터입니다 — SEKOS 는 기본 제공 양식이 없습니다.
       </div>
 
       <!-- Register form -->
@@ -526,7 +526,7 @@
                data-i18n="workspace.tpl_raw_content">RAW CONTENT</label>
         <textarea id="tpl-apply-content" rows="6"
                   data-i18n-placeholder="workspace.tpl_raw_content_ph"
-                  placeholder="여기에 원문 내용을 붙여넣으세요 — JAMES 가 양식에 맞춰 재구성합니다."
+                  placeholder="여기에 원문 내용을 붙여넣으세요 — SEKOS 가 양식에 맞춰 재구성합니다."
                   style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;resize:vertical"></textarea>
 
         <!-- v0.6.1 — 사용자 프롬프트 (USER GUIDANCE). 스타일 / 톤 / 길이만
