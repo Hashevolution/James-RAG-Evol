@@ -1,6 +1,7 @@
-# PROJECT JAMES
+# SEKOS — Secure Enterprise Knowledge Operating System
 
-> **JAMES** — 로컬 우선, 감사 가능한 지식 추론 **플랫폼**. Graph-RAG
+> **SEKOS** 는 사용자 facing 플랫폼; **JAMES** 는 그 안에 들어 있는
+> 추론 엔진. 로컬 우선, 감사 가능한 지식 추론 **플랫폼**. Graph-RAG
 > 검색, 결정론적 모순 중재, append-only audit log, replayable
 > knowledge state, 인간 승인 게이트 기반 자기진화. v1.0 까지
 > **범용 mother 플랫폼** 으로 강화; 도메인 팩 (법률 · 식품 · 유통 · 여행 등)
@@ -21,34 +22,40 @@
 [![RAB SPEC](https://img.shields.io/badge/RAB%20SPEC-v0.1.1-green.svg)](eval/rab/SPEC-v0.1.md)
 [![LRB Benchmark](https://img.shields.io/badge/LRB-v0.2.3-green.svg)](papers/lrb-preprint/main.pdf)
 
-![PROJECT JAMES — 3D 온톨로지 그래프 시각화](reports/promo-assets/screenshots/06-3d-graph.jpg)
+![SEKOS — 3D 온톨로지 그래프 시각화](reports/promo-assets/screenshots/06-3d-graph.jpg)
+
+> *네이밍.* SEKOS = 제품 브랜드. JAMES = 그 안의 추론 엔진 코드명
+> (RAG + audit + lifecycle). 두 벤치마크 (RAB / LRB), BibTeX,
+> Zenodo DOI, 환경변수 (`JAMES_API_KEY` 등), CLI flag (`--sut james`),
+> 소스트리는 JAMES 이름을 그대로 유지 — 외부 reproducibility 보존.
+> SEKOS 는 사이드바에 표시되는 이름; JAMES 는 `core/` 안에 박힌 엔진.
 
 > **🚀 처음 시작하시는 분?** 컴퓨터 잘 모르셔도 따라하실 수 있는
 > [**비기너 가이드**](README.beginner.ko.md) 를 먼저 보세요.
 
 ---
 
-## JAMES 가 다른 RAG 와 다른 점 (60초 스캔)
+## SEKOS 가 다른 RAG 와 다른 점 (60초 스캔)
 
-LangChain, LlamaIndex, 일반 RAG 스택은 대부분 **고정된 corpus 위 답변 품질** 을 최적화합니다. JAMES 는 그 프레임워크들이 측정하지 않는 두 축에 맞춰 설계되었습니다:
+LangChain, LlamaIndex, 일반 RAG 스택은 대부분 **고정된 corpus 위 답변 품질** 을 최적화합니다. SEKOS 는 (JAMES 엔진 위에서) 그 프레임워크들이 측정하지 않는 두 축에 맞춰 설계되었습니다:
 
-| 축 | LangChain / LlamaIndex / vanilla RAG | **JAMES** |
+| 축 | LangChain / LlamaIndex / vanilla RAG | **SEKOS (JAMES engine)** |
 |---|---|---|
 | **Audit-native lifecycle** | `logger.info()` 문자열; canonical event taxonomy 없음; 로그만으로 replay 불가 | Event-sourced `audit_log` 스키마; `reconstruct_graph_at(t)` 가 로그만으로 시점 T 의 시스템 상태를 바이트-동일하게 재생 — **RAB v0.1.1** 에서 측정 (AC/RF/PC = 1.0 × 3 vs Baseline-0 default-logging 바닥 = 0.275/0/0) |
 | **Time-valid retrieval** | 최신 버전만; *"6개월 전 이 계약 6조 항이 어떻게 돼 있었지?"* 같은 질문 외부 versioned store 없이 답 불가 | 문서별 validity window (T1) + supersede chain (T7); time-travel query 는 `query_time` 시점 유효 버전 반환 — **LRB v0.2.3** 에서 측정 (R@1 V<N<J 가 4 모델 × 4 스케일 모두에서 보존, JAMES − Naive gap 모든 cell 에서 +0.10 이상) |
 | **Local-first 실행** | Cloud 기본 (OpenAI / Anthropic API 가 모든 retrieval 호출) | Local Ollama 위 동작 (gemma4:e4b 4B → mxtral 47B); cloud 는 query 별 opt-in; 명시 동의 없이 host 밖으로 데이터 안 나감 |
 | **EU AI Act 2026-08 정합** | "Compliance" 가 TODO | RAB 3 metric 이 Article 10/12/19 와 verbatim 매핑; AI Act 가 존재한다고 전제하는 audit 측정 도구 자체 |
 
-JAMES 가 **주장하지 않는 것**:
+SEKOS 가 **주장하지 않는 것**:
 - **closed-book QA 답변 품질이 더 좋다** — MuSiQue 에서 3-SUT EM/F1 동일 검증 (*§ honest negative* in [LRB preprint](papers/lrb-preprint/main.pdf) §5)
 - **새 아키텍처 발명** — ActiveGraph ([arXiv:2605.21997](https://arxiv.org/abs/2605.21997)) 가 동일 event-sourced runtime class 독립 co-invention; 벤치마크 자체가 contribution
-- **LangChain 의 drop-in 대체** — JAMES 는 다른 운영 모델 (audit-first) 의 *플랫폼*; 통합은 `pip install` 한 줄이 아니라 integration project
+- **LangChain 의 drop-in 대체** — SEKOS 는 다른 운영 모델 (audit-first) 의 *플랫폼*; 통합은 `pip install` 한 줄이 아니라 integration project
 
-audit / lifecycle / time-travel / on-prem 이 용도라면 — JAMES 가 그것을 위해 만들어졌고, 측정됐고, 인용 가능합니다. *고정 corpus 에서 가장 빠른 답변* 이 용도라면 LangChain 쓰세요.
+audit / lifecycle / time-travel / on-prem 이 용도라면 — SEKOS 가 그것을 위해 만들어졌고, 측정됐고, 인용 가능합니다. *고정 corpus 에서 가장 빠른 답변* 이 용도라면 LangChain 쓰세요.
 
-> **MRR / NDCG / RAGAS / 환각률 coverage 찾으시면**: [`docs/evaluation/v0.5-evaluation-coverage-mapping.md`](docs/evaluation/v0.5-evaluation-coverage-mapping.md) — 표준 RAG / IR metric 이 JAMES 의 어디서 측정되는지 (그리고 어떤 metric 은 의도적으로 측정 안 하는지) 의 full mapping + code path + procurement-ready 답변.
+> **MRR / NDCG / RAGAS / 환각률 coverage 찾으시면**: [`docs/evaluation/v0.5-evaluation-coverage-mapping.md`](docs/evaluation/v0.5-evaluation-coverage-mapping.md) — 표준 RAG / IR metric 이 SEKOS 의 어디서 측정되는지 (그리고 어떤 metric 은 의도적으로 측정 안 하는지) 의 full mapping + code path + procurement-ready 답변.
 >
-> **LangChain / LlamaIndex / Haystack / R2R / ActiveGraph 와 1 페이지 비교**: [`docs/evaluation/v0.5-industry-comparison.md`](docs/evaluation/v0.5-industry-comparison.md) — 3 개 매트릭스 (architectural capability presence / public benchmark headline coverage / reproducibility tier), 모든 JAMES cell 은 committed artifact 에 pin, 모든 경쟁사 cell 은 2026-06-13 기준 public docs 에 pin. 외부 reviewer 60 초 스캔 + 5 분 reproduce command.
+> **LangChain / LlamaIndex / Haystack / R2R / ActiveGraph 와 1 페이지 비교**: [`docs/evaluation/v0.5-industry-comparison.md`](docs/evaluation/v0.5-industry-comparison.md) — 3 개 매트릭스 (architectural capability presence / public benchmark headline coverage / reproducibility tier), 모든 SEKOS cell 은 committed artifact 에 pin, 모든 경쟁사 cell 은 2026-06-13 기준 public docs 에 pin. 외부 reviewer 60 초 스캔 + 5 분 reproduce command.
 
 ---
 
@@ -174,7 +181,7 @@ v0.5 마감 이후 **23 PR (#863 – #886) 가 main 에 추가**되어 (2026-06-
 - **RAB preprint** (10페이지): [papers/rab-preprint/main.pdf](papers/rab-preprint/main.pdf) — *EU AI Act Art. 10/12/19 를 측정 가능 audit-quality 벤치마크로 operationalise.*
 - **LRB preprint** (11페이지): [papers/lrb-preprint/main.pdf](papers/lrb-preprint/main.pdf) — *RAG 의 temporal validity 축; 4 모델 × 4 스케일에서 V<N<J 보존.*
 
-JAMES production runtime 변경 없음 — v0.4.4 는 generator, scorer, runner, NLI adapter, 8 pre-registration LOCK 문서 만 ship. arXiv preprint 는 Zenodo DOI [10.5281/zenodo.20652679](https://doi.org/10.5281/zenodo.20652679) 를 data availability 로 인용.
+SEKOS production runtime 변경 없음 — v0.4.4 는 generator, scorer, runner, NLI adapter, 8 pre-registration LOCK 문서 만 ship. arXiv preprint 는 Zenodo DOI [10.5281/zenodo.20652679](https://doi.org/10.5281/zenodo.20652679) 를 data availability 로 인용.
 
 ---
 
@@ -182,7 +189,7 @@ JAMES production runtime 변경 없음 — v0.4.4 는 generator, scorer, runner,
 
 **2026-06-10 릴리스**. v0.4.3 는 **RAB v0.1.1** 출시 — RAG / agent 시스템의 audit log 품질을 측정하는 최초 replayable-audit benchmark. 3 결정론적 metric (AC / RF / PC) 는 EU AI Act Art. 10/12/19 (Art. 113 에 따라 2026-08-02 부터 적용) 의 operationalisation. JAMES AC/RF/PC = 1.000 / 1.000 / 1.000 vs Baseline-0 (vanilla quickstart + default logging) = 0.275 / 0.000 / 0.000 (scenario-S1). Headline 은 SUT 간 **gap structure** — JAMES 점수 자체가 아님 (SPEC §6.5 가 JAMES-wins framing 명시 거부). Honest framing: **벤치마크 자체가 contribution, 아키텍처 아님** — ActiveGraph (arXiv 2605.21997) 가 audit-native runtime 의 독립 co-invention; 빈 곳은 측정이지 시스템이 아님.
 
-같은 cycle 의 companion track 이 **Cycle γ multi-hop arc** 마감 (PR #752 → #757) — 6 honest null: multi-hop improvement 가 JAMES 로드맵에서 reframe out; **graph build O(N²)** secondary finding 이 RAB 의 RF-cost 축으로 lift.
+같은 cycle 의 companion track 이 **Cycle γ multi-hop arc** 마감 (PR #752 → #757) — 6 honest null: multi-hop improvement 가 SEKOS 로드맵에서 reframe out; **graph build O(N²)** secondary finding 이 RAB 의 RF-cost 축으로 lift.
 
 이전: **v0.4.2** (2026-06-06) 가 T5 Replayable Audit Graph 출시 — 전체 event-sourced graph-wide 재구성 (`reconstruct_graph_at(t)` audit-only primitive, RAB 가 측정하는 품질의 building block).
 
@@ -218,7 +225,7 @@ EVENT 의 분리 invariant 가
 
 ## 전략 프레임: 단일 제품이 아닌 모체 플랫폼
 
-JAMES 는 **하나의 버티컬**을 만드는 것이 아닙니다. 법률·식품·유통·
+SEKOS 는 **하나의 버티컬**을 만드는 것이 아닙니다. 법률·식품·유통·
 여행 등의 도메인 팩이 **v1.0 이후에만** 분기할 수 있는 "모체
 플랫폼"으로 강화 중입니다. 그 전까지는:
 
@@ -237,7 +244,7 @@ JAMES 는 **하나의 버티컬**을 만드는 것이 아닙니다. 법률·식�
 ## 무엇이 다른가 — Replayable RAG
 
 대부분의 RAG 시스템은 *"답이 뭐야?"* 한 가지 질문에 답합니다.
-JAMES 는 두 가지를 더 답합니다:
+SEKOS 는 두 가지를 더 답합니다:
 
 - **시점 T 에 시스템이 무엇을 알고 있었나?** — T7 supersede chain
   이 fact 의 과거 상태를 보존하고, `reconstruct_view_at(t)` 가
@@ -248,10 +255,10 @@ JAMES 는 두 가지를 더 답합니다:
   를 남깁니다. `scripts/replay_trace.py <trace_id>` 가 전체 시퀀스
   를 바이트-동일하게 재구성합니다.
 
-이 둘의 결합이 JAMES 를 **Replayable RAG** 카테고리에 위치시킵니다.
+이 둘의 결합이 SEKOS 를 **Replayable RAG** 카테고리에 위치시킵니다.
 Agentic RAG (*"AI 가 무엇을 할 수 있나"* 에 최적화) 와 다르고,
 Mem0 형 메모리 layer (LLM judge 로 belief 갱신) 와 다릅니다.
-JAMES 는 LLM-free 결정론적 4-rule decision tree
+SEKOS 는 LLM-free 결정론적 4-rule decision tree
 (`core/lifecycle/contradiction_arbiter.py:classify_contradiction`)
 로 belief 를 갱신하고, 과거 fact 를 overwrite 하는 대신 보존해
 replay 가능하게 만듭니다.
@@ -389,7 +396,7 @@ James-RAG-Evol/
 
 ## 보안 접근법
 
-JAMES는 보안을 **기능이 아닌 설계 원칙**으로 다룹니다:
+SEKOS 는 보안을 **기능이 아닌 설계 원칙**으로 다룹니다:
 
 - **3단계 접근 제어**: Vector → Graph → Output
 - **RBAC** (4가지 역할) + **ABAC** (4가지 민감도)

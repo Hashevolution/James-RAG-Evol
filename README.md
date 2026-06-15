@@ -1,12 +1,22 @@
-# PROJECT JAMES
+# SEKOS — Secure Enterprise Knowledge Operating System
 
-> **JAMES** — a local-first, auditable knowledge reasoning platform.
-> Graph-RAG retrieval, deterministic contradiction arbitration,
+> **SEKOS** is the user-facing platform; **JAMES** is the reasoning
+> engine it ships with. A local-first, auditable knowledge platform
+> with Graph-RAG retrieval, deterministic contradiction arbitration,
 > append-only audit log, replayable knowledge state, and a human
 > approval gate for self-evolution. Built as a general
 > **mother platform** through v1.0; domain packs (legal, food,
 > retail, …) branch off only after v1.0 (see
 > [`docs/PLATFORM_READINESS.md`](docs/PLATFORM_READINESS.md)).
+>
+> **JAMES engine** = the internal codename for SEKOS's RAG + audit +
+> lifecycle core. The repository, source-tree comments, environment
+> variables (`JAMES_API_KEY`, `JAMES_WORKSPACE`, …), CLI flags
+> (`--sut james`), and the two benchmarks (RAB / LRB) keep the JAMES
+> name as the engine identifier so existing DOIs, citations, and
+> measurement artifacts remain reproducible. SEKOS is the surface
+> label for everything operator-facing (UI brand, marketing, product
+> framing).
 >
 > **One differentiator highlight**: *Replayable RAG* — the system's
 > state at any past point can be reconstructed byte-identically via
@@ -23,33 +33,35 @@
 [![RAB SPEC](https://img.shields.io/badge/RAB%20SPEC-v0.1.1-green.svg)](eval/rab/SPEC-v0.1.md)
 [![LRB Benchmark](https://img.shields.io/badge/LRB-v0.2.3-green.svg)](papers/lrb-preprint/main.pdf)
 
-![PROJECT JAMES — 3D ontology graph visualizer](reports/promo-assets/screenshots/06-3d-graph.jpg)
+![SEKOS — 3D ontology graph visualizer](reports/promo-assets/screenshots/06-3d-graph.jpg)
 
 [한국어 README](README.ko.md) · [🚀 처음 시작하시는 분 (10살도 따라할 수 있어요)](README.beginner.ko.md)
 
 ---
 
-## Why JAMES? (60-second scan)
+## Why SEKOS? (60-second scan)
 
-Most production RAG stacks today (LangChain, LlamaIndex, vanilla retrieval-augmented quickstarts) optimise for **answer quality on a frozen corpus**. JAMES is built for the next two axes those frameworks leave unmeasured:
+Most production RAG stacks today (LangChain, LlamaIndex, vanilla retrieval-augmented quickstarts) optimise for **answer quality on a frozen corpus**. SEKOS — running the JAMES reasoning engine — is built for the next two axes those frameworks leave unmeasured:
 
-| Axis | LangChain / LlamaIndex / vanilla RAG | **JAMES** |
+| Axis | LangChain / LlamaIndex / vanilla RAG | **SEKOS (JAMES engine)** |
 |---|---|---|
 | **Audit-native lifecycle** | `logger.info()` strings; no canonical event taxonomy; replay impossible from logs alone | Event-sourced `audit_log` schema; `reconstruct_graph_at(t)` replays system state byte-identically from log alone — measured on **RAB v0.1.1** (AC/RF/PC = 1.0 × 3 vs Baseline-0 default-logging floor = 0.275/0/0) |
 | **Time-valid retrieval** | Latest version only; cannot answer *"what was this contract's clause 6 months ago?"* without an external versioned store | Per-document validity windows (T1) + supersede chain (T7); time-travel queries return the version valid at `query_time` — measured on **LRB v0.2.3** (R@1 V<N<J preserved across 4 models × 4 scales, JAMES − Naive gap > +0.10 throughout) |
 | **Local-first execution** | Cloud-default (OpenAI / Anthropic API calls in every retrieval) | Runs on local Ollama (gemma4:e4b 4B → mxtral 47B); cloud is opt-in per query; data never leaves the host without explicit consent |
 | **EU AI Act 2026-08 alignment** | "Compliance" is a TODO | RAB's 3 metrics map verbatim to Articles 10/12/19; the benchmark is the audit instrument the Act assumes exists |
 
-What JAMES does **not** claim:
+What SEKOS does **not** claim:
 - **Better answer quality on closed-book QA** — verified equivalent on MuSiQue (3-SUT identical EM/F1 by construction; *§ honest negative* in [LRB preprint](papers/lrb-preprint/main.pdf) §5)
 - **Novel architecture** — ActiveGraph ([arXiv:2605.21997](https://arxiv.org/abs/2605.21997)) demonstrates the same event-sourced runtime class independently; the benchmark, not the runtime, is the contribution
-- **Drop-in LangChain replacement** — JAMES is a *platform* with a different operational model (audit-first); migration is an integration project, not a one-line `pip install`
+- **Drop-in LangChain replacement** — SEKOS is a *platform* with a different operational model (audit-first); migration is an integration project, not a one-line `pip install`
 
-If your use case is *audit / lifecycle / time-travel / on-prem* — JAMES is built for it, measured for it, and citeable for it. If your use case is *fastest possible answer on a fixed corpus* — use LangChain.
+If your use case is *audit / lifecycle / time-travel / on-prem* — SEKOS is built for it, measured for it, and citeable for it. If your use case is *fastest possible answer on a fixed corpus* — use LangChain.
 
-> **Looking for MRR / NDCG / RAGAS / hallucination-rate coverage?** See [`docs/evaluation/v0.5-evaluation-coverage-mapping.md`](docs/evaluation/v0.5-evaluation-coverage-mapping.md) — a full mapping of standard RAG / IR metrics to what JAMES measures (and what it deliberately doesn't), including code paths and procurement-ready answers.
+> *Note on naming.* SEKOS = product brand. JAMES = the reasoning engine inside it (RAG + audit + lifecycle). The two benchmarks (RAB, LRB) and the citation BibTeX keep the JAMES name because the published artifacts (Zenodo DOI, arXiv preprint, RAB SPEC, LRB harness) were registered under it and remain reproducible identifiers. SEKOS is what you read on the sidebar; JAMES is what you read in `grep -r '^# ' core/`.
+
+> **Looking for MRR / NDCG / RAGAS / hallucination-rate coverage?** See [`docs/evaluation/v0.5-evaluation-coverage-mapping.md`](docs/evaluation/v0.5-evaluation-coverage-mapping.md) — a full mapping of standard RAG / IR metrics to what SEKOS measures (and what it deliberately doesn't), including code paths and procurement-ready answers.
 >
-> **Looking for a one-page comparison vs LangChain / LlamaIndex / Haystack / R2R / ActiveGraph?** See [`docs/evaluation/v0.5-industry-comparison.md`](docs/evaluation/v0.5-industry-comparison.md) — three matrices (architectural capability presence / public benchmark headline coverage / reproducibility tier) with every JAMES cell pinned to a committed artifact and every competitor cell pinned to their public docs as of 2026-06-13.
+> **Looking for a one-page comparison vs LangChain / LlamaIndex / Haystack / R2R / ActiveGraph?** See [`docs/evaluation/v0.5-industry-comparison.md`](docs/evaluation/v0.5-industry-comparison.md) — three matrices (architectural capability presence / public benchmark headline coverage / reproducibility tier) with every SEKOS cell pinned to a committed artifact and every competitor cell pinned to their public docs as of 2026-06-13.
 
 ---
 
@@ -271,7 +283,7 @@ Across all 23 post-close PRs the streak holds: **zero vertical tokens, zero `cor
 - **Agent tools (Claude-Code-style file management), four-PR series** — `JAMES_AGENT_ALLOWED_PATHS` env + `register_user_path` + critical-root block (#918) → `📂 Agent Folders` admin UI + session-scoped remove (#919) → `core/agent_tools/` registry + dispatcher + 6 built-in tools (list/read/write/edit/glob/grep) + `POST /agent/chat/` LLM tool-use loop (Anthropic / Ollama toggle) (#920) → `🤖 Agent Chat` admin page with per-call tool cards + auto-allow gate + cancel button (#921).
 - **LLM Routing unified Settings** — `core/llm_settings.py` DB-first / env-fallback / default-last repository (10-key fixed taxonomy: default_model / coding_model / vision_model / auto_router / auto_style / backend_tier / backend_synth / agent_backend / agent_ollama_model / agent_anthropic_model). New `▸ LLM Routing` card inside the existing Settings page with per-row source label (`DB` / `env (JAMES_LLM_MODEL)` / `default`) + `↺ reset to env` button (#922).
 - **4 cross-PR conflict mitigations** caught by operator review (#923): `JAMES_SETTINGS_USE_DB=0` escape hatch for measurement runners + boot-time conflict warning (Risk #1); `AnthropicBackend` cloud-egress opt-in gate via `JAMES_AGENT_ALLOW_CLOUD=1` so §5.7.12 abstraction trust zone isn't silently bypassed (Risk #2); global-vs-workspace partition warning in the LLM Routing card (Risk #3); `_REPO_PROTECTED_SUBPATHS` blocks agent tools from touching `wiki/entity/{prod,test}` / `wiki/media` / `core/` / `eval/` / `scripts/` / `tests/` so `write_file` cannot bypass `core/wiki_generator/` or the 4-Gate self-evolution pipeline (Risk #4).
-- **External-reference mapping** — token-vs-capital thread mapped against JAMES design intent (4 STRONG + 2 PARTIAL + 1 explicitly rejected per Rule #3) (#925).
+- **External-reference mapping** — token-vs-capital thread mapped against SEKOS design intent (4 STRONG + 2 PARTIAL + 1 explicitly rejected per Rule #3) (#925).
 
 Same streak invariant holds across all 15 operator-ergonomics PRs: **zero `core/retrieval` / `core/graph` traversal / `core/reasoning` lines, zero vertical tokens, 4-layer rule #1 protection contract preserved**.
 
@@ -287,7 +299,7 @@ Same cycle ships the **cycle γ 4-bench measurement infrastructure closure**: D-
 - **RAB preprint** (10 pages): [papers/rab-preprint/main.pdf](papers/rab-preprint/main.pdf) — *Operationalising EU AI Act Articles 10/12/19 into a measurable audit-quality benchmark.*
 - **LRB preprint** (11 pages): [papers/lrb-preprint/main.pdf](papers/lrb-preprint/main.pdf) — *Temporal validity axis for RAG; V<N<J across 4 model families × 4 scale points.*
 
-No JAMES production runtime change — v0.4.4 ships generators, scorers, runners, NLI adapters, and 8 pre-registration LOCK documents. The arXiv preprints cite Zenodo DOI [10.5281/zenodo.20652679](https://doi.org/10.5281/zenodo.20652679) for data availability.
+No SEKOS production runtime change — v0.4.4 ships generators, scorers, runners, NLI adapters, and 8 pre-registration LOCK documents. The arXiv preprints cite Zenodo DOI [10.5281/zenodo.20652679](https://doi.org/10.5281/zenodo.20652679) for data availability.
 
 ---
 
@@ -295,9 +307,9 @@ No JAMES production runtime change — v0.4.4 ships generators, scorers, runners
 
 Released **2026-06-10**. v0.4.3 ships **RAB v0.1.1** — the first replayable-audit benchmark for RAG / agent systems whose 3 deterministic metrics (AC / RF / PC) are operationalisations of EU AI Act Articles 10, 12, 19 (in force 2026-08-02). The full SPEC, scenario fixture, scorer, reference / JAMES / Baseline-0 adapters, and 9 measurement artifacts (reports/rab/) are committed. Headline = the **gap structure** across SUTs (JAMES audit-native = 1.000 / 1.000 / 1.000 vs Baseline-0 default-logging floor = 0.275 / 0.000 / 0.000 on scenario-S1), not JAMES's score — SPEC §6.5 explicitly disclaims JAMES-wins framing. Honest framing: **the benchmark is the contribution, not the architecture** — ActiveGraph (arXiv 2605.21997) is independent co-invention of the audit-native runtime; the unfilled gap was the measurement, not the system.
 
-Companion track in the same cycle closes the **Cycle γ multi-hop arc** (PRs #752 → #757) with 6 honest nulls: multi-hop improvement reframed out of the JAMES roadmap; the **graph build O(N²)** secondary finding lifted into RAB as the RF-cost axis.
+Companion track in the same cycle closes the **Cycle γ multi-hop arc** (PRs #752 → #757) with 6 honest nulls: multi-hop improvement reframed out of the SEKOS roadmap; the **graph build O(N²)** secondary finding lifted into RAB as the RF-cost axis.
 
-No JAMES production runtime change — RAB measures the existing audit / lifecycle / graph paths via a workspace-scoped adapter; production `audit.db` is untouched. Default-off invariant preserved.
+No SEKOS production runtime change — RAB measures the existing audit / lifecycle / graph paths via a workspace-scoped adapter; production `audit.db` is untouched. Default-off invariant preserved.
 
 Pre-v0.4.3: **v0.4.2** (2026-06-06) shipped T5 Replayable Audit Graph — full event-sourced graph-wide reconstruction (`reconstruct_graph_at(t)` audit-only primitive, the building block RAB measures the quality of).
 
@@ -329,7 +341,7 @@ validation closed 2026-05-13.
 
 ## Strategic frame: Mother Platform, not a single product
 
-JAMES is **not building one vertical**. It is being hardened as a
+SEKOS is **not building one vertical**. It is being hardened as a
 "mother platform" from which domain packs (legal, food, retail,
 travel, etc.) can branch off **only at v1.0**. Until then:
 
@@ -364,7 +376,7 @@ audit-native runtime — is the contribution: ActiveGraph (arXiv
 2605.21997) independently published the event-sourced log + replay
 architecture; **RAB is what was missing**.
 
-**Headline = gap structure**, not JAMES's score. Scenario-S1 v0.4.3
+**Headline = gap structure**, not the JAMES engine's score. Scenario-S1 v0.4.3
 result:
 
 | SUT | AC | RF-exact | RF-graded | PC |
@@ -399,7 +411,7 @@ See [`eval/rab/SPEC-v0.1.md`](eval/rab/SPEC-v0.1.md),
 ## What's Different — Replayable RAG
 
 Most RAG systems answer one question: *"what's the answer?"*
-JAMES answers two extra:
+SEKOS answers two extra:
 
 - **What did the system know at time T?** — T7 supersede chains
   preserve historical fact states; `reconstruct_view_at(t)` returns
@@ -410,10 +422,10 @@ JAMES answers two extra:
   writes an append-only audit row. `scripts/replay_trace.py
   <trace_id>` reconstructs the full sequence byte-identically.
 
-The two combined make JAMES a **Replayable RAG** system — a
+The two combined make SEKOS a **Replayable RAG** system — a
 category distinct from Agentic RAG (which optimises for *what an
 AI can do*) and from Mem0-style memory layers (which use an LLM
-judge to update beliefs). JAMES updates beliefs via a
+judge to update beliefs). SEKOS updates beliefs via a
 deterministic 4-rule decision tree (`core/lifecycle/
 contradiction_arbiter.py:classify_contradiction`) that is
 LLM-free by design, and preserves both the old and the new fact
@@ -554,7 +566,7 @@ James-RAG-Evol/
 
 ## Security Approach
 
-JAMES treats security as a **design principle, not a feature**:
+SEKOS treats security as a **design principle, not a feature**:
 
 - **3-stage access control**: Vector → Graph → Output
 - **RBAC** (4 roles) + **ABAC** (4 sensitivity levels)
