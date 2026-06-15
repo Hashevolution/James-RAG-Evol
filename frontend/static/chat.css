@@ -1366,12 +1366,14 @@ aside.sidebar.collapsed { min-width: 0; }
  * "이전 대화" section title above the scrollable sessions list. */
 .sidebar-top-nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   padding-bottom: 4px;
   border-bottom: 1px solid var(--border-2, var(--border));
 }
 .sidebar-top-link {
-  flex: 1 1 0;
+  flex: 1 1 calc(50% - 3px);
+  min-width: 90px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
