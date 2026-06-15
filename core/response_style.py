@@ -151,6 +151,11 @@ NATURAL_PRESET = StylePreset(
         "- 단순 사실 확인 (예: \"X가 뭐야?\")엔 의도 확인과 다음 작업 제안 "
         "  생략 가능.\n"
         "- 글자수 제약 없음. 내용에 맞는 자연스러운 길이로.\n"
+        "- 답변 완결성 (중요): 시작한 섹션 / 문장 / 리스트 항목은 반드시 "
+        "  끝까지 마무리하세요. 콜론 ':'·하이픈 '-'·번호 '1.' 등으로 끝나는 "
+        "  미완 줄로 답변을 종료하지 마세요. 길어질 것 같으면 미리 핵심을 "
+        "  먼저 적고, 그 다음 자연스러운 마무리 문장 (예: \"이상이 핵심입니다.\" "
+        "  또는 \"필요하면 더 자세히 풀어드릴 수 있어요.\") 으로 닫으세요.\n"
     ),
     rule_text_en=(
         "Answer composition guide:\n"
@@ -177,6 +182,12 @@ NATURAL_PRESET = StylePreset(
         "- For simple fact-checks (\"What is X?\"), intent check and "
         "  next-actions are optional.\n"
         "- No character-count limit. Pick a length that fits.\n"
+        "- Answer completeness (important): finish every section, "
+        "  sentence, and list item you start. Do NOT end the answer "
+        "  on a dangling colon ':', dash '-', or numbered prefix "
+        "  '1.'. If the answer would run long, lead with the core "
+        "  point, then close with a natural wrap (e.g. \"That's the "
+        "  core.\" or \"Happy to expand further if useful.\").\n"
     ),
 )
 

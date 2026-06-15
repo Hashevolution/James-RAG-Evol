@@ -178,6 +178,9 @@ function _bindFrontendEvents() {
       case 'ask-suggestion':
         askSuggestion(parseInt(t.getAttribute('data-index'), 10), t);
         break;
+      // v0.6.1 (2026-06-15 PM) — "continue truncated answer" affordance
+      // surfaced by the truncationHint block in appendJamesMsg.
+      case 'ask-continue':              askContinue(); break;
       // Session-panel rows
       case 'switch-session':            switchSession(t.getAttribute('data-sid')); break;
       case 'rename-session':            renameSession(t.getAttribute('data-sid'), e); break;
@@ -1578,6 +1581,31 @@ function appendJamesMsg(data) {
       </div>`;
   }
 
+  // v0.6.1 (2026-06-15 PM) — answer truncation guardrail. When the
+  // rendered answer looks unfinished, surface an inline hint with a
+  // one-click "계속" affordance. See isLikelyTruncated() at the
+  // bottom of this file.
+  let truncationHint = '';
+  if (isLikelyTruncated(answer)) {
+    truncationHint = `
+      <div role="note" aria-live="polite"
+           style="display:flex;align-items:center;gap:8px;margin-top:8px;
+                  padding:8px 12px;border-radius:8px;
+                  background:rgba(255,183,77,.08);
+                  border:1px solid rgba(255,183,77,.40);
+                  font-size:12px;color:#ffb74d;line-height:1.5">
+        <span aria-hidden="true" style="font-size:14px">⚠️</span>
+        <span style="flex:1">답변이 도중에 끊긴 것 같아요. 이어서 받으려면 아래 버튼을 누르세요.</span>
+        <button data-action="ask-continue"
+                style="background:rgba(255,183,77,.18);
+                       border:1px solid rgba(255,183,77,.60);
+                       border-radius:6px;padding:4px 10px;
+                       color:#ffd180;font-size:12px;cursor:pointer;
+                       font-family:inherit;font-weight:600;
+                       transition:all .15s">계속 ▶</button>
+      </div>`;
+  }
+
   const div = document.createElement('div');
   div.className = 'msg james';
 
@@ -1714,6 +1742,7 @@ function appendJamesMsg(data) {
     <div class="avatar james">🧠</div>
     <div>
       <div class="bubble">${formatAnswerWithParagraphs(cleanAnswer)}${pathsHtml}</div>
+      ${truncationHint}
       ${webBadge}
       ${saveWikiChip}
       ${sensitivityBadge}
@@ -1726,6 +1755,70 @@ function appendJamesMsg(data) {
   `;
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
+}
+
+/* v0.6.1 (2026-06-15 PM) — operator catch: "답변이 잘렸다. 끝까지
+ * 잘 나오게 개선." Heuristic answer-truncation detector. The server
+ * already chases done_reason=length internally (core/reasoning/budget
+ * + complete_with_retry), but a model with no native done_reason or
+ * a soft early-stop (gemma4:e4b sometimes halts on a dangling colon
+ * mid-list) bypasses that retry. This adds a client-side belt-and-
+ * braces: when the rendered answer looks unfinished, we surface an
+ * inline "looks cut off — say '계속해줘' to continue" hint so the
+ * operator can recover in one turn without retyping the question.
+ *
+ * NOT a replacement for proper continuation streaming — that's a
+ * separate UX task. This is a low-risk UX guardrail.
+ */
+function askContinue() {
+  /* v0.6.1 (2026-06-15 PM) — fires when the operator taps the
+   * "계속 ▶" button surfaced by isLikelyTruncated(). Drops a
+   * concise continuation prompt into the input box and ships it.
+   * The wording asks the model to RESUME, not RESTART — important
+   * so it doesn't repeat the section it already finished. */
+  const box = document.getElementById('user-input');
+  if (!box) return;
+  box.value = '이전 답변이 도중에 끊겼습니다. 이어서 끝까지 완성해 주세요. (이미 답한 부분은 다시 적지 마세요.)';
+  if (typeof sendMessage === 'function') {
+    sendMessage();
+  }
+}
+
+function isLikelyTruncated(text) {
+  if (!text) return false;
+  const trimmed = String(text).trimEnd();
+  // STRONG cut signals — fire on answers ≥ 20 chars. These are
+  // unambiguous mid-sentence stops the model would never emit as a
+  // natural ending, so length only needs to clear "this isn't just
+  // an exclamation".
+  if (trimmed.length >= 20) {
+    // Dangling terminators: colon / hyphen / bullet / em-dash / star.
+    if (/[:\-*•—]\s*$/.test(trimmed)) return true;
+    // Numbered list item with no body — "4단계:" / "3."
+    if (/(?:^|\n)\s*\d+[.)]\s*$/.test(trimmed)) return true;
+    // Ellipsis (...) / single ellipsis char (…) at end.
+    if (/[…]{1,}$/.test(trimmed)) return true;
+    if (/\.{2,}\s*$/.test(trimmed)) return true;
+    // Open code fence — ``` count odd means we started a block but
+    // never closed it.
+    const fences = (trimmed.match(/```/g) || []).length;
+    if (fences % 2 === 1) return true;
+  }
+  // SOFT cut signals — for answers > 100 chars that DON'T end with a
+  // natural terminator. Korean answers should end with `.`, `!`, `?`
+  // or a terminal jongseong-like ending (`다`, `요`, `용`, `함`,
+  // `움`, `님`, `습니다`, `해요`, …). English answers should end
+  // with `.`, `!`, `?`. 100 char threshold avoids spamming the hint
+  // on short noun-ending factual replies like "샘 뱅크먼-프라이드".
+  if (trimmed.length > 100) {
+    const tail = trimmed.slice(-6);
+    if (!/[.!?。！？]\s*$/.test(tail) &&
+        !/[다요용함움님]\s*$/.test(tail) &&
+        !/(?:습니다|입니다|해요|이에요|예요|있어요|되요|돼요|네요|군요)\s*$/.test(tail)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /* ── item #1-B + #A1: 다음-행동 제안 추출 (다중 포맷 지원) ──
