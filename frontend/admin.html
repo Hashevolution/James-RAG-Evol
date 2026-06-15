@@ -164,6 +164,12 @@
       <div class="nav-item" data-action="show-page" data-page="agent-folders">
         <span class="nav-icon">📂</span> <span data-i18n="admin.agent_folders">에이전트 폴더</span>
       </div>
+      <!-- v0.6.1 Phase D-2 — agent chat. LLM tool-use loop that natural-
+           language reads / edits files in the operator-allowed folders.
+           Admin-only (Rule #3 self-evolution gate). -->
+      <div class="nav-item" data-action="show-page" data-page="agent-chat">
+        <span class="nav-icon">🤖</span> <span data-i18n="admin.agent_chat">에이전트 챗</span>
+      </div>
     </div>
   </nav>
 
@@ -1220,6 +1226,77 @@
       </div>
     </div>
 
+    <!-- v0.6.1 Phase D-2 — Agent chat. Admin chats in natural language;
+         the LLM emits tool_use blocks; `routes/agent_chat.py` dispatches
+         them through the registry; the chat panel renders the assistant
+         text + per-call cards (tool name, args, result, elapsed). Server
+         is synchronous-per-turn for now (max 5 tool-use iterations
+         inside one HTTP call); streaming + per-call confirm during the
+         loop ship in a follow-up when operator dogfooding flags the
+         missing-confirm friction. -->
+    <div class="page" id="page-agent-chat">
+      <div class="page-title">
+        <span data-i18n="agentchat.page_title">🤖 에이전트 챗</span>
+      </div>
+
+      <!-- Intro + safety reminder -->
+      <div class="card" style="padding:14px 18px;margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;line-height:1.5">
+        <div style="font-size:13px;color:var(--text);margin-bottom:6px"
+             data-i18n="agentchat.intro">
+          자연어로 지시하면 LLM 이 도구 (list / read / write / edit / glob /
+          grep) 호출을 결정합니다. 에이전트는 <strong>📂 에이전트 폴더</strong>
+          페이지에서 등록한 폴더 안에서만 작업할 수 있습니다.
+        </div>
+        <div style="font-size:11px;color:var(--muted)"
+             data-i18n="agentchat.intro_session">
+          모든 호출은 audit log 에 기록됩니다. admin role 만 사용 가능합니다.
+        </div>
+      </div>
+
+      <!-- Backend + session controls -->
+      <div class="card" style="padding:12px 18px;margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"
+               data-i18n="agentchat.backend_label">BACKEND</label>
+        <select id="agent-chat-backend"
+                style="padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+          <option value="">env default (JAMES_AGENT_BACKEND)</option>
+          <option value="ollama">ollama (local)</option>
+          <option value="anthropic">anthropic (cloud)</option>
+        </select>
+        <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-left:8px">
+          <input type="checkbox" id="agent-chat-auto-allow"
+                 style="vertical-align:middle">
+          <span data-i18n="agentchat.auto_allow">세션 동안 도구 자동 허용</span>
+        </label>
+        <button class="btn" data-action="agent-chat-clear" style="margin-left:auto"
+                data-i18n="agentchat.clear">대화 초기화</button>
+      </div>
+
+      <!-- Conversation -->
+      <div id="agent-chat-log"
+           style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;min-height:280px;max-height:60vh;overflow:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:10px;font-family:var(--font-ui)">
+        <div style="color:var(--muted);font-size:12px" data-i18n="agentchat.empty">
+          (아직 대화 없음 — 아래에 메시지를 입력하세요)
+        </div>
+      </div>
+
+      <!-- Composer -->
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <textarea id="agent-chat-input" rows="2"
+                  data-i18n-placeholder="agentchat.input_ph"
+                  placeholder="예: /home/me/dogfood 폴더의 .md 파일 목록 보여줘"
+                  style="flex:1;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;resize:vertical;font-family:var(--font-ui)"></textarea>
+        <button class="btn btn-primary" id="agent-chat-send-btn"
+                data-action="agent-chat-send" data-i18n="agentchat.send">전송</button>
+        <button class="btn" id="agent-chat-cancel-btn"
+                data-action="agent-chat-cancel"
+                style="display:none"
+                data-i18n="agentchat.cancel">중단</button>
+      </div>
+      <div id="agent-chat-status"
+           style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:6px;min-height:14px"></div>
+    </div>
+
   </main>
 </div>
 
@@ -1230,6 +1307,10 @@
 <script src="/static/a11y-modal.js" defer></script>
 <!-- v0.6.1 — workspace badge in header. -->
 <script src="/static/workspace-badge.js"></script>
+<!-- v0.6.1 Phase D-2 — agent chat panel (loaded by admin.js
+     showPage() loader map). Self-contained; talks directly to
+     POST /agent/chat/. -->
+<script src="/static/agent-chat.js"></script>
 <!-- v0.5 Track F.2 CR.a — Change Review list page (UI shell). Loads
      after admin.js so the SPA page-toggle wiring is already in place. -->
 <script src="/static/change-requests.js"></script>
