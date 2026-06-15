@@ -8,6 +8,11 @@ Components (all local, no third-party API tokens required):
   - Judge LLM: Ollama via its OpenAI-compatible endpoint
     (http://127.0.0.1:11434/v1). Uses config.GEMMA_MODEL by default;
     operator can point at deepseek/qwen via env JAMES_LLM_MODEL.
+
+    Risk #1 mitigation (2026-06-15): set JAMES_SETTINGS_USE_DB=0
+    alongside JAMES_LLM_MODEL so the v0.6.1 LLM-settings DB (admin
+    Settings card) cannot silently shadow the env. See
+    core/llm_settings.py::_use_db.
   - Embeddings: project's existing models/miniLM
     (paraphrase-multilingual-MiniLM-L12-v2). Same model as ChromaDB
     so retrieval-side and eval-side share semantic space.

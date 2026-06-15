@@ -487,6 +487,12 @@ def _cell_env(row: str, tier: str,
     # meaningless for the claude_code_cli backend (CLI picks the
     # model). Apply the cloud env triplet INSTEAD of JAMES_LLM_MODEL.
     # Local tiers (default branch) unchanged — regression-safe.
+    # Risk #1 mitigation (2026-06-15) — bypass v0.6.1 LLM-settings DB
+    # so the measurement subprocess's JAMES_LLM_MODEL env is the
+    # source-of-truth. Without this an operator that set the admin
+    # Settings card mid-cycle could silently shadow JAMES_LLM_MODEL.
+    # See core/llm_settings.py::_use_db.
+    env["JAMES_SETTINGS_USE_DB"] = "0"
     if tier in _TIER_BACKEND_OVERRIDE:
         env.update(_TIER_BACKEND_OVERRIDE[tier])
         # Explicitly remove JAMES_LLM_MODEL inherited from the OS env —

@@ -132,12 +132,15 @@ class BackendFactoryTests(unittest.TestCase):
     def setUp(self):
         self._prev_b = os.environ.pop("JAMES_AGENT_BACKEND", None)
         self._prev_k = os.environ.pop("ANTHROPIC_API_KEY", None)
+        self._prev_c = os.environ.pop("JAMES_AGENT_ALLOW_CLOUD", None)
 
     def tearDown(self):
         if self._prev_b is not None:
             os.environ["JAMES_AGENT_BACKEND"] = self._prev_b
         if self._prev_k is not None:
             os.environ["ANTHROPIC_API_KEY"] = self._prev_k
+        if self._prev_c is not None:
+            os.environ["JAMES_AGENT_ALLOW_CLOUD"] = self._prev_c
 
     def test_default_is_ollama(self):
         from core.agent_tools.backends import get_backend, OllamaBackend
@@ -147,6 +150,7 @@ class BackendFactoryTests(unittest.TestCase):
     def test_anthropic_requires_key(self):
         from core.agent_tools.backends import BackendError, get_backend
         os.environ["JAMES_AGENT_BACKEND"] = "anthropic"
+        os.environ["JAMES_AGENT_ALLOW_CLOUD"] = "1"  # bypass gate
         with self.assertRaises(BackendError):
             get_backend()
 
@@ -154,6 +158,19 @@ class BackendFactoryTests(unittest.TestCase):
         from core.agent_tools.backends import BackendError, get_backend
         with self.assertRaises(BackendError):
             get_backend("madeup")
+
+    def test_risk_2_anthropic_gated_by_allow_cloud(self):
+        """Risk #2 (2026-06-15) — without JAMES_AGENT_ALLOW_CLOUD=1
+        the anthropic backend refuses to construct even if the API
+        key is present (it bypasses §5.7.12)."""
+        from core.agent_tools.backends import BackendError, get_backend
+        os.environ["JAMES_AGENT_BACKEND"] = "anthropic"
+        os.environ["ANTHROPIC_API_KEY"] = "sk-fake"
+        os.environ.pop("JAMES_AGENT_ALLOW_CLOUD", None)
+        with self.assertRaises(BackendError) as ctx:
+            get_backend()
+        self.assertIn("disabled by default", str(ctx.exception))
+        self.assertIn("§5.7.12", str(ctx.exception))
 
 
 # ── Agent chat endpoint (HTTP, with stubbed backend) ──────────────

@@ -110,26 +110,53 @@ def _validate(key: str, value: str) -> str:
 
 # ── Public API ──────────────────────────────────────────────────────
 
+JAMES_SETTINGS_USE_DB_ENV = "JAMES_SETTINGS_USE_DB"
+
+
+def _use_db() -> bool:
+    """Risk #1 mitigation (2026-06-15): measurement runners set
+    ``JAMES_SETTINGS_USE_DB=0`` (also accepts ``false`` / ``no`` /
+    ``off``) so the DB-row source can NOT silently mask the env-driven
+    ``JAMES_LLM_MODEL`` / ``JAMES_CODING_MODEL`` / ... overrides they
+    pass per-subprocess. Without the toggle, an operator that set the
+    admin Settings card mid-cycle could end up with a measurement run
+    using the DB-pinned model while the result file is tier-labelled
+    against the env-pinned model — a silent data-corruption pattern
+    matching α-6 `feedback_matrix_runner_tier_model_override`.
+
+    Default = unset = DB-first (the v0.6.1 unification contract). The
+    toggle is opt-in for measurement code paths only."""
+    raw = (os.environ.get(JAMES_SETTINGS_USE_DB_ENV) or "").strip().lower()
+    if not raw:
+        return True
+    return raw not in ("0", "false", "no", "off", "disabled")
+
+
 def get(key: str, env_name: Optional[str] = None, default: str = "") -> str:
     """DB → env → default resolution.
 
     Both ``env_name`` and ``default`` can be omitted when ``key`` is in
     the canonical schema (the schema entry is consulted as a fallback).
+
+    When ``JAMES_SETTINGS_USE_DB=0`` (or false/no/off/disabled) the DB
+    read is skipped entirely and the resolution becomes env → default.
+    See :func:`_use_db` for the rationale.
     """
     if key in _KEYS:
         schema = _KEYS[key]
         env_name = env_name or schema[1]
         default = default or schema[2]
-    try:
-        with _get_conn() as conn:
-            row = conn.execute(
-                "SELECT value FROM llm_settings WHERE key = ?", (key,)
-            ).fetchone()
-        if row and row[0]:
-            return row[0]
-    except sqlite3.Error:
-        # DB unavailable — fall through to env.
-        pass
+    if _use_db():
+        try:
+            with _get_conn() as conn:
+                row = conn.execute(
+                    "SELECT value FROM llm_settings WHERE key = ?", (key,)
+                ).fetchone()
+            if row and row[0]:
+                return row[0]
+        except sqlite3.Error:
+            # DB unavailable — fall through to env.
+            pass
     env_val = os.environ.get(env_name or "", "").strip() if env_name else ""
     if env_val:
         return env_val

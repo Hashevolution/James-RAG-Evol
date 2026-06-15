@@ -62,6 +62,24 @@ CRITICAL_BLOCKED_ROOTS = [
     "C:\\ProgramData",
 ]
 
+# Risk #4 mitigation (2026-06-15): paths INSIDE the JAMES repo / install
+# directory that the agent tools must NOT touch even though they aren't
+# system-critical. Hitting `wiki/entity/prod` directly via write_file
+# would bypass `core/wiki_generator/` (entity validation + audit row +
+# chroma index), corrupting the RAG corpus. Same for `core/` (JAMES
+# source code) and `eval/` (regression baselines). Repo paths are
+# resolved at runtime via BASE_DIR; the constant lists the *relative*
+# subpaths that must stay off-limits.
+_REPO_PROTECTED_SUBPATHS = (
+    "wiki/entity/prod",
+    "wiki/entity/test",
+    "wiki/media",
+    "core",
+    "eval",
+    "scripts",
+    "tests",
+)
+
 # v0.6.1 — operator-registered absolute paths the agent tools are
 # allowed to read/write. Populated from `JAMES_AGENT_ALLOWED_PATHS`
 # (comma-separated) at first call + via the admin endpoint at runtime.
@@ -133,6 +151,33 @@ def _is_under_critical_root(abs_path: str) -> bool:
     return False
 
 
+def _is_under_repo_protected(abs_path: str) -> bool:
+    """Risk #4 (2026-06-15): True if ``abs_path`` is at or under one of
+    the JAMES-internal subpaths listed in `_REPO_PROTECTED_SUBPATHS`.
+    Bypassing `core/wiki_generator/` for a wiki/entity write would
+    corrupt the RAG corpus; touching `core/` from an agent tool would
+    be a self-evolution write outside the 4-Gate. Resolves the repo
+    paths at call time so a relocated install still gets the right
+    block."""
+    if not abs_path:
+        return True
+    try:
+        from config import BASE_DIR as _BD
+        base = os.path.realpath(_BD)
+    except Exception:
+        return False
+    norm_target = abs_path
+    norm_base = base
+    if os.name == "nt":
+        norm_target = abs_path.lower()
+        norm_base = base.lower()
+    for sub in _REPO_PROTECTED_SUBPATHS:
+        protected_abs = os.path.normpath(os.path.join(norm_base, sub.replace("/", os.sep)))
+        if norm_target == protected_abs or norm_target.startswith(protected_abs + os.sep):
+            return True
+    return False
+
+
 def register_user_path(path: str) -> Tuple[bool, str]:
     """Register an absolute path as agent-tool-allowed at runtime.
 
@@ -153,6 +198,14 @@ def register_user_path(path: str) -> Tuple[bool, str]:
         return False, f"path is not absolute: {path!r}"
     if _is_under_critical_root(abs_p):
         return False, f"path is under a critical system root: {abs_p!r}"
+    if _is_under_repo_protected(abs_p):
+        return False, (
+            f"path is under a JAMES-internal protected subtree (wiki / "
+            f"core / eval / scripts / tests): {abs_p!r}. Agent tools must "
+            f"NOT write here — wiki entities go through "
+            f"core/wiki_generator/, source files through the 4-Gate "
+            f"self-evolution pipeline."
+        )
     if not os.path.exists(abs_p):
         return False, f"path does not exist: {abs_p!r}"
     if abs_p in _USER_REGISTERED_PATHS:
@@ -266,6 +319,14 @@ def validate_path(path: str, role: str = "user") -> Tuple[bool, str]:
     real = _norm_abs(path) if (os.path.isabs(path) or path.startswith("~")) else ""
     if real and _is_under_critical_root(real):
         return False, f"critical system root blocked: {real!r}"
+    # Risk #4 (2026-06-15) — JAMES-internal protected subtrees are
+    # blocked for agent-tool access even when nested under the in-repo
+    # workspace path. Same rationale as the register-time check.
+    if real and _is_under_repo_protected(real):
+        return False, (
+            f"JAMES-internal protected subtree blocked: {real!r} (wiki / "
+            f"core / eval / scripts / tests)"
+        )
 
     # v0.6.1 — user-registered path (operator opt-in) takes precedence:
     # if `path` resolves under one of those roots, bypass the

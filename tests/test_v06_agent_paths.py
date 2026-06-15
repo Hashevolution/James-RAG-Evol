@@ -242,6 +242,47 @@ class ServerRegistrationTests(unittest.TestCase):
         self.assertIn("/admin/agent/allowed-paths/remove", paths)
 
 
+class Risk4_RepoProtectedTests(unittest.TestCase):
+    """Risk #4 (2026-06-15) — agent tools must not reach JAMES-internal
+    subtrees (wiki/entity/{prod,test}, wiki/media, core/, eval/, scripts/,
+    tests/) even via register_user_path."""
+
+    def setUp(self):
+        _reset_sandbox_state()
+
+    def tearDown(self):
+        _reset_sandbox_state()
+
+    def test_register_wiki_entity_prod_rejected(self):
+        from tools.code.sandbox import register_user_path
+        ok, msg = register_user_path("wiki/entity/prod")
+        self.assertFalse(ok)
+        self.assertIn("JAMES-internal", msg)
+
+    def test_register_core_rejected(self):
+        from tools.code.sandbox import register_user_path
+        ok, msg = register_user_path("core")
+        self.assertFalse(ok)
+        self.assertIn("JAMES-internal", msg)
+
+    def test_validate_path_blocks_wiki_even_for_admin(self):
+        import os
+        from tools.code.sandbox import validate_path
+        from config import BASE_DIR
+        target = os.path.join(BASE_DIR, "wiki", "entity", "prod", "x.md")
+        ok, msg = validate_path(target, role="admin")
+        self.assertFalse(ok)
+        self.assertIn("JAMES-internal", msg)
+
+    def test_validate_path_blocks_eval_even_for_admin(self):
+        import os
+        from tools.code.sandbox import validate_path
+        from config import BASE_DIR
+        target = os.path.join(BASE_DIR, "eval", "regression", "x.json")
+        ok, msg = validate_path(target, role="admin")
+        self.assertFalse(ok)
+
+
 class SandboxUnregisterTests(unittest.TestCase):
     def setUp(self):
         _reset_sandbox_state()

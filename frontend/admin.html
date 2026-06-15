@@ -987,6 +987,22 @@
           적용됩니다. 우측 "env 로 되돌리기" 버튼은 DB 행을 지워 환경
           변수가 다시 작동하게 합니다.
         </div>
+        <!-- Risk #3 (2026-06-15): make the global-vs-workspace boundary
+             explicit so the operator doesn't assume per-workspace
+             overrides. -->
+        <div style="font-size:11px;color:#fc8;line-height:1.5;margin-bottom:6px"
+             data-i18n="set.llm_global_warn">
+          ⚠️ 이 설정은 <strong>모든 워크스페이스가 공유</strong>합니다 (workspace-aware
+          아님). dogfood / main / cycle-γ 워크스페이스 전환해도 같은 값 적용.
+        </div>
+        <!-- Risk #1 (2026-06-15): measurement-cycle escape hatch
+             reminder. -->
+        <div style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:6px"
+             data-i18n="set.llm_measurement_hint">
+          측정 실행 시 (qvt_ablation_matrix / RAGAS / cycle-γ 등) 는
+          <code>JAMES_SETTINGS_USE_DB=0</code> 으로 env 가 source-of-truth 가 되도록
+          하세요. 그렇지 않으면 여기서 설정한 DB 값이 측정 결과에 silent 하게 반영됩니다.
+        </div>
         <div id="llm-settings-list"
              style="display:flex;flex-direction:column;gap:8px;font-family:var(--font-mono);font-size:12px">
           <div style="color:var(--muted)" data-i18n="common.loading">…</div>
@@ -1292,8 +1308,11 @@
                 style="padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
           <option value="">env default (JAMES_AGENT_BACKEND)</option>
           <option value="ollama">ollama (local)</option>
-          <option value="anthropic">anthropic (cloud)</option>
+          <option value="anthropic">⚠️ anthropic (cloud · bypasses §5.7.12)</option>
         </select>
+        <span style="font-size:11px;color:#fc8;font-family:var(--font-mono)"
+              data-i18n="agentchat.cloud_warn"
+              title="anthropic backend bypasses the §5.7.12 cloud-egress abstraction trust zone — set JAMES_AGENT_ALLOW_CLOUD=1 to opt in (Phase E will wrap it)">⚠️ cloud opt-in</span>
         <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-left:8px">
           <input type="checkbox" id="agent-chat-auto-allow"
                  style="vertical-align:middle">
