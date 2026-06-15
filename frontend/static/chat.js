@@ -931,6 +931,9 @@ function logout() {
   userRole = '';
   localStorage.removeItem('james_token');
   localStorage.removeItem('james_role');
+  // v0.6.1 — also clear the persisted api_key so the next login
+  // isn't auto-completed from the previous user's value.
+  try { localStorage.removeItem('james_api_key'); } catch (_) {}
   updateRoleBadge();
   // [item #1] admin 권한 잃으면 install 버튼 즉시 숨김
   try { updateInstallButton(); } catch (_) {}
