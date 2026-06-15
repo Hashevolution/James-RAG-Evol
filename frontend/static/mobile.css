@@ -392,7 +392,21 @@
    *     CJK + ASCII mixed text instead of stretching spaces only
    */
   .msg { max-width: 100%; gap: 8px; }
+  /* v0.6.1 v4 (2026-06-15 PM follow-up) — operator catch ("선으로
+   * 표시된 곳까지 확장"): on phone, `.msg display:flex` + `.bubble`
+   * without a flex setting meant the bubble only stretched to its
+   * content width, leaving a large ~25 % gap on the right of long
+   * answers (the screenshot shows this directly). Adding
+   *   flex: 1 1 auto;  min-width: 0;
+   * lets the bubble actually consume the remaining row width up to
+   * the existing `max-width`. min-width: 0 keeps long mono tokens
+   * from blowing past the row. text-align: justify also only takes
+   * effect once the bubble is at full width, so this fix unblocks
+   * the v3 justify rule too.
+   */
   .bubble {
+    flex: 1 1 auto;
+    min-width: 0;
     padding: 12px 14px;
     font-size: 16px;
     border-radius: 12px;

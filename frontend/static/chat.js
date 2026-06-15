@@ -1805,10 +1805,20 @@ function askContinue() {
    * "계속 ▶" button surfaced by isLikelyTruncated(). Drops a
    * concise continuation prompt into the input box and ships it.
    * The wording asks the model to RESUME, not RESTART — important
-   * so it doesn't repeat the section it already finished. */
-  const box = document.getElementById('user-input');
+   * so it doesn't repeat the section it already finished.
+   *
+   * v0.6.1 v2 (2026-06-15 PM follow-up) — operator catch: button
+   * silently no-op'd. The textarea in index.html L443 carries
+   * `id="chat-input"`, not `user-input`; sendMessage() at L1242
+   * already uses the right id. This now uses the same id +
+   * dispatches an 'input' event so any keyup/oninput listeners
+   * (auto-resize, send-btn enable) see the new text before
+   * sendMessage() runs.
+   */
+  const box = document.getElementById('chat-input');
   if (!box) return;
   box.value = '이전 답변이 도중에 끊겼습니다. 이어서 끝까지 완성해 주세요. (이미 답한 부분은 다시 적지 마세요.)';
+  box.dispatchEvent(new Event('input', { bubbles: true }));
   if (typeof sendMessage === 'function') {
     sendMessage();
   }
