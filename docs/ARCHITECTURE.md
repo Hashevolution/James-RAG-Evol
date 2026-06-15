@@ -1126,6 +1126,19 @@ row; the env stays as a boot-time default.
 per-call routing overrides from the UI (those live in `#model-chip`
 per-session override which stays as-is).
 
+**Risk #1-#4 conflict mitigations (2026-06-15)**
+
+The 4 cross-PR risks the operator caught between this trust zone, the
+v0.6.1 agent tools (§5.7.15), the measurement cycles, and §5.7.12
+cloud egress are mitigated as follows:
+
+| # | Risk | Mitigation |
+|---|---|---|
+| 1 | Measurement runner env (`JAMES_LLM_MODEL`) shadowed by admin Settings DB row → silent tier-label corruption | `core/llm_settings.py::_use_db()` reads `JAMES_SETTINGS_USE_DB`; runners set `=0` to bypass DB. `config.py::_llm_setting()` prints a stderr conflict-warning at boot if both env and DB are set. `scripts/qvt_ablation_matrix.py` injects the env per subprocess; the other 3 runners' docstrings prescribe it. Admin Settings card carries an inline reminder. |
+| 2 | `core/agent_tools/backends.py::AnthropicBackend` bypasses §5.7.12 cloud-egress trust zone (mask + policy + audit `reason:egress` row) | `AnthropicBackend.__init__` refuses to construct unless `JAMES_AGENT_ALLOW_CLOUD=1`. Agent-chat UI backend dropdown carries an inline ⚠️ "bypasses §5.7.12". Phase E will wrap the call site in the abstraction layer; until then this is an opt-in. |
+| 3 | `llm_settings` table is global (workspace-unaware) while `JAMES_WORKSPACE` partitions other state | Documented intent (§8 of memo); admin Settings card carries an inline ⚠️ "shared by every workspace" note. Workspace-scoped overlay = v1.0 multi-tenant work. |
+| 4 | `register_user_path` could register `<repo>/wiki/entity/prod` → agent `write_file` bypasses `core/wiki_generator/` (entity validation + chroma index) | `tools/code/sandbox.py::_REPO_PROTECTED_SUBPATHS` rejects registration AND per-call access to `wiki/entity/{prod,test}`, `wiki/media`, `core/`, `eval/`, `scripts/`, `tests/`. |
+
 ---
 
 ### 5.7.15 Agent Tools on User-Specified Paths (v0.6.1, Phase B)

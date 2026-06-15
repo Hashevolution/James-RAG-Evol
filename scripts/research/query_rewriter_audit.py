@@ -82,6 +82,9 @@ Pre-requisites
 - Ollama service reachable.
 - ``JAMES_LLM_MODEL`` set to the tag you want audited (the audit
   records this so reruns are diffable).
+- ``JAMES_SETTINGS_USE_DB=0`` set alongside (Risk #1 mitigation,
+  2026-06-15) so the v0.6.1 LLM-settings DB (admin Settings card)
+  cannot silently shadow the env. See ``core/llm_settings.py::_use_db``.
 
 Usage
 -----

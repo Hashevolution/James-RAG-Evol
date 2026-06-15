@@ -15,8 +15,14 @@ Isolated: writes only to the workspace named by JAMES_WORKSPACE
 Usage:
     JAMES_WORKSPACE=./workspaces/cycle_gamma_musique_ans \
     JAMES_LLM_MODEL=gemma4:e4b \
+    JAMES_SETTINGS_USE_DB=0 \
     python scripts/research/cycle_gamma_musique_graph_build.py \
         --variant ans --split dev --max-rows 25
+
+NOTE (Risk #1 mitigation, 2026-06-15): include JAMES_SETTINGS_USE_DB=0 so the
+v0.6.1 LLM-settings DB (admin Settings card) cannot silently shadow
+the env-pinned JAMES_LLM_MODEL during a measurement run. See
+core/llm_settings.py::_use_db.
 """
 from __future__ import annotations
 

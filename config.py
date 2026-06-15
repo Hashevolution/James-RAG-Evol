@@ -154,9 +154,36 @@ def _llm_setting(key: str, env_name: str, default: str) -> str:
     """v0.6.1 — DB-first resolution via core.llm_settings, with the
     historical env name as fallback. Import is lazy + try/except so
     config.py stays importable even before the data DB exists (very
-    early boot / test fixtures)."""
+    early boot / test fixtures).
+
+    Risk #1 mitigation (2026-06-15): if the operator set the env AND
+    the DB has a different value, the DB silently wins. We print a
+    one-time boot warning so the operator sees it before a long
+    measurement run finishes with a tier-labelled-but-wrong-modeled
+    result. Set ``JAMES_SETTINGS_USE_DB=0`` to disable the DB layer
+    entirely (measurement runners do this)."""
     try:
-        from core.llm_settings import get as _get
+        from core.llm_settings import get as _get, _use_db
+        env_val = os.environ.get(env_name, "").strip()
+        # Conflict detection: both env explicitly set AND DB row present
+        # AND DB-mode active. Print to stderr once per boot per key.
+        if env_val and _use_db():
+            try:
+                from core.llm_settings import _get_conn
+                with _get_conn() as conn:
+                    row = conn.execute(
+                        "SELECT value FROM llm_settings WHERE key = ?",
+                        (key,),
+                    ).fetchone()
+                if row and row[0] and row[0] != env_val:
+                    import sys as _sys
+                    _sys.stderr.write(
+                        f"[CONFIG] WARN llm_settings conflict for {key!r}: "
+                        f"{env_name}={env_val!r} but DB row={row[0]!r}. "
+                        "DB wins. Set JAMES_SETTINGS_USE_DB=0 to use env.\n"
+                    )
+            except Exception:
+                pass
         return _get(key, env_name, default)
     except Exception:
         return os.environ.get(env_name, default)

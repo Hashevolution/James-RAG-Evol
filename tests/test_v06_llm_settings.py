@@ -179,5 +179,46 @@ class ServerRegistrationTests(unittest.TestCase):
         self.assertIn("/admin/llm-settings/", paths)
 
 
+class Risk1_UseDBToggleTests(unittest.TestCase):
+    """Risk #1 mitigation (2026-06-15): JAMES_SETTINGS_USE_DB=0 makes
+    env source-of-truth so measurement runs cannot be silently
+    shadowed by an operator's admin Settings change."""
+
+    def setUp(self):
+        _scrub_env()
+        self.L = _isolate_settings_db()
+
+    def tearDown(self):
+        os.environ.pop("JAMES_SETTINGS_USE_DB", None)
+
+    def test_toggle_default_is_db_first(self):
+        os.environ["JAMES_LLM_MODEL"] = "gemma3:4b"
+        self.L.set("default_model", "mxtral:latest", by="admin")
+        self.assertEqual(self.L.get("default_model"), "mxtral:latest")
+
+    def test_toggle_zero_skips_db(self):
+        os.environ["JAMES_LLM_MODEL"] = "gemma3:4b"
+        self.L.set("default_model", "mxtral:latest", by="admin")
+        os.environ["JAMES_SETTINGS_USE_DB"] = "0"
+        self.assertEqual(self.L.get("default_model"), "gemma3:4b")
+
+    def test_toggle_accepts_false_and_friends(self):
+        os.environ["JAMES_LLM_MODEL"] = "gemma3:4b"
+        self.L.set("default_model", "mxtral:latest", by="admin")
+        for val in ("false", "no", "off", "disabled", "0", "FALSE"):
+            os.environ["JAMES_SETTINGS_USE_DB"] = val
+            self.assertEqual(self.L.get("default_model"), "gemma3:4b", val)
+
+    def test_toggle_unset_or_truthy_keeps_db(self):
+        os.environ["JAMES_LLM_MODEL"] = "gemma3:4b"
+        self.L.set("default_model", "mxtral:latest", by="admin")
+        for val in ("", "1", "true", "yes"):
+            if val:
+                os.environ["JAMES_SETTINGS_USE_DB"] = val
+            else:
+                os.environ.pop("JAMES_SETTINGS_USE_DB", None)
+            self.assertEqual(self.L.get("default_model"), "mxtral:latest", val)
+
+
 if __name__ == "__main__":
     unittest.main()

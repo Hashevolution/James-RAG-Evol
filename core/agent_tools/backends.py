@@ -33,6 +33,16 @@ ENV_OLLAMA_MODEL = "JAMES_AGENT_OLLAMA_MODEL"
 ENV_ANTHROPIC_KEY = "ANTHROPIC_API_KEY"
 ENV_ANTHROPIC_MODEL = "JAMES_AGENT_ANTHROPIC_MODEL"
 
+# Risk #2 mitigation (2026-06-15): the AnthropicBackend talks directly
+# to api.anthropic.com via httpx, bypassing the §5.7.12 cloud-egress
+# abstraction trust zone (mask / PolicyEngine / audit `reason:egress`
+# row). Until Phase E wraps the call site, instantiation is gated on
+# an explicit opt-in env so a stock JAMES install can NOT silently
+# leak operator data to a third-party service. Default behaviour:
+# anthropic backend refuses to initialise. Operator that knowingly
+# accepts the trade-off sets `JAMES_AGENT_ALLOW_CLOUD=1`.
+ENV_ALLOW_CLOUD = "JAMES_AGENT_ALLOW_CLOUD"
+
 
 class BackendError(Exception):
     """LLM backend call failed (HTTP / parse / missing key)."""
@@ -82,6 +92,17 @@ class AnthropicBackend(AgentBackend):
                  api_key: Optional[str] = None,
                  model: Optional[str] = None,
                  timeout: float = 60.0):
+        # Risk #2 (2026-06-15): cloud-egress gate. Refuse to construct
+        # unless the operator has explicitly opted in. See module-level
+        # ENV_ALLOW_CLOUD docstring.
+        allow = (os.environ.get(ENV_ALLOW_CLOUD) or "").strip().lower()
+        if allow not in ("1", "true", "yes", "on", "enabled"):
+            raise BackendError(
+                f"anthropic backend disabled by default — bypasses §5.7.12 "
+                f"abstraction trust zone (cloud egress mask + audit). Set "
+                f"{ENV_ALLOW_CLOUD}=1 to opt in (Phase E will wrap this "
+                f"call site)."
+            )
         self.api_key = api_key or os.environ.get(ENV_ANTHROPIC_KEY, "").strip()
         if not self.api_key:
             raise BackendError(
