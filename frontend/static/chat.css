@@ -1119,5 +1119,176 @@ main { display: flex; flex: 1; overflow: hidden; }
   font-weight: 700;
   margin-right: 6px;
 }
+
+/* ════════════════════════════════════════════════════════════════
+ * v0.6.1 (2026-06-15) — Claude-style sidebar reorg
+ *
+ * The top <header> is gone; the chat surface fills the viewport.
+ * The sidebar is now a single vertical column hosting every control
+ * (New chat / model chip / workspace badge / sessions / upload tabs /
+ * footer with source toggle / lang toggle / nav links / role pill).
+ * Mobile rules in mobile.css keep the overlay + backdrop behaviour
+ * from PR #924.
+ * ════════════════════════════════════════════════════════════════ */
+
+body { margin: 0; }
+
+/* Legacy header rule (.css L37 onwards) — invisible host. The element
+ * itself is gone from the new index.html; keeping the rule out of the
+ * paint pipeline. */
+header { display: none !important; }
+
+/* Main is full viewport now that the header is gone. */
+main.claude-shell {
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Sidebar — desktop default 280px. Mobile rules in mobile.css override
+ * to the existing 88vw overlay. */
+aside.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 280px;
+  min-width: 280px;
+  height: 100vh;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+/* The chat.css L248 .sidebar.collapsed already zeros width + border.
+ * Override min-width too so the flex column collapses fully. */
+aside.sidebar.collapsed { min-width: 0; }
+
+.sidebar-section {
+  padding: 8px 12px;
+}
+
+/* New chat + 양식 actions — Claude's primary affordances right under
+ * the brand. */
+.sidebar-actions {
+  display: flex;
+  gap: 6px;
+}
+.sidebar-action {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  font-family: var(--font-ui);
+}
+.sidebar-action-primary {
+  background: var(--accent);
+  color: var(--bg, #04060a);
+  font-weight: 600;
+  border-color: var(--accent);
+}
+.sidebar-action:hover { filter: brightness(1.1); }
+
+/* Model chip + workspace badge row. */
+.sidebar-meta-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Sessions / upload / recent / search tabs — compact below the panel. */
+.sidebar-tabs {
+  display: flex;
+  gap: 4px;
+  border-top: 1px solid var(--border-2, var(--border));
+  border-bottom: 1px solid var(--border-2, var(--border));
+  padding: 6px 8px;
+  background: var(--surface);
+  flex-wrap: wrap;
+}
+.sidebar-tab {
+  flex: 1 0 auto;
+  padding: 5px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-ui);
+}
+.sidebar-tab:hover { background: var(--surface-2); color: var(--text); }
+.sidebar-tab.active {
+  background: var(--surface-2);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Footer — sticks to the bottom (flex) with all settings / nav. */
+.sidebar-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--border-2, var(--border));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+}
+.sidebar-settings-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+.sidebar-nav-row {
+  display: flex;
+  gap: 6px;
+}
+.sidebar-nav-link {
+  flex: 1;
+  padding: 6px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 12px;
+  text-align: center;
+  font-family: var(--font-ui);
+}
+.sidebar-nav-link:hover { background: var(--bg); color: var(--accent); }
+.sidebar-role-pill {
+  cursor: pointer;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 12px;
+  text-align: center;
+}
+.sidebar-role-pill:hover { background: var(--bg); }
+
+/* The single .sidebar-panel host — fills the middle. The 4 panel-modes
+ * still rotate via .active. */
+.sidebar-panel {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* chat-area now uses full viewport height. */
+.chat-area { height: 100vh; }
+
+/* Model popover when its trigger lives in the sidebar — anchor at the
+ * sidebar's left edge and float above. Existing chat.js positioning
+ * logic doesn't move the popover; just make sure z-index is high. */
+.model-popover { z-index: 100; }
 </content>
 </invoke>

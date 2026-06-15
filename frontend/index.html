@@ -16,22 +16,86 @@
 <!-- v0.5 UI #4 — WCAG 2.4.1 skip link (first focusable element) -->
 <a href="#main" class="skip-link" data-i18n="a11y.skip_to_main">Skip to main content</a>
 
-<!-- ── 헤더 ── -->
-<header>
-  <!-- [#A8-9] brand mark + tagline. JAMES is the product name;
-       the tagline frames it as a knowledge + security intelligence
-       suite, not a chat toy. -->
-  <div class="logo">
-    <span class="brand">Secure Enterprise Knowledge<span class="brand-tail">Operating System</span></span>
-    <span class="live-dot" aria-hidden="true" title="System live" style="margin-left:10px"></span>
-    <!-- v0.4 Sprint 2 #3a + #3b — always-visible chat model indicator
-         + click-to-pick popover. Sprint 2 #3a populated the chip from
-         /llm/active. Sprint 2 #3b converts the <a> into a <button>
-         trigger that opens the popover; the popover lists installed
-         models (aggregated from MODE_OPTIONS) and lets the user set a
-         per-session override that flows into the next chat request as
-         `selected_model`. The popover footer keeps the admin shortcut. -->
-    <div class="model-chip-wrap" id="model-chip-wrap" hidden>
+<!-- v0.6.1 (2026-06-15) — Claude-style UX reorg. The top `<header>`
+     was deleted; every control it carried (model chip / workspace
+     badge / PROD/TEST source / lang toggle / clear / sessions /
+     role badge / 양식 / Workspace / Admin) lives inside the sidebar
+     now. The chat surface fills the viewport. The model popover
+     stays here at top-level so the popover can overlay everything
+     instead of being clipped by the sidebar overflow box. -->
+<div class="model-chip-wrap" id="model-chip-wrap" hidden style="display:none">
+  <!-- Hidden host kept for the popover dropdown spawn point used by
+       chat.js::toggleModelPopover. The visible trigger button moved
+       into the sidebar; this wrap remains so existing JS that probes
+       #model-chip-wrap by id still works without a null deref. -->
+  <div id="model-popover"
+       class="model-popover"
+       role="listbox"
+       data-i18n-aria-label="model.popover_title"
+       aria-label="모델 선택"
+       hidden>
+    <div class="model-popover-header">
+      <span data-i18n="model.popover_title">모델 선택</span>
+      <span class="model-popover-hint" data-i18n="model.popover_hint">이 세션에만 적용</span>
+    </div>
+    <div id="model-popover-list" class="model-popover-list">
+      <!-- chat.js loadModelPopover() populates rows here. -->
+    </div>
+    <div class="model-popover-footer">
+      <a href="/admin" class="model-popover-admin-link"
+         data-i18n="model.popover_admin_link">⚙ Admin 모델 설정 →</a>
+    </div>
+  </div>
+</div>
+
+<main id="main" class="claude-shell" style="position:relative">
+  <button class="sidebar-open-btn" id="sidebar-open-btn"
+          data-action="toggle-sidebar" data-i18n-title="upload.open" title="업로드 열기"
+          aria-label="사이드바 열기">▶</button>
+  <!-- v0.6.1 mobile fix (2026-06-15) — backdrop overlay so a phone
+       operator can tap the dimmed area to dismiss the sidebar. Default
+       hidden; index-init.js::toggleSidebar() adds .show only when the
+       sidebar opens on a phone-sized viewport. -->
+  <div id="sidebar-backdrop" data-action="toggle-sidebar"
+       aria-hidden="true"></div>
+  <!-- ── 사이드바 — Claude-style single column (v0.6.1 reorg, 2026-06-15)
+       The rail+panel split was replaced with one vertical column that
+       carries every control: New chat / model chip / workspace badge /
+       sessions list / upload / settings (source + lang) / nav (양식 /
+       Workspace / Admin) / role badge.
+       All existing element ids preserved so chat.js / upload.js /
+       index-init.js / workspace-badge.js handlers fire unchanged. -->
+  <aside class="sidebar" id="sidebar">
+    <!-- Sidebar header — close button + brand mark (compact). -->
+    <div class="sidebar-header">
+      <div class="sidebar-title" id="sidebar-title">
+        ▸ <span class="brand" style="font-size:13px">JAMES</span>
+      </div>
+      <button class="sidebar-toggle" data-action="toggle-sidebar" data-i18n-title="common.close" title="닫기"
+              aria-label="사이드바 닫기">◀</button>
+    </div>
+
+    <!-- Top action row — New chat + 양식 적용 (Claude-style primary
+         affordances right under the brand). -->
+    <div class="sidebar-section sidebar-actions">
+      <button class="sidebar-action sidebar-action-primary"
+              data-action="clear-history"
+              data-i18n-title="chat.clear_history"
+              title="새 대화">
+        <span aria-hidden="true">＋</span>
+        <span data-i18n="chat.new_chat">새 대화</span>
+      </button>
+      <button class="sidebar-action"
+              data-action="tplc-open"
+              data-i18n-title="tplchat.open_title"
+              title="양식 적용">
+        <span aria-hidden="true">📄</span>
+        <span data-i18n="tplchat.open">양식</span>
+      </button>
+    </div>
+
+    <!-- Model chip + workspace badge (moved from the deleted header). -->
+    <div class="sidebar-section sidebar-meta-row">
       <button id="model-chip"
               type="button"
               class="model-chip"
@@ -44,126 +108,25 @@
         <span class="model-chip-tag" id="model-chip-tag">—</span>
         <span class="model-chip-caret" aria-hidden="true">▾</span>
       </button>
-      <!-- Popover — hidden until trigger click. Outside-click in chat.js
-           closes it. Listbox semantics for screen readers. -->
-      <div id="model-popover"
-           class="model-popover"
-           role="listbox"
-           data-i18n-aria-label="model.popover_title"
-           aria-label="모델 선택"
-           hidden>
-        <div class="model-popover-header">
-          <span data-i18n="model.popover_title">모델 선택</span>
-          <span class="model-popover-hint" data-i18n="model.popover_hint">이 세션에만 적용</span>
-        </div>
-        <div id="model-popover-list" class="model-popover-list">
-          <!-- chat.js loadModelPopover() populates rows here. -->
-        </div>
-        <div class="model-popover-footer">
-          <a href="/admin" class="model-popover-admin-link"
-             data-i18n="model.popover_admin_link">⚙ Admin 모델 설정 →</a>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="header-right">
-    <!-- v0.6.1 — current workspace badge. Stays hidden until logged in
-         (workspace-badge.js fetches /workspace/info on boot). Helps the
-         operator notice when they're on dogfood-* vs the default
-         workspace in a multi-workspace setup. -->
-    <button class="nav-btn workspace-badge" id="workspace-badge"
-            type="button"
-            data-i18n-title="workspace.badge_title"
-            title="현재 워크스페이스"
-            aria-label="현재 워크스페이스"
-            style="display:none;font-size:11px">
-      📁 <span id="workspace-name">—</span>
-    </button>
-    <div class="source-toggle">
-      <button class="active" data-action="set-source" data-source="prod">PROD</button>
-      <button data-action="set-source" data-source="test">TEST</button>
-    </div>
-    <!-- [STEP 5-A] 언어 토글 -->
-    <button class="nav-btn" data-lang-toggle data-action="toggle-lang" title="Language / 언어"
-            aria-label="언어 전환 / Toggle language"
-            style="font-size:11px;font-weight:700;padding:4px 8px"></button>
-    <button class="nav-btn" data-action="clear-history" data-i18n-title="chat.clear_history" title="대화 초기화"
-            aria-label="대화 기록 삭제">🗑</button>
-    <!-- [P3-4] 세션 선택 버튼 -->
-    <button class="nav-btn" data-action="toggle-session-panel" data-i18n-title="chat.session_open" title="이전 대화 불러오기"
-            id="session-btn" aria-label="세션 패널 열기"
-            style="position:relative">
-      💬
-      <span id="session-count-badge"
-            style="display:none;position:absolute;top:-2px;right:-2px;
-                   background:var(--accent);color:var(--on-accent);border-radius:9px;
-                   font-size:10px;padding:1px 6px;font-weight:600;line-height:1.4">
-      </span>
-    </button>
-    <div class="role-badge" id="role-badge" data-action="show-login">
-      <span class="dot"></span>
-      <span class="role-name" id="role-name" data-i18n="auth.login">로그인</span>
-    </div>
-    <button class="nav-btn" data-action="tplc-open"
-            data-i18n-title="tplchat.open_title" title="양식 적용"
-            aria-label="양식 적용 / Apply template">📄 <span data-i18n="tplchat.open">양식</span></button>
-    <a href="/workspace" class="nav-btn"
-       data-i18n-title="workspace.nav_title" title="Workspace">📦 <span data-i18n="workspace.nav">Workspace</span></a>
-    <a href="/admin" class="nav-btn">⚙ Admin</a>
-  </div>
-</header>
-
-<!-- [P3-4] 세션 패널은 사이드바 'sessions' 모드로 이동.
-     #session-list / #session-count-badge ID는 그대로 보존 — chat.js의
-     loadSessionList() / 배지 갱신 로직 그대로 작동. -->
-
-<main id="main" style="position:relative">
-  <button class="sidebar-open-btn" id="sidebar-open-btn"
-          data-action="toggle-sidebar" data-i18n-title="upload.open" title="업로드 열기"
-          aria-label="사이드바 열기">▶</button>
-  <!-- v0.6.1 mobile fix (2026-06-15) — backdrop overlay so a phone
-       operator can tap the dimmed area to dismiss the sidebar. Default
-       hidden; index-init.js::toggleSidebar() adds .show only when the
-       sidebar opens on a phone-sized viewport. -->
-  <div id="sidebar-backdrop" data-action="toggle-sidebar"
-       aria-hidden="true"></div>
-  <!-- ── 사이드바 (W5: rail + panel split) ── -->
-  <aside class="sidebar" id="sidebar">
-    <!-- Left rail — mode icons. switchSidebarMode(id) flips both
-         .active on the matching rail item and the matching panel. -->
-    <div class="sidebar-rail">
-      <div class="sidebar-rail-item active" data-mode="upload"
-           data-action="switch-sidebar-mode">
-        📂
-        <span class="sidebar-rail-tip" data-i18n="sidebar.mode_upload">파일 업로드</span>
-      </div>
-      <div class="sidebar-rail-item" data-mode="sessions"
-           data-action="switch-sidebar-mode">
-        💬
-        <span class="sidebar-rail-tip" data-i18n="sidebar.mode_sessions">대화 이력</span>
-      </div>
-      <div class="sidebar-rail-item" data-mode="recent"
-           data-action="switch-sidebar-mode">
-        🕘
-        <span class="sidebar-rail-tip" data-i18n="sidebar.mode_recent">내 자료</span>
-      </div>
-      <div class="sidebar-rail-item" data-mode="search"
-           data-action="switch-sidebar-mode">
-        🔍
-        <span class="sidebar-rail-tip" data-i18n="sidebar.mode_search">검색</span>
-      </div>
+      <button class="nav-btn workspace-badge" id="workspace-badge"
+              type="button"
+              data-i18n-title="workspace.badge_title"
+              title="현재 워크스페이스"
+              aria-label="현재 워크스페이스"
+              style="display:none;font-size:11px">
+        📁 <span id="workspace-name">—</span>
+      </button>
     </div>
 
-    <!-- Right panel — only one .sidebar-panel-mode is .active at a time. -->
+    <!-- Single panel host. All four legacy panel-mode blocks live inside
+         here; default the "sessions" mode is active (the Claude analogue)
+         instead of "upload". switchSidebarMode still toggles
+         .active between them; chat.js / upload.js callers unchanged. -->
     <div class="sidebar-panel">
-      <div class="sidebar-header">
-        <div class="sidebar-title" id="sidebar-title">▸ <span data-i18n="upload.title">파일 업로드</span></div>
-        <button class="sidebar-toggle" data-action="toggle-sidebar" data-i18n-title="common.close" title="닫기"
-                aria-label="사이드바 닫기">◀</button>
-      </div>
 
-      <!-- Mode: 파일 업로드 (default) -->
-      <div class="sidebar-panel-mode active" data-mode="upload">
+      <!-- Mode: 파일 업로드 (no longer default — sessions panel below
+           takes the active state under the Claude-style reorg). -->
+      <div class="sidebar-panel-mode" data-mode="upload">
         <div class="drop-zone" id="drop-zone" data-action="trigger-file-input">
           <input type="file" id="file-input" multiple
                  accept="image/*,audio/*,video/*,.pdf,.txt,.md,.json,.docx,.xlsx,.pptx,.hwp,.hwpx">
@@ -232,7 +195,7 @@
            #session-list ID 보존 — chat.js의 loadSessionList()가 그대로
            이 div를 채움. switchSidebarMode('sessions')가 활성화 시
            자동 로드 호출. -->
-      <div class="sidebar-panel-mode" data-mode="sessions">
+      <div class="sidebar-panel-mode active" data-mode="sessions">
         <div style="padding:10px 12px;font-size:11px;color:var(--muted);
                     border-bottom:1px solid var(--border-2);display:flex;
                     justify-content:space-between;align-items:center;gap:8px">
@@ -277,6 +240,66 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Sidebar tabs — collapse the legacy 4-mode rail into small chip
+         row above the footer. switchSidebarMode is wired to data-mode
+         exactly like the old rail. Default mode 'sessions' (the Claude
+         analogue) so the operator lands on chat history, not the
+         upload drop zone. -->
+    <div class="sidebar-section sidebar-tabs">
+      <button class="sidebar-tab" data-mode="sessions"
+              data-action="switch-sidebar-mode" aria-label="대화 이력">
+        💬 <span data-i18n="sidebar.mode_sessions">대화 이력</span>
+      </button>
+      <button class="sidebar-tab" data-mode="upload"
+              data-action="switch-sidebar-mode" aria-label="파일 업로드">
+        📂 <span data-i18n="sidebar.mode_upload">파일 업로드</span>
+      </button>
+      <button class="sidebar-tab" data-mode="recent"
+              data-action="switch-sidebar-mode" aria-label="내 자료">
+        🕘 <span data-i18n="sidebar.mode_recent">내 자료</span>
+      </button>
+      <button class="sidebar-tab" data-mode="search"
+              data-action="switch-sidebar-mode" aria-label="전역 검색">
+        🔍 <span data-i18n="sidebar.mode_search">검색</span>
+      </button>
+    </div>
+
+    <!-- Sidebar footer — settings + nav + role badge. Stays at the
+         bottom (CSS flex). Order mirrors Claude.ai: settings (compact)
+         → nav links → profile pill. -->
+    <div class="sidebar-section sidebar-footer">
+      <!-- Source toggle + lang toggle on one row. -->
+      <div class="sidebar-settings-row">
+        <div class="source-toggle">
+          <button class="active" data-action="set-source" data-source="prod">PROD</button>
+          <button data-action="set-source" data-source="test">TEST</button>
+        </div>
+        <button class="nav-btn" data-lang-toggle data-action="toggle-lang"
+                title="Language / 언어"
+                aria-label="언어 전환 / Toggle language"
+                style="font-size:11px;font-weight:700;padding:4px 8px"></button>
+      </div>
+      <!-- Nav links — go to other pages (workspace / admin). -->
+      <div class="sidebar-nav-row">
+        <a href="/workspace" class="sidebar-nav-link"
+           data-i18n-title="workspace.nav_title" title="Workspace">
+          📦 <span data-i18n="workspace.nav">Workspace</span>
+        </a>
+        <a href="/admin" class="sidebar-nav-link">⚙ Admin</a>
+      </div>
+      <!-- Role badge — Claude-style profile pill at the very bottom. -->
+      <div class="role-badge sidebar-role-pill" id="role-badge"
+           data-action="show-login">
+        <span class="dot"></span>
+        <span class="role-name" id="role-name" data-i18n="auth.login">로그인</span>
+      </div>
+      <!-- Session count badge bound for #session-count-badge — kept
+           inside the footer-row as an invisible host so chat.js
+           updateSessionCountBadge() still finds it. The visible badge
+           is rendered next to the 💬 tab above when sessions exist. -->
+      <span id="session-count-badge" hidden></span>
     </div>
   </aside>
 

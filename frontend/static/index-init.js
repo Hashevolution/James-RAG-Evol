@@ -40,11 +40,18 @@
     if (typeof restoreHistory === 'function') {
       restoreHistory();
     }
-    // W5: restore last-selected sidebar mode (default = upload).
+    // W5: restore last-selected sidebar mode. v0.6.1 (2026-06-15) —
+    // the Claude-style reorg flips the default from "upload" to
+    // "sessions" so an operator opening a fresh session lands on chat
+    // history (the Claude analogue), not the upload drop zone.
     try {
       var saved = localStorage.getItem('james_sidebar_mode');
-      if (saved && saved !== 'upload') {
+      if (saved && saved !== 'sessions') {
         switchSidebarMode(saved);
+      } else if (!saved) {
+        // Apply the new default explicitly so the rail-tab highlight is
+        // in sync with the panel-mode .active class set in HTML.
+        switchSidebarMode('sessions');
       }
     } catch (_) {}
 
@@ -92,10 +99,16 @@
      Selection persists across reloads via localStorage. */
   function switchSidebarMode(modeId) {
     if (!modeId) return;
-    var rail = document.querySelectorAll('.sidebar-rail-item');
+    // v0.6.1 — both the legacy .sidebar-rail-item AND the new
+    // .sidebar-tab carry data-mode. Toggle .active on either so the
+    // Claude-style reorg layout AND any leftover rail element stay in
+    // sync without a separate code path.
+    var modeEls = document.querySelectorAll(
+      '.sidebar-rail-item[data-mode], .sidebar-tab[data-mode]'
+    );
     var panels = document.querySelectorAll('.sidebar-panel-mode');
     var matched = false;
-    rail.forEach(function (el) {
+    modeEls.forEach(function (el) {
       var on = el.dataset.mode === modeId;
       el.classList.toggle('active', on);
       if (on) matched = true;
