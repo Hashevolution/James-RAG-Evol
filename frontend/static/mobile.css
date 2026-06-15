@@ -381,12 +381,30 @@
     padding: 16px 12px 12px;
     gap: 14px;
   }
-  .msg { max-width: 100%; }
+  /* v0.6.1 v3 (2026-06-15 PM) — operator catch ("폰 웹에서 줄바꿈이
+   * 이상하다. 글자 크기 조금 더 크게, 대화창 넓히고 끝 정렬"):
+   *   - .msg full-width + smaller gap so the bubble can run wider
+   *   - .bubble bigger font + tighter padding + word-break: keep-all
+   *     so 한국어 어절(eojeol) 단위로 줄바꿈 (was break-word splitting
+   *     "구체적으|로" mid-word)
+   *   - text-align: justify so the right edge lines up cleanly
+   *   - text-justify: inter-character keeps the spacing readable for
+   *     CJK + ASCII mixed text instead of stretching spaces only
+   */
+  .msg { max-width: 100%; gap: 8px; }
   .bubble {
-    padding: 10px 14px;
-    font-size: 14.5px;
+    padding: 12px 14px;
+    font-size: 16px;
     border-radius: 12px;
-    line-height: 1.55;
+    line-height: 1.7;
+    /* CJK 어절-단위 줄바꿈 — 영문 long token 은 overflow-wrap fallback */
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    /* 양쪽 정렬 — 우측 edge 가 들쭉날쭉 안 되도록 */
+    text-align: justify;
+    text-justify: inter-character;
+    /* avatar 옆 gap 줄여 본문 폭 확보 */
+    max-width: calc(100% - 36px);
   }
   .avatar { width: 28px; height: 28px; font-size: 12px; }
 
@@ -672,7 +690,18 @@
   .welcome-title { font-size: 18px; }
   .welcome-sub { font-size: 12px; }
 
-  .bubble { font-size: 14px; padding: 9px 12px; }
+  /* v0.6.1 v3 (2026-06-15 PM) — keep the 16px font + readability
+   * tweaks even on the narrowest devices (< 480 px). Padding only
+   * shrinks slightly so the bubble still fits, not the text. */
+  .bubble {
+    font-size: 15.5px;
+    padding: 11px 13px;
+    line-height: 1.7;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    text-align: justify;
+    text-justify: inter-character;
+  }
 
   /* 어드민 nav-item 더 작게 */
   .nav-item { padding: 6px 10px; font-size: 12px; min-height: 36px; }
