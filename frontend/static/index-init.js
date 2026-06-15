@@ -23,6 +23,19 @@
 (function () {
   'use strict';
 
+  /* v0.6.1 mobile fix (2026-06-15): on phone-sized viewports the
+   * sidebar is `position:fixed; width:88vw` overlay (mobile.css §
+   * "사이드바"). Default-open used to make the chat surface
+   * inaccessible on first load; the operator caught it on Galaxy
+   * Tailscale tunnel. Default-collapsed on phones, respect operator
+   * choice if they explicitly toggled in a previous session. */
+  function _isPhoneViewport() {
+    try {
+      return window.matchMedia &&
+             window.matchMedia('(max-width: 768px)').matches;
+    } catch (_) { return false; }
+  }
+
   window.addEventListener('DOMContentLoaded', function () {
     if (typeof restoreHistory === 'function') {
       restoreHistory();
@@ -34,6 +47,21 @@
         switchSidebarMode(saved);
       }
     } catch (_) {}
+
+    // v0.6.1 — phone-viewport default-collapsed.
+    var sb = document.getElementById('sidebar');
+    var openBtn = document.getElementById('sidebar-open-btn');
+    if (sb && _isPhoneViewport()) {
+      var pref = '';
+      try { pref = localStorage.getItem('james_sidebar_open_mobile') || ''; }
+      catch (_) {}
+      // Operator hasn't expressed a preference → collapse so the chat
+      // surface is reachable on first paint.
+      if (pref !== 'open') {
+        sb.classList.add('collapsed');
+        if (openBtn) openBtn.classList.add('visible');
+      }
+    }
   });
 
   function toggleSidebar() {
@@ -44,6 +72,17 @@
     var collapsed = sb.classList.toggle('collapsed');
     btn.classList.toggle('visible', collapsed);
     if (tog) tog.textContent = collapsed ? '▶' : '◀';
+
+    // v0.6.1 mobile fix — sync the backdrop overlay and persist the
+    // operator's choice so we don't fight them on the next reload.
+    var bd = document.getElementById('sidebar-backdrop');
+    if (bd) bd.classList.toggle('show', !collapsed && _isPhoneViewport());
+    try {
+      if (_isPhoneViewport()) {
+        localStorage.setItem('james_sidebar_open_mobile',
+                              collapsed ? 'closed' : 'open');
+      }
+    } catch (_) {}
   }
 
   /* W5: sidebar rail mode switcher.

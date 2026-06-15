@@ -121,6 +121,12 @@
   <button class="sidebar-open-btn" id="sidebar-open-btn"
           data-action="toggle-sidebar" data-i18n-title="upload.open" title="업로드 열기"
           aria-label="사이드바 열기">▶</button>
+  <!-- v0.6.1 mobile fix (2026-06-15) — backdrop overlay so a phone
+       operator can tap the dimmed area to dismiss the sidebar. Default
+       hidden; index-init.js::toggleSidebar() adds .show only when the
+       sidebar opens on a phone-sized viewport. -->
+  <div id="sidebar-backdrop" data-action="toggle-sidebar"
+       aria-hidden="true"></div>
   <!-- ── 사이드바 (W5: rail + panel split) ── -->
   <aside class="sidebar" id="sidebar">
     <!-- Left rail — mode icons. switchSidebarMode(id) flips both
