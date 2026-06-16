@@ -3277,9 +3277,18 @@ async function switchSession(sessionId) {
   // [N-3 fix] in-memory SESSION_ID / HISTORY_KEY 동기 (newSession 과 동일).
   refreshSessionGlobals();
 
-  // 현재 메시지 초기화 후 해당 세션 히스토리 표시
+  // v0.6.1 v14 (2026-06-16) — operator catch: pressing "+ 새 대화"
+  // showed a blank screen instead of the welcome hero IF the
+  // operator had switched sessions earlier. Root cause: this
+  // function used to do `messages.innerHTML = ''`, which wiped the
+  // #welcome host along with the .msg rows. After that, newSession's
+  // showWelcome() had no element to flip back to display:flex. Now
+  // we remove only the actual conversation rows, leaving #welcome
+  // intact — same pattern as newSession (v11).
   const messages = document.getElementById('messages');
-  if (messages) messages.innerHTML = '';
+  if (messages) {
+    messages.querySelectorAll('.msg, .thinking-stream, .typing').forEach(el => el.remove());
+  }
 
   try {
     const res = await fetch(
@@ -3291,6 +3300,9 @@ async function switchSession(sessionId) {
 
     if (!turns.length) {
       toast('선택한 세션에 대화 기록이 없습니다', 'info');
+      // Empty session — surface the welcome hero so the page is
+      // legible instead of blank below the topbar.
+      showWelcome();
       // refresh sidebar list so the active highlight follows.
       loadSessionList().catch(() => {});
       return;
