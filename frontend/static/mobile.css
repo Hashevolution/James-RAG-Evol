@@ -869,6 +869,29 @@
   .bubble { line-height: 1.6; }
 }
 
+/* v0.6.1 v10 (2026-06-16) — Claude-style answer typography on phones.
+ * Bump headings a hair so the size step from body→heading is visible
+ * on a small viewport, tighten table padding so wide tables don't
+ * force horizontal scroll on every doc. */
+@media (max-width: 768px) {
+  .bubble .md-h1 { font-size: 20px; }
+  .bubble .md-h2 { font-size: 17px; }
+  .bubble .md-h3 { font-size: 15.5px; }
+  .bubble .md-h4 { font-size: 13px; }
+  .bubble .md-p,
+  .bubble .md-ul,
+  .bubble .md-ol {
+    font-size: 14.5px;
+    line-height: 1.7;
+  }
+  .bubble .md-table { font-size: 12.5px; }
+  .bubble .md-table th,
+  .bubble .md-table td {
+    padding: 6px 8px;
+  }
+  .bubble pre.md-pre { font-size: 12px; padding: 10px 12px; }
+}
+
 /* v0.6.1 v3 (2026-06-15) — Claude-style phone overrides.
  *
  * On phones:

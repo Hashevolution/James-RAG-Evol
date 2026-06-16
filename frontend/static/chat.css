@@ -1099,6 +1099,132 @@ main { display: flex; flex: 1; overflow: hidden; }
 }
 .bubble pre code { background: none; border: none; padding: 0; font-size: 12.5px; }
 
+/* v0.6.1 v10 (2026-06-16) — Claude-style achromatic typography for
+ * james answer body. Hierarchy carried by SIZE + WEIGHT, not color.
+ * All headings inherit the body text color (--text); the only color
+ * differentiators are subtle (--muted) for de-emphasized chrome
+ * (hr, blockquote rule, table border) and the accent only appears
+ * on inline <code> bg + link hover. Reads as "clean B/W document"
+ * matching Claude's answer column. */
+.bubble .md-h1,
+.bubble .md-h2,
+.bubble .md-h3,
+.bubble .md-h4 {
+  color: var(--text);
+  font-family: var(--font-ui);
+  margin: 18px 0 8px;
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+  font-weight: 700;
+}
+.bubble .md-h1:first-child,
+.bubble .md-h2:first-child,
+.bubble .md-h3:first-child,
+.bubble .md-h4:first-child {
+  margin-top: 2px;
+}
+.bubble .md-h1 { font-size: 22px; }
+.bubble .md-h2 { font-size: 18px; }
+.bubble .md-h3 { font-size: 16px; font-weight: 600; }
+.bubble .md-h4 { font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+
+.bubble .md-p {
+  margin: 0 0 12px;
+  line-height: 1.7;
+  color: var(--text);
+}
+.bubble .md-p:last-child { margin-bottom: 0; }
+
+.bubble .md-hr {
+  border: 0;
+  border-top: 1px solid var(--border, #2a2d33);
+  margin: 18px 0;
+}
+
+.bubble .md-quote {
+  margin: 12px 0;
+  padding: 4px 14px;
+  border-left: 3px solid var(--border, #2a2d33);
+  color: var(--text-soft, #cfd2d8);
+  font-style: normal;
+  line-height: 1.65;
+}
+
+.bubble .md-ul,
+.bubble .md-ol {
+  margin: 6px 0 14px;
+  padding-left: 22px;
+  line-height: 1.7;
+}
+.bubble .md-ul { list-style: disc; }
+.bubble .md-ol { list-style: decimal; }
+.bubble .md-li {
+  margin: 0 0 4px;
+  padding-left: 4px;
+}
+.bubble .md-li::marker {
+  color: var(--muted);
+}
+
+/* Inline code — neutral surface so the eye notices a token without
+ * jumping to color. Slightly tighter padding than the legacy chip. */
+.bubble code.md-code,
+.bubble .md-p code,
+.bubble .md-li code,
+.bubble .md-quote code {
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid var(--border-2, #25282f);
+  color: var(--text);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+/* Block code — pre.md-pre */
+.bubble pre.md-pre {
+  background: rgba(0, 0, 0, .35);
+  border: 1px solid var(--border-2, #25282f);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 12px 0;
+  overflow-x: auto;
+  line-height: 1.5;
+  font-size: 12.5px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* GFM table — quiet borders, alternating row tint */
+.bubble .md-table-wrap {
+  margin: 12px 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.bubble .md-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.bubble .md-table th,
+.bubble .md-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-2, #25282f);
+  text-align: left;
+  vertical-align: top;
+}
+.bubble .md-table th {
+  font-weight: 700;
+  color: var(--text);
+  background: rgba(255, 255, 255, .04);
+}
+.bubble .md-table tr:last-child td {
+  border-bottom: none;
+}
+
+.bubble strong { font-weight: 700; color: var(--text); }
+.bubble em { font-style: italic; }
+
 /* ── [#A4-A] 문단별 복사 버튼 ──
    hover 시 우상단에 작게 노출. 모바일에선 hover가 안 통하므로
    항상 약하게(opacity .35) 보이도록 두고 tap 시 진하게.
