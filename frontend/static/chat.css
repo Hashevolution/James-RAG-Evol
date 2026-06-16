@@ -275,6 +275,92 @@ header {
   color: #ff5d8a;
 }
 
+/* v0.6.1 v8 (2026-06-16) — Claude.ai-style session-action popover.
+ * The overlay sheds its dimming so the popover reads as a small
+ * inline menu, not a modal blocking the page. Tapping anywhere
+ * outside the popover (incl. the now-transparent overlay) still
+ * fires the existing close handler. */
+.modal-overlay.modal-overlay-popover {
+  background: rgba(4, 6, 10, .15);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  /* Anchor the popover near the top of the screen on phones (the ⋯
+   * trigger sits in the session list). On desktop, keep centered. */
+  align-items: center;
+  justify-content: center;
+}
+.modal.modal-popover {
+  width: 180px;
+  max-width: 92vw;
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid var(--border, #2a2d33);
+  background: rgba(15, 17, 22, .98);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .55),
+              0 2px 4px rgba(0, 0, 0, .35);
+}
+.modal-popover-name {
+  font-size: 10px;
+  color: var(--muted);
+  padding: 6px 12px 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.modal-popover-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text, #e0e0e0);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  line-height: 1.2;
+  text-align: left;
+  transition: background .12s, color .12s;
+}
+.modal-popover-row:hover,
+.modal-popover-row:focus-visible {
+  background: var(--surface-2, #1e293b);
+  outline: none;
+}
+.modal-popover-row svg {
+  flex-shrink: 0;
+  opacity: .8;
+}
+.modal-popover-row:hover svg { opacity: 1; }
+/* favorite ★ filled when active */
+.modal-popover-row.is-favorited svg {
+  fill: var(--accent-fg, #ffb74d);
+  stroke: var(--accent-fg, #ffb74d);
+  opacity: 1;
+}
+.modal-popover-row-danger {
+  color: #f06292;
+}
+.modal-popover-row-danger:hover,
+.modal-popover-row-danger:focus-visible {
+  background: rgba(240, 98, 146, .12);
+  color: #ff5d8a;
+}
+
+/* Favorite star painted next to the session title when the session is
+ * pinned via toggleFavoriteSession. Filled accent color so the eye
+ * lands on pinned rows first. */
+.session-fav-star {
+  display: inline-flex;
+  align-items: center;
+  color: #ffb74d;
+  margin-right: 2px;
+  flex-shrink: 0;
+}
+
 /* ── 메인 레이아웃 ── */
 main { display: flex; flex: 1; overflow: hidden; }
 

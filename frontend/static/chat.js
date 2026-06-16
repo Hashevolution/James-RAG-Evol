@@ -230,8 +230,16 @@ function _bindFrontendEvents() {
         break;
       }
       case 'session-action-archive':
-        // Disabled until the backend ships /history/sessions/{id}/archive.
+        // Legacy archive action — superseded by 'session-action-favorite'
+        // in v0.6.1 v8 (2026-06-16). Keeps a no-op fallthrough so a
+        // cached old client doesn't crash.
         break;
+      case 'session-action-favorite': {
+        var sidF = _selectedSessionSid();
+        closeSessionActionMenu();
+        if (sidF) toggleFavoriteSession(sidF);
+        break;
+      }
       // upload.js mini-thumbnails
       case 'chat-attach-click':         _chatAttachClick(); break;
       case 'remove-or-cancel':          removeOrCancel(t.getAttribute('data-item-id')); break;
@@ -2901,9 +2909,22 @@ async function loadSessionList() {
       return;
     }
 
-    listEl.innerHTML = sessions.map(s => {
+    // v0.6.1 v8 (2026-06-16) — favorites sort to the top. The
+    // localStorage-backed favorite list takes precedence over the
+    // server's natural recency order so a pinned conversation stays
+    // visible no matter how many new ones arrive after it.
+    const favSet = new Set(getFavoriteSessions());
+    const sortedSessions = sessions.slice().sort((a, b) => {
+      const af = favSet.has(a.session_id) ? 1 : 0;
+      const bf = favSet.has(b.session_id) ? 1 : 0;
+      if (af !== bf) return bf - af;  // favorites first
+      return 0;                        // otherwise preserve server order
+    });
+
+    listEl.innerHTML = sortedSessions.map(s => {
       const started = s.started ? new Date(s.started).toLocaleDateString('ko-KR', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
       const isCurrent = s.session_id === SESSION_ID;
+      const isFav     = favSet.has(s.session_id);
       const firstQ    = (s.first_question || '').slice(0, 32) || '(제목 없음)';
       // [3-D] 사용자 지정 이름 우선 표시, 없으면 첫 질문
       const titleText = s.name || firstQ;
@@ -2912,6 +2933,15 @@ async function loadSessionList() {
 
       const sidAttr = escHtml(s.session_id);
       const titleAttr = titleText.replace(/"/g, '&quot;');
+      // Star glyph for favorite rows — inline outline SVG so dark/light
+      // mode follows currentColor. Filled accent color via CSS class.
+      const favStar = isFav
+        ? '<span class="session-fav-star" aria-label="즐겨찾기" title="즐겨찾기">'
+          + '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" '
+          + 'stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">'
+          + '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'
+          + '</svg></span>'
+        : '';
       // v0.6.1 (2026-06-15) Claude-style — inline rename / delete
       // buttons replaced by a single ⋯ trigger that opens a modal
       // dialog (rename / archive / delete actions, see #session-action-modal).
@@ -2921,6 +2951,7 @@ async function loadSessionList() {
           <div class="session-item-body"
                data-action="switch-session" data-sid="${sidAttr}">
             <div class="session-item-title">
+              ${favStar}
               ${s.name ? '<span class="session-pinned">📌</span>' : ''}
               ${isCurrent ? '<span class="session-current-dot">●</span>' : ''}
               <span class="session-title-text">${titleEsc}</span>
@@ -3098,6 +3129,14 @@ async function deleteSession(sessionId, event) {
     const d = await r.json();
     if (d.success) {
       toast('세션 삭제 완료', 'success');
+      // v0.6.1 v8 (2026-06-16) — drop the deleted SID from the
+      // favorite store so it doesn't linger as an orphan reference
+      // (the next loadSessionList would skip it, but the JSON
+      // bloats over time without explicit cleanup).
+      try {
+        const favs = getFavoriteSessions().filter(s => s !== sessionId);
+        localStorage.setItem('james_favorite_sessions', JSON.stringify(favs));
+      } catch (_) {}
       // 현재 세션이면 새 세션으로
       if (sessionId === SESSION_ID) {
         newSession();
@@ -3205,7 +3244,66 @@ function openSessionActionMenu(sid, title, e) {
   m.setAttribute('data-sid', sid || '');
   var nameEl = document.getElementById('session-action-name');
   if (nameEl) nameEl.textContent = title || '';
+  // v0.6.1 v8 (2026-06-16) — sync the 즐겨찾기 row's filled/empty
+  // ★ + label based on the current favorite state of this sid.
+  var favBtn = document.getElementById('session-action-favorite-btn');
+  var favLbl = document.getElementById('session-action-favorite-label');
+  if (favBtn) {
+    var isFav = isFavoriteSession(sid);
+    favBtn.classList.toggle('is-favorited', isFav);
+    if (favLbl) {
+      favLbl.textContent = isFav
+        ? (t('chat.session_unfavorite') || '즐겨찾기 해제')
+        : (t('chat.session_favorite') || '즐겨찾기');
+    }
+  }
   m.classList.remove('hidden');
+}
+
+/* v0.6.1 v8 (2026-06-16) — Favorite (즐겨찾기) primitive.
+ *
+ * localStorage-only — no backend endpoint required. Future cycle can
+ * promote this to a server-side `/history/sessions/{id}/favorite/`
+ * (the same call sites would just point at a new transport). Stored
+ * as a JSON array of SIDs under `james_favorite_sessions`.
+ *
+ *   isFavoriteSession(sid)     → boolean
+ *   getFavoriteSessions()      → string[] (deduped)
+ *   toggleFavoriteSession(sid) → mutates store, refreshes list/UI
+ *
+ * loadSessionList sorts favorites to the top + paints ★ on the row.
+ */
+function getFavoriteSessions() {
+  try {
+    var raw = localStorage.getItem('james_favorite_sessions');
+    if (!raw) return [];
+    var arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter(Boolean) : [];
+  } catch (_) { return []; }
+}
+
+function isFavoriteSession(sid) {
+  if (!sid) return false;
+  return getFavoriteSessions().indexOf(sid) >= 0;
+}
+
+function toggleFavoriteSession(sid) {
+  if (!sid) return;
+  var favs = getFavoriteSessions();
+  var idx = favs.indexOf(sid);
+  if (idx >= 0) {
+    favs.splice(idx, 1);
+    toast(t('chat.session_unfavorited') || '즐겨찾기 해제됨', 'info');
+  } else {
+    favs.unshift(sid);                  // most-recent favorite first
+    toast(t('chat.session_favorited') || '즐겨찾기 추가됨', 'success');
+  }
+  try {
+    localStorage.setItem('james_favorite_sessions', JSON.stringify(favs));
+  } catch (_) {}
+  if (typeof loadSessionList === 'function') {
+    loadSessionList().catch(() => {});
+  }
 }
 
 function closeSessionActionMenu() {

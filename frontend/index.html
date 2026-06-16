@@ -6,11 +6,10 @@
 <meta name="theme-color" content="#04060a">
 <title>Secure Enterprise Knowledge Operating System</title>
 <link rel="stylesheet" href="/static/tokens.css">
-<!-- v=v13-20260616 cache-bust: + 새 대화 pill stopped wiping the
-     current session (was wired to clear-history; now dispatches
-     new-session). -->
-<link rel="stylesheet" href="/static/chat.css?v=v13-20260616">
-<link rel="stylesheet" href="/static/mobile.css?v=v13-20260616">
+<!-- v=v14-20260616 cache-bust: session-action popover (Claude-style)
+     + favorite (즐겨찾기) primitive + favorite-aware sidebar sort. -->
+<link rel="stylesheet" href="/static/chat.css?v=v14-20260616">
+<link rel="stylesheet" href="/static/mobile.css?v=v14-20260616">
 </head>
 <body>
 
@@ -654,43 +653,56 @@
      Three actions: rename / archive (TODO future endpoint; shown
      disabled today) / delete. Selected session id is stashed on the
      modal root via data-sid by chat.js openSessionActionMenu(). -->
-<!-- v0.6.1 v5 (2026-06-16) — operator catch: the session-action
-     modal was full-width on phones with oversized buttons. Switched
-     to a COMPACT layout (max-width 280, smaller padding, smaller
-     button heights, professional textual labels — emoji prefixes
-     removed). The .modal-compact class flips .modal padding to a
-     phone-friendly size via chat.css. -->
-<div class="modal-overlay hidden" id="session-action-modal"
+<!-- v0.6.1 v8 (2026-06-16) — Claude.ai-style popover. The previous
+     full-width modal was replaced with a compact 3-row popover that
+     anchors near the clicked ⋯ button. Each row = left-aligned
+     label + right-aligned monochrome outline SVG icon. Backdrop is
+     nearly transparent so the operator's eye stays on the action
+     they just tapped. Tapping outside the popover closes it
+     (existing .modal-overlay click delegation). 보관 → 즐겨찾기 —
+     a localStorage-only primitive that pins/un-pins the session at
+     the top of the sidebar list. -->
+<div class="modal-overlay modal-overlay-popover hidden" id="session-action-modal"
      role="dialog" aria-modal="true"
      aria-labelledby="session-action-title"
      data-sid="">
-  <div class="modal modal-compact">
-    <div class="modal-title" id="session-action-title"
-         data-i18n="chat.session_actions">대화 메뉴</div>
+  <div class="modal modal-compact modal-popover">
     <div id="session-action-name"
-         style="font-size:11px;color:var(--muted);
-                margin-bottom:10px;
-                overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
-    <div style="display:flex;flex-direction:column;gap:6px">
-      <button class="modal-btn primary modal-btn-row"
-              data-action="session-action-rename"
-              data-i18n="chat.session_rename">이름 변경</button>
-      <button class="modal-btn modal-btn-row"
-              data-action="session-action-archive"
-              data-i18n-title="chat.session_archive_hint"
-              title="대화를 목록에서 숨김 (보관함은 후속 cycle)"
-              disabled
-              data-i18n="chat.session_archive">보관 (준비 중)</button>
-      <button class="modal-btn modal-btn-row modal-btn-danger"
-              data-action="session-action-delete"
-              data-i18n="chat.session_delete">삭제</button>
-    </div>
-    <div class="modal-actions" style="margin-top:10px;justify-content:flex-end">
-      <button class="modal-btn cancel"
-              data-action="session-action-close"
-              data-i18n="common.cancel"
-              style="flex:0 0 auto;padding:6px 16px;font-size:12px">취소</button>
-    </div>
+         class="modal-popover-name"
+         aria-labelledby="session-action-title"></div>
+    <button class="modal-popover-row"
+            data-action="session-action-rename"
+            id="session-action-title">
+      <span data-i18n="chat.session_rename">이름 변경</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round"
+           stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 20h9"/>
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+      </svg>
+    </button>
+    <button class="modal-popover-row"
+            data-action="session-action-favorite"
+            id="session-action-favorite-btn">
+      <span id="session-action-favorite-label"
+            data-i18n="chat.session_favorite">즐겨찾기</span>
+      <svg id="session-action-favorite-icon"
+           width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round"
+           stroke-linejoin="round" aria-hidden="true">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+    </button>
+    <button class="modal-popover-row modal-popover-row-danger"
+            data-action="session-action-delete">
+      <span data-i18n="chat.session_delete">삭제</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round"
+           stroke-linejoin="round" aria-hidden="true">
+        <polyline points="3 6 5 6 21 6"/>
+        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+      </svg>
+    </button>
   </div>
 </div>
 
