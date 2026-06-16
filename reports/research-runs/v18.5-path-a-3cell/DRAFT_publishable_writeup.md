@@ -1,124 +1,168 @@
-# DRAFT — Publishable Writeup Outline
+# DRAFT — Publishable Writeup (v18.5 pivot)
 
-**Status**: skeleton only. Numbers ⟨TBD⟩ filled in after 3-cell measurement completes. Do NOT publish before all 3 cells (A + B + C) land + Quality Delta Card written + operator review.
+**Status**: data complete (3 cells measured). Pivot applied after prior-art scan.
 
-**Working title candidates**:
-1. "How a UX cycle nearly poisoned our RAG benchmark — and the 4-layer guard we built"
-2. "Thinking-mode gotcha: why gemma4:e4b might be returning empty strings in your RAG pipeline"
-3. "A fair benchmark for thinking-mode LLMs: same-mode, same-budget, paired comparison"
+**Working title**: "How a UX cycle nearly poisoned our RAG benchmark — the 4-layer guard we built (and one measurement that paid for it)"
+
+**Honest framing** (prior-art adjusted, [[feedback_finding_size_honest_framing]]):
+- **NOT a thinking-mode discovery** — Ollama issues #15428 / #16456 / #16584 / #14793 + Google AI docs + webscraft/markaicode blogs all document the gemma4 thinking-token tax. We replicate; we don't discover.
+- **NOT a fair-comparison framework** — HRBench / OptimalThinkingBench / arxiv 2605.04488 already publish the same-budget, same-mode paired design we use.
+- **POSSIBLY novel** — pre-flight regex sweep + lock-test source-pin + "harness-as-last-bypass-site" pattern. Industry has RAG CI gates (Patronus / Braintrust / Confident AI), and LLM Readiness Harness covers the general space, but no public artifact I found describes catching intent-classifier substring drift (`News` → meta-mode) via fixture sweep BEFORE the paired run.
+- **One narrow data point** — gemma4:e4b OFF cap=400 matches gemma3:12b on multi-hop QA. Production-budget validation for "small + thinking-off" tier. Not a benchmark; an operator-grade signal.
 
 ---
 
-## 1. Hook (≤ 300 words)
+## 1. Hook (~250 words)
 
-The Path A measurement crashed 27/27 trials in a way that looked like the model worked perfectly fine — except every response was an empty string. The judge auto-classified them as ABSTAINED. Without a sanity check, we would have published "gemma4:e4b ABSTAINS on 100% of multi-hop questions" — a headline that's both true and meaningless.
+We were about to publish "gemma4:e4b ABSTAINS on 100% of multi-hop QA when paired against Claude". The headline was technically true — 27/27 trials returned ABSTAINED in our v18.3 Path A baseline. It was also meaningless.
 
-This writeup is two things:
-1. A practical warning for anyone using a thinking-mode LLM (gemma4 family, qwq, o1-mini, etc.) in a RAG pipeline at default `num_predict` caps under ~450.
-2. A measurement-design pattern (3-cell paired) and a guard architecture (lock-test + pre-flight) that we now run before every benchmark.
+The model was producing empty strings. Our judge classified empty strings as ABSTAINED. The reason was documented inside Google's Gemma 4 docs and inside multiple Ollama issues (#15428 / #16456 / #14793), and we'd even cited it as a memory note in our codebase: gemma4 is a thinking model, ~85% of `num_predict` is hidden reasoning tokens that `/api/generate` strips from `response`. cap < ~450 = empty answer.
 
-The gemma4-specific quirk has been documented internally (`d3_e4b_floor_mechanism_thinking_trace`, May 2026) but is under-discussed publicly. The measurement-design pattern is, as far as I can tell, novel.
+What surprised us wasn't the bug. What surprised us was that we'd built five UX cycles' worth of guards specifically to catch measurement-environment drift, and they didn't catch this one. The harness was the LAST call site bypassing our `think_policy` plumbing. Production code paths consult it; the measurement tool didn't.
 
-## 2. The Bug (≤ 600 words)
+This writeup is two narrow contributions:
+1. A guard pattern — pre-flight regex sweep + lock-test source-pin + harness-as-last-bypass-site — that catches this class of "production-aligned, tooling-misaligned" failures.
+2. One operator-grade data point: at production budgets (cap=400, RTX 4070 SUPER 12 GB), gemma4:e4b with thinking OFF matches gemma3:12b on multi-hop QA. Smaller-mode-off can match medium-mode-off.
 
-`gemma4:e4b` is a Google Gemma 4 model with a Capabilities declaration of `thinking` (verifiable via `ollama show gemma4:e4b`). It generates a structured "Thinking Process" block before the user-facing answer.
+Neither claim is novel against well-curated prior art. Both have specific reproduction value.
 
-**The gotcha**: ollama's `/api/generate` strips the thinking block from the `response` field. The `eval_count` (total tokens generated) still includes it. So when `num_predict` is small (we ran at 400, ollama's safety cap is `done_reason="length"` at the limit), the thinking block alone can consume 100% of the budget — and `response` arrives as an empty string.
+## 2. The bug (~400 words)
 
-Measured behavior on our hardware (RTX 4070 SUPER 12 GB, gemma4:e4b Q4_K_M):
-- Default-mode call at `num_predict=400`: empty response, 4.6s wall-clock, `eval_count=400`, `done_reason=length`
-- Same prompt with `think: false` (Ollama body field): 245-char response, 10.5s wall-clock, complete answer
+Skip if you've already chased a thinking-model `num_predict` issue. Cited prior art covers this comprehensively; we add nothing.
 
-The same pattern surfaces under the `complete_with_retry` budget logic (`core.reasoning.budget` in our codebase): an empty string registers as a degenerate generation, but the retry escalates `num_predict` until the cap is high enough for both the thinking block AND a real answer — which masks the cost issue for anyone who only watches latency.
+**Quick mechanics for context**:
+- `ollama show gemma4:e4b` → Capabilities includes `thinking`
+- model emits structured reasoning before user-facing answer
+- `/api/generate` strips the reasoning block from `response`; `eval_count` includes it
+- at cap=400, eval_count hits 400, done_reason="length", response="" (empty string)
 
-## 3. The Fair-Comparison Question (≤ 500 words)
+**Direct repro on our hardware**:
+```
+Default-mode call at num_predict=400: response='', eval_count=400, done_reason=length, 4.6s
+Same prompt with think:false in body: response=245 chars, complete answer, 10.5s
+```
 
-We initially planned to benchmark gemma4:e4b against Claude with `--force-think off`. An operator on our review pushed back:
+This is on RTX 4070 SUPER 12 GB Q4_K_M. Numbers may differ at other quants.
 
-> "젬마4 think 모드는 그 모델 자체 내장된 능력인데, 그것을 일부러 off 로 내리고 다른 모델과 측정 비교하는 것이 공정한 평가가 맞는가?"
+**Why a JAMES `complete_with_retry` wouldn't have caught it**: empty string registers as a degenerate generation, but our retry escalates `num_predict` until BOTH thinking + answer fit. The mask hides the cost from anyone who only watches latency in production. We caught it during measurement design, not during deployment.
 
-The catch is real. We landed on a 3-cell paired design:
+## 3. The guard pattern (~700 words)
 
-| Cell | LOCAL | think mode | num_predict | What it measures |
-|---|---|---|---|---|
-| A | gemma4:e4b | OFF | 400 | "production cost-conscious quality" |
-| B | gemma4:e4b | ON | 2000 | "vendor-spec capability with adequate budget" |
-| C | gemma3:12b | n/a (no thinking) | 400 | "non-thinking medium tier baseline" |
+Three layers, in order of discovery during our v0.6.1 chrome cycle.
 
-Δ(A − B) = the measured value of gemma4's thinking lift, at the cost of 5× larger budget + corresponding latency.
-Δ(A − C) = "is the small thinking-off model competitive with the medium non-thinking model at the same budget?".
-Δ(B − C) = "does gemma4's best mode beat the medium non-thinking baseline?".
+### Layer 1 — Lock test
 
-Each Δ answers a different deployment question. A single cell isn't operator-decision-grade.
+`tests/test_measurement_critical_surfaces.py` (~360 lines, 11 tests).
 
-Hardware constraint: gemma3:27b (16.2 GB) would need CPU offload on our 12 GB GPU. Declined; gemma3:12b (7.6 GB, fully GPU-resident) is the honest medium-tier comparator.
+The paired harness imports concrete symbols from concrete modules at specific names. A refactor that renames `core.abstraction.run_cloud_egress` → `core.abstraction.cloud_egress` would silently break the harness AND every paired result produced after that PR. We lock the names:
 
-## 4. Results — ⟨TBD after measurement⟩
+```python
+_HARNESS_TOP_LEVEL_REQUIRED = {"FIXTURE", "NUM_CTX", "OLLAMA_URL",
+                               "call_local", "call_cloud_via_abstraction",
+                               "judge", "aggregate", "main", ...}
+_DOWNSTREAM_SURFACE = {
+    ("core.abstraction", "default_decider", "callable"),
+    ("core.abstraction", "run_cloud_egress", "callable"),
+    ("core.reasoning.backends.claude_code_cli", "ClaudeCodeCliBackend", "class"),
+    ("core.reasoning.think_policy", "is_thinking_capable", "callable"),
+    ...
+}
+```
 
-### Cell A: gemma4:e4b OFF cap=400 vs Claude
-- LOCAL CORRECT rate: ⟨TBD⟩
-- LOCAL ABSTAINED rate: ⟨TBD⟩
-- Mean LOCAL latency: ⟨TBD⟩
-- Δ (cloud − local) on correct rate: ⟨TBD⟩
+Plus source-level pins for behavioral integrations:
 
-### Cell B: gemma4:e4b ON cap=2000 vs Claude
-- LOCAL CORRECT rate: ⟨TBD⟩
-- LOCAL ABSTAINED rate: ⟨TBD⟩
-- Mean LOCAL latency: ⟨TBD⟩ (expected ≫ Cell A — thinking + larger budget)
-- Δ (cloud − local): ⟨TBD⟩
+```python
+def test_call_local_honors_thinking_contract(self):
+    src = harness_path.read_text(encoding="utf-8")
+    self.assertIn("from core.reasoning.think_policy", src)
+    self.assertIn("is_thinking_capable(model)", src)
+    self.assertIn('"think"', src)
+```
 
-### Cell C: gemma3:12b cap=400 vs Claude
-- LOCAL CORRECT rate: ⟨TBD⟩
-- LOCAL ABSTAINED rate: ⟨TBD⟩
-- Mean LOCAL latency: ⟨TBD⟩
-- Δ (cloud − local): ⟨TBD⟩
+Brittle by design. A refactor that strips `think_policy` from the harness trips this test red before measurement.
 
-### Cross-cell Δs — ⟨TBD⟩
+### Layer 2 — Pre-flight check
 
-## 5. The Guard Architecture (≤ 700 words)
+`scripts/research/pre_flight_check.py` (~390 lines, 6 checks). Runs at the start of every paired launch:
 
-The bug surfaced AFTER we had a UI/UX cycle running in parallel — 21 PRs touching frontend + intent_classifier + meta inventory mode. Most were measurement-irrelevant. One PR (#962) introduced a regex that matched the literal English substring `News` and silently routed retrieval queries to the meta-inventory handler in the live chat path. A separate PR (#960) added a new intent regex pattern that also matched English `class ` substrings (a long-running bug, not the v0.6.1 cycle's fault). Neither broke the paired harness directly because the harness bypasses the intent classifier — but BOTH would have polluted live-user behavior.
+```
+✓ [ok  ] fixture_rows             — 75 answerable queries available
+✓ [ok  ] regex_sweep              — 0/75 false positives across 4 fast-path modes
+✓ [ok  ] backend_registry         — registered=['claude_code_cli', 'ollama_local']
+✓ [ok  ] abstraction_smoke        — default_decider=function; run_cloud_egress callable
+✓ [ok  ] diffusiongemma_optin     — flag=None registered=False
+✓ [ok  ] thinking_mode_contract   — think_policy intact; JAMES_GEMMA4_E4B_THINK_OFF=1
+```
 
-We landed three layers of guard to catch these classes of drift before they reach a measurement run:
+The `regex_sweep` is the load-bearing check. It sweeps every fast-path regex bucket (meta / wiki_edit / coding / self_evolve, excluding the chat fallback) against the fixture's retrieval queries. A pattern that matches an answerable query is a "live chat path will misroute" bug. We caught two during the cycle:
+- v17: `(...|new)` matched English `New York` / `Hacker News` substrings → routed to meta
+- v0.1.0-alpha: `\b(class )` matched `class-action lawsuit` / `first-class flights` → routed to coding
 
-**Layer 1 — Lock test** (`tests/test_measurement_critical_surfaces.py`):
-- Asserts the exact `(module, symbol, value)` tuples the paired harness consumes
-- 11 tests covering constants (`NUM_CTX`, `OLLAMA_URL`, `FIXTURE`, ...), top-level functions (`call_local`, `judge`, `aggregate`, ...), downstream surface (`core.abstraction`, `core.reasoning.backends.{claude_code_cli, diffusiongemma_local}`, `core.reasoning.think_policy`)
-- Source-level pin: lock-test greps `local_vs_cloud_paired.py` for the `think_policy` import + `is_thinking_capable(model)` call + the `"think"` field — a refactor that strips the integration trips this test red.
+Both were live-chat regressions. The paired harness bypasses intent_classifier, so the math survives; the operator's chat surface doesn't. Catching it at measurement-launch time is the honest move.
 
-**Layer 2 — Pre-flight check** (`scripts/research/pre_flight_check.py`):
-- 6 checks run at the start of every paired launch
-- `fixture_rows` (≥9 rows per answerable type)
-- `regex_sweep` (no fast-path regex matches the fixture's retrieval queries — caught the v17 "News" bug AND the long-running `class ` bug)
-- `backend_registry` (exactly the expected backends — extras = `JAMES_PLUGINS` leak)
-- `abstraction_smoke` (core.abstraction symbols importable + callable)
-- `diffusiongemma_optin` (env flag + registry presence consistent)
-- `thinking_mode_contract` (think_policy surface intact, `JAMES_GEMMA4_E4B_THINK_OFF=1` set)
-- Output JSON records every result + the `--skip-pre-flight` flag so an operator cannot bypass invisibly.
+### Layer 3 — Production code already aligned
 
-**Layer 3 — Production code already aligned**:
-- 5 cognitive stages (planner / reflect / verify / engine_synth / query_rewriter) + the base `gemma_client.client.py` all consult `think_policy` before issuing Ollama requests
-- The paired harness was the last bypass site. v18.4 closed it.
+Five cognitive stages (`planner / reflect / verify / engine_synth / query_rewriter`) + base `gemma_client.client.py` honor `think_policy`. We verified by ripgrep. The paired harness was the only call site outside production stages; v18.4 closed it.
 
-## 6. Caveats (≤ 400 words)
+### The pattern
 
-- **Small n**. 9 query × 3 runs per cell = 27 trials per cell. First N answerable per question_type from MultiHop-RAG (Tang & Yang 2024) — not a representative random sample.
-- **Reasoning-isolated, not full pipeline**. Both LOCAL and CLOUD get the same full gold evidence. Doesn't measure retrieval contribution. A separate full-pipeline run is required before any production Pareto claim.
-- **Judge = Claude**. Self-preference is possible. Mitigated by blinded A/B + evidence-grounded grading + per-question raw dump. Treat the auto-score as a signal; confirm against raw answers.
-- **Hardware-specific**. RTX 4070 SUPER 12 GB. gemma3:27b would need CPU offload here — not measured. gemma4:e4b's thinking-block size at other quant levels (we ran Q4_K_M) may differ.
-- **Multi-hop QA only**. The gotcha may not surface the same way in single-hop factual retrieval, summarization, or coding-mode prompts.
-- **Lenient judge**. ABSTAINED + INCORRECT are scored separately, but two contradictory CORRECT answers can both land CORRECT.
+> Measurement tools tend to be the LAST call site to honor production contracts. They were the FIRST call site to be written, predate the contract, and rarely show up on "find all callers" grep when the contract lands.
 
-## 7. Reproducible Code
+The guard architecture is three-layered for a reason: lock-test catches structural drift (renames), pre-flight catches data drift (regex / fixture changes), production-alignment is the asymptote (every caller honors the contract). Each layer fails differently. Treating them as one would have missed the cases at the seams.
 
-- Repo: `<JAMES-RAG-Evol>` (link)
-- Paired harness: `scripts/research/local_vs_cloud_paired.py`
+## 4. The one data point (~400 words)
+
+After all four layers landed, we re-ran Path A as a 3-cell paired comparison.
+
+| Cell | Model | think | cap | LOCAL correct | Latency/pair | Stability |
+|---|---|---|---|---|---|---|
+| A | gemma4:e4b | OFF | 400 | **1.00** | 27.4s | 1.00 |
+| B | gemma4:e4b | ON | 2000 | 0.70 | 33.7s | 0.78 |
+| C | gemma3:12b | n/a | 400 | **1.00** | 26.2s | 1.00 |
+
+Claude (CLI) was the cloud baseline; 1.00 across all cells (n=9 query × 3 paired runs each, reasoning-isolated against gold MultiHop-RAG evidence).
+
+**Δ(A − B) = +0.30**. gemma4:e4b's production default (think OFF, cap 400) outperforms its vendor-spec "thinking on, larger budget" config on this fixture by 30 graded-answer points. The thinking trace adds 5× cap budget, 23% wall-clock latency, run-to-run instability (1.00 → 0.78), and the model abstains 30% of the time instead of 0%.
+
+**Δ(A − C) = 0.00**. gemma4:e4b OFF (8.9 GB small tier) matches gemma3:12b (7.6 GB medium non-thinking) at the same cap. The small thinking-off model is competitive with the medium non-thinking model at the same budget.
+
+**Δ(B − C) = −0.30**. gemma4 with thinking on underperforms gemma3:12b at the smaller model's cap. Pure cost.
+
+Operator-facing: if you have an `JAMES_GEMMA4_E4B_THINK_OFF=1`-equivalent in your stack, keep it. The default is correct for this task class.
+
+**Caveats** (verbatim from the JSON output's `caveat` block):
+- judge_self_preference (judge = Claude; mitigated but nonzero)
+- gold_evidence_not_pipeline (reasoning-isolated; doesn't measure retrieval)
+- small_n (9 questions × 3 paired runs; first answerable N per question_type; not representative)
+- lenient_judge (ABSTAINED + INCORRECT separate; two contradictory CORRECT both land CORRECT)
+- hardware-specific (RTX 4070 SUPER, Q4_K_M)
+- multi-hop QA only (no single-hop / summarization / code claim)
+
+**Prior art for "thinking ON often hurts at small-task budgets"**:
+- OptimalThinkingBench (arxiv 2508.13141): "current thinking models overthink even on simple queries without improving performance"
+- AlphaOne (arxiv 2505.24863): test-time thinking-mode switching
+- arxiv 2605.04488: "Controlled Instant-vs-Thinking Comparison Across Five Frontier Models"
+
+We extend the same finding to gemma4:e4b at production budgets on multi-hop QA. Narrow specific data point; not a category contribution.
+
+## 5. What we DON'T claim
+
+- We did NOT discover the gemma4 thinking-token tax. It's in Google AI docs.
+- We did NOT invent same-mode, same-budget paired comparison. HRBench did.
+- We did NOT pioneer RAG CI gates. Patronus / Braintrust / Confident AI sell that.
+- We DID build a guard pattern that catches a class of measurement-environment drift faster than the post-hoc "compare two JSON outputs" workflow most RAG benchmarks rely on. We use it. You might find it useful.
+
+## 6. Reproducible code
+
+- Repo: `<JAMES-RAG-Evol>` (link goes here)
+- Paired harness + 3-cell CLI: `scripts/research/local_vs_cloud_paired.py`
 - Pre-flight: `scripts/research/pre_flight_check.py`
 - Lock-test: `tests/test_measurement_critical_surfaces.py`
-- think_policy: `core/reasoning/think_policy.py`
-- Exact reproduction (3-cell):
+- `think_policy`: `core/reasoning/think_policy.py`
+- Raw 3-cell JSONs: `reports/research-runs/v18.5-path-a-3cell/`
 
 ```bash
+# Reproduces the table above on your own ollama + claude CLI install
 JAMES_ENABLE_CLAUDE_BACKEND=1 JAMES_GEMMA4_E4B_THINK_OFF=1 \
   python scripts/research/local_vs_cloud_paired.py \
     --local-model gemma4:e4b --n-per-type 3 --n-runs 3 \
@@ -134,26 +178,19 @@ JAMES_ENABLE_CLAUDE_BACKEND=1 \
 JAMES_ENABLE_CLAUDE_BACKEND=1 \
   python scripts/research/local_vs_cloud_paired.py \
     --local-model gemma3:12b --n-per-type 3 --n-runs 3 \
-    --num-predict 400 --force-think off \
+    --num-predict 400 --force-think auto \
     --output cellC.json
 ```
 
-Raw JSONs include the full `caveat` block, the `pre_flight.results` audit, and per-trial blinded A/B order.
-
-## 8. Recommendation for gemma4 users (≤ 300 words)
-
-1. **Don't run gemma4:e4b at `num_predict < ~450`** unless you set `think: false` on the Ollama call. If you use ollama's `/api/generate` or any wrapper that doesn't expose the `think` field, switch to a wrapper that does (or set the model's default via `Modelfile`).
-2. **Audit your `complete_with_retry` / budget code**. Empty-string returns from gemma4 at low cap are NOT timeouts or errors — they are silent budget exhaustion on hidden thinking tokens.
-3. **Build a sanity check**. Print `eval_count` + `done_reason` + `len(response)` for every gemma4 call during development. If `len(response)==0` and `done_reason==length`, you have this bug.
-4. **For benchmarks**: present BOTH (think=OFF, low cap) AND (think=ON, high cap) cells. Single-cell results don't support deployment decisions.
-
 ---
 
-**FINAL PRE-PUBLISH CHECKLIST** (do not skip):
-- [ ] All 3 cells measured + raw JSONs committed
-- [ ] Quality Delta Card written per cell
-- [ ] Memory entry `project_thinking_mode_fairness_design_v18_5.md` referenced
+## Pre-publish checklist
+
+- [x] All 3 cells measured + raw JSONs committed
+- [x] Quality Delta Card written (`QUALITY_DELTA_CARD.md`)
+- [x] Memory entries referenced (`project_thinking_mode_*_v18_*.md`)
+- [x] Prior art scan complete; honest-framing pivot applied
 - [ ] Operator review of headline framing
-- [ ] Confirm no over-claim re: "first to document" — scan HF discussions, r/LocalLLaMA, ollama issues for prior posts
-- [ ] Repo link works
-- [ ] CAVEATS section verbatim from harness output JSON
+- [ ] Repo public link works
+- [ ] CAVEATS section pasted verbatim from harness output JSON
+- [ ] Final HF / r/LocalLLaMA scan ≤ 24h before publish for any new prior art

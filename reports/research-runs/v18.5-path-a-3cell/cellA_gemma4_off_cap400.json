@@ -1,0 +1,763 @@
+{
+  "design": "reasoning-isolated; both models same full gold evidence",
+  "local_model": "gemma4:e4b",
+  "local_backend": "ollama",
+  "num_predict": 400,
+  "force_think": "off",
+  "pre_flight": {
+    "skipped": false,
+    "results": [
+      {
+        "name": "fixture_rows",
+        "status": "ok",
+        "detail": "75 answerable queries available (counts={'inference_query': 25, 'comparison_query': 25, 'temporal_query': 25})",
+        "extra": {
+          "counts": {
+            "inference_query": 25,
+            "comparison_query": 25,
+            "temporal_query": 25
+          },
+          "path": "C:\\Project\\James-RAG-Evol-v010\\workspaces\\hotpot_eval\\eval\\multihop_rag_queries.json"
+        }
+      },
+      {
+        "name": "regex_sweep",
+        "status": "ok",
+        "detail": "0/75 false positives across 4 fast-path modes (['coding', 'meta', 'self_evolve', 'wiki_edit'])",
+        "extra": {
+          "total": 75,
+          "modes_swept": [
+            "coding",
+            "meta",
+            "self_evolve",
+            "wiki_edit"
+          ]
+        }
+      },
+      {
+        "name": "backend_registry",
+        "status": "ok",
+        "detail": "registered=['claude_code_cli', 'ollama_local']",
+        "extra": {
+          "registered": [
+            "claude_code_cli",
+            "ollama_local"
+          ]
+        }
+      },
+      {
+        "name": "abstraction_smoke",
+        "status": "ok",
+        "detail": "default_decider=function; run_cloud_egress callable",
+        "extra": {}
+      },
+      {
+        "name": "diffusiongemma_optin",
+        "status": "ok",
+        "detail": "flag=None registered=False",
+        "extra": {}
+      },
+      {
+        "name": "thinking_mode_contract",
+        "status": "ok",
+        "detail": "think_policy surface intact; JAMES_GEMMA4_E4B_THINK_OFF=1 active (gemma4 family models will receive think:false).",
+        "extra": {}
+      }
+    ]
+  },
+  "num_ctx": 8192,
+  "cloud_backend": "claude_code_cli (via core.abstraction.run_cloud_egress)",
+  "judge": "claude-cli, blinded A/B per (query, run)",
+  "n_per_type": 3,
+  "n_runs": 3,
+  "caveat": {
+    "judge_self_preference": "judge is Claude; one candidate is Claude — self-preference is possible. Mitigated by blinding A/B + evidence-grounded grading + per-question raw dump. Treat the auto-score as a SIGNAL; confirm against raw answers.",
+    "gold_evidence_not_pipeline": "Reasoning-isolated design: both models get the same full gold evidence. Does NOT measure the full retrieval pipeline. A production Pareto claim needs a separate full-pipeline run (with JAMES retrieval + abstention) before any operator-facing conclusion.",
+    "small_n": "Sample is the first answerable N per question_type from MultiHop-RAG. Not representative. The verdict here is a §4.1 closure SIGNAL, not a publishable claim. n=3 paired (per feedback_n1_verdict_inflation_n3_caught) but n_questions is still small.",
+    "lenient_judge": "ABSTAINED + INCORRECT are scored separately, but two contradictory CORRECT answers can both land CORRECT (judge grades each independently). Per α-8 closure: paired Δ near 0 + collapse to noise band on n=3 has been observed (n=1 inflation pattern).",
+    "local_model_caveat": "Default local-model is gemma3:4b. Does NOT equate to gemma4 e4b (production tier, has the α-cycle thinking-trace floor on multihop). Re-run with --local-model gemma4:e4b to compare against the production tier.",
+    "abstraction_no_op": "Cloud path goes through core.abstraction.run_cloud_egress, but the gold-evidence fixture has no PII so entities=[] → mask is empty. The call path is exercised end-to-end (proves §5.7.13 module works against a real Claude backend) but the abstraction itself is a no-op for this fixture."
+  },
+  "rows": [
+    {
+      "id": 1,
+      "type": "inference_query",
+      "run": 0,
+      "hops": 3,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Sam Bankman-Fried is the individual associated with the cryptocurrency industry facing a criminal trial on fraud and conspiracy charges, according to reports from The Verge and TechCrunch. Prosecutors allege he committed fraud for personal gain.",
+      "cloud_answer": "Sam Bankman-Fried, the founder of FTX (a failed cryptocurrency exchange) and co-founder of Alameda Research, is the individual facing a criminal trial on seven counts of fraud and conspiracy charges (two counts of wire fraud and five counts of conspiracy). As reported by both The Verge and TechCrunch, prosecutors accuse him of committing fraud for personal gain, including allegedly using \"billions of dollars in misappropriated FTX customer deposits\" to buy more than $200 million of real estate for himself, make billions of dollars of investments for his own interest, repay Alameda's lenders, and use more than $100 million of customer funds to make political contributions. U.S. Attorney Damian Williams called his alleged crimes \"one of the biggest financial frauds in American history,\" and FTX's new CEO John J. Ray III referred to Bankman-Fried's conduct as \"really just old-fashioned embezzlement.\" He could face up to 115 years in jail if convicted on all charges.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 24.8
+    },
+    {
+      "id": 1,
+      "type": "inference_query",
+      "run": 1,
+      "hops": 3,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Sam Bankman-Fried is the individual associated with the cryptocurrency industry facing a criminal trial on fraud and conspiracy charges, according to reports from The Verge and TechCrunch. Prosecutors allege he committed fraud for personal gain.",
+      "cloud_answer": "Sam Bankman-Fried, the founder and former CEO of the failed cryptocurrency exchange FTX (and co-founder of Alameda Research), is the individual associated with the cryptocurrency industry facing a criminal trial on fraud and conspiracy charges, as reported by both The Verge and TechCrunch. He faces seven counts of criminal charges—two counts of wire fraud and five counts of conspiracy—and is accused by prosecutors of misappropriating billions of dollars in FTX customer deposits for personal gain, including using the funds to buy more than $200 million of real estate for himself, make billions of dollars of investments for his own interest, repay Alameda's lenders, and make more than $100 million in political contributions.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 19.03
+    },
+    {
+      "id": 1,
+      "type": "inference_query",
+      "run": 2,
+      "hops": 3,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Sam Bankman-Fried is the individual associated with the cryptocurrency industry facing a criminal trial on fraud and conspiracy charges, according to reports from The Verge and TechCrunch. Prosecutors allege he committed fraud for personal gain.",
+      "cloud_answer": "Sam Bankman-Fried, the founder of FTX and co-founder of Alameda Research, is the individual associated with the cryptocurrency industry facing a criminal trial on seven counts of fraud and conspiracy charges (two counts of wire fraud and five counts of conspiracy). As reported by both The Verge and TechCrunch, prosecutors accuse him of committing fraud for personal gain, including using billions of dollars in misappropriated FTX customer deposits to buy more than $200 million of real estate for himself, make billions of dollars of investments for his own interest, repay Alameda's lenders, and make more than $100 million in political contributions.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 18.2
+    },
+    {
+      "id": 2,
+      "type": "inference_query",
+      "run": 0,
+      "hops": 2,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Donald Trump is implicated in both inflating the value of his Manhattan penthouse at Trump Tower—which was valued at $327 million according to allegations from James and noted as an amount no apartment in New York City has ever sold for close to—and is accused by Judge Arthur Engoron, writing in a September ruling, that increasing the value of this apartment between 2014 and 2015 was \"to mask a drop in the value of one of his other properties.\"",
+      "cloud_answer": "Donald Trump",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 24.28
+    },
+    {
+      "id": 2,
+      "type": "inference_query",
+      "run": 1,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Donald Trump is implicated in both inflating the value of his Manhattan penthouse at Trump Tower—which was valued at $327 million according to allegations from James and noted as an amount no apartment in New York City has ever sold for close to—and is accused by Judge Arthur Engoron, writing in a September ruling, that increasing the value of this apartment between 2014 and 2015 was \"to mask a drop in the value of one of his other properties.\"",
+      "cloud_answer": "Donald Trump",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 26.65
+    },
+    {
+      "id": 2,
+      "type": "inference_query",
+      "run": 2,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Donald Trump is implicated in both inflating the value of his Manhattan penthouse at Trump Tower—which was valued at $327 million according to allegations from James and noted as an amount no apartment in New York City has ever sold for close to—and is accused by Judge Arthur Engoron, writing in a September ruling, that increasing the value of this apartment between 2014 and 2015 was \"to mask a drop in the value of one of his other properties.\"",
+      "cloud_answer": "Donald Trump",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 15.76
+    },
+    {
+      "id": 3,
+      "type": "inference_query",
+      "run": 0,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Sam Altman is the figure associated with generative AI technology whose departure from OpenAI was considered shocking according to Fortune, and he is also the subject of a prevailing theory suggesting a lack of full truthfulness with the board as reported by TechCrunch.",
+      "cloud_answer": "Sam Altman",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 18.21
+    },
+    {
+      "id": 3,
+      "type": "inference_query",
+      "run": 1,
+      "hops": 2,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Sam Altman is the figure associated with generative AI technology whose departure from OpenAI was considered shocking according to Fortune, and he is also the subject of a prevailing theory suggesting a lack of full truthfulness with the board as reported by TechCrunch.",
+      "cloud_answer": "Sam Altman",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 18.7
+    },
+    {
+      "id": 3,
+      "type": "inference_query",
+      "run": 2,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Sam Altman is the figure associated with generative AI technology whose departure from OpenAI was considered shocking according to Fortune, and he is also the subject of a prevailing theory suggesting a lack of full truthfulness with the board as reported by TechCrunch.",
+      "cloud_answer": "Sam Altman",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 15.33
+    },
+    {
+      "id": 26,
+      "type": "comparison_query",
+      "run": 0,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "The TechCrunch article mentions that Rainforest secured client commitments representing more than $500 million in processing, with much of the volume guaranteed. The Hacker News article states that The Epoch Times grew its revenue by a staggering 685% in two years, to $122 million in 2021.",
+      "cloud_answer": "No, they do not both report this in the way the question frames it.\n\n- **The Epoch Times article** does report a clear revenue increase: the nonprofit grew its revenue \"by a staggering 685% in two years, to $122 million in 2021.\" However, the article attributes this funding to \"aggressive online and real-world marketing campaigns and big-money conservative donors,\" not specifically to a subscription model — though it notes the paper \"boasts to be the country's fourth-largest newspaper by subscriber count.\"\n\n- **The TechCrunch article** does not report a revenue increase for Rainforest itself. It reports that Rainforest secured \"client commitments representing more than $500 million in processing\" (i.e., payment processing volume, not revenue) and raised an $8.5 million seed round. It also mentions that software companies want to \"generate more revenue from being able to\" accept payments, but this is a general motivation, not a reported revenue increase.\n\nSo only the Epoch Times article reports an actual revenue increase; the TechCrunch article reports processing volume commitments and a seed fundraise, not a revenue increase.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 31.19
+    },
+    {
+      "id": 26,
+      "type": "comparison_query",
+      "run": 1,
+      "hops": 2,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "The TechCrunch article mentions that Rainforest secured client commitments representing more than $500 million in processing, with much of the volume guaranteed. The Hacker News article states that The Epoch Times grew its revenue by a staggering 685% in two years, to $122 million in 2021.",
+      "cloud_answer": "No. Only the Epoch Times article explicitly reports a revenue increase — \"growing its revenue by a staggering 685% in two years, to $122 million in 2021\" — which is tied to its subscription-based model (it \"boasts to be the country's fourth-largest newspaper by subscriber count\").\n\nThe TechCrunch article on Rainforest does not report a revenue increase. It mentions that software companies want to \"generate more revenue\" by accepting payments, and that Rainforest has secured \"client commitments representing more than $500 million in processing\" and raised an $8.5 million seed round — but processing volume commitments and funding raised are not the same as a reported revenue increase.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 30.43
+    },
+    {
+      "id": 26,
+      "type": "comparison_query",
+      "run": 2,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "The TechCrunch article mentions that Rainforest secured client commitments representing more than $500 million in processing, with much of the volume guaranteed. The Hacker News article states that The Epoch Times grew its revenue by a staggering 685% in two years, to $122 million in 2021.",
+      "cloud_answer": "Yes. The TechCrunch article reports that Rainforest, which helps software companies embed payments, has secured client commitments representing more than $500 million in processing (much of it guaranteed), and notes that software companies want to \"accept payments and generate more revenue from being able to do so\" — tying increased revenue to payment models. The Hacker News/NBC article on The Epoch Times reports that the nonprofit (which boasts being the country's fourth-largest newspaper by subscriber count) grew its revenue by 685% in two years, reaching $122 million in 2021 — tying increased revenue to its subscription-based newspaper model.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 26.32
+    },
+    {
+      "id": 27,
+      "type": "comparison_query",
+      "run": 0,
+      "hops": 2,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "The TechCrunch article on Twitch discusses that Mike Minton stated that \"the combination of making it easier to run, increasing the rev share and then recently in the keynote, we talked about two new features to allow moderators to know when an ad break is coming, and adjust the ad break around the content\" was part of improving the ad experience. Regarding monetization strategies generally, Twitch's Chief Monetization Officer mentioned that \"the third piece, which is where we’re behind, is sponsorships,\" and they are now focused on growing sponsorship opportunities for streamers.\n\nThe TechCrunch article on Beeper Mini states that it has decided to make Beeper Mini free for the time being due to the unstable nature of its status, with the plan to \"look at turning on subscriptions again\" once things stabilize.",
+      "cloud_answer": "Yes. The Twitch article describes a monetization strategy centered on multiple revenue streams for creators on its platform: a 70/30 subscription revenue split (offered through the Partner Plus program on the first $100,000 per year, with eligibility based on a points-based system valuing Tier 1, 2, and 3 subs at 1, 2, and 6 points respectively), increased ad revenue share with an ad incentive program, viewer support through subscriptions, gifting, and cheering, and growing sponsorship opportunities leveraging Amazon's advertising business.\n\nIn contrast, the Beeper Mini article describes a much simpler subscription model: a flat $1.99 per month fee paid directly by users for access to iMessage features on Android (such as high-quality photos and videos, tapback reactions, typing indicators, and read receipts). Furthermore, due to the instability caused by Apple's attempts to shut it down, Beeper decided to make Beeper Mini free for the time being, planning to \"look at turning on subscriptions again\" once things stabilize.\n\nSo yes, the strategies differ: Twitch focuses on a creator-platform revenue-sharing ecosystem with subs, ads, and sponsorships, while Beeper Mini relies on a straightforward direct-to-consumer monthly subscription fee (currently paused/free).",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 67.03
+    },
+    {
+      "id": 27,
+      "type": "comparison_query",
+      "run": 1,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "The TechCrunch article on Twitch discusses that Mike Minton stated that \"the combination of making it easier to run, increasing the rev share and then recently in the keynote, we talked about two new features to allow moderators to know when an ad break is coming, and adjust the ad break around the content\" was part of improving the ad experience. Regarding monetization strategies generally, Twitch's Chief Monetization Officer mentioned that \"the third piece, which is where we’re behind, is sponsorships,\" and they are now focused on growing sponsorship opportunities for streamers.\n\nThe TechCrunch article on Beeper Mini states that it has decided to make Beeper Mini free for the time being due to the unstable nature of its status, with the plan to \"look at turning on subscriptions again\" once things stabilize.",
+      "cloud_answer": "Yes. The Twitch article describes a multi-pronged monetization strategy centered on subscriptions (with revenue splits like 70/30 on the first $100,000 for Partner Plus-eligible creators, using a points-based system where Tier 1, 2, and 3 subs earn 1, 2, and 6 points), advertising (with an increased rev share and an ad incentive program), and sponsorships (leveraging Amazon advertising to set up influencer deals programmatically). It is a long-term, tiered approach to monetizing creators on the platform.\n\nIn contrast, the Beeper article indicates that Beeper Mini's monetization plan was a straightforward $1.99 per month subscription for bringing iMessage to Android users. However, due to the \"chaotic\" situation caused by Apple's attempts to shut the app down, Beeper decided to make Beeper Mini free for the time being, saying \"As soon as things stabilize (we hope they will), we'll look at turning on subscriptions again.\"\n\nSo yes, the strategies differ: Twitch is pursuing a complex, evolving creator-revenue-sharing model across subs, ads, and sponsorships, while Beeper's plan was a simple flat-rate consumer subscription that has been temporarily suspended in favor of free access.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 22.62
+    },
+    {
+      "id": 27,
+      "type": "comparison_query",
+      "run": 2,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "The TechCrunch article on Twitch discusses that Mike Minton stated that \"the combination of making it easier to run, increasing the rev share and then recently in the keynote, we talked about two new features to allow moderators to know when an ad break is coming, and adjust the ad break around the content\" was part of improving the ad experience. Regarding monetization strategies generally, Twitch's Chief Monetization Officer mentioned that \"the third piece, which is where we’re behind, is sponsorships,\" and they are now focused on growing sponsorship opportunities for streamers.\n\nThe TechCrunch article on Beeper Mini states that it has decided to make Beeper Mini free for the time being due to the unstable nature of its status, with the plan to \"look at turning on subscriptions again\" once things stabilize.",
+      "cloud_answer": "Yes. The Twitch article describes a monetization strategy built around multiple revenue streams for creators — subscription revenue splits (with the Partner Plus program offering a 70/30 split on the first $100,000 for eligible creators based on a sub-points system), prioritizing ad revenue with an increased rev share and ad incentive program, community-based support through subscriptions, gifting, and cheering, and growing sponsorship opportunities through Amazon advertising.\n\nIn contrast, the Beeper article indicates that Beeper Mini, which had been a $1.99 per month subscription app, has been made free for the time being due to the \"chaotic\" situation following Apple's attempts to shut it down. Beeper stated, \"As soon as things stabilize (we hope they will), we'll look at turning on subscriptions again.\"\n\nSo the strategies differ: Twitch is actively refining and expanding a multi-pronged monetization model (subs, ads, sponsorships) for its creators, while Beeper has temporarily suspended its subscription monetization entirely in response to instability caused by Apple's interventions.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 22.29
+    },
+    {
+      "id": 28,
+      "type": "comparison_query",
+      "run": 0,
+      "hops": 2,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, \"The New York Times\" article mentions that Jordan Poyer is a new safety for the Buffalo Bills and details his career achievements. The \"Sporting News\" article states that \"The defense needs to pick up the pieces, too, stat, ahead of facing the Bengals on a short week\" for the Baltimore Ravens.",
+      "cloud_answer": "Yes. The New York Times article attributes success to Jordan Poyer, noting he is \"the only player in the NFL to have 500 or more tackles, 20 or more interceptions and 10 or more sacks in that time frame,\" a Bills captain for the fourth time, a Pro Bowl safety, and an All-Pro. The Sporting News article states about the Ravens: \"The defense needs to pick up the pieces, too, stat, ahead of facing the Bengals on a short week.\"",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 23.46
+    },
+    {
+      "id": 28,
+      "type": "comparison_query",
+      "run": 1,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, \"The New York Times\" article mentions that Jordan Poyer is a new safety for the Buffalo Bills and details his career achievements. The \"Sporting News\" article states that \"The defense needs to pick up the pieces, too, stat, ahead of facing the Bengals on a short week\" for the Baltimore Ravens.",
+      "cloud_answer": "Yes. The New York Times article attributes success to Jordan Poyer's contributions to the Bills' defense, noting he is \"the only player in the NFL to have 500 or more tackles, 20 or more interceptions and 10 or more sacks in that time frame,\" a Bills captain for the fourth time, a Pro Bowl safety, and an All-Pro. The Sporting News article states about the Ravens: \"The defense needs to pick up the pieces, too, stat, ahead of facing the Bengals on a short week.\"",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 27.97
+    },
+    {
+      "id": 28,
+      "type": "comparison_query",
+      "run": 2,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, \"The New York Times\" article mentions that Jordan Poyer is a new safety for the Buffalo Bills and details his career achievements. The \"Sporting News\" article states that \"The defense needs to pick up the pieces, too, stat, ahead of facing the Bengals on a short week\" for the Baltimore Ravens.",
+      "cloud_answer": "Yes. The New York Times article attributes success to Jordan Poyer's contributions to the Bills' defense, noting he is \"the only player in the NFL to have 500 or more tackles, 20 or more interceptions and 10 or more sacks in that time frame,\" a Bills captain for the fourth time, a Pro Bowl safety, and an All-Pro. The Sporting News article states about the Ravens: \"The defense needs to pick up the pieces, too, stat, ahead of facing the Bengals on a short week.\"",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 25.58
+    },
+    {
+      "id": 76,
+      "type": "temporal_query",
+      "run": 0,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "The TechCrunch report from October 7, 2023, mentioned that Dave Clark called recent reporting on Flexport \"deeply concerning\" in a post on social media site X. The subsequent article on October 30, 2023, noted that Flexport founder Ryan Petersen took back the CEO title and had been criticizing former CEO Dave Clark of overspending, specifically around hiring and expanding too quickly.",
+      "cloud_answer": "Yes. The October 7, 2023 report focused on Dave Clark, the ousted former CEO, firing back at Flexport's founder and board on social media site X, calling recent reporting on the logistics company \"deeply concerning,\" following a CNBC report about his last days at Flexport (valued at $8 billion).\n\nThe October 30, 2023 article shifted to actions by Ryan Petersen, who had taken back the CEO title after his hand-picked successor (Clark) was pushed out. The nature of events changed from Clark's public rebuttal to Petersen's operational moves: criticizing Clark for overspending on hiring and expansion, cutting costs, laying off about 20% of workers (around 600 people), and entering talks to acquire the technology of Convoy, the shuttered digital freight startup — a potential deal that raised questions about whether Petersen's \"reign of financial frugality\" was already over.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 19.54
+    },
+    {
+      "id": 76,
+      "type": "temporal_query",
+      "run": 1,
+      "hops": 2,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "The TechCrunch report from October 7, 2023, mentioned that Dave Clark called recent reporting on Flexport \"deeply concerning\" in a post on social media site X. The subsequent article on October 30, 2023, noted that Flexport founder Ryan Petersen took back the CEO title and had criticized former CEO Dave Clark of overspending, specifically around hiring and expanding too quickly, while also spending the past month cutting costs, including laying off about 20% of its workers.",
+      "cloud_answer": "Yes. The October 7, 2023 report focused on Dave Clark, the ousted former CEO, firing back at Flexport's founder and board on social media site X, calling recent reporting on the logistics company \"deeply concerning,\" following a CNBC report about his last days at Flexport (which was valued at $8 billion).\n\nBy the October 30, 2023 report, the nature of the events had shifted to actions taken by Ryan Petersen, who had taken back the CEO title after his hand-picked successor (Dave Clark) was pushed out. Petersen was focused on getting the company's financial house back in order, criticized Clark for overspending (specifically around hiring and expanding too quickly), and spent the past month cutting costs, including laying off about 20% of its workers, or about 600 people. Additionally, Flexport was reported to be in talks to acquire the technology of Convoy, a digital freight startup that had shuttered — a potential deal that raised questions about whether Petersen's \"reign of financial frugality\" was already over.\n\nSo the reporting shifted from the ousted CEO's public defense/grievances to the returning founder-CEO's cost-cutting actions and a potential acquisition that seemed to contradict his frugality stance.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 50.77
+    },
+    {
+      "id": 76,
+      "type": "temporal_query",
+      "run": 2,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "The TechCrunch report from October 7, 2023, mentioned that Dave Clark called recent reporting on Flexport \"deeply concerning\" in a post on social media site X. The subsequent article on October 30, 2023, noted that Flexport founder Ryan Petersen took back the CEO title and had criticized former CEO Dave Clark of overspending, specifically around hiring and expanding too quickly, while also spending the past month cutting costs, including laying off about 20% of its workers.",
+      "cloud_answer": "Yes. The October 7, 2023 report focused on Dave Clark, the former Amazon executive ousted as CEO of Flexport, firing back at the company's founder and board by calling recent reporting on the logistics company \"deeply concerning\" in a lengthy post on social media site X, following a CNBC report about his last days at Flexport (valued at $8 billion).\n\nThe October 30, 2023 report shifted to actions by founder Ryan Petersen, who had taken back the CEO title after his hand-picked successor was pushed out. Petersen's focus was on getting the company's financial house back in order, criticizing former CEO Dave Clark for overspending (specifically around hiring and expanding too quickly), and cutting costs — including laying off about 20% of workers (about 600 people). Additionally, Flexport was reported to be in talks to acquire the technology of Convoy, the shuttered digital freight startup, with plans to restore Convoy's trucking services — a move that raised the question of whether \"Petersen's reign of financial frugality\" was already over.\n\nSo the nature of the events changed from a public dispute/defense by the ousted CEO (Clark) to operational and strategic actions by the returning founder-CEO (Petersen), including cost-cutting, leadership restructuring, and a potential acquisition.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 27.49
+    },
+    {
+      "id": 77,
+      "type": "temporal_query",
+      "run": 0,
+      "hops": 3,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "The article from The Verge published on November 1, 2023, discussed that some people blame SEO experts for making online life feel like a \"search-optimized hellhole,\" suggesting that the practice seemed to have destroyed the illusion that the internet was ever about anything other than selling stuff. In contrast, the TechCrunch article from December 15, 2023, reported on a class action lawsuit accusing Google and Alphabet of anticompetitive behavior for \"siphoning off\" news publishers’ content, their readers, and ad revenue through anticompetitive means.",
+      "cloud_answer": "No, there was a change in portrayal. The Verge article from November 1, 2023 portrays Google's influence on the digital ecosystem through the lens of search engine optimization (SEO), describing how Google Search results have become \"absolutely unusable,\" \"garbage,\" and \"a nightmare\" because \"a lot of the content doesn't feel authentic.\" It frames the problem as users blaming either Google itself—\"an all-powerful, all-seeing, trillion-dollar corporation with a 90 percent market share for online search\" that is \"corrupting our access to the truth\"—or the SEO practitioners who exploit the algorithm to clog the internet with bullshit and degrade \"our collective sense of reality.\" The focus is on how SEO has \"successfully destroyed the illusion that the internet was ever about anything other than selling stuff.\"\n\nIn contrast, the TechCrunch article from December 15, 2023 portrays Google's influence through a legal/antitrust lens, describing a class action lawsuit filed by Arkansas-based publisher Helena World Chronicle accusing Google and parent company Alphabet of \"anticompetitive behavior in violation of U.S. antitrust law, the Sherman Act, and others, on behalf of news publishers.\" It frames Google as a company that \"siphons off\" news publishers' content, their readers and ad revenue through anticompetitive means, and specifically cites AI's harms to publishers' bottom line.\n\nSo the portrayal shifted from Google being depicted as a dominant search platform whose ecosystem is being degraded by SEO manipulation (with Google as both potential victim and complicit corrupting force), to Google being depicted as an active anticompetitive actor that siphons content, readers, and ad revenue from news publishers—with AI now identified as a specific harm to publishers' livelihoods.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 29.9
+    },
+    {
+      "id": 77,
+      "type": "temporal_query",
+      "run": 1,
+      "hops": 3,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "The article from The Verge published on November 1, 2023, mentioned that some people blame \"the people I wanted to see in Florida, the ones who engage in the mysterious art of search engine optimization, or SEO,\" while others blame Google itself for corrupting access to truth. In contrast, the TechCrunch article from December 15, 2023, reported a class action lawsuit accusing Google and Alphabet of anticompetitive behavior by \"siphoning off\" news publishers’ content, readers, and ad revenue through anticompetitive means.",
+      "cloud_answer": "Based on the context, there was a change in the portrayal of Google's influence on the digital ecosystem between the two reports.\n\nThe Verge article from November 1, 2023 portrays Google's influence primarily through the lens of search quality degradation, focusing on how SEO practitioners exploit Google's algorithms to fill search results with low-quality, advertising-driven content. It describes user frustration with Google Search results being \"absolutely unusable,\" \"garbage,\" and \"a nightmare,\" and notes that some blame Google itself as \"an all-powerful, all-seeing, trillion-dollar corporation with a 90 percent market share for online search\" that may be \"corrupting our access to the truth,\" while others blame SEO practitioners.\n\nThe TechCrunch article from December 15, 2023 portrays Google's influence differently — as the subject of a class action antitrust lawsuit filed by news publisher Helena World Chronicle. This portrayal frames Google and Alphabet as engaging in \"anticompetitive behavior in violation of U.S. antitrust law, the Sherman Act, and others,\" accusing Google of \"siphon[ing] off\" news publishers' content, readers, and ad revenue, and specifically citing AI's harms to publishers' bottom line.\n\nSo the portrayal shifted from Google as a search platform whose results have been degraded (with blame shared between Google and SEO practitioners) to Google as an alleged antitrust violator directly harming news publishers' business through anticompetitive means and AI.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 53.94
+    },
+    {
+      "id": 77,
+      "type": "temporal_query",
+      "run": 2,
+      "hops": 3,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "The article from The Verge published on November 1, 2023, mentioned that some people blame \"the people I wanted to see in Florida, the ones who engage in the mysterious art of search engine optimization, or SEO,\" while others blame Google itself for corrupting access to truth. In contrast, the TechCrunch article from December 15, 2023, reported a class action lawsuit accusing Google and Alphabet of anticompetitive behavior by \"siphoning off\" news publishers’ content, readers, and ad revenue through anticompetitive means.",
+      "cloud_answer": "No, there was a change in portrayal. The Verge article from November 1, 2023 portrays Google's influence primarily through the lens of SEO and search result quality, describing Google as an \"all-powerful, all-seeing, trillion-dollar corporation with a 90 percent market share for online search\" that some blame for \"corrupting our access to the truth,\" while focusing on how SEO practitioners exploit Google's algorithms to create a \"search-optimized hellhole\" with results that feel \"absolutely unusable,\" \"garbage,\" and \"a nightmare.\"\n\nThe later TechCrunch article from December 15, 2023 shifts the portrayal to frame Google as engaging in \"anticompetitive behavior in violation of U.S. antitrust law, the Sherman Act, and others,\" with the class action lawsuit by Helena World Chronicle arguing that Google \"siphons off\" news publishers' content, their readers, and ad revenue through anticompetitive means, with specific citation of AI's harms to publishers' bottom line.\n\nSo the portrayal shifted from Google as a search platform whose results are being degraded by SEO manipulators, to Google as an alleged antitrust violator actively harming news publishers through content siphoning and AI.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 23.78
+    },
+    {
+      "id": 78,
+      "type": "temporal_query",
+      "run": 0,
+      "hops": 3,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "The advice provided by Sporting News to bettors included reading the requirements for any available promotions before accepting them, and in one instance, it suggested that if wagering on tonight's MNF game, users would probably want to go with the favored Eagles. The reports published covered dates up to December 18, 2023, but there is no mention of focusing on hype between September 28, 2023, and December 18, 2023.",
+      "cloud_answer": "Yes. Across the articles in the provided context published between September 28, 2023, and December 18, 2023, Sporting News advised bettors to:\n\n1. **Read the requirements** for promotions and offers: \"We urge you to read the requirements for any available promotions and offers before accepting them so you're aware of any restrictions before betting\" (from the NBA Rookie of the Year Odds article, published October 4, 2023).\n\n2. **Go with the favored Eagles**: \"Since you need your moneyline bet to win to claim the $150 in bonus bets, if you're wagering on tonight's MNF game, you'll probably want to go with the favored Eagles\" (from the Eagles vs. Seahawks MNF bonus offers article, published December 18, 2023).\n\n3. **Focusing on hype**: The FanDuel 'Prop Stars' article (published September 28, 2023) leans into the Travis Kelce and Taylor Swift celebrity storyline hype, noting that \"companies like FanDuel just can't help but lean into a profitable storyline.\"",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 19.77
+    },
+    {
+      "id": 78,
+      "type": "temporal_query",
+      "run": 1,
+      "hops": 3,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "The advice provided by Sporting News to bettors included reading the requirements for any available promotions before accepting them, and in one instance, it suggested that if wagering on tonight's MNF game, users would probably want to go with the favored Eagles. The reports published cover dates up to December 18, 2023, which is after September 28, 2023.",
+      "cloud_answer": "Yes. Based on the provided context:\n\n- **Reading requirements**: The October 4, 2023 article advises, \"We urge you to read the requirements for any available promotions and offers before accepting them so you're aware of any restrictions before betting.\"\n\n- **Going with the favored Eagles**: The December 18, 2023 article states, \"if you're wagering on tonight's MNF game, you'll probably want to go with the favored Eagles.\"\n\n- **Focusing on hype**: The September 28, 2023 article references leaning into the hype around the Travis Kelce and Taylor Swift storyline, noting \"companies like FanDuel just can't help but lean into a profitable storyline.\"",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 17.69
+    },
+    {
+      "id": 78,
+      "type": "temporal_query",
+      "run": 2,
+      "hops": 3,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "The advice provided by Sporting News to bettors included reading the requirements for any available promotions before accepting them, and in one instance, it suggested that if wagering on tonight's MNF game, users would probably want to go with the favored Eagles. The reports published cover dates up to December 18, 2023, which is after September 28, 2023.",
+      "cloud_answer": "Yes. Across the reports published between September 28, 2023, and December 18, 2023, Sporting News advised bettors to:\n\n1. **Read the requirements**: In the October 4, 2023 article on NBA Rookie of the Year odds, Sporting News stated, \"We urge you to read the requirements for any available promotions and offers before accepting them so you're aware of any restrictions before betting.\"\n\n2. **Go with the favored Eagles**: In the December 18, 2023 article on Monday Night Football bonus offers, Sporting News advised, \"Since you need your moneyline bet to win to claim the $150 in bonus bets, if you're wagering on tonight's MNF game, you'll probably want to go with the favored Eagles.\"\n\n3. **Focusing on hype**: The September 28, 2023 article on FanDuel 'Prop Stars' Picks references companies like FanDuel leaning into the profitable storyline/hype around Travis Kelce and Taylor Swift, though the provided context does not contain explicit betting advice from Sporting News specifically directing bettors to focus on hype.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 39.96
+    }
+  ],
+  "aggregate": {
+    "per_question": [
+      {
+        "id": 1,
+        "type": "inference_query",
+        "hops": 3,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 20.68
+      },
+      {
+        "id": 2,
+        "type": "inference_query",
+        "hops": 2,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 22.23
+      },
+      {
+        "id": 3,
+        "type": "inference_query",
+        "hops": 2,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 17.41
+      },
+      {
+        "id": 26,
+        "type": "comparison_query",
+        "hops": 2,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 29.31
+      },
+      {
+        "id": 27,
+        "type": "comparison_query",
+        "hops": 2,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 37.31
+      },
+      {
+        "id": 28,
+        "type": "comparison_query",
+        "hops": 2,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 25.67
+      },
+      {
+        "id": 76,
+        "type": "temporal_query",
+        "hops": 2,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 32.6
+      },
+      {
+        "id": 77,
+        "type": "temporal_query",
+        "hops": 3,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 35.87
+      },
+      {
+        "id": 78,
+        "type": "temporal_query",
+        "hops": 3,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 25.81
+      }
+    ],
+    "summary": {
+      "n_questions": 9,
+      "n_runs_per_question": 3,
+      "local_correct_rate": 1.0,
+      "cloud_correct_rate": 1.0,
+      "local_abstain_rate": 0.0,
+      "cloud_abstain_rate": 0.0,
+      "delta_correct_cloud_minus_local": 0.0,
+      "local_stable_rate": 1.0,
+      "cloud_stable_rate": 1.0,
+      "by_type": {
+        "inference_query": {
+          "n": 3,
+          "local_correct": 3,
+          "cloud_correct": 3
+        },
+        "comparison_query": {
+          "n": 3,
+          "local_correct": 3,
+          "cloud_correct": 3
+        },
+        "temporal_query": {
+          "n": 3,
+          "local_correct": 3,
+          "cloud_correct": 3
+        }
+      }
+    }
+  }
+}
