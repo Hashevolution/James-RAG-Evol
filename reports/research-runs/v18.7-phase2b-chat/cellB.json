@@ -1,0 +1,1000 @@
+{
+  "design": "chat-mode free-form; both models same prior_turns / no evidence",
+  "fixture": "chat",
+  "local_model": "gemma3:4b",
+  "local_backend": "ollama",
+  "num_predict": 400,
+  "force_think": "off",
+  "pre_flight": {
+    "skipped": false,
+    "results": [
+      {
+        "name": "fixture_rows",
+        "status": "ok",
+        "detail": "75 answerable queries available (counts={'inference_query': 25, 'comparison_query': 25, 'temporal_query': 25})",
+        "extra": {
+          "counts": {
+            "inference_query": 25,
+            "comparison_query": 25,
+            "temporal_query": 25
+          },
+          "path": "C:\\Project\\James-RAG-Evol-v010\\workspaces\\hotpot_eval\\eval\\multihop_rag_queries.json"
+        }
+      },
+      {
+        "name": "chat_fixture",
+        "status": "ok",
+        "detail": "18 chat queries available (counts={'small_talk': 5, 'factual_chat': 5, 'open_question': 5, 'multi_turn': 3}, factual_with_gold=5, multiturn_with_prior=3)",
+        "extra": {
+          "counts": {
+            "small_talk": 5,
+            "factual_chat": 5,
+            "open_question": 5,
+            "multi_turn": 3
+          },
+          "path": "C:\\Project\\James-RAG-Evol-v010\\eval\\chat_mode_queries.json"
+        }
+      },
+      {
+        "name": "regex_sweep",
+        "status": "ok",
+        "detail": "0/75 false positives across 4 fast-path modes (['coding', 'meta', 'self_evolve', 'wiki_edit'])",
+        "extra": {
+          "total": 75,
+          "modes_swept": [
+            "coding",
+            "meta",
+            "self_evolve",
+            "wiki_edit"
+          ]
+        }
+      },
+      {
+        "name": "backend_registry",
+        "status": "ok",
+        "detail": "registered=['claude_code_cli', 'ollama_local']",
+        "extra": {
+          "registered": [
+            "claude_code_cli",
+            "ollama_local"
+          ]
+        }
+      },
+      {
+        "name": "abstraction_smoke",
+        "status": "ok",
+        "detail": "default_decider=function; run_cloud_egress callable",
+        "extra": {}
+      },
+      {
+        "name": "diffusiongemma_optin",
+        "status": "ok",
+        "detail": "flag=None registered=False",
+        "extra": {}
+      },
+      {
+        "name": "thinking_mode_contract",
+        "status": "ok",
+        "detail": "think_policy surface intact; JAMES_GEMMA4_E4B_THINK_OFF=1 active (gemma4 family models will receive think:false).",
+        "extra": {}
+      }
+    ]
+  },
+  "num_ctx": 8192,
+  "cloud_backend": "claude_code_cli (via core.abstraction.run_cloud_egress)",
+  "judge": "claude-cli, blinded A/B per (query, run)",
+  "n_per_type": 3,
+  "n_runs": 3,
+  "caveat": {
+    "judge_self_preference": "judge is Claude; one candidate is Claude — self-preference is possible. Mitigated by blinding A/B + evidence-grounded grading + per-question raw dump. Treat the auto-score as a SIGNAL; confirm against raw answers.",
+    "gold_evidence_not_pipeline": "Reasoning-isolated design: both models get the same full gold evidence. Does NOT measure the full retrieval pipeline. A production Pareto claim needs a separate full-pipeline run (with JAMES retrieval + abstention) before any operator-facing conclusion.",
+    "small_n": "Sample is the first answerable N per question_type from MultiHop-RAG. Not representative. The verdict here is a §4.1 closure SIGNAL, not a publishable claim. n=3 paired (per feedback_n1_verdict_inflation_n3_caught) but n_questions is still small.",
+    "lenient_judge": "ABSTAINED + INCORRECT are scored separately, but two contradictory CORRECT answers can both land CORRECT (judge grades each independently). Per α-8 closure: paired Δ near 0 + collapse to noise band on n=3 has been observed (n=1 inflation pattern).",
+    "local_model_caveat": "Default local-model is gemma3:4b. Does NOT equate to gemma4 e4b (production tier, has the α-cycle thinking-trace floor on multihop). Re-run with --local-model gemma4:e4b to compare against the production tier.",
+    "abstraction_no_op": "Cloud path goes through core.abstraction.run_cloud_egress, but the gold-evidence fixture has no PII so entities=[] → mask is empty. The call path is exercised end-to-end (proves §5.7.13 module works against a real Claude backend) but the abstraction itself is a no-op for this fixture.",
+    "chat_mode_lenient_judge": "Chat-mode fixture (small_talk / open_question / multi_turn) is INTRINSICALLY judge-only. There is no gold ground-truth for free-form conversation. Only the factual_chat sub-class carries gold_signals and is gold-grounded checkable. The other 3 sub-classes inherit the +0.11-0.19 lenient bias quantified in v18.6 (project_judge_reliability_gold_grounded_v18_6). Report judge_correct AND gold_correct (factual_chat subset) separately. Do NOT promote chat-mode-only claims without the judge-bias caveat attached."
+  },
+  "rows": [
+    {
+      "id": 1001,
+      "type": "small_talk",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "ABSTAINED",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "잘 모르겠어요. 어떻게 지내세요? 😊",
+      "cloud_answer": "안녕하세요! 저는 AI라 기분이라는 게 따로 없지만, 대화 나눌 준비는 잘 되어 있어요. 오늘 도와드릴 일이 있으신가요?",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 26.07
+    },
+    {
+      "id": 1001,
+      "type": "small_talk",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "ABSTAINED",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "잘 모르겠어요. 어떻게 지내세요? 😊",
+      "cloud_answer": "안녕하세요! 저는 AI라서 기분이라는 게 따로 있진 않지만, 오늘도 도울 준비는 충분히 되어 있어요. 무슨 일로 오셨나요?",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 19.97
+    },
+    {
+      "id": 1001,
+      "type": "small_talk",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "ABSTAINED",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "잘 모르겠어요. 어떻게 지내세요? 😊",
+      "cloud_answer": "안녕하세요! 저는 AI라서 기분이라는 게 따로 있진 않지만, 오늘도 도와드릴 준비는 되어 있어요. 무엇을 도와드릴까요?",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 18.47
+    },
+    {
+      "id": 1002,
+      "type": "small_talk",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "ABSTAINED",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Okay! What about lunch? 😊",
+      "cloud_answer": "오~ 점심 고민의 시간! 🍱\n\n뭐 끌리는지 힌트 좀 줄래?\n- 든든하게 vs 가볍게\n- 따뜻한 국물 vs 시원한 거\n- 한식 / 일식 / 중식 / 양식\n\n아니면 그냥 추천받고 싶으면 — **김치찌개에 계란말이** 어때? 점심 잠깐 쉬어가는 타이밍엔 익숙하고 든든한 게 최고지 😌",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 19.51
+    },
+    {
+      "id": 1002,
+      "type": "small_talk",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "ABSTAINED",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Okay! What about lunch? 😊",
+      "cloud_answer": "오~ 점심 고민! 날씨나 기분 따라 다르긴 한데, 몇 가지 던져볼게요:\n\n- **얼큰한 거 땡기면**: 김치찌개, 짬뽕, 육개장\n- **가볍게**: 냉면, 메밀국수, 김밥+우동\n- **든든하게**: 제육덮밥, 돈까스, 백반\n- **간단 배달**: 마라탕, 쌀국수, 샌드위치\n\n오늘 기분이나 날씨는 어때요? 좁혀드릴게요 🙂",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 64.73
+    },
+    {
+      "id": 1002,
+      "type": "small_talk",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "ABSTAINED",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Okay! What about lunch? 😊",
+      "cloud_answer": "점심 메뉴 추천 몇 개 던져볼게:\n\n- **국물 땡기면**: 김치찌개, 순두부, 칼국수\n- **든든하게**: 제육덮밥, 돈가스, 비빔밥\n- **가볍게**: 냉면, 메밀소바, 샐러드 파스타\n- **별미**: 마라탕, 쌀국수, 텐동\n\n날씨나 기분 알려주면 더 좁혀줄 수 있어. 어제 뭐 먹었어?",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 26.78
+    },
+    {
+      "id": 1003,
+      "type": "small_talk",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "천만에요! (You’re welcome! / Don't mention it!)",
+      "cloud_answer": "도움이 됐다니 다행이야! 또 필요한 거 있으면 언제든 말해줘.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 15.33
+    },
+    {
+      "id": 1003,
+      "type": "small_talk",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "천만에요! (You’re welcome! / Don't mention it!)",
+      "cloud_answer": "도움이 됐다니 다행이에요. 또 필요한 거 있으면 언제든 말씀해주세요!",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 17.74
+    },
+    {
+      "id": 1003,
+      "type": "small_talk",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "천만에요! (You’re welcome! / Don't mention it!)",
+      "cloud_answer": "도움이 됐다니 다행이야! 또 필요한 거 있으면 언제든 말해줘.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 14.99
+    },
+    {
+      "id": 1011,
+      "type": "factual_chat",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "서울이에요! (Seoul!)",
+      "cloud_answer": "서울입니다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 14.93
+    },
+    {
+      "id": 1011,
+      "type": "factual_chat",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "서울이에요! (Seoul!)",
+      "cloud_answer": "한국의 수도는 서울입니다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 14.86
+    },
+    {
+      "id": 1011,
+      "type": "factual_chat",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "서울이에요! (Seoul!)",
+      "cloud_answer": "서울입니다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 16.44
+    },
+    {
+      "id": 1012,
+      "type": "factual_chat",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "100°C (Celsius) 입니다.",
+      "cloud_answer": "1기압(표준 대기압) 기준으로 섭씨 100도입니다. 기압이 낮아지면 끓는점도 낮아져서, 예를 들어 높은 산에서는 100도보다 낮은 온도에서 끓습니다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 18.22
+    },
+    {
+      "id": 1012,
+      "type": "factual_chat",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "100°C (Celsius) 입니다.",
+      "cloud_answer": "표준 대기압(1 atm)에서 물의 끓는점은 섭씨 100도입니다. 기압이 낮아지면 끓는점도 함께 낮아져요 (예: 고산지대).",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 15.66
+    },
+    {
+      "id": 1012,
+      "type": "factual_chat",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "100°C (Celsius) 입니다.",
+      "cloud_answer": "1기압 기준으로 섭씨 100도입니다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 19.59
+    },
+    {
+      "id": 1013,
+      "type": "factual_chat",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "태양이에요! (It's the Sun!)",
+      "cloud_answer": "태양입니다. 태양계 밖에서 가장 가까운 항성은 약 4.24광년 떨어진 프록시마 센타우리(Proxima Centauri)예요.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 16.8
+    },
+    {
+      "id": 1013,
+      "type": "factual_chat",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "태양이에요! (It's the Sun!)",
+      "cloud_answer": "태양입니다. 태양계를 제외하면 가장 가까운 항성은 **프록시마 켄타우리**(Proxima Centauri)로, 약 4.24광년 떨어져 있습니다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 27.61
+    },
+    {
+      "id": 1013,
+      "type": "factual_chat",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "태양이에요! (It's the Sun!)",
+      "cloud_answer": "태양입니다. 태양계 바깥에서 가장 가까운 항성은 약 4.24광년 떨어진 프록시마 센타우리(Proxima Centauri)예요.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 19.9
+    },
+    {
+      "id": 1021,
+      "type": "open_question",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "ABSTAINED",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "주말에 가족과 함께 즐길 수 있는 좋은 방법이 많이 있어요! 무엇을 좋아하세요?",
+      "cloud_answer": "가족 구성이나 연령대에 따라 좋은 방법이 달라지긴 하는데, 몇 가지 무난한 아이디어를 드리면\n\n- **함께 요리하기**: 만두 빚기, 피자 만들기, 김밥 싸기처럼 손이 많이 가는 음식을 같이 하면 자연스럽게 대화가 생겨요.\n- **근교 나들이**: 수목원, 둘레길, 캠핑장 같은 곳은 부담 없이 다녀오기 좋습니다. 날씨 좋은 6월이라 야외 활동이 특히 잘 맞아요.\n- **보드게임/퍼즐의 밤**: 비 오는 날엔 할리갈리, 루미큐브, 1000피스 퍼즐 같은 걸로 거실에서 시간 보내기.\n- **함께 영화 보기**: 각자 보고 싶은 영화 한 편씩 골라서 주말마다 돌아가며 상영회.\n- **추억 정리 시간**: 옛날 사진 같이 보거나 가족 앨범 만들기 — 의외로 부모님이 좋아하세요.\n\n혹시 자녀 연령대나 같이 사는 가족 구성을 알려주시면 좀 더 맞춤으로 추천드릴 수 있어요.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 25.71
+    },
+    {
+      "id": 1021,
+      "type": "open_question",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "ABSTAINED",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "주말에 가족과 함께 즐길 수 있는 좋은 방법이 많이 있어요! 무엇을 좋아하세요?",
+      "cloud_answer": "가족 구성과 계절(6월)에 맞춰 몇 가지 추천드릴게요:\n\n**야외 활동**\n- 근교 수목원·공원 피크닉 (서울이라면 서울숲, 올림픽공원, 하늘공원)\n- 한강에서 자전거·돗자리·치맥\n- 가까운 계곡이나 바닷가 당일치기 (6월은 아직 덜 붐벼서 좋아요)\n\n**실내 활동**\n- 가족 보드게임의 밤 (할리갈리, 루미큐브, 부루마블)\n- 함께 요리하기 — 피자 도우 만들기, 김밥 말기 같은 참여형 메뉴\n- 영화관 대신 집에서 빔프로젝터로 홈시네마\n\n**소소하지만 의미 있는 것**\n- 어릴 적 사진첩 같이 보기\n- 부모님/조부모님 인터뷰하며 짧은 영상 남기기\n- 동네 산책하면서 평소 못 했던 이야기 나누기\n\n가족 연령대나 관심사 알려주시면 더 구체적으로 추천드릴 수 있어요. 어떤 분들과 보내실 예정인가요?",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 48.26
+    },
+    {
+      "id": 1021,
+      "type": "open_question",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "ABSTAINED",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "주말에 가족과 함께 즐길 수 있는 좋은 방법이 많이 있어요! 무엇을 좋아하세요?",
+      "cloud_answer": "가족 구성과 분위기에 따라 잘 맞는 활동이 다르니 몇 가지 추천 드릴게요.\n\n**집에서 즐기는 시간**\n- 보드게임 토너먼트 (할리갈리, 다빈치코드, 루미큐브 등)\n- 함께 요리하기 — 피자 만들기, 김밥 싸기처럼 각자 역할 나누기 좋은 메뉴\n- 가족 영화의 밤 + 팝콘\n\n**가볍게 외출**\n- 근처 공원에서 자전거·산책·배드민턴\n- 계절 과일 따기 체험 (6월이면 매실, 블루베리, 자두 시즌)\n- 도서관·서점 들렀다가 카페에서 각자 책 읽기\n\n**조금 더 특별하게**\n- 당일치기 근교 드라이브 (강가, 수목원, 전통시장 구경)\n- 가족 사진관 또는 셀프 스튜디오에서 사진 찍기\n- 함께 봉사활동 (유기견 보호소, 지역 행사)\n\n가족 구성(아이 연령대, 부모님 동반 여부 등)을 알려주시면 더 맞춤으로 추천해 드릴 수 있어요.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 27.76
+    },
+    {
+      "id": 1022,
+      "type": "open_question",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "스트레스 많이 받으시죠? 명상이나 운동, 좋아하는 활동 하는 게 도움이 될 수 있어요.",
+      "cloud_answer": "스트레스 관리에 도움이 되는 방법 몇 가지예요:\n\n**즉각적인 방법**\n- **심호흡**: 4초 들이마시고, 7초 멈추고, 8초 내쉬기 (4-7-8 호흡법)\n- **잠깐 자리 비우기**: 5~10분만이라도 산책하거나 창밖 보기\n- **찬물로 세수**: 부교감신경이 활성화되어 진정 효과가 있어요\n\n**일상 습관**\n- **규칙적인 운동**: 가벼운 산책도 효과적이에요\n- **충분한 수면**: 7~8시간, 일정한 시간에\n- **카페인·알코올 줄이기**: 불안감을 키울 수 있어요\n- **명상이나 일기 쓰기**: 머릿속을 정리하는 데 도움이 돼요\n\n**관계와 환경**\n- 믿을 만한 사람과 대화하기\n- 일과 휴식의 경계 정하기 (예: 퇴근 후 업무 알림 끄기)\n- 스트레스 원인을 종이에 적어보기 — 통제 가능한 것/아닌 것 구분\n\n혹시 지금 특별히 힘든 상황이 있으신가요? 상황에 맞게 더 구체적으로 이야기해드릴 수 있어요. 만약 스트레스가 오래 지속되거나 일상에 큰 지장이 있다면 전문가 상담을 받아보는 것도 좋은 방법이에요.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 29.6
+    },
+    {
+      "id": 1022,
+      "type": "open_question",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "스트레스 많이 받으시죠? 명상이나 운동, 좋아하는 활동 하는 게 도움이 될 수 있어요.",
+      "cloud_answer": "스트레스를 다루는 방법은 사람마다 다르지만, 일반적으로 도움이 된다고 알려진 것들은 이렇습니다:\n\n**즉각적으로 도움이 되는 것**\n- 깊은 호흡 (4초 들이마시고, 7초 멈추고, 8초 내쉬기)\n- 잠깐 산책하기 — 특히 햇빛을 받으며\n- 찬물로 세수하거나 손목을 식히기 (자율신경계가 진정됨)\n\n**일상에서 꾸준히**\n- 규칙적인 수면 (7~9시간)\n- 가벼운 운동 — 30분 걷기만으로도 효과 있음\n- 카페인·알코올 줄이기\n- 가까운 사람과 대화하기\n\n**마음 정리**\n- 머릿속 생각을 종이에 적어보기 (브레인 덤프)\n- 통제할 수 있는 것과 없는 것을 구분하기\n- \"지금 이 순간 내가 할 수 있는 한 가지\"에 집중하기\n\n만약 스트레스가 오래 지속되거나 일상에 지장을 줄 정도라면, 전문가 상담을 받는 것도 좋은 선택입니다. 혹시 지금 특별히 힘든 상황이 있으신가요?",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 24.79
+    },
+    {
+      "id": 1022,
+      "type": "open_question",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "스트레스 많이 받으시죠? 명상이나 운동, 좋아하는 활동 하는 게 도움이 될 수 있어요.",
+      "cloud_answer": "스트레스 해소에 도움이 되는 방법 몇 가지예요:\n\n**즉시 효과 있는 것**\n- **심호흡**: 4초 들이마시고, 7초 멈추고, 8초 내쉬기 (4-7-8 호흡법)\n- **가벼운 산책**: 10~15분만 걸어도 코르티솔 수치가 떨어져요\n- **찬물 세수**: 부교감신경이 활성화되면서 진정 효과가 있어요\n\n**일상에서 챙기면 좋은 것**\n- **충분한 수면**: 7~8시간, 특히 자는 시간을 일정하게\n- **규칙적인 운동**: 주 3회 정도, 땀이 살짝 날 정도면 충분\n- **카페인·알코올 줄이기**: 둘 다 불안감을 키워요\n- **사람과 대화**: 가까운 사람에게 털어놓는 것만으로도 효과가 있어요\n\n**마음 다스리는 법**\n- **저널링**: 머릿속 생각을 종이에 적어보면 정리가 돼요\n- **명상 앱**: Calm, Headspace 같은 앱으로 5~10분씩\n- **취미 시간 확보**: \"해야 할 일\"이 아닌 \"하고 싶은 일\"을 일부러 넣기\n\n혹시 특정한 상황(업무, 인간관계, 시험 등) 때문에 스트레스가 심하신 거라면 말씀해 주세요. 더 맞춤형으로 얘기 나눠볼 수 있어요.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 35.8
+    },
+    {
+      "id": 1023,
+      "type": "open_question",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "처음 배우신다면 Python이 좋아요! 쉬운 문법으로 유명하거든요. 😊",
+      "cloud_answer": "처음이라면 **Python**을 추천드려요.\n\n- 문법이 영어 문장처럼 읽혀서 진입 장벽이 낮아요\n- 들여쓰기로 구조를 강제해서 자연스럽게 좋은 습관이 들고요\n- 자료가 압도적으로 많아서 막힐 때 검색하기 쉬워요\n- 웹, 데이터 분석, 자동화, AI 등 활용 범위도 넓고요\n\n만약 웹사이트를 만들고 싶다는 목표가 뚜렷하다면 **JavaScript**도 좋은 선택이에요. 브라우저만 있으면 바로 결과를 볼 수 있다는 게 큰 장점이거든요.\n\n어떤 걸 만들어보고 싶으세요? 목표에 따라 추천이 달라질 수 있어요.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 21.4
+    },
+    {
+      "id": 1023,
+      "type": "open_question",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "처음 배우신다면 Python이 좋아요! 쉬운 문법으로 유명하거든요. 😊",
+      "cloud_answer": "처음 시작한다면 **Python**을 추천드려요.\n\n이유는 단순합니다:\n- 문법이 영어 문장처럼 읽혀서 진입 장벽이 낮음\n- 환경 설정이 간단해서 \"코딩\"에 집중할 수 있음\n- 자동화, 데이터 분석, 웹, AI 등 활용처가 넓어서 흥미를 유지하기 쉬움\n\n다만 목적에 따라 다를 수 있어요. 웹사이트를 직접 만들어보고 싶다면 **JavaScript**가, 게임/앱처럼 눈에 보이는 결과물을 빨리 만들고 싶다면 **Python + 간단한 라이브러리(pygame 등)** 조합도 좋습니다. 어떤 걸 만들어보고 싶으신지 알려주시면 더 구체적으로 추천드릴 수 있어요.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 21.46
+    },
+    {
+      "id": 1023,
+      "type": "open_question",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "처음 배우신다면 Python이 좋아요! 쉬운 문법으로 유명하거든요. 😊",
+      "cloud_answer": "처음이라면 **Python**을 추천드려요. 문법이 영어 문장처럼 읽혀서 진입장벽이 낮고, 자료가 압도적으로 많아서 막혔을 때 검색하면 답이 잘 나옵니다.\n\n목적이 명확하면 선택이 달라질 수 있어요:\n- **웹사이트 만들기** → JavaScript\n- **데이터 분석/AI** → Python\n- **앱 개발** → Swift(iOS) / Kotlin(Android)\n\n특별한 목표가 없다면 Python으로 기본기를 다진 뒤 관심 분야로 확장하는 게 가장 무난합니다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 23.43
+    },
+    {
+      "id": 1031,
+      "type": "multi_turn",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "물론이죠! 광합성은 식물이 햇빛 에너지를 이용하여 물과 이산화탄소로부터 포도당(식물의 영양분)을 만들고, 산소를 배출하는 과정입니다. 좀 더 자세히 알고 싶으신 부분이 있으세요?",
+      "cloud_answer": "광합성을 좀 더 자세히 풀어볼게요.\n\n**1. 어디서 일어나나요?**\n주로 식물 잎 속에 있는 **엽록체(chloroplast)**라는 세포 소기관에서 일어납니다. 엽록체 안에는 햇빛을 흡수하는 초록색 색소인 **엽록소(chlorophyll)**가 들어 있어요.\n\n**2. 무엇이 필요한가요? (재료)**\n- **햇빛** — 에너지원\n- **물(H₂O)** — 뿌리에서 흡수\n- **이산화탄소(CO₂)** — 잎의 기공으로 흡수\n\n**3. 무엇이 만들어지나요? (산물)**\n- **포도당(C₆H₁₂O₆)** — 식물의 에너지·성장 재료\n- **산소(O₂)** — 기공을 통해 공기 중으로 방출\n\n**4. 전체 화학식**\n6CO₂ + 6H₂O + 빛에너지 → C₆H₁₂O₆ + 6O₂\n\n**5. 두 단계로 나뉘어요**\n- **명반응(빛에 의존)**: 빛 에너지를 화학 에너지(ATP, NADPH)로 바꾸고, 물을 분해해 산소를 방출합니다.\n- **암반응(캘빈 회로)**: 명반응에서 얻은 에너지로 이산화탄소를 포도당으로 합성합니다.\n\n**왜 중요한가요?**\n지구 대기의 산소 대부분이 광합성에서 나오고, 거의 모든 생태계의 먹이사슬이 광합성으로 만들어진 유기물에서 시작되기 때문입니다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 26.13
+    },
+    {
+      "id": 1031,
+      "type": "multi_turn",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "물론이죠! 광합성은 식물이 햇빛 에너지를 이용하여 물과 이산화탄소를 포도당(식물의 에너지원)으로 바꾸고, 산소를 배출하는 과정입니다. 좀 더 자세히 알고 싶으시면 어떤 부분이 궁금하신가요?",
+      "cloud_answer": "광합성은 식물, 조류, 일부 세균이 빛 에너지를 화학 에너지로 바꾸어 양분을 만드는 과정이에요. 좀 더 풀어서 설명드리면 다음과 같습니다.\n\n**전체 반응식**\n6CO₂ + 6H₂O + 빛 에너지 → C₆H₁₂O₆(포도당) + 6O₂\n\n**일어나는 장소**\n주로 식물 잎의 세포 속 **엽록체**에서 일어나며, 엽록체 안의 **엽록소**라는 초록색 색소가 빛을 흡수하는 역할을 합니다.\n\n**두 단계로 나뉨**\n1. **명반응 (빛에 의존하는 반응)**\n   - 장소: 엽록체의 틸라코이드 막\n   - 빛 에너지를 흡수해서 물(H₂O)을 분해 → 산소(O₂)가 부산물로 방출됨\n   - 이 과정에서 ATP와 NADPH라는 에너지 운반 물질이 만들어져요.\n\n2. **암반응 (캘빈 회로, 빛과 무관한 반응)**\n   - 장소: 엽록체의 스트로마\n   - 명반응에서 만든 ATP와 NADPH를 사용해 이산화탄소(CO₂)를 포도당으로 합성합니다.\n\n**왜 중요한가?**\n- 지구 대기에 **산소를 공급**하는 거의 유일한 원천이에요.\n- 동물을 포함한 거의 모든 생물이 먹는 **유기물(양분)의 근원**이 됩니다.\n- 대기 중 **이산화탄소를 흡수**하므로 기후 조절에도 핵심적인 역할을 해요.\n\n쉽게 비유하자면, 식물은 햇빛을 연료 삼아 공기와 물을 재료로 \"당분 공장\"을 돌리는 셈입니다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 30.45
+    },
+    {
+      "id": 1031,
+      "type": "multi_turn",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "물론이죠! 광합성은 식물이 햇빛 에너지를 이용하여 물과 이산화탄소를 포도당(식물의 에너지원)으로 바꾸고, 산소를 배출하는 과정입니다. 좀 더 자세히 알고 싶으시면 어떤 부분이 궁금하신가요?",
+      "cloud_answer": "광합성을 단계별로 좀 더 자세히 설명드리면 다음과 같습니다.\n\n**1. 재료 흡수**\n- **물(H₂O)**: 뿌리를 통해 흡수되어 줄기를 거쳐 잎까지 이동합니다.\n- **이산화탄소(CO₂)**: 잎의 기공(stomata)을 통해 공기 중에서 흡수됩니다.\n- **햇빛**: 잎 속 엽록체에 있는 **엽록소(chlorophyll)** 가 빛 에너지를 흡수합니다.\n\n**2. 두 단계 반응**\n- **명반응(light reaction)**: 엽록체의 틸라코이드 막에서 일어나며, 빛 에너지를 이용해 물을 분해하고 ATP와 NADPH(에너지 운반 분자)를 만듭니다. 이 과정에서 부산물로 **산소(O₂)** 가 발생합니다.\n- **암반응(캘빈 회로)**: 엽록체의 스트로마에서 일어나며, 명반응에서 만든 ATP·NADPH를 이용해 이산화탄소를 고정시켜 **포도당(C₆H₁₂O₆)** 을 합성합니다.\n\n**3. 전체 화학식**\n$$6CO_2 + 6H_2O \\xrightarrow{\\text{빛에너지}} C_6H_{12}O_6 + 6O_2$$\n\n**4. 의의**\n- 식물은 만들어진 포도당을 에너지원·성장 재료로 사용합니다.\n- 부산물인 산소는 동물의 호흡에 쓰이고, 대기 중 이산화탄소를 줄여 지구 생태계와 기후를 유지하는 핵심 역할을 합니다.\n\n더 깊이 알고 싶은 부분(예: 명반응의 전자전달계, C3·C4·CAM 식물의 차이 등)이 있으면 말씀해 주세요.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 46.1
+    },
+    {
+      "id": 1032,
+      "type": "multi_turn",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Python이 가장 많이 추천돼요! 처음 배우는 사람에게는 문법이 쉽고 활용 범위도 넓어서 좋아요.",
+      "cloud_answer": "입문자라면 **Python** 을 가장 추천해요.\n\n- 문법이 거의 영어 문장처럼 읽혀서 \"프로그래밍 사고\"에 집중하기 좋아요\n- 에러 메시지가 비교적 친절하고, 자료·튜토리얼이 가장 풍부합니다\n- 한 번 익혀두면 자동화, 데이터 분석, AI 등으로 확장하기 쉬워요\n\n다만 \"결과물이 눈에 보여야 재미있다\" 싶으면 JavaScript 가 더 잘 맞을 수 있어요. 어떤 걸 만들어보고 싶은지에 따라 갈리는 부분이에요.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 20.11
+    },
+    {
+      "id": 1032,
+      "type": "multi_turn",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Python이 가장 많이 추천돼요! 처음 배우는 사람에게는 문법이 쉽고 활용 범위도 넓어서 좋아요.",
+      "cloud_answer": "입문자에게는 **Python** 을 가장 추천해요.\n\n- 문법이 영어 문장에 가까워서 처음부터 \"막힘\" 이 적습니다.\n- 작은 스크립트로도 결과가 바로 나와서 성취감을 얻기 쉽고요.\n- 이후 데이터 분석, 자동화, 웹, AI 등 어디로 가든 발판이 됩니다.\n\n다만 *웹사이트를 직접 만들어 보고 싶다* 면 JavaScript 가, *초등학생 정도의 어린 학습자* 라면 Scratch 가 더 잘 맞아요. 목적이 있으면 알려주세요 — 거기에 맞춰 더 좁혀드릴게요.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 22.85
+    },
+    {
+      "id": 1032,
+      "type": "multi_turn",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Python이 가장 많이 추천돼요! 처음 배우는 사람에게는 문법이 쉽고 활용 범위도 넓어서 좋아요.",
+      "cloud_answer": "입문자에게는 Python을 가장 추천합니다. 문법이 영어 문장에 가까워 읽기 쉽고, 들여쓰기 규칙 덕분에 자연스럽게 좋은 코딩 습관이 잡힙니다. 또 자료와 강의가 가장 풍부해서 막혔을 때 해결하기 쉽고, 웹·데이터·자동화 등 진로를 정하기 전 여러 방향을 가볍게 시도해 볼 수 있다는 점도 큰 장점입니다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 19.19
+    },
+    {
+      "id": 1033,
+      "type": "multi_turn",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Okay, here’s a quick summary: The Moon always shows us the same side because its rotation and orbit are synchronized – it's called tidal locking due to Earth’s gravity.",
+      "cloud_answer": "달의 자전 주기와 공전 주기가 약 27.3일로 같아서 항상 같은 면이 지구를 향합니다. 이 현상은 지구 중력이 달의 자전을 서서히 늦춰 만든 **조석 고정** 때문이에요.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 16.0
+    },
+    {
+      "id": 1033,
+      "type": "multi_turn",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Okay, here’s a quick summary: The Moon always shows us the same side because its rotation and orbit are synchronized – it's called tidal locking due to Earth’s gravity.",
+      "cloud_answer": "달의 자전 주기와 공전 주기가 같아서(약 27.3일), 지구 중력에 의한 **조석 고정** 때문에 항상 같은 면만 보입니다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 36.25
+    },
+    {
+      "id": 1033,
+      "type": "multi_turn",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Okay, here’s a quick summary: The Moon always shows us the same side because its rotation and orbit are synchronized – it's called tidal locking due to Earth’s gravity.",
+      "cloud_answer": "달의 자전 주기와 공전 주기가 약 27.3일로 같아서, 항상 같은 면이 지구를 향합니다. 이 현상을 **조석 고정**이라 하며, 지구 중력이 오랜 시간 달의 자전을 늦춰 만들어진 결과예요.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 15.83
+    }
+  ],
+  "aggregate": {
+    "per_question": [
+      {
+        "id": 1001,
+        "type": "small_talk",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "ABSTAINED",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "ABSTAINED",
+          "ABSTAINED",
+          "ABSTAINED"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 21.5
+      },
+      {
+        "id": 1002,
+        "type": "small_talk",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "ABSTAINED",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "ABSTAINED",
+          "ABSTAINED",
+          "ABSTAINED"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 37.01
+      },
+      {
+        "id": 1003,
+        "type": "small_talk",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 16.02
+      },
+      {
+        "id": 1011,
+        "type": "factual_chat",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 15.41
+      },
+      {
+        "id": 1012,
+        "type": "factual_chat",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 17.82
+      },
+      {
+        "id": 1013,
+        "type": "factual_chat",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 21.44
+      },
+      {
+        "id": 1021,
+        "type": "open_question",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "ABSTAINED",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "ABSTAINED",
+          "ABSTAINED",
+          "ABSTAINED"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 33.91
+      },
+      {
+        "id": 1022,
+        "type": "open_question",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 30.06
+      },
+      {
+        "id": 1023,
+        "type": "open_question",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 22.1
+      },
+      {
+        "id": 1031,
+        "type": "multi_turn",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 34.23
+      },
+      {
+        "id": 1032,
+        "type": "multi_turn",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 20.72
+      },
+      {
+        "id": 1033,
+        "type": "multi_turn",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 22.69
+      }
+    ],
+    "summary": {
+      "n_questions": 12,
+      "n_runs_per_question": 3,
+      "local_correct_rate": 0.75,
+      "cloud_correct_rate": 1.0,
+      "local_abstain_rate": 0.25,
+      "cloud_abstain_rate": 0.0,
+      "delta_correct_cloud_minus_local": 0.25,
+      "local_stable_rate": 1.0,
+      "cloud_stable_rate": 1.0,
+      "by_type": {
+        "small_talk": {
+          "n": 3,
+          "local_correct": 1,
+          "cloud_correct": 3
+        },
+        "factual_chat": {
+          "n": 3,
+          "local_correct": 3,
+          "cloud_correct": 3
+        },
+        "open_question": {
+          "n": 3,
+          "local_correct": 2,
+          "cloud_correct": 3
+        },
+        "multi_turn": {
+          "n": 3,
+          "local_correct": 3,
+          "cloud_correct": 3
+        }
+      }
+    }
+  }
+}

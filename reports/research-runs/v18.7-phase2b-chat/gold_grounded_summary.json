@@ -1,0 +1,50 @@
+[
+  {
+    "cell": "A",
+    "model_desc": "gemma4:e4b OFF cap=400",
+    "scope": "factual_chat only",
+    "n_trials": 9,
+    "local_judge_correct": 1.0,
+    "local_gold_correct": 1.0,
+    "local_agreement": 1.0,
+    "local_over_credits": 0,
+    "local_under_credits": 0,
+    "cloud_judge_correct": 1.0,
+    "cloud_gold_correct": 1.0,
+    "cloud_agreement": 1.0,
+    "over_credit_examples": [],
+    "under_credit_examples": []
+  },
+  {
+    "cell": "B",
+    "model_desc": "gemma3:4b cap=400",
+    "scope": "factual_chat only",
+    "n_trials": 9,
+    "local_judge_correct": 1.0,
+    "local_gold_correct": 1.0,
+    "local_agreement": 1.0,
+    "local_over_credits": 0,
+    "local_under_credits": 0,
+    "cloud_judge_correct": 1.0,
+    "cloud_gold_correct": 1.0,
+    "cloud_agreement": 1.0,
+    "over_credit_examples": [],
+    "under_credit_examples": []
+  },
+  {
+    "cell": "C",
+    "model_desc": "gemma3:12b cap=400",
+    "scope": "factual_chat only",
+    "n_trials": 9,
+    "local_judge_correct": 1.0,
+    "local_gold_correct": 1.0,
+    "local_agreement": 1.0,
+    "local_over_credits": 0,
+    "local_under_credits": 0,
+    "cloud_judge_correct": 1.0,
+    "cloud_gold_correct": 1.0,
+    "cloud_agreement": 1.0,
+    "over_credit_examples": [],
+    "under_credit_examples": []
+  }
+]

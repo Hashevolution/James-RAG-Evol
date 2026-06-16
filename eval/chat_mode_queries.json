@@ -94,7 +94,7 @@
       "evidence_required": false,
       "expected_behavior": "Direct factual answer with standard atmospheric pressure caveat optional.",
       "gold_signals": [
-        {"term": "100", "aliases": ["섭씨 100", "100도", "100°C"]}
+        {"term": "100", "aliases": ["섭씨 100", "100도", "100°C", "백도", "섭씨 백도", "백 도"]}
       ]
     },
     {
