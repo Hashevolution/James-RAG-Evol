@@ -733,13 +733,24 @@
   .main > aside {
     display: none;
   }
+  /* v0.6.1 v9 (2026-06-16) — operator catch: this panel covered ~70%
+   * of the graph viewport. Reframed as a BOTTOM sheet (anchored to
+   * the bottom edge with a max-height ~50vh) so the graph stays
+   * visible above it. The original "left:8 right:8 top:56" wiring
+   * made the panel a top-anchored card that blocked the very node
+   * that was just clicked. Bottom-anchored mirrors Maps / Apple's
+   * detail-sheet pattern. */
   .neighbor-panel {
     right: 8px;
     left: 8px;
-    top: 56px;
+    top: auto;
+    bottom: 12px;
     width: auto;
-    max-height: calc(70% - 56px);
+    max-height: 50vh;
     font-size: 12px;
+    padding: 12px 12px 10px;
+    border-radius: 14px;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, .45);
   }
   .neighbor-panel .np-close {
     width: 32px;
@@ -752,6 +763,12 @@
   .neighbor-panel .np-item {
     padding: 10px 8px;
     font-size: 13px;
+  }
+  /* Body excerpt — tighter cap so the sheet stays at ~50vh even
+   * with a markdown body. Operator can scroll inside the body if
+   * the document is longer than the budget. */
+  .neighbor-panel .np-summary-body {
+    max-height: 22vh;
   }
   .top-search-drawer {
     width: calc(100% - 16px);

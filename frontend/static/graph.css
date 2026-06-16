@@ -230,6 +230,73 @@
     border-radius: 6px;
     border: 1px solid var(--border-2);
   }
+  /* v0.6.1 v9 (2026-06-16) — markdown render variant. Drops the
+   * pre-wrap (line breaks come from the <p> / <ul> we generate) so
+   * vertical density matches the desktop neighbor list. */
+  .neighbor-panel .np-summary-body.np-summary-body-md {
+    white-space: normal;
+  }
+  .neighbor-panel .np-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-fg);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin: 8px 0 4px;
+  }
+  .neighbor-panel .np-section-title:first-child {
+    margin-top: 0;
+  }
+  .neighbor-panel .np-section-p {
+    margin: 0 0 6px;
+    line-height: 1.55;
+  }
+  .neighbor-panel .np-section-list {
+    list-style: none;
+    margin: 0 0 6px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .neighbor-panel .np-section-list li {
+    padding-left: 12px;
+    position: relative;
+    line-height: 1.5;
+  }
+  .neighbor-panel .np-section-list li::before {
+    content: "·";
+    position: absolute;
+    left: 2px;
+    top: 0;
+    color: var(--muted);
+    font-weight: 700;
+  }
+  /* Confidence intuition chip — replaces "(conf=0.90)" dev token. */
+  .neighbor-panel .np-conf {
+    display: inline-block;
+    font-size: 10.5px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-left: 6px;
+    vertical-align: 1px;
+    font-family: var(--font-ui);
+    letter-spacing: 0;
+  }
+  .neighbor-panel .np-conf-high {
+    background: rgba(74, 175, 80, .14);
+    color: #6ed683;
+  }
+  .neighbor-panel .np-conf-med {
+    background: rgba(255, 183, 77, .14);
+    color: #ffc14d;
+  }
+  .neighbor-panel .np-conf-low {
+    background: rgba(240, 98, 146, .14);
+    color: #f06292;
+  }
   .neighbor-panel .np-summary-body.np-empty-body {
     color: var(--muted); font-style: italic;
     background: transparent; border: none; padding: 4px 0;
