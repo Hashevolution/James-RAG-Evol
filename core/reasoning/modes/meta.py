@@ -162,19 +162,36 @@ _RECENT_TOKENS = (
     "방금", "오늘", "어제",
 )
 
+# v0.6.1 v18 (2026-06-16) — option D narrative trigger. When the
+# operator asks "요약해줘" / "정리해줘" / "전체적으로" we route to a
+# LLM-narrative variant of the overview. Default overview still takes
+# the fast deterministic path.
+_NARRATIVE_TOKENS = (
+    "요약", "정리", "전체적", "총평", "요점", "정리해", "summary",
+    "한 줄로", "한줄로", "한 마디", "정리해줘", "보고서로",
+)
+
 
 def _parse_meta_filter(query: str) -> Dict[str, str]:
     """Decide whether the meta query is an OVERVIEW request or a
-    follow-up asking for a specific slice (type / theme / recent).
+    follow-up asking for a specific slice (type / theme / recent /
+    summary).
 
     Returns: {"kind": "overview"} | {"kind": "type", "raw": <etype>}
                                   | {"kind": "theme", "label": <theme>}
                                   | {"kind": "recent"}
+                                  | {"kind": "summary"}
     """
     q = (query or "").lower().strip()
     if not q:
         return {"kind": "overview"}
-    # v0.6.1 v17 (2026-06-16) — theme tokens checked FIRST so a
+    # v0.6.1 v18 (2026-06-16) — narrative trigger FIRST so a request
+    # like "AI 자료 요약해줘" goes to the LLM narrative path (which
+    # internally still uses the AI filter to scope its prompt context)
+    # rather than the deterministic type/theme detail view.
+    if any(tok in q for tok in _NARRATIVE_TOKENS):
+        return {"kind": "summary"}
+    # v0.6.1 v17 (2026-06-16) — theme tokens checked next so a
     # phrase like "재무 보고서" lands on the "재무 · 시장" theme
     # rather than the generic "report" type. Both signals are
     # legitimate; theme is more specific in those compound cases.
@@ -189,6 +206,106 @@ def _parse_meta_filter(query: str) -> Dict[str, str]:
     if any(tok in q for tok in _RECENT_TOKENS):
         return {"kind": "recent"}
     return {"kind": "overview"}
+
+
+# v0.6.1 v18 (2026-06-16) — option C: graph-degree top-K.
+# Out-degree = count of `- target:` lines in the entity's frontmatter
+# relations block. Cheap (regex scan, no yaml parse), strong proxy
+# for "hub entity" without spinning up the full GraphEngine. Reads
+# the same files we already read for entity_type peek so cost stays
+# under 200 ms even at 500 entities.
+_REL_TARGET_RE   = re.compile(r"^\s*target:\s*([^\r\n#]+)", re.MULTILINE)
+_REL_TARGETID_RE = re.compile(r"^\s*target_id:\s*([^\r\n#]+)", re.MULTILINE)
+_ENTITY_ID_RE    = re.compile(r"^\s*id:\s*([^\r\n#]+)", re.MULTILINE)
+
+
+def _norm_key(s: str) -> str:
+    """Aggressive normalize for name matching across casing / hyphen /
+    space / dot variants. "PALANTIR TECHNOLOGIES" → "palantir_technologies".
+    """
+    s = (s or "").lower().strip().strip("\"'").strip()
+    for ch in (" ", "-", "."):
+        s = s.replace(ch, "_")
+    while "__" in s:
+        s = s.replace("__", "_")
+    return s.strip("_")
+
+
+def _peek_fm_section(path: Path) -> str:
+    """Return the frontmatter text block (between the two '---'
+    delimiters) for cheap regex inspection. Capped at 12 KB —
+    frontmatter that overflows is a structural outlier."""
+    try:
+        with path.open("r", encoding="utf-8", errors="replace") as fh:
+            head = fh.read(12288)
+    except OSError:
+        return ""
+    if not head.startswith("---"):
+        return head
+    end = head.find("---", 3)
+    return head[3:end] if end > 0 else head
+
+
+def _build_degree_map(
+    enriched: List[Dict[str, Any]], wiki_root: Path,
+) -> Dict[str, int]:
+    """Compute hybrid degree = out + in for each entity name.
+    out = `- target:` lines in own frontmatter.
+    in  = times this entity's name OR id appears as another entity's
+          target / target_id. Two-key match — by normalized name and
+          by entity_id — so loose form ("PALANTIR TECHNOLOGIES") still
+          counts even when wiki file slugs are aggressive
+          ("palantir_technologies").
+    """
+    # First pass — collect each entity's own id + out-targets.
+    name_to_id: Dict[str, str] = {}     # canonical name → entity_id
+    id_to_name: Dict[str, str] = {}     # entity_id → canonical name
+    name_key_to_canonical: Dict[str, str] = {}  # normalized name key → name
+    out_targets: Dict[str, List[Tuple[str, str]]] = {}  # name → [(target_name, target_id)]
+
+    for e in enriched:
+        name = e.get("name") or ""
+        if not name:
+            continue
+        fm_text = _peek_fm_section(wiki_root / e["path"])
+        # own id
+        m_id = _ENTITY_ID_RE.search(fm_text)
+        eid = m_id.group(1).strip().strip("\"'").strip() if m_id else ""
+        if eid:
+            name_to_id[name] = eid
+            id_to_name[eid] = name
+        name_key_to_canonical[_norm_key(name)] = name
+        # targets
+        target_names = [m.group(1).strip().strip("\"'").strip()
+                        for m in _REL_TARGET_RE.finditer(fm_text)]
+        target_ids = [m.group(1).strip().strip("\"'").strip()
+                      for m in _REL_TARGETID_RE.finditer(fm_text)]
+        # pair them positionally — yaml lists usually keep target +
+        # target_id co-located; if a row only has one, the other side
+        # is empty string.
+        pairs: List[Tuple[str, str]] = []
+        for i in range(max(len(target_names), len(target_ids))):
+            tn = target_names[i] if i < len(target_names) else ""
+            ti = target_ids[i]   if i < len(target_ids)   else ""
+            pairs.append((tn, ti))
+        out_targets[name] = pairs
+
+    # Second pass — in-degree by id-first, name-key-second.
+    in_count: Dict[str, int] = defaultdict(int)
+    for src, pairs in out_targets.items():
+        for tn, ti in pairs:
+            canonical = ""
+            if ti and ti in id_to_name:
+                canonical = id_to_name[ti]
+            elif tn:
+                canonical = name_key_to_canonical.get(_norm_key(tn), "")
+            if canonical and canonical != src:
+                in_count[canonical] += 1
+
+    return {
+        e["name"]: len(out_targets.get(e["name"], [])) + in_count.get(e["name"], 0)
+        for e in enriched if e.get("name")
+    }
 
 
 def _render_type_detail(enriched: List[Dict[str, Any]], etype: str) -> str:
@@ -250,6 +367,104 @@ def _render_theme_detail(enriched: List[Dict[str, Any]], theme: str) -> str:
     out.append(
         "특정 항목을 자세히 보려면 이름으로 직접 질문하세요. "
         "예: \"" + head[0] + "에 대해 알려줘\"."
+    )
+    return "\n".join(out)
+
+
+def _render_llm_narrative(
+    engine,
+    *,
+    total: int,
+    by_type: Dict[str, List[str]],
+    by_theme: Dict[str, List[str]],
+    recent: List[Dict[str, Any]],
+    top_degree: List[Tuple[str, int]],
+) -> str:
+    """v0.6.1 v18 (2026-06-16) — option D: LLM narrative variant.
+
+    Builds a compact summary block first (counts + top names +
+    最近 추가) then asks the engine's general LLM to write a 2-3
+    paragraph narrative ("이 자료의 주요 주제 / 강점 / 빈약한
+    영역"). The deterministic data block is appended below the
+    narrative so the operator can verify the LLM's claims at a
+    glance.
+    """
+    # ── data block (deterministic, always renders) ──────────
+    type_rows = sorted(by_type.items(), key=lambda kv: -len(kv[1]))[:8]
+    theme_rows = [
+        (t, n) for t, n in sorted(by_theme.items(), key=lambda kv: -len(kv[1]))
+        if t != "기타"
+    ][:6]
+
+    type_summary = ", ".join(
+        f"{_TYPE_LABELS.get(t, t or '미분류')} {len(ns)}개"
+        for t, ns in type_rows
+    )
+    theme_summary = ", ".join(
+        f"{theme} {len(ns)}개" for theme, ns in theme_rows
+    )
+    hub_summary = ", ".join(f"{name} ({d}연결)" for name, d in top_degree[:5])
+    recent_summary = ", ".join(
+        e["name"] for e in recent[:5] if e.get("name")
+    )
+
+    prompt = (
+        f"아래는 한 RAG 시스템이 보유한 wiki 자료의 분포 요약입니다.\n"
+        f"이 정보를 바탕으로 한국어로 2~3문단의 자연어 요약을 작성해 주세요.\n"
+        f"- 어떤 주제·분야에 강점이 있는지\n"
+        f"- 빈약하거나 빠진 영역이 있는지\n"
+        f"- 운영자가 다음에 어떤 자료를 추가하면 좋을지 한 줄 추천\n"
+        f"숫자는 정확히 인용하고, 추측은 하지 마세요.\n\n"
+        f"[총 자료 수] {total}개\n"
+        f"[분류별] {type_summary}\n"
+        f"[주제별] {theme_summary}\n"
+        f"[핵심 hub] {hub_summary or '연결 데이터 없음'}\n"
+        f"[최근 추가] {recent_summary}\n\n"
+        f"요약:"
+    )
+    try:
+        narrative = engine.llm.call_gemma(
+            prompt, timeout=30, use_cache=False,
+        ) or ""
+    except Exception as e:
+        try:
+            engine._log("meta_narrative_llm", e, "")
+        except Exception:
+            pass
+        narrative = ""
+    narrative = narrative.strip()
+
+    out: List[str] = [f"## 보유 자료 총 {total}개 — 요약"]
+    out.append("")
+    if narrative:
+        out.append(narrative)
+        out.append("")
+        out.append("---")
+        out.append("")
+    out.append("### 분류별")
+    for t, ns in type_rows:
+        label = _TYPE_LABELS.get(t, t or "미분류")
+        out.append(f"- **{label}** ({len(ns)}개)")
+    out.append("")
+    if theme_rows:
+        out.append("### 주제별")
+        for theme, ns in theme_rows:
+            out.append(f"- **{theme}** ({len(ns)}개)")
+        out.append("")
+    if top_degree:
+        out.append("### 핵심 hub (연결 수)")
+        for name, deg in top_degree[:5]:
+            out.append(f"- **{name}** ({deg} 연결)")
+        out.append("")
+    if recent:
+        out.append("### 최근 추가")
+        for e in recent[:5]:
+            if e.get("name"):
+                out.append(f"- {e['name']}")
+        out.append("")
+    out.append(
+        "특정 분류·주제를 더 자세히 보려면 그 이름으로 다시 질문해 보세요. "
+        "예: \"개념 자료에는 뭐가 있어?\"."
     )
     return "\n".join(out)
 
@@ -399,6 +614,43 @@ def handle_meta(
                 enriched, key=lambda x: x["mtime"], reverse=True,
             )[:5]
 
+            # ── graph-degree top-K (option C) ───────────────────
+            # Computed for overview + summary paths so the most-
+            # connected hub entities surface alongside the type and
+            # theme breakdowns. Skipped on focused detail views to
+            # keep their response narrow.
+            degree_map = _build_degree_map(enriched, wiki_root)
+            top_degree = sorted(
+                degree_map.items(), key=lambda kv: -kv[1],
+            )[:10]
+            # Drop trailing zeros — if the corpus has no recorded
+            # relations at all, don't render an empty section.
+            top_degree = [(n, d) for n, d in top_degree if d > 0]
+
+            # ── option D: LLM narrative variant ─────────────────
+            if meta_filter["kind"] == "summary":
+                answer = _render_llm_narrative(
+                    engine,
+                    total=total,
+                    by_type=by_type,
+                    by_theme=by_theme,
+                    recent=recent,
+                    top_degree=top_degree,
+                )
+                engine._elapsed(t_meta, "META_inventory")
+                return {
+                    "answer":        answer,
+                    "mode":          "meta",
+                    "graph_paths":   [],
+                    "graph_used":    len(top_degree),
+                    "sources":       [],
+                    "blocked":       False,
+                    "role_used":     user_role,
+                    "timing_sec":    round(time.time() - t_start, 2),
+                    "unified_score": 1.0,
+                    "loop_count":    0,
+                }
+
             # ── format as markdown — uses the v0.6.1 v15 serif
             # answer typography on the client side. Heading levels
             # match the client's .md-h2/-h3 size step.
@@ -439,6 +691,25 @@ def handle_meta(
                     f"- **기타** ({other_count}개) — 위 카테고리 외 일반 항목"
                 )
             out.append("")
+
+            # 핵심 entity — graph degree top-K (option C).
+            # Skipped when the corpus has no edges so the section
+            # doesn't render an empty placeholder.
+            if top_degree:
+                out.append("### 핵심 entity (연결 수 top 10)")
+                out.append("_(다른 항목과 가장 많이 연결된 hub)_")
+                out.append("")
+                for name, deg in top_degree:
+                    # find the type label so the row reads as
+                    # "PALANTIR (27 연결, 조직)" — operator instantly
+                    # sees both the importance and the category.
+                    etype = next(
+                        (e["type"] for e in enriched if e["name"] == name),
+                        "",
+                    )
+                    label = _TYPE_LABELS.get(etype, etype or "미분류")
+                    out.append(f"- **{name}** ({deg} 연결, {label})")
+                out.append("")
 
             # 최근 추가 — mtime-sorted top 5.
             out.append("### 최근 추가된 자료 (top 5)")

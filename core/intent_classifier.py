@@ -144,6 +144,14 @@ class IntentClassifier:
             r"(AI|에이아이|머신러닝|블록체인|크립토|crypto|web3|보안|security|연구|논문|연도별|연도|재무|시장|웹\s*자료)\s*(관련|쪽|쪽으로|에|는|을|의)\s*(자료|항목|것|들|목록|리스트|어떤|뭐|무슨|있|보여|알려)",
             r"(AI|에이아이|머신러닝|블록체인|크립토|crypto|web3|보안|security|연구|논문|연도별|연도|재무|시장|웹\s*자료)\s*(자료|항목|것|들|목록|리스트)\s*(어떤|뭐|무슨|있|보여|알려|\?)?",
             r"(최근|새로|새로운|새로\s*추가|최신|recent|latest|new)\s*(추가|들어온|올라온)?\s*\S{0,6}\s*(자료|항목|것|것들|문서|entity)?",
+            # v0.6.1 v18 (2026-06-16) — narrative trigger: "요약/정리/
+            # 전체적으로/총평". Routes to handle_meta which then
+            # detects the narrative keyword and runs the LLM
+            # variant. Distinct from retrieval-summary because the
+            # subject is the WHOLE corpus, not a specific topic.
+            r"(보유\s*자료|내부\s*자료|자료|wiki|위키|entity)\s*(전체|모두|싹|싹\s*다)?\s*(요약|정리|총평|보고)",
+            r"(전체적|총괄|총평).{0,6}(자료|wiki|위키|보고|정리|요약)",
+            r"(요약|정리)해\s*줘\s*$",
             # 영어 — 더 유연하게 (PR #73 패턴은 'what do you' 만 잡음)
             r"(list|show)\s+(all\s+|me\s+)?(your\s+)?(entities|wiki|documents|files|data|knowledge)",
             r"^what\s+(\S+\s+){0,3}do\s+you\s+(have|know)",
