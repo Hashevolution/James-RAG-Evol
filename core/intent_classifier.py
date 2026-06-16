@@ -143,7 +143,18 @@ class IntentClassifier:
             # 인텐트 인식 (v17 fix).
             r"(AI|에이아이|머신러닝|블록체인|크립토|crypto|web3|보안|security|연구|논문|연도별|연도|재무|시장|웹\s*자료)\s*(관련|쪽|쪽으로|에|는|을|의)\s*(자료|항목|것|들|목록|리스트|어떤|뭐|무슨|있|보여|알려)",
             r"(AI|에이아이|머신러닝|블록체인|크립토|crypto|web3|보안|security|연구|논문|연도별|연도|재무|시장|웹\s*자료)\s*(자료|항목|것|들|목록|리스트)\s*(어떤|뭐|무슨|있|보여|알려|\?)?",
-            r"(최근|새로|새로운|새로\s*추가|최신|recent|latest|new)\s*(추가|들어온|올라온)?\s*\S{0,6}\s*(자료|항목|것|것들|문서|entity)?",
+            # v0.6.1 v18.1 (2026-06-16) — measurement-validity fix.
+            # The v17 form had `recent|latest|new` with the trailing
+            # noun group OPTIONAL, so bare English `new` / `News` /
+            # `New York` substrings in retrieval queries (MultiHop-RAG
+            # fixture) false-positive matched, polluting paired
+            # measurements that pre-screen intent. Two-pattern split:
+            # Korean tokens stay loose (no English false positives
+            # because Korean characters never appear inside English
+            # words), English tokens REQUIRE an explicit inventory
+            # noun follow-up.
+            r"(최근|새로|새로운|새로\s*추가|최신|방금|어제|오늘)\s*(추가|들어온|올라온|업로드)?\s*\S{0,6}\s*(자료|항목|것|것들|문서|entity)?",
+            r"\b(recent|latest|new)\s+(additions|entries|files|documents|entities|items|uploads|content)\b",
             # v0.6.1 v18 (2026-06-16) — narrative trigger: "요약/정리/
             # 전체적으로/총평". Routes to handle_meta which then
             # detects the narrative keyword and runs the LLM
