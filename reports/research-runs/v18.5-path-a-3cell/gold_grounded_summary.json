@@ -1,0 +1,122 @@
+[
+  {
+    "cell": "A",
+    "n": 27,
+    "local_judge_correct": 1.0,
+    "local_gold_correct": 0.815,
+    "local_agreement": 0.815,
+    "local_over_credits": 5,
+    "local_under_credits": 0,
+    "cloud_judge_correct": 1.0,
+    "cloud_gold_correct": 1.0,
+    "cloud_agreement": 1.0,
+    "over_credit_examples": [
+      {
+        "id": 27,
+        "type": "comparison_query",
+        "run": 0
+      },
+      {
+        "id": 27,
+        "type": "comparison_query",
+        "run": 1
+      },
+      {
+        "id": 27,
+        "type": "comparison_query",
+        "run": 2
+      },
+      {
+        "id": 78,
+        "type": "temporal_query",
+        "run": 1
+      },
+      {
+        "id": 78,
+        "type": "temporal_query",
+        "run": 2
+      }
+    ],
+    "under_credit_examples": []
+  },
+  {
+    "cell": "B",
+    "n": 27,
+    "local_judge_correct": 0.704,
+    "local_gold_correct": 0.778,
+    "local_agreement": 0.778,
+    "local_over_credits": 2,
+    "local_under_credits": 4,
+    "cloud_judge_correct": 1.0,
+    "cloud_gold_correct": 1.0,
+    "cloud_agreement": 1.0,
+    "over_credit_examples": [
+      {
+        "id": 26,
+        "type": "comparison_query",
+        "run": 1
+      },
+      {
+        "id": 26,
+        "type": "comparison_query",
+        "run": 2
+      }
+    ],
+    "under_credit_examples": [
+      {
+        "id": 77,
+        "type": "temporal_query",
+        "run": 0,
+        "judge_verdict": "ABSTAINED"
+      },
+      {
+        "id": 78,
+        "type": "temporal_query",
+        "run": 0,
+        "judge_verdict": "ABSTAINED"
+      },
+      {
+        "id": 78,
+        "type": "temporal_query",
+        "run": 1,
+        "judge_verdict": "ABSTAINED"
+      },
+      {
+        "id": 78,
+        "type": "temporal_query",
+        "run": 2,
+        "judge_verdict": "ABSTAINED"
+      }
+    ]
+  },
+  {
+    "cell": "C",
+    "n": 27,
+    "local_judge_correct": 1.0,
+    "local_gold_correct": 0.889,
+    "local_agreement": 0.889,
+    "local_over_credits": 3,
+    "local_under_credits": 0,
+    "cloud_judge_correct": 1.0,
+    "cloud_gold_correct": 1.0,
+    "cloud_agreement": 1.0,
+    "over_credit_examples": [
+      {
+        "id": 27,
+        "type": "comparison_query",
+        "run": 0
+      },
+      {
+        "id": 27,
+        "type": "comparison_query",
+        "run": 1
+      },
+      {
+        "id": 27,
+        "type": "comparison_query",
+        "run": 2
+      }
+    ],
+    "under_credit_examples": []
+  }
+]
