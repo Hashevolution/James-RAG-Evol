@@ -869,22 +869,22 @@
   .bubble { line-height: 1.6; }
 }
 
-/* v0.6.1 v10 (2026-06-16) — Claude-style answer typography on phones.
- * Bump headings a hair so the size step from body→heading is visible
- * on a small viewport, tighten table padding so wide tables don't
- * force horizontal scroll on every doc. */
+/* v0.6.1 v10/v15 (2026-06-16) — Claude-style serif answer typography
+ * on phones. v15 bumps body up to 15.5 / heading scale increased so
+ * 명조체 가독성 ↑ on small viewport. table + pre stay mono/ui. */
 @media (max-width: 768px) {
-  .bubble .md-h1 { font-size: 20px; }
-  .bubble .md-h2 { font-size: 17px; }
-  .bubble .md-h3 { font-size: 15.5px; }
+  .bubble { font-size: 15.5px; line-height: 1.75; }
+  .bubble .md-h1 { font-size: 22px; }
+  .bubble .md-h2 { font-size: 19px; }
+  .bubble .md-h3 { font-size: 16.5px; }
   .bubble .md-h4 { font-size: 13px; }
   .bubble .md-p,
   .bubble .md-ul,
   .bubble .md-ol {
-    font-size: 14.5px;
-    line-height: 1.7;
+    font-size: 15.5px;
+    line-height: 1.75;
   }
-  .bubble .md-table { font-size: 12.5px; }
+  .bubble .md-table { font-size: 13.5px; }
   .bubble .md-table th,
   .bubble .md-table td {
     padding: 6px 8px;
@@ -913,12 +913,18 @@
     max-width: min(86%, 540px);
   }
   .sidebar-nav-row {
-    padding: 12px 14px;
-    font-size: 15px;
+    padding: 13px 14px;
+    font-size: 16px;
   }
   .sidebar-nav-icon {
     font-size: 18px;
   }
+  /* v0.6.1 v15 (2026-06-16) — 메뉴 글자 ↑ on phone too. session
+   * rows + popover row scale to match. */
+  .session-item-title { font-size: 15px; }
+  .session-item-meta  { font-size: 12px; }
+  .modal-popover-row  { font-size: 16px; padding: 12px 14px; }
+  .sidebar-section-title { font-size: 12px; }
   .chat-topbar {
     padding: 8px 12px;
     gap: 6px;
