@@ -85,6 +85,31 @@ def _instantiate_backend(name: str):
         # Constructor takes an optional cli_path — pass a fake one and
         # patch subprocess.Popen at call sites in the tests below.
         return ClaudeCodeCliBackend(cli_path="/fake/claude")
+    if name == "diffusiongemma_local":
+        # v0.6.1 v18 (2026-06-16) spike. Inject a fake requests.Session
+        # so the suite never reaches a vLLM / llama.cpp-server. The
+        # session returns a Response-like object whose .json() yields
+        # an OpenAI-shaped successful completion.
+        from core.reasoning.backends.diffusiongemma_local import (
+            DiffusionGemmaLocalBackend,
+        )
+        b = DiffusionGemmaLocalBackend(
+            url="http://fake.invalid",
+            model="diffusiongemma-26b-a4b-it-test",
+        )
+        fake_resp = MagicMock()
+        fake_resp.status_code = 200
+        fake_resp.json.return_value = {
+            "choices": [{
+                "message": {"role": "assistant", "content": "ok"},
+                "finish_reason": "stop",
+            }],
+        }
+        fake_resp.text = '{"choices":[{"message":{"content":"ok"}}]}'
+        fake_session = MagicMock()
+        fake_session.post.return_value = fake_resp
+        b._session = fake_session
+        return b
     raise ValueError(f"no mock harness for backend {name!r}")
 
 
@@ -101,6 +126,8 @@ def _enumerate_reference_backends() -> Iterable[Tuple[str, str]]:
     yield ("ollama_local", "ollama_local")
     if os.environ.get("JAMES_ENABLE_CLAUDE_BACKEND") == "1":
         yield ("claude_code_cli", "claude_code_cli")
+    if os.environ.get("JAMES_ENABLE_DIFFUSIONGEMMA") == "1":
+        yield ("diffusiongemma_local", "diffusiongemma_local")
 
 
 # ─── Conformance assertions ───────────────────────────────────────
@@ -150,6 +177,22 @@ class ReferenceBackendConformanceTests(unittest.TestCase):
             self.assertIsInstance(res2, CompletionResult)
             self.assertNotEqual(res2.error, "")
             self.assertEqual(res2.text, "")
+
+        # diffusiongemma_local — make requests.Session.post raise
+        # (timeout, network down, …).
+        if os.environ.get("JAMES_ENABLE_DIFFUSIONGEMMA") == "1":
+            from core.reasoning.backends.diffusiongemma_local import (
+                DiffusionGemmaLocalBackend,
+            )
+            import requests as _req
+            db = DiffusionGemmaLocalBackend(url="http://fake.invalid")
+            fake_session = MagicMock()
+            fake_session.post.side_effect = _req.Timeout("boom")
+            db._session = fake_session
+            res3 = db.complete("hi", timeout=1.0)
+            self.assertIsInstance(res3, CompletionResult)
+            self.assertNotEqual(res3.error, "")
+            self.assertEqual(res3.text, "")
 
     def test_r2_backend_id_matches_registry_name(self):
         """R2 — backend_id is the registry name. Live registry is
