@@ -163,6 +163,20 @@ def call_local(prompt: str, *, model: str, timeout: int = 180,
         vs DiffusionGemma on the same fixture without rewriting the
         harness. ``model`` becomes the model tag the serving stack
         announced (e.g. ``google/diffusiongemma-26b-a4b-it``).
+
+    v0.6.1 v18.4 (2026-06-16) — thinking-mode contract. The v18.3
+    Path A baseline launched with gemma4:e4b and produced 27/27 empty
+    LOCAL responses, then auto-classified them as ABSTAINED. Root
+    cause was the d3_e4b_floor_mechanism_thinking_trace memory's
+    finding (PR #602): the e4b model burns ~85% of num_predict on
+    hidden thinking tokens that ``/api/generate`` strips from
+    ``response``. cap=400 left zero room for user-facing answer.
+
+    Fix: when the model is thinking-capable AND the operator's
+    JAMES_GEMMA4_E4B_THINK_OFF=1 flag is set (default in `.env`
+    since PR #609), forward ``think: false`` to the Ollama request.
+    Honor the same contract production code uses — the harness was
+    the last call site bypassing it.
     """
     if local_backend == "diffusiongemma_local":
         from core.reasoning.backends.diffusiongemma_local import (
@@ -182,13 +196,32 @@ def call_local(prompt: str, *, model: str, timeout: int = 180,
             raise RuntimeError(f"diffusiongemma backend error: {result.error}")
         return (result.text or "").strip()
 
-    # default: ollama
+    # default: ollama. v18.4: thinking-aware body.
+    body: Dict[str, Any] = {
+        "model": model, "prompt": prompt, "stream": False,
+        "options": {
+            "num_predict": 400, "temperature": 0.0, "num_ctx": NUM_CTX,
+        },
+    }
+    # Honor production's think_policy contract. is_thinking_capable
+    # gates on the model family; _flag_active reads
+    # JAMES_GEMMA4_E4B_THINK_OFF. When BOTH are true, ``think: false``
+    # joins the Ollama body — matching the gemma_client.py path
+    # production calls already take.
+    try:
+        from core.reasoning.think_policy import (
+            is_thinking_capable, _flag_active,
+        )
+        if is_thinking_capable(model) and _flag_active():
+            body["think"] = False
+    except ImportError:
+        # think_policy module gone (extreme refactor) — fall through
+        # to the legacy direct call. Lock-test catches the loss.
+        pass
+
     req = urllib.request.Request(
         OLLAMA_URL,
-        data=json.dumps({
-            "model": model, "prompt": prompt, "stream": False,
-            "options": {"num_predict": 400, "temperature": 0.0, "num_ctx": NUM_CTX},
-        }).encode(),
+        data=json.dumps(body).encode(),
         headers={"Content-Type": "application/json"},
     )
     r = json.loads(urllib.request.urlopen(req, timeout=timeout).read())

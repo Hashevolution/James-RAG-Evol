@@ -370,12 +370,73 @@ def check_diffusiongemma_opt_in() -> PreFlightResult:
 # ─── orchestrator ───────────────────────────────────────────────────
 
 
+def check_thinking_mode_contract() -> PreFlightResult:
+    """v0.6.1 v18.4 (2026-06-16) — operator catch after the Path A
+    baseline produced 27/27 empty responses. The d3_e4b_floor_mechanism
+    memory documented gemma4:e4b's hidden thinking tokens; the v18.3
+    paired harness bypassed the production think_policy contract and
+    measured empty strings as ABSTAINED.
+
+    Two assertions:
+      1. ``core/reasoning/think_policy.py`` is importable + exposes the
+         contract surface (is_thinking_capable, _flag_active). The
+         memory + the PR #602/#609 plumbing must stay reachable from
+         any new call site — the harness is the most recent example.
+      2. If the operator's stock JAMES install has ``gemma4:e4b``
+         available (the production small tier) AND the harness is
+         expected to drive it, the ``JAMES_GEMMA4_E4B_THINK_OFF=1``
+         flag MUST be set. We cannot enumerate installed Ollama
+         models hermetically here, so we surface this as a warning
+         that the operator should resolve before launching against
+         e4b. The warning sits in the output JSON so audit trail
+         records the state at run time.
+    """
+    try:
+        from core.reasoning import think_policy
+    except ImportError as e:
+        return PreFlightResult(
+            "thinking_mode_contract", "fail",
+            f"core.reasoning.think_policy import failed: {e}. "
+            f"Production code (5 stage call sites) + paired harness "
+            f"both depend on this contract. Restore or update the "
+            f"lock-test.",
+        )
+    missing = [
+        sym for sym in ("is_thinking_capable", "_flag_active",
+                        "think_for_stage")
+        if not hasattr(think_policy, sym)
+    ]
+    if missing:
+        return PreFlightResult(
+            "thinking_mode_contract", "fail",
+            f"core.reasoning.think_policy missing symbols: {missing}. "
+            f"call_local + production gemma_client both consume these.",
+        )
+    flag = os.environ.get("JAMES_GEMMA4_E4B_THINK_OFF")
+    if flag != "1":
+        return PreFlightResult(
+            "thinking_mode_contract", "warn",
+            "JAMES_GEMMA4_E4B_THINK_OFF not set to '1'. If the run "
+            "uses gemma4:e4b family the LOCAL responses will be "
+            "empty (hidden thinking tokens absorb num_predict). The "
+            "production .env carries this flag — verify it's loaded "
+            "in the measurement shell.",
+            extra={"env_flag": flag},
+        )
+    return PreFlightResult(
+        "thinking_mode_contract", "ok",
+        "think_policy surface intact; JAMES_GEMMA4_E4B_THINK_OFF=1 "
+        "active (gemma4 family models will receive think:false).",
+    )
+
+
 _CHECKS = (
     check_fixture,
     check_regex_false_positives,
     check_backend_registry,
     check_abstraction_smoke,
     check_diffusiongemma_opt_in,
+    check_thinking_mode_contract,
 )
 
 
