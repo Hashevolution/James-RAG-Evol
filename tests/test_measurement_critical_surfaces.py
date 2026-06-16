@@ -122,6 +122,13 @@ _DOWNSTREAM_SURFACE = {
     ("core.reasoning.backends",                         "register_backend", "callable"),
     ("core.reasoning.backends",                         "get_backend", "callable"),
     ("core.reasoning.backends",                         "list_backends", "callable"),
+    # v0.6.1 v18.4 — thinking-mode contract. Production code (5 cognitive
+    # stage call sites) + paired harness both honor JAMES_GEMMA4_E4B_THINK_OFF
+    # via these three symbols. Losing any of them resurrects the v18.3
+    # "27/27 empty response" failure mode.
+    ("core.reasoning.think_policy",                     "is_thinking_capable", "callable"),
+    ("core.reasoning.think_policy",                     "_flag_active", "callable"),
+    ("core.reasoning.think_policy",                     "think_for_stage", "callable"),
 }
 
 
@@ -223,6 +230,45 @@ class MeasurementSurfaceLockTest(unittest.TestCase):
                         inspect.isclass(attr),
                         f"{module_path}.{symbol} is no longer a class",
                     )
+
+    def test_call_local_honors_thinking_contract(self):
+        """v0.6.1 v18.4 (2026-06-16) — harness's call_local must
+        consult ``think_policy`` for thinking-capable models. Without
+        this, gemma4:e4b produces 27/27 empty responses (the v18.3
+        Path A baseline failure mode).
+
+        We don't run the actual HTTP call here — instead, we inspect
+        the harness source for the import + the conditional. A refactor
+        that removes the integration trips this test before any
+        operator reaches the empty-response cliff again.
+        """
+        harness_path = (
+            Path(__file__).resolve().parent.parent
+            / "scripts" / "research" / "local_vs_cloud_paired.py"
+        )
+        src = harness_path.read_text(encoding="utf-8")
+        self.assertIn(
+            "from core.reasoning.think_policy",
+            src,
+            "call_local stopped importing think_policy — the harness "
+            "is back on the bypass path that produced 27/27 empty "
+            "responses in v18.3. Restore the import or update the "
+            "lock-test alongside a deliberate measurement-baseline "
+            "change.",
+        )
+        self.assertIn(
+            "is_thinking_capable(model)",
+            src,
+            "call_local stopped gating on is_thinking_capable — the "
+            "harness no longer detects gemma4 family.",
+        )
+        self.assertIn(
+            "\"think\"",
+            src,
+            "call_local stopped forwarding the think field to Ollama. "
+            "gemma4:e4b will absorb num_predict on hidden thinking "
+            "tokens again.",
+        )
 
     def test_call_local_signature_stable(self):
         """call_local accepts the exact kwargs run_one_query passes
