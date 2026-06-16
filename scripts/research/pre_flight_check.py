@@ -137,10 +137,20 @@ def check_fixture() -> PreFlightResult:
 
 
 def check_regex_false_positives() -> PreFlightResult:
-    """Every meta-mode regex must NOT match the fixture's retrieval
-    queries. False positives in the live chat path silently route the
-    operator's English queries to handle_meta instead of retrieval —
-    measurement-adjacent but visible-regression.
+    """No fast-path regex (across ALL non-retrieval modes) may match
+    the fixture's retrieval queries. False positives in the live chat
+    path silently route the operator's English queries away from
+    retrieval — measurement-adjacent but visible-regression.
+
+    Modes swept: ``meta``, ``wiki_edit``, ``coding``. ``chat`` is the
+    fallback so its patterns are skipped. ``retrieval`` has no fast
+    patterns — it's the implicit default.
+
+    v18.2 retroactive scan (2026-06-16) found `coding` pattern
+    ``\\b(def |class |import |traceback)\\b`` matching ``class `` in
+    English fixture queries (`class-action`, `first-class`, etc.).
+    Predates the v0.6.1 chrome cycle (initial release) — long-running
+    bug, but now pre-flight catches it before measurement.
 
     The harness itself bypasses intent_classifier, so this check
     cannot poison a paired RUN; it catches the bug BEFORE the operator
@@ -165,16 +175,32 @@ def check_regex_false_positives() -> PreFlightResult:
 
     fixture_path: Path = harness.FIXTURE
     data = json.loads(fixture_path.read_text(encoding="utf-8"))
-    meta_patterns = IntentClassifier().FAST_PATTERNS.get("meta", [])
-    if not meta_patterns:
+    classifier = IntentClassifier()
+
+    # Modes to sweep — every fast-path bucket EXCEPT chat (fallback)
+    # and the implicit retrieval default. If a new mode appears in
+    # FAST_PATTERNS that we want excluded (e.g. a new fallback), add
+    # it to _SWEEP_EXCLUDE.
+    _SWEEP_EXCLUDE = {"chat"}
+    sweep_modes = [
+        m for m in classifier.FAST_PATTERNS
+        if m not in _SWEEP_EXCLUDE
+    ]
+    if not sweep_modes:
         return PreFlightResult(
             "regex_sweep", "warn",
-            "meta fast-path patterns missing — classifier surface "
-            "changed; lock-test should already be red",
+            "no fast-path modes found to sweep — classifier surface "
+            "may have rotated; lock-test should already be red",
         )
 
-    # Compile once per check — cheap, but avoid re-compiling per row.
-    compiled = [re.compile(p, re.IGNORECASE) for p in meta_patterns]
+    # Per-mode compiled patterns.
+    per_mode: Dict[str, List[re.Pattern]] = {}
+    per_mode_raw: Dict[str, List[str]] = {}
+    for mode in sweep_modes:
+        raw = classifier.FAST_PATTERNS.get(mode, [])
+        per_mode[mode] = [re.compile(p, re.IGNORECASE) for p in raw]
+        per_mode_raw[mode] = raw
+
     answerable = harness.ANSWERABLE
 
     fp_rows: List[Dict[str, Any]] = []
@@ -184,30 +210,40 @@ def check_regex_false_positives() -> PreFlightResult:
             continue
         total += 1
         text = q.get("text", "")
-        for i, cre in enumerate(compiled):
-            m = cre.search(text)
-            if m:
-                fp_rows.append({
-                    "id":      q.get("id"),
-                    "type":    q.get("question_type"),
-                    "text":    text[:120],
-                    "pattern": meta_patterns[i][:80],
-                    "match":   m.group(0),
-                })
-                break       # one match per row is enough
+        for mode, compiled in per_mode.items():
+            for i, cre in enumerate(compiled):
+                m = cre.search(text)
+                if m:
+                    fp_rows.append({
+                        "id":      q.get("id"),
+                        "qtype":   q.get("question_type"),
+                        "text":    text[:120],
+                        "mode":    mode,
+                        "pattern": per_mode_raw[mode][i][:80],
+                        "match":   m.group(0),
+                    })
+                    break       # one match per (row, mode) is enough
 
     if fp_rows:
+        by_mode: Dict[str, int] = {}
+        for r in fp_rows:
+            by_mode[r["mode"]] = by_mode.get(r["mode"], 0) + 1
         return PreFlightResult(
             "regex_sweep", "fail",
-            f"{len(fp_rows)}/{total} answerable queries falsely "
-            f"classified as meta — live chat path will misroute. "
-            f"First example: {fp_rows[0]!r}",
-            extra={"false_positives": fp_rows[:5], "total": total},
+            f"{len(fp_rows)} false positives across answerable "
+            f"fixture rows (modes: {by_mode}). Live chat path will "
+            f"misroute. First example: {fp_rows[0]!r}",
+            extra={
+                "false_positives": fp_rows[:5],
+                "total": total,
+                "by_mode": by_mode,
+            },
         )
     return PreFlightResult(
         "regex_sweep", "ok",
-        f"0/{total} false positives across answerable fixture rows",
-        extra={"total": total},
+        f"0/{total} false positives across {len(sweep_modes)} fast-path "
+        f"modes ({sorted(sweep_modes)})",
+        extra={"total": total, "modes_swept": sorted(sweep_modes)},
     )
 
 

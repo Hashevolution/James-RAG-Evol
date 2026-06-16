@@ -82,7 +82,20 @@ class IntentClassifier:
         ],
         "coding": [
             r"\b(python|파이썬|javascript|자바스크립트)\b",
-            r"\b(def |class |import |traceback)\b",
+            # v0.6.1 v18.3 (2026-06-16) — measurement-validity fix.
+            # The old form "\b(def |class |import |traceback)\b"
+            # matched English "class " in retrieval queries
+            # (class-action lawsuit / first-class / world-class).
+            # pre-flight retroactive sweep caught this — 7/75
+            # MultiHop-RAG answerable queries falsely classified.
+            # Predates the v0.6.1 cycle (initial release), but the
+            # measurement guard exposes long-running bugs too.
+            # Fix: require code-context follow-up — the next char
+            # after the keyword is `(` / `[` / identifier-friendly,
+            # which English prose doesn't produce after `class `.
+            r"\b(def|class)\s+[A-Za-z_][\w]*\s*[\(:\[]",
+            r"(?:^|\n)\s*(?:from\s+[A-Za-z_][\w.]*\s+)?import\s+[A-Za-z_][\w]*(?:\s*,\s*[A-Za-z_][\w]*)*\s*(?:as\s+[A-Za-z_][\w]*)?\s*(?:#|$|\n)",
+            r"\bTraceback\s+\(most recent call last\)",
             r"(코드 작성|코드 수정|버그 찾아|코드 만들어|스크립트)",
         ],
         "self_evolve": [
