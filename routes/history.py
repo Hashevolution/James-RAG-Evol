@@ -69,6 +69,60 @@ async def rename_session(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@router.post(
+    "/history/sessions/favorite/",
+    summary="세션 즐겨찾기 토글 [v0.6.1 v12]",
+)
+async def set_session_favorite(
+    api_key:    str,
+    session_id: str,
+    favorited:  bool,
+    role:       str = Depends(get_role_from_request),
+):
+    """v0.6.1 v12 (2026-06-16) — 세션을 즐겨찾기로 고정/해제.
+
+    Operator catch: the v0.6.1 v8 favorite primitive lived in
+    localStorage only, so the PC web and phone web didn't see the
+    same star state. This endpoint promotes favorites to the same
+    cross-device store as session names — any client signed in with
+    the same api_key + JWT sees the same list.
+    """
+    verify_api_key(api_key)
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id 필요")
+    try:
+        from core.memory import MemoryStore
+        ok = MemoryStore().set_session_favorite(session_id, bool(favorited))
+        return {
+            "success":    ok,
+            "session_id": session_id,
+            "favorited":  bool(favorited),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/history/sessions/favorites/",
+    summary="즐겨찾기 세션 SID 목록 [v0.6.1 v12]",
+)
+async def get_session_favorites(
+    api_key: str,
+    role:    str = Depends(get_role_from_request),
+):
+    """v0.6.1 v12 (2026-06-16) — 즐겨찾기 SID 리스트. 클라이언트가
+    boot 시 한 번 호출해서 localStorage 캐시와 union/replace 한다.
+    /history/sessions/ 의 응답에도 ``is_favorite`` 가 포함되므로
+    엄밀히 필요하진 않지만, 가벼운 polling 경로로 노출.
+    """
+    verify_api_key(api_key)
+    try:
+        from core.memory import MemoryStore
+        return {"favorites": MemoryStore().get_favorite_session_ids()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.delete("/history/", summary="대화 히스토리 삭제 [P7]")
 async def delete_history(
     api_key:    str,

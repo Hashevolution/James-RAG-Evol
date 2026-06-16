@@ -3019,11 +3019,16 @@ async function loadSessionList() {
       return;
     }
 
-    // v0.6.1 v8 (2026-06-16) — favorites sort to the top. The
-    // localStorage-backed favorite list takes precedence over the
-    // server's natural recency order so a pinned conversation stays
-    // visible no matter how many new ones arrive after it.
-    const favSet = new Set(getFavoriteSessions());
+    // v0.6.1 v12 (2026-06-16) — favorites are now CROSS-DEVICE. The
+    // /history/sessions/ response carries `is_favorite` per row,
+    // which becomes the authoritative truth. The localStorage cache
+    // is reconciled against it so any other device's recent toggle
+    // shows up here on the next reload.
+    const serverFavSet = new Set(
+      sessions.filter(s => s.is_favorite).map(s => s.session_id),
+    );
+    _writeFavoriteCache(Array.from(serverFavSet));
+    const favSet = serverFavSet;
     const sortedSessions = sessions.slice().sort((a, b) => {
       const af = favSet.has(a.session_id) ? 1 : 0;
       const bf = favSet.has(b.session_id) ? 1 : 0;
@@ -3379,17 +3384,18 @@ function openSessionActionMenu(sid, title, e) {
 }
 
 /* v0.6.1 v8 (2026-06-16) — Favorite (즐겨찾기) primitive.
+ * v12 (2026-06-16) — promoted to server-side via
+ *   POST /history/sessions/favorite/?session_id=...&favorited=1
+ *   GET  /history/sessions/favorites/
+ * so PC web + phone web see the same star state. localStorage stays
+ * as an offline cache + fast first-paint source.
  *
- * localStorage-only — no backend endpoint required. Future cycle can
- * promote this to a server-side `/history/sessions/{id}/favorite/`
- * (the same call sites would just point at a new transport). Stored
- * as a JSON array of SIDs under `james_favorite_sessions`.
- *
- *   isFavoriteSession(sid)     → boolean
- *   getFavoriteSessions()      → string[] (deduped)
- *   toggleFavoriteSession(sid) → mutates store, refreshes list/UI
- *
- * loadSessionList sorts favorites to the top + paints ★ on the row.
+ * Authority order:
+ *   - Authoritative truth = server (loadSessionList consumes
+ *     session.is_favorite from /history/sessions/).
+ *   - localStorage cache is updated optimistically on toggle so the
+ *     star paints immediately, and gets reconciled on the next
+ *     loadSessionList round trip.
  */
 function getFavoriteSessions() {
   try {
@@ -3400,27 +3406,67 @@ function getFavoriteSessions() {
   } catch (_) { return []; }
 }
 
+function _writeFavoriteCache(favs) {
+  try {
+    localStorage.setItem('james_favorite_sessions', JSON.stringify(favs));
+  } catch (_) {}
+}
+
 function isFavoriteSession(sid) {
   if (!sid) return false;
   return getFavoriteSessions().indexOf(sid) >= 0;
 }
 
-function toggleFavoriteSession(sid) {
+async function toggleFavoriteSession(sid) {
   if (!sid) return;
   var favs = getFavoriteSessions();
   var idx = favs.indexOf(sid);
-  if (idx >= 0) {
-    favs.splice(idx, 1);
-    toast(t('chat.session_unfavorited') || '즐겨찾기 해제됨', 'info');
+  var willFavorite = (idx < 0);
+  // Optimistic local mutation so the star paints immediately.
+  if (willFavorite) {
+    favs.unshift(sid);
   } else {
-    favs.unshift(sid);                  // most-recent favorite first
-    toast(t('chat.session_favorited') || '즐겨찾기 추가됨', 'success');
+    favs.splice(idx, 1);
   }
-  try {
-    localStorage.setItem('james_favorite_sessions', JSON.stringify(favs));
-  } catch (_) {}
+  _writeFavoriteCache(favs);
   if (typeof loadSessionList === 'function') {
     loadSessionList().catch(() => {});
+  }
+  // Server round-trip. If it fails, revert the optimistic change so
+  // the cache doesn't drift from the truth on next page load.
+  try {
+    var url = `${API}/history/sessions/favorite/`
+            + `?api_key=${encodeURIComponent(getApiKey())}`
+            + `&session_id=${encodeURIComponent(sid)}`
+            + `&favorited=${willFavorite ? 'true' : 'false'}`;
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var d = await r.json();
+    if (!d || d.success !== true) throw new Error('server: success=false');
+    toast(
+      willFavorite
+        ? (t('chat.session_favorited') || '즐겨찾기 추가됨')
+        : (t('chat.session_unfavorited') || '즐겨찾기 해제됨'),
+      willFavorite ? 'success' : 'info',
+    );
+  } catch (e) {
+    // Revert cache on failure.
+    var current = getFavoriteSessions();
+    var revertedIdx = current.indexOf(sid);
+    if (willFavorite && revertedIdx >= 0) current.splice(revertedIdx, 1);
+    if (!willFavorite && revertedIdx < 0) current.unshift(sid);
+    _writeFavoriteCache(current);
+    if (typeof loadSessionList === 'function') {
+      loadSessionList().catch(() => {});
+    }
+    toast(
+      (t('chat.session_favorite_failed') || '즐겨찾기 동기화 실패') +
+      ': ' + e.message,
+      'error',
+    );
   }
 }
 
