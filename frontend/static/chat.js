@@ -1762,18 +1762,46 @@ function appendJamesMsg(data) {
   const dirIdEsc = dirId ? escHtml(dirId) : '';
   const fbHtml = dirId ? `
     <div class="feedback-btns" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+      <!-- v0.6.1 v7 (2026-06-16) — operator catch: text-only chips
+           "좋아요 / 별로 / 복사" read fine but the operator wants
+           monochrome OUTLINE icons (no caricature color emoji).
+           Feather/Lucide-style stroked SVGs, currentColor + stroke 2,
+           inherit the chip's text color. title / aria-label keep the
+           hover label + screen-reader name. -->
       <button class="fb-btn" data-action="send-feedback" data-dir-id="${dirIdEsc}" data-signal="explicit_positive"
         style="background:none;border:1px solid var(--border);border-radius:6px;
                padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
-               transition:all .15s" title="좋아요">좋아요</button>
+               line-height:1;display:inline-flex;align-items:center;justify-content:center;
+               transition:all .15s" title="좋아요" aria-label="좋아요">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true">
+          <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+        </svg>
+      </button>
       <button class="fb-btn" data-action="send-feedback" data-dir-id="${dirIdEsc}" data-signal="explicit_negative"
         style="background:none;border:1px solid var(--border);border-radius:6px;
                padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
-               transition:all .15s" title="별로예요">별로</button>
+               line-height:1;display:inline-flex;align-items:center;justify-content:center;
+               transition:all .15s" title="별로예요" aria-label="별로예요">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true">
+          <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
+        </svg>
+      </button>
       <button class="fb-btn" data-action="copy-answer-text" data-content="${answerEscapedAttr}"
         style="background:none;border:1px solid var(--border);border-radius:6px;
                padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
-               transition:all .15s" title="이 답변 복사">복사</button>
+               line-height:1;display:inline-flex;align-items:center;justify-content:center;
+               transition:all .15s" title="이 답변 복사" aria-label="이 답변 복사">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+      </button>
       ${exportButtons}
     </div>` : '';
 
@@ -2687,7 +2715,7 @@ function formatAnswerWithParagraphs(text) {
               data-action="copy-answer-text"
               data-content="${escapedAttr}"
               title="이 문단 복사"
-              aria-label="이 문단 복사">복사</button>
+              aria-label="이 문단 복사"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
     </div>`;
   }).join('');
 }
