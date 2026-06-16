@@ -280,30 +280,34 @@ class ReasoningEngine:
         elif picked_model:
             print(f"[MODEL] mode={mode} using user-selected '{picked_model}'")
 
-        # ── v18.7 Phase 2c — chat-mode consumes the measured preference ──
-        # When the user did NOT pick a model, chat mode auto-routes
+        # ── v18.7 Phase 2c/3c — measured-preference mode routing ──
+        # When the user did NOT pick a model, these modes auto-route
         # through the measured preference list instead of the global
-        # config.GEMMA_MODEL default. The Phase 2b 3-cell paired
-        # measurement (reports/research-runs/v18.7-phase2b-chat/
-        # QUALITY_DELTA_CARD.md) ranked gemma3:12b (0.917) >
-        # gemma4:e4b OFF (0.833) > gemma3:4b (0.750) on the Korean
-        # chat fixture; gemma3:4b 3/3-abstained on a basic greeting.
-        # requested="" makes resolve_for_mode use the preference list
-        # top (not GEMMA_MODEL), so this is the first mode to actually
-        # consume the Phase-1 plumbing. Kill-switch:
-        # JAMES_DISABLE_MODE_AWARE_CHAT=1 reverts to GEMMA_MODEL.
-        # Only `chat` is wired — retrieval/meta/wiki_edit/vision
-        # preference lists are populated but NOT yet measurement-
-        # validated, so they keep the legacy GEMMA_MODEL path.
-        if mode == "chat" and not picked_model:
+        # config.GEMMA_MODEL default. requested="" makes
+        # resolve_for_mode use the preference-list top (not
+        # GEMMA_MODEL), so these are the modes that actually consume
+        # the Phase-1 plumbing.
+        #   • chat (Phase 2b, v18.7-phase2b-chat QDC): gemma3:12b
+        #     (0.917) > gemma4:e4b (0.833) > gemma3:4b (0.750) on the
+        #     Korean chat fixture.
+        #   • retrieval (Phase 3b, v18.7-phase3b-tier-ladder QDC):
+        #     gold-grounded 27b(1.0) > 12b(0.889) > 4b(0.852) >
+        #     gemma4:e4b(0.815). The default GEMMA_MODEL (gemma4:e4b)
+        #     is WEAKEST on evidence-rich retrieval; preference top is
+        #     gemma3:12b (best value; 27b is more accurate but 2.3x
+        #     slower + verbose, so not the default).
+        # Kill-switch: JAMES_DISABLE_MODE_AWARE_ROUTING=1 reverts both
+        # to GEMMA_MODEL. meta/wiki_edit/vision/self_evolve stay on the
+        # legacy path (not yet measurement-validated per mode).
+        if mode in ("chat", "retrieval") and not picked_model:
             import os
-            if not os.environ.get("JAMES_DISABLE_MODE_AWARE_CHAT"):
+            if not os.environ.get("JAMES_DISABLE_MODE_AWARE_ROUTING"):
                 from core.model_resolver import resolve_for_mode
-                _rm = resolve_for_mode("chat", requested="")
+                _rm = resolve_for_mode(mode, requested="")
                 if _rm.tag:
                     picked_model = _rm.tag
-                    print(f"[MODEL] mode=chat auto-routed → '{_rm.tag}' "
-                          f"(source={_rm.source}; Phase 2c measured pref)")
+                    print(f"[MODEL] mode={mode} auto-routed → '{_rm.tag}' "
+                          f"(source={_rm.source}; measured pref)")
                     if _rm.warning:
                         print(f"[MODEL] {_rm.warning}")
 

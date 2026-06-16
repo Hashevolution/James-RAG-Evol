@@ -114,8 +114,20 @@ DEFAULT_PREFERENCE: dict = {
     # v18_5]] §γ) hooks them into intent-aware dispatch alongside the
     # chat-mode measurement protocol. Until then, every mode resolves
     # to the same legacy GEMMA_MODEL — same behavior as pre-v18.7.
+    # v18.7 Phase 3c (2026-06-16) — reordered after the tier-ladder
+    # gold-grounded measurement (reports/research-runs/
+    # v18.7-phase3b-tier-ladder/QUALITY_DELTA_CARD.md). On evidence-rich
+    # multihop the gold-grounded ranking was 27b(1.0) > 12b(0.889) >
+    # 4b(0.852) > gemma4:e4b(0.815). gemma4:e4b (the global GEMMA_MODEL
+    # default) is the WEAKEST on evidence-rich retrieval, so it is
+    # demoted. gemma3:12b leads on value (0.889, fast, non-verbose);
+    # gemma3:27b is most accurate (1.0) but 2.3x slower + verbose, so it
+    # sits second (used when 12b is absent, or for a future
+    # verify-stage-only deep escalation). full complexity escalation is
+    # NOT auto-wired — the gain over 12b (+0.111) does not justify the
+    # latency + verbosity for a default path.
     "retrieval": [
-        "gemma4:e4b", "gemma3:12b", "gemma3:27b",
+        "gemma3:12b", "gemma3:27b", "gemma4:e4b",
         "mixtral:8x7b", "qwen2.5:14b", "llama3.1:8b",
     ],
     "meta": [
