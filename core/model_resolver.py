@@ -86,9 +86,22 @@ from typing import List, NamedTuple, Set
 #   vision (gpt-4o, claude) requires Direction α §5.7.13 trust-
 #   zone PR; not in this preference list yet.
 DEFAULT_PREFERENCE: dict = {
+    # v18.7 Phase 2b (2026-06-16) — reordered after the chat-mode
+    # 3-cell paired measurement (gemma4:e4b OFF / gemma3:4b /
+    # gemma3:12b) on the operator-authored Korean fixture. gemma3:4b
+    # was the pre-measurement top pick (size + speed reasoning), but
+    # the measurement found it 3/3 abstains on basic greeting
+    # (id=1001 "안녕하세요") and ties or loses on every other sub-
+    # class. gemma3:12b leads on graded (0.917 vs 0.833 / 0.750) and
+    # is the only cell that handles open_question id=1021 ("주말에
+    # 가족과 ..."). See
+    #   reports/research-runs/v18.7-phase2b-chat/QUALITY_DELTA_CARD.md
+    # for the full per-sub-class breakdown + caveats. Sub-3B family
+    # is kept in the list for fallback (small-RAM hosts) but no
+    # longer the top pick.
     "chat": [
+        "gemma3:12b", "gemma4:e4b", "gemma3:27b",
         "gemma3:4b", "gemma3:1b", "gemma2:2b",
-        "gemma3:12b", "gemma3:27b", "gemma4:e4b",
         "qwen2.5:14b", "llama3.2:3b", "mistral:7b",
     ],
     "coding": [
