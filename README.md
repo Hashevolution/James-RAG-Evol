@@ -51,7 +51,7 @@ Most production RAG stacks today (LangChain, LlamaIndex, vanilla retrieval-augme
 | **EU AI Act 2026-08 alignment** | "Compliance" is a TODO | RAB's 3 metrics map verbatim to Articles 10/12/19; the benchmark is the audit instrument the Act assumes exists |
 
 What SEKOS does **not** claim:
-- **Better answer quality on closed-book QA** — verified equivalent on MuSiQue (3-SUT identical EM/F1 by construction; *§ honest negative* in [LRB preprint](papers/lrb-preprint/main.pdf) §5)
+- **Better answer quality on closed-book QA** — not *better*, but **measured parity**: V=N=JAMES produce 4-decimal-identical EM/F1 on MuSiQue (gemma4:e4b / gemma3:12b / mxtral 47B), so JAMES adds **no reasoning degradation**. The closed-book score is the backbone model's capability; the validity-window mechanism is retrieval-side and orthogonal to closed-book reasoning. See [LRB preprint](papers/lrb-preprint/main.pdf) §5.5.
 - **Novel architecture** — ActiveGraph ([arXiv:2605.21997](https://arxiv.org/abs/2605.21997)) demonstrates the same event-sourced runtime class independently; the benchmark, not the runtime, is the contribution
 - **Drop-in LangChain replacement** — SEKOS is a *platform* with a different operational model (audit-first); migration is an integration project, not a one-line `pip install`
 

@@ -173,7 +173,7 @@ The headline of v0.4.4 is the **SCALE-axis extension of the V<N<J finding** (LRB
 - ✓ Pattern + gap scale-robust (publication-tier evidence)
 - ⚠ Absolute magnitudes scenario-sensitive (honest caveat; not a JAMES claim)
 - ✗ ActiveGraph (arXiv 2605.21997) is independent co-invention of the audit-native validity-window architecture; LRB does NOT claim novelty of the architecture, only of the benchmark and the cross-scale measurement
-- ✗ Multi-hop reasoning is saturated honest negative (3-SUT identical on MuSiQue)
+- = Multi-hop reasoning is **measured parity** — V=N=JAMES produce 4-decimal-identical EM/F1 on MuSiQue, so JAMES adds **no reasoning degradation**. The lifecycle/validity-window axes are retrieval-side and orthogonal to closed-book reasoning; this is equivalence, not a failed win.
 - ✗ EU AI Act references are anchor / framing, not compliance certification
 
 This release is the data-availability anchor for the LRB v0.2.5 arXiv preprint. The preprint's Acknowledgements section will cite the v0.4.4 DOI assigned at Zenodo mint.

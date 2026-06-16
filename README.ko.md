@@ -47,7 +47,7 @@ LangChain, LlamaIndex, 일반 RAG 스택은 대부분 **고정된 corpus 위 답
 | **EU AI Act 2026-08 정합** | "Compliance" 가 TODO | RAB 3 metric 이 Article 10/12/19 와 verbatim 매핑; AI Act 가 존재한다고 전제하는 audit 측정 도구 자체 |
 
 SEKOS 가 **주장하지 않는 것**:
-- **closed-book QA 답변 품질이 더 좋다** — MuSiQue 에서 3-SUT EM/F1 동일 검증 (*§ honest negative* in [LRB preprint](papers/lrb-preprint/main.pdf) §5)
+- **closed-book QA 답변 품질이 더 좋다** — *더 좋다*는 아니고 **동등(parity) 입증**: MuSiQue 에서 V=N=JAMES 가 EM/F1 4-decimal 동일 (gemma4:e4b / gemma3:12b / mxtral 47B) → JAMES 가 추론을 **악화시키지 않음**이 입증됨. closed-book 점수는 백본 모델 능력이고, validity-window 기능은 retrieval-side 라 closed-book 추론에 orthogonal. [LRB preprint](papers/lrb-preprint/main.pdf) §5.5 참조.
 - **새 아키텍처 발명** — ActiveGraph ([arXiv:2605.21997](https://arxiv.org/abs/2605.21997)) 가 동일 event-sourced runtime class 독립 co-invention; 벤치마크 자체가 contribution
 - **LangChain 의 drop-in 대체** — SEKOS 는 다른 운영 모델 (audit-first) 의 *플랫폼*; 통합은 `pip install` 한 줄이 아니라 integration project
 
