@@ -1,0 +1,38 @@
+[
+  {
+    "model": "gemma3:4b",
+    "rung": "light",
+    "n": 27,
+    "judge_correct": 1.0,
+    "gold_correct": 0.852,
+    "judge_bias": 0.148,
+    "pair_latency_sec": 26.4
+  },
+  {
+    "model": "gemma4:e4b",
+    "rung": "(current default)",
+    "n": 27,
+    "judge_correct": 1.0,
+    "gold_correct": 0.815,
+    "judge_bias": 0.185,
+    "pair_latency_sec": 23.2
+  },
+  {
+    "model": "gemma3:12b",
+    "rung": "standard",
+    "n": 27,
+    "judge_correct": 1.0,
+    "gold_correct": 0.889,
+    "judge_bias": 0.111,
+    "pair_latency_sec": 27.5
+  },
+  {
+    "model": "gemma3:27b",
+    "rung": "deep",
+    "n": 27,
+    "judge_correct": 0.704,
+    "gold_correct": 1.0,
+    "judge_bias": -0.296,
+    "pair_latency_sec": 60.2
+  }
+]
