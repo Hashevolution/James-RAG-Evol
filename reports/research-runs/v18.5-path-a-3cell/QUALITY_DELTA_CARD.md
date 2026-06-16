@@ -8,35 +8,49 @@
 **Pre-flight**: 6/6 ok per cell (fixture_rows / regex_sweep / backend_registry / abstraction_smoke / diffusiongemma_optin / thinking_mode_contract)
 **v18.4 guard verification**: 27/27 empty-response failure mode resolved (was 100% pre-fix)
 
-## 5-axis matrix (CLOUD baseline = Claude CLI, 1.00 correct across all cells)
+## 5-axis matrix (CLOUD baseline = Claude CLI)
 
-| Axis | Cell A — gemma4:e4b OFF cap=400 | Cell B — gemma4:e4b ON cap=2000 | Cell C — gemma3:12b cap=400 |
-|---|---|---|---|
-| Path Recall | n/a (gold evidence directly injected) | n/a | n/a |
-| **Graded answer rate** | **1.00** | 0.70 | **1.00** |
-| **Δ vs Claude (graded)** | **+0.00** | +0.30 (worse) | **+0.00** |
-| Abstention rate | 0/27 (0%) | 8/27 (30%) | 0/27 (0%) |
-| **Token cost (cap)** | 400 | 2000 (5×) | 400 |
-| **Latency cost (pair avg)** | 27.4s | 33.7s (+23%) | 26.2s |
-| **Stability (across 3 runs)** | 1.00 | 0.78 | 1.00 |
-| Run-to-run noise (per-question) | none | comparison/temporal each lost 1 question | none |
+**v18.6 update**: an operator catch — "Claude 답이 확실히 맞는가?" — forced a gold-grounded deterministic recheck (`gold_grounded_recheck.py` against the fixture's per-query `gold_signals`). The judge column below is the v18.5 published value; the gold-grounded column is the corrected reality. The judge gap is the lenient-bias correction this PR documents.
+
+| Axis | Cell A — gemma4:e4b OFF cap=400 | Cell B — gemma4:e4b ON cap=2000 | Cell C — gemma3:12b cap=400 | CLOUD — Claude CLI |
+|---|---|---|---|---|
+| Path Recall | n/a (gold evidence directly injected) | n/a | n/a | n/a |
+| **Graded — judge (Claude)** | 1.00 | 0.70 | 1.00 | 1.00 |
+| **Graded — gold-grounded** | **0.81** | 0.78 | **0.89** | **1.00** |
+| **Judge bias on LOCAL** | **+0.19 over-credit** | mixed (+2 over, −4 under) | **+0.11 over-credit** | 0.00 (perfect agreement) |
+| **Δ vs Claude (gold-grounded)** | **−0.19** | −0.22 | **−0.11** | 0 |
+| Abstention rate (judge) | 0/27 (0%) | 8/27 (30%) | 0/27 (0%) | 0/27 (0%) |
+| **Token cost (cap)** | 400 | 2000 (5×) | 400 | n/a |
+| **Latency cost (pair avg)** | 27.4s | 33.7s (+23%) | 26.2s | included above |
+| **Stability (judge agreement across 3 runs)** | 1.00 | 0.78 | 1.00 | 1.00 |
+| Run-to-run noise (per-question) | none | comparison/temporal each lost 1 question | none | none |
 
 ## 3-way Δ summary
 
-| Δ | Value | Operator-facing interpretation |
-|---|---|---|
-| **A − B** | +0.30 | gemma4 production default (think=OFF, cap=400) **beats** the vendor "best-mode" config (think=ON, cap=2000) by 30 graded-answer points on multi-hop QA |
-| **A − C** | **0.00** | gemma4:e4b OFF (8.9 GB small) **matches** gemma3:12b (7.6 GB medium non-thinking) at the same cap. The small model is competitive without thinking. |
-| **B − C** | −0.30 | gemma4 ON (more budget + thinking) **underperforms** the smaller non-thinking model. Pure cost without quality. |
+| Δ | judge-based (v18.5) | **gold-grounded (v18.6 corrected)** | Operator-facing interpretation |
+|---|---|---|---|
+| **A − B** | +0.30 | **+0.03** | gemma4 OFF still beats ON, but the lift collapses once judge bias is removed. The difference is small — thinking ON is *not significantly worse* on this fixture, but the latency + stability costs (Cell B) make it operationally worse anyway. |
+| **A − C** | 0.00 | **−0.08** | gemma3:12b actually **edges** gemma4:e4b OFF. Both are competitive, but gemma3:12b is mildly more accurate at the same cap (and faster + smaller). |
+| **B − C** | −0.30 | −0.11 | gemma4 ON still underperforms gemma3:12b but the gap narrows under gold grounding. |
+| **A vs Claude** | +0.00 | **−0.19** | Cloud advantage exists; v18.5's "parity" was lenient-judge artifact. |
+| **C vs Claude** | +0.00 | **−0.11** | Same — small but consistent cloud advantage. |
 
-## Operator-facing recommendation (data-grounded)
+## Operator-facing recommendation — v18.6 corrected (data-grounded)
 
 **For multi-hop QA at JAMES production budget (cap=400) on RTX 4070 SUPER:**
 
-1. **Keep `JAMES_GEMMA4_E4B_THINK_OFF=1`** in `.env`. The production default is correct.
-2. **gemma4:e4b OFF is the recommended small tier** — fully GPU-resident (8.9 GB on 12 GB VRAM), 100% graded accuracy match against Claude on reasoning-isolated multi-hop QA, 100% paired-run stability.
-3. **Do NOT enable `think:true` without measurement evidence** that the specific task benefits. Cell B shows 30% over-abstention + −0.30 graded delta at 5× cap.
-4. **gemma3:12b is a non-thinking alternative** at the same tier — same correct rate, marginally faster (26.2s vs 27.4s pair), 7.6 GB instead of 8.9 GB. Useful if memory pressure matters more than the 1.3 GB headroom.
+1. **Keep `JAMES_GEMMA4_E4B_THINK_OFF=1`** in `.env`. Cell A vs Cell B shows thinking ON adds 23% latency + 22% stability loss + abstention spike with no graded benefit (Δ +0.03 within noise).
+2. **gemma3:12b *slightly* edges gemma4:e4b OFF** under gold grounding (0.89 vs 0.81). Both compete; gemma3:12b is faster + smaller + simpler.
+3. **gemma4:e4b OFF retains optionality** — it's a thinking-capable model with thinking off by env contract. Future task classes where thinking provably helps (per `a3_a2_think_mode_track_closure`'s planner / reflect / verify findings — grader-positive, judge-inconclusive) can flip the same model into thinking mode without a model swap.
+4. **Claude (cloud) remains the accuracy ceiling on this fixture** (1.00 gold-grounded vs ≤ 0.89 local) — but the gap (−0.11 to −0.19) is small enough that cost/latency/privacy arguments dominate the deployment choice. Direction α's "premise unproven" framing is now more accurately "premise weakly disproven; gap exists but small enough that S6/S7 cloud-tier remains operationally deferred".
+
+**Production model selection — operator decision:**
+
+| Option | Score | VRAM | Latency | Notes |
+|---|---|---|---|---|
+| **X**: gemma4:e4b OFF cap=400 (current) | 0.81 | 8.9 GB | 27.4s pair | Thinking-mode optionality preserved |
+| **Y**: gemma3:12b cap=400 | 0.89 | 7.6 GB | 26.2s pair | Simpler, slightly better on this task |
+| **Z**: Cloud routing per query class | 1.00 | 0 local | network bound | Privacy / cost surface — see `core.abstraction` |
 
 ## Caveats (verbatim from output JSON, required before citing)
 
