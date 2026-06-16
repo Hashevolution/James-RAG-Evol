@@ -332,6 +332,20 @@ def _autoregister() -> None:
         from core.reasoning.backends.claude_code_cli import ClaudeCodeCliBackend
         register_backend("claude_code_cli", ClaudeCodeCliBackend())
 
+    # v0.6.1 v18 (2026-06-16) — DiffusionGemma spike. Off by default
+    # so a stock install never points at a vLLM / llama.cpp-server
+    # endpoint without explicit consent. Honest-framing note: the
+    # backend's value is unmeasured — registering it is an infra
+    # change; promoting it to a default needs the 5-axis Quality
+    # Delta Card per CLAUDE.md rule #2.
+    if os.environ.get("JAMES_ENABLE_DIFFUSIONGEMMA") == "1":
+        from core.reasoning.backends.diffusiongemma_local import (
+            DiffusionGemmaLocalBackend,
+        )
+        register_backend(
+            "diffusiongemma_local", DiffusionGemmaLocalBackend(),
+        )
+
     # Plugin import is last so a plugin can choose to override or
     # extend the built-in registrations. register_backend's
     # idempotent-with-same-instance rule still applies — duplicate

@@ -145,12 +145,44 @@ def _answer_prompt(context: str, question: str) -> str:
 # ─── model calls ──────────────────────────────────────────────────────
 
 
-def call_local(prompt: str, *, model: str, timeout: int = 180) -> str:
-    """Direct Ollama call — not through the JAMES backend registry,
-    because the matrix runner / pipeline isn't booted for measurement.
-    This is the same shape v2 used. num_ctx is explicit (v1 used the
-    Ollama default 2048 and silently truncated 6-7.5k-char articles —
-    see v2 docstring §1)."""
+def call_local(prompt: str, *, model: str, timeout: int = 180,
+               local_backend: str = "ollama") -> str:
+    """Direct local call. The matrix runner / pipeline isn't booted
+    for measurement, so we hit the serving layer directly.
+
+    Two backends supported (CLI flag ``--local-backend``):
+
+      * ``ollama`` (default) — http://127.0.0.1:11434/api/generate.
+        Same byte-identical shape v2 used; num_ctx explicit so the
+        v1 silent truncation bug stays fixed.
+      * ``diffusiongemma_local`` — v0.6.1 v18 (2026-06-16) spike.
+        Goes through the registered backend
+        (``core.reasoning.backends.diffusiongemma_local``) which speaks
+        OpenAI-compatible /v1/chat/completions against vLLM or
+        llama.cpp-server. Lets the operator paired-compare gemma4:e4b
+        vs DiffusionGemma on the same fixture without rewriting the
+        harness. ``model`` becomes the model tag the serving stack
+        announced (e.g. ``google/diffusiongemma-26b-a4b-it``).
+    """
+    if local_backend == "diffusiongemma_local":
+        from core.reasoning.backends.diffusiongemma_local import (
+            DiffusionGemmaLocalBackend,
+        )
+        # URL from env (JAMES_DIFFUSIONGEMMA_URL) is read by the
+        # backend's constructor. Tests stay hermetic; measurement runs
+        # honor whatever the operator pointed the env at.
+        backend = DiffusionGemmaLocalBackend(model=model or None)
+        result = backend.complete(
+            prompt,
+            max_tokens=400,
+            timeout=float(timeout),
+            temperature=0.0,
+        )
+        if result.error and not result.text:
+            raise RuntimeError(f"diffusiongemma backend error: {result.error}")
+        return (result.text or "").strip()
+
+    # default: ollama
     req = urllib.request.Request(
         OLLAMA_URL,
         data=json.dumps({
@@ -282,13 +314,17 @@ def select_queries(n_per_type: int) -> List[dict]:
 def run_one_query(
     query: dict, ctx: str, *,
     local_model: str, run_idx: int, timeout: int,
+    local_backend: str = "ollama",
 ) -> Dict[str, Any]:
     """One paired (local + cloud + judge) trial. Returns a row dict."""
     prompt = _answer_prompt(ctx, query["text"])
     t0 = time.time()
 
     try:
-        la = call_local(prompt, model=local_model, timeout=timeout)
+        la = call_local(
+            prompt, model=local_model, timeout=timeout,
+            local_backend=local_backend,
+        )
         la_err = ""
     except Exception as e:  # noqa: BLE001
         la, la_err = "", f"{type(e).__name__}: {e}"
@@ -446,7 +482,22 @@ def main() -> int:
     ap.add_argument("--n-runs", type=int, default=3,
                     help="paired runs per question (default 3)")
     ap.add_argument("--local-model", default=DEFAULT_LOCAL_MODEL,
-                    help=f"Ollama model tag (default {DEFAULT_LOCAL_MODEL})")
+                    help=f"Ollama / DiffusionGemma model tag (default {DEFAULT_LOCAL_MODEL})")
+    ap.add_argument(
+        "--local-backend",
+        default="ollama",
+        choices=["ollama", "diffusiongemma_local"],
+        help=(
+            "v0.6.1 v18 (2026-06-16) spike — pick which local backend "
+            "drives the LOCAL side of the paired comparison. "
+            "`ollama` (default) hits http://127.0.0.1:11434/api/generate. "
+            "`diffusiongemma_local` hits the JAMES backend adapter "
+            "(/v1/chat/completions on the URL given by "
+            "JAMES_DIFFUSIONGEMMA_URL, default http://127.0.0.1:8001). "
+            "Pair against the existing CLOUD (Claude) path to produce "
+            "the 5-axis Quality Delta Card before promoting the spike."
+        ),
+    )
     ap.add_argument("--timeout", type=int, default=180,
                     help="per-call timeout in seconds")
     ap.add_argument("--output", default="",
@@ -479,6 +530,7 @@ def main() -> int:
             row = run_one_query(
                 q, ctx, local_model=args.local_model,
                 run_idx=run_idx, timeout=args.timeout,
+                local_backend=args.local_backend,
             )
             rows.append(row)
             print(f"local={row['local_verdict'][:4]} "
@@ -519,6 +571,7 @@ def main() -> int:
     out_path.write_text(json.dumps({
         "design": "reasoning-isolated; both models same full gold evidence",
         "local_model": args.local_model,
+        "local_backend": args.local_backend,
         "num_ctx": NUM_CTX,
         "cloud_backend": "claude_code_cli (via core.abstraction.run_cloud_egress)",
         "judge": "claude-cli, blinded A/B per (query, run)",
