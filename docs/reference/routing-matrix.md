@@ -94,8 +94,8 @@ separate from the backend-tier system:
 - ✅ Phase 2a/b/c — chat fixture + measurement + engine wire (PR #970/971/972)
 - 🔄 **Phase 3** (Option B — local size ladder)
   - ✅ 3a — `LOCAL_TIER_LADDER` + `resolve_local_tier()` defined (plumb-first)
-  - ⏳ 3b — complexity-paired measurement (narrow/broad × 4b/12b/27b)
-  - ⏳ 3c — wire D5 tier decision → `resolve_local_tier` (after 3b), flip `JAMES_AUTO_ROUTER` only if measured net-positive
+  - ✅ 3b — complexity-paired measurement done (4-cell: 4b/gemma4:e4b/12b/27b × multihop). **gold-grounded reversal**: judge-only said escalation pointless, but gold_signals shows 27b=1.000 > 12b=0.889 > 4b=0.852 > gemma4:e4b=0.815. Escalation has a basis (modest +0.111) but costs 2.3× latency + verbose answers. Side finding: gemma4:e4b (current default) is *lowest* on evidence-rich retrieval. See `reports/research-runs/v18.7-phase3b-tier-ladder/QUALITY_DELTA_CARD.md`.
+  - ⏸️ 3c — wire D5 tier decision → `resolve_local_tier`: **operator trade-off decision** (+0.111 gold-accuracy vs 2.3× latency + verbosity). `JAMES_AUTO_ROUTER` stays OFF until decided. Ladder infra (3a) preserved regardless.
 - ⏳ Phase 4 — privacy gate (PII) + cost-aware cap + cloud (Claude) routing
 - ⏳ Phase 5 — sub-class routing inside chat + admin routing dashboard
 

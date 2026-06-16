@@ -1,0 +1,779 @@
+{
+  "design": "reasoning-isolated; both models same full gold evidence",
+  "fixture": "multihop",
+  "local_model": "gemma3:27b",
+  "local_backend": "ollama",
+  "num_predict": 400,
+  "force_think": "off",
+  "pre_flight": {
+    "skipped": false,
+    "results": [
+      {
+        "name": "fixture_rows",
+        "status": "ok",
+        "detail": "75 answerable queries available (counts={'inference_query': 25, 'comparison_query': 25, 'temporal_query': 25})",
+        "extra": {
+          "counts": {
+            "inference_query": 25,
+            "comparison_query": 25,
+            "temporal_query": 25
+          },
+          "path": "C:\\Project\\James-RAG-Evol-v010\\workspaces\\hotpot_eval\\eval\\multihop_rag_queries.json"
+        }
+      },
+      {
+        "name": "chat_fixture",
+        "status": "ok",
+        "detail": "18 chat queries available (counts={'small_talk': 5, 'factual_chat': 5, 'open_question': 5, 'multi_turn': 3}, factual_with_gold=5, multiturn_with_prior=3)",
+        "extra": {
+          "counts": {
+            "small_talk": 5,
+            "factual_chat": 5,
+            "open_question": 5,
+            "multi_turn": 3
+          },
+          "path": "C:\\Project\\James-RAG-Evol-v010\\eval\\chat_mode_queries.json"
+        }
+      },
+      {
+        "name": "regex_sweep",
+        "status": "ok",
+        "detail": "0/75 false positives across 4 fast-path modes (['coding', 'meta', 'self_evolve', 'wiki_edit'])",
+        "extra": {
+          "total": 75,
+          "modes_swept": [
+            "coding",
+            "meta",
+            "self_evolve",
+            "wiki_edit"
+          ]
+        }
+      },
+      {
+        "name": "backend_registry",
+        "status": "ok",
+        "detail": "registered=['claude_code_cli', 'ollama_local']",
+        "extra": {
+          "registered": [
+            "claude_code_cli",
+            "ollama_local"
+          ]
+        }
+      },
+      {
+        "name": "abstraction_smoke",
+        "status": "ok",
+        "detail": "default_decider=function; run_cloud_egress callable",
+        "extra": {}
+      },
+      {
+        "name": "diffusiongemma_optin",
+        "status": "ok",
+        "detail": "flag=None registered=False",
+        "extra": {}
+      },
+      {
+        "name": "thinking_mode_contract",
+        "status": "ok",
+        "detail": "think_policy surface intact; JAMES_GEMMA4_E4B_THINK_OFF=1 active (gemma4 family models will receive think:false).",
+        "extra": {}
+      }
+    ]
+  },
+  "num_ctx": 8192,
+  "cloud_backend": "claude_code_cli (via core.abstraction.run_cloud_egress)",
+  "judge": "claude-cli, blinded A/B per (query, run)",
+  "n_per_type": 3,
+  "n_runs": 3,
+  "caveat": {
+    "judge_self_preference": "judge is Claude; one candidate is Claude — self-preference is possible. Mitigated by blinding A/B + evidence-grounded grading + per-question raw dump. Treat the auto-score as a SIGNAL; confirm against raw answers.",
+    "gold_evidence_not_pipeline": "Reasoning-isolated design: both models get the same full gold evidence. Does NOT measure the full retrieval pipeline. A production Pareto claim needs a separate full-pipeline run (with JAMES retrieval + abstention) before any operator-facing conclusion.",
+    "small_n": "Sample is the first answerable N per question_type from MultiHop-RAG. Not representative. The verdict here is a §4.1 closure SIGNAL, not a publishable claim. n=3 paired (per feedback_n1_verdict_inflation_n3_caught) but n_questions is still small.",
+    "lenient_judge": "ABSTAINED + INCORRECT are scored separately, but two contradictory CORRECT answers can both land CORRECT (judge grades each independently). Per α-8 closure: paired Δ near 0 + collapse to noise band on n=3 has been observed (n=1 inflation pattern).",
+    "local_model_caveat": "Default local-model is gemma3:4b. Does NOT equate to gemma4 e4b (production tier, has the α-cycle thinking-trace floor on multihop). Re-run with --local-model gemma4:e4b to compare against the production tier.",
+    "abstraction_no_op": "Cloud path goes through core.abstraction.run_cloud_egress, but the gold-evidence fixture has no PII so entities=[] → mask is empty. The call path is exercised end-to-end (proves §5.7.13 module works against a real Claude backend) but the abstraction itself is a no-op for this fixture.",
+    "chat_mode_lenient_judge": "Chat-mode fixture (small_talk / open_question / multi_turn) is INTRINSICALLY judge-only. There is no gold ground-truth for free-form conversation. Only the factual_chat sub-class carries gold_signals and is gold-grounded checkable. The other 3 sub-classes inherit the +0.11-0.19 lenient bias quantified in v18.6 (project_judge_reliability_gold_grounded_v18_6). Report judge_correct AND gold_correct (factual_chat subset) separately. Do NOT promote chat-mode-only claims without the judge-bias caveat attached."
+  },
+  "rows": [
+    {
+      "id": 1,
+      "type": "inference_query",
+      "run": 0,
+      "hops": 3,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Sam Bankman-Fried, the founder of FTX and Alameda Research, is the individual facing seven counts of fraud and conspiracy. Both articles state he is accused of misappropriating customer funds – described as “fraud from the start” and “one of the biggest financial frauds in American history” – to buy real estate, make investments, repay lenders, and even fund political contributions. Prosecutors allege this was done through lies about consumer protection and conflicts of interest.",
+      "cloud_answer": "Sam Bankman-Fried, the founder of FTX and co-founder of Alameda Research, is the individual associated with the cryptocurrency industry facing a criminal trial on seven counts of fraud and conspiracy charges (two counts of wire fraud and five counts of conspiracy). As reported by both The Verge and TechCrunch, prosecutors accuse him of committing fraud for personal gain, including using billions of dollars in misappropriated FTX customer deposits to buy more than $200 million of real estate for himself, make billions of dollars of investments for his own interest, repay Alameda's lenders, and make more than $100 million in political contributions.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 86.34
+    },
+    {
+      "id": 1,
+      "type": "inference_query",
+      "run": 1,
+      "hops": 3,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Sam Bankman-Fried, the founder of FTX and Alameda Research, is the individual facing seven counts of fraud and conspiracy. Both articles state he is accused of misappropriating customer funds – described as “fraud from the start” and “one of the biggest financial frauds in American history” – to buy real estate, make investments, repay lenders, and even fund political contributions. Prosecutors allege this was done with intent, and evidence includes his own statements and communications.",
+      "cloud_answer": "Sam Bankman-Fried, the founder of FTX and co-founder of Alameda Research, is the individual associated with the cryptocurrency industry facing a criminal trial on seven counts of fraud and conspiracy charges (two counts of wire fraud and five counts of conspiracy). As reported by both The Verge and TechCrunch, prosecutors accuse him of committing fraud for personal gain, including using \"billions of dollars in misappropriated FTX customer deposits\" to buy more than $200 million of real estate for himself, make billions of dollars of investments for his own interest, repay Alameda's lenders, and use more than $100 million of customer funds to make political contributions.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 45.14
+    },
+    {
+      "id": 1,
+      "type": "inference_query",
+      "run": 2,
+      "hops": 3,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Sam Bankman-Fried, the founder of FTX and Alameda Research, is the individual facing seven counts of fraud and conspiracy. Both articles state he is accused of misappropriating customer funds – described as “fraud from the start” and “one of the biggest financial frauds in American history” – to buy real estate, make investments, repay lenders, and even fund political contributions. Prosecutors allege this was done with intent, and evidence includes his own statements and communications.",
+      "cloud_answer": "Sam Bankman-Fried, the founder of FTX and co-founder of Alameda Research, is the individual associated with the cryptocurrency industry facing a criminal trial on seven counts of fraud and conspiracy charges (two counts of wire fraud and five counts of conspiracy). As reported by both The Verge and TechCrunch, prosecutors accuse him of committing fraud for personal gain, including using billions of dollars in misappropriated FTX customer deposits to buy more than $200 million of real estate for himself, make billions of dollars of investments for his own interest, repay Alameda's lenders, and make more than $100 million in political contributions.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 45.03
+    },
+    {
+      "id": 2,
+      "type": "inference_query",
+      "run": 0,
+      "hops": 2,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Donald Trump is implicated in both instances. According to Fortune, he claimed his Trump Tower apartment in Manhattan was valued at $327 million – an amount no New York City apartment has ever reached in a sale. The Age reports that the prosecution argues Trump increased the value of this same penthouse from $200 million to $327 million between 2014 and 2015 “to mask a drop in the value of one of his other properties.”",
+      "cloud_answer": "Donald Trump",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 49.1
+    },
+    {
+      "id": 2,
+      "type": "inference_query",
+      "run": 1,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Donald Trump is implicated in both instances. According to the Fortune article, James said Trump claimed his Trump Tower apartment was valued at $327 million – no apartment in New York City has ever sold for close to that amount. The Age article states that between 2014 and 2015, Trump increased the value of the same penthouse apartment to $327 million from $200 million “to mask a drop in the value of one of his other properties.”",
+      "cloud_answer": "Donald Trump",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 45.99
+    },
+    {
+      "id": 2,
+      "type": "inference_query",
+      "run": 2,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Donald Trump is implicated in both instances. According to the Fortune article, James said Trump claimed his Trump Tower apartment was valued at $327 million – no apartment in New York City has ever sold for close to that amount. The Age article states that between 2014 and 2015, Trump increased the value of the same penthouse apartment to $327 million from $200 million “to mask a drop in the value of one of his other properties.”",
+      "cloud_answer": "Donald Trump",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 44.9
+    },
+    {
+      "id": 3,
+      "type": "inference_query",
+      "run": 0,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Sam Altman is the figure associated with generative AI technology whose departure from OpenAI was considered shocking according to Fortune. Both articles report that the board found he was “not consistently candid in his communications,” which is the prevailing theory suggesting a lack of full truthfulness with the board as reported by TechCrunch.",
+      "cloud_answer": "Sam Altman",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 36.64
+    },
+    {
+      "id": 3,
+      "type": "inference_query",
+      "run": 1,
+      "hops": 2,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Sam Altman is the figure associated with generative AI technology whose departure from OpenAI was considered shocking according to Fortune. Both articles report that the board found he was “not consistently candid in his communications,” which is the prevailing theory suggesting a lack of full truthfulness with the board as reported by TechCrunch.",
+      "cloud_answer": "Sam Altman",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 36.3
+    },
+    {
+      "id": 3,
+      "type": "inference_query",
+      "run": 2,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Sam Altman is the figure associated with generative AI technology whose departure from OpenAI was considered shocking according to Fortune. Both articles report that the board found he was “not consistently candid in his communications,” which is the prevailing theory suggesting a lack of full truthfulness with the board as reported by TechCrunch.",
+      "cloud_answer": "Sam Altman",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 31.89
+    },
+    {
+      "id": 26,
+      "type": "comparison_query",
+      "run": 0,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "ABSTAINED",
+      "local_abstain": false,
+      "cloud_abstain": true,
+      "local_answer": "Yes, both articles report increases in revenue. The TechCrunch article states Rainforest has secured client commitments representing more than $500 million in processing volume, while the Hacker News article reports that The Epoch Times grew its revenue by a staggering 685% in two years, to $122 million in 2021. One relates to payment processing and the other to subscriptions/news readership.",
+      "cloud_answer": "I don't know",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 65.9
+    },
+    {
+      "id": 26,
+      "type": "comparison_query",
+      "run": 1,
+      "hops": 2,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, both articles report increases in revenue. The TechCrunch article states Rainforest has secured client commitments representing more than $500 million in processing volume, while the Hacker News article reports that The Epoch Times grew its revenue by a staggering 685% in two years, to $122 million in 2021. One relates to payment processing and the other to subscriptions/news readership.",
+      "cloud_answer": "No. The TechCrunch article on Rainforest does not report an increase in revenue; it reports client commitments representing more than $500 million in processing, but does not state an actual revenue increase. The Hacker News article on The Epoch Times does report a revenue increase — growing 685% in two years to $122 million in 2021 — but this is attributed to advertising, marketing campaigns, and big-money conservative donors, not specifically described as a subscription model revenue increase.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 63.18
+    },
+    {
+      "id": 26,
+      "type": "comparison_query",
+      "run": 2,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, both articles report increases in revenue. The TechCrunch article states Rainforest has secured client commitments representing more than $500 million in processing volume, while the Hacker News article reports that The Epoch Times grew its revenue by a staggering 685% in two years, to $122 million in 2021. One relates to payment processing and the other to subscriptions/news readership.",
+      "cloud_answer": "No. Only the Hacker News article on The Epoch Times explicitly reports a revenue increase, stating the nonprofit grew \"its revenue by a staggering 685% in two years, to $122 million in 2021,\" tied to its subscription-driven model (it \"boasts to be the country's fourth-largest newspaper by subscriber count\").\n\nThe TechCrunch article on Rainforest does not report a revenue increase for Rainforest itself. It reports that Rainforest raised an $8.5 million seed round and has secured \"client commitments representing more than $500 million in processing, with much of the volume guaranteed\" — that is processing volume from client commitments, not a reported revenue increase. It also notes software companies want to \"generate more revenue\" by accepting payments, but no actual revenue growth figure is given.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 50.97
+    },
+    {
+      "id": 27,
+      "type": "comparison_query",
+      "run": 0,
+      "hops": 2,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, the articles indicate different monetization strategies. The Twitch article details a shift *from* a fixed revenue split (70/30) *to* prioritizing ad revenue and then introducing tiered subscription options like Partner Plus with varying rev shares based on points earned through subscriptions. They are actively working to provide access to higher rev shares over time. \n\nThe Beeper Mini article initially describes a $1.99 per month subscription model, but due to Apple’s actions and instability, they have temporarily made it free and will re-evaluate subscriptions once things stabilize. This is a straightforward paid subscription versus Twitch's more complex tiered system tied to engagement metrics and ad revenue prioritization.",
+      "cloud_answer": "Yes. The Twitch article describes a multi-pronged monetization strategy centered on subscription revenue splits (a 70/30 split on the first $100,000 for eligible Partner Plus creators, with a points-based system valuing Tier 1, 2, and 3 subs at 1, 2, and 6 points respectively), advertising (with increased rev share, an ad incentive program, and new tools for synchronizing ad breaks with content), community-based support (subscriptions, gifting, cheering), and growing sponsorship opportunities by leveraging Amazon's advertising business.\n\nIn contrast, the Beeper article describes a much simpler subscription-only model: Beeper Mini was originally offered at $1.99 per month for bringing iMessage chats to Android users. Due to the instability caused by Apple's attempts to shut down the service, Beeper decided to make Beeper Mini free for the time being, stating, \"As soon as things stabilize (we hope they will), we'll look at turning on subscriptions again.\"\n\nSo yes, the strategies differ significantly — Twitch employs a complex, multi-revenue-stream creator monetization model (subs, ads, sponsorships) with tiered rev shares and eligibility criteria, while Beeper's strategy is a straightforward flat-rate consumer subscription that has been temporarily suspended (made free) in response to external disruption from Apple.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 69.5
+    },
+    {
+      "id": 27,
+      "type": "comparison_query",
+      "run": 1,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, the articles indicate different monetization strategies. The Twitch article details a shift *from* a fixed revenue split (70/30) *to* prioritizing ad revenue and then introducing tiered subscription options like Partner Plus with varying rev shares based on points earned through subscriptions. They are actively working to provide access to higher rev shares over time. \n\nThe Beeper Mini article initially describes a $1.99 per month subscription model, but due to Apple’s actions and instability, they have temporarily made it free and will re-evaluate subscriptions once things stabilize. This is a straightforward paid subscription service that was paused due to external factors, while Twitch's strategy involves more complex tiers and revenue sharing adjustments.",
+      "cloud_answer": "Yes. The Twitch article describes a multi-pronged monetization strategy centered on subscription revenue splits (a 70/30 split on the first $100,000 for Partner Plus creators, with a points-based eligibility system valuing Tier 1, 2, and 3 subs at 1, 2, and 6 points respectively), increased ad revenue share with an ad incentive program, and growing sponsorship opportunities through Amazon advertising — focused on monetizing creators on the platform.\n\nIn contrast, the Beeper Mini article describes a direct consumer subscription model — originally $1.99 per month for Android users to access iMessage features like high-quality photos/videos, tapback reactions, typing indicators, and read receipts. Furthermore, due to the \"chaotic\" situation with Apple's attempts to shut it down, Beeper decided to make Beeper Mini free for the time being, stating \"As soon as things stabilize (we hope they will), we'll look at turning on subscriptions again.\"\n\nSo the strategies differ: Twitch focuses on creator monetization through revenue splits, ads, and sponsorships, while Beeper Mini uses a flat-rate consumer subscription (currently paused/free due to instability from Apple's interventions).",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 68.99
+    },
+    {
+      "id": 27,
+      "type": "comparison_query",
+      "run": 2,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, the articles indicate different monetization strategies. The Twitch article details a shift *from* a fixed revenue split (70/30) *to* prioritizing ad revenue and then introducing tiered subscription options like Partner Plus with varying rev shares based on points earned through subscriptions. They are actively working to provide access to higher rev shares over time. \n\nThe Beeper Mini article initially describes a $1.99 per month subscription model, but due to Apple’s actions and instability, they have temporarily made it free and will re-evaluate subscriptions once things stabilize. This is a straightforward paid subscription service that was paused due to external factors, while Twitch's strategy involves more complex tiers and revenue sharing adjustments.",
+      "cloud_answer": "Yes. The TechCrunch article on Twitch describes a monetization strategy centered on multiple revenue streams for creators: subscription revenue splits (including the Partner Plus program offering a 70/30 split on the first $100,000 for eligible creators based on a points-based system), advertising revenue (with an increased rev share and an ad incentive program), community-based viewer support through subscriptions, gifting, and cheering, and growing sponsorship/branded partnership opportunities leveraging Amazon advertising.\n\nIn contrast, the TechCrunch article on Beeper Mini describes a much simpler subscription strategy: a single flat $1.99 per month subscription fee for access to iMessage features on Android. Moreover, due to the instability caused by Apple's attempts to shut the app down, Beeper decided to make Beeper Mini free for the time being, stating \"As soon as things stabilize (we hope they will), we'll look at turning on subscriptions again.\"\n\nSo the strategies differ significantly: Twitch focuses on a multi-pronged creator monetization model (subs with tiered revenue splits, ads, sponsorships) within a community-based platform, while Beeper Mini relies on a straightforward flat-rate consumer subscription—currently paused and offered for free amid its conflict with Apple.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 66.21
+    },
+    {
+      "id": 28,
+      "type": "comparison_query",
+      "run": 0,
+      "hops": 2,
+      "a_is_local": true,
+      "local_verdict": "INCORRECT",
+      "cloud_verdict": "INCORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, both statements are true according to the provided texts. \n\nThe New York Times article states that Jordan Poyer “was the only player in the NFL to have 500 or more tackles, 20 or more interceptions and 10 or more sacks in that time frame,” indicating his significant contribution to the Bills’ defense.\n\nThe Sporting News article says, \"The Ravens' offense is just fine…but he still can't afford to make big mistakes... The defense needs to pick up the pieces, too, stat, ahead of facing the Bengals on a short week.” This clearly indicates that the Ravens’ defense requires improvement.",
+      "cloud_answer": "",
+      "local_error": "",
+      "cloud_error": "RuntimeError: cloud backend error: exit code 1",
+      "judge_error": "skipped: candidate error",
+      "elapsed_sec": 52.21
+    },
+    {
+      "id": 28,
+      "type": "comparison_query",
+      "run": 1,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "INCORRECT",
+      "cloud_verdict": "INCORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, both statements are true according to the provided texts. \n\nThe New York Times article states that Jordan Poyer “was the only player in the NFL to have 500 or more tackles, 20 or more interceptions and 10 or more sacks in that time frame,” indicating his significant contribution to the Bills’ defense.\n\nThe Sporting News article says, \"The Ravens' offense is just fine…but he still can't afford to make big mistakes... The defense needs to pick up the pieces, too, stat, ahead of facing the Bengals on a short week.” This clearly indicates that the Ravens’ defense requires improvement.",
+      "cloud_answer": "",
+      "local_error": "",
+      "cloud_error": "RuntimeError: cloud backend error: exit code 1",
+      "judge_error": "skipped: candidate error",
+      "elapsed_sec": 46.6
+    },
+    {
+      "id": 28,
+      "type": "comparison_query",
+      "run": 2,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "INCORRECT",
+      "cloud_verdict": "INCORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, both statements are true according to the provided texts. \n\nThe New York Times article states that Jordan Poyer “was the only player in the NFL to have 500 or more tackles, 20 or more interceptions and 10 or more sacks in that time frame,” indicating his significant contribution to the Bills’ defense.\n\nThe Sporting News article says, \"The Ravens' offense is just fine…but he still can't afford to make big mistakes... The defense needs to pick up the pieces, too, stat, ahead of facing the Bengals on a short week.” This clearly indicates that the Ravens’ defense requires improvement.",
+      "cloud_answer": "",
+      "local_error": "",
+      "cloud_error": "RuntimeError: cloud backend error: exit code 1",
+      "judge_error": "skipped: candidate error",
+      "elapsed_sec": 47.47
+    },
+    {
+      "id": 76,
+      "type": "temporal_query",
+      "run": 0,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "INCORRECT",
+      "cloud_verdict": "INCORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "According to the provided context, after Dave Clark was ousted as CEO of Flexport and made comments on social media (reported Oct 7th), Ryan Petersen took back the CEO title and began cutting costs, including layoffs (reported Oct 30th). This indicates a change in leadership and strategy at Flexport following the initial reporting on Clark’s departure. Additionally, the October 30th article details potential acquisition plans – acquiring Convoy's technology – which was not mentioned in the earlier report.",
+      "cloud_answer": "",
+      "local_error": "",
+      "cloud_error": "RuntimeError: cloud backend error: exit code 1",
+      "judge_error": "skipped: candidate error",
+      "elapsed_sec": 41.95
+    },
+    {
+      "id": 76,
+      "type": "temporal_query",
+      "run": 1,
+      "hops": 2,
+      "a_is_local": true,
+      "local_verdict": "INCORRECT",
+      "cloud_verdict": "INCORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "According to the provided context, after Dave Clark was ousted as CEO of Flexport and made comments about the company on social media (reported October 7th), Ryan Petersen took back the CEO title and began cutting costs, including layoffs (reported October 30th). This indicates a change in leadership and strategy at Flexport following the initial reporting on Clark’s departure. Additionally, the later article details potential acquisition plans involving Convoy, suggesting further shifts within the company beyond just personnel changes.",
+      "cloud_answer": "",
+      "local_error": "",
+      "cloud_error": "RuntimeError: cloud backend error: exit code 1",
+      "judge_error": "skipped: candidate error",
+      "elapsed_sec": 35.69
+    },
+    {
+      "id": 76,
+      "type": "temporal_query",
+      "run": 2,
+      "hops": 2,
+      "a_is_local": false,
+      "local_verdict": "INCORRECT",
+      "cloud_verdict": "INCORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "According to the provided context, after Dave Clark was ousted as CEO of Flexport and made comments about the company on social media (reported October 7th), Ryan Petersen took back the CEO title and began cutting costs, including layoffs (reported October 30th). This indicates a change in leadership and strategy at Flexport following the initial reporting on Clark’s departure. Additionally, the later article details potential acquisition plans involving Convoy, suggesting further shifts within the company beyond just personnel changes.",
+      "cloud_answer": "",
+      "local_error": "",
+      "cloud_error": "RuntimeError: cloud backend error: exit code 1",
+      "judge_error": "skipped: candidate error",
+      "elapsed_sec": 35.78
+    },
+    {
+      "id": 77,
+      "type": "temporal_query",
+      "run": 0,
+      "hops": 3,
+      "a_is_local": true,
+      "local_verdict": "INCORRECT",
+      "cloud_verdict": "INCORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Both articles portray Google as having a negative influence on the digital ecosystem, though in different ways. The Verge article (November 1, 2023) focuses on how SEO manipulation, facilitated by Google’s algorithm, degrades search results and prioritizes profit over authentic information. It suggests Google's objectivity is corrupting access to truth.\n\nThe TechCrunch article (December 15, 2023) details a class action antitrust lawsuit alleging that Google *directly* “siphons off” content, readers, and ad revenue from news publishers through anticompetitive behavior. This represents an escalation in the portrayal of Google’s negative influence – moving beyond algorithmic issues to direct legal accusations of monopolistic practices harming businesses. \n\nTherefore, there *was* a change: the later report details more concrete and legally defined harm caused by Google than the earlier one, which focused on broader concerns about search quality and manipulation.",
+      "cloud_answer": "",
+      "local_error": "",
+      "cloud_error": "RuntimeError: cloud backend error: exit code 1",
+      "judge_error": "skipped: candidate error",
+      "elapsed_sec": 70.8
+    },
+    {
+      "id": 77,
+      "type": "temporal_query",
+      "run": 1,
+      "hops": 3,
+      "a_is_local": true,
+      "local_verdict": "INCORRECT",
+      "cloud_verdict": "INCORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Both articles portray Google as having a negative influence on the digital ecosystem, but with different focuses. The Verge article (November 1, 2023) details how SEO practices, influenced by Google’s algorithm, have degraded search results and created a “search-optimized hellhole.” It focuses on *how* information is presented through search.\n\nThe TechCrunch article (December 15, 2023) describes a class action lawsuit alleging that Google actively *takes* content, readers, and ad revenue from news publishers through anticompetitive behavior – focusing on the economic impact of Google’s actions on news organizations. \n\nTherefore, there was a change in portrayal: The earlier article focused on the quality of search results as being negatively impacted by SEO practices leveraging Google's algorithm, while the later article focuses on direct financial harm to publishers due to alleged anticompetitive behavior by Google itself. Both agree on negative influence but highlight different aspects and mechanisms.",
+      "cloud_answer": "",
+      "local_error": "",
+      "cloud_error": "RuntimeError: cloud backend error: exit code 1",
+      "judge_error": "skipped: candidate error",
+      "elapsed_sec": 68.07
+    },
+    {
+      "id": 77,
+      "type": "temporal_query",
+      "run": 2,
+      "hops": 3,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Both articles portray Google as having a negative influence on the digital ecosystem, but with different focuses. The Verge article (November 1, 2023) details how SEO practices, influenced by Google’s algorithm, have degraded search results and created a “search-optimized hellhole.” It focuses on *how* information is presented through search.\n\nThe TechCrunch article (December 15, 2023) describes a class action lawsuit alleging that Google actively *takes* content, readers, and ad revenue from news publishers through anticompetitive behavior – focusing on the economic impact of Google’s actions on news organizations. \n\nTherefore, there was a change in portrayal: The earlier article focused on the quality of search results as being negatively impacted by SEO practices leveraging Google's algorithm, while the later article focuses on direct financial harm to publishers due to alleged anticompetitive behavior by Google itself. Both agree on negative influence but highlight different aspects and mechanisms.",
+      "cloud_answer": "No, there was a change in portrayal. The Verge article from November 1, 2023 portrays Google's influence largely through the lens of SEO practitioners exploiting/manipulating Google Search, with Google described as an \"all-powerful, all-seeing, trillion-dollar corporation with a 90 percent market share for online search\" that some blame for \"corrupting our access to the truth,\" while focusing on how SEO professionals degrade the quality of search results. The later TechCrunch article from December 15, 2023 shifts the portrayal to depict Google as the active antagonist itself, accused of \"anticompetitive behavior\" that \"siphons off\" news publishers' content, readers, and ad revenue, with AI's harms to publishers' bottom line specifically cited, framing Google as violating the Sherman Act and other antitrust laws.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 102.6
+    },
+    {
+      "id": 78,
+      "type": "temporal_query",
+      "run": 0,
+      "hops": 3,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, the advice provided by Sporting News to bettors regarding the evaluation of betting opportunities and offers involved reading requirements, going with the favored team, and focusing on hype. Here's how those elements appear across the provided articles:\n\n* **Reading Requirements:** Multiple articles emphasize *reading the requirements* for any available promotions and offers before accepting them (December 18th article). They also stress ensuring you’re using only *legal online sportsbooks* and advise against offshore options, implying due diligence is needed.\n* **Going with the Favored Team:** The December 18th article specifically suggests going with the favored Eagles when betting on the MNF game to increase chances of winning a FanDuel bonus bet.\n* **Focusing on Hype:** The September 28th article directly discusses leaning into the \"hype\" surrounding Travis Kelce and Taylor Swift, acknowledging it as a profitable storyline that FanDuel is capitalizing on with prop bets. This demonstrates an awareness of how media attention/public interest influences betting opportunities.",
+      "cloud_answer": "Yes. Based on the provided context:\n\n- **Reading requirements**: In the October 4, 2023 article on NBA Rookie of the Year odds, Sporting News advises: \"We urge you to read the requirements for any available promotions and offers before accepting them so you're aware of any restrictions before betting.\"\n\n- **Going with the favored Eagles**: In the December 18, 2023 article on Eagles vs. Seahawks Monday Night Football, Sporting News advises: \"Since you need your moneyline bet to win to claim the $150 in bonus bets, if you're wagering on tonight's MNF game, you'll probably want to go with the favored Eagles.\"\n\n- **Focusing on hype**: The September 28, 2023 article on Chiefs-Jets Week 4 leans into the Travis Kelce and Taylor Swift celebrity storyline, noting that \"companies like FanDuel just can't help but lean into a profitable storyline.\"",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 89.13
+    },
+    {
+      "id": 78,
+      "type": "temporal_query",
+      "run": 1,
+      "hops": 3,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, the advice provided by Sporting News to bettors regarding the evaluation of betting opportunities and offers involved reading requirements, going with the favored team, and focusing on hype. Here's how those elements appear across the provided articles:\n\n* **Reading Requirements:** Multiple articles emphasize *reading the requirements* for any available promotions and offers before accepting them (December 18th article). They also stress ensuring you’re using only *legal online sportsbooks* and advise against illegal offshore options (December 18th article).\n* **Going with the Favored Team:** The December 18th article, when discussing a FanDuel promotion tied to Taylor Swift and Travis Kelce, suggests if wagering on the Chiefs-Jets game, bettors might want to “go with the favored Eagles” to increase their chances of winning the associated bonus bet. Similarly, in the September 28th article, it is suggested that if you are wagering on tonight’s MNF game (Eagles vs Seahawks), you should probably go with the favored Eagles.\n* **Focusing on Hype:** The September 28th article *explicitly* discusses leaning into a profitable storyline – the hype surrounding Travis Kelce and Taylor Swift – as a marketing tactic by FanDuel, acknowledging the attention it's receiving.",
+      "cloud_answer": "Yes. Based on the provided context:\n\n- **Reading requirements**: In the October 4, 2023 article on NBA Rookie of the Year odds, Sporting News states: \"We urge you to read the requirements for any available promotions and offers before accepting them so you're aware of any restrictions before betting.\"\n\n- **Going with the favored Eagles**: In the December 18, 2023 article on Eagles vs. Seahawks MNF bonuses, Sporting News advises: \"Since you need your moneyline bet to win to claim the $150 in bonus bets, if you're wagering on tonight's MNF game, you'll probably want to go with the favored Eagles.\"\n\n- **Focusing on hype**: The September 28, 2023 article on FanDuel 'Prop Stars' Picks leans into the Travis Kelce and Taylor Swift hype, noting that \"companies like FanDuel just can't help but lean into a profitable storyline.\"",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 125.69
+    },
+    {
+      "id": 78,
+      "type": "temporal_query",
+      "run": 2,
+      "hops": 3,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "Yes, the advice provided by Sporting News to bettors regarding the evaluation of betting opportunities and offers involved reading requirements, going with the favored team, and focusing on hype. Here's how those elements appear across the provided articles:\n\n* **Reading Requirements:** Multiple articles emphasize *reading the requirements* for any available promotions and offers before accepting them (December 18th article). They also stress ensuring you’re using only *legal online sportsbooks* and advise against illegal offshore options (December 18th article).\n* **Going with the Favored Team:** The December 18th article, when discussing a FanDuel promotion tied to Taylor Swift and Travis Kelce, suggests if wagering on the Chiefs-Jets game, bettors might want to “go with the favored Eagles” to increase their chances of winning the associated bonus bet. Similarly, in the September 28th article, it is suggested that if you are wagering on tonight’s MNF game (Eagles vs Seahawks), you should probably go with the favored Eagles.\n* **Focusing on Hype:** The September 28th article *explicitly* discusses leaning into a profitable storyline – the hype surrounding Travis Kelce and Taylor Swift – as a marketing tactic by FanDuel, acknowledging the attention it's receiving.",
+      "cloud_answer": "Yes. Based on the context:\n\n- **Reading requirements**: The October 4, 2023 article advises, \"We urge you to read the requirements for any available promotions and offers before accepting them so you're aware of any restrictions before betting.\"\n\n- **Going with the favored Eagles**: The December 18, 2023 article states, \"if you're wagering on tonight's MNF game, you'll probably want to go with the favored Eagles.\"\n\n- **Focusing on hype**: The September 28, 2023 article highlights leaning into the Travis Kelce and Taylor Swift storyline, noting that \"companies like FanDuel just can't help but lean into a profitable storyline.\"",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 102.96
+    }
+  ],
+  "aggregate": {
+    "per_question": [
+      {
+        "id": 1,
+        "type": "inference_query",
+        "hops": 3,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 58.84
+      },
+      {
+        "id": 2,
+        "type": "inference_query",
+        "hops": 2,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 46.66
+      },
+      {
+        "id": 3,
+        "type": "inference_query",
+        "hops": 2,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 34.94
+      },
+      {
+        "id": 26,
+        "type": "comparison_query",
+        "hops": 2,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "ABSTAINED",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": false,
+        "elapsed_sec_mean": 60.02
+      },
+      {
+        "id": 27,
+        "type": "comparison_query",
+        "hops": 2,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 68.23
+      },
+      {
+        "id": 28,
+        "type": "comparison_query",
+        "hops": 2,
+        "n_runs": 3,
+        "local_majority": "INCORRECT",
+        "cloud_majority": "INCORRECT",
+        "local_verdicts": [
+          "INCORRECT",
+          "INCORRECT",
+          "INCORRECT"
+        ],
+        "cloud_verdicts": [
+          "INCORRECT",
+          "INCORRECT",
+          "INCORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 48.76
+      },
+      {
+        "id": 76,
+        "type": "temporal_query",
+        "hops": 2,
+        "n_runs": 3,
+        "local_majority": "INCORRECT",
+        "cloud_majority": "INCORRECT",
+        "local_verdicts": [
+          "INCORRECT",
+          "INCORRECT",
+          "INCORRECT"
+        ],
+        "cloud_verdicts": [
+          "INCORRECT",
+          "INCORRECT",
+          "INCORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 37.81
+      },
+      {
+        "id": 77,
+        "type": "temporal_query",
+        "hops": 3,
+        "n_runs": 3,
+        "local_majority": "INCORRECT",
+        "cloud_majority": "INCORRECT",
+        "local_verdicts": [
+          "INCORRECT",
+          "INCORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "INCORRECT",
+          "INCORRECT",
+          "CORRECT"
+        ],
+        "local_stable": false,
+        "cloud_stable": false,
+        "elapsed_sec_mean": 80.49
+      },
+      {
+        "id": 78,
+        "type": "temporal_query",
+        "hops": 3,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 105.93
+      }
+    ],
+    "summary": {
+      "n_questions": 9,
+      "n_runs_per_question": 3,
+      "local_correct_rate": 0.667,
+      "cloud_correct_rate": 0.667,
+      "local_abstain_rate": 0.0,
+      "cloud_abstain_rate": 0.0,
+      "delta_correct_cloud_minus_local": 0.0,
+      "local_stable_rate": 0.889,
+      "cloud_stable_rate": 0.778,
+      "by_type": {
+        "inference_query": {
+          "n": 3,
+          "local_correct": 3,
+          "cloud_correct": 3
+        },
+        "comparison_query": {
+          "n": 3,
+          "local_correct": 2,
+          "cloud_correct": 2
+        },
+        "temporal_query": {
+          "n": 3,
+          "local_correct": 1,
+          "cloud_correct": 1
+        }
+      }
+    }
+  }
+}
