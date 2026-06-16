@@ -112,6 +112,10 @@ class IntentClassifier:
             # 캐논 형식: "wiki 목록", "내부 자료 보여줘"
             r"(wiki|위키|내부\s*자료|보유\s*자료|가지고\s*있는)\s*(목록|리스트|보여)",
             r"(어떤|무슨)\s*(자료|문서|wiki|위키|entity|엔티티).{0,15}(있|가지)",
+            # v0.6.1 v17 (2026-06-16) — "무엇" 토큰도 받아들임. 운영자가
+            # 자연어로 "내부 자료가 무엇이 있나" 처럼 자주 사용.
+            r"(자료|데이터|문서|wiki|entity|knowledge|것).{0,8}(무엇|뭐가|뭐|어떤|무슨).{0,5}(있|가지)",
+            r"(어떤|무슨|무엇|뭐가).{0,5}(자료|문서|데이터|wiki|위키|entity|엔티티).{0,15}(있|가지|보유)",
             r"^(자료|문서|entity|엔티티)\s*(목록|리스트)\s*[?\.!]?$",
             # 캐주얼 한국어: "데이터 뭐 있는지", "문서 뭐가 있어"
             r"(데이터|자료|문서|wiki|위키|entity|엔티티|knowledge)\s*(뭐|무슨|어떤)",
@@ -121,6 +125,25 @@ class IntentClassifier:
             # 캐주얼 한국어: "아는거 뭐 있어", "알고 있는 거 뭐"
             r"(아는|알고\s*있는)\s*(거|것).{0,8}(뭐|무슨|어떤)",
             r"내부\s*에?\s*(무슨|뭐|어떤)\s*(자료|문서|데이터|것|거)",
+            # v0.6.1 v17 (2026-06-16) — meta inventory follow-up.
+            # Operator catch: after the v16 hybrid overview, the natural
+            # follow-up is "개념 자료에는 뭐가 있어?", "조직 리스트",
+            # "AI 관련 자료", "최근 추가된 거" 류. These should land on
+            # meta (not retrieval) so handle_meta can pivot the same
+            # inventory by type / theme / recency. handle_meta inspects
+            # the same query for filter keywords and renders the
+            # appropriate detail view.
+            # type 키워드 + (자료/항목/관련/것/들/리스트/목록 optional) +
+            # (조사/공백 anywhere) + verb (누구·누가 포함)
+            r"(개념|조직|기업|인물|보고서|문서|이벤트|장소|자산|미분류)\s*(자료|항목|관련|것|들|목록|리스트)?\s*\S{0,5}\s*(어떤|뭐|무슨|얼마|몇|있|보여|알려|누구|누가|목록|리스트)",
+            # type 키워드 단독 + 명시 verb (리스트/목록) — "조직 리스트" 류.
+            r"(개념|조직|기업|인물|보고서|문서|이벤트|장소|자산|미분류)\s*(목록|리스트)",
+            # theme + 관련/쪽/는 + 자료/항목/리스트 OR 명시 verb. verb
+            # 그룹은 optional — "AI 관련 자료" 같은 명사구만으로도 meta
+            # 인텐트 인식 (v17 fix).
+            r"(AI|에이아이|머신러닝|블록체인|크립토|crypto|web3|보안|security|연구|논문|연도별|연도|재무|시장|웹\s*자료)\s*(관련|쪽|쪽으로|에|는|을|의)\s*(자료|항목|것|들|목록|리스트|어떤|뭐|무슨|있|보여|알려)",
+            r"(AI|에이아이|머신러닝|블록체인|크립토|crypto|web3|보안|security|연구|논문|연도별|연도|재무|시장|웹\s*자료)\s*(자료|항목|것|들|목록|리스트)\s*(어떤|뭐|무슨|있|보여|알려|\?)?",
+            r"(최근|새로|새로운|새로\s*추가|최신|recent|latest|new)\s*(추가|들어온|올라온)?\s*\S{0,6}\s*(자료|항목|것|것들|문서|entity)?",
             # 영어 — 더 유연하게 (PR #73 패턴은 'what do you' 만 잡음)
             r"(list|show)\s+(all\s+|me\s+)?(your\s+)?(entities|wiki|documents|files|data|knowledge)",
             r"^what\s+(\S+\s+){0,3}do\s+you\s+(have|know)",

@@ -94,6 +94,188 @@ _TYPE_LABELS = {
 }
 
 
+# v0.6.1 v17 (2026-06-16) — query filter taxonomy for meta follow-ups.
+# Operator catch: the v16 hybrid overview produces "분류별: 개념(135),
+# 조직(86), ..."; the natural follow-up is "개념 자료에는 뭐가 있어?".
+# These tables let _parse_meta_filter map a Korean keyword (in the
+# raw query) back to either a specific entity_type or a specific
+# theme bucket so handle_meta can render a focused detail view.
+#
+# Each tuple = (keyword token, raw entity_type / theme label).
+# Order matters: the first hit wins, so more specific terms ("재무
+# 보고서" → "재무 · 시장") should appear before less specific ones
+# ("보고서" → "report") in their respective list.
+_TYPE_FILTER_TOKENS: List[Tuple[str, str]] = [
+    ("인물",       "person"),
+    ("사람",       "person"),
+    ("조직",       "organization"),
+    ("기업",       "company"),
+    ("회사",       "company"),
+    ("개념",       "concept"),
+    ("이벤트",     "event"),
+    ("사건",       "event"),
+    ("장소",       "location"),
+    ("자산",       "asset"),
+    ("문서",       "document"),
+    ("보고서",     "report"),
+    ("미분류",     ""),
+    # English fallback so list/show queries land cleanly.
+    ("person",       "person"),
+    ("organization", "organization"),
+    ("company",      "company"),
+    ("concept",      "concept"),
+    ("event",        "event"),
+    ("location",     "location"),
+    ("asset",        "asset"),
+    ("document",     "document"),
+    ("report",       "report"),
+]
+
+_THEME_FILTER_TOKENS: List[Tuple[str, str]] = [
+    ("연도별",       "연도별 보고서·실적"),
+    ("실적",         "연도별 보고서·실적"),
+    ("연도",         "연도별 보고서·실적"),
+    ("ai",           "AI · 머신러닝"),
+    ("에이아이",     "AI · 머신러닝"),
+    ("머신러닝",     "AI · 머신러닝"),
+    ("llm",          "AI · 머신러닝"),
+    ("블록체인",     "블록체인 · Web3"),
+    ("크립토",       "블록체인 · Web3"),
+    ("crypto",       "블록체인 · Web3"),
+    ("web3",         "블록체인 · Web3"),
+    ("재무",         "재무 · 시장"),
+    ("시장",         "재무 · 시장"),
+    ("매출",         "재무 · 시장"),
+    ("보안",         "보안 · 정책"),
+    ("정책",         "보안 · 정책"),
+    ("security",     "보안 · 정책"),
+    ("연구",         "연구 · 논문"),
+    ("논문",         "연구 · 논문"),
+    ("paper",        "연구 · 논문"),
+    ("웹",           "웹 · 외부 자료"),
+    ("외부",         "웹 · 외부 자료"),
+    ("뉴스",         "웹 · 외부 자료"),
+]
+
+_RECENT_TOKENS = (
+    "최근", "새로", "새로운", "최신", "recent", "latest", "new",
+    "방금", "오늘", "어제",
+)
+
+
+def _parse_meta_filter(query: str) -> Dict[str, str]:
+    """Decide whether the meta query is an OVERVIEW request or a
+    follow-up asking for a specific slice (type / theme / recent).
+
+    Returns: {"kind": "overview"} | {"kind": "type", "raw": <etype>}
+                                  | {"kind": "theme", "label": <theme>}
+                                  | {"kind": "recent"}
+    """
+    q = (query or "").lower().strip()
+    if not q:
+        return {"kind": "overview"}
+    # v0.6.1 v17 (2026-06-16) — theme tokens checked FIRST so a
+    # phrase like "재무 보고서" lands on the "재무 · 시장" theme
+    # rather than the generic "report" type. Both signals are
+    # legitimate; theme is more specific in those compound cases.
+    for token, theme in _THEME_FILTER_TOKENS:
+        if token in q:
+            return {"kind": "theme", "label": theme}
+    # Specific-type request — Korean / English single-word tokens.
+    for token, etype in _TYPE_FILTER_TOKENS:
+        if token in q:
+            return {"kind": "type", "raw": etype}
+    # Recent request.
+    if any(tok in q for tok in _RECENT_TOKENS):
+        return {"kind": "recent"}
+    return {"kind": "overview"}
+
+
+def _render_type_detail(enriched: List[Dict[str, Any]], etype: str) -> str:
+    """Render the full list of entities matching a specific
+    entity_type. Capped at 80 names + "외 N 개" so a giant bucket
+    doesn't blow the answer length.
+    """
+    matching = [
+        e for e in enriched
+        if (e["type"] or "(미분류)") == (etype or "(미분류)")
+    ]
+    label = _TYPE_LABELS.get(etype, etype.title() or "미분류")
+    if not matching:
+        return f"## “{label}” 분류 자료 없음\n\n해당 분류로 등록된 wiki 항목이 없습니다."
+    # Sort: alphabetical for stability across calls.
+    names = sorted([e["name"] for e in matching if e["name"]])
+    out: List[str] = [
+        f"## 분류 ‘{label}’ — 총 {len(matching)}개",
+        "",
+        f"_(전체 보유 자료 중 entity_type = `{etype or '(미분류)'}` 항목)_",
+        "",
+    ]
+    CAP = 80
+    head = names[:CAP]
+    tail = len(names) - len(head)
+    # Bullet list — markdown renders these as the .md-ul on the client.
+    out.extend(f"- {n}" for n in head)
+    if tail > 0:
+        out.append(f"- _(외 {tail}개 더 — 더 좁은 키워드로 다시 질문해 보세요)_")
+    out.append("")
+    out.append(
+        "특정 항목을 자세히 보려면 이름으로 직접 질문하세요. "
+        "예: \"" + head[0] + "에 대해 알려줘\"."
+    )
+    return "\n".join(out)
+
+
+def _render_theme_detail(enriched: List[Dict[str, Any]], theme: str) -> str:
+    matching = [e for e in enriched if _classify_theme(e["name"]) == theme]
+    if not matching:
+        return (
+            f"## 주제 ‘{theme}’ 자료 없음\n\n"
+            "해당 주제 키워드와 매치되는 wiki 항목이 없습니다."
+        )
+    names = sorted([e["name"] for e in matching if e["name"]])
+    out: List[str] = [
+        f"## 주제 ‘{theme}’ — 총 {len(matching)}개",
+        "",
+        "_(이름 패턴 기반 그룹)_",
+        "",
+    ]
+    CAP = 80
+    head = names[:CAP]
+    tail = len(names) - len(head)
+    out.extend(f"- {n}" for n in head)
+    if tail > 0:
+        out.append(f"- _(외 {tail}개 더)_")
+    out.append("")
+    out.append(
+        "특정 항목을 자세히 보려면 이름으로 직접 질문하세요. "
+        "예: \"" + head[0] + "에 대해 알려줘\"."
+    )
+    return "\n".join(out)
+
+
+def _render_recent_detail(enriched: List[Dict[str, Any]], n: int = 30) -> str:
+    recent = sorted(enriched, key=lambda x: x["mtime"], reverse=True)[:n]
+    if not recent:
+        return "## 최근 추가된 자료 없음\n\nwiki 에 아직 등록된 항목이 없습니다."
+    out: List[str] = [
+        f"## 최근 추가된 자료 (top {len(recent)})",
+        "",
+        "_(파일 수정 시각 기준 내림차순)_",
+        "",
+    ]
+    for e in recent:
+        if not e["name"]:
+            continue
+        label = _TYPE_LABELS.get(e["type"], e["type"] or "미분류")
+        out.append(f"- {e['name']} _(타입: {label})_")
+    out.append("")
+    out.append(
+        "특정 항목을 자세히 보려면 이름으로 직접 질문하세요."
+    )
+    return "\n".join(out)
+
+
 # ────────────────────────────────────────────────────────────────────
 # meta — internal-data inventory ("what do you have?")
 # ────────────────────────────────────────────────────────────────────
@@ -159,6 +341,58 @@ def handle_meta(
             for e in enriched:
                 theme = _classify_theme(e["name"]) or "기타"
                 by_theme[theme].append(e["name"])
+
+            # v0.6.1 v17 (2026-06-16) — meta follow-up routing. If
+            # the query carries a type / theme / recent filter, render
+            # the focused detail view instead of the generic overview.
+            # The overview path stays the default for first-shot
+            # queries like "내부 자료가 무엇이 있나".
+            meta_filter = _parse_meta_filter(safe_query)
+            if meta_filter["kind"] == "type":
+                answer = _render_type_detail(enriched, meta_filter["raw"])
+                engine._elapsed(t_meta, "META_inventory")
+                return {
+                    "answer":        answer,
+                    "mode":          "meta",
+                    "graph_paths":   [],
+                    "graph_used":    0,
+                    "sources":       [],
+                    "blocked":       False,
+                    "role_used":     user_role,
+                    "timing_sec":    round(time.time() - t_start, 2),
+                    "unified_score": 1.0,
+                    "loop_count":    0,
+                }
+            if meta_filter["kind"] == "theme":
+                answer = _render_theme_detail(enriched, meta_filter["label"])
+                engine._elapsed(t_meta, "META_inventory")
+                return {
+                    "answer":        answer,
+                    "mode":          "meta",
+                    "graph_paths":   [],
+                    "graph_used":    0,
+                    "sources":       [],
+                    "blocked":       False,
+                    "role_used":     user_role,
+                    "timing_sec":    round(time.time() - t_start, 2),
+                    "unified_score": 1.0,
+                    "loop_count":    0,
+                }
+            if meta_filter["kind"] == "recent":
+                answer = _render_recent_detail(enriched)
+                engine._elapsed(t_meta, "META_inventory")
+                return {
+                    "answer":        answer,
+                    "mode":          "meta",
+                    "graph_paths":   [],
+                    "graph_used":    0,
+                    "sources":       [],
+                    "blocked":       False,
+                    "role_used":     user_role,
+                    "timing_sec":    round(time.time() - t_start, 2),
+                    "unified_score": 1.0,
+                    "loop_count":    0,
+                }
 
             # ── most-recent additions ───────────────────────────
             recent = sorted(
