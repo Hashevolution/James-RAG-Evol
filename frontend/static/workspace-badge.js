@@ -35,13 +35,25 @@
     var nameEl = document.getElementById('workspace-name');
     if (!nameEl) return;
     nameEl.textContent = info.workspace_name || 'default';
-    // Tooltip = resolved path + entity count for an at-a-glance check.
-    var tooltipBits = [];
-    if (info.workspace_path) tooltipBits.push(info.workspace_path);
+    // v0.6.1 v6 (2026-06-16) — operator catch: the badge said
+    // "default" but the operator (Korean) couldn't tell what the
+    // word meant. Tooltip now self-documents: name on top, then
+    // "기본 workspace" / "사용자 workspace" + path + entities +
+    // tenant flag. Hover-only — visual chrome stays compact.
+    var name = info.workspace_name || 'default';
+    var nameRow = 'Workspace: ' + name
+      + (info.is_default ? ' (기본 / default)' : ' (사용자 선택)');
+    var tooltipBits = [nameRow];
+    if (info.workspace_path) tooltipBits.push('경로: ' + info.workspace_path);
     if (typeof info.entity_count === 'number') {
-      tooltipBits.push('entities: ' + info.entity_count);
+      tooltipBits.push('엔티티: ' + info.entity_count);
     }
-    if (info.per_tenant_enabled) tooltipBits.push('per-tenant');
+    if (info.per_tenant_enabled) tooltipBits.push('per-tenant 격리 활성');
+    if (info.is_default) {
+      tooltipBits.push(
+        '— 별도 workspace 를 만들지 않은 상태입니다. /workspace 페이지에서 분리 가능.'
+      );
+    }
     box.title = tooltipBits.join('\n');
     // Visually distinguish dogfood / non-default so the operator
     // immediately notices they're NOT on the main workspace.
