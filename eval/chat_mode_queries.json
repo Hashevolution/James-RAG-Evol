@@ -1,0 +1,229 @@
+{
+  "version": "0.1.0",
+  "description": "Chat-mode measurement fixture — small_talk + factual_chat + open_question + multi_turn. Korean primary (JAMES production use case per user_profile.md). v18.7 Phase 2 prereq.",
+  "source_dataset": "synthesized-jiwon-2026-06-16",
+  "source_license": "CC-BY-4.0 (operator-authored, no third-party content)",
+  "source_citation": "Operator-authored fixture for chat-mode routing decision (v0.6.1 Phase 2 prereq).",
+  "built_at_utc": "2026-06-16T11:00:00Z",
+  "subset": {
+    "small_talk": 5,
+    "factual_chat": 5,
+    "open_question": 5,
+    "multi_turn": 3
+  },
+  "type_distribution": {
+    "small_talk": "Short greeting / wellbeing / casual response. No factual claim. judge-only (lenient bias caveat).",
+    "factual_chat": "General-knowledge factual question. gold_signals applicable.",
+    "open_question": "Creative advice / opinion / open-ended. judge-only (lenient bias caveat).",
+    "multi_turn": "2-turn context carry. First turn given as prior_turns, second turn is the actual probe. judge-only."
+  },
+  "scoring_protocol": {
+    "judge": "Claude CLI, pairwise blinded A/B per (query, run). Same judge protocol as multihop_rag fixture.",
+    "gold_grounded": "Applied to factual_chat only (subset of queries with gold_signals). Other sub-classes report judge-only.",
+    "fairness_caveat": "small_talk / open_question / multi_turn cannot be deterministically graded. Judge bias (per project_judge_reliability_gold_grounded_v18_6: +0.11 to +0.19 over-credit on LOCAL) applies. Reported in Quality Delta Card as 'judge-only' rows."
+  },
+  "queries": [
+    {
+      "id": 1001,
+      "category": "chat-small-talk",
+      "question_type": "small_talk",
+      "text": "안녕하세요. 오늘 기분이 어때요?",
+      "abstention_truth": "present",
+      "evidence_required": false,
+      "expected_behavior": "Short friendly greeting back. No factual claim required.",
+      "gold_signals": []
+    },
+    {
+      "id": 1002,
+      "category": "chat-small-talk",
+      "question_type": "small_talk",
+      "text": "잠깐 쉬어가야겠다. 점심 뭐 먹을까?",
+      "abstention_truth": "present",
+      "evidence_required": false,
+      "expected_behavior": "Brief casual suggestion or sympathetic acknowledgement.",
+      "gold_signals": []
+    },
+    {
+      "id": 1003,
+      "category": "chat-small-talk",
+      "question_type": "small_talk",
+      "text": "고마워. 도움이 많이 됐어.",
+      "abstention_truth": "present",
+      "evidence_required": false,
+      "expected_behavior": "Short polite acknowledgement. Should NOT lecture or summarize prior context unsolicited.",
+      "gold_signals": []
+    },
+    {
+      "id": 1004,
+      "category": "chat-small-talk",
+      "question_type": "small_talk",
+      "text": "오늘 좀 피곤하네. 너는 괜찮아?",
+      "abstention_truth": "present",
+      "evidence_required": false,
+      "expected_behavior": "Sympathetic + brief check-in style. Avoid clinical / medical claim.",
+      "gold_signals": []
+    },
+    {
+      "id": 1005,
+      "category": "chat-small-talk",
+      "question_type": "small_talk",
+      "text": "Hello, how's it going?",
+      "abstention_truth": "present",
+      "evidence_required": false,
+      "expected_behavior": "Mirror-language English greeting. Should not switch to Korean unless asked.",
+      "gold_signals": []
+    },
+    {
+      "id": 1011,
+      "category": "chat-factual",
+      "question_type": "factual_chat",
+      "text": "한국의 수도는 어디인가요?",
+      "abstention_truth": "present",
+      "evidence_required": false,
+      "expected_behavior": "Direct factual answer. Korea capital city.",
+      "gold_signals": [
+        {"term": "서울", "aliases": ["Seoul"]}
+      ]
+    },
+    {
+      "id": 1012,
+      "category": "chat-factual",
+      "question_type": "factual_chat",
+      "text": "물의 끓는점은 섭씨 몇 도인가요?",
+      "abstention_truth": "present",
+      "evidence_required": false,
+      "expected_behavior": "Direct factual answer with standard atmospheric pressure caveat optional.",
+      "gold_signals": [
+        {"term": "100", "aliases": ["섭씨 100", "100도", "100°C"]}
+      ]
+    },
+    {
+      "id": 1013,
+      "category": "chat-factual",
+      "question_type": "factual_chat",
+      "text": "지구에서 가장 가까운 항성의 이름은 무엇인가요?",
+      "abstention_truth": "present",
+      "evidence_required": false,
+      "expected_behavior": "Sun / Proxima Centauri (depending on interpretation — both acceptable per gold_signals).",
+      "gold_signals": [
+        {"term": "태양", "aliases": ["the Sun", "Sun", "Proxima Centauri", "프록시마 센타우리"]}
+      ]
+    },
+    {
+      "id": 1014,
+      "category": "chat-factual",
+      "question_type": "factual_chat",
+      "text": "DNA 의 약자를 풀어 쓰면 무엇인가요?",
+      "abstention_truth": "present",
+      "evidence_required": false,
+      "expected_behavior": "Deoxyribonucleic acid / 디옥시리보핵산.",
+      "gold_signals": [
+        {"term": "deoxyribonucleic", "aliases": ["디옥시리보", "디옥시리보핵산"]}
+      ]
+    },
+    {
+      "id": 1015,
+      "category": "chat-factual",
+      "question_type": "factual_chat",
+      "text": "1년은 몇 시간인가요? 대략 계산해 주세요.",
+      "abstention_truth": "present",
+      "evidence_required": false,
+      "expected_behavior": "365 × 24 = 8760 hours (close enough).",
+      "gold_signals": [
+        {"term": "8760", "aliases": ["8,760", "8760시간", "8760 hours"]}
+      ]
+    },
+    {
+      "id": 1021,
+      "category": "chat-open",
+      "question_type": "open_question",
+      "text": "주말에 가족과 시간 보낼 좋은 방법 추천해 주세요.",
+      "abstention_truth": "present",
+      "evidence_required": false,
+      "expected_behavior": "Creative open-ended advice. Multiple valid answers. Should NOT hallucinate user's situation.",
+      "gold_signals": []
+    },
+    {
+      "id": 1022,
+      "category": "chat-open",
+      "question_type": "open_question",
+      "text": "스트레스가 많을 때 도움이 되는 방법은 무엇인가요?",
+      "abstention_truth": "present",
+      "evidence_required": false,
+      "expected_behavior": "General coping suggestions. Should avoid clinical diagnosis claims.",
+      "gold_signals": []
+    },
+    {
+      "id": 1023,
+      "category": "chat-open",
+      "question_type": "open_question",
+      "text": "처음 프로그래밍을 배운다면 어떤 언어부터 시작하는 게 좋을까요?",
+      "abstention_truth": "present",
+      "evidence_required": false,
+      "expected_behavior": "Recommendation with brief reasoning. Python / JS / Scratch all acceptable.",
+      "gold_signals": []
+    },
+    {
+      "id": 1024,
+      "category": "chat-open",
+      "question_type": "open_question",
+      "text": "잠이 잘 안 올 때 무엇을 해보면 좋을까?",
+      "abstention_truth": "present",
+      "evidence_required": false,
+      "expected_behavior": "General sleep hygiene advice. Should NOT prescribe medication.",
+      "gold_signals": []
+    },
+    {
+      "id": 1025,
+      "category": "chat-open",
+      "question_type": "open_question",
+      "text": "친구가 갑자기 연락이 뜸해졌어요. 어떻게 하면 좋을까요?",
+      "abstention_truth": "present",
+      "evidence_required": false,
+      "expected_behavior": "Empathetic relational advice. No clinical claims.",
+      "gold_signals": []
+    },
+    {
+      "id": 1031,
+      "category": "chat-multi-turn",
+      "question_type": "multi_turn",
+      "text": "그것 좀 더 자세히 풀어 설명해 줄래?",
+      "abstention_truth": "present",
+      "evidence_required": false,
+      "expected_behavior": "Resolve the antecedent 'that' from prior_turns and expand on the photosynthesis explanation.",
+      "prior_turns": [
+        {"role": "user", "text": "광합성이 무엇인지 한 문장으로 설명해 줘."},
+        {"role": "assistant", "text": "광합성은 식물이 햇빛, 물, 이산화탄소를 이용하여 포도당과 산소를 만들어내는 화학 반응입니다."}
+      ],
+      "gold_signals": []
+    },
+    {
+      "id": 1032,
+      "category": "chat-multi-turn",
+      "question_type": "multi_turn",
+      "text": "그 중에서 어떤 게 가장 추천이야?",
+      "abstention_truth": "present",
+      "evidence_required": false,
+      "expected_behavior": "Pick one from the prior list (Python / JS / Scratch) and briefly justify. Should NOT introduce new languages.",
+      "prior_turns": [
+        {"role": "user", "text": "처음 프로그래밍을 배운다면 어떤 언어부터 시작하는 게 좋을까?"},
+        {"role": "assistant", "text": "Python, JavaScript, Scratch 세 가지가 자주 추천됩니다. Python 은 문법이 단순하고 데이터 분석·머신러닝까지 확장됩니다. JavaScript 는 웹 작업이 바로 보여서 동기 부여가 좋고요. Scratch 는 시각 블록 방식이라 어린 학습자에게 적합합니다."}
+      ],
+      "gold_signals": []
+    },
+    {
+      "id": 1033,
+      "category": "chat-multi-turn",
+      "question_type": "multi_turn",
+      "text": "방금 정리한 내용 짧게 다시 요약해 줘.",
+      "abstention_truth": "present",
+      "evidence_required": false,
+      "expected_behavior": "Compress the prior assistant turn into 1-2 sentences. Should NOT invent new facts.",
+      "prior_turns": [
+        {"role": "user", "text": "달은 왜 매번 같은 면만 지구를 향하나요?"},
+        {"role": "assistant", "text": "달의 자전 주기와 공전 주기가 약 27.3일로 거의 동일하기 때문입니다. 이를 조석 고정 (tidal locking) 이라고 부르며, 지구의 중력이 오랜 시간에 걸쳐 달의 자전 속도를 늦춰서 결국 동기화되었습니다."}
+      ],
+      "gold_signals": []
+    }
+  ]
+}

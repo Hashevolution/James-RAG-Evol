@@ -75,6 +75,8 @@ _HARNESS_IMPORTS_REQUIRED = {
 # Renaming / moving any of these is a measurement-surface change.
 _HARNESS_TOP_LEVEL_REQUIRED = {
     "FIXTURE",
+    "FIXTURES",                # v18.7 Phase 2 prereq — multi-fixture switch
+    "ANSWERABLE_BY_FIXTURE",   # v18.7 — per-fixture answerable type list
     "RAW",
     "DEFAULT_LOCAL_MODEL",
     "OLLAMA_URL",
@@ -87,6 +89,7 @@ _HARNESS_TOP_LEVEL_REQUIRED = {
     "call_cloud_via_abstraction",
     "judge",
     "_majority",
+    "_chat_prompt",            # v18.7 — chat fixture prompt template
     "select_queries",
     "run_one_query",
     "aggregate",
@@ -400,6 +403,111 @@ class FixtureLockTest(unittest.TestCase):
                         f"query #{i} missing field {field!r} — "
                         f"paired harness will fail on this record.",
                     )
+
+
+class ChatFixtureSurface(unittest.TestCase):
+    """v0.6.1 v18.7 Phase 2 prereq (2026-06-16) — chat-mode fixture.
+
+    The chat fixture is operator-authored (not derived from a public
+    benchmark), so there is no upstream alarm if a UX cycle silently
+    edits it. The lock-tests below freeze the surface the harness
+    consumes — file location, sub-class counts, factual_chat
+    gold_signals coverage, multi_turn prior_turns coverage. Adding
+    new chat queries is allowed; removing sub-classes or breaking
+    the gold_signals / prior_turns contract trips the test.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        _import_harness()
+
+    def test_chat_fixture_registered_in_harness(self):
+        from local_vs_cloud_paired import FIXTURES
+        self.assertIn(
+            "chat", FIXTURES,
+            "harness FIXTURES dict missing 'chat' entry — the "
+            "--fixture chat CLI will fail. Phase 2 prereq broken.",
+        )
+
+    def test_chat_fixture_file_exists(self):
+        from local_vs_cloud_paired import FIXTURES
+        chat_path = FIXTURES["chat"]
+        self.assertTrue(
+            chat_path.exists(),
+            f"chat fixture file missing: {chat_path}. "
+            f"--fixture chat will raise FileNotFoundError.",
+        )
+
+    def test_chat_fixture_subclasses_complete(self):
+        """All 4 chat sub-classes must carry ≥ 3 rows so the default
+        run (n_per_type=3) can build the paired sample."""
+        import json as _json
+        from local_vs_cloud_paired import FIXTURES
+        data = _json.loads(FIXTURES["chat"].read_text(encoding="utf-8"))
+        for t in ("small_talk", "factual_chat",
+                  "open_question", "multi_turn"):
+            with self.subTest(sub_class=t):
+                rows = [q for q in data.get("queries", [])
+                        if q.get("question_type") == t]
+                self.assertGreaterEqual(
+                    len(rows), 3,
+                    f"chat sub-class {t!r} only has {len(rows)} rows "
+                    f"— paired default needs 3.",
+                )
+
+    def test_chat_fixture_factual_have_gold_signals(self):
+        """factual_chat is the only chat sub-class where the gold-
+        grounded check applies (per v18.6 judge bias). Every record
+        must carry gold_signals."""
+        import json as _json
+        from local_vs_cloud_paired import FIXTURES
+        data = _json.loads(FIXTURES["chat"].read_text(encoding="utf-8"))
+        factuals = [q for q in data.get("queries", [])
+                    if q.get("question_type") == "factual_chat"]
+        for q in factuals:
+            with self.subTest(id=q.get("id")):
+                self.assertTrue(
+                    bool(q.get("gold_signals")),
+                    f"factual_chat id={q.get('id')} missing "
+                    f"gold_signals — gold-grounded recheck cannot "
+                    f"score this row.",
+                )
+
+    def test_chat_fixture_multiturn_have_prior_turns(self):
+        """multi_turn queries must carry prior_turns; the chat prompt
+        template treats their absence as a single-turn query, which
+        defeats the sub-class's purpose."""
+        import json as _json
+        from local_vs_cloud_paired import FIXTURES
+        data = _json.loads(FIXTURES["chat"].read_text(encoding="utf-8"))
+        multis = [q for q in data.get("queries", [])
+                  if q.get("question_type") == "multi_turn"]
+        for q in multis:
+            with self.subTest(id=q.get("id")):
+                self.assertTrue(
+                    bool(q.get("prior_turns")),
+                    f"multi_turn id={q.get('id')} missing prior_turns "
+                    f"— sub-class becomes single-turn.",
+                )
+
+    def test_chat_prompt_template_emits_prior_turns(self):
+        """Smoke: _chat_prompt() must include prior_turns in the
+        emitted prompt body so both sides see the same context."""
+        from local_vs_cloud_paired import _chat_prompt
+        q = {
+            "text": "그거 다시 한 줄로 정리해 줘.",
+            "prior_turns": [
+                {"role": "user", "text": "광합성이 뭐야?"},
+                {"role": "assistant", "text": "식물이 빛으로 양분을 만드는 과정."},
+            ],
+        }
+        body = _chat_prompt(q)
+        self.assertIn("광합성이 뭐야?", body,
+                      "_chat_prompt drops the user prior_turn body")
+        self.assertIn("식물이 빛으로 양분을 만드는 과정.", body,
+                      "_chat_prompt drops the assistant prior_turn body")
+        self.assertIn("그거 다시 한 줄로 정리해 줘.", body,
+                      "_chat_prompt drops the current query body")
 
 
 if __name__ == "__main__":   # pragma: no cover
