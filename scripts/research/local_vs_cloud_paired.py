@@ -502,6 +502,20 @@ def main() -> int:
                     help="per-call timeout in seconds")
     ap.add_argument("--output", default="",
                     help="output JSON path; auto-named when empty")
+    # v0.6.1 v18.2 (2026-06-16) — measurement-validity guard.
+    # Operator catch: UI / UX cycles silently rotate measurement
+    # baselines (PR #962 — meta regex matched "News" / "New York"
+    # substrings). Pre-flight runs the lock-test-aligned sanity
+    # checks before any LLM call goes out. --skip-pre-flight is
+    # recorded in the output JSON so an operator can't bypass the
+    # guard invisibly.
+    ap.add_argument("--skip-pre-flight", action="store_true",
+                    help=(
+                        "Bypass measurement-validity pre-flight checks "
+                        "(fixture / regex sweep / backend registry / "
+                        "abstraction smoke). The bypass IS recorded in "
+                        "the output JSON so audit trail stays intact."
+                    ))
     args = ap.parse_args()
 
     if os.environ.get("JAMES_ENABLE_CLAUDE_BACKEND") != "1":
@@ -509,6 +523,36 @@ def main() -> int:
               "the claude_code_cli backend is opt-in (CLAUDE.md rule).",
               file=sys.stderr)
         return 2
+
+    # v0.6.1 v18.2 — pre-flight gate.
+    pre_flight_results: List[Dict[str, Any]] = []
+    pre_flight_skipped = bool(args.skip_pre_flight)
+    if not pre_flight_skipped:
+        try:
+            from scripts.research.pre_flight_check import (
+                run_pre_flight, has_failures, format_results,
+            )
+        except ImportError:
+            # Allow direct script invocation without the scripts/ prefix.
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            from pre_flight_check import (    # type: ignore
+                run_pre_flight, has_failures, format_results,
+            )
+        results = run_pre_flight()
+        print("=== pre-flight check ===")
+        print(format_results(results))
+        # Preserve as plain dicts for the output JSON audit trail.
+        pre_flight_results = [
+            {"name": r.name, "status": r.status,
+             "detail": r.detail, "extra": r.extra}
+            for r in results
+        ]
+        if has_failures(results):
+            print("\n[FATAL] pre-flight failed — paired run blocked. "
+                  "Fix or re-launch with --skip-pre-flight (recorded).",
+                  file=sys.stderr)
+            return 3
+        print()
 
     queries = select_queries(args.n_per_type)
     print(f"local={args.local_model} (num_ctx={NUM_CTX})  "
@@ -572,6 +616,11 @@ def main() -> int:
         "design": "reasoning-isolated; both models same full gold evidence",
         "local_model": args.local_model,
         "local_backend": args.local_backend,
+        # v0.6.1 v18.2 — measurement-validity audit trail.
+        "pre_flight": {
+            "skipped": pre_flight_skipped,
+            "results": pre_flight_results,
+        },
         "num_ctx": NUM_CTX,
         "cloud_backend": "claude_code_cli (via core.abstraction.run_cloud_egress)",
         "judge": "claude-cli, blinded A/B per (query, run)",
