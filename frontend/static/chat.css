@@ -1030,14 +1030,20 @@ main { display: flex; flex: 1; overflow: hidden; }
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 4px;
-  padding: 1px 5px;
+  padding: 3px 4px;
   font-size: 11px;
-  line-height: 1.2;
+  line-height: 1;
   cursor: pointer;
   opacity: 0;
   transition: opacity .15s, color .15s;
   color: var(--muted);
   font-family: inherit;
+  /* v0.6.1 v7 (2026-06-16) — center the inline SVG icon. The button
+   * used to host a text "복사" label; now it carries a small outline
+   * copy glyph that needs flex centering. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .bubble .paragraph:hover .paragraph-copy-btn { opacity: .85; }
 .bubble .paragraph-copy-btn:hover,
