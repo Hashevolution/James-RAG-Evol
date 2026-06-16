@@ -117,12 +117,24 @@ function _bindFrontendEvents() {
       case 'toggle-lang':               toggleLang(); break;
       case 'clear-history':             clearHistory(); break;
       // v0.6.1 v3 (2026-06-15) — Claude-style sidebar 💬 채팅 row.
-      // Scrolls the messages stream to top + closes the sidebar on
-      // mobile. Does NOT clear history (that's + 새 대화 in the
-      // footer). Acts as a "return to current chat" shortcut.
+      // v4 (2026-06-16) — Also forces the sidebar to the sessions
+      // panel + reloads the list so the operator sees the latest
+      // history immediately (operator catch — the Loading...
+      // placeholder was stuck when boot didn't auto-load). Does
+      // NOT clear history (that's + 새 대화 in the footer).
       case 'goto-chat-top': {
         const msgs = document.getElementById('messages');
         if (msgs) msgs.scrollTo({ top: 0, behavior: 'smooth' });
+        // Activate the sessions panel + refresh the list. If
+        // already on sessions mode, switchSidebarMode still re-
+        // dispatches loadSessionList so a tap acts as "pull to
+        // refresh" without the gesture.
+        if (typeof switchSidebarMode === 'function') {
+          try { switchSidebarMode('sessions'); } catch (_) {}
+        }
+        if (typeof loadSessionList === 'function') {
+          loadSessionList().catch(() => {});
+        }
         // close sidebar on phone-sized viewports for parity with
         // the existing show-page handler in admin.js
         const sb = document.getElementById('sidebar');
@@ -299,6 +311,29 @@ window.addEventListener('DOMContentLoaded', () => {
   // dropdown options; chip shows which model resolve_chat() picked
   // for the next request — env / preference / fallback).
   try { loadActiveModelChip(); } catch (e) { console.warn('[JAMES] model chip 로드 실패:', e); }
+  // v0.6.1 v4 (2026-06-16) — sessions list auto-load on boot.
+  // The "이전 대화" section header (Claude-style) made the static
+  // "Loading..." placeholder visibly stuck. Previously the panel
+  // only loaded on user tap of the 🕘 mode tab. Now we kick the
+  // load on boot if there's any auth (token or api_key) present —
+  // the loadSessionList handler itself surfaces "로드 실패" if the
+  // server rejects, so guests don't see the placeholder forever.
+  try {
+    if (localStorage.getItem('james_token')
+        || localStorage.getItem('james_api_key')) {
+      loadSessionList().catch(() => {});
+    } else {
+      const listEl = document.getElementById('session-list');
+      if (listEl) {
+        listEl.innerHTML =
+          '<div style="color:var(--muted,#888);font-size:12px;'
+          + 'text-align:center;padding:20px">'
+          + (t('chat.session_login_hint')
+             || '로그인 후 이전 대화가 표시됩니다')
+          + '</div>';
+      }
+    }
+  } catch (e) { console.warn('[JAMES] session list boot load 실패:', e); }
 });
 
 // Re-render the mode dropdown when the operator toggles language so the
