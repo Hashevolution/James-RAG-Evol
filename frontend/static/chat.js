@@ -866,7 +866,18 @@ function restoreHistory() {
 
 /* ── 대화 초기화 (요약 저장 후 삭제) ── */
 async function clearHistory() {
-  if (!confirm('현재 대화를 초기화할까요?\n대화 내용이 장기 기억으로 요약 저장됩니다.')) return;
+  // v0.6.1 v8 (2026-06-16) — clarified the confirm copy: "초기화"
+  // alone was ambiguous (operator interpreted it as "start fresh",
+  // not "permanently delete"). Spell out that this DELETES the
+  // current session from the server. The sidebar "+ 새 대화" pill
+  // no longer routes here — it dispatches new-session, which keeps
+  // prior sessions intact.
+  if (!confirm(
+    '현재 대화를 [서버에서 삭제] 합니다.\n' +
+    '(대화 내용은 장기 기억으로 요약 저장됩니다.)\n\n' +
+    '계속하시겠습니까?\n' +
+    '※ 기존 세션을 그대로 두고 새 대화만 시작하려면 사이드바의 ＋ 새 대화 버튼을 이용하세요.'
+  )) return;
 
   // 요약 먼저 저장 (장기 기억)
   await summarizeSession();
