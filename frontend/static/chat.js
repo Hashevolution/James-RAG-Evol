@@ -2739,27 +2739,126 @@ function formatAnswerWithParagraphs(text) {
   }).join('');
 }
 
+/* v0.6.1 v10 (2026-06-16) — Claude-style answer typography.
+ *
+ * Operator catch (screenshot): the assistant body needed Claude.ai-
+ * style "achromatic but cleanly hierarchical" formatting — explicit
+ * line-height, weight/size hierarchy, table + blockquote support,
+ * proper margin between blocks. Previous renderer baked color +
+ * size into inline styles; now structural classes (.md-h1/-h2/-h3,
+ * .md-hr, .md-li, .md-blockquote, .md-table, etc.) take over and
+ * chat.css owns the typography in one place.
+ *
+ * Block tokens (line-anchored) are processed first so they don't
+ * trip the inline-replacement passes:
+ *   ``` ... ```            → <pre><code class="lang-...">
+ *   | h | h |              → <table> (header + body, GFM-style)
+ *   ##/###/####            → <h2>/<h3>/<h4>
+ *   ---                    → <hr>
+ *   > text                 → <blockquote>
+ *   - / * / 1.  text       → <ul>/<ol><li>
+ *
+ * Then inline:
+ *   **bold**, *em*, `code`
+ *
+ * Finally remaining newlines collapse into <p>/<br> so paragraphs
+ * stay distinct (single-line → <br>, double-newline → <p>).
+ */
 function formatAnswer(text) {
+  // ── code fences ────────────────────────────────────────────────
   const codeBlocks = [];
-  text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+  text = String(text || '').replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
     const idx = codeBlocks.length;
-    codeBlocks.push(`<pre><code class="lang-${lang||'text'}">${escHtml(code.trim())}</code></pre>`);
+    codeBlocks.push(
+      `<pre class="md-pre"><code class="lang-${escHtml(lang || 'text')}">${escHtml(code.replace(/\n+$/, ''))}</code></pre>`,
+    );
     return `\x00CODE${idx}\x00`;
   });
+
+  // ── GFM-style table ────────────────────────────────────────────
+  // Detect "| h | h |\n|---|---|\n| r | r |..." blocks. Operate on
+  // raw text so escapeHtml doesn't munge the pipes.
+  const tableBlocks = [];
+  text = text.replace(
+    /(^|\n)(\|[^\n]+\|\n\|[\s:|\-]+\|\n(?:\|[^\n]+\|\n?)+)/g,
+    (_m, lead, block) => {
+      const lines = block.trim().split(/\n/);
+      const split = (row) => row.replace(/^\|/, '').replace(/\|$/, '').split('|').map(s => s.trim());
+      const headers = split(lines[0]);
+      // line 1 = separator (---), skip
+      const bodyRows = lines.slice(2).map(split);
+      const th = headers.map(h => `<th>${escHtml(h)}</th>`).join('');
+      const tr = bodyRows.map(
+        row => '<tr>' + row.map(c => `<td>${_renderInlineMd(escHtml(c))}</td>`).join('') + '</tr>',
+      ).join('');
+      const html = `<div class="md-table-wrap"><table class="md-table"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div>`;
+      const idx = tableBlocks.length;
+      tableBlocks.push(html);
+      return `${lead}\x00TABLE${idx}\x00`;
+    },
+  );
+
+  // Escape the rest of the text. Code + tables already escaped + held
+  // as sentinels.
   text = escHtml(text);
-  text = text.replace(/^###\s+(.+)$/gm, '<strong style="font-size:13px;color:var(--brand-2)">$1</strong>');
-  text = text.replace(/^##\s+(.+)$/gm,  '<strong style="font-size:14px;color:var(--accent)">$1</strong>');
-  text = text.replace(/^#\s+(.+)$/gm,   '<strong style="font-size:15px;color:var(--accent)">$1</strong>');
-  text = text.replace(/^---+$/gm, '<hr style="border:none;border-top:1px solid var(--border);margin:6px 0">');
-  text = text.replace(/^(\d+\.\s+.+)$/gm, '<span style="display:block;padding-left:8px">$1</span>');
-  text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  text = text.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
-  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-  text = text.replace(/\n{2,}/g, '<br><br>');
-  text = text.replace(/\n/g, '<br>');
+
+  // ── block-level: headings, hr, blockquote, lists ───────────────
+  text = text.replace(/^####\s+(.+)$/gm, '<h4 class="md-h4">$1</h4>');
+  text = text.replace(/^###\s+(.+)$/gm,  '<h3 class="md-h3">$1</h3>');
+  text = text.replace(/^##\s+(.+)$/gm,   '<h2 class="md-h2">$1</h2>');
+  text = text.replace(/^#\s+(.+)$/gm,    '<h1 class="md-h1">$1</h1>');
+  text = text.replace(/^[-_*]{3,}\s*$/gm, '<hr class="md-hr">');
+  text = text.replace(/^>\s+(.+)$/gm, '<blockquote class="md-quote">$1</blockquote>');
+
+  // ── inline (bold / em / code) ──────────────────────────────────
+  text = _renderInlineMd(text);
+
+  // ── lists: gather consecutive <li> rows under one <ul>/<ol> ────
+  // Convert leading "- " / "* " / "1. " to li markers in a single
+  // pass, then collapse adjacent markers under a list parent.
+  text = text.replace(/^[ \t]*[-*]\s+(.+)$/gm, '<li class="md-li">$1</li>');
+  text = text.replace(/^[ \t]*\d+\.\s+(.+)$/gm, '<li class="md-li md-li-ordered">$1</li>');
+  text = text.replace(
+    /(<li class="md-li md-li-ordered">[\s\S]+?<\/li>)(?=(?:\s*<li class="md-li md-li-ordered">)?)/g,
+    (m) => m,
+  );
+  text = text.replace(/((?:<li class="md-li(?: md-li-ordered)?">[\s\S]+?<\/li>\s*)+)/g, (m) => {
+    if (/md-li-ordered/.test(m)) return `<ol class="md-ol">${m}</ol>`;
+    return `<ul class="md-ul">${m}</ul>`;
+  });
+
+  // ── paragraphs ─────────────────────────────────────────────────
+  // Double-newline → paragraph break; single newline inside a block
+  // becomes <br>. Avoid wrapping a line that's already a block-level
+  // element (heading / hr / blockquote / list / pre / table).
+  const blocks = text.split(/\n{2,}/).map(chunk => {
+    const trimmed = chunk.trim();
+    if (!trimmed) return '';
+    // already a block?
+    if (/^<(h[1-6]|ul|ol|hr|blockquote|pre|div class="md-table-wrap"|\x00TABLE\d+\x00)/.test(trimmed)
+        || /^\x00CODE\d+\x00/.test(trimmed)) {
+      return trimmed.replace(/\n/g, '');
+    }
+    return `<p class="md-p">${trimmed.replace(/\n/g, '<br>')}</p>`;
+  });
+  text = blocks.filter(Boolean).join('');
+
+  // ── restore code + table sentinels ─────────────────────────────
   codeBlocks.forEach((block, idx) => {
     text = text.replace(`\x00CODE${idx}\x00`, block);
   });
+  tableBlocks.forEach((block, idx) => {
+    text = text.replace(`\x00TABLE${idx}\x00`, block);
+  });
+  return text;
+}
+
+// Inline-only render. Splits out so the table-cell pass can reuse
+// it without re-running block-level rules.
+function _renderInlineMd(text) {
+  text = text.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/(^|[^\*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+  text = text.replace(/`([^`\n]+)`/g, '<code class="md-code">$1</code>');
   return text;
 }
 
