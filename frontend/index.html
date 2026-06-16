@@ -6,10 +6,11 @@
 <meta name="theme-color" content="#04060a">
 <title>Secure Enterprise Knowledge Operating System</title>
 <link rel="stylesheet" href="/static/tokens.css">
-<!-- v=v12-20260616 cache-bust: monochrome outline SVG feedback chips
-     (👍 / 👎 / 복사 → Feather-style outline SVGs). -->
-<link rel="stylesheet" href="/static/chat.css?v=v12-20260616">
-<link rel="stylesheet" href="/static/mobile.css?v=v12-20260616">
+<!-- v=v13-20260616 cache-bust: + 새 대화 pill stopped wiping the
+     current session (was wired to clear-history; now dispatches
+     new-session). -->
+<link rel="stylesheet" href="/static/chat.css?v=v13-20260616">
+<link rel="stylesheet" href="/static/mobile.css?v=v13-20260616">
 </head>
 <body>
 
@@ -447,9 +448,18 @@
           <span class="dot"></span>
           <span class="role-name" id="role-name">?</span>
         </button>
+        <!-- v0.6.1 v8 (2026-06-16) — operator catch: pressing this
+             pill DELETED the current chat from the server (it was
+             wired to clear-history → DELETE /history/?session_id=...).
+             The Claude-style "New chat" pattern starts a fresh
+             session WITHOUT touching prior ones. Now dispatches
+             new-session, which mints a new SID + clears the message
+             pane; previous sessions stay intact in the sidebar list.
+             A separate "Delete current chat" action lives in the
+             session-action-modal for explicit destructive removal. -->
         <button class="sidebar-newchat-pill"
-                data-action="clear-history"
-                data-i18n-title="chat.clear_history"
+                data-action="new-session"
+                data-i18n-title="chat.new_chat"
                 title="새 대화">
           <span aria-hidden="true">＋</span>
           <span data-i18n="chat.new_chat">새 대화</span>
