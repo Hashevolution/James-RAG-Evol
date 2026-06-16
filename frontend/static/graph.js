@@ -664,6 +664,79 @@
     return String(etype || 'unknown').toUpperCase();
   }
 
+  /* v0.6.1 v9 (2026-06-16) — operator catch: raw markdown
+   * ("## 요약", "## 관계") + dev-style "(conf=0.90)" tokens were
+   * leaking into the entity-summary body. Now we tokenize the body
+   * line-by-line:
+   *   - "## label"  → small section title chip
+   *   - "- text"    → list row (with conf chip rendered inline)
+   *   - other lines → paragraph (with conf chip rendered inline)
+   * Confidence tokens "(conf=0.NN)" turn into a colored intuition
+   * chip: high (≥0.85) green / medium (≥0.6) amber / low pink.
+   */
+  function _renderConfTokens(htmlSafe) {
+    return htmlSafe.replace(
+      /\(conf\s*=\s*([0-9]*\.?[0-9]+)\)/g,
+      function (_m, raw) {
+        var v = parseFloat(raw);
+        if (isNaN(v) || v < 0 || v > 1) return _m;
+        var pct = Math.round(v * 100);
+        var cls, label;
+        if (v >= 0.85) { cls = 'np-conf-high'; label = '높음'; }
+        else if (v >= 0.6) { cls = 'np-conf-med'; label = '보통'; }
+        else { cls = 'np-conf-low'; label = '낮음'; }
+        return '<span class="np-conf ' + cls + '" ' +
+               'title="신뢰도 ' + pct + '% (raw conf=' + raw + ')">' +
+               pct + '% · ' + label +
+               '</span>';
+      },
+    );
+  }
+
+  function _renderEntityBody(text) {
+    var lines = String(text || '').split(/\r?\n/);
+    var parts = [];
+    var inList = false;
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var trimmed = line.replace(/\s+$/, '');
+      // skip blank
+      if (!trimmed.length) {
+        if (inList) { parts.push('</ul>'); inList = false; }
+        continue;
+      }
+      // ## 헤딩
+      var mh = /^#{1,4}\s+(.+)$/.exec(trimmed);
+      if (mh) {
+        if (inList) { parts.push('</ul>'); inList = false; }
+        parts.push(
+          '<div class="np-section-title">' +
+          escapeHtml(mh[1]) +
+          '</div>',
+        );
+        continue;
+      }
+      // - 또는 * bullet
+      var mb = /^[\-*]\s+(.+)$/.exec(trimmed);
+      if (mb) {
+        if (!inList) { parts.push('<ul class="np-section-list">'); inList = true; }
+        parts.push(
+          '<li>' + _renderConfTokens(escapeHtml(mb[1])) + '</li>',
+        );
+        continue;
+      }
+      // 일반 문단
+      if (inList) { parts.push('</ul>'); inList = false; }
+      parts.push(
+        '<p class="np-section-p">' +
+        _renderConfTokens(escapeHtml(trimmed)) +
+        '</p>',
+      );
+    }
+    if (inList) parts.push('</ul>');
+    return parts.join('');
+  }
+
   function renderEntitySummary(data) {
     var host = _summaryHostEl();
     if (!host || !data) return;
@@ -671,18 +744,19 @@
     var sens  = data.sensitivity || 'internal';
     var body  = (data.body || '').trim();
 
-    // 본문 발췌 — 너무 길면 첫 ~360자 + 말줄임. body 가 frontmatter 없는
-    // 순수 문서 텍스트라 그대로 잘라도 안전.
     var excerpt;
     if (body.length === 0) {
       excerpt = '<div class="np-summary-body np-empty-body">' +
                 '본문 비어있음 (메타데이터만 존재)</div>';
     } else {
+      // Char budget — keep dialog compact on phones. 360 chars was
+      // the legacy plain-text cap; the markdown render shows similar
+      // density per line so we leave the cap as-is.
       var trimmed = body.length > 360
         ? body.slice(0, 360).trimEnd() + '…'
         : body;
-      excerpt = '<div class="np-summary-body">' +
-                escapeHtml(trimmed) +
+      excerpt = '<div class="np-summary-body np-summary-body-md">' +
+                _renderEntityBody(trimmed) +
                 '</div>';
     }
 
