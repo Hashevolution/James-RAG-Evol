@@ -44,6 +44,7 @@ Or as a module (the harness calls ``run_pre_flight()`` in its main()):
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import json
 import os
 import re
@@ -430,8 +431,108 @@ def check_thinking_mode_contract() -> PreFlightResult:
     )
 
 
+def check_chat_fixture() -> PreFlightResult:
+    """v0.6.1 v18.7 Phase 2 prereq (2026-06-16) — verify the chat-mode
+    fixture is intact whenever the harness exposes a `chat` fixture
+    option. The chat fixture is operator-authored (not derived from
+    MultiHop-RAG), so schema drift between fixture and harness has no
+    natural alarm. This check pins:
+      • file exists at FIXTURES['chat']
+      • all 4 chat sub-classes (small_talk / factual_chat /
+        open_question / multi_turn) have ≥1 row
+      • factual_chat queries carry gold_signals (gold-grounded path
+        depends on it)
+      • multi_turn queries carry prior_turns (chat prompt template
+        depends on it)
+    Surfaced as `warn` if the fixture file is absent — older repos
+    that pre-date Phase 2 still ship without it; the harness only
+    reads it on `--fixture chat`. The lock-test guarantees the
+    harness keeps the `chat` key in FIXTURES until intentionally
+    revised.
+    """
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "local_vs_cloud_paired",
+            _REPO_ROOT / "scripts" / "research" / "local_vs_cloud_paired.py",
+        )
+        harness = importlib.util.module_from_spec(spec)
+        sys.modules["local_vs_cloud_paired"] = harness
+        spec.loader.exec_module(harness)
+    except Exception as e:
+        return PreFlightResult(
+            "chat_fixture", "fail",
+            f"harness import failed: {type(e).__name__}: {e}",
+        )
+
+    fixtures = getattr(harness, "FIXTURES", None)
+    if not isinstance(fixtures, dict) or "chat" not in fixtures:
+        return PreFlightResult(
+            "chat_fixture", "warn",
+            "harness does not expose a 'chat' fixture (Phase 2 prereq "
+            "not yet landed in this branch).",
+        )
+
+    chat_path: Path = fixtures["chat"]
+    if not chat_path.exists():
+        return PreFlightResult(
+            "chat_fixture", "warn",
+            f"chat fixture file absent: {chat_path}. `--fixture chat` "
+            f"will fail until the file is restored.",
+        )
+
+    data = json.loads(chat_path.read_text(encoding="utf-8"))
+    queries = data.get("queries", [])
+    expected_types = ("small_talk", "factual_chat",
+                      "open_question", "multi_turn")
+    counts = {t: 0 for t in expected_types}
+    factual_with_gold = 0
+    multiturn_with_prior = 0
+    for q in queries:
+        t = q.get("question_type")
+        if t in counts:
+            counts[t] += 1
+        if t == "factual_chat" and q.get("gold_signals"):
+            factual_with_gold += 1
+        if t == "multi_turn" and q.get("prior_turns"):
+            multiturn_with_prior += 1
+
+    empties = [t for t, n in counts.items() if n == 0]
+    if empties:
+        return PreFlightResult(
+            "chat_fixture", "fail",
+            f"chat fixture missing rows for sub-classes: {empties} "
+            f"(counts={counts})",
+            extra={"counts": counts},
+        )
+    if counts["factual_chat"] != factual_with_gold:
+        return PreFlightResult(
+            "chat_fixture", "fail",
+            f"factual_chat carries {factual_with_gold}/{counts['factual_chat']} "
+            f"gold_signals (gold-grounded path requires all of them)",
+            extra={"counts": counts,
+                   "factual_with_gold": factual_with_gold},
+        )
+    if counts["multi_turn"] != multiturn_with_prior:
+        return PreFlightResult(
+            "chat_fixture", "fail",
+            f"multi_turn carries {multiturn_with_prior}/{counts['multi_turn']} "
+            f"prior_turns (chat prompt template requires all of them)",
+            extra={"counts": counts,
+                   "multiturn_with_prior": multiturn_with_prior},
+        )
+
+    return PreFlightResult(
+        "chat_fixture", "ok",
+        f"{sum(counts.values())} chat queries available "
+        f"(counts={counts}, factual_with_gold={factual_with_gold}, "
+        f"multiturn_with_prior={multiturn_with_prior})",
+        extra={"counts": counts, "path": str(chat_path)},
+    )
+
+
 _CHECKS = (
     check_fixture,
+    check_chat_fixture,
     check_regex_false_positives,
     check_backend_registry,
     check_abstraction_smoke,

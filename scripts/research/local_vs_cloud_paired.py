@@ -71,6 +71,22 @@ WS = ROOT / "workspaces" / "hotpot_eval"
 FIXTURE = WS / "eval" / "multihop_rag_queries.json"
 RAW = WS / "raw"
 
+# v0.6.1 v18.7 Phase 2 prereq (2026-06-16) — chat-mode fixture for the
+# routing measurement protocol. Reasoning-isolated multihop_rag fixture
+# can NOT cover chat-mode use cases (no retrieval, no gold_evidence for
+# small_talk / open_question / multi_turn). The chat fixture is
+# operator-authored and scored:
+#   • factual_chat — gold_signals + judge (both axes available)
+#   • small_talk / open_question / multi_turn — judge-only (lenient
+#     bias caveat per project_judge_reliability_gold_grounded_v18_6)
+FIXTURES: Dict[str, Path] = {
+    "multihop": WS / "eval" / "multihop_rag_queries.json",
+    # Chat-mode fixture is operator-authored + tracked (small, no PII,
+    # no third-party license entanglement) — sits under eval/ not under
+    # the gitignored workspaces/ tree the multihop_rag corpus lives in.
+    "chat": ROOT / "eval" / "chat_mode_queries.json",
+}
+
 DEFAULT_LOCAL_MODEL = "gemma3:4b"
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 
@@ -79,7 +95,11 @@ OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 # excluded — for null queries there is no positive evidence and the
 # scoring would test abstention behavior, not reasoning quality. That
 # is a separate hypothesis (see α-8 abstention work).
-ANSWERABLE = ("inference_query", "comparison_query", "temporal_query")
+ANSWERABLE_BY_FIXTURE: Dict[str, Tuple[str, ...]] = {
+    "multihop": ("inference_query", "comparison_query", "temporal_query"),
+    "chat": ("small_talk", "factual_chat", "open_question", "multi_turn"),
+}
+ANSWERABLE = ANSWERABLE_BY_FIXTURE["multihop"]   # legacy alias
 
 # Evidence size guards (same as v2 — confirmed sufficient by the v2 smoke).
 MAX_ART_CHARS = 7500
@@ -140,6 +160,36 @@ def _answer_prompt(context: str, question: str) -> str:
         "\"I don't know\".\n\n"
         f"Context:\n{context}\n\nQuestion: {question}\n\nAnswer:"
     )
+
+
+def _chat_prompt(query: dict) -> str:
+    """Build a chat-mode prompt — free-form, no evidence injection.
+    prior_turns (multi_turn sub-class) are folded in as conversational
+    context with role labels so both LOCAL and CLOUD see the same
+    prior state. The instruction body keeps the abstention hatch open
+    ("if you don't know, say so") but does NOT require evidence
+    grounding — chat-mode is intentionally general-knowledge / open.
+    """
+    prior = query.get("prior_turns") or []
+    parts: List[str] = []
+    if prior:
+        parts.append("Previous conversation (paired both sides):")
+        for turn in prior:
+            role = turn.get("role", "user")
+            text = turn.get("text", "").strip()
+            parts.append(f"  {role.upper()}: {text}")
+        parts.append("")
+    parts.append(
+        "Respond naturally as a helpful assistant. Mirror the user's "
+        "language (Korean ↔ English). If you genuinely don't know a "
+        "factual answer, say so briefly rather than inventing one. "
+        "Keep the reply appropriately short for chat — do NOT add "
+        "unsolicited disclaimers or restatements."
+    )
+    parts.append("")
+    parts.append(f"User: {query['text']}")
+    parts.append("Assistant:")
+    return "\n".join(parts)
 
 
 # ─── model calls ──────────────────────────────────────────────────────
@@ -348,13 +398,23 @@ def _majority(verdicts: List[str]) -> str:
 # ─── run ──────────────────────────────────────────────────────────────
 
 
-def select_queries(n_per_type: int) -> List[dict]:
-    fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+def select_queries(n_per_type: int, fixture_name: str = "multihop") -> List[dict]:
+    """Pick first-N queries per question_type for the given fixture.
+    `multihop` (default) selects the 3 answerable question_types
+    (inference / comparison / temporal) — null_query intentionally
+    excluded. `chat` selects all 4 chat sub-classes (small_talk /
+    factual_chat / open_question / multi_turn)."""
+    path = FIXTURES.get(fixture_name)
+    if path is None or not path.exists():
+        raise FileNotFoundError(
+            f"fixture {fixture_name!r} not found at {path}"
+        )
+    fixture = json.loads(path.read_text(encoding="utf-8"))
     by_type: Dict[str, List[dict]] = {}
     for q in fixture["queries"]:
         by_type.setdefault(q["question_type"], []).append(q)
     selected: List[dict] = []
-    for t in ANSWERABLE:
+    for t in ANSWERABLE_BY_FIXTURE[fixture_name]:
         selected += by_type.get(t, [])[:n_per_type]
     return selected
 
@@ -363,9 +423,15 @@ def run_one_query(
     query: dict, ctx: str, *,
     local_model: str, run_idx: int, timeout: int,
     local_backend: str = "ollama",
+    fixture_name: str = "multihop",
 ) -> Dict[str, Any]:
-    """One paired (local + cloud + judge) trial. Returns a row dict."""
-    prompt = _answer_prompt(ctx, query["text"])
+    """One paired (local + cloud + judge) trial. Returns a row dict.
+    `fixture_name=chat` switches the prompt template to the chat-mode
+    free-form path (prior_turns + no evidence injection)."""
+    if fixture_name == "chat":
+        prompt = _chat_prompt(query)
+    else:
+        prompt = _answer_prompt(ctx, query["text"])
     t0 = time.time()
 
     try:
@@ -520,11 +586,34 @@ CAVEAT_BLOCK = {
         "path is exercised end-to-end (proves §5.7.13 module works against a real "
         "Claude backend) but the abstraction itself is a no-op for this fixture."
     ),
+    "chat_mode_lenient_judge": (
+        "Chat-mode fixture (small_talk / open_question / multi_turn) is "
+        "INTRINSICALLY judge-only. There is no gold ground-truth for free-form "
+        "conversation. Only the factual_chat sub-class carries gold_signals and "
+        "is gold-grounded checkable. The other 3 sub-classes inherit the +0.11-"
+        "0.19 lenient bias quantified in v18.6 (project_judge_reliability_gold_"
+        "grounded_v18_6). Report judge_correct AND gold_correct (factual_chat "
+        "subset) separately. Do NOT promote chat-mode-only claims without the "
+        "judge-bias caveat attached."
+    ),
 }
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
+    ap.add_argument(
+        "--fixture", default="multihop", choices=sorted(FIXTURES.keys()),
+        help=(
+            "v0.6.1 v18.7 Phase 2 prereq — pick the measurement fixture. "
+            "`multihop` (default) = MultiHop-RAG reasoning-isolated multi-hop QA "
+            "(3 answerable question_types × n_per_type). "
+            "`chat` = chat-mode fixture (small_talk + factual_chat + "
+            "open_question + multi_turn × n_per_type). Chat-mode has NO "
+            "evidence injection — both sides answer free-form from general "
+            "knowledge. Scoring: factual_chat gets gold_signals + judge; "
+            "the other 3 sub-classes are judge-only (lenient bias caveat)."
+        ),
+    )
     ap.add_argument("--n-per-type", type=int, default=3,
                     help="questions per question_type (default 3 → 9 total)")
     ap.add_argument("--n-runs", type=int, default=3,
@@ -618,27 +707,38 @@ def main() -> int:
             return 3
         print()
 
-    queries = select_queries(args.n_per_type)
+    queries = select_queries(args.n_per_type, fixture_name=args.fixture)
+    design = ("reasoning-isolated" if args.fixture == "multihop"
+              else "chat-mode free-form (no evidence injection)")
     print(f"local={args.local_model} (num_ctx={NUM_CTX})  "
           f"cloud=claude-cli-abstraction-wired  judge=claude-blinded-AB  "
           f"queries={len(queries)}  n_runs={args.n_runs}")
-    print("design=reasoning-isolated  fixture=multihop_rag\n")
+    print(f"design={design}  fixture={args.fixture}\n")
 
     rows: List[Dict[str, Any]] = []
     for i, q in enumerate(queries, 1):
-        ctx, n_nodes, n_res = build_evidence(q)
-        if n_res == 0:
-            print(f"[{i}/{len(queries)}] id={q['id']} SKIPPED "
-                  f"(no resolved articles for {n_nodes} expected)")
-            continue
+        if args.fixture == "chat":
+            # Chat-mode skips evidence assembly entirely. The prompt
+            # template injects prior_turns (multi_turn) instead.
+            ctx, n_nodes, n_res = "", 0, 0
+        else:
+            ctx, n_nodes, n_res = build_evidence(q)
+            if n_res == 0:
+                print(f"[{i}/{len(queries)}] id={q['id']} SKIPPED "
+                      f"(no resolved articles for {n_nodes} expected)")
+                continue
+        prior_n = len(q.get("prior_turns") or [])
+        hop_hint = (f"prior_turns={prior_n}" if args.fixture == "chat"
+                    else f"hops={n_nodes}(res {n_res})")
         print(f"[{i}/{len(queries)}] id={q['id']} {q['question_type']} "
-              f"hops={n_nodes}(res {n_res})")
+              f"{hop_hint}")
         for run_idx in range(args.n_runs):
             print(f"  run {run_idx+1}/{args.n_runs} … ", end="", flush=True)
             row = run_one_query(
                 q, ctx, local_model=args.local_model,
                 run_idx=run_idx, timeout=args.timeout,
                 local_backend=args.local_backend,
+                fixture_name=args.fixture,
             )
             rows.append(row)
             print(f"local={row['local_verdict'][:4]} "
@@ -677,7 +777,12 @@ def main() -> int:
                 / f"alpha-8-local-vs-cloud-paired-{ts}.json")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps({
-        "design": "reasoning-isolated; both models same full gold evidence",
+        "design": (
+            "reasoning-isolated; both models same full gold evidence"
+            if args.fixture == "multihop"
+            else "chat-mode free-form; both models same prior_turns / no evidence"
+        ),
+        "fixture": args.fixture,
         "local_model": args.local_model,
         "local_backend": args.local_backend,
         # v18.5 — measurement design overrides
