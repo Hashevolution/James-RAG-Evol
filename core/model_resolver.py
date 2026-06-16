@@ -38,21 +38,53 @@ from typing import List, NamedTuple, Set
 
 
 # ─── Default preference lists ──────────────────────────────────────
-# First entry = highest preference. Operator overrides via env.
+# First entry = highest preference. Operator overrides via env
+# (``JAMES_MODEL_PREFERENCE_<MODE>=tag1,tag2,...``).
 #
-# `chat` order rationale (Korean-first audience):
+# v0.6.1 v18.7 (2026-06-16) — Phase 1 of the Phase 1-5 routing
+# build-out (see [[project_thinking_mode_fairness_design_v18_5]] §γ
+# and the operator review on 2026-06-16). This PR ONLY populates
+# the preference lists — engine.py still calls a single fixed
+# ``GEMMA_MODEL`` for every mode, so the lists are currently
+# consulted only by ``core/gemma_client/client.py`` (chat path).
+# Phase 2 hooks the lists into intent-aware dispatch with measurement.
+#
+# Rationale per mode (gold-grounded v18.6 data + memory crossref):
+#
+# `chat` — small + fast first; Korean audience. Unchanged from L0.
 #   gemma3:4b   — 16GB box sweet spot, decent Korean
-#   gemma3:1b   — 8GB box fallback, weaker quality
-#   gemma2:2b   — older but tiny; works on legacy boxes
+#   gemma3:1b   — 8GB box fallback
+#   gemma2:2b   — older but tiny; legacy boxes
 #   gemma3:12b  — 32GB box quality bump
 #   gemma3:27b  — 32GB+ heavy
-#   gemma4:e4b  — operator's existing default; kept for back-compat
-#   qwen2.5:14b — non-gemma fallback with Korean
+#   gemma4:e4b  — production tier (operator default); thinking-off
+#                 via .env carries production-grade quality at the
+#                 cost of being heavier than gemma3:4b
+#   qwen2.5:14b — non-gemma Korean fallback
 #   llama3.2:3b — emergency fallback
 #   mistral:7b  — last gemma-less option
 #
-# `coding` order: qwen-coder family first (handle_coding routes via
-#   llm.router which already prefers it). Deepseek family as fallback.
+# `coding` — qwen-coder family first (handle_coding routes via
+#   llm.router which already prefers it). Deepseek family fallback.
+#
+# `retrieval` — production tier first (v18.6 gold-grounded result:
+#   gemma4:e4b OFF 0.81, gemma3:12b 0.89 on multi-hop QA — both
+#   competitive within small-n noise; thinking-off env contract
+#   makes gemma4:e4b safe at cap=400). Heavy fallback for wide-
+#   scope synthesis (D5 LEO L.B).
+#
+# `meta` — same as retrieval. handle_meta is LLM-free for the
+#   inventory fast path (routes/llm.py L233 "보유 wiki 인벤토리 (LLM
+#   미사용)") but the LLM-narrative variant (option D from cycle
+#   v0.6.1 v16) uses this list when fired.
+#
+# `wiki_edit` — long-context edit; larger tier first since edit
+#   operations benefit from the model holding more of the file
+#   in working memory at once.
+#
+# `vision` — only llava in the current local install. cloud
+#   vision (gpt-4o, claude) requires Direction α §5.7.13 trust-
+#   zone PR; not in this preference list yet.
 DEFAULT_PREFERENCE: dict = {
     "chat": [
         "gemma3:4b", "gemma3:1b", "gemma2:2b",
@@ -62,6 +94,27 @@ DEFAULT_PREFERENCE: dict = {
     "coding": [
         "qwen2.5-coder:7b", "qwen2.5-coder:14b", "qwen2.5-coder:32b",
         "deepseek-coder:6.7b", "deepseek-coder:33b",
+    ],
+    # v18.7 (2026-06-16): retrieval / meta / wiki_edit / vision added.
+    # Honest framing: these lists are POPULATED but NOT YET CONSUMED
+    # by engine.py. Phase 2 ([[project_thinking_mode_fairness_design_
+    # v18_5]] §γ) hooks them into intent-aware dispatch alongside the
+    # chat-mode measurement protocol. Until then, every mode resolves
+    # to the same legacy GEMMA_MODEL — same behavior as pre-v18.7.
+    "retrieval": [
+        "gemma4:e4b", "gemma3:12b", "gemma3:27b",
+        "mixtral:8x7b", "qwen2.5:14b", "llama3.1:8b",
+    ],
+    "meta": [
+        "gemma4:e4b", "gemma3:12b", "gemma3:27b",
+        "qwen2.5:14b", "llama3.1:8b",
+    ],
+    "wiki_edit": [
+        "gemma3:27b", "gemma4:e4b", "gemma3:12b",
+        "mixtral:8x7b", "qwen2.5:14b",
+    ],
+    "vision": [
+        "llava:13b",
     ],
 }
 
@@ -237,6 +290,48 @@ def resolve_coding() -> ResolvedModel:
     return resolve_for_mode("coding", requested=requested)
 
 
+# v0.6.1 v18.7 (2026-06-16) — Phase 1 convenience wrappers.
+# Engine.py does NOT call these yet — Phase 2 will. Provided now so
+# operator-side scripts + future Phase 2 PR can drop in 1-line
+# replacement of resolve_chat() with the mode-specific variant.
+def resolve_retrieval() -> ResolvedModel:
+    """Resolve for retrieval-grounded synthesis (multi-hop QA,
+    evidence-grounded answer)."""
+    try:
+        from config import GEMMA_MODEL  # type: ignore
+        requested = GEMMA_MODEL or ""
+    except Exception:
+        requested = ""
+    return resolve_for_mode("retrieval", requested=requested)
+
+
+def resolve_meta() -> ResolvedModel:
+    """Resolve for the meta-inventory LLM-narrative variant (option D
+    from cycle v0.6.1 v16). Fast-path inventory uses no LLM at all."""
+    try:
+        from config import GEMMA_MODEL  # type: ignore
+        requested = GEMMA_MODEL or ""
+    except Exception:
+        requested = ""
+    return resolve_for_mode("meta", requested=requested)
+
+
+def resolve_wiki_edit() -> ResolvedModel:
+    """Resolve for long-context wiki edit operations."""
+    try:
+        from config import GEMMA_MODEL  # type: ignore
+        requested = GEMMA_MODEL or ""
+    except Exception:
+        requested = ""
+    return resolve_for_mode("wiki_edit", requested=requested)
+
+
+def resolve_vision() -> ResolvedModel:
+    """Resolve for vision tasks (image / video → text). Local only —
+    cloud vision needs Direction α §5.7.13 trust-zone PR."""
+    return resolve_for_mode("vision", requested="")
+
+
 def resolution_snapshot() -> dict:
     """Snapshot of current resolution state — for /admin/llm/resolution.
 
@@ -249,25 +344,35 @@ def resolution_snapshot() -> dict:
         "ttl_s": 60,
       }
     """
-    chat = resolve_chat()
-    coding = resolve_coding()
-    return {
-        "chat": {
-            "tag": chat.tag,
-            "source": chat.source,
-            "warning": chat.warning,
-            "fallback_chain": chat.fallback_chain,
-        },
-        "coding": {
-            "tag": coding.tag,
-            "source": coding.source,
-            "warning": coding.warning,
-            "fallback_chain": coding.fallback_chain,
-        },
-        "installed": sorted(installed_models()),
-        "preference": {
-            "chat": _preference_for("chat"),
-            "coding": _preference_for("coding"),
-        },
-        "ttl_s": _CACHE_TTL_S,
+    # v0.6.1 v18.7 — all configured modes resolve in the snapshot so
+    # the admin /admin/llm/resolution endpoint shows the full Phase 1
+    # plumbing readiness. resolved tags still match the legacy
+    # GEMMA_MODEL while Phase 2 hasn't landed; the values come alive
+    # the moment engine.py starts calling the mode-specific resolvers.
+    resolvers = {
+        "chat":      resolve_chat(),
+        "coding":    resolve_coding(),
+        "retrieval": resolve_retrieval(),
+        "meta":      resolve_meta(),
+        "wiki_edit": resolve_wiki_edit(),
+        "vision":    resolve_vision(),
     }
+    out = {
+        name: {
+            "tag": r.tag, "source": r.source,
+            "warning": r.warning, "fallback_chain": r.fallback_chain,
+        }
+        for name, r in resolvers.items()
+    }
+    out["installed"] = sorted(installed_models())
+    out["preference"] = {
+        name: _preference_for(name)
+        for name in ("chat", "coding", "retrieval", "meta",
+                     "wiki_edit", "vision")
+    }
+    out["ttl_s"] = _CACHE_TTL_S
+    # v18.7 — Phase 1 marker. Tells any consumer (admin page, future
+    # Phase 2 PR, debugging session) that the lists are populated but
+    # engine.py hasn't been rewired yet.
+    out["phase"] = "phase1_preference_only"
+    return out
