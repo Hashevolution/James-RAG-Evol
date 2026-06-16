@@ -197,27 +197,42 @@ def call_local(prompt: str, *, model: str, timeout: int = 180,
         return (result.text or "").strip()
 
     # default: ollama. v18.4: thinking-aware body.
+    # v0.6.1 v18.5 (2026-06-16) — measurement-design overrides. The
+    # CLI exposes --num-predict and --force-think so the 3-cell paired
+    # design (gemma4 OFF / gemma4 ON / non-thinking medium) can run
+    # against the SAME fixture + harness path. Env vars carry the
+    # values into call_local without rewiring callers.
+    num_predict = int(os.environ.get("_JAMES_PAIRED_NUM_PREDICT", "400"))
+    force_think = os.environ.get("_JAMES_PAIRED_FORCE_THINK", "auto").lower()
+
     body: Dict[str, Any] = {
         "model": model, "prompt": prompt, "stream": False,
         "options": {
-            "num_predict": 400, "temperature": 0.0, "num_ctx": NUM_CTX,
+            "num_predict": num_predict, "temperature": 0.0,
+            "num_ctx": NUM_CTX,
         },
     }
     # Honor production's think_policy contract. is_thinking_capable
     # gates on the model family; _flag_active reads
     # JAMES_GEMMA4_E4B_THINK_OFF. When BOTH are true, ``think: false``
     # joins the Ollama body — matching the gemma_client.py path
-    # production calls already take.
-    try:
-        from core.reasoning.think_policy import (
-            is_thinking_capable, _flag_active,
-        )
-        if is_thinking_capable(model) and _flag_active():
-            body["think"] = False
-    except ImportError:
-        # think_policy module gone (extreme refactor) — fall through
-        # to the legacy direct call. Lock-test catches the loss.
-        pass
+    # production calls already take. --force-think on/off overrides
+    # the auto-policy explicitly for measurement-design purposes.
+    if force_think == "off":
+        body["think"] = False
+    elif force_think == "on":
+        body["think"] = True
+    else:
+        try:
+            from core.reasoning.think_policy import (
+                is_thinking_capable, _flag_active,
+            )
+            if is_thinking_capable(model) and _flag_active():
+                body["think"] = False
+        except ImportError:
+            # think_policy module gone (extreme refactor) — fall through
+            # to the legacy direct call. Lock-test catches the loss.
+            pass
 
     req = urllib.request.Request(
         OLLAMA_URL,
@@ -533,6 +548,16 @@ def main() -> int:
     )
     ap.add_argument("--timeout", type=int, default=180,
                     help="per-call timeout in seconds")
+    # v18.5 — measurement-design overrides for the 3-cell paired design
+    ap.add_argument("--num-predict", type=int, default=400,
+                    help="LOCAL num_predict cap (default 400). Larger "
+                         "values give thinking-mode models room for "
+                         "both internal reasoning + user-facing answer.")
+    ap.add_argument("--force-think",
+                    choices=["auto", "on", "off"], default="auto",
+                    help="Override think_policy auto-decision for "
+                         "LOCAL model: auto=policy (default), "
+                         "on=think:true forced, off=think:false forced.")
     ap.add_argument("--output", default="",
                     help="output JSON path; auto-named when empty")
     # v0.6.1 v18.2 (2026-06-16) — measurement-validity guard.
@@ -550,6 +575,12 @@ def main() -> int:
                         "the output JSON so audit trail stays intact."
                     ))
     args = ap.parse_args()
+
+    # v18.5 — pass the design overrides into call_local via env. The
+    # function-arg path would force a large refactor across run_one_query
+    # / aggregate; env carrier keeps the diff small.
+    os.environ["_JAMES_PAIRED_NUM_PREDICT"] = str(args.num_predict)
+    os.environ["_JAMES_PAIRED_FORCE_THINK"] = args.force_think
 
     if os.environ.get("JAMES_ENABLE_CLAUDE_BACKEND") != "1":
         print("[FATAL] set JAMES_ENABLE_CLAUDE_BACKEND=1 before running — "
@@ -649,6 +680,9 @@ def main() -> int:
         "design": "reasoning-isolated; both models same full gold evidence",
         "local_model": args.local_model,
         "local_backend": args.local_backend,
+        # v18.5 — measurement design overrides
+        "num_predict": args.num_predict,
+        "force_think": args.force_think,
         # v0.6.1 v18.2 — measurement-validity audit trail.
         "pre_flight": {
             "skipped": pre_flight_skipped,
