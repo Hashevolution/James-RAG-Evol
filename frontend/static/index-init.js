@@ -75,10 +75,12 @@
     var sb = document.getElementById('sidebar');
     var btn = document.getElementById('sidebar-open-btn');
     if (!sb || !btn) return;
-    var tog = sb.querySelector('.sidebar-toggle');
     var collapsed = sb.classList.toggle('collapsed');
     btn.classList.toggle('visible', collapsed);
-    if (tog) tog.textContent = collapsed ? '▶' : '◀';
+    // v0.6.1 v4 (2026-06-16) — toggle text override (▶/◀) was removed;
+    // the toggle now hosts an inline ☰ SVG. Replacing textContent
+    // would wipe the SVG. The button's icon stays constant; only the
+    // sidebar's transform state changes.
 
     // v0.6.1 mobile fix — sync the backdrop overlay and persist the
     // operator's choice so we don't fight them on the next reload.
@@ -91,6 +93,103 @@
       }
     } catch (_) {}
   }
+
+  /* v0.6.1 v4 (2026-06-16) — phone swipe gesture for the sidebar.
+   *
+   * Operator request: a left/right swipe should toggle the sidebar
+   * the way Claude / Gmail / most modern mobile apps do it. This
+   * captures touchstart / touchend at document scope and only acts
+   * on the phone viewport (≤ 768px).
+   *
+   *   closed → open  : swipe-right that STARTED in the left edge
+   *                    zone (≤ EDGE_PX). The narrow zone keeps the
+   *                    gesture from competing with horizontal
+   *                    scrolling inside chat content.
+   *   open  → close  : swipe-left that started inside the open
+   *                    sidebar OR on the backdrop overlay. Anywhere
+   *                    is fair game because the backdrop covers the
+   *                    full viewport.
+   *
+   * Vertical-dominant gestures (|dy| > VERT_GUARD) are ignored so
+   * normal up/down scrolling never triggers a toggle. A maximum
+   * duration (DURATION_MAX) drops very slow gestures the user
+   * probably abandoned mid-scroll.
+   */
+  function _setupSwipeToggle() {
+    var EDGE_PX = 28;          // closed-state left-edge activation zone
+    var DELTA_X_MIN = 55;      // minimum horizontal travel to fire
+    var VERT_GUARD = 60;       // |dy| above this = vertical scroll
+    var DURATION_MAX = 700;    // ms — drop very slow drags
+
+    var sx = 0, sy = 0, st = 0;
+    var startedFromEdge = false;
+    var startedInSidebar = false;
+    var active = false;
+
+    function onStart(e) {
+      if (!_isPhoneViewport()) return;
+      var tp = e.touches && e.touches[0];
+      if (!tp) return;
+      sx = tp.clientX;
+      sy = tp.clientY;
+      st = Date.now();
+      var sb = document.getElementById('sidebar');
+      var isOpen = sb && !sb.classList.contains('collapsed');
+
+      // Don't hijack swipes that started on form controls or scroll
+      // containers where the touch is genuinely a scroll/select.
+      var tgt = e.target;
+      if (tgt && tgt.closest) {
+        if (tgt.closest('input, textarea, select, [contenteditable]')) {
+          active = false;
+          return;
+        }
+      }
+
+      startedFromEdge = !isOpen && sx <= EDGE_PX;
+      startedInSidebar = isOpen && tgt && tgt.closest
+        && (tgt.closest('#sidebar') || tgt.closest('#sidebar-backdrop'));
+      active = startedFromEdge || !!startedInSidebar;
+    }
+
+    function onEnd(e) {
+      if (!active) return;
+      active = false;
+      var tp = (e.changedTouches && e.changedTouches[0])
+            || (e.touches && e.touches[0]);
+      if (!tp) return;
+      var dx = tp.clientX - sx;
+      var dy = tp.clientY - sy;
+      var dt = Date.now() - st;
+      if (dt > DURATION_MAX) return;
+      if (Math.abs(dy) > VERT_GUARD) return;
+      if (Math.abs(dx) < DELTA_X_MIN) return;
+      var sb = document.getElementById('sidebar');
+      if (!sb) return;
+      var isOpen = !sb.classList.contains('collapsed');
+
+      if (!isOpen && startedFromEdge && dx > 0) {
+        // swipe-right from left edge → open
+        toggleSidebar();
+      } else if (isOpen && startedInSidebar && dx < 0) {
+        // swipe-left inside the open sidebar / backdrop → close
+        toggleSidebar();
+      }
+    }
+
+    // Passive listeners — we only TOGGLE on end, never preventDefault,
+    // so we never block native scroll. The browser scroll behaviour
+    // stays intact.
+    document.addEventListener('touchstart', onStart, { passive: true });
+    document.addEventListener('touchend', onEnd, { passive: true });
+    // touchcancel mirrors touchend semantics for our case (e.g. when
+    // the gesture is interrupted by a phone notification overlay).
+    document.addEventListener('touchcancel', onEnd, { passive: true });
+  }
+
+  // Wire the swipe handler once on DOMContentLoaded (above) — the
+  // listeners are document-scoped so they survive sidebar mutation.
+  window.addEventListener('DOMContentLoaded', _setupSwipeToggle);
 
   /* W5: sidebar rail mode switcher.
      Public entry point — W6 will call this on drag-enter to flip the

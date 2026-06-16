@@ -552,8 +552,20 @@ main { display: flex; flex: 1; overflow: hidden; }
   font-size: 13px; padding: 4px 8px;
   border-radius: 6px;
   transition: color .15s, background .15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .sidebar-toggle:hover { color: var(--text); background: var(--surface-2); }
+
+/* v0.6.1 v4 (2026-06-16) — inline hamburger SVG inherits color from
+ * its parent button so .sidebar-toggle / .sidebar-open-btn hover
+ * states tint the lines the same way the previous ▶/◀ chars did. */
+.sidebar-icon-hamburger {
+  display: block;
+  color: currentColor;
+  stroke: currentColor;
+}
 
 /* 사이드바 열기 버튼 (닫혔을 때).
    v0.4 live verify fix (2026-05-26): align vertically with
@@ -577,9 +589,11 @@ main { display: flex; flex: 1; overflow: hidden; }
   display: none;
   z-index: 10;
   transition: color .15s, background .15s;
+  align-items: center;
+  justify-content: center;
 }
 .sidebar-open-btn:hover { color: var(--text); background: var(--surface-2); }
-.sidebar-open-btn.visible { display: block; }
+.sidebar-open-btn.visible { display: inline-flex; }
 
 /* 파일 목록 스크롤 */
 .file-list {

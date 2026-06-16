@@ -6,15 +6,13 @@
 <meta name="theme-color" content="#04060a">
 <title>Secure Enterprise Knowledge Operating System</title>
 <link rel="stylesheet" href="/static/tokens.css">
-<!-- v=v7-20260615 cache-bust: forces phones with cached older chat.css /
-     mobile.css to refetch after the Claude-style sidebar reorg
-     (vertical primary nav + bottom avatar/new-chat pill + flattened
-     james bubble + chat-topbar). Pin both stylesheets to the same
-     buster so a half-cached state can't mismatch. -->
-<link rel="stylesheet" href="/static/chat.css?v=v7-20260615">
+<!-- v=v8-20260616 cache-bust: ☰ hamburger SVG (replacing ▶/◀ arrows)
+     + sidebar-toggle inline-flex centering. Pin both stylesheets to
+     the same buster so a half-cached state can't mismatch. -->
+<link rel="stylesheet" href="/static/chat.css?v=v8-20260616">
 <!-- mobile-responsive overrides — kept after inline styles so @media
      rules win at narrow viewports without !important on every line. -->
-<link rel="stylesheet" href="/static/mobile.css?v=v7-20260615">
+<link rel="stylesheet" href="/static/mobile.css?v=v8-20260616">
 </head>
 <body>
 
@@ -55,8 +53,19 @@
 
 <main id="main" class="claude-shell" style="position:relative">
   <button class="sidebar-open-btn" id="sidebar-open-btn"
-          data-action="toggle-sidebar" data-i18n-title="upload.open" title="업로드 열기"
-          aria-label="사이드바 열기">▶</button>
+          data-action="toggle-sidebar" data-i18n-title="upload.open" title="메뉴 열기"
+          aria-label="사이드바 열기">
+    <!-- v0.6.1 v4 (2026-06-16) — operator catch: ▶/◀ arrows replaced
+         by an inline-SVG hamburger (☰). Inline so it inherits
+         currentColor + can grow/shrink with the button's font size. -->
+    <svg class="sidebar-icon-hamburger" width="22" height="22" viewBox="0 0 24 24"
+         fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <line x1="4" y1="7"  x2="20" y2="7"></line>
+      <line x1="4" y1="12" x2="20" y2="12"></line>
+      <line x1="4" y1="17" x2="20" y2="17"></line>
+    </svg>
+  </button>
   <!-- v0.6.1 mobile fix (2026-06-15) — backdrop overlay so a phone
        operator can tap the dimmed area to dismiss the sidebar. Default
        hidden; index-init.js::toggleSidebar() adds .show only when the
@@ -98,8 +107,19 @@
       <div class="sidebar-title" id="sidebar-title">
         <span class="brand sidebar-brand-large">SEKOS</span>
       </div>
-      <button class="sidebar-toggle" data-action="toggle-sidebar" data-i18n-title="common.close" title="닫기"
-              aria-label="사이드바 닫기">◀</button>
+      <button class="sidebar-toggle" data-action="toggle-sidebar" data-i18n-title="common.close" title="메뉴"
+              aria-label="사이드바 닫기">
+        <!-- v0.6.1 v4 (2026-06-16) — ☰ hamburger SVG (replaces ◀).
+             Same icon used by the open button so the toggle reads
+             as "menu" regardless of open/closed state. -->
+        <svg class="sidebar-icon-hamburger" width="20" height="20" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="4" y1="7"  x2="20" y2="7"></line>
+          <line x1="4" y1="12" x2="20" y2="12"></line>
+          <line x1="4" y1="17" x2="20" y2="17"></line>
+        </svg>
+      </button>
     </div>
 
     <!-- v0.6.1 v3 (2026-06-15) Claude-style PRIMARY NAV — vertical
