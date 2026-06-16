@@ -313,11 +313,11 @@ header {
   justify-content: space-between;
   gap: 10px;
   width: 100%;
-  padding: 10px 12px;
+  padding: 11px 14px;
   background: transparent;
   border: 0;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text, #e0e0e0);
   cursor: pointer;
   font-family: var(--font-ui);
@@ -1057,8 +1057,12 @@ main { display: flex; flex: 1; overflow: hidden; }
 .bubble {
   padding: 12px 16px;
   border-radius: 10px;
-  font-size: 14px;
-  line-height: 1.65;
+  /* v0.6.1 v15 (2026-06-16) — operator catch: 대화 본문 명조체 +
+   * 글자 크기 ↑ (14 → 16). chrome (사이드바 / 버튼) 은 기존 font-ui
+   * 유지. line-height 1.7 로 한국어 명조 가독성 보강. */
+  font-family: var(--font-serif);
+  font-size: 16px;
+  line-height: 1.75;
   /* v13 (2026-06-16) — avatar gone, reclaim the 42 px reserved for
    * it. user bubble keeps its 80% max via the .msg.user .bubble
    * override below. */
@@ -1117,16 +1121,28 @@ main { display: flex; flex: 1; overflow: hidden; }
  * (hr, blockquote rule, table border) and the accent only appears
  * on inline <code> bg + link hover. Reads as "clean B/W document"
  * matching Claude's answer column. */
+/* v0.6.1 v15 (2026-06-16) — headings inherit the .bubble serif font.
+ * Hierarchy still carried by SIZE + WEIGHT (operator's "기존 글자체도
+ * 활용" applies to chrome / code / meta — the answer body is one
+ * coherent serif block). H4 stays sans uppercase as a label chip. */
 .bubble .md-h1,
 .bubble .md-h2,
-.bubble .md-h3,
-.bubble .md-h4 {
+.bubble .md-h3 {
   color: var(--text);
-  font-family: var(--font-ui);
-  margin: 18px 0 8px;
+  font-family: var(--font-serif);
+  margin: 20px 0 10px;
   line-height: 1.35;
   letter-spacing: -0.005em;
   font-weight: 700;
+}
+.bubble .md-h4 {
+  color: var(--muted);
+  font-family: var(--font-ui);
+  margin: 18px 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
 }
 .bubble .md-h1:first-child,
 .bubble .md-h2:first-child,
@@ -1134,15 +1150,15 @@ main { display: flex; flex: 1; overflow: hidden; }
 .bubble .md-h4:first-child {
   margin-top: 2px;
 }
-.bubble .md-h1 { font-size: 22px; }
-.bubble .md-h2 { font-size: 18px; }
-.bubble .md-h3 { font-size: 16px; font-weight: 600; }
-.bubble .md-h4 { font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.bubble .md-h1 { font-size: 26px; }
+.bubble .md-h2 { font-size: 22px; }
+.bubble .md-h3 { font-size: 18px; font-weight: 700; }
 
 .bubble .md-p {
-  margin: 0 0 12px;
-  line-height: 1.7;
+  margin: 0 0 14px;
+  line-height: 1.75;
   color: var(--text);
+  font-family: var(--font-serif);
 }
 .bubble .md-p:last-child { margin-bottom: 0; }
 
@@ -1153,19 +1169,21 @@ main { display: flex; flex: 1; overflow: hidden; }
 }
 
 .bubble .md-quote {
-  margin: 12px 0;
+  margin: 14px 0;
   padding: 4px 14px;
   border-left: 3px solid var(--border, #2a2d33);
   color: var(--text-soft, #cfd2d8);
-  font-style: normal;
-  line-height: 1.65;
+  font-family: var(--font-serif);
+  font-style: italic;
+  line-height: 1.7;
 }
 
 .bubble .md-ul,
 .bubble .md-ol {
   margin: 6px 0 14px;
   padding-left: 22px;
-  line-height: 1.7;
+  line-height: 1.75;
+  font-family: var(--font-serif);
 }
 .bubble .md-ul { list-style: disc; }
 .bubble .md-ol { list-style: decimal; }
@@ -1214,8 +1232,9 @@ main { display: flex; flex: 1; overflow: hidden; }
 .bubble .md-table {
   border-collapse: collapse;
   width: 100%;
-  font-size: 13.5px;
-  line-height: 1.5;
+  font-size: 14.5px;
+  line-height: 1.55;
+  font-family: var(--font-serif);
 }
 .bubble .md-table th,
 .bubble .md-table td {
@@ -1740,13 +1759,17 @@ aside.sidebar.collapsed { min-width: 0; }
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 10px 12px;
+  padding: 11px 12px;
   background: transparent;
   border: 0;
   border-radius: 8px;
   color: var(--text, #e0e0e0);
   text-decoration: none;
-  font-size: 14px;
+  /* v0.6.1 v15 (2026-06-16) — operator catch: 메뉴 글자 조금 더 크게.
+   * 14 → 15.5 px on desktop (chrome font-ui 유지, 크기만 ↑).
+   * Mobile bump lives in mobile.css. */
+  font-size: 15.5px;
+  font-weight: 500;
   font-family: var(--font-ui);
   line-height: 1.2;
   cursor: pointer;
@@ -2043,7 +2066,7 @@ aside.sidebar { height: 100vh; height: 100dvh; }
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: 14.5px;
   font-weight: 600;
   color: var(--text, #e0e0e0);
 }
@@ -2060,7 +2083,7 @@ aside.sidebar { height: 100vh; height: 100dvh; }
 .session-item-meta {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted, #8a8d99);
 }
 .session-item-menu {

@@ -71,9 +71,16 @@
   --shadow-card:  0 1px 0 rgba(255,255,255,.02) inset,
                   0 8px 24px rgba(0,0,0,.18);
 
-  /* ── type ── */
+  /* ── type ──
+   * v0.6.1 v15 (2026-06-16) — operator catch: 대화 본문은 명조체로
+   * 가독성 ↑. UI chrome (사이드바 / 버튼 / 토스트) 은 기존 sans
+   * 유지. 한국어 명조 (Noto Serif KR / Nanum Myeongjo) 를 1순위,
+   * 영어 serif (Source Serif / Georgia) 를 fallback 으로. */
   --font-mono:    'JetBrains Mono', ui-monospace, monospace;
   --font-ui:      'Inter', 'Pretendard', system-ui, -apple-system, sans-serif;
+  --font-serif:   'Noto Serif KR', 'Nanum Myeongjo', 'Source Serif Pro',
+                  'Source Serif 4', Georgia, 'Times New Roman',
+                  'Apple SD Gothic Neo', serif;
 }
 
 /* ── A11y/CSP — small utility classes (v0.5 UI #6) ──
