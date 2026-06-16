@@ -172,9 +172,32 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-llm", action="store_true",
                     help="resolver introspection only (no generation)")
+    ap.add_argument("--tier-ladder", action="store_true",
+                    help="show the v18.7 Phase 3a local complexity-tier "
+                         "ladder (light/standard/deep → ollama tag) and exit")
     ap.add_argument("--user-role", default="admin",
                     help="role to probe under (admin sees all modes)")
     args = ap.parse_args()
+
+    if args.tier_ladder:
+        from core.model_resolver import (
+            LOCAL_TIER_LADDER, resolve_local_tier, installed_models,
+        )
+        inst = installed_models()
+        print("\n=== v18.7 Phase 3a — local complexity-tier ladder ===")
+        print("(DEFINED but NOT YET consumed by the pipeline — Phase 3b "
+              "measures + wires)\n")
+        print(f'{"rung":<10} | {"mapped tag":<14} | {"installed?":<10} | '
+              f'{"resolves to":<16} | source')
+        print("-" * 78)
+        for rung in ("light", "standard", "deep"):
+            mapped = LOCAL_TIER_LADDER[rung]
+            rm = resolve_local_tier(rung)
+            print(f'{rung:<10} | {mapped:<14} | '
+                  f'{"yes" if mapped in inst else "NO":<10} | '
+                  f'{rm.tag:<16} | {rm.source}')
+        print()
+        return 0
 
     print(f"\n=== JAMES routing matrix probe "
           f"({'resolve-only' if args.no_llm else 'live engine'}) ===")

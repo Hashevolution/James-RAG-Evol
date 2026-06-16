@@ -69,13 +69,33 @@ wiki_edit   → gemma4:e4b (silent — inferred)   (24.3s)
 self_evolve → gemma4:e4b (silent — inferred)
 ```
 
+## Phase 3a — local complexity-tier ladder (DEFINED, not yet consumed)
+
+Operator decision 2026-06-16 (Option B): D5 escalates among **local
+ollama model sizes** by query complexity, not local↔cloud. The existing
+`BackendCapability` tier vocabulary (small ≤4B / medium 12-27B / large
+70B+ or cloud) gives no third local rung — a 12 GB GPU has no local 70B+.
+So the local ladder is its own mapping in `core/model_resolver.py`,
+separate from the backend-tier system:
+
+| Rung | Model | When (Phase 3b will wire) | Measured? |
+|---|---|---|---|
+| `light` | gemma3:4b | narrow scope / CAP_SUBSTITUTION / cheap | lost Phase 2b chat |
+| `standard` | gemma3:12b | default; chat leader | ✅ Phase 2b |
+| `deep` | gemma3:27b | broad scope / CAP_HEAVY / verify stage | not yet |
+
+- `resolve_local_tier(rung)` — installed-check + downgrade (deep → standard → light) + env override `JAMES_LOCAL_TIER_<RUNG>`.
+- Inspect: `python scripts/research/routing_matrix_probe.py --tier-ladder`
+- **NOT consumed by the pipeline yet.** Phase 3b runs a complexity-paired measurement (narrow vs broad query × {4b, 12b, 27b}) BEFORE wiring escalation into D5 — α-7 caveat (no activation without measurement) is binding.
+
 ## Phase status (5-phase routing build-out)
 
 - ✅ Phase 1 — preference list plumbing (`DEFAULT_PREFERENCE`, PR #969)
 - ✅ Phase 2a/b/c — chat fixture + measurement + engine wire (PR #970/971/972)
-- ⏳ **Phase 3** — D5 AUTO_ROUTER (complexity-tier escalation) + backend
-  tier adapters (gemma3:12b / 27b / mixtral need `BackendCapability`
-  tier declarations)
+- 🔄 **Phase 3** (Option B — local size ladder)
+  - ✅ 3a — `LOCAL_TIER_LADDER` + `resolve_local_tier()` defined (plumb-first)
+  - ⏳ 3b — complexity-paired measurement (narrow/broad × 4b/12b/27b)
+  - ⏳ 3c — wire D5 tier decision → `resolve_local_tier` (after 3b), flip `JAMES_AUTO_ROUTER` only if measured net-positive
 - ⏳ Phase 4 — privacy gate (PII) + cost-aware cap + cloud (Claude) routing
 - ⏳ Phase 5 — sub-class routing inside chat + admin routing dashboard
 
