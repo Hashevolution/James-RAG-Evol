@@ -116,6 +116,21 @@ function _bindFrontendEvents() {
       case 'set-source':                setSource(t.getAttribute('data-source'), t); break;
       case 'toggle-lang':               toggleLang(); break;
       case 'clear-history':             clearHistory(); break;
+      // v0.6.1 v3 (2026-06-15) — Claude-style sidebar 💬 채팅 row.
+      // Scrolls the messages stream to top + closes the sidebar on
+      // mobile. Does NOT clear history (that's + 새 대화 in the
+      // footer). Acts as a "return to current chat" shortcut.
+      case 'goto-chat-top': {
+        const msgs = document.getElementById('messages');
+        if (msgs) msgs.scrollTo({ top: 0, behavior: 'smooth' });
+        // close sidebar on phone-sized viewports for parity with
+        // the existing show-page handler in admin.js
+        const sb = document.getElementById('sidebar');
+        if (sb && window.matchMedia('(max-width: 768px)').matches) {
+          toggleSidebar();
+        }
+        break;
+      }
       case 'toggle-session-panel':      toggleSessionPanel(); break;
       case 'show-login':                showLogin(); break;
       case 'new-session':               newSession(); break;
@@ -1161,25 +1176,41 @@ function updateRoleBadge() {
 
   if (token && userRole) {
     badge.classList.add('logged-in');
-    badge.onclick = null;
-    badge.style.cursor = 'default';
+    badge.classList.remove('logged-out');
+    // v0.6.1 v3 (2026-06-15) — Claude-style avatar circle. Click
+    // toggles between confirm-logout (logged-in) and showLogin
+    // (logged-out); the previous inline logout-btn was unreachable
+    // inside the round avatar (clipped by max-width: 1em). The
+    // existing data-action="show-login" stays for the logged-out
+    // case via this same handler.
+    badge.onclick = () => {
+      if (confirm('로그아웃하시겠습니까? / Sign out?')) {
+        // Reuse the existing logout flow if present.
+        if (typeof logout === 'function') {
+          logout();
+        } else {
+          localStorage.removeItem('james_token');
+          localStorage.removeItem('james_role');
+          location.reload();
+        }
+      }
+    };
+    badge.style.cursor = 'pointer';
 
-    const roleColor = {
-      admin:    'var(--danger)',
-      manager:  'var(--warn)',
-      employee: 'var(--accent)',
-      external: 'var(--muted)',
-    }[userRole] || 'var(--muted)';
-
-    roleText.innerHTML = `
-      <span style="color:${roleColor};font-weight:600">${userRole.toUpperCase()}</span>
-      <button class="logout-btn" data-action="logout" title="로그아웃">✕</button>
-    `;
+    // Avatar shows the first letter of the role (A / M / E / X).
+    const initial = (userRole || '?').charAt(0).toUpperCase();
+    badge.title = `${userRole.toUpperCase()} — 클릭 시 로그아웃`;
+    badge.setAttribute('aria-label', `${userRole.toUpperCase()} (로그아웃)`);
+    roleText.textContent = initial;
   } else {
     badge.classList.remove('logged-in');
+    badge.classList.add('logged-out');
     badge.onclick = showLogin;
     badge.style.cursor = 'pointer';
-    roleText.innerHTML = '로그인';
+    badge.title = '로그인';
+    badge.setAttribute('aria-label', '로그인');
+    // Logged-out avatar: "?" so the circle isn't empty.
+    roleText.textContent = '?';
   }
 }
 

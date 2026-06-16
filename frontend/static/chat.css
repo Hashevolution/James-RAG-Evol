@@ -782,6 +782,52 @@ main { display: flex; flex: 1; overflow: hidden; }
   background: var(--bg);
 }
 
+/* v0.6.1 v3 (2026-06-15) — Claude-style chat top bar. Hosts the
+ * model chip + workspace badge (moved out of the sidebar to keep
+ * the sidebar's primary nav uncluttered). Compact, low-noise — it
+ * sits above the messages stream and stays visible during scroll
+ * via flex layout (not sticky — chat-area's flex-direction:column
+ * already pins it). */
+.chat-topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-2, var(--border));
+  background: var(--bg);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.chat-topbar .model-chip {
+  font-size: 11px;
+}
+.chat-topbar .workspace-badge {
+  font-size: 11px;
+}
+
+/* conv-action-chip — shared style for the compact action buttons
+ * (양식, 대화 전체 복사) below the chat input. Light visual weight,
+ * sits on the page background. */
+.conv-action-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 11px;
+  transition: all .15s;
+  font-family: var(--font-ui);
+}
+.conv-action-chip:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--surface-2);
+}
+
 .messages {
   flex: 1;
   overflow-y: auto;
@@ -866,19 +912,31 @@ main { display: flex; flex: 1; overflow: hidden; }
   word-break: break-word;
   overflow-wrap: break-word;
 }
-/* [#A8-9] james bubble = "report card" — subtle elevation +
-   left-side accent rail to suggest a structured document. */
+/* v0.6.1 v3 (2026-06-15) — Claude-style message bubbles.
+ *
+ * james bubble: NO bubble. The assistant response renders as bare
+ * body text on the page background (just like Claude.ai's
+ * assistant reply column). Padding stays so the text doesn't hug
+ * the avatar / edge. The left-accent rail / shadow / border were
+ * dropped per operator catch — the bubble was visually crowding the
+ * reading area on phones. */
 .msg.james .bubble {
-  background: var(--surface);
-  border: 1px solid var(--border-2);
-  border-left: 2px solid var(--accent-fg);
-  box-shadow: var(--shadow-card);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
   color: var(--text);
+  padding: 4px 0;
 }
+/* user bubble: right-aligned gray pill. Matches Claude.ai's user
+ * message style — bubble background slightly lighter than page
+ * background, generous border-radius, comfortable padding. */
 .msg.user .bubble {
-  background: var(--accent-soft);
-  border: 1px solid rgba(99,102,241,.25);
+  background: var(--surface-2, #1e293b);
+  border: 0;
+  border-radius: 18px;
   color: var(--text);
+  padding: 10px 14px;
+  max-width: min(80%, 640px);
 }
 .bubble code {
   font-family: var(--font-mono);
@@ -1362,37 +1420,178 @@ aside.sidebar.collapsed { min-width: 0; }
   min-height: 0;
 }
 
-/* v0.6.1 (2026-06-15) — Claude-parity reorder. Top-fixed nav row +
- * "이전 대화" section title above the scrollable sessions list. */
-.sidebar-top-nav {
+/* v0.6.1 v3 (2026-06-15) — Claude-style sidebar.
+ *
+ * Brand header is now display-font sized (mirrors the "Claude" serif
+ * mark at the top-left of the screenshot). The vertical primary nav
+ * below it carries one row per destination (icon + label, full-width,
+ * left-aligned), with the active row getting a rounded gray pill
+ * highlight — exactly the layout shown in the operator's screenshot. */
+.sidebar-header-brand {
+  padding: 16px 14px 8px;
+  border-bottom: none;
+}
+.sidebar-brand-large {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  color: var(--text, #e0e0e0);
+  font-family: var(--font-display, var(--font-ui));
+}
+
+/* Primary nav — vertical list (Claude pattern). Each row is a full-
+ * width clickable, with a hover/focus surface raise and an .active
+ * variant that paints the rounded pill behind the row. */
+.sidebar-primary-nav {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding-bottom: 4px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 6px 8px;
   border-bottom: 1px solid var(--border-2, var(--border));
 }
-.sidebar-top-link {
-  flex: 1 1 calc(50% - 3px);
-  min-width: 90px;
-  display: inline-flex;
+.sidebar-nav-row {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 10px;
-  background: var(--surface-2, #1e293b);
-  border: 1px solid var(--border);
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: 0;
   border-radius: 8px;
   color: var(--text, #e0e0e0);
   text-decoration: none;
-  font-size: 12px;
+  font-size: 14px;
   font-family: var(--font-ui);
+  line-height: 1.2;
+  cursor: pointer;
+  text-align: left;
+}
+.sidebar-nav-row:hover,
+.sidebar-nav-row:focus-visible {
+  background: var(--surface-2, #1e293b);
+  outline: none;
+}
+.sidebar-nav-row-active {
+  background: var(--surface-2, #1e293b);
+}
+.sidebar-nav-icon {
+  width: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.sidebar-nav-label {
+  flex: 1;
+}
+
+/* Compact mode tabs (📂 🕘 🔍) — small icon row, no labels visible,
+ * lives between the primary nav and the sessions list. The active
+ * tab still gets the standard .sidebar-tab.active treatment from the
+ * older block above. */
+.sidebar-tabs-compact {
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px;
+  justify-content: flex-start;
+}
+.sidebar-tabs-compact .sidebar-tab {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  font-size: 16px;
   line-height: 1;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
 }
-.sidebar-top-link:hover {
-  background: var(--surface, #0f172a);
-  color: var(--accent, #6cd);
-  border-color: var(--accent, #6cd);
+.sidebar-tabs-compact .sidebar-tab:hover {
+  background: var(--surface-2);
 }
+
+/* Footer bottom row — avatar (left) + new-chat pill (right).
+ * Mirrors Claude's mobile bottom bar exactly: a circular initial
+ * letter on the left and a contained white-ish pill on the right. */
+.sidebar-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 4px 2px;
+}
+.sidebar-avatar-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #818cf8, var(--accent, #6366f1));
+  color: #fff;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  padding: 0;
+  font-family: var(--font-ui);
+  flex-shrink: 0;
+}
+.sidebar-avatar-circle .role-name {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  /* Trim to 1 character (avatar shows first letter of role/name). */
+  max-width: 1em;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.sidebar-avatar-circle .dot {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 2px solid var(--bg, #04060a);
+  display: block;
+}
+/* Logged-out state: muted dot, hollow circle. Bound class added by
+ * auth.js when role-badge has no token. We use the existing
+ * .role-badge.logged-out variant if present. */
+.sidebar-avatar-circle.logged-out {
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px dashed var(--border);
+}
+.sidebar-avatar-circle.logged-out .dot {
+  background: var(--muted);
+}
+.sidebar-newchat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  background: var(--text, #e0e0e0);
+  color: var(--bg, #04060a);
+  border: 0;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.sidebar-newchat-pill:hover {
+  background: #fff;
+}
+
+/* Legacy 2×2 grid CSS (.sidebar-top-nav / .sidebar-top-link) is no
+ * longer rendered in the HTML; any stale call sites still pointing
+ * at the old class names visually disappear instead of double-
+ * stacking. */
+.sidebar-top-nav { display: none !important; }
 
 /* Section title (e.g., "이전 대화") above the scrollable list. */
 .sidebar-section-title {

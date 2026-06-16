@@ -791,6 +791,39 @@
   .bubble { line-height: 1.6; }
 }
 
+/* v0.6.1 v3 (2026-06-15) — Claude-style phone overrides.
+ *
+ * On phones:
+ *  - hide the per-message avatar boxes (Claude.ai doesn't show
+ *    "J" / "C" avatars next to each message on mobile)
+ *  - hide the conversation actions row's copy-all chip beyond the
+ *    first one to save vertical space — primary entry is the input
+ *  - sidebar primary nav rows get slightly larger touch targets
+ *  - chat-topbar stays single-line on phones (model chip only;
+ *    workspace badge wraps below if visible)
+ */
+@media (max-width: 768px) {
+  .msg .avatar { display: none; }
+  .msg.james .bubble,
+  .msg.user .bubble {
+    max-width: 100%;
+  }
+  .msg.user .bubble {
+    max-width: min(86%, 540px);
+  }
+  .sidebar-nav-row {
+    padding: 12px 14px;
+    font-size: 15px;
+  }
+  .sidebar-nav-icon {
+    font-size: 18px;
+  }
+  .chat-topbar {
+    padding: 8px 12px;
+    gap: 6px;
+  }
+}
+
 /* ─────────────────────────────────────────────────────────
  * 접근성 — 모바일 사용자 다수가 큰 글자 선호
  * 시스템 폰트 크기 설정 존중 (rem이 아닌 곳도 대응)

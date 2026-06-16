@@ -6,14 +6,15 @@
 <meta name="theme-color" content="#04060a">
 <title>Secure Enterprise Knowledge Operating System</title>
 <link rel="stylesheet" href="/static/tokens.css">
-<!-- v=v6-20260615 cache-bust: forces phones with cached older chat.css /
-     mobile.css to refetch after the sidebar-top-nav flex-wrap + new
-     에이전트 / 추론 그래프 nav links landed. Pin both stylesheets to
-     the same buster so a half-cached state can't mismatch. -->
-<link rel="stylesheet" href="/static/chat.css?v=v6-20260615">
+<!-- v=v7-20260615 cache-bust: forces phones with cached older chat.css /
+     mobile.css to refetch after the Claude-style sidebar reorg
+     (vertical primary nav + bottom avatar/new-chat pill + flattened
+     james bubble + chat-topbar). Pin both stylesheets to the same
+     buster so a half-cached state can't mismatch. -->
+<link rel="stylesheet" href="/static/chat.css?v=v7-20260615">
 <!-- mobile-responsive overrides — kept after inline styles so @media
      rules win at narrow viewports without !important on every line. -->
-<link rel="stylesheet" href="/static/mobile.css?v=v6-20260615">
+<link rel="stylesheet" href="/static/mobile.css?v=v7-20260615">
 </head>
 <body>
 
@@ -90,121 +91,80 @@
          acronym). The full phrase still surfaces in the welcome
          hero of the main chat area; the sidebar header gets the
          short, memorable form. -->
-    <div class="sidebar-header">
+    <!-- v0.6.1 v3 (2026-06-15) Claude-style — Brand SEKOS gets the
+         Claude.ai serif-style display treatment (larger font, no
+         "▸" caret prefix). Close button stays top-right. -->
+    <div class="sidebar-header sidebar-header-brand">
       <div class="sidebar-title" id="sidebar-title">
-        ▸ <span class="brand" style="font-size:13px">SEKOS</span>
+        <span class="brand sidebar-brand-large">SEKOS</span>
       </div>
       <button class="sidebar-toggle" data-action="toggle-sidebar" data-i18n-title="common.close" title="닫기"
               aria-label="사이드바 닫기">◀</button>
     </div>
 
-    <!-- v0.6.1 v2 (2026-06-15 PM) — operator catch (red circle + red
-         arrow): + 새 대화 was at the bottom, should be at the top
-         (most-clicked primary action under Claude.ai convention).
-         This is the single LARGE button right under the brand. -->
-    <div class="sidebar-section sidebar-actions">
-      <button class="sidebar-action sidebar-action-primary sidebar-action-newchat"
-              data-action="clear-history"
-              data-i18n-title="chat.clear_history"
-              title="새 대화">
-        <span aria-hidden="true">＋</span>
-        <span data-i18n="chat.new_chat">새 대화</span>
-      </button>
-    </div>
-
-    <!-- v0.6.1 (2026-06-15) — meta row stays under the primary
-         action (operator catch: blue circle around model chip +
-         blue arrow up). "what model / what workspace am I in"
-         info kept near the top, just below + 새 대화. -->
-    <div class="sidebar-section sidebar-meta-row">
-      <button id="model-chip"
+    <!-- v0.6.1 v3 (2026-06-15) Claude-style PRIMARY NAV — vertical
+         full-width rows (icon + label), one per destination. The
+         🤖 에이전트 / 🌐 추론 그래프 items keep the hash deep-link
+         + standalone-route routing introduced in PR #942; only the
+         layout flipped from 2×2 grid to Claude's vertical list.
+           - 💬 채팅  → current page (active by default)
+           - 📦 프로젝트 → /workspace
+           - 🌐 추론 그래프 → /admin/graph
+           - 🤖 에이전트 → /admin#agent-chat
+           - ⚙ 관리자 → /admin -->
+    <nav class="sidebar-section sidebar-primary-nav" aria-label="페이지 이동">
+      <button class="sidebar-nav-row sidebar-nav-row-active"
               type="button"
-              class="model-chip"
-              data-action="toggle-model-popover"
-              data-i18n-title="model.chip_title"
-              title="현재 응답에 사용 중인 모델 — 클릭 시 변경"
-              aria-haspopup="listbox"
-              aria-expanded="false">
-        <span class="model-chip-icon" aria-hidden="true">🤖</span>
-        <span class="model-chip-tag" id="model-chip-tag">—</span>
-        <span class="model-chip-caret" aria-hidden="true">▾</span>
+              data-action="goto-chat-top"
+              title="채팅">
+        <span class="sidebar-nav-icon" aria-hidden="true">💬</span>
+        <span class="sidebar-nav-label" data-i18n="sidebar.nav_chat">채팅</span>
       </button>
-      <button class="nav-btn workspace-badge" id="workspace-badge"
-              type="button"
-              data-i18n-title="workspace.badge_title"
-              title="현재 워크스페이스"
-              aria-label="현재 워크스페이스"
-              style="display:none;font-size:11px">
-        📁 <span id="workspace-name">—</span>
-      </button>
-    </div>
-
-    <!-- TOP FIXED — page nav (Workspace + Admin + Agent + Reasoning Graph).
-         v0.6.1 (2026-06-15) — operator request: Agent (에이전트 챗) +
-         Reasoning Graph were previously only reachable through the
-         Admin page's left nav. They're now first-class chat sidebar
-         destinations. The Admin link still surfaces all admin tools
-         (audit / policy / users / etc.); these two are shortcuts to
-         the most-used operator surfaces.
-           - Agent  → /admin#agent-chat  (hash routed by admin.js)
-           - Graph  → /admin/graph        (existing standalone route)
-         Layout wraps 2×2 on phones via .sidebar-top-nav flex-wrap. -->
-    <nav class="sidebar-section sidebar-top-nav" aria-label="페이지 이동">
-      <a href="/workspace" class="sidebar-top-link"
-         data-i18n-title="workspace.nav_title" title="Workspace">
-        <span aria-hidden="true">📦</span>
-        <span data-i18n="workspace.nav">Workspace</span>
+      <a href="/workspace" class="sidebar-nav-row"
+         data-i18n-title="workspace.nav_title" title="프로젝트">
+        <span class="sidebar-nav-icon" aria-hidden="true">📦</span>
+        <span class="sidebar-nav-label" data-i18n="sidebar.nav_project">프로젝트</span>
       </a>
-      <a href="/admin" class="sidebar-top-link"
-         title="Admin">
-        <span aria-hidden="true">⚙</span>
-        <span data-i18n="sidebar.nav_admin">Admin</span>
-      </a>
-      <a href="/admin#agent-chat" class="sidebar-top-link"
-         data-i18n-title="sidebar.nav_agent_title"
-         title="에이전트 챗 (자연어 도구 호출)">
-        <span aria-hidden="true">🤖</span>
-        <span data-i18n="sidebar.nav_agent">에이전트</span>
-      </a>
-      <a href="/admin/graph" class="sidebar-top-link"
+      <a href="/admin/graph" class="sidebar-nav-row"
          data-i18n-title="sidebar.nav_graph_title"
          title="추론 그래프 (3D 노드 시각화)">
-        <span aria-hidden="true">🌐</span>
-        <span data-i18n="sidebar.nav_graph">추론 그래프</span>
+        <span class="sidebar-nav-icon" aria-hidden="true">🌐</span>
+        <span class="sidebar-nav-label" data-i18n="sidebar.nav_graph">추론 그래프</span>
+      </a>
+      <a href="/admin#agent-chat" class="sidebar-nav-row"
+         data-i18n-title="sidebar.nav_agent_title"
+         title="에이전트 챗 (자연어 도구 호출)">
+        <span class="sidebar-nav-icon" aria-hidden="true">🤖</span>
+        <span class="sidebar-nav-label" data-i18n="sidebar.nav_agent">에이전트</span>
+      </a>
+      <a href="/admin" class="sidebar-nav-row"
+         title="관리자">
+        <span class="sidebar-nav-icon" aria-hidden="true">⚙</span>
+        <span class="sidebar-nav-label" data-i18n="sidebar.nav_admin">관리자</span>
       </a>
     </nav>
 
-    <!-- v0.6.1 v2 (2026-06-15 PM) — 양식 (Templates) moved BELOW the
-         Workspace/Admin nav per the screenshot. Templates is a
-         tool, not a destination, so it sits in the secondary
-         action zone right above the mode tabs. -->
-    <div class="sidebar-section sidebar-actions sidebar-actions-secondary">
-      <button class="sidebar-action"
-              data-action="tplc-open"
-              data-i18n-title="tplchat.open_title"
-              title="양식 적용"
-              style="flex:1">
-        <span aria-hidden="true">📄</span>
-        <span data-i18n="tplchat.open">양식</span>
-      </button>
-    </div>
-
-    <!-- Mode tabs (upload / recent / search) — kept fixed below the
-         page nav. Stay accessible regardless of sessions-list scroll
-         position. -->
-    <div class="sidebar-section sidebar-tabs">
+    <!-- Mode tabs (upload / recent / search) — compact icon row
+         under the primary nav. Stays accessible without dominating
+         the sidebar; the label text only appears on tap (title)
+         and screen readers (aria-label). The sessions-list panel
+         is the default. -->
+    <div class="sidebar-section sidebar-tabs sidebar-tabs-compact">
       <button class="sidebar-tab" data-mode="upload"
-              data-action="switch-sidebar-mode" aria-label="파일 업로드">
-        📂 <span data-i18n="sidebar.mode_upload">파일 업로드</span>
-      </button>
+              data-action="switch-sidebar-mode"
+              data-i18n-aria-label="sidebar.mode_upload"
+              aria-label="파일 업로드"
+              data-i18n-title="sidebar.mode_upload" title="파일 업로드">📂</button>
       <button class="sidebar-tab" data-mode="recent"
-              data-action="switch-sidebar-mode" aria-label="내 자료">
-        🕘 <span data-i18n="sidebar.mode_recent">내 자료</span>
-      </button>
+              data-action="switch-sidebar-mode"
+              data-i18n-aria-label="sidebar.mode_recent"
+              aria-label="내 자료"
+              data-i18n-title="sidebar.mode_recent" title="내 자료">🕘</button>
       <button class="sidebar-tab" data-mode="search"
-              data-action="switch-sidebar-mode" aria-label="전역 검색">
-        🔍 <span data-i18n="sidebar.mode_search">검색</span>
-      </button>
+              data-action="switch-sidebar-mode"
+              data-i18n-aria-label="sidebar.mode_search"
+              aria-label="전역 검색"
+              data-i18n-title="sidebar.mode_search" title="전역 검색">🔍</button>
     </div>
 
     <!-- Section title — like Claude's "즐겨찾기" / "이전 대화" labels.
@@ -327,15 +287,17 @@
       </div>
     </div>
 
-    <!-- BOTTOM FIXED FOOTER — v0.6.1 v2 (2026-06-15 PM):
-         + 새 대화 moved UP to the top of the sidebar (operator catch
-         from screenshot — red arrow). Footer is now:
-           1) PROD/TEST + KO|EN settings row (compact)
-           2) PROMINENT login/role pill (was a thin chip; now a
-              large, visible badge so the operator can see at a
-              glance whether they're logged in as ADMIN)
-         The session-count-badge bound element stays here so the
-         chat.js updateSessionCountBadge handler keeps working. -->
+    <!-- BOTTOM FIXED FOOTER — v0.6.1 v3 (2026-06-15) Claude-style.
+         Two rows:
+           1) settings strip (PROD/TEST + KO|EN) — compact, low
+              visual weight, kept here because the operator still
+              needs single-tap source / language switching
+           2) avatar (role-badge) left + "+ 새 대화" pill right —
+              matches Claude.ai mobile bottom bar exactly. The
+              avatar's click target is still the login/role popover
+              (data-action="show-login"); its display flipped from
+              "rounded pill with label" to "round circle with
+              initial letter" via .sidebar-avatar-circle. -->
     <div class="sidebar-section sidebar-footer">
       <!-- Source toggle + lang toggle on one row. -->
       <div class="sidebar-settings-row">
@@ -348,17 +310,34 @@
                 aria-label="언어 전환 / Toggle language"
                 style="font-size:11px;font-weight:700;padding:4px 8px"></button>
       </div>
-      <!-- Role badge — PROMINENT version (v0.6.1 v2). When logged out:
-           clear "로그인" call-to-action. When logged in: big role label
-           (ADMIN/USER), bigger green dot, more visible logout button. -->
-      <div class="role-badge sidebar-role-pill role-badge-prominent"
-           id="role-badge"
-           data-action="show-login">
-        <span class="dot"></span>
-        <span class="role-name" id="role-name" data-i18n="auth.login">로그인</span>
+      <!-- Bottom action row — avatar + new chat pill (Claude pattern).
+           role-badge keeps its id + data-action so the auth.js click
+           handler + storage-event sync work unchanged; only the
+           visual shape changed (round circle + initial letter). -->
+      <div class="sidebar-footer-row">
+        <!-- role-badge: click target managed by chat.js::updateRoleBadge
+             — logged-in fires a confirm-logout, logged-out opens the
+             login modal. data-action="show-login" was removed so the
+             click delegation doesn't double-fire alongside the direct
+             onclick assignment when logged in. -->
+        <button class="role-badge sidebar-avatar-circle logged-out"
+                id="role-badge"
+                type="button"
+                title="로그인 / 역할"
+                aria-label="로그인 / 역할">
+          <span class="dot"></span>
+          <span class="role-name" id="role-name">?</span>
+        </button>
+        <button class="sidebar-newchat-pill"
+                data-action="clear-history"
+                data-i18n-title="chat.clear_history"
+                title="새 대화">
+          <span aria-hidden="true">＋</span>
+          <span data-i18n="chat.new_chat">새 대화</span>
+        </button>
       </div>
       <!-- Session count badge bound for #session-count-badge — kept
-           hidden inside the footer-row so chat.js updateSessionCountBadge
+           hidden inside the footer so chat.js updateSessionCountBadge
            still finds it. -->
       <span id="session-count-badge" hidden></span>
     </div>
@@ -366,6 +345,36 @@
 
   <!-- ── 챗 영역 ── -->
   <section class="chat-area">
+    <!-- v0.6.1 v3 (2026-06-15) Claude-style chat top bar — model
+         chip + workspace badge moved OUT of the sidebar (where
+         they crowded the Claude-style nav list) and INTO a compact
+         top bar that hovers above the messages stream. Element ids
+         preserved so chat.js loadModelPopover() + workspace-badge.js
+         still wire to #model-chip / #model-chip-tag / #workspace-name
+         unchanged. -->
+    <div class="chat-topbar" id="chat-topbar">
+      <button id="model-chip"
+              type="button"
+              class="model-chip"
+              data-action="toggle-model-popover"
+              data-i18n-title="model.chip_title"
+              title="현재 응답에 사용 중인 모델 — 클릭 시 변경"
+              aria-haspopup="listbox"
+              aria-expanded="false">
+        <span class="model-chip-icon" aria-hidden="true">🤖</span>
+        <span class="model-chip-tag" id="model-chip-tag">—</span>
+        <span class="model-chip-caret" aria-hidden="true">▾</span>
+      </button>
+      <button class="nav-btn workspace-badge" id="workspace-badge"
+              type="button"
+              data-i18n-title="workspace.badge_title"
+              title="현재 워크스페이스"
+              aria-label="현재 워크스페이스"
+              style="display:none;font-size:11px">
+        📁 <span id="workspace-name">—</span>
+      </button>
+    </div>
+
     <!-- v0.5 UI #2 — aria-live polite so screen readers announce
          new chat messages without yanking focus (WCAG 4.1.3). -->
     <div class="messages" id="messages"
@@ -445,13 +454,24 @@
               title="권장 모드로 전환"
               data-i18n-title="chat.mode_recommend_active_title"></span>
       </div>
-      <button data-action="copy-conversation"
-              style="background:none;border:1px solid var(--border);
-                     border-radius:6px;padding:4px 10px;cursor:pointer;
-                     color:var(--muted);font-size:11px;transition:all .15s"
-              title="현재 대화 전체를 텍스트로 복사"
-              data-i18n="chat.copy_all"
-              data-i18n-title="chat.copy_all_title">📋 대화 전체 복사</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <!-- v0.6.1 v3 (2026-06-15) Claude-style — 양식 (Templates)
+             moved from sidebar into the chat conv-actions row. It's
+             a chat-time tool (apply a doc-shaping template to the
+             next response) so it belongs near the input. -->
+        <button data-action="tplc-open"
+                data-i18n-title="tplchat.open_title"
+                title="양식 적용"
+                class="conv-action-chip">
+          <span aria-hidden="true">📄</span>
+          <span data-i18n="tplchat.open">양식</span>
+        </button>
+        <button data-action="copy-conversation"
+                class="conv-action-chip"
+                title="현재 대화 전체를 텍스트로 복사"
+                data-i18n="chat.copy_all"
+                data-i18n-title="chat.copy_all_title">📋 대화 전체 복사</button>
+      </div>
     </div>
 
     <div class="input-area">
