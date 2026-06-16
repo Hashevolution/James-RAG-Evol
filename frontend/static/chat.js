@@ -1677,30 +1677,15 @@ function appendJamesMsg(data) {
       </div>`;
   }
 
-  // v0.6.1 (2026-06-15 PM) — answer truncation guardrail. When the
-  // rendered answer looks unfinished, surface an inline hint with a
-  // one-click "계속" affordance. See isLikelyTruncated() at the
-  // bottom of this file.
+  // v0.6.1 (2026-06-15 PM) — answer truncation guardrail. The actual
+  // detector runs AFTER cleanAnswer is extracted (line below) so the
+  // SUGGESTIONS chip block ("(1) X / (2) Y") doesn't trip the SOFT
+  // signal that fires when the tail isn't a sentence terminator.
+  // Operator catch v6 (2026-06-16): the previous order ran the
+  // detector on the raw `answer` which always included the
+  // suggestions tail, producing a false-positive "looks cut off"
+  // hint on perfectly complete answers.
   let truncationHint = '';
-  if (isLikelyTruncated(answer)) {
-    truncationHint = `
-      <div role="note" aria-live="polite"
-           style="display:flex;align-items:center;gap:8px;margin-top:8px;
-                  padding:8px 12px;border-radius:8px;
-                  background:rgba(255,183,77,.08);
-                  border:1px solid rgba(255,183,77,.40);
-                  font-size:12px;color:#ffb74d;line-height:1.5">
-        <span aria-hidden="true" style="font-size:14px">⚠️</span>
-        <span style="flex:1">답변이 도중에 끊긴 것 같아요. 이어서 받으려면 아래 버튼을 누르세요.</span>
-        <button data-action="ask-continue"
-                style="background:rgba(255,183,77,.18);
-                       border:1px solid rgba(255,183,77,.60);
-                       border-radius:6px;padding:4px 10px;
-                       color:#ffd180;font-size:12px;cursor:pointer;
-                       font-family:inherit;font-weight:600;
-                       transition:all .15s">계속 ▶</button>
-      </div>`;
-  }
 
   const div = document.createElement('div');
   div.className = 'msg james';
@@ -1800,6 +1785,28 @@ function appendJamesMsg(data) {
   // chip + 본문에 두 번 보이는 문제 (실사용자 피드백) 해결.
   const { suggestions, cleanAnswer } =
     extractNextActionSuggestions(answer);
+  // Now that the suggestions tail is removed, evaluate truncation
+  // against just the body text. (See truncationHint declaration
+  // above for the operator-catch context.)
+  if (isLikelyTruncated(cleanAnswer)) {
+    truncationHint = `
+      <div role="note" aria-live="polite"
+           style="display:flex;align-items:center;gap:8px;margin-top:8px;
+                  padding:8px 12px;border-radius:8px;
+                  background:rgba(255,183,77,.08);
+                  border:1px solid rgba(255,183,77,.40);
+                  font-size:12px;color:#ffb74d;line-height:1.5">
+        <span aria-hidden="true" style="font-size:14px">⚠</span>
+        <span style="flex:1">답변이 도중에 끊긴 것 같아요. 이어서 받으려면 아래 버튼을 누르세요.</span>
+        <button data-action="ask-continue"
+                style="background:rgba(255,183,77,.18);
+                       border:1px solid rgba(255,183,77,.60);
+                       border-radius:6px;padding:4px 10px;
+                       color:#ffd180;font-size:12px;cursor:pointer;
+                       font-family:inherit;font-weight:600;
+                       transition:all .15s">계속 ▶</button>
+      </div>`;
+  }
   let suggestionsHtml = '';
   if (suggestions.length > 0) {
     // [N-4, 2026-05-13] Cluster header — "✨ 제안" with mint accent so
@@ -2372,10 +2379,15 @@ function appendTyping(traceId) {
       <div id="thinking-${traceId}" class="thinking-stream"
            role="log" aria-live="polite" aria-atomic="false"
            aria-label="Reasoning timeline (retrieve → expand → verify)">
+        <!-- v0.6.1 v6 (2026-06-16) — operator catch: the placeholder
+             label was "JAMES 추론 중" (Korean brand chrome). Replaced
+             with an English DEBUG-style trace word that reads as the
+             first real stage ("Analyzing question") so it's already
+             informative before any stage event has streamed in. -->
         <div class="thinking-placeholder">
           ${brainPulseSvg(true)}
           <span class="thinking-shimmer-text thinking-label thinking-placeholder-text"
-                data-trace="${traceId}">JAMES 추론 중</span>
+                data-trace="${traceId}">Analyzing question…</span>
         </div>
       </div>
     </div>
@@ -2399,34 +2411,44 @@ function appendTyping(traceId) {
   //   verify    — 답변 생성 + 종료 단계 (검증/마무리)
   // 백엔드(server_llmwiki.py · core/reasoning/modes.py)가 실제로
   // 내보내는 stage 와 1:1 대응되며, 빈 phase 컨테이너는 lazy 생성.
+  // v0.6.1 v6 (2026-06-16) — operator catch: labels rewritten to
+  // English debug-style trace words ("Analyzing question",
+  // "Rewriting query", "Searching documents", "Classifying",
+  // "Merging", "Hop blocked", "Generating answer", etc.) so the
+  // operator sees what the engine is ACTUALLY doing, not a generic
+  // "JAMES 추론 중". Icons remain emoji per the operator's own
+  // "시각적 노출 효과" exception clause — they're the small animated
+  // glyphs that read at a glance during the live stream.
   const STAGE_META = {
-    auth:        { icon: '🔐', label: '권한 확인',          color: '#999',    phase: 'retrieve' },
-    risky_coding_blocked: { icon: '🛑', label: '위험 명령 차단', color: '#f06292', phase: 'retrieve' },
-    retrieve:    { icon: '🔍', label: '내부 자료 검색',     color: '#7c6af7', phase: 'retrieve' },
-    rerank:      { icon: '🎯', label: '재정렬',              color: '#7c6af7', phase: 'retrieve' },
-    graph:       { icon: '🕸️', label: '관계 그래프 탐색',   color: '#3da78a', phase: 'expand' },
-    tool:        { icon: '🔧', label: '도구 호출',           color: '#ffb74d', phase: 'expand' },
-    coding_route: { icon: '⌨️', label: '코딩 LLM 라우팅',    color: '#ffb74d', phase: 'expand' },
-    coding_llm_pick: { icon: '⚙️', label: '모델 선택',       color: '#ffb74d', phase: 'expand' },
-    coding_user_pick: { icon: '👤', label: '사용자 모델 선택', color: '#ffb74d', phase: 'expand' },
-    coding_done: { icon: '✓',  label: '코딩 완료',           color: '#4caf7d', phase: 'verify' },
-    coding_llm_error: { icon: '⚠️', label: '코더 LLM 오류',  color: '#f06292', phase: 'verify' },
-    coding_fallback_done: { icon: '↻', label: 'Fallback 완료', color: '#ffb74d', phase: 'verify' },
-    coding_fallback_error: { icon: '⚠️', label: 'Fallback 오류', color: '#f06292', phase: 'verify' },
-    coding_user_pick_done: { icon: '✓', label: '사용자 모델 완료', color: '#4caf7d', phase: 'verify' },
-    coding_user_pick_error: { icon: '⚠️', label: '사용자 모델 오류', color: '#f06292', phase: 'verify' },
-    answer:      { icon: '🤖', label: 'LLM 답변 생성',       color: '#f06292', phase: 'verify' },
-    complete:    { icon: '✅', label: '완료',                color: '#4caf7d', phase: 'verify' },
+    auth:        { icon: '🔐', label: 'Verifying access',        color: '#999',    phase: 'retrieve' },
+    risky_coding_blocked: { icon: '🛑', label: 'Risky command blocked', color: '#f06292', phase: 'retrieve' },
+    rewrite:     { icon: '✏', label: 'Rewriting query',          color: '#7c6af7', phase: 'retrieve' },
+    classify:    { icon: '⌕', label: 'Classifying intent',       color: '#7c6af7', phase: 'retrieve' },
+    retrieve:    { icon: '🔍', label: 'Searching documents',     color: '#7c6af7', phase: 'retrieve' },
+    rerank:      { icon: '🎯', label: 'Re-ranking candidates',   color: '#7c6af7', phase: 'retrieve' },
+    merge:       { icon: '⇆', label: 'Merging evidence',         color: '#7c6af7', phase: 'retrieve' },
+    hop_blocked: { icon: '⊘', label: 'Hop blocked',              color: '#f06292', phase: 'retrieve' },
+    graph:       { icon: '🕸️', label: 'Traversing graph',        color: '#3da78a', phase: 'expand' },
+    expand:      { icon: '⇢', label: 'Expanding context',        color: '#3da78a', phase: 'expand' },
+    tool:        { icon: '🔧', label: 'Calling tool',             color: '#ffb74d', phase: 'expand' },
+    coding_route: { icon: '⌨️', label: 'Routing to coder LLM',    color: '#ffb74d', phase: 'expand' },
+    coding_llm_pick: { icon: '⚙', label: 'Picking model',         color: '#ffb74d', phase: 'expand' },
+    coding_user_pick: { icon: '⌽', label: 'User model override',  color: '#ffb74d', phase: 'expand' },
+    coding_done: { icon: '✓',  label: 'Coder LLM complete',       color: '#4caf7d', phase: 'verify' },
+    coding_llm_error: { icon: '⚠', label: 'Coder LLM error',      color: '#f06292', phase: 'verify' },
+    coding_fallback_done: { icon: '↻', label: 'Fallback complete', color: '#ffb74d', phase: 'verify' },
+    coding_fallback_error: { icon: '⚠', label: 'Fallback error',  color: '#f06292', phase: 'verify' },
+    coding_user_pick_done: { icon: '✓', label: 'User model done', color: '#4caf7d', phase: 'verify' },
+    coding_user_pick_error: { icon: '⚠', label: 'User model error', color: '#f06292', phase: 'verify' },
+    verify:      { icon: '✓', label: 'Verifying claims',         color: '#3da78a', phase: 'verify' },
+    answer:      { icon: '🤖', label: 'Generating answer',        color: '#f06292', phase: 'verify' },
+    complete:    { icon: '✓', label: 'Done',                      color: '#4caf7d', phase: 'verify' },
   };
 
-  // [§4 #3] Phase 단위 메타 — 컨테이너 헤더에 표시. 순서는 timeline
-  // 진행 순서를 강제한다: RETRIEVE → EXPAND → VERIFY. 한 phase 가
-  // 생략되어도(예: graph 사용 안 한 빠른 답변) 다음 phase 가 빈
-  // 자리를 그대로 받는다 — 사용자에겐 진행이 한 칸 점프한 것처럼
-  // 보임. 비어 있는 phase 컨테이너는 절대 만들지 않는다(lazy).
+  // Phase headers — English UPPERCASE debug labels (operator catch).
   const PHASE_META = {
     retrieve: { icon: '🔎', label: 'RETRIEVE', order: 1 },
-    expand:   { icon: '🕸️', label: 'EXPAND',   order: 2 },
+    expand:   { icon: '🕸', label: 'EXPAND',   order: 2 },
     verify:   { icon: '🤖', label: 'VERIFY',   order: 3 },
   };
 
