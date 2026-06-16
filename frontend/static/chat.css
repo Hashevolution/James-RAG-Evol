@@ -1029,6 +1029,14 @@ main { display: flex; flex: 1; overflow: hidden; }
   animation: fadeIn .2s ease;
 }
 .msg.user { margin-left: auto; flex-direction: row-reverse; }
+/* v0.6.1 v13 (2026-06-16) — operator catch: PC web "자메스와 사용자
+ * 아이콘이 없어도 될것같다". Avatars on every row added visual
+ * weight without information value; mobile already hid them. Now
+ * hidden globally so PC matches Claude.ai's avatar-less assistant
+ * column. The .avatar style block stays (operator-tier admin
+ * surfaces may reuse it) but the chat-page .msg .avatar
+ * specifically is display:none. */
+.msg .avatar { display: none !important; }
 .avatar {
   width: 30px; height: 30px;
   border-radius: 6px;
@@ -1051,7 +1059,10 @@ main { display: flex; flex: 1; overflow: hidden; }
   border-radius: 10px;
   font-size: 14px;
   line-height: 1.65;
-  max-width: calc(100% - 42px);
+  /* v13 (2026-06-16) — avatar gone, reclaim the 42 px reserved for
+   * it. user bubble keeps its 80% max via the .msg.user .bubble
+   * override below. */
+  max-width: 100%;
   word-break: break-word;
   overflow-wrap: break-word;
 }
