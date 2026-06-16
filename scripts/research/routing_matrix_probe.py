@@ -143,13 +143,14 @@ def probe_mode_resolve_only(mode: str) -> Dict[str, object]:
     from core.model_resolver import resolve_for_mode, resolve_chat
 
     note = ""
-    if mode == "chat":
-        if os.environ.get("JAMES_DISABLE_MODE_AWARE_CHAT"):
+    if mode in ("chat", "retrieval"):
+        if os.environ.get("JAMES_DISABLE_MODE_AWARE_ROUTING"):
             rm = resolve_chat()
             note = "kill-switch ON → resolve_chat()/GEMMA_MODEL"
         else:
-            rm = resolve_for_mode("chat", requested="")
-            note = "Phase 2c auto-route (preference top)"
+            rm = resolve_for_mode(mode, requested="")
+            phase = "Phase 2c" if mode == "chat" else "Phase 3c"
+            note = f"{phase} auto-route (measured preference top)"
         model = rm.tag
     elif mode == "coding":
         try:
@@ -161,7 +162,7 @@ def probe_mode_resolve_only(mode: str) -> Dict[str, object]:
     elif mode == "meta":
         model = "(fast-path — no LLM)"
         note = "inventory generated without LLM"
-    else:  # retrieval / wiki_edit / self_evolve
+    else:  # wiki_edit / self_evolve (retrieval now handled above)
         rm = resolve_chat()
         model = rm.tag
         note = "legacy: call_gemma(model=None) → resolve_chat() → GEMMA_MODEL"

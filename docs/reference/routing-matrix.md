@@ -19,7 +19,7 @@
 | Mode | Trigger (IntentClassifier) | Model | Resolution path | Observability | Status |
 |---|---|---|---|---|---|
 | **chat** | 일상 대화·인사 | **gemma3:12b** | engine.py `resolve_for_mode("chat", requested="")` → preference top | `[MODEL] mode=chat auto-routed → gemma3:12b` ✅ observed | **measurement-backed (Phase 2c)** |
-| **retrieval** | 지식 검색·정보 조회 | gemma4:e4b | `call_gemma(model=None)` → `resolve_chat()` → GEMMA_MODEL | silent (no log on happy path) | legacy (unmeasured) |
+| **retrieval** | 지식 검색·정보 조회 | **gemma3:12b** | engine.py `resolve_for_mode("retrieval", requested="")` → preference top | `[MODEL] mode=retrieval auto-routed → gemma3:12b` ✅ observed | **measurement-backed (Phase 3c)** |
 | **meta** | 내부자료 인벤토리 | none (no LLM) | fast-path inventory generation | `(fast-path)` ✅ confirmed | n/a |
 | **coding** | 코드 작성·버그 | qwen2.5-coder:32b | `llm.router(task_type="coding")` | `[coding_route]` / router log ✅ | dedicated router |
 | **wiki_edit** | 지식 수정·삭제 (admin) | gemma4:e4b | `call_gemma(model=None)` → `resolve_chat()` → GEMMA_MODEL | silent | legacy (unmeasured) |
@@ -29,9 +29,9 @@
 ## Resolution priority (3-tier)
 
 ```
-1. user secondary-picker selection   → catalog-validated tag wins (every mode)
-2. chat + no pick                     → gemma3:12b (Phase 2c; kill-switch JAMES_DISABLE_MODE_AWARE_CHAT=1)
-3. other mode + no pick               → legacy GEMMA_MODEL (gemma4:e4b), or coding=qwen-coder:32b
+1. user secondary-picker selection      → catalog-validated tag wins (every mode)
+2. chat/retrieval + no pick              → gemma3:12b (Phase 2c/3c; kill-switch JAMES_DISABLE_MODE_AWARE_ROUTING=1)
+3. other mode + no pick                  → legacy GEMMA_MODEL (gemma4:e4b), or coding=qwen-coder:32b
 ```
 
 ## The `resolve_chat()` trap (important)
@@ -95,7 +95,7 @@ separate from the backend-tier system:
 - 🔄 **Phase 3** (Option B — local size ladder)
   - ✅ 3a — `LOCAL_TIER_LADDER` + `resolve_local_tier()` defined (plumb-first)
   - ✅ 3b — complexity-paired measurement done (4-cell: 4b/gemma4:e4b/12b/27b × multihop). **gold-grounded reversal**: judge-only said escalation pointless, but gold_signals shows 27b=1.000 > 12b=0.889 > 4b=0.852 > gemma4:e4b=0.815. Escalation has a basis (modest +0.111) but costs 2.3× latency + verbose answers. Side finding: gemma4:e4b (current default) is *lowest* on evidence-rich retrieval. See `reports/research-runs/v18.7-phase3b-tier-ladder/QUALITY_DELTA_CARD.md`.
-  - ⏸️ 3c — wire D5 tier decision → `resolve_local_tier`: **operator trade-off decision** (+0.111 gold-accuracy vs 2.3× latency + verbosity). `JAMES_AUTO_ROUTER` stays OFF until decided. Ladder infra (3a) preserved regardless.
+  - ✅ 3c — **retrieval mode wired** to `resolve_for_mode("retrieval", "")` → gemma3:12b (the measured-best *default*; gemma4:e4b demoted as weakest on evidence-rich retrieval). Done via the same engine.py mode-routing block as chat (kill-switch generalized to `JAMES_DISABLE_MODE_AWARE_ROUTING`). **Full 27b complexity escalation NOT auto-wired** — the +0.111 gold-accuracy gain over 12b doesn't justify 2.3× latency + verbose answers for a default path. `LOCAL_TIER_LADDER` infra (3a) preserved for a future verify-stage-only deep escalation with verbosity-curbing response_style. `JAMES_AUTO_ROUTER` stays OFF.
 - ⏳ Phase 4 — privacy gate (PII) + cost-aware cap + cloud (Claude) routing
 - ⏳ Phase 5 — sub-class routing inside chat + admin routing dashboard
 
