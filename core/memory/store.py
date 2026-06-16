@@ -24,9 +24,11 @@ from core.memory.db import (
 from core.memory.conversation import (
     delete_session as _conv_delete_session,
     get_all_sessions as _conv_get_all_sessions,
+    get_favorite_session_ids as _conv_get_favorite_session_ids,
     get_history_context as _conv_get_history_context,
     get_recent_turns as _conv_get_recent_turns,
     save_turn as _conv_save_turn,
+    set_session_favorite as _conv_set_session_favorite,
     set_session_name as _conv_set_session_name,
 )
 from core.memory.summaries import (
@@ -245,6 +247,12 @@ class MemoryStore:
 
     def set_session_name(self, session_id: str, name: str) -> bool:
         return _conv_set_session_name(session_id, name)
+
+    def set_session_favorite(self, session_id: str, favorited: bool) -> bool:
+        return _conv_set_session_favorite(session_id, favorited)
+
+    def get_favorite_session_ids(self) -> list:
+        return _conv_get_favorite_session_ids()
 
     def delete_session(self, session_id: str) -> bool:
         return _conv_delete_session(session_id)

@@ -127,11 +127,73 @@ def get_all_sessions() -> list:
                 ).fetchone()
                 info["name"] = name_row["value"] if name_row else ""
 
+                # v0.6.1 v12 (2026-06-16) — favorite (즐겨찾기)
+                # cross-device sync. Same shape as `name`: a tiny
+                # preferences row keyed by session_id.
+                fav_row = conn.execute(
+                    "SELECT value FROM preferences "
+                    "WHERE key=? LIMIT 1",
+                    (f"session_favorite:{sid}",)
+                ).fetchone()
+                info["is_favorite"] = bool(
+                    fav_row and fav_row["value"] == "1"
+                )
+
                 sessions.append(info)
 
             return sessions
     except Exception as e:
         print(f"[MEMORY] get_all_sessions 실패: {e}")
+        return []
+
+
+def set_session_favorite(session_id: str, favorited: bool) -> bool:
+    """v0.6.1 v12 (2026-06-16) — pin a session to the top of the
+    sidebar list. Stored under ``preferences[session_favorite:<sid>]``
+    so it survives across devices (any client signed in with the
+    same api_key + JWT sees the same favorites).
+
+    Mirrors the ``set_session_name`` pattern — INSERT OR REPLACE on a
+    namespaced preference key, value = "1" when favorited / row
+    DELETEd when not. Operator catch (2026-06-16): the v0.6.1 v8
+    favorite primitive lived in localStorage only, so the PC web and
+    phone web didn't see the same star state.
+    """
+    if not session_id:
+        return False
+    now = datetime.now().isoformat()
+    key = f"session_favorite:{session_id}"
+    try:
+        with _connect() as conn:
+            if favorited:
+                conn.execute(
+                    "INSERT OR REPLACE INTO preferences "
+                    "(key, value, raw, confidence, created_at, updated_at) "
+                    "VALUES (?,?,?,?,?,?)",
+                    (key, "1", "", 1.0, now, now),
+                )
+            else:
+                conn.execute("DELETE FROM preferences WHERE key=?", (key,))
+        return True
+    except Exception as e:
+        print(f"[SESSION] favorite 저장 실패: {e}")
+        return False
+
+
+def get_favorite_session_ids() -> list:
+    """v0.6.1 v12 (2026-06-16) — return the SID list pinned via
+    set_session_favorite. Stable but unordered; the client sorts
+    however it wants (the v0.6.1 v8 client sorts favorites to the top
+    of the sidebar list).
+    """
+    try:
+        with _connect() as conn:
+            rows = conn.execute(
+                "SELECT key FROM preferences WHERE key LIKE 'session_favorite:%' AND value='1'"
+            ).fetchall()
+        return [r["key"].split("session_favorite:", 1)[1] for r in rows]
+    except Exception as e:
+        print(f"[SESSION] favorite 조회 실패: {e}")
         return []
 
 
@@ -171,6 +233,10 @@ def delete_session(session_id: str) -> bool:
             conn.execute(
                 "DELETE FROM preferences WHERE key=?",
                 (f"session_name:{session_id}",)
+            )
+            conn.execute(
+                "DELETE FROM preferences WHERE key=?",
+                (f"session_favorite:{session_id}",)
             )
             conn.execute(
                 "DELETE FROM preferences WHERE key LIKE ?",
