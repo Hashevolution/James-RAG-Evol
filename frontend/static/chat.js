@@ -1476,9 +1476,20 @@ async function sendMessage() {
    메시지 렌더링
 ════════════════════════════════ */
 
+/* v0.6.1 v11 (2026-06-16) — operator catch: pressing "+ 새 대화"
+ * left the chat surface blank instead of restoring the welcome
+ * hero. Root cause: hideWelcome used to REMOVE the element from
+ * the DOM, so newSession() could never re-show it. Now hideWelcome
+ * just toggles display:none; showWelcome restores display:flex.
+ * newSession + sendMessage round-trip across the same element. */
 function hideWelcome() {
   const w = document.getElementById('welcome');
-  if (w) w.remove();
+  if (w) w.style.display = 'none';
+}
+
+function showWelcome() {
+  const w = document.getElementById('welcome');
+  if (w) w.style.display = 'flex';
 }
 
 function appendMsg(role, text) {
@@ -3313,10 +3324,18 @@ function newSession() {
   // 다음 query 가 옛 SID 로 전송되어 backend N-3 게이트가 못 풀림.
   refreshSessionGlobals();
 
-  // 화면 초기화
+  // v0.6.1 v11 (2026-06-16) — operator catch: previously this set
+  // `messages.innerHTML = ''` which also wiped the #welcome host,
+  // so the "Welcome to SEKOS / 무엇이든 물어보세요" hero never
+  // re-appeared on a new chat. Now we only remove message bubbles
+  // (`.msg`) and the loading/typing rows, then explicitly call
+  // showWelcome() so the same hero the operator sees on first
+  // load returns for every new chat.
   const messages = document.getElementById('messages');
-  if (messages) messages.innerHTML = '';
-  document.getElementById('welcome')?.style?.setProperty('display', 'flex');
+  if (messages) {
+    messages.querySelectorAll('.msg, .thinking-stream, .typing').forEach(el => el.remove());
+  }
+  showWelcome();
   toast('새 대화를 시작합니다', 'success');
   // refresh sidebar list so the new session appears at top.
   loadSessionList().catch(() => {});
