@@ -225,6 +225,12 @@
     if (modeId === 'sessions' && typeof loadSessionList === 'function') {
       loadSessionList();
     }
+    // v0.6.1 v5 (2026-06-16) — search mode: focus the search input
+    // + ensure session cache is fresh (so the client-side filter has
+    // something to filter). primeSidebarSearch is exposed by chat.js.
+    if (modeId === 'search' && typeof primeSidebarSearch === 'function') {
+      primeSidebarSearch();
+    }
     // Update the panel header title from the matching rail tip so
     // i18n stays in one place.
     var titleEl = document.getElementById('sidebar-title');

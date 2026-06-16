@@ -232,6 +232,49 @@ header {
 .modal-btn.cancel  { background: transparent; border: 1px solid var(--border); color: var(--text-soft); }
 .modal-btn.cancel:hover { background: var(--surface-2); color: var(--text); }
 
+/* v0.6.1 v5 (2026-06-16) — compact session-action modal. Operator
+ * catch: the default modal width (380 px) + 32 px padding was too
+ * large for a 3-button menu on a phone — it occupied almost the
+ * full viewport. The .modal-compact variant pulls width down to
+ * 280 px and padding to 18 px so the menu fits in ~30% of the
+ * vertical space it used to. */
+.modal.modal-compact {
+  width: 280px;
+  max-width: calc(100vw - 32px);
+  padding: 18px 18px 14px;
+  border-radius: 12px;
+  border-width: 1px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, .55);
+}
+.modal.modal-compact .modal-title {
+  font-size: 14px;
+  margin-bottom: 6px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+/* Compact action rows — full-width, small padding, no big gaps. */
+.modal-btn-row {
+  text-align: center;
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: 8px;
+  width: 100%;
+  flex: 0 0 auto;
+}
+.modal-btn-row:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+.modal-btn-row.modal-btn-danger {
+  color: #f06292;
+  border: 1px solid #f06292;
+  background: transparent;
+}
+.modal-btn-row.modal-btn-danger:hover {
+  background: rgba(240, 98, 146, .12);
+  color: #ff5d8a;
+}
+
 /* ── 메인 레이아웃 ── */
 main { display: flex; flex: 1; overflow: hidden; }
 
@@ -1606,6 +1649,96 @@ aside.sidebar.collapsed { min-width: 0; }
  * at the old class names visually disappear instead of double-
  * stacking. */
 .sidebar-top-nav { display: none !important; }
+
+/* v0.6.1 v5 (2026-06-16) — Sidebar search panel. Active when the
+ * 🔍 mode tab is selected. Client-side substring match against the
+ * cached session list (name + first question); file / wiki search
+ * still pending a backend endpoint. */
+.sidebar-search-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  height: 100%;
+  min-height: 0;
+}
+.sidebar-search-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: var(--font-ui);
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.sidebar-search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.sidebar-search-input::-webkit-search-cancel-button {
+  cursor: pointer;
+  -webkit-appearance: searchfield-cancel-button;
+}
+.sidebar-search-results {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sidebar-search-result {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-ui);
+}
+.sidebar-search-result:hover {
+  background: var(--surface-2);
+  border-color: var(--accent);
+}
+.sidebar-search-result-title {
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sidebar-search-result-meta {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+.sidebar-search-result mark {
+  background: var(--accent-soft);
+  color: var(--accent-fg);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.sidebar-search-empty {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  padding: 14px 8px;
+  font-family: var(--font-ui);
+}
+.sidebar-search-scope-note {
+  font-size: 10px;
+  color: var(--muted);
+  border-top: 1px solid var(--border-2, var(--border));
+  padding-top: 8px;
+  line-height: 1.4;
+  font-family: var(--font-ui);
+}
 
 /* Section title (e.g., "이전 대화") above the scrollable list. */
 .sidebar-section-title {

@@ -1045,7 +1045,7 @@ function loadMineSidebar() {
     const items = data.items || [];
     if (!items.length) {
       target.innerHTML = `<div style="color:var(--muted);font-size:11px;padding:16px;text-align:center;line-height:1.5">
-        업로드한 파일이 아직 없습니다.<br>(왼쪽 📂 모드에서 추가)
+        업로드한 파일이 아직 없습니다.<br>(왼쪽 메뉴 ‘파일 업로드’에서 추가)
       </div>`;
       return;
     }
@@ -1780,15 +1780,15 @@ function appendJamesMsg(data) {
       <button class="fb-btn" data-action="send-feedback" data-dir-id="${dirIdEsc}" data-signal="explicit_positive"
         style="background:none;border:1px solid var(--border);border-radius:6px;
                padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
-               transition:all .15s" title="좋아요">👍</button>
+               transition:all .15s" title="좋아요">좋아요</button>
       <button class="fb-btn" data-action="send-feedback" data-dir-id="${dirIdEsc}" data-signal="explicit_negative"
         style="background:none;border:1px solid var(--border);border-radius:6px;
                padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
-               transition:all .15s" title="별로예요">👎</button>
+               transition:all .15s" title="별로예요">별로</button>
       <button class="fb-btn" data-action="copy-answer-text" data-content="${answerEscapedAttr}"
         style="background:none;border:1px solid var(--border);border-radius:6px;
                padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
-               transition:all .15s" title="이 답변 복사">📋 복사</button>
+               transition:all .15s" title="이 답변 복사">복사</button>
       ${exportButtons}
     </div>` : '';
 
@@ -2665,7 +2665,7 @@ function formatAnswerWithParagraphs(text) {
               data-action="copy-answer-text"
               data-content="${escapedAttr}"
               title="이 문단 복사"
-              aria-label="이 문단 복사">📋</button>
+              aria-label="이 문단 복사">복사</button>
     </div>`;
   }).join('');
 }
@@ -2799,6 +2799,11 @@ function toggleSessionPanel() {
   switchSidebarMode(currentMode === 'sessions' ? 'upload' : 'sessions');
 }
 
+// v0.6.1 v5 (2026-06-16) — cached session list shared with the
+// sidebar search panel. loadSessionList writes; renderSidebarSearch
+// reads. Stays in-memory only (no localStorage) so a logout clears it.
+let _SESSIONS_CACHE = [];
+
 async function loadSessionList() {
   const listEl = document.getElementById('session-list');
   if (!listEl) return;
@@ -2809,6 +2814,12 @@ async function loadSessionList() {
     );
     const data = await res.json();
     const sessions = data.sessions || [];
+    _SESSIONS_CACHE = sessions;
+
+    // If the search panel is already open, keep its results in sync
+    // with the freshest session set without forcing the operator to
+    // re-type.
+    try { renderSidebarSearch(); } catch (_) {}
 
     // 배지 업데이트
     const badge = document.getElementById('session-count-badge');
@@ -2863,6 +2874,120 @@ async function loadSessionList() {
     listEl.innerHTML = `<div style="color:var(--muted);font-size:12px">로드 실패: ${e.message}</div>`;
   }
 }
+
+/* ── v0.6.1 v5 (2026-06-16) — Sidebar search panel ──
+ *
+ * Operator catch: the 🔍 mode shipped with a "(activated in a follow-up
+ * cycle)" placeholder. Reframed as a CLIENT-SIDE substring search
+ * over the cached session list (`_SESSIONS_CACHE`), the most useful
+ * scope without a new backend endpoint. File / wiki search is
+ * honestly noted as pending in the scope footer.
+ *
+ *   primeSidebarSearch() : called by switchSidebarMode('search').
+ *                          Ensures the cache is hot, focuses input.
+ *   renderSidebarSearch(): pure render from current input value.
+ *                          Called on input + on cache refresh.
+ *   _highlight()         : wraps matching substring in <mark>.
+ */
+function primeSidebarSearch() {
+  // Refresh the cache so the panel sees the latest session set; the
+  // result list waits for loadSessionList to write to _SESSIONS_CACHE
+  // (renderSidebarSearch is invoked there).
+  if (!_SESSIONS_CACHE.length) {
+    loadSessionList().catch(() => {});
+  } else {
+    renderSidebarSearch();
+  }
+  const input = document.getElementById('sidebar-search-input');
+  if (input) {
+    // Defer focus to next frame — switchSidebarMode mutates classes
+    // first, and Safari throws focus away if called on the same tick.
+    setTimeout(() => { try { input.focus(); } catch (_) {} }, 0);
+  }
+}
+
+function renderSidebarSearch() {
+  const input = document.getElementById('sidebar-search-input');
+  const out = document.getElementById('sidebar-search-results');
+  if (!out) return;
+  const q = ((input && input.value) || '').trim().toLowerCase();
+  if (!q) {
+    out.innerHTML =
+      '<div class="sidebar-search-empty">'
+      + (t('sidebar.search_empty_hint')
+         || '검색어를 입력하세요')
+      + '</div>';
+    return;
+  }
+  if (!_SESSIONS_CACHE.length) {
+    out.innerHTML =
+      '<div class="sidebar-search-empty">'
+      + (t('sidebar.search_no_cache')
+         || '검색 대상이 없습니다 (로그인 / 세션 로드 필요)')
+      + '</div>';
+    return;
+  }
+  const hits = _SESSIONS_CACHE.filter(s => {
+    const name = (s.name || '').toLowerCase();
+    const fq   = (s.first_question || '').toLowerCase();
+    return name.includes(q) || fq.includes(q);
+  });
+  if (!hits.length) {
+    out.innerHTML =
+      '<div class="sidebar-search-empty">'
+      + (t('sidebar.search_no_hits')
+         || `“${q}” 결과 없음`).replace('${q}', q)
+      + '</div>';
+    return;
+  }
+  out.innerHTML = hits.slice(0, 50).map(s => {
+    const title = s.name || s.first_question || '(제목 없음)';
+    const started = s.started
+      ? new Date(s.started).toLocaleString('ko-KR', {
+          month: 'short', day: 'numeric',
+          hour: '2-digit', minute: '2-digit',
+        })
+      : '';
+    const sidAttr = escHtml(s.session_id);
+    return `
+      <button class="sidebar-search-result"
+              data-action="switch-session"
+              data-sid="${sidAttr}">
+        <span class="sidebar-search-result-title">
+          ${_highlight(title, q)}
+        </span>
+        <span class="sidebar-search-result-meta">
+          ${s.turn_count || 0}턴 · ${started}
+        </span>
+      </button>`;
+  }).join('');
+}
+
+function _highlight(text, q) {
+  const safe = escHtml(text || '');
+  if (!q) return safe;
+  try {
+    // Re-escape q for regex, then highlight matches case-insensitively.
+    const safeQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(safeQ, 'ig');
+    return safe.replace(re, m => `<mark>${m}</mark>`);
+  } catch (_) {
+    return safe;
+  }
+}
+
+// Expose primeSidebarSearch for index-init.js switchSidebarMode hook.
+window.primeSidebarSearch = primeSidebarSearch;
+
+// Wire the input listener once on boot. Uses 'input' so the result
+// list updates per keystroke; cheap because the cache is small (≤
+// ~hundreds of sessions per operator).
+window.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('sidebar-search-input');
+  if (input) {
+    input.addEventListener('input', renderSidebarSearch);
+  }
+});
 
 /* ── [3-D] 세션 이름 변경 ── */
 async function renameSession(sessionId, event) {

@@ -6,13 +6,13 @@
 <meta name="theme-color" content="#04060a">
 <title>Secure Enterprise Knowledge Operating System</title>
 <link rel="stylesheet" href="/static/tokens.css">
-<!-- v=v8-20260616 cache-bust: ☰ hamburger SVG (replacing ▶/◀ arrows)
-     + sidebar-toggle inline-flex centering. Pin both stylesheets to
-     the same buster so a half-cached state can't mismatch. -->
-<link rel="stylesheet" href="/static/chat.css?v=v8-20260616">
+<!-- v=v9-20260616 cache-bust: compact session-action modal +
+     emoji→SVG nav icons + working sidebar search input. Pin both
+     stylesheets so a half-cached state can't mismatch. -->
+<link rel="stylesheet" href="/static/chat.css?v=v9-20260616">
 <!-- mobile-responsive overrides — kept after inline styles so @media
      rules win at narrow viewports without !important on every line. -->
-<link rel="stylesheet" href="/static/mobile.css?v=v8-20260616">
+<link rel="stylesheet" href="/static/mobile.css?v=v9-20260616">
 </head>
 <body>
 
@@ -132,59 +132,145 @@
            - 🌐 추론 그래프 → /admin/graph
            - 🤖 에이전트 → /admin#agent-chat
            - ⚙ 관리자 → /admin -->
+    <!-- v0.6.1 v5 (2026-06-16) — operator catch: emoji icons (💬 📦
+         🌐 🤖 ⚙) lowered the professional concept. Replaced with
+         Feather/Lucide-style inline SVG strokes (currentColor +
+         stroke 2) that match the hamburger toggle. Same visual
+         weight + clear professional appearance. -->
     <nav class="sidebar-section sidebar-primary-nav" aria-label="페이지 이동">
       <button class="sidebar-nav-row sidebar-nav-row-active"
               type="button"
               data-action="goto-chat-top"
               title="채팅">
-        <span class="sidebar-nav-icon" aria-hidden="true">💬</span>
+        <span class="sidebar-nav-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round"
+               stroke-linejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7
+                     8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8
+                     8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48
+                     0 0 1 8 8v.5z"/>
+          </svg>
+        </span>
         <span class="sidebar-nav-label" data-i18n="sidebar.nav_chat">채팅</span>
       </button>
       <a href="/workspace" class="sidebar-nav-row"
          data-i18n-title="workspace.nav_title" title="프로젝트">
-        <span class="sidebar-nav-icon" aria-hidden="true">📦</span>
+        <span class="sidebar-nav-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round"
+               stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0
+                     0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0
+                     0 21 16z"/>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+            <line x1="12" y1="22.08" x2="12" y2="12"/>
+          </svg>
+        </span>
         <span class="sidebar-nav-label" data-i18n="sidebar.nav_project">프로젝트</span>
       </a>
       <a href="/admin/graph" class="sidebar-nav-row"
          data-i18n-title="sidebar.nav_graph_title"
          title="추론 그래프 (3D 노드 시각화)">
-        <span class="sidebar-nav-icon" aria-hidden="true">🌐</span>
+        <span class="sidebar-nav-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round"
+               stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10
+                     15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+        </span>
         <span class="sidebar-nav-label" data-i18n="sidebar.nav_graph">추론 그래프</span>
       </a>
       <a href="/admin#agent-chat" class="sidebar-nav-row"
          data-i18n-title="sidebar.nav_agent_title"
          title="에이전트 챗 (자연어 도구 호출)">
-        <span class="sidebar-nav-icon" aria-hidden="true">🤖</span>
+        <span class="sidebar-nav-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round"
+               stroke-linejoin="round">
+            <rect x="4" y="4" width="16" height="16" rx="2" ry="2"/>
+            <rect x="9" y="9" width="6" height="6"/>
+            <line x1="9" y1="1" x2="9" y2="4"/>
+            <line x1="15" y1="1" x2="15" y2="4"/>
+            <line x1="9" y1="20" x2="9" y2="23"/>
+            <line x1="15" y1="20" x2="15" y2="23"/>
+            <line x1="20" y1="9" x2="23" y2="9"/>
+            <line x1="20" y1="14" x2="23" y2="14"/>
+            <line x1="1" y1="9" x2="4" y2="9"/>
+            <line x1="1" y1="14" x2="4" y2="14"/>
+          </svg>
+        </span>
         <span class="sidebar-nav-label" data-i18n="sidebar.nav_agent">에이전트</span>
       </a>
       <a href="/admin" class="sidebar-nav-row"
          title="관리자">
-        <span class="sidebar-nav-icon" aria-hidden="true">⚙</span>
+        <span class="sidebar-nav-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round"
+               stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0
+                     2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33
+                     1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65
+                     1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0
+                     1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82
+                     1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65
+                     1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0
+                     0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65
+                     1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65
+                     1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0
+                     0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33
+                     1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2
+                     2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </span>
         <span class="sidebar-nav-label" data-i18n="sidebar.nav_admin">관리자</span>
       </a>
     </nav>
 
-    <!-- Mode tabs (upload / recent / search) — compact icon row
-         under the primary nav. Stays accessible without dominating
-         the sidebar; the label text only appears on tap (title)
-         and screen readers (aria-label). The sessions-list panel
-         is the default. -->
+    <!-- Mode tabs (upload / recent / search) — compact icon row with
+         Feather/Lucide SVG strokes (replacing 📂 🕘 🔍 emojis). Labels
+         stay in aria-label + title for a11y. Sessions panel default. -->
     <div class="sidebar-section sidebar-tabs sidebar-tabs-compact">
       <button class="sidebar-tab" data-mode="upload"
               data-action="switch-sidebar-mode"
               data-i18n-aria-label="sidebar.mode_upload"
               aria-label="파일 업로드"
-              data-i18n-title="sidebar.mode_upload" title="파일 업로드">📂</button>
+              data-i18n-title="sidebar.mode_upload" title="파일 업로드">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2
+                   3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+      </button>
       <button class="sidebar-tab" data-mode="recent"
               data-action="switch-sidebar-mode"
               data-i18n-aria-label="sidebar.mode_recent"
               aria-label="내 자료"
-              data-i18n-title="sidebar.mode_recent" title="내 자료">🕘</button>
+              data-i18n-title="sidebar.mode_recent" title="내 자료">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </button>
       <button class="sidebar-tab" data-mode="search"
               data-action="switch-sidebar-mode"
               data-i18n-aria-label="sidebar.mode_search"
               aria-label="전역 검색"
-              data-i18n-title="sidebar.mode_search" title="전역 검색">🔍</button>
+              data-i18n-title="sidebar.mode_search" title="전역 검색">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </button>
     </div>
 
     <!-- Section title — like Claude's "즐겨찾기" / "이전 대화" labels.
@@ -295,13 +381,29 @@
              style="flex:1;overflow-y:auto;padding:8px 12px"></div>
       </div>
 
-      <!-- Mode: 검색 (placeholder — 전역 검색은 후속) -->
+      <!-- Mode: 검색. v0.6.1 v5 (2026-06-16) — operator catch: the
+           "(후속 사이클에서 활성화)" placeholder shipped without a
+           working search. Now does CLIENT-SIDE substring match
+           against the cached session list (name + first question).
+           File / wiki search still needs a backend endpoint —
+           honestly framed below so future-me knows what's pending. -->
       <div class="sidebar-panel-mode" data-mode="search">
-        <div class="sidebar-placeholder">
-          <div class="icon">🔍</div>
-          <div class="title" data-i18n="sidebar.search_title">전역 검색</div>
-          <div class="hint" data-i18n="sidebar.search_hint">
-            업로드한 파일·위키·과거 대화 통합 검색.<br>(후속 사이클에서 활성화)
+        <div class="sidebar-search-wrap">
+          <input type="search"
+                 id="sidebar-search-input"
+                 class="sidebar-search-input"
+                 data-i18n-placeholder="sidebar.search_input_ph"
+                 placeholder="이전 대화에서 검색…"
+                 autocomplete="off"
+                 spellcheck="false"
+                 aria-label="이전 대화 검색">
+          <div id="sidebar-search-results"
+               class="sidebar-search-results"
+               aria-live="polite"></div>
+          <div class="sidebar-search-scope-note"
+               data-i18n="sidebar.search_scope_hint">
+            현재 검색 범위 — 이전 대화 (제목·첫 질문).
+            파일·위키 검색은 후속 사이클.
           </div>
         </div>
       </div>
@@ -373,6 +475,10 @@
          still wire to #model-chip / #model-chip-tag / #workspace-name
          unchanged. -->
     <div class="chat-topbar" id="chat-topbar">
+      <!-- v5 (2026-06-16) — model-chip icon flipped from 🤖 emoji
+           to a small bullet so the chip reads "● 모델명 ▾" instead
+           of a cartoon robot. Same for workspace-badge (📁 → 작은
+           SVG folder outline). -->
       <button id="model-chip"
               type="button"
               class="model-chip"
@@ -381,7 +487,8 @@
               title="현재 응답에 사용 중인 모델 — 클릭 시 변경"
               aria-haspopup="listbox"
               aria-expanded="false">
-        <span class="model-chip-icon" aria-hidden="true">🤖</span>
+        <span class="model-chip-icon" aria-hidden="true"
+              style="font-size:9px;color:var(--accent-fg)">●</span>
         <span class="model-chip-tag" id="model-chip-tag">—</span>
         <span class="model-chip-caret" aria-hidden="true">▾</span>
       </button>
@@ -391,7 +498,14 @@
               title="현재 워크스페이스"
               aria-label="현재 워크스페이스"
               style="display:none;font-size:11px">
-        📁 <span id="workspace-name">—</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true"
+             style="vertical-align:-2px;margin-right:4px">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2
+                   3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span id="workspace-name">—</span>
       </button>
     </div>
 
@@ -433,7 +547,7 @@
                 style="background:var(--surface);border:1px solid var(--border);
                        color:var(--text);padding:4px 10px;border-radius:6px;
                        font-size:11px;cursor:pointer">
-          <option value="auto" data-i18n="mode.auto">🤖 자동</option>
+          <option value="auto" data-i18n="mode.auto">자동</option>
         </select>
         <span id="model-picker-wrap"
               style="display:none;align-items:center;gap:4px"
@@ -464,7 +578,7 @@
            title="이 PC에 맞는 모델 자동 추천 (admin 페이지)"
            data-i18n="mode.recommend_link"
            data-i18n-title="mode.recommend_link_title">
-          🎯 추천
+          모델 추천
         </a>
         <span id="mode-recommend"
               style="display:none;font-size:11px;color:var(--accent-fg);
@@ -475,22 +589,19 @@
               data-i18n-title="chat.mode_recommend_active_title"></span>
       </div>
       <div style="display:flex;gap:6px;align-items:center">
-        <!-- v0.6.1 v3 (2026-06-15) Claude-style — 양식 (Templates)
-             moved from sidebar into the chat conv-actions row. It's
-             a chat-time tool (apply a doc-shaping template to the
-             next response) so it belongs near the input. -->
+        <!-- 양식 (Templates) — chat-time tool. v5 (2026-06-16):
+             📄 emoji prefix removed; conv-action-chip stays
+             label-only for a clean professional look. -->
         <button data-action="tplc-open"
                 data-i18n-title="tplchat.open_title"
                 title="양식 적용"
-                class="conv-action-chip">
-          <span aria-hidden="true">📄</span>
-          <span data-i18n="tplchat.open">양식</span>
-        </button>
+                class="conv-action-chip"
+                data-i18n="tplchat.open">양식</button>
         <button data-action="copy-conversation"
                 class="conv-action-chip"
                 title="현재 대화 전체를 텍스트로 복사"
                 data-i18n="chat.copy_all"
-                data-i18n-title="chat.copy_all_title">📋 대화 전체 복사</button>
+                data-i18n-title="chat.copy_all_title">대화 전체 복사</button>
       </div>
     </div>
 
@@ -536,40 +647,42 @@
      Three actions: rename / archive (TODO future endpoint; shown
      disabled today) / delete. Selected session id is stashed on the
      modal root via data-sid by chat.js openSessionActionMenu(). -->
+<!-- v0.6.1 v5 (2026-06-16) — operator catch: the session-action
+     modal was full-width on phones with oversized buttons. Switched
+     to a COMPACT layout (max-width 280, smaller padding, smaller
+     button heights, professional textual labels — emoji prefixes
+     removed). The .modal-compact class flips .modal padding to a
+     phone-friendly size via chat.css. -->
 <div class="modal-overlay hidden" id="session-action-modal"
      role="dialog" aria-modal="true"
      aria-labelledby="session-action-title"
      data-sid="">
-  <div class="modal" style="max-width:380px">
-    <div class="modal-title" id="session-action-title">▸ <span data-i18n="chat.session_actions">대화 메뉴</span></div>
+  <div class="modal modal-compact">
+    <div class="modal-title" id="session-action-title"
+         data-i18n="chat.session_actions">대화 메뉴</div>
     <div id="session-action-name"
-         style="font-size:12px;color:var(--muted);
-                margin-bottom:14px;
+         style="font-size:11px;color:var(--muted);
+                margin-bottom:10px;
                 overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="modal-btn primary"
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <button class="modal-btn primary modal-btn-row"
               data-action="session-action-rename"
-              style="text-align:left">
-        ✏️ <span data-i18n="chat.session_rename">이름 변경</span>
-      </button>
-      <button class="modal-btn"
+              data-i18n="chat.session_rename">이름 변경</button>
+      <button class="modal-btn modal-btn-row"
               data-action="session-action-archive"
               data-i18n-title="chat.session_archive_hint"
               title="대화를 목록에서 숨김 (보관함은 후속 cycle)"
-              style="text-align:left;opacity:.6;cursor:not-allowed"
-              disabled>
-        📦 <span data-i18n="chat.session_archive">보관 (준비 중)</span>
-      </button>
-      <button class="modal-btn"
+              disabled
+              data-i18n="chat.session_archive">보관 (준비 중)</button>
+      <button class="modal-btn modal-btn-row modal-btn-danger"
               data-action="session-action-delete"
-              style="text-align:left;color:#f06292;border-color:#f06292">
-        🗑️ <span data-i18n="chat.session_delete">삭제</span>
-      </button>
+              data-i18n="chat.session_delete">삭제</button>
     </div>
-    <div class="modal-actions" style="margin-top:14px;justify-content:flex-end">
+    <div class="modal-actions" style="margin-top:10px;justify-content:flex-end">
       <button class="modal-btn cancel"
               data-action="session-action-close"
-              data-i18n="common.cancel">취소</button>
+              data-i18n="common.cancel"
+              style="flex:0 0 auto;padding:6px 16px;font-size:12px">취소</button>
     </div>
   </div>
 </div>
