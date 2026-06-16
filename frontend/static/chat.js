@@ -2821,11 +2821,18 @@ async function loadSessionList() {
     // re-type.
     try { renderSidebarSearch(); } catch (_) {}
 
-    // 배지 업데이트
+    // v0.6.1 v6 (2026-06-16) — operator catch: the bare "50" floating
+    // under the avatar was this badge. The Claude-style reorg moved
+    // the badge from the header into the sidebar footer where it
+    // visually leaked because loadSessionList was overriding the
+    // hidden attribute with style.display='block'. Stop overriding;
+    // the badge stays hidden (it's still in the DOM for callers that
+    // might rebind a visible UI later).
     const badge = document.getElementById('session-count-badge');
     if (badge) {
-      badge.style.display = sessions.length ? 'block' : 'none';
       badge.textContent = sessions.length;
+      // Don't touch badge.hidden / badge.style.display — the HTML
+      // attribute `hidden` keeps it invisible in the footer.
     }
 
     if (!sessions.length) {

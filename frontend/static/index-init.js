@@ -206,16 +206,23 @@
       '.sidebar-rail-item[data-mode], .sidebar-tab[data-mode]'
     );
     var panels = document.querySelectorAll('.sidebar-panel-mode');
-    var matched = false;
+    // v0.6.1 v6 (2026-06-16) — operator catch: tapping 💬 Chat after
+    // switching to 📂 / 🕘 / 🔍 left the sidebar stuck on the previous
+    // mode. Root cause: this loop tracked `matched` on .sidebar-tab,
+    // but there's no tab for 'sessions' — so switchSidebarMode('sessions')
+    // hit `if (!matched) return;` and never toggled the panels. Now we
+    // track existence on the PANELS (the source of truth) and only
+    // early-return when no panel matches the requested mode.
     modeEls.forEach(function (el) {
+      el.classList.toggle('active', el.dataset.mode === modeId);
+    });
+    var matched = false;
+    panels.forEach(function (el) {
       var on = el.dataset.mode === modeId;
       el.classList.toggle('active', on);
       if (on) matched = true;
     });
     if (!matched) return;  // unknown mode → ignore
-    panels.forEach(function (el) {
-      el.classList.toggle('active', el.dataset.mode === modeId);
-    });
     // W8-B: lazy-load the "내 자료" list when switching into recent.
     if (modeId === 'recent' && typeof loadMineSidebar === 'function') {
       loadMineSidebar();
