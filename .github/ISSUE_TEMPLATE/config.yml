@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Reproducibility Program overview
+    url: https://github.com/Hashevolution/James-RAG-Evol/blob/main/benchmarks/REPRODUCTION_PROGRAM.md
+    about: How reproduction reports are triaged (confirmed / variant / failed).
+  - name: Benchmark Challenge
+    url: https://github.com/Hashevolution/James-RAG-Evol/blob/main/benchmarks/CHALLENGE.md
+    about: Try to beat JAMES under identical datasets / models / constraints.
