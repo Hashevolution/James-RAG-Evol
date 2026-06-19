@@ -69,7 +69,7 @@ class PublicImportSurfaceTests(unittest.TestCase):
 
     def test_canonical_public_imports(self):
         # Public API as called by pipeline_synth.py + research scripts.
-        from core.reasoning.reflect import (
+        from core.reasoning.reflect import (  # noqa: F401 — importability contract
             ReflectionLoop, get_reflection_loop, DEFAULT_BACKEND_ID,
         )
         self.assertTrue(callable(get_reflection_loop))
@@ -89,7 +89,7 @@ class PublicImportSurfaceTests(unittest.TestCase):
         )
 
     def test_canonical_prompt_constants(self):
-        from core.reasoning.reflect import (
+        from core.reasoning.reflect import (  # noqa: F401 — importability contract
             CRITIQUE_PROMPT_EN,
             CRITIQUE_PROMPT_KO,
             REVISE_PROMPT_EN,

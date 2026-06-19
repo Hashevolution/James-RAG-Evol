@@ -1,0 +1,76 @@
+# benchmarks/config.yaml
+# ---------------------------------------------------------------------------
+# Single source of truth for the reproduction environment. Every value here
+# is a DISCLOSURE, not a knob the harness reads at runtime — the committed
+# runners are self-contained. This file exists so an external evaluator can
+# confirm (a) which artifacts are scored, (b) under which model/embedding/
+# hardware the reference numbers were captured, and (c) what is deterministic
+# vs. LLM-judge band-based.
+#
+# Fingerprint values mirror the committed baselines
+# (eval/ragas/baseline.json, eval/rab/SPEC-v0.1.md runner_env).
+version: "repro-v1"
+project_version: "v0.6.1"
+captured_against_doi: "10.5281/zenodo.20652679"   # v0.4.4 data archive
+
+# --- What gets scored -------------------------------------------------------
+benchmarks:
+  rab:
+    name: "RAB v0.1.1 — Replayable-Audit Benchmark"
+    deterministic: true            # no LLM in the scored path
+    scorer: "eval/rab/scorer.py"   # AC / RF / PC, deterministic
+    spec: "eval/rab/SPEC-v0.1.md"
+    fixtures:
+      - "eval/rab/scenarios/s1_lifecycle_small.json"
+      - "eval/rab/scenarios/s2_lifecycle_large.json"
+    suts: [reference, baseline0, baseline1, james]
+    headline: "4-SUT gap structure (Art. 10/12/19), NOT a JAMES-wins claim"
+    reference_numbers:               # scenario S1
+      reference: {AC: 1.000, RF: 1.000, PC: 1.000}
+      baseline0: {AC: 0.275, RF: 0.000, PC: 0.000}
+      james:     {AC: 1.000, RF: 1.000, PC: 1.000}
+
+  lrb:
+    name: "LRB v0.2.x — Lifecycle Retrieval Benchmark"
+    deterministic: true            # token-mode retrieval scoring, no LLM
+    fixtures_dir: "eval/external/lrb/"
+    scenarios: [S1, S2, S3]
+    suts: [vanilla, naive_supersede, james]   # V / N / J
+    headline: "R@1 V < N < J on S2; JAMES - Naive gap > +0.10 throughout"
+    reference_numbers:               # S3 publication-scale R@1
+      s3_publication_r_at_1: {vanilla: 0.502, naive: 0.721, james: 0.845}
+    framing: |
+      Pattern + gap are scale-robust (strong); absolute magnitudes are
+      scenario-sensitive (moderate). See papers/lrb-preprint/main.pdf §5.
+
+  ragas:
+    name: "RAGAS suite (sibling, LLM-judge)"
+    deterministic: false           # faithfulness/answer_relevancy are judged
+    requires_ollama: true
+    fixture: "eval/ragas/fixture_v0.2.json"   # 3 rows — small by design
+    baseline: "eval/ragas/baseline.json"
+    note: |
+      LLM-judge metrics are BAND-checked, not point-identical. This is a
+      reproducibility caveat, not a defect — see invariants in baseline.json.
+      RAGAS is a secondary cross-check; the headline reproducible numbers are
+      RAB + LRB. Coverage mapping: docs/evaluation/v0.5-evaluation-coverage-mapping.md
+
+# --- Reference environment (fingerprint) ------------------------------------
+environment:
+  os: "Windows 11 Home 10.0.26200"
+  cpu: "AMD Ryzen 7 7700 8-Core"
+  ram_gb: 32
+  gpu: "NVIDIA GeForce RTX 4070 SUPER (12 GB VRAM)"
+  python: ">=3.11"
+  ollama_model: "gemma4:e4b"        # only needed for --with-llm / --full james
+  coding_model: "qwen2.5-coder:32b"
+  embedding_model: "paraphrase-multilingual-MiniLM-L12-v2"
+  ollama_endpoint: "http://localhost:11434"
+  llm_temperature: 0.0
+  requirements: "requirements.txt   (pinned freeze: requirements_pinned.txt)"
+
+# --- Determinism posture ----------------------------------------------------
+determinism:
+  core_tier: "byte-identical across machines (RAB + LRB token-mode; no LLM)"
+  llm_tier: "band-based (RAGAS / LRB-S3 james-engine) — Ollama is nondeterministic"
+  seeds_file: "benchmarks/seeds.txt"

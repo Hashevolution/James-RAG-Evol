@@ -143,7 +143,6 @@ class TraceReplayRoundTripTests(TraceReplayBaseTests):
         day = "2026-06-01"
         # 5 stages, one every 10 minutes starting 00:00 UTC. The
         # cutoff tests use a midpoint between stage 2 and stage 3.
-        base = "2026-06-01T00:00:00+00:00"
         stages = []
         for i, (stage, offset_min) in enumerate([
             ("auth",     0),

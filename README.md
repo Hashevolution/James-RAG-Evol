@@ -143,25 +143,39 @@ Two benchmarks released as a sibling pair, both pre-registered before measuremen
 
 ### Reproduce in 60 seconds
 
+**One command** (wraps everything below; deterministic core tier, no GPU/Ollama, ~2 min):
+
 ```bash
 git clone https://github.com/Hashevolution/James-RAG-Evol.git
 cd James-RAG-Evol
 python -m pip install -r requirements.txt
+bash benchmarks/run_all.sh        # see benchmarks/README.md for --full / --with-llm
+```
 
+<details>
+<summary>Or run each benchmark by hand</summary>
+
+```bash
 # RAB scenario-S1 (deterministic; no LLM call; ~5 seconds)
 python scripts/research/rab_run.py --sut reference     # AC/RF/PC = 1.000/1.000/1.000
 python scripts/research/rab_run.py --sut baseline0     # AC/RF/PC = 0.275/0.000/0.000
 python scripts/research/rab_run.py --sut james         # AC/RF/PC = 1.000/1.000/1.000
 
 # LRB Phase B (S2 time-travel) token-mode (deterministic; no LLM; ~30 seconds)
+# Scenario fixtures are gitignored — build them first (deterministic, no LLM):
+python scripts/research/build_lrb_scenario_s1.py
+python scripts/research/build_lrb_scenario_s2.py
 PYTHONPATH=. python scripts/research/lrb_run_phase_b.py --scenarios S1,S2
+#   → S2 R@1: Vanilla 0.225 < Naive 0.538 < JAMES 0.688 (JAMES − Naive gap +0.15)
 
 # LRB S3 publication-scale (1000 docs / 5.6k events / 1000 queries; ~3 minutes)
 python scripts/research/build_lrb_scenario_s3.py --scale publication
 python scripts/research/lrb_run_s3.py --scale publication
 ```
 
-Every `result.json` + `bench.jsonl` artifact in `reports/external/lrb/` and `reports/rab/` is SHA-pinned against the scenario fixture; **byte-identical re-runs are the verification protocol**.
+</details>
+
+Every `result.json` + `bench.jsonl` artifact in `reports/external/lrb/` and `reports/rab/` is SHA-pinned against the scenario fixture; **byte-identical re-runs are the verification protocol**. Full reproducibility disclosure + the community reproduction program live in [`benchmarks/`](benchmarks/README.md).
 
 ---
 

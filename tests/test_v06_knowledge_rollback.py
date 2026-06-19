@@ -316,7 +316,7 @@ class HtmlStructureTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not HTML.exists():
-            raise unittest.SkipTest(f"knowledge-rollback.html missing")
+            raise unittest.SkipTest("knowledge-rollback.html missing")
         cls.body = HTML.read_text(encoding="utf-8")
 
     def test_two_flow_section_titles(self):
@@ -349,7 +349,7 @@ class JsStructureTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not JS.exists():
-            raise unittest.SkipTest(f"knowledge-rollback.js missing")
+            raise unittest.SkipTest("knowledge-rollback.js missing")
         cls.body = JS.read_text(encoding="utf-8")
 
     def test_exposes_global(self):

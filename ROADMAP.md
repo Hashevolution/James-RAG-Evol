@@ -1327,6 +1327,45 @@ external developers can publish their own packs.
 - Vertical Products (separate business decision per domain after v1.0)
 - Federation across multiple JAMES instances (Beyond v1.0 section)
 
+### Scalability — vector compression tier (trigger-gated, NOT version-scheduled)
+
+**Entry trigger** (none of which is currently met): a real deployed
+corpus whose float32 vector index exceeds available RAM — concretely
+**> ~1M documents** at the default 384-dim, or a pilot that measures a
+vector-store memory bottleneck. Until a trigger fires this stays a note,
+not work: at 384-dim even 1M docs ≈ 1.5 GB fits the reference 32 GB
+machine, so adopting compression now would be optimization against an
+**unproven premise** (cf. the cloud-tier S6/S7 shelving lesson).
+
+**Priority ladder when the trigger fires** — ranked by
+*(memory saved × recall kept) ÷ replay/audit cost*, not memory alone,
+because byte-identical replay (RAB / `reconstruct_graph_at(t)`) is the
+crown-jewel constraint:
+
+- [ ] **1. Int8 scalar quantization** (~4×) — *replay-safe*: a fixed,
+      audit-logged scale makes it deterministic; backend-agnostic
+      (quantize at the embedding level before ChromaDB). First and
+      lowest-risk. Entry PR must paste a 5-axis Quality Delta Card
+      (rule #2) — the "Recall within 1%" claim is re-measured on JAMES's
+      own QVT/LRB queries, not imported from the literature.
+- [ ] **2. Dimensionality reduction** — requires a **model swap** (the
+      default `paraphrase-multilingual-MiniLM-L12-v2` is multilingual
+      and **not** Matryoshka, so head-truncation is unsafe). Forces full
+      re-ingestion + **KO/EN bilingual re-validation** (bilingual
+      regression has bitten before — see `feedback_d2_v2_softener_bilingual_regression`).
+      Separate measurement cycle.
+- [ ] **3. FAISS IVFPQ** (~10–100×) — strongest memory win but the
+      **trained codebook is a replay liability**: historical replays must
+      pin their era's codebook. Also a **backend change** (ChromaDB →
+      FAISS = trust-boundary / `docs/ARCHITECTURE.md` PR, rule #4).
+      Architecture decision precedes any build.
+- [ ] **4. Binary + rescoring** — only at very large scale; keeps float32
+      for rescore (so the "32×" is index-only), and rescore ordering must
+      be made deterministic for audit reproducibility.
+
+Rule #1 is not implicated (horizontal infra, not a domain feature) — this
+is a *priority/trigger* question, not a permission one.
+
 ---
 
 ## Beyond v1.0 — Speculative

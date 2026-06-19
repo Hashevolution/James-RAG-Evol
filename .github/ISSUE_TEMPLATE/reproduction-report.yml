@@ -1,0 +1,77 @@
+name: "Reproduction report"
+description: "Report the result of running benchmarks/run_all.sh on your hardware (match OR mismatch — both welcome)."
+title: "[repro] <one-line summary of your result>"
+labels: ["reproduction"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for independently reproducing JAMES's benchmarks!
+        See `benchmarks/REPRODUCTION_PROGRAM.md` for context. Negative and
+        variant results are as valuable as confirmations.
+  - type: dropdown
+    id: tier
+    attributes:
+      label: Which tier did you run?
+      options:
+        - "core (default — RAB + LRB, deterministic)"
+        - "core + --full (LRB S3 publication-scale)"
+        - "core + --with-llm (RAGAS)"
+        - "all tiers"
+    validations:
+      required: true
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Self-assessed outcome
+      description: "See REPRODUCTION_PROGRAM.md for definitions."
+      options:
+        - "confirmed (core-tier numbers matched / LLM-tier inside band)"
+        - "variant (LLM-tier outside band, or env difference explains a delta)"
+        - "failed (core-tier numbers differ)"
+        - "not sure — please help me classify"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "e.g. Ubuntu 24.04 / macOS 15.1 / Windows 11"
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: Hardware (CPU / RAM / GPU)
+      placeholder: "e.g. Apple M3 Pro / 36 GB / (no discrete GPU)"
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version + requirements file used
+      placeholder: "e.g. 3.11.9, requirements_pinned.txt"
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: "LLM model version (only if you ran --with-llm / --full james)"
+      placeholder: "e.g. ollama gemma4:e4b (digest abc123)"
+    validations:
+      required: false
+  - type: textarea
+    id: output
+    attributes:
+      label: Benchmark output
+      description: "Paste the RAB + LRB tables (and RAGAS if run). Raw stdout is fine."
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: "Deviations, install friction, surprises."
+    validations:
+      required: false

@@ -6,7 +6,7 @@ Phase E ``run_shell``) register here as well.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
 # Global cap. Individual tools MAY pin a lower per-call timeout via

@@ -1,0 +1,24 @@
+# benchmarks/seeds.txt — random-seed posture for reproduction.
+#
+# Read this together with benchmarks/REPRODUCIBILITY.md §3 (determinism tiers).
+#
+# CORE TIER (RAB + LRB token-mode) — no RNG, no LLM.
+#   These benchmarks are deterministic BY CONSTRUCTION: the scored path is
+#   pure functions over committed JSON fixtures (event-log replay for RAB,
+#   token-overlap retrieval scoring for LRB). There is no seed to set because
+#   there is no sampling. Same fixture SHA in -> byte-identical AC/RF/PC and
+#   R@k out. The runners print fixture_sha / log_sha so you can confirm you
+#   scored the same bytes we did.
+#
+# LLM TIER (RAGAS, LRB-S3 --engine james) — Ollama in the path.
+#   Ollama / local model inference is NOT fully deterministic even at
+#   temperature 0 (attention kernels, batching). We therefore report BANDS,
+#   not points, for judge-based metrics. The relevant seeds/knobs:
+NUMPY_SEED=42          # unit-test fixtures (tests/conftest.py)
+SKLEARN_SEED=42        # any sklearn split in test fixtures
+LLM_TEMPERATURE=0.0    # greedy decode requested from Ollama
+# Note: LLM_TEMPERATURE=0 reduces but does not remove run-to-run variance.
+# RAGAS tolerance bands (eval/ragas/baseline.json): judge_metric_abs=0.15,
+# embedding_metric_abs=0.10. A reproduction landing inside the band is a
+# CONFIRMED reproduction; outside the band on a judge metric is a VARIANT,
+# not a failure — flag it in your reproduction-report issue.

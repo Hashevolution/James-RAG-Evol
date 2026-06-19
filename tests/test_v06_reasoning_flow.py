@@ -202,7 +202,7 @@ class HtmlStructureTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not HTML.exists():
-            raise unittest.SkipTest(f"reasoning-flow.html missing")
+            raise unittest.SkipTest("reasoning-flow.html missing")
         cls.body = HTML.read_text(encoding="utf-8")
 
     def test_three_swimlanes_present(self):

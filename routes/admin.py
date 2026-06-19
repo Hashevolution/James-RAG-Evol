@@ -729,7 +729,6 @@ async def admin_audit_recent_traces(
     """
     _require_feature(api_key, role, "admin.metrics")
 
-    from pathlib import Path as _Path
     from datetime import datetime as _dt
     from core.observability import _trace_root
 

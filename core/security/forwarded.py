@@ -65,7 +65,7 @@ from __future__ import annotations
 
 import ipaddress
 import os
-from typing import Final, List, Optional, Sequence, Tuple, Union
+from typing import Final, List, Optional, Tuple, Union
 
 
 JAMES_TRUSTED_PROXIES_ENV:        Final[str] = "JAMES_TRUSTED_PROXIES"

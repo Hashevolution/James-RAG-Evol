@@ -30,7 +30,6 @@ upcoming Quality Delta Card produced by ``local_vs_cloud_paired.py``.
 """
 from __future__ import annotations
 
-import hashlib
 import importlib
 import inspect
 import os
