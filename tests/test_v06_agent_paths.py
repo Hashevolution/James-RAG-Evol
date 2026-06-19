@@ -157,7 +157,6 @@ def _make_client(role="admin"):
     app.dependency_overrides[get_role_from_request] = lambda: role
     ap._bearer_username = lambda request: "admin"
     # Stub the api_key + admin gate so the test doesn't need a real key.
-    import routes._helpers as h
     ap._require_admin = lambda api_key, role: None if role == "admin" else (_ for _ in ()).throw(
         __import__("fastapi").HTTPException(status_code=403, detail="admin only")
     )

@@ -23,12 +23,10 @@ Run:
 """
 from __future__ import annotations
 
-import io
 import os
 import subprocess
 import sys
 import unittest
-from contextlib import redirect_stdout
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

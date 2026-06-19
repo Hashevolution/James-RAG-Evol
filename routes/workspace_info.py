@@ -31,7 +31,7 @@ not yet loaded it returns 0 rather than initialising it.
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
