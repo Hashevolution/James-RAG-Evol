@@ -10,11 +10,9 @@ from __future__ import annotations
 import json
 import os
 import unittest
-from unittest import mock
 
 from core.routing import (
     CostBudget,
-    CostStatus,
     PrivacyCheck,
     check_cap,
     check_query_privacy,
