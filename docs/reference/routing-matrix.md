@@ -96,23 +96,36 @@ separate from the backend-tier system:
   - ✅ 3a — `LOCAL_TIER_LADDER` + `resolve_local_tier()` defined (plumb-first)
   - ✅ 3b — complexity-paired measurement done (4-cell: 4b/gemma4:e4b/12b/27b × multihop). **gold-grounded reversal**: judge-only said escalation pointless, but gold_signals shows 27b=1.000 > 12b=0.889 > 4b=0.852 > gemma4:e4b=0.815. Escalation has a basis (modest +0.111) but costs 2.3× latency + verbose answers. Side finding: gemma4:e4b (current default) is *lowest* on evidence-rich retrieval. See `reports/research-runs/v18.7-phase3b-tier-ladder/QUALITY_DELTA_CARD.md`.
   - ✅ 3c — **retrieval mode wired** to `resolve_for_mode("retrieval", "")` → gemma3:12b (the measured-best *default*; gemma4:e4b demoted as weakest on evidence-rich retrieval). Done via the same engine.py mode-routing block as chat (kill-switch generalized to `JAMES_DISABLE_MODE_AWARE_ROUTING`). **Full 27b complexity escalation NOT auto-wired** — the +0.111 gold-accuracy gain over 12b doesn't justify 2.3× latency + verbose answers for a default path. `LOCAL_TIER_LADDER` infra (3a) preserved for a future verify-stage-only deep escalation with verbosity-curbing response_style. `JAMES_AUTO_ROUTER` stays OFF.
-- 🔄 **Phase 4** — privacy gate (PII) + cost-aware cap
-  - ✅ 4a — `core/routing/` primitives shipped **plumb-first** (PR
-    #978-+1): `PrivacyCheck` / `detect_pii` / `check_query_privacy`
-    + `CostStatus` / `CostBudget` / `default_budget` / `check_cap`.
-    Default behaviour byte-identical to Phase 3c — `engine.py`,
-    `call_gemma`, `resolve_for_mode` unchanged. `resolution_snapshot()`
-    advances to `phase4_privacy_cost_cap_primitives` and exposes
-    `privacy` + `cost_cap` sub-keys for operator introspection.
-    Surface locked by `RoutingPhase4Surface` lock-test + the
-    `routing_phase4_primitives` pre-flight check. Design memo:
-    `docs/design/v0.6.1-phase4-privacy-cost-cap.md`.
-  - ⏳ 4b — cloud egress consumer wire. Defers to Phase 5 because
-    the Phase-5 cloud-as-preference question and the privacy + cost
-    consumer share the same site (`scripts/research/local_vs_cloud_
-    paired.py` + the eventual router cloud branch). Plumb-first
-    primitives ready to drop into that wire.
-- ⏳ Phase 5 — cloud as preference option + sub-class routing inside chat + admin routing dashboard
+- ✅ **Phase 4** — privacy gate (PII) + cost-aware cap (plumb-first
+  primitives shipped in PR #980, design memo
+  `docs/design/v0.6.1-phase4-privacy-cost-cap.md`).
+  - ✅ 4a — `core/routing/` primitives: `PrivacyCheck` /
+    `detect_pii` / `check_query_privacy` + `CostStatus` /
+    `CostBudget` / `default_budget` / `check_cap`. Default
+    behaviour byte-identical (force_local OFF, cap=0.0).
+    `resolution_snapshot()` advances to
+    `phase4_privacy_cost_cap_primitives` and exposes `privacy` +
+    `cost_cap` sub-keys for operator introspection. Surface locked
+    by `RoutingPhase4Surface` lock-test + `routing_phase4_primitives`
+    pre-flight check.
+- 🔄 **Phase 5** — cloud egress consumer wire + cloud-as-preference + sub-class routing inside chat + admin routing dashboard
+  - ✅ 5a — **gate wired into the cloud egress site**
+    (`scripts/research/local_vs_cloud_paired.call_cloud_via_
+    abstraction`). Gate calls `check_query_privacy(prompt)` +
+    `check_cap(tokens_estimate, usd_estimate)` BEFORE `run_cloud_
+    egress`. Trips raise `RuntimeError("cloud refused by privacy
+    gate: ...")` / `RuntimeError("cloud refused by cost cap: ...")`
+    which the caller's cloud-error catch records. Source-level
+    invariants locked by `WireSourceInvariantTests` in
+    `tests/test_phase5a_cloud_gate.py` (5 source-pattern checks +
+    3 behaviour tests with mocked egress). Default behaviour
+    byte-identical: gate is a pure no-op until the operator flips
+    `JAMES_PRIVACY_FORCE_LOCAL=1` or sets
+    `JAMES_COST_CAP_MONTHLY_USD>0`.
+  - ⏳ 5b — production router cloud branch wire (same gate, applied
+    inside the eventual `engine.py` cloud route — gated on Phase
+    5 cloud-as-preference measurement).
+  - ⏳ 5c — cloud as preference option + sub-class routing inside chat + admin routing dashboard.
 
 **Phase 4 env contract** (all default OFF / no-cap):
 
