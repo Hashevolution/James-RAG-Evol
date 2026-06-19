@@ -55,12 +55,18 @@ class ConfigCodingModelTests(unittest.TestCase):
         # config.CODING_MODEL must be importable.
         import config
         # Re-read the source to catch the hard-coded default literal.
+        # v0.6.1 introduced a ``_llm_setting(...)`` wrapper for DB-first
+        # resolution; the wrapper takes the historical env name and
+        # default in the same positions, so we accept either the raw
+        # ``os.environ.get(...)`` form or the wrapper form, as long as
+        # both the env key and the documented default literal are
+        # present on the CODING_MODEL line.
         src = (Path(__file__).resolve().parent.parent / "config.py").read_text(encoding="utf-8")
         self.assertRegex(
             src,
-            r'CODING_MODEL\s*=\s*os\.environ\.get\(\s*["\']JAMES_CODING_MODEL["\']\s*,\s*["\']qwen2\.5-coder:32b["\']',
-            "config.CODING_MODEL must read JAMES_CODING_MODEL env with "
-            "qwen2.5-coder:32b as the documented fallback default",
+            r'CODING_MODEL\s*=\s*[^\n]*["\']JAMES_CODING_MODEL["\'][^\n]*["\']qwen2\.5-coder:32b["\']',
+            "config.CODING_MODEL must reference JAMES_CODING_MODEL env "
+            "with qwen2.5-coder:32b as the documented fallback default",
         )
         self.assertTrue(hasattr(config, "CODING_MODEL"),
                         "config module must export CODING_MODEL attribute")
