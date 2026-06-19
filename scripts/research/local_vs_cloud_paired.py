@@ -293,16 +293,54 @@ def call_local(prompt: str, *, model: str, timeout: int = 180,
     return (r.get("response") or "").strip()
 
 
-def call_cloud_via_abstraction(prompt: str, *, timeout: int = 180) -> str:
+def call_cloud_via_abstraction(
+    prompt: str,
+    *,
+    timeout: int = 180,
+    tokens_estimate: int = 0,
+    usd_estimate: float = 0.0,
+) -> str:
     """Cloud call via `core.abstraction.run_cloud_egress` against the
     `ClaudeCodeCliBackend`. The fixture's gold-evidence has no PII so
     `entities=[]` makes the abstraction a no-op — but the full call
     chain (build_map → mask_text → backend.complete → unmask_text →
     emit_egress_event) is exercised end-to-end.
 
+    v0.6.1 Phase 5a — Phase 4 routing primitives are consulted *before*
+    egress:
+
+      1. ``check_query_privacy(prompt)`` — refuses the call if
+         ``JAMES_PRIVACY_FORCE_LOCAL=1`` AND a PII pattern matches.
+      2. ``check_cap(tokens_estimate, usd_estimate)`` — refuses the
+         call if the projected USD total would exceed
+         ``JAMES_COST_CAP_MONTHLY_USD`` (0.0 = no cap, default).
+
+    Default behaviour is byte-identical: both env knobs default OFF /
+    no-cap, so the gate is a pure no-op until an operator opts in.
+    Gate trips raise ``RuntimeError`` with the cause; the caller's
+    cloud-error catch records ``[cloud refused: ...]`` and the row
+    falls through to whatever non-cloud column the cell represents.
+
     Returns the raw text answer (errors propagate up so the per-run row
     records `[cloud error: ...]` in the caller's catch).
     """
+    # v0.6.1 Phase 5a — privacy + cost gate. Both default OFF / no-cap
+    # → no-op unless the operator flips the env.
+    from core.routing import check_cap, check_query_privacy
+
+    priv = check_query_privacy(prompt)
+    if priv.force_local:
+        raise RuntimeError(
+            f"cloud refused by privacy gate: {priv.reasons}"
+        )
+    cost = check_cap(tokens_estimate, usd_estimate=usd_estimate)
+    if not cost.under_cap:
+        raise RuntimeError(
+            f"cloud refused by cost cap: "
+            f"used_usd={cost.used_usd_est:.4f}/{cost.cap_usd:.4f} "
+            f"(month={cost.month})"
+        )
+
     # Local imports — avoid loading the core stack at module import time
     # so `--help` / linting doesn't require the full env.
     from core.abstraction import default_decider, run_cloud_egress
