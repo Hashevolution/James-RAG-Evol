@@ -497,8 +497,11 @@ def resolution_snapshot() -> dict:
                      "wiki_edit", "vision")
     }
     out["ttl_s"] = _CACHE_TTL_S
-    # v18.7 — Phase 1 marker. Tells any consumer (admin page, future
-    # Phase 2 PR, debugging session) that the lists are populated but
-    # engine.py hasn't been rewired yet.
-    out["phase"] = "phase1_preference_only"
+    # Routing build-out phase marker + Phase-4 introspection live in
+    # core/routing.snapshot() (rule-#5 size discipline).
+    try:
+        from core.routing import snapshot as _rs
+        out.update(_rs())
+    except Exception as exc:
+        out["routing_snapshot_error"] = f"{type(exc).__name__}: {exc}"
     return out
