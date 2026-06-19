@@ -53,12 +53,13 @@ class ResolveChainTests(unittest.TestCase):
         self.assertIn("gemma3:4b", r.warning)
 
     def test_preference_first_match_wins(self):
-        # If gemma3:4b and gemma3:12b both installed, gemma3:4b should
-        # win (higher in default preference list).
+        # v18.7 Phase 2b reorder (PR #971): chat preference top is
+        # gemma3:12b after the paired measurement. With both 4b + 12b
+        # installed, the resolver picks 12b.
         with mock.patch.object(self.mr, "installed_models",
                                return_value={"gemma3:12b", "gemma3:4b"}):
             r = self.mr.resolve_for_mode("chat", requested="")
-        self.assertEqual(r.tag, "gemma3:4b")
+        self.assertEqual(r.tag, "gemma3:12b")
         self.assertEqual(r.source, "preference")
 
     def test_no_preference_match_falls_to_any(self):
@@ -72,13 +73,15 @@ class ResolveChainTests(unittest.TestCase):
         self.assertIn("last resort", r.warning)
 
     def test_nothing_installed_returns_none_with_install_command(self):
+        # v18.7 Phase 2b reorder (PR #971): the install suggestion is
+        # the head of the preference list, now gemma3:12b.
         with mock.patch.object(self.mr, "installed_models", return_value=set()):
             r = self.mr.resolve_for_mode("chat", requested="gemma3:4b")
         self.assertEqual(r.tag, "")
         self.assertEqual(r.source, "none")
         self.assertIn("ollama pull", r.warning)
         # Suggestion should be the head of the preference list.
-        self.assertIn("gemma3:4b", r.warning)
+        self.assertIn("gemma3:12b", r.warning)
 
     def test_fallback_chain_records_attempts(self):
         # The chain must include at least the requested + every
@@ -200,13 +203,17 @@ class SnapshotTests(unittest.TestCase):
 
 class GemmaClientIntegrationTests(unittest.TestCase):
     """Source-level: gemma_client.call_gemma must call resolve_chat()
-    when model=None. This is the actual production wiring point."""
+    when model=None. This is the actual production wiring point.
+
+    v0.6 package split: ``core.gemma_client`` is now a façade package;
+    the actual ``call_gemma`` source lives in ``core.gemma_client.client``.
+    """
 
     @classmethod
     def setUpClass(cls):
         import inspect
-        from core import gemma_client
-        cls.src = inspect.getsource(gemma_client)
+        from core.gemma_client import client as gemma_client_client
+        cls.src = inspect.getsource(gemma_client_client)
 
     def test_call_gemma_imports_resolver(self):
         self.assertIn("from core.model_resolver import resolve_chat", self.src,
