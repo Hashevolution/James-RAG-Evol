@@ -96,8 +96,43 @@ separate from the backend-tier system:
   - ✅ 3a — `LOCAL_TIER_LADDER` + `resolve_local_tier()` defined (plumb-first)
   - ✅ 3b — complexity-paired measurement done (4-cell: 4b/gemma4:e4b/12b/27b × multihop). **gold-grounded reversal**: judge-only said escalation pointless, but gold_signals shows 27b=1.000 > 12b=0.889 > 4b=0.852 > gemma4:e4b=0.815. Escalation has a basis (modest +0.111) but costs 2.3× latency + verbose answers. Side finding: gemma4:e4b (current default) is *lowest* on evidence-rich retrieval. See `reports/research-runs/v18.7-phase3b-tier-ladder/QUALITY_DELTA_CARD.md`.
   - ✅ 3c — **retrieval mode wired** to `resolve_for_mode("retrieval", "")` → gemma3:12b (the measured-best *default*; gemma4:e4b demoted as weakest on evidence-rich retrieval). Done via the same engine.py mode-routing block as chat (kill-switch generalized to `JAMES_DISABLE_MODE_AWARE_ROUTING`). **Full 27b complexity escalation NOT auto-wired** — the +0.111 gold-accuracy gain over 12b doesn't justify 2.3× latency + verbose answers for a default path. `LOCAL_TIER_LADDER` infra (3a) preserved for a future verify-stage-only deep escalation with verbosity-curbing response_style. `JAMES_AUTO_ROUTER` stays OFF.
-- ⏳ Phase 4 — privacy gate (PII) + cost-aware cap + cloud (Claude) routing
-- ⏳ Phase 5 — sub-class routing inside chat + admin routing dashboard
+- 🔄 **Phase 4** — privacy gate (PII) + cost-aware cap
+  - ✅ 4a — `core/routing/` primitives shipped **plumb-first** (PR
+    #978-+1): `PrivacyCheck` / `detect_pii` / `check_query_privacy`
+    + `CostStatus` / `CostBudget` / `default_budget` / `check_cap`.
+    Default behaviour byte-identical to Phase 3c — `engine.py`,
+    `call_gemma`, `resolve_for_mode` unchanged. `resolution_snapshot()`
+    advances to `phase4_privacy_cost_cap_primitives` and exposes
+    `privacy` + `cost_cap` sub-keys for operator introspection.
+    Surface locked by `RoutingPhase4Surface` lock-test + the
+    `routing_phase4_primitives` pre-flight check. Design memo:
+    `docs/design/v0.6.1-phase4-privacy-cost-cap.md`.
+  - ⏳ 4b — cloud egress consumer wire. Defers to Phase 5 because
+    the Phase-5 cloud-as-preference question and the privacy + cost
+    consumer share the same site (`scripts/research/local_vs_cloud_
+    paired.py` + the eventual router cloud branch). Plumb-first
+    primitives ready to drop into that wire.
+- ⏳ Phase 5 — cloud as preference option + sub-class routing inside chat + admin routing dashboard
+
+**Phase 4 env contract** (all default OFF / no-cap):
+
+| Env | Default | Effect |
+|---|---|---|
+| `JAMES_PRIVACY_FORCE_LOCAL` | unset (OFF) | When `1`, the gate blocks egress on any PII pattern match. When unset, matches are reported but not blocking. |
+| `JAMES_PRIVACY_PII_PATTERNS_EXTRA` | unset | Comma-separated `name:regex` pairs — operator-extensible patterns. Invalid regex logged + skipped, never raises. |
+| `JAMES_COST_CAP_MONTHLY_USD` | `0.0` | USD ceiling for the current month. `0.0` = no cap. |
+| `JAMES_COST_CAP_FILE` | `$JAMES_WORKSPACE/.james_cost.json` (cwd fallback) | Tally file path. |
+
+Layering vs §5.7.12 / §5.7.13:
+
+- §5.7.12 / §5.7.13 — per-entity mask / pass / keep-local INSIDE a
+  cloud call (already shipped in `core/abstraction/`).
+- Phase 4 — per-query pre-check that the cloud call can happen at
+  all (privacy gate + cost cap).
+
+These are orthogonal. A query can pass Phase 4 and still have its
+entities masked by §5.7.12; or fail Phase 4 (PII / over-cap) and
+never reach §5.7.12.
 
 Related memory: `project_routing_buildout_5phase_v18_7`,
 `project_phase2c_engine_chat_wire_v18_7`,

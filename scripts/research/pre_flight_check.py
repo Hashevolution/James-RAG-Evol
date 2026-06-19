@@ -530,6 +530,66 @@ def check_chat_fixture() -> PreFlightResult:
     )
 
 
+def check_routing_phase4_primitives() -> PreFlightResult:
+    """v0.6.1 Phase 4 — verify ``core/routing`` plumb-first primitives
+    are importable and expose the locked surface.
+
+    Phase 4 is plumb-first: no consumer exists yet, but the Phase 5
+    cloud egress wire (and the eventual Phase 5 paired measurement
+    over the cloud branch) will call ``check_query_privacy`` +
+    ``check_cap`` before any ``run_cloud_egress`` invocation. This
+    check guards the import path so a regression in the routing
+    primitives is caught BEFORE a paired run goes out with a half-
+    wired cloud branch.
+
+    Symbol set mirrors ``RoutingPhase4Surface`` in
+    ``tests/test_measurement_critical_surfaces.py``.
+    """
+    required = (
+        "PrivacyCheck", "detect_pii", "check_query_privacy",
+        "CostStatus", "CostBudget", "default_budget", "check_cap",
+    )
+    try:
+        import core.routing as routing_pkg
+    except Exception as exc:
+        return PreFlightResult(
+            "routing_phase4_primitives",
+            "fail",
+            f"core.routing import failed: {type(exc).__name__}: {exc}",
+        )
+    missing = [s for s in required if not hasattr(routing_pkg, s)]
+    if missing:
+        return PreFlightResult(
+            "routing_phase4_primitives",
+            "fail",
+            f"core.routing missing Phase 4 symbols: {missing}",
+        )
+    # Smoke: detect_pii('') must not raise and the empty-cap branch
+    # must short-circuit. Both are surface invariants Phase 5 leans on.
+    try:
+        routing_pkg.detect_pii("")
+        budget = routing_pkg.CostBudget(cap_usd=0.0)
+        status = routing_pkg.check_cap(0, budget=budget)
+    except Exception as exc:
+        return PreFlightResult(
+            "routing_phase4_primitives",
+            "fail",
+            f"smoke failed: {type(exc).__name__}: {exc}",
+        )
+    if not status.under_cap:
+        return PreFlightResult(
+            "routing_phase4_primitives",
+            "fail",
+            "check_cap(cap=0.0) did not short-circuit to under_cap=True",
+        )
+    return PreFlightResult(
+        "routing_phase4_primitives",
+        "ok",
+        f"surface stable ({len(required)} symbols); plumb-first "
+        f"(no consumer yet — Phase 5 wires)",
+    )
+
+
 _CHECKS = (
     check_fixture,
     check_chat_fixture,
@@ -538,6 +598,7 @@ _CHECKS = (
     check_abstraction_smoke,
     check_diffusiongemma_opt_in,
     check_thinking_mode_contract,
+    check_routing_phase4_primitives,
 )
 
 

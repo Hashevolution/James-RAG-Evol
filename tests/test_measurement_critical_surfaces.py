@@ -510,5 +510,80 @@ class ChatFixtureSurface(unittest.TestCase):
                       "_chat_prompt drops the current query body")
 
 
+class RoutingPhase4Surface(unittest.TestCase):
+    """v0.6.1 v18.7 Phase 4 (2026-06-20) — privacy + cost cap primitives.
+
+    Phase 4 ships ``core/routing/`` as plumb-first: populated, not
+    yet consumed by ``engine.py`` or the cloud egress branch. The
+    lock-tests below freeze the public surface (4 callables + 3
+    namedtuple shapes) so a future Phase 5 wire — or any other PR
+    that re-touches routing primitives — catches accidental renames
+    and tuple-field changes before merge. The Phase 5 consumer site
+    in `local_vs_cloud_paired.py` will rely on the exact symbols
+    locked here.
+    """
+
+    def test_core_routing_public_surface(self):
+        """``core.routing.__all__`` must export the 7 Phase-4
+        public symbols. Adding new ones is allowed; renaming or
+        removing any of these breaks the Phase 5 wire."""
+        import core.routing as routing_pkg
+        required = {
+            "PrivacyCheck",
+            "detect_pii",
+            "check_query_privacy",
+            "CostStatus",
+            "CostBudget",
+            "default_budget",
+            "check_cap",
+        }
+        missing = required - set(getattr(routing_pkg, "__all__", []))
+        self.assertFalse(
+            missing,
+            f"core.routing.__all__ missing Phase 4 symbols: {missing}",
+        )
+        for sym in required:
+            with self.subTest(symbol=sym):
+                self.assertTrue(
+                    hasattr(routing_pkg, sym),
+                    f"core.routing.{sym} not importable",
+                )
+
+    def test_privacy_check_namedtuple_shape(self):
+        from core.routing import PrivacyCheck
+        self.assertEqual(
+            PrivacyCheck._fields,
+            ("force_local", "reasons", "matched"),
+            "PrivacyCheck tuple shape changed — Phase 5 consumer "
+            "unpacks (force_local, reasons, matched) positionally",
+        )
+
+    def test_cost_status_namedtuple_shape(self):
+        from core.routing import CostStatus
+        self.assertEqual(
+            CostStatus._fields,
+            ("under_cap", "used_tokens", "used_usd_est",
+             "cap_usd", "month", "reasons"),
+            "CostStatus tuple shape changed — Phase 5 consumer "
+            "depends on the 6-field layout",
+        )
+
+    def test_detect_pii_callable_no_raise_on_empty(self):
+        """Surface invariant: detect_pii('') must not raise — the
+        Phase 5 consumer may call it on an empty intent slot."""
+        from core.routing import detect_pii
+        self.assertEqual(detect_pii(""), [])
+
+    def test_check_cap_no_cap_short_circuit(self):
+        """Surface invariant: check_cap with cap_usd=0 always
+        returns under_cap=True. Phase 5 must be able to treat the
+        no-cap branch as a pass-through."""
+        from core.routing import CostBudget, check_cap
+        import tempfile, os
+        with tempfile.TemporaryDirectory() as d:
+            b = CostBudget(os.path.join(d, ".cost.json"), cap_usd=0.0)
+            self.assertTrue(check_cap(0, budget=b).under_cap)
+
+
 if __name__ == "__main__":   # pragma: no cover
     unittest.main()
