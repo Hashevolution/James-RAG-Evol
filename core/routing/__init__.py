@@ -42,6 +42,7 @@ from core.routing.cost_cap import (
     CostStatus,
     check_cap,
     default_budget,
+    estimate_usd,
 )
 
 
@@ -92,6 +93,7 @@ __all__ = [
     "CostBudget",
     "default_budget",
     "check_cap",
+    "estimate_usd",
     # introspection
     "snapshot",
 ]

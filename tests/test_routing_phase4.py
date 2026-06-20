@@ -20,6 +20,7 @@ from core.routing import (
     check_query_privacy,
     default_budget,
     detect_pii,
+    estimate_usd,
 )
 from core.routing.cost_cap import _SCHEMA_VERSION, _current_month
 
@@ -292,6 +293,99 @@ class CheckCapTests(unittest.TestCase):
         os.environ["JAMES_COST_CAP_MONTHLY_USD"] = "not-a-number"
         b = default_budget()
         self.assertEqual(b.cap_usd, 0.0)
+
+
+class TokenRateTableTests(unittest.TestCase):
+    """v0.6.1 Phase 5b' — token-rate table + estimate_usd helper."""
+
+    def setUp(self):
+        self._env = {
+            k: os.environ.pop(k)
+            for k in list(os.environ)
+            if k.startswith("JAMES_COST_RATE_")
+        }
+
+    def tearDown(self):
+        for k in list(os.environ):
+            if k.startswith("JAMES_COST_RATE_"):
+                os.environ.pop(k, None)
+        for k, v in self._env.items():
+            os.environ[k] = v
+
+    def test_estimate_zero_for_empty(self):
+        self.assertEqual(estimate_usd(0, 0), 0.0)
+
+    def test_estimate_uses_shipped_table(self):
+        # claude-4-opus = (15, 75) USD per 1M tokens
+        # 1000 in + 500 out → 15*0.001 + 75*0.0005 = 0.015 + 0.0375
+        usd = estimate_usd(1000, 500, model="claude-4-opus")
+        self.assertAlmostEqual(usd, 0.015 + 0.0375, places=6)
+
+    def test_estimate_tolerates_model_slug_variants(self):
+        a = estimate_usd(1000, 0, model="Claude 4 Sonnet")
+        b = estimate_usd(1000, 0, model="claude-4-sonnet")
+        c = estimate_usd(1000, 0, model="claude_4_sonnet")
+        self.assertAlmostEqual(a, b)
+        self.assertAlmostEqual(a, c)
+        # sonnet input rate = 3 USD per 1M → 1000 tokens = 0.003
+        self.assertAlmostEqual(a, 0.003, places=6)
+
+    def test_estimate_unknown_model_uses_wildcard(self):
+        # Unknown model → wildcard fallback (3, 15) per 1M
+        usd = estimate_usd(1000, 0, model="brand-new-model")
+        self.assertAlmostEqual(usd, 0.003, places=6)
+
+    def test_env_override_wins_over_shipped(self):
+        os.environ["JAMES_COST_RATE_CLAUDE-4-OPUS"] = "10.0:50.0"
+        usd = estimate_usd(1000, 1000, model="claude-4-opus")
+        # 1000*10/1M + 1000*50/1M = 0.010 + 0.050 = 0.060
+        self.assertAlmostEqual(usd, 0.060, places=6)
+
+    def test_env_override_malformed_falls_through(self):
+        os.environ["JAMES_COST_RATE_CLAUDE-4-OPUS"] = "garbage"
+        # Should fall through to shipped (15, 75)
+        usd = estimate_usd(1000, 0, model="claude-4-opus")
+        self.assertAlmostEqual(usd, 0.015, places=6)
+
+    def test_check_cap_uses_token_rate_when_no_explicit_usd(self):
+        """check_cap now projects token spend through estimate_usd
+        when the caller leaves usd_estimate at 0.0."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            tally = os.path.join(d, ".cost.json")
+            b = CostBudget(tally, cap_usd=0.001)  # 0.001 USD cap (tight)
+            # 1000 opus tokens = 0.015 USD → over cap
+            s = check_cap(
+                1000, budget=b, model="claude-4-opus",
+                output_tokens_estimate=0,
+            )
+            self.assertFalse(s.under_cap)
+            # 1 opus token = 15e-9 USD → well under
+            s2 = check_cap(
+                1, budget=b, model="claude-4-opus",
+            )
+            self.assertTrue(s2.under_cap)
+
+    def test_check_cap_explicit_usd_wins(self):
+        """When the caller passes usd_estimate, the token rate is
+        skipped (explicit beats inferred)."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            tally = os.path.join(d, ".cost.json")
+            b = CostBudget(tally, cap_usd=1.0)
+            # explicit $5 > cap → over
+            s = check_cap(
+                1000, budget=b, usd_estimate=5.0,
+                model="claude-4-opus",
+            )
+            self.assertFalse(s.under_cap)
+            # explicit $0.5 < cap, even though 1000 opus tokens would
+            # only be 0.015 anyway
+            s2 = check_cap(
+                1000, budget=b, usd_estimate=0.5,
+                model="claude-4-opus",
+            )
+            self.assertTrue(s2.under_cap)
 
 
 if __name__ == "__main__":

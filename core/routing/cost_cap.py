@@ -40,6 +40,95 @@ _SCHEMA_VERSION = 1
 _DEFAULT_FILE = ".james_cost.json"
 
 
+# v0.6.1 Phase 5b' (2026-06-20) — published token-rate table for
+# the cloud backends JAMES routes through. USD per 1,000,000 tokens
+# (i.e. divide by 1_000_000 then multiply by token count).
+#
+# The numbers track Anthropic's public list price as of v0.6.1.
+# Operators on a different contract (volume pricing, internal rate
+# card) override per-model via ``JAMES_COST_RATE_<MODEL_KEY>=<in>:<out>``
+# at call time — ``_resolve_rate`` reads that env first.
+#
+# Keys are lowercase + dot-stripped slug forms so caller `model`
+# strings ("claude-4-opus", "Claude 4 Sonnet", "claude_4_haiku") all
+# normalise to the same lookup.
+_TOKEN_RATES_USD_PER_M: dict = {
+    # Anthropic Claude 4 family (v0.6.1 list price)
+    "claude-4-opus":     (15.0, 75.0),
+    "claude-4-sonnet":   ( 3.0, 15.0),
+    "claude-4-haiku":    ( 1.0,  5.0),
+    # Claude Code CLI tends to identify as the underlying model; the
+    # default research backend (``claude_code_cli``) maps to opus.
+    "claude_code_cli":   (15.0, 75.0),
+    # Generic fallback used when ``model`` is empty AND no env
+    # override exists. Anchored at a mid-tier rate so an unidentified
+    # call doesn't silently underestimate.
+    "*":                 ( 3.0, 15.0),
+}
+
+
+def _normalise_model_key(model: str) -> str:
+    """Slug form for token-rate lookup. ``"Claude 4 Opus"`` →
+    ``"claude-4-opus"``; tolerates dot / space / underscore / case."""
+    s = (model or "").strip().lower()
+    for ch in (" ", "_", "."):
+        s = s.replace(ch, "-")
+    while "--" in s:
+        s = s.replace("--", "-")
+    return s.strip("-")
+
+
+def _resolve_rate(model: str) -> tuple[float, float]:
+    """Return ``(input_usd_per_m, output_usd_per_m)`` for the model.
+
+    Resolution order:
+      1. ``JAMES_COST_RATE_<MODEL_KEY>=<input>:<output>`` env (operator
+         override; both numbers required; bad form falls through to
+         the table with a logged warning).
+      2. ``_TOKEN_RATES_USD_PER_M`` shipped table.
+      3. ``_TOKEN_RATES_USD_PER_M["*"]`` generic fallback.
+
+    ``MODEL_KEY`` is the normalised key UPPER-cased with hyphens kept
+    (e.g. ``JAMES_COST_RATE_CLAUDE-4-OPUS=10.0:50.0``).
+    """
+    key = _normalise_model_key(model)
+    if key:
+        env_name = f"JAMES_COST_RATE_{key.upper()}"
+        raw = os.environ.get(env_name, "").strip()
+        if raw:
+            try:
+                in_str, out_str = raw.split(":", 1)
+                return (max(0.0, float(in_str)), max(0.0, float(out_str)))
+            except (ValueError, AttributeError):
+                print(
+                    f"[routing.cost_cap] {env_name}={raw!r} not in "
+                    "'<input>:<output>' form; using shipped table"
+                )
+    if key in _TOKEN_RATES_USD_PER_M:
+        return _TOKEN_RATES_USD_PER_M[key]
+    return _TOKEN_RATES_USD_PER_M["*"]
+
+
+def estimate_usd(
+    input_tokens: int,
+    output_tokens: int = 0,
+    *,
+    model: str = "",
+) -> float:
+    """Return USD estimate for a (input, output) token pair.
+
+    Returns ``0.0`` for empty input. The rate table + env override
+    are resolved at call time so test isolation works.
+    """
+    if input_tokens <= 0 and output_tokens <= 0:
+        return 0.0
+    in_rate, out_rate = _resolve_rate(model)
+    return (
+        max(0, int(input_tokens))  * in_rate  / 1_000_000.0 +
+        max(0, int(output_tokens)) * out_rate / 1_000_000.0
+    )
+
+
 class CostStatus(NamedTuple):
     """Outcome of ``check_cap``.
 
@@ -193,17 +282,22 @@ def check_cap(
     *,
     budget: Optional[CostBudget] = None,
     usd_estimate: float = 0.0,
+    output_tokens_estimate: int = 0,
+    model: str = "",
 ) -> CostStatus:
     """Pre-flight cap check.
 
     Returns ``under_cap=False`` iff cap_usd > 0.0 AND the projected
-    total (existing usd_est + ``usd_estimate``) would exceed it.
+    total (existing usd_est + the larger of ``usd_estimate`` /
+    ``estimate_usd(tokens_estimate, output_tokens_estimate, model=model)``)
+    would exceed it.
 
-    ``tokens_estimate`` is currently informational (rolled into
-    the CostStatus' projected math when ``usd_estimate`` is 0.0 by
-    assuming a 0.0 USD-per-token rate — i.e. only the explicit
-    ``usd_estimate`` counts). Phase 5 will add a token-rate table
-    so the caller can pass tokens alone.
+    v0.6.1 Phase 5b' (2026-06-20) — token-rate table landed. When
+    ``usd_estimate`` is left at its default ``0.0``, the cap projection
+    now uses ``estimate_usd(tokens_estimate, output_tokens_estimate,
+    model=model)`` so callers that pass token counts alone get a
+    real projection. Explicit ``usd_estimate`` still wins when set
+    (operator override / pre-computed billing line).
     """
     if budget is None:
         budget = default_budget()
@@ -212,7 +306,14 @@ def check_cap(
     if cap <= 0.0:
         # No cap configured → always under.
         return base
-    projected = base.used_usd_est + max(0.0, float(usd_estimate))
+    explicit = max(0.0, float(usd_estimate))
+    if explicit > 0.0:
+        projected_delta = explicit
+    else:
+        projected_delta = estimate_usd(
+            tokens_estimate, output_tokens_estimate, model=model,
+        )
+    projected = base.used_usd_est + projected_delta
     under = projected < cap
     reasons = list(base.reasons)
     if under and "over_cap" in reasons:
