@@ -81,13 +81,81 @@ def run_cloud_egress(
         the response (left verbatim in `text`), surfaced separately so
         the caller can decide treatment (UI annotation, refuse-show, …).
 
-    On a refused egress (keep-local name in prompt), returns an error
-    `CompletionResult` with `error="refused: keep_local in prompt: …"`
-    and an empty `flagged` list. The cloud backend is NOT called.
+    On a refused egress (keep-local name in prompt, or v0.6.1 Phase 5b
+    privacy-gate / cost-cap trip), returns an error `CompletionResult`
+    with `error="refused: …"` and an empty `flagged` list. The cloud
+    backend is NOT called.
     On a backend-side error (timeout, network, CLI not found), the
     backend's error `CompletionResult` is returned as-is with the
     unmask step skipped (no answer to unmask).
+
+    Phase 5b defense-in-depth (v0.6.1 v18.7, 2026-06-20):
+    Even though §5.7.13 caller obligation #1 puts PolicyEngine gating
+    on the caller side (and Phase 5a wired the gate at
+    `local_vs_cloud_paired.call_cloud_via_abstraction`), the runner
+    re-checks `core.routing.check_query_privacy(prompt+system)` +
+    `check_cap(max_tokens)` here so that any future caller that
+    bypasses the §5.7.13 §1 obligation still cannot egress under
+    `JAMES_PRIVACY_FORCE_LOCAL=1` / over-cap. Default OFF / no-cap =
+    pure no-op; byte-identical to pre-5b.
     """
+    # ── Phase 5b — privacy + cost defense-in-depth ──────────────────
+    # Caller-side gate (§5.7.13 §1) is the contract; this layer is
+    # belt-and-suspenders for future callers (production router cloud
+    # branch, third-party plug-ins) that may forget the contract.
+    try:
+        from core.routing import check_cap, check_query_privacy
+    except Exception:  # pragma: no cover — surface stability is locked
+        # Surface lock-test catches missing imports; if it ever
+        # somehow disappears at runtime, fall through to the legacy
+        # behaviour rather than break the cloud path.
+        check_cap = None  # type: ignore[assignment]
+        check_query_privacy = None  # type: ignore[assignment]
+
+    if check_query_privacy is not None:
+        priv = check_query_privacy((prompt or "") + "\n" + (system or ""))
+        if priv.force_local:
+            amap_for_audit = build_map((), lambda e: Decision.PASS)
+            emit_egress_event(
+                stage, prompt, backend.backend_id, amap_for_audit,
+                reason=f"refused_privacy_gate:{','.join(priv.reasons)}",
+            )
+            return (
+                CompletionResult(
+                    text="",
+                    backend_id=backend.backend_id,
+                    error=(
+                        "refused: privacy gate (reasons="
+                        f"{priv.reasons})"
+                    ),
+                ),
+                [],
+            )
+
+    if check_cap is not None:
+        cost = check_cap(tokens_estimate=max_tokens)
+        if not cost.under_cap:
+            amap_for_audit = build_map((), lambda e: Decision.PASS)
+            emit_egress_event(
+                stage, prompt, backend.backend_id, amap_for_audit,
+                reason=(
+                    f"refused_cost_cap:"
+                    f"used={cost.used_usd_est:.4f}/{cost.cap_usd:.4f}"
+                ),
+            )
+            return (
+                CompletionResult(
+                    text="",
+                    backend_id=backend.backend_id,
+                    error=(
+                        "refused: cost cap "
+                        f"(used_usd={cost.used_usd_est:.4f}/"
+                        f"{cost.cap_usd:.4f} month={cost.month})"
+                    ),
+                ),
+                [],
+            )
+
     amap = build_map(entities, decider)
 
     # §5.7.13 caller obligation #4 (runner-side defense-in-depth):

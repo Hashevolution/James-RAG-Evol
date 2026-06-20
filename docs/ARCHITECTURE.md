@@ -990,6 +990,15 @@ invoking the module)
   treatment) and are **never** stripped from the response without
   operator review.
 
+> **v0.6.1 Phase 5b note (2026-06-20)** — runner-side `run_cloud_egress`
+> additionally re-checks `core.routing.check_query_privacy(prompt+system)`
+> + `check_cap(max_tokens)` before `build_map`. This is *defense-in-depth*
+> only: caller-side gating per §5.7.13 §1 above is still the contract, and
+> with the env defaults (`JAMES_PRIVACY_FORCE_LOCAL` unset,
+> `JAMES_COST_CAP_MONTHLY_USD=0.0`) the runner re-check is a byte-identical
+> no-op. The note is recorded here so a future contract reader sees both
+> layers and does not mistake the runner check for a contract relaxation.
+
 **Non-goals (what this module deliberately does NOT do)**
 
 - **Does not classify sensitivity.** That is a property of the entity

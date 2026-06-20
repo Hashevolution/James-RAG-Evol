@@ -140,9 +140,18 @@ separate from the backend-tier system:
     byte-identical: gate is a pure no-op until the operator flips
     `JAMES_PRIVACY_FORCE_LOCAL=1` or sets
     `JAMES_COST_CAP_MONTHLY_USD>0`.
-  - ⏳ 5b — production router cloud branch wire (same gate, applied
-    inside the eventual `engine.py` cloud route — gated on Phase
-    5 cloud-as-preference measurement).
+  - ✅ 5b (defense-in-depth) — gate also runs **inside**
+    `core/abstraction/_runner.run_cloud_egress`. Any future caller
+    that bypasses the §5.7.13 §1 caller-side obligation is still
+    refused under `JAMES_PRIVACY_FORCE_LOCAL=1` / over-cap. Refusal
+    returns `CompletionResult(error="refused: privacy gate" / "cost
+    cap")` and emits a `refused_privacy_gate` / `refused_cost_cap`
+    audit reason. Default OFF / no-cap = byte-identical no-op.
+    Source-level + behaviour invariants locked by
+    `tests/test_phase5b_abstraction_gate.py` (8 cases).
+  - ⏳ 5b' — production router cloud branch wire (the eventual
+    `engine.py` cloud route still needs to be built; gated on the
+    Phase 5 cloud-as-preference measurement).
   - ⏳ 5c — cloud as preference option + sub-class routing inside chat + admin routing dashboard.
 
 **Phase 4 env contract** (all default OFF / no-cap):
