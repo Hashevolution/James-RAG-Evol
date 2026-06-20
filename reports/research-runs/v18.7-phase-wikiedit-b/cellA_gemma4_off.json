@@ -1,0 +1,1012 @@
+{
+  "design": "chat-mode free-form; both models same prior_turns / no evidence",
+  "fixture": "wiki_edit",
+  "local_model": "gemma4:e4b",
+  "local_backend": "ollama",
+  "num_predict": 400,
+  "force_think": "auto",
+  "pre_flight": {
+    "skipped": false,
+    "results": [
+      {
+        "name": "fixture_rows",
+        "status": "ok",
+        "detail": "75 answerable queries available (counts={'inference_query': 25, 'comparison_query': 25, 'temporal_query': 25})",
+        "extra": {
+          "counts": {
+            "inference_query": 25,
+            "comparison_query": 25,
+            "temporal_query": 25
+          },
+          "path": "C:\\Project\\James-RAG-Evol-v010\\workspaces\\hotpot_eval\\eval\\multihop_rag_queries.json"
+        }
+      },
+      {
+        "name": "chat_fixture",
+        "status": "ok",
+        "detail": "18 chat queries available (counts={'small_talk': 5, 'factual_chat': 5, 'open_question': 5, 'multi_turn': 3}, factual_with_gold=5, multiturn_with_prior=3)",
+        "extra": {
+          "counts": {
+            "small_talk": 5,
+            "factual_chat": 5,
+            "open_question": 5,
+            "multi_turn": 3
+          },
+          "path": "C:\\Project\\James-RAG-Evol-v010\\eval\\chat_mode_queries.json"
+        }
+      },
+      {
+        "name": "wiki_edit_fixture",
+        "status": "ok",
+        "detail": "12 wiki_edit queries available (counts={'factual_edit': 3, 'format_edit': 3, 'summarize': 3, 'reword': 3}, factual_with_gold=3, summarize_with_gold=3)",
+        "extra": {}
+      },
+      {
+        "name": "regex_sweep",
+        "status": "ok",
+        "detail": "0/75 false positives across 4 fast-path modes (['coding', 'meta', 'self_evolve', 'wiki_edit'])",
+        "extra": {
+          "total": 75,
+          "modes_swept": [
+            "coding",
+            "meta",
+            "self_evolve",
+            "wiki_edit"
+          ]
+        }
+      },
+      {
+        "name": "backend_registry",
+        "status": "ok",
+        "detail": "registered=['claude_code_cli', 'ollama_local']",
+        "extra": {
+          "registered": [
+            "claude_code_cli",
+            "ollama_local"
+          ]
+        }
+      },
+      {
+        "name": "abstraction_smoke",
+        "status": "ok",
+        "detail": "default_decider=function; run_cloud_egress callable",
+        "extra": {}
+      },
+      {
+        "name": "diffusiongemma_optin",
+        "status": "ok",
+        "detail": "flag=None registered=False",
+        "extra": {}
+      },
+      {
+        "name": "thinking_mode_contract",
+        "status": "ok",
+        "detail": "think_policy surface intact; JAMES_GEMMA4_E4B_THINK_OFF=1 active (gemma4 family models will receive think:false).",
+        "extra": {}
+      },
+      {
+        "name": "routing_phase4_primitives",
+        "status": "ok",
+        "detail": "surface stable (7 symbols); plumb-first (no consumer yet — Phase 5 wires)",
+        "extra": {}
+      }
+    ]
+  },
+  "num_ctx": 8192,
+  "cloud_backend": "claude_code_cli (via core.abstraction.run_cloud_egress)",
+  "judge": "claude-cli, blinded A/B per (query, run)",
+  "n_per_type": 3,
+  "n_runs": 3,
+  "caveat": {
+    "judge_self_preference": "judge is Claude; one candidate is Claude — self-preference is possible. Mitigated by blinding A/B + evidence-grounded grading + per-question raw dump. Treat the auto-score as a SIGNAL; confirm against raw answers.",
+    "gold_evidence_not_pipeline": "Reasoning-isolated design: both models get the same full gold evidence. Does NOT measure the full retrieval pipeline. A production Pareto claim needs a separate full-pipeline run (with JAMES retrieval + abstention) before any operator-facing conclusion.",
+    "small_n": "Sample is the first answerable N per question_type from MultiHop-RAG. Not representative. The verdict here is a §4.1 closure SIGNAL, not a publishable claim. n=3 paired (per feedback_n1_verdict_inflation_n3_caught) but n_questions is still small.",
+    "lenient_judge": "ABSTAINED + INCORRECT are scored separately, but two contradictory CORRECT answers can both land CORRECT (judge grades each independently). Per α-8 closure: paired Δ near 0 + collapse to noise band on n=3 has been observed (n=1 inflation pattern).",
+    "local_model_caveat": "Default local-model is gemma3:4b. Does NOT equate to gemma4 e4b (production tier, has the α-cycle thinking-trace floor on multihop). Re-run with --local-model gemma4:e4b to compare against the production tier.",
+    "abstraction_no_op": "Cloud path goes through core.abstraction.run_cloud_egress, but the gold-evidence fixture has no PII so entities=[] → mask is empty. The call path is exercised end-to-end (proves §5.7.13 module works against a real Claude backend) but the abstraction itself is a no-op for this fixture.",
+    "chat_mode_lenient_judge": "Chat-mode fixture (small_talk / open_question / multi_turn) is INTRINSICALLY judge-only. There is no gold ground-truth for free-form conversation. Only the factual_chat sub-class carries gold_signals and is gold-grounded checkable. The other 3 sub-classes inherit the +0.11-0.19 lenient bias quantified in v18.6 (project_judge_reliability_gold_grounded_v18_6). Report judge_correct AND gold_correct (factual_chat subset) separately. Do NOT promote chat-mode-only claims without the judge-bias caveat attached."
+  },
+  "rows": [
+    {
+      "id": 3001,
+      "type": "factual_edit",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 광합성 연구\n광합성은 식물이 빛 에너지를 화학 에너지로 전환하는 과정이다. 김 교수 연구팀은 2024년 새로운 광합성 효소를 발견했다. 이 발견은 농업 분야에 큰 영향을 줄 것으로 기대된다.",
+      "cloud_answer": "[Wiki] 광합성 연구\n광합성은 식물이 빛 에너지를 화학 에너지로 전환하는 과정이다. 김 교수 연구팀은 2024년 새로운 광합성 효소를 발견했다. 이 발견은 농업 분야에 큰 영향을 줄 것으로 기대된다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 95.86
+    },
+    {
+      "id": 3001,
+      "type": "factual_edit",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 광합성 연구\n광합성은 식물이 빛 에너지를 화학 에너지로 전환하는 과정이다. 김 교수 연구팀은 2024년 새로운 광합성 효소를 발견했다. 이 발견은 농업 분야에 큰 영향을 줄 것으로 기대된다.",
+      "cloud_answer": "[Wiki] 광합성 연구\n광합성은 식물이 빛 에너지를 화학 에너지로 전환하는 과정이다. 김 교수 연구팀은 2024년 새로운 광합성 효소를 발견했다. 이 발견은 농업 분야에 큰 영향을 줄 것으로 기대된다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 67.04
+    },
+    {
+      "id": 3001,
+      "type": "factual_edit",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 광합성 연구\n광합성은 식물이 빛 에너지를 화학 에너지로 전환하는 과정이다. 김 교수 연구팀은 2024년 새로운 광합성 효소를 발견했다. 이 발견은 농업 분야에 큰 영향을 줄 것으로 기대된다.",
+      "cloud_answer": "[Wiki] 광합성 연구\n광합성은 식물이 빛 에너지를 화학 에너지로 전환하는 과정이다. 김 교수 연구팀은 2024년 새로운 광합성 효소를 발견했다. 이 발견은 농업 분야에 큰 영향을 줄 것으로 기대된다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 38.29
+    },
+    {
+      "id": 3002,
+      "type": "factual_edit",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 재생에너지 현황\n2025년 한국의 재생에너지 발전 비중은 꾸준히 증가하고 있다. 작년 기준 전체 발전량의 20% 가 재생에너지에서 나왔다. 정부는 2030년까지 30% 달성을 목표로 한다.",
+      "cloud_answer": "[Wiki] 재생에너지 현황\n2025년 한국의 재생에너지 발전 비중은 꾸준히 증가하고 있다. 작년 기준 전체 발전량의 20% 가 재생에너지에서 나왔다. 정부는 2030년까지 30% 달성을 목표로 한다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 14.68
+    },
+    {
+      "id": 3002,
+      "type": "factual_edit",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 재생에너지 현황\n2025년 한국의 재생에너지 발전 비중은 꾸준히 증가하고 있다. 작년 기준 전체 발전량의 20% 가 재생에너지에서 나왔다. 정부는 2030년까지 30% 달성을 목표로 한다.",
+      "cloud_answer": "[Wiki] 재생에너지 현황\n2025년 한국의 재생에너지 발전 비중은 꾸준히 증가하고 있다. 작년 기준 전체 발전량의 20% 가 재생에너지에서 나왔다. 정부는 2030년까지 30% 달성을 목표로 한다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 66.9
+    },
+    {
+      "id": 3002,
+      "type": "factual_edit",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 재생에너지 현황\n2025년 한국의 재생에너지 발전 비중은 꾸준히 증가하고 있다. 작년 기준 전체 발전량의 20% 가 재생에너지에서 나왔다. 정부는 2030년까지 30% 달성을 목표로 한다.",
+      "cloud_answer": "[Wiki] 재생에너지 현황\n2025년 한국의 재생에너지 발전 비중은 꾸준히 증가하고 있다. 작년 기준 전체 발전량의 20% 가 재생에너지에서 나왔다. 정부는 2030년까지 30% 달성을 목표로 한다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 16.2
+    },
+    {
+      "id": 3003,
+      "type": "factual_edit",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 백엔드 스택 v0.5\n현재 서버는 Python 3.12 위에서 FastAPI 0.110 을 사용한다. PostgreSQL 16 + Redis 7 조합으로 데이터 계층을 구성했고, 캐시 무효화는 pub/sub 으로 처리한다.",
+      "cloud_answer": "[Wiki] 백엔드 스택 v0.5\n현재 서버는 Python 3.12 위에서 FastAPI 0.110 을 사용한다. PostgreSQL 16 + Redis 7 조합으로 데이터 계층을 구성했고, 캐시 무효화는 pub/sub 으로 처리한다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 45.37
+    },
+    {
+      "id": 3003,
+      "type": "factual_edit",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 백엔드 스택 v0.5\n현재 서버는 Python 3.12 위에서 FastAPI 0.110 을 사용한다. PostgreSQL 16 + Redis 7 조합으로 데이터 계층을 구성했고, 캐시 무효화는 pub/sub 으로 처리한다.",
+      "cloud_answer": "[Wiki] 백엔드 스택 v0.5\n현재 서버는 Python 3.12 위에서 FastAPI 0.110 을 사용한다. PostgreSQL 16 + Redis 7 조합으로 데이터 계층을 구성했고, 캐시 무효화는 pub/sub 으로 처리한다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 15.02
+    },
+    {
+      "id": 3003,
+      "type": "factual_edit",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 백엔드 스택 v0.5\n현재 서버는 Python 3.12 위에서 FastAPI 0.110 을 사용한다. PostgreSQL 16 + Redis 7 조합으로 데이터 계층을 구성했고, 캐시 무효화는 pub/sub 으로 처리한다.",
+      "cloud_answer": "[Wiki] 백엔드 스택 v0.5\n현재 서버는 Python 3.12 위에서 FastAPI 0.110 을 사용한다. PostgreSQL 16 + Redis 7 조합으로 데이터 계층을 구성했고, 캐시 무효화는 pub/sub 으로 처리한다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 16.34
+    },
+    {
+      "id": 3011,
+      "type": "format_edit",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 보안 체크리스트\n- HTTPS 만 허용한다.\n- CSP nonce 를 적용한다.\n- API key 는 환경변수에 둔다.\n- 로그에는 PII 를 남기지 않는다.",
+      "cloud_answer": "[Wiki] 보안 체크리스트\n- HTTPS 만 허용한다.\n- CSP nonce 를 적용한다.\n- API key 는 환경변수에 둔다.\n- 로그에는 PII 를 남기지 않는다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 129.75
+    },
+    {
+      "id": 3011,
+      "type": "format_edit",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 보안 체크리스트\n- HTTPS 만 허용한다.\n- CSP nonce 를 적용한다.\n- API key 는 환경변수에 둔다.\n- 로그에는 PII 를 남기지 않는다.",
+      "cloud_answer": "[Wiki] 보안 체크리스트\n- HTTPS 만 허용한다.\n- CSP nonce 를 적용한다.\n- API key 는 환경변수에 둔다.\n- 로그에는 PII 를 남기지 않는다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 37.15
+    },
+    {
+      "id": 3011,
+      "type": "format_edit",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 보안 체크리스트\n- HTTPS 만 허용한다.\n- CSP nonce 를 적용한다.\n- API key 는 환경변수에 둔다.\n- 로그에는 PII 를 남기지 않는다.",
+      "cloud_answer": "[Wiki] 보안 체크리스트\n- HTTPS 만 허용한다.\n- CSP nonce 를 적용한다.\n- API key 는 환경변수에 둔다.\n- 로그에는 PII 를 남기지 않는다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 14.3
+    },
+    {
+      "id": 3012,
+      "type": "format_edit",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 파일 업로드 API\n\n## 개요\n업로드 엔드포인트는 multipart/form-data 만 받는다. 파일 크기는 100MB 이하여야 한다. 업로드 시 바이러스 스캔이 강제된다.\n\n## 주의사항\n스캔 실패 시 422 를 반환한다.",
+      "cloud_answer": "[Wiki] 파일 업로드 API\n\n## 개요\n업로드 엔드포인트는 multipart/form-data 만 받는다. 파일 크기는 100MB 이하여야 한다.\n\n## 주의사항\n업로드 시 바이러스 스캔이 강제된다. 스캔 실패 시 422 를 반환한다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 127.21
+    },
+    {
+      "id": 3012,
+      "type": "format_edit",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 파일 업로드 API\n\n## 개요\n업로드 엔드포인트는 multipart/form-data 만 받는다. 파일 크기는 100MB 이하여야 한다. 업로드 시 바이러스 스캔이 강제된다.\n\n## 주의사항\n스캔 실패 시 422 를 반환한다.",
+      "cloud_answer": "[Wiki] 파일 업로드 API\n\n## 개요\n업로드 엔드포인트는 multipart/form-data 만 받는다. 파일 크기는 100MB 이하여야 한다.\n\n## 주의사항\n업로드 시 바이러스 스캔이 강제된다. 스캔 실패 시 422 를 반환한다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 17.66
+    },
+    {
+      "id": 3012,
+      "type": "format_edit",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 파일 업로드 API\n\n## 개요\n업로드 엔드포인트는 multipart/form-data 만 받는다. 파일 크기는 100MB 이하여야 한다. 업로드 시 바이러스 스캔이 강제된다.\n\n## 주의사항\n스캔 실패 시 422 를 반환한다.",
+      "cloud_answer": "[Wiki] 파일 업로드 API\n\n## 개요\n업로드 엔드포인트는 multipart/form-data 만 받는다. 파일 크기는 100MB 이하여야 한다.\n\n## 주의사항\n업로드 시 바이러스 스캔이 강제된다. 스캔 실패 시 422 를 반환한다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 36.13
+    },
+    {
+      "id": 3013,
+      "type": "format_edit",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 캐시 옵션 비교\n| 항목 | 메모리 캐시 | 디스크 캐시 |\n|---|---|---|\n| 속도/특성 | 빠르고 휘발성이 있다. | 느리지만 영속성이 있다. |\n| 비용 | 무료고 | SSD 비용이 든다. |",
+      "cloud_answer": "[Wiki] 캐시 옵션 비교\n\n| 항목 | 옵션 A (메모리 캐시) | 옵션 B (디스크 캐시) |\n| --- | --- | --- |\n| 속도 | 빠름 | 느림 |\n| 영속성 | 휘발성 | 영속성 있음 |\n| 비용 | 무료 | SSD 비용 발생 |",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 57.8
+    },
+    {
+      "id": 3013,
+      "type": "format_edit",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 캐시 옵션 비교\n| 항목 | 메모리 캐시 | 디스크 캐시 |\n|---|---|---|\n| 속도/특성 | 빠르고 휘발성이 있다. | 느리지만 영속성이 있다. |\n| 비용 | 무료고 | SSD 비용이 든다. |",
+      "cloud_answer": "[Wiki] 캐시 옵션 비교\n\n| 항목 | 옵션 A (메모리 캐시) | 옵션 B (디스크 캐시) |\n| --- | --- | --- |\n| 속도 | 빠름 | 느림 |\n| 영속성 | 휘발성 | 영속성 있음 |\n| 비용 | 무료 | SSD 비용 발생 |",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 16.45
+    },
+    {
+      "id": 3013,
+      "type": "format_edit",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 캐시 옵션 비교\n| 항목 | 메모리 캐시 | 디스크 캐시 |\n|---|---|---|\n| 속도/특성 | 빠르고 휘발성이 있다. | 느리지만 영속성이 있다. |\n| 비용 | 무료고 | SSD 비용이 든다. |",
+      "cloud_answer": "[Wiki] 캐시 옵션 비교\n\n| 항목 | 옵션 A (메모리 캐시) | 옵션 B (디스크 캐시) |\n| --- | --- | --- |\n| 속도 | 빠름 | 느림 |\n| 영속성 | 휘발성 | 영속성 있음 |\n| 비용 | 무료 | SSD 비용 발생 |",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 38.28
+    },
+    {
+      "id": 3021,
+      "type": "summarize",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 분기 성과 보고\n2026년 1분기는 매출 120억 원(전년 대비 18% 성장)을 기록했으며, 영업이익률은 9.5%(작년 동기 7.2%)로 개선되었다. 신규 가입자는 4만 5천 명 중 70%가 기존 채널에서 유입되었고, 마케팅 비용은 8억 원(매출의 6.7%) 수준이었다.",
+      "cloud_answer": "[Wiki] 분기 성과 보고\n2026년 1분기 매출 120억 원(전년 대비 +18%), 영업이익률 9.5%(전년 동기 7.2%), 신규 가입자 4만 5천 명(기존 채널 유입 70%), 마케팅 비용 8억 원(매출의 6.7%).",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 37.14
+    },
+    {
+      "id": 3021,
+      "type": "summarize",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 분기 성과 보고\n2026년 1분기는 매출 120억 원(전년 대비 18% 성장)을 기록했으며, 영업이익률은 9.5%(작년 동기 7.2%)로 개선되었다. 신규 가입자는 4만 5천 명 중 70%가 기존 채널에서 유입되었고, 마케팅 비용은 8억 원(매출의 6.7%) 수준이었다.",
+      "cloud_answer": "[Wiki] 분기 성과 보고\n2026년 1분기 매출은 120억 원(전년 대비 +18%), 영업이익률은 9.5%(작년 동기 7.2%)였다. 신규 가입자 4만 5천 명 중 70%는 기존 채널에서 유입됐으며, 마케팅 비용은 8억 원(매출의 6.7%)이었다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 20.48
+    },
+    {
+      "id": 3021,
+      "type": "summarize",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 분기 성과 보고\n2026년 1분기는 매출 120억 원(전년 대비 18% 성장)을 기록했으며, 영업이익률은 9.5%(작년 동기 7.2%)로 개선되었다. 신규 가입자는 4만 5천 명 중 70%가 기존 채널에서 유입되었고, 마케팅 비용은 8억 원(매출의 6.7%) 수준이었다.",
+      "cloud_answer": "[Wiki] 분기 성과 보고\n2026년 1분기 매출 120억 원(전년 대비 +18%), 영업이익률 9.5%(전년 동기 7.2%)로 개선됐다. 신규 가입자 4만 5천 명 중 70%가 기존 채널 유입이며, 마케팅 비용은 8억 원(매출의 6.7%)이었다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 16.13
+    },
+    {
+      "id": 3022,
+      "type": "summarize",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 2026 라이선싱 결정\n코어 모듈은 Apache-2.0, 신규 plug-in SDK는 MIT로 공개한다. 제3자 fixture와 외부 벤치마크 결과는 원저작권을 유지하며 출처를 명시한다. 상업적 호스팅 서비스는 별도 BSL 조항을 검토 중이다.",
+      "cloud_answer": "[Wiki] 2026 라이선싱 결정\n코어 모듈은 Apache-2.0, 신규 plug-in SDK 는 MIT 로 공개한다.\n제3자 fixture 및 외부 벤치마크 결과는 원저작권을 보존하고 CITATION.md 에 출처를 명시한다.\n상업적 호스팅 서비스용 BSL 조항은 검토 중이다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 16.41
+    },
+    {
+      "id": 3022,
+      "type": "summarize",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 2026 라이선싱 결정\n코어 모듈은 Apache-2.0, 신규 plug-in SDK는 MIT로 공개한다. 제3자 fixture와 외부 벤치마크 결과는 원저작권을 유지하며 출처를 명시한다. 상업적 호스팅 서비스는 별도 BSL 조항을 검토 중이다.",
+      "cloud_answer": "[Wiki] 2026 라이선싱 결정\n코어 모듈은 Apache-2.0, 신규 plug-in SDK 는 MIT 로 공개한다.\n제3자 fixture 와 외부 벤치마크 결과는 원저작권을 보존하고 CITATION.md 에 출처를 명시한다.\n상업적 호스팅 서비스용 BSL 조항은 검토 중이다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 15.59
+    },
+    {
+      "id": 3022,
+      "type": "summarize",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 2026 라이선싱 결정\n코어 모듈은 Apache-2.0, 신규 plug-in SDK는 MIT로 공개한다. 제3자 fixture와 외부 벤치마크 결과는 원저작권을 유지하며 출처를 명시한다. 상업적 호스팅 서비스는 별도 BSL 조항을 검토 중이다.",
+      "cloud_answer": "[Wiki] 2026 라이선싱 결정\n코어 모듈은 Apache-2.0, 신규 plug-in SDK 는 MIT 로 공개한다.\n제3자 fixture 와 외부 벤치마크는 원저작권 유지·CITATION.md 출처 명시.\n상업적 호스팅 서비스용 BSL 조항은 검토 중이다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 16.3
+    },
+    {
+      "id": 3023,
+      "type": "summarize",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] Phase 4 routing primitives\nPhase 4는 privacy gate와 monthly cost cap을 core/routing/패키지로 plumb-first 도입했으며, PII 검출 정규식 4종 + env-extensible 및 atomic JSON 월별 token tally가 핵심이며 기본값은 모두 OFF/no-cap으로 byte-identical 무동작이고 Phase 5에서 cloud egress 시 consumer로 wire한다.",
+      "cloud_answer": "[Wiki] Phase 4 routing primitives\nPhase 4 는 privacy gate 와 monthly cost cap 을 core/routing/ 에 plumb-first 로 도입했고 (PII 정규식 4종 + atomic JSON token tally, 기본 OFF/no-cap 으로 byte-identical 무동작), Phase 5 가 cloud egress 시 wire 한다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 16.31
+    },
+    {
+      "id": 3023,
+      "type": "summarize",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] Phase 4 routing primitives\nPhase 4는 privacy gate와 monthly cost cap을 core/routing/패키지로 plumb-first 도입했으며, PII 검출 정규식 4종 + env-extensible 및 atomic JSON 월별 token tally가 핵심이며 기본값은 모두 OFF/no-cap으로 byte-identical 무동작이고 Phase 5에서 cloud egress 시 consumer로 wire한다.",
+      "cloud_answer": "[Wiki] Phase 4 routing primitives\nPhase 4 는 privacy gate (PII 검출 정규식 4종 + env-extensible) 와 monthly cost cap (atomic JSON token tally) 을 core/routing/ 패키지로 plumb-first 도입했으며, 기본값 OFF/no-cap 으로 byte-identical 무동작이고 Phase 5 에서 cloud egress consumer 로 wire 된다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 16.72
+    },
+    {
+      "id": 3023,
+      "type": "summarize",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] Phase 4 routing primitives\nPhase 4는 privacy gate와 monthly cost cap을 core/routing/패키지로 plumb-first 도입했으며, PII 검출 정규식 4종 + env-extensible 및 atomic JSON 월별 token tally가 핵심이며 기본값은 모두 OFF/no-cap으로 byte-identical 무동작이고 Phase 5에서 cloud egress 시 consumer로 wire한다.",
+      "cloud_answer": "[Wiki] Phase 4 routing primitives\nPhase 4 는 privacy gate(PII 정규식 4종 + env 확장)와 atomic JSON 월별 token tally 기반 cost cap 을 core/routing/ 에 plumb-first 로 도입했으며, 기본값 OFF/no-cap 으로 byte-identical 무동작이고 Phase 5 에서 cloud egress consumer 로 wire 된다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 17.03
+    },
+    {
+      "id": 3031,
+      "type": "reword",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 인증 토큰 회전\n인증 토큰이라는 건요, 24시간마다 주기적으로 바뀌어요. 이 '바뀌는 시점'에는 현재 사용 중인 모든 기기(세션)에서 다시 한번 로그인을 하셔야 해요. 만약 이 과정이 원활하게 진행되지 않으면, 시스템은 안전한 비상 모드(fallback 모드)로 전환됩니다.",
+      "cloud_answer": "[Wiki] 인증 토큰 회전\n저희 인증 토큰은 하루(24시간)에 한 번씩 새 것으로 바뀌어요. 토큰이 바뀌는 순간에는 그때까지 로그인되어 있던 모든 사용자에게 다시 한 번 로그인을 부탁드리게 됩니다. 만약 토큰 교체 과정에서 문제가 생기면, 시스템은 자동으로 fallback 모드(예비 동작 모드)로 전환돼요.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 19.01
+    },
+    {
+      "id": 3031,
+      "type": "reword",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 인증 토큰 회전\n인증 토큰이라는 건요, 24시간마다 주기적으로 바뀌어요. 이 '바뀌는 시점'에는 현재 사용 중인 모든 기기(세션)에서 다시 한번 로그인을 하셔야 해요. 만약 이 과정이 원활하게 진행되지 않으면, 시스템은 안전한 비상 모드(fallback 모드)로 전환됩니다.",
+      "cloud_answer": "[Wiki] 인증 토큰 회전\n보안을 위해 인증 토큰은 24시간마다 새것으로 바뀝니다. 토큰이 바뀌는 순간, 사용 중이던 모든 세션은 다시 한 번 로그인(재인증)을 해주셔야 해요. 만약 토큰 교체 과정에서 문제가 생기면, 시스템이 자동으로 대체(fallback) 모드로 전환됩니다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 40.56
+    },
+    {
+      "id": 3031,
+      "type": "reword",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 인증 토큰 회전\n인증 토큰이라는 건요, 24시간마다 주기적으로 바뀌어요. 이 '바뀌는 시점'에는 현재 사용 중인 모든 기기(세션)에서 다시 한번 로그인을 하셔야 해요. 만약 이 과정이 원활하게 진행되지 않으면, 시스템은 안전한 비상 모드(fallback 모드)로 전환됩니다.",
+      "cloud_answer": "[Wiki] 인증 토큰 회전\n우리가 쓰는 인증 토큰은 24시간마다 한 번씩 새것으로 바뀌어요. 이때 로그인되어 있던 모든 화면에서는 다시 한 번 로그인을 해 주셔야 해요. 혹시 토큰을 바꾸는 과정에서 문제가 생기면, 시스템이 자동으로 fallback 모드(예비 모드)로 넘어가게 됩니다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 17.85
+    },
+    {
+      "id": 3032,
+      "type": "reword",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 코드 리뷰 가이드\n코드 리뷰는 부담스러울 수 있지만, 더 나은 결과물을 만들기 위해 동료의 PR을 검토해 주시기 바랍니다. 또한, 가능한 한 큰 규모의 PR은 지양해 주시면 감사하겠습니다.",
+      "cloud_answer": "[Wiki] 코드 리뷰 가이드\n코드 리뷰는 더 나은 결과물을 위한 협업 과정입니다. 동료의 PR을 한 번씩 차분히 검토해 주세요. PR은 가급적 작은 단위로 올려 주시기 바랍니다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 16.83
+    },
+    {
+      "id": 3032,
+      "type": "reword",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 코드 리뷰 가이드\n코드 리뷰는 부담스러울 수 있지만, 더 나은 결과물을 만들기 위해 동료의 PR을 검토해 주시기 바랍니다. 또한, 가능한 한 큰 규모의 PR은 지양해 주시면 감사하겠습니다.",
+      "cloud_answer": "[Wiki] 코드 리뷰 가이드\n더 나은 결과물을 위해 동료의 PR을 꼼꼼히 검토해 주세요. PR은 가급적 작은 단위로 올려 주시기 바랍니다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 20.35
+    },
+    {
+      "id": 3032,
+      "type": "reword",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 코드 리뷰 가이드\n코드 리뷰는 부담스러울 수 있지만, 더 나은 결과물을 만들기 위해 동료의 PR을 검토해 주시기 바랍니다. 또한, 가능한 한 큰 규모의 PR은 지양해 주시면 감사하겠습니다.",
+      "cloud_answer": "[Wiki] 코드 리뷰 가이드\n더 나은 결과물을 위해 동료의 PR을 꼼꼼히 리뷰해 주세요. 가능하면 PR 단위를 작게 유지해 주시기 바랍니다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 16.73
+    },
+    {
+      "id": 3033,
+      "type": "reword",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] Backup Policy\nData is backed up daily at midnight and retained for 7 days. Monthly backups are kept separately for one year.",
+      "cloud_answer": "[Wiki] 백업 정책\nData is backed up every day at midnight, and 7 days' worth is retained. End-of-month backups are kept separately for one year.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 56.02
+    },
+    {
+      "id": 3033,
+      "type": "reword",
+      "run": 1,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] Backup Policy\nData is backed up daily at midnight and retained for 7 days. Monthly backups are kept separately for one year.",
+      "cloud_answer": "[Wiki] 백업 정책\nData is backed up every day at midnight, and 7 days' worth is retained. The end-of-month backup is stored separately for one year.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 15.97
+    },
+    {
+      "id": 3033,
+      "type": "reword",
+      "run": 2,
+      "hops": 0,
+      "a_is_local": false,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] Backup Policy\nData is backed up daily at midnight and retained for 7 days. Monthly backups are kept separately for one year.",
+      "cloud_answer": "[Wiki] 백업 정책\nData is backed up daily at midnight, and 7 days' worth is retained. End-of-month backups are stored separately for 1 year.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 36.2
+    }
+  ],
+  "aggregate": {
+    "per_question": [
+      {
+        "id": 3001,
+        "type": "factual_edit",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 67.06
+      },
+      {
+        "id": 3002,
+        "type": "factual_edit",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 32.59
+      },
+      {
+        "id": 3003,
+        "type": "factual_edit",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 25.58
+      },
+      {
+        "id": 3011,
+        "type": "format_edit",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 60.4
+      },
+      {
+        "id": 3012,
+        "type": "format_edit",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 60.33
+      },
+      {
+        "id": 3013,
+        "type": "format_edit",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 37.51
+      },
+      {
+        "id": 3021,
+        "type": "summarize",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 24.58
+      },
+      {
+        "id": 3022,
+        "type": "summarize",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 16.1
+      },
+      {
+        "id": 3023,
+        "type": "summarize",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 16.69
+      },
+      {
+        "id": 3031,
+        "type": "reword",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 25.81
+      },
+      {
+        "id": 3032,
+        "type": "reword",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 17.97
+      },
+      {
+        "id": 3033,
+        "type": "reword",
+        "hops": 0,
+        "n_runs": 3,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT",
+          "CORRECT",
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 36.06
+      }
+    ],
+    "summary": {
+      "n_questions": 12,
+      "n_runs_per_question": 3,
+      "local_correct_rate": 1.0,
+      "cloud_correct_rate": 1.0,
+      "local_abstain_rate": 0.0,
+      "cloud_abstain_rate": 0.0,
+      "delta_correct_cloud_minus_local": 0.0,
+      "local_stable_rate": 1.0,
+      "cloud_stable_rate": 1.0,
+      "by_type": {
+        "factual_edit": {
+          "n": 3,
+          "local_correct": 3,
+          "cloud_correct": 3
+        },
+        "format_edit": {
+          "n": 3,
+          "local_correct": 3,
+          "cloud_correct": 3
+        },
+        "summarize": {
+          "n": 3,
+          "local_correct": 3,
+          "cloud_correct": 3
+        },
+        "reword": {
+          "n": 3,
+          "local_correct": 3,
+          "cloud_correct": 3
+        }
+      }
+    }
+  }
+}
