@@ -134,8 +134,19 @@ DEFAULT_PREFERENCE: dict = {
         "gemma4:e4b", "gemma3:12b", "gemma3:27b",
         "qwen2.5:14b", "llama3.1:8b",
     ],
+    # v18.7 Phase wiki_edit-c (2026-06-20) — reordered after the
+    # wiki_edit-mode 3-cell paired measurement on the operator-authored
+    # Korean fixture. Gold-grounded summarize ranking:
+    #   gemma3:12b (1.000) > gemma4:e4b OFF (0.667) > gemma3:27b (0.333)
+    # gemma3:27b is the only model that LOST — its verbose tendency
+    # buries key facts under extra prose, dropping gold_signals match
+    # rate to 0.333. This INVERTS Phase 3b's evidence-rich retrieval
+    # ranking (where 27b led with 1.000) — the task verb (summarize
+    # vs explain) flips which model wins. See
+    #   reports/research-runs/v18.7-phase-wikiedit-b/QUALITY_DELTA_CARD.md
+    # § "Cross-task ranking reversal".
     "wiki_edit": [
-        "gemma3:27b", "gemma4:e4b", "gemma3:12b",
+        "gemma3:12b", "gemma4:e4b", "gemma3:27b",
         "mixtral:8x7b", "qwen2.5:14b",
     ],
     "vision": [

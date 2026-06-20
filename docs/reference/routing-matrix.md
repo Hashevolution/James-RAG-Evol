@@ -22,7 +22,7 @@
 | **retrieval** | 지식 검색·정보 조회 | **gemma3:12b** | engine.py `resolve_for_mode("retrieval", requested="")` → preference top | `[MODEL] mode=retrieval auto-routed → gemma3:12b` ✅ observed | **measurement-backed (Phase 3c)** |
 | **meta** | 내부자료 인벤토리 | none (no LLM) | fast-path inventory generation | `(fast-path)` ✅ confirmed | n/a |
 | **coding** | 코드 작성·버그 | qwen2.5-coder:32b | `llm.router(task_type="coding")` | `[coding_route]` / router log ✅ | dedicated router |
-| **wiki_edit** | 지식 수정·삭제 (admin) | gemma4:e4b | `call_gemma(model=None)` → `resolve_chat()` → GEMMA_MODEL | silent | legacy (Phase wiki_edit-a fixture ✅; measurement + wire pending) |
+| **wiki_edit** | 지식 수정·삭제 (admin) | **gemma3:12b** | engine.py `resolve_for_mode("wiki_edit", requested="")` → preference top | `[MODEL] mode=wiki_edit auto-routed → gemma3:12b` ✅ observed | **measurement-backed (Phase wiki_edit-c)** |
 | **self_evolve** | 자메스 자기개선 (admin) | gemma4:e4b | `call_gemma(model=None)` → `resolve_chat()` → GEMMA_MODEL | silent | legacy (unmeasured) |
 | vision | (FUTURE — not routed) | llava:13b | `call_gemma_vision` direct | n/a | inactive |
 
@@ -30,7 +30,7 @@
 
 ```
 1. user secondary-picker selection      → catalog-validated tag wins (every mode)
-2. chat/retrieval + no pick              → gemma3:12b (Phase 2c/3c; kill-switch JAMES_DISABLE_MODE_AWARE_ROUTING=1)
+2. chat/retrieval/wiki_edit + no pick    → gemma3:12b (Phase 2c/3c/wiki_edit-c; kill-switch JAMES_DISABLE_MODE_AWARE_ROUTING=1)
 3. other mode + no pick                  → legacy GEMMA_MODEL (gemma4:e4b), or coding=qwen-coder:32b
 ```
 
@@ -42,11 +42,11 @@ installed — so `resolve_chat()` returns **gemma4:e4b and never consults
 the preference list**. Only `resolve_for_mode(mode, requested="")` (empty
 requested) lets the preference list drive. This is why:
 
-- chat-mode (Phase 2c) calls `resolve_for_mode("chat", requested="")`
-  to actually reach the measured-best gemma3:12b.
-- retrieval / wiki_edit / self_evolve still call `resolve_chat()` (via
-  `call_gemma(model=None)`), so they stay on GEMMA_MODEL until each gets
-  its own measurement + a wire that uses `requested=""`.
+- chat-mode (Phase 2c), retrieval-mode (Phase 3c), and wiki_edit-mode
+  (Phase wiki_edit-c) all call `resolve_for_mode(mode, requested="")`
+  so the preference-list top drives.
+- `self_evolve` still calls `resolve_chat()` (via `call_gemma(model=None)`),
+  so it stays on GEMMA_MODEL until it gets its own measurement + wire.
 
 ## Observability gap (noted, not yet fixed)
 
@@ -108,7 +108,7 @@ separate from the backend-tier system:
     `cost_cap` sub-keys for operator introspection. Surface locked
     by `RoutingPhase4Surface` lock-test + `routing_phase4_primitives`
     pre-flight check.
-- 🔄 **Phase wiki_edit** (parallel to Phase 5)
+- ✅ **Phase wiki_edit** (parallel to Phase 5)
   - ✅ wiki_edit-a — fixture + harness path (PR `feat/v0.6.1-wiki-edit-mode-fixture`):
     `eval/wiki_edit_mode_queries.json` (4 sub-classes × 3: factual_edit
     / format_edit / summarize / reword; factual_edit + summarize carry
@@ -119,13 +119,19 @@ separate from the backend-tier system:
     `check_wiki_edit_fixture` (9th check) + lock-test
     `WikiEditFixtureSurface` (6 invariants). Default behaviour
     unchanged; only the `--fixture wiki_edit` CLI is now available.
-  - ⏳ wiki_edit-b — paired measurement (operator launches; same
-    3-cell pattern as Phase 2b chat: gemma4:e4b OFF / gemma3:12b /
-    gemma3:27b paired against the Korean fixture). Cell choice for
-    wiki_edit is informed by the Phase 3b finding (gemma3:27b leads
-    on evidence-rich tasks but 2.3× slower + verbose).
-  - ⏳ wiki_edit-c — engine wire + `DEFAULT_PREFERENCE['wiki_edit']`
-    reorder (post-measurement).
+  - ✅ wiki_edit-b — paired measurement complete (3 cells × 12
+    queries × 3 paired runs = 108 LOCAL + 108 CLOUD + 108 judge LLM
+    calls). Headline gold-grounded summarize ranking:
+    `gemma3:12b (1.000) > gemma4:e4b OFF (0.667) > gemma3:27b (0.333)`.
+    **⭐ Cross-task ranking reversal** — 27b's verbose tendency
+    *helps* on Phase 3b retrieval (more facts included → more gold
+    matches) but *hurts* on summarize (extra prose buries the key
+    facts). See `reports/research-runs/v18.7-phase-wikiedit-b/QUALITY_DELTA_CARD.md`.
+  - ✅ wiki_edit-c — `DEFAULT_PREFERENCE['wiki_edit']` reordered
+    per the 3-cell ranking (gemma3:12b promoted; gemma3:27b
+    demoted) + engine.py mode-routing branch extended from
+    `("chat", "retrieval")` to `("chat", "retrieval", "wiki_edit")`.
+    `JAMES_DISABLE_MODE_AWARE_ROUTING` kill-switch generalized.
 - 🔄 **Phase 5** — cloud egress consumer wire + cloud-as-preference + sub-class routing inside chat + admin routing dashboard
   - ✅ 5a — **gate wired into the cloud egress site**
     (`scripts/research/local_vs_cloud_paired.call_cloud_via_
