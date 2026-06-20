@@ -22,7 +22,7 @@
 | **retrieval** | 지식 검색·정보 조회 | **gemma3:12b** | engine.py `resolve_for_mode("retrieval", requested="")` → preference top | `[MODEL] mode=retrieval auto-routed → gemma3:12b` ✅ observed | **measurement-backed (Phase 3c)** |
 | **meta** | 내부자료 인벤토리 | none (no LLM) | fast-path inventory generation | `(fast-path)` ✅ confirmed | n/a |
 | **coding** | 코드 작성·버그 | qwen2.5-coder:32b | `llm.router(task_type="coding")` | `[coding_route]` / router log ✅ | dedicated router |
-| **wiki_edit** | 지식 수정·삭제 (admin) | gemma4:e4b | `call_gemma(model=None)` → `resolve_chat()` → GEMMA_MODEL | silent | legacy (unmeasured) |
+| **wiki_edit** | 지식 수정·삭제 (admin) | gemma4:e4b | `call_gemma(model=None)` → `resolve_chat()` → GEMMA_MODEL | silent | legacy (Phase wiki_edit-a fixture ✅; measurement + wire pending) |
 | **self_evolve** | 자메스 자기개선 (admin) | gemma4:e4b | `call_gemma(model=None)` → `resolve_chat()` → GEMMA_MODEL | silent | legacy (unmeasured) |
 | vision | (FUTURE — not routed) | llava:13b | `call_gemma_vision` direct | n/a | inactive |
 
@@ -108,6 +108,24 @@ separate from the backend-tier system:
     `cost_cap` sub-keys for operator introspection. Surface locked
     by `RoutingPhase4Surface` lock-test + `routing_phase4_primitives`
     pre-flight check.
+- 🔄 **Phase wiki_edit** (parallel to Phase 5)
+  - ✅ wiki_edit-a — fixture + harness path (PR `feat/v0.6.1-wiki-edit-mode-fixture`):
+    `eval/wiki_edit_mode_queries.json` (4 sub-classes × 3: factual_edit
+    / format_edit / summarize / reword; factual_edit + summarize carry
+    `gold_signals` for gold-grounded recheck) +
+    `local_vs_cloud_paired._wiki_edit_prompt` (folds `original_doc` +
+    edit instruction into the prompt body) + `FIXTURES["wiki_edit"]`
+    + `ANSWERABLE_BY_FIXTURE["wiki_edit"]` + pre-flight
+    `check_wiki_edit_fixture` (9th check) + lock-test
+    `WikiEditFixtureSurface` (6 invariants). Default behaviour
+    unchanged; only the `--fixture wiki_edit` CLI is now available.
+  - ⏳ wiki_edit-b — paired measurement (operator launches; same
+    3-cell pattern as Phase 2b chat: gemma4:e4b OFF / gemma3:12b /
+    gemma3:27b paired against the Korean fixture). Cell choice for
+    wiki_edit is informed by the Phase 3b finding (gemma3:27b leads
+    on evidence-rich tasks but 2.3× slower + verbose).
+  - ⏳ wiki_edit-c — engine wire + `DEFAULT_PREFERENCE['wiki_edit']`
+    reorder (post-measurement).
 - 🔄 **Phase 5** — cloud egress consumer wire + cloud-as-preference + sub-class routing inside chat + admin routing dashboard
   - ✅ 5a — **gate wired into the cloud egress site**
     (`scripts/research/local_vs_cloud_paired.call_cloud_via_

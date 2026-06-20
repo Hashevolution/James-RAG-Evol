@@ -590,9 +590,99 @@ def check_routing_phase4_primitives() -> PreFlightResult:
     )
 
 
+def check_wiki_edit_fixture() -> PreFlightResult:
+    """v0.6.1 Phase wiki_edit-a (2026-06-20) — wiki_edit-mode fixture.
+
+    Mirrors ``check_chat_fixture``. Asserts:
+      - fixture registered in ``harness.FIXTURES['wiki_edit']``
+      - file exists + parses
+      - 4 sub-classes each have ≥3 rows (paired ``n_per_type=3`` default)
+      - ``factual_edit`` + ``summarize`` rows carry ``gold_signals``
+        (gold-grounded recheck per
+        ``project_judge_reliability_gold_grounded_v18_6``)
+      - every row carries a non-empty ``original_doc`` (the prompt
+        template needs it; missing docs would silently degrade to an
+        empty edit target).
+    """
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from local_vs_cloud_paired import (
+            ANSWERABLE_BY_FIXTURE, FIXTURES,
+        )
+    except Exception as exc:
+        return PreFlightResult(
+            "wiki_edit_fixture", "fail",
+            f"harness import failed: {type(exc).__name__}: {exc}",
+        )
+    path = FIXTURES.get("wiki_edit")
+    if path is None:
+        return PreFlightResult(
+            "wiki_edit_fixture", "fail",
+            "FIXTURES['wiki_edit'] not registered",
+        )
+    if not path.exists():
+        return PreFlightResult(
+            "wiki_edit_fixture", "fail",
+            f"fixture file missing: {path}",
+        )
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return PreFlightResult(
+            "wiki_edit_fixture", "fail",
+            f"fixture unreadable: {type(exc).__name__}: {exc}",
+        )
+    rows = data.get("queries", [])
+    counts: dict = {}
+    for q in rows:
+        counts[q.get("question_type", "?")] = (
+            counts.get(q.get("question_type", "?"), 0) + 1
+        )
+    expected = ANSWERABLE_BY_FIXTURE.get("wiki_edit", ())
+    for t in expected:
+        if counts.get(t, 0) < 3:
+            return PreFlightResult(
+                "wiki_edit_fixture", "fail",
+                f"sub-class {t!r} has only {counts.get(t, 0)} rows; "
+                "paired default needs 3",
+            )
+    factual_with_gold = sum(
+        1 for q in rows
+        if q.get("question_type") == "factual_edit" and q.get("gold_signals")
+    )
+    summarize_with_gold = sum(
+        1 for q in rows
+        if q.get("question_type") == "summarize" and q.get("gold_signals")
+    )
+    if factual_with_gold < 3:
+        return PreFlightResult(
+            "wiki_edit_fixture", "fail",
+            f"factual_edit rows with gold_signals: {factual_with_gold} < 3",
+        )
+    if summarize_with_gold < 3:
+        return PreFlightResult(
+            "wiki_edit_fixture", "fail",
+            f"summarize rows with gold_signals: {summarize_with_gold} < 3",
+        )
+    missing_docs = [q.get("id") for q in rows
+                    if not (q.get("original_doc") or "").strip()]
+    if missing_docs:
+        return PreFlightResult(
+            "wiki_edit_fixture", "fail",
+            f"rows missing original_doc: {missing_docs}",
+        )
+    return PreFlightResult(
+        "wiki_edit_fixture", "ok",
+        f"{len(rows)} wiki_edit queries available "
+        f"(counts={counts}, factual_with_gold={factual_with_gold}, "
+        f"summarize_with_gold={summarize_with_gold})",
+    )
+
+
 _CHECKS = (
     check_fixture,
     check_chat_fixture,
+    check_wiki_edit_fixture,
     check_regex_false_positives,
     check_backend_registry,
     check_abstraction_smoke,

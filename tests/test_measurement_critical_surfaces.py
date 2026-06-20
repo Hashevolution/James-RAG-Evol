@@ -509,6 +509,107 @@ class ChatFixtureSurface(unittest.TestCase):
                       "_chat_prompt drops the current query body")
 
 
+class WikiEditFixtureSurface(unittest.TestCase):
+    """v0.6.1 v18.7 Phase wiki_edit-a prereq (2026-06-20) — wiki_edit-mode
+    fixture. Mirrors ``ChatFixtureSurface``.
+
+    The wiki_edit fixture is operator-authored (not derived from a
+    public benchmark), so there is no upstream alarm if a UX cycle
+    silently edits it. The lock-tests below freeze the surface the
+    harness consumes — file location, sub-class counts, factual_edit
+    gold_signals coverage, every-row-has-original_doc contract, and
+    that ``_wiki_edit_prompt`` actually folds the doc + instruction
+    into the prompt body.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        _import_harness()
+
+    def test_wiki_edit_fixture_registered_in_harness(self):
+        from local_vs_cloud_paired import FIXTURES
+        self.assertIn(
+            "wiki_edit", FIXTURES,
+            "harness FIXTURES dict missing 'wiki_edit' entry — the "
+            "--fixture wiki_edit CLI will fail. Phase wiki_edit-a "
+            "prereq broken.",
+        )
+
+    def test_wiki_edit_fixture_file_exists(self):
+        from local_vs_cloud_paired import FIXTURES
+        path = FIXTURES["wiki_edit"]
+        self.assertTrue(
+            path.exists(),
+            f"wiki_edit fixture file missing: {path}. "
+            f"--fixture wiki_edit will raise FileNotFoundError.",
+        )
+
+    def test_wiki_edit_fixture_subclasses_complete(self):
+        """All 4 wiki_edit sub-classes must carry ≥ 3 rows so the
+        default run (n_per_type=3) can build the paired sample."""
+        import json as _json
+        from local_vs_cloud_paired import FIXTURES
+        data = _json.loads(FIXTURES["wiki_edit"].read_text(encoding="utf-8"))
+        for t in ("factual_edit", "format_edit", "summarize", "reword"):
+            with self.subTest(sub_class=t):
+                rows = [q for q in data.get("queries", [])
+                        if q.get("question_type") == t]
+                self.assertGreaterEqual(
+                    len(rows), 3,
+                    f"wiki_edit sub-class {t!r} only has {len(rows)} "
+                    f"rows — paired default needs 3.",
+                )
+
+    def test_wiki_edit_factual_have_gold_signals(self):
+        """factual_edit is the deterministic sub-class — every row
+        must carry gold_signals so gold-grounded recheck applies."""
+        import json as _json
+        from local_vs_cloud_paired import FIXTURES
+        data = _json.loads(FIXTURES["wiki_edit"].read_text(encoding="utf-8"))
+        factuals = [q for q in data.get("queries", [])
+                    if q.get("question_type") == "factual_edit"]
+        for q in factuals:
+            with self.subTest(id=q.get("id")):
+                self.assertTrue(
+                    bool(q.get("gold_signals")),
+                    f"factual_edit id={q.get('id')} missing "
+                    f"gold_signals — gold-grounded recheck cannot "
+                    f"score this row.",
+                )
+
+    def test_wiki_edit_every_row_has_original_doc(self):
+        """Every wiki_edit row MUST carry a non-empty original_doc;
+        the prompt template needs it as the edit target."""
+        import json as _json
+        from local_vs_cloud_paired import FIXTURES
+        data = _json.loads(FIXTURES["wiki_edit"].read_text(encoding="utf-8"))
+        for q in data.get("queries", []):
+            with self.subTest(id=q.get("id")):
+                doc = (q.get("original_doc") or "").strip()
+                self.assertTrue(
+                    bool(doc),
+                    f"wiki_edit id={q.get('id')} missing original_doc "
+                    f"— prompt would have an empty edit target.",
+                )
+
+    def test_wiki_edit_prompt_template_emits_doc(self):
+        """Smoke: ``_wiki_edit_prompt()`` must include the original_doc
+        body AND the edit instruction so both sides see the same edit
+        task."""
+        from local_vs_cloud_paired import _wiki_edit_prompt
+        q = {
+            "text": "본문의 '2023년' 부분을 '2024년' 으로 정정해 주세요.",
+            "original_doc": "[Wiki] 광합성 연구\n2023년 발견.",
+        }
+        body = _wiki_edit_prompt(q)
+        self.assertIn("[Wiki] 광합성 연구", body,
+                      "_wiki_edit_prompt drops the original_doc body")
+        self.assertIn("2023년 발견.", body,
+                      "_wiki_edit_prompt drops the original_doc body")
+        self.assertIn("'2024년' 으로 정정", body,
+                      "_wiki_edit_prompt drops the edit instruction")
+
+
 class RoutingPhase4Surface(unittest.TestCase):
     """v0.6.1 v18.7 Phase 4 (2026-06-20) — privacy + cost cap primitives.
 
