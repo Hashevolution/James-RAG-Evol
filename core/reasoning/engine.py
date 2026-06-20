@@ -299,7 +299,7 @@ class ReasoningEngine:
         # Kill-switch: JAMES_DISABLE_MODE_AWARE_ROUTING=1 reverts both
         # to GEMMA_MODEL. meta/wiki_edit/vision/self_evolve stay on the
         # legacy path (not yet measurement-validated per mode).
-        if mode in ("chat", "retrieval") and not picked_model:
+        if mode in ("chat", "retrieval", "wiki_edit") and not picked_model:
             import os
             if not os.environ.get("JAMES_DISABLE_MODE_AWARE_ROUTING"):
                 from core.model_resolver import resolve_for_mode
