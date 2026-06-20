@@ -166,7 +166,13 @@ class IntentClassifier:
             # because Korean characters never appear inside English
             # words), English tokens REQUIRE an explicit inventory
             # noun follow-up.
-            r"(최근|새로|새로운|새로\s*추가|최신|방금|어제|오늘)\s*(추가|들어온|올라온|업로드)?\s*\S{0,6}\s*(자료|항목|것|것들|문서|entity)?",
+            # v0.6.1 v18.7 (2026-06-20) — fix: marker without an
+            # explicit inventory noun was over-matching retrieval
+            # queries ("OpenAI의 최신 모델 전략", "최신 소식 알려줘").
+            # The trailing inventory-noun group was OPTIONAL in v17;
+            # required now so the pattern only matches when both a
+            # recency marker AND an inventory noun appear together.
+            r"(최근|새로|새로운|새로\s*추가|최신|방금|어제|오늘)\s*(추가|들어온|올라온|업로드)?\s*\S{0,6}\s*(자료|항목|것|것들|문서|entity)",
             r"\b(recent|latest|new)\s+(additions|entries|files|documents|entities|items|uploads|content)\b",
             # v0.6.1 v18 (2026-06-16) — narrative trigger: "요약/정리/
             # 전체적으로/총평". Routes to handle_meta which then
