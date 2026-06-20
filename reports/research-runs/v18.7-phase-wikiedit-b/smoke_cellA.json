@@ -1,0 +1,284 @@
+{
+  "design": "chat-mode free-form; both models same prior_turns / no evidence",
+  "fixture": "wiki_edit",
+  "local_model": "gemma4:e4b",
+  "local_backend": "ollama",
+  "num_predict": 400,
+  "force_think": "auto",
+  "pre_flight": {
+    "skipped": false,
+    "results": [
+      {
+        "name": "fixture_rows",
+        "status": "ok",
+        "detail": "75 answerable queries available (counts={'inference_query': 25, 'comparison_query': 25, 'temporal_query': 25})",
+        "extra": {
+          "counts": {
+            "inference_query": 25,
+            "comparison_query": 25,
+            "temporal_query": 25
+          },
+          "path": "C:\\Project\\James-RAG-Evol-v010\\workspaces\\hotpot_eval\\eval\\multihop_rag_queries.json"
+        }
+      },
+      {
+        "name": "chat_fixture",
+        "status": "ok",
+        "detail": "18 chat queries available (counts={'small_talk': 5, 'factual_chat': 5, 'open_question': 5, 'multi_turn': 3}, factual_with_gold=5, multiturn_with_prior=3)",
+        "extra": {
+          "counts": {
+            "small_talk": 5,
+            "factual_chat": 5,
+            "open_question": 5,
+            "multi_turn": 3
+          },
+          "path": "C:\\Project\\James-RAG-Evol-v010\\eval\\chat_mode_queries.json"
+        }
+      },
+      {
+        "name": "wiki_edit_fixture",
+        "status": "ok",
+        "detail": "12 wiki_edit queries available (counts={'factual_edit': 3, 'format_edit': 3, 'summarize': 3, 'reword': 3}, factual_with_gold=3, summarize_with_gold=3)",
+        "extra": {}
+      },
+      {
+        "name": "regex_sweep",
+        "status": "ok",
+        "detail": "0/75 false positives across 4 fast-path modes (['coding', 'meta', 'self_evolve', 'wiki_edit'])",
+        "extra": {
+          "total": 75,
+          "modes_swept": [
+            "coding",
+            "meta",
+            "self_evolve",
+            "wiki_edit"
+          ]
+        }
+      },
+      {
+        "name": "backend_registry",
+        "status": "ok",
+        "detail": "registered=['claude_code_cli', 'ollama_local']",
+        "extra": {
+          "registered": [
+            "claude_code_cli",
+            "ollama_local"
+          ]
+        }
+      },
+      {
+        "name": "abstraction_smoke",
+        "status": "ok",
+        "detail": "default_decider=function; run_cloud_egress callable",
+        "extra": {}
+      },
+      {
+        "name": "diffusiongemma_optin",
+        "status": "ok",
+        "detail": "flag=None registered=False",
+        "extra": {}
+      },
+      {
+        "name": "thinking_mode_contract",
+        "status": "ok",
+        "detail": "think_policy surface intact; JAMES_GEMMA4_E4B_THINK_OFF=1 active (gemma4 family models will receive think:false).",
+        "extra": {}
+      },
+      {
+        "name": "routing_phase4_primitives",
+        "status": "ok",
+        "detail": "surface stable (7 symbols); plumb-first (no consumer yet — Phase 5 wires)",
+        "extra": {}
+      }
+    ]
+  },
+  "num_ctx": 8192,
+  "cloud_backend": "claude_code_cli (via core.abstraction.run_cloud_egress)",
+  "judge": "claude-cli, blinded A/B per (query, run)",
+  "n_per_type": 1,
+  "n_runs": 1,
+  "caveat": {
+    "judge_self_preference": "judge is Claude; one candidate is Claude — self-preference is possible. Mitigated by blinding A/B + evidence-grounded grading + per-question raw dump. Treat the auto-score as a SIGNAL; confirm against raw answers.",
+    "gold_evidence_not_pipeline": "Reasoning-isolated design: both models get the same full gold evidence. Does NOT measure the full retrieval pipeline. A production Pareto claim needs a separate full-pipeline run (with JAMES retrieval + abstention) before any operator-facing conclusion.",
+    "small_n": "Sample is the first answerable N per question_type from MultiHop-RAG. Not representative. The verdict here is a §4.1 closure SIGNAL, not a publishable claim. n=3 paired (per feedback_n1_verdict_inflation_n3_caught) but n_questions is still small.",
+    "lenient_judge": "ABSTAINED + INCORRECT are scored separately, but two contradictory CORRECT answers can both land CORRECT (judge grades each independently). Per α-8 closure: paired Δ near 0 + collapse to noise band on n=3 has been observed (n=1 inflation pattern).",
+    "local_model_caveat": "Default local-model is gemma3:4b. Does NOT equate to gemma4 e4b (production tier, has the α-cycle thinking-trace floor on multihop). Re-run with --local-model gemma4:e4b to compare against the production tier.",
+    "abstraction_no_op": "Cloud path goes through core.abstraction.run_cloud_egress, but the gold-evidence fixture has no PII so entities=[] → mask is empty. The call path is exercised end-to-end (proves §5.7.13 module works against a real Claude backend) but the abstraction itself is a no-op for this fixture.",
+    "chat_mode_lenient_judge": "Chat-mode fixture (small_talk / open_question / multi_turn) is INTRINSICALLY judge-only. There is no gold ground-truth for free-form conversation. Only the factual_chat sub-class carries gold_signals and is gold-grounded checkable. The other 3 sub-classes inherit the +0.11-0.19 lenient bias quantified in v18.6 (project_judge_reliability_gold_grounded_v18_6). Report judge_correct AND gold_correct (factual_chat subset) separately. Do NOT promote chat-mode-only claims without the judge-bias caveat attached."
+  },
+  "rows": [
+    {
+      "id": 3001,
+      "type": "factual_edit",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 광합성 연구\n광합성은 식물이 빛 에너지를 화학 에너지로 전환하는 과정이다. 김 교수 연구팀은 2024년 새로운 광합성 효소를 발견했다. 이 발견은 농업 분야에 큰 영향을 줄 것으로 기대된다.",
+      "cloud_answer": "[Wiki] 광합성 연구\n광합성은 식물이 빛 에너지를 화학 에너지로 전환하는 과정이다. 김 교수 연구팀은 2024년 새로운 광합성 효소를 발견했다. 이 발견은 농업 분야에 큰 영향을 줄 것으로 기대된다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 70.97
+    },
+    {
+      "id": 3011,
+      "type": "format_edit",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 보안 체크리스트\n- HTTPS 만 허용한다.\n- CSP nonce 를 적용한다.\n- API key 는 환경변수에 둔다.\n- 로그에는 PII 를 남기지 않는다.",
+      "cloud_answer": "[Wiki] 보안 체크리스트\n- HTTPS 만 허용한다.\n- CSP nonce 를 적용한다.\n- API key 는 환경변수에 둔다.\n- 로그에는 PII 를 남기지 않는다.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 14.68
+    },
+    {
+      "id": 3021,
+      "type": "summarize",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 분기 성과 보고\n2026년 1분기는 매출 120억 원(전년 대비 18% 성장)을 기록했으며, 영업이익률은 9.5%(작년 동기 7.2%)로 개선되었다. 신규 가입자는 4만 5천 명 중 70%가 기존 채널에서 유입되었고, 마케팅 비용은 8억 원(매출의 6.7%) 수준이었다.",
+      "cloud_answer": "[Wiki] 분기 성과 보고\n2026년 1분기 매출 120억 원(전년 대비 +18%), 영업이익률 9.5%(전년 동기 7.2%), 신규 가입자 4만 5천 명(기존 채널 유입 70%), 마케팅 비용 8억 원(매출의 6.7%).",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 37.19
+    },
+    {
+      "id": 3031,
+      "type": "reword",
+      "run": 0,
+      "hops": 0,
+      "a_is_local": true,
+      "local_verdict": "CORRECT",
+      "cloud_verdict": "CORRECT",
+      "local_abstain": false,
+      "cloud_abstain": false,
+      "local_answer": "[Wiki] 인증 토큰 회전\n인증 토큰이라는 건요, 24시간마다 주기적으로 바뀌어요. 이 '바뀌는 시점'에는 현재 사용 중인 모든 기기(세션)에서 다시 한번 로그인을 하셔야 해요. 만약 이 과정이 원활하게 진행되지 않으면, 시스템은 안전한 비상 모드(fallback 모드)로 전환됩니다.",
+      "cloud_answer": "[Wiki] 인증 토큰 회전\n저희 시스템의 인증 토큰은 하루에 한 번, 24시간마다 새것으로 바뀌어요. 이렇게 토큰이 바뀌는 순간에는 그때 접속해 계신 모든 분들이 다시 한 번 로그인을 해주셔야 한답니다. 혹시라도 토큰 교체 과정에서 문제가 생기면, 시스템은 자동으로 fallback 모드로 전환되어 안전하게 운영을 이어가요.",
+      "local_error": "",
+      "cloud_error": "",
+      "judge_error": "",
+      "elapsed_sec": 18.73
+    }
+  ],
+  "aggregate": {
+    "per_question": [
+      {
+        "id": 3001,
+        "type": "factual_edit",
+        "hops": 0,
+        "n_runs": 1,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 70.97
+      },
+      {
+        "id": 3011,
+        "type": "format_edit",
+        "hops": 0,
+        "n_runs": 1,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 14.68
+      },
+      {
+        "id": 3021,
+        "type": "summarize",
+        "hops": 0,
+        "n_runs": 1,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 37.19
+      },
+      {
+        "id": 3031,
+        "type": "reword",
+        "hops": 0,
+        "n_runs": 1,
+        "local_majority": "CORRECT",
+        "cloud_majority": "CORRECT",
+        "local_verdicts": [
+          "CORRECT"
+        ],
+        "cloud_verdicts": [
+          "CORRECT"
+        ],
+        "local_stable": true,
+        "cloud_stable": true,
+        "elapsed_sec_mean": 18.73
+      }
+    ],
+    "summary": {
+      "n_questions": 4,
+      "n_runs_per_question": 1,
+      "local_correct_rate": 1.0,
+      "cloud_correct_rate": 1.0,
+      "local_abstain_rate": 0.0,
+      "cloud_abstain_rate": 0.0,
+      "delta_correct_cloud_minus_local": 0.0,
+      "local_stable_rate": 1.0,
+      "cloud_stable_rate": 1.0,
+      "by_type": {
+        "factual_edit": {
+          "n": 1,
+          "local_correct": 1,
+          "cloud_correct": 1
+        },
+        "format_edit": {
+          "n": 1,
+          "local_correct": 1,
+          "cloud_correct": 1
+        },
+        "summarize": {
+          "n": 1,
+          "local_correct": 1,
+          "cloud_correct": 1
+        },
+        "reword": {
+          "n": 1,
+          "local_correct": 1,
+          "cloud_correct": 1
+        }
+      }
+    }
+  }
+}
