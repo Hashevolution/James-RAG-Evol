@@ -44,13 +44,11 @@ CORE_DIR = Path(__file__).resolve().parent.parent / "core"
 # to the ``core/`` directory and uses POSIX separators for stability
 # across Windows + Linux CI.
 GRANDFATHERED: dict = {
-    "reasoning/modes/meta.py": (
-        "31.6 KB — handle_meta has grown four sub-modes "
-        "(inventory / theme / entity_type / recent) plus the LLM-"
-        "narrative variant. Split candidate: ``modes/meta/_inventory."
-        "py`` (fast-path) + ``modes/meta/_narrative.py`` (LLM-narr) "
-        "+ ``modes/meta/__init__.py`` (dispatch facade)."
-    ),
+    # v0.6.1 v18.7 (2026-06-20) — meta.py split into the meta/
+    # package (PR `refactor/v0.6.1-meta-mode-split`); the entry
+    # was removed in the same PR per the anti-creep rule.
+    # No grandfather entries currently — every core/**/*.py is at
+    # or under the rule #5 ceiling.
 }
 
 
