@@ -85,6 +85,12 @@ FIXTURES: Dict[str, Path] = {
     # no third-party license entanglement) — sits under eval/ not under
     # the gitignored workspaces/ tree the multihop_rag corpus lives in.
     "chat": ROOT / "eval" / "chat_mode_queries.json",
+    # v18.7 Phase wiki_edit-a (2026-06-20) — operator-authored fixture
+    # for wiki_edit mode routing. Same eval/ location + tracked, same
+    # rationale as the chat fixture. Each query carries an
+    # ``original_doc`` block that `_wiki_edit_prompt` folds in as the
+    # edit target.
+    "wiki_edit": ROOT / "eval" / "wiki_edit_mode_queries.json",
 }
 
 DEFAULT_LOCAL_MODEL = "gemma3:4b"
@@ -98,6 +104,7 @@ OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 ANSWERABLE_BY_FIXTURE: Dict[str, Tuple[str, ...]] = {
     "multihop": ("inference_query", "comparison_query", "temporal_query"),
     "chat": ("small_talk", "factual_chat", "open_question", "multi_turn"),
+    "wiki_edit": ("factual_edit", "format_edit", "summarize", "reword"),
 }
 ANSWERABLE = ANSWERABLE_BY_FIXTURE["multihop"]   # legacy alias
 
@@ -160,6 +167,36 @@ def _answer_prompt(context: str, question: str) -> str:
         "\"I don't know\".\n\n"
         f"Context:\n{context}\n\nQuestion: {question}\n\nAnswer:"
     )
+
+
+def _wiki_edit_prompt(query: dict) -> str:
+    """Build a wiki_edit-mode prompt — the original document is folded
+    in as the edit target, then the edit instruction is appended.
+
+    Unlike `_answer_prompt` (which forbids non-evidence content) and
+    `_chat_prompt` (which has no evidence at all), the wiki_edit path
+    REQUIRES the model to rewrite the original_doc per the instruction.
+    The instruction body still keeps a narrow abstention hatch ("if
+    the instruction cannot be applied, say so") but the expected
+    behaviour is a rewritten document, not a refusal.
+    """
+    doc = (query.get("original_doc") or "").strip()
+    parts: List[str] = [
+        "You are editing an existing internal-wiki document. Apply the "
+        "edit instruction to the document below, preserving everything "
+        "the instruction does not change. Mirror the user's language "
+        "(Korean ↔ English). If the instruction genuinely cannot be "
+        "applied to the document as written, reply with exactly: "
+        "\"INSTRUCTION_NOT_APPLICABLE\".",
+        "",
+        "Original document:",
+        doc,
+        "",
+        f"Edit instruction: {query['text']}",
+        "",
+        "Edited document:",
+    ]
+    return "\n".join(parts)
 
 
 def _chat_prompt(query: dict) -> str:
@@ -464,10 +501,17 @@ def run_one_query(
     fixture_name: str = "multihop",
 ) -> Dict[str, Any]:
     """One paired (local + cloud + judge) trial. Returns a row dict.
-    `fixture_name=chat` switches the prompt template to the chat-mode
-    free-form path (prior_turns + no evidence injection)."""
+
+    Prompt template per fixture:
+      - ``multihop`` (default): evidence-grounded answer (``_answer_prompt``).
+      - ``chat``:               free-form chat (``_chat_prompt``).
+      - ``wiki_edit``:          edit the embedded ``original_doc``
+                                (``_wiki_edit_prompt``).
+    """
     if fixture_name == "chat":
         prompt = _chat_prompt(query)
+    elif fixture_name == "wiki_edit":
+        prompt = _wiki_edit_prompt(query)
     else:
         prompt = _answer_prompt(ctx, query["text"])
     t0 = time.time()
@@ -759,6 +803,19 @@ def main() -> int:
             # Chat-mode skips evidence assembly entirely. The prompt
             # template injects prior_turns (multi_turn) instead.
             ctx, n_nodes, n_res = "", 0, 0
+        elif args.fixture == "wiki_edit":
+            # wiki_edit folds the embedded original_doc into the prompt
+            # template; no external evidence assembly is needed. The
+            # n_nodes/n_res signals are reused to surface "doc length"
+            # for log readability.
+            doc = q.get("original_doc") or ""
+            ctx = ""
+            n_nodes = 1
+            n_res = 1 if doc.strip() else 0
+            if n_res == 0:
+                print(f"[{i}/{len(queries)}] id={q['id']} SKIPPED "
+                      f"(no original_doc in record)")
+                continue
         else:
             ctx, n_nodes, n_res = build_evidence(q)
             if n_res == 0:
@@ -766,8 +823,12 @@ def main() -> int:
                       f"(no resolved articles for {n_nodes} expected)")
                 continue
         prior_n = len(q.get("prior_turns") or [])
-        hop_hint = (f"prior_turns={prior_n}" if args.fixture == "chat"
-                    else f"hops={n_nodes}(res {n_res})")
+        if args.fixture == "chat":
+            hop_hint = f"prior_turns={prior_n}"
+        elif args.fixture == "wiki_edit":
+            hop_hint = f"doc_chars={len(q.get('original_doc') or '')}"
+        else:
+            hop_hint = f"hops={n_nodes}(res {n_res})"
         print(f"[{i}/{len(queries)}] id={q['id']} {q['question_type']} "
               f"{hop_hint}")
         for run_idx in range(args.n_runs):
