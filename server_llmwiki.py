@@ -454,6 +454,10 @@ app.include_router(ops_router)
 from routes.templating import router as templating_router
 app.include_router(templating_router)
 
+# [v18.7 vision/wiki-edit cycle] workspace 추론-편집 모달 endpoints.
+from routes.wiki_edit_ui import router as wiki_edit_ui_router
+app.include_router(wiki_edit_ui_router)
+
 
 
 @app.on_event("startup")
