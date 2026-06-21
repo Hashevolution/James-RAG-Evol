@@ -175,6 +175,13 @@ function _bindFrontendEvents() {
       case 'copy-conversation':         copyConversation(); break;
       // Send + login
       case 'send-message':              sendMessage(); break;
+      // v18.7 vision-wire — image attach
+      case 'attach-image': {
+        const vfi = document.getElementById('vision-file-input');
+        if (vfi) vfi.click();
+        break;
+      }
+      case 'clear-vision-image':        clearVisionImage(); break;
       case 'toggle-api-key-visibility': toggleApiKeyVisibility(); break;
       case 'close-login':               closeLogin(); break;
       case 'do-login':                  doLogin(); break;
@@ -276,6 +283,9 @@ function _bindStableInputs() {
   if (mp)  mp.addEventListener('change', () => onModePickerChange());
   const mdp = document.getElementById('model-picker');
   if (mdp) mdp.addEventListener('change', () => onModelPickerChange());
+  // v18.7 vision-wire — image file selection → upload → preview.
+  const vfi = document.getElementById('vision-file-input');
+  if (vfi) vfi.addEventListener('change', (e) => handleVisionFileChange(e));
   // Modal-overlay click-outside → close. Each overlay's existing
   // close*Outside fn already checks ``e.target === overlay`` so we
   // forward the event unchanged.
@@ -1323,10 +1333,73 @@ let lastUserQuestion = '';
 // askWithForceWeb이 set, sendMessage가 read+clear (단발성).
 let _forceWebOnce = false;
 
+// v18.7 vision-wire — 첨부된 이미지의 server-side 경로 + 표시 이름.
+// handleVisionFileChange가 업로드 성공 시 set, sendMessage가 read +
+// 단발성 clear (force_web과 동일 1회용 패턴). null = 텍스트 전용 질의.
+let _pendingVisionImage = null;
+
+/* 이미지 선택 → /vision/upload/ 즉시 업로드 → 경로 확보 + 미리보기.
+   업로드를 선택 시점에 끝내두면 전송 시점엔 image_path가 이미 준비됨. */
+async function handleVisionFileChange(e) {
+  const f = e.target && e.target.files && e.target.files[0];
+  if (!f) return;
+  // 같은 파일 재선택도 change가 다시 뜨도록 input 초기화.
+  e.target.value = '';
+
+  const nameEl = document.getElementById('vision-preview-name');
+  const row    = document.getElementById('vision-preview');
+  if (nameEl) nameEl.textContent = `업로드 중… ${f.name}`;
+  if (row)    row.style.display = 'flex';
+
+  try {
+    const fd = new FormData();
+    fd.append('file', f);
+    fd.append('api_key', getApiKey());
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;  // multipart: Content-Type 미설정
+    const r = await fetch(`${API}/vision/upload/`, {
+      method: 'POST', headers, body: fd,
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || r.statusText);
+    }
+    const data = await r.json();
+    _pendingVisionImage = { path: data.image_path, name: data.filename || f.name };
+    renderVisionPreview();
+  } catch (err) {
+    _pendingVisionImage = null;
+    clearVisionImage();
+    toast(`이미지 업로드 실패: ${err.message || err}`, 'error');
+  }
+}
+
+function renderVisionPreview() {
+  const row    = document.getElementById('vision-preview');
+  const nameEl = document.getElementById('vision-preview-name');
+  if (!_pendingVisionImage) { if (row) row.style.display = 'none'; return; }
+  if (nameEl) nameEl.textContent = `첨부: ${_pendingVisionImage.name}`;
+  if (row)    row.style.display = 'flex';
+}
+
+function clearVisionImage() {
+  _pendingVisionImage = null;
+  const row = document.getElementById('vision-preview');
+  if (row) row.style.display = 'none';
+  const vfi = document.getElementById('vision-file-input');
+  if (vfi) vfi.value = '';
+}
+
 async function sendMessage() {
   const input = document.getElementById('chat-input');
   const text  = input.value.trim();
-  if (!text) return;
+  // 이미지가 첨부돼 있으면 텍스트 없이도 전송 허용 (analyzer 기본 프롬프트).
+  if (!text && !_pendingVisionImage) return;
+
+  // 단발성 vision 첨부 capture + clear (force_web과 동일 패턴).
+  const visImg = _pendingVisionImage;
+  _pendingVisionImage = null;
+  clearVisionImage();
 
   // item #4: 다음 답변이 다운로드 버튼을 보일지 결정
   pendingReportRequest = REPORT_REQUEST_KEYWORDS.test(text);
@@ -1338,8 +1411,13 @@ async function sendMessage() {
   _forceWebOnce = false;
 
   hideWelcome();
-  appendMsg('user', text);
-  saveToLocal('user', text);
+  // 이미지 첨부 시 사용자 bubble에 표시 (텍스트 없으면 분석 요청만).
+  const userBubble = visImg
+    ? (text ? `${text}\n[첨부 이미지: ${visImg.name}]`
+            : `[이미지 분석 요청: ${visImg.name}]`)
+    : text;
+  appendMsg('user', userBubble);
+  saveToLocal('user', userBubble);
   input.value = '';
   input.style.height = 'auto';
 
@@ -1404,6 +1482,9 @@ async function sendMessage() {
         // [#A2 phase 2] secondary picker로 고른 LLM tag. 서버 catalog
         // 검증 후 mode handler의 call_gemma(model=...)로 전달.
         selected_model:   selectedModel || '',
+        // v18.7 vision-wire — 첨부 이미지의 server-side 경로. 서버가
+        // _safe_image_path(UPLOAD_DIR 격리) 재검증 후 vision 모드 라우팅.
+        image_path:       visImg ? visImg.path : '',
       }),
       signal: AC ? AC.signal : undefined,
     });

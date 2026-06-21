@@ -24,7 +24,7 @@
 | **coding** | 코드 작성·버그 | qwen2.5-coder:32b | `llm.router(task_type="coding")` | `[coding_route]` / router log ✅ | dedicated router |
 | **wiki_edit** | 지식 수정·삭제 (admin) | **gemma3:12b** | engine.py `resolve_for_mode("wiki_edit", requested="")` → preference top | `[MODEL] mode=wiki_edit auto-routed → gemma3:12b` ✅ observed | **measurement-backed (Phase wiki_edit-c)** |
 | **self_evolve** | 자메스 자기개선 (admin) | gemma4:e4b | `call_gemma(model=None)` → `resolve_chat()` → GEMMA_MODEL | silent | legacy (unmeasured) |
-| vision | (FUTURE — not routed) | llava:13b | `call_gemma_vision` direct | n/a | inactive |
+| vision | 이미지 → 텍스트 분석 (image_path 첨부) | **llava:13b** | engine `image_path→vision` override → `handle_vision` → `resolve_for_mode("vision")` (install-check + graceful fallback) | `[ROUTER] image attached → mode=vision` + `[VISION] model=llava:13b (source=preference)` | **active** (handler + engine dispatch + `/query` image_path + 챗 첨부 UI/`POST /vision/upload/`). single local candidate → no a/b/c QDC, routing = resolution-robustness only |
 
 ## Resolution priority (3-tier)
 

@@ -19,14 +19,18 @@ from llm.base import BaseLLM
 class LlavaClient(BaseLLM):
     name = "llava"
 
-    def __init__(self):
+    def __init__(self, model: str = ""):
         try:
             from config import MULTIMODAL_MODEL, OLLAMA_API_URL
-            self.model   = MULTIMODAL_MODEL   # llava:13b
-            self.api_url = OLLAMA_API_URL
+            default_model = MULTIMODAL_MODEL   # llava:13b
+            self.api_url  = OLLAMA_API_URL
         except ImportError:
-            self.model   = "llava:13b"
-            self.api_url = "http://127.0.0.1:11434/api/generate"
+            default_model = "llava:13b"
+            self.api_url  = "http://127.0.0.1:11434/api/generate"
+        # An explicit (resolved) tag wins — e.g. handle_vision passes the
+        # ``resolve_for_mode("vision")`` result. Empty keeps the legacy
+        # config/hardcoded default so existing callers are byte-identical.
+        self.model = (model or "").strip() or default_model
 
     def generate(self, messages: list, **kwargs) -> str:
         """텍스트 전용 — 이미지 없을 때 fallback"""

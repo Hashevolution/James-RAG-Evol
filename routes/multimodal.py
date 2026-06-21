@@ -117,6 +117,58 @@ async def analyze_video(
         try: os.remove(tmp_path)
         except Exception: pass
 
+@router.post("/vision/upload/", summary="비전 이미지 업로드 (챗 첨부) [v18.7]")
+async def vision_upload(
+    file:    UploadFile = File(...),
+    api_key: str = Form(...),
+    role:    str = Depends(get_role_from_request),
+):
+    """챗 비전 첨부용 경량 업로드.
+
+    이미지를 UPLOAD_DIR 에 저장하고 server-side 경로만 반환한다 —
+    분석/인제스트 없음 (그건 handle_vision 가 POST /query/ 흐름에서
+    수행). 반환된 image_path 를 클라이언트가 다음 /query/ 요청에 실어
+    보내면, 서버가 _safe_image_path 로 UPLOAD_DIR 격리를 재검증한 뒤
+    vision 모드로 라우팅한다. (클라이언트가 경로를 변조해도 격리
+    재검증에서 걸러진다.)
+    """
+    verify_api_key(api_key)
+
+    # ROLE_ALLOWED 와 동일 정책 — external(일상챗 전용) 차단.
+    from core.intent_classifier import ROLE_ALLOWED
+    if "vision" not in ROLE_ALLOWED.get(role, set()):
+        raise HTTPException(status_code=403, detail="비전 분석 권한이 없습니다.")
+
+    suffix  = os.path.splitext(file.filename or "")[1].lower()
+    allowed = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
+    if suffix not in allowed:
+        raise HTTPException(status_code=400,
+                            detail=f"지원 형식: {sorted(allowed)}")
+
+    data = await file.read()
+    try:
+        from config import MAX_UPLOAD_BYTES
+        cap = MAX_UPLOAD_BYTES
+    except Exception:
+        cap = 20 * 1024 * 1024
+    if len(data) > cap:
+        raise HTTPException(status_code=413,
+                            detail="이미지가 너무 큽니다.")
+
+    import uuid
+    name = f"chatvis_{int(time.time())}_{uuid.uuid4().hex[:8]}{suffix}"
+    dest = os.path.join(UPLOAD_DIR, name)
+    with open(dest, "wb") as f:
+        f.write(data)
+
+    _write_audit(role, "/vision/upload/", query=(file.filename or "")[:80],
+                 answer=f"saved {name} ({len(data)} bytes)")
+    return {
+        "image_path": os.path.abspath(dest),
+        "filename":   file.filename or name,
+        "bytes":      len(data),
+    }
+
 @router.post("/screen/analyze/", summary="화면 분석 [P7-SCR-1]")
 async def screen_analyze(
     data: ScreenRequest,

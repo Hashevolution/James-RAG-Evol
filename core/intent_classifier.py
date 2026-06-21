@@ -34,6 +34,8 @@ ACTIVE_MODES = {
     "coding",
     "wiki_edit",
     "self_evolve",   # [P7] 자기 인식/진화 활성화
+    "vision",        # [v18.7] 이미지→텍스트 (handle_vision); image_path
+                     # 첨부 또는 명시 override 로만 진입 (텍스트 라우터 X).
 }
 
 # 미래 확장 예정 모드 (현재는 fallback 처리)
@@ -45,8 +47,8 @@ FUTURE_MODES = {
 # role별 허용 모드
 ROLE_ALLOWED = {
     "admin":    ACTIVE_MODES | FUTURE_MODES,
-    "manager":  {"chat", "retrieval", "meta", "coding"},
-    "employee": {"chat", "retrieval", "meta", "coding"},
+    "manager":  {"chat", "retrieval", "meta", "coding", "vision"},
+    "employee": {"chat", "retrieval", "meta", "coding", "vision"},
     # external sees meta too — listing entity *names* leaks no
     # ABAC-protected content (the read still goes through retrieval +
     # role filter). The list itself is the kind of inventory question

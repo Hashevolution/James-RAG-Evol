@@ -38,6 +38,7 @@ from .meta         import handle_meta
 from .wiki_edit    import handle_wiki_edit
 from .self_evolve  import handle_self_evolve
 from .coding       import handle_coding
+from .vision       import handle_vision
 
 # Shared constants (originally module-level in the monolith). Kept in
 # ``_common`` so any future handler can re-use them — re-exported here
@@ -55,6 +56,7 @@ __all__ = [
     "handle_wiki_edit",
     "handle_self_evolve",
     "handle_coding",
+    "handle_vision",
     "CONTINUITY_DIRECTIVE_KO",
     "CONTINUITY_DIRECTIVE_EN",
 ]
