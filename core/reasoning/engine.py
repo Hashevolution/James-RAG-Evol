@@ -28,6 +28,7 @@ from core.reasoning.modes import (
     handle_wiki_edit,
     handle_self_evolve,
     handle_coding,
+    handle_vision,
 )
 
 TIMING_TARGET_SEC = 30.0
@@ -230,7 +231,7 @@ class ReasoningEngine:
         # role-allowed 체크는 그대로 적용해서 권한 우회 방지.
         from core.intent_classifier import ROLE_ALLOWED
         VALID_OVERRIDES = {"chat", "retrieval", "meta", "coding",
-                           "wiki_edit", "self_evolve"}
+                           "wiki_edit", "self_evolve", "vision"}
         override = (mode_override or "").strip().lower()
         if override and override in VALID_OVERRIDES:
             allowed = ROLE_ALLOWED.get(user_role, {"chat", "retrieval"})
@@ -269,6 +270,15 @@ class ReasoningEngine:
                   f"retrieval pipeline)")
             mode = "retrieval"
 
+        # ── Image attached → vision mode (v18.7 vision-wire) ─────
+        # An image_path in kwargs forces vision regardless of what the
+        # text router produced — the query is *about* the image. Gated
+        # by ROLE_ALLOWED so external (chat-only) can't reach it.
+        if kwargs.get("image_path") and "vision" in ROLE_ALLOWED.get(
+                user_role, {"chat", "retrieval"}):
+            print(f"[ROUTER] image attached → mode=vision (was {mode!r})")
+            mode = "vision"
+
         # ── [#A2 phase 2] selected_model validation ────────────
         # The user's secondary-picker choice arrives untrusted. Reject
         # anything not in the catalog for the resolved mode — silent
@@ -280,25 +290,15 @@ class ReasoningEngine:
         elif picked_model:
             print(f"[MODEL] mode={mode} using user-selected '{picked_model}'")
 
-        # ── v18.7 Phase 2c/3c — measured-preference mode routing ──
-        # When the user did NOT pick a model, these modes auto-route
-        # through the measured preference list instead of the global
-        # config.GEMMA_MODEL default. requested="" makes
-        # resolve_for_mode use the preference-list top (not
-        # GEMMA_MODEL), so these are the modes that actually consume
-        # the Phase-1 plumbing.
-        #   • chat (Phase 2b, v18.7-phase2b-chat QDC): gemma3:12b
-        #     (0.917) > gemma4:e4b (0.833) > gemma3:4b (0.750) on the
-        #     Korean chat fixture.
-        #   • retrieval (Phase 3b, v18.7-phase3b-tier-ladder QDC):
-        #     gold-grounded 27b(1.0) > 12b(0.889) > 4b(0.852) >
-        #     gemma4:e4b(0.815). The default GEMMA_MODEL (gemma4:e4b)
-        #     is WEAKEST on evidence-rich retrieval; preference top is
-        #     gemma3:12b (best value; 27b is more accurate but 2.3x
-        #     slower + verbose, so not the default).
-        # Kill-switch: JAMES_DISABLE_MODE_AWARE_ROUTING=1 reverts both
-        # to GEMMA_MODEL. meta/wiki_edit/vision/self_evolve stay on the
-        # legacy path (not yet measurement-validated per mode).
+        # ── v18.7 Phase 2c/3c/wiki_edit-c — measured-preference routing ──
+        # When the user did NOT pick a model, these modes auto-route via
+        # resolve_for_mode(mode, requested="") to the preference-list top
+        # (requested="" bypasses config.GEMMA_MODEL). All three are
+        # measurement-backed → gemma3:12b; see docs/reference/
+        # routing-matrix.md for the per-mode QDC + ranking. Kill-switch
+        # JAMES_DISABLE_MODE_AWARE_ROUTING=1 reverts all to GEMMA_MODEL.
+        # meta/self_evolve stay legacy; vision resolves its own
+        # single-candidate model inside handle_vision (no text catalog).
         if mode in ("chat", "retrieval", "wiki_edit") and not picked_model:
             import os
             if not os.environ.get("JAMES_DISABLE_MODE_AWARE_ROUTING"):
@@ -322,6 +322,8 @@ class ReasoningEngine:
             return handle_self_evolve(self, safe_query, system_prompt, user_role, t_start, selected_model=picked_model)
         if mode == "coding":
             return handle_coding(self, safe_query, system_prompt, user_role, t_start, selected_model=picked_model)
+        if mode == "vision":
+            return handle_vision(self, safe_query, kwargs.get("image_path", ""), user_role, t_start, selected_model=picked_model)
 
         # ── PR-O5 (cycle 12) — internal RAG feature gate ──────────
         # external (= guest / 비로그인) 는 일상 챗만 허용. internal

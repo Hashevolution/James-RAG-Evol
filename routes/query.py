@@ -27,6 +27,27 @@ class _LazySingleton:
 rag_engine = _LazySingleton(get_rag_engine)
 router = APIRouter()
 
+
+def _safe_image_path(raw: str) -> str:
+    """Return ``raw`` only if it resolves to an existing file INSIDE
+    UPLOAD_DIR; else "". Blocks path-traversal / arbitrary-file-read via
+    a client-supplied ``image_path`` (the client can only reference files
+    it legitimately uploaded through /analyze/image/).
+    """
+    raw = (raw or "").strip()
+    if not raw:
+        return ""
+    try:
+        import os
+        from config import UPLOAD_DIR
+        base = os.path.realpath(UPLOAD_DIR)
+        target = os.path.realpath(raw)
+        if os.path.commonpath([base, target]) != base:
+            return ""           # outside UPLOAD_DIR → reject
+        return target if os.path.isfile(target) else ""
+    except Exception:
+        return ""
+
 # ─── Pydantic ───
 
 class QueryRequest(BaseModel):
@@ -70,6 +91,13 @@ class QueryRequest(BaseModel):
     # silently falls back to the mode default (security: client cannot
     # request arbitrary Ollama tags).
     selected_model:   str  = ""
+    # [v18.7 vision-wire] Server-side path of a previously-uploaded image
+    # (e.g. the temp file written by POST /analyze/image/). When set and
+    # the path resolves INSIDE UPLOAD_DIR (path-traversal guard) and the
+    # role is vision-allowed, the engine routes this turn to vision mode
+    # (handle_vision → local llava). A path outside UPLOAD_DIR, or a
+    # non-existent file, is silently dropped — the query proceeds as text.
+    image_path:       str  = ""
 
 class QueryResponse(BaseModel):
     question:       str
@@ -157,6 +185,7 @@ async def query(
         mode_override    = data.mode_override,     # item #6: chat 페이지 모드 picker
         force_web_search = data.force_web_search,  # [#A8-6] explicit web exploration
         selected_model   = data.selected_model,    # [#A2 phase 2] user-picked LLM tag
+        image_path       = _safe_image_path(data.image_path),  # vision-wire
     )
     elapsed = time.time() - t_start
 
