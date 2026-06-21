@@ -48,26 +48,14 @@ GRANDFATHERED: dict = {
     # package (PR `refactor/v0.6.1-meta-mode-split`); the entry
     # was removed in the same PR per the anti-creep rule.
     #
-    # ── Pre-existing split-debt surfaced 2026-06-21 ──────────────
-    # Both files crept over the 20 KB cap AFTER the gate (#983) landed
-    # — model_resolver.py via the Phase 3a/3c/wiki_edit-c routing
-    # build-out, intent_classifier.py via #987 + the vision mode
-    # registration. They were already RED before the vision-wire PR
-    # discovered them; grandfathered here (operator decision) so the
-    # gate is GREEN, with the actual splits deferred to the
-    # ``fix/v0.6.1-test-suite-sweep`` branch.
-    "model_resolver.py": (
-        "extract the Phase-3a LOCAL_TIER_LADDER + resolve_local_tier "
-        "+ resolution_snapshot block (~3 KB) into a sibling "
-        "core/model_resolver_tiers.py, leaving the per-mode preference "
-        "resolution in the main module."
-    ),
-    "intent_classifier.py": (
-        "extract the mode taxonomy (ACTIVE_MODES / FUTURE_MODES / "
-        "ROLE_ALLOWED) + the classify_fast pattern tables into a "
-        "core/intent/ package (e.g. intent/_modes.py + "
-        "intent/_patterns.py) like the meta/ split."
-    ),
+    # 2026-06-21 — the two files grandfathered by the vision-wire PR
+    # (model_resolver.py, intent_classifier.py) were SPLIT in
+    # `fix/v0.6.1-test-suite-sweep`: the Phase-3a tier ladder moved to
+    # core/model_resolver_tiers.py and the classify_fast tables to
+    # core/intent_fast_patterns.py. Both are back under the cap, so per
+    # the anti-creep rule their entries were removed in the same PR.
+    # No grandfather entries currently — every core/**/*.py is at or
+    # under the rule #5 ceiling.
 }
 
 
