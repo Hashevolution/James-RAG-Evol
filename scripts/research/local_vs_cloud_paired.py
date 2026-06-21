@@ -91,6 +91,11 @@ FIXTURES: Dict[str, Path] = {
     # ``original_doc`` block that `_wiki_edit_prompt` folds in as the
     # edit target.
     "wiki_edit": ROOT / "eval" / "wiki_edit_mode_queries.json",
+    # v18.7 Phase meta-a (2026-06-21) — operator-authored synthetic
+    # distribution snapshots for meta-mode (inventory LLM-narrative).
+    # `_meta_prompt` mirrors handle_meta's option-D prompt; gold_signals
+    # are the counts that must be cited verbatim.
+    "meta": ROOT / "eval" / "meta_mode_queries.json",
 }
 
 DEFAULT_LOCAL_MODEL = "gemma3:4b"
@@ -105,6 +110,7 @@ ANSWERABLE_BY_FIXTURE: Dict[str, Tuple[str, ...]] = {
     "multihop": ("inference_query", "comparison_query", "temporal_query"),
     "chat": ("small_talk", "factual_chat", "open_question", "multi_turn"),
     "wiki_edit": ("factual_edit", "format_edit", "summarize", "reword"),
+    "meta": ("small_corpus", "medium_corpus", "large_corpus"),
 }
 ANSWERABLE = ANSWERABLE_BY_FIXTURE["multihop"]   # legacy alias
 
@@ -197,6 +203,37 @@ def _wiki_edit_prompt(query: dict) -> str:
         "Edited document:",
     ]
     return "\n".join(parts)
+
+
+def _meta_prompt(query: dict) -> str:
+    """Build a meta-mode (inventory narrative) prompt — byte-identical to
+    handle_meta's option-D prompt (core/reasoning/modes/meta/_render.py::
+    _render_llm_narrative), fed from the fixture's synthetic distribution
+    instead of a live corpus scan. The model must summarize strengths /
+    gaps + one recommendation, citing the counts EXACTLY.
+    """
+    d = query.get("distribution") or {}
+    total = d.get("total", 0)
+    type_summary = ", ".join(f"{t} {n}개" for t, n in d.get("by_type", []))
+    theme_summary = ", ".join(f"{t} {n}개" for t, n in d.get("by_theme", []))
+    hub_summary = ", ".join(
+        f"{name} ({c}연결)" for name, c in d.get("hubs", [])
+    )
+    recent_summary = ", ".join(d.get("recent", []))
+    return (
+        "아래는 한 RAG 시스템이 보유한 wiki 자료의 분포 요약입니다.\n"
+        "이 정보를 바탕으로 한국어로 2~3문단의 자연어 요약을 작성해 주세요.\n"
+        "- 어떤 주제·분야에 강점이 있는지\n"
+        "- 빈약하거나 빠진 영역이 있는지\n"
+        "- 운영자가 다음에 어떤 자료를 추가하면 좋을지 한 줄 추천\n"
+        "숫자는 정확히 인용하고, 추측은 하지 마세요.\n\n"
+        f"[총 자료 수] {total}개\n"
+        f"[분류별] {type_summary}\n"
+        f"[주제별] {theme_summary}\n"
+        f"[핵심 hub] {hub_summary or '연결 데이터 없음'}\n"
+        f"[최근 추가] {recent_summary}\n\n"
+        "요약:"
+    )
 
 
 def _chat_prompt(query: dict) -> str:
@@ -512,6 +549,8 @@ def run_one_query(
         prompt = _chat_prompt(query)
     elif fixture_name == "wiki_edit":
         prompt = _wiki_edit_prompt(query)
+    elif fixture_name == "meta":
+        prompt = _meta_prompt(query)
     else:
         prompt = _answer_prompt(ctx, query["text"])
     t0 = time.time()
@@ -816,6 +855,17 @@ def main() -> int:
                 print(f"[{i}/{len(queries)}] id={q['id']} SKIPPED "
                       f"(no original_doc in record)")
                 continue
+        elif args.fixture == "meta":
+            # meta folds the synthetic distribution into the prompt
+            # template; no external evidence assembly. n_res guards
+            # against an empty distribution record.
+            ctx = ""
+            n_nodes = 1
+            n_res = 1 if (q.get("distribution") or {}).get("total") else 0
+            if n_res == 0:
+                print(f"[{i}/{len(queries)}] id={q['id']} SKIPPED "
+                      f"(no distribution in record)")
+                continue
         else:
             ctx, n_nodes, n_res = build_evidence(q)
             if n_res == 0:
@@ -827,6 +877,8 @@ def main() -> int:
             hop_hint = f"prior_turns={prior_n}"
         elif args.fixture == "wiki_edit":
             hop_hint = f"doc_chars={len(q.get('original_doc') or '')}"
+        elif args.fixture == "meta":
+            hop_hint = f"total={(q.get('distribution') or {}).get('total', 0)}"
         else:
             hop_hint = f"hops={n_nodes}(res {n_res})"
         print(f"[{i}/{len(queries)}] id={q['id']} {q['question_type']} "
