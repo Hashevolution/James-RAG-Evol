@@ -120,9 +120,14 @@ def _ensure_llava_loaded() -> bool:
 
 # ─── 메인 분석 함수 ──────────────────────────────────────────
 
-def analyze_image(image_path: str, role: str = "admin") -> dict:
+def analyze_image(image_path: str, role: str = "admin", model: str = "") -> dict:
     """
     이미지 종합 분석.
+
+    ``model`` (optional): explicit Ollama vision tag to use, e.g. the
+    ``resolve_for_mode("vision")`` result threaded by ``handle_vision``.
+    Empty → the LlavaClient legacy default (config ``MULTIMODAL_MODEL`` or
+    hardcoded ``llava:13b``), so existing callers stay byte-identical.
 
     Returns:
         {
@@ -168,7 +173,7 @@ def analyze_image(image_path: str, role: str = "admin") -> dict:
     _ensure_llava_loaded()
     try:
         from llm.providers.llava_client import LlavaClient
-        client = LlavaClient()
+        client = LlavaClient(model=model)
 
         if not client.is_available():
             print("[IMAGE] llava 미설치 → EXIF 결과만 반환")
