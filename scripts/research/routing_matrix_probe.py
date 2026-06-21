@@ -181,8 +181,9 @@ def main() -> int:
     args = ap.parse_args()
 
     if args.tier_ladder:
-        from core.model_resolver import (
-            LOCAL_TIER_LADDER, resolve_local_tier, installed_models,
+        from core.model_resolver import installed_models
+        from core.model_resolver_tiers import (
+            LOCAL_TIER_LADDER, resolve_local_tier,
         )
         inst = installed_models()
         print("\n=== v18.7 Phase 3a — local complexity-tier ladder ===")
