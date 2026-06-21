@@ -230,6 +230,10 @@
                 id="cr-propose-toggle"
                 style="margin-left:auto"
                 data-i18n="workspace.cr_new">+ 새 제안</button>
+        <!-- v18.7 — 추론 편집 모달 런처 (admin). 문서 불러오기 →
+             드래그 선택 → 자연어 지시 → 초안 → 적용. base_hash 자동. -->
+        <button class="header-btn" data-action="wiki-edit-open"
+                id="wiki-edit-launch">추론 편집</button>
         <button class="header-btn" data-action="cr-reload"
                 data-i18n="workspace.refresh">새로고침</button>
       </div>
@@ -626,6 +630,59 @@
     </div>
     <div class="modal-link">
       <a href="#" data-action="open-forgot" data-i18n="auth.forgot_password">비밀번호를 잊으셨나요?</a>
+    </div>
+  </div>
+</div>
+
+<!-- v18.7 — 추론 편집 모달. 문서 불러오기 → 본문에서 드래그 선택 →
+     자연어 지시 → LLM 초안 → 검토/수정 → 적용 (base_hash 충돌 검사). -->
+<div class="modal-overlay hidden" id="wiki-edit-modal"
+     role="dialog" aria-modal="true" aria-labelledby="wiki-edit-title">
+  <div class="modal" style="max-width:880px;width:92vw">
+    <div class="modal-title" id="wiki-edit-title">▸ 추론 편집</div>
+    <div class="hint">엔티티를 불러와 본문에서 수정할 부분을 드래그 선택한 뒤,
+      자연어 지시로 편집 초안을 만들고 검토·수정 후 적용합니다.
+      (선택을 비워두면 문서 전체가 대상)</div>
+
+    <div class="modal-field" style="display:flex;gap:8px;align-items:flex-end">
+      <div style="flex:1">
+        <label>ENTITY 이름</label>
+        <input type="text" id="we-name" placeholder="예: 비트코인" spellcheck="false">
+      </div>
+      <button class="modal-btn" data-action="wiki-edit-load">불러오기</button>
+    </div>
+    <div class="modal-error" id="we-msg"></div>
+
+    <div class="modal-field" id="we-body-wrap" style="display:none">
+      <label>현재 본문 <span style="color:var(--muted)">(수정할 부분을 드래그 선택)</span></label>
+      <div id="we-body"
+           style="white-space:pre-wrap;max-height:240px;overflow:auto;
+                  background:var(--bg);border:1px solid var(--border);
+                  border-radius:6px;padding:10px;font-size:13px;
+                  font-family:var(--font-mono)"></div>
+    </div>
+
+    <div class="modal-field" id="we-instruction-wrap" style="display:none">
+      <label>편집 지시 (자연어)</label>
+      <textarea id="we-instruction" rows="2"
+                placeholder="예: 2024년 실적 문단을 최신 수치로 갱신하고 군더더기 문장은 제거해줘"></textarea>
+      <div class="modal-actions" style="margin-top:8px">
+        <button class="modal-btn primary" data-action="wiki-edit-draft"
+                id="we-draft-btn">초안 생성</button>
+      </div>
+    </div>
+
+    <div class="modal-field" id="we-draft-wrap" style="display:none">
+      <label>편집 초안 <span style="color:var(--muted)">(적용 전 직접 수정 가능)</span>
+        · <span id="we-model" style="font-family:var(--font-mono);color:var(--muted)"></span></label>
+      <textarea id="we-draft" rows="10"
+                style="font-family:var(--font-mono);font-size:13px"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="modal-btn cancel" data-action="wiki-edit-close">닫기</button>
+      <button class="modal-btn primary" data-action="wiki-edit-apply"
+              id="we-apply-btn" style="display:none">적용</button>
     </div>
   </div>
 </div>

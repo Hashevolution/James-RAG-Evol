@@ -779,6 +779,122 @@ async function _crPost(path, body) {
   return r.json();
 }
 
+/* ── v18.7 추론 편집 모달 ──────────────────────────────────────
+   문서 불러오기 → 본문 드래그 선택 → 자연어 지시 → LLM 초안 →
+   검토/수정 → 적용. base_hash 자동(운영자 SHA 손계산 불필요), 적용
+   시 충돌 검사(409)로 동시편집 방지. 챗 wiki_edit 와 동일
+   read_entity/update_entity 재사용 (백업+감사+벡터 동기화). */
+let _weBaseHash = '';
+
+function openWikiEdit() {
+  if (!_isAdmin()) { toast('admin 전용 기능입니다.', 'error'); return; }
+  _weBaseHash = '';
+  const msg = document.getElementById('we-msg'); if (msg) msg.textContent = '';
+  const nm = document.getElementById('we-name'); if (nm) nm.value = '';
+  const body = document.getElementById('we-body'); if (body) body.textContent = '';
+  const ins = document.getElementById('we-instruction'); if (ins) ins.value = '';
+  const draft = document.getElementById('we-draft'); if (draft) draft.value = '';
+  document.getElementById('we-body-wrap').style.display = 'none';
+  document.getElementById('we-instruction-wrap').style.display = 'none';
+  document.getElementById('we-draft-wrap').style.display = 'none';
+  document.getElementById('we-apply-btn').style.display = 'none';
+  const m = document.getElementById('wiki-edit-modal');
+  if (m) m.classList.remove('hidden');
+}
+
+function closeWikiEdit() {
+  const m = document.getElementById('wiki-edit-modal');
+  if (m) m.classList.add('hidden');
+}
+
+async function wikiEditLoad() {
+  const name = document.getElementById('we-name').value.trim();
+  const msg = document.getElementById('we-msg');
+  msg.textContent = '';
+  if (!name) { msg.textContent = '❌ ENTITY 이름을 입력하세요.'; return; }
+  try {
+    const data = await _apiFetch(
+      `/admin/wiki/edit/source?name=${encodeURIComponent(name)}`);
+    if (!data.found) {
+      msg.textContent = `❌ ${data.message || '문서를 찾을 수 없습니다.'}`;
+      return;
+    }
+    document.getElementById('we-body').textContent = data.body || '';
+    _weBaseHash = data.base_hash || '';
+    document.getElementById('we-body-wrap').style.display = '';
+    document.getElementById('we-instruction-wrap').style.display = '';
+    document.getElementById('we-draft-wrap').style.display = 'none';
+    document.getElementById('we-apply-btn').style.display = 'none';
+    msg.textContent = `✅ 불러옴 (${(data.body || '').length}자)`;
+  } catch (e) { msg.textContent = `❌ ${e.message}`; }
+}
+
+function _weCaptureSelection() {
+  // 본문(#we-body) 안에서 드래그된 텍스트만 선택으로 인정.
+  try {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return '';
+    const body = document.getElementById('we-body');
+    if (body && sel.anchorNode && body.contains(sel.anchorNode)) {
+      return sel.toString();
+    }
+  } catch (_) {}
+  return '';
+}
+
+async function wikiEditDraft() {
+  const name = document.getElementById('we-name').value.trim();
+  const instruction = document.getElementById('we-instruction').value.trim();
+  const msg = document.getElementById('we-msg');
+  msg.textContent = '';
+  if (!name) { msg.textContent = '❌ 먼저 문서를 불러오세요.'; return; }
+  if (!instruction) { msg.textContent = '❌ 편집 지시를 입력하세요.'; return; }
+  const selected = _weCaptureSelection();
+  const btn = document.getElementById('we-draft-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '초안 생성 중…'; }
+  try {
+    const data = await _crPost('/admin/wiki/edit/draft', {
+      name, instruction, selected_text: selected,
+    });
+    document.getElementById('we-draft').value = data.draft_body || '';
+    document.getElementById('we-model').textContent = `model: ${data.model || ''}`;
+    _weBaseHash = data.base_hash || _weBaseHash;
+    document.getElementById('we-draft-wrap').style.display = '';
+    document.getElementById('we-apply-btn').style.display = '';
+    msg.textContent = selected
+      ? `✅ 초안 생성 (선택 ${selected.length}자 중심)`
+      : '✅ 초안 생성 (문서 전체 대상)';
+  } catch (e) {
+    msg.textContent = `❌ ${e.message}`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '초안 생성'; }
+  }
+}
+
+async function wikiEditApply() {
+  const name = document.getElementById('we-name').value.trim();
+  const newBody = document.getElementById('we-draft').value;
+  const msg = document.getElementById('we-msg');
+  msg.textContent = '';
+  if (!newBody.trim()) { msg.textContent = '❌ 적용할 본문이 비었습니다.'; return; }
+  if (!confirm(`'${name}' 문서에 편집을 적용합니다. 계속할까요?\n(변경 전 자동 백업됩니다)`)) return;
+  const btn = document.getElementById('we-apply-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '적용 중…'; }
+  try {
+    await _crPost('/admin/wiki/edit/apply', {
+      name, new_body: newBody, base_hash: _weBaseHash,
+    });
+    toast(`✅ 적용 완료: ${name}`, 'success');
+    closeWikiEdit();
+    if (_currentTab === 'data') reloadData();
+  } catch (e) {
+    // 409 = 불러온 뒤 누군가 수정 → 충돌. 메시지로 재로드 유도.
+    msg.textContent = `❌ ${e.message}`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '적용'; }
+  }
+}
+
 /* ── [v0.6 template-formatting engine] Templates tab ──
  *
  * Backend contract (routes/templating.py):
@@ -1167,6 +1283,12 @@ function _bindFrontendEvents() {
       case 'cr-submit-approve':  submitCrApprove(); break;
       case 'cr-submit-reject':   submitCrReject(); break;
       case 'cr-submit-comment':  submitCrComment(); break;
+      // v18.7 — 추론 편집 모달
+      case 'wiki-edit-open':     openWikiEdit(); break;
+      case 'wiki-edit-close':    closeWikiEdit(); break;
+      case 'wiki-edit-load':     wikiEditLoad(); break;
+      case 'wiki-edit-draft':    wikiEditDraft(); break;
+      case 'wiki-edit-apply':    wikiEditApply(); break;
       /* ── [v0.6 template-formatting engine] actions ── */
       case 'tpl-reload':         reloadTemplates(); break;
       case 'tpl-create':         createTemplate(); break;
