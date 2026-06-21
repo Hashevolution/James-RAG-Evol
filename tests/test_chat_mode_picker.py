@@ -63,8 +63,13 @@ class BackendModeOverrideTests(unittest.TestCase):
                         "mode_override default must be empty string for back-compat")
 
     def test_query_endpoint_forwards_field(self):
+        # Slice the whole /query/ handler body (to the next @app. route
+        # decorator) rather than a fixed char window — the handler grows
+        # over time (e.g. the vision-wire image_path forward), and a
+        # fixed window used to truncate before the rag_engine.query call.
         idx = self.srv_src.index('@app.post("/query/"')
-        body = self.srv_src[idx:idx + 2500]
+        nxt = self.srv_src.find('\n@app.', idx + 1)
+        body = self.srv_src[idx:nxt if nxt != -1 else idx + 6000]
         self.assertIn("mode_override", body,
                       "/query/ must forward data.mode_override into rag_engine.query")
         self.assertIn("data.mode_override", body)
@@ -153,8 +158,16 @@ class FrontendChatJsTests(unittest.TestCase):
                       "loadModePickerOptions must fetch /llm/modes/")
 
     def test_send_message_includes_mode_override(self):
+        # Slice the whole sendMessage() body (to the next top-level
+        # function) instead of a fixed char window — sendMessage grows
+        # (e.g. the vision-wire image_path forward) and a fixed window
+        # truncated before the /query/ request body.
         idx = self.js.index("async function sendMessage()")
-        body = self.js[idx:idx + 3000]
+        nxt = self.js.find("\nasync function ", idx + 1)
+        nxt2 = self.js.find("\nfunction ", idx + 1)
+        ends = [e for e in (nxt, nxt2) if e != -1]
+        end = min(ends) if ends else idx + 6000
+        body = self.js[idx:end]
         self.assertIn("mode_override:", body,
                       "sendMessage body must include mode_override field")
 
