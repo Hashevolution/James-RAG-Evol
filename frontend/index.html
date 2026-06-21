@@ -620,7 +620,32 @@
       <div id="chat-attachment-row"
            style="display:none;flex-wrap:wrap;gap:6px;padding:6px 16px;
                   border-bottom:1px solid var(--border-2);"></div>
+      <!-- v18.7 vision-wire — 단일 이미지 첨부 미리보기. 첨부 시 표시,
+           전송/제거 시 숨김. (코퍼스 인제스트용 chat-attachment-row 와
+           별개 — 이건 비전 모드 1회성 첨부.) -->
+      <div id="vision-preview"
+           style="display:none;align-items:center;gap:8px;padding:6px 16px;
+                  border-bottom:1px solid var(--border-2);font-size:13px;">
+        <span id="vision-preview-name" style="color:var(--text-2);"></span>
+        <button id="vision-clear-btn" data-action="clear-vision-image"
+                aria-label="이미지 첨부 제거"
+                style="background:none;border:none;color:var(--text-3);
+                       cursor:pointer;padding:2px 6px;">제거</button>
+      </div>
+      <input type="file" id="vision-file-input" accept="image/*"
+             style="display:none" aria-hidden="true">
       <div class="input-wrap">
+        <button class="attach-btn" id="attach-btn" data-action="attach-image"
+                aria-label="이미지 첨부"
+                style="background:none;border:none;cursor:pointer;
+                       padding:0 8px;color:var(--text-3);display:flex;
+                       align-items:center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round"
+               stroke-linejoin="round" aria-hidden="true">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+          </svg>
+        </button>
         <textarea id="chat-input" placeholder="Type a message (Shift+Enter for new line)"
                   data-i18n-placeholder="chat.placeholder" rows="1"></textarea>
         <button class="send-btn" id="send-btn" data-action="send-message"
