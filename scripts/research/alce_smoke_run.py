@@ -33,6 +33,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
+# Windows consoles default to cp949 (KR locale); the axis `notes` carry an
+# em-dash (—) that crashes the final print AFTER the result JSON is already
+# written. Force utf-8 so the run completes cleanly (mirrors
+# local_vs_cloud_paired.py).
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 from eval.external.alce_loader import ALCELoader
 from eval.external.alce_nli_adapter import (ALCE_ADAPTER_NAMES,
                                             get_alce_adapter)
