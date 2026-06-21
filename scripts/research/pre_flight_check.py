@@ -679,10 +679,69 @@ def check_wiki_edit_fixture() -> PreFlightResult:
     )
 
 
+def check_meta_fixture() -> PreFlightResult:
+    """v0.6.1 Phase meta-a (2026-06-21) — meta-mode (inventory narrative)
+    fixture. Mirrors ``check_wiki_edit_fixture``. Asserts:
+      - fixture registered in ``FIXTURES['meta']`` + file parses
+      - 3 sub-classes (small/medium/large_corpus) each have ≥3 rows
+      - every row carries ``gold_signals`` (numeric fidelity is the
+        deterministic axis) + a ``distribution`` with a non-zero total
+        (the prompt template needs it; an empty distribution would
+        silently degrade the narrative prompt).
+    """
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from local_vs_cloud_paired import ANSWERABLE_BY_FIXTURE, FIXTURES
+    except Exception as exc:
+        return PreFlightResult(
+            "meta_fixture", "fail",
+            f"harness import failed: {type(exc).__name__}: {exc}",
+        )
+    path = FIXTURES.get("meta")
+    if path is None:
+        return PreFlightResult("meta_fixture", "fail",
+                               "FIXTURES['meta'] not registered")
+    if not path.exists():
+        return PreFlightResult("meta_fixture", "fail",
+                               f"fixture file missing: {path}")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return PreFlightResult("meta_fixture", "fail",
+                               f"fixture unreadable: {type(exc).__name__}: {exc}")
+    rows = data.get("queries", [])
+    counts: dict = {}
+    for q in rows:
+        counts[q.get("question_type", "?")] = (
+            counts.get(q.get("question_type", "?"), 0) + 1
+        )
+    for t in ANSWERABLE_BY_FIXTURE.get("meta", ()):
+        if counts.get(t, 0) < 3:
+            return PreFlightResult(
+                "meta_fixture", "fail",
+                f"sub-class {t!r} has only {counts.get(t, 0)} rows; "
+                "paired default needs 3",
+            )
+    no_gold = [q.get("id") for q in rows if not q.get("gold_signals")]
+    if no_gold:
+        return PreFlightResult("meta_fixture", "fail",
+                               f"rows missing gold_signals: {no_gold}")
+    no_dist = [q.get("id") for q in rows
+               if not (q.get("distribution") or {}).get("total")]
+    if no_dist:
+        return PreFlightResult("meta_fixture", "fail",
+                               f"rows missing distribution.total: {no_dist}")
+    return PreFlightResult(
+        "meta_fixture", "ok",
+        f"{len(rows)} meta queries available (counts={counts})",
+    )
+
+
 _CHECKS = (
     check_fixture,
     check_chat_fixture,
     check_wiki_edit_fixture,
+    check_meta_fixture,
     check_regex_false_positives,
     check_backend_registry,
     check_abstraction_smoke,

@@ -610,6 +610,77 @@ class WikiEditFixtureSurface(unittest.TestCase):
                       "_wiki_edit_prompt drops the edit instruction")
 
 
+class MetaFixtureSurface(unittest.TestCase):
+    """v0.6.1 v18.7 Phase meta-a prereq (2026-06-21) — meta-mode
+    (inventory narrative) fixture. Mirrors ``WikiEditFixtureSurface``.
+
+    Operator-authored synthetic distributions, so a UX cycle could
+    silently break it with no upstream alarm. Lock the surface the
+    harness consumes — registration, sub-class counts, gold_signals +
+    distribution coverage, and that ``_meta_prompt`` mirrors
+    handle_meta's narrative prompt (counts folded in + exact-citation
+    directive)."""
+
+    @classmethod
+    def setUpClass(cls):
+        _import_harness()
+
+    def test_meta_fixture_registered(self):
+        from local_vs_cloud_paired import FIXTURES
+        self.assertIn("meta", FIXTURES,
+                      "harness FIXTURES dict missing 'meta' — "
+                      "--fixture meta CLI will fail.")
+
+    def test_meta_fixture_file_exists(self):
+        from local_vs_cloud_paired import FIXTURES
+        self.assertTrue(FIXTURES["meta"].exists(),
+                        f"meta fixture missing: {FIXTURES['meta']}")
+
+    def test_meta_subclasses_complete(self):
+        import json as _json
+        from local_vs_cloud_paired import FIXTURES
+        data = _json.loads(FIXTURES["meta"].read_text(encoding="utf-8"))
+        for t in ("small_corpus", "medium_corpus", "large_corpus"):
+            with self.subTest(sub_class=t):
+                rows = [q for q in data.get("queries", [])
+                        if q.get("question_type") == t]
+                self.assertGreaterEqual(
+                    len(rows), 3,
+                    f"meta sub-class {t!r} only has {len(rows)} rows.")
+
+    def test_meta_every_row_has_gold_and_distribution(self):
+        import json as _json
+        from local_vs_cloud_paired import FIXTURES
+        data = _json.loads(FIXTURES["meta"].read_text(encoding="utf-8"))
+        for q in data.get("queries", []):
+            with self.subTest(id=q.get("id")):
+                self.assertTrue(bool(q.get("gold_signals")),
+                                f"meta id={q.get('id')} missing gold_signals")
+                self.assertTrue(
+                    bool((q.get("distribution") or {}).get("total")),
+                    f"meta id={q.get('id')} missing distribution.total")
+
+    def test_meta_prompt_template_emits_counts_and_directive(self):
+        """``_meta_prompt`` must fold the distribution counts in AND
+        carry the exact-citation directive (mirrors the production
+        _render_llm_narrative prompt)."""
+        from local_vs_cloud_paired import _meta_prompt
+        q = {
+            "distribution": {
+                "total": 313,
+                "by_type": [["개념", 120]],
+                "by_theme": [["AI", 90]],
+                "hubs": [["PALANTIR", 27]],
+                "recent": ["OPENAI"],
+            },
+        }
+        body = _meta_prompt(q)
+        self.assertIn("313", body, "_meta_prompt drops the total count")
+        self.assertIn("개념 120개", body, "_meta_prompt drops the type summary")
+        self.assertIn("숫자는 정확히 인용", body,
+                      "_meta_prompt drops the exact-citation directive")
+
+
 class RoutingPhase4Surface(unittest.TestCase):
     """v0.6.1 v18.7 Phase 4 (2026-06-20) — privacy + cost cap primitives.
 

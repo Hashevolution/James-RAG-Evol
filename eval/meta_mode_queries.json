@@ -1,0 +1,126 @@
+{
+  "_meta": {
+    "purpose": "meta-mode (inventory LLM-narrative) paired-measurement fixture (v18.7 Phase meta-a). Operator-authored, synthetic distribution snapshots — no real corpus state, no PII. Mirrors handle_meta's option-D narrative path (core/reasoning/modes/meta/_render.py::_render_llm_narrative): given a corpus distribution, the model must summarize strengths/gaps + recommend, citing numbers EXACTLY.",
+    "scoring": "gold_signals = the exact counts that MUST appear verbatim in the narrative (numeric fidelity is the deterministic axis). Strength/gap/recommendation quality is judge-only (lenient-bias caveat per project_judge_reliability_gold_grounded_v18_6). Sub-classes vary corpus scale (small/medium/large).",
+    "status": "POPULATED, NOT CONSUMED — engine.py + _render.py unchanged. Phase meta-b (operator 3-cell launch) measures gemma4:e4b / gemma3:12b / gemma3:27b; Phase meta-c reorders DEFAULT_PREFERENCE['meta'] + wires _render_llm_narrative's call_gemma to resolve_for_mode('meta')."
+  },
+  "queries": [
+    {
+      "id": "meta_1001",
+      "question_type": "small_corpus",
+      "text": "보유 자료 전체를 요약해줘",
+      "distribution": {
+        "total": 42,
+        "by_type": [["개념", 18], ["조직", 12], ["인물", 8], ["보고서", 4]],
+        "by_theme": [["AI", 15], ["보안", 10], ["크립토", 7]],
+        "hubs": [["PALANTIR", 9], ["OPENAI", 6]],
+        "recent": ["ANTHROPIC", "MISTRAL", "LLAMA"]
+      },
+      "gold_signals": ["42", "18", "15"]
+    },
+    {
+      "id": "meta_1002",
+      "question_type": "small_corpus",
+      "text": "내부 자료 총평 정리해줘",
+      "distribution": {
+        "total": 31,
+        "by_type": [["인물", 14], ["조직", 9], ["개념", 8]],
+        "by_theme": [["금융", 12], ["연구", 11], ["시장", 8]],
+        "hubs": [["BLACKROCK", 7]],
+        "recent": ["VANGUARD", "FIDELITY"]
+      },
+      "gold_signals": ["31", "14", "12"]
+    },
+    {
+      "id": "meta_1003",
+      "question_type": "small_corpus",
+      "text": "자료 전체 싹 다 요약",
+      "distribution": {
+        "total": 27,
+        "by_type": [["보고서", 15], ["개념", 7], ["이벤트", 5]],
+        "by_theme": [["블록체인", 13], ["규제", 9], ["보안", 5]],
+        "hubs": [["BITCOIN", 11], ["ETHEREUM", 8]],
+        "recent": ["SOLANA"]
+      },
+      "gold_signals": ["27", "15", "13"]
+    },
+    {
+      "id": "meta_1011",
+      "question_type": "medium_corpus",
+      "text": "보유 자료 요약해줘",
+      "distribution": {
+        "total": 313,
+        "by_type": [["개념", 120], ["조직", 85], ["인물", 60], ["보고서", 48]],
+        "by_theme": [["AI", 90], ["크립토", 70], ["보안", 50]],
+        "hubs": [["PALANTIR", 27], ["BITCOIN", 22], ["NVIDIA", 18]],
+        "recent": ["OPENAI", "ANTHROPIC", "MISTRAL"]
+      },
+      "gold_signals": ["313", "120", "90", "27"]
+    },
+    {
+      "id": "meta_1012",
+      "question_type": "medium_corpus",
+      "text": "내부 자료 전체적으로 정리해줘",
+      "distribution": {
+        "total": 268,
+        "by_type": [["조직", 110], ["인물", 78], ["개념", 50], ["장소", 30]],
+        "by_theme": [["시장", 95], ["재무", 80], ["연구", 55]],
+        "hubs": [["BLACKROCK", 31], ["VANGUARD", 24]],
+        "recent": ["FIDELITY", "STATESTREET"]
+      },
+      "gold_signals": ["268", "110", "95", "31"]
+    },
+    {
+      "id": "meta_1013",
+      "question_type": "medium_corpus",
+      "text": "wiki 자료 총괄 요약",
+      "distribution": {
+        "total": 199,
+        "by_type": [["개념", 80], ["보고서", 64], ["이벤트", 35], ["인물", 20]],
+        "by_theme": [["보안", 75], ["규제", 60], ["AI", 40]],
+        "hubs": [["MITRE", 19], ["NIST", 16]],
+        "recent": ["CISA", "ENISA"]
+      },
+      "gold_signals": ["199", "80", "75", "19"]
+    },
+    {
+      "id": "meta_1021",
+      "question_type": "large_corpus",
+      "text": "보유 자료 전체 요약해줘",
+      "distribution": {
+        "total": 1240,
+        "by_type": [["개념", 430], ["조직", 360], ["인물", 250], ["보고서", 120], ["이벤트", 80]],
+        "by_theme": [["AI", 380], ["크립토", 300], ["금융", 280], ["보안", 180], ["규제", 100]],
+        "hubs": [["PALANTIR", 88], ["BITCOIN", 71], ["OPENAI", 64], ["NVIDIA", 55]],
+        "recent": ["ANTHROPIC", "MISTRAL", "COHERE", "DEEPSEEK", "QWEN"]
+      },
+      "gold_signals": ["1240", "430", "380", "88"]
+    },
+    {
+      "id": "meta_1022",
+      "question_type": "large_corpus",
+      "text": "내부 자료 싹 다 정리해줘",
+      "distribution": {
+        "total": 980,
+        "by_type": [["조직", 340], ["인물", 300], ["개념", 200], ["장소", 90], ["자산", 50]],
+        "by_theme": [["시장", 320], ["재무", 260], ["연구", 240], ["규제", 160]],
+        "hubs": [["BLACKROCK", 77], ["VANGUARD", 62], ["FIDELITY", 49]],
+        "recent": ["STATESTREET", "PIMCO", "CITADEL"]
+      },
+      "gold_signals": ["980", "340", "320", "77"]
+    },
+    {
+      "id": "meta_1023",
+      "question_type": "large_corpus",
+      "text": "전체 자료 총평 요약",
+      "distribution": {
+        "total": 1530,
+        "by_type": [["보고서", 520], ["개념", 410], ["조직", 300], ["인물", 200], ["이벤트", 100]],
+        "by_theme": [["보안", 450], ["규제", 400], ["AI", 380], ["블록체인", 300]],
+        "hubs": [["MITRE", 95], ["NIST", 80], ["CISA", 66]],
+        "recent": ["ENISA", "BSI", "ANSSI"]
+      },
+      "gold_signals": ["1530", "520", "450", "95"]
+    }
+  ]
+}
