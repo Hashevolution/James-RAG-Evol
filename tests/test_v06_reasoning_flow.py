@@ -297,7 +297,7 @@ class I18nKeysTests(unittest.TestCase):
 class EntryPointTests(unittest.TestCase):
     def test_admin_html_link(self):
         body = ADMIN_HTML.read_text(encoding="utf-8")
-        self.assertIn('href="/admin/reasoning-flow"', body)
+        self.assertIn('href="/admin/graph#flow"', body)  # v0.6.1 graph-hub
         self.assertIn('admin.flow_link', body)
 
     def test_server_route_registered(self):
