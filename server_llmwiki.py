@@ -305,12 +305,8 @@ async def serve_reasoning_flow():
     primitive + the new `/admin/audit/recent-traces` listing endpoint.
     HTML is public; backend endpoints admin-gate.
     """
-    page = os.path.join(FRONTEND_DIR, "reasoning-flow.html")
-    if os.path.exists(page):
-        return FileResponse(page)
-    return HTMLResponse(
-        "<h1>Reasoning flow</h1><p>frontend/reasoning-flow.html 없음</p>"
-    )
+    # v0.6.1 graph-hub — reasoning flow folded into the graph hub tab.
+    return RedirectResponse(url="/admin/graph#flow", status_code=301)
 
 
 @app.get("/admin/knowledge-rollback", response_class=HTMLResponse, include_in_schema=False)
@@ -322,12 +318,8 @@ async def serve_knowledge_rollback():
     it calls (`/admin/graph/last-change`, `/admin/graph/diff-vs-now`,
     `/admin/graph/log-rollback-intent`) all admin-gate.
     """
-    page = os.path.join(FRONTEND_DIR, "knowledge-rollback.html")
-    if os.path.exists(page):
-        return FileResponse(page)
-    return HTMLResponse(
-        "<h1>Knowledge Rollback</h1><p>frontend/knowledge-rollback.html 없음</p>"
-    )
+    # v0.6.1 graph-hub — knowledge rollback folded into the graph hub tab.
+    return RedirectResponse(url="/admin/graph#rollback", status_code=301)
 
 
 @app.get("/onboarding", response_class=HTMLResponse, include_in_schema=False)

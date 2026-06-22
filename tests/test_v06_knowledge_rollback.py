@@ -395,7 +395,7 @@ class I18nKeysTests(unittest.TestCase):
 class AdminEntryPointTests(unittest.TestCase):
     def test_admin_html_links_to_rollback(self):
         body = ADMIN_HTML.read_text(encoding="utf-8")
-        self.assertIn('href="/admin/knowledge-rollback"', body)
+        self.assertIn('href="/admin/graph#rollback"', body)  # v0.6.1 graph-hub
         self.assertIn('admin.rollback_link', body)
 
 
