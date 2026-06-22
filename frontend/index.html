@@ -44,7 +44,7 @@
     </div>
     <div class="model-popover-footer">
       <a href="/admin" class="model-popover-admin-link"
-         data-i18n="model.popover_admin_link">⚙ Admin 모델 설정 →</a>
+         data-i18n="model.popover_admin_link">Admin 모델 설정 →</a>
     </div>
   </div>
 </div>
@@ -87,7 +87,7 @@
             bottom : compact footer (meta + settings + role pill)
          The four legacy panel-mode blocks (upload / recent / search)
          still live inside .sidebar-panel; switching to one of them
-         briefly hides the sessions list. The 📂 / 🕘 / 🔍 tabs are
+         briefly hides the sessions list. The / / tabs are
          intentionally KEPT near the top so they're reachable without
          scrolling, but they sit OUTSIDE the scroll area so the
          sessions list doesn't push them off-screen. -->
@@ -122,16 +122,16 @@
 
     <!-- v0.6.1 v3 (2026-06-15) Claude-style PRIMARY NAV — vertical
          full-width rows (icon + label), one per destination. The
-         🤖 에이전트 / 🌐 추론 그래프 items keep the hash deep-link
+         에이전트 / 추론 그래프 items keep the hash deep-link
          + standalone-route routing introduced in PR #942; only the
          layout flipped from 2×2 grid to Claude's vertical list.
-           - 💬 채팅  → current page (active by default)
-           - 📦 프로젝트 → /workspace
-           - 🌐 추론 그래프 → /admin/graph
-           - 🤖 에이전트 → /admin#agent-chat
-           - ⚙ 관리자 → /admin -->
-    <!-- v0.6.1 v5 (2026-06-16) — operator catch: emoji icons (💬 📦
-         🌐 🤖 ⚙) lowered the professional concept. Replaced with
+           - 채팅  → current page (active by default)
+           - 프로젝트 → /workspace
+           - 추론 그래프 → /admin/graph
+           - 에이전트 → /admin#agent-chat
+           - 관리자 → /admin -->
+    <!-- v0.6.1 v5 (2026-06-16) — operator catch: emoji icons (
+         ) lowered the professional concept. Replaced with
          Feather/Lucide-style inline SVG strokes (currentColor +
          stroke 2) that match the hamburger toggle. Same visual
          weight + clear professional appearance. -->
@@ -230,7 +230,7 @@
     </nav>
 
     <!-- Mode tabs (upload / recent / search) — compact icon row with
-         Feather/Lucide SVG strokes (replacing 📂 🕘 🔍 emojis). Labels
+         Feather/Lucide SVG strokes (replacing emojis). Labels
          stay in aria-label + title for a11y. Sessions panel default. -->
     <div class="sidebar-section sidebar-tabs sidebar-tabs-compact">
       <button class="sidebar-tab" data-mode="upload"
@@ -296,7 +296,7 @@
                경유 경로는 그대로 보존 (iOS Safari 의 capture-only 거동 회피). -->
           <input type="file" id="camera-input" accept="image/*" capture="environment"
                  style="display:none">
-          <div class="drop-icon">📂</div>
+          <div class="drop-icon"></div>
           <div class="drop-label">
             <span data-i18n="upload.drag_label">클릭하거나 드래그하여 파일 추가</span><br>
             <span class="drop-types"><span data-i18n="upload.types">이미지 · 오디오 · PDF · 문서</span></span><br>
@@ -313,7 +313,7 @@
                        border-radius:6px;color:var(--text-soft);font-size:12px;
                        cursor:pointer;font-family:var(--font-ui)"
                 data-i18n="upload.folder_button">
-          📁 폴더 선택
+          폴더 선택
         </button>
         <!-- v0.6 모바일 카메라 직접 진입 버튼 — 폰에서는 후면 카메라가 즉시
              열림, PC 에서는 파일 피커로 fallback. dogfooding "한 탭으로 자료
@@ -325,11 +325,11 @@
                        border-radius:6px;color:var(--text-soft);font-size:12px;
                        cursor:pointer;font-family:var(--font-ui)"
                 data-i18n="upload.camera_button">
-          📷 사진 촬영
+          사진 촬영
         </button>
 
         <div class="instruction-box">
-          <label><span data-i18n="upload.common_label">💬 공통 저장 지시 (폴더 미지정 파일에 적용)</span></label>
+          <label><span data-i18n="upload.common_label">공통 저장 지시 (폴더 미지정 파일에 적용)</span></label>
           <input type="text" id="save-instruction"
                  placeholder="e.g., Save to 2026 reports folder"
                  data-i18n-placeholder="upload.folder_example">
@@ -482,9 +482,9 @@
          still wire to #model-chip / #model-chip-tag / #workspace-name
          unchanged. -->
     <div class="chat-topbar" id="chat-topbar">
-      <!-- v5 (2026-06-16) — model-chip icon flipped from 🤖 emoji
+      <!-- v5 (2026-06-16) — model-chip icon flipped from emoji
            to a small bullet so the chip reads "● 모델명 ▾" instead
-           of a cartoon robot. Same for workspace-badge (📁 → 작은
+           of a cartoon robot. Same for workspace-badge (→ 작은
            SVG folder outline). -->
       <button id="model-chip"
               type="button"
@@ -597,7 +597,7 @@
       </div>
       <div style="display:flex;gap:6px;align-items:center">
         <!-- 양식 (Templates) — chat-time tool. v5 (2026-06-16):
-             📄 emoji prefix removed; conv-action-chip stays
+             emoji prefix removed; conv-action-chip stays
              label-only for a clean professional look. -->
         <button data-action="tplc-open"
                 data-i18n-title="tplchat.open_title"
@@ -766,7 +766,7 @@
                 style="position:absolute;right:8px;top:50%;
                        transform:translateY(-50%);background:none;
                        border:none;cursor:pointer;color:var(--muted);
-                       font-size:14px;padding:2px 4px">👁️</button>
+                       font-size:14px;padding:2px 4px">표시</button>
       </div>
       <small style="color:var(--muted);font-size:11px;display:block;margin-top:4px"
              data-i18n="auth.api_key_hint">서버 .env의 JAMES_API_KEY 값. 비워두면 환경변수 그대로 사용.</small>
@@ -809,7 +809,7 @@
     </div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:6px"
          data-i18n="auth.reset_admin_hint">
-      💡 토큰이 없다면 관리자에게 "비밀번호 재설정 토큰을 발급해 주세요" 라고 요청하세요.
+      토큰이 없다면 관리자에게 "비밀번호 재설정 토큰을 발급해 주세요" 라고 요청하세요.
       관리자가 사용자 관리 페이지에서 토큰을 발급해 안전한 경로(메신저·전화 등)로 전달합니다.
     </div>
     <div class="modal-field">
@@ -927,7 +927,7 @@
     <div class="modal-actions">
       <button class="modal-btn cancel" data-action="tplc-close" data-i18n="common.cancel">취소</button>
       <button class="modal-btn" id="tplc-copy-btn" data-action="tplc-copy"
-              style="display:none" data-i18n="tplchat.copy">📋 복사</button>
+              style="display:none" data-i18n="tplchat.copy">복사</button>
       <button class="modal-btn" id="tplc-download-btn" data-action="tplc-download"
               style="display:none" data-i18n="tplchat.download">다운로드</button>
       <button class="modal-btn primary" id="tplc-apply-btn" data-action="tplc-apply" data-i18n="tplchat.generate">정리하기</button>
