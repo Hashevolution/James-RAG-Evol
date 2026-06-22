@@ -21,6 +21,7 @@ let _apiKey  = '';
 let _dataOffset = 0;
 let _dataTotal  = 0;
 let _searchTimer = null;
+let _srcTimer = null;  // v0.6.1 — 원본 자료 탭 검색 debounce
 let _currentTab = 'data';
 
 function _loadStored() {
@@ -194,6 +195,7 @@ function selectTab(tab) {
   if (tab === 'jobs')      reloadJobs();
   if (tab === 'cr')        reloadCrs();
   if (tab === 'templates') reloadTemplates();
+  if (tab === 'search')    srcSearch();  // renders the hint / current results
 }
 
 function onDataSearchInput() {
@@ -326,6 +328,84 @@ async function openDetail(artifactId) {
 
 function closeDetail() {
   document.getElementById('detail-panel').classList.remove('open');
+}
+
+/* ── 원본 자료 (source documents) tab — find → view → edit.
+   Wires /admin/files/{search,view,download} + the wiki-edit modal.
+   Design: docs/design/v0.6.1-workspace-source-documents-tab.md ── */
+function _srcRoot() {
+  const s = document.getElementById('src-root');
+  return (s && s.value) || 'wiki';
+}
+function _srcStem(path) {
+  const base = String(path || '').split('/').pop();
+  return base.replace(/\.[^.]+$/, '');
+}
+function srcSearchDebounced() {
+  if (_srcTimer) clearTimeout(_srcTimer);
+  _srcTimer = setTimeout(() => srcSearch(), 250);
+}
+async function srcSearch() {
+  const list = document.getElementById('src-results');
+  if (!list) return;
+  const qel = document.getElementById('src-q');
+  const q = (qel && qel.value) || '';
+  if (!q.trim()) {
+    list.innerHTML = `<div style="padding:14px;font-size:12px;color:var(--muted)">${t('workspace.src_hint')}</div>`;
+    return;
+  }
+  list.innerHTML = `<div style="padding:14px;font-size:12px;color:var(--muted)">…</div>`;
+  try {
+    const root = _srcRoot();
+    const data = await _apiFetch(
+      `/admin/files/search?q=${encodeURIComponent(q.trim())}&root=${encodeURIComponent(root)}`);
+    const rows = data.matches || [];
+    if (!rows.length) {
+      list.innerHTML = `<div style="padding:14px;font-size:12px;color:var(--muted)">${t('workspace.src_no_match')}</div>`;
+      return;
+    }
+    list.innerHTML = rows.map(r =>
+      `<div data-action="src-open" data-path="${_esc(r.path)}" style="padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer">
+         <div style="font-size:12px;color:var(--text);word-break:break-all">${_esc(r.name)}</div>
+         <div style="font-size:10px;color:var(--muted)">${_esc(r.path)} · ${_fmtBytes(r.size)}</div>
+       </div>`).join('')
+      + (data.truncated ? `<div style="padding:8px;font-size:10px;color:var(--muted)">${t('workspace.src_truncated')}</div>` : '');
+  } catch (e) {
+    list.innerHTML = `<div style="padding:14px;font-size:12px;color:#e66">${_esc(e.message)}</div>`;
+  }
+}
+async function srcOpen(path) {
+  const view = document.getElementById('src-view');
+  if (!view) return;
+  const root = _srcRoot();
+  const editable = (root === 'wiki' && /\.md$/i.test(path));
+  const dlUrl = `${API}/admin/files/download?root=${encodeURIComponent(root)}&path=${encodeURIComponent(path)}&api_key=${encodeURIComponent(_apiKey || '')}`;
+  const head =
+    `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+       <div style="font-weight:600;font-size:13px;flex:1;min-width:0;word-break:break-all">${_esc(path)}</div>
+       ${editable ? `<button class="modal-btn primary" data-action="src-edit" data-path="${_esc(path)}">${t('workspace.src_edit')}</button>` : ''}
+       <a class="modal-btn" href="${dlUrl}" target="_blank" rel="noopener">${t('workspace.src_download')}</a>
+     </div>`;
+  view.innerHTML = `<div style="padding:14px;font-size:12px;color:var(--muted)">…</div>`;
+  try {
+    const data = await _apiFetch(
+      `/admin/files/view?root=${encodeURIComponent(root)}&path=${encodeURIComponent(path)}`);
+    view.innerHTML = head +
+      `<pre style="white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:12px;max-height:60vh;overflow:auto">${_esc(data.content)}</pre>`;
+  } catch (e) {
+    // 415 (binary) / 413 (too big) → view unavailable, download still works.
+    view.innerHTML = head +
+      `<div style="padding:14px;font-size:12px;color:var(--muted)">${_esc(e.message)}<br>${t('workspace.src_download_only')}</div>`;
+  }
+}
+function srcEdit(path) {
+  // Hand off to the existing 추론편집(wiki-edit) modal, pre-loaded by the
+  // filename stem (find_entity_file resolves entities by stem).
+  if (typeof openWikiEdit !== 'function') return;
+  openWikiEdit();
+  const nm = document.getElementById('we-name');
+  if (nm) nm.value = _srcStem(path);
+  if (typeof wikiEditLoad === 'function') wikiEditLoad();
 }
 
 /* ── W8-B: jobs tab ── */
@@ -1261,6 +1341,9 @@ function _bindFrontendEvents() {
       case 'do-login':         doLogin(); break;
       case 'open-forgot':      e.preventDefault(); openForgot(); break;
       case 'open-detail':      openDetail(t.getAttribute('data-artifact-id')); break;
+      /* ── 원본 자료 (source documents) tab ── */
+      case 'src-open':         srcOpen(t.getAttribute('data-path')); break;
+      case 'src-edit':         e.stopPropagation(); srcEdit(t.getAttribute('data-path')); break;
       case 'download-job':
         downloadJob(
           t.getAttribute('data-job-id'),
@@ -1314,6 +1397,11 @@ function _bindFrontendEvents() {
 function _bindStableInputs() {
   const dq = document.getElementById('data-q');
   if (dq) dq.addEventListener('input', () => onDataSearchInput());
+  /* v0.6.1 — 원본 자료 탭 검색(파일명) + root 전환. */
+  const srcq = document.getElementById('src-q');
+  if (srcq) srcq.addEventListener('input', () => srcSearchDebounced());
+  const srcroot = document.getElementById('src-root');
+  if (srcroot) srcroot.addEventListener('change', () => srcSearch());
   const dstat = document.getElementById('data-status');
   if (dstat) dstat.addEventListener('change', () => reloadData());
   const jt = document.getElementById('job-type');
