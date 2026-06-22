@@ -80,7 +80,7 @@
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.id = 'np-summary-edit-btn';
-    btn.textContent = '✏️ ' + _t('graph.node.edit.button', '노드 편집');
+    btn.textContent = _t('graph.node.edit.button', '노드 편집');
     btn.setAttribute('style',
       'margin-top:10px;width:100%;padding:8px 10px;' +
       'background:var(--surface-2);border:1px solid var(--border);' +
