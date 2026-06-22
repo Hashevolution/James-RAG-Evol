@@ -134,6 +134,37 @@ def _refresh_index():
         print(f"[WIKI_EDIT] entity_id_index 갱신 실패: {e}")
 
 
+def _cascade_edit(path, name: str, user_role: str = "admin"):
+    """v0.6.1 — entity-edit lifecycle cascade. Re-extract relations from
+    the edited content and invalidate graph relations it no longer
+    supports (keeps reasoning consistent). Best-effort: never breaks the
+    save. Returns the cascade summary dict or None.
+    See docs/design/v0.6.1-entity-edit-cascade.md."""
+    try:
+        try:
+            from core.graph_rag_engine import RAGEngine
+        except ModuleNotFoundError:
+            try:
+                from graph_rag_engine import RAGEngine
+            except ModuleNotFoundError:
+                import sys
+                sys.path.insert(0, str(BASE_DIR))
+                from core.graph_rag_engine import RAGEngine
+        from core.cascade import cascade_modify_entity
+        engine = RAGEngine(default_role="admin")
+        wg = getattr(engine, "wiki_generator", None)
+        if wg is None:
+            return None
+        summary = cascade_modify_entity(path, name, wiki_generator=wg,
+                                        user_role=user_role)
+        inv = len(summary.get("invalidated", [])) if summary else 0
+        print(f"[WIKI_EDIT] edit cascade: {inv} relation(s) invalidated")
+        return summary
+    except Exception as e:
+        print(f"[WIKI_EDIT] edit cascade 실패: {e}")
+        return None
+
+
 # ─────────────────────────────────────────────
 # 핵심 탐색
 # ─────────────────────────────────────────────
@@ -213,8 +244,15 @@ def update_entity(name: str, new_content: str,
     _audit("UPDATE", str(path.name), f"chars {len(old_content)}→{len(new_content)}", user_role)
     _resync_vector(path.name, new_content)
     _refresh_index()
+    # v0.6.1 — lifecycle cascade: keep the graph consistent with the edit.
+    casc = _cascade_edit(path, name, user_role)
 
-    return True, f"✅ '{name}' 수정 완료 (백업: {backup.name})"
+    msg = f"✅ '{name}' 수정 완료 (백업: {backup.name})"
+    if casc and casc.get("invalidated"):
+        msg += f" · 관계 {len(casc['invalidated'])}개 무효화"
+    if casc and casc.get("added_detected"):
+        msg += f" · 신규 관계 {len(casc['added_detected'])}개 감지"
+    return True, msg
 
 
 def append_to_entity(name: str, append_text: str,
