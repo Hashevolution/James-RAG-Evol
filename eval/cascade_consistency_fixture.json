@@ -1,0 +1,53 @@
+{
+  "_doc": "Cascade reasoning-consistency probe fixture. Each scenario is one entity whose frontmatter relations mix ACTIVE edges (must still be traversed) with edges the lifecycle has deactivated (invalidated/superseded/expired — must NOT be traversed once the edit/lifecycle ran). All confidences are >= CONFIDENCE_THRESHOLD (0.6) so the EXISTING confidence filter does not mask the question: does live traversal honor status? See docs/design/v0.6.1-entity-edit-cascade.md + scripts/research/cascade_consistency_probe.py.",
+  "scenarios": [
+    {
+      "name": "edit_dropped_relation",
+      "entity": {
+        "name": "Alpha", "entity_type": "concept",
+        "relations": [
+          {"target": "Beta",  "label": "관련", "confidence": 0.90, "status": {"active": true},  "mutation_type": "active"},
+          {"target": "Gamma", "label": "포함", "confidence": 0.90, "status": {"active": false, "invalidated_at": "2026-06-22T00:00:00Z"}, "mutation_type": "invalidated"}
+        ]
+      },
+      "should_appear": ["Beta"],
+      "should_not_appear": ["Gamma"]
+    },
+    {
+      "name": "superseded_relation",
+      "entity": {
+        "name": "Delta", "entity_type": "concept",
+        "relations": [
+          {"target": "Epsilon", "label": "관련", "confidence": 0.95, "status": {"active": true}, "mutation_type": "active"},
+          {"target": "Zeta",    "label": "관련", "confidence": 0.95, "status": {"active": false, "superseded_by": "e_concept_deadbeef00"}, "mutation_type": "superseded"}
+        ]
+      },
+      "should_appear": ["Epsilon"],
+      "should_not_appear": ["Zeta"]
+    },
+    {
+      "name": "expired_relation",
+      "entity": {
+        "name": "Theta", "entity_type": "concept",
+        "relations": [
+          {"target": "Iota",  "label": "관련", "confidence": 0.80, "status": {"active": true}, "mutation_type": "active"},
+          {"target": "Kappa", "label": "관련", "confidence": 0.80, "status": {"active": false}, "mutation_type": "expired"}
+        ]
+      },
+      "should_appear": ["Iota"],
+      "should_not_appear": ["Kappa"]
+    },
+    {
+      "name": "all_active_control",
+      "entity": {
+        "name": "Lambda", "entity_type": "concept",
+        "relations": [
+          {"target": "Mu", "label": "관련", "confidence": 0.90, "status": {"active": true}, "mutation_type": "active"},
+          {"target": "Nu", "label": "포함", "confidence": 0.90, "status": {"active": true}, "mutation_type": "active"}
+        ]
+      },
+      "should_appear": ["Mu", "Nu"],
+      "should_not_appear": []
+    }
+  ]
+}
