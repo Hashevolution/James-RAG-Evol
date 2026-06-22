@@ -438,3 +438,41 @@
      mobile.css's graph section — see PR mobile-css-extension. The
      original 720px / 480px breakpoints were promoted to the project-
      standard 768px / 480px so all four pages share one boundary. */
+
+/* v0.6.1 graph-hub tab bar — graph / 추론 흐름 / 롤백 (graph-tabs.js).
+   Sits between the header and the tab panels. The graph tab is the 3D
+   view (default); flow/rollback are scrollable content panels. */
+.graph-hub-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.graph-hub-tab {
+  appearance: none;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 9px 15px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-ui, sans-serif);
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.graph-hub-tab:hover { color: var(--text-soft); }
+.graph-hub-tab-active {
+  color: var(--accent-fg);
+  border-bottom-color: var(--accent);
+}
+/* flow / rollback panels: constrained reading width, scrollable. */
+section[data-graph-tab="flow"],
+section[data-graph-tab="rollback"] {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 20px 56px;
+}
+[data-graph-tab][hidden] { display: none !important; }
