@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#04060a">
+<title data-i18n="intro.page_title">SEKOS — Secure Enterprise Knowledge OS</title>
+<link rel="stylesheet" href="/static/tokens.css">
+<link rel="stylesheet" href="/static/onboarding.css">
+<link rel="stylesheet" href="/static/glossary.css">
+<link rel="stylesheet" href="/static/intro.css">
+<link rel="stylesheet" href="/static/mobile.css?v=v5-20260615">
+</head>
+<body>
+
+<a href="#main" class="skip-link" data-i18n="a11y.skip_to_main">Skip to main content</a>
+
+<header>
+  <div class="logo">
+    <span class="brand">Secure Enterprise Knowledge<span class="brand-tail">Operating System</span></span>
+  </div>
+  <div class="header-right">
+    <button class="nav-btn workspace-badge" id="workspace-badge"
+            type="button" data-i18n-title="workspace.badge_title"
+            title="현재 워크스페이스" aria-label="현재 워크스페이스"
+            style="display:none;font-size:11px">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;margin-right:3px"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span id="workspace-name">—</span>
+    </button>
+    <button class="nav-btn" data-lang-toggle data-action="toggle-lang"
+            title="Language / 언어" aria-label="언어 전환 / Toggle language"
+            style="font-size:12px;font-weight:600;background:var(--surface-2);
+                   border:1px solid var(--border);border-radius:6px;
+                   padding:5px 10px;cursor:pointer;color:var(--text-soft)"></button>
+    <!-- PR-intro-1: chat still served at / ; PR-intro-2 flips this to /chat -->
+    <a href="/" class="nav-btn" data-i18n="intro.skip_to_chat">챗 시작 →</a>
+  </div>
+</header>
+
+<main id="main" class="intro-main">
+
+  <!-- ── HERO ─────────────────────────────────────────────── -->
+  <section class="intro-hero">
+    <h1 class="intro-hero-title" data-i18n="intro.hero_title">
+      감사가능한 지식 추론 운영체제
+    </h1>
+    <p class="intro-hero-sub" data-i18n="intro.hero_sub">
+      사내 지식을 검색·추론하고, 누가 무엇을 언제 바꿨는지 모두 기록하며,
+      필요할 때 과거 어느 시점으로든 되돌릴 수 있습니다.
+    </p>
+    <div class="intro-hero-cta">
+      <!-- PR-intro-1: chat = / ; PR-intro-2 → /chat -->
+      <a href="/" class="intro-cta intro-cta-primary" data-i18n="intro.cta_chat">챗 시작</a>
+      <a href="/workspace" class="intro-cta" data-i18n="intro.cta_workspace">워크스페이스</a>
+      <a href="/admin" class="intro-cta" data-i18n="intro.cta_admin">관리자</a>
+    </div>
+  </section>
+
+  <!-- ── tab bar (anchor scroll) ──────────────────────────── -->
+  <nav class="intro-tabs" role="tablist" aria-label="Intro sections">
+    <button class="intro-tab intro-tab-active" data-intro-tab="intro"
+            role="tab" data-i18n="intro.tab_intro">소개</button>
+    <button class="intro-tab" data-intro-tab="tour"
+            role="tab" data-i18n="intro.tab_tour">사용 안내</button>
+    <button class="intro-tab" data-intro-tab="glossary"
+            role="tab" data-i18n="intro.tab_glossary">용어집</button>
+  </nav>
+
+  <!-- ══ Section: 소개 ══════════════════════════════════════ -->
+  <section class="intro-section intro-section-active" data-intro-section="intro">
+    <div class="intro-cards">
+      <div class="intro-card">
+        <strong data-i18n="onboarding.step1.search_heading">검색</strong>
+        <span data-i18n="onboarding.step1.search_desc">사내 문서에서 답을 찾고, 답의 근거를 추적할 수 있습니다.</span>
+      </div>
+      <div class="intro-card">
+        <strong data-i18n="onboarding.step1.audit_heading">감사 로그</strong>
+        <span data-i18n="onboarding.step1.audit_desc">누가 어떤 변경을 언제 했는지 모두 기록됩니다.</span>
+      </div>
+      <div class="intro-card">
+        <strong data-i18n="onboarding.step1.review_heading">변경 검토</strong>
+        <span data-i18n="onboarding.step1.review_desc">누군가 변경을 제안하면, 운영자가 승인 / 거부할 수 있습니다.</span>
+      </div>
+      <div class="intro-card">
+        <strong data-i18n="onboarding.step1.timetravel_heading">시점 복원</strong>
+        <span data-i18n="onboarding.step1.timetravel_desc">과거 어떤 순간의 상태로든 시스템을 되돌려 볼 수 있습니다.</span>
+      </div>
+    </div>
+    <p class="intro-moat" data-i18n="intro.moat" data-i18n-html>
+      차별점: 모든 변경을 삭제 대신 유효구간(validity-window)으로 보존해,
+      현재 답변 품질을 지키면서도 <strong>재현 가능한 감사(replayable-audit)</strong>
+      와 <strong>시점 복원(time-travel)</strong> 을 함께 제공합니다.
+    </p>
+  </section>
+
+  <!-- ══ Section: 사용 안내 (onboarding 5-step, embedded) ════ -->
+  <section class="intro-section" data-intro-section="tour" hidden>
+    <nav class="onboarding-progress" role="navigation" aria-label="Onboarding step indicator">
+      <ol class="step-dots">
+        <li class="step-dot" data-step="1" aria-current="step"><span class="dot-label" data-i18n="onboarding.step_label.welcome">환영</span></li>
+        <li class="step-dot" data-step="2"><span class="dot-label" data-i18n="onboarding.step_label.search">검색</span></li>
+        <li class="step-dot" data-step="3"><span class="dot-label" data-i18n="onboarding.step_label.audit">감사 로그</span></li>
+        <li class="step-dot" data-step="4"><span class="dot-label" data-i18n="onboarding.step_label.review">변경 검토</span></li>
+        <li class="step-dot" data-step="5"><span class="dot-label" data-i18n="onboarding.step_label.timetravel">시점 복원</span></li>
+      </ol>
+    </nav>
+
+    <section class="step step-active" data-step="1" role="region" aria-labelledby="step-1-title">
+      <h1 id="step-1-title" data-i18n="onboarding.step1.title">SEKOS 에 처음 오신 분 안내</h1>
+      <div class="step-body">
+        <p data-i18n="onboarding.step1.intro">SEKOS 는 회사의 지식을 안전하게 저장하고, 누가 무엇을 언제 바꿨는지 남기고, 필요할 때 과거 시점으로 되돌릴 수 있는 시스템입니다. 이 안내는 다섯 가지 핵심 동작을 5 분 안에 배웁니다.</p>
+        <p class="step-hint" data-i18n="onboarding.step1.hint">개발 지식이 없어도 됩니다. 각 단계는 화면 안내만 따라 하시면 됩니다. 언제든 위쪽 "챗 시작" 으로 안내를 닫을 수 있고, 다시 보고 싶을 때는 관리자 페이지에서 재시작할 수 있습니다.</p>
+      </div>
+    </section>
+
+    <section class="step" data-step="2" role="region" aria-labelledby="step-2-title" hidden>
+      <h1 id="step-2-title" data-i18n="onboarding.step2.title">검색 — 답 찾기</h1>
+      <div class="step-body">
+        <p data-i18n="onboarding.step2.intro">검색은 가장 자주 쓰게 될 기능입니다. 평소처럼 한국어로 질문을 입력하시면 됩니다.</p>
+        <div class="example-box">
+          <span class="example-label" data-i18n="onboarding.step2.example_label">예시 질문</span>
+          <ul class="example-list">
+            <li data-i18n="onboarding.step2.example_1">우리 회사 휴가 정책은 어떻게 되나요?</li>
+            <li data-i18n="onboarding.step2.example_2">지난 분기 매출 보고서 핵심 요약해 줘</li>
+            <li data-i18n="onboarding.step2.example_3">앤스로픽의 CEO 가 누구야?</li>
+          </ul>
+        </div>
+        <p data-i18n="onboarding.step2.answer_explanation">답은 항상 <strong>근거 문서 링크</strong>와 함께 표시됩니다. 답 옆의 출처 표시를 누르면 어떤 문서에서 어떤 부분을 가져왔는지 확인할 수 있습니다. 시스템이 답을 모르겠으면 "정보가 없습니다" 라고 솔직하게 답합니다 — 추측해서 잘못된 정보를 만들지 않도록 설계되어 있습니다.</p>
+        <p class="step-hint" data-i18n="onboarding.step2.hint">안내를 마친 뒤 메인 채팅에서 직접 질문을 입력해 보세요.</p>
+      </div>
+    </section>
+
+    <section class="step" data-step="3" role="region" aria-labelledby="step-3-title" hidden>
+      <h1 id="step-3-title" data-i18n="onboarding.step3.title">감사 로그 — 누가 무엇을 언제 바꿨나</h1>
+      <div class="step-body">
+        <p data-i18n="onboarding.step3.intro">모든 검색, 모든 업로드, 모든 변경이 감사 로그에 기록됩니다. 법규 (EU AI Act / GDPR / SOC 2) 가 요구하는 추적성을 자동으로 만족합니다.</p>
+        <div class="example-box">
+          <span class="example-label" data-i18n="onboarding.step3.example_label">자주 묻는 질문</span>
+          <ul class="example-list">
+            <li data-i18n="onboarding.step3.example_who">"지난주 휴가 정책 문서를 누가 마지막으로 바꿨지?"</li>
+            <li data-i18n="onboarding.step3.example_when">"이 답이 어제와 다른데, 그 사이에 무슨 변화가 있었지?"</li>
+            <li data-i18n="onboarding.step3.example_what">"X 라는 직원이 이번 달에 검색한 내용 전부 보여줘"</li>
+          </ul>
+        </div>
+        <p data-i18n="onboarding.step3.where_to_find">관리자 페이지의 <strong>감사 로그</strong> 탭에서 모든 기록을 시간 순으로 볼 수 있습니다. 사용자별 / 카테고리별 / 키워드별로 필터링 가능하며, CSV / PDF 로 내려받을 수 있습니다.</p>
+        <p class="step-hint" data-i18n="onboarding.step3.hint">안내를 마치면 관리자 → 감사 로그 에서 직접 살펴볼 수 있습니다.</p>
+      </div>
+    </section>
+
+    <section class="step" data-step="4" role="region" aria-labelledby="step-4-title" hidden>
+      <h1 id="step-4-title" data-i18n="onboarding.step4.title">변경 검토 — 승인할까요?</h1>
+      <div class="step-body">
+        <p data-i18n="onboarding.step4.intro">직원이 새 문서를 업로드하거나 기존 정보를 수정 제안하면, 그 변경은 <strong>승인 대기 (Pending)</strong> 상태로 들어갑니다. 운영자가 검토해서 승인할 때까지 시스템에 반영되지 않습니다.</p>
+        <div class="example-box">
+          <span class="example-label" data-i18n="onboarding.step4.example_label">대시보드에서 보는 화면</span>
+          <ul class="example-list">
+            <li data-i18n="onboarding.step4.example_before_after">왼쪽 = 현재 내용, 오른쪽 = 변경 제안 (다른 부분 표시됨)</li>
+            <li data-i18n="onboarding.step4.example_who">누가 (사용자) 언제 (시각) 무엇을 (차이) 왜 (제안 사유)</li>
+            <li data-i18n="onboarding.step4.example_buttons">"승인" 또는 "거부" 버튼 한 번이면 끝</li>
+          </ul>
+        </div>
+        <p data-i18n="onboarding.step4.signature_explanation">승인 / 거부 시 운영자의 신원이 암호학적으로 (OIDC 또는 운영자 ID) 함께 기록됩니다. 누가 무엇을 승인했는지 사후 위조 불가능합니다.</p>
+        <p class="step-hint" data-i18n="onboarding.step4.hint">관리자 → Change Review 에서 대기 중인 변경을 처리합니다.</p>
+      </div>
+    </section>
+
+    <section class="step" data-step="5" role="region" aria-labelledby="step-5-title" hidden>
+      <h1 id="step-5-title" data-i18n="onboarding.step5.title">시점 복원 — 지난주 상태로 돌아가기</h1>
+      <div class="step-body">
+        <p data-i18n="onboarding.step5.intro">실수로 문서를 삭제했거나, 잘못된 정보가 한동안 시스템에 있었다면, 과거 어느 시점의 상태로든 시스템을 되돌릴 수 있습니다.</p>
+        <div class="example-box">
+          <span class="example-label" data-i18n="onboarding.step5.example_label">3 단계로 시점 복원</span>
+          <ol class="example-list">
+            <li data-i18n="onboarding.step5.step_pick_time">관리자 → 그래프 → Time-Travel 에서 돌아갈 시점 선택 (예: "2026-06-10 오후 3시")</li>
+            <li data-i18n="onboarding.step5.step_compare">"그때의 시스템 vs 지금" 비교 화면에서 차이 확인</li>
+            <li data-i18n="onboarding.step5.step_restore">원하면 "복원" 또는 "특정 변경만 되돌리기" 버튼 클릭</li>
+          </ol>
+        </div>
+        <p data-i18n="onboarding.step5.audit_preservation">복원 자체도 감사 로그에 기록됩니다. 즉 "어제 14시 상태로 되돌렸음" 이 그대로 남아서, 나중에 누군가 "왜 이렇게 되어 있지?" 라고 물으면 설명할 수 있습니다.</p>
+        <p class="step-hint" data-i18n="onboarding.step5.hint">안내가 끝납니다. 이제 관리자 페이지로 이동해서 직접 사용해 보세요.</p>
+      </div>
+    </section>
+
+    <nav class="onboarding-nav" aria-label="Onboarding navigation">
+      <button id="onboarding-prev" type="button" class="onb-btn onb-btn-secondary" data-i18n="onboarding.nav.prev" disabled>← 이전</button>
+      <button id="onboarding-next" type="button" class="onb-btn onb-btn-primary" data-i18n="onboarding.nav.next">다음 →</button>
+      <a href="/admin" id="onboarding-finish" class="onb-btn onb-btn-primary" data-i18n="onboarding.nav.finish" hidden>관리자 페이지로 →</a>
+    </nav>
+  </section>
+
+  <!-- ══ Section: 용어집 (glossary, embedded) ═══════════════ -->
+  <section class="intro-section" data-intro-section="glossary" hidden>
+    <p class="glossary-intro" data-i18n="glossary.intro">SEKOS 의 화면에 등장하는 기술 용어들을 평이한 한국어로 설명합니다. 모르는 용어가 보이면 이 페이지에서 검색하거나, 다른 페이지에서 점선 밑줄이 그어진 단어 위에 마우스를 올리면 같은 설명이 툴팁으로 나타납니다.</p>
+    <div class="glossary-search">
+      <input id="glossary-search-input" type="text" autocomplete="off" placeholder="용어 검색…" data-i18n-placeholder="glossary.search.placeholder" aria-label="용어 검색" class="glossary-input">
+    </div>
+    <section class="glossary-section" data-category="core">
+      <h2 data-i18n="glossary.cat.core">기본 개념</h2>
+      <dl class="glossary-list">
+        <div class="glossary-entry" data-term="rag" tabindex="0"><dt>RAG <span class="term-en">(Retrieval-Augmented Generation)</span></dt><dd data-i18n="glossary.def.rag">질문에 답할 때, LLM 이 가진 지식만 쓰지 않고 <strong>먼저 사내 문서를 검색</strong>한 뒤 그 결과를 근거로 답을 만드는 방식. SEKOS 가 기본적으로 동작하는 방식입니다.</dd></div>
+        <div class="glossary-entry" data-term="graph-rag" tabindex="0"><dt>Graph-RAG <span class="term-en">(그래프 기반 RAG)</span></dt><dd data-i18n="glossary.def.graph_rag">단순 문서 검색에 더해 <strong>온톨로지 그래프 (개념 간 관계망)</strong> 를 통해 답을 찾는 방식. 여러 문서에 흩어진 정보를 연결해서 답할 수 있습니다.</dd></div>
+        <div class="glossary-entry" data-term="entity" tabindex="0"><dt>Entity <span class="term-en">(엔티티)</span></dt><dd data-i18n="glossary.def.entity">시스템이 알고 있는 <strong>한 개의 "것"</strong> — 사람, 조직, 개념, 문서 등. 예: "앤스로픽" / "휴가 정책 v3" / "김철수".</dd></div>
+        <div class="glossary-entry" data-term="relation" tabindex="0"><dt>Relation <span class="term-en">(관계)</span></dt><dd data-i18n="glossary.def.relation">엔티티들 사이의 <strong>연결</strong>. 예: "앤스로픽 ─CEO─ 다리오 아모데이", "휴가 정책 v3 ─supersedes─ 휴가 정책 v2".</dd></div>
+        <div class="glossary-entry" data-term="ontology" tabindex="0"><dt>Ontology <span class="term-en">(온톨로지)</span></dt><dd data-i18n="glossary.def.ontology">엔티티의 <strong>종류 + 관계 종류</strong> 의 정의 체계. 예: 회사 도메인은 "사람 / 조직 / 문서 / 정책" 같은 엔티티 종류, "WORKS_AT / SUPERSEDES / APPROVED_BY" 같은 관계 종류로 구성.</dd></div>
+        <div class="glossary-entry" data-term="embedding" tabindex="0"><dt>Embedding <span class="term-en">(임베딩)</span></dt><dd data-i18n="glossary.def.embedding">텍스트를 <strong>숫자 벡터로 변환</strong>한 것. 이를 통해 "비슷한 의미" 를 가진 문서를 빠르게 찾을 수 있습니다.</dd></div>
+      </dl>
+    </section>
+    <section class="glossary-section" data-category="audit">
+      <h2 data-i18n="glossary.cat.audit">감사 + 시점</h2>
+      <dl class="glossary-list">
+        <div class="glossary-entry" data-term="audit-log" tabindex="0"><dt>Audit log <span class="term-en">(감사 로그)</span></dt><dd data-i18n="glossary.def.audit_log">시스템에서 일어난 <strong>모든 동작의 기록</strong>. 누가 언제 어떤 질문을 했는지, 어떤 문서를 봤는지, 어떤 변경을 했는지 모두 저장됩니다. 위조 불가능 (append-only).</dd></div>
+        <div class="glossary-entry" data-term="trace-id" tabindex="0"><dt>trace_id <span class="term-en">(추적 ID)</span></dt><dd data-i18n="glossary.def.trace_id">한 번의 질문/답변 흐름 전체를 <strong>고유하게 식별하는 ID</strong>. 나중에 "이 답이 어떻게 만들어졌지?" 추적할 때 사용. 모든 audit log 행에 함께 기록됩니다.</dd></div>
+        <div class="glossary-entry" data-term="replay" tabindex="0"><dt>Replay <span class="term-en">(재생)</span></dt><dd data-i18n="glossary.def.replay">과거 어떤 시점의 시스템 상태를 <strong>바이트 단위로 똑같이 재구성</strong> 하는 기능. audit log 만 있으면 어느 시점이든 재현 가능.</dd></div>
+        <div class="glossary-entry" data-term="time-travel" tabindex="0"><dt>Time-travel <span class="term-en">(시점 복원)</span></dt><dd data-i18n="glossary.def.time_travel">관리자 → 그래프 페이지에서 시점 선택 → 그 시점의 시스템 상태를 보거나 되돌리는 기능. 실수 복구 + forensic 분석에 사용.</dd></div>
+        <div class="glossary-entry" data-term="supersede" tabindex="0"><dt>Supersede <span class="term-en">(관계 갱신)</span></dt><dd data-i18n="glossary.def.supersede">예: "휴가 정책 v3 가 v2 를 supersede 한다" = 더 새로운 버전이 이전 버전을 대체. <strong>이전 버전은 지워지지 않고</strong> 체인 형태로 보존되어, 시점 복원이 가능합니다.</dd></div>
+        <div class="glossary-entry" data-term="cascade" tabindex="0"><dt>Cascade <span class="term-en">(연쇄 무효화)</span></dt><dd data-i18n="glossary.def.cascade">한 문서를 삭제했을 때 그 문서를 근거로 한 다른 정보들을 <strong>자동으로 비활성화</strong>하는 동작. "이 정보의 근거였던 문서가 없어졌으니 정보도 의심스러움" 표시.</dd></div>
+      </dl>
+    </section>
+    <section class="glossary-section" data-category="quality">
+      <h2 data-i18n="glossary.cat.quality">답변 품질</h2>
+      <dl class="glossary-list">
+        <div class="glossary-entry" data-term="abstention" tabindex="0"><dt>Abstention <span class="term-en">(회피)</span></dt><dd data-i18n="glossary.def.abstention">시스템이 답을 모를 때 <strong>"정보가 없습니다" 라고 솔직하게 답하는 것</strong>. 추측해서 잘못된 답을 만드는 것보다 회피가 옳은 행동입니다.</dd></div>
+        <div class="glossary-entry" data-term="hallucination" tabindex="0"><dt>Hallucination <span class="term-en">(환각)</span></dt><dd data-i18n="glossary.def.hallucination">LLM 이 사실이 아닌 내용을 <strong>그럴듯하게 만들어내는 현상</strong>. SEKOS 는 회피 + 근거 표시로 환각을 최소화합니다.</dd></div>
+        <div class="glossary-entry" data-term="citation" tabindex="0"><dt>Citation <span class="term-en">(근거 인용)</span></dt><dd data-i18n="glossary.def.citation">답변에 <strong>어떤 문서의 어느 부분을 사용했는지</strong> 출처를 함께 표시하는 것. 답을 검증 + 재확인할 수 있게 합니다.</dd></div>
+        <div class="glossary-entry" data-term="path-coverage" tabindex="0"><dt>Path coverage <span class="term-en">(경로 적중률)</span></dt><dd data-i18n="glossary.def.path_coverage">질문에 답하는 데 필요한 <strong>실제 근거 문서를 시스템이 얼마나 찾았는지</strong> 측정한 비율. SEKOS Graph-RAG = 0.41 (벡터 검색만 쓰면 0.00).</dd></div>
+      </dl>
+    </section>
+    <section class="glossary-section" data-category="security">
+      <h2 data-i18n="glossary.cat.security">보안 + 권한</h2>
+      <dl class="glossary-list">
+        <div class="glossary-entry" data-term="rbac" tabindex="0"><dt>RBAC <span class="term-en">(역할 기반 접근 제어)</span></dt><dd data-i18n="glossary.def.rbac">사용자의 <strong>역할에 따라</strong> 무엇을 볼 수 있는지 결정. 예: "admin / employee / external" 역할별로 접근 가능 자료가 다름.</dd></div>
+        <div class="glossary-entry" data-term="abac" tabindex="0"><dt>ABAC <span class="term-en">(속성 기반 접근 제어)</span></dt><dd data-i18n="glossary.def.abac">역할 + 문서 속성 (예: "기밀 등급") 의 조합으로 접근을 결정. RBAC 보다 세밀한 통제.</dd></div>
+        <div class="glossary-entry" data-term="oidc" tabindex="0"><dt>OIDC <span class="term-en">(OpenID Connect)</span></dt><dd data-i18n="glossary.def.oidc">회사의 SSO (Single Sign-On) 시스템과 SEKOS 를 <strong>연동</strong> 하는 표준. SEKOS 직접 비밀번호를 받지 않고 회사 IdP 에 위임.</dd></div>
+        <div class="glossary-entry" data-term="approval-evidence" tabindex="0"><dt>Approval evidence <span class="term-en">(승인 증거)</span></dt><dd data-i18n="glossary.def.approval_evidence">변경 승인 시 <strong>운영자의 신원을 암호학적으로 기록</strong>한 정보 (SSO 토큰 또는 OS 사용자 ID 의 해시). 사후 위조 불가능.</dd></div>
+        <div class="glossary-entry" data-term="csp" tabindex="0"><dt>CSP <span class="term-en">(Content Security Policy)</span></dt><dd data-i18n="glossary.def.csp">브라우저가 어떤 스크립트/스타일을 실행할 수 있는지 <strong>제한 하는 보안 정책</strong>. XSS 공격 방어.</dd></div>
+        <div class="glossary-entry" data-term="tenant" tabindex="0"><dt>Tenant <span class="term-en">(테넌트)</span></dt><dd data-i18n="glossary.def.tenant">한 SEKOS 인스턴스에 <strong>여러 고객사가 들어 있을 때 각 고객사</strong>. 예: SaaS 운영 시 acme / globex 가 같은 서버를 쓰지만 데이터는 분리.</dd></div>
+      </dl>
+    </section>
+    <section class="glossary-section" data-category="ops">
+      <h2 data-i18n="glossary.cat.ops">운영자 동작</h2>
+      <dl class="glossary-list">
+        <div class="glossary-entry" data-term="change-request" tabindex="0"><dt>Change Request (CR) <span class="term-en">(변경 요청)</span></dt><dd data-i18n="glossary.def.change_request">직원이 정보를 수정하고 싶을 때 만드는 <strong>"제안" 상태의 변경</strong>. 운영자가 검토 후 승인/거부할 때까지 실제 시스템에는 적용되지 않습니다.</dd></div>
+        <div class="glossary-entry" data-term="rollback" tabindex="0"><dt>Rollback <span class="term-en">(롤백)</span></dt><dd data-i18n="glossary.def.rollback">잘못된 변경을 <strong>되돌리는 동작</strong>. SEKOS 에는 (a) "최근 변경 되돌리기" + (b) "특정 시점으로 복원" 두 가지가 있습니다.</dd></div>
+        <div class="glossary-entry" data-term="contradiction-arbiter" tabindex="0"><dt>Contradiction arbiter <span class="term-en">(모순 중재)</span></dt><dd data-i18n="glossary.def.contradiction_arbiter">새로 들어온 정보가 기존 정보와 충돌할 때 <strong>4 가지 규칙으로 어떻게 처리할지 결정</strong>하는 모듈. LLM 호출 없이 결정론적.</dd></div>
+        <div class="glossary-entry" data-term="reasoning-trace" tabindex="0"><dt>Reasoning trace <span class="term-en">(추론 흔적)</span></dt><dd data-i18n="glossary.def.reasoning_trace">한 번의 질문/답변에서 시스템이 <strong>어떤 단계들을 거쳤는지</strong> 의 기록. 관리자 → 추론 흐름 보기 페이지에서 시각화하여 볼 수 있음.</dd></div>
+      </dl>
+    </section>
+    <div id="glossary-no-results" class="empty-state" hidden data-i18n="glossary.search.no_results">검색 결과가 없습니다.</div>
+    <p class="glossary-footer-note" data-i18n="glossary.footer_note">다른 페이지에서 <span class="glossary-term-demo">점선 밑줄</span> 이 그어진 단어 위에 마우스를 올리면 같은 설명이 툴팁으로 나타납니다.</p>
+  </section>
+
+</main>
+
+<script src="/static/i18n.js"></script>
+<script src="/static/auth.js"></script>
+<script src="/static/intro.js"></script>
+<!-- onboarding step nav drives the #tour section -->
+<script src="/static/onboarding.js"></script>
+<!-- glossary search drives the #glossary section -->
+<script src="/static/glossary.js"></script>
+<script src="/static/workspace-badge.js"></script>
+</body>
+</html>
