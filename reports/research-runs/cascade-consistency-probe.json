@@ -1,0 +1,71 @@
+{
+  "fixture": "eval\\cascade_consistency_fixture.json",
+  "scenarios": 4,
+  "metrics": {
+    "current": {
+      "invalidated_leakage": 3,
+      "active_dropped": 0,
+      "consistent_scenarios": "1/4",
+      "active_retention": 1.0
+    },
+    "filtered_fix": {
+      "invalidated_leakage": 0,
+      "active_dropped": 0,
+      "consistent_scenarios": "4/4",
+      "active_retention": 1.0
+    }
+  },
+  "rows": [
+    {
+      "scenario": "edit_dropped_relation",
+      "current": {
+        "leaked": [
+          "Gamma"
+        ],
+        "dropped_active": []
+      },
+      "filtered": {
+        "leaked": [],
+        "dropped_active": []
+      }
+    },
+    {
+      "scenario": "superseded_relation",
+      "current": {
+        "leaked": [
+          "Zeta"
+        ],
+        "dropped_active": []
+      },
+      "filtered": {
+        "leaked": [],
+        "dropped_active": []
+      }
+    },
+    {
+      "scenario": "expired_relation",
+      "current": {
+        "leaked": [
+          "Kappa"
+        ],
+        "dropped_active": []
+      },
+      "filtered": {
+        "leaked": [],
+        "dropped_active": []
+      }
+    },
+    {
+      "scenario": "all_active_control",
+      "current": {
+        "leaked": [],
+        "dropped_active": []
+      },
+      "filtered": {
+        "leaked": [],
+        "dropped_active": []
+      }
+    }
+  ],
+  "verdict": "CURRENT live traversal LEAKS lifecycle-deactivated relations (status ignored); the status-aware filter removes the leak with full active-relation retention."
+}
