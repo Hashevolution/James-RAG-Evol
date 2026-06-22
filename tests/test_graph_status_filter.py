@@ -72,6 +72,56 @@ class LiveContextExcludesDeadEdgeTests(unittest.TestCase):
             os.environ.pop("JAMES_DISABLE_STATUS_FILTER", None)
 
 
+class ValidityWindowTests(unittest.TestCase):
+    """v0.6.1 iter3 — relation_is_live honors the T1 validity window for
+    current-state queries (the expiration sweep is batch, not per-query,
+    so a time-expired-but-unswept edge would otherwise leak)."""
+    def setUp(self):
+        os.environ.pop("JAMES_DISABLE_STATUS_FILTER", None)
+        from datetime import datetime, timezone
+        self.at = datetime(2026, 6, 22, tzinfo=timezone.utc)
+
+    def _rel(self, frm=None, to=None):
+        r = {"target": "X", "label": "관련", "confidence": 0.9,
+             "status": {"active": True}, "mutation_type": "active"}
+        if frm or to:
+            r["validity"] = {"from": frm, "to": to}
+        return r
+
+    def test_expired_to_in_past_not_live(self):
+        self.assertFalse(relation_is_live(
+            self._rel(to="2020-01-01T00:00:00Z"), at=self.at))
+
+    def test_not_yet_valid_from_in_future_not_live(self):
+        self.assertFalse(relation_is_live(
+            self._rel(frm="2099-01-01T00:00:00Z"), at=self.at))
+
+    def test_within_window_is_live(self):
+        self.assertTrue(relation_is_live(
+            self._rel(frm="2020-01-01T00:00:00Z", to="2099-01-01T00:00:00Z"),
+            at=self.at))
+
+    def test_no_validity_is_live(self):
+        self.assertTrue(relation_is_live(self._rel(), at=self.at))
+
+    def test_unparseable_validity_is_permissive(self):
+        self.assertTrue(relation_is_live(self._rel(to="not-a-date"), at=self.at))
+
+    def test_context_excludes_time_expired_edge(self):
+        # real build_graph_context_str, real now: a 2020 to-date is expired.
+        eng = object.__new__(GraphEngine)
+        ent = {"name": "Omicron", "entity_type": "concept", "relations": [
+            {"target": "Pi", "label": "관련", "confidence": 0.9,
+             "status": {"active": True}, "mutation_type": "active"},
+            {"target": "Rho", "label": "관련", "confidence": 0.9,
+             "status": {"active": True}, "mutation_type": "active",
+             "validity": {"from": "2019-01-01T00:00:00Z", "to": "2020-01-01T00:00:00Z"}},
+        ]}
+        ctx = eng.build_graph_context_str([ent], [], 0.0)
+        self.assertIn("Pi", ctx)
+        self.assertNotIn("Rho", ctx)
+
+
 class GraphScoreExcludesDeadTests(unittest.TestCase):
     """v0.6.1 iter2 — a deactivated edge must not inflate compute_graph_score
     (which drives DFS halting + ranking)."""
