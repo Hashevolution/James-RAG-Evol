@@ -1185,6 +1185,9 @@ const TRANSLATIONS = {
 
     /* ── Reasoning Graph (v0.2 Axis 3 Observability) ── */
     'graph.title':               'Reasoning Graph',
+    'graph.hub.tab_graph':       'Graph',
+    'graph.hub.tab_flow':        'Reasoning flow',
+    'graph.hub.tab_rollback':    'Rollback',
     'graph.back_admin':          'Admin',
     'graph.back_chat':           'Chat',
     'graph.filter.source':       'Source',
@@ -2410,6 +2413,9 @@ const TRANSLATIONS = {
 
     /* ── 추론 그래프 (v0.2 Axis 3 옵저버빌리티) ── */
     'graph.title':               '추론 그래프',
+    'graph.hub.tab_graph':       '그래프',
+    'graph.hub.tab_flow':        '추론 흐름',
+    'graph.hub.tab_rollback':    '롤백',
     'graph.back_admin':          '관리자',
     'graph.back_chat':           '챗',
     'graph.filter.source':       '소스',
