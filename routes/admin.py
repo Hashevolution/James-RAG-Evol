@@ -706,6 +706,8 @@ async def admin_audit_recent_traces(
     api_key: str,
     limit:   int = 20,
     day:     str = "",
+    q:       str = "",
+    days:    int = 14,
     role:    str = Depends(get_role_from_request),
 ):
     """List the most recent reasoning trace IDs for the non-developer
@@ -733,39 +735,65 @@ async def admin_audit_recent_traces(
     from core.observability import _trace_root
 
     cap = max(1, min(int(limit or 20), 100))
+    q_norm = (q or "").strip().lower()
+    root = _trace_root()
 
+    # Which day partitions to scan. A keyword search (`q`) with no
+    # explicit `day` spans the most recent `days` partitions so an older
+    # question is findable; a plain browse stays on the one day (today).
     day_str = (day or "").strip()
-    if not day_str:
+    if not day_str and not q_norm:
         day_str = _dt.now().strftime("%Y-%m-%d")
-    try:
-        _dt.strptime(day_str, "%Y-%m-%d")
-    except ValueError:
-        raise HTTPException(
-            status_code=400,
-            detail="'day' must be YYYY-MM-DD",
-        )
+    if day_str:
+        try:
+            _dt.strptime(day_str, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="'day' must be YYYY-MM-DD",
+            )
 
-    day_dir = _trace_root() / day_str
-    if not day_dir.exists() or not day_dir.is_dir():
-        return {"ok": True, "traces": [], "day": day_str}
+    def _valid_day(name: str) -> bool:
+        try:
+            _dt.strptime(name, "%Y-%m-%d")
+            return True
+        except ValueError:
+            return False
+
+    if day_str:
+        day_dirs = [root / day_str]
+    else:
+        lookback = max(1, min(int(days or 14), 60))
+        try:
+            dirs = sorted(
+                (d for d in root.iterdir() if d.is_dir() and _valid_day(d.name)),
+                key=lambda d: d.name, reverse=True,
+            )
+        except OSError:
+            dirs = []
+        day_dirs = dirs[:lookback]
 
     files = []
-    try:
-        for entry in day_dir.iterdir():
-            if entry.is_file() and entry.suffix == ".jsonl":
-                files.append(entry)
-    except OSError:
-        return {"ok": True, "traces": [], "day": day_str}
+    for d in day_dirs:
+        if not d.exists() or not d.is_dir():
+            continue
+        try:
+            for entry in d.iterdir():
+                if entry.is_file() and entry.suffix == ".jsonl":
+                    files.append(entry)
+        except OSError:
+            continue
 
-    # Sort by mtime descending — most recent first.
+    # Most recent first. Without a query we need only `cap` files; with a
+    # query we read more to find matches, but bound the scan so a large
+    # history can't stall the request.
     files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-    files = files[:cap]
+    scan_limit = cap if not q_norm else max(cap, 400)
+    files = files[:scan_limit]
 
-    out = []
-    for path in files:
-        trace_id = path.stem
+    def _summarise(path):
         summary = {
-            "trace_id":     trace_id,
+            "trace_id":     path.stem,
             "stage_count":  0,
             "first_ts_ns":  None,
             "last_ts_ns":   None,
@@ -801,9 +829,19 @@ async def admin_audit_recent_traces(
                             summary["user"] = v.strip()[:64]
         except OSError:
             pass
-        out.append(summary)
+        return summary
 
-    return {"ok": True, "traces": out, "day": day_str}
+    out = []
+    for path in files:
+        s = _summarise(path)
+        if q_norm and q_norm not in (s["question"] or "").lower():
+            continue
+        out.append(s)
+        if len(out) >= cap:
+            break
+
+    return {"ok": True, "traces": out, "day": day_str,
+            "q": q, "scanned": len(files)}
 
 
 @router.get(
