@@ -217,3 +217,7 @@ docs/internal/
 james_backup_*/
 backup_*.zip
 *.old
+
+# visual-regression: current captures (baselines under baseline/ are committed)
+reports/visual/*.png
+reports/_viz_server.log
