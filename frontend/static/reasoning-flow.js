@@ -18,39 +18,39 @@
    * one extra "description" field per stage explaining what it does
    * in plain Korean. Surface the description in the detail panel. */
   var STAGE_META = {
-    auth:        { icon: '🔐', label: '권한 확인',     phase: 'retrieve',
+    auth:        { icon: '', label: '권한 확인',     phase: 'retrieve',
                    desc: '요청자가 이 질문을 할 권한이 있는지 확인합니다.' },
-    risky_coding_blocked: { icon: '🛑', label: '위험 명령 차단', phase: 'retrieve',
+    risky_coding_blocked: { icon: '', label: '위험 명령 차단', phase: 'retrieve',
                             desc: '위험한 명령이 감지되어 차단되었습니다.' },
-    retrieve:    { icon: '🔍', label: '자료 검색',     phase: 'retrieve',
+    retrieve:    { icon: '', label: '자료 검색',     phase: 'retrieve',
                    desc: '사내 문서에서 질문과 관련된 자료를 찾습니다.' },
-    rerank:      { icon: '🎯', label: '재정렬',        phase: 'retrieve',
+    rerank:      { icon: '', label: '재정렬',        phase: 'retrieve',
                    desc: '찾은 자료를 질문과의 관련성 순으로 다시 정렬합니다.' },
-    graph:       { icon: '🕸️', label: '관계 그래프',   phase: 'expand',
+    graph:       { icon: '', label: '관계 그래프',   phase: 'expand',
                    desc: '온톨로지 그래프에서 관련된 엔티티들의 관계를 탐색합니다.' },
-    tool:        { icon: '🔧', label: '도구 호출',     phase: 'expand',
+    tool:        { icon: '', label: '도구 호출',     phase: 'expand',
                    desc: '필요한 외부 도구 (계산기, 검색, 코드 실행 등) 를 호출합니다.' },
-    coding_route: { icon: '⌨️', label: '코딩 라우팅',  phase: 'expand',
+    coding_route: { icon: '', label: '코딩 라우팅',  phase: 'expand',
                     desc: '코딩 질문을 적절한 LLM 으로 라우팅합니다.' },
-    coding_llm_pick: { icon: '⚙️', label: '모델 선택', phase: 'expand',
+    coding_llm_pick: { icon: '', label: '모델 선택', phase: 'expand',
                        desc: '쿼리 복잡도에 맞는 LLM 을 선택합니다.' },
-    coding_user_pick: { icon: '👤', label: '사용자 모델 선택', phase: 'expand',
+    coding_user_pick: { icon: '', label: '사용자 모델 선택', phase: 'expand',
                         desc: '사용자가 지정한 LLM 으로 라우팅합니다.' },
-    coding_done: { icon: '✓',  label: '코딩 완료',     phase: 'verify',
+    coding_done: { icon: '',  label: '코딩 완료',     phase: 'verify',
                    desc: '코딩 응답 생성이 완료되었습니다.' },
-    coding_llm_error: { icon: '⚠️', label: '코더 오류', phase: 'verify',
+    coding_llm_error: { icon: '', label: '코더 오류', phase: 'verify',
                         desc: 'LLM 호출 중 오류가 발생했습니다.' },
-    coding_fallback_done: { icon: '↻',  label: 'Fallback 완료', phase: 'verify',
+    coding_fallback_done: { icon: '',  label: 'Fallback 완료', phase: 'verify',
                             desc: '주 모델 실패 후 대체 모델로 응답을 생성했습니다.' },
-    coding_fallback_error: { icon: '⚠️', label: 'Fallback 오류', phase: 'verify',
+    coding_fallback_error: { icon: '', label: 'Fallback 오류', phase: 'verify',
                              desc: '대체 모델도 실패했습니다.' },
-    coding_user_pick_done: { icon: '✓', label: '사용자 모델 완료', phase: 'verify',
+    coding_user_pick_done: { icon: '', label: '사용자 모델 완료', phase: 'verify',
                              desc: '사용자가 선택한 LLM 으로 응답 생성 완료.' },
-    coding_user_pick_error: { icon: '⚠️', label: '사용자 모델 오류', phase: 'verify',
+    coding_user_pick_error: { icon: '', label: '사용자 모델 오류', phase: 'verify',
                               desc: '사용자가 선택한 LLM 호출 실패.' },
-    answer:      { icon: '🤖', label: '답변 생성',     phase: 'verify',
+    answer:      { icon: '', label: '답변 생성',     phase: 'verify',
                    desc: '찾은 자료를 바탕으로 LLM 이 답변을 생성합니다.' },
-    complete:    { icon: '✅', label: '완료',          phase: 'verify',
+    complete:    { icon: '', label: '완료',          phase: 'verify',
                    desc: '추론 과정이 모두 완료되었습니다.' }
   };
 
@@ -255,7 +255,7 @@
     for (var i = 0; i < stages.length; i++) {
       var s = stages[i];
       var meta = STAGE_META[s.stage] || {
-        icon: '·', label: s.stage || 'unknown', phase: 'verify',
+        icon: '', label: s.stage || 'unknown', phase: 'verify',
         desc: '',
       };
       phases[meta.phase].push({ idx: i, stage: s, meta: meta });
@@ -332,7 +332,7 @@
     var stage = currentTraceStages[idx];
     if (!stage) return;
     var meta = STAGE_META[stage.stage] || {
-      icon: '·', label: stage.stage || '?', desc: '', phase: 'verify',
+      icon: '', label: stage.stage || '?', desc: '', phase: 'verify',
     };
 
     // Mark the selected card.

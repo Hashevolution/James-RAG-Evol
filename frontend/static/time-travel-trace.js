@@ -35,23 +35,23 @@
   // chat panel only loads on /, not /graph; reusing the symbol
   // would require a shared module the project doesn't have yet.
   var STAGE_META = {
-    auth:                  { icon: '🔐', label: 'Auth check',         phase: 'retrieve' },
-    risky_coding_blocked:  { icon: '🛑', label: 'Risky cmd blocked',  phase: 'retrieve' },
-    retrieve:              { icon: '🔍', label: 'Retrieve',           phase: 'retrieve' },
-    rerank:                { icon: '🎯', label: 'Rerank',             phase: 'retrieve' },
-    graph:                 { icon: '🕸️', label: 'Graph expand',       phase: 'expand'   },
-    tool:                  { icon: '🔧', label: 'Tool call',          phase: 'expand'   },
-    coding_route:          { icon: '⌨️', label: 'Coding route',       phase: 'expand'   },
-    coding_llm_pick:       { icon: '⚙️', label: 'Model pick',         phase: 'expand'   },
-    coding_user_pick:      { icon: '👤', label: 'User model pick',    phase: 'expand'   },
-    coding_done:           { icon: '✓',  label: 'Coding done',        phase: 'verify'   },
-    coding_llm_error:      { icon: '⚠️', label: 'Coder LLM error',    phase: 'verify'   },
-    coding_fallback_done:  { icon: '↻',  label: 'Fallback done',      phase: 'verify'   },
-    coding_fallback_error: { icon: '⚠️', label: 'Fallback error',     phase: 'verify'   },
-    coding_user_pick_done: { icon: '✓',  label: 'User pick done',     phase: 'verify'   },
-    coding_user_pick_error:{ icon: '⚠️', label: 'User pick error',    phase: 'verify'   },
-    answer:                { icon: '🤖', label: 'Answer',             phase: 'verify'   },
-    complete:              { icon: '✅', label: 'Complete',           phase: 'verify'   }
+    auth:                  { icon: '', label: 'Auth check',         phase: 'retrieve' },
+    risky_coding_blocked:  { icon: '', label: 'Risky cmd blocked',  phase: 'retrieve' },
+    retrieve:              { icon: '', label: 'Retrieve',           phase: 'retrieve' },
+    rerank:                { icon: '', label: 'Rerank',             phase: 'retrieve' },
+    graph:                 { icon: '', label: 'Graph expand',       phase: 'expand'   },
+    tool:                  { icon: '', label: 'Tool call',          phase: 'expand'   },
+    coding_route:          { icon: '', label: 'Coding route',       phase: 'expand'   },
+    coding_llm_pick:       { icon: '', label: 'Model pick',         phase: 'expand'   },
+    coding_user_pick:      { icon: '', label: 'User model pick',    phase: 'expand'   },
+    coding_done:           { icon: '',  label: 'Coding done',        phase: 'verify'   },
+    coding_llm_error:      { icon: '', label: 'Coder LLM error',    phase: 'verify'   },
+    coding_fallback_done:  { icon: '',  label: 'Fallback done',      phase: 'verify'   },
+    coding_fallback_error: { icon: '', label: 'Fallback error',     phase: 'verify'   },
+    coding_user_pick_done: { icon: '',  label: 'User pick done',     phase: 'verify'   },
+    coding_user_pick_error:{ icon: '', label: 'User pick error',    phase: 'verify'   },
+    answer:                { icon: '', label: 'Answer',             phase: 'verify'   },
+    complete:              { icon: '', label: 'Complete',           phase: 'verify'   }
   };
 
   var PHASE_ORDER = ['retrieve', 'expand', 'verify'];
@@ -156,7 +156,7 @@
     for (var i = 0; i < stages.length; i++) {
       var s = stages[i] || {};
       var name = s.stage || '';
-      var meta = STAGE_META[name] || { icon: '·', label: name || 'unknown',
+      var meta = STAGE_META[name] || { icon: '', label: name || 'unknown',
                                        phase: 'verify' };
       buckets[meta.phase].push({ stage: name, meta: meta, raw: s });
     }

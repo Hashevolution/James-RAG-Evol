@@ -214,7 +214,7 @@
         document.execCommand('copy');
         document.body.removeChild(ta);
       }
-      _setMsg('📋 ' + _tt('tplchat.copy_done', 'Copied to clipboard.'));
+      _setMsg('' + _tt('tplchat.copy_done', 'Copied to clipboard.'));
     } catch (e) {
       _setMsg('❌ ' + e.message);
     }
