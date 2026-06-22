@@ -75,6 +75,7 @@
   };
 
   var currentTraceStages = [];
+  var _currentTraceId = '';  // v0.6.1 (gap ③) — last-loaded trace for cross-link
 
   function $(id) { return document.getElementById(id); }
 
@@ -202,6 +203,7 @@
 
   function loadTrace(traceId) {
     if (!traceId) return;
+    _currentTraceId = traceId;  // v0.6.1 (gap ③) — for the graph cross-link
     var input = $('flow-trace-input');
     if (input) input.value = traceId;
 
@@ -423,6 +425,19 @@
     }
     if (refreshBtn) {
       refreshBtn.addEventListener('click', function () { loadRecentTraces(); });
+    }
+    // v0.6.1 (gap ③) — "그래프에서 보기": load the current trace into the
+    // graph Time-Travel trail and switch to the graph tab (same page).
+    var toGraphBtn = $('flow-to-graph-btn');
+    if (toGraphBtn) {
+      toGraphBtn.addEventListener('click', function () {
+        if (!_currentTraceId) return;
+        var ttInput = $('time-travel-trace-input');
+        var ttApply = $('time-travel-trace-apply');
+        if (ttInput) ttInput.value = _currentTraceId;
+        if (window.JAMES_GraphTabs) window.JAMES_GraphTabs.select('graph');
+        if (ttApply) ttApply.click();
+      });
     }
     // v0.6.1 (gap ②) — debounced question search over recent traces.
     var searchInput = $('flow-search-input');

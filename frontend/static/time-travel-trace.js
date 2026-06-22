@@ -233,13 +233,32 @@
       '<span style="color:var(--text)">' +
       escapeHtml(String(total)) + '</span></div>';
 
+    // v0.6.1 (gap ③) — jump to the swimlane flow view of this same trace.
+    var toFlowBtn = traceId ?
+      ('<button id="trace-to-flow-btn" type="button" ' +
+       'style="font-size:10px;padding:4px 8px;margin-bottom:8px;cursor:pointer;' +
+       'background:var(--surface-2);border:1px solid var(--border);' +
+       'border-radius:6px;color:var(--text-soft)">' +
+       escapeHtml(t('graph.timetravel.trace.to_flow', '추론 흐름으로 보기 →')) +
+       '</button>') : '';
+
     var buckets = bucketStages(stages);
     var phaseHtml = '';
     for (var i = 0; i < PHASE_ORDER.length; i++) {
       phaseHtml += renderPhase(PHASE_ORDER[i], buckets[PHASE_ORDER[i]]);
     }
 
-    panel.innerHTML = header + phaseHtml;
+    panel.innerHTML = header + toFlowBtn + phaseHtml;
+
+    var toFlow = document.getElementById('trace-to-flow-btn');
+    if (toFlow) {
+      toFlow.addEventListener('click', function () {
+        if (window.JAMES_GraphTabs) window.JAMES_GraphTabs.select('flow');
+        if (window.JAMES_ReasoningFlow && window.JAMES_ReasoningFlow.loadTrace) {
+          window.JAMES_ReasoningFlow.loadTrace(traceId);
+        }
+      });
+    }
   }
 
   // ─── HTTP fetch ────────────────────────────────────────────────

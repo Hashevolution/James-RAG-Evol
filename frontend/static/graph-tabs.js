@@ -65,6 +65,10 @@
     show(tabFromHash());
   }
 
+  // v0.6.1 (gap ③) — programmatic tab switch for flow↔graph cross-links
+  // (reasoning-flow.js "그래프에서 보기" / time-travel-trace.js "흐름으로 보기").
+  window.JAMES_GraphTabs = { select: selectTab, show: show };
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', bind);
   } else {
