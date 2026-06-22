@@ -116,7 +116,7 @@ function _bindFrontendEvents() {
       case 'set-source':                setSource(t.getAttribute('data-source'), t); break;
       case 'toggle-lang':               toggleLang(); break;
       case 'clear-history':             clearHistory(); break;
-      // v0.6.1 v3 (2026-06-15) — Claude-style sidebar 💬 채팅 row.
+      // v0.6.1 v3 (2026-06-15) — Claude-style sidebar 채팅 row.
       // v4 (2026-06-16) — Also forces the sidebar to the sessions
       // panel + reloads the list so the operator sees the latest
       // history immediately (operator catch — the Loading...
@@ -332,7 +332,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // v0.6.1 v4 (2026-06-16) — sessions list auto-load on boot.
   // The "이전 대화" section header (Claude-style) made the static
   // "Loading..." placeholder visibly stuck. Previously the panel
-  // only loaded on user tap of the 🕘 mode tab. Now we kick the
+  // only loaded on user tap of the mode tab. Now we kick the
   // load on boot if there's any auth (token or api_key) present —
   // the loadSessionList handler itself surfaces "로드 실패" if the
   // server rejects, so guests don't see the placeholder forever.
@@ -511,9 +511,9 @@ function populateModelPopover() {
     return;
   }
   const active = (selectedModel || '').trim();
-  const weightIcon = w => w === 'light' ? '🪶'
-                       : w === 'heavy' ? '🐘'
-                       : '⚖️';
+  const weightIcon = w => w === 'light' ? '경량'
+                       : w === 'heavy' ? '대형'
+                       : '중간';
   list.innerHTML = rows.map(r => {
     const isActive = active === r.tag;
     const isDefault = !active && resolverTag === r.tag;
@@ -603,9 +603,9 @@ async function loadModePickerOptions() {
    모드가 바뀌면 그 모드의 models[] 후보로 다시 채운다. 후보가 0-1개
    이거나 mode가 auto/meta면 picker 숨김.
    weight 표기:
-     light  → 🪶 (가벼움 / 빠름)
-     medium → ⚖️
-     heavy  → 🐘 (무거움 / 정확)
+     light  → (가벼움 / 빠름)
+     medium → 
+     heavy  → (무거움 / 정확)
    미설치 모델은 ⚠️ 마커 + 설치 버튼이 그 모델 install 동작. */
 function refreshModelPicker() {
   const wrap = document.getElementById('model-picker-wrap');
@@ -626,9 +626,9 @@ function refreshModelPicker() {
   selectedModel = savedValid
                 ? saved
                 : (models.find(m => m.default) || models[0]).tag;
-  const weightIcon = w => w === 'light' ? '🪶'
-                       : w === 'heavy' ? '🐘'
-                       : '⚖️';
+  const weightIcon = w => w === 'light' ? '경량'
+                       : w === 'heavy' ? '대형'
+                       : '중간';
   // [item #1, 2026-05-09] explicit installed marker so user can scan
   // the dropdown and immediately see which models are ready vs need
   // a pull. Previously absence of ⚠️ silently meant "installed" — too
@@ -701,7 +701,7 @@ function updateInstallButton() {
   }
   btn.style.display = 'inline-block';
   btn.dataset.model = target;
-  btn.textContent = `📦 ${target} 설치`;
+  btn.textContent = `${target} 설치`;
   btn.title = `${target} 모델이 Ollama에 없습니다. 클릭하여 설치 시작.`;
 }
 
@@ -709,7 +709,7 @@ function updateInstallButton() {
    서버는 ollama HTTP /api/pull 스트림을 백그라운드 thread로 파싱해서
    _install_progress 딕트에 percent/status를 기록.
    클라는 2.5s 간격으로 GET /admin/llm/install-progress?model=... 폴링.
-   설치 버튼이 "📦 X 설치" → "⏳ 23.5% (X)" → "✅ 설치됨" 으로 라이브 갱신.
+   설치 버튼이 "X 설치" → "⏳ 23.5% (X)" → "✅ 설치됨" 으로 라이브 갱신.
    사용자가 다른 페이지로 이동해도 서버 백그라운드 thread는 계속 돌아감. */
 // HTTP + 폴링 메커니즘은 llm-install.js의 LlmInstall.start()가 담당.
 // 여기는 mode-install-btn UI 렌더링만.
@@ -800,7 +800,7 @@ function checkModeRecommendation(text) {
       recommendedMode = best.key;
       const banner = document.getElementById('mode-recommend');
       if (banner) {
-        banner.textContent = `💡 ${best.label} 권장 — 클릭하여 전환`;
+        banner.textContent = `${best.label} 권장 — 클릭하여 전환`;
         banner.style.display = 'inline-block';
       }
     } else {
@@ -975,10 +975,10 @@ function toggleApiKeyVisibility() {
   if (!input) return;
   if (input.type === 'password') {
     input.type = 'text';
-    if (btn) btn.textContent = '🙈';
+    if (btn) btn.textContent = '숨김';
   } else {
     input.type = 'password';
-    if (btn) btn.textContent = '👁️';
+    if (btn) btn.textContent = '표시';
   }
 }
 
@@ -1044,7 +1044,7 @@ function logout() {
 
 /* ── W8-B: 사이드바 "내 자료" 모드 ──
    W5 의 placeholder 를 /artifacts/mine 데이터로 채움. 사용자가 rail
-   의 🕘 아이콘 클릭 시 switchSidebarMode('recent') 가 이 함수를
+   의 아이콘 클릭 시 switchSidebarMode('recent') 가 이 함수를
    호출 (index.html 의 switchSidebarMode 안 wire). JWT 없으면
    안내 메시지만 보여줌.
 */
@@ -1323,7 +1323,7 @@ let pendingReportRequest = false;
 const REPORT_REQUEST_KEYWORDS =
   /보고서|레포트|문서로|문서\s*로\s*만들|파일로\s*만들|파일\s*로\s*저장|다운로드|export|report\s*(file|format)?/i;
 
-// [#A8-6] 가장 최근 사용자 질문을 기억 → 답변 bubble의 "🌐 웹으로 더
+// [#A8-6] 가장 최근 사용자 질문을 기억 → 답변 bubble의 "웹으로 더
 // 조사" chip 클릭 시 그대로 다시 보낸다 (force_web_search=true).
 // askWithForceWeb이 직접 sendMessage를 호출하기보단 입력값을 채우고
 // 저장 후 _runQuery 핵심 로직을 직접 부르므로 입력창에 잠깐 보였다
@@ -1520,7 +1520,7 @@ async function sendMessage() {
     }
     // 지식 레벨 변화
     if (data.level_up) {
-      jamesNotify(`🎯 지식 레벨 +${data.level_up.delta} [${data.level_up.domain}]`, 'levelup');
+      jamesNotify(`지식 레벨 +${data.level_up.delta} [${data.level_up.domain}]`, 'levelup');
     }
     // 자료 없음 경고
     if (data.unified_score != null && data.unified_score < 0.1 && !data.blocked) {
@@ -1543,7 +1543,7 @@ async function sendMessage() {
       label = '⏱️ 응답 시간 초과 (3분)';
       hint  = '\n\n모델 응답이 너무 깁니다. 짧은 질문으로 다시 보내거나, 사이드바에서 더 작은 모델로 전환해보세요.';
     } else if (err && err.name === 'TypeError') {
-      label = '🌐 서버 연결 실패';
+      label = '서버 연결 실패';
       hint  = '\n\n· 폰에서: 위에서 아래로 swipe 해 페이지를 새로고침해보세요\n· PC에서: Ctrl+Shift+R 로 강제 새로고침\n· Tailscale 연결 상태를 확인해보세요';
     }
     appendMsg('james', `${label}: ${err.message}${hint}`);
@@ -1578,7 +1578,7 @@ function appendMsg(role, text) {
   const div = document.createElement('div');
   div.className = `msg ${role}`;
   div.innerHTML = `
-    <div class="avatar ${role}">${role === 'james' ? '🧠' : '👤'}</div>
+    <div class="avatar ${role}">${role === 'james' ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/></svg>' : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'}</div>
     <div class="bubble">${escHtml(text)}</div>
   `;
   messages.appendChild(div);
@@ -1597,7 +1597,7 @@ function appendJamesMsg(data) {
       (data.mode||'') + ':' + (data.answer||'').slice(0,40)
     )).slice(0,12) : '');
 
-  // [#A8-7] 웹 검색 답변에 "📥 위키 저장" chip — 사용자 직접 승인 흐름.
+  // [#A8-7] 웹 검색 답변에 "위키 저장" chip — 사용자 직접 승인 흐름.
   // pending_save_proposal_id가 있고 admin role이면 chip 노출. click →
   // /admin/proposals/{id}/approve로 직접 wiki entity 생성. 비-admin은
   // chip 미표시 (서버에서 거절될 거라 무의미). data 객체에 chip 상태 보관.
@@ -1613,7 +1613,7 @@ function appendJamesMsg(data) {
                        padding:8px 12px;cursor:pointer;color:var(--text);
                        font-size:12px;width:100%;font-family:inherit;
                        transition:all .15s">
-          <span style="color:#4caf7d;font-weight:600;margin-right:6px">📥</span>
+          <span style="color:#4caf7d;font-weight:600;margin-right:6px"></span>
           <span>이 자료를 위키로 저장 (장기 기억화)</span>
         </button>
       </div>`;
@@ -1642,7 +1642,7 @@ function appendJamesMsg(data) {
                         font-weight:600;user-select:none;display:inline-block;
                         background:rgba(79,195,247,.10);padding:3px 9px;
                         border-radius:6px;border:1px solid rgba(79,195,247,.30)">
-          🌐 웹 검색 사용됨 (${escHtml(engineLabel)} · ${sources.length}건) — 출처 보기
+          웹 검색 사용됨 (${escHtml(engineLabel)} · ${sources.length}건) — 출처 보기
         </summary>
         ${sourceLines ? `<ul style="margin:6px 0 0 18px;padding:0;font-family:var(--font-ui)">${sourceLines}</ul>` : ''}
       </details>`;
@@ -1683,7 +1683,7 @@ function appendJamesMsg(data) {
           bg:     'rgba(107,231,208,.10)',
           border: 'rgba(107,231,208,.45)',
           color:  '#6be7d0',
-          icon:   '✨',
+          icon:   '',
           label:  t('chat.web_chip_high'),
         };
       } else if (isMid) {
@@ -1695,7 +1695,7 @@ function appendJamesMsg(data) {
           bg:     'rgba(255,183,77,.10)',
           border: 'rgba(255,183,77,.45)',
           color:  '#ffb74d',
-          icon:   '🔍',
+          icon:   '',
           label:  t('chat.web_chip_mid'),
         };
       } else {
@@ -1704,7 +1704,7 @@ function appendJamesMsg(data) {
           bg:     'rgba(79,195,247,.10)',
           border: 'rgba(79,195,247,.45)',
           color:  '#4fc3f7',
-          icon:   '🌐',
+          icon:   '',
           label:  t('chat.web_chip_low'),
         };
       }
@@ -1764,7 +1764,7 @@ function appendJamesMsg(data) {
                   font-size:11px;color:#fca5a5;
                   font-family:var(--font-mono);letter-spacing:.3px"
            title="${escHtml(sensTitle)}">
-        <span aria-hidden="true">🔒</span>
+        <span aria-hidden="true"></span>
         <span>${escHtml(sensLabel)}</span>
       </div>`;
   }
@@ -1831,7 +1831,7 @@ function appendJamesMsg(data) {
                  style="cursor:pointer;font-size:11px;color:var(--muted);
                         font-family:var(--font-mono);user-select:none;
                         padding:2px 0">
-          🕸️ 그래프 경로 ${paths.length}개 보기
+          그래프 경로 ${paths.length}개 보기
         </summary>
         <div id="${pathsId}" class="graph-paths" style="margin-top:6px">
           <div class="path-title">GRAPH PATHS</div>${list}
@@ -1848,7 +1848,7 @@ function appendJamesMsg(data) {
     metaHtml += `</div>`;
   }
 
-  // 👍👎 피드백 버튼 (모든 답변) + 📥 export 버튼 (조건부)
+  // 피드백 버튼 (모든 답변) + export 버튼 (조건부)
   // item #4: export 버튼은 사용자가 직전 질문에 "보고서로 / 파일로
   // 만들어줘" 같은 키워드를 넣었을 때만 표시. 평상시 chat 답변엔
   // 시각적 잡음 없음. 답변 단위로 결정 — 다음 답변엔 다시 hidden.
@@ -1861,14 +1861,14 @@ function appendJamesMsg(data) {
   const _expBtnStyle = "background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;transition:all .15s";
   const pyExportBtn = hasCodeBlock ? `
       <button class="fb-btn export-btn" data-action="export-answer" data-format="py" data-content="${answerEscapedAttr}"
-        style="${_expBtnStyle}" title=".py 다운로드 (코드 블록만 추출)">📥 .py</button>` : '';
+        style="${_expBtnStyle}" title=".py 다운로드 (코드 블록만 추출)">.py</button>` : '';
   const exportButtons = showExportBtns ? `
       <button class="fb-btn export-btn" data-action="export-answer" data-format="md" data-content="${answerEscapedAttr}"
-        style="${_expBtnStyle}" title=".md 다운로드">📥 .md</button>
+        style="${_expBtnStyle}" title=".md 다운로드">.md</button>
       <button class="fb-btn export-btn" data-action="export-answer" data-format="docx" data-content="${answerEscapedAttr}"
-        style="${_expBtnStyle}" title=".docx 다운로드 (Word)">📥 .docx</button>
+        style="${_expBtnStyle}" title=".docx 다운로드 (Word)">.docx</button>
       <button class="fb-btn export-btn" data-action="export-answer" data-format="txt" data-content="${answerEscapedAttr}"
-        style="${_expBtnStyle}" title=".txt 다운로드 (Notepad)">📥 .txt</button>${pyExportBtn}`
+        style="${_expBtnStyle}" title=".txt 다운로드 (Notepad)">.txt</button>${pyExportBtn}`
     : pyExportBtn;
   const dirIdEsc = dirId ? escHtml(dirId) : '';
   const fbHtml = dirId ? `
@@ -1948,7 +1948,7 @@ function appendJamesMsg(data) {
   }
   let suggestionsHtml = '';
   if (suggestions.length > 0) {
-    // [N-4, 2026-05-13] Cluster header — "✨ 제안" with mint accent so
+    // [N-4, 2026-05-13] Cluster header — "제안" with mint accent so
     // the user reads "these are clickable next-step suggestions" at a
     // glance, not "more inline prose". Pre-N-4 the chips appeared bare
     // and users reported missing them entirely on long answers.
@@ -1959,7 +1959,7 @@ function appendJamesMsg(data) {
              style="display:flex;align-items:center;gap:6px;
                     font-size:11px;color:var(--accent);font-weight:700;
                     letter-spacing:.4px;text-transform:uppercase">
-          <span style="font-size:14px">✨</span>
+          <span style="font-size:14px"></span>
           <span>${escHtml(t('chat.suggestions_label'))}</span>
         </div>
         ${suggestions.map((s, i) => `
@@ -1981,7 +1981,7 @@ function appendJamesMsg(data) {
   }
 
   div.innerHTML = `
-    <div class="avatar james">🧠</div>
+    <div class="avatar james"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/></svg></div>
     <div>
       <div class="bubble">${formatAnswerWithParagraphs(cleanAnswer)}${pathsHtml}</div>
       ${truncationHint}
@@ -2193,7 +2193,7 @@ function extractNextActionSuggestions(answerText) {
   return empty;
 }
 
-/* [#A8-7] "📥 위키 저장" chip 클릭 핸들러.
+/* [#A8-7] "위키 저장" chip 클릭 핸들러.
    chat 답변에 노출된 pending_save_proposal_id로 /admin/proposals/{id}/approve
    직접 호출. admin role 필요 (chip 자체가 admin에게만 보이지만 server-side
    에서도 거절). 성공 시 toast + chip을 "✓ 저장됨" 으로 disable. */
@@ -2268,7 +2268,7 @@ async function approveWikiSave(btn) {
   }
 }
 
-/* [#A8-6] "🌐 웹 검색으로 더 조사" chip 클릭 핸들러.
+/* [#A8-6] "웹 검색으로 더 조사" chip 클릭 핸들러.
    사용자의 직전 질문을 force_web_search=true로 다시 전송.
    chip은 한 번 클릭되면 disabled로 바꿔서 중복 트리거 방지. */
 function askWithForceWeb(btn) {
@@ -2510,7 +2510,7 @@ function appendTyping(traceId) {
   const div = document.createElement('div');
   div.className = 'msg james';
   div.innerHTML = `
-    <div class="avatar james">🧠</div>
+    <div class="avatar james"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/></svg></div>
     <div class="bubble" style="min-width:220px">
       <!-- v0.5 UI #5 — aria-live=polite + role=log so screen readers
            announce reasoning stages as they arrive without yanking
@@ -2559,36 +2559,36 @@ function appendTyping(traceId) {
   // "시각적 노출 효과" exception clause — they're the small animated
   // glyphs that read at a glance during the live stream.
   const STAGE_META = {
-    auth:        { icon: '🔐', label: 'Verifying access',        color: '#999',    phase: 'retrieve' },
-    risky_coding_blocked: { icon: '🛑', label: 'Risky command blocked', color: '#f06292', phase: 'retrieve' },
-    rewrite:     { icon: '✏', label: 'Rewriting query',          color: '#7c6af7', phase: 'retrieve' },
-    classify:    { icon: '⌕', label: 'Classifying intent',       color: '#7c6af7', phase: 'retrieve' },
-    retrieve:    { icon: '🔍', label: 'Searching documents',     color: '#7c6af7', phase: 'retrieve' },
-    rerank:      { icon: '🎯', label: 'Re-ranking candidates',   color: '#7c6af7', phase: 'retrieve' },
-    merge:       { icon: '⇆', label: 'Merging evidence',         color: '#7c6af7', phase: 'retrieve' },
-    hop_blocked: { icon: '⊘', label: 'Hop blocked',              color: '#f06292', phase: 'retrieve' },
-    graph:       { icon: '🕸️', label: 'Traversing graph',        color: '#3da78a', phase: 'expand' },
-    expand:      { icon: '⇢', label: 'Expanding context',        color: '#3da78a', phase: 'expand' },
-    tool:        { icon: '🔧', label: 'Calling tool',             color: '#ffb74d', phase: 'expand' },
-    coding_route: { icon: '⌨️', label: 'Routing to coder LLM',    color: '#ffb74d', phase: 'expand' },
-    coding_llm_pick: { icon: '⚙', label: 'Picking model',         color: '#ffb74d', phase: 'expand' },
-    coding_user_pick: { icon: '⌽', label: 'User model override',  color: '#ffb74d', phase: 'expand' },
-    coding_done: { icon: '✓',  label: 'Coder LLM complete',       color: '#4caf7d', phase: 'verify' },
-    coding_llm_error: { icon: '⚠', label: 'Coder LLM error',      color: '#f06292', phase: 'verify' },
-    coding_fallback_done: { icon: '↻', label: 'Fallback complete', color: '#ffb74d', phase: 'verify' },
-    coding_fallback_error: { icon: '⚠', label: 'Fallback error',  color: '#f06292', phase: 'verify' },
-    coding_user_pick_done: { icon: '✓', label: 'User model done', color: '#4caf7d', phase: 'verify' },
-    coding_user_pick_error: { icon: '⚠', label: 'User model error', color: '#f06292', phase: 'verify' },
-    verify:      { icon: '✓', label: 'Verifying claims',         color: '#3da78a', phase: 'verify' },
-    answer:      { icon: '🤖', label: 'Generating answer',        color: '#f06292', phase: 'verify' },
-    complete:    { icon: '✓', label: 'Done',                      color: '#4caf7d', phase: 'verify' },
+    auth:        { icon: '', label: 'Verifying access',        color: '#999',    phase: 'retrieve' },
+    risky_coding_blocked: { icon: '', label: 'Risky command blocked', color: '#f06292', phase: 'retrieve' },
+    rewrite:     { icon: '', label: 'Rewriting query',          color: '#7c6af7', phase: 'retrieve' },
+    classify:    { icon: '', label: 'Classifying intent',       color: '#7c6af7', phase: 'retrieve' },
+    retrieve:    { icon: '', label: 'Searching documents',     color: '#7c6af7', phase: 'retrieve' },
+    rerank:      { icon: '', label: 'Re-ranking candidates',   color: '#7c6af7', phase: 'retrieve' },
+    merge:       { icon: '', label: 'Merging evidence',         color: '#7c6af7', phase: 'retrieve' },
+    hop_blocked: { icon: '', label: 'Hop blocked',              color: '#f06292', phase: 'retrieve' },
+    graph:       { icon: '', label: 'Traversing graph',        color: '#3da78a', phase: 'expand' },
+    expand:      { icon: '', label: 'Expanding context',        color: '#3da78a', phase: 'expand' },
+    tool:        { icon: '', label: 'Calling tool',             color: '#ffb74d', phase: 'expand' },
+    coding_route: { icon: '', label: 'Routing to coder LLM',    color: '#ffb74d', phase: 'expand' },
+    coding_llm_pick: { icon: '', label: 'Picking model',         color: '#ffb74d', phase: 'expand' },
+    coding_user_pick: { icon: '', label: 'User model override',  color: '#ffb74d', phase: 'expand' },
+    coding_done: { icon: '',  label: 'Coder LLM complete',       color: '#4caf7d', phase: 'verify' },
+    coding_llm_error: { icon: '', label: 'Coder LLM error',      color: '#f06292', phase: 'verify' },
+    coding_fallback_done: { icon: '', label: 'Fallback complete', color: '#ffb74d', phase: 'verify' },
+    coding_fallback_error: { icon: '', label: 'Fallback error',  color: '#f06292', phase: 'verify' },
+    coding_user_pick_done: { icon: '', label: 'User model done', color: '#4caf7d', phase: 'verify' },
+    coding_user_pick_error: { icon: '', label: 'User model error', color: '#f06292', phase: 'verify' },
+    verify:      { icon: '', label: 'Verifying claims',         color: '#3da78a', phase: 'verify' },
+    answer:      { icon: '', label: 'Generating answer',        color: '#f06292', phase: 'verify' },
+    complete:    { icon: '', label: 'Done',                      color: '#4caf7d', phase: 'verify' },
   };
 
   // Phase headers — English UPPERCASE debug labels (operator catch).
   const PHASE_META = {
-    retrieve: { icon: '🔎', label: 'RETRIEVE', order: 1 },
-    expand:   { icon: '🕸', label: 'EXPAND',   order: 2 },
-    verify:   { icon: '🤖', label: 'VERIFY',   order: 3 },
+    retrieve: { icon: '', label: 'RETRIEVE', order: 1 },
+    expand:   { icon: '', label: 'EXPAND',   order: 2 },
+    verify:   { icon: '', label: 'VERIFY',   order: 3 },
   };
 
   // 현재 active line을 done으로 마감 (다음 stage 시작 시 호출)
@@ -2680,7 +2680,7 @@ function appendTyping(traceId) {
       refreshPhaseState(previousActivePhase);
 
       const m = STAGE_META[stage] || {
-        icon: '·', label: stage, color: '#888', phase: 'verify',
+        icon: '', label: stage, color: '#888', phase: 'verify',
       };
       const ms = Date.now() - t0;
 
@@ -3047,11 +3047,11 @@ function jamesConfirm(opts) {
 }
 
 /* ── [P3-4 → sidebar, 2026-05-21] 세션 선택 ──
-   세션 리스트는 사이드바 'sessions' 모드로 이동. 상단 헤더 💬 버튼은
+   세션 리스트는 사이드바 'sessions' 모드로 이동. 상단 헤더 버튼은
    이전 플로팅 패널의 open/close 토글 의미를 유지: 현재 sessions 모드
    면 닫기(=기본 'upload'로 복귀), 아니면 sessions로 전환.
    switchSidebarMode 가 sessions 진입 시 loadSessionList 를 호출하므로
-   리스트는 자동 로드된다. 직접 rail 💬 아이콘 클릭도 동일 경로. */
+   리스트는 자동 로드된다. 직접 rail 아이콘 클릭도 동일 경로. */
 function toggleSessionPanel() {
   if (typeof switchSidebarMode !== 'function') return;
   const railActive = document.querySelector('.sidebar-rail-item.active');
@@ -3148,7 +3148,7 @@ async function loadSessionList() {
                data-action="switch-session" data-sid="${sidAttr}">
             <div class="session-item-title">
               ${favStar}
-              ${s.name ? '<span class="session-pinned">📌</span>' : ''}
+              ${s.name ? '<span class="session-pinned"></span>' : ''}
               ${isCurrent ? '<span class="session-current-dot">●</span>' : ''}
               <span class="session-title-text">${titleEsc}</span>
             </div>
@@ -3172,7 +3172,7 @@ async function loadSessionList() {
 
 /* ── v0.6.1 v5 (2026-06-16) — Sidebar search panel ──
  *
- * Operator catch: the 🔍 mode shipped with a "(activated in a follow-up
+ * Operator catch: the mode shipped with a "(activated in a follow-up
  * cycle)" placeholder. Reframed as a CLIENT-SIDE substring search
  * over the cached session list (`_SESSIONS_CACHE`), the most useful
  * scope without a new backend endpoint. File / wiki search is
