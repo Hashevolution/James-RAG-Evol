@@ -31,13 +31,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-HTML       = REPO_ROOT / "frontend" / "glossary.html"
+# v0.6.1 PR-intro-3 — glossary content moved into the intro front door
+# (#glossary section). glossary.js stays the driver (its own path).
+HTML       = REPO_ROOT / "frontend" / "intro.html"
 JS         = REPO_ROOT / "frontend" / "static" / "glossary.js"
 CSS        = REPO_ROOT / "frontend" / "static" / "glossary.css"
 I18N       = REPO_ROOT / "frontend" / "static" / "i18n.js"
 ADMIN_HTML = REPO_ROOT / "frontend" / "admin.html"
 GRAPH_HTML = REPO_ROOT / "frontend" / "graph.html"
-ONBOARDING_HTML = REPO_ROOT / "frontend" / "onboarding.html"
+INTRO_HTML = REPO_ROOT / "frontend" / "intro.html"
 REASONING_HTML  = REPO_ROOT / "frontend" / "reasoning-flow.html"
 ROLLBACK_HTML   = REPO_ROOT / "frontend" / "knowledge-rollback.html"
 SERVER     = REPO_ROOT / "server_llmwiki.py"
@@ -47,7 +49,7 @@ class GlossaryPageStructureTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not HTML.exists():
-            raise unittest.SkipTest("glossary.html missing")
+            raise unittest.SkipTest("intro.html (#glossary) missing")
         cls.body = HTML.read_text(encoding="utf-8")
 
     def test_five_categories(self):
@@ -149,8 +151,8 @@ class CrossPageWiringTests(unittest.TestCase):
     def test_graph_html_loads_glossary(self):
         self._assert_loads_glossary_js(GRAPH_HTML, "graph.html")
 
-    def test_onboarding_html_loads_glossary(self):
-        self._assert_loads_glossary_js(ONBOARDING_HTML, "onboarding.html")
+    def test_intro_html_loads_glossary(self):
+        self._assert_loads_glossary_js(INTRO_HTML, "intro.html")
 
     def test_reasoning_html_loads_glossary(self):
         self._assert_loads_glossary_js(REASONING_HTML, "reasoning-flow.html")

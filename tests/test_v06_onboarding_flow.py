@@ -39,7 +39,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-HTML       = REPO_ROOT / "frontend" / "onboarding.html"
+# v0.6.1 PR-intro-3 — the 5-step tour content moved into the intro front
+# door (#tour section). onboarding.js / .css are still the drivers, so
+# they keep their own paths; only the markup host changed.
+HTML       = REPO_ROOT / "frontend" / "intro.html"
 JS         = REPO_ROOT / "frontend" / "static" / "onboarding.js"
 CSS        = REPO_ROOT / "frontend" / "static" / "onboarding.css"
 I18N       = REPO_ROOT / "frontend" / "static" / "i18n.js"
@@ -51,7 +54,7 @@ class HtmlStructureTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not HTML.exists():
-            raise unittest.SkipTest(f"onboarding.html missing: {HTML}")
+            raise unittest.SkipTest(f"intro.html (#tour) missing: {HTML}")
         cls.body = HTML.read_text(encoding="utf-8")
 
     def test_html_exists(self):
@@ -87,9 +90,11 @@ class HtmlStructureTests(unittest.TestCase):
             self.assertIn(f'id="{button_id}"', self.body,
                           f"missing button: {button_id}")
 
-    def test_dont_show_again_checkbox_present(self):
-        self.assertIn('id="dont-show-again"', self.body)
-        self.assertIn('id="onboarding-checkbox"', self.body)
+    def test_tour_section_embedded_in_intro(self):
+        # v0.6.1 PR-intro-3 — the tour lives in the intro #tour section.
+        # The old per-page "don't show again" checkbox is replaced by the
+        # intro front-door auto-skip (intro.js / james_intro_seen).
+        self.assertIn('data-intro-section="tour"', self.body)
 
     def test_no_technical_jargon_in_body(self):
         # Lock: non-developer surface MUST NOT use raw technical
@@ -108,9 +113,16 @@ class HtmlStructureTests(unittest.TestCase):
             "valid_to",
             "JWT",
         ]
+        # v0.6.1 PR-intro-3 — scope the jargon check to the TOUR section.
+        # The intro page also embeds the #glossary section, which is
+        # intentionally full of technical terms (it IS the glossary), so
+        # the no-jargon rule applies only to the operator-facing tour.
+        start = self.body.find('data-intro-section="tour"')
+        end = self.body.find('data-intro-section="glossary"')
+        tour = self.body[start:end] if (start != -1 and end != -1) else self.body
         for term in jargon:
-            self.assertNotIn(term, self.body,
-                             f"technical jargon leaked into HTML: {term!r}")
+            self.assertNotIn(term, tour,
+                             f"technical jargon leaked into the tour: {term!r}")
 
     def test_skip_link_and_a11y(self):
         # WCAG 2.4.1 skip link must be the first focusable element.
