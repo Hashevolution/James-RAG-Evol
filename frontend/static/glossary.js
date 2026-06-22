@@ -97,8 +97,7 @@
       '<span class="tooltip-term">' + escapeHtml(term.replace(/-/g, ' ')) +
       '</span>' +
       '<span>' + escapeHtml(def) + '</span>' +
-      '<a class="tooltip-link" href="/glossary#' +
-      encodeURIComponent(term) + '">전체 용어집 →</a>';
+      '<a class="tooltip-link" href="/#glossary">전체 용어집 →</a>';
     // Position next to the trigger.
     var rect = trigger.getBoundingClientRect();
     var top = rect.bottom + window.scrollY + 6;

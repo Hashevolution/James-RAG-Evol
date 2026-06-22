@@ -148,7 +148,7 @@ function openForgot() {
   closeLogin();
   // Simple punt: navigate to the chat page where the existing
   // forgot-password modal lives. Returning here is the user's choice.
-  window.location.href = '/';
+  window.location.href = '/chat';
 }
 
 /* ── data tab — main feature ── */

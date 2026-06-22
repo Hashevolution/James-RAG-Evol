@@ -20,20 +20,29 @@
   'use strict';
 
   var SEEN_KEY = 'james_intro_seen';
-  // PR-intro-2 will serve chat here; until then chat is still at "/".
-  var CHAT_PATH = '/chat';
+  var CHAT_PATH = '/chat';  // chat app (PR-intro-2 moved it off "/")
 
   function seen() {
-    try { return localStorage.getItem(SEEN_KEY) === '1'; } catch (_) { return false; }
+    try {
+      return localStorage.getItem(SEEN_KEY) === '1'
+        // honour the legacy onboarding flag so users who finished the old
+        // /onboarding flow are recognised without re-seeing the intro.
+        || localStorage.getItem('james_onboarding_completed') === '1';
+    } catch (_) { return false; }
   }
   function markSeen() {
     try { localStorage.setItem(SEEN_KEY, '1'); } catch (_) {}
   }
 
   // ── 2. front-door auto-skip (only when this IS the front door) ──
-  // At "/intro" (isolated-review route) pathname !== "/", so this is a
-  // no-op; it activates automatically once the page is served at "/".
-  if (window.location.pathname === '/' && seen()) {
+  // When served at "/", a returning visitor is bounced to /chat — UNLESS
+  // they arrived with an explicit section hash (#tour / #glossary /
+  // #intro), e.g. the /onboarding→/#tour and /glossary→/#glossary 301s,
+  // or the admin "안내 / 용어집" links. Those must SHOW the section, not
+  // skip. At the legacy /intro route (pathname !== "/") this is a no-op.
+  var _h = (window.location.hash || '').replace('#', '');
+  if (window.location.pathname === '/' && seen()
+      && _h !== 'tour' && _h !== 'glossary' && _h !== 'intro') {
     window.location.replace(CHAT_PATH);
     return;
   }

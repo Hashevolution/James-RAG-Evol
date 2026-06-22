@@ -21,7 +21,7 @@ import sqlite3
 import time
 from collections import defaultdict
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from config import BASE_DIR, UPLOAD_DIR, WIKI_DIR, CHROMA_DIR
@@ -232,6 +232,19 @@ async def security_headers_middleware(request: Request, call_next):
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def serve_index():
+    """v0.6.1 PR-intro-2 — `/` is now the public intro front door.
+    Daily chat moved to /chat. intro.js auto-skips returning visitors
+    (localStorage james_intro_seen) straight to /chat, so daily entry is
+    frictionless. See docs/design/v0.6.1-intro-page-restructure.md."""
+    page = os.path.join(FRONTEND_DIR, "intro.html")
+    if os.path.exists(page):
+        return FileResponse(page)
+    return HTMLResponse("<h1>SEKOS</h1><p>frontend/intro.html 없음</p>")
+
+
+@app.get("/chat", response_class=HTMLResponse, include_in_schema=False)
+async def serve_chat():
+    """v0.6.1 PR-intro-2 — the chat app (was served at `/`)."""
     index = os.path.join(FRONTEND_DIR, "index.html")
     if os.path.exists(index):
         return FileResponse(index)
@@ -279,10 +292,8 @@ async def serve_glossary():
     (`/static/glossary.js`) that other pages load to auto-attach
     hover tooltips on elements with `data-glossary="<term-slug>"`.
     """
-    page = os.path.join(FRONTEND_DIR, "glossary.html")
-    if os.path.exists(page):
-        return FileResponse(page)
-    return HTMLResponse("<h1>Glossary</h1><p>frontend/glossary.html 없음</p>")
+    # v0.6.1 PR-intro-2 — glossary folded into the intro front door.
+    return RedirectResponse(url="/#glossary", status_code=301)
 
 
 @app.get("/admin/reasoning-flow", response_class=HTMLResponse, include_in_schema=False)
@@ -332,10 +343,8 @@ async def serve_onboarding():
     downstream pages it points at (`/admin`, `/admin/graph`) gate
     on JWT.
     """
-    page = os.path.join(FRONTEND_DIR, "onboarding.html")
-    if os.path.exists(page):
-        return FileResponse(page)
-    return HTMLResponse("<h1>Onboarding</h1><p>frontend/onboarding.html 없음</p>")
+    # v0.6.1 PR-intro-2 — onboarding folded into the intro front door.
+    return RedirectResponse(url="/#tour", status_code=301)
 
 
 @app.get("/workspace", response_class=HTMLResponse, include_in_schema=False)
