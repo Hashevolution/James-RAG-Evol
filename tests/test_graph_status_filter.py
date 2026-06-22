@@ -148,5 +148,52 @@ class GraphScoreExcludesDeadTests(unittest.TestCase):
             os.environ.pop("JAMES_DISABLE_STATUS_FILTER", None)
 
 
+class _SnapStubGen:
+    """Stub WikiGenerator for build_snapshot: entity_id_index +
+    _read_frontmatter over in-memory frontmatter dicts."""
+    def __init__(self, fms, entity_path):
+        self._fms = fms
+        self.entity_id_index = {k: k for k in fms}
+        self.entity_path = entity_path
+        self.entity_types = ["concept"]
+
+    def refresh_entity_map(self):
+        pass
+
+    def _read_frontmatter(self, path):
+        return self._fms.get(str(path))
+
+
+class GraphSnapshotExcludesDeadTests(unittest.TestCase):
+    """v0.6.1 iter5 — the current-state /admin/graph/snapshot (3D viz) must
+    not render lifecycle-dead edges as if they were live (its edge payload
+    has no status field, so a dead edge is indistinguishable)."""
+    def setUp(self):
+        os.environ.pop("JAMES_DISABLE_STATUS_FILTER", None)
+
+    def test_snapshot_drops_dead_edge_keeps_live(self):
+        import tempfile
+        from core.graph_snapshot import build_snapshot, invalidate_cache
+        A, B, C = "e_concept_aaaaaaaa01", "e_concept_bbbbbbbb02", "e_concept_cccccccc03"
+        fms = {
+            A: {"name": "A", "entity_type": "concept", "relations": [
+                {"target": "B", "target_id": B, "label": "관련", "type": "RELATED_TO",
+                 "confidence": 0.9, "status": {"active": True}, "mutation_type": "active"},
+                {"target": "C", "target_id": C, "label": "관련", "type": "RELATED_TO",
+                 "confidence": 0.9, "status": {"active": False}, "mutation_type": "invalidated"},
+            ]},
+            B: {"name": "B", "entity_type": "concept"},
+            C: {"name": "C", "entity_type": "concept"},
+        }
+        with tempfile.TemporaryDirectory() as td:
+            gen = _SnapStubGen(fms, __import__("pathlib").Path(td))
+            invalidate_cache()
+            snap = build_snapshot(gen)
+            targets = {e.get("t") for e in snap.get("edges", [])}
+            self.assertIn(B, targets)       # live edge kept
+            self.assertNotIn(C, targets)    # dead edge dropped
+            invalidate_cache()
+
+
 if __name__ == "__main__":
     unittest.main()
