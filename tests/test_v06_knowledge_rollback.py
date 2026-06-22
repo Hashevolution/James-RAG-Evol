@@ -47,7 +47,8 @@ ensure_utf8_console()
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-HTML = REPO_ROOT / "frontend" / "knowledge-rollback.html"
+# v0.6.1 graph-hub: knowledge-rollback folded into graph.html (#rollback tab).
+HTML = REPO_ROOT / "frontend" / "graph.html"
 JS   = REPO_ROOT / "frontend" / "static" / "knowledge-rollback.js"
 CSS  = REPO_ROOT / "frontend" / "static" / "knowledge-rollback.css"
 I18N = REPO_ROOT / "frontend" / "static" / "i18n.js"
@@ -316,8 +317,15 @@ class HtmlStructureTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not HTML.exists():
-            raise unittest.SkipTest("knowledge-rollback.html missing")
+            raise unittest.SkipTest("graph.html (#rollback tab) missing")
         cls.body = HTML.read_text(encoding="utf-8")
+        # v0.6.1 graph-hub: rollback surface is now the #rollback tab
+        # section in graph.html. Slice it for section-scoped checks
+        # (jargon / region count / dialog) — the rest of the hub page is
+        # out of scope.
+        _s = cls.body.find('data-graph-tab="rollback"')
+        _e = cls.body.find('<!-- Admin login modal')
+        cls.rollback = cls.body[_s:_e] if (_s != -1 and _e != -1) else cls.body
 
     def test_two_flow_section_titles(self):
         for label in ("undo-last-title", "restore-to-title"):
@@ -335,14 +343,15 @@ class HtmlStructureTests(unittest.TestCase):
     def test_no_technical_jargon(self):
         for term in ("trace_id", "audit_log", "reconstruct_graph_at",
                      "tenant_id", "JWT", "T7 supersede"):
-            self.assertNotIn(term, self.body,
+            self.assertNotIn(term, self.rollback,
                              f"technical jargon leaked: {term!r}")
 
     def test_a11y_skip_link_and_roles(self):
         self.assertIn('class="skip-link"', self.body)
-        self.assertEqual(self.body.count('role="region"'), 2)
-        self.assertIn('role="dialog"', self.body)
-        self.assertIn('aria-modal="true"', self.body)
+        # 2 regions within the #rollback tab section (undo / restore).
+        self.assertEqual(self.rollback.count('role="region"'), 2)
+        self.assertIn('role="dialog"', self.rollback)
+        self.assertIn('aria-modal="true"', self.rollback)
 
 
 class JsStructureTests(unittest.TestCase):

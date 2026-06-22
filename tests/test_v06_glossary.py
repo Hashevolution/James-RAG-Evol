@@ -40,8 +40,10 @@ I18N       = REPO_ROOT / "frontend" / "static" / "i18n.js"
 ADMIN_HTML = REPO_ROOT / "frontend" / "admin.html"
 GRAPH_HTML = REPO_ROOT / "frontend" / "graph.html"
 INTRO_HTML = REPO_ROOT / "frontend" / "intro.html"
-REASONING_HTML  = REPO_ROOT / "frontend" / "reasoning-flow.html"
-ROLLBACK_HTML   = REPO_ROOT / "frontend" / "knowledge-rollback.html"
+# v0.6.1 graph-hub: reasoning-flow + knowledge-rollback folded into
+# graph.html (#flow / #rollback tabs) — glossary.js is loaded there.
+REASONING_HTML  = REPO_ROOT / "frontend" / "graph.html"
+ROLLBACK_HTML   = REPO_ROOT / "frontend" / "graph.html"
 SERVER     = REPO_ROOT / "server_llmwiki.py"
 
 
