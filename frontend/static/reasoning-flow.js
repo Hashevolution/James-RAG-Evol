@@ -135,13 +135,18 @@
 
   /* ── trace list ──────────────────────────────────────────── */
 
-  function loadRecentTraces() {
+  function loadRecentTraces(q) {
     var list = $('flow-recent-list');
     if (!list) return;
     list.innerHTML = '<div class="loading">' +
       escapeHtml(t('flow.loading', '불러오는 중…')) + '</div>';
 
-    request('GET', '/admin/audit/recent-traces?limit=20',
+    // v0.6.1 (gap ②) — a keyword searches questions across the recent
+    // ~14 day partitions; no keyword = today's recent traces.
+    var url = '/admin/audit/recent-traces?limit=20';
+    if (q && q.trim()) url += '&q=' + encodeURIComponent(q.trim()) + '&days=14';
+
+    request('GET', url,
       function (body) {
         var rows = body.traces || [];
         if (rows.length === 0) {
@@ -417,7 +422,17 @@
       });
     }
     if (refreshBtn) {
-      refreshBtn.addEventListener('click', loadRecentTraces);
+      refreshBtn.addEventListener('click', function () { loadRecentTraces(); });
+    }
+    // v0.6.1 (gap ②) — debounced question search over recent traces.
+    var searchInput = $('flow-search-input');
+    if (searchInput) {
+      var _deb = null;
+      searchInput.addEventListener('input', function () {
+        if (_deb) clearTimeout(_deb);
+        var v = searchInput.value;
+        _deb = setTimeout(function () { loadRecentTraces(v); }, 300);
+      });
     }
     loadRecentTraces();
     // v0.6.1 — deep-link from a chat answer: /admin/graph?trace=<id>#flow
