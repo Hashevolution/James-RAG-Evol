@@ -34,6 +34,7 @@ from core.graph_engine.constants import (
     DEPTH_DECAY,
     DFS_SCORE_THRESHOLD,
     MAX_DEPTH,
+    relation_is_live,
 )
 from core.graph_engine.doc_hop_rule import _doc_outgoing_hop_valid
 
@@ -305,6 +306,8 @@ class GraphEngine:
             for rel in relations:
                 if not isinstance(rel, dict):
                     continue
+                if not relation_is_live(rel):   # v0.6.1 — honor lifecycle status
+                    continue
                 if float(rel.get("confidence", 0)) < CONFIDENCE_THRESHOLD:
                     continue
 
@@ -420,7 +423,8 @@ class GraphEngine:
 
             rels = [
                 r for r in e.get("relations", [])
-                if isinstance(r, dict) and float(r.get("confidence", 0)) >= CONFIDENCE_THRESHOLD
+                if isinstance(r, dict) and relation_is_live(r)
+                and float(r.get("confidence", 0)) >= CONFIDENCE_THRESHOLD
             ][:3]
             if rels:
                 rel_strs = []
