@@ -250,8 +250,8 @@ def update_entity(name: str, new_content: str,
     msg = f"✅ '{name}' 수정 완료 (백업: {backup.name})"
     if casc and casc.get("invalidated"):
         msg += f" · 관계 {len(casc['invalidated'])}개 무효화"
-    if casc and casc.get("added_detected"):
-        msg += f" · 신규 관계 {len(casc['added_detected'])}개 감지"
+    if casc and casc.get("added"):
+        msg += f" · 신규 관계 {len(casc['added'])}개 추가"
     return True, msg
 
 

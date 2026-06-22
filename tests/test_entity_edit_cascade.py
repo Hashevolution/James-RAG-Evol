@@ -47,6 +47,10 @@ class _StubGen:
             raise RuntimeError("extractor down")
         return {"entities": [], "relations": self._relations}
 
+    def resolve_pending_relations(self):
+        # Phase 2 back-fill sweep — no-op in the unit test (no entity index).
+        return 0
+
 
 def _write(tmp: Path, text: str) -> Path:
     p = tmp / "Alpha.md"
@@ -80,7 +84,7 @@ class CascadeInvalidateTests(unittest.TestCase):
         self.assertEqual(rels["Gamma"]["mutation_type"], "invalidated")
         self.assertNotEqual(rels["Beta"].get("status", {}).get("active"), False)
 
-    def test_added_relation_detected_not_materialised(self):
+    def test_added_relation_materialised(self):
         path = _write(self.tmp, ENTITY_MD)
         # new text now also asserts Alpha→Delta (not in frontmatter)
         gen = _StubGen([
@@ -91,11 +95,14 @@ class CascadeInvalidateTests(unittest.TestCase):
         out = cascade_modify_entity(path, "Alpha", wiki_generator=gen)
         self.assertTrue(out["ok"])
         self.assertEqual(out["invalidated"], [])  # all kept
-        added = {r["target"] for r in out["added_detected"]}
+        added = {r["target"] for r in out["added"]}
         self.assertIn("Delta", added)
-        # Phase 1 does NOT add it to the frontmatter graph.
+        # Phase 2 DOES add it to the frontmatter graph as a MANUAL edge.
         fm, _ = _read_frontmatter(path)
-        self.assertNotIn("Delta", {r["target"] for r in fm["relations"]})
+        delta = {r["target"]: r for r in fm["relations"]}.get("Delta")
+        self.assertIsNotNone(delta)
+        self.assertEqual(delta["status"]["active"], True)
+        self.assertEqual(delta["sources"][0]["role"], "manual")
 
     def test_extractor_failure_is_safe_noop(self):
         path = _write(self.tmp, ENTITY_MD)
