@@ -420,6 +420,12 @@
       refreshBtn.addEventListener('click', loadRecentTraces);
     }
     loadRecentTraces();
+    // v0.6.1 — deep-link from a chat answer: /admin/graph?trace=<id>#flow
+    // (graph-tabs lands on #flow; we auto-load the trace here).
+    try {
+      var deepTrace = new URLSearchParams(window.location.search).get('trace');
+      if (deepTrace && deepTrace.trim()) loadTrace(deepTrace.trim());
+    } catch (e) {}
   }
 
   if (document.readyState === 'loading') {

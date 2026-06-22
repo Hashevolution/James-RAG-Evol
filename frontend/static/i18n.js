@@ -122,6 +122,7 @@ const TRANSLATIONS = {
     'common.last':           'Last',
 
     'chat.title':            'Secure Enterprise Knowledge Operating System — Security Reasoning Engine',
+    'chat.view_reasoning':   'View reasoning',
     'chat.placeholder':      'Type a message (Shift+Enter for new line)',
     'chat.example1':         'What is economics?',
     'chat.example2':         'Find documents about John Smith',
@@ -1353,6 +1354,7 @@ const TRANSLATIONS = {
     'common.last':           '마지막',
 
     'chat.title':            'Secure Enterprise Knowledge Operating System — 보안 추론 엔진',
+    'chat.view_reasoning':   '추론 과정 보기',
     'chat.placeholder':      '메시지를 입력하세요 (Shift+Enter: 줄바꿈)',
     'chat.example1':         '경제학이란 무엇인가?',
     'chat.example2':         '김철수 관련 자료 찾아줘',
