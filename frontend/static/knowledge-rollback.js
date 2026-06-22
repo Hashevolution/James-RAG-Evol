@@ -1,6 +1,6 @@
 /* PROJECT JAMES — knowledge rollback affordance (Phase 4 P4.2).
  *
- * Drives `frontend/knowledge-rollback.html`. Two flows:
+ * Drives the rollback tab embedded in /admin/graph (#rollback). Two flows:
  *
  *   A. Undo recent change
  *      1. fetch GET /admin/graph/last-change

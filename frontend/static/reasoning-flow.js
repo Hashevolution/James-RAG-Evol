@@ -1,6 +1,6 @@
 /* PROJECT JAMES — reasoning flow visualization (Phase 4 P4.3).
  *
- * Drives `frontend/reasoning-flow.html`. Three responsibilities:
+ * Drives the reasoning-flow tab embedded in /admin/graph (#flow). Three responsibilities:
  *
  *   1. List recent traces (GET /admin/audit/recent-traces)
  *   2. Load a specific trace (GET /admin/trace/{trace_id})
