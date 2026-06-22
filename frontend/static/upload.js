@@ -165,7 +165,7 @@ dropZone.addEventListener('drop', async e => {
                   border-radius:16px; border:1px solid var(--border,#25282f);
                   box-shadow:0 12px 40px rgba(0,0,0,.5); text-align:center;
                   pointer-events:none">
-        <div style="font-size:48px; margin-bottom:8px">📥</div>
+        <div style="margin-bottom:8px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
         <div style="font-size:16px; font-weight:600; color:var(--text,#fff)">
           여기에 놓으면 업로드 큐에 추가됩니다
         </div>
@@ -309,9 +309,9 @@ function renderChatAttachmentRow() {
       ? `<img src="${_thumbDataCache.get(it.id)}" alt=""
               style="width:100%;height:100%;object-fit:cover;border-radius:5px">`
       : `<span style="font-size:18px">${
-          (typeof getFileIcon === 'function') ? getFileIcon(it.file.name) : '📄'
+          (typeof getFileIcon === 'function') ? getFileIcon(it.file.name) : 'DOC'
         }</span>`;
-    const status = it.status === 'upload' ? '⬆️'
+    const status = it.status === 'upload' ? '↑'
                  : it.status === 'done'   ? '✅'
                  : it.status === 'error'  ? '❌'
                  : '';
@@ -409,13 +409,13 @@ function updateUploadBtn() {
 /* ── 아이콘 ── */
 function getFileIcon(name) {
   const ext = name.split('.').pop().toLowerCase();
-  if (['jpg','jpeg','png','gif','webp','bmp'].includes(ext)) return '🖼️';
-  if (['mp4','avi','mov','mkv','webm'].includes(ext))        return '🎬';
-  if (['mp3','wav','m4a','aac','flac'].includes(ext))        return '🎵';
-  if (['pdf'].includes(ext))                                  return '📄';
-  if (['md','txt'].includes(ext))                             return '📝';
-  if (['json','yaml','yml'].includes(ext))                    return '⚙️';
-  return '📁';
+  if (['jpg','jpeg','png','gif','webp','bmp'].includes(ext)) return 'IMG';
+  if (['mp4','avi','mov','mkv','webm'].includes(ext))        return 'VID';
+  if (['mp3','wav','m4a','aac','flac'].includes(ext))        return 'AUD';
+  if (['pdf'].includes(ext))                                  return 'PDF';
+  if (['md','txt'].includes(ext))                             return 'TXT';
+  if (['json','yaml','yml'].includes(ext))                    return 'CFG';
+  return 'DIR';
 }
 
 function formatSize(bytes) {
@@ -445,7 +445,7 @@ function renderFileItem(item) {
       <span class="file-progress-pct" id="progress-pct-${item.id}">0%</span>
     </div>
     <div class="file-folder-row">
-      <span class="folder-icon">📂</span>
+      <span class="folder-icon"></span>
       <input
         type="text"
         class="folder-input"
@@ -698,12 +698,12 @@ function showUploadResult(results) {
 
   const summary = results.map(r => {
     const parts = [];
-    const folder = r.instruction ? `📂 ${r.instruction}` : '📂 날짜 자동 분류';
+    const folder = r.instruction ? `${r.instruction}` : '날짜 자동 분류';
     parts.push(folder);
     if (r.category)    parts.push(`분류: ${r.category}`);
     if (r.sensitivity) parts.push(`보안: ${r.sensitivity}`);
     if (r.summary)     parts.push(`요약: ${r.summary}`);
-    return `📎 **${r.name}**\n${parts.join(' | ')}`;
+    return `**${r.name}**\n${parts.join(' | ')}`;
   }).join('\n\n');
 
   appendJamesMsg({
