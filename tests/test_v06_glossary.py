@@ -202,7 +202,9 @@ class ServerAndEntryPointTests(unittest.TestCase):
 
     def test_admin_html_link_to_glossary(self):
         body = ADMIN_HTML.read_text(encoding="utf-8")
-        self.assertIn('href="/glossary"', body)
+        # v0.6.1 PR-intro-2 — glossary folded into the intro front door;
+        # the admin link now points at the glossary section anchor.
+        self.assertIn('href="/#glossary"', body)
         self.assertIn('admin.glossary_link', body)
 
 
