@@ -1,6 +1,6 @@
 /* PROJECT JAMES — operator onboarding flow (Phase 4 P4.1).
  *
- * Drives the 5-step `frontend/onboarding.html` page:
+ * Drives the 5-step tour embedded in the intro front door (#tour);
  *
  *   1. Welcome
  *   2. Search
