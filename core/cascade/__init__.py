@@ -46,6 +46,7 @@ from ._modify import (
     diff_triples,
     load_extraction_sidecar,
 )
+from ._modify_entity import cascade_modify_entity
 
 
 __all__ = [
@@ -59,6 +60,8 @@ __all__ = [
     "cascade_modify_doc",
     "diff_triples",
     "load_extraction_sidecar",
+    # entity-edit cascade (Phase 1: invalidate stale relations)
+    "cascade_modify_entity",
     # helpers (kept exported for tests / scripts that import them directly)
     "strip_uuid_prefix",
     "_read_frontmatter",
