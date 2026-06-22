@@ -127,5 +127,75 @@ class CascadeInvalidateTests(unittest.TestCase):
             os.environ.pop("JAMES_DISABLE_EDIT_CASCADE", None)
 
 
+class _InboundStubGen:
+    """Stub with an entity index so the inverse-edge sweep can resolve the
+    target entity file. _llm_extract returns NO relations → Alpha→Beta is
+    invalidated, which must also invalidate the inverse Beta→Alpha."""
+    def __init__(self, entity_id_index, entity_path):
+        self.entity_id_index = entity_id_index
+        self.entity_path = entity_path
+
+    def _llm_extract_document_entities(self, name, body, meta):
+        return {"entities": [], "relations": []}   # nothing survives
+
+    def resolve_pending_relations(self):
+        return 0
+
+
+A_MD = """---
+name: Alpha
+type: concept
+relations:
+  - target: Beta
+    target_id: e_concept_bbbb000001
+    label: 관련
+    status: {active: true}
+    mutation_type: active
+---
+Alpha body (the Beta link is no longer stated here).
+"""
+
+B_MD = """---
+name: Beta
+type: concept
+relations:
+  - target: Alpha
+    target_id: e_concept_aaaa000001
+    label: 관련
+    status: {active: true}
+    mutation_type: active
+---
+Beta body.
+"""
+
+
+class InboundT6Tests(unittest.TestCase):
+    """Phase 3 — invalidating A→B must also invalidate the inverse B→A on
+    the target entity (bidirectional graph consistency)."""
+    def setUp(self):
+        os.environ.pop("JAMES_DISABLE_EDIT_CASCADE", None)
+        self._td = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._td.name)
+
+    def tearDown(self):
+        self._td.cleanup()
+
+    def test_inverse_edge_invalidated_on_target(self):
+        a = self.tmp / "Alpha.md"; a.write_text(A_MD, encoding="utf-8")
+        b = self.tmp / "Beta.md";  b.write_text(B_MD, encoding="utf-8")
+        gen = _InboundStubGen({"e_concept_bbbb000001": str(b)}, self.tmp)
+
+        out = cascade_modify_entity(a, "Alpha", wiki_generator=gen)
+        self.assertTrue(out["ok"])
+        # A→Beta invalidated on Alpha
+        self.assertIn("Beta", {r["target"] for r in out["invalidated"]})
+        # inverse Beta→Alpha invalidated on Beta (Phase 3)
+        self.assertTrue(out["inverse_invalidated"])
+        fmb, _ = _read_frontmatter(b)
+        beta_to_alpha = {r["target"]: r for r in fmb["relations"]}["Alpha"]
+        self.assertFalse(beta_to_alpha["status"]["active"])
+        self.assertEqual(beta_to_alpha["mutation_type"], "invalidated")
+
+
 if __name__ == "__main__":
     unittest.main()
