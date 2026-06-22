@@ -48,7 +48,8 @@ ensure_utf8_console()
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-HTML       = REPO_ROOT / "frontend" / "reasoning-flow.html"
+# v0.6.1 graph-hub: reasoning-flow folded into graph.html (#flow tab).
+HTML       = REPO_ROOT / "frontend" / "graph.html"
 JS         = REPO_ROOT / "frontend" / "static" / "reasoning-flow.js"
 CSS        = REPO_ROOT / "frontend" / "static" / "reasoning-flow.css"
 I18N       = REPO_ROOT / "frontend" / "static" / "i18n.js"
@@ -202,8 +203,15 @@ class HtmlStructureTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not HTML.exists():
-            raise unittest.SkipTest("reasoning-flow.html missing")
+            raise unittest.SkipTest("graph.html (#flow tab) missing")
         cls.body = HTML.read_text(encoding="utf-8")
+        # v0.6.1 graph-hub: the reasoning-flow surface is now the #flow
+        # tab section embedded in graph.html. Slice it for the
+        # section-scoped checks (jargon / region count) — the rest of the
+        # hub page (graph tab, rollback tab, modals) is out of scope.
+        _s = cls.body.find('data-graph-tab="flow"')
+        _e = cls.body.find('data-graph-tab="rollback"')
+        cls.flow = cls.body[_s:_e] if (_s != -1 and _e != -1) else cls.body
 
     def test_three_swimlanes_present(self):
         for phase_id in ("phase-retrieve", "phase-expand", "phase-verify"):
@@ -223,13 +231,14 @@ class HtmlStructureTests(unittest.TestCase):
         for term in ("trace_id 가 위조", "audit_log table",
                      "reconstruct_graph_at", "T7 supersede chain",
                      "JWT"):
-            self.assertNotIn(term, self.body,
+            self.assertNotIn(term, self.flow,
                              f"technical jargon leaked: {term!r}")
 
     def test_a11y_skip_link_and_roles(self):
         self.assertIn('class="skip-link"', self.body)
-        self.assertEqual(self.body.count('role="region"'), 3)
-        self.assertIn('aria-live="polite"', self.body)
+        # 3 regions within the #flow tab section (selector / viz / detail).
+        self.assertEqual(self.flow.count('role="region"'), 3)
+        self.assertIn('aria-live="polite"', self.flow)
 
 
 class JsStructureTests(unittest.TestCase):
