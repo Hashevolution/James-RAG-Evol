@@ -155,6 +155,12 @@ def build_snapshot(
         kept_ids.add(eid)
 
     # ── Pass 2: walk relations, drop sensitive types, count degree. ──
+    # v0.6.1 — the /admin/graph/snapshot is the CURRENT-state view (no time
+    # param; time-travel uses reconstruct_graph_at separately) and the edge
+    # payload carries no status field, so a lifecycle-dead edge would render
+    # indistinguishable from a live one. Exclude dead edges for consistency
+    # with the live query path (#1021); kill-switch JAMES_DISABLE_STATUS_FILTER.
+    from core.graph_engine.constants import relation_is_live
     edges: List[Dict[str, Any]] = []
     degree: Dict[str, int] = {nid: 0 for nid in kept_ids}
     for eid, fm in raw_entities.items():
@@ -162,6 +168,8 @@ def build_snapshot(
             continue
         for rel in fm.get("relations", []) or []:
             if not isinstance(rel, dict):
+                continue
+            if not relation_is_live(rel):
                 continue
             target_id = rel.get("target_id") or ""
             if not target_id or target_id == "UNRESOLVED":
