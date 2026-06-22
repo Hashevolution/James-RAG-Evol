@@ -89,7 +89,7 @@
           <line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
       </span>
-      <span data-i18n="workspace.tab_search">검색</span>
+      <span data-i18n="workspace.tab_search">원본 자료</span>
     </div>
     <!-- [v0.2.x CR-C] Change Request panel — 4th tab. -->
     <div class="nav-item" data-tab="cr" data-action="select-tab">
@@ -227,12 +227,22 @@
       </table>
     </div>
 
-    <!-- Search tab (placeholder) -->
+    <!-- 원본 자료 (source documents) tab — find → view → edit.
+         Wires the existing /admin/files/{search,view,download} +
+         wiki-edit modal. Design:
+         docs/design/v0.6.1-workspace-source-documents-tab.md -->
     <div id="tab-search" style="display:none">
-      <div class="page-title"><span data-i18n="workspace.search_title">전역 검색</span></div>
-      <div class="hint" style="margin-top:60px;text-align:center;font-size:13px;line-height:1.7"
-           data-i18n="workspace.search_placeholder">
-        업로드한 파일 · 위키 entity · 과거 대화 통합 검색이 후속 사이클에서 활성화됩니다.
+      <div class="page-title"><span data-i18n="workspace.search_title">원본 자료</span></div>
+      <div style="display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap">
+        <select id="src-root" style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+          <option value="wiki" data-i18n="workspace.src_root_wiki">위키 (지식 문서)</option>
+          <option value="uploads" data-i18n="workspace.src_root_uploads">업로드 (원본 파일)</option>
+        </select>
+        <input id="src-q" type="search" autocomplete="off" spellcheck="false" placeholder="파일명 검색" data-i18n-placeholder="workspace.src_search_ph" style="flex:1;min-width:180px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start">
+        <div id="src-results" style="flex:0 0 320px;max-height:62vh;overflow:auto;border:1px solid var(--border);border-radius:6px"></div>
+        <div id="src-view" style="flex:1;min-width:0"></div>
       </div>
     </div>
 
