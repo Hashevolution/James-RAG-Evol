@@ -535,7 +535,7 @@
     panel.innerHTML =
       '<button class="np-close" data-action="close-neighbor" ' +
       'title="닫기">×</button>' +
-      '<div class="np-title">🔗 ' + escapeHtml(centerNode.name || '?') + '</div>' +
+      '<div class="np-title">' + escapeHtml(centerNode.name || '?') + '</div>' +
       '<div class="np-meta">' + neighbors.length + '개 직접 연결' +
       (neighbors.length > 50 ? ' (50개까지 표시)' : '') + '</div>' +
       '<div class="np-list">' + rowsHtml + '</div>';
@@ -804,7 +804,7 @@
       setTimeout(function () { input.focus(); }, 80);
     }
     var toggle = document.getElementById('tsd-toggle');
-    if (toggle) toggle.textContent = '🔎 검색 ▴';
+    if (toggle) toggle.textContent = '검색 ▴';
   }
 
   window.hideSearchDrawer = function () {
@@ -812,7 +812,7 @@
     if (!drawer) return;
     drawer.classList.remove('tsd-open');
     var toggle = document.getElementById('tsd-toggle');
-    if (toggle) toggle.textContent = '🔎 검색 ▾';
+    if (toggle) toggle.textContent = '검색 ▾';
   };
 
   // Render the list rows for query `q` (case-insensitive substring).

@@ -161,7 +161,7 @@
                 'style="background:transparent;border:1px solid var(--border);' +
                        'color:var(--text-soft);width:24px;height:22px;' +
                        'border-radius:4px;cursor:pointer;font-size:11px;line-height:1">' +
-          '✏️' +
+          '수정' +
         '</button>' +
         '<button type="button" data-action="del-src" data-idx="' + idx + '" ' +
                 'title="Delete this source" ' +
@@ -469,7 +469,7 @@
 
     if (editEnabled) {
       editEnabled = false;
-      btn.textContent = '🔒 Edit mode: OFF';
+      btn.textContent = 'Edit mode: OFF';
       if (hint) hint.style.display = 'none';
       return;
     }
@@ -491,7 +491,7 @@
       }
     }
     editEnabled = true;
-    btn.textContent = '🔓 Edit mode: ON';
+    btn.textContent = 'Edit mode: ON';
     if (hint) hint.style.display = 'block';
   }
 
