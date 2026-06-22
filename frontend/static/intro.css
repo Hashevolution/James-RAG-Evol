@@ -1,0 +1,130 @@
+/* intro.css — SEKOS public intro front door (v0.6.1).
+   Layers on top of tokens.css + onboarding.css + glossary.css (which
+   supply the #tour step + #glossary term styles). This file adds only
+   the hero, tab bar, intro cards, and section show/hide. */
+
+.intro-main {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 28px 20px 64px;
+}
+
+/* ── HERO ─────────────────────────────────────────────────── */
+.intro-hero {
+  text-align: center;
+  padding: 40px 12px 28px;
+  border-bottom: 1px solid var(--border-2, var(--border));
+  margin-bottom: 22px;
+}
+.intro-hero-title {
+  font-family: var(--font-serif, serif);
+  font-size: clamp(26px, 4.5vw, 40px);
+  line-height: 1.2;
+  color: var(--text);
+  margin: 0 0 14px;
+  letter-spacing: -0.01em;
+}
+.intro-hero-sub {
+  max-width: 620px;
+  margin: 0 auto 26px;
+  color: var(--text-soft);
+  font-size: 15px;
+  line-height: 1.7;
+}
+.intro-hero-cta {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.intro-cta {
+  display: inline-block;
+  padding: 11px 22px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  transition: border-color .15s, background .15s, transform .05s;
+}
+.intro-cta:hover { border-color: var(--accent); }
+.intro-cta:active { transform: translateY(1px); }
+.intro-cta-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+.intro-cta-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+/* ── tab bar ──────────────────────────────────────────────── */
+.intro-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.intro-tab {
+  appearance: none;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 10px 16px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-ui, sans-serif);
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.intro-tab:hover { color: var(--text-soft); }
+.intro-tab-active {
+  color: var(--accent-fg);
+  border-bottom-color: var(--accent);
+}
+
+/* ── sections (show/hide via [hidden]) ────────────────────── */
+.intro-section[hidden] { display: none; }
+
+/* ── 소개 cards ───────────────────────────────────────────── */
+.intro-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.intro-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 16px 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.intro-card strong {
+  color: var(--accent-fg);
+  font-size: 15px;
+}
+.intro-card span {
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.intro-moat {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 12px 16px;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  color: var(--text-soft);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+.intro-moat strong { color: var(--accent-fg); }
+
+@media (max-width: 560px) {
+  .intro-hero { padding: 28px 8px 20px; }
+  .intro-tab { padding: 9px 11px; font-size: 13px; }
+}

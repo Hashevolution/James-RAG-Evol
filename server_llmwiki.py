@@ -246,6 +246,21 @@ async def healthz():
     return {"status": "ok"}
 
 
+@app.get("/intro", response_class=HTMLResponse, include_in_schema=False)
+async def serve_intro():
+    """v0.6.1 — public intro front door (consolidates onboarding + glossary).
+
+    Phase PR-intro-1: served at the temporary /intro route for isolated
+    review. PR-intro-2 promotes it to "/" (chat moves to /chat) and turns
+    /onboarding + /glossary into 301 redirects to /#tour and /#glossary.
+    See docs/design/v0.6.1-intro-page-restructure.md.
+    """
+    page = os.path.join(FRONTEND_DIR, "intro.html")
+    if os.path.exists(page):
+        return FileResponse(page)
+    return HTMLResponse("<h1>SEKOS</h1><p>frontend/intro.html 없음</p>")
+
+
 @app.get("/admin", response_class=HTMLResponse, include_in_schema=False)
 async def serve_admin():
     admin = os.path.join(FRONTEND_DIR, "admin.html")

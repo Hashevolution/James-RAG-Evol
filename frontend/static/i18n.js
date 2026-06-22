@@ -447,6 +447,19 @@ const TRANSLATIONS = {
     'rollback.err.bad_request':         'malformed request',
     'rollback.err.unknown':             'unknown error',
 
+    // v0.6.1 — intro front door (consolidates onboarding + glossary)
+    'intro.page_title':   'SEKOS — Secure Enterprise Knowledge OS',
+    'intro.skip_to_chat': 'Open chat →',
+    'intro.hero_title':   'An auditable knowledge-reasoning OS',
+    'intro.hero_sub':     'Search and reason over your internal knowledge, record who changed what and when, and roll back to any past point in time.',
+    'intro.cta_chat':      'Start chat',
+    'intro.cta_workspace': 'Workspace',
+    'intro.cta_admin':     'Admin',
+    'intro.tab_intro':    'Overview',
+    'intro.tab_tour':     'Guide',
+    'intro.tab_glossary': 'Glossary',
+    'intro.moat':         'What sets it apart: every change is preserved as a validity-window rather than deleted, so current answer quality is kept while also giving you <strong>replayable audit</strong> and <strong>time-travel</strong>.',
+
     // v0.6 Phase 4 P4.1 — operator onboarding flow (5 steps)
     'onboarding.page_title':         'SEKOS — Operator quickstart',
     'onboarding.header_subtitle':    '· Operator quickstart',
@@ -1662,6 +1675,19 @@ const TRANSLATIONS = {
     'rollback.err.unknown':             '알 수 없는 오류',
 
     // v0.6 Phase 4 P4.1 — operator onboarding flow (5 steps)
+    // v0.6.1 — intro front door
+    'intro.page_title':   'SEKOS — 보안 기업 지식 운영체제',
+    'intro.skip_to_chat': '챗 시작 →',
+    'intro.hero_title':   '감사가능한 지식 추론 운영체제',
+    'intro.hero_sub':     '사내 지식을 검색·추론하고, 누가 무엇을 언제 바꿨는지 모두 기록하며, 필요할 때 과거 어느 시점으로든 되돌릴 수 있습니다.',
+    'intro.cta_chat':      '챗 시작',
+    'intro.cta_workspace': '워크스페이스',
+    'intro.cta_admin':     '관리자',
+    'intro.tab_intro':    '소개',
+    'intro.tab_tour':     '사용 안내',
+    'intro.tab_glossary': '용어집',
+    'intro.moat':         '차별점: 모든 변경을 삭제 대신 유효구간(validity-window)으로 보존해, 현재 답변 품질을 지키면서도 <strong>재현 가능한 감사(replayable-audit)</strong> 와 <strong>시점 복원(time-travel)</strong> 을 함께 제공합니다.',
+
     'onboarding.page_title':         'SEKOS — 비개발자 운영자 안내',
     'onboarding.header_subtitle':    '· 비개발자 운영자 안내',
     'onboarding.skip_to_admin':      '건너뛰기 →',
