@@ -30,7 +30,12 @@
             title="현재 워크스페이스"
             aria-label="현재 워크스페이스"
             style="display:none;font-size:11px">
-      📁 <span id="workspace-name">—</span>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round"
+           stroke-linejoin="round" aria-hidden="true"
+           style="vertical-align:-2px;margin-right:3px">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+      </svg><span id="workspace-name">—</span>
     </button>
     <span class="role-badge" id="role-badge" style="display:none">
       <span class="who" id="role-who"></span>
@@ -49,28 +54,69 @@
 
 <main id="main">
   <nav class="sidebar">
+    <!-- v0.6.1 (2026-06-22) — operator catch: emoji nav icons lowered
+         the professional concept (same as the chat page v5 de-emoji).
+         Replaced with Feather/Lucide-style inline SVG (currentColor +
+         stroke 2), matching the chat sidebar nav. -->
     <div class="nav-item active" data-tab="data" data-action="select-tab">
-      <span class="nav-icon">📦</span>
+      <span class="nav-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round">
+          <ellipse cx="12" cy="5" rx="9" ry="3"/>
+          <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+          <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+        </svg>
+      </span>
       <span data-i18n="workspace.tab_data">내 데이터</span>
     </div>
     <div class="nav-item" data-tab="jobs" data-action="select-tab">
-      <span class="nav-icon">🛠</span>
+      <span class="nav-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round">
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+        </svg>
+      </span>
       <span data-i18n="workspace.tab_jobs">작업</span>
     </div>
     <div class="nav-item" data-tab="search" data-action="select-tab">
-      <span class="nav-icon">🔍</span>
+      <span class="nav-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </span>
       <span data-i18n="workspace.tab_search">검색</span>
     </div>
     <!-- [v0.2.x CR-C] Change Request panel — 4th tab. -->
     <div class="nav-item" data-tab="cr" data-action="select-tab">
-      <span class="nav-icon">📝</span>
+      <span class="nav-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      </span>
       <span data-i18n="workspace.tab_cr">변경 요청</span>
     </div>
     <!-- [v0.6 template-formatting engine] horizontal document-shaping
          tab — register a template (user data), apply pasted content,
          download the reshaped file. Ships zero templates. -->
     <div class="nav-item" data-tab="templates" data-action="select-tab">
-      <span class="nav-icon">📄</span>
+      <span class="nav-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+      </span>
       <span data-i18n="workspace.tab_templates">양식</span>
     </div>
   </nav>
@@ -79,7 +125,7 @@
     <!-- Data tab -->
     <div id="tab-data">
       <div class="page-title">
-        <span data-i18n="workspace.data_title">📦 데이터</span>
+        <span data-i18n="workspace.data_title">데이터</span>
         <span class="badge" id="data-scope-badge" style="display:none">ADMIN</span>
       </div>
       <div class="hint" data-i18n="workspace.data_hint">
@@ -120,7 +166,7 @@
     <!-- Jobs tab (W8-B: trigger + queue) -->
     <div id="tab-jobs" style="display:none">
       <div class="page-title">
-        🛠 <span data-i18n="workspace.jobs_title">작업</span>
+        <span data-i18n="workspace.jobs_title">작업</span>
         <span class="badge" id="jobs-scope-badge" style="display:none">ADMIN</span>
       </div>
       <div class="hint" data-i18n="workspace.jobs_hint">
@@ -183,7 +229,7 @@
 
     <!-- Search tab (placeholder) -->
     <div id="tab-search" style="display:none">
-      <div class="page-title">🔍 <span data-i18n="workspace.search_title">전역 검색</span></div>
+      <div class="page-title"><span data-i18n="workspace.search_title">전역 검색</span></div>
       <div class="hint" style="margin-top:60px;text-align:center;font-size:13px;line-height:1.7"
            data-i18n="workspace.search_placeholder">
         업로드한 파일 · 위키 entity · 과거 대화 통합 검색이 후속 사이클에서 활성화됩니다.
@@ -196,7 +242,7 @@
          approve/reject; any auth user can propose + comment. -->
     <div id="tab-cr" style="display:none">
       <div class="page-title">
-        📝 <span data-i18n="workspace.cr_title">변경 요청</span>
+        <span data-i18n="workspace.cr_title">변경 요청</span>
         <span class="badge" id="cr-scope-badge" style="display:none"
               data-i18n="workspace.cr_scope_admin">ADMIN</span>
       </div>
@@ -417,7 +463,7 @@
          content → SEKOS reshapes onto the structure → download. -->
     <div id="tab-templates" style="display:none">
       <div class="page-title">
-        📄 <span data-i18n="workspace.tpl_title">양식</span>
+        <span data-i18n="workspace.tpl_title">양식</span>
       </div>
       <div class="hint" data-i18n="workspace.tpl_hint">
         양식(서식)을 등록하고, raw 내용을 붙여넣으면 SEKOS 가 양식 구조에 맞춰 재작성해 파일로 제시합니다.
@@ -460,9 +506,9 @@
             <input id="tpl-form-image-camera" type="file" accept="image/*" capture="environment"
                    style="font-size:12px;color:var(--text);margin-left:8px"
                    data-i18n-title="workspace.tpl_form_image_camera_hint"
-                   title="📷 카메라로 양식 촬영">
+                   title="카메라로 양식 촬영">
             <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--font-mono)"
-                 data-i18n="workspace.tpl_form_image_hint">이미지를 선택하거나 📷 로 촬영하면 OCR(서버, Tesseract)로 텍스트를 추출해 위 칸을 채웁니다.</div>
+                 data-i18n="workspace.tpl_form_image_hint">이미지를 선택하거나 카메라로 촬영하면 OCR(서버, Tesseract)로 텍스트를 추출해 위 칸을 채웁니다.</div>
           </div>
 
           <!-- v0.6.1 — 문서 양식 등록 (.docx / .pdf / .pptx / .xlsx / .hwp).
@@ -567,7 +613,7 @@
             <div style="display:flex;gap:6px">
               <button class="modal-btn" data-action="tpl-copy"
                       id="tpl-copy-btn"
-                      data-i18n="workspace.tpl_copy">📋 복사</button>
+                      data-i18n="workspace.tpl_copy">복사</button>
               <button class="modal-btn primary" data-action="tpl-download"
                       data-i18n="workspace.tpl_download">다운로드</button>
             </div>
