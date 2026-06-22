@@ -961,10 +961,12 @@ async function wikiEditApply() {
   const btn = document.getElementById('we-apply-btn');
   if (btn) { btn.disabled = true; btn.textContent = '적용 중…'; }
   try {
-    await _crPost('/admin/wiki/edit/apply', {
+    const res = await _crPost('/admin/wiki/edit/apply', {
       name, new_body: newBody, base_hash: _weBaseHash,
     });
-    toast(`✅ 적용 완료: ${name}`, 'success');
+    // v0.6.1 — surface the cascade result (관계 무효화/추가/역방향/파생)
+    // returned by update_entity so the operator sees what the edit did.
+    toast((res && res.message) ? res.message : `✅ 적용 완료: ${name}`, 'success');
     closeWikiEdit();
     if (_currentTab === 'data') reloadData();
   } catch (e) {

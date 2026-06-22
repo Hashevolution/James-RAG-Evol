@@ -252,6 +252,10 @@ def update_entity(name: str, new_content: str,
         msg += f" · 관계 {len(casc['invalidated'])}개 무효화"
     if casc and casc.get("added"):
         msg += f" · 신규 관계 {len(casc['added'])}개 추가"
+    if casc and casc.get("inverse_invalidated"):
+        msg += f" · 역방향 {len(casc['inverse_invalidated'])}개"
+    if casc and casc.get("derived_invalidated"):
+        msg += f" · 파생 {len(casc['derived_invalidated'])}개"
     return True, msg
 
 
