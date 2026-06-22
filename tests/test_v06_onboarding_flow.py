@@ -203,8 +203,10 @@ class I18nKeysPresenceTests(unittest.TestCase):
 class AdminEntryPointTests(unittest.TestCase):
     def test_admin_html_links_to_onboarding(self):
         body = ADMIN_HTML.read_text(encoding="utf-8")
-        self.assertIn('href="/onboarding"', body,
-                      "admin.html header must link to /onboarding")
+        # v0.6.1 PR-intro-2 — onboarding folded into the intro front door;
+        # the admin link now points at the tour section anchor (/#tour).
+        self.assertIn('href="/#tour"', body,
+                      "admin.html header must link to the intro tour (/#tour)")
         self.assertIn('admin.onboarding_link', body,
                       "admin.html must use the i18n key for the link label")
 
@@ -214,7 +216,9 @@ class ServerRouteTests(unittest.TestCase):
         body = SERVER.read_text(encoding="utf-8")
         self.assertIn('@app.get("/onboarding"', body)
         self.assertIn("async def serve_onboarding", body)
-        self.assertIn("onboarding.html", body)
+        # v0.6.1 PR-intro-2 — /onboarding now 301-redirects into the intro
+        # front door (the 5-step tour content moved to intro.html#tour).
+        self.assertIn("/#tour", body)
 
 
 if __name__ == "__main__":
