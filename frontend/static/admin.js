@@ -384,10 +384,10 @@ function toggleAdminPwVisibility() {
   if (!input) return;
   if (input.type === 'password') {
     input.type = 'text';
-    if (btn) btn.textContent = '🙈';
+    if (btn) btn.textContent = '숨김';
   } else {
     input.type = 'password';
-    if (btn) btn.textContent = '👁️';
+    if (btn) btn.textContent = '표시';
   }
 }
 
@@ -467,7 +467,7 @@ async function firstRunShow(resolutionData) {
     const summary = recData.specs_summary || {};
     if (hwBox) {
       hwBox.innerHTML = `
-        <div><strong>🖥️ 이 PC 사양</strong></div>
+        <div><strong>이 PC 사양</strong></div>
         <div>GPU: ${_escHtml(summary.gpu || '?')}</div>
         <div>RAM: ${_escHtml(summary.ram || '?')}</div>
         <div>전체 등급: <strong style="color:var(--accent-fg)">Level ${summary.level || '?'}</strong></div>
@@ -490,12 +490,12 @@ async function firstRunShow(resolutionData) {
                               size_gb:1.0, purpose:['chat']}, true);
       } else {
         // Top chat candidate gets star + 강조
-        html += '<div style="font-size:11px;color:var(--muted);padding:6px 10px;text-transform:uppercase;letter-spacing:.3px">💬 일상 대화</div>';
+        html += '<div style="font-size:11px;color:var(--muted);padding:6px 10px;text-transform:uppercase;letter-spacing:.3px">일상 대화</div>';
         chatFeasible.slice(0, 3).forEach((r, i) => {
           html += _firstRunRow(r, i === 0);
         });
         if (codingFeasible.length > 0) {
-          html += '<div style="font-size:11px;color:var(--muted);padding:6px 10px;margin-top:8px;text-transform:uppercase;letter-spacing:.3px">💻 코딩</div>';
+          html += '<div style="font-size:11px;color:var(--muted);padding:6px 10px;margin-top:8px;text-transform:uppercase;letter-spacing:.3px">코딩</div>';
           codingFeasible.slice(0, 2).forEach(r => {
             html += _firstRunRow(r, false);
           });
@@ -513,7 +513,7 @@ function _firstRunRow(r, primary) {
   const sizeGB = (r.size_gb != null) ? `${r.size_gb}GB` : '';
   const desc = _escHtml(r.desc || r.description || '');
   const tag = _escHtml(r.tag || r.name || '');
-  const stars = primary ? '⭐ ' : '   ';
+  const stars = primary ? '● ' : '   ';
   const bg = primary ? 'rgba(99,102,241,.10)' : 'transparent';
   const border = primary ? 'border:1px solid var(--accent);' : 'border:1px solid var(--border);';
   return `<div style="${border}background:${bg};border-radius:7px;padding:10px 12px;margin:4px 6px;
@@ -528,7 +528,7 @@ function _firstRunRow(r, primary) {
             style="padding:7px 14px;background:var(--accent);color:var(--on-accent);
                    border:0;border-radius:6px;cursor:pointer;font-size:12px;
                    font-weight:600;flex-shrink:0">
-      📦 설치
+      설치
     </button>
   </div>`;
 }
@@ -890,7 +890,7 @@ async function loadDashboard() {
     } else {
       if (logBox) {
         logBox.innerHTML = logs.map(l => {
-          const blocked = l.blocked ? '🚫' : '✅';
+          const blocked = l.blocked ? '❌' : '✅';
           const elapsed = l.elapsed ? `${l.elapsed}s` : '';
           const q = (l.q || l.query || '').slice(0, 60);
           const ts = (l.ts || l.timestamp || '').slice(11, 19);
@@ -1697,7 +1697,7 @@ async function loadLongTerm() {
           <td class="mono">${s.saved_at?.slice(0,10) || '-'}</td>
           <td>${escapeHtml(s.topic || '-')}${hint}</td>
           <td style="max-width:400px;font-size:12px">${escapeHtml((s.summary || '').slice(0,120) || '-')}</td>
-          <td>${sid ? '🔍 펼침' : '-'}</td>
+          <td>${sid ? '펼침' : '-'}</td>
         </tr>
       `;
     }).join('') || `<tr><td colspan='4' class='empty'>${t('mem.no_longterm')}</td></tr>`;
@@ -1772,7 +1772,7 @@ async function openSessionTurns(sessionId, label) {
                     padding:10px 12px;border-radius:4px">
           <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono);
                       display:flex;justify-content:space-between">
-            <span>${isUser ? '🗨️ user' : '🤖 james'}${turn.mode ? ' · mode=' + escapeHtml(turn.mode) : ''}</span>
+            <span>${isUser ? 'user' : 'james'}${turn.mode ? ' · mode=' + escapeHtml(turn.mode) : ''}</span>
             <span>${escapeHtml(tsShort)}</span>
           </div>
           <div style="white-space:pre-wrap;font-size:13px">${escapeHtml(text)}</div>
@@ -1836,7 +1836,7 @@ async function deleteSessionOnly(sessionId) {
   try {
     await api(`/history/?session_id=${sessionId}`, 'DELETE');
     toast(
-      t('mem.deleted_no_summary') || `🗑️ ${sessionId.slice(0,12)} deleted`,
+      t('mem.deleted_no_summary') || `${sessionId.slice(0,12)} deleted`,
       'success',
     );
     await loadSessions();
@@ -2187,9 +2187,9 @@ async function loadFiles() {
 /* Recursive tree renderer. Folders render as collapsible <details>
    so the user can expand/collapse selectively without the whole tree
    collapsing on a re-render. Files have:
-     - a 👁 view button (text files only) — opens an inline modal via
+     - a view button (text files only) — opens an inline modal via
        /admin/files/view (fetch + Authorization header)
-     - a ⬇ download link (any allowlisted ext) — opens in new tab
+     - a download link (any allowlisted ext) — opens in new tab
    The view path is the natural "open file" flow for an admin doing
    inspection; download is for taking the file off-server. */
 const _DOWNLOAD_OK_EXTS = new Set([
@@ -2201,7 +2201,7 @@ const _VIEW_OK_EXTS = new Set([
   'md','txt','json','yaml','yml','csv','jsonl','log','tsv',
 ]);
 
-/* Inline file viewer modal — fires when the 👁 button on a file row
+/* Inline file viewer modal — fires when the button on a file row
    is clicked. Uses fetch() so the Authorization header is attached
    automatically (the download <a href> path loses the header in a
    new-tab click and trips admin.data on the server). */
@@ -2223,7 +2223,7 @@ function _ensureFileViewModal() {
                 box-shadow:0 8px 32px rgba(0,0,0,0.5)">
       <div style="display:flex;align-items:center;gap:12px;
                   padding:12px 16px;border-bottom:1px solid var(--border-2)">
-        <span style="font-size:18px">📄</span>
+        
         <span id="file-view-name" style="flex:1;font-weight:600;
               font-family:var(--font-mono);font-size:13px;
               color:var(--accent-fg);word-break:break-all"></span>
@@ -2328,7 +2328,7 @@ function _renderTree(nodes, parentPath, root) {
         <details style="padding-left:12px;border-left:1px dashed var(--border-2)">
           <summary style="cursor:pointer;color:var(--accent-fg);
                           padding:3px 6px;border-radius:4px">
-            📂 ${_escHtml(n.name)}/
+            ${_escHtml(n.name)}/
           </summary>
           <div style="padding-left:14px;margin-top:2px">${childHtml}</div>
         </details>
@@ -2344,7 +2344,7 @@ function _renderTree(nodes, parentPath, root) {
               data-name="${_escHtml(n.name)}"
               style="background:none;border:none;color:var(--accent-fg);
                      cursor:pointer;font-size:13px;padding:0;margin-left:8px"
-              title="열기">👁</button>`
+              title="열기">열기</button>`
         : '';
       const dlBtn = canDownload
         ? `<button type="button" data-action="download-file"
@@ -2353,12 +2353,12 @@ function _renderTree(nodes, parentPath, root) {
               data-name="${_escHtml(n.name)}"
               style="background:none;border:none;color:var(--accent-fg);
                      cursor:pointer;font-size:13px;padding:0;margin-left:6px"
-              title="다운로드">⬇</button>`
+              title="다운로드">받기</button>`
         : '';
       html += `<li style="margin:2px 0;padding:3px 6px 3px 18px;
                           border-left:1px dashed var(--border-2);
                           display:flex;align-items:center;gap:6px">
-        <span>📄 ${_escHtml(n.name)}</span>
+        <span>${_escHtml(n.name)}</span>
         <span style="color:var(--muted);font-size:11px;flex:1">
           ${_humanSize(n.size)} · ${_humanMtime(n.mtime)}
         </span>${viewBtn}${dlBtn}
@@ -2402,7 +2402,7 @@ async function searchFiles() {
               data-name="${_escHtml(m.name)}"
               style="background:none;border:none;color:var(--accent-fg);
                      cursor:pointer;font-size:13px;padding:0;margin-left:8px"
-              title="열기">👁</button>`
+              title="열기">열기</button>`
         : '';
       const dlBtn = canDownload
         ? `<button type="button" data-action="download-file"
@@ -2411,7 +2411,7 @@ async function searchFiles() {
               data-name="${_escHtml(m.name)}"
               style="background:none;border:none;color:var(--accent-fg);
                      cursor:pointer;font-size:13px;padding:0;margin-left:6px"
-              title="다운로드">⬇</button>`
+              title="다운로드">받기</button>`
         : '';
       html += `<li style="margin:3px 0;padding:6px 8px;
                           border-bottom:1px dotted var(--border-2);
@@ -2444,13 +2444,13 @@ function onLanguageChange(lang) {
 // pattern (admin.js:2135) so the UI label honours the active language;
 // `label` stays as EN fallback if the i18n table misses the key.
 const PROTECTED_CANDIDATES = [
-  { file: 'core/security_layer.py',  label: '🔐 Security Layer',  label_key: 'set.protected_security_layer',   default: true  },
-  { file: 'core/auth.py',            label: '🔑 Auth Module',      label_key: 'set.protected_auth_module',      default: true  },
-  { file: 'config.py',               label: '⚙️  Config File',     label_key: 'set.protected_config_file',      default: true  },
-  { file: 'server_llmwiki.py',       label: '🌐 FastAPI Server',   label_key: 'set.protected_fastapi_server',   default: false },
-  { file: 'core/graph_engine.py',    label: '🕸️  Graph Engine',    label_key: 'set.protected_graph_engine',     default: false },
-  { file: 'core/reasoning_engine.py',label: '🧠 Reasoning Engine', label_key: 'set.protected_reasoning_engine', default: false },
-  { file: 'core/vector_store.py',    label: '🗄️  Vector Store',    label_key: 'set.protected_vector_store',     default: false },
+  { file: 'core/security_layer.py',  label: 'Security Layer',  label_key: 'set.protected_security_layer',   default: true  },
+  { file: 'core/auth.py',            label: 'Auth Module',      label_key: 'set.protected_auth_module',      default: true  },
+  { file: 'config.py',               label: ' Config File',     label_key: 'set.protected_config_file',      default: true  },
+  { file: 'server_llmwiki.py',       label: 'FastAPI Server',   label_key: 'set.protected_fastapi_server',   default: false },
+  { file: 'core/graph_engine.py',    label: ' Graph Engine',    label_key: 'set.protected_graph_engine',     default: false },
+  { file: 'core/reasoning_engine.py',label: 'Reasoning Engine', label_key: 'set.protected_reasoning_engine', default: false },
+  { file: 'core/vector_store.py',    label: ' Vector Store',    label_key: 'set.protected_vector_store',     default: false },
 ];
 
 
@@ -2501,7 +2501,7 @@ async function loadSettings() {
         // 현재 모델이 목록에 없으면 동적 추가
         const newOpt = document.createElement('option');
         newOpt.value = data.model;
-        newOpt.textContent = `🔧 ${data.model} (${t('set.current')})`;
+        newOpt.textContent = `${data.model} (${t('set.current')})`;
         modelSel.prepend(newOpt);
         modelSel.value = data.model;
       }
@@ -2907,7 +2907,7 @@ async function loadWebSearchConfig() {
       if (active === 'tavily') {
         lines.push(`✅ Tavily 활성화 (key set, advanced 모드)`);
       } else if (active === 'duckduckgo') {
-        lines.push(`🦆 DuckDuckGo fallback`);
+        lines.push(`DuckDuckGo fallback`);
         if (!s.tavily_key) lines.push(`⚠️ TAVILY_API_KEY 미설정`);
         if (s.tavily_exhausted) lines.push(`⚠️ Tavily 할당량 소진`);
       } else {
@@ -3258,7 +3258,7 @@ async function runEvaluation() {
   btn.textContent = t('perf.running'); btn.disabled = true;
   try {
     const r = await api('/admin/performance/evaluate/', 'POST');
-    const gc = { A:'✅', B:'🟡', C:'🟠', D:'❌' };
+    const gc = { A:'✅', B:'●', C:'●', D:'❌' };
     alert(`${t('perf.eval_done',{grade:r.grade,score:r.total_score,issues:(r.issues||[]).join(', ')||t('perf.no_issue')} )}`);
     await loadPerformance();
   } catch (e) {
@@ -3353,9 +3353,9 @@ async function webLearnTopic() {
                     margin-bottom:8px;font-size:12px;line-height:1.7;
                     white-space:pre-wrap">${r.knowledge || ''}</div>
         <div style="font-size:11px;color:var(--muted)">
-          📄 wiki: ${r.wiki_path ? r.wiki_path.split(/[\\/]/).pop() : '-'}<br>
+          wiki: ${r.wiki_path ? r.wiki_path.split(/[\\/]/).pop() : '-'}<br>
           ${fetchedNote}<br>
-          📚 Sources (${(r.sources||[]).length}):<br>
+          Sources (${(r.sources||[]).length}):<br>
           ${sourceLinks}
         </div>`;
 
@@ -4189,7 +4189,7 @@ function renderDomains(domains) {
           <div style="font-size:10px;color:var(--muted);
                       font-family:var(--font-mono);line-height:1.6">
             <div><span data-i18n="growth.next_level">다음까지</span> <strong style="color:${d.color}">${d.tier_pct ?? d.pct}%</strong></div>
-            <div>📄 ${d.wiki_count ?? 0} wiki · score ${d.score ?? 0}</div>
+            <div>${d.wiki_count ?? 0} wiki · score ${d.score ?? 0}</div>
           </div>
         </div>
       </div>`).join('') + '</div>';
@@ -4243,7 +4243,7 @@ async function loadHardware() {
         return `
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-              <div style="font-size:28px">${w.icon||'🔧'}</div>
+              <div style="font-size:28px">${w.icon||''}</div>
               <div><div style="font-weight:700;font-size:15px"${nameDi}>${w.name||'?'}</div>
                    <div style="font-size:10px;color:var(--muted)"${roleDi}>${w.role||key}</div></div>
               <div style="margin-left:auto;font-size:26px;font-weight:900;color:${col};font-family:var(--font-mono)">
@@ -4266,11 +4266,11 @@ async function loadHardware() {
 
     const sysEl = document.getElementById('hw-sysinfo');
     if (sysEl) sysEl.innerHTML = [
-      `🖥️  플랫폼:  ${specs.platform||'?'}`,
-      `⚔️  CPU:    ${specs.cpu?.name||'?'} (${specs.cpu?.cores||'?'}cores)`,
-      `🛡️  RAM:    ${specs.ram?.total_gb||'?'} GB`,
-      `🪄  GPU:    ${specs.gpu?.found ? specs.gpu?.name : t('hw.cpu_only')} ${specs.gpu?.vram_gb?`(${specs.gpu.vram_gb}GB)`:''}`,
-      `🎒  Disk:   ${specs.disk?.total_gb||'?'}GB (free ${specs.disk?.free_gb||'?'}GB)`,
+      ` 플랫폼:  ${specs.platform||'?'}`,
+      ` CPU:    ${specs.cpu?.name||'?'} (${specs.cpu?.cores||'?'}cores)`,
+      ` RAM:    ${specs.ram?.total_gb||'?'} GB`,
+      ` GPU:    ${specs.gpu?.found ? specs.gpu?.name : t('hw.cpu_only')} ${specs.gpu?.vram_gb?`(${specs.gpu.vram_gb}GB)`:''}`,
+      ` Disk:   ${specs.disk?.total_gb||'?'}GB (free ${specs.disk?.free_gb||'?'}GB)`,
     ].map(l=>`<div>${l}</div>`).join('');
 
     // [4-B] LLM 추천 로드
@@ -4299,7 +4299,7 @@ async function loadLLMRecommend() {
     const renderCard = (m) => {
       const isInstalled = installed.has(m.name);
       const purposes    = (m.purpose||[]).map(p => ({
-        chat:'💬',retrieval:'🔍',coding:'💻',multimodal:'🖼️'
+        chat:'',retrieval:'',coding:'',multimodal:''
       }[p]||p)).join(' ');
       const btnStyle = isInstalled
         ? `background:#4caf7d;cursor:default`
@@ -4330,7 +4330,7 @@ async function loadLLMRecommend() {
 
     el.innerHTML = `
       <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
-        📊 GPU ${recData.specs_summary?.gpu || '?'} · RAM ${recData.specs_summary?.ram || '?'}
+        GPU ${recData.specs_summary?.gpu || '?'} · RAM ${recData.specs_summary?.ram || '?'}
         · ${t('hw.llm_feasible',{count:feasible.length})}
       </div>
       ${feasible.map(renderCard).join('')}
