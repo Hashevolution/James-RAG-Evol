@@ -128,3 +128,34 @@
   .intro-hero { padding: 28px 8px 20px; }
   .intro-tab { padding: 9px 11px; font-size: 13px; }
 }
+
+/* ── scroll-reveal (v0.6.1) ───────────────────────────────────
+   Progressive enhancement: intro.js adds `.reveal` ONLY when
+   IntersectionObserver is available, then toggles `.is-visible` as each
+   block scrolls into view. No JS / no IO → elements never get `.reveal` →
+   render normally. The HERO is left static (above the fold — the request
+   is scroll-DOWN reveal, not a load entrance). prefers-reduced-motion →
+   all motion off. */
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity .55s cubic-bezier(.22,.61,.36,1),
+              transform .55s cubic-bezier(.22,.61,.36,1);
+  will-change: opacity, transform;
+}
+.reveal.is-visible { opacity: 1; transform: translateY(0); }
+
+/* card hover lift — subtle depth on the 소개 cards */
+.intro-card {
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.intro-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  box-shadow: 0 8px 22px -10px var(--accent-soft, rgba(0,0,0,.25));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .reveal.is-visible { opacity: 1; transform: none; transition: none; }
+  .intro-card:hover { transform: none; }
+}

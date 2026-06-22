@@ -74,6 +74,37 @@
     }
   }
 
+  // ── scroll-reveal (v0.6.1) ──
+  // Fade-and-rise each content block as it scrolls into view. Pure
+  // progressive enhancement: only adds the (initially-hidden) `.reveal`
+  // class when IntersectionObserver exists, so a no-JS / old browser
+  // never hides anything. Hidden tab sections (display:none) are still
+  // observed — IO re-fires when a tab switch makes them visible.
+  function setupReveal() {
+    if (!('IntersectionObserver' in window)) return;
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          e.target.classList.add('is-visible');
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+
+    var sel = '.intro-card, .intro-moat, .glossary-section, .step';
+    var cardN = 0;
+    document.querySelectorAll(sel).forEach(function (el) {
+      if (el.classList.contains('reveal')) return;
+      el.classList.add('reveal');
+      // gentle stagger across a row of cards
+      if (el.classList.contains('intro-card')) {
+        el.style.transitionDelay = ((cardN % 6) * 70) + 'ms';
+        cardN++;
+      }
+      io.observe(el);
+    });
+  }
+
   function bind() {
     document.querySelectorAll('[data-intro-tab]').forEach(function (t) {
       t.addEventListener('click', function () {
@@ -90,6 +121,7 @@
 
     window.addEventListener('hashchange', syncFromHash);
     syncFromHash();
+    setupReveal();
   }
 
   if (document.readyState === 'loading') {
