@@ -155,11 +155,20 @@ def is_sensitive_relation(rel_type: str) -> bool:
     return bool(RELATION_TYPES.get(normalize_relation(rel_type), {}).get("sensitive", False))
 
 def compute_graph_score(relations: List[Dict], depth: int = 1) -> float:
-    """score = Σ(weight × confidence) / depth"""
+    """score = Σ(weight × confidence) / depth
+
+    v0.6.1 — exclude lifecycle-deactivated edges (cascade / T1 / T7) so a
+    relation the cascade invalidated no longer inflates the graph score
+    that drives DFS halting + entity ranking (companion to the live-output
+    filter in expand_dynamic / build_graph_context_str, PR #1021).
+    Lazy import keeps core.ontology free of a graph_engine import cycle.
+    """
     if not relations or depth < 1: return 0.0
+    from core.graph_engine.constants import relation_is_live
     total = 0.0
     for rel in relations:
         if not isinstance(rel, dict): continue
+        if not relation_is_live(rel): continue
         raw = rel.get("type") or rel.get("label") or "RELATED_TO"
         if is_sensitive_relation(raw): continue
         total += get_relation_weight(raw) * float(rel.get("confidence", 0.0))

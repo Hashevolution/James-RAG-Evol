@@ -72,5 +72,31 @@ class LiveContextExcludesDeadEdgeTests(unittest.TestCase):
             os.environ.pop("JAMES_DISABLE_STATUS_FILTER", None)
 
 
+class GraphScoreExcludesDeadTests(unittest.TestCase):
+    """v0.6.1 iter2 — a deactivated edge must not inflate compute_graph_score
+    (which drives DFS halting + ranking)."""
+    def setUp(self):
+        os.environ.pop("JAMES_DISABLE_STATUS_FILTER", None)
+
+    def test_dead_relation_excluded_from_score(self):
+        from core.ontology import compute_graph_score
+        active = {"target": "B", "label": "관련", "confidence": 0.9, "status": {"active": True}}
+        dead = {"target": "C", "label": "관련", "confidence": 0.9,
+                "status": {"active": False}, "mutation_type": "invalidated"}
+        self.assertEqual(compute_graph_score([active]), compute_graph_score([active, dead]))
+
+    def test_kill_switch_counts_dead(self):
+        from core.ontology import compute_graph_score
+        active = {"target": "B", "label": "관련", "confidence": 0.9, "status": {"active": True}}
+        dead = {"target": "C", "label": "관련", "confidence": 0.9,
+                "status": {"active": False}, "mutation_type": "invalidated"}
+        os.environ["JAMES_DISABLE_STATUS_FILTER"] = "1"
+        try:
+            self.assertGreater(compute_graph_score([active, dead]),
+                               compute_graph_score([active]))
+        finally:
+            os.environ.pop("JAMES_DISABLE_STATUS_FILTER", None)
+
+
 if __name__ == "__main__":
     unittest.main()
