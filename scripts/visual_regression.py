@@ -112,7 +112,11 @@ def run(base_url: str, update_baseline: bool, threshold: float,
     failures = []
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+        # Emulate prefers-reduced-motion so scroll-reveal / entrance
+        # animations settle instantly → deterministic screenshots (an
+        # animated page must not make the diff timing-dependent).
+        ctx = browser.new_context(viewport={"width": 1440, "height": 900},
+                                  reduced_motion="reduce")
         if token:
             # seed auth before any page script runs
             ctx.add_init_script(
