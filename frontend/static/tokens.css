@@ -201,13 +201,22 @@ body {
  * "active". The `.role-badge .dot` keeps its semantic colour
  * (grey / --success) without a halo — only the badge perimeter
  * gets the soft ring. */
+/* v0.6.1 consistency review — every primary CTA convention
+   (.btn-primary / .onb-btn-primary / .modal-btn.primary) now shares the
+   same mint "primary" halo + accent-hover, so a primary action reads the
+   same on every page. Their size/font/layout stay context-appropriate
+   (table vs onboarding CTA vs modal footer). */
 .btn-primary,
+.onb-btn-primary,
+.modal-btn.primary,
 .send-btn {
   box-shadow:
     0 0 0 1px rgba(107,231,208,.30),
     0 0 22px rgba(107,231,208,.32);
 }
 .btn-primary:disabled,
+.onb-btn-primary:disabled,
+.modal-btn.primary:disabled,
 .send-btn:disabled {
   box-shadow: none;
 }

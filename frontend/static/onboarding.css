@@ -290,7 +290,7 @@ body {
   color: var(--on-accent);
 }
 
-.onb-btn-primary:hover { background: var(--accent); filter: brightness(1.1); }
+.onb-btn-primary:hover { background: var(--accent-hover); }  /* v0.6.1 — match .btn-primary / .modal-btn.primary hover */
 
 /* ── "dont show again" checkbox ─────────────────────────────── */
 
