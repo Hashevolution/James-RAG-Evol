@@ -106,19 +106,7 @@ header {
   background: var(--accent-soft);
   color: var(--accent);
 }
-.nav-btn {
-  padding: 6px 12px;
-  border-radius: var(--radius);
-  border: 1px solid transparent;
-  background: none;
-  color: var(--muted);
-  font-size: 13px;
-  cursor: pointer;
-  text-decoration: none;
-  transition: all .15s;
-  font-family: var(--font-ui);
-}
-.nav-btn:hover { background: var(--surface-2); color: var(--text); }
+/* .nav-btn — moved to tokens.css (shared, v0.6.1 consistency review). */
 
 /* v0.6.1 — workspace badge. Default = same surface as nav-btn. Custom
    (non-default) workspace = accented border so the operator notices

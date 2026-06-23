@@ -358,3 +358,23 @@ body::before {
   z-index: 999;
   pointer-events: none;
 }
+
+/* ── shared header/nav button (v0.6.1 consistency review) ─────────────
+   Canonical `.nav-btn` — was copy-pasted identically into chat.css /
+   admin.css / graph.css and re-invented as `.header-btn` in workspace.css.
+   Now defined ONCE here (tokens.css loads on every page); the per-page
+   copies were removed and workspace.html migrated header-btn → nav-btn.
+   mobile.css keeps its responsive .nav-btn override (loads later). */
+.nav-btn {
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all .15s;
+  font-family: var(--font-ui);
+}
+.nav-btn:hover { background: var(--surface-2); color: var(--text); }

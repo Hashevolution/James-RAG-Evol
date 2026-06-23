@@ -43,12 +43,9 @@
     font-family: var(--font-mono);
   }
   .header-right { display: flex; align-items: center; gap: 10px; }
-  .header-btn {
-    background: none; border: 1px solid var(--border); border-radius: 6px;
-    color: var(--text-soft); cursor: pointer; padding: 6px 10px;
-    font-size: 12px;
-  }
-  .header-btn:hover { background: var(--surface-2); color: var(--text); }
+  /* header buttons use the shared .nav-btn (tokens.css) — v0.6.1
+     consistency review; the old .header-btn variant was removed and the
+     markup migrated to .nav-btn so workspace matches chat/admin/graph. */
   .role-badge {
     font-size: 11px; padding: 4px 10px;
     border: 1px solid var(--border); border-radius: 6px;
