@@ -24,7 +24,7 @@
   </div>
   <div class="header-right">
     <!-- v0.6.1 — current workspace badge. Stays hidden until logged in. -->
-    <button class="header-btn workspace-badge" id="workspace-badge"
+    <button class="nav-btn workspace-badge" id="workspace-badge"
             type="button"
             data-i18n-title="workspace.badge_title"
             title="현재 워크스페이스"
@@ -41,13 +41,13 @@
       <span class="who" id="role-who"></span>
       <span id="role-name"></span>
     </span>
-    <button class="header-btn" data-lang-toggle data-action="toggle-lang"
+    <button class="nav-btn" data-lang-toggle data-action="toggle-lang"
             aria-label="언어 전환 / Toggle language"
             style="font-weight:700"></button>
-    <a href="/chat" class="header-btn" style="text-decoration:none" data-i18n="workspace.back_chat">챗</a>
-    <button class="header-btn" id="login-btn"
+    <a href="/chat" class="nav-btn" style="text-decoration:none" data-i18n="workspace.back_chat">챗</a>
+    <button class="nav-btn" id="login-btn"
             data-action="show-login" data-i18n="auth.login">로그인</button>
-    <button class="header-btn" id="logout-btn"
+    <button class="nav-btn" id="logout-btn"
             data-action="do-logout" style="display:none" data-i18n="auth.logout">로그아웃</button>
   </div>
 </header>
@@ -209,7 +209,7 @@
       <!-- Toolbar + table -->
       <div class="toolbar">
         <span class="counter" id="jobs-counter"></span>
-        <button class="header-btn" data-action="reload-jobs" style="margin-left:auto"
+        <button class="nav-btn" data-action="reload-jobs" style="margin-left:auto"
                 data-i18n="workspace.refresh">새로고침</button>
       </div>
       <table>
@@ -282,15 +282,15 @@
           <option value="run_jobs"    data-i18n="workspace.cr_target_jobs">run_jobs</option>
         </select>
         <span class="counter" id="cr-counter"></span>
-        <button class="header-btn" data-action="cr-toggle-propose"
+        <button class="nav-btn" data-action="cr-toggle-propose"
                 id="cr-propose-toggle"
                 style="margin-left:auto"
                 data-i18n="workspace.cr_new">+ 새 제안</button>
         <!-- v18.7 — 추론 편집 모달 런처 (admin). 문서 불러오기 →
              드래그 선택 → 자연어 지시 → 초안 → 적용. base_hash 자동. -->
-        <button class="header-btn" data-action="wiki-edit-open"
+        <button class="nav-btn" data-action="wiki-edit-open"
                 id="wiki-edit-launch">추론 편집</button>
-        <button class="header-btn" data-action="cr-reload"
+        <button class="nav-btn" data-action="cr-reload"
                 data-i18n="workspace.refresh">새로고침</button>
       </div>
 
@@ -393,7 +393,7 @@
             <span id="cr-detail-title"
                   style="font-size:14px;font-weight:600;margin-left:6px"></span>
           </div>
-          <button class="header-btn" data-action="cr-close-detail"
+          <button class="nav-btn" data-action="cr-close-detail"
                   aria-label="닫기">×</button>
         </div>
 
@@ -449,9 +449,9 @@
                  style="flex:1;min-width:200px;padding:7px 10px;
                         background:var(--bg);border:1px solid var(--border);
                         border-radius:6px;color:var(--text);font-size:12px">
-          <button class="header-btn" data-action="cr-submit-comment"
+          <button class="nav-btn" data-action="cr-submit-comment"
                   data-i18n="workspace.cr_comment_submit">코멘트</button>
-          <button class="header-btn" id="cr-reject-btn"
+          <button class="nav-btn" id="cr-reject-btn"
                   data-action="cr-submit-reject" style="display:none"
                   data-i18n="workspace.cr_reject">거절</button>
           <button class="modal-btn primary" id="cr-approve-btn"
@@ -546,7 +546,7 @@
       <!-- Toolbar -->
       <div class="toolbar">
         <span class="counter" id="tpl-counter"></span>
-        <button class="header-btn" data-action="tpl-reload" style="margin-left:auto"
+        <button class="nav-btn" data-action="tpl-reload" style="margin-left:auto"
                 data-i18n="workspace.refresh">새로고침</button>
       </div>
 
@@ -573,7 +573,7 @@
             <span style="font-size:14px;font-weight:600" id="tpl-apply-name"></span>
             <span class="mono" style="font-size:11px;color:var(--muted);margin-left:6px" id="tpl-apply-id"></span>
           </div>
-          <button class="header-btn" data-action="tpl-close-apply" aria-label="닫기">×</button>
+          <button class="nav-btn" data-action="tpl-close-apply" aria-label="닫기">×</button>
         </div>
 
         <!-- Parsed structure preview -->
