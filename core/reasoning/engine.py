@@ -104,11 +104,19 @@ class ReasoningEngine:
         thin wrapper so the cleanup invariant is impossible to skip.
         """
         try:
-            return self._query_impl(
+            result = self._query_impl(
                 user_query, user_role, source_type, session_id,
                 response_style, mode_override, selected_model,
                 **kwargs,
             )
+            # v0.6.1 — surface the model that ACTUALLY answered (auto-routed
+            # per mode) so the chat header reflects reality, not the picker
+            # default. _last_routed_model is set in _query_impl after the
+            # routing decision; empty for modes that resolve downstream
+            # (meta/vision) → UI keeps its current chip.
+            if isinstance(result, dict) and not result.get("model_used"):
+                result["model_used"] = getattr(self, "_last_routed_model", "") or ""
+            return result
         finally:
             # PR-10b — release the turn's scratch and clear the
             # session ContextVar so the next request in this
@@ -152,6 +160,9 @@ class ReasoningEngine:
         """
         # [P7-FIX] kwargs에 session_id 주입 (내부 메서드들이 참조)
         kwargs["session_id"] = session_id
+        # v0.6.1 — clear the per-query routed-model marker so a prior
+        # query's model can't leak into this one's reported model_used.
+        self._last_routed_model = ""
         if user_role is None:
             user_role = self.default_role
 
@@ -310,6 +321,20 @@ class ReasoningEngine:
                           f"(source={_rm.source}; measured pref)")
                     if _rm.warning:
                         print(f"[MODEL] {_rm.warning}")
+
+        # v0.6.1 — remember the model actually chosen for this query so
+        # query() can report it. picked_model holds the user pick OR the
+        # auto-routed tag; fall back to the legacy default for the LLM
+        # modes when neither applied, so the header is right in the common
+        # cases (coding resolves CODING_MODEL downstream; meta uses no LLM).
+        _eff_model = picked_model
+        if not _eff_model and mode in ("chat", "retrieval", "wiki_edit"):
+            try:
+                from config import GEMMA_MODEL as _GM
+                _eff_model = _GM
+            except Exception:
+                _eff_model = ""
+        self._last_routed_model = _eff_model or ""
 
         # ── Mode dispatch (#29 phase 2: extracted to core/reasoning/modes.py) ──
         if mode == "chat":
