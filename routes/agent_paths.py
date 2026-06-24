@@ -286,6 +286,12 @@ async def get_agent_llm_settings(
     allow_cloud = (os.environ.get("JAMES_AGENT_ALLOW_CLOUD") or "").strip().lower() \
         in ("1", "true", "yes", "on", "enabled")
     anthropic_key_present = bool((os.environ.get("ANTHROPIC_API_KEY") or "").strip())
+    # claude_cli backend (Max-plan login, no API key) — is the `claude`
+    # CLI reachable?
+    import shutil
+    claude_cli_present = bool(
+        (os.environ.get("JAMES_CLAUDE_CLI_PATH") or "").strip()
+        or shutil.which("claude"))
 
     return {
         "backend": ls.get("agent_backend"),
@@ -303,9 +309,10 @@ async def get_agent_llm_settings(
         ],
         "shell_enabled": shell_enabled(),
         # Cloud-egress gate status so the UI can tell the operator exactly
-        # what to set before the anthropic backend will work.
+        # what to set before the cloud backends will work.
         "allow_cloud": allow_cloud,
         "anthropic_key_present": anthropic_key_present,
+        "claude_cli_present": claude_cli_present,
     }
 
 
