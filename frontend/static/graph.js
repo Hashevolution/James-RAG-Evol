@@ -1364,7 +1364,11 @@
      a trace's graph stage matched. Returns the count actually found in
      the current snapshot (ids not in the snapshot are skipped). ── */
   function highlightTraceNodes(nodeIds) {
-    if (!graph || !nodeIds || !nodeIds.length) return 0;
+    if (!graph) return 0;
+    // Switching to a trace with NO graph nodes must still clear the
+    // PREVIOUS trace's highlight — otherwise the old halos/edges stay lit
+    // while the panel shows the new trace.
+    if (!nodeIds || !nodeIds.length) { clearTraceHighlight(); return 0; }
     clearActivePath(/*skipRefresh*/true);
     var matched = [];
     for (var i = 0; i < nodeIds.length; i++) {

@@ -432,15 +432,23 @@
     if (toGraphBtn) {
       toGraphBtn.addEventListener('click', function () {
         if (!_currentTraceId) return;
-        var ttInput = $('time-travel-trace-input');
-        var ttApply = $('time-travel-trace-apply');
-        if (ttInput) ttInput.value = _currentTraceId;
+        var tid = _currentTraceId;            // capture — survives any later change
         if (window.JAMES_GraphTabs) window.JAMES_GraphTabs.select('graph');
-        // Defer the trail fetch until the graph tab is actually visible
-        // and laid out — otherwise the trail panel is created inside a
-        // still-hidden .stage and the user (esp. on mobile) sees nothing
-        // happen. Double rAF lets the tab-switch paint first.
-        var fire = function () { if (ttApply) ttApply.click(); };
+        // Defer the trail fetch until the graph tab is visible + laid out
+        // (the panel/canvas were just un-hidden). Pass the trace_id
+        // DIRECTLY to showTrace so it never depends on reading the input
+        // element at the right moment (the prior input+click path raced
+        // the tab switch and sometimes fetched nothing).
+        var fire = function () {
+          if (window.JAMES_TimeTravelTrace && window.JAMES_TimeTravelTrace.showTrace) {
+            window.JAMES_TimeTravelTrace.showTrace(tid);
+          } else {
+            var ttInput = $('time-travel-trace-input');
+            var ttApply = $('time-travel-trace-apply');
+            if (ttInput) ttInput.value = tid;
+            if (ttApply) ttApply.click();
+          }
+        };
         if (window.requestAnimationFrame) {
           requestAnimationFrame(function () { requestAnimationFrame(fire); });
         } else {
