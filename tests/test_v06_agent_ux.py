@@ -91,11 +91,16 @@ class LLMSettingsTests(unittest.TestCase):
         self._orig = llm._list_installed_ollama_models
         llm._list_installed_ollama_models = lambda: {"mxtral:latest", "gemma3:12b"}
         os.environ["JAMES_SETTINGS_USE_DB"] = "0"   # env/default, no DB writes
+        # Defensive: ensure no leaked agent-backend env from another test
+        # class makes ls.get("agent_backend") resolve to non-default.
+        self._prev_be = os.environ.pop("JAMES_AGENT_BACKEND", None)
 
     def tearDown(self):
         import routes.llm as llm
         llm._list_installed_ollama_models = self._orig
         os.environ.pop("JAMES_SETTINGS_USE_DB", None)
+        if self._prev_be is not None:
+            os.environ["JAMES_AGENT_BACKEND"] = self._prev_be
 
     def test_get_returns_models_and_defaults(self):
         c = _make_client()

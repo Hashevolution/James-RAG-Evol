@@ -15,7 +15,8 @@ runaway LLM can't drain the workspace.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+import json
+from typing import Any, Dict, List, Optional, Set
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -31,6 +32,44 @@ router = APIRouter()
 
 MAX_ITERATIONS = 5
 DEFAULT_MAX_TOKENS = 1024
+
+
+def _extract_text_tool_call(text: str, tool_names: Set[str]) -> Optional[Dict[str, Any]]:
+    """Recover a tool call that a model emitted as plain JSON *text*
+    instead of a structured tool_call.
+
+    Some local models (e.g. ``qwen2.5-coder`` via Ollama) narrate the
+    call — ``{"name": "list_files", "arguments": {...}}`` — in the
+    message content rather than using the native tool-calling channel, so
+    ``tool_calls`` comes back empty and nothing dispatches. This scans the
+    text for a JSON object whose ``name`` is one of the known tools and
+    whose args live under ``arguments`` / ``parameters`` / ``input``.
+    Returns a normalised ``{id, name, input}`` or ``None``.
+    """
+    if not text:
+        return None
+    dec = json.JSONDecoder()
+    i, n = 0, len(text)
+    while i < n:
+        if text[i] != "{":
+            i += 1
+            continue
+        try:
+            obj, end = dec.raw_decode(text, i)
+        except ValueError:
+            i += 1
+            continue
+        i = end
+        if isinstance(obj, dict):
+            name = obj.get("name")
+            args = obj.get("arguments")
+            if args is None:
+                args = obj.get("parameters")
+            if args is None:
+                args = obj.get("input")
+            if name in tool_names and isinstance(args, dict):
+                return {"id": "text-fallback", "name": name, "input": args}
+    return None
 
 
 class AgentChatRequest(BaseModel):
@@ -78,12 +117,32 @@ async def agent_chat_route(
         t for t in list_tools() if t.name != "run_shell" or _shell_on
     ]
     tools_schema = tools_to_schema(visible_tools)
+    _tool_names: Set[str] = {t.name for t in visible_tools}
     max_tokens = max(64, min(int(body.max_tokens or DEFAULT_MAX_TOKENS), 4096))
+
+    # The model can't guess which folders it is allowed to touch — tell it
+    # the registered absolute paths explicitly, so it uses a real path
+    # (e.g. C:\Project\foo) instead of a placeholder like
+    # "<provide-absolute-path>".
+    try:
+        from tools.code.sandbox import get_user_registered_paths
+        _allowed = get_user_registered_paths()
+    except Exception:
+        _allowed = []
+    _folders_line = (
+        " The operator has allowed these absolute folders — use one of "
+        "these EXACT paths for the 'path'/'cwd' argument, never a "
+        "placeholder: " + "; ".join(_allowed) + "."
+        if _allowed else
+        " No folders are registered yet — tell the operator to register a "
+        "folder on this page before you can read or edit files."
+    )
     system = body.system or (
         "You are JAMES, an auditable knowledge platform's agent. You may "
         "call the listed tools to inspect and modify files in the "
-        "operator-allowed folders. Do not invent file paths; ask the "
-        "user when uncertain. Keep responses concise."
+        "operator-allowed folders. Do not invent file paths; use the "
+        "allowed folders below. Keep responses concise."
+        + _folders_line
         + (
             " You also have run_shell: it runs a shell command in an "
             "operator-allowed folder (pass an absolute 'cwd' inside an "
@@ -119,6 +178,16 @@ async def agent_chat_route(
         stop_reason = resp.get("stop_reason") or "end_turn"
         final_text = resp.get("text") or final_text
         calls = resp.get("tool_calls") or []
+
+        # Fallback: a model that narrated a tool call as JSON text (no
+        # native tool_call) — recover + dispatch it so the file op still
+        # runs, and don't echo the raw JSON to the user.
+        if not calls:
+            fb = _extract_text_tool_call(resp.get("text") or "", _tool_names)
+            if fb:
+                calls = [fb]
+                stop_reason = "tool_use"
+                final_text = ""
 
         if not calls or stop_reason != "tool_use":
             break
