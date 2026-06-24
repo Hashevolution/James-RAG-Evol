@@ -1347,4 +1347,64 @@
   } else {
     start();
   }
+
+  /* ── v0.6.1 — highlight a reasoning trace's traversed nodes on the 3D
+     graph. Reuses the existing active-path machinery (halos, edge
+     colour, pulses). Called by time-travel-trace.js with the entity ids
+     a trace's graph stage matched. Returns the count actually found in
+     the current snapshot (ids not in the snapshot are skipped). ── */
+  function highlightTraceNodes(nodeIds) {
+    if (!graph || !nodeIds || !nodeIds.length) return 0;
+    clearActivePath(/*skipRefresh*/true);
+    var matched = [];
+    for (var i = 0; i < nodeIds.length; i++) {
+      var n = nodeIdx.get(nodeIds[i]);
+      if (n) { activePathNodes.add(n.id); matched.push(n); }
+    }
+    if (!matched.length) {
+      clearActivePath(false);   // nothing to show — repaint clean
+      return 0;
+    }
+    // Light every edge that connects two matched nodes (the subgraph the
+    // trace touched).
+    var loopEdges = [];
+    for (var a = 0; a < matched.length; a++) {
+      for (var b = 0; b < matched.length; b++) {
+        if (a === b) continue;
+        var k = edgeKey(matched[a].id, matched[b].id);
+        if (edgeIdx.has(k) && !activePathEdges.has(k)) {
+          activePathEdges.add(k);
+          loopEdges.push({ src: matched[a], tgt: matched[b] });
+        }
+      }
+    }
+    refreshLabels();
+    refreshNodeHalos();
+    if (graph) {
+      graph.linkColor(graph.linkColor());
+      graph.linkWidth(graph.linkWidth());
+    }
+    var stepMs = 0;
+    loopEdges.forEach(function (e) {
+      setTimeout(function () { spawnPulse(e.src, e.tgt); }, stepMs);
+      stepMs += STEP_GAP / 2;
+    });
+    setTimeout(function () { startPulseLoop(loopEdges); }, stepMs + 400);
+    // Fly the camera to fit just the highlighted trace nodes.
+    try {
+      if (graph.zoomToFit) {
+        graph.zoomToFit(700, 90, function (nn) {
+          return activePathNodes.has(nn.id);
+        });
+      }
+    } catch (_) {}
+    return matched.length;
+  }
+
+  function clearTraceHighlight() { clearActivePath(/*skipRefresh*/false); }
+
+  // Cross-module API (mirrors window.JAMES_ReasoningFlow / _TimeTravelTrace).
+  window.JAMES_Graph = window.JAMES_Graph || {};
+  window.JAMES_Graph.highlightTraceNodes = highlightTraceNodes;
+  window.JAMES_Graph.clearTraceHighlight = clearTraceHighlight;
 })();

@@ -300,6 +300,10 @@ def run_loop_1_expand(
             valid_entity_ids=len(valid_ids),
             graph_nodes=len(graph_ctx),
             paths_walked=len(graph_paths),
+            # v0.6.1 — the actual validated entity ids (capped) so the
+            # graph tab can highlight this trace's traversed nodes on the
+            # 3D canvas. Observability-only; does not affect the answer.
+            matched_entity_ids=[str(x) for x in list(valid_ids)[:50]],
         )
     except Exception as e:
         engine._log("loop1_expand", e, user_role)
