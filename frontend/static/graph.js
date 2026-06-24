@@ -1055,12 +1055,15 @@
         map:         tex,
         color:       0xffffff,
         transparent: true,
-        opacity:     0.55,
+        // Brighter, bigger glow in trace-highlight mode so the directly-
+        // related nodes really pop; normal glow for neighbor clicks.
+        opacity:     _traceDimActive ? 0.95 : 0.55,
         blending:    THREE.AdditiveBlending,
         depthWrite:  false,
       });
       var sp = new THREE.Sprite(mat);
-      sp.scale.set(20, 20, 1);
+      var haloS = _traceDimActive ? 36 : 20;
+      sp.scale.set(haloS, haloS, 1);
       sp.userData.isHalo = true;
       sp.userData.nodeId = nodeId;
       sp.userData.bornMs = performance.now();
@@ -1089,10 +1092,12 @@
       // looks more organic than uniform breathing.
       var t = ((now - (sp.userData.bornMs || 0)) / 1800) % 1;   // 1.8s period
       var phase = Math.sin(t * Math.PI * 2);
-      // Scale 17..23, opacity 0.4..0.7 — gentle wrap-around feel.
-      var s = 20 + 3 * phase;
+      // Trace mode: bigger + brighter breathing glow; otherwise gentle.
+      var base = _traceDimActive ? 36 : 20;
+      var amp  = _traceDimActive ? 6 : 3;
+      var s = base + amp * phase;
       sp.scale.set(s, s, 1);
-      sp.material.opacity = 0.55 + 0.15 * phase;
+      sp.material.opacity = (_traceDimActive ? 0.9 : 0.55) + 0.1 * phase;
     });
   }
 
@@ -1493,14 +1498,16 @@
     var accent = getCss('--accent-fg', '#6cf');
     graph.nodeOpacity(function (n) {
       if (activePathNodes.has(n.id)) return 1.0;     // matched: full
-      if (_tracePathNodes.has(n.id)) return 0.55;    // trail: mid
-      return 0.06;                                    // rest: faded
+      if (_tracePathNodes.has(n.id)) return 0.30;    // trail hop: faint, original color
+      return 0.05;                                    // rest: nearly gone
     });
     graph.nodeColor(function (n) {
+      // Matched (directly-related) nodes → bright accent. Trail hops keep
+      // their ORIGINAL type color (just faint via opacity above).
       return activePathNodes.has(n.id) ? accent : _baseNodeColor(n);
     });
     graph.nodeVal(function (n) {
-      return activePathNodes.has(n.id) ? _baseNodeVal(n) * 3 + 4 : _baseNodeVal(n);
+      return activePathNodes.has(n.id) ? _baseNodeVal(n) * 4 + 6 : _baseNodeVal(n);
     });
   }
   function _clearTraceDim() {
