@@ -400,28 +400,60 @@
   }
 
   /* ── Model / backend settings ── */
+  let _llmData = null;
+
   async function _loadAgentModels(refresh) {
     const sel = document.getElementById('agent-chat-model');
     if (!sel) return;
     try {
-      const d = await fetch(_q('/admin/agent/llm-settings'),
+      _llmData = await fetch(_q('/admin/agent/llm-settings'),
         { headers: _authHeaders() }).then(r => r.json());
-      const cur = d.backend === 'anthropic' ? d.anthropic_model : d.ollama_model;
-      const models = d.installed_ollama_models || [];
-      const prev = sel.value;
-      const opts = [`<option value="">${_esc((_t('agentchat.model_default', '(기본) ')) + (cur || ''))}</option>`]
-        .concat(models.map(m => `<option value="${_esc(m)}">${_esc(m)}</option>`));
-      sel.innerHTML = opts.join('');
-      if (prev && models.indexOf(prev) >= 0) sel.value = prev;
       const bsel = document.getElementById('agent-chat-backend');
-      if (bsel && !bsel.value && d.backend) bsel.value = d.backend;
-      // reflect current shell-enabled state in the checkbox
+      if (bsel && !bsel.value && _llmData.backend) bsel.value = _llmData.backend;
+      _populateModels();
       const shc = document.getElementById('agent-enable-shell');
-      if (shc) shc.checked = !!d.shell_enabled;
+      if (shc) shc.checked = !!_llmData.shell_enabled;
       if (refresh) _setLlmMsg(_t('agentchat.models_refreshed', '모델 목록 갱신 완료'));
     } catch (e) {
       _setLlmMsg(_t('agentchat.models_fail', 'ollama 모델 조회 실패 (ollama 미실행?)'));
     }
+  }
+
+  /* Fill the MODEL dropdown for the selected backend: installed Ollama
+     models, or the Claude family for the cloud backend. */
+  function _populateModels() {
+    const sel = document.getElementById('agent-chat-model');
+    const bsel = document.getElementById('agent-chat-backend');
+    if (!sel || !_llmData) return;
+    const backend = (bsel && bsel.value) || _llmData.backend || 'ollama';
+    const prev = sel.value;
+    let list, cur;
+    if (backend === 'anthropic') {
+      list = _llmData.claude_models || [];
+      cur = _llmData.anthropic_model;
+      _setCloudStatus();
+    } else {
+      list = _llmData.installed_ollama_models || [];
+      cur = _llmData.ollama_model;
+      _setLlmMsg('');
+    }
+    const opts = [`<option value="">${_esc((_t('agentchat.model_default', '(기본) ')) + (cur || ''))}</option>`]
+      .concat((list || []).map(m => `<option value="${_esc(m)}">${_esc(m)}</option>`));
+    sel.innerHTML = opts.join('');
+    if (prev && (list || []).indexOf(prev) >= 0) sel.value = prev;
+  }
+
+  /* Tell the operator exactly what to set before the cloud backend works. */
+  function _setCloudStatus() {
+    if (!_llmData) return;
+    if (_llmData.allow_cloud && _llmData.anthropic_key_present) {
+      _setLlmMsg(_t('agentchat.cloud_ready', '☁ 클라우드(Claude) 사용 준비됨'));
+      return;
+    }
+    const need = [];
+    if (!_llmData.allow_cloud) need.push('JAMES_AGENT_ALLOW_CLOUD=1');
+    if (!_llmData.anthropic_key_present) need.push('ANTHROPIC_API_KEY');
+    _setLlmMsg(_t('agentchat.cloud_need', '☁ 클라우드 사용하려면 서버에 설정 필요: ') + need.join(' + '));
   }
 
   async function _saveAgentModel() {
@@ -547,6 +579,11 @@
     if (!_wsBooted) {
       _wsBooted = true;
       document.addEventListener('click', _wsClick);
+      // Switching backend (ollama ⇄ anthropic) re-fills the model
+      // dropdown (Ollama models vs the Claude family) + cloud status.
+      document.addEventListener('change', function (e) {
+        if (e.target && e.target.id === 'agent-chat-backend') _populateModels();
+      });
     }
     _loadSessions();
     _loadAgentModels(false);
