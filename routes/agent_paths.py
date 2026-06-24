@@ -285,14 +285,27 @@ async def get_agent_llm_settings(
 
     allow_cloud = (os.environ.get("JAMES_AGENT_ALLOW_CLOUD") or "").strip().lower() \
         in ("1", "true", "yes", "on", "enabled")
+    anthropic_key_present = bool((os.environ.get("ANTHROPIC_API_KEY") or "").strip())
 
     return {
         "backend": ls.get("agent_backend"),
         "ollama_model": ls.get("agent_ollama_model"),
         "anthropic_model": ls.get("agent_anthropic_model"),
         "installed_ollama_models": installed,
+        # Suggested Claude model ids for the UI dropdown (the cloud
+        # backend can use any valid Anthropic model id; these are the
+        # current family). See `core/agent_tools/backends.py`.
+        "claude_models": [
+            "claude-opus-4-8",
+            "claude-sonnet-4-6",
+            "claude-haiku-4-5-20251001",
+            "claude-fable-5",
+        ],
         "shell_enabled": shell_enabled(),
+        # Cloud-egress gate status so the UI can tell the operator exactly
+        # what to set before the anthropic backend will work.
         "allow_cloud": allow_cloud,
+        "anthropic_key_present": anthropic_key_present,
     }
 
 

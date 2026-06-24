@@ -111,6 +111,35 @@ class LLMSettingsTests(unittest.TestCase):
         self.assertIn("mxtral:latest", body["installed_ollama_models"])
         self.assertIn("shell_enabled", body)
 
+    def test_get_includes_claude_models_and_key_flag(self):
+        c = _make_client()
+        r = c.get("/admin/agent/llm-settings", params={"api_key": "x"})
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        self.assertIn("claude_models", body)
+        self.assertTrue(any("claude" in m for m in body["claude_models"]))
+        self.assertIn("anthropic_key_present", body)
+        self.assertIn("allow_cloud", body)
+
+    def test_set_anthropic_model_with_db(self):
+        os.environ.pop("JAMES_SETTINGS_USE_DB", None)
+        import core.llm_settings as ls
+        tmpdb = tempfile.mkdtemp(prefix="james_ls2_")
+        orig = ls._DB_PATH
+        ls._DB_PATH = os.path.join(tmpdb, "t.db")
+        try:
+            c = _make_client()
+            r = c.post("/admin/agent/llm-settings",
+                       json={"api_key": "x", "backend": "anthropic",
+                             "anthropic_model": "claude-opus-4-8"})
+            self.assertEqual(r.status_code, 200, r.text)
+            self.assertEqual(ls.get("agent_backend"), "anthropic")
+            self.assertEqual(ls.get("agent_anthropic_model"), "claude-opus-4-8")
+        finally:
+            ls._DB_PATH = orig
+            shutil.rmtree(tmpdb, ignore_errors=True)
+            os.environ["JAMES_SETTINGS_USE_DB"] = "0"
+
     def test_set_invalid_backend_rejected(self):
         c = _make_client()
         r = c.post("/admin/agent/llm-settings",
