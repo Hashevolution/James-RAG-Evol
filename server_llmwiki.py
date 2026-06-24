@@ -454,6 +454,10 @@ app.include_router(agent_paths_router)
 from routes.agent_chat import router as agent_chat_router
 app.include_router(agent_chat_router)
 
+# v0.6.1 UX overhaul — agent chat session persistence (CRUD).
+from routes.agent_sessions import router as agent_sessions_router
+app.include_router(agent_sessions_router)
+
 # v0.6.1 — LLM routing unified settings admin surface.
 from routes.llm_settings import router as llm_settings_router
 app.include_router(llm_settings_router)

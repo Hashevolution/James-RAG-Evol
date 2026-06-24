@@ -52,6 +52,44 @@
     return !!(cb && cb.checked);
   }
 
+  /* ── v0.6.1 UX overhaul state: sessions / model / folder browser ── */
+  let _sessions = [];          // session summaries from the server
+  let _activeSession = null;   // {id, title} of the open conversation
+  let _wsBooted = false;       // bootAgentWorkspace listeners attached once
+  let _browseCur = '';         // current path shown in the browser modal
+  let _browsePickable = false; // is _browseCur registerable
+
+  function _authHeaders(extra) {
+    const h = Object.assign({}, extra || {});
+    const tk = _tok();
+    if (tk) h.Authorization = 'Bearer ' + tk;
+    return h;
+  }
+  /* Append api_key to a URL (admin GET/DELETE endpoints take it as a
+     query param; POST/PUT take it in the JSON body). */
+  function _q(url) {
+    return url + (url.includes('?') ? '&' : '?')
+      + 'api_key=' + encodeURIComponent(_key());
+  }
+  async function _api(method, url, body) {
+    const opt = {
+      method,
+      headers: _authHeaders(body ? { 'Content-Type': 'application/json' } : {}),
+    };
+    if (body) opt.body = JSON.stringify(body);
+    const r = await fetch(url, opt);
+    if (!r.ok) {
+      let d = '' + r.status;
+      try { d = (await r.json()).detail || d; } catch (_) {}
+      throw new Error(d);
+    }
+    return r.status === 204 ? null : r.json();
+  }
+  function _setLlmMsg(msg) {
+    const el = document.getElementById('agent-llm-msg');
+    if (el) el.textContent = msg || '';
+  }
+
   /* Public: called from admin.js showPage() loader map. */
   window.loadAgentChat = function loadAgentChat() {
     if (_booted) return;
@@ -84,12 +122,15 @@
 
     const backendSel = document.getElementById('agent-chat-backend');
     const backend = (backendSel && backendSel.value) || null;
+    const modelSel = document.getElementById('agent-chat-model');
+    const model = (modelSel && modelSel.value) || null;
     const payload = {
       api_key: _key(),
       message: msg,
       history: _history.slice(),
     };
     if (backend) payload.backend = backend;
+    if (model) payload.model = model;
 
     _abort = new AbortController();
     try {
@@ -109,6 +150,7 @@
       }
       const data = await r.json();
       _handleResponse(msg, data);
+      _persistActive();          // save this turn into the active session
     } catch (e) {
       if (e.name === 'AbortError') {
         _setStatus(_t('agentchat.aborted', '중단됨'));
@@ -137,6 +179,9 @@
         }</div>`;
     }
     _setStatus('');
+    // Persist the now-empty history to the active session (keeps the
+    // session but clears its turns).
+    if (_activeSession) _persistActive();
   };
 
   function _toggleSending(busy) {
@@ -235,4 +280,254 @@
       _t('agentchat.iters', 'iter')} ${data.iterations || 0} · ${
       _t('agentchat.calls', 'calls')} ${trace.length} · ${_esc(data.backend || '')}`);
   }
+
+  /* ── v0.6.1 UX overhaul: render a loaded session's history ── */
+  function _renderHistory() {
+    const box = _log();
+    if (!box) return;
+    box.innerHTML = '';
+    if (!_history.length) {
+      box.innerHTML =
+        `<div style="color:var(--muted);font-size:12px">${
+          _esc(_t('agentchat.empty', '(아직 대화 없음 — 아래에 메시지를 입력하세요)'))
+        }</div>`;
+      return;
+    }
+    _history.forEach(m => {
+      if (m.role === 'user') _renderUserBubble(m.content);
+      else _renderAssistantBubble(m.content);
+    });
+  }
+
+  /* ── Sessions ── */
+  function _renderSessions() {
+    const box = document.getElementById('agent-session-list');
+    if (!box) return;
+    if (!_sessions.length) {
+      box.innerHTML = `<div style="color:var(--muted);font-size:11px">${
+        _esc(_t('agentsess.empty', '세션 없음 — + 새 대화'))}</div>`;
+      return;
+    }
+    box.innerHTML = _sessions.map(s => {
+      const active = _activeSession && _activeSession.id === s.id;
+      return `<div data-action="agent-session-open" data-sid="${_esc(s.id)}"
+        style="display:flex;justify-content:space-between;align-items:center;gap:4px;
+        padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px;
+        background:${active ? 'var(--accent,#3b82f6)' : 'var(--bg)'};
+        color:${active ? '#fff' : 'var(--text)'};border:1px solid var(--border)">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(s.title)}</span>
+        <button data-action="agent-session-del" data-sid="${_esc(s.id)}"
+          title="${_esc(_t('agentsess.del', '삭제'))}"
+          style="border:0;background:transparent;color:${active ? '#fff' : 'var(--muted)'};
+          cursor:pointer;font-size:12px;padding:0 2px">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  async function _loadSessions() {
+    try {
+      const d = await fetch(_q('/admin/agent/sessions'),
+        { headers: _authHeaders() }).then(r => r.json());
+      _sessions = d.sessions || [];
+    } catch (_) { _sessions = []; }
+    if (_activeSession && !_sessions.find(s => s.id === _activeSession.id)) {
+      _activeSession = null;
+    }
+    if (!_activeSession && _sessions.length) {
+      await _selectSession(_sessions[0].id);
+    } else {
+      _renderSessions();
+    }
+  }
+
+  async function _selectSession(id) {
+    if (!id) return;
+    try {
+      const d = await fetch(_q('/admin/agent/sessions/' + encodeURIComponent(id)),
+        { headers: _authHeaders() }).then(r => r.json());
+      _activeSession = { id: d.session.id, title: d.session.title };
+      _history = (d.session.messages || []).map(m => ({ role: m.role, content: m.content }));
+      _renderHistory();
+    } catch (e) {
+      _setStatus(_t('agentsess.load_fail', '세션 로드 실패') + ': ' + (e.message || e));
+    }
+    _renderSessions();
+  }
+
+  async function _newSession() {
+    try {
+      const d = await _api('POST', '/admin/agent/sessions',
+        { api_key: _key(), title: _t('agentsess.new_title', '새 대화') });
+      _sessions.unshift(d.session);
+      _activeSession = { id: d.session.id, title: d.session.title };
+      _history = [];
+      _renderHistory();
+      _renderSessions();
+      _setStatus('');
+    } catch (e) {
+      _setStatus(_t('agentsess.new_fail', '세션 생성 실패') + ': ' + (e.message || e));
+    }
+  }
+
+  async function _deleteSession(id, ev) {
+    if (ev) ev.stopPropagation();
+    if (!id) return;
+    if (!confirm(_t('agentsess.del_confirm', '이 대화 세션을 삭제할까요?'))) return;
+    try {
+      await fetch(_q('/admin/agent/sessions/' + encodeURIComponent(id)),
+        { method: 'DELETE', headers: _authHeaders() });
+    } catch (_) {}
+    if (_activeSession && _activeSession.id === id) {
+      _activeSession = null;
+      _history = [];
+      _renderHistory();
+    }
+    await _loadSessions();
+  }
+
+  async function _persistActive() {
+    try {
+      if (!_activeSession) {
+        const first = (_history.find(m => m.role === 'user') || {}).content || '새 대화';
+        const d = await _api('POST', '/admin/agent/sessions',
+          { api_key: _key(), title: String(first).slice(0, 40) });
+        _activeSession = { id: d.session.id, title: d.session.title };
+      }
+      await _api('PUT', '/admin/agent/sessions/' + encodeURIComponent(_activeSession.id),
+        { api_key: _key(), messages: _history });
+      _loadSessions();      // refresh sidebar title / ordering
+    } catch (_) {}
+  }
+
+  /* ── Model / backend settings ── */
+  async function _loadAgentModels(refresh) {
+    const sel = document.getElementById('agent-chat-model');
+    if (!sel) return;
+    try {
+      const d = await fetch(_q('/admin/agent/llm-settings'),
+        { headers: _authHeaders() }).then(r => r.json());
+      const cur = d.backend === 'anthropic' ? d.anthropic_model : d.ollama_model;
+      const models = d.installed_ollama_models || [];
+      const prev = sel.value;
+      const opts = [`<option value="">${_esc((_t('agentchat.model_default', '(기본) ')) + (cur || ''))}</option>`]
+        .concat(models.map(m => `<option value="${_esc(m)}">${_esc(m)}</option>`));
+      sel.innerHTML = opts.join('');
+      if (prev && models.indexOf(prev) >= 0) sel.value = prev;
+      const bsel = document.getElementById('agent-chat-backend');
+      if (bsel && !bsel.value && d.backend) bsel.value = d.backend;
+      if (refresh) _setLlmMsg(_t('agentchat.models_refreshed', '모델 목록 갱신 완료'));
+    } catch (e) {
+      _setLlmMsg(_t('agentchat.models_fail', 'ollama 모델 조회 실패 (ollama 미실행?)'));
+    }
+  }
+
+  async function _saveAgentModel() {
+    const bsel = document.getElementById('agent-chat-backend');
+    const sel = document.getElementById('agent-chat-model');
+    const backend = (bsel && bsel.value) || null;
+    const model = (sel && sel.value) || '';
+    const body = { api_key: _key() };
+    if (backend) body.backend = backend;
+    if (model) {
+      if (backend === 'anthropic') body.anthropic_model = model;
+      else body.ollama_model = model;
+    }
+    try {
+      await _api('POST', '/admin/agent/llm-settings', body);
+      _setLlmMsg(_t('agentchat.model_saved', '기본값으로 저장됨'));
+    } catch (e) {
+      _setLlmMsg(_t('agentchat.model_save_fail', '저장 실패') + ': ' + (e.message || e));
+    }
+  }
+
+  /* ── Folder browser modal ── */
+  function _browseModal() { return document.getElementById('agent-browse-modal'); }
+  async function _openBrowse() {
+    const m = _browseModal();
+    if (!m) return;
+    m.style.display = 'flex';
+    await _navBrowse('');
+  }
+  function _closeBrowse() {
+    const m = _browseModal();
+    if (m) m.style.display = 'none';
+  }
+  async function _navBrowse(path) {
+    try {
+      const url = '/admin/agent/browse' + (path ? ('?path=' + encodeURIComponent(path)) : '');
+      const d = await fetch(_q(url), { headers: _authHeaders() }).then(r => {
+        if (!r.ok) throw new Error('' + r.status);
+        return r.json();
+      });
+      _browseCur = d.current || '';
+      _browsePickable = !!d.registerable;
+      _renderBrowse(d);
+    } catch (e) {
+      const l = document.getElementById('agent-browse-list');
+      if (l) l.innerHTML = `<div style="color:#f88;font-size:12px;padding:6px">${_esc(e.message || e)}</div>`;
+    }
+  }
+  function _renderBrowse(d) {
+    const cur = document.getElementById('agent-browse-current');
+    if (cur) cur.textContent = d.current || _t('agent.browse_roots', '(드라이브 / 홈)');
+    const pick = document.getElementById('agent-browse-pick-btn');
+    if (pick) { pick.disabled = !d.registerable; pick.style.opacity = d.registerable ? '1' : '.5'; }
+    const list = document.getElementById('agent-browse-list');
+    if (!list) return;
+    let html = '';
+    if (d.parent !== null && d.current) {
+      html += `<div data-action="agent-browse-nav" data-path="${_esc(d.parent)}"
+        style="padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px;
+        font-family:var(--font-mono);background:var(--bg);border:1px solid var(--border)">⬑ ${
+        _esc(_t('agent.browse_up', '상위 폴더'))}</div>`;
+    }
+    const entries = d.entries || [];
+    if (!entries.length && d.current) {
+      html += `<div style="color:var(--muted);font-size:12px;padding:6px">${
+        _esc(_t('agent.browse_empty', '(하위 폴더 없음)'))}</div>`;
+    }
+    html += entries.map(en => `<div data-action="agent-browse-nav" data-path="${_esc(en.path)}"
+      style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;
+      border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--font-mono);
+      background:var(--bg);border:1px solid var(--border)">
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📁 ${_esc(en.name)}</span>
+      ${en.registerable ? '' : `<span style="color:#f88;font-size:10px" title="${_esc(_t('agent.browse_blocked', '등록 불가'))}">⛔</span>`}
+    </div>`).join('');
+    list.innerHTML = html;
+  }
+  function _pickBrowse() {
+    if (!_browseCur || !_browsePickable) return;
+    const inp = document.getElementById('agent-path-input');
+    if (inp) inp.value = _browseCur;
+    _closeBrowse();
+    if (window.registerAgentPath) window.registerAgentPath();
+  }
+
+  /* ── Delegated click handler for the new actions ── */
+  function _wsClick(e) {
+    const el = e.target.closest && e.target.closest('[data-action]');
+    if (!el) return;
+    switch (el.getAttribute('data-action')) {
+      case 'agent-session-new':    _newSession(); break;
+      case 'agent-session-open':   _selectSession(el.getAttribute('data-sid')); break;
+      case 'agent-session-del':    _deleteSession(el.getAttribute('data-sid'), e); break;
+      case 'agent-model-refresh':  _loadAgentModels(true); break;
+      case 'agent-model-save':     _saveAgentModel(); break;
+      case 'agent-browse-open':    _openBrowse(); break;
+      case 'agent-browse-close':   _closeBrowse(); break;
+      case 'agent-browse-nav':     _navBrowse(el.getAttribute('data-path')); break;
+      case 'agent-browse-pick':    _pickBrowse(); break;
+      default: return;
+    }
+  }
+
+  /* Public: booted by admin.js loadAgentPage() when the page is shown. */
+  window.bootAgentWorkspace = function bootAgentWorkspace() {
+    if (!_wsBooted) {
+      _wsBooted = true;
+      document.addEventListener('click', _wsClick);
+    }
+    _loadSessions();
+    _loadAgentModels(false);
+  };
 })();
