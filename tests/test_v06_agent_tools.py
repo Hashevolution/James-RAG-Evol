@@ -8,6 +8,7 @@ Run:
 """
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import sys
@@ -135,12 +136,16 @@ class BackendFactoryTests(unittest.TestCase):
         self._prev_c = os.environ.pop("JAMES_AGENT_ALLOW_CLOUD", None)
 
     def tearDown(self):
-        if self._prev_b is not None:
-            os.environ["JAMES_AGENT_BACKEND"] = self._prev_b
-        if self._prev_k is not None:
-            os.environ["ANTHROPIC_API_KEY"] = self._prev_k
-        if self._prev_c is not None:
-            os.environ["JAMES_AGENT_ALLOW_CLOUD"] = self._prev_c
+        # Restore the prior value, OR remove the var entirely if it
+        # wasn't set before — otherwise an env we added (e.g.
+        # JAMES_AGENT_BACKEND=anthropic) leaks into later test classes.
+        for var, prev in (("JAMES_AGENT_BACKEND", self._prev_b),
+                          ("ANTHROPIC_API_KEY", self._prev_k),
+                          ("JAMES_AGENT_ALLOW_CLOUD", self._prev_c)):
+            if prev is not None:
+                os.environ[var] = prev
+            else:
+                os.environ.pop(var, None)
 
     def test_default_is_ollama(self):
         from core.agent_tools.backends import get_backend, OllamaBackend
@@ -281,6 +286,97 @@ class AgentChatEndpointTests(unittest.TestCase):
         # And the file actually got written:
         with open(target, encoding="utf-8") as f:
             self.assertEqual(f.read(), "hi from agent")
+
+
+class TextToolCallFallbackTests(unittest.TestCase):
+    """A model that narrates a tool call as JSON text (no native
+    tool_call) must still be recovered + dispatched."""
+
+    def test_extract_arguments_key(self):
+        from routes.agent_chat import _extract_text_tool_call
+        txt = 'Sure: ' + json.dumps(
+            {"name": "list_files", "arguments": {"path": "C:\\x"}})
+        fb = _extract_text_tool_call(txt, {"list_files"})
+        self.assertEqual(fb["name"], "list_files")
+        self.assertEqual(fb["input"]["path"], "C:\\x")
+
+    def test_extract_parameters_and_input_keys(self):
+        from routes.agent_chat import _extract_text_tool_call
+        a = _extract_text_tool_call(
+            json.dumps({"name": "read_file", "parameters": {"path": "a"}}),
+            {"read_file"})
+        self.assertEqual(a["input"]["path"], "a")
+        b = _extract_text_tool_call(
+            json.dumps({"name": "read_file", "input": {"path": "b"}}),
+            {"read_file"})
+        self.assertEqual(b["input"]["path"], "b")
+
+    def test_extract_unknown_name_is_none(self):
+        from routes.agent_chat import _extract_text_tool_call
+        self.assertIsNone(_extract_text_tool_call(
+            json.dumps({"name": "nope", "arguments": {}}), {"list_files"}))
+
+    def test_extract_plain_text_is_none(self):
+        from routes.agent_chat import _extract_text_tool_call
+        self.assertIsNone(_extract_text_tool_call("just a normal answer", {"list_files"}))
+
+
+class TextFallbackEndpointTests(unittest.TestCase):
+    def setUp(self):
+        _reset_sandbox_state()
+        self._tmp = tempfile.mkdtemp(prefix="james_fb_")
+        from tools.code.sandbox import register_user_path
+        register_user_path(self._tmp)
+
+    def tearDown(self):
+        shutil.rmtree(self._tmp, ignore_errors=True)
+        _reset_sandbox_state()
+
+    def test_text_tool_call_is_dispatched(self):
+        client, ac = _make_client()
+        narrated = json.dumps(
+            {"name": "list_files", "arguments": {"path": self._tmp}})
+        fake = _FakeBackend(
+            {"stop_reason": "end_turn", "text": narrated,
+             "tool_calls": [], "raw": {}},
+            {"stop_reason": "end_turn", "text": "Here are the files.",
+             "tool_calls": [], "raw": {}},
+        )
+        import core.agent_tools.backends as be
+        orig = be.get_backend
+        be.get_backend = lambda name=None, model=None: fake
+        try:
+            r = client.post("/agent/chat/",
+                            json={"api_key": "x", "message": "list files"})
+        finally:
+            be.get_backend = orig
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        self.assertEqual(len(body["tool_trace"]), 1)
+        self.assertEqual(body["tool_trace"][0]["name"], "list_files")
+        self.assertTrue(body["tool_trace"][0]["ok"], body["tool_trace"])
+
+    def test_system_prompt_lists_allowed_folders(self):
+        client, ac = _make_client()
+
+        class _Cap:
+            name = "cap"
+            def __init__(self): self.system = None
+            def chat_with_tools(self, messages, tools, *, system=None, max_tokens=1024):
+                self.system = system
+                return {"stop_reason": "end_turn", "text": "ok",
+                        "tool_calls": [], "raw": {}}
+
+        cap = _Cap()
+        import core.agent_tools.backends as be
+        orig = be.get_backend
+        be.get_backend = lambda name=None, model=None: cap
+        try:
+            client.post("/agent/chat/", json={"api_key": "x", "message": "hi"})
+        finally:
+            be.get_backend = orig
+        self.assertIsNotNone(cap.system)
+        self.assertIn(self._tmp, cap.system)
 
 
 class ServerRegistrationTests(unittest.TestCase):
