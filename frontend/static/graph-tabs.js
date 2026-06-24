@@ -35,9 +35,21 @@
       btn.classList.toggle('graph-hub-tab-active',
         btn.getAttribute('data-graph-tab-btn') === name);
     });
-    // Returning to the graph: the 3D canvas was display:none → re-fit it.
+    // Returning to the graph: the 3D canvas was display:none (0×0) → it
+    // must be re-fit BEFORE any camera op, else it renders black. Force a
+    // reflow so clientWidth/Height are real, dispatch resize now, and
+    // again on the next frame (mobile layout can lag a frame).
     if (name === 'graph') {
-      try { window.dispatchEvent(new Event('resize')); } catch (_) {}
+      try {
+        var gc = document.getElementById('graph-canvas');
+        if (gc) { void gc.offsetHeight; }   // force synchronous reflow
+        window.dispatchEvent(new Event('resize'));
+        if (window.requestAnimationFrame) {
+          requestAnimationFrame(function () {
+            try { window.dispatchEvent(new Event('resize')); } catch (_) {}
+          });
+        }
+      } catch (_) {}
     }
   }
 
