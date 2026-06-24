@@ -45,6 +45,10 @@ class ShellRegistrationTests(unittest.TestCase):
 class ShellGateTests(unittest.TestCase):
     def setUp(self):
         self._prev = os.environ.pop(_ENV, None)
+        # shell_enabled() is DB-first now; pin to env-only so a stray DB
+        # row can't make these gate tests non-deterministic.
+        self._prev_db = os.environ.get("JAMES_SETTINGS_USE_DB")
+        os.environ["JAMES_SETTINGS_USE_DB"] = "0"
         _reset_sandbox_state()
         self._tmp = tempfile.mkdtemp(prefix="james_sh_")
         from tools.code.sandbox import register_user_path
@@ -55,6 +59,10 @@ class ShellGateTests(unittest.TestCase):
             os.environ[_ENV] = self._prev
         else:
             os.environ.pop(_ENV, None)
+        if self._prev_db is not None:
+            os.environ["JAMES_SETTINGS_USE_DB"] = self._prev_db
+        else:
+            os.environ.pop("JAMES_SETTINGS_USE_DB", None)
         shutil.rmtree(self._tmp, ignore_errors=True)
         _reset_sandbox_state()
 
@@ -182,12 +190,18 @@ def _make_client(role="admin"):
 class ShellSchemaVisibilityTests(unittest.TestCase):
     def setUp(self):
         self._prev = os.environ.pop(_ENV, None)
+        self._prev_db = os.environ.get("JAMES_SETTINGS_USE_DB")
+        os.environ["JAMES_SETTINGS_USE_DB"] = "0"
 
     def tearDown(self):
         if self._prev is not None:
             os.environ[_ENV] = self._prev
         else:
             os.environ.pop(_ENV, None)
+        if self._prev_db is not None:
+            os.environ["JAMES_SETTINGS_USE_DB"] = self._prev_db
+        else:
+            os.environ.pop("JAMES_SETTINGS_USE_DB", None)
 
     def _run_once(self):
         client, _ = _make_client()

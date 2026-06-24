@@ -79,10 +79,18 @@ RUN_SHELL_EXTRA_BLOCKED = (
 
 
 def shell_enabled() -> bool:
-    """True when the operator has opted into ``run_shell`` via
-    ``JAMES_AGENT_ENABLE_SHELL`` (1/true/yes/on/enabled)."""
-    raw = (os.environ.get(ENV_ENABLE_SHELL) or "").strip().lower()
-    return raw in ("1", "true", "yes", "on", "enabled")
+    """True when the operator has opted into ``run_shell``.
+
+    DB-first via the unified LLM settings (so the admin UI checkbox can
+    toggle it without a restart), falling back to the
+    ``JAMES_AGENT_ENABLE_SHELL`` env var. Default OFF (highest-risk
+    surface). Accepts 1/true/yes/on/enabled."""
+    try:
+        from core import llm_settings as ls
+        return ls.get_bool("agent_enable_shell", ENV_ENABLE_SHELL, "0")
+    except Exception:
+        raw = (os.environ.get(ENV_ENABLE_SHELL) or "").strip().lower()
+        return raw in ("1", "true", "yes", "on", "enabled")
 
 
 def _resolve_argv(shell: str, command: str) -> List[str]:

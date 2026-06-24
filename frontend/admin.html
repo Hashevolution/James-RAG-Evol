@@ -1270,12 +1270,19 @@
             </div>
             <div id="agent-llm-msg"
                  style="font-size:11px;color:var(--muted);font-family:var(--font-mono);min-height:13px"></div>
-            <!-- run_shell opt-in note -->
-            <div style="font-size:11px;color:#fc8"
-                 data-i18n="agentchat.intro_shell"
-                 title="JAMES_AGENT_ENABLE_SHELL=1 환경 변수를 설정하면 셸 명령 도구가 활성화됩니다. 비활성 시 LLM 에게 노출되지 않습니다.">
-              ⚠ 셸 명령 실행(run_shell)은 기본 비활성 —
-              <code>JAMES_AGENT_ENABLE_SHELL=1</code> 설정 시에만 작동.
+            <!-- run_shell opt-in toggle (v0.6.1 — UI-selectable) -->
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <label style="font-size:12px;color:#fc8;display:flex;align-items:center;gap:6px;cursor:pointer">
+                <input type="checkbox" id="agent-enable-shell"
+                       data-action="agent-shell-toggle" style="vertical-align:middle">
+                <span data-i18n="agentchat.shell_toggle">⚠ 셸 명령 실행(run_shell) 허용 — 등록 폴더 안에서만</span>
+              </label>
+              <span id="agent-shell-msg"
+                    style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"></span>
+            </div>
+            <div style="font-size:10px;color:var(--muted)"
+                 data-i18n="agentchat.shell_hint">
+              최고위험 도구입니다. 켜면 LLM 이 등록된 폴더 안에서 셸 명령을 실행할 수 있습니다 (admin 전용·감사 기록). 끄면 LLM 에게 노출되지 않습니다.
             </div>
 
             <!-- folders (collapsible) -->

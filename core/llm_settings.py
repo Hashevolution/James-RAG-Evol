@@ -59,6 +59,9 @@ SETTINGS_SCHEMA: Tuple[Tuple[str, str, str, str], ...] = (
     ("agent_backend",        "JAMES_AGENT_BACKEND",         "ollama",                           "enum:ollama,anthropic"),
     ("agent_ollama_model",   "JAMES_AGENT_OLLAMA_MODEL",    "mxtral:latest",                    "string"),
     ("agent_anthropic_model","JAMES_AGENT_ANTHROPIC_MODEL", "claude-haiku-4-5-20251001",        "string"),
+    # Agent shell tool (v0.6.1 Phase E) — UI-toggleable; default OFF
+    # (highest-risk surface). Env JAMES_AGENT_ENABLE_SHELL still works.
+    ("agent_enable_shell",   "JAMES_AGENT_ENABLE_SHELL",    "0",                                "bool"),
 )
 
 _KEYS = {entry[0]: entry for entry in SETTINGS_SCHEMA}

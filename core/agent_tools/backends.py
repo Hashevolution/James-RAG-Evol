@@ -182,6 +182,104 @@ _DEFAULT_OLLAMA_HOST = "http://localhost:11434"
 _DEFAULT_OLLAMA_MODEL = "mxtral:latest"
 
 
+def _tools_prompt(tools: List[Dict[str, Any]]) -> str:
+    """Describe the tools as text for models that don't support Ollama's
+    native tool API. The model is told to reply with a single JSON object
+    when it wants to call a tool; the agent loop's
+    ``_extract_text_tool_call`` recovers it."""
+    lines = [
+        "You can use these tools. When you want to call one, reply with "
+        "ONLY a JSON object (no prose around it): "
+        '{"name": "<tool>", "arguments": {<args>}}. '
+        "Otherwise answer normally. Available tools:",
+    ]
+    for t in tools:
+        schema = t.get("input_schema") or {}
+        props = list((schema.get("properties") or {}).keys())
+        params = ", ".join(props) if props else ""
+        lines.append(f"- {t.get('name')}({params}): {t.get('description', '')}")
+    return "\n".join(lines)
+
+
+def _to_ollama_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Convert the agent loop's Anthropic-style messages into Ollama's
+    ``/api/chat`` shape.
+
+    The loop accumulates multi-block content — an assistant turn carries
+    ``[{type:text}, {type:tool_use}]`` and the tool result comes back as a
+    user turn with ``[{type:tool_result}]``. Ollama requires
+    ``messages[].content`` to be a **string**; tool calls go in an
+    assistant ``tool_calls`` array and tool results in separate
+    ``{role:"tool"}`` messages. Without this adaptation Ollama rejects the
+    second request with "cannot unmarshal array into ... content of type
+    string".
+    """
+    out: List[Dict[str, Any]] = []
+    for m in messages:
+        role = m.get("role")
+        content = m.get("content")
+
+        if isinstance(content, str):
+            out.append({"role": role, "content": content})
+            continue
+        if not isinstance(content, list):
+            out.append({
+                "role": role,
+                "content": "" if content is None
+                else json.dumps(content, ensure_ascii=False),
+            })
+            continue
+
+        texts: List[str] = []
+        tool_calls: List[Dict[str, Any]] = []
+        tool_results: List[str] = []
+        for b in content:
+            if not isinstance(b, dict):
+                texts.append(str(b))
+                continue
+            bt = b.get("type")
+            if bt == "text":
+                texts.append(b.get("text") or "")
+            elif bt == "tool_use":
+                tool_calls.append({
+                    "function": {
+                        "name": b.get("name"),
+                        "arguments": b.get("input") or {},
+                    },
+                })
+            elif bt == "tool_result":
+                c = b.get("content")
+                if not isinstance(c, str):
+                    try:
+                        c = json.dumps(c, ensure_ascii=False)
+                    except Exception:
+                        c = str(c)
+                tool_results.append(c)
+            else:
+                try:
+                    texts.append(json.dumps(b, ensure_ascii=False))
+                except Exception:
+                    texts.append(str(b))
+
+        joined = "\n".join(t for t in texts if t)
+        if role == "assistant":
+            msg: Dict[str, Any] = {"role": "assistant", "content": joined}
+            if tool_calls:
+                msg["tool_calls"] = tool_calls
+            out.append(msg)
+        elif role == "user":
+            # Any plain text becomes a user turn; tool results become
+            # separate Ollama "tool" messages (must follow the assistant
+            # tool_calls turn).
+            if joined:
+                out.append({"role": "user", "content": joined})
+            for tr in tool_results:
+                out.append({"role": "tool", "content": tr})
+        else:
+            out.append({"role": role, "content": joined})
+    return out
+
+
 class OllamaBackend(AgentBackend):
     name = "ollama"
 
@@ -218,22 +316,35 @@ class OllamaBackend(AgentBackend):
             },
         } for t in tools]
 
-        msgs = list(messages)
-        if system:
-            msgs = [{"role": "system", "content": system}] + msgs
-
-        body = {
-            "model": self.model,
-            "messages": msgs,
-            "tools": ol_tools,
-            "stream": False,
-            "options": {"num_predict": max_tokens},
-        }
+        base_msgs = _to_ollama_messages(messages)
         url = self.host + "/api/chat"
+
+        def _post(client, use_tools: bool, sys_text: Optional[str]):
+            msgs = ([{"role": "system", "content": sys_text}] + base_msgs
+                    if sys_text else base_msgs)
+            body = {
+                "model": self.model,
+                "messages": msgs,
+                "stream": False,
+                "options": {"num_predict": max_tokens},
+            }
+            if use_tools:
+                body["tools"] = ol_tools
+            return client.post(url, content=json.dumps(body),
+                               headers={"Content-Type": "application/json"})
+
         try:
             with httpx.Client(timeout=self.timeout) as client:
-                resp = client.post(url, content=json.dumps(body),
-                                    headers={"Content-Type": "application/json"})
+                resp = _post(client, True, system)
+                # Many local models don't support Ollama's native tool API
+                # (e.g. mixtral:8x7b → "does not support tools"). Fall back
+                # to a text protocol: describe the tools in the system
+                # prompt and let the model emit a JSON call, which the
+                # agent loop's _extract_text_tool_call recovers.
+                if (resp.status_code >= 400
+                        and "does not support tools" in resp.text.lower()):
+                    aug = ((system + "\n\n") if system else "") + _tools_prompt(tools)
+                    resp = _post(client, False, aug)
         except httpx.HTTPError as e:
             raise BackendError(f"ollama http error: {e}")
         if resp.status_code >= 400:
