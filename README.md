@@ -69,6 +69,26 @@ If your use case is *audit / lifecycle / time-travel / on-prem* — SEKOS is bui
 
 ### Installation
 
+**Windows — one-click (recommended):**
+
+```text
+git clone https://github.com/Hashevolution/James-RAG-Evol
+cd James-RAG-Evol
+# then double-click  install.bat   (or:  powershell -ExecutionPolicy Bypass -File install.ps1)
+# when it finishes:  double-click  start.bat
+```
+
+`install.bat` creates the `.venv` virtualenv, installs `requirements.txt`,
+generates `.env` with a fresh API key + JWT secret, and **detects + guides**
+you through the native deps (Ollama, Tesseract, Poppler) — it never
+silently installs system software. It offers to pull the default model
+(`gemma4:e4b`) if Ollama is already installed. Re-running is safe.
+`start.bat` launches the dev server (auto-reload) and opens the admin page.
+Ollama itself is the one prerequisite to install yourself if missing
+(`winget install Ollama.Ollama`).
+
+**Manual / macOS / Linux:**
+
 ```bash
 git clone https://github.com/Hashevolution/James-RAG-Evol
 cd James-RAG-Evol
