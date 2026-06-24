@@ -42,6 +42,7 @@
   // exploreFromNode (이웃 lighting) 가 유일한 path activator.
   var activePathEdges = new Set();   // edge keys currently lit
   var activePathNodes = new Set();   // node ids currently labeled (path-traversed)
+  var _traceDimActive = false;       // trace-highlight fade mode (non-trace nodes dimmed)
 
   // [#4-2 c-label/f] always-visible name labels. Hubs are always shown.
   // Path-traversed nodes are shown while the path is active. Both share
@@ -1019,6 +1020,7 @@
   // clearActivePath 는 closeNeighborPanel/exploreFromNode 가 호출.
 
   function clearActivePath(skipRefresh) {
+    _clearTraceDim();               // restore full-graph opacity if dimmed
     activePathEdges.clear();
     activePathNodes.clear();
     stopPulseLoop();
@@ -1380,6 +1382,7 @@
     }
     refreshLabels();
     refreshNodeHalos();
+    _applyTraceDim();        // fade everything that isn't on the trace
     if (graph) {
       graph.linkColor(graph.linkColor());
       graph.linkWidth(graph.linkWidth());
@@ -1390,34 +1393,66 @@
       stepMs += STEP_GAP / 2;
     });
     setTimeout(function () { startPulseLoop(loopEdges); }, stepMs + 400);
-    // Fly the camera to fit just the highlighted trace nodes — but
-    // DEFER + GUARD: when arriving via a tab switch the canvas may still
-    // be 0×0 (just un-hidden) and the force layout may not have settled.
-    // Zooming then flies the camera into empty space → black screen.
-    // So: wait a beat, re-fit the canvas size, and only zoom if the
-    // canvas has real size AND the matched nodes have real positions.
-    var doFit = function () {
+    // Camera: do NOT zoomToFit the (often scattered) matched nodes — that
+    // computes a huge bounding box and flies the camera way out (the
+    // "extreme zoom-out" the operator saw). Instead gently move to the
+    // matched centroid at a CLAMPED distance, keeping the current view
+    // angle. Deferred so the canvas is sized + positions have settled.
+    var focusCamera = function () {
       try {
-        if (!graph || !graph.zoomToFit) return;
+        if (!graph || !graph.cameraPosition) return;
         var el = document.getElementById('graph-canvas');
         if (!el || el.clientWidth < 2 || el.clientHeight < 2) return;
         graph.width(el.clientWidth).height(el.clientHeight);
-        var spread = matched.some(function (n) {
-          return isFinite(n.x) && isFinite(n.y) &&
-                 (Math.abs(n.x) + Math.abs(n.y) + Math.abs(n.z || 0)) > 1;
+        var pts = matched.filter(function (n) {
+          return isFinite(n.x) && isFinite(n.y);
         });
-        if (!spread) return;   // positions not settled — leave camera as-is
-        graph.zoomToFit(800, 70, function (nn) {
-          return activePathNodes.has(nn.id);
+        if (!pts.length) return;        // positions not settled — leave camera
+        var cx = 0, cy = 0, cz = 0;
+        pts.forEach(function (n) { cx += n.x; cy += n.y; cz += (n.z || 0); });
+        cx /= pts.length; cy /= pts.length; cz /= pts.length;
+        var maxR = 0;
+        pts.forEach(function (n) {
+          var d = Math.sqrt((n.x - cx) * (n.x - cx) + (n.y - cy) * (n.y - cy) +
+                            ((n.z || 0) - cz) * ((n.z || 0) - cz));
+          if (d > maxR) maxR = d;
         });
+        // Frame the cluster but clamp so scattered traces stay readable
+        // instead of zooming the whole sphere out.
+        var dist = Math.max(80, Math.min(maxR * 2.0 + 80, 320));
+        var cam = graph.cameraPosition() || { x: 0, y: 0, z: dist };
+        var dx = cam.x - cx, dy = cam.y - cy, dz = cam.z - cz;
+        var len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (!isFinite(len) || len < 1) { dx = 0; dy = 0; dz = 1; len = 1; }
+        graph.cameraPosition(
+          { x: cx + (dx / len) * dist, y: cy + (dy / len) * dist, z: cz + (dz / len) * dist },
+          { x: cx, y: cy, z: cz },
+          900
+        );
       } catch (_) {}
     };
     if (window.requestAnimationFrame) {
-      requestAnimationFrame(function () { setTimeout(doFit, 250); });
+      requestAnimationFrame(function () { setTimeout(focusCamera, 250); });
     } else {
-      setTimeout(doFit, 300);
+      setTimeout(focusCamera, 300);
     }
     return matched.length;
+  }
+
+  // Trace-dim mode: while a trace is highlighted, fade non-trace nodes so
+  // the lit path reads clearly even in the full 513-node graph. Restored
+  // by clearActivePath() (any node-click / clear exits the mode).
+  function _applyTraceDim() {
+    if (!graph) return;
+    _traceDimActive = true;
+    graph.nodeOpacity(function (n) {
+      return activePathNodes.has(n.id) ? 1.0 : 0.08;
+    });
+  }
+  function _clearTraceDim() {
+    if (!_traceDimActive) return;
+    _traceDimActive = false;
+    if (graph) graph.nodeOpacity(0.92);
   }
 
   function clearTraceHighlight() { clearActivePath(/*skipRefresh*/false); }
