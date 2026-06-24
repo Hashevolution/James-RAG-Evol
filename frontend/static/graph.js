@@ -43,6 +43,14 @@
   var activePathEdges = new Set();   // edge keys currently lit
   var activePathNodes = new Set();   // node ids currently labeled (path-traversed)
   var _traceDimActive = false;       // trace-highlight fade mode (non-trace nodes dimmed)
+  var _tracePathNodes = new Set();   // intermediate nodes on the trace trail (mid visibility)
+
+  // Base node accessors (named so trace-dim mode can swap + restore them).
+  function _baseNodeColor(n) { return typeColor(n.type); }
+  function _baseNodeVal(n) {
+    var base = Math.max(1, Math.sqrt((n.degree || 0) + 1));
+    return isHub(n) ? base * 1.7 : base;
+  }
 
   // [#4-2 c-label/f] always-visible name labels. Hubs are always shown.
   // Path-traversed nodes are shown while the path is active. Both share
@@ -212,21 +220,14 @@
       .nodeLabel(function () { return ''; })   // we render our own tooltip
       // [#4-1 c-color] hubs render in solid type color, non-hubs slightly
       // desaturated so the hubs visually pop without changing palette.
-      .nodeColor(function (n) {
-        var c = typeColor(n.type);
-        if (isHub(n)) return c;            // full saturation
-        return c;                           // (force-graph applies node opacity later)
-      })
+      .nodeColor(_baseNodeColor)
       // [#4-1] non-hubs slightly less opaque → hubs read as primary.
       .nodeOpacity(0.92)
       // [#4-1 c-size] hubs grow ~1.7x, non-hubs unchanged. nodeVal feeds
       // a sphere-volume-proportional scale → 1.7x val ≈ 1.2x apparent
       // radius, enough to read but not crowd neighbors.
       .nodeRelSize(3)
-      .nodeVal(function (n) {
-        var base = Math.max(1, Math.sqrt((n.degree || 0) + 1));
-        return isHub(n) ? base * 1.7 : base;
-      })
+      .nodeVal(_baseNodeVal)
       // [#4-1 a / #4-2 e] base link visibility + persistent path lit.
       // activePathEdges (no expiry) is the "lit" state — set by
       // exploreFromNode after a node click, cleared on closeNeighborPanel.
@@ -245,7 +246,9 @@
       .linkWidth(function (l) {
         var k = edgeKey(linkSrc(l), linkTgt(l));
         if (activePathEdges.has(k)) {
-          return 1.4;                       // slightly bolder for active
+          // Bolder in trace-highlight mode so the reasoning trail reads
+          // against the faded background; normal-bold for neighbor clicks.
+          return _traceDimActive ? 3.0 : 1.4;
         }
         var hubTouch = isHub(l.source) || isHub(l.target);
         return hubTouch ? 0.8 : 0.55;
@@ -1367,17 +1370,28 @@
       clearActivePath(false);   // nothing to show — repaint clean
       return 0;
     }
-    // Light every edge that connects two matched nodes (the subgraph the
-    // trace touched).
+    // Build the visible TRAIL: the trace's matched nodes are usually not
+    // directly adjacent, so connect them with the shortest graph path
+    // between consecutive matched nodes (BFS, capped). Light those edges
+    // and remember the intermediate nodes so they stay mid-visible — that
+    // is what makes the "reasoning path" actually readable.
     var loopEdges = [];
-    for (var a = 0; a < matched.length; a++) {
-      for (var b = 0; b < matched.length; b++) {
-        if (a === b) continue;
-        var k = edgeKey(matched[a].id, matched[b].id);
-        if (edgeIdx.has(k) && !activePathEdges.has(k)) {
-          activePathEdges.add(k);
-          loopEdges.push({ src: matched[a], tgt: matched[b] });
-        }
+    _tracePathNodes = new Set();
+    var litEdge = function (aId, bId) {
+      var k1 = edgeKey(aId, bId), k2 = edgeKey(bId, aId);
+      var k = edgeIdx.has(k1) ? k1 : (edgeIdx.has(k2) ? k2 : null);
+      if (k && !activePathEdges.has(k)) {
+        activePathEdges.add(k);
+        loopEdges.push({ src: nodeIdx.get(aId), tgt: nodeIdx.get(bId) });
+      }
+    };
+    for (var p = 0; p < matched.length - 1; p++) {
+      var path = _traceShortestPath(matched[p].id, matched[p + 1].id, 6);
+      if (!path) continue;
+      for (var q = 0; q < path.length - 1; q++) {
+        litEdge(path[q], path[q + 1]);
+        if (!activePathNodes.has(path[q]))     _tracePathNodes.add(path[q]);
+        if (!activePathNodes.has(path[q + 1])) _tracePathNodes.add(path[q + 1]);
       }
     }
     refreshLabels();
@@ -1439,20 +1453,65 @@
     return matched.length;
   }
 
-  // Trace-dim mode: while a trace is highlighted, fade non-trace nodes so
-  // the lit path reads clearly even in the full 513-node graph. Restored
-  // by clearActivePath() (any node-click / clear exits the mode).
+  // BFS shortest path between two node ids over the current graph
+  // (capped at maxHops). Returns the id list incl. both ends, or null.
+  function _traceShortestPath(srcId, dstId, maxHops) {
+    if (srcId === dstId) return [srcId];
+    var start = nodeIdx.get(srcId);
+    if (!start) return null;
+    var prev = {}; prev[srcId] = null;
+    var depth = {}; depth[srcId] = 0;
+    var queue = [start];
+    while (queue.length) {
+      var cur = queue.shift();
+      if (depth[cur.id] >= maxHops) continue;
+      var nb = getNeighbors(cur);
+      for (var i = 0; i < nb.length; i++) {
+        var nid = nb[i].neighbor.id;
+        if (Object.prototype.hasOwnProperty.call(prev, nid)) continue;
+        prev[nid] = cur.id;
+        depth[nid] = depth[cur.id] + 1;
+        if (nid === dstId) {
+          var path = [nid], pp = cur.id;
+          while (pp !== null) { path.unshift(pp); pp = prev[pp]; }
+          return path;
+        }
+        queue.push(nb[i].neighbor);
+      }
+    }
+    return null;
+  }
+
+  // Trace-dim mode: while a trace is highlighted, strongly emphasise the
+  // matched nodes (bright accent + larger), keep the trail's intermediate
+  // nodes mid-visible, and fade everything else — so the reasoning path
+  // reads clearly even in the full 513-node graph. Restored by
+  // clearActivePath() (any node-click / clear exits the mode).
   function _applyTraceDim() {
     if (!graph) return;
     _traceDimActive = true;
+    var accent = getCss('--accent-fg', '#6cf');
     graph.nodeOpacity(function (n) {
-      return activePathNodes.has(n.id) ? 1.0 : 0.08;
+      if (activePathNodes.has(n.id)) return 1.0;     // matched: full
+      if (_tracePathNodes.has(n.id)) return 0.55;    // trail: mid
+      return 0.06;                                    // rest: faded
+    });
+    graph.nodeColor(function (n) {
+      return activePathNodes.has(n.id) ? accent : _baseNodeColor(n);
+    });
+    graph.nodeVal(function (n) {
+      return activePathNodes.has(n.id) ? _baseNodeVal(n) * 3 + 4 : _baseNodeVal(n);
     });
   }
   function _clearTraceDim() {
     if (!_traceDimActive) return;
     _traceDimActive = false;
-    if (graph) graph.nodeOpacity(0.92);
+    _tracePathNodes = new Set();
+    if (graph) {
+      graph.nodeOpacity(0.92);
+      graph.nodeColor(_baseNodeColor);
+      graph.nodeVal(_baseNodeVal);
+    }
   }
 
   function clearTraceHighlight() { clearActivePath(/*skipRefresh*/false); }
