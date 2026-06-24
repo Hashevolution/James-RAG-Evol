@@ -1488,24 +1488,23 @@
   }
 
   // Trace-dim mode: while a trace is highlighted, strongly emphasise the
-  // matched nodes (bright accent + larger), keep the trail's intermediate
-  // nodes mid-visible, and fade everything else — so the reasoning path
-  // reads clearly even in the full 513-node graph. Restored by
-  // clearActivePath() (any node-click / clear exits the mode).
+  // matched nodes (original color, larger size, bright halo), keep the
+  // trail's intermediate nodes faint in their original color, and fade
+  // everything else — so the reasoning path reads clearly even in the
+  // full 513-node graph. Restored by clearActivePath() (node-click/clear).
   function _applyTraceDim() {
     if (!graph) return;
     _traceDimActive = true;
-    var accent = getCss('--accent-fg', '#6cf');
     graph.nodeOpacity(function (n) {
       if (activePathNodes.has(n.id)) return 1.0;     // matched: full
       if (_tracePathNodes.has(n.id)) return 0.30;    // trail hop: faint, original color
       return 0.05;                                    // rest: nearly gone
     });
-    graph.nodeColor(function (n) {
-      // Matched (directly-related) nodes → bright accent. Trail hops keep
-      // their ORIGINAL type color (just faint via opacity above).
-      return activePathNodes.has(n.id) ? accent : _baseNodeColor(n);
-    });
+    // Keep EVERY node in its ORIGINAL type color — the previous accent
+    // recolor used a CSS var that resolves dark on this theme, making the
+    // nodes look black. Matched nodes stand out via full opacity + larger
+    // size + the bright breathing halo instead.
+    graph.nodeColor(_baseNodeColor);
     graph.nodeVal(function (n) {
       return activePathNodes.has(n.id) ? _baseNodeVal(n) * 4 + 6 : _baseNodeVal(n);
     });
