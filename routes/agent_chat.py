@@ -52,7 +52,7 @@ async def agent_chat_route(
     _require_admin(body.api_key, role)
     username = _bearer_username(request) or "admin"
 
-    from core.agent_tools import dispatch, list_tools
+    from core.agent_tools import dispatch, list_tools, shell_enabled
     from core.agent_tools.backends import (
         BackendError,
         get_backend,
@@ -67,13 +67,30 @@ async def agent_chat_route(
     except BackendError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    tools_schema = tools_to_schema(list_tools())
+    # v0.6.1 Phase E — run_shell is the highest-risk tool and ships
+    # DEFAULT OFF. Hide it from the LLM schema entirely while disabled so
+    # the model never wastes a loop iteration on a tool it can't use. The
+    # handler ALSO re-checks the gate (defence in depth for direct
+    # dispatch() callers).
+    _shell_on = shell_enabled()
+    visible_tools = [
+        t for t in list_tools() if t.name != "run_shell" or _shell_on
+    ]
+    tools_schema = tools_to_schema(visible_tools)
     max_tokens = max(64, min(int(body.max_tokens or DEFAULT_MAX_TOKENS), 4096))
     system = body.system or (
         "You are JAMES, an auditable knowledge platform's agent. You may "
         "call the listed tools to inspect and modify files in the "
         "operator-allowed folders. Do not invent file paths; ask the "
         "user when uncertain. Keep responses concise."
+        + (
+            " You also have run_shell: it runs a shell command in an "
+            "operator-allowed folder (pass an absolute 'cwd' inside an "
+            "allowed folder). Prefer the file tools for file edits; use "
+            "run_shell only when a command is genuinely needed, and never "
+            "for destructive or network operations."
+            if _shell_on else ""
+        )
     )
 
     # Conversation state. Each backend accepts the Anthropic-style

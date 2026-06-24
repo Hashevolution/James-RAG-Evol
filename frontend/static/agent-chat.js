@@ -190,10 +190,17 @@
     const detail = call.ok
       ? (_t('agentchat.tool_ok', '완료'))
       : _esc(call.error || 'error');
+    // run_shell is the highest-risk tool — flag it with a warning border
+    // + a ⚠ marker so the operator can spot a shell call at a glance.
+    const isShell = call.name === 'run_shell';
+    const border = isShell ? '#a16207' : 'var(--border,#334155)';
+    const shellTag = isShell
+      ? ` <span style="color:#fc8" title="${_esc(_t('agentchat.shell_tag_title', '셸 명령 실행 — 운영자 허용 폴더 안에서만'))}">⚠ shell</span>`
+      : '';
     _appendNode(`
-      <div style="align-self:flex-start;max-width:92%;background:var(--bg,#0f172a);border:1px solid var(--border,#334155);border-radius:8px;padding:8px 12px;font-family:var(--font-mono);font-size:11px;color:var(--text)">
+      <div style="align-self:flex-start;max-width:92%;background:var(--bg,#0f172a);border:1px solid ${border};border-radius:8px;padding:8px 12px;font-family:var(--font-mono);font-size:11px;color:var(--text)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span><strong>${okIcon} ${_esc(call.name)}</strong>
+          <span><strong>${okIcon} ${_esc(call.name)}</strong>${shellTag}
                 <span style="color:var(--muted);margin-left:6px">iter ${call.iter || ''}</span></span>
           <span style="color:var(--muted)">${call.elapsed_ms != null ? call.elapsed_ms + ' ms' : ''}</span>
         </div>

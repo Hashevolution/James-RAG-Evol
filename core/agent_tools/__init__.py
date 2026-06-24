@@ -41,6 +41,12 @@ from core.agent_tools.dispatcher import dispatch  # noqa: F401
 # import is intentional (matches `tools/__init__.py` pattern).
 from core.agent_tools import builtins  # noqa: F401
 
+# v0.6.1 Phase E — run_shell tool (highest-risk surface). Registered
+# unconditionally so direct dispatch() callers get a clear "disabled"
+# error; the handler + endpoint both gate on JAMES_AGENT_ENABLE_SHELL.
+from core.agent_tools import shell  # noqa: F401
+from core.agent_tools.shell import shell_enabled  # noqa: F401
+
 __all__ = [
     "MAX_TOOL_TIMEOUT_SEC",
     "Tool",
@@ -49,4 +55,5 @@ __all__ = [
     "list_tools",
     "register_tool",
     "dispatch",
+    "shell_enabled",
 ]
