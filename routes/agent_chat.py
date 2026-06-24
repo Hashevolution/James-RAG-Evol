@@ -38,6 +38,7 @@ class AgentChatRequest(BaseModel):
     message: str
     history: Optional[List[Dict[str, Any]]] = None
     backend: Optional[str] = None     # "anthropic" | "ollama" override
+    model: Optional[str] = None       # per-call model override (UI dropdown)
     max_tokens: Optional[int] = None
     system: Optional[str] = None
 
@@ -63,7 +64,7 @@ async def agent_chat_route(
         raise HTTPException(status_code=400, detail="message must be non-empty")
 
     try:
-        backend = get_backend(body.backend)
+        backend = get_backend(body.backend, body.model)
     except BackendError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

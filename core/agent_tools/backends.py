@@ -281,16 +281,23 @@ def _settings_get(key: str, env_name: str, default: str) -> str:
         return os.environ.get(env_name, default)
 
 
-def get_backend(name: Optional[str] = None) -> AgentBackend:
-    """Resolve the active backend from ``name`` (test override) or the
-    unified LLM settings repository (DB-first, ``JAMES_AGENT_BACKEND``
+def get_backend(name: Optional[str] = None,
+                model: Optional[str] = None) -> AgentBackend:
+    """Resolve the active backend from ``name`` (test / UI override) or
+    the unified LLM settings repository (DB-first, ``JAMES_AGENT_BACKEND``
     env fallback). Defaults to ``ollama`` (local-first is JAMES'
-    identity)."""
+    identity).
+
+    ``model`` is an optional per-call model override (the agent-chat UI
+    passes the dropdown selection). An empty string is treated as "no
+    override" so the backend falls back to the DB / env / default model.
+    """
     selected = (name or _settings_get("agent_backend", ENV_BACKEND, "ollama")).strip().lower()
+    model = (model or "").strip() or None
     if selected == "anthropic":
-        return AnthropicBackend()
+        return AnthropicBackend(model=model)
     if selected == "ollama":
-        return OllamaBackend()
+        return OllamaBackend(model=model)
     raise BackendError(
         f"unknown backend {selected!r}; expected 'anthropic' or 'ollama'"
     )

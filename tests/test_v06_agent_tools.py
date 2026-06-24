@@ -231,11 +231,11 @@ class AgentChatEndpointTests(unittest.TestCase):
         client, ac = _make_client()
         fake = _FakeBackend({"stop_reason": "end_turn",
                               "text": "hello back", "tool_calls": [], "raw": {}})
-        ac.get_backend = lambda name=None: fake
+        ac.get_backend = lambda name=None, model=None: fake
         # patch import path the endpoint uses
         import core.agent_tools.backends as be
         orig_get = be.get_backend
-        be.get_backend = lambda name=None: fake
+        be.get_backend = lambda name=None, model=None: fake
         try:
             r = client.post("/agent/chat/",
                             json={"api_key": "x", "message": "hi"})
@@ -265,7 +265,7 @@ class AgentChatEndpointTests(unittest.TestCase):
         )
         import core.agent_tools.backends as be
         orig = be.get_backend
-        be.get_backend = lambda name=None: fake
+        be.get_backend = lambda name=None, model=None: fake
         try:
             r = client.post("/agent/chat/",
                             json={"api_key": "x",

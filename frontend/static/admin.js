@@ -649,10 +649,18 @@ function showPage(id, el) {
     character:      loadCharacter,
     knowledge:      loadKnowledge,
     hardware:       loadHardware,    // [P3-1]
-    'agent-folders': loadAgentFolders,  // v0.6.1 Phase D-1
-    'agent-chat':    loadAgentChat,     // v0.6.1 Phase D-2
+    agent:           loadAgentPage,     // v0.6.1 UX overhaul (merged)
   };
   loaders[id]?.();
+}
+
+/* ── v0.6.1 UX overhaul: unified agent page loader ───────── */
+/* Boots the merged page — folder list (this file) + chat/session/model
+ * logic (agent-chat.js, loaded after admin.js). */
+function loadAgentPage() {
+  loadAgentFolders();
+  if (window.loadAgentChat) window.loadAgentChat();
+  if (window.bootAgentWorkspace) window.bootAgentWorkspace();
 }
 
 /* ── v0.6.1 Phase D-1: Agent allowed folders ─────────────── */

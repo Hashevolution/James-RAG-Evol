@@ -194,7 +194,7 @@ class ShellSchemaVisibilityTests(unittest.TestCase):
         rec = _RecordingBackend()
         import core.agent_tools.backends as be
         orig = be.get_backend
-        be.get_backend = lambda name=None: rec
+        be.get_backend = lambda name=None, model=None: rec
         try:
             r = client.post("/agent/chat/", json={"api_key": "x", "message": "hi"})
         finally:
