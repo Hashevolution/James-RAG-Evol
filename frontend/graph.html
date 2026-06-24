@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#04060a">
 <title>Secure Enterprise Knowledge Operating System — Reasoning Graph</title>
-<link rel="stylesheet" href="/static/tokens.css">
+<link rel="stylesheet" href="/static/tokens.css?v=v21-20260625-csp">
 <!-- v=v14-20260616 cache-bust: graph.css markdown render + conf chip
      + bottom-sheet panel on phones (v9 node-detail panel reorg). -->
 <link rel="stylesheet" href="/static/graph.css?v=v14-20260616">
@@ -24,25 +24,25 @@
 <header>
   <div class="logo">
     <span class="brand">Secure Enterprise Knowledge<span class="brand-tail">Operating System</span></span>
-    <span style="color:var(--muted);font-size:11px;margin-left:6px">· <span data-i18n="graph.title">Reasoning Graph</span></span>
-    <span class="live-dot" aria-hidden="true" title="System live" style="margin-left:10px"></span>
+    <span class="c-muted fs-11 ml-6">· <span data-i18n="graph.title">Reasoning Graph</span></span>
+    <span class="live-dot ml-10" aria-hidden="true" title="System live"></span>
   </div>
   <div class="header-right">
     <!-- v0.6.1 — current workspace badge. Reasoning graph is workspace-
          scoped (entities + audit log come from the active JAMES_WORKSPACE),
          so the operator needs to see which workspace they're inspecting
          the graph for. -->
-    <button class="nav-btn workspace-badge" id="workspace-badge"
+    <button class="nav-btn workspace-badge d-none fs-11" id="workspace-badge"
             type="button"
             data-i18n-title="workspace.badge_title"
             title="현재 워크스페이스"
             aria-label="현재 워크스페이스"
-            style="display:none;font-size:11px">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;margin-right:3px"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span id="workspace-name">—</span>
+           >
+      <svg class="va-n2 mr-3" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span id="workspace-name">—</span>
     </button>
-    <button class="nav-btn" data-lang-toggle data-action="toggle-lang" title="Language / 언어"
+    <button class="nav-btn u-09020afe" data-lang-toggle data-action="toggle-lang" title="Language / 언어"
             aria-label="언어 전환 / Toggle language"
-            style="font-size:12px;font-weight:600;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;color:var(--text-soft)"></button>
+           ></button>
     <a href="/admin" class="nav-btn">← <span data-i18n="graph.back_admin">Admin</span></a>
     <a href="/chat" class="nav-btn">← <span data-i18n="graph.back_chat">Chat</span></a>
   </div>
@@ -77,35 +77,23 @@
              data-i18n="graph.timetravel.pick">
         Pick a moment
       </label>
-      <input id="time-travel-input"
+      <input class="w-full bg-bg bd-1 br-7 p-9-12 c-text font-mono fs-12 outline-none" id="time-travel-input"
              type="datetime-local"
              aria-label="Time-travel timestamp"
-             style="width:100%;background:var(--bg);
-                    border:1px solid var(--border);border-radius:7px;
-                    padding:9px 12px;color:var(--text);
-                    font-family:var(--font-mono);font-size:12px;
-                    outline:none">
-      <div style="display:flex;gap:6px;margin-top:8px">
-        <button id="time-travel-apply" type="button"
+            >
+      <div class="d-flex gap-6 mt-8">
+        <button class="u-559a9927" id="time-travel-apply" type="button"
                 data-action="time-travel-apply"
                 aria-label="Replay graph state at picked time"
                 data-i18n="graph.timetravel.apply"
-                style="flex:1;padding:7px 10px;
-                       background:var(--accent);color:var(--on-accent);
-                       border:none;border-radius:6px;cursor:pointer;
-                       font-size:11px;font-weight:600;
-                       font-family:var(--font-mono);letter-spacing:.4px">
+               >
           Apply
         </button>
-        <button id="time-travel-now" type="button"
+        <button class="u-55f6adff" id="time-travel-now" type="button"
                 data-action="time-travel-now"
                 aria-label="Return to current graph state"
                 data-i18n="graph.timetravel.now"
-                style="flex:1;padding:7px 10px;
-                       background:var(--surface-2);color:var(--text-soft);
-                       border:1px solid var(--border);border-radius:6px;
-                       cursor:pointer;font-size:11px;font-weight:600;
-                       font-family:var(--font-mono);letter-spacing:.4px">
+               >
           Now
         </button>
       </div>
@@ -113,9 +101,8 @@
            the active replay moment without yanking focus. -->
       <div id="time-travel-state"
            role="status" aria-live="polite"
-           class="stat"
-           style="margin-top:8px;font-size:11px;line-height:1.5;
-                  font-family:var(--font-mono);color:var(--muted)">
+           class="stat mt-8 fs-11 lh-15 font-mono c-muted"
+          >
         <span data-i18n="graph.timetravel.now_label">Viewing: NOW</span>
       </div>
 
@@ -126,32 +113,23 @@
            but rendered in the same 3-phase chat.js STAGE_META
            format). -->
       <label for="time-travel-trace-input"
-             class="field-label"
-             style="margin-top:10px"
+             class="field-label mt-10"
+            
              data-i18n="graph.timetravel.trace.label">
         Trace replay
       </label>
-      <input id="time-travel-trace-input"
+      <input class="w-full bg-bg bd-1 br-7 p-7-10 c-text font-mono fs-11 outline-none" id="time-travel-trace-input"
              type="text"
              autocomplete="off"
              spellcheck="false"
              placeholder="trace_id"
              aria-label="Trace ID to replay"
-             style="width:100%;background:var(--bg);
-                    border:1px solid var(--border);border-radius:7px;
-                    padding:7px 10px;color:var(--text);
-                    font-family:var(--font-mono);font-size:11px;
-                    outline:none">
-      <button id="time-travel-trace-apply" type="button"
+            >
+      <button class="u-44ba397d" id="time-travel-trace-apply" type="button"
               data-action="time-travel-trace-apply"
               aria-label="Replay trace at picked time"
               data-i18n="graph.timetravel.trace.apply"
-              style="width:100%;margin-top:6px;padding:6px 10px;
-                     background:var(--surface-2);
-                     border:1px solid var(--border);border-radius:6px;
-                     color:var(--text-soft);cursor:pointer;
-                     font-size:11px;font-weight:600;
-                     font-family:var(--font-mono);letter-spacing:.4px">
+             >
         Show trail
       </button>
 
@@ -159,17 +137,12 @@
            a cutoff is picked; the renderer enables it on TT.a's
            `:set` event so the operator can compare the past moment
            against the current state. -->
-      <button id="time-travel-diff" type="button"
+      <button class="u-ecc59556" id="time-travel-diff" type="button"
               data-action="time-travel-diff"
               aria-label="Show graph state diff between time T and now"
               data-i18n="graph.timetravel.diff.button"
               disabled
-              style="width:100%;margin-top:8px;padding:7px 10px;
-                     background:var(--surface-2);
-                     border:1px solid var(--border);border-radius:6px;
-                     color:var(--text-soft);cursor:not-allowed;
-                     font-size:11px;font-weight:600;opacity:.5;
-                     font-family:var(--font-mono);letter-spacing:.4px">
+             >
         Diff vs NOW
       </button>
     </div>
@@ -188,29 +161,29 @@
     </div>
 
     <div>
-      <div class="panel-title" style="margin-bottom:8px"
+      <div class="panel-title mb-8"
            data-i18n="graph.legend.title">
         <span data-glossary="entity">Legend</span>
       </div>
       <div class="legend">
-        <div class="legend-row"><span class="legend-dot" style="background:var(--t-person)"></span>   <span data-i18n="graph.legend.person">person</span></div>
-        <div class="legend-row"><span class="legend-dot" style="background:var(--t-org)"></span>      <span data-i18n="graph.legend.org">org</span></div>
-        <div class="legend-row"><span class="legend-dot" style="background:var(--t-concept)"></span>  <span data-i18n="graph.legend.concept">concept</span></div>
-        <div class="legend-row"><span class="legend-dot" style="background:var(--t-document)"></span> <span data-i18n="graph.legend.document">document</span></div>
-        <div class="legend-row"><span class="legend-dot" style="background:var(--t-event)"></span>    <span data-i18n="graph.legend.event">event</span></div>
+        <div class="legend-row"><span class="legend-dot u-d40e04fd"></span>   <span data-i18n="graph.legend.person">person</span></div>
+        <div class="legend-row"><span class="legend-dot u-10cdfa29"></span>      <span data-i18n="graph.legend.org">org</span></div>
+        <div class="legend-row"><span class="legend-dot u-f0030879"></span>  <span data-i18n="graph.legend.concept">concept</span></div>
+        <div class="legend-row"><span class="legend-dot u-1d182703"></span> <span data-i18n="graph.legend.document">document</span></div>
+        <div class="legend-row"><span class="legend-dot u-9ff490e0"></span>    <span data-i18n="graph.legend.event">event</span></div>
       </div>
     </div>
 
     <div>
-      <div class="panel-title" style="margin-bottom:8px" data-i18n="graph.stats.title">Snapshot</div>
+      <div class="panel-title mb-8" data-i18n="graph.stats.title">Snapshot</div>
       <div class="stat" id="stat-box">
         <span data-i18n="common.loading">Loading...</span>
       </div>
     </div>
 
     <div>
-      <div class="panel-title" style="margin-bottom:8px" data-i18n="graph.tip.title">Controls</div>
-      <div class="stat" style="line-height:1.7">
+      <div class="panel-title mb-8" data-i18n="graph.tip.title">Controls</div>
+      <div class="stat u-43ff79ff">
         <div data-i18n="graph.tip.rotate">drag — rotate 360°</div>
         <div data-i18n="graph.tip.zoom">scroll — zoom</div>
         <div data-i18n="graph.tip.click">click node — focus</div>
@@ -219,17 +192,14 @@
 
     <!-- [Knowledge Cascade Phase E UI] admin edit-mode toggle. JS hides
          the wrapper if not admin / server has JAMES_GRAPH_EDIT off. -->
-    <div id="graph-edit-wrap" style="display:none">
-      <div class="panel-title" style="margin-bottom:8px">Edit mode</div>
-      <button id="graph-edit-toggle" type="button"
-              style="width:100%;padding:9px 12px;background:var(--surface-2);
-                     border:1px solid var(--border);border-radius:7px;
-                     color:var(--text-soft);font-size:12px;cursor:pointer;
-                     font-family:var(--font-mono);letter-spacing:.4px">
+    <div class="d-none" id="graph-edit-wrap">
+      <div class="panel-title mb-8">Edit mode</div>
+      <button class="u-3a00a1a8" id="graph-edit-toggle" type="button"
+             >
         Edit mode: OFF
       </button>
-      <div id="graph-edit-hint" class="stat"
-           style="margin-top:8px;line-height:1.6;font-size:11px;display:none">
+      <div id="graph-edit-hint" class="stat mt-8 lh-16 fs-11 d-none"
+          >
         edit ON — click any edge to view + edit its sources
       </div>
     </div>
@@ -283,8 +253,8 @@
     </div>
     <div class="recent-list-wrapper">
       <label class="field-label" data-i18n="flow.selector.recent_label">최근 질문 목록 (오늘)</label>
-      <button id="flow-refresh-btn" type="button" class="onb-btn" style="font-size:11px;padding:6px 12px;min-height:32px" data-i18n="flow.selector.refresh">↻ 새로 고침</button>
-      <input id="flow-search-input" type="search" class="flow-input" autocomplete="off" spellcheck="false" placeholder="질문으로 검색 (최근 14일)" aria-label="질문으로 트레이스 검색" data-i18n-placeholder="flow.selector.search_ph" style="margin-top:8px">
+      <button id="flow-refresh-btn" type="button" class="onb-btn u-c50d1568" data-i18n="flow.selector.refresh">↻ 새로 고침</button>
+      <input id="flow-search-input" type="search" class="flow-input mt-8" autocomplete="off" spellcheck="false" placeholder="질문으로 검색 (최근 14일)" aria-label="질문으로 트레이스 검색" data-i18n-placeholder="flow.selector.search_ph">
       <div id="flow-recent-list" class="recent-list" aria-live="polite">
         <div class="empty-state" data-i18n="flow.selector.empty">최근 질문이 없습니다. trace_id 를 직접 입력해 보세요.</div>
       </div>
@@ -292,7 +262,7 @@
   </section>
   <section class="flow-viz-section" id="flow-viz-section" role="region" aria-labelledby="flow-viz-title" hidden>
     <h2 id="flow-viz-title" data-i18n="flow.viz.title">추론 흐름</h2>
-    <button id="flow-to-graph-btn" type="button" class="onb-btn" style="font-size:11px;padding:6px 12px;min-height:32px;margin-bottom:8px" data-i18n="flow.to_graph">그래프에서 이 추론 보기 →</button>
+    <button id="flow-to-graph-btn" type="button" class="onb-btn u-89fcfdab" data-i18n="flow.to_graph">그래프에서 이 추론 보기 →</button>
     <div id="flow-summary" class="flow-summary"></div>
     <div class="flow-swimlanes" id="flow-swimlanes">
       <div class="swimlane" data-phase="retrieve">
@@ -344,7 +314,7 @@
     <div class="rollback-modal-card">
       <h2 id="rollback-confirm-title" data-i18n="rollback.confirm.title">롤백 확인</h2>
       <div id="rollback-confirm-summary" class="confirm-summary"></div>
-      <label for="rollback-note" data-i18n="rollback.confirm.note_label" style="display:block;margin:14px 0 6px;font-size:12px;color:var(--text-soft);font-family:var(--font-mono)">왜 되돌리시나요? (감사 기록에 남습니다)</label>
+      <label class="u-1417170d" for="rollback-note" data-i18n="rollback.confirm.note_label">왜 되돌리시나요? (감사 기록에 남습니다)</label>
       <textarea id="rollback-note" rows="3" placeholder="예: 어제 14시에 잘못된 휴가 정책 문서가 업로드됨" data-i18n-placeholder="rollback.confirm.note_placeholder" class="rollback-textarea"></textarea>
       <div class="rollback-modal-buttons">
         <button id="rollback-cancel-btn" type="button" class="onb-btn" data-i18n="rollback.confirm.cancel">취소</button>
@@ -361,32 +331,32 @@
      role="dialog" aria-modal="true"
      aria-labelledby="login-modal-title">
   <div class="modal-card">
-    <div id="login-modal-title" style="font-size:13px;font-weight:600;font-family:var(--font-mono);color:var(--accent-fg);margin-bottom:8px;letter-spacing:.5px;">▸ Secure Enterprise Knowledge Operating System</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:24px;" data-i18n="auth.admin_required">Admin login required</div>
-    <div style="margin-bottom:14px;">
-      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px;">ADMIN ID</div>
-      <input id="login-id" type="text" placeholder="admin" value="admin"
+    <div class="fs-13 fw-600 font-mono c-accent-fg mb-8 ls-05" id="login-modal-title">▸ Secure Enterprise Knowledge Operating System</div>
+    <div class="u-3989efe8" data-i18n="auth.admin_required">Admin login required</div>
+    <div class="mb-14">
+      <div class="fs-10 c-muted ls-1 font-mono mb-6">ADMIN ID</div>
+      <input class="w-full bg-bg bd-1 br-7 p-10-14 c-text fs-14 outline-none" id="login-id" type="text" placeholder="admin" value="admin"
              autocomplete="off" spellcheck="false"
-             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 14px;color:var(--text);font-size:14px;outline:none;">
+            >
     </div>
-    <div style="margin-bottom:14px;">
-      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px;">PASSWORD</div>
-      <input id="login-pw" type="password" placeholder="••••••••"
+    <div class="mb-14">
+      <div class="fs-10 c-muted ls-1 font-mono mb-6">PASSWORD</div>
+      <input class="w-full bg-bg bd-1 br-7 p-10-14 c-text fs-14 outline-none" id="login-pw" type="password" placeholder="••••••••"
              autocomplete="new-password"
-             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 14px;color:var(--text);font-size:14px;outline:none;">
+            >
     </div>
-    <div style="margin-bottom:14px;">
-      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px;">
+    <div class="mb-14">
+      <div class="fs-10 c-muted ls-1 font-mono mb-6">
         API KEY
-        <span style="opacity:.6;font-weight:400;text-transform:none;letter-spacing:0">— blank if already set on chat page</span>
+        <span class="u-26dfbfa2">— blank if already set on chat page</span>
       </div>
-      <input id="login-apikey" type="password" placeholder="JAMES_API_KEY"
+      <input class="w-full bg-bg bd-1 br-7 p-10-14 c-text fs-14 outline-none" id="login-apikey" type="password" placeholder="JAMES_API_KEY"
              autocomplete="off" spellcheck="false"
-             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 14px;color:var(--text);font-size:14px;outline:none;">
+            >
     </div>
-    <div id="login-error" style="font-size:12px;color:var(--danger);min-height:18px;margin-bottom:12px;font-family:var(--font-mono);"></div>
-    <button data-action="do-login"
-            style="width:100%;padding:11px;background:var(--accent);border:none;border-radius:8px;color:var(--on-accent);font-size:14px;font-weight:600;cursor:pointer;"
+    <div class="u-3d31afaf" id="login-error"></div>
+    <button class="u-57cc855e" data-action="do-login"
+           
             data-i18n="auth.login">
       Login
     </button>
@@ -404,72 +374,50 @@
 <div class="modal-overlay" id="edge-edit-modal"
      role="dialog" aria-modal="true"
      aria-labelledby="edge-edit-title">
-  <div class="modal-card" style="max-width:520px;width:92%;max-height:80vh;overflow-y:auto">
-    <div id="edge-edit-title"
-         style="font-size:13px;font-weight:600;font-family:var(--font-mono);
-                color:var(--accent-fg);margin-bottom:6px;letter-spacing:.5px">
+  <div class="modal-card u-59bb6812">
+    <div class="fs-13 fw-600 font-mono c-accent-fg mb-6 ls-05" id="edge-edit-title"
+        >
       ▸ <span id="edge-edit-src">—</span>
-      <span style="color:var(--muted);font-weight:400"> → </span>
+      <span class="c-muted fw-400"> → </span>
       <span id="edge-edit-tgt">—</span>
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;
-                font-family:var(--font-mono)">
+    <div class="fs-11 c-muted mb-14 font-mono">
       <span id="edge-edit-type">—</span>
-      <span style="margin-left:10px">conf: <span id="edge-edit-conf">—</span></span>
+      <span class="ml-10">conf: <span id="edge-edit-conf">—</span></span>
     </div>
 
-    <div style="font-size:10px;color:var(--muted);letter-spacing:1px;
-                font-family:var(--font-mono);margin-bottom:6px">SOURCES</div>
-    <div id="edge-edit-sources"
-         style="border:1px solid var(--border);border-radius:7px;
-                background:var(--bg);padding:8px;margin-bottom:18px;
-                font-size:12px;max-height:30vh;overflow-y:auto">
+    <div class="fs-10 c-muted ls-1 font-mono mb-6">SOURCES</div>
+    <div class="u-6bf30e00" id="edge-edit-sources"
+        >
       <!-- JS fills rows -->
     </div>
 
-    <div style="font-size:10px;color:var(--muted);letter-spacing:1px;
-                font-family:var(--font-mono);margin-bottom:6px">
+    <div class="fs-10 c-muted ls-1 font-mono mb-6">
       ADD MANUAL SOURCE
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:8px">
-      <input id="edge-edit-weight" type="number" step="0.1" min="0" max="1"
+    <div class="d-flex gap-8 mb-8">
+      <input class="u-9c8a81e2" id="edge-edit-weight" type="number" step="0.1" min="0" max="1"
              value="0.8" placeholder="weight"
-             style="flex:0 0 80px;background:var(--bg);
-                    border:1px solid var(--border);border-radius:6px;
-                    padding:7px 9px;color:var(--text);font-size:12px;outline:none">
-      <input id="edge-edit-note" type="text" maxlength="300"
+            >
+      <input class="u-0da9f7dd" id="edge-edit-note" type="text" maxlength="300"
              placeholder="note (optional)"
-             style="flex:1;background:var(--bg);border:1px solid var(--border);
-                    border-radius:6px;padding:7px 9px;color:var(--text);
-                    font-size:12px;outline:none">
+            >
     </div>
-    <button id="edge-edit-append"
-            style="width:100%;padding:9px;background:var(--accent);
-                   border:none;border-radius:7px;color:var(--on-accent);
-                   font-size:12px;font-weight:600;cursor:pointer;
-                   font-family:var(--font-mono);letter-spacing:.4px;margin-bottom:18px">
+    <button class="u-de414fa1" id="edge-edit-append"
+           >
       + Add manual source
     </button>
 
-    <div id="edge-edit-error"
-         style="font-size:11px;color:var(--danger);min-height:14px;
-                margin-bottom:8px;font-family:var(--font-mono)"></div>
+    <div class="u-dc6eeb85" id="edge-edit-error"
+        ></div>
 
-    <div style="display:flex;gap:8px">
-      <button id="edge-edit-delete-relation"
-              style="flex:1;padding:9px;background:transparent;
-                     border:1px solid var(--danger);border-radius:7px;
-                     color:var(--danger);font-size:11px;font-weight:600;
-                     cursor:pointer;font-family:var(--font-mono);
-                     letter-spacing:.4px">
+    <div class="d-flex gap-8">
+      <button class="u-4552fac5" id="edge-edit-delete-relation"
+             >
         Delete entire relation
       </button>
-      <button id="edge-edit-close"
-              style="flex:1;padding:9px;background:var(--surface-2);
-                     border:1px solid var(--border);border-radius:7px;
-                     color:var(--text-soft);font-size:11px;font-weight:600;
-                     cursor:pointer;font-family:var(--font-mono);
-                     letter-spacing:.4px">
+      <button class="u-e26f804b" id="edge-edit-close"
+             >
         Close
       </button>
     </div>
@@ -483,43 +431,33 @@
 <div class="modal-overlay" id="node-edit-modal"
      role="dialog" aria-modal="true"
      aria-labelledby="node-edit-title">
-  <div class="modal-card" style="max-width:520px;width:92%;max-height:85vh;overflow-y:auto">
-    <div id="node-edit-title"
+  <div class="modal-card u-a0830e29">
+    <div class="fs-13 fw-600 font-mono c-accent-fg mb-6 ls-05" id="node-edit-title"
          data-i18n="graph.node.edit.title"
-         style="font-size:13px;font-weight:600;font-family:var(--font-mono);
-                color:var(--accent-fg);margin-bottom:6px;letter-spacing:.5px">
+        >
       ▸ 노드 편집
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;
-                font-family:var(--font-mono)">
+    <div class="fs-11 c-muted mb-14 font-mono">
       <span data-i18n="graph.node.edit.idLabel">entity_id</span>:
-      <span id="node-edit-id" style="color:var(--text-soft)">—</span>
+      <span class="c-text-soft" id="node-edit-id">—</span>
     </div>
 
     <!-- 이름 -->
-    <div style="margin-bottom:12px">
-      <label for="node-edit-name"
+    <div class="mb-12">
+      <label class="d-block fs-10 c-muted ls-1 font-mono mb-4" for="node-edit-name"
              data-i18n="graph.node.edit.name"
-             style="display:block;font-size:10px;color:var(--muted);
-                    letter-spacing:1px;font-family:var(--font-mono);
-                    margin-bottom:4px">이름</label>
-      <input id="node-edit-name" type="text" maxlength="200"
-             style="width:100%;background:var(--bg);border:1px solid var(--border);
-                    border-radius:6px;padding:8px 10px;color:var(--text);
-                    font-size:13px;outline:none;box-sizing:border-box">
+            >이름</label>
+      <input class="u-039f2f43" id="node-edit-name" type="text" maxlength="200"
+            >
     </div>
 
     <!-- 엔티티 종류 -->
-    <div style="margin-bottom:12px">
-      <label for="node-edit-etype"
+    <div class="mb-12">
+      <label class="d-block fs-10 c-muted ls-1 font-mono mb-4" for="node-edit-etype"
              data-i18n="graph.node.edit.entityType"
-             style="display:block;font-size:10px;color:var(--muted);
-                    letter-spacing:1px;font-family:var(--font-mono);
-                    margin-bottom:4px">엔티티 종류</label>
-      <select id="node-edit-etype"
-              style="width:100%;background:var(--bg);border:1px solid var(--border);
-                     border-radius:6px;padding:8px 10px;color:var(--text);
-                     font-size:13px;outline:none;box-sizing:border-box">
+            >엔티티 종류</label>
+      <select class="u-039f2f43" id="node-edit-etype"
+             >
         <option value="person"   data-i18n="graph.legend.person">인물</option>
         <option value="org"      data-i18n="graph.legend.org">조직</option>
         <option value="concept"  data-i18n="graph.legend.concept">개념</option>
@@ -528,73 +466,50 @@
     </div>
 
     <!-- 별칭 -->
-    <div style="margin-bottom:12px">
-      <label for="node-edit-aliases"
+    <div class="mb-12">
+      <label class="d-block fs-10 c-muted ls-1 font-mono mb-4" for="node-edit-aliases"
              data-i18n="graph.node.edit.aliases"
-             style="display:block;font-size:10px;color:var(--muted);
-                    letter-spacing:1px;font-family:var(--font-mono);
-                    margin-bottom:4px">별칭 (한 줄에 하나씩)</label>
-      <textarea id="node-edit-aliases" rows="3"
+            >별칭 (한 줄에 하나씩)</label>
+      <textarea class="u-74dfbddd" id="node-edit-aliases" rows="3"
                 placeholder="앤스로픽&#10;Anthropic AI"
-                style="width:100%;background:var(--bg);border:1px solid var(--border);
-                       border-radius:6px;padding:8px 10px;color:var(--text);
-                       font-size:12px;outline:none;box-sizing:border-box;
-                       font-family:var(--font-mono);resize:vertical"></textarea>
+               ></textarea>
     </div>
 
     <!-- 요약 -->
-    <div style="margin-bottom:12px">
-      <label for="node-edit-summary"
+    <div class="mb-12">
+      <label class="d-block fs-10 c-muted ls-1 font-mono mb-4" for="node-edit-summary"
              data-i18n="graph.node.edit.summary"
-             style="display:block;font-size:10px;color:var(--muted);
-                    letter-spacing:1px;font-family:var(--font-mono);
-                    margin-bottom:4px">요약</label>
-      <textarea id="node-edit-summary" rows="5" maxlength="4000"
-                style="width:100%;background:var(--bg);border:1px solid var(--border);
-                       border-radius:6px;padding:8px 10px;color:var(--text);
-                       font-size:12px;outline:none;box-sizing:border-box;
-                       resize:vertical"></textarea>
+            >요약</label>
+      <textarea class="u-df897132" id="node-edit-summary" rows="5" maxlength="4000"
+               ></textarea>
     </div>
 
     <!-- 민감도 -->
-    <div style="margin-bottom:14px">
-      <label for="node-edit-sens"
+    <div class="mb-14">
+      <label class="d-block fs-10 c-muted ls-1 font-mono mb-4" for="node-edit-sens"
              data-i18n="graph.node.edit.sensitivity"
-             style="display:block;font-size:10px;color:var(--muted);
-                    letter-spacing:1px;font-family:var(--font-mono);
-                    margin-bottom:4px">민감도</label>
-      <select id="node-edit-sens"
-              style="width:100%;background:var(--bg);border:1px solid var(--border);
-                     border-radius:6px;padding:8px 10px;color:var(--text);
-                     font-size:13px;outline:none;box-sizing:border-box">
+            >민감도</label>
+      <select class="u-039f2f43" id="node-edit-sens"
+             >
         <option value="normal"    data-i18n="graph.node.edit.sensNormal">보통</option>
         <option value="sensitive" data-i18n="graph.node.edit.sensSensitive">민감</option>
       </select>
     </div>
 
-    <div id="node-edit-status"
-         style="font-size:11px;color:var(--muted);min-height:14px;
-                margin-bottom:4px;font-family:var(--font-mono)"></div>
-    <div id="node-edit-error"
-         style="font-size:11px;color:var(--danger);min-height:14px;
-                margin-bottom:8px;font-family:var(--font-mono)"></div>
+    <div class="u-a737cc80" id="node-edit-status"
+        ></div>
+    <div class="u-dc6eeb85" id="node-edit-error"
+        ></div>
 
-    <div style="display:flex;gap:8px">
-      <button id="node-edit-save"
+    <div class="d-flex gap-8">
+      <button class="u-3fc63d02" id="node-edit-save"
               data-i18n="graph.node.edit.save"
-              style="flex:1;padding:10px;background:var(--accent);
-                     border:none;border-radius:7px;color:var(--on-accent);
-                     font-size:12px;font-weight:600;cursor:pointer;
-                     font-family:var(--font-mono);letter-spacing:.4px">
+             >
         저장
       </button>
-      <button id="node-edit-close"
+      <button class="u-f329ff85" id="node-edit-close"
               data-i18n="graph.node.edit.close"
-              style="flex:1;padding:10px;background:var(--surface-2);
-                     border:1px solid var(--border);border-radius:7px;
-                     color:var(--text-soft);font-size:12px;font-weight:600;
-                     cursor:pointer;font-family:var(--font-mono);
-                     letter-spacing:.4px">
+             >
         닫기
       </button>
     </div>

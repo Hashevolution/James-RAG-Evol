@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#04060a">
 <title>Secure Enterprise Knowledge Operating System — Workspace</title>
-<link rel="stylesheet" href="/static/tokens.css">
+<link rel="stylesheet" href="/static/tokens.css?v=v21-20260625-csp">
 <link rel="stylesheet" href="/static/workspace.css">
 <!-- mobile-responsive overrides — kept after page styles so @media
      rules win at narrow viewports without !important on every line -->
@@ -20,35 +20,35 @@
   <div class="logo">
     <span class="brand">Secure Enterprise Knowledge<span class="brand-tail">Operating System</span></span>
     <span class="tagline" data-i18n="workspace.tagline">Workspace · 데이터 + 작업</span>
-    <span class="live-dot" aria-hidden="true" title="System live" style="margin-left:10px"></span>
+    <span class="live-dot ml-10" aria-hidden="true" title="System live"></span>
   </div>
   <div class="header-right">
     <!-- v0.6.1 — current workspace badge. Stays hidden until logged in. -->
-    <button class="nav-btn workspace-badge" id="workspace-badge"
+    <button class="nav-btn workspace-badge d-none fs-11" id="workspace-badge"
             type="button"
             data-i18n-title="workspace.badge_title"
             title="현재 워크스페이스"
             aria-label="현재 워크스페이스"
-            style="display:none;font-size:11px">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+           >
+      <svg class="va-n2 mr-3" width="13" height="13" viewBox="0 0 24 24" fill="none"
            stroke="currentColor" stroke-width="2" stroke-linecap="round"
            stroke-linejoin="round" aria-hidden="true"
-           style="vertical-align:-2px;margin-right:3px">
+          >
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
       </svg><span id="workspace-name">—</span>
     </button>
-    <span class="role-badge" id="role-badge" style="display:none">
+    <span class="role-badge d-none" id="role-badge">
       <span class="who" id="role-who"></span>
       <span id="role-name"></span>
     </span>
-    <button class="nav-btn" data-lang-toggle data-action="toggle-lang"
+    <button class="nav-btn fw-700" data-lang-toggle data-action="toggle-lang"
             aria-label="언어 전환 / Toggle language"
-            style="font-weight:700"></button>
-    <a href="/chat" class="nav-btn" style="text-decoration:none" data-i18n="workspace.back_chat">챗</a>
+           ></button>
+    <a href="/chat" class="nav-btn no-underline" data-i18n="workspace.back_chat">챗</a>
     <button class="nav-btn" id="login-btn"
             data-action="show-login" data-i18n="auth.login">로그인</button>
-    <button class="nav-btn" id="logout-btn"
-            data-action="do-logout" style="display:none" data-i18n="auth.logout">로그아웃</button>
+    <button class="nav-btn d-none" id="logout-btn"
+            data-action="do-logout" data-i18n="auth.logout">로그아웃</button>
   </div>
 </header>
 
@@ -126,7 +126,7 @@
     <div id="tab-data">
       <div class="page-title">
         <span data-i18n="workspace.data_title">데이터</span>
-        <span class="badge" id="data-scope-badge" style="display:none">ADMIN</span>
+        <span class="badge d-none" id="data-scope-badge">ADMIN</span>
       </div>
       <div class="hint" data-i18n="workspace.data_hint">
         업로드한 파일과 처리 상태를 조회합니다. admin role 은 모든 사용자의 파일을, 그 외는 본인 업로드만 표시합니다.
@@ -164,43 +164,43 @@
     </div>
 
     <!-- Jobs tab (W8-B: trigger + queue) -->
-    <div id="tab-jobs" style="display:none">
+    <div class="d-none" id="tab-jobs">
       <div class="page-title">
         <span data-i18n="workspace.jobs_title">작업</span>
-        <span class="badge" id="jobs-scope-badge" style="display:none">ADMIN</span>
+        <span class="badge d-none" id="jobs-scope-badge">ADMIN</span>
       </div>
       <div class="hint" data-i18n="workspace.jobs_hint">
         엔티티를 Excel/문서/JSON 으로 합성하는 generic 작업을 실행합니다. 결과물은 본인만 다운로드 가능합니다.
       </div>
 
       <!-- Trigger form -->
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:14px">
-        <div style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:end">
+      <div class="bg-surface bd-1 br-8 p-16 mb-14">
+        <div class="u-b6b4121e">
           <div>
-            <label style="font-size:10px;color:var(--muted);letter-spacing:.5px;font-family:var(--font-mono);display:block;margin-bottom:4px">JOB TYPE</label>
-            <select id="job-type" style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+            <label class="fs-10 c-muted ls-05 font-mono d-block mb-4">JOB TYPE</label>
+            <select class="p-8-10 bg-bg bd-1 br-6 c-text fs-12" id="job-type">
               <option value="excel_build" data-i18n="workspace.jt_excel">excel_build · 엔티티 → .xlsx</option>
               <option value="doc_combine" data-i18n="workspace.jt_doc">doc_combine · 엔티티 → .md</option>
               <option value="entity_export" data-i18n="workspace.jt_export">entity_export · 카테고리 → .json</option>
             </select>
           </div>
           <div>
-            <label style="font-size:10px;color:var(--muted);letter-spacing:.5px;font-family:var(--font-mono);display:block;margin-bottom:4px">
+            <label class="fs-10 c-muted ls-05 font-mono d-block mb-4">
               <span id="job-input-label">INPUT REFS</span>
             </label>
-            <input id="job-input-refs" type="text"
+            <input class="w-full p-8-10 bg-bg bd-1 br-6 c-text fs-12 font-mono" id="job-input-refs" type="text"
                    data-i18n-placeholder="workspace.refs_ph"
                    placeholder="쉼표로 구분된 entity_id (또는 카테고리)"
-                   style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:var(--font-mono)">
+                  >
           </div>
           <div>
-            <button data-action="run-job" id="run-job-btn"
-                    style="padding:9px 16px;background:var(--accent);color:var(--on-accent);border:0;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600"
+            <button class="u-2ac71257" data-action="run-job" id="run-job-btn"
+                   
                     data-i18n="workspace.run">실행</button>
           </div>
         </div>
-        <div id="job-input-hint"
-             style="font-size:11px;color:var(--muted);margin-top:8px;font-family:var(--font-mono)"
+        <div class="fs-11 c-muted mt-8 font-mono" id="job-input-hint"
+            
              data-i18n="workspace.refs_hint_excel">
           예: ent_001, ent_042 · 빈 항목은 자동으로 생략됩니다.
         </div>
@@ -209,7 +209,7 @@
       <!-- Toolbar + table -->
       <div class="toolbar">
         <span class="counter" id="jobs-counter"></span>
-        <button class="nav-btn" data-action="reload-jobs" style="margin-left:auto"
+        <button class="nav-btn ml-auto" data-action="reload-jobs"
                 data-i18n="workspace.refresh">새로고침</button>
       </div>
       <table>
@@ -217,7 +217,7 @@
           <th data-i18n="workspace.col_job_type">타입</th>
           <th data-i18n="workspace.col_created">생성</th>
           <th data-i18n="workspace.col_status">상태</th>
-          <th data-i18n="workspace.col_owner" id="th-job-owner" style="display:none">소유자</th>
+          <th class="d-none" data-i18n="workspace.col_owner" id="th-job-owner">소유자</th>
           <th data-i18n="workspace.col_result">결과</th>
           <th data-i18n="workspace.col_actions">액션</th>
         </tr></thead>
@@ -231,18 +231,18 @@
          Wires the existing /admin/files/{search,view,download} +
          wiki-edit modal. Design:
          docs/design/v0.6.1-workspace-source-documents-tab.md -->
-    <div id="tab-search" style="display:none">
+    <div class="d-none" id="tab-search">
       <div class="page-title"><span data-i18n="workspace.search_title">원본 자료</span></div>
-      <div style="display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap">
-        <select id="src-root" style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+      <div class="u-b193c0d0">
+        <select class="p-8-10 bg-bg bd-1 br-6 c-text fs-12" id="src-root">
           <option value="wiki" data-i18n="workspace.src_root_wiki">위키 (지식 문서)</option>
           <option value="uploads" data-i18n="workspace.src_root_uploads">업로드 (원본 파일)</option>
         </select>
-        <input id="src-q" type="search" autocomplete="off" spellcheck="false" placeholder="파일명 검색" data-i18n-placeholder="workspace.src_search_ph" style="flex:1;min-width:180px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+        <input class="u-e8a4793a" id="src-q" type="search" autocomplete="off" spellcheck="false" placeholder="파일명 검색" data-i18n-placeholder="workspace.src_search_ph">
       </div>
-      <div style="display:flex;gap:14px;align-items:flex-start">
-        <div id="src-results" style="flex:0 0 320px;max-height:62vh;overflow:auto;border:1px solid var(--border);border-radius:6px"></div>
-        <div id="src-view" style="flex:1;min-width:0"></div>
+      <div class="d-flex gap-14 items-start">
+        <div class="u-9acf2948" id="src-results"></div>
+        <div class="u-89bd09bd" id="src-view"></div>
       </div>
     </div>
 
@@ -250,10 +250,10 @@
          Backend: core/change_request.py + change_request_apply.py.
          Trust zone: docs/ARCHITECTURE.md §5.6. Auth: admin can
          approve/reject; any auth user can propose + comment. -->
-    <div id="tab-cr" style="display:none">
+    <div class="d-none" id="tab-cr">
       <div class="page-title">
         <span data-i18n="workspace.cr_title">변경 요청</span>
-        <span class="badge" id="cr-scope-badge" style="display:none"
+        <span class="badge d-none" id="cr-scope-badge"
               data-i18n="workspace.cr_scope_admin">ADMIN</span>
       </div>
       <div class="hint" data-i18n="workspace.cr_hint">
@@ -263,28 +263,24 @@
 
       <!-- Toolbar — filter + new-proposal toggle + refresh. -->
       <div class="toolbar">
-        <select id="cr-filter-status"
-                style="padding:8px 10px;background:var(--bg);
-                       border:1px solid var(--border);border-radius:6px;
-                       color:var(--text);font-size:12px">
+        <select class="p-8-10 bg-bg bd-1 br-6 c-text fs-12" id="cr-filter-status"
+               >
           <option value="" data-i18n="workspace.cr_status_all">전체 상태</option>
           <option value="open"       data-i18n="workspace.cr_status_open">open</option>
           <option value="merged"     data-i18n="workspace.cr_status_merged">merged</option>
           <option value="rejected"   data-i18n="workspace.cr_status_rejected">rejected</option>
           <option value="superseded" data-i18n="workspace.cr_status_superseded">superseded</option>
         </select>
-        <select id="cr-filter-target"
-                style="padding:8px 10px;background:var(--bg);
-                       border:1px solid var(--border);border-radius:6px;
-                       color:var(--text);font-size:12px">
+        <select class="p-8-10 bg-bg bd-1 br-6 c-text fs-12" id="cr-filter-target"
+               >
           <option value="" data-i18n="workspace.cr_target_all">전체 대상</option>
           <option value="wiki_entity" data-i18n="workspace.cr_target_wiki">wiki_entity</option>
           <option value="run_jobs"    data-i18n="workspace.cr_target_jobs">run_jobs</option>
         </select>
         <span class="counter" id="cr-counter"></span>
-        <button class="nav-btn" data-action="cr-toggle-propose"
+        <button class="nav-btn ml-auto" data-action="cr-toggle-propose"
                 id="cr-propose-toggle"
-                style="margin-left:auto"
+               
                 data-i18n="workspace.cr_new">+ 새 제안</button>
         <!-- v18.7 — 추론 편집 모달 런처 (admin). 문서 불러오기 →
              드래그 선택 → 자연어 지시 → 초안 → 적용. base_hash 자동. -->
@@ -297,74 +293,58 @@
       <!-- Inline propose form (collapsed by default). Manual fields
            for v0.2.x — proposers compute base_hash client- or
            script-side; the UI's primary value is review/approve. -->
-      <div id="cr-propose-form" style="display:none;background:var(--surface);
-           border:1px solid var(--border);border-radius:8px;
-           padding:16px;margin-bottom:14px">
-        <div style="display:grid;grid-template-columns:auto 1fr;gap:10px 12px;align-items:center">
-          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"
+      <div class="d-none bg-surface bd-1 br-8 p-16 mb-14" id="cr-propose-form">
+        <div class="u-c6e02b13">
+          <label class="fs-11 c-muted font-mono"
                  data-i18n="workspace.cr_form_target_type">TARGET TYPE</label>
-          <select id="cr-form-target-type"
-                  style="padding:7px 10px;background:var(--bg);
-                         border:1px solid var(--border);border-radius:6px;
-                         color:var(--text);font-size:12px">
+          <select class="p-7-10 bg-bg bd-1 br-6 c-text fs-12" id="cr-form-target-type"
+                 >
             <option value="wiki_entity">wiki_entity</option>
             <option value="run_jobs">run_jobs</option>
           </select>
 
-          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"
+          <label class="fs-11 c-muted font-mono"
                  data-i18n="workspace.cr_form_target_id">TARGET ID</label>
-          <input id="cr-form-target-id" type="text"
+          <input class="p-7-10 bg-bg bd-1 br-6 c-text fs-12 font-mono" id="cr-form-target-id" type="text"
                  data-i18n-placeholder="workspace.cr_form_target_id_ph"
                  placeholder="entity/prod/concept/your_entity.md"
-                 style="padding:7px 10px;background:var(--bg);
-                        border:1px solid var(--border);border-radius:6px;
-                        color:var(--text);font-size:12px;font-family:var(--font-mono)">
+                >
 
-          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"
+          <label class="fs-11 c-muted font-mono"
                  data-i18n="workspace.cr_form_title">TITLE</label>
-          <input id="cr-form-title" type="text"
+          <input class="p-7-10 bg-bg bd-1 br-6 c-text fs-12" id="cr-form-title" type="text"
                  data-i18n-placeholder="workspace.cr_form_title_ph"
                  placeholder="짧고 명확한 변경 요약"
-                 style="padding:7px 10px;background:var(--bg);
-                        border:1px solid var(--border);border-radius:6px;
-                        color:var(--text);font-size:12px">
+                >
 
-          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);align-self:start;margin-top:6px"
+          <label class="fs-11 c-muted font-mono self-start mt-6"
                  data-i18n="workspace.cr_form_description">DESCRIPTION</label>
-          <textarea id="cr-form-description" rows="2"
+          <textarea class="p-7-10 bg-bg bd-1 br-6 c-text fs-12 resize-v" id="cr-form-description" rows="2"
                     data-i18n-placeholder="workspace.cr_form_description_ph"
                     placeholder="배경 / 이유 (선택)"
-                    style="padding:7px 10px;background:var(--bg);
-                           border:1px solid var(--border);border-radius:6px;
-                           color:var(--text);font-size:12px;resize:vertical"></textarea>
+                   ></textarea>
 
-          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"
+          <label class="fs-11 c-muted font-mono"
                  data-i18n="workspace.cr_form_base_hash">BASE HASH</label>
-          <input id="cr-form-base-hash" type="text"
+          <input class="p-7-10 bg-bg bd-1 br-6 c-text fs-11 font-mono" id="cr-form-base-hash" type="text"
                  placeholder="sha256 of current target state"
-                 style="padding:7px 10px;background:var(--bg);
-                        border:1px solid var(--border);border-radius:6px;
-                        color:var(--text);font-size:11px;font-family:var(--font-mono)">
+                >
 
-          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);align-self:start;margin-top:6px"
+          <label class="fs-11 c-muted font-mono self-start mt-6"
                  data-i18n="workspace.cr_form_body">PROPOSED BODY</label>
-          <textarea id="cr-form-body" rows="8"
+          <textarea class="p-7-10 bg-bg bd-1 br-6 c-text fs-12 font-mono resize-v" id="cr-form-body" rows="8"
                     data-i18n-placeholder="workspace.cr_form_body_ph"
                     placeholder="새 본문 (wiki_entity → 전체 파일 내용)"
-                    style="padding:7px 10px;background:var(--bg);
-                           border:1px solid var(--border);border-radius:6px;
-                           color:var(--text);font-size:12px;font-family:var(--font-mono);
-                           resize:vertical"></textarea>
+                   ></textarea>
         </div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+        <div class="d-flex gap-8 justify-end mt-10">
           <button class="modal-btn cancel" data-action="cr-cancel-propose"
                   data-i18n="common.cancel">취소</button>
           <button class="modal-btn primary" data-action="cr-submit-propose"
                   data-i18n="workspace.cr_submit">제안 제출</button>
         </div>
-        <div id="cr-propose-msg"
-             style="font-size:11px;color:var(--muted);
-                    font-family:var(--font-mono);margin-top:6px;min-height:14px"></div>
+        <div class="u-3bde27cd" id="cr-propose-msg"
+            ></div>
       </div>
 
       <!-- List table. Click a row to open the detail panel below. -->
@@ -382,16 +362,12 @@
       </table>
 
       <!-- Detail panel — fills when a row is clicked. -->
-      <div id="cr-detail-panel" style="display:none;margin-top:14px;
-           background:var(--surface);border:1px solid var(--border);
-           border-radius:8px;padding:16px">
-        <div style="display:flex;justify-content:space-between;align-items:center;
-                    border-bottom:1px solid var(--border-2);padding-bottom:8px;
-                    margin-bottom:10px">
+      <div class="u-3726dd17" id="cr-detail-panel">
+        <div class="u-d7d110ff">
           <div>
             <span id="cr-detail-status-badge" class="badge"></span>
-            <span id="cr-detail-title"
-                  style="font-size:14px;font-weight:600;margin-left:6px"></span>
+            <span class="fs-14 fw-600 ml-6" id="cr-detail-title"
+                 ></span>
           </div>
           <button class="nav-btn" data-action="cr-close-detail"
                   aria-label="닫기">×</button>
@@ -413,11 +389,11 @@
           <div class="label" data-i18n="workspace.cr_detail_created">CREATED</div>
           <div class="value" id="cr-detail-created"></div>
         </div>
-        <div class="detail-row" id="cr-detail-merged-row" style="display:none">
+        <div class="detail-row d-none" id="cr-detail-merged-row">
           <div class="label" data-i18n="workspace.cr_detail_merged">MERGED</div>
           <div class="value" id="cr-detail-merged"></div>
         </div>
-        <div class="detail-row" id="cr-detail-reject-row" style="display:none">
+        <div class="detail-row d-none" id="cr-detail-reject-row">
           <div class="label" data-i18n="workspace.cr_detail_reject_reason">REJECT REASON</div>
           <div class="value" id="cr-detail-reject"></div>
         </div>
@@ -427,40 +403,33 @@
         </div>
         <div class="detail-row">
           <div class="label" data-i18n="workspace.cr_detail_diff">PROPOSED DIFF</div>
-          <pre id="cr-detail-diff"
-               style="background:var(--bg);border:1px solid var(--border);
-                      border-radius:6px;padding:10px;font-size:11px;
-                      max-height:280px;overflow:auto;white-space:pre-wrap;
-                      word-break:break-word;font-family:var(--font-mono)"></pre>
+          <pre class="u-051f894b" id="cr-detail-diff"
+              ></pre>
         </div>
         <div class="detail-row">
           <div class="label" data-i18n="workspace.cr_detail_reviews">REVIEWS</div>
-          <div id="cr-detail-reviews"
-               style="display:flex;flex-direction:column;gap:6px"></div>
+          <div class="d-flex flex-col gap-6" id="cr-detail-reviews"
+              ></div>
         </div>
 
         <!-- Action bar — admin can approve / reject; any auth user can comment. -->
-        <div id="cr-detail-actions"
-             style="display:flex;gap:8px;justify-content:flex-end;
-                    margin-top:14px;flex-wrap:wrap;align-items:center">
-          <input id="cr-comment-body" type="text"
+        <div class="u-942a8980" id="cr-detail-actions"
+            >
+          <input class="u-160ee922" id="cr-comment-body" type="text"
                  data-i18n-placeholder="workspace.cr_comment_ph"
                  placeholder="코멘트 (선택)"
-                 style="flex:1;min-width:200px;padding:7px 10px;
-                        background:var(--bg);border:1px solid var(--border);
-                        border-radius:6px;color:var(--text);font-size:12px">
+                >
           <button class="nav-btn" data-action="cr-submit-comment"
                   data-i18n="workspace.cr_comment_submit">코멘트</button>
-          <button class="nav-btn" id="cr-reject-btn"
-                  data-action="cr-submit-reject" style="display:none"
+          <button class="nav-btn d-none" id="cr-reject-btn"
+                  data-action="cr-submit-reject"
                   data-i18n="workspace.cr_reject">거절</button>
-          <button class="modal-btn primary" id="cr-approve-btn"
-                  data-action="cr-submit-approve" style="display:none"
+          <button class="modal-btn primary d-none" id="cr-approve-btn"
+                  data-action="cr-submit-approve"
                   data-i18n="workspace.cr_approve">승인 + 적용</button>
         </div>
-        <div id="cr-detail-msg"
-             style="font-size:11px;color:var(--muted);
-                    font-family:var(--font-mono);margin-top:6px;min-height:14px"></div>
+        <div class="u-3bde27cd" id="cr-detail-msg"
+            ></div>
       </div>
     </div>
 
@@ -471,7 +440,7 @@
          docs/design/v0.6-template-formatting-ui.md + ARCHITECTURE
          §5.7.14. Flow: register a template → pick it → paste raw
          content → SEKOS reshapes onto the structure → download. -->
-    <div id="tab-templates" style="display:none">
+    <div class="d-none" id="tab-templates">
       <div class="page-title">
         <span data-i18n="workspace.tpl_title">양식</span>
       </div>
@@ -481,43 +450,43 @@
       </div>
 
       <!-- Register form -->
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:14px">
-        <div style="display:grid;grid-template-columns:auto 1fr;gap:10px 12px;align-items:start">
-          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:8px"
+      <div class="bg-surface bd-1 br-8 p-16 mb-14">
+        <div class="u-390dd707">
+          <label class="fs-11 c-muted font-mono mt-8"
                  data-i18n="workspace.tpl_form_name">NAME</label>
-          <input id="tpl-form-name" type="text"
+          <input class="p-8-10 bg-bg bd-1 br-6 c-text fs-12" id="tpl-form-name" type="text"
                  data-i18n-placeholder="workspace.tpl_form_name_ph"
                  placeholder="양식 이름 (예: 주간 보고서)"
-                 style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+                >
 
-          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:8px"
+          <label class="fs-11 c-muted font-mono mt-8"
                  data-i18n="workspace.tpl_form_raw">TEMPLATE</label>
-          <textarea id="tpl-form-raw" rows="6"
+          <textarea class="p-8-10 bg-bg bd-1 br-6 c-text fs-12 font-mono resize-v" id="tpl-form-raw" rows="6"
                     data-i18n-placeholder="workspace.tpl_form_raw_ph"
                     placeholder="양식 본문 — 제목/섹션/플레이스홀더({{이름}}, [날짜] 등)를 포함한 구조"
-                    style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:var(--font-mono);resize:vertical"></textarea>
+                   ></textarea>
 
-          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:8px"
+          <label class="fs-11 c-muted font-mono mt-8"
                  data-i18n="workspace.tpl_form_file">FROM FILE</label>
           <div>
-            <input id="tpl-form-file" type="file" accept=".txt,.md,.markdown,text/plain"
-                   style="font-size:12px;color:var(--text)">
-            <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--font-mono)"
+            <input class="fs-12 c-text" id="tpl-form-file" type="file" accept=".txt,.md,.markdown,text/plain"
+                  >
+            <div class="fs-11 c-muted mt-4 font-mono"
                  data-i18n="workspace.tpl_form_file_hint">텍스트/마크다운 파일을 선택하면 위 TEMPLATE 칸이 채워집니다.</div>
           </div>
 
-          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:8px"
+          <label class="fs-11 c-muted font-mono mt-8"
                  data-i18n="workspace.tpl_form_image">FROM IMAGE</label>
           <div>
-            <input id="tpl-form-image" type="file" accept="image/*"
-                   style="font-size:12px;color:var(--text)">
+            <input class="fs-12 c-text" id="tpl-form-image" type="file" accept="image/*"
+                  >
             <!-- v0.6 모바일 후면 카메라 직접 진입 (양식 종이를 폰으로 찍기).
                  PC 에서는 일반 파일 피커로 fallback. -->
-            <input id="tpl-form-image-camera" type="file" accept="image/*" capture="environment"
-                   style="font-size:12px;color:var(--text);margin-left:8px"
+            <input class="fs-12 c-text ml-8" id="tpl-form-image-camera" type="file" accept="image/*" capture="environment"
+                  
                    data-i18n-title="workspace.tpl_form_image_camera_hint"
                    title="카메라로 양식 촬영">
-            <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--font-mono)"
+            <div class="fs-11 c-muted mt-4 font-mono"
                  data-i18n="workspace.tpl_form_image_hint">이미지를 선택하거나 카메라로 촬영하면 OCR(서버, Tesseract)로 텍스트를 추출해 위 칸을 채웁니다.</div>
           </div>
 
@@ -525,28 +494,28 @@
                서버가 markitdown 으로 텍스트 추출. `.hwp` 는 빌드에 따라
                실패할 수 있고, 실패 시 명시적 "한글에서 .docx 저장 후 업로드"
                에러 메시지로 안내. -->
-          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:8px"
+          <label class="fs-11 c-muted font-mono mt-8"
                  data-i18n="workspace.tpl_form_doc">FROM DOCUMENT</label>
           <div>
-            <input id="tpl-form-doc" type="file"
+            <input class="fs-12 c-text" id="tpl-form-doc" type="file"
                    accept=".docx,.doc,.pdf,.pptx,.xlsx,.hwp,.hwpx"
-                   style="font-size:12px;color:var(--text)">
-            <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--font-mono)"
+                  >
+            <div class="fs-11 c-muted mt-4 font-mono"
                  data-i18n="workspace.tpl_form_doc_hint">.docx / .pdf / .pptx / .xlsx 를 선택하면 텍스트를 추출해 위 칸을 채웁니다. .hwp 는 실패 가능 — 한글에서 .docx 로 저장 후 업로드 권장.</div>
           </div>
         </div>
-        <div style="display:flex;justify-content:flex-end;margin-top:10px">
+        <div class="d-flex justify-end mt-10">
           <button class="modal-btn primary" data-action="tpl-create"
                   data-i18n="workspace.tpl_register">양식 등록</button>
         </div>
-        <div id="tpl-form-msg"
-             style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:6px;min-height:14px"></div>
+        <div class="u-3bde27cd" id="tpl-form-msg"
+            ></div>
       </div>
 
       <!-- Toolbar -->
       <div class="toolbar">
         <span class="counter" id="tpl-counter"></span>
-        <button class="nav-btn" data-action="tpl-reload" style="margin-left:auto"
+        <button class="nav-btn ml-auto" data-action="tpl-reload"
                 data-i18n="workspace.refresh">새로고침</button>
       </div>
 
@@ -564,14 +533,11 @@
       </table>
 
       <!-- Apply panel — fills when a template row is selected. -->
-      <div id="tpl-apply-panel" style="display:none;margin-top:14px;
-           background:var(--surface);border:1px solid var(--border);
-           border-radius:8px;padding:16px">
-        <div style="display:flex;justify-content:space-between;align-items:center;
-                    border-bottom:1px solid var(--border-2);padding-bottom:8px;margin-bottom:10px">
+      <div class="u-3726dd17" id="tpl-apply-panel">
+        <div class="u-d7d110ff">
           <div>
-            <span style="font-size:14px;font-weight:600" id="tpl-apply-name"></span>
-            <span class="mono" style="font-size:11px;color:var(--muted);margin-left:6px" id="tpl-apply-id"></span>
+            <span class="fs-14 fw-600" id="tpl-apply-name"></span>
+            <span class="mono fs-11 c-muted ml-6" id="tpl-apply-id"></span>
           </div>
           <button class="nav-btn" data-action="tpl-close-apply" aria-label="닫기">×</button>
         </div>
@@ -582,45 +548,45 @@
           <div id="tpl-apply-placeholders" class="detail-entities"></div>
         </div>
 
-        <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);display:block;margin:10px 0 4px"
+        <label class="u-3d9db492"
                data-i18n="workspace.tpl_raw_content">RAW CONTENT</label>
-        <textarea id="tpl-apply-content" rows="6"
+        <textarea class="w-full p-8-10 bg-bg bd-1 br-6 c-text fs-12 resize-v" id="tpl-apply-content" rows="6"
                   data-i18n-placeholder="workspace.tpl_raw_content_ph"
                   placeholder="여기에 원문 내용을 붙여넣으세요 — SEKOS 가 양식에 맞춰 재구성합니다."
-                  style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;resize:vertical"></textarea>
+                 ></textarea>
 
         <!-- v0.6.1 — 사용자 프롬프트 (USER GUIDANCE). 스타일 / 톤 / 길이만
              가이드. fact 변경 / 양식 무시는 _SYSTEM rule 1-4 가 우선 (formatter.py). -->
-        <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);display:block;margin:10px 0 4px"
+        <label class="u-3d9db492"
                data-i18n="workspace.tpl_instruction">USER GUIDANCE (선택)</label>
-        <textarea id="tpl-apply-instruction" rows="2" maxlength="2048"
+        <textarea class="w-full p-8-10 bg-bg bd-1 br-6 c-text fs-12 resize-v" id="tpl-apply-instruction" rows="2" maxlength="2048"
                   data-i18n-placeholder="workspace.tpl_instruction_ph"
                   placeholder="예: 결정사항은 bullet 으로, 톤은 격식체로, 액션은 담당자별로 묶어."
-                  style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;resize:vertical"></textarea>
+                 ></textarea>
 
-        <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
-          <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"
+        <div class="d-flex gap-8 items-center mt-10 flex-wrap">
+          <label class="fs-11 c-muted font-mono"
                  data-i18n="workspace.tpl_format">FORMAT</label>
-          <select id="tpl-apply-fmt"
-                  style="padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+          <select class="p-7-10 bg-bg bd-1 br-6 c-text fs-12" id="tpl-apply-fmt"
+                 >
             <option value="md">md</option>
             <option value="txt">txt</option>
             <option value="html">html</option>
             <option value="docx">docx</option>
           </select>
-          <button class="modal-btn primary" data-action="tpl-apply"
-                  id="tpl-apply-btn" style="margin-left:auto"
+          <button class="modal-btn primary ml-auto" data-action="tpl-apply"
+                  id="tpl-apply-btn"
                   data-i18n="workspace.tpl_generate">생성</button>
         </div>
-        <div id="tpl-apply-msg"
-             style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:6px;min-height:14px"></div>
+        <div class="u-3bde27cd" id="tpl-apply-msg"
+            ></div>
 
         <!-- Result preview + download + copy (v0.6.1) -->
-        <div id="tpl-result" style="display:none;margin-top:12px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <span class="label" style="font-family:var(--font-mono);font-size:11px;color:var(--muted)"
+        <div class="d-none mt-12" id="tpl-result">
+          <div class="d-flex justify-between items-center mb-6">
+            <span class="label font-mono fs-11 c-muted"
                   data-i18n="workspace.tpl_preview">PREVIEW</span>
-            <div style="display:flex;gap:6px">
+            <div class="d-flex gap-6">
               <button class="modal-btn" data-action="tpl-copy"
                       id="tpl-copy-btn"
                       data-i18n="workspace.tpl_copy">복사</button>
@@ -628,17 +594,14 @@
                       data-i18n="workspace.tpl_download">다운로드</button>
             </div>
           </div>
-          <pre id="tpl-result-preview"
-               style="background:var(--bg);border:1px solid var(--border);
-                      border-radius:6px;padding:10px;font-size:11px;
-                      max-height:320px;overflow:auto;white-space:pre-wrap;
-                      word-break:break-word;font-family:var(--font-mono)"></pre>
+          <pre class="u-ef5e65fb" id="tpl-result-preview"
+              ></pre>
         </div>
 
         <!-- Past outputs for this template -->
-        <div class="detail-row" style="margin-top:12px">
+        <div class="detail-row mt-12">
           <div class="label" data-i18n="workspace.tpl_outputs">OUTPUTS</div>
-          <div id="tpl-apply-outputs" style="display:flex;flex-direction:column;gap:6px"></div>
+          <div class="d-flex flex-col gap-6" id="tpl-apply-outputs"></div>
         </div>
       </div>
     </div>
@@ -694,14 +657,14 @@
      자연어 지시 → LLM 초안 → 검토/수정 → 적용 (base_hash 충돌 검사). -->
 <div class="modal-overlay hidden" id="wiki-edit-modal"
      role="dialog" aria-modal="true" aria-labelledby="wiki-edit-title">
-  <div class="modal" style="max-width:880px;width:92vw">
+  <div class="modal u-1addcfff">
     <div class="modal-title" id="wiki-edit-title">▸ 추론 편집</div>
     <div class="hint">엔티티를 불러와 본문에서 수정할 부분을 드래그 선택한 뒤,
       자연어 지시로 편집 초안을 만들고 검토·수정 후 적용합니다.
       (선택을 비워두면 문서 전체가 대상)</div>
 
-    <div class="modal-field" style="display:flex;gap:8px;align-items:flex-end">
-      <div style="flex:1">
+    <div class="modal-field d-flex gap-8 items-end">
+      <div class="flex-1">
         <label>ENTITY 이름</label>
         <input type="text" id="we-name" placeholder="예: 비트코인" spellcheck="false">
       </div>
@@ -709,36 +672,33 @@
     </div>
     <div class="modal-error" id="we-msg"></div>
 
-    <div class="modal-field" id="we-body-wrap" style="display:none">
-      <label>현재 본문 <span style="color:var(--muted)">(수정할 부분을 드래그 선택)</span></label>
-      <div id="we-body"
-           style="white-space:pre-wrap;max-height:240px;overflow:auto;
-                  background:var(--bg);border:1px solid var(--border);
-                  border-radius:6px;padding:10px;font-size:13px;
-                  font-family:var(--font-mono)"></div>
+    <div class="modal-field d-none" id="we-body-wrap">
+      <label>현재 본문 <span class="c-muted">(수정할 부분을 드래그 선택)</span></label>
+      <div class="u-ab7defe6" id="we-body"
+          ></div>
     </div>
 
-    <div class="modal-field" id="we-instruction-wrap" style="display:none">
+    <div class="modal-field d-none" id="we-instruction-wrap">
       <label>편집 지시 (자연어)</label>
       <textarea id="we-instruction" rows="2"
                 placeholder="예: 2024년 실적 문단을 최신 수치로 갱신하고 군더더기 문장은 제거해줘"></textarea>
-      <div class="modal-actions" style="margin-top:8px">
+      <div class="modal-actions mt-8">
         <button class="modal-btn primary" data-action="wiki-edit-draft"
                 id="we-draft-btn">초안 생성</button>
       </div>
     </div>
 
-    <div class="modal-field" id="we-draft-wrap" style="display:none">
-      <label>편집 초안 <span style="color:var(--muted)">(적용 전 직접 수정 가능)</span>
-        · <span id="we-model" style="font-family:var(--font-mono);color:var(--muted)"></span></label>
-      <textarea id="we-draft" rows="10"
-                style="font-family:var(--font-mono);font-size:13px"></textarea>
+    <div class="modal-field d-none" id="we-draft-wrap">
+      <label>편집 초안 <span class="c-muted">(적용 전 직접 수정 가능)</span>
+        · <span class="font-mono c-muted" id="we-model"></span></label>
+      <textarea class="font-mono fs-13" id="we-draft" rows="10"
+               ></textarea>
     </div>
 
     <div class="modal-actions">
       <button class="modal-btn cancel" data-action="wiki-edit-close">닫기</button>
-      <button class="modal-btn primary" data-action="wiki-edit-apply"
-              id="we-apply-btn" style="display:none">적용</button>
+      <button class="modal-btn primary d-none" data-action="wiki-edit-apply"
+              id="we-apply-btn">적용</button>
     </div>
   </div>
 </div>

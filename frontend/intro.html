@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#04060a">
 <title data-i18n="intro.page_title">SEKOS — Secure Enterprise Knowledge OS</title>
-<link rel="stylesheet" href="/static/tokens.css">
+<link rel="stylesheet" href="/static/tokens.css?v=v21-20260625-csp">
 <link rel="stylesheet" href="/static/onboarding.css">
 <link rel="stylesheet" href="/static/glossary.css">
 <link rel="stylesheet" href="/static/intro.css">
@@ -20,17 +20,15 @@
     <span class="brand">Secure Enterprise Knowledge<span class="brand-tail">Operating System</span></span>
   </div>
   <div class="header-right">
-    <button class="nav-btn workspace-badge" id="workspace-badge"
+    <button class="nav-btn workspace-badge d-none fs-11" id="workspace-badge"
             type="button" data-i18n-title="workspace.badge_title"
             title="현재 워크스페이스" aria-label="현재 워크스페이스"
-            style="display:none;font-size:11px">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;margin-right:3px"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span id="workspace-name">—</span>
+           >
+      <svg class="va-n2 mr-3" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span id="workspace-name">—</span>
     </button>
-    <button class="nav-btn" data-lang-toggle data-action="toggle-lang"
+    <button class="nav-btn u-09020afe" data-lang-toggle data-action="toggle-lang"
             title="Language / 언어" aria-label="언어 전환 / Toggle language"
-            style="font-size:12px;font-weight:600;background:var(--surface-2);
-                   border:1px solid var(--border);border-radius:6px;
-                   padding:5px 10px;cursor:pointer;color:var(--text-soft)"></button>
+           ></button>
     <!-- PR-intro-1: chat still served at / ; PR-intro-2 flips this to /chat -->
     <a href="/chat" class="nav-btn" data-i18n="intro.skip_to_chat">챗 시작 →</a>
   </div>

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#04060a">
 <title>Secure Enterprise Knowledge Operating System — Admin</title>
-<link rel="stylesheet" href="/static/tokens.css">
+<link rel="stylesheet" href="/static/tokens.css?v=v21-20260625-csp">
 <link rel="stylesheet" href="/static/admin.css">
 <!-- mobile-responsive overrides — kept after inline styles so @media
      rules win at narrow viewports without !important on every line -->
@@ -19,56 +19,53 @@
 <header>
   <div class="logo">
     <span class="brand">Secure Enterprise Knowledge<span class="brand-tail">Operating System</span></span>
-    <span style="color:var(--muted);font-size:11px;margin-left:6px">· Admin Console</span>
-    <span class="live-dot" aria-hidden="true" title="System live" style="margin-left:10px"></span>
+    <span class="c-muted fs-11 ml-6">· Admin Console</span>
+    <span class="live-dot ml-10" aria-hidden="true" title="System live"></span>
   </div>
   <div class="header-right">
     <!-- v0.6.1 — current workspace badge. Stays hidden until logged in. -->
-    <button class="nav-btn workspace-badge" id="workspace-badge"
+    <button class="nav-btn workspace-badge d-none fs-11" id="workspace-badge"
             type="button"
             data-i18n-title="workspace.badge_title"
             title="현재 워크스페이스"
             aria-label="현재 워크스페이스"
-            style="display:none;font-size:11px">
+           >
       <span id="workspace-name">—</span>
     </button>
     <!-- [STEP 5-A] 언어 토글 -->
-    <button class="nav-btn" data-lang-toggle data-action="toggle-lang" title="Language / 언어"
+    <button class="nav-btn u-09020afe" data-lang-toggle data-action="toggle-lang" title="Language / 언어"
             aria-label="언어 전환 / Toggle language"
-            style="font-size:12px;font-weight:600;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;color:var(--text-soft)"></button>
+           ></button>
     <!-- v0.6 Phase 4 P4.1 — operator onboarding entry point -->
-    <a href="/#tour" class="nav-btn"
+    <a href="/#tour" class="nav-btn fs-12"
        data-i18n="admin.onboarding_link"
        title="Operator guide / 운영자 안내"
-       style="font-size:12px">운영자 안내</a>
+      >운영자 안내</a>
     <!-- v0.6 Phase 4 P4.2 — knowledge rollback affordance entry point -->
-    <a href="/admin/graph#rollback" class="nav-btn"
+    <a href="/admin/graph#rollback" class="nav-btn fs-12"
        data-i18n="admin.rollback_link"
        title="Knowledge rollback / 지식 롤백"
-       style="font-size:12px">↶ 지식 롤백</a>
+      >↶ 지식 롤백</a>
     <!-- v0.6 Phase 4 P4.3 — reasoning flow visualization entry point -->
-    <a href="/admin/graph#flow" class="nav-btn"
+    <a href="/admin/graph#flow" class="nav-btn fs-12"
        data-i18n="admin.flow_link"
        title="Reasoning flow / 추론 흐름"
-       style="font-size:12px">추론 흐름</a>
+      >추론 흐름</a>
     <!-- v0.6 Phase 4 P4.4 — glossary entry point -->
-    <a href="/#glossary" class="nav-btn"
+    <a href="/#glossary" class="nav-btn fs-12"
        data-i18n="admin.glossary_link"
        title="Glossary / 용어 설명"
-       style="font-size:12px">용어 설명</a>
+      >용어 설명</a>
     <a href="/chat" class="nav-btn" data-i18n="admin.chat_link">← 챗으로</a>
   </div>
 </header>
 
 <div class="admin-layout">
   <!-- 모바일에서 사이드메뉴 토글 — item #2 -->
-  <button id="admin-nav-toggle"
+  <button class="u-d755eb62" id="admin-nav-toggle"
           data-action="toggle-admin-nav"
           aria-label="메뉴 토글"
-          style="display:none;position:fixed;top:8px;left:8px;z-index:60;
-                 width:44px;height:44px;border:1px solid var(--border);
-                 background:var(--surface);color:var(--text);border-radius:8px;
-                 font-size:20px;cursor:pointer">☰</button>
+         >☰</button>
 
   <!-- ── 사이드 메뉴 (폴더블 섹션) ── -->
   <nav id="admin-nav">
@@ -119,7 +116,7 @@
       <div class="nav-item" data-action="show-page" data-page="change-requests">
         <span data-i18n="admin.change_requests">Change Requests</span>
       </div>
-      <a class="nav-item" href="/admin/graph" style="text-decoration:none">
+      <a class="nav-item no-underline" href="/admin/graph">
         <span data-i18n="graph.title">Reasoning Graph</span>
       </a>
     </div>
@@ -182,7 +179,7 @@
       </div>
       <!-- [3-A] 응답 시간 그래프 -->
       <div id="dash-chart"></div>
-      <div class="section-title" style="margin-top:16px">▸ <span data-i18n="dash.recent_logs">최근 쿼리 로그</span></div>
+      <div class="section-title mt-16">▸ <span data-i18n="dash.recent_logs">최근 쿼리 로그</span></div>
       <!-- v0.5 UI #2 — aria-live polite so screen readers
            announce new log entries on refresh (WCAG 4.1.3). -->
       <div class="log-box" id="dash-logs"
@@ -197,35 +194,35 @@
 
       <!-- W4 P2-B-2: my own password change -->
       <div class="section-title">▸ <span data-i18n="users.my_password_title">내 비밀번호 변경</span></div>
-      <div class="table-wrap" style="padding:16px 20px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-        <input id="mypw-old" type="password"
+      <div class="table-wrap p-16-20 mb-16 d-flex flex-wrap gap-8 items-center">
+        <input class="u-9d72653d" id="mypw-old" type="password"
                data-i18n-placeholder="users.mypw_old_ph" placeholder="현재 비밀번호"
                autocomplete="current-password"
-               style="flex:1;min-width:160px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px">
-        <input id="mypw-new" type="password"
+              >
+        <input class="u-34f48e04" id="mypw-new" type="password"
                data-i18n-placeholder="users.mypw_new_ph" placeholder="새 비밀번호 (8~72자, 영문+숫자)"
                autocomplete="new-password"
-               style="flex:2;min-width:200px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px">
-        <button data-action="change-my-password"
-                style="padding:8px 14px;background:#1e7a3e;color:#fff;border:0;border-radius:6px;cursor:pointer;font-size:13px"
+              >
+        <button class="u-31c2f318" data-action="change-my-password"
+               
                 data-i18n="users.mypw_submit">변경</button>
-        <div id="mypw-msg" style="flex-basis:100%;font-size:12px;color:var(--muted);font-family:var(--font-mono);min-height:16px"></div>
+        <div class="u-93b290df" id="mypw-msg"></div>
       </div>
 
       <!-- W4 P3-3: my API keys -->
       <div class="section-title">▸ <span data-i18n="users.my_keys_title">내 API 키</span></div>
-      <div class="table-wrap" style="padding:12px 20px;margin-bottom:16px">
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
-          <input id="mykey-label" type="text"
+      <div class="table-wrap p-12-20 mb-16">
+        <div class="d-flex gap-8 items-center mb-8 flex-wrap">
+          <input class="u-5dad51e1" id="mykey-label" type="text"
                  data-i18n-placeholder="users.mykey_label_ph"
                  placeholder="라벨 (선택, 예: ci-deploy)"
                  maxlength="64"
-                 style="flex:1;min-width:160px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
-          <button data-action="issue-my-api-key"
-                  style="padding:7px 12px;background:#1e5a7a;color:#fff;border:0;border-radius:6px;cursor:pointer;font-size:12px"
+                >
+          <button class="u-3c0be829" data-action="issue-my-api-key"
+                 
                   data-i18n="users.mykey_issue">키 발급</button>
         </div>
-        <table style="margin-top:6px">
+        <table class="mt-6">
           <thead><tr>
             <th data-i18n="users.mykey_prefix">PREFIX</th>
             <th data-i18n="users.mykey_label">라벨</th>
@@ -239,8 +236,8 @@
       </div>
 
       <!-- W4 P2-A: pending signups (active=0) -->
-      <div class="section-title">▸ <span data-i18n="users.pending_title">가입 신청 대기</span> <span style="font-size:11px;color:var(--muted);margin-left:8px" id="users-pending-count"></span></div>
-      <div class="table-wrap" style="margin-bottom:16px">
+      <div class="section-title">▸ <span data-i18n="users.pending_title">가입 신청 대기</span> <span class="fs-11 c-muted ml-8" id="users-pending-count"></span></div>
+      <div class="table-wrap mb-16">
         <table>
           <thead><tr>
             <th data-i18n="users.username">사용자</th>
@@ -271,12 +268,12 @@
     <!-- W4-Q3: 권한 매트릭스 (feature × role checkbox grid) -->
     <div class="page" id="page-policy">
       <div class="page-title"><span data-i18n="policy.page_title">권한 매트릭스</span></div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5"
+      <div class="fs-11 c-muted mb-12 lh-15"
            data-i18n="policy.page_hint">
         각 기능을 어느 role 이 사용할 수 있는지 설정합니다. 체크 = 허용. 변경하면 즉시 반영. "기본값 복원" 으로 해당 기능의 모든 override 를 제거합니다.
       </div>
-      <div id="policy-toast"
-           style="font-size:11px;font-family:var(--font-mono);color:var(--muted);min-height:16px;margin-bottom:8px"></div>
+      <div class="u-e0972e59" id="policy-toast"
+          ></div>
       <div class="table-wrap">
         <table>
           <thead><tr id="policy-thead">
@@ -296,23 +293,19 @@
       <div class="cards" id="entity-cards"></div>
 
       <!-- item #1: search + paging controls -->
-      <div style="display:flex;gap:8px;align-items:center;margin:8px 0 12px;flex-wrap:wrap">
-        <input id="entities-search" type="text"
+      <div class="u-111a2a9b">
+        <input class="u-2ad1dbdc" id="entities-search" type="text"
                placeholder="이름 / id 검색 (substring)"
-               style="flex:1;min-width:200px;padding:8px 12px;
-                      background:var(--bg);border:1px solid var(--border);
-                      border-radius:6px;color:var(--text);font-size:13px">
-        <select id="entities-etype-filter"
-                style="padding:8px 12px;background:var(--bg);
-                       border:1px solid var(--border);border-radius:6px;
-                       color:var(--text);font-size:13px">
+              >
+        <select class="p-8-12 bg-bg bd-1 br-6 c-text fs-13" id="entities-etype-filter"
+               >
           <option value="">모든 타입</option>
         </select>
-        <span id="entities-counter"
-              style="font-size:12px;color:var(--muted);font-family:var(--font-mono)"></span>
+        <span class="fs-12 c-muted font-mono" id="entities-counter"
+             ></span>
       </div>
 
-      <div class="section-title">▸ <span data-i18n="entity.list_title">Entity 목록</span> <span style="font-size:11px;color:var(--muted);margin-left:8px">(행 클릭 → 상세)</span></div>
+      <div class="section-title">▸ <span data-i18n="entity.list_title">Entity 목록</span> <span class="fs-11 c-muted ml-8">(행 클릭 → 상세)</span></div>
       <div class="table-wrap">
         <table>
           <thead><tr><th data-i18n="common.name">이름</th><th data-i18n="common.type">타입</th><th data-i18n="entity.sensitivity">민감도</th><th data-i18n="entity.relations">Relations</th></tr></thead>
@@ -321,49 +314,36 @@
       </div>
 
       <!-- Paging buttons -->
-      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
-        <button data-action="entities-page" data-delta="-1" id="entities-prev"
-                style="padding:6px 14px;background:var(--bg);
-                       border:1px solid var(--border);border-radius:6px;
-                       color:var(--text);cursor:pointer">← 이전</button>
-        <span id="entities-page-label"
-              style="align-self:center;font-size:12px;color:var(--muted);font-family:var(--font-mono)">page 1</span>
-        <button data-action="entities-page" data-delta="1" id="entities-next"
-                style="padding:6px 14px;background:var(--bg);
-                       border:1px solid var(--border);border-radius:6px;
-                       color:var(--text);cursor:pointer">다음 →</button>
+      <div class="d-flex gap-8 justify-center mt-12">
+        <button class="u-698d0f45" data-action="entities-page" data-delta="-1" id="entities-prev"
+               >← 이전</button>
+        <span class="self-center fs-12 c-muted font-mono" id="entities-page-label"
+             >page 1</span>
+        <button class="u-698d0f45" data-action="entities-page" data-delta="1" id="entities-next"
+               >다음 →</button>
       </div>
 
       <!-- Detail modal -->
-      <div id="entity-detail-modal"
+      <div class="u-065d769b" id="entity-detail-modal"
            role="dialog" aria-modal="true"
            aria-labelledby="entity-detail-title"
-           style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
-                  z-index:9999;align-items:flex-start;justify-content:center;
-                  overflow-y:auto;padding:40px 16px"
+          
            data-overlay-action="close-entity-detail">
-        <div style="background:var(--surface-2);border:1px solid var(--border);
-                    border-radius:8px;padding:20px;max-width:720px;width:100%;
-                    max-height:85vh;overflow-y:auto">
-          <div style="display:flex;justify-content:space-between;align-items:center;
-                      margin-bottom:12px;border-bottom:1px solid var(--border);
-                      padding-bottom:8px">
-            <div id="entity-detail-title"
-                 style="font-size:16px;font-weight:600"></div>
-            <button data-action="close-entity-detail"
+        <div class="u-e159df34">
+          <div class="u-02b336d7">
+            <div class="fs-16 fw-600" id="entity-detail-title"
+                ></div>
+            <button class="u-4c2e6fd3" data-action="close-entity-detail"
                     aria-label="닫기"
-                    style="background:transparent;border:0;color:var(--muted);
-                           cursor:pointer;font-size:20px">×</button>
+                   >×</button>
           </div>
-          <div id="entity-detail-meta"
-               style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:12px"></div>
-          <div id="entity-detail-relations"
-               style="margin-bottom:12px"></div>
+          <div class="fs-11 c-muted font-mono mb-12" id="entity-detail-meta"
+              ></div>
+          <div class="mb-12" id="entity-detail-relations"
+              ></div>
           <div class="section-title">▸ 본문</div>
-          <pre id="entity-detail-body"
-               style="white-space:pre-wrap;font-family:var(--font-mono);
-                      font-size:12px;background:var(--bg);padding:12px;
-                      border-radius:4px;max-height:50vh;overflow-y:auto"></pre>
+          <pre class="u-2abd191f" id="entity-detail-body"
+              ></pre>
         </div>
       </div>
     </div>
@@ -379,14 +359,14 @@
            inside the Memory tab so the operator sees it alongside the
            long-term + sessions inventory. -->
       <div class="section-title">▸ <span data-i18n="memory.feedback_title">사용자 피드백 집계</span></div>
-      <div class="table-wrap" style="padding: 12px 20px;">
-        <div id="feedback-stats-card"
-             style="display:flex;gap:24px;flex-wrap:wrap;font-family:var(--font-mono);font-size:13px">
-          <div style="color:var(--muted);font-size:12px" data-i18n="common.loading">Loading...</div>
+      <div class="table-wrap p-12-20">
+        <div class="u-e74ffa36" id="feedback-stats-card"
+            >
+          <div class="c-muted fs-12" data-i18n="common.loading">Loading...</div>
         </div>
       </div>
 
-      <div class="section-title">▸ <span data-i18n="memory.longterm_title">장기 기억 (세션 요약)</span> <span style="font-size:11px;color:var(--muted);margin-left:8px">(행 클릭 → 원본 대화 펼침)</span></div>
+      <div class="section-title">▸ <span data-i18n="memory.longterm_title">장기 기억 (세션 요약)</span> <span class="fs-11 c-muted ml-8">(행 클릭 → 원본 대화 펼침)</span></div>
       <div class="table-wrap">
         <table>
           <thead><tr><th data-i18n="common.date">날짜</th><th data-i18n="common.topic">주제</th><th data-i18n="common.summary">요약</th><th data-i18n="common.actions">액션</th></tr></thead>
@@ -394,7 +374,7 @@
         </table>
       </div>
 
-      <div class="section-title">▸ <span data-i18n="memory.session_list">세션 목록</span> <span style="font-size:11px;color:var(--muted);margin-left:8px">(행 클릭 → 원본 대화 펼침)</span></div>
+      <div class="section-title">▸ <span data-i18n="memory.session_list">세션 목록</span> <span class="fs-11 c-muted ml-8">(행 클릭 → 원본 대화 펼침)</span></div>
       <div class="table-wrap">
         <table>
           <thead><tr><th data-i18n="session.id">세션 ID</th><th data-i18n="session.turns">대화 수</th><th data-i18n="common.start">시작</th><th data-i18n="common.last">마지막</th><th data-i18n="common.actions">액션</th></tr></thead>
@@ -403,29 +383,22 @@
       </div>
 
       <!-- item #3-b: session original-turns expand modal -->
-      <div id="session-turns-modal"
+      <div class="u-065d769b" id="session-turns-modal"
            role="dialog" aria-modal="true"
            aria-labelledby="session-turns-title"
-           style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
-                  z-index:9999;align-items:flex-start;justify-content:center;
-                  overflow-y:auto;padding:40px 16px"
+          
            data-overlay-action="close-session-turns">
-        <div style="background:var(--surface-2);border:1px solid var(--border);
-                    border-radius:8px;padding:20px;max-width:820px;width:100%;
-                    max-height:85vh;overflow-y:auto">
-          <div style="display:flex;justify-content:space-between;align-items:center;
-                      margin-bottom:12px;border-bottom:1px solid var(--border);
-                      padding-bottom:8px">
-            <div id="session-turns-title"
-                 style="font-size:16px;font-weight:600">세션 원본 대화</div>
-            <button data-action="close-session-turns"
+        <div class="u-299c14b8">
+          <div class="u-02b336d7">
+            <div class="fs-16 fw-600" id="session-turns-title"
+                >세션 원본 대화</div>
+            <button class="u-4c2e6fd3" data-action="close-session-turns"
                     aria-label="닫기"
-                    style="background:transparent;border:0;color:var(--muted);
-                           cursor:pointer;font-size:20px">×</button>
+                   >×</button>
           </div>
-          <div id="session-turns-meta"
-               style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:12px"></div>
-          <div id="session-turns-body" style="display:flex;flex-direction:column;gap:8px"></div>
+          <div class="fs-11 c-muted font-mono mb-12" id="session-turns-meta"
+              ></div>
+          <div class="d-flex flex-col gap-8" id="session-turns-body"></div>
         </div>
       </div>
 
@@ -452,7 +425,7 @@
     <!-- 자기진화 제안 검토 -->
     <div class="page" id="page-proposals">
       <div class="page-title"><span data-i18n="prop.page_title">자기진화 제안 검토</span>
-        <button class="btn btn-primary" style="font-size:12px;margin-left:12px"
+        <button class="btn btn-primary fs-12 ml-12"
           data-action="generate-proposals" data-i18n="prop.generate">Analyze Signals → Generate Proposals</button>
       </div>
       <div class="section-title">▸ <span data-i18n="prop.title">대기 중인 제안</span></div>
@@ -470,14 +443,12 @@
         </table>
       </div>
       <!-- 제안 상세 -->
-      <div id="proposal-detail" style="display:none;margin-top:20px">
+      <div class="d-none mt-20" id="proposal-detail">
         <div class="section-title">▸ <span data-i18n="prop.detail">제안 상세</span></div>
-        <div class="table-wrap" style="padding:16px">
-          <div id="proposal-detail-content"
-               style="font-family:var(--font-mono);font-size:12px;
-                      white-space:pre-wrap;color:var(--text);
-                      max-height:400px;overflow-y:auto"></div>
-          <div style="display:flex;gap:10px;margin-top:16px">
+        <div class="table-wrap p-16">
+          <div class="u-1f02e31d" id="proposal-detail-content"
+              ></div>
+          <div class="d-flex gap-10 mt-16">
             <button class="btn btn-approve" id="detail-approve-btn"><span data-i18n="prop.approve">✅ 승인</span></button>
             <button class="btn btn-reject"  id="detail-reject-btn" data-i18n="prop.reject">❌ 거부</button>
           </div>
@@ -510,7 +481,7 @@
 
       <!-- Identity 섹션 -->
       <div class="section-title"><span data-i18n="char.identity">▸ Identity</span></div>
-      <div class="table-wrap" style="padding: 8px 20px; margin-bottom: 20px;">
+      <div class="table-wrap p-8-20 mb-20">
         <div class="setting-row">
           <div>
             <div class="setting-label" data-i18n="char.identity_name">이름</div>
@@ -519,7 +490,7 @@
           <input class="setting-value" type="text" id="set-name"
                  placeholder="SEKOS">
         </div>
-        <div style="padding: 12px 0; display:flex; justify-content:flex-end;">
+        <div class="u-974eb5eb">
           <button class="btn btn-primary" data-action="save-identity"
                   data-i18n="char.identity_save">이름 저장</button>
         </div>
@@ -581,7 +552,7 @@
             </div>
           </div>
 
-          <div class="section-title" style="margin-top:20px">
+          <div class="section-title mt-20">
             <span data-i18n="char.connections">▸ 선택한 성향의 영향력</span>
           </div>
           <div id="char-connections" class="char-connections">
@@ -590,10 +561,10 @@
             </div>
           </div>
 
-          <div style="margin-top:20px;display:flex;gap:8px;flex-wrap:wrap">
+          <div class="mt-20 d-flex gap-8 flex-wrap">
             <button class="btn btn-primary" data-action="save-character"
                     data-i18n="char.save">저장</button>
-            <button class="btn" style="background:var(--surface);border:1px solid var(--border);color:var(--muted)"
+            <button class="btn bg-surface bd-1 c-muted"
                     data-action="reset-character">
               <span data-i18n="set.reset_default">↩ 기본값</span>
             </button>
@@ -602,11 +573,11 @@
       </div>
 
       <!-- 하단: 성향 그룹별 상세값 + 슬라이더 (보조 입력) -->
-      <div class="section-title" style="margin-top:24px">
+      <div class="section-title u-062d4a88">
         <span data-i18n="char.fine_tune">▸ 정밀 조정</span>
       </div>
       <div id="trait-sliders" class="char-sliders"></div>
-      <div style="margin-top:8px;font-size:11px;color:var(--muted);font-family:var(--font-mono)">
+      <div class="mt-8 fs-11 c-muted font-mono">
         <span data-i18n="char.note_pair">* Groups A~D: 상충 (합=1.0 자동조정)</span>
         &nbsp;·&nbsp;
         <span data-i18n="char.note_corr">* 점선 = 상관관계 (damping 0.3로 부드럽게 영향)</span>
@@ -620,17 +591,17 @@
       <div class="section-title"><span data-i18n="growth.core_abilities">▸ Phase 1~7 Core Abilities</span></div>
       <div id="capability-bars"></div>
 
-      <div class="section-title" style="margin-top:20px"><span data-i18n="know.domain_levels">▸ Domain Knowledge Level</span></div>
+      <div class="section-title mt-20"><span data-i18n="know.domain_levels">▸ Domain Knowledge Level</span></div>
       <div id="domain-levels"></div>
 
-      <div style="margin-top:16px;font-size:11px;font-family:var(--font-mono);color:var(--muted)"
+      <div class="mt-16 fs-11 font-mono c-muted"
            id="recent-gains"></div>
     </div>
 
     <!-- 성능 평가 -->
     <div class="page" id="page-performance">
       <div class="page-title"><span data-i18n="perf.page_title">성능 평가</span>
-        <button class="btn btn-primary" style="font-size:12px;margin-left:12px"
+        <button class="btn btn-primary fs-12 ml-12"
           data-action="run-evaluation" data-i18n="perf.run_now">Run Evaluation</button>
       </div>
       <div class="cards" id="perf-cards"></div>
@@ -656,66 +627,63 @@
 
       <!-- [3-E 경로 B] 웹 검색 장기 학습 -->
       <div class="section-title">▸ <span data-i18n="learn.web_title">웹 검색 장기 학습</span>
-        <span style="font-size:10px;color:var(--muted);margin-left:8px">
+        <span class="fs-10 c-muted ml-8">
           <span data-i18n="learn.web_subtitle">검색 → LLM 정제 → wiki entity 즉시 저장 (장기 지식)</span>
         </span>
       </div>
-      <div class="table-wrap" style="padding:16px 20px;margin-bottom:16px">
+      <div class="table-wrap p-16-20 mb-16">
         <div class="setting-row">
           <div>
             <div class="setting-label" data-i18n="learn.web_topic">검색 주제</div>
             <div class="setting-sub">
               <span data-i18n="learn.web_label">웹에서 검색 → 요약 → wiki 저장</span><br>
-              <span style="color:#4caf7d;font-size:11px" data-i18n="learn.web_longterm">Saved as long-term knowledge</span>
+              <span class="u-78cb8b59" data-i18n="learn.web_longterm">Saved as long-term knowledge</span>
             </div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:8px;min-width:260px">
-            <div style="display:flex;gap:8px">
+          <div class="d-flex flex-col gap-8 minw-260">
+            <div class="d-flex gap-8">
               <input class="setting-value" type="text" id="web-learn-input"
                      placeholder="e.g., quantum computing, generative AI" data-i18n-placeholder="learn.web_placeholder">
               <button class="btn btn-primary" data-action="web-learn-topic" data-i18n="learn.web_btn">Search &amp; Learn</button>
             </div>
-            <div style="font-size:11px;color:var(--muted)">
+            <div class="fs-11 c-muted">
               <span data-i18n="learn.web_hint">Tip: Asking the same topic twice in chat triggers auto long-term conversion</span>
             </div>
           </div>
         </div>
-        <div id="web-learn-result"
-             style="font-size:12px;font-family:var(--font-mono);
-                    color:var(--muted);min-height:20px;margin-top:8px;
-                    padding:8px;background:var(--bg);border-radius:6px;display:none">
+        <div class="u-b8867a16" id="web-learn-result"
+            >
         </div>
       </div>
 
       <div class="section-title">▸ <span data-i18n="learn.llm_title">LLM 자기학습 (내부 지식 기반)</span></div>
-      <div class="table-wrap" style="padding:16px 20px">
+      <div class="table-wrap p-16-20">
         <div class="setting-row">
           <div><div class="setting-label" data-i18n="learn.topic_label">학습 주제</div>
                <div class="setting-sub"><span data-i18n="learn.llm_subtitle">LLM 지식으로 학습 → wiki 추가 제안</span></div></div>
-          <div style="display:flex;gap:8px">
+          <div class="d-flex gap-8">
             <input class="setting-value" type="text" id="learn-topic-input"
                    placeholder="e.g., quantum computing, blockchain" data-i18n-placeholder="learn.topic_placeholder">
             <button class="btn btn-primary" data-action="learn-topic" data-i18n="learn.btn">Learn</button>
           </div>
         </div>
-        <div style="padding:12px 0">
+        <div class="u-de1f41bc">
           <button class="btn btn-approve" data-action="learn-from-errors" data-i18n="learn.from_errors">Auto-learn from errors</button>
         </div>
-        <div id="learn-result" style="font-size:12px;font-family:var(--font-mono);
-             color:var(--muted);min-height:20px"></div>
+        <div class="u-bdf5e0da" id="learn-result"></div>
       </div>
     </div>
 
     <!-- 감사 로그 (W4 P6: rich filter + paged table) -->
     <div class="page" id="page-audit">
       <div class="page-title"><span data-i18n="audit.page_title">감사 로그</span></div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5"
+      <div class="fs-11 c-muted mb-12 lh-15"
            data-i18n="audit.page_hint">
         모든 인증/사용자 관리/비밀번호/API 키 이벤트가 audit_log 에 기록됩니다. 카테고리 필터로 좁히거나 이벤트·사용자명·키 prefix 로 검색할 수 있습니다.
       </div>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
-        <select id="audit-category"
-                style="padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+      <div class="d-flex gap-8 items-center mb-12 flex-wrap">
+        <select class="p-7-10 bg-bg bd-1 br-6 c-text fs-12" id="audit-category"
+               >
           <option value="all"        data-i18n="audit.cat_all">전체</option>
           <option value="user_mgmt"  data-i18n="audit.cat_user_mgmt">사용자 관리</option>
           <option value="password"   data-i18n="audit.cat_password">비밀번호/가입</option>
@@ -726,12 +694,12 @@
           <option value="attack"     data-i18n="audit.cat_attack">공격 이벤트</option>
           <option value="system"     data-i18n="audit.cat_system">시스템 로그</option>
         </select>
-        <input id="audit-q" type="text"
+        <input class="u-160ee922" id="audit-q" type="text"
                data-i18n-placeholder="audit.search_ph"
                placeholder="이벤트 / username / 키 prefix 검색"
-               style="flex:1;min-width:200px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
-        <span id="audit-counter"
-              style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"></span>
+              >
+        <span class="fs-11 c-muted font-mono" id="audit-counter"
+             ></span>
       </div>
       <div class="table-wrap">
         <table>
@@ -746,15 +714,15 @@
           <tbody id="audit-body"><tr><td colspan="6" class="loading" data-i18n="common.loading">로딩 중...</td></tr></tbody>
         </table>
       </div>
-      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
-        <button data-action="audit-page" data-delta="-1"
+      <div class="d-flex gap-8 justify-center mt-12">
+        <button class="u-698d0f45" data-action="audit-page" data-delta="-1"
                 id="audit-prev"
-                style="padding:6px 14px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer">← 이전</button>
-        <span id="audit-page-label"
-              style="align-self:center;font-size:12px;color:var(--muted);font-family:var(--font-mono)">page 1</span>
-        <button data-action="audit-page" data-delta="1"
+               >← 이전</button>
+        <span class="self-center fs-12 c-muted font-mono" id="audit-page-label"
+             >page 1</span>
+        <button class="u-698d0f45" data-action="audit-page" data-delta="1"
                 id="audit-next"
-                style="padding:6px 14px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer">다음 →</button>
+               >다음 →</button>
       </div>
     </div>
 
@@ -773,26 +741,26 @@
         <span class="badge" data-i18n="cr.preview_badge"
               title="UI shell; backend HTTP endpoint lands in CR.b">PREVIEW</span>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5"
+      <div class="fs-11 c-muted mb-12 lh-15"
            data-i18n="cr.page_hint">
         Non-developer review surface for the SEKOS change-request primitive (`core/change_request.py`). Approve/reject captures forensic principal evidence via the G2.a `current_approval_evidence` resolver (POSIX or explicit). Diff renderer + arbiter visualisation in CR.b/c.
       </div>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
-        <select id="cr-status-filter"
-                style="padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+      <div class="d-flex gap-8 items-center mb-12 flex-wrap">
+        <select class="p-7-10 bg-bg bd-1 br-6 c-text fs-12" id="cr-status-filter"
+               >
           <option value="all"        data-i18n="cr.status_all">All</option>
           <option value="open"       data-i18n="cr.status_open" selected>Open</option>
           <option value="merged"     data-i18n="cr.status_merged">Merged</option>
           <option value="rejected"   data-i18n="cr.status_rejected">Rejected</option>
           <option value="superseded" data-i18n="cr.status_superseded">Superseded</option>
         </select>
-        <input id="cr-search" type="text"
+        <input class="u-160ee922" id="cr-search" type="text"
                data-i18n-placeholder="cr.search_ph"
                placeholder="Search proposer / title / target"
-               style="flex:1;min-width:200px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px"
+              
                aria-label="Search change requests">
-        <span id="cr-counter" class="muted-12"
-              style="font-family:var(--font-mono)"
+        <span id="cr-counter" class="muted-12 font-mono"
+             
               aria-live="polite"
               role="status"></span>
       </div>
@@ -810,8 +778,8 @@
           <tbody id="cr-list-body"
                  aria-live="polite" aria-relevant="additions"
                  aria-label="Change request list">
-            <tr><td colspan="7" class="muted-12"
-                    style="text-align:center;padding:18px"
+            <tr><td colspan="7" class="muted-12 u-2057e1f6"
+                   
                     data-i18n="common.loading">Loading...</td></tr>
           </tbody>
         </table>
@@ -823,29 +791,23 @@
       <div class="page-title">
         <span data-i18n="uploads.page_title">업로드 파일 이력</span>
       </div>
-      <div style="display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
-        <input type="text" id="uploads-search"
+      <div class="d-flex gap-10 mb-14 items-center flex-wrap">
+        <input class="u-94756a6c" type="text" id="uploads-search"
                placeholder="파일명 검색 (Enter)"
                data-i18n-placeholder="uploads.search_placeholder"
-               style="flex:1;min-width:200px;padding:8px 12px;
-                      background:var(--surface-2);border:1px solid var(--border);
-                      border-radius:8px;color:var(--text);font-size:13px">
-        <button data-action="load-uploads" style="padding:8px 16px;
-                background:var(--accent);color:var(--on-accent);border:0;border-radius:8px;
-                cursor:pointer;font-size:13px;font-weight:600">
+              >
+        <button class="u-3cd4d6c4" data-action="load-uploads">
           <span data-i18n="common.search">검색</span>
         </button>
-        <span id="uploads-meta" style="color:var(--muted);font-size:12px"></span>
+        <span class="c-muted fs-12" id="uploads-meta"></span>
       </div>
-      <div id="uploads-table-wrap"
-           style="background:var(--surface);border:1px solid var(--border);
-                  border-radius:10px;overflow:hidden">
-        <div id="uploads-tbody" style="padding:20px">
+      <div class="u-f097a413" id="uploads-table-wrap"
+          >
+        <div class="p-20" id="uploads-tbody">
           <div class="loading" data-i18n="common.loading">로딩 중...</div>
         </div>
       </div>
-      <div id="uploads-pager" style="margin-top:14px;display:flex;
-           gap:10px;justify-content:center"></div>
+      <div class="u-bcdf512f" id="uploads-pager"></div>
     </div>
 
     <!-- 파일 관리 [item #2] -->
@@ -854,52 +816,37 @@
         <span data-i18n="files.page_title">파일 관리</span>
       </div>
       <!-- 검색/루트 선택 행 -->
-      <div style="display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
-        <select id="files-root"
-                style="background:var(--surface-2);border:1px solid var(--border);
-                       border-radius:8px;color:var(--text);font-size:13px;
-                       padding:8px 12px;cursor:pointer">
+      <div class="d-flex gap-10 mb-14 items-center flex-wrap">
+        <select class="bg-surface-2 bd-1 br-8 c-text fs-13 p-8-12 cursor-pointer" id="files-root"
+               >
           <option value="wiki">wiki/ (entity 파일)</option>
           <option value="uploads">uploads/ (원본 업로드)</option>
           <option value="media">media/ (이미지/비디오)</option>
         </select>
-        <input type="text" id="files-search"
+        <input class="u-94756a6c" type="text" id="files-search"
                placeholder="파일명 검색 (Enter, 대소문자 무시)"
                data-i18n-placeholder="files.search_placeholder"
-               style="flex:1;min-width:200px;padding:8px 12px;
-                      background:var(--surface-2);border:1px solid var(--border);
-                      border-radius:8px;color:var(--text);font-size:13px">
-        <button data-action="search-files" style="padding:8px 16px;
-                background:var(--accent);color:var(--on-accent);border:0;border-radius:8px;
-                cursor:pointer;font-size:13px;font-weight:600">
+              >
+        <button class="u-3cd4d6c4" data-action="search-files">
           <span data-i18n="common.search">검색</span>
         </button>
-        <button data-action="load-files" style="padding:8px 12px;
-                background:var(--surface-2);border:1px solid var(--border);
-                color:var(--muted);border-radius:8px;cursor:pointer;font-size:12px"
+        <button class="p-8-12 bg-surface-2 bd-1 c-muted br-8 cursor-pointer fs-12" data-action="load-files"
                 title="검색 초기화 + 트리 다시 불러오기">
           ↻ 트리
         </button>
       </div>
-      <div id="files-info" style="color:var(--muted);font-size:12px;
-           margin-bottom:10px"></div>
+      <div class="c-muted fs-12 mb-10" id="files-info"></div>
       <!-- 트리/검색 결과 표시 -->
-      <div id="files-content"
-           style="background:var(--surface);border:1px solid var(--border);
-                  border-radius:10px;padding:14px;min-height:300px;
-                  font-family:var(--font-mono);font-size:12px;
-                  max-height:60vh;overflow-y:auto">
+      <div class="u-11b78217" id="files-content"
+          >
         <div class="loading" data-i18n="common.loading">로딩 중...</div>
       </div>
       <!-- 업로드 안내 -->
-      <div style="margin-top:14px;padding:12px;background:var(--surface-2);
-           border:1px solid var(--border);border-radius:8px;font-size:12px;
-           color:var(--muted);line-height:1.6">
-        새 파일 업로드는 <a href="/chat" style="color:var(--accent-fg);
-           text-decoration:none">Chat 페이지</a>에서 진행됩니다.
+      <div class="u-3f0ee34f">
+        새 파일 업로드는 <a class="c-accent-fg no-underline" href="/chat">Chat 페이지</a>에서 진행됩니다.
         업로드 직후 이 트리에 반영되며, 자세한 내역은
-        <a href="#" data-action="show-page" data-page="uploads"
-          style="color:var(--accent-fg);text-decoration:none">업로드 이력</a> 탭 참조.
+        <a class="c-accent-fg no-underline" href="#" data-action="show-page" data-page="uploads"
+         >업로드 이력</a> 탭 참조.
       </div>
     </div>
 
@@ -910,35 +857,33 @@
       </div>
 
       <!-- 전체 등급 -->
-      <div id="hw-rank-card" style="margin-bottom:20px;padding:20px;
-           background:var(--surface);border:1px solid var(--border);
-           border-radius:12px;text-align:center">
-        <div style="font-size:13px;color:var(--muted);margin-bottom:8px">
+      <div class="u-4e41ca5e" id="hw-rank-card">
+        <div class="fs-13 c-muted mb-8">
           <span data-i18n="hw.description">Hardware running SEKOS intelligence</span>
         </div>
-        <div id="hw-rank-badge"
-             style="font-size:36px;font-weight:900;letter-spacing:-1px"
+        <div class="u-431df820" id="hw-rank-badge"
+            
              data-i18n="common.loading">
           Loading...
         </div>
-        <div id="hw-rank-label"
-             style="font-size:13px;color:var(--muted);margin-top:4px"></div>
+        <div class="fs-13 c-muted mt-4" id="hw-rank-label"
+            ></div>
       </div>
 
       <!-- 장비 카드 4개 -->
-      <div id="hw-cards"
-           style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:20px">
+      <div class="u-9d5c9183" id="hw-cards"
+          >
         <div class="loading" data-i18n="hw.measuring">Measuring hardware...</div>
       </div>
 
       <!-- [4-B] LLM 추천 + 설치 -->
-      <div class="section-title" style="margin-top:20px">
+      <div class="section-title mt-20">
         ▸ <span data-i18n="hw.llm_title">이 PC에 맞는 LLM 모델</span>
-        <span style="font-size:10px;color:var(--muted);margin-left:8px">
+        <span class="fs-10 c-muted ml-8">
           <span data-i18n="hw.llm_subtitle">하드웨어 스펙 기반 자동 추천 · Ollama 자동 설치</span>
         </span>
       </div>
-      <div class="table-wrap" style="padding:12px 20px;margin-bottom:16px">
+      <div class="table-wrap p-12-20 mb-16">
         <div id="llm-recommend-list">
           <div class="loading"><span data-i18n="hw.llm_loading">추천 분석 중...</span></div>
         </div>
@@ -946,15 +891,14 @@
 
       <!-- 시스템 정보 -->
       <div class="section-title">▸ <span data-i18n="hw.sysinfo">시스템 정보</span></div>
-      <div class="table-wrap" style="padding:12px 20px">
-        <div id="hw-sysinfo"
-             style="font-family:var(--font-mono);font-size:11px;
-                    color:var(--muted);line-height:1.8"
+      <div class="table-wrap p-12-20">
+        <div class="u-18ba313a" id="hw-sysinfo"
+            
              data-i18n="common.loading">
           Loading...
         </div>
-        <button class="btn btn-secondary" data-action="load-hardware"
-                style="margin-top:12px;font-size:12px">
+        <button class="btn btn-secondary mt-12 fs-12" data-action="load-hardware"
+               >
           <span data-i18n="hw.remeasure">다시 측정</span>
         </button>
       </div>
@@ -973,8 +917,8 @@
       <div class="section-title">
         <span data-i18n="set.llm_title">▸ LLM Routing</span>
       </div>
-      <div class="card" style="padding:14px 18px;margin-bottom:20px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
-        <div style="font-size:11px;color:var(--muted);line-height:1.55;margin-bottom:10px"
+      <div class="card u-e6f429e1">
+        <div class="u-72fcb731"
              data-i18n="set.llm_intro">
           모델 / 자동설정 / 라우팅 토글이 한 자리에 모인 통합 설정입니다.
           DB 값이 우선이고, DB 가 비어 있으면 환경 변수 → 기본값 순으로
@@ -984,31 +928,31 @@
         <!-- Risk #3 (2026-06-15): make the global-vs-workspace boundary
              explicit so the operator doesn't assume per-workspace
              overrides. -->
-        <div style="font-size:11px;color:#fc8;line-height:1.5;margin-bottom:6px"
+        <div class="u-392deb27"
              data-i18n="set.llm_global_warn">
           ⚠️ 이 설정은 <strong>모든 워크스페이스가 공유</strong>합니다 (workspace-aware
           아님). dogfood / main / cycle-γ 워크스페이스 전환해도 같은 값 적용.
         </div>
         <!-- Risk #1 (2026-06-15): measurement-cycle escape hatch
              reminder. -->
-        <div style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:6px"
+        <div class="fs-11 c-muted lh-15 mb-6"
              data-i18n="set.llm_measurement_hint">
           측정 실행 시 (qvt_ablation_matrix / RAGAS / cycle-γ 등) 는
           <code>JAMES_SETTINGS_USE_DB=0</code> 으로 env 가 source-of-truth 가 되도록
           하세요. 그렇지 않으면 여기서 설정한 DB 값이 측정 결과에 silent 하게 반영됩니다.
         </div>
-        <div id="llm-settings-list"
-             style="display:flex;flex-direction:column;gap:8px;font-family:var(--font-mono);font-size:12px">
-          <div style="color:var(--muted)" data-i18n="common.loading">…</div>
+        <div class="d-flex flex-col gap-8 font-mono fs-12" id="llm-settings-list"
+            >
+          <div class="c-muted" data-i18n="common.loading">…</div>
         </div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <div class="d-flex gap-8 justify-end mt-12">
           <button class="btn" data-action="llm-settings-reload"
                   data-i18n="set.llm_reload">새로고침</button>
           <button class="btn btn-primary" data-action="llm-settings-save"
                   data-i18n="set.llm_save">변경사항 저장</button>
         </div>
-        <div id="llm-settings-msg"
-             style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:6px;min-height:14px"></div>
+        <div class="u-3bde27cd" id="llm-settings-msg"
+            ></div>
       </div>
 
       <!-- [P3 unified UX 2026-05-10] 페르소나 자유텍스트 섹션 제거 —
@@ -1016,12 +960,12 @@
            radar UI 와 충돌하여 사용자 혼란 유발. 이름은 character 페이지의
            Identity 섹션으로 이전, 답변 언어만 본 페이지에 단독 섹션으로 유지. -->
       <div class="section-title"><span data-i18n="set.lang_title">▸ 답변 언어</span></div>
-      <div class="table-wrap" style="padding: 8px 20px; margin-bottom: 20px;">
+      <div class="table-wrap p-8-20 mb-20">
         <div class="setting-row">
           <div><div class="setting-label" data-i18n="set.answer_lang">Response Language</div>
                <div class="setting-sub" data-i18n="set.answer_lang_desc">Default response language (includes UI)</div></div>
-          <select class="setting-value" id="set-language"
-                  style="cursor:pointer">
+          <select class="setting-value cursor-pointer" id="set-language"
+                 >
             <option value="한국어" data-i18n="set.lang_ko">Korean</option>
             <option value="한국어/영어" data-i18n="set.lang_both">Korean + English (bilingual)</option>
             <option value="영어" data-i18n="set.lang_en">English</option>
@@ -1030,19 +974,19 @@
       </div>
 
       <div class="section-title"><span data-i18n="set.server_title">▸ Server Settings</span></div>
-      <div class="table-wrap" style="padding: 8px 20px;">
+      <div class="table-wrap p-8-20">
         <div class="setting-row">
           <div><div class="setting-label" data-i18n="set.llm_model_label">LLM Model</div><div class="setting-sub" data-i18n="set.llm_desc">Select the active LLM model</div></div>
-          <div style="display:flex;flex-direction:column;gap:6px;min-width:260px">
-            <select class="setting-value" id="set-model" style="cursor:pointer">
+          <div class="d-flex flex-col gap-6 minw-260">
+            <select class="setting-value cursor-pointer" id="set-model">
               <option value="gemma4:e4b">gemma4:e4b (default — fast)</option>
               <option value="gemma3:12b">gemma3:12b (high performance)</option>
               <option value="qwen2.5-coder:32b">qwen2.5-coder:32b (coding)</option>
               <option value="llava:13b">llava:13b (multimodal)</option>
               <option value="mistral:7b">mistral:7b (lightweight)</option>
             </select>
-            <div id="model-current-badge"
-                 style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"
+            <div class="fs-11 c-muted font-mono" id="model-current-badge"
+                
                  data-i18n="set.model_checking">
               Current model: checking...
             </div>
@@ -1051,37 +995,33 @@
         <div class="setting-row">
           <div><div class="setting-label" data-i18n="set.max_loop_label">Max Loop</div>
                <div class="setting-sub" data-i18n="set.rag_loop_desc">Max RAG reasoning loops
-                 <span style="font-weight:600;color:var(--accent)">
+                 <span class="fw-600 c-accent">
                    (<span data-i18n="set.current">Current</span>: <span id="set-loop-val">2</span>)
                  </span>
                </div>
           </div>
-          <div style="display:flex;align-items:center;gap:10px;min-width:220px">
-            <input type="range" id="set-loop" min="1" max="5" value="2" step="1"
-                   style="flex:1;accent-color:var(--accent)">
-            <div style="display:flex;justify-content:space-between;
-                        font-size:10px;color:var(--muted);width:100%;position:absolute;
-                        margin-top:24px;pointer-events:none">
+          <div class="u-caeb6867">
+            <input class="flex-1 accent-accent" type="range" id="set-loop" min="1" max="5" value="2" step="1"
+                  >
+            <div class="u-6342850d">
             </div>
-            <div style="display:flex;gap:4px">
-              <span style="font-size:11px;padding:2px 7px;border-radius:4px;
-                           background:var(--surface-2);color:var(--muted)" data-i18n="set.speed_fast">1=fast</span>
-              <span style="font-size:11px;padding:2px 7px;border-radius:4px;
-                           background:var(--surface-2);color:var(--muted)" data-i18n="set.speed_precise">5=precise</span>
+            <div class="d-flex gap-4">
+              <span class="u-49f9b186" data-i18n="set.speed_fast">1=fast</span>
+              <span class="u-49f9b186" data-i18n="set.speed_precise">5=precise</span>
             </div>
           </div>
         </div>
-        <div class="setting-row" style="align-items:flex-start">
+        <div class="setting-row items-start">
           <div><div class="setting-label" data-i18n="set.protected_label">Protected Files</div>
                <div class="setting-sub"><span data-i18n="set.protected">Tool 접근/수정 차단 파일 (체크 = 보호)</span></div>
           </div>
-          <div id="protected-checkboxes"
-               style="display:flex;flex-direction:column;gap:6px;min-width:260px">
+          <div class="d-flex flex-col gap-6 minw-260" id="protected-checkboxes"
+              >
             <!-- JS로 동적 생성 -->
-            <div style="color:var(--muted);font-size:12px" data-i18n="common.loading">Loading...</div>
+            <div class="c-muted fs-12" data-i18n="common.loading">Loading...</div>
           </div>
         </div>
-        <div style="padding: 16px 0; display:flex; justify-content:flex-end;">
+        <div class="p-16-0 d-flex justify-end">
           <button class="btn btn-primary" data-action="save-settings" data-i18n="set.save_server">Save Server Settings</button>
         </div>
       </div>
@@ -1093,17 +1033,17 @@
            persistent (workspace/llm_selection.json), unlike the
            cognitive flags below. -->
       <div class="section-title">▸ <span data-i18n="set.llm_selection_title">LLM Task → Model</span></div>
-      <div class="table-wrap" style="padding: 8px 20px;">
-        <div class="setting-row" style="align-items:flex-start; padding-bottom: 0;">
+      <div class="table-wrap p-8-20">
+        <div class="setting-row u-38f9e152">
           <div>
             <div class="setting-label" data-i18n="set.llm_selection_subtitle">Per-task model overrides</div>
             <div class="setting-sub" data-i18n="set.llm_selection_hint">Persistent (workspace/llm_selection.json). Empty selection = config default. Only models installed via ollama are selectable.</div>
           </div>
         </div>
-        <div id="llm-selection-rows" style="padding: 8px 0;">
-          <div style="color:var(--muted);font-size:12px" data-i18n="common.loading">Loading...</div>
+        <div class="u-e1deb8fb" id="llm-selection-rows">
+          <div class="c-muted fs-12" data-i18n="common.loading">Loading...</div>
         </div>
-        <div style="padding: 16px 0; display:flex; justify-content:flex-end;">
+        <div class="p-16-0 d-flex justify-end">
           <button class="btn btn-primary" data-action="save-llm-selections" data-i18n="set.llm_selection_save">Save LLM Selections</button>
         </div>
       </div>
@@ -1114,17 +1054,17 @@
            "session-only" hint here so an admin who toggles knows a
            restart reverts the change. -->
       <div class="section-title">▸ <span data-i18n="set.cognitive_title">Cognitive Features</span></div>
-      <div class="table-wrap" style="padding: 8px 20px;">
-        <div class="setting-row" style="align-items:flex-start; padding-bottom: 0;">
+      <div class="table-wrap p-8-20">
+        <div class="setting-row u-38f9e152">
           <div>
             <div class="setting-label" data-i18n="set.cognitive_subtitle">Reasoning pipeline toggles</div>
             <div class="setting-sub" data-i18n="set.cognitive_hint">In-process only — container restart reverts to boot .env values. To persist, edit the .env file.</div>
           </div>
         </div>
-        <div id="cognitive-flag-rows" style="padding: 8px 0;">
-          <div style="color:var(--muted);font-size:12px" data-i18n="common.loading">Loading...</div>
+        <div class="u-e1deb8fb" id="cognitive-flag-rows">
+          <div class="c-muted fs-12" data-i18n="common.loading">Loading...</div>
         </div>
-        <div style="padding: 16px 0; display:flex; justify-content:flex-end;">
+        <div class="p-16-0 d-flex justify-end">
           <button class="btn btn-primary" data-action="save-cognitive-flags" data-i18n="set.cognitive_save">Save Cognitive Flags</button>
         </div>
       </div>
@@ -1133,35 +1073,34 @@
            threshold + live engine status. Loaded by loadWebSearchConfig()
            on page mount. -->
       <div class="section-title">▸ <span data-i18n="set.web_search_title">Web Search</span></div>
-      <div class="table-wrap" style="padding: 8px 20px;">
-        <div class="setting-row" style="align-items:flex-start">
+      <div class="table-wrap p-8-20">
+        <div class="setting-row items-start">
           <div>
             <div class="setting-label" data-i18n="set.web_engine_status">Engine Status</div>
             <div class="setting-sub" data-i18n="set.web_engine_status_hint">Active search engine + key configuration status (real-time)</div>
           </div>
-          <div id="web-search-status-display"
-               style="font-family:var(--font-mono);font-size:12px;
-                      min-width:260px;color:var(--muted)">
+          <div class="font-mono fs-12 minw-260 c-muted" id="web-search-status-display"
+              >
             checking...
           </div>
         </div>
-        <div class="setting-row" style="align-items:flex-start">
+        <div class="setting-row items-start">
           <div>
             <div class="setting-label" data-i18n="set.web_allowed_roles">Allowed Roles</div>
             <div class="setting-sub" data-i18n="set.web_allowed_roles_hint">Roles allowed to trigger web search. Empty is invalid (to disable web search, remove TAVILY_API_KEY from .env).</div>
           </div>
-          <div id="web-search-roles"
-               style="display:flex;flex-direction:column;gap:6px;min-width:260px">
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px">
+          <div class="d-flex flex-col gap-6 minw-260" id="web-search-roles"
+              >
+            <label class="d-flex items-center gap-8 fs-12">
               <input type="checkbox" value="admin"    class="ws-role-cb" checked> admin
             </label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px">
+            <label class="d-flex items-center gap-8 fs-12">
               <input type="checkbox" value="manager"  class="ws-role-cb"> manager
             </label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px">
+            <label class="d-flex items-center gap-8 fs-12">
               <input type="checkbox" value="employee" class="ws-role-cb"> employee
             </label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px">
+            <label class="d-flex items-center gap-8 fs-12">
               <input type="checkbox" value="external" class="ws-role-cb"> external
             </label>
           </div>
@@ -1171,12 +1110,10 @@
             <div class="setting-label"><span data-i18n="set.web_relevance_threshold">Relevance Threshold</span>
               <!-- [#A8-2] 숫자 옆에 직관적 라벨 — 강력/적극/보통/소극/안함.
                    admin.js applyWsThresholdLabel()가 슬라이더 값 → 라벨 매핑. -->
-              <span style="font-weight:600;color:var(--accent)">
+              <span class="fw-600 c-accent">
                 (<span data-i18n="set.current">Current</span>: <span id="ws-threshold-val">0.30</span>
-                <span id="ws-threshold-label"
-                      style="margin-left:6px;padding:1px 8px;border-radius:4px;
-                             font-size:11px;background:var(--accent-soft);
-                             color:var(--accent-fg)">보통</span>)
+                <span class="u-5f31f7a4" id="ws-threshold-label"
+                     >보통</span>)
               </span>
             </div>
             <div class="setting-sub" data-i18n="set.web_threshold_hint">unified_score 가 이 값 미만이면 웹 검색 트리거.
@@ -1184,19 +1121,17 @@
               <strong>낮추면 (안함)</strong> 자료 풍부할 때만 웹 검색.
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:10px;min-width:260px">
-            <input type="range" id="ws-threshold" min="0.05" max="0.80" step="0.05"
+          <div class="d-flex items-center gap-10 minw-260">
+            <input class="flex-1 accent-accent" type="range" id="ws-threshold" min="0.05" max="0.80" step="0.05"
                    value="0.30"
-                   style="flex:1;accent-color:var(--accent)">
-            <div style="display:flex;gap:4px">
-              <span style="font-size:11px;padding:2px 7px;border-radius:4px;
-                           background:var(--surface-2);color:var(--muted)" data-i18n="set.web_threshold_off">안함</span>
-              <span style="font-size:11px;padding:2px 7px;border-radius:4px;
-                           background:var(--surface-2);color:var(--muted)" data-i18n="set.web_threshold_strong">강력</span>
+                  >
+            <div class="d-flex gap-4">
+              <span class="u-49f9b186" data-i18n="set.web_threshold_off">안함</span>
+              <span class="u-49f9b186" data-i18n="set.web_threshold_strong">강력</span>
             </div>
           </div>
         </div>
-        <div style="padding: 16px 0; display:flex; justify-content:flex-end;">
+        <div class="p-16-0 d-flex justify-end">
           <button class="btn btn-primary" data-action="save-web-search-config" data-i18n="set.web_save_button">Save Web Search Settings</button>
         </div>
       </div>
@@ -1215,164 +1150,164 @@
         <span data-i18n="agent.page_title">에이전트</span>
       </div>
 
-      <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
+      <div class="d-flex gap-14 items-start flex-wrap">
 
         <!-- ── LEFT: session sidebar ── -->
-        <aside style="flex:0 0 220px;min-width:190px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:12px;font-weight:600" data-i18n="agentsess.title">대화 세션</span>
-            <button class="btn btn-primary" data-action="agent-session-new"
-                    style="padding:3px 10px;font-size:11px"
+        <aside class="u-9bc5438a">
+          <div class="d-flex justify-between items-center">
+            <span class="fs-12 fw-600" data-i18n="agentsess.title">대화 세션</span>
+            <button class="btn btn-primary p-3-10 fs-11" data-action="agent-session-new"
+                   
                     data-i18n="agentsess.new">+ 새 대화</button>
           </div>
-          <div id="agent-session-list"
-               style="display:flex;flex-direction:column;gap:4px;max-height:55vh;overflow:auto">
-            <div style="color:var(--muted);font-size:11px" data-i18n="common.loading">…</div>
+          <div class="u-31db86e6" id="agent-session-list"
+              >
+            <div class="c-muted fs-11" data-i18n="common.loading">…</div>
           </div>
         </aside>
 
         <!-- ── RIGHT: controls + chat ── -->
-        <section style="flex:1;min-width:320px;display:flex;flex-direction:column;gap:12px">
+        <section class="u-abd6d905">
 
           <!-- Controls: backend + model + folders + auto-allow -->
-          <div class="card" style="padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;display:flex;flex-direction:column;gap:10px">
+          <div class="card u-aa69727c">
 
             <!-- backend + model row -->
-            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-              <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"
+            <div class="d-flex gap-10 flex-wrap items-center">
+              <label class="fs-11 c-muted font-mono"
                      data-i18n="agentchat.backend_label">BACKEND</label>
-              <select id="agent-chat-backend"
-                      style="padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
+              <select class="p-6-10 bg-bg bd-1 br-6 c-text fs-12" id="agent-chat-backend"
+                     >
                 <option value="">env default</option>
                 <option value="ollama">ollama (local)</option>
                 <option value="claude_cli">claude (Max 플랜 CLI · 키 불필요)</option>
                 <option value="anthropic">anthropic (cloud · API 키)</option>
               </select>
 
-              <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-left:6px"
+              <label class="fs-11 c-muted font-mono ml-6"
                      data-i18n="agentchat.model_label">MODEL</label>
-              <select id="agent-chat-model"
+              <select class="u-736ad3fd" id="agent-chat-model"
                       title="설치된 ollama 모델 / 백엔드 기본"
-                      style="padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;min-width:150px">
+                     >
                 <option value="">(기본)</option>
               </select>
-              <button class="btn" data-action="agent-model-refresh"
-                      style="padding:4px 8px;font-size:11px"
+              <button class="btn u-c0a9fd0e" data-action="agent-model-refresh"
+                     
                       title="설치된 모델 다시 조회" data-i18n="agentchat.model_refresh">↻</button>
-              <button class="btn btn-primary" data-action="agent-model-save"
-                      style="padding:4px 10px;font-size:11px"
+              <button class="btn btn-primary u-198baae3" data-action="agent-model-save"
+                     
                       title="이 백엔드/모델을 기본값으로 저장"
                       data-i18n="agentchat.model_save">기본값으로 저장</button>
 
-              <label style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-left:auto">
-                <input type="checkbox" id="agent-chat-auto-allow" style="vertical-align:middle">
+              <label class="fs-11 c-muted font-mono ml-auto">
+                <input class="va-middle" type="checkbox" id="agent-chat-auto-allow">
                 <span data-i18n="agentchat.auto_allow">도구 자동 허용</span>
               </label>
             </div>
-            <div id="agent-llm-msg"
-                 style="font-size:11px;color:var(--muted);font-family:var(--font-mono);min-height:13px"></div>
+            <div class="u-e2aa3c7a" id="agent-llm-msg"
+                ></div>
             <!-- cloud-egress opt-in toggle (v0.6.1 — UI-selectable) -->
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <label style="font-size:12px;color:#8cf;display:flex;align-items:center;gap:6px;cursor:pointer">
-                <input type="checkbox" id="agent-allow-cloud"
-                       data-action="agent-cloud-toggle" style="vertical-align:middle">
+            <div class="d-flex items-center gap-8 flex-wrap">
+              <label class="u-91a9423e">
+                <input class="va-middle" type="checkbox" id="agent-allow-cloud"
+                       data-action="agent-cloud-toggle">
                 <span data-i18n="agentchat.cloud_toggle">☁ 클라우드 사용 허용 (Claude · 데이터가 Anthropic 으로 전송)</span>
               </label>
             </div>
 
             <!-- run_shell opt-in toggle (v0.6.1 — UI-selectable) -->
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <label style="font-size:12px;color:#fc8;display:flex;align-items:center;gap:6px;cursor:pointer">
-                <input type="checkbox" id="agent-enable-shell"
-                       data-action="agent-shell-toggle" style="vertical-align:middle">
+            <div class="d-flex items-center gap-8 flex-wrap">
+              <label class="u-be941e14">
+                <input class="va-middle" type="checkbox" id="agent-enable-shell"
+                       data-action="agent-shell-toggle">
                 <span data-i18n="agentchat.shell_toggle">⚠ 셸 명령 실행(run_shell) 허용 — 등록 폴더 안에서만</span>
               </label>
-              <span id="agent-shell-msg"
-                    style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"></span>
+              <span class="fs-11 c-muted font-mono" id="agent-shell-msg"
+                   ></span>
             </div>
-            <div style="font-size:10px;color:var(--muted)"
+            <div class="fs-10 c-muted"
                  data-i18n="agentchat.shell_hint">
               최고위험 도구입니다. 켜면 LLM 이 등록된 폴더 안에서 셸 명령을 실행할 수 있습니다 (admin 전용·감사 기록). 끄면 LLM 에게 노출되지 않습니다.
             </div>
 
             <!-- folders (collapsible) -->
-            <details style="border-top:1px solid var(--border);padding-top:8px">
-              <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--text)"
+            <details class="u-ef035a56">
+              <summary class="cursor-pointer fs-12 fw-600 c-text"
                        data-i18n="agent.folders_summary">작업 폴더 (에이전트가 접근 가능한 폴더)</summary>
-              <div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.55"
+              <div class="u-b507437c"
                    data-i18n="agent.intro">
                 등록된 폴더 안에서만 파일 읽기 / 편집 / 셸 실행이 가능합니다.
                 시스템 critical 경로 (<code>C:\Windows</code> 등) 는 등록 불가입니다.
               </div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-                <input id="agent-path-input" type="text"
+              <div class="d-flex gap-8 flex-wrap mt-8">
+                <input class="u-79c3e149" id="agent-path-input" type="text"
                        data-i18n-placeholder="agent.register_ph"
                        placeholder="예: C:\Users\me\Documents\dogfood"
-                       style="flex:1;min-width:240px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:var(--font-mono)">
-                <button class="btn" data-action="agent-browse-open"
-                        style="padding:6px 12px;font-size:12px"
+                      >
+                <button class="btn p-6-12 fs-12" data-action="agent-browse-open"
+                       
                         data-i18n="agent.browse">📁 찾아보기</button>
-                <button class="btn btn-primary" data-action="agent-register-path"
-                        style="padding:6px 12px;font-size:12px"
+                <button class="btn btn-primary p-6-12 fs-12" data-action="agent-register-path"
+                       
                         data-i18n="agent.register_btn">등록</button>
               </div>
-              <div id="agent-form-msg"
-                   style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:6px;min-height:13px"></div>
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
-                <span style="font-size:12px;font-weight:600" data-i18n="agent.registered_label">현재 등록된 폴더</span>
-                <button class="btn" data-action="agent-reload" style="padding:3px 10px;font-size:11px"
+              <div class="u-be242e74" id="agent-form-msg"
+                  ></div>
+              <div class="d-flex justify-between items-center mt-10">
+                <span class="fs-12 fw-600" data-i18n="agent.registered_label">현재 등록된 폴더</span>
+                <button class="btn p-3-10 fs-11" data-action="agent-reload"
                         data-i18n="agent.reload">새로고침</button>
               </div>
-              <div id="agent-paths-list"
-                   style="display:flex;flex-direction:column;gap:6px;min-height:24px;margin-top:6px;font-family:var(--font-mono);font-size:12px">
-                <div style="color:var(--muted)" data-i18n="common.loading">…</div>
+              <div class="u-4b28c85b" id="agent-paths-list"
+                  >
+                <div class="c-muted" data-i18n="common.loading">…</div>
               </div>
-              <pre id="agent-env-value"
-                   style="margin:8px 0 0;font-size:10px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px;white-space:pre-wrap;word-break:break-all">(loading…)</pre>
+              <pre class="u-919872ca" id="agent-env-value"
+                  >(loading…)</pre>
             </details>
           </div>
 
           <!-- Conversation -->
-          <div id="agent-chat-log"
-               style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;min-height:260px;max-height:55vh;overflow:auto;display:flex;flex-direction:column;gap:10px;font-family:var(--font-ui)">
-            <div style="color:var(--muted);font-size:12px" data-i18n="agentchat.empty">
+          <div class="u-1007d4c8" id="agent-chat-log"
+              >
+            <div class="c-muted fs-12" data-i18n="agentchat.empty">
               (아직 대화 없음 — 아래에 메시지를 입력하세요)
             </div>
           </div>
 
           <!-- Composer -->
-          <div style="display:flex;gap:8px;align-items:flex-end">
-            <textarea id="agent-chat-input" rows="2"
+          <div class="d-flex gap-8 items-end">
+            <textarea class="flex-1 p-8-10 bg-bg bd-1 br-6 c-text fs-13 resize-v font-ui" id="agent-chat-input" rows="2"
                       data-i18n-placeholder="agentchat.input_ph"
                       placeholder="예: C:\Users\me\dogfood 폴더의 .md 파일 목록 보여줘"
-                      style="flex:1;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;resize:vertical;font-family:var(--font-ui)"></textarea>
+                     ></textarea>
             <button class="btn btn-primary" id="agent-chat-send-btn"
                     data-action="agent-chat-send" data-i18n="agentchat.send">전송</button>
-            <button class="btn" id="agent-chat-cancel-btn"
-                    data-action="agent-chat-cancel" style="display:none"
+            <button class="btn d-none" id="agent-chat-cancel-btn"
+                    data-action="agent-chat-cancel"
                     data-i18n="agentchat.cancel">중단</button>
             <button class="btn" data-action="agent-chat-clear"
                     title="현재 세션 비우기" data-i18n="agentchat.clear">초기화</button>
           </div>
-          <div id="agent-chat-status"
-               style="font-size:11px;color:var(--muted);font-family:var(--font-mono);min-height:14px"></div>
+          <div class="u-38643f9d" id="agent-chat-status"
+              ></div>
         </section>
       </div>
 
       <!-- ── Folder browser modal ── -->
-      <div id="agent-browse-modal"
-           style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.55);align-items:center;justify-content:center">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;width:min(620px,92vw);max-height:82vh;display:flex;flex-direction:column;padding:16px;gap:10px">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:14px;font-weight:600" data-i18n="agent.browse_title">폴더 선택</span>
-            <button class="btn" data-action="agent-browse-close" style="padding:3px 10px;font-size:12px">✕</button>
+      <div class="u-5f42ab00" id="agent-browse-modal"
+          >
+        <div class="u-a4ecb3a2">
+          <div class="d-flex justify-between items-center">
+            <span class="fs-14 fw-600" data-i18n="agent.browse_title">폴더 선택</span>
+            <button class="btn p-3-10 fs-12" data-action="agent-browse-close">✕</button>
           </div>
-          <div id="agent-browse-current"
-               style="font-size:11px;color:var(--muted);font-family:var(--font-mono);word-break:break-all;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px">/</div>
-          <div id="agent-browse-list"
-               style="flex:1;overflow:auto;display:flex;flex-direction:column;gap:3px;min-height:200px;max-height:50vh">
+          <div class="u-af524a3f" id="agent-browse-current"
+              >/</div>
+          <div class="u-ba3f4872" id="agent-browse-list"
+              >
           </div>
-          <div style="display:flex;justify-content:flex-end;gap:8px">
+          <div class="d-flex justify-end gap-8">
             <button class="btn" data-action="agent-browse-close" data-i18n="agent.browse_cancel">닫기</button>
             <button class="btn btn-primary" id="agent-browse-pick-btn"
                     data-action="agent-browse-pick"
@@ -1403,53 +1338,50 @@
 <script src="/static/glossary.js"></script>
 
 <!-- ── Admin 로그인 모달 ── -->
-<div class="modal-overlay" id="admin-login-modal"
+<div class="modal-overlay u-c5a8031d" id="admin-login-modal"
      role="dialog" aria-modal="true"
      aria-labelledby="admin-login-modal-title"
-     style="display:none;position:fixed;inset:0;background:rgba(4,6,10,.35);display:flex;align-items:center;justify-content:center;z-index:300;">
-  <div class="modal" style="padding:36px;width:340px;">
-    <div id="admin-login-modal-title" style="font-size:13px;font-weight:600;font-family:var(--font-mono);color:var(--danger);margin-bottom:8px;letter-spacing:.5px;">▸ Secure Enterprise Knowledge Operating System · Admin</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:24px;" data-i18n="auth.admin_required">Admin login required</div>
-    <div style="margin-bottom:14px;">
-      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px;">ADMIN ID</div>
-      <input id="admin-login-id" type="text" placeholder="admin" value="admin"
+    >
+  <div class="modal u-8f3a65ea">
+    <div class="fs-13 fw-600 font-mono c-danger mb-8 ls-05" id="admin-login-modal-title">▸ Secure Enterprise Knowledge Operating System · Admin</div>
+    <div class="u-3989efe8" data-i18n="auth.admin_required">Admin login required</div>
+    <div class="mb-14">
+      <div class="fs-10 c-muted ls-1 font-mono mb-6">ADMIN ID</div>
+      <input class="w-full bg-bg bd-1 br-7 p-10-14 c-text fs-14 outline-none" id="admin-login-id" type="text" placeholder="admin" value="admin"
              autocomplete="off" spellcheck="false"
-             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 14px;color:var(--text);font-size:14px;outline:none;">
+            >
     </div>
-    <div style="margin-bottom:14px;">
-      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px;">PASSWORD</div>
+    <div class="mb-14">
+      <div class="fs-10 c-muted ls-1 font-mono mb-6">PASSWORD</div>
       <!-- [#A8-3] password 옆에 toggle — chat 페이지와 동일 패턴 -->
-      <div style="position:relative">
-        <input id="admin-login-pw" type="password" placeholder="••••••••"
+      <div class="pos-relative">
+        <input class="u-ecc24fde" id="admin-login-pw" type="password" placeholder="••••••••"
                autocomplete="new-password"
-               style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 40px 10px 14px;color:var(--text);font-size:14px;outline:none;">
-        <button type="button"
+              >
+        <button class="u-2430bfe7" type="button"
                 id="admin-login-pw-toggle"
                 data-action="toggle-admin-pw-visibility"
                 aria-label="show/hide password"
                 title="비밀번호 보기/숨기기"
-                style="position:absolute;right:8px;top:50%;
-                       transform:translateY(-50%);background:none;
-                       border:none;cursor:pointer;color:var(--muted);
-                       font-size:14px;padding:4px 6px"></button>
+               ></button>
       </div>
     </div>
-    <div id="admin-login-error" style="font-size:12px;color:var(--danger);min-height:18px;margin-bottom:12px;font-family:var(--font-mono);"></div>
-    <button data-action="do-admin-login"
-            style="width:100%;padding:11px;background:var(--danger);border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;"
+    <div class="u-3d31afaf" id="admin-login-error"></div>
+    <button class="u-e56abdee" data-action="do-admin-login"
+           
             data-i18n="auth.login">
       Login
     </button>
     <!-- W4 P2-B-2: forgot-password link -->
-    <div style="margin-top:14px;text-align:center;">
-      <a href="#" data-action="open-forgot-password-modal"
-         style="font-size:12px;color:var(--muted);text-decoration:underline;cursor:pointer"
+    <div class="u-92b0a009">
+      <a class="fs-12 c-muted underline cursor-pointer" href="#" data-action="open-forgot-password-modal"
+        
          data-i18n="auth.forgot_password">비밀번호를 잊으셨나요?</a>
     </div>
     <!-- W4 P4: signup link -->
-    <div style="margin-top:8px;text-align:center;">
-      <a href="#" data-action="open-signup-modal"
-         style="font-size:12px;color:var(--muted);text-decoration:underline;cursor:pointer"
+    <div class="mt-8 text-center">
+      <a class="fs-12 c-muted underline cursor-pointer" href="#" data-action="open-signup-modal"
+        
          data-i18n="auth.signup_link">계정이 없으신가요? 회원가입</a>
     </div>
   </div>
@@ -1461,39 +1393,39 @@
      submitter cannot log in until that happens — admin's existing
      session is unaffected.
 -->
-<div id="signup-modal"
+<div class="u-4bf6e6cb" id="signup-modal"
      role="dialog" aria-modal="true"
      aria-labelledby="signup-modal-title"
-     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;z-index:320">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;width:360px;max-width:92vw;box-shadow:0 24px 80px rgba(0,0,0,.7)">
-    <div id="signup-modal-title" style="font-size:15px;font-weight:600;color:var(--accent-fg);margin-bottom:6px"
+    >
+  <div class="u-255ac621">
+    <div class="fs-15 fw-600 c-accent-fg mb-6" id="signup-modal-title"
          data-i18n="auth.signup_title">▸ 회원가입</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:18px;line-height:1.5"
+    <div class="u-d4099956"
          data-i18n="auth.signup_hint">
       가입 신청 후 관리자 승인을 거쳐야 로그인할 수 있습니다.
     </div>
-    <div style="margin-bottom:12px">
-      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px">USERNAME</div>
-      <input id="signup-id" type="text" autocomplete="username" spellcheck="false"
+    <div class="mb-12">
+      <div class="fs-10 c-muted ls-1 font-mono mb-6">USERNAME</div>
+      <input class="w-full bg-bg bd-1 br-7 p-9-12 c-text fs-13 outline-none" id="signup-id" type="text" autocomplete="username" spellcheck="false"
              data-i18n-placeholder="auth.signup_username_ph"
              placeholder="영문 소문자/숫자/_- (3~32자)"
-             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;outline:none">
+            >
     </div>
-    <div style="margin-bottom:14px">
-      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px">PASSWORD</div>
-      <input id="signup-pw" type="password" autocomplete="new-password"
+    <div class="mb-14">
+      <div class="fs-10 c-muted ls-1 font-mono mb-6">PASSWORD</div>
+      <input class="w-full bg-bg bd-1 br-7 p-9-12 c-text fs-13 outline-none" id="signup-pw" type="password" autocomplete="new-password"
              data-i18n-placeholder="auth.signup_password_ph"
              placeholder="8~72자, 영문 + 숫자"
-             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;outline:none">
+            >
     </div>
-    <div id="signup-error" style="font-size:12px;color:var(--danger);min-height:18px;margin-bottom:6px;font-family:var(--font-mono)"></div>
-    <div id="signup-success" style="display:none;font-size:12px;color:#1e7a3e;margin-bottom:10px;line-height:1.5"></div>
-    <div style="display:flex;gap:8px">
-      <button data-action="close-signup-modal"
-              style="flex:1;padding:10px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:13px;cursor:pointer"
+    <div class="u-b269fdd3" id="signup-error"></div>
+    <div class="u-1a3f862b" id="signup-success"></div>
+    <div class="d-flex gap-8">
+      <button class="flex-1 p-10 bg-transparent bd-1 br-7 c-muted fs-13 cursor-pointer" data-action="close-signup-modal"
+             
               data-i18n="common.cancel">취소</button>
-      <button data-action="submit-signup"
-              style="flex:2;padding:10px;background:#1e5a7a;border:0;border-radius:7px;color:#fff;font-size:13px;font-weight:600;cursor:pointer"
+      <button class="u-15397f03" data-action="submit-signup"
+             
               data-i18n="auth.signup_submit">가입 신청</button>
     </div>
   </div>
@@ -1506,39 +1438,39 @@
      pattern of /password/reset/confirm — unified 401 on token error,
      400 only on policy violation.
 -->
-<div id="forgot-password-modal"
+<div class="u-4bf6e6cb" id="forgot-password-modal"
      role="dialog" aria-modal="true"
      aria-labelledby="forgot-password-modal-title"
-     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;z-index:320">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;width:380px;max-width:92vw;box-shadow:0 24px 80px rgba(0,0,0,.7)">
-    <div id="forgot-password-modal-title" style="font-size:15px;font-weight:600;color:var(--accent-fg);margin-bottom:6px;letter-spacing:.5px"
+    >
+  <div class="u-54305035">
+    <div class="fs-15 fw-600 c-accent-fg mb-6 ls-05" id="forgot-password-modal-title"
          data-i18n="auth.reset_password_title">▸ 비밀번호 재설정</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:18px;line-height:1.5"
+    <div class="u-d4099956"
          data-i18n="auth.reset_password_hint">
       관리자가 발급한 일회용 토큰을 입력하세요. (1시간 유효)
     </div>
-    <div style="margin-bottom:12px">
-      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px">USERNAME</div>
-      <input id="reset-username" type="text" autocomplete="username"
-             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;outline:none">
+    <div class="mb-12">
+      <div class="fs-10 c-muted ls-1 font-mono mb-6">USERNAME</div>
+      <input class="w-full bg-bg bd-1 br-7 p-9-12 c-text fs-13 outline-none" id="reset-username" type="text" autocomplete="username"
+            >
     </div>
-    <div style="margin-bottom:12px">
-      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px">RESET TOKEN</div>
-      <input id="reset-token" type="text" autocomplete="off" spellcheck="false"
-             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:12px;outline:none;font-family:var(--font-mono)">
+    <div class="mb-12">
+      <div class="fs-10 c-muted ls-1 font-mono mb-6">RESET TOKEN</div>
+      <input class="w-full bg-bg bd-1 br-7 p-9-12 c-text fs-12 outline-none font-mono" id="reset-token" type="text" autocomplete="off" spellcheck="false"
+            >
     </div>
-    <div style="margin-bottom:14px">
-      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);margin-bottom:6px">NEW PASSWORD</div>
-      <input id="reset-new-pw" type="password" autocomplete="new-password"
-             style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px;outline:none">
+    <div class="mb-14">
+      <div class="fs-10 c-muted ls-1 font-mono mb-6">NEW PASSWORD</div>
+      <input class="w-full bg-bg bd-1 br-7 p-9-12 c-text fs-13 outline-none" id="reset-new-pw" type="password" autocomplete="new-password"
+            >
     </div>
-    <div id="reset-error" style="font-size:12px;color:var(--danger);min-height:18px;margin-bottom:10px;font-family:var(--font-mono)"></div>
-    <div style="display:flex;gap:8px">
-      <button data-action="close-forgot-password-modal"
-              style="flex:1;padding:10px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:13px;cursor:pointer"
+    <div class="u-5ddb24b1" id="reset-error"></div>
+    <div class="d-flex gap-8">
+      <button class="flex-1 p-10 bg-transparent bd-1 br-7 c-muted fs-13 cursor-pointer" data-action="close-forgot-password-modal"
+             
               data-i18n="common.cancel">취소</button>
-      <button data-action="submit-password-reset"
-              style="flex:2;padding:10px;background:#1e7a3e;border:0;border-radius:7px;color:#fff;font-size:13px;font-weight:600;cursor:pointer"
+      <button class="u-b6bc178b" data-action="submit-password-reset"
+             
               data-i18n="auth.reset_submit">재설정</button>
     </div>
   </div>
@@ -1560,43 +1492,27 @@
      ARIA: role=dialog + aria-modal + aria-labelledby per a11y-modal.js
      focus-trap contract. ESC closes; outside-click does NOT (forensic
      review surface — accidental dismiss = audit risk). -->
-<div id="cr-detail-modal"
+<div class="u-45d4b707" id="cr-detail-modal"
      role="dialog" aria-modal="true"
      aria-labelledby="cr-detail-modal-title"
-     style="display:none;position:fixed;inset:0;
-            background:rgba(0,0,0,.7);align-items:flex-start;
-            justify-content:center;z-index:9999;
-            overflow-y:auto;padding:40px 16px">
-  <div style="background:var(--surface-2);
-              border:1px solid var(--border);border-radius:8px;
-              padding:24px;max-width:980px;width:100%;
-              max-height:88vh;overflow-y:auto;
-              box-shadow:0 24px 80px rgba(0,0,0,.6)">
-    <div style="display:flex;justify-content:space-between;
-                align-items:center;margin-bottom:14px">
-      <div id="cr-detail-modal-title"
-           style="font-size:15px;font-weight:600;
-                  color:var(--accent-fg);
-                  font-family:var(--font-mono);letter-spacing:.4px"
+    >
+  <div class="u-6cdea84a">
+    <div class="d-flex justify-between items-center mb-14">
+      <div class="u-74a68ab5" id="cr-detail-modal-title"
+          
            data-i18n="cr.detail_title">
         Change Request Detail
       </div>
-      <button class="modal-btn cancel"
+      <button class="modal-btn cancel u-978fde3d"
               data-action="cr-detail-close"
               aria-label="Close change request detail"
               data-i18n="common.close"
-              style="padding:6px 14px;background:var(--surface);
-                     border:1px solid var(--border);border-radius:6px;
-                     color:var(--text-soft);cursor:pointer;
-                     font-size:12px">Close</button>
+             >Close</button>
     </div>
 
     <!-- Metadata block -->
-    <div id="cr-detail-meta"
-         style="display:grid;grid-template-columns:auto 1fr;
-                column-gap:12px;row-gap:6px;
-                margin-bottom:18px;font-size:12px;
-                font-family:var(--font-mono)">
+    <div class="u-8869ee63" id="cr-detail-meta"
+        >
       <!-- JS populates: CR ID / Target / Proposer / Status /
            Created / Labels -->
     </div>
@@ -1605,47 +1521,28 @@
     <div class="field-label" data-i18n="cr.detail_description">
       Description
     </div>
-    <div id="cr-detail-description"
-         style="background:var(--bg);border:1px solid var(--border);
-                border-radius:6px;padding:10px 14px;
-                font-size:12px;line-height:1.5;color:var(--text-soft);
-                margin-bottom:18px;white-space:pre-wrap;
-                min-height:36px"></div>
+    <div class="u-84be825a" id="cr-detail-description"
+        ></div>
 
     <!-- Side-by-side diff renderer -->
     <div class="field-label" data-i18n="cr.detail_diff">
       Proposed change (before → after)
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;
-                gap:10px;margin-bottom:18px">
+    <div class="u-19bff323">
       <div>
-        <div class="muted-12"
-             style="font-family:var(--font-mono);margin-bottom:4px"
+        <div class="muted-12 font-mono mb-4"
+            
              data-i18n="cr.diff_before">Before (base @ base_hash)</div>
-        <pre id="cr-detail-diff-before"
-             style="background:var(--bg);border:1px solid var(--border);
-                    border-left:3px solid var(--danger);
-                    border-radius:6px;padding:10px 12px;
-                    font-size:11px;line-height:1.5;
-                    color:var(--text-soft);
-                    max-height:360px;overflow:auto;
-                    white-space:pre-wrap;word-break:break-word;
-                    margin:0"
+        <pre class="u-2ff2369d" id="cr-detail-diff-before"
+            
              aria-label="Before state of the change request"></pre>
       </div>
       <div>
-        <div class="muted-12"
-             style="font-family:var(--font-mono);margin-bottom:4px"
+        <div class="muted-12 font-mono mb-4"
+            
              data-i18n="cr.diff_after">After (proposed)</div>
-        <pre id="cr-detail-diff-after"
-             style="background:var(--bg);border:1px solid var(--border);
-                    border-left:3px solid var(--success);
-                    border-radius:6px;padding:10px 12px;
-                    font-size:11px;line-height:1.5;
-                    color:var(--text-soft);
-                    max-height:360px;overflow:auto;
-                    white-space:pre-wrap;word-break:break-word;
-                    margin:0"
+        <pre class="u-b083d1b4" id="cr-detail-diff-after"
+            
              aria-label="Proposed after-state of the change request"></pre>
       </div>
     </div>
@@ -1653,19 +1550,16 @@
     <!-- CR.c contradiction-arbiter slot + CR.d action buttons slot.
          Both render empty until those PRs land; section headers
          present so the operator sees the planned shape. -->
-    <div id="cr-detail-arbiter-slot"
-         style="background:var(--bg);border:1px solid var(--border);
-                border-radius:6px;padding:10px 14px;
-                font-size:11px;color:var(--muted);
-                font-family:var(--font-mono);margin-bottom:14px">
+    <div class="bg-bg bd-1 br-6 p-10-14 fs-11 c-muted font-mono mb-14" id="cr-detail-arbiter-slot"
+        >
       <span data-i18n="cr.arbiter_pending">
         Contradiction-arbiter visualisation lands in CR.c
       </span>
     </div>
-    <div id="cr-detail-actions-slot"
-         style="display:flex;gap:8px;justify-content:flex-end">
-      <span class="muted-12"
-            style="font-family:var(--font-mono);align-self:center"
+    <div class="d-flex gap-8 justify-end" id="cr-detail-actions-slot"
+        >
+      <span class="muted-12 font-mono self-center"
+           
             data-i18n="cr.actions_pending">
         Approve / Reject buttons land in CR.d
       </span>
@@ -1673,29 +1567,29 @@
   </div>
 </div>
 
-<div id="api-key-display-modal"
+<div class="u-4bf6e6cb" id="api-key-display-modal"
      role="dialog" aria-modal="true"
      aria-labelledby="api-key-display-modal-title"
-     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;z-index:320">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;width:520px;max-width:92vw;box-shadow:0 24px 80px rgba(0,0,0,.7)">
-    <div id="api-key-display-modal-title" style="font-size:14px;font-weight:600;color:var(--accent-fg);margin-bottom:6px"
+    >
+  <div class="u-ec943564">
+    <div class="fs-14 fw-600 c-accent-fg mb-6" id="api-key-display-modal-title"
          data-i18n="users.mykey_issued_title">API 키 발급 완료</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5"
+    <div class="fs-11 c-muted mb-14 lh-15"
          data-i18n="users.mykey_issued_hint">
       이 키는 한 번만 표시됩니다. 안전한 곳에 보관하세요. 분실 시 새로 발급 필요.
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-family:var(--font-mono)">LABEL:
-      <span id="mykey-display-label" style="color:var(--text);font-weight:600"></span></div>
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:12px;font-family:var(--font-mono);font-size:12px;word-break:break-all;color:var(--text)"
+    <div class="fs-11 c-muted mb-6 font-mono">LABEL:
+      <span class="c-text fw-600" id="mykey-display-label"></span></div>
+    <div class="u-87f8977c"
          id="mykey-display-value"></div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;font-family:var(--font-mono)"
+    <div class="fs-11 c-muted mb-14 font-mono"
          id="mykey-display-prefix"></div>
-    <div style="display:flex;gap:8px">
-      <button data-action="copy-my-api-key"
-              style="flex:2;padding:9px;background:#1e7a3e;border:0;border-radius:7px;color:#fff;font-size:13px;cursor:pointer"
+    <div class="d-flex gap-8">
+      <button class="u-f7861f5e" data-action="copy-my-api-key"
+             
               data-i18n="users.mykey_copy">키 복사</button>
-      <button data-action="close-my-api-key-modal"
-              style="flex:1;padding:9px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:13px;cursor:pointer"
+      <button class="u-1aab2bbb" data-action="close-my-api-key-modal"
+             
               data-i18n="common.close">닫기</button>
     </div>
   </div>
@@ -1707,29 +1601,29 @@
      copying is a real risk so we keep the modal modal (no outside-
      click dismiss) and the close button restates the warning.
 -->
-<div id="reset-token-display-modal"
+<div class="u-4bf6e6cb" id="reset-token-display-modal"
      role="dialog" aria-modal="true"
      aria-labelledby="reset-token-display-modal-title"
-     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;z-index:320">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;width:480px;max-width:92vw;box-shadow:0 24px 80px rgba(0,0,0,.7)">
-    <div id="reset-token-display-modal-title" style="font-size:14px;font-weight:600;color:var(--accent-fg);margin-bottom:6px"
+    >
+  <div class="u-92ba9b96">
+    <div class="fs-14 fw-600 c-accent-fg mb-6" id="reset-token-display-modal-title"
          data-i18n="users.token_issued_title">비밀번호 재설정 토큰 발급</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5"
+    <div class="fs-11 c-muted mb-14 lh-15"
          data-i18n="users.token_issued_hint">
       이 토큰은 한 번만 표시됩니다. 사용자에게 전달 후 화면을 떠나세요.
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-family:var(--font-mono)">FOR:
-      <span id="token-display-username" style="color:var(--text);font-weight:600"></span></div>
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:12px;font-family:var(--font-mono);font-size:12px;word-break:break-all;color:var(--text)"
+    <div class="fs-11 c-muted mb-6 font-mono">FOR:
+      <span class="c-text fw-600" id="token-display-username"></span></div>
+    <div class="u-87f8977c"
          id="token-display-value"></div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;font-family:var(--font-mono)"
+    <div class="fs-11 c-muted mb-14 font-mono"
          id="token-display-ttl"></div>
-    <div style="display:flex;gap:8px">
-      <button data-action="copy-reset-token"
-              style="flex:2;padding:9px;background:#1e7a3e;border:0;border-radius:7px;color:#fff;font-size:13px;cursor:pointer"
+    <div class="d-flex gap-8">
+      <button class="u-f7861f5e" data-action="copy-reset-token"
+             
               data-i18n="users.token_copy">토큰 복사</button>
-      <button data-action="close-reset-token-modal"
-              style="flex:1;padding:9px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:13px;cursor:pointer"
+      <button class="u-1aab2bbb" data-action="close-reset-token-modal"
+             
               data-i18n="common.close">닫기</button>
     </div>
   </div>
@@ -1741,68 +1635,53 @@
      역할:   하드웨어 측정 결과 + 추천 모델 + 원클릭 설치.
      닫힘:   "나중에" 버튼으로 dismiss (sessionStorage에 기록 — 재진입
             시 다시 안 띄움). 설치 완료 시 자동 닫힘. -->
-<div class="modal-overlay" id="firstrun-wizard-modal"
+<div class="modal-overlay u-a9962869" id="firstrun-wizard-modal"
      role="dialog" aria-modal="true"
      aria-labelledby="firstrun-wizard-modal-title"
-     style="display:none;position:fixed;inset:0;background:rgba(4,6,10,.35);
-            align-items:center;justify-content:center;z-index:400;">
-  <div class="modal" style="padding:36px;width:560px;max-width:92vw;
-              max-height:88vh;overflow-y:auto;">
-    <div id="firstrun-wizard-modal-title" style="font-size:18px;font-weight:600;color:var(--accent-fg);
-                margin-bottom:8px;letter-spacing:.3px;">
+    >
+  <div class="modal u-85181f38">
+    <div class="u-b2ff889f" id="firstrun-wizard-modal-title">
       처음 실행 — LLM 모델 설치 필요
     </div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6;">
+    <div class="fs-13 c-muted mb-20 lh-16">
       Ollama에 설치된 모델이 없어서 답변을 만들 수 없습니다.
       이 PC의 사양에 맞는 모델을 자동 추천해드립니다.
     </div>
 
-    <div id="firstrun-hw-summary"
-         style="background:var(--surface-2);border:1px solid var(--border);
-                border-radius:8px;padding:12px 14px;margin-bottom:16px;
-                font-size:12px;color:var(--text-soft);line-height:1.5;">
+    <div class="u-f6ccbcd3" id="firstrun-hw-summary"
+        >
       <div class="loading">하드웨어 측정 중...</div>
     </div>
 
-    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;
-                letter-spacing:.4px;margin-bottom:8px;">
+    <div class="u-9e9e719b">
       권장 모델 (이 PC에서 작동 가능한 것 중 우선순위)
     </div>
-    <div id="firstrun-recommendations"
-         style="background:var(--bg);border:1px solid var(--border);
-                border-radius:8px;padding:8px;margin-bottom:14px;
-                max-height:280px;overflow-y:auto;">
-      <div class="loading" style="padding:20px;text-align:center;color:var(--muted)">
+    <div class="u-bf6a901f" id="firstrun-recommendations"
+        >
+      <div class="loading p-20 text-center c-muted">
         추천 계산 중...
       </div>
     </div>
 
     <!-- 진행률 표시 (설치 시작 후 활성화) -->
-    <div id="firstrun-progress" style="display:none;background:var(--surface-2);
-         border:1px solid var(--accent);border-radius:8px;padding:12px;
-         margin-bottom:14px;font-size:12px">
-      <div id="firstrun-progress-text"
-           style="color:var(--accent-fg);margin-bottom:6px">설치 시작 중...</div>
-      <div style="background:var(--bg);height:6px;border-radius:3px;overflow:hidden">
-        <div id="firstrun-progress-bar"
-             style="background:var(--accent);height:100%;width:0%;
-                    transition:width .3s"></div>
+    <div class="u-a345ace1" id="firstrun-progress">
+      <div class="c-accent-fg mb-6" id="firstrun-progress-text"
+          >설치 시작 중...</div>
+      <div class="u-e8dc057b">
+        <div class="u-c2d09fb1" id="firstrun-progress-bar"
+            ></div>
       </div>
     </div>
 
-    <div style="display:flex;gap:10px;margin-top:18px">
-      <button id="firstrun-later-btn"
+    <div class="u-212754e8">
+      <button class="u-5aa95d8f" id="firstrun-later-btn"
               data-action="first-run-dismiss"
-              style="flex:1;padding:11px;background:var(--surface-2);
-                     border:1px solid var(--border);border-radius:8px;
-                     color:var(--muted);font-size:13px;cursor:pointer;">
+             >
         나중에 (이 세션 동안 다시 안 띄움)
       </button>
-      <button id="firstrun-refresh-btn"
+      <button class="u-e408ae80" id="firstrun-refresh-btn"
               data-action="first-run-check"
-              style="padding:11px 16px;background:var(--surface-2);
-                     border:1px solid var(--border);border-radius:8px;
-                     color:var(--muted);font-size:13px;cursor:pointer;"
+             
               title="모델 설치 후 다시 확인">
         ↻ 새로고침
       </button>

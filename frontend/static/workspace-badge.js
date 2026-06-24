@@ -63,6 +63,7 @@
       box.classList.remove('workspace-badge-custom');
     }
     box.style.display = '';
+    box.classList.remove('d-none');  // markup hide is now .d-none (CSP migration)
   }
 
   async function _boot() {
