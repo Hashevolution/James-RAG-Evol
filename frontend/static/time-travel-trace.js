@@ -108,6 +108,18 @@
     if (panel) panel.style.display = 'none';
   }
 
+  // Make the panel noticeable when it (re)appears — scroll it into the
+  // viewport and briefly flash its border. Without this the small
+  // top-right overlay is easy to miss, esp. on phones (the "그래프에서
+  // 이 추론 보기" button felt like it did nothing).
+  function revealPanel(panel) {
+    if (!panel) return;
+    try { panel.scrollIntoView({ block: 'nearest' }); } catch (_) {}
+    var base = '0 2px 10px rgba(0,0,0,.4)';
+    panel.style.boxShadow = '0 0 0 2px var(--accent-fg,#6cf), ' + base;
+    setTimeout(function () { panel.style.boxShadow = base; }, 1200);
+  }
+
   function renderHeader(stateText) {
     return '<div style="font-weight:600;color:var(--accent-fg);' +
            'margin-bottom:6px;letter-spacing:.4px">' +
@@ -126,6 +138,7 @@
       escapeHtml(t('graph.timetravel.trace.loading', 'Loading trail…')) +
       ' (' + escapeHtml(traceId) + ')'
     );
+    revealPanel(panel);
   }
 
   function renderError(detail, traceId) {
@@ -139,6 +152,7 @@
       escapeHtml(t('graph.timetravel.trace.error', 'Trail unavailable')) +
       safeDetail + traceFrag + '</span>'
     );
+    revealPanel(panel);
   }
 
   function renderEmpty() {
@@ -249,6 +263,7 @@
     }
 
     panel.innerHTML = header + toFlowBtn + phaseHtml;
+    revealPanel(panel);
 
     var toFlow = document.getElementById('trace-to-flow-btn');
     if (toFlow) {
