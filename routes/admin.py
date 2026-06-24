@@ -179,6 +179,17 @@ _FILE_VIEW_TEXT_EXTS = frozenset({
     ".jsonl", ".log", ".tsv",
 })
 
+# Binary document formats that can't be read as UTF-8 but CAN be shown
+# as extracted text (read-only) via the upload pipeline's text extractor
+# (processors/file_processor.py). Used by /admin/files/view so the
+# 원본 자료 tab can open uploaded PDFs/Office docs instead of 415-ing.
+_FILE_VIEW_EXTRACT_EXTS = frozenset({
+    ".pdf", ".docx", ".pptx", ".xlsx", ".doc", ".ppt", ".xls",
+})
+# Source-file size ceiling for extraction (the extracted text is then
+# capped separately to max_kb). Extraction of a huge scan would be slow.
+_FILE_VIEW_EXTRACT_MAX_BYTES = 15 * 1024 * 1024
+
 class PersonaRequest(BaseModel):
     api_key:  str
     name:     str = ""
@@ -2325,7 +2336,8 @@ async def admin_files_view(
     if not full or not os.path.isfile(full):
         raise HTTPException(status_code=404, detail="not found")
     ext = os.path.splitext(full)[1].lower()
-    if ext not in _FILE_VIEW_TEXT_EXTS:
+    is_extract = ext in _FILE_VIEW_EXTRACT_EXTS
+    if ext not in _FILE_VIEW_TEXT_EXTS and not is_extract:
         raise HTTPException(
             status_code=415,
             detail=f"extension {ext} not viewable inline; use download",
@@ -2335,25 +2347,57 @@ async def admin_files_view(
         size = os.path.getsize(full)
     except OSError:
         raise HTTPException(status_code=404, detail="stat failed")
-    if size > max_kb * 1024:
+    # Text files are read directly (capped at max_kb). Binary docs are
+    # text-extracted; their *source* may be larger, so the source cap is
+    # higher and the extracted text is truncated to max_kb below.
+    src_cap = _FILE_VIEW_EXTRACT_MAX_BYTES if is_extract else max_kb * 1024
+    if size > src_cap:
         raise HTTPException(
             status_code=413,
-            detail=f"file {size} bytes exceeds max_kb={max_kb}; use download",
+            detail=f"file {size} bytes too large; use download",
         )
-    try:
-        with open(full, "r", encoding="utf-8", errors="replace") as f:
-            content = f.read()
-    except OSError as e:
-        raise HTTPException(status_code=500, detail=f"read failed: {e}")
+
+    extracted = False
+    if is_extract:
+        # Reuse the upload pipeline's extractor (MarkItDown + OCR
+        # fallback). Lazy import so a missing optional dep degrades to a
+        # clean 415 instead of breaking module import.
+        try:
+            from processors.file_processor import FileProcessor
+            fp = FileProcessor()
+            tc = (fp.extract_pdf(full) if ext == ".pdf"
+                  else fp.extract_office(full))
+            content = (getattr(tc, "text", None) or "").strip()
+        except Exception as e:  # noqa: BLE001
+            raise HTTPException(
+                status_code=415,
+                detail=f"could not extract text from {ext}: {e}; use download",
+            )
+        if not content:
+            raise HTTPException(
+                status_code=415,
+                detail=f"no extractable text in {ext} (scanned?); use download",
+            )
+        extracted = True
+        cap = max_kb * 1024
+        if len(content.encode("utf-8", "ignore")) > cap:
+            content = content[:cap] + "\n…(truncated — use download for full)"
+    else:
+        try:
+            with open(full, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
+        except OSError as e:
+            raise HTTPException(status_code=500, detail=f"read failed: {e}")
     _write_audit(role, "/admin/files/view/",
                  query=os.path.basename(full), elapsed_sec=0)
     return {
-        "root":    root,
-        "path":    path,
-        "name":    os.path.basename(full),
-        "size":    size,
-        "ext":     ext,
-        "content": content,
+        "root":      root,
+        "path":      path,
+        "name":      os.path.basename(full),
+        "size":      size,
+        "ext":       ext,
+        "content":   content,
+        "extracted": extracted,
     }
 
 @router.get("/admin/files/download", summary="파일 다운로드 [item #2]")

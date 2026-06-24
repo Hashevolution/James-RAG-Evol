@@ -390,12 +390,27 @@ async function srcOpen(path) {
   try {
     const data = await _apiFetch(
       `/admin/files/view?root=${encodeURIComponent(root)}&path=${encodeURIComponent(path)}`);
-    view.innerHTML = head +
-      `<pre style="white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:12px;max-height:60vh;overflow:auto">${_esc(data.content)}</pre>`;
+    // Extracted (PDF/Office) content is read-only text pulled from the
+    // binary; flag it so the user knows it's not the raw file.
+    const note = data.extracted
+      ? `<div style="font-size:11px;color:#8cf;margin-bottom:6px">📄 ${t('workspace.src_extracted')}</div>`
+      : '';
+    // Uploaded originals aren't editable here — editing is for 위키 .md
+    // entities. Point the user there so they can reach the edit step.
+    const editHint = (!editable && root !== 'wiki')
+      ? `<div style="font-size:11px;color:var(--muted);margin-top:8px">${t('workspace.src_edit_hint')}</div>`
+      : '';
+    view.innerHTML = head + note +
+      `<pre style="white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:12px;max-height:60vh;overflow:auto">${_esc(data.content)}</pre>`
+      + editHint;
   } catch (e) {
-    // 415 (binary) / 413 (too big) → view unavailable, download still works.
+    // 415 (binary, no text) / 413 (too big) → view unavailable, download works.
+    const editHint = (root !== 'wiki')
+      ? `<div style="font-size:11px;color:var(--muted);margin-top:8px">${t('workspace.src_edit_hint')}</div>`
+      : '';
     view.innerHTML = head +
-      `<div style="padding:14px;font-size:12px;color:var(--muted)">${_esc(e.message)}<br>${t('workspace.src_download_only')}</div>`;
+      `<div style="padding:14px;font-size:12px;color:var(--muted)">${_esc(e.message)}<br>${t('workspace.src_download_only')}</div>`
+      + editHint;
   }
 }
 function srcEdit(path) {
