@@ -213,5 +213,40 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(out["msg_count"], 1)
 
 
+class ShellToggleTests(unittest.TestCase):
+    """run_shell is now UI-toggleable via the DB-backed agent_enable_shell
+    setting (no restart)."""
+
+    def setUp(self):
+        import core.llm_settings as ls
+        self._tmpdb = tempfile.mkdtemp(prefix="james_sh_ls_")
+        self._orig = ls._DB_PATH
+        ls._DB_PATH = os.path.join(self._tmpdb, "t.db")
+        self._prev_db = os.environ.pop("JAMES_SETTINGS_USE_DB", None)   # DB-first
+        self._prev_env = os.environ.pop("JAMES_AGENT_ENABLE_SHELL", None)
+
+    def tearDown(self):
+        import core.llm_settings as ls
+        ls._DB_PATH = self._orig
+        shutil.rmtree(self._tmpdb, ignore_errors=True)
+        if self._prev_db is not None:
+            os.environ["JAMES_SETTINGS_USE_DB"] = self._prev_db
+        if self._prev_env is not None:
+            os.environ["JAMES_AGENT_ENABLE_SHELL"] = self._prev_env
+
+    def test_toggle_via_endpoint(self):
+        from core.agent_tools import shell_enabled
+        self.assertFalse(shell_enabled())          # default OFF
+        c = _make_client()
+        r = c.post("/admin/agent/llm-settings",
+                   json={"api_key": "x", "enable_shell": True})
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertTrue(shell_enabled())
+        r = c.post("/admin/agent/llm-settings",
+                   json={"api_key": "x", "enable_shell": False})
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertFalse(shell_enabled())
+
+
 if __name__ == "__main__":
     unittest.main()

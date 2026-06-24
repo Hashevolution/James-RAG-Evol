@@ -415,6 +415,9 @@
       if (prev && models.indexOf(prev) >= 0) sel.value = prev;
       const bsel = document.getElementById('agent-chat-backend');
       if (bsel && !bsel.value && d.backend) bsel.value = d.backend;
+      // reflect current shell-enabled state in the checkbox
+      const shc = document.getElementById('agent-enable-shell');
+      if (shc) shc.checked = !!d.shell_enabled;
       if (refresh) _setLlmMsg(_t('agentchat.models_refreshed', '모델 목록 갱신 완료'));
     } catch (e) {
       _setLlmMsg(_t('agentchat.models_fail', 'ollama 모델 조회 실패 (ollama 미실행?)'));
@@ -437,6 +440,23 @@
       _setLlmMsg(_t('agentchat.model_saved', '기본값으로 저장됨'));
     } catch (e) {
       _setLlmMsg(_t('agentchat.model_save_fail', '저장 실패') + ': ' + (e.message || e));
+    }
+  }
+
+  /* ── Shell tool toggle (run_shell) ── */
+  async function _toggleShell() {
+    const cb = document.getElementById('agent-enable-shell');
+    const msgEl = document.getElementById('agent-shell-msg');
+    const on = !!(cb && cb.checked);
+    try {
+      await _api('POST', '/admin/agent/llm-settings',
+        { api_key: _key(), enable_shell: on });
+      if (msgEl) msgEl.textContent = on
+        ? _t('agentchat.shell_on', '셸 실행 켜짐')
+        : _t('agentchat.shell_off', '셸 실행 꺼짐');
+    } catch (e) {
+      if (cb) cb.checked = !on;     // revert on failure
+      if (msgEl) msgEl.textContent = (e.message || e);
     }
   }
 
@@ -513,6 +533,7 @@
       case 'agent-session-del':    _deleteSession(el.getAttribute('data-sid'), e); break;
       case 'agent-model-refresh':  _loadAgentModels(true); break;
       case 'agent-model-save':     _saveAgentModel(); break;
+      case 'agent-shell-toggle':   _toggleShell(); break;
       case 'agent-browse-open':    _openBrowse(); break;
       case 'agent-browse-close':   _closeBrowse(); break;
       case 'agent-browse-nav':     _navBrowse(el.getAttribute('data-path')); break;

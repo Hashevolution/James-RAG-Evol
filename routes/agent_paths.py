@@ -259,6 +259,7 @@ class AgentLLMSettingsRequest(BaseModel):
     backend: Optional[str] = None
     ollama_model: Optional[str] = None
     anthropic_model: Optional[str] = None
+    enable_shell: Optional[bool] = None
 
 
 @router.get(
@@ -323,6 +324,9 @@ async def set_agent_llm_settings(
         if body.anthropic_model is not None and body.anthropic_model.strip():
             ls.set("agent_anthropic_model", body.anthropic_model.strip(), by=username)
             changed["agent_anthropic_model"] = body.anthropic_model.strip()
+        if body.enable_shell is not None:
+            ls.set("agent_enable_shell", "1" if body.enable_shell else "0", by=username)
+            changed["agent_enable_shell"] = "1" if body.enable_shell else "0"
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

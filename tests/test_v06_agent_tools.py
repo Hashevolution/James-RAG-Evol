@@ -288,6 +288,50 @@ class AgentChatEndpointTests(unittest.TestCase):
             self.assertEqual(f.read(), "hi from agent")
 
 
+class OllamaMessageAdaptTests(unittest.TestCase):
+    """Multi-block (Anthropic-style) messages must become Ollama's
+    string-content + tool_calls + role:tool shape, else Ollama 400s with
+    'cannot unmarshal array into ... content of type string'."""
+
+    def test_string_content_passthrough(self):
+        from core.agent_tools.backends import _to_ollama_messages
+        out = _to_ollama_messages([{"role": "user", "content": "hi"}])
+        self.assertEqual(out, [{"role": "user", "content": "hi"}])
+
+    def test_assistant_tool_use_becomes_tool_calls(self):
+        from core.agent_tools.backends import _to_ollama_messages
+        out = _to_ollama_messages([{"role": "assistant", "content": [
+            {"type": "text", "text": "ok"},
+            {"type": "tool_use", "id": "1", "name": "list_files",
+             "input": {"path": "/x"}}]}])
+        self.assertEqual(out[0]["role"], "assistant")
+        self.assertEqual(out[0]["content"], "ok")
+        fn = out[0]["tool_calls"][0]["function"]
+        self.assertEqual(fn["name"], "list_files")
+        self.assertEqual(fn["arguments"], {"path": "/x"})
+
+    def test_tool_result_becomes_tool_role(self):
+        from core.agent_tools.backends import _to_ollama_messages
+        out = _to_ollama_messages([{"role": "user", "content": [
+            {"type": "tool_result", "tool_use_id": "1",
+             "content": {"files": ["a"]}}]}])
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["role"], "tool")
+        self.assertIn("files", out[0]["content"])   # dict stringified
+
+    def test_no_list_content_survives(self):
+        from core.agent_tools.backends import _to_ollama_messages
+        msgs = [
+            {"role": "user", "content": "hi"},
+            {"role": "assistant", "content": [
+                {"type": "tool_use", "id": "1", "name": "x", "input": {}}]},
+            {"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": "1", "content": "done"}]},
+        ]
+        for m in _to_ollama_messages(msgs):
+            self.assertIsInstance(m["content"], str)
+
+
 class TextToolCallFallbackTests(unittest.TestCase):
     """A model that narrates a tool call as JSON text (no native
     tool_call) must still be recovered + dispatched."""
