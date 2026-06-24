@@ -407,10 +407,12 @@ def get_backend(name: Optional[str] = None,
     model = (model or "").strip() or None
     if selected == "anthropic":
         return AnthropicBackend(model=model)
+    if selected == "claude_cli":
+        return ClaudeCliBackend(model=model)
     if selected == "ollama":
         return OllamaBackend(model=model)
     raise BackendError(
-        f"unknown backend {selected!r}; expected 'anthropic' or 'ollama'"
+        f"unknown backend {selected!r}; expected 'ollama', 'anthropic' or 'claude_cli'"
     )
 
 
@@ -422,3 +424,11 @@ def tools_to_schema(tools_list) -> List[Dict[str, Any]]:
         "description": t.description,
         "input_schema": t.input_schema,
     } for t in tools_list]
+
+
+# Public re-export. ClaudeCliBackend lives in its own module to keep this
+# file under the 20 KB gate (rule #5); imported at the BOTTOM so
+# backend_claude_cli can import this module's already-defined symbols
+# without a circular-import error. get_backend() resolves it as a module
+# global at call time.
+from core.agent_tools.backend_claude_cli import ClaudeCliBackend  # noqa: E402,F401

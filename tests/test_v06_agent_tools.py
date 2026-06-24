@@ -164,6 +164,25 @@ class BackendFactoryTests(unittest.TestCase):
         with self.assertRaises(BackendError):
             get_backend("madeup")
 
+    def test_claude_cli_gated_by_allow_cloud(self):
+        """claude_cli (Max-plan CLI, no API key) is still cloud egress →
+        refuses without JAMES_AGENT_ALLOW_CLOUD=1."""
+        from core.agent_tools.backends import BackendError, get_backend
+        os.environ.pop("JAMES_AGENT_ALLOW_CLOUD", None)
+        with self.assertRaises(BackendError) as ctx:
+            get_backend("claude_cli")
+        self.assertIn("ALLOW_CLOUD", str(ctx.exception))
+        self.assertIn("no API key", str(ctx.exception))
+
+    def test_claude_cli_no_api_key_required(self):
+        """With ALLOW_CLOUD set, claude_cli constructs even with NO
+        ANTHROPIC_API_KEY (unlike the anthropic HTTP backend)."""
+        from core.agent_tools.backends import get_backend, ClaudeCliBackend
+        os.environ["JAMES_AGENT_ALLOW_CLOUD"] = "1"
+        os.environ.pop("ANTHROPIC_API_KEY", None)
+        b = get_backend("claude_cli")
+        self.assertIsInstance(b, ClaudeCliBackend)
+
     def test_risk_2_anthropic_gated_by_allow_cloud(self):
         """Risk #2 (2026-06-15) — without JAMES_AGENT_ALLOW_CLOUD=1
         the anthropic backend refuses to construct even if the API
@@ -286,6 +305,79 @@ class AgentChatEndpointTests(unittest.TestCase):
         # And the file actually got written:
         with open(target, encoding="utf-8") as f:
             self.assertEqual(f.read(), "hi from agent")
+
+
+class ClaudeCliBackendTests(unittest.TestCase):
+    """claude_cli wraps `claude -p` (Max-plan login). The CLI returns
+    plain text, so the backend folds the tools into the system prompt and
+    the loop's _extract_text_tool_call recovers the JSON call."""
+
+    def setUp(self):
+        os.environ["JAMES_AGENT_ALLOW_CLOUD"] = "1"
+
+    def tearDown(self):
+        os.environ.pop("JAMES_AGENT_ALLOW_CLOUD", None)
+
+    def test_transcript_and_tool_prompt_and_recovery(self):
+        import core.reasoning.backends.claude_code_cli as cli
+        captured = {}
+
+        class _Res:
+            text = '{"name": "list_files", "arguments": {"path": "/x"}}'
+            error = None
+
+        class _FakeCli:
+            def complete(self, prompt, *, system="", model=None,
+                         max_tokens=1024, timeout=60.0, **o):
+                captured["prompt"] = prompt
+                captured["system"] = system
+                captured["model"] = model
+                return _Res()
+
+        orig = cli.ClaudeCodeCliBackend
+        cli.ClaudeCodeCliBackend = _FakeCli
+        try:
+            from core.agent_tools.backends import ClaudeCliBackend
+            b = ClaudeCliBackend(model="claude-opus-4-8")
+            tools = [{"name": "list_files", "description": "list",
+                      "input_schema": {"type": "object",
+                                       "properties": {"path": {"type": "string"}}}}]
+            r = b.chat_with_tools(
+                messages=[{"role": "user", "content": "list files"}],
+                tools=tools, system="base", max_tokens=64)
+        finally:
+            cli.ClaudeCodeCliBackend = orig
+        self.assertIn("list_files", captured["system"])     # tools described
+        self.assertIn("User: list files", captured["prompt"])
+        self.assertEqual(captured["model"], "claude-opus-4-8")
+        self.assertEqual(r["stop_reason"], "end_turn")
+        from routes.agent_chat import _extract_text_tool_call
+        fb = _extract_text_tool_call(r["text"], {"list_files"})
+        self.assertEqual(fb["name"], "list_files")
+        self.assertEqual(fb["input"]["path"], "/x")
+
+    def test_cli_error_surfaces_as_backend_error(self):
+        import core.reasoning.backends.claude_code_cli as cli
+
+        class _Res:
+            text = ""
+            error = "claude CLI not found"
+
+        class _FakeCli:
+            def complete(self, *a, **k):
+                return _Res()
+
+        orig = cli.ClaudeCodeCliBackend
+        cli.ClaudeCodeCliBackend = _FakeCli
+        try:
+            from core.agent_tools.backends import ClaudeCliBackend, BackendError
+            b = ClaudeCliBackend()
+            with self.assertRaises(BackendError):
+                b.chat_with_tools(
+                    messages=[{"role": "user", "content": "x"}],
+                    tools=[], system="", max_tokens=8)
+        finally:
+            cli.ClaudeCodeCliBackend = orig
 
 
 class OllamaMessageAdaptTests(unittest.TestCase):

@@ -56,7 +56,7 @@ SETTINGS_SCHEMA: Tuple[Tuple[str, str, str, str], ...] = (
     ("backend_tier",         "JAMES_BACKEND_TIER",          "local",                            "enum:local,claude,hybrid"),
     ("backend_synth",        "JAMES_BACKEND_SYNTH",         "",                                 "string"),
     # Agent backend (v0.6.1 Phase C, #920)
-    ("agent_backend",        "JAMES_AGENT_BACKEND",         "ollama",                           "enum:ollama,anthropic"),
+    ("agent_backend",        "JAMES_AGENT_BACKEND",         "ollama",                           "enum:ollama,anthropic,claude_cli"),
     ("agent_ollama_model",   "JAMES_AGENT_OLLAMA_MODEL",    "mxtral:latest",                    "string"),
     ("agent_anthropic_model","JAMES_AGENT_ANTHROPIC_MODEL", "claude-haiku-4-5-20251001",        "string"),
     # Agent shell tool (v0.6.1 Phase E) — UI-toggleable; default OFF

@@ -428,7 +428,7 @@
     const backend = (bsel && bsel.value) || _llmData.backend || 'ollama';
     const prev = sel.value;
     let list, cur;
-    if (backend === 'anthropic') {
+    if (backend === 'anthropic' || backend === 'claude_cli') {
       list = _llmData.claude_models || [];
       cur = _llmData.anthropic_model;
       _setCloudStatus();
@@ -443,17 +443,25 @@
     if (prev && (list || []).indexOf(prev) >= 0) sel.value = prev;
   }
 
-  /* Tell the operator exactly what to set before the cloud backend works. */
+  /* Tell the operator exactly what to set before the cloud backend works.
+     claude_cli (Max-plan CLI) needs the `claude` CLI but NO API key;
+     anthropic (HTTP) needs ANTHROPIC_API_KEY. Both need ALLOW_CLOUD. */
   function _setCloudStatus() {
     if (!_llmData) return;
-    if (_llmData.allow_cloud && _llmData.anthropic_key_present) {
-      _setLlmMsg(_t('agentchat.cloud_ready', '☁ 클라우드(Claude) 사용 준비됨'));
-      return;
-    }
+    const bsel = document.getElementById('agent-chat-backend');
+    const backend = (bsel && bsel.value) || _llmData.backend || 'anthropic';
     const need = [];
     if (!_llmData.allow_cloud) need.push('JAMES_AGENT_ALLOW_CLOUD=1');
-    if (!_llmData.anthropic_key_present) need.push('ANTHROPIC_API_KEY');
-    _setLlmMsg(_t('agentchat.cloud_need', '☁ 클라우드 사용하려면 서버에 설정 필요: ') + need.join(' + '));
+    if (backend === 'claude_cli') {
+      if (!_llmData.claude_cli_present) need.push(_t('agentchat.cloud_need_cli', 'claude CLI (Max 플랜 로그인)'));
+    } else {
+      if (!_llmData.anthropic_key_present) need.push('ANTHROPIC_API_KEY');
+    }
+    if (!need.length) {
+      _setLlmMsg(_t('agentchat.cloud_ready', '☁ 클라우드(Claude) 사용 준비됨'));
+    } else {
+      _setLlmMsg(_t('agentchat.cloud_need', '☁ 클라우드 사용하려면 서버에 설정 필요: ') + need.join(' + '));
+    }
   }
 
   async function _saveAgentModel() {
@@ -464,7 +472,7 @@
     const body = { api_key: _key() };
     if (backend) body.backend = backend;
     if (model) {
-      if (backend === 'anthropic') body.anthropic_model = model;
+      if (backend === 'anthropic' || backend === 'claude_cli') body.anthropic_model = model;
       else body.ollama_model = model;
     }
     try {
