@@ -1390,14 +1390,33 @@
       stepMs += STEP_GAP / 2;
     });
     setTimeout(function () { startPulseLoop(loopEdges); }, stepMs + 400);
-    // Fly the camera to fit just the highlighted trace nodes.
-    try {
-      if (graph.zoomToFit) {
-        graph.zoomToFit(700, 90, function (nn) {
+    // Fly the camera to fit just the highlighted trace nodes — but
+    // DEFER + GUARD: when arriving via a tab switch the canvas may still
+    // be 0×0 (just un-hidden) and the force layout may not have settled.
+    // Zooming then flies the camera into empty space → black screen.
+    // So: wait a beat, re-fit the canvas size, and only zoom if the
+    // canvas has real size AND the matched nodes have real positions.
+    var doFit = function () {
+      try {
+        if (!graph || !graph.zoomToFit) return;
+        var el = document.getElementById('graph-canvas');
+        if (!el || el.clientWidth < 2 || el.clientHeight < 2) return;
+        graph.width(el.clientWidth).height(el.clientHeight);
+        var spread = matched.some(function (n) {
+          return isFinite(n.x) && isFinite(n.y) &&
+                 (Math.abs(n.x) + Math.abs(n.y) + Math.abs(n.z || 0)) > 1;
+        });
+        if (!spread) return;   // positions not settled — leave camera as-is
+        graph.zoomToFit(800, 70, function (nn) {
           return activePathNodes.has(nn.id);
         });
-      }
-    } catch (_) {}
+      } catch (_) {}
+    };
+    if (window.requestAnimationFrame) {
+      requestAnimationFrame(function () { setTimeout(doFit, 250); });
+    } else {
+      setTimeout(doFit, 300);
+    }
     return matched.length;
   }
 
