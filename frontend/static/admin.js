@@ -323,11 +323,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     // The try/catch is just belt-and-suspenders so a non-auth
     // failure (network blip) doesn't pop the login modal.
   }
-  // v0.6.1 (2026-06-15) — chat-sidebar deep links (#agent-chat / #agent-
-  // folders / #...) jump straight to a page without going through the
-  // dashboard. The chat sidebar's "에이전트" / "추론 그래프" entries
-  // rely on this. Only fires for known page ids so a stray hash can't
-  // null-deref into a missing element.
+  // v0.6.1 — chat-sidebar deep links (#agent / #graph / #...) jump
+  // straight to a page without going through the dashboard. The chat
+  // sidebar's "에이전트" / "추론 그래프" entries rely on this. Only fires
+  // for known page ids so a stray hash can't null-deref into a missing
+  // element.
   _maybeApplyHashRoute();
 });
 
