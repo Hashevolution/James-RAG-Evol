@@ -383,6 +383,18 @@
     fetchTrail(traceId, currentCutoffIso);
   }
 
+  // Direct API for cross-module callers (the flow→graph button). Takes the
+  // trace_id explicitly so it doesn't depend on the input element being
+  // present/populated at call time (avoids a tab-switch race), and still
+  // syncs the visible input for display.
+  function showTrace(traceId) {
+    traceId = (traceId || '').trim();
+    if (!traceId) return;
+    var input = $('time-travel-trace-input');
+    if (input) input.value = traceId;
+    fetchTrail(traceId, currentCutoffIso);
+  }
+
   function onCutoffSet(ev) {
     var iso = (ev && ev.detail && ev.detail.iso) || '';
     currentCutoffIso = iso;
@@ -430,6 +442,7 @@
   // Expose for tests + downstream code.
   window.JAMES_TimeTravelTrace = {
     show: onShowTrail,
+    showTrace: showTrace,
     hide: hidePanel,
     fetchTrail: fetchTrail,
     renderTrail: renderTrail,

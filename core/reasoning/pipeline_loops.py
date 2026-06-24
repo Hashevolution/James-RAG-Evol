@@ -241,6 +241,10 @@ def run_loop_0_retrieve(
     top_doc = docs[0] if docs else {}
     log_stage(
         "retrieve",
+        # The user question text (capped) so the reasoning-flow tab can
+        # search traces by question. Observability-only; nothing reads it
+        # back into the answer path.
+        query=(safe_query or "")[:200],
         top_k=len(docs),
         avg_vec_score=round(avg_score, 4),
         top_vector_score=round(top_doc.get("score", 0.0), 4),
