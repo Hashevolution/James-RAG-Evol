@@ -463,9 +463,18 @@
   color: var(--accent-fg);
   border-bottom-color: var(--accent);
 }
-/* flow / rollback panels: constrained reading width, scrollable. */
+/* flow / rollback panels: constrained reading width, scrollable.
+   They are flex siblings of the (overflow:hidden) body, so they must
+   claim the remaining height and scroll INTERNALLY — otherwise tall
+   content (the stage list) is clipped and the page won't scroll on
+   mobile. */
 section[data-graph-tab="flow"],
 section[data-graph-tab="rollback"] {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
   max-width: 960px;
   margin: 0 auto;
   padding: 24px 20px 56px;
