@@ -1591,6 +1591,18 @@ function appendJamesMsg(data) {
   const answer   = data.answer     || '응답 없음';
   const mode     = data.mode       || '';
   const paths    = data.graph_paths || [];
+
+  // v0.6.1 — sync the header model chip with the model that ACTUALLY
+  // answered (auto-routed per mode), not the picker default. Only when
+  // the server reported one (empty for meta/vision → keep current chip).
+  if (data.model_used) {
+    const _tagEl = document.getElementById('model-chip-tag');
+    if (_tagEl) {
+      _tagEl.textContent = data.model_used;
+      const _chip = document.getElementById('model-chip');
+      if (_chip) _chip.setAttribute('data-source', 'used');
+    }
+  }
   const timing   = data.timing_sec != null ? `${data.timing_sec}s` : '';
   const dirId    = data.direction_id ||
     (data.answer ? btoa(encodeURIComponent(

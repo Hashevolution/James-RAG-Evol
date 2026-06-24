@@ -123,6 +123,13 @@ class QueryResponse(BaseModel):
     # [#A8-7] chat-side "📥 위키 저장" chip이 approve API에 보낼 proposal id.
     # 빈 문자열이면 chip 숨김. web_used=true일 때만 채워진다.
     pending_save_proposal_id: str = ""
+    # v0.6.1 — final answer hit the output-token cap (drives the UI
+    # "continue" banner). NOTE: response_model strips keys absent here, so
+    # this MUST be declared for the dict value to reach the client.
+    truncated:      bool  = False
+    # v0.6.1 — the LLM model that ACTUALLY produced the answer (auto-routed
+    # per mode), so the chat header reflects reality, not the picker default.
+    model_used:     str   = ""
 
 # ─── Endpoints ───
 
@@ -282,6 +289,8 @@ async def query(
         # v0.6.1 — accurate truncation signal (final answer hit the output
         # token cap). The chat UI shows its "continue" banner on this.
         "truncated":     bool(result.get("truncated", False)),
+        # v0.6.1 — model that actually answered (auto-routed per mode).
+        "model_used":    result.get("model_used", ""),
     }
     # [#65 phase 3] admin-only RAGAS evaluation hook. The chunk texts that
     # fed the LLM are surfaced only when (a) caller opted in via
