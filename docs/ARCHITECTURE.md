@@ -1150,7 +1150,7 @@ cloud egress are mitigated as follows:
 
 ---
 
-### 5.7.15 Agent Tools on User-Specified Paths (v0.6.1, Phase B)
+### 5.7.15 Agent Tools on User-Specified Paths (v0.6.1, Phase B + C + E)
 
 > **Status: Phase A (memo) + Phase B (path permission base) shipped;
 > Phase C/D/E (LLM tool-call dispatch / chat-side confirm UI / shell tool)
@@ -1203,12 +1203,29 @@ by default). §5.7.15 closes that gap.
 | `GET /admin/agent/allowed-paths` | `_require_admin` | Returns `{registered_paths, count, env_name, env_value}` |
 | `POST /admin/agent/allowed-paths` `{api_key, path}` | `_require_admin` | Calls `register_user_path(path)`; audits; 400 with explicit reason on rejection |
 
-**Deferred (Phase C/D/E, intentionally not in this trust zone yet)** —
-LLM tool-call dispatch loop (Anthropic `tool_use` or Ollama function
-calling), chat-side confirm UI, and a `run_shell` tool with stronger
-`BLOCKED_COMMANDS`. These ship only after operator dogfooding flags
-their absence as the next bottleneck — the same Phase 5 evidence-
-driven discipline that closed Direction α and cycle γ.
+**Phase E — `run_shell` (v0.6.1, shipped)** — `core/agent_tools/shell.py`
+adds a `run_shell` tool: the LLM may run a shell command line
+(powershell / pwsh / cmd / bash / sh, explicit argv — no `shell=True`
+string splat) inside an operator-allowed folder. It is the highest-risk
+tool, so it ships **default OFF** behind `JAMES_AGENT_ENABLE_SHELL=1`
+(mirrors the `AnthropicBackend` `JAMES_AGENT_ALLOW_CLOUD` opt-in) and is
+hidden from the LLM schema entirely while disabled. Defences, all
+enforced in the handler: (1) the opt-in gate, (2) admin-only re-check,
+(3) `cwd` must pass `validate_path` (in-repo workspace or a registered
+folder; critical roots + JAMES-internal subtrees stay blocked), (4)
+`validate_command` (sandbox `BLOCKED_COMMANDS` + danger patterns) PLUS a
+wider `RUN_SHELL_EXTRA_BLOCKED` list for the bigger shell surface
+(download-and-execute, service/registry/scheduler edits, disk/ACL tools,
+encoded commands), (5) a hard `SHELL_TIMEOUT_SEC`=20 subprocess timeout
+that actually kills the child + a 4 KB output cap, (6) a sandbox
+`log_security_event` audit row per run on top of the dispatcher's
+pre/post rows.
+
+**Still deferred** — per-call interactive confirm UI (`Allow / Deny /
+Always-allow`, needs SSE/WS) and wrapping the Anthropic backend call
+site in the §5.7.12 abstraction layer. Until the confirm UI lands,
+`run_shell` (and all user-allowed-path writes) stay admin-only; the
+session-scoped "auto-allow" checkbox is the interim operator gate.
 
 **Non-goals (this trust zone)** — no Windows ACL / POSIX capability
 integration (sandbox stays in-process); no per-user allowed-path

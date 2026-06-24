@@ -120,7 +120,18 @@ def log_security_event(
     except Exception:
         pass
     flag = "🚫 BLOCKED" if blocked else ("⚠️ ADMIN_OVERRIDE" if admin_override else "✅ ALLOWED")
-    print(f"[SANDBOX] {flag} [{role}] {event_type}: {detail[:60]}")
+    # The emoji flags fail on a cp949 Windows console unless stdout was
+    # reconfigured to utf-8 (uvicorn does this; bare unit-test / CLI
+    # runners don't). Mirror the guard already used in
+    # `_ensure_user_paths_loaded` so an audit print can never crash the
+    # caller (e.g. an agent run_shell call on a cp949 console).
+    try:
+        print(f"[SANDBOX] {flag} [{role}] {event_type}: {detail[:60]}")
+    except UnicodeEncodeError:
+        try:
+            print(f"[SANDBOX] [{role}] {event_type}: {detail[:60]}")
+        except Exception:
+            pass
 
 
 # ─── 사용자 등록 경로 (v0.6.1) ──────────────────────────────
