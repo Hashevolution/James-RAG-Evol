@@ -279,6 +279,9 @@ async def query(
         "web_sources":   result.get("web_sources", []),
         # [#A8-7] chat-side 위키 저장 chip용 proposal id
         "pending_save_proposal_id": result.get("pending_save_proposal_id", ""),
+        # v0.6.1 — accurate truncation signal (final answer hit the output
+        # token cap). The chat UI shows its "continue" banner on this.
+        "truncated":     bool(result.get("truncated", False)),
     }
     # [#65 phase 3] admin-only RAGAS evaluation hook. The chunk texts that
     # fed the LLM are surfaced only when (a) caller opted in via

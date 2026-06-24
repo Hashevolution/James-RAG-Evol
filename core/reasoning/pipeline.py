@@ -43,6 +43,16 @@ from core.reasoning.pipeline_synth import generate_answer
 from core.security_layer import filter_answer_by_role
 
 
+def _answer_was_truncated() -> bool:
+    """True if the final answer generation hit the output-token cap
+    (backend reported done_reason=="length"). Best-effort."""
+    try:
+        from core.reasoning.trace_helpers import get_answer_done_reason
+        return get_answer_done_reason() == "length"
+    except Exception:
+        return False
+
+
 def run_retrieval_pipeline(
     engine,
     safe_query: str,
@@ -54,6 +64,14 @@ def run_retrieval_pipeline(
     force_web_search: bool = False,   # [#A8-6] 사용자가 chip 클릭 시 True
     selected_model: str = "",         # [#A2 phase 2] catalog-validated user pick
 ) -> Dict[str, Any]:
+    # v0.6.1 — clear the answer truncation signal at the start so a prior
+    # query's value can't leak into this one (the answer-producing
+    # generations set it during this run).
+    try:
+        from core.reasoning.trace_helpers import reset_answer_done_reason
+        reset_answer_done_reason()
+    except Exception:
+        pass
     # ── STEP 0.5a: entity anchor expansion (F9.3) ───────
     # Opt-in via JAMES_ENABLE_ENTITY_ANCHOR=1 (default OFF). Helper
     # at core/reasoning/pipeline_query_expansion.py — extracted to
@@ -356,6 +374,10 @@ def run_retrieval_pipeline(
         # data via `loop_state["docs"]` if they hold the engine.
         "retrieved_contexts": [d.get("text", "") for d in loop_state["docs"]],
         "blocked":       False,
+        # v0.6.1 — True when the final answer's generation hit the output
+        # token cap (backend done_reason=="length"). Drives the UI's
+        # "continue" banner accurately (vs the old blind heuristic).
+        "truncated":     _answer_was_truncated(),
         "timing_sec":    round(total, 2),
         "unified_score": round(unified_score if "unified_score" in dir() else 0.0, 3),
         "loop_count":    min(MAX_LOOP + 1, 3),

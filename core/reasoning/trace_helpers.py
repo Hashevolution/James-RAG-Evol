@@ -65,6 +65,30 @@ from core.reasoning.trace_schema import (
 )
 
 
+# v0.6.1 — last answer-stage truncation signal. The backend reports
+# ``done_reason="length"`` when the model hit the output-token cap; the
+# answer-PRODUCING generations (synth here + reflect.revised) record it so
+# the pipeline can surface an accurate `truncated` flag to the UI's
+# "continue" banner (replacing the blind client-side heuristic). Reset at
+# pipeline start. Single-process local-first app: a module global is
+# adequate (not request-isolated under concurrent load — acceptable).
+_ANSWER_DONE_REASON = ""
+
+
+def set_answer_done_reason(reason) -> None:
+    global _ANSWER_DONE_REASON
+    _ANSWER_DONE_REASON = reason or ""
+
+
+def get_answer_done_reason() -> str:
+    return _ANSWER_DONE_REASON
+
+
+def reset_answer_done_reason() -> None:
+    global _ANSWER_DONE_REASON
+    _ANSWER_DONE_REASON = ""
+
+
 # Sentinel string used in error rows to mark a backend-reported failure
 # (the backend returned text matching RouterWrapper's known error strings
 # rather than a clean response). Mirrors the OllamaLocalBackend convention
@@ -296,6 +320,11 @@ def trace_synth_call(
     err = result.error or ""
     if not err and _is_router_error(text_str):
         err = "backend reported error string"
+
+    # Record the truncation signal for this answer-producing generation
+    # (synth / web_fallback / retry). reflect.revised overwrites it later
+    # if reflection runs; the pipeline reads the final value.
+    set_answer_done_reason(getattr(result, "done_reason", "") or "")
 
     emit_trace_step(
         TraceStep(
