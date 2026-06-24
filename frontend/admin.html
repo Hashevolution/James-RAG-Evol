@@ -1271,6 +1271,15 @@
             </div>
             <div id="agent-llm-msg"
                  style="font-size:11px;color:var(--muted);font-family:var(--font-mono);min-height:13px"></div>
+            <!-- cloud-egress opt-in toggle (v0.6.1 — UI-selectable) -->
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <label style="font-size:12px;color:#8cf;display:flex;align-items:center;gap:6px;cursor:pointer">
+                <input type="checkbox" id="agent-allow-cloud"
+                       data-action="agent-cloud-toggle" style="vertical-align:middle">
+                <span data-i18n="agentchat.cloud_toggle">☁ 클라우드 사용 허용 (Claude · 데이터가 Anthropic 으로 전송)</span>
+              </label>
+            </div>
+
             <!-- run_shell opt-in toggle (v0.6.1 — UI-selectable) -->
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <label style="font-size:12px;color:#fc8;display:flex;align-items:center;gap:6px;cursor:pointer">

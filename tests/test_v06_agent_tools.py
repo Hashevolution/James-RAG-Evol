@@ -134,6 +134,10 @@ class BackendFactoryTests(unittest.TestCase):
         self._prev_b = os.environ.pop("JAMES_AGENT_BACKEND", None)
         self._prev_k = os.environ.pop("ANTHROPIC_API_KEY", None)
         self._prev_c = os.environ.pop("JAMES_AGENT_ALLOW_CLOUD", None)
+        # cloud_allowed() is DB-first now; pin to env-only so a stray DB
+        # row can't flip these gate tests.
+        self._prev_db = os.environ.get("JAMES_SETTINGS_USE_DB")
+        os.environ["JAMES_SETTINGS_USE_DB"] = "0"
 
     def tearDown(self):
         # Restore the prior value, OR remove the var entirely if it
@@ -146,6 +150,10 @@ class BackendFactoryTests(unittest.TestCase):
                 os.environ[var] = prev
             else:
                 os.environ.pop(var, None)
+        if self._prev_db is not None:
+            os.environ["JAMES_SETTINGS_USE_DB"] = self._prev_db
+        else:
+            os.environ.pop("JAMES_SETTINGS_USE_DB", None)
 
     def test_default_is_ollama(self):
         from core.agent_tools.backends import get_backend, OllamaBackend
@@ -314,9 +322,15 @@ class ClaudeCliBackendTests(unittest.TestCase):
 
     def setUp(self):
         os.environ["JAMES_AGENT_ALLOW_CLOUD"] = "1"
+        self._prev_db = os.environ.get("JAMES_SETTINGS_USE_DB")
+        os.environ["JAMES_SETTINGS_USE_DB"] = "0"   # env-only cloud gate
 
     def tearDown(self):
         os.environ.pop("JAMES_AGENT_ALLOW_CLOUD", None)
+        if self._prev_db is not None:
+            os.environ["JAMES_SETTINGS_USE_DB"] = self._prev_db
+        else:
+            os.environ.pop("JAMES_SETTINGS_USE_DB", None)
 
     def test_transcript_and_tool_prompt_and_recovery(self):
         import core.reasoning.backends.claude_code_cli as cli

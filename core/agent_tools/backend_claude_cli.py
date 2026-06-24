@@ -14,7 +14,6 @@ no ``ANTHROPIC_API_KEY``.
 from __future__ import annotations
 
 import json
-import os
 from typing import Any, Dict, List, Optional
 
 from core.agent_tools.backends import (
@@ -25,6 +24,7 @@ from core.agent_tools.backends import (
     _DEFAULT_ANTHROPIC_MODEL,
     _settings_get,
     _tools_prompt,
+    cloud_allowed,
 )
 
 
@@ -71,13 +71,13 @@ class ClaudeCliBackend(AgentBackend):
     name = "claude_cli"
 
     def __init__(self, model: Optional[str] = None, timeout: float = 120.0):
-        allow = (os.environ.get(ENV_ALLOW_CLOUD) or "").strip().lower()
-        if allow not in ("1", "true", "yes", "on", "enabled"):
+        if not cloud_allowed():
             raise BackendError(
                 f"claude_cli backend disabled by default — it sends data to "
-                f"Anthropic via the Claude CLI (Max-plan login). Set "
-                f"{ENV_ALLOW_CLOUD}=1 to opt in (no API key needed; the "
-                f"`claude` CLI must be installed and logged in)."
+                f"Anthropic via the Claude CLI (Max-plan login). Enable cloud "
+                f"on the agent page or set {ENV_ALLOW_CLOUD}=1 to opt in (no "
+                f"API key needed; the `claude` CLI must be installed and "
+                f"logged in)."
             )
         self.model = (model
                       or _settings_get("agent_anthropic_model",

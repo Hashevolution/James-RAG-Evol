@@ -413,6 +413,8 @@
       _populateModels();
       const shc = document.getElementById('agent-enable-shell');
       if (shc) shc.checked = !!_llmData.shell_enabled;
+      const clc = document.getElementById('agent-allow-cloud');
+      if (clc) clc.checked = !!_llmData.allow_cloud;
       if (refresh) _setLlmMsg(_t('agentchat.models_refreshed', '모델 목록 갱신 완료'));
     } catch (e) {
       _setLlmMsg(_t('agentchat.models_fail', 'ollama 모델 조회 실패 (ollama 미실행?)'));
@@ -500,6 +502,21 @@
     }
   }
 
+  /* ── Cloud-egress toggle (JAMES_AGENT_ALLOW_CLOUD) ── */
+  async function _toggleAllowCloud() {
+    const cb = document.getElementById('agent-allow-cloud');
+    const on = !!(cb && cb.checked);
+    try {
+      await _api('POST', '/admin/agent/llm-settings',
+        { api_key: _key(), allow_cloud: on });
+      if (_llmData) _llmData.allow_cloud = on;
+      _setCloudStatus();
+    } catch (e) {
+      if (cb) cb.checked = !on;     // revert on failure
+      _setLlmMsg((e.message || e));
+    }
+  }
+
   /* ── Folder browser modal ── */
   function _browseModal() { return document.getElementById('agent-browse-modal'); }
   async function _openBrowse() {
@@ -574,6 +591,7 @@
       case 'agent-model-refresh':  _loadAgentModels(true); break;
       case 'agent-model-save':     _saveAgentModel(); break;
       case 'agent-shell-toggle':   _toggleShell(); break;
+      case 'agent-cloud-toggle':   _toggleAllowCloud(); break;
       case 'agent-browse-open':    _openBrowse(); break;
       case 'agent-browse-close':   _closeBrowse(); break;
       case 'agent-browse-nav':     _navBrowse(el.getAttribute('data-path')); break;

@@ -260,6 +260,7 @@ class AgentLLMSettingsRequest(BaseModel):
     ollama_model: Optional[str] = None
     anthropic_model: Optional[str] = None
     enable_shell: Optional[bool] = None
+    allow_cloud: Optional[bool] = None
 
 
 @router.get(
@@ -283,8 +284,8 @@ async def get_agent_llm_settings(
     except Exception:
         installed = []
 
-    allow_cloud = (os.environ.get("JAMES_AGENT_ALLOW_CLOUD") or "").strip().lower() \
-        in ("1", "true", "yes", "on", "enabled")
+    from core.agent_tools.backends import cloud_allowed
+    allow_cloud = cloud_allowed()      # DB-first (UI toggle) + env fallback
     anthropic_key_present = bool((os.environ.get("ANTHROPIC_API_KEY") or "").strip())
     # claude_cli backend (Max-plan login, no API key) — is the `claude`
     # CLI reachable?
@@ -347,6 +348,9 @@ async def set_agent_llm_settings(
         if body.enable_shell is not None:
             ls.set("agent_enable_shell", "1" if body.enable_shell else "0", by=username)
             changed["agent_enable_shell"] = "1" if body.enable_shell else "0"
+        if body.allow_cloud is not None:
+            ls.set("agent_allow_cloud", "1" if body.allow_cloud else "0", by=username)
+            changed["agent_allow_cloud"] = "1" if body.allow_cloud else "0"
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
