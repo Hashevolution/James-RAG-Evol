@@ -106,6 +106,9 @@
   function hidePanel() {
     var panel = $(PANEL_ID);
     if (panel) panel.style.display = 'none';
+    if (window.JAMES_Graph && window.JAMES_Graph.clearTraceHighlight) {
+      window.JAMES_Graph.clearTraceHighlight();
+    }
   }
 
   // Make the panel noticeable when it (re)appears — scroll it into the
@@ -263,6 +266,40 @@
     }
 
     panel.innerHTML = header + toFlowBtn + phaseHtml;
+
+    // v0.6.1 — highlight the nodes this trace traversed on the 3D graph.
+    // The graph stage logs `matched_entity_ids` (the validated entity ids
+    // it expanded); collect them and hand them to graph.js.
+    var traceNodeIds = [];
+    for (var si = 0; si < stages.length; si++) {
+      var st = stages[si] || {};
+      if (st.stage === 'graph' && st.matched_entity_ids &&
+          st.matched_entity_ids.length) {
+        for (var mi = 0; mi < st.matched_entity_ids.length; mi++) {
+          var id = st.matched_entity_ids[mi];
+          if (traceNodeIds.indexOf(id) < 0) traceNodeIds.push(id);
+        }
+      }
+    }
+    var lit = 0;
+    if (window.JAMES_Graph && window.JAMES_Graph.highlightTraceNodes) {
+      lit = window.JAMES_Graph.highlightTraceNodes(traceNodeIds) || 0;
+    }
+    var hlNote;
+    if (!traceNodeIds.length) {
+      hlNote = t('graph.timetravel.trace.no_nodes',
+                 '이 추론에는 그래프 노드 기록이 없습니다 (옛 추론).');
+    } else if (!lit) {
+      hlNote = t('graph.timetravel.trace.nodes_off',
+                 '관련 노드가 현재 그래프 화면에 없습니다.');
+    } else {
+      hlNote = t('graph.timetravel.trace.nodes_lit',
+                 '그래프에 %n개 노드 강조됨').replace('%n', String(lit));
+    }
+    panel.insertAdjacentHTML('afterbegin',
+      '<div style="font-size:10px;color:var(--accent-fg,#6cf);' +
+      'margin-bottom:4px">● ' + escapeHtml(hlNote) + '</div>');
+
     revealPanel(panel);
 
     var toFlow = document.getElementById('trace-to-flow-btn');
