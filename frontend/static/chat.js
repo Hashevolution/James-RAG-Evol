@@ -1924,10 +1924,18 @@ function appendJamesMsg(data) {
   // chip + 본문에 두 번 보이는 문제 (실사용자 피드백) 해결.
   const { suggestions, cleanAnswer } =
     extractNextActionSuggestions(answer);
-  // Now that the suggestions tail is removed, evaluate truncation
-  // against just the body text. (See truncationHint declaration
-  // above for the operator-catch context.)
-  if (isLikelyTruncated(cleanAnswer)) {
+  // v0.6.1 — prefer the SERVER truncation signal (data.truncated, set
+  // when the final answer's generation hit the output-token cap). It's
+  // authoritative, so when present we trust it and skip the blind
+  // client heuristic (which false-positived on answers that merely end
+  // without punctuation). Only paths that don't carry the flag (e.g. the
+  // streaming preview) fall back to isLikelyTruncated().
+  var _hasServerTrunc =
+    data && Object.prototype.hasOwnProperty.call(data, 'truncated');
+  var _showTrunc = _hasServerTrunc
+    ? (data.truncated === true)
+    : isLikelyTruncated(cleanAnswer);
+  if (_showTrunc) {
     truncationHint = `
       <div role="note" aria-live="polite"
            style="display:flex;align-items:center;gap:8px;margin-top:8px;

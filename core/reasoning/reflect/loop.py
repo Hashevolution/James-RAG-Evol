@@ -326,6 +326,15 @@ class ReflectionLoop:
         text = getattr(result, "text", "") or ""
         err = getattr(result, "error", "") or ""
 
+        # The revised pass produces the FINAL displayed answer — record its
+        # truncation signal so the pipeline's `truncated` flag is accurate.
+        if applied_rule.endswith("revised") and not err:
+            try:
+                from core.reasoning.trace_helpers import set_answer_done_reason
+                set_answer_done_reason(getattr(result, "done_reason", "") or "")
+            except Exception:
+                pass
+
         self._emit(
             applied_rule=applied_rule,
             prompt=prompt,
