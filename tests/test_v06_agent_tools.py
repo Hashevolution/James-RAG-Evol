@@ -346,6 +346,7 @@ class ClaudeCliBackendTests(unittest.TestCase):
                 captured["prompt"] = prompt
                 captured["system"] = system
                 captured["model"] = model
+                captured["opts"] = o
                 return _Res()
 
         orig = cli.ClaudeCodeCliBackend
@@ -364,6 +365,9 @@ class ClaudeCliBackendTests(unittest.TestCase):
         self.assertIn("list_files", captured["system"])     # tools described
         self.assertIn("User: list files", captured["prompt"])
         self.assertEqual(captured["model"], "claude-opus-4-8")
+        # The CLI must be told to disable its own tools (so it doesn't run
+        # agentic file ops in its sandbox and ignore the operator folder).
+        self.assertTrue(captured["opts"].get("disallow_tools"))
         self.assertEqual(r["stop_reason"], "end_turn")
         from routes.agent_chat import _extract_text_tool_call
         fb = _extract_text_tool_call(r["text"], {"list_files"})
@@ -392,6 +396,40 @@ class ClaudeCliBackendTests(unittest.TestCase):
                     tools=[], system="", max_tokens=8)
         finally:
             cli.ClaudeCodeCliBackend = orig
+
+
+class ClaudeCliDisallowToolsArgvTests(unittest.TestCase):
+    """The CLI backend must add `--disallowedTools *` when disallow_tools
+    is set (so `claude -p` is a pure text completer), and NOT otherwise."""
+
+    def _run(self, **kw):
+        from unittest.mock import patch
+        from core.reasoning.backends.claude_code_cli import ClaudeCodeCliBackend
+        be = ClaudeCodeCliBackend(cli_path="/fake/claude")
+        captured = {}
+
+        class _Proc:
+            returncode = 0
+
+            def communicate(self, input=None, timeout=None):
+                return ("ok", "")
+
+        def _fake_popen(argv, **kwargs):
+            captured["argv"] = argv
+            return _Proc()
+
+        with patch("subprocess.Popen", side_effect=_fake_popen):
+            be.complete("hi", **kw)
+        return captured["argv"]
+
+    def test_flag_present_when_disallow(self):
+        argv = self._run(disallow_tools=True)
+        self.assertIn("--disallowedTools", argv)
+        self.assertEqual(argv[argv.index("--disallowedTools") + 1], "*")
+
+    def test_flag_absent_by_default(self):
+        argv = self._run()
+        self.assertNotIn("--disallowedTools", argv)
 
 
 class OllamaMessageAdaptTests(unittest.TestCase):

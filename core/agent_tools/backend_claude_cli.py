@@ -104,6 +104,11 @@ class ClaudeCliBackend(AgentBackend):
             res = ClaudeCodeCliBackend().complete(
                 prompt, system=sys_full, model=self.model,
                 max_tokens=max_tokens, timeout=self.timeout,
+                # The CLI must NOT use its own tools (it would run agentic
+                # file ops in a sandboxed temp cwd and never reach the
+                # operator's registered folders). Force pure-text output;
+                # JAMES dispatches the tool call it emits.
+                disallow_tools=True,
             )
         except Exception as e:  # noqa: BLE001
             raise BackendError(f"claude cli error: {e}")

@@ -127,6 +127,7 @@ class ClaudeCodeCliBackend:
         model: Optional[str] = None,
         temperature: Optional[float] = None,   # accepted per R4, ignored — CLI no flag
         cwd: Optional[str] = None,
+        disallow_tools: bool = False,
         **opts,
     ) -> CompletionResult:
         t0 = time.time()
@@ -142,6 +143,13 @@ class ClaudeCodeCliBackend:
             # validated by the CLI itself — we don't try to enumerate
             # the model catalog client-side
             argv.extend(["--model", str(model)])
+        if disallow_tools:
+            # Make `claude -p` behave as a PURE text completer — disable
+            # all of its own built-in tools (Read/Bash/Edit/…) so it does
+            # NOT run agentic file ops in its sandboxed cwd. Callers that
+            # dispatch tools themselves (agent tool-use loop) use this so
+            # the model only emits text (a JSON tool call we parse).
+            argv.extend(["--disallowedTools", "*"])
 
         composed = f"{system}\n\n{prompt}" if system else prompt
         # bound the prompt at the same 1 MiB the output is bounded at —
