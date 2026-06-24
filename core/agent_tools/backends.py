@@ -48,6 +48,22 @@ class BackendError(Exception):
     """LLM backend call failed (HTTP / parse / missing key)."""
 
 
+def cloud_allowed() -> bool:
+    """True when the operator has opted into cloud egress for the agent.
+
+    DB-first via the unified LLM settings (so the admin UI checkbox can
+    toggle it without a restart), falling back to the
+    ``JAMES_AGENT_ALLOW_CLOUD`` env var. Default OFF — a stock install
+    must NOT silently send operator data to a third party
+    (§5.7.12)."""
+    try:
+        from core import llm_settings as ls
+        return ls.get_bool("agent_allow_cloud", ENV_ALLOW_CLOUD, "0")
+    except Exception:
+        raw = (os.environ.get(ENV_ALLOW_CLOUD) or "").strip().lower()
+        return raw in ("1", "true", "yes", "on", "enabled")
+
+
 class AgentBackend(ABC):
     """Each backend takes a conversation + the JAMES tool registry's
     schema list and returns:
@@ -93,15 +109,13 @@ class AnthropicBackend(AgentBackend):
                  model: Optional[str] = None,
                  timeout: float = 60.0):
         # Risk #2 (2026-06-15): cloud-egress gate. Refuse to construct
-        # unless the operator has explicitly opted in. See module-level
-        # ENV_ALLOW_CLOUD docstring.
-        allow = (os.environ.get(ENV_ALLOW_CLOUD) or "").strip().lower()
-        if allow not in ("1", "true", "yes", "on", "enabled"):
+        # unless the operator has explicitly opted in (env or the admin
+        # UI toggle, via cloud_allowed()).
+        if not cloud_allowed():
             raise BackendError(
                 f"anthropic backend disabled by default — bypasses §5.7.12 "
-                f"abstraction trust zone (cloud egress mask + audit). Set "
-                f"{ENV_ALLOW_CLOUD}=1 to opt in (Phase E will wrap this "
-                f"call site)."
+                f"abstraction trust zone (cloud egress mask + audit). Enable "
+                f"cloud on the agent page or set {ENV_ALLOW_CLOUD}=1 to opt in."
             )
         self.api_key = api_key or os.environ.get(ENV_ANTHROPIC_KEY, "").strip()
         if not self.api_key:

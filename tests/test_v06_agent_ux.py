@@ -277,5 +277,52 @@ class ShellToggleTests(unittest.TestCase):
         self.assertFalse(shell_enabled())
 
 
+class CloudAllowToggleTests(unittest.TestCase):
+    """JAMES_AGENT_ALLOW_CLOUD is now UI-toggleable via the DB-backed
+    agent_allow_cloud setting (no restart)."""
+
+    def setUp(self):
+        import core.llm_settings as ls
+        self._tmpdb = tempfile.mkdtemp(prefix="james_cl_ls_")
+        self._orig = ls._DB_PATH
+        ls._DB_PATH = os.path.join(self._tmpdb, "t.db")
+        self._prev_db = os.environ.pop("JAMES_SETTINGS_USE_DB", None)   # DB-first
+        self._prev_env = os.environ.pop("JAMES_AGENT_ALLOW_CLOUD", None)
+
+    def tearDown(self):
+        import core.llm_settings as ls
+        ls._DB_PATH = self._orig
+        shutil.rmtree(self._tmpdb, ignore_errors=True)
+        if self._prev_db is not None:
+            os.environ["JAMES_SETTINGS_USE_DB"] = self._prev_db
+        if self._prev_env is not None:
+            os.environ["JAMES_AGENT_ALLOW_CLOUD"] = self._prev_env
+
+    def test_toggle_via_endpoint(self):
+        from core.agent_tools.backends import cloud_allowed
+        self.assertFalse(cloud_allowed())          # default OFF
+        c = _make_client()
+        r = c.post("/admin/agent/llm-settings",
+                   json={"api_key": "x", "allow_cloud": True})
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertTrue(cloud_allowed())
+        # GET should now report allow_cloud True
+        r = c.get("/admin/agent/llm-settings", params={"api_key": "x"})
+        self.assertTrue(r.json()["allow_cloud"])
+        r = c.post("/admin/agent/llm-settings",
+                   json={"api_key": "x", "allow_cloud": False})
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertFalse(cloud_allowed())
+
+    def test_claude_cli_constructs_when_db_allows(self):
+        """With agent_allow_cloud set in the DB (no env), the cloud
+        backend constructs — the UI toggle alone is enough."""
+        from core.agent_tools.backends import get_backend, ClaudeCliBackend
+        c = _make_client()
+        c.post("/admin/agent/llm-settings",
+               json={"api_key": "x", "allow_cloud": True})
+        self.assertIsInstance(get_backend("claude_cli"), ClaudeCliBackend)
+
+
 if __name__ == "__main__":
     unittest.main()

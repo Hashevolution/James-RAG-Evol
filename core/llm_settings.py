@@ -62,6 +62,9 @@ SETTINGS_SCHEMA: Tuple[Tuple[str, str, str, str], ...] = (
     # Agent shell tool (v0.6.1 Phase E) — UI-toggleable; default OFF
     # (highest-risk surface). Env JAMES_AGENT_ENABLE_SHELL still works.
     ("agent_enable_shell",   "JAMES_AGENT_ENABLE_SHELL",    "0",                                "bool"),
+    # Agent cloud-egress gate (v0.6.1) — UI-toggleable; default OFF.
+    # Env JAMES_AGENT_ALLOW_CLOUD still works as a fallback.
+    ("agent_allow_cloud",    "JAMES_AGENT_ALLOW_CLOUD",     "0",                                "bool"),
 )
 
 _KEYS = {entry[0]: entry for entry in SETTINGS_SCHEMA}
