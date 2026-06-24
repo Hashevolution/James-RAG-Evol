@@ -436,7 +436,16 @@
         var ttApply = $('time-travel-trace-apply');
         if (ttInput) ttInput.value = _currentTraceId;
         if (window.JAMES_GraphTabs) window.JAMES_GraphTabs.select('graph');
-        if (ttApply) ttApply.click();
+        // Defer the trail fetch until the graph tab is actually visible
+        // and laid out — otherwise the trail panel is created inside a
+        // still-hidden .stage and the user (esp. on mobile) sees nothing
+        // happen. Double rAF lets the tab-switch paint first.
+        var fire = function () { if (ttApply) ttApply.click(); };
+        if (window.requestAnimationFrame) {
+          requestAnimationFrame(function () { requestAnimationFrame(fire); });
+        } else {
+          setTimeout(fire, 60);
+        }
       });
     }
     // v0.6.1 (gap ②) — debounced question search over recent traces.
