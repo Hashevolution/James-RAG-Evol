@@ -45,6 +45,9 @@ class LooksLikeText(unittest.TestCase):
             "미국 증권거래위원회(SEC)가 비트코인 spot ETF 11종을 일괄 승인했다."))
         self.assertTrue(self.fp._looks_like_text(
             "The quarterly report shows revenue of 12 million dollars."))
+        # short-but-real caption (an actual qwen2.5vl read of a notice
+        # photo) must NOT be rejected by the fragmentation guard.
+        self.assertTrue(self.fp._looks_like_text("전장연, 7.1.08시 혜화R 버스타기"))
 
     def test_noise_and_empty_fail(self):
         self.assertFalse(self.fp._looks_like_text(""))
