@@ -513,7 +513,7 @@
       // 누를 때 lazy probe — 페이지 로드마다 probe 보내지 않음.
       if (token) {
         var wrap = $('graph-edit-wrap');
-        if (wrap) wrap.style.display = '';
+        if (wrap) { wrap.style.display = ''; wrap.classList.remove('d-none'); }  // CSP migration
       }
 
       // ForceGraph3D 의 link click → modal. 본 핸들러는 항상 등록되어

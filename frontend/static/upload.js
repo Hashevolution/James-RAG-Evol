@@ -501,7 +501,7 @@ function setQueueProgress(current, total, filename) {
   const box = document.getElementById('queue-progress');
   if (!box) return;
   if (current > total || total <= 0) { box.style.display = 'none'; return; }
-  box.style.display = '';
+  box.style.display = ''; box.classList.remove('d-none');  // CSP migration
   const txt = document.getElementById('queue-progress-text');
   if (txt) txt.textContent = `업로드 중 ${current}/${total} — ${filename}`;
   const fill = document.getElementById('queue-progress-fill');

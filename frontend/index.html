@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#04060a">
 <title>Secure Enterprise Knowledge Operating System</title>
-<link rel="stylesheet" href="/static/tokens.css?v=v20-20260616">
+<link rel="stylesheet" href="/static/tokens.css?v=v21-20260625-csp">
 <!-- v=v20-20260616 cache-bust: 대화 본문 명조체 (--font-serif) +
      글자 크기 ↑ + 사이드바 메뉴 글자 ↑. Pin both stylesheets so a
      half-cached state can't mismatch + bring in tokens.css fresh. -->
@@ -24,7 +24,7 @@
      now. The chat surface fills the viewport. The model popover
      stays here at top-level so the popover can overlay everything
      instead of being clipped by the sidebar overflow box. -->
-<div class="model-chip-wrap" id="model-chip-wrap" hidden style="display:none">
+<div class="model-chip-wrap d-none" id="model-chip-wrap" hidden>
   <!-- Hidden host kept for the popover dropdown spawn point used by
        chat.js::toggleModelPopover. The visible trigger button moved
        into the sidebar; this wrap remains so existing JS that probes
@@ -49,7 +49,7 @@
   </div>
 </div>
 
-<main id="main" class="claude-shell" style="position:relative">
+<main id="main" class="claude-shell pos-relative">
   <button class="sidebar-open-btn" id="sidebar-open-btn"
           data-action="toggle-sidebar" data-i18n-title="upload.open" title="메뉴 열기"
           aria-label="사이드바 열기">
@@ -289,41 +289,35 @@
                  accept="image/*,audio/*,video/*,.pdf,.txt,.md,.json,.docx,.xlsx,.pptx,.hwp,.hwpx">
           <!-- item #8: 폴더 통째 선택용 hidden input. webkitdirectory 사용 시
                accept 무시되고 디렉토리 picker가 뜸. -->
-          <input type="file" id="folder-input" multiple webkitdirectory directory
-                 style="display:none">
+          <input class="d-none" type="file" id="folder-input" multiple webkitdirectory directory
+                >
           <!-- v0.6 카메라 직접 진입 — 모바일에서 capture="environment" 시 후면
                카메라가 열림. 별도 input 으로 분리해 기존 파일 피커의 사진첩
                경유 경로는 그대로 보존 (iOS Safari 의 capture-only 거동 회피). -->
-          <input type="file" id="camera-input" accept="image/*" capture="environment"
-                 style="display:none">
+          <input class="d-none" type="file" id="camera-input" accept="image/*" capture="environment"
+                >
           <div class="drop-icon"></div>
           <div class="drop-label">
             <span data-i18n="upload.drag_label">클릭하거나 드래그하여 파일 추가</span><br>
             <span class="drop-types"><span data-i18n="upload.types">이미지 · 오디오 · PDF · 문서</span></span><br>
-            <span class="drop-types" style="margin-top:4px;display:inline-block" data-i18n="upload.folder_drag">
+            <span class="drop-types mt-4 d-inline-block" data-i18n="upload.folder_drag">
               폴더 통째로 드래그도 가능
             </span>
           </div>
         </div>
         <!-- item #8: 폴더 선택 버튼 (드래그 외 클릭 경로) -->
-        <button type="button"
+        <button class="u-c7f59426" type="button"
                 data-action="trigger-folder-input"
-                style="margin:0 12px;padding:8px;
-                       background:var(--surface-2);border:1px solid var(--border);
-                       border-radius:6px;color:var(--text-soft);font-size:12px;
-                       cursor:pointer;font-family:var(--font-ui)"
+               
                 data-i18n="upload.folder_button">
           폴더 선택
         </button>
         <!-- v0.6 모바일 카메라 직접 진입 버튼 — 폰에서는 후면 카메라가 즉시
              열림, PC 에서는 파일 피커로 fallback. dogfooding "한 탭으로 자료
              사진 보내기" 워크플로우의 첫 진입점. -->
-        <button type="button"
+        <button class="u-fd2f16b2" type="button"
                 data-action="trigger-camera-input"
-                style="margin:6px 12px 0;padding:8px;
-                       background:var(--surface-2);border:1px solid var(--border);
-                       border-radius:6px;color:var(--text-soft);font-size:12px;
-                       cursor:pointer;font-family:var(--font-ui)"
+               
                 data-i18n="upload.camera_button">
           사진 촬영
         </button>
@@ -338,7 +332,7 @@
         <div class="file-list" id="file-list"></div>
 
         <!-- 큐 진행 표시 (Issue #14) — 다중 파일 업로드 동안 표시 -->
-        <div class="queue-progress" id="queue-progress" style="display:none;">
+        <div class="queue-progress d-none" id="queue-progress">
           <div class="queue-progress-text" id="queue-progress-text"></div>
           <div class="queue-progress-bar"><div class="queue-progress-fill" id="queue-progress-fill"></div></div>
         </div>
@@ -357,9 +351,9 @@
            sessions list IS the sidebar's main area. The "+ 새 대화"
            action sits in .sidebar-actions at the top of the sidebar. -->
       <div class="sidebar-panel-mode active" data-mode="sessions">
-        <div id="session-list"
-             style="flex:1;overflow-y:auto;padding:8px 12px">
-          <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px"
+        <div class="flex-1 ovy-auto p-8-12" id="session-list"
+            >
+          <div class="c-muted fs-12 text-center p-20"
                data-i18n="common.loading">
             Loading...
           </div>
@@ -368,15 +362,13 @@
 
       <!-- Mode: 내 자료 (W8-B: artifacts/mine 으로 채움) -->
       <div class="sidebar-panel-mode" data-mode="recent">
-        <div style="padding:10px 12px;font-size:11px;color:var(--muted);
-                    border-bottom:1px solid var(--border-2);display:flex;
-                    justify-content:space-between;align-items:center">
+        <div class="u-427e46c1">
           <span data-i18n="sidebar.mine_title">내 자료 (최근 업로드)</span>
-          <a href="/workspace" style="font-size:10px;color:var(--accent-fg);text-decoration:none"
+          <a class="fs-10 c-accent-fg no-underline" href="/workspace"
              data-i18n="sidebar.open_workspace">Workspace ↗</a>
         </div>
-        <div id="sidebar-mine-list"
-             style="flex:1;overflow-y:auto;padding:8px 12px"></div>
+        <div class="flex-1 ovy-auto p-8-12" id="sidebar-mine-list"
+            ></div>
       </div>
 
       <!-- Mode: 검색. v0.6.1 v5 (2026-06-16) — operator catch: the
@@ -425,10 +417,10 @@
           <button class="active" data-action="set-source" data-source="prod">PROD</button>
           <button data-action="set-source" data-source="test">TEST</button>
         </div>
-        <button class="nav-btn" data-lang-toggle data-action="toggle-lang"
+        <button class="nav-btn u-d7570ef8" data-lang-toggle data-action="toggle-lang"
                 title="Language / 언어"
                 aria-label="언어 전환 / Toggle language"
-                style="font-size:11px;font-weight:700;padding:4px 8px"></button>
+               ></button>
       </div>
       <!-- Bottom action row — avatar + new chat pill (Claude pattern).
            role-badge keeps its id + data-action so the auth.js click
@@ -494,21 +486,21 @@
               title="현재 응답에 사용 중인 모델 — 클릭 시 변경"
               aria-haspopup="listbox"
               aria-expanded="false">
-        <span class="model-chip-icon" aria-hidden="true"
-              style="font-size:9px;color:var(--accent-fg)">●</span>
+        <span class="model-chip-icon u-50220fb6" aria-hidden="true"
+             >●</span>
         <span class="model-chip-tag" id="model-chip-tag">—</span>
         <span class="model-chip-caret" aria-hidden="true">▾</span>
       </button>
-      <button class="nav-btn workspace-badge" id="workspace-badge"
+      <button class="nav-btn workspace-badge d-none fs-11" id="workspace-badge"
               type="button"
               data-i18n-title="workspace.badge_title"
               title="현재 워크스페이스"
               aria-label="현재 워크스페이스"
-              style="display:none;font-size:11px">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+             >
+        <svg class="va-n2 mr-4" width="12" height="12" viewBox="0 0 24 24" fill="none"
              stroke="currentColor" stroke-width="2" stroke-linecap="round"
              stroke-linejoin="round" aria-hidden="true"
-             style="vertical-align:-2px;margin-right:4px">
+            >
           <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2
                    3h9a2 2 0 0 1 2 2z"/>
         </svg>
@@ -524,15 +516,13 @@
       <div class="welcome" id="welcome">
         <!-- [#A8-9] welcome reframed: knowledge + security + report
              intelligence (was generic "Graph-RAG 지식 추론 엔진"). -->
-        <div class="welcome-title">Welcome to <span class="brand" style="font-size:inherit">Secure Enterprise Knowledge<span class="brand-tail">Operating System</span></span></div>
+        <div class="welcome-title">Welcome to <span class="brand fs-inherit">Secure Enterprise Knowledge<span class="brand-tail">Operating System</span></span></div>
         <div class="welcome-sub">
           <span data-i18n="app.subtitle">지식·보안·보고서 인텔리전스 시스템</span><br>
-          <span style="font-size:12px;color:var(--muted-2);font-family:var(--font-mono);
-                       letter-spacing:.5px;display:inline-block;margin-top:6px;
-                       padding:2px 10px;border:1px solid var(--border-2);border-radius:4px">
+          <span class="u-2079cee6">
             Knowledge · Security · Reporting Intelligence
           </span><br>
-          <span data-i18n="app.welcome" style="display:inline-block;margin-top:10px">
+          <span class="d-inline-block mt-10" data-i18n="app.welcome">
             물어보거나, 자료를 업로드하거나, 보고서를 요청하세요.
           </span>
         </div>
@@ -546,56 +536,43 @@
     </div>
 
     <!-- item #6: 모드 picker + 자동 추천 배지 (input area 위) -->
-    <div class="conv-actions" style="display:flex;justify-content:space-between;
-                                      align-items:center;gap:6px;
-                                      padding:4px 16px;font-size:11px;flex-wrap:wrap">
-      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-        <select id="mode-picker"
-                style="background:var(--surface);border:1px solid var(--border);
-                       color:var(--text);padding:4px 10px;border-radius:6px;
-                       font-size:11px;cursor:pointer">
+    <div class="conv-actions u-740d5b33">
+      <div class="d-flex items-center gap-6 flex-wrap">
+        <select class="u-4e6a0b38" id="mode-picker"
+               >
           <option value="auto" data-i18n="mode.auto">자동</option>
         </select>
-        <span id="model-picker-wrap"
-              style="display:none;align-items:center;gap:4px"
+        <span class="d-none items-center gap-4" id="model-picker-wrap"
+             
               title="이 모드에서 사용할 모델 선택"
               data-i18n-title="chat.model_picker_title">
-          <select id="model-picker"
-                  style="background:var(--surface);border:1px solid var(--border);
-                         color:var(--text);padding:4px 10px;border-radius:6px;
-                         font-size:11px;cursor:pointer"></select>
+          <select class="u-4e6a0b38" id="model-picker"
+                 ></select>
         </span>
-        <button id="mode-install-btn"
+        <button class="u-5dcc4888" id="mode-install-btn"
                 data-action="trigger-model-install"
                 aria-label="LLM 모델 설치"
-                style="display:none;background:var(--accent-soft);
-                       border:1px solid var(--accent);color:var(--accent-fg);
-                       padding:4px 10px;border-radius:6px;font-size:11px;
-                       cursor:pointer;font-family:var(--font-ui)"
+               
                 title="선택한 모드의 모델이 미설치 — 클릭하여 ollama pull"
                 data-i18n-title="chat.mode_install_title"></button>
         <!-- [PR plan-4] 추천 모델 가이드로 admin 페이지 이동 -->
-        <a id="mode-recommend-link"
+        <a class="u-dfa88652" id="mode-recommend-link"
            href="/admin"
            target="_blank"
            rel="noopener"
-           style="font-size:11px;color:var(--muted);text-decoration:none;
-                  padding:4px 8px;border:1px dashed var(--border);
-                  border-radius:6px;cursor:pointer"
+          
            title="이 PC에 맞는 모델 자동 추천 (admin 페이지)"
            data-i18n="mode.recommend_link"
            data-i18n-title="mode.recommend_link_title">
           모델 추천
         </a>
-        <span id="mode-recommend"
-              style="display:none;font-size:11px;color:var(--accent-fg);
-                     padding:2px 8px;border:1px solid var(--accent-fg);
-                     border-radius:6px;cursor:pointer"
+        <span class="u-3dfc2178" id="mode-recommend"
+             
               data-action="accept-mode-recommend"
               title="권장 모드로 전환"
               data-i18n-title="chat.mode_recommend_active_title"></span>
       </div>
-      <div style="display:flex;gap:6px;align-items:center">
+      <div class="d-flex gap-6 items-center">
         <!-- 양식 (Templates) — chat-time tool. v5 (2026-06-16):
              emoji prefix removed; conv-action-chip stays
              label-only for a clean professional look. -->
@@ -617,29 +594,24 @@
            uploadQueue 가 비어있으면 display:none. 클릭 → 사이드바
            업로드 모드 자동 전환 + expand. dragenter 단계에서도 미리
            표시될 수 있게 chat.js 가 갱신한다. -->
-      <div id="chat-attachment-row"
-           style="display:none;flex-wrap:wrap;gap:6px;padding:6px 16px;
-                  border-bottom:1px solid var(--border-2);"></div>
+      <div class="u-ee398942" id="chat-attachment-row"
+          ></div>
       <!-- v18.7 vision-wire — 단일 이미지 첨부 미리보기. 첨부 시 표시,
            전송/제거 시 숨김. (코퍼스 인제스트용 chat-attachment-row 와
            별개 — 이건 비전 모드 1회성 첨부.) -->
-      <div id="vision-preview"
-           style="display:none;align-items:center;gap:8px;padding:6px 16px;
-                  border-bottom:1px solid var(--border-2);font-size:13px;">
-        <span id="vision-preview-name" style="color:var(--text-2);"></span>
-        <button id="vision-clear-btn" data-action="clear-vision-image"
+      <div class="u-f4ca3d4c" id="vision-preview"
+          >
+        <span class="c-text-2" id="vision-preview-name"></span>
+        <button class="u-e5324176" id="vision-clear-btn" data-action="clear-vision-image"
                 aria-label="이미지 첨부 제거"
-                style="background:none;border:none;color:var(--text-3);
-                       cursor:pointer;padding:2px 6px;">제거</button>
+               >제거</button>
       </div>
-      <input type="file" id="vision-file-input" accept="image/*"
-             style="display:none" aria-hidden="true">
+      <input class="d-none" type="file" id="vision-file-input" accept="image/*"
+             aria-hidden="true">
       <div class="input-wrap">
-        <button class="attach-btn" id="attach-btn" data-action="attach-image"
+        <button class="attach-btn u-6ab03333" id="attach-btn" data-action="attach-image"
                 aria-label="이미지 첨부"
-                style="background:none;border:none;cursor:pointer;
-                       padding:0 8px;color:var(--text-3);display:flex;
-                       align-items:center;">
+               >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                stroke="currentColor" stroke-width="2" stroke-linecap="round"
                stroke-linejoin="round" aria-hidden="true">
@@ -754,21 +726,18 @@
          submits username + password + api_key in one POST. -->
     <div class="modal-field">
       <label data-i18n="auth.api_key">API Key</label>
-      <div style="position:relative">
-        <input type="password" id="login-api-key" placeholder="sk-..."
+      <div class="pos-relative">
+        <input class="u-8a63b251" type="password" id="login-api-key" placeholder="sk-..."
                autocomplete="off" spellcheck="false"
-               style="padding-right:40px">
-        <button type="button"
+              >
+        <button class="u-912cc26a" type="button"
                 id="login-api-key-toggle"
                 data-action="toggle-api-key-visibility"
                 aria-label="show/hide api key"
                 title="API Key 보기/숨기기"
-                style="position:absolute;right:8px;top:50%;
-                       transform:translateY(-50%);background:none;
-                       border:none;cursor:pointer;color:var(--muted);
-                       font-size:14px;padding:2px 4px">표시</button>
+               >표시</button>
       </div>
-      <small style="color:var(--muted);font-size:11px;display:block;margin-top:4px"
+      <small class="c-muted fs-11 d-block mt-4"
              data-i18n="auth.api_key_hint">서버 .env의 JAMES_API_KEY 값. 비워두면 환경변수 그대로 사용.</small>
     </div>
     <div class="modal-error" id="login-error"></div>
@@ -777,15 +746,15 @@
       <button class="modal-btn primary" data-action="do-login" data-i18n="auth.login">로그인</button>
     </div>
     <!-- W4 P5: forgot-password link -->
-    <div style="margin-top:14px;text-align:center;font-size:12px">
-      <a href="#" data-action="open-forgot-password-modal"
-         style="color:var(--muted);text-decoration:underline;cursor:pointer"
+    <div class="u-671ed45d">
+      <a class="c-muted underline cursor-pointer" href="#" data-action="open-forgot-password-modal"
+        
          data-i18n="auth.forgot_password">비밀번호를 잊으셨나요?</a>
     </div>
     <!-- W4 P4: signup link beneath login -->
-    <div style="margin-top:8px;text-align:center;font-size:12px">
-      <a href="#" data-action="open-signup-modal"
-         style="color:var(--muted);text-decoration:underline;cursor:pointer"
+    <div class="mt-8 text-center fs-12">
+      <a class="c-muted underline cursor-pointer" href="#" data-action="open-signup-modal"
+        
          data-i18n="auth.signup_link">계정이 없으신가요? 회원가입</a>
     </div>
   </div>
@@ -803,11 +772,11 @@
      aria-labelledby="forgot-password-modal-title">
   <div class="modal">
     <div class="modal-title" id="forgot-password-modal-title">▸ <span data-i18n="auth.reset_password_title">비밀번호 재설정</span></div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5"
+    <div class="fs-12 c-muted mb-14 lh-15"
          data-i18n="auth.reset_password_hint">
       관리자가 발급한 일회용 토큰을 입력하세요. (1시간 유효)
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:6px"
+    <div class="fs-11 c-muted mb-14 lh-15 p-10 bg-bg bd-1 br-6"
          data-i18n="auth.reset_admin_hint">
       토큰이 없다면 관리자에게 "비밀번호 재설정 토큰을 발급해 주세요" 라고 요청하세요.
       관리자가 사용자 관리 페이지에서 토큰을 발급해 안전한 경로(메신저·전화 등)로 전달합니다.
@@ -818,8 +787,8 @@
     </div>
     <div class="modal-field">
       <label>RESET TOKEN</label>
-      <input type="text" id="reset-token" autocomplete="off" spellcheck="false"
-             style="font-family:var(--font-mono);font-size:12px">
+      <input class="font-mono fs-12" type="text" id="reset-token" autocomplete="off" spellcheck="false"
+            >
     </div>
     <div class="modal-field">
       <label data-i18n="auth.password">새 비밀번호</label>
@@ -844,7 +813,7 @@
      aria-labelledby="signup-modal-title">
   <div class="modal">
     <div class="modal-title" id="signup-modal-title">▸ <span data-i18n="auth.signup_title">회원가입</span></div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5"
+    <div class="fs-11 c-muted mb-14 lh-15"
          data-i18n="auth.signup_hint">
       가입 신청 후 관리자 승인을 거쳐야 로그인할 수 있습니다.
     </div>
@@ -861,7 +830,7 @@
              placeholder="8~72자, 영문 + 숫자">
     </div>
     <div class="modal-error" id="signup-error"></div>
-    <div class="modal-info" id="signup-success" style="display:none;color:#1e7a3e;font-size:12px;margin-bottom:8px"></div>
+    <div class="modal-info u-903cf72f" id="signup-success"></div>
     <div class="modal-actions">
       <button class="modal-btn cancel" data-action="close-signup" data-i18n="common.cancel">취소</button>
       <button class="modal-btn primary" data-action="do-signup" data-i18n="auth.signup_submit">가입 신청</button>
@@ -880,56 +849,56 @@
 <div class="modal-overlay hidden" id="tplc-modal"
      role="dialog" aria-modal="true"
      aria-labelledby="tplc-modal-title">
-  <div class="modal" style="max-width:560px;width:92vw">
+  <div class="modal u-7ff27f7b">
     <div class="modal-title" id="tplc-modal-title">▸ <span data-i18n="tplchat.title">양식에 맞춰 정리</span></div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5"
+    <div class="fs-11 c-muted mb-14 lh-15"
          data-i18n="tplchat.hint">
       워크스페이스에 등록한 양식을 골라 내용을 붙여넣으면 양식 구조에 맞춰 정리한 파일을 받을 수 있습니다.
     </div>
     <div class="modal-field">
       <label data-i18n="tplchat.pick">양식 선택</label>
-      <select id="tplc-select"
-              style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-size:13px">
+      <select class="w-full bg-surface bd-1 c-text p-6-10 br-6 fs-13" id="tplc-select"
+             >
       </select>
     </div>
-    <div id="tplc-placeholders" style="display:flex;flex-wrap:wrap;gap:4px;margin:-4px 0 12px"></div>
+    <div class="u-96de41ff" id="tplc-placeholders"></div>
     <div class="modal-field">
       <label data-i18n="tplchat.content">붙여넣을 내용</label>
-      <textarea id="tplc-content" rows="7"
+      <textarea class="w-full bg-surface bd-1 c-text p-8-10 br-6 fs-13 font-ui resize-v" id="tplc-content" rows="7"
                 data-i18n-placeholder="tplchat.content_ph"
                 placeholder="여기에 원문 내용을 붙여넣으세요…"
-                style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-size:13px;font-family:var(--font-ui);resize:vertical"></textarea>
+               ></textarea>
     </div>
     <!-- v0.6.1 — 사용자 프롬프트 (USER GUIDANCE) — 스타일 / 톤 / 길이 가이드 -->
     <div class="modal-field">
       <label data-i18n="tplchat.instruction">지시사항 (선택)</label>
-      <textarea id="tplc-instruction" rows="2" maxlength="2048"
+      <textarea class="w-full bg-surface bd-1 c-text p-8-10 br-6 fs-13 font-ui resize-v" id="tplc-instruction" rows="2" maxlength="2048"
                 data-i18n-placeholder="tplchat.instruction_ph"
                 placeholder="예: 결정사항은 bullet, 톤은 격식체로, 액션은 담당자별로 묶어."
-                style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-size:13px;font-family:var(--font-ui);resize:vertical"></textarea>
+               ></textarea>
     </div>
-    <div class="modal-field" style="display:flex;align-items:center;gap:8px">
-      <label style="margin:0" data-i18n="tplchat.format">출력 형식</label>
-      <select id="tplc-fmt"
-              style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px 10px;border-radius:6px;font-size:12px">
+    <div class="modal-field d-flex items-center gap-8">
+      <label class="m-0" data-i18n="tplchat.format">출력 형식</label>
+      <select class="u-415f6c14" id="tplc-fmt"
+             >
         <option value="md">Markdown (.md)</option>
         <option value="txt">Text (.txt)</option>
         <option value="html">HTML (.html)</option>
         <option value="docx">Word (.docx)</option>
       </select>
     </div>
-    <div class="modal-error" id="tplc-msg" style="min-height:0"></div>
-    <div id="tplc-result" style="display:none;margin-bottom:10px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:4px" data-i18n="tplchat.preview">미리보기</div>
-      <pre id="tplc-preview"
-           style="max-height:200px;overflow:auto;background:var(--bg);border:1px solid var(--border-2);border-radius:6px;padding:10px;font-size:12px;white-space:pre-wrap;word-break:break-word"></pre>
+    <div class="modal-error u-2519520b" id="tplc-msg"></div>
+    <div class="d-none mb-10" id="tplc-result">
+      <div class="fs-11 c-muted mb-4" data-i18n="tplchat.preview">미리보기</div>
+      <pre class="u-4ee85ded" id="tplc-preview"
+          ></pre>
     </div>
     <div class="modal-actions">
       <button class="modal-btn cancel" data-action="tplc-close" data-i18n="common.cancel">취소</button>
-      <button class="modal-btn" id="tplc-copy-btn" data-action="tplc-copy"
-              style="display:none" data-i18n="tplchat.copy">복사</button>
-      <button class="modal-btn" id="tplc-download-btn" data-action="tplc-download"
-              style="display:none" data-i18n="tplchat.download">다운로드</button>
+      <button class="modal-btn d-none" id="tplc-copy-btn" data-action="tplc-copy"
+              data-i18n="tplchat.copy">복사</button>
+      <button class="modal-btn d-none" id="tplc-download-btn" data-action="tplc-download"
+              data-i18n="tplchat.download">다운로드</button>
       <button class="modal-btn primary" id="tplc-apply-btn" data-action="tplc-apply" data-i18n="tplchat.generate">정리하기</button>
     </div>
   </div>

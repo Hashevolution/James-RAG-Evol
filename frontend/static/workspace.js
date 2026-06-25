@@ -682,7 +682,7 @@ function _renderCrDetail(cr, reviews) {
   // Merged / reject rows are conditional — only visible when relevant.
   const mergedRow = document.getElementById('cr-detail-merged-row');
   if (cr.status === 'merged' && cr.merged_at) {
-    mergedRow.style.display = '';
+    mergedRow.style.display = ''; mergedRow.classList.remove('d-none');  // CSP migration
     document.getElementById('cr-detail-merged').textContent =
       `${cr.merged_by || '?'} · ${_fmtTs(cr.merged_at)}`;
   } else {
@@ -690,7 +690,7 @@ function _renderCrDetail(cr, reviews) {
   }
   const rejRow = document.getElementById('cr-detail-reject-row');
   if (cr.reject_reason) {
-    rejRow.style.display = '';
+    rejRow.style.display = ''; rejRow.classList.remove('d-none');  // CSP migration
     document.getElementById('cr-detail-reject').textContent = cr.reject_reason;
   } else {
     rejRow.style.display = 'none';
@@ -916,7 +916,9 @@ async function wikiEditLoad() {
     }
     document.getElementById('we-body').textContent = data.body || '';
     _weBaseHash = data.base_hash || '';
+    document.getElementById('we-body-wrap').classList.remove('d-none');  // CSP migration
     document.getElementById('we-body-wrap').style.display = '';
+    document.getElementById('we-instruction-wrap').classList.remove('d-none');
     document.getElementById('we-instruction-wrap').style.display = '';
     document.getElementById('we-draft-wrap').style.display = 'none';
     document.getElementById('we-apply-btn').style.display = 'none';
@@ -954,7 +956,9 @@ async function wikiEditDraft() {
     document.getElementById('we-draft').value = data.draft_body || '';
     document.getElementById('we-model').textContent = `model: ${data.model || ''}`;
     _weBaseHash = data.base_hash || _weBaseHash;
+    document.getElementById('we-draft-wrap').classList.remove('d-none');  // CSP migration
     document.getElementById('we-draft-wrap').style.display = '';
+    document.getElementById('we-apply-btn').classList.remove('d-none');
     document.getElementById('we-apply-btn').style.display = '';
     msg.textContent = selected
       ? `✅ 초안 생성 (선택 ${selected.length}자 중심)`

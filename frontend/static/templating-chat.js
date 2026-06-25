@@ -185,7 +185,8 @@
       _outId = r.out_id;
       document.getElementById('tplc-preview').textContent = r.preview || '';
       document.getElementById('tplc-result').style.display = 'block';
-      document.getElementById('tplc-download-btn').style.display = '';
+      var _dlBtn = document.getElementById('tplc-download-btn');
+      _dlBtn.style.display = ''; _dlBtn.classList.remove('d-none');  // CSP migration
       var copyBtn = document.getElementById('tplc-copy-btn');
       if (copyBtn) copyBtn.style.display = '';
       _setMsg('✅ ' + (r.filename || ''));
