@@ -527,6 +527,21 @@
     min-width: 36px;
   }
 
+  /* ── 업로드 파일 — 폰 컴팩트 칩 (operator 폰 dogfooding catch
+   *    2026-06-25) ──
+   *  데스크톱 사이드바의 키 큰 파일 카드(아이콘+이름+크기+상태+✕ 위에
+   *  파일별 "저장 폴더" 텍스트 입력란까지)가 좁은 폰 하단을 잠식했다.
+   *  폰에선 칩 = file-item-top 한 줄(아이콘+이름+상태+폴더+✕)만 노출하고
+   *  파일별 폴더 입력란은 기본 숨김 → 폴더 버튼 탭하면 그 파일만 펼친다.
+   *  (.file-item 은 column 레이아웃이라 row 로 바꾸지 않고, 아래 행들을
+   *   숨겨 한 줄만 남기는 방식.) */
+  .file-list { padding: 6px 12px 10px; }
+  .file-item { padding: 7px 9px; margin-bottom: 5px; }
+  .file-item .file-size { display: none; }          /* 칩 좁게 — 크기 생략 */
+  .folder-toggle { display: inline-flex; align-items: center; }
+  .file-folder-row { display: none; }               /* 기본 숨김 */
+  .file-item.show-folder .file-folder-row { display: flex; }
+
   /* 답변 옆 buttons (👍 👎 📥) — 가로 스크롤 가능하게 */
   .feedback-btns {
     flex-wrap: wrap;
