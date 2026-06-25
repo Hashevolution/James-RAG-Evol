@@ -250,6 +250,7 @@ function _bindFrontendEvents() {
       // upload.js mini-thumbnails
       case 'chat-attach-click':         _chatAttachClick(); break;
       case 'remove-or-cancel':          removeOrCancel(t.getAttribute('data-item-id')); break;
+      case 'toggle-folder':             toggleFolderRow(t.getAttribute('data-item-id')); break;
     }
   });
 

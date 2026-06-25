@@ -398,6 +398,19 @@ function removeOrCancel(id) {
 // Backwards-compat alias for any inline onclick that still calls removeFile
 function removeFile(id) { removeOrCancel(id); }
 
+/* Mobile: per-file "저장 폴더" input is hidden by default (the chip is a
+   compact thumbnail+name+✕). The folder button toggles it open for the
+   one file. No-op visual on desktop where the folder row is always shown. */
+function toggleFolderRow(id) {
+  const el = document.getElementById(`file-${id}`);
+  if (!el) return;
+  const opened = el.classList.toggle('show-folder');
+  if (opened) {
+    const inp = document.getElementById(`folder-${id}`);
+    if (inp) inp.focus();
+  }
+}
+
 /* ── 업로드 버튼 상태 ── */
 function updateUploadBtn() {
   const pending = uploadQueue.filter(i => i.status === 'ready').length;
@@ -438,6 +451,7 @@ function renderFileItem(item) {
         <div class="file-size">${formatSize(item.file.size)}</div>
       </div>
       <span class="file-status status-ready" id="status-${item.id}">대기</span>
+      <button class="folder-toggle" data-action="toggle-folder" data-item-id="${escHtml(item.id)}" aria-label="저장 폴더 설정" title="저장 폴더"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></button>
       <button class="remove-btn" id="action-${item.id}" data-action="remove-or-cancel" data-item-id="${escHtml(item.id)}" title="제거">✕</button>
     </div>
     <div class="file-progress-row" id="progress-${item.id}" style="display:none;">

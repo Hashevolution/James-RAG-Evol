@@ -851,6 +851,18 @@ main { display: flex; flex: 1; overflow: hidden; }
 }
 .folder-input::placeholder { color: var(--muted); opacity: .8; }
 
+/* Folder toggle button — only used on phones, where the per-file folder
+   input is collapsed into a compact chip (mobile.css reveals it). Hidden
+   on desktop, where the folder row is always visible. */
+.folder-toggle {
+  display: none;
+  background: none; border: none; color: var(--muted);
+  cursor: pointer; padding: 2px 4px; border-radius: 4px;
+  flex-shrink: 0; line-height: 0;
+}
+.folder-toggle:hover { color: var(--accent-fg); }
+.file-item.show-folder .folder-toggle { color: var(--accent-fg); }
+
 /* ── 진행 표시 (Issue #14) ── */
 .file-progress-row {
   display: flex; align-items: center; gap: 6px;
