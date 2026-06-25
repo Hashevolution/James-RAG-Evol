@@ -1336,8 +1336,14 @@ main { display: flex; flex: 1; overflow: hidden; }
   padding: 16px 24px 20px;
   background: var(--bg);
   display: flex;
+  /* Stack vertically so the attachment rows (#chat-attachment-row /
+     #vision-preview, both full-width "border-bottom" rows) sit ABOVE the
+     input — Claude-style — instead of beside it. A horizontal row pushed
+     the input + send button off-screen on phones once an attachment chip
+     appeared (operator catch 2026-06-25). */
+  flex-direction: column;
   gap: 10px;
-  align-items: flex-end;
+  align-items: stretch;
 }
 .input-wrap {
   flex: 1;
