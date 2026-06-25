@@ -608,9 +608,19 @@
       </div>
       <input class="d-none" type="file" id="vision-file-input" accept="image/*"
              aria-hidden="true">
+      <!-- v0.6.1 — composer multi-file corpus attach. The paperclip now
+           opens THIS (multiple, all corpus types) and the picked files are
+           ingested into the knowledge base (reusing the proven /upload/
+           pipeline) + shown as compact chips in #chat-attachment-row.
+           (#vision-file-input above is kept for single-image vision Q&A,
+            currently not wired to the paperclip — operator chose corpus
+            upload semantics for the composer.) -->
+      <input class="d-none" type="file" id="composer-file-input" multiple
+             accept="image/*,audio/*,video/*,.pdf,.txt,.md,.json,.docx,.xlsx,.pptx,.hwp,.hwpx"
+             aria-hidden="true">
       <div class="input-wrap">
-        <button class="attach-btn u-6ab03333" id="attach-btn" data-action="attach-image"
-                aria-label="이미지 첨부"
+        <button class="attach-btn u-6ab03333" id="attach-btn" data-action="composer-attach"
+                aria-label="파일 첨부 (지식베이스 업로드)"
                >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -630,8 +640,8 @@
 <script src="/static/i18n.js"></script>
 <script src="/static/auth.js"></script>
 <script src="/static/llm-install.js"></script>
-<script src="/static/chat.js"></script>
-<script src="/static/upload.js"></script>
+<script src="/static/chat.js?v=v22-20260625-upload"></script>
+<script src="/static/upload.js?v=v22-20260625-upload"></script>
 <script src="/static/a11y-modal.js" defer></script>
 <!-- v0.5 UI #4 — inline <script> block extracted to /static/index-init.js
      so the chat page's CSP can drop script-src 'unsafe-inline'. No

@@ -28,6 +28,24 @@ if (_folderInput) {
     e.target.value = '';
   });
 }
+// v0.6.1 — 챗 컴포저 클립(📎) → 다중 파일 코퍼스 업로드. 사이드바
+// dropzone 과 달리 "올리면 바로 업로드" — 첨부 즉시 인제스트(검증된
+// /upload/ 파이프라인 재사용) + #chat-attachment-row 칩으로 표시. 사이드바
+// 의 수동 "업로드 및 분석" 버튼 흐름(파일별 폴더 지정)은 그대로 유지.
+const _composerInput = document.getElementById('composer-file-input');
+if (_composerInput) {
+  _composerInput.addEventListener('change', async e => {
+    const files = Array.from(e.target.files).map(_captureRelPath);
+    e.target.value = '';
+    if (!files.length) return;
+    addFiles(files);                 // 큐 + 컴포저 칩(renderChatAttachmentRow)
+    try { await uploadFiles(); }     // 즉시 코퍼스 인제스트
+    catch (err) {
+      if (typeof toast === 'function') toast(`업로드 실패: ${err && err.message || err}`, 'error');
+    }
+    if (typeof renderChatAttachmentRow === 'function') renderChatAttachmentRow();
+  });
+}
 // v0.6 — 모바일 카메라 직접 진입용 input (capture="environment"). 폰에선
 // 후면 카메라가 즉시 열리고 1장 캡처 후 큐에 add. PC 에선 일반 파일 피커.
 const _cameraInput = document.getElementById('camera-input');
