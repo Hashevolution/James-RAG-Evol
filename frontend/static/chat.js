@@ -251,6 +251,12 @@ function _bindFrontendEvents() {
       case 'chat-attach-click':         _chatAttachClick(); break;
       case 'remove-or-cancel':          removeOrCancel(t.getAttribute('data-item-id')); break;
       case 'toggle-folder':             toggleFolderRow(t.getAttribute('data-item-id')); break;
+      case 'composer-attach': {
+        // Composer paperclip → multi-file corpus upload (knowledge base).
+        const ci = document.getElementById('composer-file-input');
+        if (ci) ci.click();
+        break;
+      }
     }
   });
 
