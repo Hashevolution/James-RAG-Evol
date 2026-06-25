@@ -195,6 +195,13 @@ GEMMA_MODEL    = _llm_setting("default_model", "JAMES_LLM_MODEL", "gemma4:e4b")
 # (e.g. gemma4:e4b) if the 32B coder is too heavy for their tunnel
 # / reverse proxy timeout.
 CODING_MODEL   = _llm_setting("coding_model", "JAMES_CODING_MODEL", "qwen2.5-coder:32b")
+# Vision / multimodal model. Used for image text-extraction + captioning
+# during corpus ingest (processors/file_processor.extract_image →
+# GemmaClient.call_gemma_vision) and the chat vision mode. MUST be a
+# vision-capable model: sending images to a text-only model (the old bug —
+# call_gemma_vision used GEMMA_MODEL) makes the LLM reply "no image
+# attached", so uploaded images yielded no real text → no entities.
+MULTIMODAL_MODEL = _llm_setting("multimodal_model", "JAMES_MULTIMODAL_MODEL", "llava:13b")
 OLLAMA_API_URL = os.environ.get("OLLAMA_API_URL", "http://127.0.0.1:11434/api/generate")
 
 # [Track 1 PR-C, 2026-05-19] LLM_TEMPERATURE — default sampling

@@ -23,7 +23,7 @@ from typing import Optional
 
 import requests
 
-from config import GEMMA_MODEL, OLLAMA_API_URL
+from config import GEMMA_MODEL, MULTIMODAL_MODEL, OLLAMA_API_URL
 from core.gemma_client.config import _resolve_max_prompt_len
 from core.gemma_client.errors import (
     is_cacheable_response,
@@ -344,7 +344,11 @@ class GemmaClient:
             resp = requests.post(
                 OLLAMA_API_URL,
                 json={
-                    "model":  GEMMA_MODEL,
+                    # MUST be a vision-capable model. GEMMA_MODEL (text)
+                    # ignored the image → "no image attached" replies, so
+                    # uploaded images produced no entities. See
+                    # config.MULTIMODAL_MODEL.
+                    "model":  MULTIMODAL_MODEL,
                     "prompt": prompt,
                     "images": [image_b64],
                     "stream": False,
