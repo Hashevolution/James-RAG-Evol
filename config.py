@@ -202,6 +202,16 @@ CODING_MODEL   = _llm_setting("coding_model", "JAMES_CODING_MODEL", "qwen2.5-cod
 # call_gemma_vision used GEMMA_MODEL) makes the LLM reply "no image
 # attached", so uploaded images yielded no real text → no entities.
 MULTIMODAL_MODEL = _llm_setting("multimodal_model", "JAMES_MULTIMODAL_MODEL", "qwen2.5vl:7b")
+# Context window for the vision call. A high-res photo (e.g. a 12 MP phone
+# shot of a document) becomes thousands of vision tokens; with the default
+# ollama context (4096) the image + prompt overflow → HTTP 400
+# `exceed_context_size_error` and NO text is read. 8192 fits a 12 MP image
+# + the extraction prompt with headroom; operators with larger photos can
+# raise it (more VRAM) via JAMES_VISION_NUM_CTX.
+try:
+    VISION_NUM_CTX = int(os.environ.get("JAMES_VISION_NUM_CTX", "8192"))
+except ValueError:
+    VISION_NUM_CTX = 8192
 OLLAMA_API_URL = os.environ.get("OLLAMA_API_URL", "http://127.0.0.1:11434/api/generate")
 
 # [Track 1 PR-C, 2026-05-19] LLM_TEMPERATURE — default sampling
