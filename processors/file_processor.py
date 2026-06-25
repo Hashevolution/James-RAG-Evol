@@ -237,6 +237,16 @@ class FileProcessor:
                 filepath,
             )
             res = res or ""
+            # GemmaClient.call_gemma_vision SWALLOWS HTTP/timeout errors and
+            # returns a "[Gemma Vision 오류] …" STRING (e.g. a transient 400
+            # while the model cold-loads after a restart). That string has
+            # real words, so _looks_like_text would accept it and the error
+            # message would be ingested as the image's text + spawn a bogus
+            # "Gemma Vision" entity. Treat any such error string as a failed
+            # transcription → "" so extract_image falls through to OCR.
+            if res.lstrip().startswith("[Gemma Vision 오류]"):
+                print(f"[DEBUG] Vision 호출 실패(에러 문자열) → OCR fallback: {res[:80]}")
+                return ""
             if _NO_TEXT not in res and res.count('|') >= 3:
                 res = f"\n\n> **[ORIGINAL_IMAGE_REFERENCE_REQUIRED: {filename}]**\n" + res
             return res
