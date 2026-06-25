@@ -91,6 +91,17 @@ class ExtractImageFlow(unittest.TestCase):
         self.assertEqual(tc.source, "ocr")
         tess.assert_not_called()   # EasyOCR succeeded first
 
+    def test_vision_error_string_not_treated_as_text(self):
+        # call_gemma_vision swallows a transient 400 (model cold-load) into
+        # a "[Gemma Vision 오류] …" string. It has real words but must NOT
+        # be transcription — _extract_with_vision_tiling returns "" so the
+        # flow falls to OCR instead of ingesting the error message.
+        self.fp.gemma_client = mock.Mock()
+        self.fp.gemma_client.call_gemma_vision.return_value = (
+            "[Gemma Vision 오류] 400 Client Error: Bad Request for url: "
+            "http://127.0.0.1:11434/api/generate")
+        self.assertEqual(self.fp._extract_with_vision_tiling("x.jpg"), "")
+
     def test_garbage_ocr_discarded_no_fabricated_text(self):
         # vision says no-text; OCR returns confidence-passed-but-still-noise
         # block chars → _looks_like_text rejects → honest marker, NO garbage.
