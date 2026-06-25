@@ -75,14 +75,18 @@ class ExtractImageFlow(unittest.TestCase):
         easy.assert_not_called()
 
     def test_no_text_sentinel_falls_through_to_ocr(self):
+        # EasyOCR (the neural #1 fallback) returns good text → Tesseract
+        # is not even reached.
         sentinel = "<NO_TEXT>: 흐릿한 한국어 공지 문서 사진"
         ocr_good = "공지사항\n2026년 6월 25일 전 직원 교육 일정 안내드립니다."
         with mock.patch.object(self.fp, "_extract_with_vision_tiling", return_value=sentinel), \
-             mock.patch.object(self.fp, "_extract_with_tesseract", return_value=ocr_good), \
+             mock.patch.object(self.fp, "_extract_with_easyocr", return_value=ocr_good), \
+             mock.patch.object(self.fp, "_extract_with_tesseract") as tess, \
              mock.patch("processors.file_processor.Image.open", return_value=object()):
             tc = self.fp.extract_image("x.jpg")
         self.assertIn("교육 일정", tc.text)
         self.assertEqual(tc.source, "ocr")
+        tess.assert_not_called()   # EasyOCR succeeded first
 
     def test_garbage_ocr_discarded_no_fabricated_text(self):
         # vision says no-text; OCR returns confidence-passed-but-still-noise

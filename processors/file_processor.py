@@ -262,11 +262,15 @@ class FileProcessor:
         if not no_text and self._looks_like_text(vtext):
             text, source = vtext.strip(), "vision"
         else:
-            # vision could not transcribe → confidence-gated OCR fallback
+            # vision could not transcribe → confidence-gated OCR fallback.
+            # EasyOCR (neural) goes first — it reads real-world / Korean
+            # photos markedly better than Tesseract; Tesseract is the
+            # cheaper last resort. (PaddleOCR would be a stronger #1 still,
+            # but has no wheel for this Python — see the upgrade note.)
             source = "ocr"
-            otext = self._extract_with_tesseract(Image.open(filepath))
+            otext = self._extract_with_easyocr(filepath)
             if not self._looks_like_text(otext):
-                otext = self._extract_with_easyocr(filepath)
+                otext = self._extract_with_tesseract(Image.open(filepath))
             text = otext.strip() if self._looks_like_text(otext) else ""
 
         if text:
