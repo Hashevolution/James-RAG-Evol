@@ -23,7 +23,7 @@ from typing import Optional
 
 import requests
 
-from config import GEMMA_MODEL, MULTIMODAL_MODEL, OLLAMA_API_URL
+from config import GEMMA_MODEL, MULTIMODAL_MODEL, OLLAMA_API_URL, VISION_NUM_CTX
 from core.gemma_client.config import _resolve_max_prompt_len
 from core.gemma_client.errors import (
     is_cacheable_response,
@@ -352,6 +352,10 @@ class GemmaClient:
                     "prompt": prompt,
                     "images": [image_b64],
                     "stream": False,
+                    # A high-res image's vision tokens + the prompt overflow
+                    # the default 4096 context → HTTP 400 and zero text read.
+                    # See config.VISION_NUM_CTX.
+                    "options": {"num_ctx": VISION_NUM_CTX},
                 },
                 timeout=timeout,
             )
