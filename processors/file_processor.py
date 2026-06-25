@@ -22,6 +22,7 @@ PROJECT JAMES - File Processor Module
          후속 phase 가 단일 quarantine chokepoint 로 통일 예정.
 """
 import os
+import re
 import cv2
 import numpy as np
 from PIL import Image
@@ -32,6 +33,17 @@ from pdf2image import convert_from_path
 from config import POPPLER_PATH, TESSERACT_PATH
 from core.policy_engine import TrustedContent
 from utils.metadata import MetadataGenerator
+
+# Minimum per-word OCR confidence (Tesseract 0-100 scale; EasyOCR's 0-1
+# scale is compared against this/100). Words below this are dropped — the
+# key defence against OCR "noise" (a blurry photo can otherwise emit tens
+# of thousands of low-confidence garbage tokens that would pollute the KG).
+_OCR_MIN_CONF = 55
+
+# Sentinel the vision model emits when it cannot read any text. Lets us
+# distinguish "no transcription" from real text WITHOUT a fragile
+# length/keyword heuristic, so the OCR fallback fires correctly.
+_NO_TEXT = "<NO_TEXT>"
 
 
 class FileProcessor:
@@ -118,33 +130,110 @@ class FileProcessor:
         )
 
     def _preprocess_image(self, img):
-        w, h  = img.size
-        img   = img.resize((w * 2, h * 2), Image.LANCZOS)
-        img_np = np.array(img.convert("L"))
-        binary = cv2.adaptiveThreshold(img_np, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                        cv2.THRESH_BINARY, 11, 2)
-        return Image.fromarray(binary)
+        # NO hard binarization. Adaptive thresholding targets clean,
+        # evenly-lit scans; on PHOTOS it freezes lighting gradients + JPEG
+        # noise into black/white speckle that Tesseract reads as thousands
+        # of phantom characters (measured on a blurry doc photo: this path
+        # produced 296k garbage chars vs ~2k on the plain grayscale image —
+        # a 136× amplification). Modern Tesseract-LSTM normalises internally
+        # and reads grayscale better, so hand it grayscale and let it work.
+        # A 2× upscale still helps small text, but only when the image is
+        # small — upscaling an already-large photo just multiplies the noise.
+        w, h = img.size
+        if max(w, h) < 2000:
+            img = img.resize((w * 2, h * 2), Image.LANCZOS)
+        return img.convert("L")
 
     def _extract_with_tesseract(self, img):
+        # Confidence-filtered: keep only words Tesseract is reasonably sure
+        # about. A blurry / textless photo otherwise yields huge runs of
+        # low-confidence gibberish (observed: 296k garbage chars) that would
+        # be ingested as fake "text". image_to_data gives per-word conf.
         pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
         processed = self._preprocess_image(img)
-        return pytesseract.image_to_string(processed, lang="kor+eng", config="--psm 6")
+        try:
+            data = pytesseract.image_to_data(
+                processed, lang="kor+eng", config="--psm 6",
+                output_type=pytesseract.Output.DICT,
+            )
+        except Exception as e:
+            print(f"[DEBUG] Tesseract 오류: {e}")
+            return ""
+        words = []
+        for w, c in zip(data.get("text", []), data.get("conf", [])):
+            try:
+                conf = float(c)
+            except (TypeError, ValueError):
+                conf = -1.0
+            if conf >= _OCR_MIN_CONF and w.strip():
+                words.append(w.strip())
+        return " ".join(words)
 
     def _extract_with_easyocr(self, filepath):
         reader = self.get_easyocr_reader()
         if not reader:
             return ""
-        results = reader.readtext(filepath, detail=0, paragraph=True)
-        return "\n".join(results)
+        try:
+            # detail=1 → (bbox, text, confidence); EasyOCR conf is 0-1.
+            results = reader.readtext(filepath, detail=1, paragraph=False)
+        except Exception as e:
+            print(f"[DEBUG] EasyOCR 오류: {e}")
+            return ""
+        kept = [
+            t for (_b, t, conf) in results
+            if conf >= (_OCR_MIN_CONF / 100.0) and t and t.strip()
+        ]
+        return "\n".join(kept)
+
+    @staticmethod
+    def _looks_like_text(text: str) -> bool:
+        """True iff ``text`` reads as real extracted text, not OCR noise.
+
+        Three guards (confidence filtering already drops most low-conf
+        noise upstream; this is the final gate before the KG):
+
+          1. ≥10 word-characters total (reject near-empty).
+          2. ≥50% of non-space chars are Hangul / Latin / digit (rejects
+             block-char / symbol soup like EasyOCR's ▒█).
+          3. NOT fragmented: a real document OCR yields multi-character
+             "words", whereas an unreadable photo yields a stream of
+             isolated 1-char tokens + symbols ("y | ® Fo 이 고 il Ki ...").
+             Require ≥40% of whitespace tokens to be real words (≥2 word-
+             chars) AND at least 5 such words.
+        """
+        t = (text or "").strip()
+        valid = len(re.findall(r"[가-힣A-Za-z0-9]", t))
+        if valid < 10:
+            return False
+        nonspace = len(re.sub(r"\s", "", t)) or 1
+        if (valid / nonspace) < 0.5:
+            return False
+        tokens = t.split()
+        if not tokens:
+            return False
+        words = [w for w in tokens
+                 if len(re.findall(r"[가-힣A-Za-z0-9]", w)) >= 2]
+        return (len(words) / len(tokens)) >= 0.4 and len(words) >= 5
 
     def _extract_with_vision_tiling(self, filepath):
+        # Verbatim-transcription prompt with a hard sentinel: the model
+        # must emit `<NO_TEXT>: <short description>` when it cannot read
+        # any text, instead of a verbose "the image is too blurry…"
+        # paragraph. The old prompt's apology (> 10 chars) defeated the
+        # length-based OCR fallback, so blurry document photos extracted
+        # nothing AND never reached OCR.
         try:
             filename = os.path.basename(filepath)
             res = self.gemma_client.call_gemma_vision(
-                "이 이미지의 모든 텍스트를 마크다운으로 추출해. 표가 있다면 형식을 유지해.",
-                filepath
+                "이 이미지에 보이는 모든 텍스트를 그대로(verbatim) 마크다운으로 옮겨 적어. "
+                "표가 있으면 표 형식을 유지해. 설명·사과·번역·추측은 절대 하지 마. "
+                "읽을 수 있는 텍스트가 전혀 없거나 흐려서 못 읽으면, 다른 말 없이 정확히 "
+                f"`{_NO_TEXT}: ` 뒤에 이 이미지가 무엇인지 8단어 이내로만 적어 "
+                f"(예: `{_NO_TEXT}: 흐릿한 한국어 공지 문서 사진`).",
+                filepath,
             )
-            if res.count('|') >= 3:
+            res = res or ""
+            if _NO_TEXT not in res and res.count('|') >= 3:
                 res = f"\n\n> **[ORIGINAL_IMAGE_REFERENCE_REQUIRED: {filename}]**\n" + res
             return res
         except Exception as e:
@@ -153,20 +242,41 @@ class FileProcessor:
 
     def extract_image(self, filepath) -> TrustedContent:
         # 이미지에서 추출된 모든 텍스트는 low-trust (적대적 픽셀 가능).
-        # vision tiling 성공 시 source="vision", OCR fallback 시 source="ocr".
-        text   = self._extract_with_vision_tiling(filepath)
-        source = "vision"
-        if len(text) < 10:
-            text   = self._extract_with_easyocr(filepath)
+        #
+        # Flow (v0.6.1): vision transcription → if it emitted <NO_TEXT> (or
+        # the result isn't real text) fall through to confidence-gated OCR
+        # (Tesseract → EasyOCR). OCR output passes only `_looks_like_text`,
+        # so garbage from an unreadable photo is discarded rather than
+        # ingested. When nothing is readable we keep an honest, NON-garbage
+        # marker (+ the model's short hint) so a document entity still has
+        # minimal context without fabricated text.
+        vtext   = self._extract_with_vision_tiling(filepath)
+        no_text = _NO_TEXT in vtext
+
+        desc = ""
+        if no_text:
+            m = re.search(rf"{re.escape(_NO_TEXT)}\s*:?\s*([^\n]*)", vtext)
+            desc = (m.group(1).strip() if m else "")[:120]
+
+        text, source = "", "vision"
+        if not no_text and self._looks_like_text(vtext):
+            text, source = vtext.strip(), "vision"
+        else:
+            # vision could not transcribe → confidence-gated OCR fallback
             source = "ocr"
-        if len(text) < 10:
-            text   = self._extract_with_tesseract(Image.open(filepath))
-            source = "ocr"
-        return TrustedContent(
-            text=f"[이미지 분석 결과]\n{text}",
-            source=source,
-            trust="low",
-        )
+            otext = self._extract_with_tesseract(Image.open(filepath))
+            if not self._looks_like_text(otext):
+                otext = self._extract_with_easyocr(filepath)
+            text = otext.strip() if self._looks_like_text(otext) else ""
+
+        if text:
+            body = f"[이미지 텍스트]\n{text}"
+        else:
+            # Nothing readable by vision OR OCR — do NOT ingest noise.
+            body   = f"[이미지 분석] {desc or '텍스트를 추출할 수 없는 이미지'}"
+            source = "vision"
+
+        return TrustedContent(text=body, source=source, trust="low")
 
     def extract_audio(self, filepath) -> TrustedContent:
         model = self.get_whisper_model()
