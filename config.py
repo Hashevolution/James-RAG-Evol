@@ -201,7 +201,7 @@ CODING_MODEL   = _llm_setting("coding_model", "JAMES_CODING_MODEL", "qwen2.5-cod
 # vision-capable model: sending images to a text-only model (the old bug —
 # call_gemma_vision used GEMMA_MODEL) makes the LLM reply "no image
 # attached", so uploaded images yielded no real text → no entities.
-MULTIMODAL_MODEL = _llm_setting("multimodal_model", "JAMES_MULTIMODAL_MODEL", "llava:13b")
+MULTIMODAL_MODEL = _llm_setting("multimodal_model", "JAMES_MULTIMODAL_MODEL", "qwen2.5vl:7b")
 OLLAMA_API_URL = os.environ.get("OLLAMA_API_URL", "http://127.0.0.1:11434/api/generate")
 
 # [Track 1 PR-C, 2026-05-19] LLM_TEMPERATURE — default sampling

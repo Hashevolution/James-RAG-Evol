@@ -199,7 +199,11 @@ class FileProcessor:
              "words", whereas an unreadable photo yields a stream of
              isolated 1-char tokens + symbols ("y | ® Fo 이 고 il Ki ...").
              Require ≥40% of whitespace tokens to be real words (≥2 word-
-             chars) AND at least 5 such words.
+             chars) AND at least 3 such words. (The ≥40% ratio is the real
+             discriminator — garbage runs ~0.3, real text ~1.0; the floor
+             of 3 only rejects near-trivial output, kept low so short-but-
+             real captions like a 4-word notice headline still pass —
+             guard #1 already requires ≥10 word-chars.)
         """
         t = (text or "").strip()
         valid = len(re.findall(r"[가-힣A-Za-z0-9]", t))
@@ -213,7 +217,7 @@ class FileProcessor:
             return False
         words = [w for w in tokens
                  if len(re.findall(r"[가-힣A-Za-z0-9]", w)) >= 2]
-        return (len(words) / len(tokens)) >= 0.4 and len(words) >= 5
+        return (len(words) / len(tokens)) >= 0.4 and len(words) >= 3
 
     def _extract_with_vision_tiling(self, filepath):
         # Verbatim-transcription prompt with a hard sentinel: the model
