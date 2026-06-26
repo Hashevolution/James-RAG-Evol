@@ -317,16 +317,63 @@ TERSE_PRESET = StylePreset(
 )
 
 
+# Detailed / verbatim preset (2026-06-26) — for explicit "상세히 / 자세히
+# / 원문 / 전체 내용" requests. Unlike NATURAL (which condenses into a
+# readable answer), this tells the model to REPRODUCE the relevant source
+# content in full so an ingested document's tables / numbers / items
+# survive instead of collapsing into a one-line summary. It is a
+# format/verbosity variant (same 8192 cap + injectors as NATURAL), NOT a
+# v1-style token-cut preset.
+DETAILED_PRESET = StylePreset(
+    name="detailed",
+    max_tokens=8192,
+    force_two_sections=False,
+    rule_text_ko=(
+        "답변 작성 가이드 (상세/원문 모드):\n"
+        "- 사용자가 **상세한 내용 / 원문 그대로**를 요청했습니다. 내부 "
+        "자료의 관련 부분을 **요약하지 말고 빠짐없이 그대로 재현**하세요.\n"
+        "- 표가 있으면 **표 형식 그대로, 모든 행**을 옮기세요. 숫자·날짜·"
+        "시간·인원·장소·항목·금액을 **하나도 생략하지 말고** 보존.\n"
+        "- 압축·일반화·\"등\"으로 뭉뚱그리기 금지. 자료에 있는 구체 항목을 "
+        "전부 나열하세요.\n"
+        "- 자연스러운 한국어로 구조화하되 ('STEP 1', 📚/💡 라벨 금지) "
+        "내용의 완전성을 최우선으로.\n"
+        "- 컨텍스트에 [관련 자료 목록]이 있으면 첫 줄에 참고 파일을 명시.\n"
+        "- 자료에 없는 내용은 지어내지 말고 \"제공된 자료에는 없습니다\"라고 "
+        "명시하세요.\n"
+        "- 완결성: 시작한 표·문장·항목은 끝까지 마무리. 미완 줄로 끝내지 "
+        "마세요.\n"
+    ),
+    rule_text_en=(
+        "Answer guide (detailed / verbatim mode):\n"
+        "- The user asked for the FULL detail / the source as-is. "
+        "REPRODUCE the relevant internal-source content in full — do NOT "
+        "summarise.\n"
+        "- Keep tables as tables (every row). Preserve every number, date, "
+        "time, count, place, item, and amount — omit nothing.\n"
+        "- No compressing, generalising, or \"etc.\". List every concrete "
+        "item present in the source.\n"
+        "- Structure as natural prose (no 'STEP 1' or 📚/💡 labels) but "
+        "completeness comes first.\n"
+        "- If the context has a [Source Files] list, name the files first.\n"
+        "- Do not invent content not in the source; say so if it is absent.\n"
+        "- Completeness: finish every table, sentence, and item you start.\n"
+    ),
+)
+
+
 # Style id → preset registry. default (unmatched / empty) → NATURAL.
 _STYLE_REGISTRY = {
     "terse": TERSE_PRESET,
     "natural": NATURAL_PRESET,
-    # brief / standard / detailed keep resolving to NATURAL (v2 decision:
-    # the v1 token-cutting presets were rejected by user feedback; we
-    # do NOT resurrect token-cut behavior, only style/format variants).
+    # brief / standard keep resolving to NATURAL (v2 decision: the v1
+    # token-cutting presets were rejected by user feedback). "detailed"
+    # now resolves to the real DETAILED_PRESET (2026-06-26) — a
+    # format/verbosity variant that reproduces source detail, NOT a
+    # token-cut preset.
     "brief": NATURAL_PRESET,
     "standard": NATURAL_PRESET,
-    "detailed": NATURAL_PRESET,
+    "detailed": DETAILED_PRESET,
 }
 
 

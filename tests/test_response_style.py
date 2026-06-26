@@ -46,24 +46,38 @@ class NaturalFlowResolverTests(unittest.TestCase):
         os.environ.pop("JAMES_RESPONSE_STYLE", None)
         self.assertIs(resolve_style(), NATURAL_PRESET)
 
-    def test_all_legacy_ids_resolve_to_natural(self):
+    def test_brief_standard_resolve_to_natural(self):
+        # brief / standard still collapse to NATURAL (v1 token-cut presets
+        # not resurrected). "detailed" is now a real preset — see
+        # test_detailed_resolves_to_detailed_preset.
         from core.response_style import resolve_style, NATURAL_PRESET
-        for legacy in ("brief", "standard", "detailed",
-                       "BRIEF", "Standard", "  detailed  "):
+        for legacy in ("brief", "standard", "BRIEF", "Standard"):
             self.assertIs(resolve_style(legacy), NATURAL_PRESET,
                           f"legacy id {legacy!r} must resolve to NATURAL")
+
+    def test_detailed_resolves_to_detailed_preset(self):
+        # 2026-06-26: "detailed" now resolves to the real DETAILED_PRESET
+        # (reproduce source detail) instead of NATURAL.
+        from core.response_style import (
+            resolve_style, DETAILED_PRESET, NATURAL_PRESET,
+        )
+        for v in ("detailed", "DETAILED", "  detailed  "):
+            self.assertIs(resolve_style(v), DETAILED_PRESET,
+                          f"{v!r} must resolve to DETAILED_PRESET")
+        self.assertIsNot(DETAILED_PRESET, NATURAL_PRESET)
+        self.assertEqual(DETAILED_PRESET.name, "detailed")
 
     def test_unknown_values_resolve_to_natural(self):
         from core.response_style import resolve_style, NATURAL_PRESET
         for val in ("verbose", "nonsense", "", "  "):
             self.assertIs(resolve_style(val), NATURAL_PRESET)
 
-    def test_env_var_does_not_change_outcome_in_v2(self):
+    def test_env_var_brief_and_unknown_still_natural(self):
         from core.response_style import resolve_style, NATURAL_PRESET
-        for val in ("brief", "detailed", "anything"):
+        for val in ("brief", "standard", "anything"):
             os.environ["JAMES_RESPONSE_STYLE"] = val
             self.assertIs(resolve_style(), NATURAL_PRESET,
-                          f"env={val!r} must still return NATURAL in v2")
+                          f"env={val!r} must still return NATURAL")
 
     def test_natural_preset_properties(self):
         from core.response_style import NATURAL_PRESET
@@ -215,10 +229,12 @@ class StyleOverrideTests(unittest.TestCase):
         # explicit terse wins over env natural
         self.assertIs(self.rs.resolve_style("terse"), self.rs.TERSE_PRESET)
 
-    def test_v1_presets_still_natural(self):
-        # brief/standard/detailed NOT resurrected (no token-cut) → NATURAL
-        for s in ("brief", "standard", "detailed"):
+    def test_brief_standard_still_natural(self):
+        # brief/standard NOT resurrected (no token-cut) → NATURAL.
+        # "detailed" is a real preset now (2026-06-26).
+        for s in ("brief", "standard"):
             self.assertIs(self.rs.resolve_style(s), self.rs.NATURAL_PRESET)
+        self.assertIs(self.rs.resolve_style("detailed"), self.rs.DETAILED_PRESET)
 
     def test_unknown_falls_back_to_natural(self):
         self.assertIs(self.rs.resolve_style("nonsense-style"), self.rs.NATURAL_PRESET)

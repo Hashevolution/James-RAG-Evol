@@ -76,6 +76,25 @@ class AnswerStyleClassifier:
     #   - "compare X and Y" / "analyze X" / "evaluate X" / why / how
     #   - "비교/분석/평가/왜/어떻게/원인/방법"
     #   - "report on X" / "summarize X" / "보고서/요약/정리"
+    # ── Fast patterns — explicit "give me the full detail" requests ──
+    # Match → "detailed" (DETAILED_PRESET: reproduce the source content
+    # in full — tables/numbers/items — instead of summarising). Checked
+    # BEFORE terse/natural so "상세히 알려줘" / "원문 그대로" wins even if
+    # the query also looks short. Operator catch 2026-06-26: an ingested
+    # document's detail (a schedule table) was only ever summarised back.
+    FAST_DETAILED_PATTERNS = [
+        r"상세\s*(히|하게|한|하면|내용|정보|일정|하게요)",
+        r"자세\s*(히|하게|한|하게요)",
+        r"구체적(으로|인)",
+        r"낱낱이|빠짐없이|하나도\s*빠짐없|모든\s*(내용|항목|정보|일정)",
+        r"전체\s*(내용|일정|목록|표|텍스트|원문)",
+        r"원문|원본|있는\s*그대로|그대로\s*(보여|알려|적어|읽어)",
+        r"풀어서\s*(설명|알려|적어|보여)",
+        r"\b(in\s+detail|full\s+detail|verbatim|word[\s\-]for[\s\-]word|"
+        r"every\s+detail|full\s+text|the\s+(full|complete|entire)\s+"
+        r"(list|table|schedule|content|text|details))\b",
+    ]
+
     FAST_TERSE_PATTERNS = [
         # ── EN Wh-fact question (single-line answer expected) ──
         # "Who is the CEO?" / "What is X?" — directly Wh + copula
@@ -193,6 +212,12 @@ terse / natural"""
         q = query.strip()
         if not q:
             return "natural"
+
+        # DETAILED 패턴 최우선 — "상세히/원문/전체 내용" 명시 요청은
+        # 요약이 아니라 원문 재현을 원하는 것.
+        for pat in self.FAST_DETAILED_PATTERNS:
+            if re.search(pat, q, re.IGNORECASE):
+                return "detailed"
 
         # NOT_TERSE 패턴 먼저 — 분석/비교/보고서 explicit 우선
         for pat in self.FAST_NOT_TERSE_PATTERNS:
