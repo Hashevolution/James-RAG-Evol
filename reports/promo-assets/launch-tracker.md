@@ -154,6 +154,9 @@ Three independent curators, three independent review pipelines. One acceptance i
 
 | Channel | URL | Audience | Posted |
 |---|---|---|---|
+| **Reddit r/SideProject (E1) — JAMES intro (first Reddit post)** | https://www.reddit.com/r/SideProject/s/kJPXpdKTqp | Global EN (maker / side-project community) | 2026-05-25 |
+| **X (KO) K6 — OpenSSF silver 6-week velog companion** | https://x.com/i/status/2057409108974895194 | KR (X timeline — velog K5 cross-promotion) | 2026-05-21 |
+| **Velog (K5) — OpenSSF silver 6-week progress report** | https://velog.io/@hashevolution/%EC%86%94%EB%A1%9C-%EB%A9%94%EC%9D%B8%ED%85%8C%EC%9D%B4%EB%84%88%EA%B0%80-OpenSSF-%EC%8B%A4%EB%B2%84%EC%97%90-%EB%8F%84%EC%A0%84%ED%95%98%EB%8A%94-6%EC%A3%BC-%EC%96%B4%EC%8A%88%EC%96%B4%EB%9F%B0%EC%8A%A4-%EC%BC%80%EC%9D%B4%EC%8A%A4-%EC%9E%91%EC%84%B1%EA%B8%B0 | KR (velog.io developer audience — OpenSSF/security angle) | 2026-05-21 |
 | **GeekNews (K1)** | https://news.hada.io/topic?id=29648 | KR (Hada.io tech community) | 2026-05-19 |
 | **Velog (K4) — Korean intro cross-post** | https://naver.me/GUTw3kar | KR (Naver-shortened, full at velog.io/@hashevolution) | 2026-05-19 |
 | **X (KO) K3 Video 1 — login + main chat** | https://x.com/i/status/2056628377919128016 | KR (X timeline) | 2026-05-19 |
