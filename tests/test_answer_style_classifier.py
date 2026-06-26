@@ -28,6 +28,21 @@ class FastPatternTerseTests(unittest.TestCase):
         from core.answer_style_classifier import AnswerStyleClassifier
         self.cls = AnswerStyleClassifier()
 
+    def test_detail_requests_classify_detailed(self):
+        # 2026-06-26 — explicit "give me the full detail" requests must
+        # win over terse/natural so DETAILED_PRESET reproduces source
+        # content (e.g. an ingested schedule table) instead of summarising.
+        for q in [
+            "전장연 일정 상세히 알려줘",
+            "이 자료 원문 그대로 보여줘",
+            "7월 1일 전체 일정 알려줘",
+            "구체적으로 설명해",
+            "tell me in detail",
+            "show me the full table",
+        ]:
+            self.assertEqual(self.cls.classify_fast(q), "detailed",
+                             f"detail request {q!r} → detailed")
+
     def test_en_wh_fact_question(self):
         for q in [
             "Who is the CEO of TechCorp?",
