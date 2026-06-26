@@ -37,10 +37,11 @@ from typing import Any, Callable
 import anyio
 from fastapi.responses import StreamingResponse
 
-# Default gap between heartbeats. Comfortably under the idle-eviction
-# windows seen on mobile carriers / Tailscale (~30–60 s) while staying
-# cheap (one byte).
-_HEARTBEAT_INTERVAL_SEC = 12.0
+# Default gap between heartbeats. Kept short (5 s) so even an aggressive
+# mobile-carrier / Tailscale idle-eviction window can't open between
+# beats. The first beat is emitted IMMEDIATELY (see gen()) so there is no
+# initial idle gap between the headers and the first body byte.
+_HEARTBEAT_INTERVAL_SEC = 5.0
 
 # Leading whitespace — ignored by any JSON parser, so the client reads the
 # concatenated body as plain JSON.
@@ -62,6 +63,9 @@ async def stream_json_with_heartbeat(
     """
     async def gen():
         task = asyncio.ensure_future(anyio.to_thread.run_sync(work))
+        # Emit one byte immediately so the body starts flowing the moment
+        # the headers go out — no initial idle gap for the tunnel to drop.
+        yield _HEARTBEAT
         while not task.done():
             done, _ = await asyncio.wait({task}, timeout=interval)
             if not done:
