@@ -27,6 +27,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from config import MAX_UPLOAD_BYTES, UPLOAD_DIR
+from core.http_heartbeat import stream_json_with_heartbeat
 from core.api_keys import (
     issue_api_key as _api_key_issue,
     list_api_keys as _api_key_list,
@@ -258,210 +259,217 @@ async def upload(
         print(f"[UPLOAD] data_artifacts register skipped: {_e}")
         artifact_id = None
 
-    try:
-        # #44 phase 4-B: process_file 가 TrustedContent 반환.
-        # #44 phase 4-C: ingestion 검역은 PolicyEngine 단일 chokepoint
-        # (`default_engine.sanitize_for_ingestion`) 로 라우팅. 기존
-        # `sanitize_document_content` 는 backwards-compat shim 으로 유지되며
-        # 동일한 코드 경로(extract_data_only + log_attack) 를 사용한다.
-        tc = file_processor.process_file(filepath, file.filename)
-        print(f"[UPLOAD] provenance source={tc.source} trust={tc.trust} "
-              f"file={file.filename}")
-
-        # [P4-SRV-5] Instruction Isolation — PolicyEngine ingestion gate
-        raw_content, _sanitize_decision = default_engine.sanitize_for_ingestion(
-            tc, source=file.filename,
-        )
-
-        meta   = file_processor.generate_file_metadata(raw_content)
-        from utils.tokenizer import split_chunks
-        chunks = split_chunks(raw_content)
-
-        # [P7-FIX] 업로드는 서버 내부 작업
-        # Memory Trust는 사용자 쿼리 신뢰도 검증용 — 업로드에 적용 불필요
-        # api_key 검증(verify_api_key) 통과 = 신뢰된 요청으로 처리
-
-        rag_engine.vector_store.add_documents_with_meta(
-            texts=chunks, source=file.filename,
-            metadata={
-                "sensitivity": meta.get("sensitivity", "internal"),
-                "owner":       meta.get("owner", "system"),
-                "category":    meta.get("category", "기타"),
-                "source_type": "prod",
-            },
-        )
-        # [W8-C 2026-05-11] capture entity_ids so we can write
-        # wiki_links rows after the entity files are on disk. The
-        # process_document_for_entities return type was unused before;
-        # we now consume it to make the artifact ↔ entity relation
-        # queryable from /admin/artifacts/<id> + the workspace UI.
-        created_entity_ids: list = []
-        # Phase D — extraction sidecar 경로. 물리 파일 옆에 `<uuid>_<file>
-        # .extraction.json` 으로 저장 → 재업로드 시 modify cascade 가 이
-        # 파일을 읽어 old/new triple diff 를 한다.
-        extraction_sidecar = os.path.join(
-            UPLOAD_DIR, unique_name + ".extraction.json",
-        )
+    # Run the slow ingest (vision OCR / entity extraction, ~30-60s) in a
+    # worker thread + heartbeat the connection so a mobile/Tailscale tunnel
+    # does not drop the upload mid-process (which left the composer chip
+    # stuck even though the server finished). Validation/size/auth errors
+    # already raised above with proper status before streaming starts.
+    def _work():
         try:
-            created_entity_ids = list(
-                rag_engine.wiki_generator.process_document_for_entities(
-                    file.filename, raw_content, [],
-                    user_role="admin",
-                    metadata=meta,
-                    extraction_sidecar_path=extraction_sidecar,
-                ) or []
+            # #44 phase 4-B: process_file 가 TrustedContent 반환.
+            # #44 phase 4-C: ingestion 검역은 PolicyEngine 단일 chokepoint
+            # (`default_engine.sanitize_for_ingestion`) 로 라우팅. 기존
+            # `sanitize_document_content` 는 backwards-compat shim 으로 유지되며
+            # 동일한 코드 경로(extract_data_only + log_attack) 를 사용한다.
+            tc = file_processor.process_file(filepath, file.filename)
+            print(f"[UPLOAD] provenance source={tc.source} trust={tc.trust} "
+                  f"file={file.filename}")
+
+            # [P4-SRV-5] Instruction Isolation — PolicyEngine ingestion gate
+            raw_content, _sanitize_decision = default_engine.sanitize_for_ingestion(
+                tc, source=file.filename,
             )
-        except TypeError:
-            # 구버전 시그니처 fallback (metadata/user_role 미지원)
+
+            meta   = file_processor.generate_file_metadata(raw_content)
+            from utils.tokenizer import split_chunks
+            chunks = split_chunks(raw_content)
+
+            # [P7-FIX] 업로드는 서버 내부 작업
+            # Memory Trust는 사용자 쿼리 신뢰도 검증용 — 업로드에 적용 불필요
+            # api_key 검증(verify_api_key) 통과 = 신뢰된 요청으로 처리
+
+            rag_engine.vector_store.add_documents_with_meta(
+                texts=chunks, source=file.filename,
+                metadata={
+                    "sensitivity": meta.get("sensitivity", "internal"),
+                    "owner":       meta.get("owner", "system"),
+                    "category":    meta.get("category", "기타"),
+                    "source_type": "prod",
+                },
+            )
+            # [W8-C 2026-05-11] capture entity_ids so we can write
+            # wiki_links rows after the entity files are on disk. The
+            # process_document_for_entities return type was unused before;
+            # we now consume it to make the artifact ↔ entity relation
+            # queryable from /admin/artifacts/<id> + the workspace UI.
+            created_entity_ids: list = []
+            # Phase D — extraction sidecar 경로. 물리 파일 옆에 `<uuid>_<file>
+            # .extraction.json` 으로 저장 → 재업로드 시 modify cascade 가 이
+            # 파일을 읽어 old/new triple diff 를 한다.
+            extraction_sidecar = os.path.join(
+                UPLOAD_DIR, unique_name + ".extraction.json",
+            )
             try:
                 created_entity_ids = list(
                     rag_engine.wiki_generator.process_document_for_entities(
-                        file.filename, raw_content, []
+                        file.filename, raw_content, [],
+                        user_role="admin",
+                        metadata=meta,
+                        extraction_sidecar_path=extraction_sidecar,
                     ) or []
                 )
+            except TypeError:
+                # 구버전 시그니처 fallback (metadata/user_role 미지원)
+                try:
+                    created_entity_ids = list(
+                        rag_engine.wiki_generator.process_document_for_entities(
+                            file.filename, raw_content, []
+                        ) or []
+                    )
+                except AttributeError:
+                    pass
             except AttributeError:
+                # process_document_for_entities 없음 → 문서 entity 직접 생성
+                try:
+                    doc_entity = {
+                        "name":        os.path.splitext(file.filename)[0],
+                        "type":        "document",
+                        "relations":   [],
+                        "attributes": {
+                            "summary":   meta.get("summary", ""),
+                            "category":  meta.get("category", "기타"),
+                            "keywords":  ", ".join(meta.get("keywords", [])),
+                        },
+                        "sensitivity": meta.get("sensitivity", "internal"),
+                        "source_type": "prod",
+                    }
+                    created_path = rag_engine.wiki_generator.create_entity_file(
+                        doc_entity, file.filename, []
+                    )
+                    # create_entity_file returns the .md file path.
+                    # The entity_id matches the stem (no extension).
+                    if created_path:
+                        from pathlib import Path as _PathW8C
+                        created_entity_ids.append(_PathW8C(created_path).stem)
+                except Exception as wiki_err:
+                    print(f"[UPLOAD] wiki entity 생성 skip: {wiki_err}")
+            except Exception as e:
+                print(f"[UPLOAD] entity 처리 skip: {e}")
+
+            # [W8-C 2026-05-11] write wiki_links rows. Best-effort — a
+            # failure here does NOT roll back the upload (the bytes are on
+            # disk and the vector store / wiki .md files exist). It only
+            # means the artifact ↔ entity relation isn't queryable for
+            # this upload; subsequent uploads continue to track.
+            if artifact_id and created_entity_ids:
+                try:
+                    from core.data_artifacts import link_entity
+                    for eid in created_entity_ids:
+                        if eid:
+                            link_entity(artifact_id, eid)
+                    print(f"[UPLOAD] linked {len(created_entity_ids)} entities "
+                          f"to artifact {artifact_id}")
+                except Exception as _e:
+                    print(f"[UPLOAD] link_entity skipped: {_e}")
+
+            # ── [P7] Media Store — 이미지/영상/오디오 날짜별 폴더 보관 ──
+            MEDIA_EXTS = {
+                ".jpg",".jpeg",".png",".gif",".webp",".bmp",".tiff",
+                ".mp4",".avi",".mov",".mkv",".webm",
+                ".mp3",".wav",".m4a",".aac",".flac",
+            }
+            fname_lower = file.filename.lower()
+            if any(fname_lower.endswith(ext) for ext in MEDIA_EXTS):
+                try:
+                    from tools.multimodal.media_store import (
+                        store_media, store_with_instruction, MEDIA_BASE
+                    )
+                    # 절대 경로로 변환 (상대 경로 오류 방지)
+                    abs_filepath = os.path.abspath(filepath)
+                    print(f"[UPLOAD] 미디어 저장 시작: {abs_filepath}")
+                    print(f"[UPLOAD] MEDIA_BASE: {os.path.abspath(MEDIA_BASE)}")
+
+                    analysis = {
+                        "path":        abs_filepath,
+                        "type":        "media_image" if any(
+                            fname_lower.endswith(e)
+                            for e in [".jpg",".jpeg",".png",".gif",".webp",".bmp"]
+                        ) else "media_video",
+                        "date":        "",
+                        "location":    "",
+                        "persons":     [],
+                        "tags":        meta.get("keywords", []),
+                        "description": meta.get("summary", ""),
+                        "analyzed_at": __import__("datetime").datetime.now().isoformat(),
+                    }
+                    if instruction.strip():
+                        store_result = store_with_instruction(
+                            src_path    = abs_filepath,
+                            instruction = instruction,
+                            analysis    = analysis,
+                            source_type = source_type,
+                            move        = False,
+                        )
+                    else:
+                        store_result = store_media(
+                            src_path    = abs_filepath,
+                            analysis    = analysis,
+                            source_type = source_type,
+                            move        = False,
+                        )
+
+                    if store_result.get("success"):
+                        # store_with_instruction → "stored_path"
+                        # store_media → "original_path"
+                        stored = (store_result.get("stored_path")
+                                  or store_result.get("original_path",""))
+                        print(f"[UPLOAD] ✅ 미디어 보관 완료: {stored}")
+                    else:
+                        err = store_result.get("error","알 수 없는 오류")
+                        print(f"[UPLOAD] ❌ 미디어 보관 실패: {err}")
+                except Exception as media_err:
+                    import traceback
+                    print(f"[UPLOAD] media_store skip: {media_err}")
+                    print(traceback.format_exc())
+
+            try:
+                for f_name in os.listdir(UPLOAD_DIR):
+                    if f_name.endswith("_" + file.filename) and f_name != unique_name:
+                        os.remove(os.path.join(UPLOAD_DIR, f_name))
+            except Exception:
                 pass
-        except AttributeError:
-            # process_document_for_entities 없음 → 문서 entity 직접 생성
-            try:
-                doc_entity = {
-                    "name":        os.path.splitext(file.filename)[0],
-                    "type":        "document",
-                    "relations":   [],
-                    "attributes": {
-                        "summary":   meta.get("summary", ""),
-                        "category":  meta.get("category", "기타"),
-                        "keywords":  ", ".join(meta.get("keywords", [])),
-                    },
-                    "sensitivity": meta.get("sensitivity", "internal"),
-                    "source_type": "prod",
-                }
-                created_path = rag_engine.wiki_generator.create_entity_file(
-                    doc_entity, file.filename, []
-                )
-                # create_entity_file returns the .md file path.
-                # The entity_id matches the stem (no extension).
-                if created_path:
-                    from pathlib import Path as _PathW8C
-                    created_entity_ids.append(_PathW8C(created_path).stem)
-            except Exception as wiki_err:
-                print(f"[UPLOAD] wiki entity 생성 skip: {wiki_err}")
+
+            # [W7-A] mark indexed only after vector + entity steps succeeded.
+            if artifact_id:
+                try:
+                    _da_update_status(artifact_id, "indexed")
+                except Exception as _e:
+                    print(f"[UPLOAD] status update skipped: {_e}")
+
+            result_data = {
+                "status":      "ok",
+                "filename":    unique_name,
+                "category":    meta.get("category","기타"),
+                "summary":     meta.get("summary",""),
+                "keywords":    meta.get("keywords",[]),
+                "sensitivity": meta.get("sensitivity","internal"),
+                "artifact_id": artifact_id,   # [W7-A]
+            }
+            _write_audit(role, "/upload/", query=file.filename, ip_address=ip)
+            return result_data
+        except HTTPException:
+            # [W7-A] HTTPException propagation — surface but mark failed
+            # so the operator can find it via /admin/artifacts/list.
+            if artifact_id:
+                try: _da_update_status(artifact_id, "failed")
+                except Exception: pass
+            raise
         except Exception as e:
-            print(f"[UPLOAD] entity 처리 skip: {e}")
-
-        # [W8-C 2026-05-11] write wiki_links rows. Best-effort — a
-        # failure here does NOT roll back the upload (the bytes are on
-        # disk and the vector store / wiki .md files exist). It only
-        # means the artifact ↔ entity relation isn't queryable for
-        # this upload; subsequent uploads continue to track.
-        if artifact_id and created_entity_ids:
-            try:
-                from core.data_artifacts import link_entity
-                for eid in created_entity_ids:
-                    if eid:
-                        link_entity(artifact_id, eid)
-                print(f"[UPLOAD] linked {len(created_entity_ids)} entities "
-                      f"to artifact {artifact_id}")
-            except Exception as _e:
-                print(f"[UPLOAD] link_entity skipped: {_e}")
-
-        # ── [P7] Media Store — 이미지/영상/오디오 날짜별 폴더 보관 ──
-        MEDIA_EXTS = {
-            ".jpg",".jpeg",".png",".gif",".webp",".bmp",".tiff",
-            ".mp4",".avi",".mov",".mkv",".webm",
-            ".mp3",".wav",".m4a",".aac",".flac",
-        }
-        fname_lower = file.filename.lower()
-        if any(fname_lower.endswith(ext) for ext in MEDIA_EXTS):
-            try:
-                from tools.multimodal.media_store import (
-                    store_media, store_with_instruction, MEDIA_BASE
-                )
-                # 절대 경로로 변환 (상대 경로 오류 방지)
-                abs_filepath = os.path.abspath(filepath)
-                print(f"[UPLOAD] 미디어 저장 시작: {abs_filepath}")
-                print(f"[UPLOAD] MEDIA_BASE: {os.path.abspath(MEDIA_BASE)}")
-
-                analysis = {
-                    "path":        abs_filepath,
-                    "type":        "media_image" if any(
-                        fname_lower.endswith(e)
-                        for e in [".jpg",".jpeg",".png",".gif",".webp",".bmp"]
-                    ) else "media_video",
-                    "date":        "",
-                    "location":    "",
-                    "persons":     [],
-                    "tags":        meta.get("keywords", []),
-                    "description": meta.get("summary", ""),
-                    "analyzed_at": __import__("datetime").datetime.now().isoformat(),
-                }
-                if instruction.strip():
-                    store_result = store_with_instruction(
-                        src_path    = abs_filepath,
-                        instruction = instruction,
-                        analysis    = analysis,
-                        source_type = source_type,
-                        move        = False,
-                    )
-                else:
-                    store_result = store_media(
-                        src_path    = abs_filepath,
-                        analysis    = analysis,
-                        source_type = source_type,
-                        move        = False,
-                    )
-
-                if store_result.get("success"):
-                    # store_with_instruction → "stored_path"
-                    # store_media → "original_path"
-                    stored = (store_result.get("stored_path")
-                              or store_result.get("original_path",""))
-                    print(f"[UPLOAD] ✅ 미디어 보관 완료: {stored}")
-                else:
-                    err = store_result.get("error","알 수 없는 오류")
-                    print(f"[UPLOAD] ❌ 미디어 보관 실패: {err}")
-            except Exception as media_err:
-                import traceback
-                print(f"[UPLOAD] media_store skip: {media_err}")
-                print(traceback.format_exc())
-
-        try:
-            for f_name in os.listdir(UPLOAD_DIR):
-                if f_name.endswith("_" + file.filename) and f_name != unique_name:
-                    os.remove(os.path.join(UPLOAD_DIR, f_name))
-        except Exception:
-            pass
-
-        # [W7-A] mark indexed only after vector + entity steps succeeded.
-        if artifact_id:
-            try:
-                _da_update_status(artifact_id, "indexed")
-            except Exception as _e:
-                print(f"[UPLOAD] status update skipped: {_e}")
-
-        result_data = {
-            "status":      "ok",
-            "filename":    unique_name,
-            "category":    meta.get("category","기타"),
-            "summary":     meta.get("summary",""),
-            "keywords":    meta.get("keywords",[]),
-            "sensitivity": meta.get("sensitivity","internal"),
-            "artifact_id": artifact_id,   # [W7-A]
-        }
-        _write_audit(role, "/upload/", query=file.filename, ip_address=ip)
-        return result_data
-    except HTTPException:
-        # [W7-A] HTTPException propagation — surface but mark failed
-        # so the operator can find it via /admin/artifacts/list.
-        if artifact_id:
-            try: _da_update_status(artifact_id, "failed")
-            except Exception: pass
-        raise
-    except Exception as e:
-        if artifact_id:
-            try: _da_update_status(artifact_id, "failed")
-            except Exception: pass
-        raise HTTPException(status_code=500, detail=f"분석 실패: {e}")
+            if artifact_id:
+                try: _da_update_status(artifact_id, "failed")
+                except Exception: pass
+            raise HTTPException(status_code=500, detail=f"분석 실패: {e}")
+    return await stream_json_with_heartbeat(_work)
 
 @router.get("/admin/users", summary="사용자 목록 (W4 P2-A: real implementation)")
 async def admin_users(

@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from core.feedback_engine import FeedbackEngine
+from core.http_heartbeat import stream_json_with_heartbeat
 from routes._deps import get_rag_engine
 from routes._helpers import (
     _require_feature,
@@ -182,120 +183,127 @@ async def query(
     log_stage("auth", role=role, allowed=True, session_id=session_id,
               question_len=len(question), include_contexts=data.include_contexts)
 
-    t_start = time.time()
-    result  = rag_engine.query(
-        user_query       = question,
-        user_role        = role,
-        session_id       = session_id,
-        session_language = data.session_language,  # [STEP2-A] 세션 언어
-        response_style   = data.response_style,    # brief/standard/detailed
-        mode_override    = data.mode_override,     # item #6: chat 페이지 모드 picker
-        force_web_search = data.force_web_search,  # [#A8-6] explicit web exploration
-        selected_model   = data.selected_model,    # [#A2 phase 2] user-picked LLM tag
-        image_path       = _safe_image_path(data.image_path),  # vision-wire
-    )
-    elapsed = time.time() - t_start
+    # Run the blocking ~30-90s reasoning pipeline in a worker thread and
+    # heartbeat the connection: mobile/Tailscale tunnels drop an idle
+    # request ("Failed to fetch"), and threading frees the event loop so
+    # /trace/poll streams reasoning stages live. current_trace_id
+    # (ContextVar) propagates into the thread via anyio.to_thread.
+    def _work():
+        t_start = time.time()
+        result  = rag_engine.query(
+            user_query       = question,
+            user_role        = role,
+            session_id       = session_id,
+            session_language = data.session_language,  # [STEP2-A] 세션 언어
+            response_style   = data.response_style,    # brief/standard/detailed
+            mode_override    = data.mode_override,     # item #6: chat 페이지 모드 picker
+            force_web_search = data.force_web_search,  # [#A8-6] explicit web exploration
+            selected_model   = data.selected_model,    # [#A2 phase 2] user-picked LLM tag
+            image_path       = _safe_image_path(data.image_path),  # vision-wire
+        )
+        elapsed = time.time() - t_start
 
-    log_stage("complete", elapsed_ms=int(elapsed * 1000),
-              blocked=bool(result.get("blocked", False)),
-              answer_len=len(result.get("answer", "") or ""),
-              graph_paths=len(result.get("graph_paths") or []),
-              mode=result.get("mode", ""))
+        log_stage("complete", elapsed_ms=int(elapsed * 1000),
+                  blocked=bool(result.get("blocked", False)),
+                  answer_len=len(result.get("answer", "") or ""),
+                  graph_paths=len(result.get("graph_paths") or []),
+                  mode=result.get("mode", ""))
 
-    answer = result.get("answer", "")
+        answer = result.get("answer", "")
 
-    # [P4-SRV-2] 감사 로그
-    _write_audit(
-        user_role      = role,
-        endpoint       = "/query/",
-        query          = question,
-        answer         = answer,
-        graph_paths    = result.get("graph_paths", []),
-        blocked        = result.get("blocked", False),
-        security_event = "blocked" if result.get("blocked") else "",
-        elapsed_sec    = elapsed,
-        ip_address     = ip,
-    )
+        # [P4-SRV-2] 감사 로그
+        _write_audit(
+            user_role      = role,
+            endpoint       = "/query/",
+            query          = question,
+            answer         = answer,
+            graph_paths    = result.get("graph_paths", []),
+            blocked        = result.get("blocked", False),
+            security_event = "blocked" if result.get("blocked") else "",
+            elapsed_sec    = elapsed,
+            ip_address     = ip,
+        )
 
-    # [P7] 대화 히스토리 자동 저장
-    if not result.get("blocked") and answer:
+        # [P7] 대화 히스토리 자동 저장
+        if not result.get("blocked") and answer:
+            try:
+                from core.memory import MemoryStore
+                MemoryStore().save_turn(
+                    session_id = session_id,
+                    question   = question,
+                    answer     = answer,
+                    mode       = result.get("mode", ""),
+                )
+            except Exception as e:
+                print(f"[HISTORY] 저장 실패: {e}")
+
+        # [P7-EVO] 자기진화 관찰 — 개선 신호 자동 수집
+        if not result.get("blocked"):
+            try:
+                from tools.self.evo_analyzer import observe_and_signal
+                signal = observe_and_signal(question, {
+                    **result,
+                    "unified_score": result.get("unified_score", 1.0),
+                })
+                if signal:
+                    print(f"[EVO] 신호 감지: {signal['type']} "
+                          f"score={signal.get('score','-'):.3f}")
+            except Exception:
+                pass
+
+        # [P7-EVO-B] 중요도 측정 — LOOM 연동
+        if not result.get("blocked"):
+            try:
+                from tools.self.importance_scorer import score_query
+                imp = score_query(
+                    question,
+                    unified_score = result.get("unified_score", 1.0),
+                    answer        = result.get("answer", ""),
+                )
+                if imp["propose_wiki"]:
+                    print(f"[EVO-B] wiki 보강 제안 대상: '{question[:40]}'")
+            except Exception:
+                pass
+
+        # [P8-EVAL-1] 성능 지표 기록
         try:
-            from core.memory import MemoryStore
-            MemoryStore().save_turn(
-                session_id = session_id,
-                question   = question,
-                answer     = answer,
-                mode       = result.get("mode", ""),
-            )
-        except Exception as e:
-            print(f"[HISTORY] 저장 실패: {e}")
-
-    # [P7-EVO] 자기진화 관찰 — 개선 신호 자동 수집
-    if not result.get("blocked"):
-        try:
-            from tools.self.evo_analyzer import observe_and_signal
-            signal = observe_and_signal(question, {
-                **result,
-                "unified_score": result.get("unified_score", 1.0),
-            })
-            if signal:
-                print(f"[EVO] 신호 감지: {signal['type']} "
-                      f"score={signal.get('score','-'):.3f}")
+            from tools.self.performance_evaluator import record_query
+            record_query(question, result, elapsed)
         except Exception:
             pass
 
-    # [P7-EVO-B] 중요도 측정 — LOOM 연동
-    if not result.get("blocked"):
-        try:
-            from tools.self.importance_scorer import score_query
-            imp = score_query(
-                question,
-                unified_score = result.get("unified_score", 1.0),
-                answer        = result.get("answer", ""),
-            )
-            if imp["propose_wiki"]:
-                print(f"[EVO-B] wiki 보강 제안 대상: '{question[:40]}'")
-        except Exception:
-            pass
-
-    # [P8-EVAL-1] 성능 지표 기록
-    try:
-        from tools.self.performance_evaluator import record_query
-        record_query(question, result, elapsed)
-    except Exception:
-        pass
-
-    response = {
-        "question":      question,
-        "answer":        answer,
-        "sources":       result.get("sources", []),
-        "blocked":       result.get("blocked", False),
-        "role_used":     role,
-        "graph_paths":   result.get("graph_paths", []),
-        "timing_sec":    round(elapsed, 2),
-        "mode":          result.get("mode", ""),
-        "session_id":    session_id,
-        "unified_score": round(result.get("unified_score", 0.0), 3),  # [3-B] 신뢰도
-        "direction_id":  FeedbackEngine.make_direction_id(
-            result.get("mode",""), question
-        ) if not result.get("blocked") else "",
-        # [#47 phase 1] correlate response to per-stage trace file.
-        "trace_id":      trace_id,
-        # [#A6-2] 웹 검색 사용됨 배지 + 출처 URL (자료 부족 fallback 시).
-        "web_used":      bool(result.get("web_used", False)),
-        "web_sources":   result.get("web_sources", []),
-        # [#A8-7] chat-side 위키 저장 chip용 proposal id
-        "pending_save_proposal_id": result.get("pending_save_proposal_id", ""),
-        # v0.6.1 — accurate truncation signal (final answer hit the output
-        # token cap). The chat UI shows its "continue" banner on this.
-        "truncated":     bool(result.get("truncated", False)),
-        # v0.6.1 — model that actually answered (auto-routed per mode).
-        "model_used":    result.get("model_used", ""),
-    }
-    # [#65 phase 3] admin-only RAGAS evaluation hook. The chunk texts that
-    # fed the LLM are surfaced only when (a) caller opted in via
-    # `include_contexts=true` AND (b) resolved role is "admin". Other
-    # roles see the same response shape as before.
-    if data.include_contexts and role == "admin":
-        response["retrieved_contexts"] = result.get("retrieved_contexts", [])
-    return response
+        response = {
+            "question":      question,
+            "answer":        answer,
+            "sources":       result.get("sources", []),
+            "blocked":       result.get("blocked", False),
+            "role_used":     role,
+            "graph_paths":   result.get("graph_paths", []),
+            "timing_sec":    round(elapsed, 2),
+            "mode":          result.get("mode", ""),
+            "session_id":    session_id,
+            "unified_score": round(result.get("unified_score", 0.0), 3),  # [3-B] 신뢰도
+            "direction_id":  FeedbackEngine.make_direction_id(
+                result.get("mode",""), question
+            ) if not result.get("blocked") else "",
+            # [#47 phase 1] correlate response to per-stage trace file.
+            "trace_id":      trace_id,
+            # [#A6-2] 웹 검색 사용됨 배지 + 출처 URL (자료 부족 fallback 시).
+            "web_used":      bool(result.get("web_used", False)),
+            "web_sources":   result.get("web_sources", []),
+            # [#A8-7] chat-side 위키 저장 chip용 proposal id
+            "pending_save_proposal_id": result.get("pending_save_proposal_id", ""),
+            # v0.6.1 — accurate truncation signal (final answer hit the output
+            # token cap). The chat UI shows its "continue" banner on this.
+            "truncated":     bool(result.get("truncated", False)),
+            # v0.6.1 — model that actually answered (auto-routed per mode).
+            "model_used":    result.get("model_used", ""),
+        }
+        # [#65 phase 3] admin-only RAGAS evaluation hook. The chunk texts that
+        # fed the LLM are surfaced only when (a) caller opted in via
+        # `include_contexts=true` AND (b) resolved role is "admin". Other
+        # roles see the same response shape as before.
+        if data.include_contexts and role == "admin":
+            response["retrieved_contexts"] = result.get("retrieved_contexts", [])
+        return response
+    return await stream_json_with_heartbeat(_work)
