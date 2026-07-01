@@ -40,8 +40,17 @@ class ResponseStyleCapTests(unittest.TestCase):
 class GemmaClientDefaultsTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        # gemma_client.py became the gemma_client/ package in the v0.6
+        # module-size split; inspect.getsource(package) returns only
+        # __init__.py. The num_ctx / num_predict literals live in
+        # client.py.
         from core import gemma_client
-        cls.src = inspect.getsource(gemma_client)
+        from core.gemma_client import client as gemma_client_client
+        cls.src = (
+            inspect.getsource(gemma_client)
+            + "\n"
+            + inspect.getsource(gemma_client_client)
+        )
 
     def test_num_predict_fallback_increased(self):
         # The fallback (when caller passes 0) must be ≥ 4096.

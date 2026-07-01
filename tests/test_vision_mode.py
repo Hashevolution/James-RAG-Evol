@@ -87,7 +87,11 @@ class ResolutionTests(unittest.TestCase):
         with mock.patch.dict(os.environ,
                              {"JAMES_DISABLE_MODE_AWARE_ROUTING": "1"}):
             tag, source, _ = _resolve_vision_model("")
-        self.assertEqual(tag, "llava:13b")
+        # The killswitch branch falls back to config.MULTIMODAL_MODEL
+        # (qwen2.5vl:7b since PR #1070; was llava:13b) — pin the config
+        # value, not a hardcoded tag, so the two can't drift again.
+        from config import MULTIMODAL_MODEL
+        self.assertEqual(tag, MULTIMODAL_MODEL)
         self.assertEqual(source, "legacy_killswitch")
 
     def test_resolver_consulted_when_no_killswitch(self):
@@ -132,7 +136,10 @@ class AnalysisTests(unittest.TestCase):
         self.assertIn("부산", row["answer"])
         self.assertEqual(row["vision_meta"]["trust"], "low")
         self.assertEqual(row["vision_meta"]["source"], "vision")
-        self.assertEqual(row["vision_meta"]["model"], "llava:13b")
+        # Killswitch path resolves config.MULTIMODAL_MODEL (qwen2.5vl:7b
+        # since PR #1070) — pin the config value, not a hardcoded tag.
+        from config import MULTIMODAL_MODEL
+        self.assertEqual(row["vision_meta"]["model"], MULTIMODAL_MODEL)
 
     def test_analyze_error_normalised(self):
         with mock.patch("tools.multimodal.image_analyzer.analyze_image",

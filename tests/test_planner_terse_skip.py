@@ -26,8 +26,18 @@ import re
 
 
 def _read_pipeline_synth() -> str:
+    # pipeline_synth.py became the pipeline_synth/ package in the v0.6
+    # module-size splits (#900-#904); inspect.getsource(package)
+    # returns only __init__.py, which silently emptied these greps.
+    # The terse-gate / planner logic lives in generator.py.
     from core.reasoning import pipeline_synth
-    return inspect.getsource(pipeline_synth)
+    from core.reasoning.pipeline_synth import generator, result, softener
+    return (
+        inspect.getsource(pipeline_synth)
+        + "\n" + inspect.getsource(generator)
+        + "\n" + inspect.getsource(result)
+        + "\n" + inspect.getsource(softener)
+    )
 
 
 def test_generate_answer_uses_resolve_style_for_terse_check():
