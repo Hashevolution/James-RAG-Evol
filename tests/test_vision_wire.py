@@ -37,8 +37,14 @@ import config  # noqa: E402,F401
 class EngineWireTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        # The routing block (incl. the image_path → vision override)
+        # moved to engine_routing.py in the 2026-07-01 rule #5 split.
+        # Concatenate routing BEFORE engine so the ordering assertions
+        # (override after router, before the dispatch that stays in
+        # engine._query_impl) keep their meaning.
         import core.reasoning.engine as eng
-        cls.src = inspect.getsource(eng)
+        import core.reasoning.engine_routing as eng_routing
+        cls.src = inspect.getsource(eng_routing) + "\n" + inspect.getsource(eng)
 
     def test_image_override_block_present(self):
         m = re.search(
