@@ -74,16 +74,24 @@ def pipeline_source() -> str:
 
 
 def engine_source() -> str:
-    """Concatenated source of the three modules that together implement
+    """Concatenated source of the four modules that together implement
     ``ReasoningEngine.query``. Use instead of
     ``inspect.getsource(engine)`` when the symbol you're grepping for
-    may live in the memory-context block or the canonical RAG synth.
+    may live in the memory-context block, the mode/model routing block
+    (split out 2026-07-01), or the canonical RAG synth.
     """
-    from core.reasoning import engine, engine_memory, engine_synth
+    from core.reasoning import (
+        engine,
+        engine_memory,
+        engine_routing,
+        engine_synth,
+    )
     return (
         inspect.getsource(engine)
         + "\n"
         + inspect.getsource(engine_memory)
+        + "\n"
+        + inspect.getsource(engine_routing)
         + "\n"
         + inspect.getsource(engine_synth)
     )
