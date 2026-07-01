@@ -41,6 +41,34 @@ def _reimport_backends(env_overrides=None):
     return mod
 
 
+# Snapshot the ORIGINAL module objects at test-module import so
+# tearDown can put them back. Re-importing in tearDown (the previous
+# strategy) left a *new* module object in sys.modules — any other test
+# module that bound ``CompletionResult`` (or a backend class) at
+# pytest-collection time then failed ``isinstance`` checks against
+# instances created from the fresh module (observed as the
+# order-dependent test_backend_conformance R1 failure when this file
+# ran first). Restoring the originals keeps class identity stable
+# across the whole session.
+import core.reasoning.backends as _orig_backends_pkg  # noqa: E402
+_ORIG_BACKEND_MODULES = {
+    name: module
+    for name, module in sys.modules.items()
+    if name.startswith("core.reasoning.backends")
+}
+
+
+def _restore_backends():
+    """Reinstate the original core.reasoning.backends module objects
+    (and the parent-package attribute) captured at import time."""
+    for name in list(sys.modules):
+        if name.startswith("core.reasoning.backends"):
+            del sys.modules[name]
+    sys.modules.update(_ORIG_BACKEND_MODULES)
+    import core.reasoning as _parent
+    _parent.backends = _ORIG_BACKEND_MODULES["core.reasoning.backends"]
+
+
 class RegistryProtocolTests(unittest.TestCase):
 
     def test_ollama_local_always_registered(self):
@@ -90,8 +118,9 @@ class OptInGateTests(unittest.TestCase):
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
-        # always restore a normal registry for downstream tests
-        _reimport_backends()
+        # always restore the ORIGINAL registry module for downstream
+        # tests (a re-import would break cross-module class identity)
+        _restore_backends()
 
     def test_claude_backend_absent_when_env_unset(self):
         os.environ.pop("JAMES_ENABLE_CLAUDE_BACKEND", None)
@@ -359,7 +388,7 @@ class DefaultBackendResolutionTests(unittest.TestCase):
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
-        _reimport_backends()
+        _restore_backends()
 
     def test_env_unset_returns_ollama_local(self):
         os.environ.pop("JAMES_REASONING_BACKEND", None)
@@ -410,7 +439,10 @@ class DefaultBackendResolutionTests(unittest.TestCase):
         stage_files = [
             root / "core" / "retrieval" / "query_rewriter.py",
             root / "core" / "reasoning" / "planner.py",
-            root / "core" / "reasoning" / "reflect.py",
+            # reflect.py became the reflect/ package in the v0.6
+            # module-size splits (#900-#904); the backend wiring
+            # lives in prompts.py.
+            root / "core" / "reasoning" / "reflect" / "prompts.py",
             root / "core" / "reasoning" / "verify.py",
         ]
         for f in stage_files:
@@ -458,7 +490,7 @@ class StageBackendResolutionTests(unittest.TestCase):
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
-        _reimport_backends()
+        _restore_backends()
 
     def test_unknown_stage_raises(self):
         # Stage typo at the call site should fail loudly during dev
@@ -519,7 +551,10 @@ class SynthCallSitesUseBackendHelperTests(unittest.TestCase):
         root = Path(__file__).resolve().parent.parent
         middleware_files = [
             root / "core" / "reasoning" / "engine_synth.py",
-            root / "core" / "reasoning" / "pipeline_synth.py",
+            # pipeline_synth.py became the pipeline_synth/ package in
+            # the v0.6 module-size splits (#900-#904) — scan every
+            # module in it so a re-added direct call can't hide.
+            *sorted((root / "core" / "reasoning" / "pipeline_synth").glob("*.py")),
             root / "core" / "reasoning" / "modes" / "chat.py",
             root / "core" / "reasoning" / "modes" / "coding.py",
             root / "core" / "reasoning" / "modes" / "self_evolve.py",

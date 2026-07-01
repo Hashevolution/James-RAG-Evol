@@ -47,6 +47,13 @@ def pipeline_source() -> str:
         pipeline_query_expansion,
         pipeline_synth,
     )
+    # pipeline_synth.py became the pipeline_synth/ package in the v0.6
+    # module-size splits (#900-#904). ``inspect.getsource`` on a package
+    # returns only its ``__init__.py``, which dropped generator.py /
+    # softener.py / result.py from this concatenation and silently
+    # broke the structural greps that depend on them — include the
+    # submodules explicitly.
+    from core.reasoning.pipeline_synth import generator, result, softener
     return (
         inspect.getsource(pipeline)
         + "\n"
@@ -57,6 +64,12 @@ def pipeline_source() -> str:
         + inspect.getsource(pipeline_query_expansion)
         + "\n"
         + inspect.getsource(pipeline_synth)
+        + "\n"
+        + inspect.getsource(generator)
+        + "\n"
+        + inspect.getsource(result)
+        + "\n"
+        + inspect.getsource(softener)
     )
 
 
