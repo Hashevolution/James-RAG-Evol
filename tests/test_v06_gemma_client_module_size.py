@@ -100,8 +100,11 @@ class PublicImportSurfaceTests(unittest.TestCase):
         self.assertFalse(is_cacheable_response("ab"))  # < 5 chars
 
     def test_default_max_prompt_len_unchanged(self):
+        # 4000 → 16000 on 2026-07-01 (double-truncation fix vs the
+        # synth-context 8000 default). Canonical pin + history:
+        # tests/test_gemma_client_prompt_cap.py.
         from core.gemma_client import _DEFAULT_MAX_PROMPT_LEN
-        self.assertEqual(_DEFAULT_MAX_PROMPT_LEN, 4000)
+        self.assertEqual(_DEFAULT_MAX_PROMPT_LEN, 16000)
 
 
 class ResponseParserContractTests(unittest.TestCase):

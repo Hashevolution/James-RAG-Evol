@@ -45,7 +45,9 @@ from __future__ import annotations
 # ─── re-exports — preserves the pre-split import surface ─────────
 
 from core.gemma_client.config import (  # noqa: F401
+    _DEFAULT_KEEP_ALIVE,
     _DEFAULT_MAX_PROMPT_LEN,
+    _resolve_keep_alive,
     _resolve_max_prompt_len,
 )
 from core.gemma_client.errors import (  # noqa: F401

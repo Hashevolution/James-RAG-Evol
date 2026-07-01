@@ -24,7 +24,10 @@ from typing import Optional
 import requests
 
 from config import GEMMA_MODEL, MULTIMODAL_MODEL, OLLAMA_API_URL, VISION_NUM_CTX
-from core.gemma_client.config import _resolve_max_prompt_len
+from core.gemma_client.config import (
+    _resolve_keep_alive,
+    _resolve_max_prompt_len,
+)
 from core.gemma_client.errors import (
     is_cacheable_response,
     log_system_event,
@@ -248,6 +251,13 @@ class GemmaClient:
                 }
                 if emit_think:
                     body["think"] = bool(think)
+                # v0.6.1 (2026-07-01) — keep the model resident between
+                # calls so a chat pause doesn't force a cold reload
+                # (done_reason="load", tens of seconds on 12B+). See
+                # config._resolve_keep_alive; opt-out omits the field.
+                keep_alive = _resolve_keep_alive()
+                if keep_alive is not None:
+                    body["keep_alive"] = keep_alive
                 body["options"] = {
                             # [#A8-5 2026-05-09] num_predict 기본값 2000 → 8192.
                             # 사용자 보고: "대화 글자수가 중간에 짤리지 않고
@@ -341,22 +351,28 @@ class GemmaClient:
             with open(image_path, "rb") as f:
                 image_b64 = base64.b64encode(f.read()).decode("utf-8")
 
+            body: dict = {
+                # MUST be a vision-capable model. GEMMA_MODEL (text)
+                # ignored the image → "no image attached" replies, so
+                # uploaded images produced no entities. See
+                # config.MULTIMODAL_MODEL.
+                "model":  MULTIMODAL_MODEL,
+                "prompt": prompt,
+                "images": [image_b64],
+                "stream": False,
+                # A high-res image's vision tokens + the prompt overflow
+                # the default 4096 context → HTTP 400 and zero text read.
+                # See config.VISION_NUM_CTX.
+                "options": {"num_ctx": VISION_NUM_CTX},
+            }
+            # Same keep-alive rationale as call_gemma — vision models
+            # are the largest and slowest to cold-load.
+            keep_alive = _resolve_keep_alive()
+            if keep_alive is not None:
+                body["keep_alive"] = keep_alive
             resp = requests.post(
                 OLLAMA_API_URL,
-                json={
-                    # MUST be a vision-capable model. GEMMA_MODEL (text)
-                    # ignored the image → "no image attached" replies, so
-                    # uploaded images produced no entities. See
-                    # config.MULTIMODAL_MODEL.
-                    "model":  MULTIMODAL_MODEL,
-                    "prompt": prompt,
-                    "images": [image_b64],
-                    "stream": False,
-                    # A high-res image's vision tokens + the prompt overflow
-                    # the default 4096 context → HTTP 400 and zero text read.
-                    # See config.VISION_NUM_CTX.
-                    "options": {"num_ctx": VISION_NUM_CTX},
-                },
+                json=body,
                 timeout=timeout,
             )
             resp.raise_for_status()

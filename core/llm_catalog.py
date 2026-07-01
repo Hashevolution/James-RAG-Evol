@@ -154,7 +154,21 @@ CATALOG: List[dict] = [
         "language":    ["en"],
     },
 
-    # ─── LLaVA — multimodal vision ─────────────────────────────────
+    # ─── Multimodal vision ─────────────────────────────────────────
+    {
+        # v0.6.1 default MULTIMODAL_MODEL (config.py, PR #1070 A/B —
+        # reads dense Korean document photos llava:13b cannot).
+        # Catalog entry added 2026-07-01 to close the drift between
+        # config default and this catalog (hardware recommender +
+        # admin picker read this list).
+        "tag":         "qwen2.5vl:7b",
+        "weight":      "light",
+        "purpose":     ["multimodal"],
+        "min_vram_gb": 6, "min_ram_gb": 16,
+        "size_gb":     6.0,
+        "description": "이미지+텍스트 분석 (문서 사진 OCR 강함, 기본값)",
+        "language":    ["multi", "ko", "en"],
+    },
     {
         "tag":         "llava:13b",
         "weight":      "medium",
