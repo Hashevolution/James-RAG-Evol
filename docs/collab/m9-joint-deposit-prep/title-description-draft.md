@@ -74,8 +74,12 @@ invent.
 
 The 3-axis structure: (1) mode split (substitution vs synthesis),
 confirmed by Robin Converse on 26b sovereign infrastructure; (2)
-workload gradient (heavy / light / no synthesis), measured by JAMES
-on e4b via V3'.e refined Pattern S (PR #440); (3) model-scale
+workload gradient, measured by JAMES on e4b — a 7-tier monotonic
+natural-stop gradient, 62 → 1681 tokens, 27x dynamic range,
+per-tier cross-sweep variation within 3-5% (Direction 1 closure,
+PR #461/#463, archived as 10.5281/zenodo.20363998); the earlier
+V3'.e refined Pattern S (PR #440) is the 3-level precursor
+(heavy / light / no synthesis), not the 7-tier result; (3) model-scale
 efficiency (synthesis token cost ∝ 1/parameter-count), discovered
 by Robin during the cross-stack invariance test itself. Each axis
 is reproducible against the same V3' protocol on different stacks.
@@ -121,7 +125,9 @@ determinism; synthesis mode incurs a task-weight-proportional
 token cost.
 
 3-axis joint discovery: mode split (Converse, 26b sovereign);
-workload gradient (Seo, JAMES V3'.e refined Pattern S, PR #440);
+workload gradient (Seo, JAMES 7-tier natural-stop gradient,
+Direction 1 closure PR #461/#463, DOI 10.5281/zenodo.20363998;
+V3'.e PR #440 = 3-level precursor);
 model-scale efficiency (Converse, cross-stack invariance test).
 Headline: "Substitution is free. Synthesis costs in proportion
 to what it has to invent."
@@ -158,7 +164,8 @@ contributor's vocabulary is cited in the joint record.
 Headline (3-author locked): "Substitution is free. Synthesis costs
 in proportion to what it has to invent."
 3-axis structure: mode split (Converse 26b) / workload gradient
-(Seo JAMES V3'.e, PR #440) / model-scale efficiency (Converse cross-
+(Seo JAMES 7-tier, Direction 1 PR #461/#463; V3'.e PR #440 =
+3-level precursor) / model-scale efficiency (Converse cross-
 stack invariance). Architectural primitive framing: Afana
 ("architectural primitive everyone building agentic systems needs
 to internalize"). Substitution-vs-decision phrasing: Arnaut ("each
@@ -214,3 +221,77 @@ description should NOT pre-empt them:
 | "Add my walk-back article DOI" | Append Provia walk-back article DOI to related_identifiers (current draft has placeholder) |
 | "Vadym not yet" | Drop Vadym row, keep 3-author; deposit STILL has the "each variant has its own tax" phrase but credited differently per Ali's preference |
 | Silence past 6/13 | Hold. Do not publish unilaterally. The Phase R6 commitment was "before the outline"; if Track 3.3 outline drafting starts without deposit, deposit becomes the outline's reference, which is fine. |
+
+---
+
+## Axis 2 (Seo / workload gradient) — canonical wording
+
+**Added 2026-08-19** after Ali Afana's third-leg deposit
+(`aliafana/two-context-mode-split`, DOI 10.5281/zenodo.21924473) cited
+this axis as *"a seven-tier gradient (V3-prime Direction 1; PR #440,
+Issue #448)"*. Two pointer errors and one measurement-wording error to
+fix before anything is submitted.
+
+### Pointer corrections
+
+| Cited | Actually |
+|---|---|
+| PR #440 | V3'.e refined Pattern S, merged 2026-05-23 — **3 workload levels** (heavy 0/10 · light 14/20 · none 20/20). The word "7-tier" does not appear in it, and it predates Direction 1. |
+| — | **PR #461 + #463** (merged 2026-05-24) are the 7-tier closure. #463's body carries the tier table (62 / 235 / ~370 / ~690 / ~910 / ~970 / 1681) and the 27x figure. Archived as **v0.3.1, DOI 10.5281/zenodo.20363998**, whose Zenodo `related_identifiers` cite #461/#463/#457 and never #440. |
+| Issue #448 | Robin Converse's 26b cross-stack data — **the Converse axis**. Citing it as evidence for the Seo bullet mis-attributes her leg to ours. |
+
+Root cause is on the JAMES side: this folder labelled the axis
+"workload gradient ... (PR #440)" when that was still the 3-level
+result, and the label was never updated after v0.3.1 upgraded the axis
+to 7 tiers (see `v3prime-direction1-cognitive-stages-result.md`: *"axis-2
+was a binary substitution-vs-synthesis split → axis-2 is a 7-tier
+monotonic gradient"*). Ali took "seven-tier" from the DOI description
+and "#440" from here. Fixed in this file, `joint-zenodo-draft.json`,
+`four-way-attribution-catalog.md`, `README.md` and `CLAUDE.md`.
+
+### Measured-quantity caveat (honest-framing rule)
+
+The 7-tier number is **total completion tokens (`eval_count`)**, which on
+`gemma4:e4b` includes a hidden reasoning trace.
+`reports/research-runs/d1-7tier-thinking-decomposition-internal-2026-05-30.md`:
+5 of 7 tiers are 82-98% trace (verify 1164 eval / 23 visible;
+query_rewrite 534 / 38; planner 685 / 92). The tiers carrying
+unambiguous workload signal are the substitution baseline (2% trace)
+and `reflect` (61%, 580 visible tokens). "Synthesis **output** tracks
+task workload" overstates it.
+
+### Proposed verbatim bullet (English — for Ali to paste)
+
+> **Workload gradient (Seo):** inside retrieval middleware on
+> gemma4:e4b, completion length at natural stop rises monotonically
+> across a seven-tier task ladder — 62 → 1681 tokens, 27x dynamic
+> range, per-tier cross-sweep variation within 3-5% (V3-prime
+> **Direction 1 closure, PRs #461/#463**, archived as
+> 10.5281/zenodo.20363998; the earlier two-mode / three-workload split
+> is **PR #440**, and Converse's cross-stack numbers are **Issue
+> #448**). The measured quantity is total completion tokens
+> (`eval_count`), which on this model includes a hidden reasoning
+> trace: a follow-up decomposition found 5 of the 7 tiers are 82-98%
+> trace, so the gradient's magnitude is part task workload and part
+> reasoning-mode cost. The substitution baseline (2% trace) and the
+> `reflect` tier (61%, 580 visible tokens) are the tiers carrying
+> unambiguous workload signal.
+
+### Consequence for the production leg's boundary condition
+
+Ali's leg concludes that the shipped prompt's "2-4 sentences"
+instruction, not the cap, is the binding constraint. gpt-4o-mini emits
+no reasoning trace **and** the prompt is length-instructed, so two
+causes are confounded. Separating them needs one added cell: length
+instruction on/off x reasoning mode on/off. This does not weaken the
+boundary condition — it names what still has to be measured before it
+is stated as a mechanism.
+
+### Forward-pointer mismatch to reconcile
+
+The v0.3.1 and v0.3.3 Zenodo `notes` (already minted, not editable)
+describe the third leg as *"Ali Afana (Provia, mid-June
+**managed-Gemini** cross-stack)"*. The delivered leg is a hosted
+**gpt-4o-mini** production router. The joint record should say so in one
+sentence rather than leave the forward-pointer resolving to a stack
+that was never used.
