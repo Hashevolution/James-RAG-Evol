@@ -23,7 +23,7 @@ from typing import Optional
 
 import requests
 
-from config import GEMMA_MODEL, MULTIMODAL_MODEL, OLLAMA_API_URL, VISION_NUM_CTX
+from config import MULTIMODAL_MODEL, OLLAMA_API_URL, VISION_NUM_CTX
 from core.gemma_client.config import _resolve_max_prompt_len
 from core.gemma_client.errors import (
     is_cacheable_response,

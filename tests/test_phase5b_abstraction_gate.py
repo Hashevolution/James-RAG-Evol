@@ -27,7 +27,6 @@ import inspect
 import os
 import tempfile
 import unittest
-from unittest import mock
 
 from core.abstraction import run_cloud_egress
 from core.abstraction._policy import default_decider

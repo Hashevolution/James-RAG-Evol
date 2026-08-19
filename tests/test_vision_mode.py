@@ -104,7 +104,6 @@ class ResolutionTests(unittest.TestCase):
         self.assertEqual((tag, source), ("llava:13b", "preference"))
 
     def test_no_vision_model_installed_returns_install_hint(self):
-        from core.reasoning.modes import vision as vmod
         fake = mock.Mock()
         fake.tag, fake.source, fake.warning = "", "none", "nothing installed"
         env = {k: v for k, v in os.environ.items()

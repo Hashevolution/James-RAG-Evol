@@ -134,7 +134,7 @@ def run(base_url: str, update_baseline: bool, threshold: float,
             page.on("pageerror", lambda e: errors.append("pageerror: " + str(e)))
             try:
                 page.goto(base_url + path, wait_until="networkidle", timeout=20000)
-            except Exception as e:
+            except Exception:
                 page.wait_for_timeout(1500)  # networkidle may not settle (polling)
             page.wait_for_timeout(800)
             cur = OUT_DIR / f"{name}.png"
