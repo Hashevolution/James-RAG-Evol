@@ -25,7 +25,7 @@ def _make_client(user="alice", role="admin"):
     app = FastAPI()
     app.include_router(wi.router)
     app.dependency_overrides[get_role_from_request] = lambda: role
-    wi._bearer_username = lambda request: user  # noqa: stub JWT subject
+    wi._bearer_username = lambda request: user  # stub JWT subject
     return TestClient(app), wi
 
 

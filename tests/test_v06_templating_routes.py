@@ -27,7 +27,7 @@ def _make_client(user="alice", role="admin"):
     app = FastAPI()
     app.include_router(tr.router)
     app.dependency_overrides[get_role_from_request] = lambda: role
-    tr._bearer_username = lambda request: user  # noqa: stub JWT subject
+    tr._bearer_username = lambda request: user  # stub JWT subject
     return TestClient(app), tr
 
 
@@ -182,7 +182,6 @@ class TemplatingRoutesTests(unittest.TestCase):
         orig = tr.ingest_document
         tr.ingest_document = lambda path: "# 회의록\n{{date}}\n"
         try:
-            r = tr.ingest_document  # noqa: silence
             r = client.post(
                 "/templates/ingest-document",
                 files={"file": ("form.docx", b"PK\x03\x04binary",

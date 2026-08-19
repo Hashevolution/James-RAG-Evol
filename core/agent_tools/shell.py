@@ -36,7 +36,7 @@ from __future__ import annotations
 
 import os
 import subprocess
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from core.agent_tools.registry import Tool, ToolError, register_tool
 
