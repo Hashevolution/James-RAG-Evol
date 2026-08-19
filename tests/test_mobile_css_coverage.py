@@ -26,6 +26,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 ROOT = Path(__file__).resolve().parent.parent
 
+# Static assets carry cache-busting query strings since v0.6.1
+# (``mobile.css?v=v22-20260625-upload``), so the link check matches the
+# path with an optional query rather than a bare literal href.
+MOBILE_CSS_LINK_RE = r'href="/static/mobile\.css(?:\?[^"]*)?"'
+
 
 class MobileCssLinkPresentTests(unittest.TestCase):
     """Pages that depend on shared mobile rules link the stylesheet."""
@@ -33,30 +38,52 @@ class MobileCssLinkPresentTests(unittest.TestCase):
     def _read(self, name: str) -> str:
         return (ROOT / "frontend" / name).read_text(encoding="utf-8")
 
+    def _assert_links(self, page: str, why: str) -> None:
+        # [2026-08-19] v0.6.1 attached cache-busting query strings to the
+        # static assets (``mobile.css?v=v22-20260625-upload``), so a literal
+        # ``href="/static/mobile.css"`` match no longer holds even though
+        # every page still links the stylesheet. Match the path and allow an
+        # optional query — the contract is "the page links mobile.css", not
+        # "the href carries no version marker".
+        self.assertRegex(
+            self._read(page), MOBILE_CSS_LINK_RE,
+            f"{page}: {why}",
+        )
+
     def test_chat_links_mobile_css(self):
-        self.assertIn('href="/static/mobile.css"', self._read("index.html"),
-            "index.html (chat) must link the shared mobile overrides")
+        self._assert_links(
+            "index.html", "chat must link the shared mobile overrides")
 
     def test_admin_links_mobile_css(self):
-        self.assertIn('href="/static/mobile.css"', self._read("admin.html"),
-            "admin.html must link the shared mobile overrides")
+        self._assert_links(
+            "admin.html", "must link the shared mobile overrides")
 
     def test_workspace_links_mobile_css(self):
-        self.assertIn('href="/static/mobile.css"', self._read("workspace.html"),
-            "workspace.html must link mobile.css for touch-target + "
+        self._assert_links(
+            "workspace.html", "must link mobile.css for touch-target + "
             "iOS font-size + safe-area-inset rules")
 
     def test_graph_links_mobile_css(self):
-        self.assertIn('href="/static/mobile.css"', self._read("graph.html"),
-            "graph.html must link mobile.css — its mobile @media block "
+        self._assert_links(
+            "graph.html", "must link mobile.css — its mobile @media block "
             "was consolidated into mobile.css's graph section")
+
+    def test_intro_links_mobile_css(self):
+        self._assert_links(
+            "intro.html", "must link mobile.css — added to the coverage "
+            "contract 2026-08-19 (page landed in PR #1062)")
 
     def test_no_full_page_left_unaccounted(self):
         # All four canonical pages must be in the mobile.css contract.
         # Anything new added under frontend/ trips this guard until it's
         # explicitly addressed.
         expected = {"index.html", "admin.html",
-                    "workspace.html", "graph.html"}
+                    "workspace.html", "graph.html",
+                    # [2026-08-19] intro.html landed in PR #1062
+                    # (2026-06-25) and was never registered here; the guard
+                    # was correctly red until now. It links mobile.css, so
+                    # it joins the contract rather than being excused.
+                    "intro.html"}
         top_level = {
             p.name for p in (ROOT / "frontend").glob("*.html")
             if p.is_file()
@@ -154,9 +181,19 @@ class GraphRulesConsolidatedTests(unittest.TestCase):
         )
 
     def test_neighbor_panel_reposition_present(self):
+        # [2026-08-19] The panel was redesigned into a bottom sheet
+        # (``top: auto; bottom: 12px; max-height: 50vh``) — see the
+        # "the sheet stays at ~50vh" note in mobile.css. The old
+        # ``top: 56px`` assertion pinned a superseded layout. Assert the
+        # invariant the rule exists for — the panel is anchored to the
+        # viewport bottom and height-capped — not one literal offset.
         self.assertRegex(
             self.css,
-            r"\.neighbor-panel\s*\{[^}]*top:\s*56px",
+            r"\.neighbor-panel\s*\{[^}]*bottom:\s*\d+px",
+        )
+        self.assertRegex(
+            self.css,
+            r"\.neighbor-panel\s*\{[^}]*max-height:\s*\d+vh",
         )
 
     def test_search_drawer_widens_to_viewport(self):
