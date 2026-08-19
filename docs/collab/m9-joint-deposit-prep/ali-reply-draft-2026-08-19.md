@@ -6,15 +6,27 @@
 `WHAT I NEED BACK, FROM EACH OF YOU` 4개. 이 답신은 그 4개 + 비용 0인
 메타데이터 사실 정정 2건만 담는다. **이행 의무가 생기는 내용은 넣지 않는다.**
 
-## 발송 전 확인
+## 발송 전 조건 — 1건
 
-1. **v0.3.3 DOI `10.5281/zenodo.20374227`** — GitHub 증거로 확정(PR #520
-   `isNewVersionOf` + alpha.3 notes가 대상을 v0.3.3으로 명시). Zenodo
-   Versions 탭 육안 확인 1회면 완전무결하나, 없이도 발송 가능 판단.
-2. **concept DOI** — 우리가 한 번도 기록한 적 없음. 편지는 "확인해 줄 수 없고
-   어차피 최신 버전으로 리졸브되므로 쓰면 안 된다"로 답함.
-3. **저장소 정정 커밋** — 편지가 "fixed on my side"라고 말하므로, 발송 시점에
-   해당 커밋이 최소한 브랜치에 살아 있어야 함.
+**정정 커밋을 `main`에 병합할 것.** 편지 2문단이 "Fixed on my side"라고
+말하는데, 정정은 현재 `claude/two-context-mode-split-review-fhckhf`
+브랜치에만 있다. `origin/main`에는 유령 행
+(`docs/release_notes_v0.4.0.md:93` = `v0.4.0-alpha.1 —
+10.5281/zenodo.20374227`)과 낡은 `PR #440` 표기가 그대로 살아 있어서,
+Ali가 저장소를 열면 정정이 보이지 않는다. **병합 후 발송.**
+
+### 확인 불필요 (이미 종결된 항목 — 재확인 요구하지 말 것)
+
+- **v0.3.3 = `10.5281/zenodo.20374227`** — 확정. PR #520이 이 번호를
+  alpha.3의 `isNewVersionOf`로 추가했고, alpha.3 notes가 그 대상을
+  *"chain back to v0.3.3 (10.5281/zenodo.20XXXXXX, operator-supplied at
+  publish time)"* 로 명시한다. `v0.4.0-alpha.1`은 존재한 적이 없다
+  (alpha.2가 스스로를 "the first alpha tag"라 선언, PR·태그·릴리스·CHANGELOG
+  전부 부재). Zenodo Versions 탭을 열어도 추가 정보가 나오지 않는다.
+- **concept DOI** — 발송 선행조건이 아니다. 편지의 답이 "확인해 줄 수 없고,
+  어차피 최신 버전(v0.4.4)으로 리졸브되므로 v0.3.x 인용에 쓰면 안 된다"이므로
+  번호를 알아내야 답할 수 있는 구조가 아니다. 저장소에 concept DOI를 기록해
+  두는 것은 별건의 위생 작업.
 
 ## 이번 답신에서 의도적으로 뺀 것 → 자체 수행 후 추가 답신
 
