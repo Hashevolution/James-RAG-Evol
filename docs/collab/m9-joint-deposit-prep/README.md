@@ -73,8 +73,10 @@ documented in §4 below.
    happen quickly.
 5. **No cycle γ findings included** — confirm draft contains only
    the pre-committed scope (3-axis substitution/synthesis +
-   workload gradient + model-scale, PR #440 + Robin 26b + Ali
-   e-commerce evidence). Cycle γ Phase B+C RGB-en data is OUT.
+   workload gradient + model-scale; JAMES axis = Direction 1 7-tier
+   closure PR #461/#463 / DOI 10.5281/zenodo.20363998, with V3'.e
+   PR #440 as its 3-level precursor; + Robin 26b + Ali e-commerce
+   evidence). Cycle γ Phase B+C RGB-en data is OUT.
 6. **License agreement** — Joint deposit is MIT (default). If Ali
    prefers CC-BY for the dataset half, adjust.
 7. **Related_identifiers cross-link to Robin DOI** —
@@ -97,3 +99,4 @@ draft. The draft files here become historical record.
 | Date | What | Why |
 |---|---|---|
 | 2026-06-08 | Folder created with skeleton files | M9 prep, post Robin DOI arrival (10.5281/zenodo.20570701) + Ali resume window opening |
+| 2026-08-19 | Axis-2 citation pointers corrected (PR #440 → Direction 1 PR #461/#463 + DOI 10.5281/zenodo.20363998) across all 4 draft files + `CLAUDE.md`; `eval_count` / thinking-trace caveat + canonical bullet added to `title-description-draft.md` | Ali's third-leg deposit cited this axis as "seven-tier ... PR #440, Issue #448"; the mislabel originated in this folder. See `title-description-draft.md` §Axis 2 |

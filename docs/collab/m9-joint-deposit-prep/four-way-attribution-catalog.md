@@ -175,7 +175,7 @@ origin.
 | Track | Owner | Evidence |
 |---|---|---|
 | Mode split | Robin | LinkedIn 2026-05-22 framing + 26b sovereign 2×2 matrix + DOI 10.5281/zenodo.20570701 (2026-06-08 byte-identical + cap-invariant) |
-| Workload gradient | JAMES | V3'.a~d + V3'.e (PR #440) on gemma4:e4b, ~500-token floor + substitution-synthesis split |
+| Workload gradient | JAMES | **7-tier monotonic natural-stop gradient (62 → 1681 tok, 27x), Direction 1 closure PR #461/#463, DOI 10.5281/zenodo.20363998** — the citable form of this axis. Precursors on gemma4:e4b: V3'.a~d (~500-token floor) + V3'.e 3-level split (PR #440) |
 | Model-scale efficiency | Robin | 26b clustering vs e4b fanning-out (Robin 26b finding 2026-05-23) |
 | Architectural framing | Ali | "ceiling vs path" + "each variant has its own tax" + walk-back article |
 | Substitution-vs-decision boundary | Vadym (via Ali article comments) | "each variant has its own tax" phrasing, Robin-flagged |

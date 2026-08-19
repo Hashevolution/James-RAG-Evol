@@ -88,12 +88,34 @@ L.D wrapper end-to-end validation surfaced two latent issues during the operator
 
 ## DOI lineage
 
-- v0.4.0 (this) — `10.5281/zenodo.<minted-at-publish>`, **isNewVersionOf** v0.4.0-alpha.3
+- v0.4.0 (this) — `10.5281/zenodo.20411354` (minted at publish; recorded by PR #554), **isNewVersionOf** v0.4.0-alpha.3
 - v0.4.0-alpha.3 — `10.5281/zenodo.20391100` (LEO L.0→L.D + Sprint 4 prep + CI / module hygiene)
-- v0.4.0-alpha.1 — `10.5281/zenodo.20374227`
-- v0.3.3 — pre-v0.4
+- v0.4.0-alpha.2 — prepped (PR #508) but **never released to GitHub**; no DOI minted. Scope superseded by alpha.3.
+- v0.3.3 — `10.5281/zenodo.20374227` (D6 retry-wiring closure)
 - v0.3.2 — `10.5281/zenodo.20372649`
 - v0.3.1 — `10.5281/zenodo.20363998`
+
+> **Correction (2026-08-19)** — this block previously carried a row
+> reading `v0.4.0-alpha.1 — 10.5281/zenodo.20374227` and left v0.3.3
+> as "pre-v0.4" with no DOI. **`v0.4.0-alpha.1` never existed**: the
+> v0.4 cycle's first alpha tag was alpha.2 (PR #508 prep, itself never
+> released — see its own `.zenodo.json`: *"v0.4.0-alpha.2 is the first
+> alpha tag of the v0.4 cycle"*), and alpha.3 is the second. There is
+> no alpha.1 PR, tag, release, or CHANGELOG entry.
+>
+> `20374227` belongs to **v0.3.3**: PR #520 (`v0.4.0-alpha.3 post-mint
+> DOI chain`) added it to `.zenodo.json` as alpha.3's `isNewVersionOf`,
+> and alpha.3's own notes name that target — *"the explicit
+> isNewVersionOf chain back to v0.3.3 (10.5281/zenodo.20XXXXXX,
+> operator-supplied at publish time)"*. PR #520 is the operator filling
+> that placeholder.
+>
+> Root cause: the README DOI badge went v0.3.1 (#466) → v0.3.2 (#490)
+> → **skipped v0.3.3** → alpha.3 (#520), so v0.3.3's number sat
+> unrecorded for three days and was written into this file against the
+> wrong label. `docs/release_notes_v0.4.1.md`, `ROADMAP.md`,
+> `.zenodo.json` and the M9 joint-deposit draft all carry the correct
+> `v0.3.3 = 20374227` mapping and were not changed.
 
 ## Operator publish steps (after PR-T7.C merges)
 
