@@ -91,23 +91,23 @@ result.
 
 **1. The instruction effect is real; the spread test doesn't retire it.**
 You write that the 127 → 138.5 shift is "smaller than within-cell spread
-— so the binding constraint is neither the cap nor the instruction."
+— so the binding constraint is neither the cap nor the instruction".
 Within-cell spread is the dispersion of individual calls; what a shift
-in centres has to clear is the error on the centre, smaller by roughly
-√n. Borrowing your 48–63 spread: at n=20 the expected range of a normal
-sample is about 3.7 SD, so SD is around 14, the error on an 80-call
-median is about 2 tokens, and the error on the difference between two of
-them is about 3. The observed +11.5 is close to four times that — and
-since both arms ran the same frozen payloads, pairing can only tighten
-it.
+in centres has to clear is the error on the centre, smaller by a factor
+of about √n. Borrowing your 48–63 spread: at n=20 the expected range of
+a normal sample is about 3.7 SD, so SD is around 14, the error on an
+80-call median is about 2 tokens, and the error on the difference
+between two of them about 3. The observed +11.5 is close to four times
+that last figure — and since both arms ran the same frozen payloads,
+pairing can only tighten it.
 
-And it isn't one cell carrying it. Your four control medians span
+Nor is one cell carrying the effect. Your four control medians span
 124–128.5 and your four instruction-removed medians span 133.5–144.5 —
 the two sets don't overlap, so every removed cell sits above every
 control cell, same day and same frozen payloads, clearing the whole
-control range by five tokens. On its own that pattern is only a sign
-test on four pairs, which an inert cause reproduces about one time in
-sixteen; it is the magnitude above that carries the weight. Together
+control range by five tokens. On its own that pattern is just a
+four-pair sign test — an inert cause reproduces it about one time in
+sixteen — so the magnitude above is what carries the weight. Together
 they say the effect is small, consistent, and not noise. (I can't check
 this arm cell by cell — unlike the first sweep's per-cap table, the
 deposit gives these medians only as ranges.)
@@ -115,11 +115,10 @@ deposit gives these medians only as ranges.)
 Your conclusion survives all of it: at caps of 400 to 4096, an
 instruction worth 11.5 tokens is plainly not what holds the call an
 order of magnitude below the ceiling. What doesn't survive is "not what
-puts it there," which reads as no effect at all.
+puts it there", which reads as no effect at all.
 
-Both of my changes land in one sentence of yours, so here is a single
-drop-in for it — everything from "per-cap medians" to the end. It
-carries the fix in (2) below as well:
+Here is a single drop-in for that sentence — everything from "per-cap
+medians" to the end. It carries the fix in (2) below as well:
 
 > per-cap medians moved 124–128.5 → 133.5–144.5 tokens (pooled 127 →
 > 138.5, 1.09×): removing the instruction lengthens the reply by about
@@ -129,15 +128,15 @@ carries the fix in (2) below as well:
 > absence of a reasoning trace is what places that floor is the
 > middleware leg's axis; it was not varied on this stack.
 
-The same phrasing recurs further down, in the paragraph on the boundary
-condition, as "…shows the prompt's length instruction is not what puts
-it there: the model's visible-answer floor governs". For that one:
+The phrase itself sits further down, in the boundary-condition
+paragraph: "…shows the prompt's length instruction is not what puts it
+there: the model's visible-answer floor governs". For that one:
 
 > …bounds the prompt's length instruction to about 9% of the reply's
 > length: it contributes, but the model's visible-answer floor is what
 > holds the call an order of magnitude below the cap.
 
-This reads stronger, not weaker. "The instruction does almost nothing"
+Both read stronger, not weaker. "The instruction does almost nothing"
 invites the one reviewer question you cannot answer from the data; "it
 is worth 9%, the floor owns the rest" answers it in advance.
 
@@ -152,16 +151,16 @@ that clause; dropping it outright works equally well.
 
 **Two things to check rather than change.**
 
-*Robin's third axis.* Your previous draft's Converse bullet carried it —
+*Robin's third axis.* Your first draft's Converse bullet carried it —
 "synthesis grows markedly more token-efficient with model scale" — and
 this version puts the fan-out figure there instead. Her ~9×
-token-efficiency finding — the one Issue #448 reads as "Parameter count
-appears to buy reasoning efficiency, not just reasoning capacity" — is
+token-efficiency finding, which Issue #448 sums up as "Parameter count
+appears to buy reasoning efficiency, not just reasoning capacity", is
 now absent, and her leg reads as a replication of substitution
-determinism on a larger model. Your first draft tagged that bullet
+determinism on a larger model. That same draft tagged the bullet
 "[Robin - this is your axis; edit freely.]", so this may simply be her
-own rewrite, in which case there is nothing to do. If instead it went out
-with the restructuring, she should see that before you submit. (Her
+own rewrite, in which case there is nothing to do. If instead it was
+lost in the restructuring, she should see that before you submit. (Her
 6–9/20 fan-out does check out against her repo README, so the figure is
 traceable through her DOI even though #448 doesn't carry it.)
 
@@ -201,7 +200,7 @@ all three with only the last clause swapped:
 If you meant the connective sentence inside the deposit instead, say so
 and I'll write that one.
 
-Make those two changes and you have my OK on the text as it stands.
+Make those two changes and you have my OK.
 
 — Jiwon Seo
 Hashevolution / PROJECT JAMES
