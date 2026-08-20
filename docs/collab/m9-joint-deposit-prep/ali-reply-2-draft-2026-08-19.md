@@ -16,6 +16,20 @@
 - 통계 논증은 SE 추정이 아니라 **control 4셀(124–128.5)과 제거 4셀
   (133.5–144.5)의 완전 분리**를 1차 근거로 삼음. 분포 가정 불필요.
   SE 는 보조: n=20 range 48–63 → SD≈15 → 80콜 중앙값 오차 ≈2 토큰.
+
+**최종 대조 (발송 직전) — 정정 3건**
+- Ali README 실측 per-cap 중앙값 = **127.5 / 130.5 / 118.5 / 122.5**,
+  README 자체가 **non-monotonic** 이라 명시. 초안의 "downward cap trend
+  gone" 은 근거 없는 서술 → 삭제. 1차 범위[118.5–130.5] 안에 신규
+  control[124–128.5] 이 **포함**되므로 "두 control 이 어긋난다" 도 과장 →
+  "재현 안 된 것은 최저 두 셀" 로 축소.
+- 10단어 헤드라인을 "your phrasing" 이라 쓴 것 = 오귀속.
+  `launch-tracker.md:109` — 문구는 `v3prime-e-substitution-synthesis-result.md
+  §Implications` 의 JAMES-side candidate 였고 Ali 가 **독립 재도출·지지**,
+  Ali 고유 기여는 "cost asymmetry in ten words". 3자 수렴으로 재서술.
+- 우리 README 에 "Context" 섹션 없음 (실제: Why SEKOS? / Quick Start /
+  Architecture / … / **Papers & Reproducibility**). stitch clause 위치를
+  실제 섹션명으로 교체.
 **전제**: 1차 답장 발송 완료. 저장소 정정(#1077)·lint 복구(#1078) main 반영 완료.
 
 ## 이 답장이 하는 일
@@ -62,9 +76,10 @@ The arithmetic agrees at the pooled level. Borrowing your 48–63
 within-cell spread: at n=20 the expected range of a normal sample is
 about 3.7 SD, so SD is on the order of 15, and the error on an 80-call
 arm's median is about 2 tokens (≈1.25 × 15/√80). The observed +11.5 is
-roughly five times that. I can't check it cell by cell — you report the
-medians as ranges, so I can't tell which cap paired with which — but the
-pooled figure and the disjointness are enough.
+roughly five times that. I can't check this arm cell by cell — unlike
+the first sweep's per-cap table, the deposit gives these medians only as
+ranges, so I can't tell which cap paired with which — but the pooled
+figure and the disjointness are enough.
 
 Your conclusion survives all of this: at caps of 400 to 4096, an
 instruction worth 11.5 tokens is plainly not what holds the call an
@@ -114,30 +129,31 @@ three legs, she should see it before submission. (Her 6–9/20 synthesis
 uniqueness checks out against her repo README, so that figure is
 traceable through her DOI even though #448 doesn't carry it.)
 
-*Run-to-run drift.* You say "80 control", so the control arm is fresh
-calls rather than the original sweep re-reported — worth making explicit
-in the bullet, because the two controls do not line up. The first sweep
-put the medians at 127.5–130.5 for 400–800 and 118.5–122.5 for
-1600–4096; the same-day control reads 124–128.5 across all four, with
-the downward cap trend gone. The first sweep's high-cap band sits below
-the same-day control band and the two do not overlap there. That does
-not threaten the paired result — the disjointness above lives inside one
-same-day arm — but two runs of the same nominal condition disagreeing
-is exactly what a reader will weigh the 9% against, so it is worth a
-sentence saying what it is: a fresh sweep, a different day on a hosted
-endpoint, or something you'd rather flag than explain.
+*The control centre's own play.* You say "80 control", so this arm is
+fresh calls rather than the first sweep re-reported — worth stating in
+the bullet. The two are compatible but not identical: your README gives
+the first sweep's per-cap medians as 127.5 / 130.5 / 118.5 / 122.5,
+non-monotonic and spanning 118.5–130.5, while the same-day control spans
+124–128.5. The new band sits inside the old one; what did not reproduce
+are the two lowest cells. Nothing here threatens the paired result — the
+disjointness above lives inside one same-day arm — but it does mean the
+control centre carries a few tokens of run-to-run play of its own, and
+that is the number a reader will hold the 9% against. One sentence
+naming it is enough.
 
 **Two small ones, take or leave.** 10.5281/zenodo.20363998 is deposited
 with upload_type `software`, so "the JAMES-leg dataset" may confuse
 anyone who opens it — "record" or "software archive" is exact. And the
 ten-word line — *"Substitution is free. Synthesis costs in proportion to
-what it has to invent."* — is your phrasing, Robin endorsed it, and it
-is the one sentence all three of us have agreed on verbatim; it would
-cost one line in the description to keep it.
+what it has to invent."* — is the one sentence all three of us hold
+verbatim: it came out of the V3'.e result doc, you re-derived it
+independently on the PR #440 thread and gave it the "cost asymmetry in
+ten words" framing, and Robin locked it. It would cost one line in the
+description to keep it.
 
 **The stitch clause.** Taking it as the sentence each of us drops into
-our own forward-pointers on mint day — my README Context section, Issue
-#448, your README — here is a version that works in all three with only
+our own forward-pointers on mint day — my README's Papers &
+Reproducibility section, Issue #448, your README — here is a version that works in all three with only
 the last clause swapped:
 
 > This work is one leg of a three-stack convergence record —
