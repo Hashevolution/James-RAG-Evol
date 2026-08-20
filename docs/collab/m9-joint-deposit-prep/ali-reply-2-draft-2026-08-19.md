@@ -161,9 +161,9 @@ now absent, and her leg reads as a replication of substitution
 determinism on a larger model. Your first draft tagged that bullet
 "[Robin - this is your axis; edit freely.]", so this may simply be her
 own rewrite, in which case there is nothing to do. If instead it went out
-with the restructuring, she should see that before you submit. (Her 6–9/20 fan-out
-does check out against her repo README, so the figure is traceable
-through her DOI even though #448 doesn't carry it.)
+with the restructuring, she should see that before you submit. (Her
+6–9/20 fan-out does check out against her repo README, so the figure is
+traceable through her DOI even though #448 doesn't carry it.)
 
 *How steady the control centre is.* "80 control" means fresh calls
 rather than the first sweep re-reported — worth saying in the bullet.
