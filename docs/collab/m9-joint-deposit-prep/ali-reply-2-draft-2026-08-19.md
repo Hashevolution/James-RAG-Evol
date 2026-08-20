@@ -37,8 +37,11 @@
 Ali,
 
 OK on the record — with two sentences I'd change first, both in the
-production bullet, and both because the body currently claims more than
-your own "does not claim" section allows. Neither touches your result.
+production bullet. They fail differently: the first states a conclusion
+your data support but justifies it with the wrong test, and overshoots
+into "no effect"; the second states as general something your own "does
+not claim" section restricts to a single measured pair. Neither touches
+your result.
 
 **1. The instruction effect is real; the spread test doesn't retire it.**
 You write that the 127 → 138.5 shift is "smaller than within-cell
@@ -55,14 +58,18 @@ control cell, in a same-day paired arm on frozen payloads. A cause that
 does nothing does not move all four cells in the same direction and
 clear the whole control range by five tokens.
 
-The arithmetic agrees. Borrowing your 48–63 within-cell spread: at
-n=20 the expected range of a normal sample is about 3.7 SD, so SD is on
-the order of 15, and the error on an 80-call arm's median is about 2
-tokens (≈1.25 × 15/√80). The observed +11.5 is roughly five times that.
-Per-cell it still clears — median error ≈4 tokens against shifts of
-+9 to +16.
+The arithmetic agrees at the pooled level. Borrowing your 48–63
+within-cell spread: at n=20 the expected range of a normal sample is
+about 3.7 SD, so SD is on the order of 15, and the error on an 80-call
+arm's median is about 2 tokens (≈1.25 × 15/√80). The observed +11.5 is
+roughly five times that. I can't check it cell by cell — you report the
+medians as ranges, so I can't tell which cap paired with which — but the
+pooled figure and the disjointness are enough.
 
-That is a small effect, not an absent one. Suggested replacement:
+Your conclusion survives all of this: at caps of 400 to 4096, an
+instruction worth 11.5 tokens is plainly not what holds the call an
+order of magnitude below the ceiling. What doesn't survive is "not what
+puts it there," which reads as no effect. Suggested replacement:
 
 > per-cap medians moved 124–128.5 → 133.5–144.5 tokens (pooled 127 →
 > 138.5, 1.09×): the instruction accounts for roughly 9% of the reply
@@ -88,19 +95,21 @@ reads as established, but the reasoning axis was never varied on your
 stack — you ran one hosted model, and every trace-side number in this
 record comes from e4b, a different model on a different stack. Your
 "does not claim" section already says exactly this; the body should
-match it. Cut the clause from the bullet, or land it as:
+match it. Drop the clause, or make it drop-in:
 
-> whether the absence of a reasoning trace is what places that floor is
-> the middleware leg's axis, and was not varied here.
+> …while synthesis never approaches any cap. Whether the absence of a
+> reasoning trace is what places that floor is the middleware leg's
+> axis; it was not varied on this stack.
 
 **Two things to check rather than change.**
 
-*Robin's third axis.* Earlier drafts carried three axes with model-scale
-efficiency as its own — her ~9× synthesis-efficiency finding, which
-Issue #448 states as "Parameter count appears to buy reasoning
-efficiency, not just reasoning capacity." In this version her leg is a
-replication of substitution determinism on a larger model and the 9× is
-gone. If that is her call, fine; if it is a casualty of restructuring to
+*Robin's third axis.* Your own previous draft's Converse bullet had it —
+"synthesis grows markedly more token-efficient with model scale" — and
+this version replaces that with the fan-out figure. So her ~9× finding,
+which Issue #448 states as "Parameter count appears to buy reasoning
+efficiency, not just reasoning capacity", is no longer in the record;
+her leg is now a replication of substitution determinism on a larger
+model. If that is her call, fine; if it is a casualty of restructuring to
 three legs, she should see it before submission. (Her 6–9/20 synthesis
 uniqueness checks out against her repo README, so that figure is
 traceable through her DOI even though #448 doesn't carry it.)
@@ -110,11 +119,13 @@ calls rather than the original sweep re-reported — worth making explicit
 in the bullet, because the two controls do not line up. The first sweep
 put the medians at 127.5–130.5 for 400–800 and 118.5–122.5 for
 1600–4096; the same-day control reads 124–128.5 across all four, with
-the downward cap trend flattened. At matched caps that is roughly a
-six-token move between runs of the same nominal condition. It does not
-threaten the paired result — the disjointness above is within one
-same-day arm — but it does bound how precisely the 9% can be quoted, and
-one sentence naming it would pre-empt the question.
+the downward cap trend gone. The first sweep's high-cap band sits below
+the same-day control band and the two do not overlap there. That does
+not threaten the paired result — the disjointness above lives inside one
+same-day arm — but two runs of the same nominal condition disagreeing
+is exactly what a reader will weigh the 9% against, so it is worth a
+sentence saying what it is: a fresh sweep, a different day on a hosted
+endpoint, or something you'd rather flag than explain.
 
 **Two small ones, take or leave.** 10.5281/zenodo.20363998 is deposited
 with upload_type `software`, so "the JAMES-leg dataset" may confuse
