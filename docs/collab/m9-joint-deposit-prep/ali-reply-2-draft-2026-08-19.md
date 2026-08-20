@@ -27,6 +27,15 @@
   `launch-tracker.md:109` — 문구는 `v3prime-e-substitution-synthesis-result.md
   §Implications` 의 JAMES-side candidate 였고 Ali 가 **독립 재도출·지지**,
   Ali 고유 기여는 "cost asymmetry in ten words". 3자 수렴으로 재서술.
+**핵심 전제 확정 — "48–63" 의 정체**
+- item 1 산술 전체가 이 한 단어에 달려 있었음: **범위(max−min)** 이면 SD≈14 →
+  차이오차 2.8 → **4.1배(유의)**, **표준편차** 면 SD≈55 → 차이오차 10.9 →
+  **1.06배(전혀 유의하지 않음)** — 즉 그가 틀렸는지 옳은지가 뒤집힘.
+- Ali README 표의 행 이름이 문자 그대로 **`within-cell range`** (63/48/48/51)
+  임을 원문에서 확인. 요약 해석이 아니라 컬럼 헤더 → **범위 확정**, 산술 성립.
+- 부수 확인: 왜도(token length 는 우편포) 가 있으면 range/SD 비가 3.735 보다
+  커져 SD 는 더 작아짐 → 우리 추정은 **보수적 방향**.
+
 **통계 서술 재점검 (2건 추가 정정)**
 - **비교 대상 오류**: "+11.5 는 80콜 중앙값 오차(≈2)의 5배" → +11.5 는 **두
   독립 중앙값의 차이**이므로 차이의 오차(≈2.8, √2 배)와 비교해야 함 → **약 4배**.
@@ -144,9 +153,10 @@ this version puts the fan-out figure there instead. Her ~9×
 token-efficiency finding — the one Issue #448 reads as "Parameter count
 appears to buy reasoning efficiency, not just reasoning capacity" — is
 now absent, and her leg reads as a replication of substitution
-determinism on a larger model. Her
-call, not mine — but if it went out in the restructuring rather than by
-decision, she should see that before you submit. (Her 6–9/20 fan-out
+determinism on a larger model. Your first draft tagged that bullet
+"Robin — this is your axis; edit freely", so this may simply be her own
+rewrite, in which case there is nothing to do. If instead it went out
+with the restructuring, she should see that before you submit. (Her 6–9/20 fan-out
 does check out against her repo README, so the figure is traceable
 through her DOI even though #448 doesn't carry it.)
 
