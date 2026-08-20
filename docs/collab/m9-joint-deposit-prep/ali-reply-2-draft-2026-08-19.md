@@ -27,6 +27,17 @@
   `launch-tracker.md:109` — 문구는 `v3prime-e-substitution-synthesis-result.md
   §Implications` 의 JAMES-side candidate 였고 Ali 가 **독립 재도출·지지**,
   Ali 고유 기여는 "cost asymmetry in ten words". 3자 수렴으로 재서술.
+**통계 서술 재점검 (2건 추가 정정)**
+- **비교 대상 오류**: "+11.5 는 80콜 중앙값 오차(≈2)의 5배" → +11.5 는 **두
+  독립 중앙값의 차이**이므로 차이의 오차(≈2.8, √2 배)와 비교해야 함 → **약 4배**.
+  실측 spread 63/48/48/51 평균 52.5 ÷ 3.735 → SD≈14 로 정정. 쌍대(frozen
+  payload 동일)라 실제로는 더 유리하나 보수적 기준 채택.
+- **분리(disjointness) 과대평가**: 이를 "더 강한 증거"·"효과 없는 원인은 그런
+  패턴을 만들지 않는다" 로 단정했으나, 4쌍 부호검정 = **1/16 (0.0625)** 로
+  관례적 유의수준 미달. 주 근거는 **크기(≈4σ)**, 분리는 **전 셀 일관성**을
+  보이는 보조 근거로 재배치. (상대의 통계를 지적하는 편지에서 같은 유형의
+  과장을 저지르지 않도록.)
+
 **최종 다듬기 (발송 직전 4건)**
 - **산술 오류 정정**: 2차 대체문이 "9% of that distance" 였음. 11.5 토큰은
   *답변 길이*(127)의 9% 이지 *cap 까지의 거리*(cap400 기준 273, cap4096 기준
@@ -74,18 +85,22 @@ You write that the 127 → 138.5 shift is "smaller than within-cell spread
 Within-cell spread is the dispersion of individual calls; what a shift
 in centres has to clear is the error on the centre, smaller by roughly
 √n. Borrowing your 48–63 spread: at n=20 the expected range of a normal
-sample is about 3.7 SD, so SD is on the order of 15 and the error on an
-80-call median is about 2 tokens. The observed +11.5 is some five times
-that.
+sample is about 3.7 SD, so SD is around 14, the error on an 80-call
+median is about 2 tokens, and the error on the difference between two of
+them is about 3. The observed +11.5 is close to four times that — and
+since both arms ran the same frozen payloads, pairing can only tighten
+it.
 
-The stronger evidence needs no distributional assumption at all. Your
-four control medians span 124–128.5 and your four instruction-removed
-medians span 133.5–144.5: the two sets are **disjoint**. Every removed
-cell sits above every control cell — same day, same frozen payloads,
-clearing the whole control range by five tokens. A cause that does
-nothing does not do that. (I can't check this arm cell by cell; unlike
-the first sweep's per-cap table, the deposit gives these medians only as
-ranges.)
+And it isn't one cell carrying it. Your four control medians span
+124–128.5 and your four instruction-removed medians span 133.5–144.5 —
+the two sets don't overlap, so every removed cell sits above every
+control cell, same day and same frozen payloads, clearing the whole
+control range by five tokens. On its own that pattern is only a sign
+test on four pairs, which an inert cause reproduces about one time in
+sixteen; it is the magnitude above that carries the weight. Together
+they say the effect is small, consistent, and not noise. (I can't check
+this arm cell by cell — unlike the first sweep's per-cap table, the
+deposit gives these medians only as ranges.)
 
 Your conclusion survives all of it: at caps of 400 to 4096, an
 instruction worth 11.5 tokens is plainly not what holds the call an
@@ -139,7 +154,7 @@ rather than the first sweep re-reported — worth saying in the bullet.
 The two are compatible without being identical: your README puts the
 first sweep's per-cap medians at 127.5 / 130.5 / 118.5 / 122.5,
 non-monotonic across 118.5–130.5, while the same-day control sits at
-124–128.5, inside that span but without the two lowest cells. The paired
+124–128.5 — inside that span, but never reaching the two lowest cells. The paired
 result is untouched — the disjointness above lives inside one arm — but
 the control centre has a few tokens of play of its own, and that is what
 a reader will hold the 9% against. One sentence naming it is enough.
