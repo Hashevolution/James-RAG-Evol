@@ -81,10 +81,11 @@
 
 Ali,
 
-OK on the record — with two changes first, both in the production
-bullet. They fail differently: the first reaches a conclusion your data
-support but justifies it with the wrong test, and then overshoots into
-"no effect"; the second states as general something your own "does not
+OK on the record — with two changes first. They sit in one sentence of
+the production bullet, plus the boundary-condition paragraph that echoes
+it, and they fail differently: the first reaches a conclusion your data
+support but justifies it with the wrong test, then overshoots into "no
+effect"; the second states as general something your own "does not
 claim" section confines to a single measured pair. Neither touches your
 result.
 
@@ -114,36 +115,40 @@ deposit gives these medians only as ranges.)
 Your conclusion survives all of it: at caps of 400 to 4096, an
 instruction worth 11.5 tokens is plainly not what holds the call an
 order of magnitude below the ceiling. What doesn't survive is "not what
-puts it there," which reads as no effect at all. Two replacements:
+puts it there," which reads as no effect at all.
+
+Both of my changes land in one sentence of yours, so here is a single
+drop-in for it — everything from "per-cap medians" to the end. It
+carries the fix in (2) below as well:
 
 > per-cap medians moved 124–128.5 → 133.5–144.5 tokens (pooled 127 →
 > 138.5, 1.09×): removing the instruction lengthens the reply by about
-> 9% and no more, leaving the order-of-magnitude gap to every cap
-> governed by the model's own natural answer length. The instruction is
-> a contributor, not the binding constraint.
+> 9% and no more, so the instruction is a contributor but not the
+> binding constraint — the order-of-magnitude gap to every cap is
+> governed by the model's own natural answer length. Whether the
+> absence of a reasoning trace is what places that floor is the
+> middleware leg's axis; it was not varied on this stack.
 
-and, in the paragraph below it, for "…is not what puts it there: the
-model's visible-answer floor governs":
+The same phrasing recurs further down, in the paragraph on the boundary
+condition, as "…shows the prompt's length instruction is not what puts
+it there: the model's visible-answer floor governs". For that one:
 
-> …bounds the prompt's length instruction to that same 9%: it
-> contributes, but the model's visible-answer floor is what holds the
-> call an order of magnitude below the cap.
+> …bounds the prompt's length instruction to about 9% of the reply's
+> length: it contributes, but the model's visible-answer floor is what
+> holds the call an order of magnitude below the cap.
 
 This reads stronger, not weaker. "The instruction does almost nothing"
 invites the one reviewer question you cannot answer from the data; "it
 is worth 9%, the floor owns the rest" answers it in advance.
 
 **2. The no-trace explanation is an inference, not your measurement.**
-"a hosted model with no reasoning trace floors near its visible answer"
-reads as established, but the reasoning axis was never varied on your
-stack — one hosted model, and every trace-side number in this record
-comes from e4b, a different model on a different stack. Your "does not
-claim" section already says precisely this; the body should match it.
-Drop the clause, or close the sentence with:
-
-> …but the model's own natural answer length. Whether the absence of a
-> reasoning trace is what places that floor is the middleware leg's
-> axis; it was not varied on this stack.
+The clause that closes the same sentence — "a hosted model with no
+reasoning trace floors near its visible answer" — reads as established,
+but the reasoning axis was never varied on your stack: one hosted model,
+and every trace-side number in this record comes from e4b, a different
+model on a different stack. Your "does not claim" section already says
+precisely this; the body should match it. The drop-in above replaces
+that clause; dropping it outright works equally well.
 
 **Two things to check rather than change.**
 
@@ -154,8 +159,8 @@ token-efficiency finding — the one Issue #448 reads as "Parameter count
 appears to buy reasoning efficiency, not just reasoning capacity" — is
 now absent, and her leg reads as a replication of substitution
 determinism on a larger model. Your first draft tagged that bullet
-"Robin — this is your axis; edit freely", so this may simply be her own
-rewrite, in which case there is nothing to do. If instead it went out
+"[Robin - this is your axis; edit freely.]", so this may simply be her
+own rewrite, in which case there is nothing to do. If instead it went out
 with the restructuring, she should see that before you submit. (Her 6–9/20 fan-out
 does check out against her repo README, so the figure is traceable
 through her DOI even though #448 doesn't carry it.)
