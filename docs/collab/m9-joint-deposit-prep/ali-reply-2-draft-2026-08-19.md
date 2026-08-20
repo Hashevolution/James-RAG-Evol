@@ -140,10 +140,11 @@ Drop the clause, or close the sentence with:
 
 *Robin's third axis.* Your previous draft's Converse bullet carried it —
 "synthesis grows markedly more token-efficient with model scale" — and
-this version puts the fan-out figure there instead. Her ~9× finding,
-which Issue #448 states as "Parameter count appears to buy reasoning
-efficiency, not just reasoning capacity", is now absent; her leg reads
-as a replication of substitution determinism on a larger model. Her
+this version puts the fan-out figure there instead. Her ~9×
+token-efficiency finding — the one Issue #448 reads as "Parameter count
+appears to buy reasoning efficiency, not just reasoning capacity" — is
+now absent, and her leg reads as a replication of substitution
+determinism on a larger model. Her
 call, not mine — but if it went out in the restructuring rather than by
 decision, she should see that before you submit. (Her 6–9/20 fan-out
 does check out against her repo README, so the figure is traceable
@@ -154,10 +155,11 @@ rather than the first sweep re-reported — worth saying in the bullet.
 The two are compatible without being identical: your README puts the
 first sweep's per-cap medians at 127.5 / 130.5 / 118.5 / 122.5,
 non-monotonic across 118.5–130.5, while the same-day control sits at
-124–128.5 — inside that span, but never reaching the two lowest cells. The paired
-result is untouched — the disjointness above lives inside one arm — but
-the control centre has a few tokens of play of its own, and that is what
-a reader will hold the 9% against. One sentence naming it is enough.
+124–128.5 — inside that span, but never reaching the two lowest cells.
+The paired result is untouched, since control and treatment ran the same
+day on the same payloads; but the control centre has a few tokens of
+play of its own, and that is what a reader will hold the 9% against. One
+sentence naming it is enough.
 
 **Two small ones, take or leave.** 10.5281/zenodo.20363998 is deposited
 with upload_type `software`, so "the JAMES-leg dataset" may throw anyone
