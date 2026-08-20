@@ -112,10 +112,15 @@ they say the effect is small, consistent, and not noise. (I can't check
 this arm cell by cell — unlike the first sweep's per-cap table, the
 deposit gives these medians only as ranges.)
 
-Your conclusion survives all of it: at caps of 400 to 4096, an
-instruction worth 11.5 tokens is plainly not what holds the call an
-order of magnitude below the ceiling. What doesn't survive is "not what
-puts it there", which reads as no effect at all.
+Your conclusion survives all of it — what's blurred is which yardstick
+applies. Against the distance to any cap, 11.5 tokens is negligible:
+that is your point and it stands, and at 400 to 4096 an instruction
+worth 11.5 tokens is plainly not what holds the call an order of
+magnitude below the ceiling. Against the reply's own variability it is
+about 0.8 SD, which is not a small effect at all. "Smaller than
+within-cell spread" reads as the second claim while arguing the first.
+What doesn't survive is "not what puts it there", which reads as no
+effect anywhere.
 
 Here is a single drop-in for that sentence — everything from "per-cap
 medians" to the end. It carries the fix in (2) below as well:
