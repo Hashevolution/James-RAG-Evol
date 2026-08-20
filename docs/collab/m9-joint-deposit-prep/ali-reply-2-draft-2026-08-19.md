@@ -205,7 +205,16 @@ all three with only the last clause swapped:
 If you meant the connective sentence inside the deposit instead, say so
 and I'll write that one.
 
-Make those two changes and you have my OK.
+**Four things I can confirm rather than raise.** The three DOIs are
+transcribed correctly — 20363998 for v0.3.1, 20372649 for v0.3.2,
+20374227 for v0.3.3 — and so are the four JAMES pointers under "is
+supplemented by": #461 and #463 for the seven-tier closure, #440 for the
+earlier split, #448 for Robin's leg. My author row is right as printed.
+And the parenthetical on the managed-Gemini forward-pointer says what it
+needed to say.
+
+So: make the two changes and treat this as my OK. Nothing needs to come
+back to me first — you have two.
 
 — Jiwon Seo
 Hashevolution / PROJECT JAMES
