@@ -27,6 +27,17 @@
   `launch-tracker.md:109` — 문구는 `v3prime-e-substitution-synthesis-result.md
   §Implications` 의 JAMES-side candidate 였고 Ali 가 **독립 재도출·지지**,
   Ali 고유 기여는 "cost asymmetry in ten words". 3자 수렴으로 재서술.
+**최종 다듬기 (발송 직전 4건)**
+- **산술 오류 정정**: 2차 대체문이 "9% of that distance" 였음. 11.5 토큰은
+  *답변 길이*(127)의 9% 이지 *cap 까지의 거리*(cap400 기준 273, cap4096 기준
+  ~3969)의 9% 가 아님 — 후자면 4% / 0.3%. "removing the instruction lengthens
+  the reply by about 9%" 로 교체.
+- 2번 항목 drop-in 이 bullet 앞부분("…while synthesis never approaches any
+  cap")에서 시작해 실제 교체 위치와 어긋났음 → 해당 clause 자리에 정확히
+  꽂히도록 재작성.
+- 서두 "two sentences" → 실제 대체문 3개(1번 2개 + 2번 1개) → **"two changes"**.
+- 전체 압축: 1번 3문단 → 2문단, control 항목 대폭 축약.
+
 - 우리 README 에 "Context" 섹션 없음 (실제: Why SEKOS? / Quick Start /
   Architecture / … / **Papers & Reproducibility**). stitch clause 위치를
   실제 섹션명으로 교체.
@@ -50,111 +61,102 @@
 
 Ali,
 
-OK on the record — with two sentences I'd change first, both in the
-production bullet. They fail differently: the first states a conclusion
-your data support but justifies it with the wrong test, and overshoots
-into "no effect"; the second states as general something your own "does
-not claim" section restricts to a single measured pair. Neither touches
-your result.
+OK on the record — with two changes first, both in the production
+bullet. They fail differently: the first reaches a conclusion your data
+support but justifies it with the wrong test, and then overshoots into
+"no effect"; the second states as general something your own "does not
+claim" section confines to a single measured pair. Neither touches your
+result.
 
 **1. The instruction effect is real; the spread test doesn't retire it.**
-You write that the 127 → 138.5 shift is "smaller than within-cell
-spread — so the binding constraint is neither the cap nor the
-instruction." Within-cell spread is the dispersion of individual
-samples; what a shift in centres has to clear is the error on that
-centre, which is smaller by roughly √n.
+You write that the 127 → 138.5 shift is "smaller than within-cell spread
+— so the binding constraint is neither the cap nor the instruction."
+Within-cell spread is the dispersion of individual calls; what a shift
+in centres has to clear is the error on the centre, smaller by roughly
+√n. Borrowing your 48–63 spread: at n=20 the expected range of a normal
+sample is about 3.7 SD, so SD is on the order of 15 and the error on an
+80-call median is about 2 tokens. The observed +11.5 is some five times
+that.
 
-The cleanest evidence is in the numbers you already report, and it needs
-no distributional assumption at all: your four control medians span
-124–128.5 and your four instruction-removed medians span 133.5–144.5.
-Those two sets are **disjoint** — every removed cell sits above every
-control cell, in a same-day paired arm on frozen payloads. A cause that
-does nothing does not move all four cells in the same direction and
-clear the whole control range by five tokens.
-
-The arithmetic agrees at the pooled level. Borrowing your 48–63
-within-cell spread: at n=20 the expected range of a normal sample is
-about 3.7 SD, so SD is on the order of 15, and the error on an 80-call
-arm's median is about 2 tokens (≈1.25 × 15/√80). The observed +11.5 is
-roughly five times that. I can't check this arm cell by cell — unlike
+The stronger evidence needs no distributional assumption at all. Your
+four control medians span 124–128.5 and your four instruction-removed
+medians span 133.5–144.5: the two sets are **disjoint**. Every removed
+cell sits above every control cell — same day, same frozen payloads,
+clearing the whole control range by five tokens. A cause that does
+nothing does not do that. (I can't check this arm cell by cell; unlike
 the first sweep's per-cap table, the deposit gives these medians only as
-ranges, so I can't tell which cap paired with which — but the pooled
-figure and the disjointness are enough.
+ranges.)
 
-Your conclusion survives all of this: at caps of 400 to 4096, an
+Your conclusion survives all of it: at caps of 400 to 4096, an
 instruction worth 11.5 tokens is plainly not what holds the call an
 order of magnitude below the ceiling. What doesn't survive is "not what
-puts it there," which reads as no effect. Suggested replacement:
+puts it there," which reads as no effect at all. Two replacements:
 
 > per-cap medians moved 124–128.5 → 133.5–144.5 tokens (pooled 127 →
-> 138.5, 1.09×): the instruction accounts for roughly 9% of the reply
-> length and no more, leaving the order-of-magnitude gap to every cap
+> 138.5, 1.09×): removing the instruction lengthens the reply by about
+> 9% and no more, leaving the order-of-magnitude gap to every cap
 > governed by the model's own natural answer length. The instruction is
 > a contributor, not the binding constraint.
 
-and, in the paragraph below it:
+and, in the paragraph below it, for "…is not what puts it there: the
+model's visible-answer floor governs":
 
-> the instruction-removed arm bounds the prompt's length instruction to
-> roughly 9% of that distance: the model's own answer floor, not the
-> instruction, is what keeps the call an order of magnitude below the
-> cap.
+> …bounds the prompt's length instruction to that same 9%: it
+> contributes, but the model's visible-answer floor is what holds the
+> call an order of magnitude below the cap.
 
-This is stronger for you, not weaker. "The instruction does almost
-nothing" invites one reviewer question you cannot answer from the data;
-"the instruction is worth 9% and the floor owns the rest" answers it in
-advance.
+This reads stronger, not weaker. "The instruction does almost nothing"
+invites the one reviewer question you cannot answer from the data; "it
+is worth 9%, the floor owns the rest" answers it in advance.
 
 **2. The no-trace explanation is an inference, not your measurement.**
 "a hosted model with no reasoning trace floors near its visible answer"
 reads as established, but the reasoning axis was never varied on your
-stack — you ran one hosted model, and every trace-side number in this
-record comes from e4b, a different model on a different stack. Your
-"does not claim" section already says exactly this; the body should
-match it. Drop the clause, or make it drop-in:
+stack — one hosted model, and every trace-side number in this record
+comes from e4b, a different model on a different stack. Your "does not
+claim" section already says precisely this; the body should match it.
+Drop the clause, or close the sentence with:
 
-> …while synthesis never approaches any cap. Whether the absence of a
+> …but the model's own natural answer length. Whether the absence of a
 > reasoning trace is what places that floor is the middleware leg's
 > axis; it was not varied on this stack.
 
 **Two things to check rather than change.**
 
-*Robin's third axis.* Your own previous draft's Converse bullet had it —
+*Robin's third axis.* Your previous draft's Converse bullet carried it —
 "synthesis grows markedly more token-efficient with model scale" — and
-this version replaces that with the fan-out figure. So her ~9× finding,
+this version puts the fan-out figure there instead. Her ~9× finding,
 which Issue #448 states as "Parameter count appears to buy reasoning
-efficiency, not just reasoning capacity", is no longer in the record;
-her leg is now a replication of substitution determinism on a larger
-model. If that is her call, fine; if it is a casualty of restructuring to
-three legs, she should see it before submission. (Her 6–9/20 synthesis
-uniqueness checks out against her repo README, so that figure is
-traceable through her DOI even though #448 doesn't carry it.)
+efficiency, not just reasoning capacity", is now absent; her leg reads
+as a replication of substitution determinism on a larger model. Her
+call, not mine — but if it went out in the restructuring rather than by
+decision, she should see that before you submit. (Her 6–9/20 fan-out
+does check out against her repo README, so the figure is traceable
+through her DOI even though #448 doesn't carry it.)
 
-*The control centre's own play.* You say "80 control", so this arm is
-fresh calls rather than the first sweep re-reported — worth stating in
-the bullet. The two are compatible but not identical: your README gives
-the first sweep's per-cap medians as 127.5 / 130.5 / 118.5 / 122.5,
-non-monotonic and spanning 118.5–130.5, while the same-day control spans
-124–128.5. The new band sits inside the old one; what did not reproduce
-are the two lowest cells. Nothing here threatens the paired result — the
-disjointness above lives inside one same-day arm — but it does mean the
-control centre carries a few tokens of run-to-run play of its own, and
-that is the number a reader will hold the 9% against. One sentence
-naming it is enough.
+*How steady the control centre is.* "80 control" means fresh calls
+rather than the first sweep re-reported — worth saying in the bullet.
+The two are compatible without being identical: your README puts the
+first sweep's per-cap medians at 127.5 / 130.5 / 118.5 / 122.5,
+non-monotonic across 118.5–130.5, while the same-day control sits at
+124–128.5, inside that span but without the two lowest cells. The paired
+result is untouched — the disjointness above lives inside one arm — but
+the control centre has a few tokens of play of its own, and that is what
+a reader will hold the 9% against. One sentence naming it is enough.
 
 **Two small ones, take or leave.** 10.5281/zenodo.20363998 is deposited
-with upload_type `software`, so "the JAMES-leg dataset" may confuse
-anyone who opens it — "record" or "software archive" is exact. And the
-ten-word line — *"Substitution is free. Synthesis costs in proportion to
-what it has to invent."* — is the one sentence all three of us hold
-verbatim: it came out of the V3'.e result doc, you re-derived it
-independently on the PR #440 thread and gave it the "cost asymmetry in
-ten words" framing, and Robin locked it. It would cost one line in the
-description to keep it.
+with upload_type `software`, so "the JAMES-leg dataset" may throw anyone
+who opens it; "record" or "software archive" is exact. And the ten-word
+line — *"Substitution is free. Synthesis costs in proportion to what it
+has to invent."* — is the one sentence all three of us hold verbatim: it
+came out of the V3′.e result doc, you re-derived it independently on the
+PR #440 thread and gave it the "cost asymmetry in ten words" framing,
+and Robin locked it. One line in the description would keep it.
 
-**The stitch clause.** Taking it as the sentence each of us drops into
+**The stitch clause.** Reading it as the sentence each of us drops into
 our own forward-pointers on mint day — my README's Papers &
-Reproducibility section, Issue #448, your README — here is a version that works in all three with only
-the last clause swapped:
+Reproducibility section, Issue #448, your README — one version serves
+all three with only the last clause swapped:
 
 > This work is one leg of a three-stack convergence record —
 > substitution-vs-synthesis measured independently on a sovereign 26B
@@ -167,7 +169,7 @@ the last clause swapped:
 If you meant the connective sentence inside the deposit instead, say so
 and I'll write that one.
 
-Change those two sentences and you have my OK on the text as it stands.
+Make those two changes and you have my OK on the text as it stands.
 
 — Jiwon Seo
 Hashevolution / PROJECT JAMES
