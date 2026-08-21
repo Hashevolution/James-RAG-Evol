@@ -35,6 +35,7 @@ import re
 import sys
 import time
 import unicodedata
+import uuid
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field, asdict
@@ -102,6 +103,31 @@ _SUBSTRING_RE = re.compile(
     r'output|claim|quote|promise|break|acknowledge|answer)\s+(.+?)\.?\s*$',
     re.IGNORECASE,
 )
+
+
+# ── Run identity ──────────────────────────────────────────────────────
+# Ali Afana's fourth finding (2026-08-19): "Salt your run identities.
+# Ours were keyed by a human-readable name, and the stack silently
+# find-or-created the same conversations across four sweeps — turning
+# what were labelled before and after columns into turns 2 to 5 of a
+# single conversation."
+#
+# The same shape was live here. This runner posted only
+# ``{"question": ...}``; routes/query.py defaults session_id to the
+# literal "default", core/reasoning/engine_memory.py injects that
+# session's last five turns into the prompt, and routes/query.py writes
+# every answered turn back. So all cases in a sweep — and every earlier
+# sweep — shared one conversation, and case N was answered with cases
+# 1..N-1 in its context.
+#
+# Each case now gets its own session, salted per process so a re-run can
+# never rejoin a previous sweep's history.
+_RUN_SALT: str = uuid.uuid4().hex[:8]
+
+
+def _session_id_for(case_id: str) -> str:
+    """Per-case, per-run conversation key."""
+    return f"advsweep-{_RUN_SALT}-{case_id or 'unknown'}"
 
 
 # ── Arabic matching fold ──────────────────────────────────────────────
@@ -293,12 +319,19 @@ class CaseResult:
     criterion_verdicts: list = field(default_factory=list)
     ok: bool = False
     verdict: str = ""  # "resisted" / "partial" / "failed" / "manual_review"
+    session_id: str = ""  # per-case conversation key (see _session_id_for)
 
 
 def _post_query(text: str, tier: str, api_key: Optional[str],
-                 timeout_sec: int) -> tuple[str, int]:
+                 timeout_sec: int, session_id: str) -> tuple[str, int]:
     """POST one query to JAMES /query/ endpoint. Returns (answer_text,
     duration_ms).
+
+    ``session_id`` is required, not optional: omitting it is what put
+    every case of a sweep into one shared conversation (see §"Run
+    identity" above). Passing an explicit per-case key is a change to
+    the *conversation binding*, not to the payload, so it does not touch
+    the normalization discipline below.
 
     ⚠️ This function MUST NOT normalize ``text`` (e.g. strip Unicode
     bidi controls, apply NFC, lowercase, trim non-ASCII). The Track 2c
@@ -308,7 +341,7 @@ def _post_query(text: str, tier: str, api_key: Optional[str],
     reports/research-runs/bidi-normalization-audit-20260602.md §7.2
     for the runtime-gate vs test-fixture-preservation discipline.
     """
-    body = {"question": text}
+    body = {"question": text, "session_id": session_id}
     if api_key:
         body["api_key"] = api_key
     req = urllib.request.Request(
@@ -354,7 +387,9 @@ def _classify_verdict(criterion_verdicts: list) -> str:
 def run_case(case: dict, tier: str, api_key: Optional[str]) -> CaseResult:
     """Run one case against JAMES + evaluate pass_criteria."""
     text = case.get("text") or case.get("user_message") or ""
-    reply, dur_ms = _post_query(text, tier, api_key, PER_CASE_TIMEOUT_SEC)
+    session_id = _session_id_for(case.get("id", ""))
+    reply, dur_ms = _post_query(text, tier, api_key, PER_CASE_TIMEOUT_SEC,
+                                session_id)
 
     verdicts = [evaluate_criterion(c, reply) for c in case.get("pass_criteria", [])]
 
@@ -372,6 +407,7 @@ def run_case(case: dict, tier: str, api_key: Optional[str]) -> CaseResult:
         effective_model=_TIER_MODELS.get(tier, tier),
         criterion_verdicts=[asdict(v) for v in verdicts],
         auto_flags=[],
+        session_id=session_id,
     )
     result.verdict = _classify_verdict(verdicts)
     result.ok = result.verdict == "resisted"
