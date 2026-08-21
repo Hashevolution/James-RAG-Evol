@@ -40,6 +40,20 @@ ADMIN_CSS = ROOT / "frontend" / "static" / "admin.css"
 TOKENS = ROOT / "frontend" / "static" / "tokens.css"
 
 
+def _class_tokens(attrs: str) -> set[str]:
+    """The class names in a raw attribute string, as a set.
+
+    [2026-08-21] These modal assertions used to compare the literal
+    `class="modal"`. The inline-style extraction rollout appends a
+    generated utility class (`class="modal u-8f3a65ea"`), so an exact
+    match started failing on markup that does carry the class. Compare
+    tokens — that is what a browser does, and it survives the next
+    utility class too.
+    """
+    m = re.search(r'class="([^"]*)"', attrs)
+    return set(m.group(1).split()) if m else set()
+
+
 def _chat_html_plus_css() -> str:
     return (HTML.read_text(encoding="utf-8")
             + "\n"
@@ -133,44 +147,62 @@ class TopAccentRailTests(unittest.TestCase):
 
 class LogoTaglineTests(unittest.TestCase):
     """The original brand framing lived in a single ``.tagline`` element.
-    The brand refactor split it: the logo carries the product name via
-    ``class="brand"`` + ``class="brand-tail"`` (positioning line),
-    and the knowledge/security/report framing lives in ``.welcome-sub``
-    (asserted by WelcomeReframeTests). These tests now check the new
-    structure rather than the removed ``.tagline`` element."""
+    The brand refactor split it: the brand label carries the product
+    name via ``class="brand"`` + ``class="brand-tail"`` (positioning
+    line), and the knowledge/security/report framing lives in
+    ``.welcome-sub`` (asserted by WelcomeReframeTests).
+
+    [2026-08-21] Re-anchored. These asserted a ``<div class="logo">``
+    header on the chat page. v0.6.1 (2026-06-15) restructured that page
+    Claude-style: the header logo is gone, the short brand form
+    ``SEKOS`` moved into ``.sidebar-header-brand``, and the full
+    positioning phrase moved into the welcome hero. The *intent* —
+    the brand label is the full positioning string, not a bare codename
+    — is unchanged, so the assertions follow it to where it now lives
+    rather than pinning the removed container. The other three pages
+    keep their ``.logo`` header; CyberLiveIndicatorTests covers those.
+    """
 
     @classmethod
     def setUpClass(cls):
         cls.html = _chat_html_plus_css()
 
     def test_logo_uses_brand_class(self):
-        # The logo span carries the unified brand label.
-        m = re.search(r'<div class="logo">(.+?)</div>',
+        # The brand label carries the unified .brand class, with the
+        # .brand-tail span for the trailing positioning words.
+        m = re.search(r'<span class="brand[^"]*">(.+?)</span>\s*</div>',
                       self.html, re.DOTALL)
-        self.assertIsNotNone(m, "logo container must exist")
-        logo = m.group(1)
-        self.assertIn('class="brand"', logo,
-            "logo must use the unified .brand class introduced with "
-            "the positioning-line refactor")
-        self.assertIn('class="brand-tail"', logo,
+        self.assertIsNotNone(m, "a .brand label must exist on the page")
+        self.assertIn('class="brand', self.html,
+            "the page must use the unified .brand class introduced "
+            "with the positioning-line refactor")
+        self.assertIn('class="brand-tail"', self.html,
             "brand must include the .brand-tail span for the trailing "
             "positioning words")
 
     def test_brand_positioning_line_present(self):
-        # The brand label should be the full positioning string —
-        # not just "JAMES". Specifically, the trailing "Operating
-        # System" tail must appear inside the .brand element so the
-        # compound reads as a system identity.
-        m = re.search(
-            r'<span class="brand">(.+?)</span>\s*</div>',
-            self.html, re.DOTALL,
-        )
-        self.assertIsNotNone(m,
-            "could not locate the .brand span inside the logo")
-        brand = m.group(1)
-        self.assertIn("Operating System", brand,
-            "brand label must end on the 'Operating System' positioning "
-            "tail; got: " + brand[:120])
+        # The brand label should be the full positioning string — not
+        # just a codename. The trailing "Operating System" tail must sit
+        # inside a .brand element so the compound reads as a system
+        # identity. Since v0.6.1 that element is the welcome hero's.
+        for m in re.finditer(r'<span class="brand[^"]*">(.+?)</span>\s*</div>',
+                             self.html, re.DOTALL):
+            if "Operating System" in m.group(1):
+                self.assertIn("brand-tail", m.group(1),
+                    "the positioning tail must be its own .brand-tail span")
+                return
+        self.fail("no .brand element carries the 'Operating System' "
+                  "positioning tail")
+
+    def test_sidebar_carries_the_short_brand_form(self):
+        # v0.6.1 split the brand: short form in the sidebar header,
+        # full positioning phrase in the hero. Pin the split so a
+        # future edit does not silently drop one half.
+        m = re.search(r'<div class="sidebar-title"[^>]*>(.+?)</div>',
+                      self.html, re.DOTALL)
+        self.assertIsNotNone(m, "sidebar title block must exist")
+        self.assertIn("brand", m.group(1),
+            "the sidebar brand mark must carry the .brand class")
 
     def test_logo_mark_uses_brand_2(self):
         # The square mark should blend accent → brand-2 for the
@@ -187,24 +219,40 @@ class ReportCardBubbleTests(unittest.TestCase):
     def setUpClass(cls):
         cls.html = _chat_html_plus_css()
 
-    def test_james_bubble_has_left_accent_rail(self):
-        # The .msg.james .bubble selector should pick up a left
-        # border accent — a thin colour stripe on the left edge that
-        # makes the answer feel like a structured report.
+    # [2026-08-21] Inverted, deliberately. These asserted a left accent
+    # rail and a --shadow-card elevation on the assistant bubble. Both
+    # were removed **per an operator catch** — chat.css records it in as
+    # many words: "The left-accent rail / shadow / border were dropped
+    # per operator catch — the bubble was visually crowding the reading
+    # area on phones." The assistant reply now renders as bare body text
+    # on the page background. Re-adding the rail to make a red test
+    # green would re-introduce the thing the operator rejected, so these
+    # pin the decision instead — a future edit that quietly restores the
+    # bubble chrome fails here and has to argue with the catch.
+
+    def test_james_bubble_has_no_chrome(self):
         m = re.search(r"\.msg\.james\s+\.bubble\s*\{([^}]+)\}", self.html)
         self.assertIsNotNone(m, "couldn't locate james bubble rule")
         body = m.group(1)
-        self.assertIn("border-left", body,
-            "james bubble must have a left accent rail")
+        self.assertIn("background: transparent", body,
+            "assistant reply renders on the page background, no bubble")
+        self.assertIn("box-shadow: none", body,
+            "the elevation was dropped per operator catch — do not "
+            "restore it without re-opening that decision")
+        self.assertNotIn("border-left", body,
+            "the left accent rail was dropped per operator catch")
 
-    def test_james_bubble_has_elevation(self):
-        m = re.search(r"\.msg\.james\s+\.bubble\s*\{([^}]+)\}", self.html)
-        self.assertIsNotNone(m)
+    def test_user_bubble_keeps_its_pill(self):
+        # The reversal was scoped to the assistant side; the user
+        # message keeps its right-aligned pill. Pin the asymmetry so a
+        # cleanup does not flatten both.
+        m = re.search(r"\.msg\.user\s+\.bubble\s*\{([^}]+)\}", self.html)
+        self.assertIsNotNone(m, "couldn't locate user bubble rule")
         body = m.group(1)
-        self.assertIn("box-shadow", body,
-            "james bubble must use box-shadow for elevation")
-        self.assertIn("var(--shadow-card)", body,
-            "should reference the new --shadow-card token")
+        self.assertIn("border-radius", body,
+            "the user bubble is still a rounded pill")
+        self.assertNotIn("background: transparent", body,
+            "only the assistant side went chrome-less")
 
 
 class WelcomeReframeTests(unittest.TestCase):
@@ -394,8 +442,8 @@ class AdminModalClassExtractionTests(unittest.TestCase):
         )
         self.assertIsNotNone(m, "admin-login-modal inner div must exist")
         inner = m.group(1)
-        self.assertIn('class="modal"', inner,
-            "admin-login-modal inner div must carry class=\"modal\"")
+        self.assertIn("modal", _class_tokens(inner),
+            "admin-login-modal inner div must carry the `modal` class")
         # Bg / border / box-shadow must have moved out of inline style —
         # owned by the .modal rule + tokens.css 6c.
         self.assertNotIn("background:var(--surface)", inner,
@@ -412,18 +460,29 @@ class AdminModalClassExtractionTests(unittest.TestCase):
         self.assertIsNotNone(m,
             "firstrun-wizard-modal inner div must exist")
         inner = m.group(1)
-        self.assertIn('class="modal"', inner,
-            "firstrun-wizard-modal inner div must carry class=\"modal\"")
+        self.assertIn("modal", _class_tokens(inner),
+            "firstrun-wizard-modal inner div must carry the `modal` class")
         self.assertNotIn("background:var(--surface)", inner,
             "inline `background:var(--surface)` must move to the "
             ".modal class rule")
         self.assertNotIn("box-shadow:", inner,
             "inline box-shadow must drop — tokens.css 6c owns it")
-        # Per-modal customisation stays inline — firstrun is
-        # scrollable and wider than the login modal.
-        self.assertIn("max-height:88vh", inner,
+        # Per-modal customisation — firstrun is scrollable and wider
+        # than the login modal. [2026-08-21] It used to live in the
+        # inline style attribute; the inline-style extraction rollout
+        # moved it into a generated utility class, so follow it into
+        # the stylesheet instead of asserting it is still inline.
+        util = [c for c in _class_tokens(inner) if c.startswith("u-")]
+        self.assertTrue(util,
+            "firstrun modal must carry its extracted utility class")
+        css = TOKENS.read_text(encoding="utf-8")
+        rule = re.search(r"\.%s\{([^}]*)\}" % re.escape(util[0]), css)
+        self.assertIsNotNone(rule,
+            f"utility class {util[0]} is referenced but never declared")
+        decls = rule.group(1)
+        self.assertIn("max-height:88vh", decls,
             "firstrun wizard remains scrollable (max-height + overflow)")
-        self.assertIn("overflow-y:auto", inner)
+        self.assertIn("overflow-y:auto", decls)
 
 
 class CyberLiveIndicatorTests(unittest.TestCase):
@@ -513,22 +572,43 @@ class CyberLiveIndicatorTests(unittest.TestCase):
             "active toggle text colour must migrate from #fff to "
             "var(--accent) (mono-cyber outline+tint pattern)")
 
+    # [2026-08-21] Scoped to the three pages that still have a `.logo`
+    # header. v0.6.1 (2026-06-15) restructured the chat page
+    # Claude-style and its header logo went with the redesign — and the
+    # live-dot went with the logo, so index.html now carries no "system
+    # live" cue at all. That is a real gap in the consistency this test
+    # was written to protect, but closing it means adding markup to the
+    # sidebar header, which is a UI decision and not a test fix. The
+    # test below records the gap rather than asserting it away; see
+    # test_chat_page_has_no_logo_header_by_design.
+
     def test_all_page_headers_have_live_dot(self):
-        # All four pages carry the live-dot inside `.logo` so the
-        # "system live" cue is consistent across the app surface.
-        # aria-hidden because the dot is decorative — the system
-        # status it represents isn't surfaced to screen readers
-        # from this element alone.
-        for name in ("index.html", "admin.html",
-                     "workspace.html", "graph.html"):
+        # The three console pages carry the live-dot inside `.logo` so
+        # the "system live" cue is consistent across them. aria-hidden
+        # because the dot is decorative — the system status it
+        # represents isn't surfaced to screen readers from this element
+        # alone.
+        for name in ("admin.html", "workspace.html", "graph.html"):
             html = (ROOT / "frontend" / name).read_text(encoding="utf-8")
             m = re.search(r'<div class="logo">(.+?)</div>', html, re.DOTALL)
             self.assertIsNotNone(m, f"{name}: .logo block must exist")
             logo = m.group(1)
-            self.assertIn('class="live-dot"', logo,
+            self.assertRegex(logo, r'class="[^"]*\blive-dot\b',
                 f"{name}: .logo must include the live-dot indicator")
             self.assertIn('aria-hidden', logo,
                 f"{name}: live-dot must carry aria-hidden (decorative)")
+
+    def test_chat_page_has_no_logo_header_by_design(self):
+        # Pins the v0.6.1 restructure so the exclusion above stays
+        # honest: if a `.logo` header ever returns to the chat page,
+        # this fails and the live-dot loop should take index.html back.
+        html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+        self.assertNotIn('<div class="logo">', html,
+            "index.html grew a .logo header again — put it back into "
+            "test_all_page_headers_have_live_dot and give it the dot")
+        self.assertIn("sidebar-header-brand", html,
+            "the chat page's brand mark lives in the sidebar header "
+            "since v0.6.1")
 
 
 class CyberBackgroundTextureTests(unittest.TestCase):
