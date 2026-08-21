@@ -1,4 +1,4 @@
-# JAMES — Session Briefing for Claude Code
+# SEKOS / JAMES — Session Briefing for Claude Code
 
 > Read this first. This file orients any new Claude Code session to
 > the project's current direction in under 60 seconds.
@@ -10,86 +10,50 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 ## Where we are right now
 
-- **Current version**: **v0.4.3 closed** (2026-06-10, DOI
-  `10.5281/zenodo.20625533`) — RAB v0.1.1 (Replayable-Audit Benchmark
-  for RAG / agent systems; 3 deterministic metrics AC/RF/PC mapped to
-  EU AI Act Art. 10/12/19 in force 2026-08-02) + Cycle γ multi-hop arc
-  closure (multi-hop improvement reframed out of the JAMES roadmap;
-  graph build O(N²) finding lifted into RAB as the RF-cost axis).
-  v0.4.2 (T5 Replayable Audit Graph, 2026-06-06) shipped the
-  `reconstruct_graph_at(t)` primitive that RAB measures the quality
-  of. v0.4.1 (2026-05-28, DOI `10.5281/zenodo.20426719`) closed T6
-  Causality Chain + T2.D ingestion + QVT α track. v0.2.0 / v0.3.0
-  fully closed; v0.4.0 (Layer 4 Lifecycle: T1+T7+T2 first bundle)
-  shipped 2026-05-27.
-- **Active theme**: **Direction α — hybrid cloud reasoning tier**
-  (entered 2026-06-03). The α-measurement cycle (α-6/7/8) is closed and
-  the **forced discovery hunt has ended** (see memory
-  `feedback_alpha_cycle_discovery_loop_end`); emergent CASCADE-class
-  findings are still pursued, but we no longer mine measurement cycles
-  for breakthroughs.
-  - **α-8 closed** = ⭐ operational only (n=3 paired collapsed n=1's
-    apparent ⭐⭐); typed filter default ON, no regression. Did NOT
-    move the graded-answer ceiling.
-  - **Track 2c closed** (JAMES side): Phase 6 α-8 retest = poison_01
-    promotion failed (typed filter doesn't generalize to catalog
-    poisoning); Ali validation reply **sent 2026-06-03** (cross-stack
-    comparison); next Ali action = mid-June 3-author joint-piece.
-  - **Direction α landed (2026-06-03)**: design memo
-    `docs/design/v0.4-direction-alpha-hybrid-cloud-tier.md`;
-    abstraction-layer PoC + real-Claude e2e loop
-    (`scripts/research/abstraction_*`); **§5.7.12 Cloud Egress Trust
-    Zone** merged (PR #695) = rule #4 gate now OPEN for cloud code.
-  - **Premise re-examination**: a reasoning-isolated local-vs-cloud
-    measurement (full gold evidence + blinded judge) gave local
-    gemma3:4b 9/9 = Claude 9/9 → the "local reasoning ceiling" that
-    motivates the cloud tier is **unproven** (likely a retrieval +
-    metric artifact). Cloud-tier value must be *proven* alongside the
-    build, not assumed. See memory
-    `project_direction_alpha_local_vs_cloud_quality_thread`.
-  - **Cloud-tier build S0–S5 closed (2026-06-03 evening, 6 PRs)**:
-    §5.7.13 abstraction module trust contract (#698) + `core/abstraction/`
-    production module (#699, 4-file split, 34 tests) +
-    `run_cloud_egress` orchestrator with runner-side keep_local refusal
-    (#700, 16 tests) + `local_vs_cloud_paired.py` measurement harness
-    (#701, paired n=3 + 6-key caveat block + 17 smoke tests) +
-    `JAMES_FORCE_CLOUD` synth wire at `trace_synth_call` (#702, 4-branch
-    decision tree + 9 tests, byte-identical OFF). Live wire works:
-    `JAMES_ENABLE_CLAUDE_BACKEND=1 + JAMES_FORCE_CLOUD=1 +
-    JAMES_BACKEND_SYNTH=claude_code_cli` → every synth call routes
-    through abstraction + real Claude. (1)-(5) of the prior "Next" queue
-    all closed except (4) UI picker — deferred to S5b (env-flag pattern
-    sufficient until measurement gates the UX investment). See memory
-    `project_direction_alpha_cloud_tier_build_state`. Cloud = Max-plan
-    headless `claude -p` for research; production needs Anthropic API
-    key (`feedback_direction_alpha_max_plan_research_cloud`).
-  - **Direction α 2026-06-04 cycle closure — premise 측정상 미입증.**
-    α-8 cloud tier extension (Stage 1-5 closed, 4 PRs #705/#706/#707
-    + cell measurements) 결과: 3 측정 모두 cloud reasoning ceiling
-    신호 없음 — (1) v2 reasoning-isolated 9/9=9/9 차이 0, (2) Stage 4
-    Run 1 fair evidence-grounded Δ -0.037 (magnitude tiny), (3)
-    Stage 4b cloud raw invalid (Claude 학습-지식 leak, multihop=2023
-    뉴스). 결과 보고서: `reports/research-runs/alpha-8-cloud-tier-
-    extension-20260604.md`. **결정**: cloud-tier 인프라 (S0-S5c +
-    Stage 1-2, 10 PR) **보존** (라이브 wire 검증됨, 미래 다른 cloud
-    LLM / leak-controlled fixture / 한국어 fixture에서 재활용),
-    **S6/S7 무기한 보류** (cloud 가치 자체 미입증), **다음 cycle =
-    mother platform 강화 / v0.5 도메인 pilot redirection**. 이번
-    cycle 5건 사용자 catch가 박은 measurement-side 룰 (`feedback_
-    methodological_chain_before_plan` + `feedback_fixture_fitness_
-    before_verdict` + `feedback_evidence_grounded_validity_check`)은
-    다음 cycle 진입 시 의무 reading.
-  Domain pilot (v0.5) still gated. α-7 closed REJECT (PR #680, 10th
-  wrong-fix-averted); α-6 closed 2026-06-01.
-- **Strategic frame**: We are still building a **mother platform**;
-  v1.0 vertical domain branching remains the only authorised
-  specialisation point. The 2026-06-01 strategic discussion narrowed
-  the v0.5 first-domain candidate to **enterprise internal knowledge
-  ontology** (horizontal, audit/ownership/correction moat) — see
-  the 2026-06-01 strategy handover; the framing applies to v0.5 domain
-  *selection criteria*, not to v0.4 cycle scope.
-  See `docs/PLATFORM_READINESS.md` for the 6-dimension readiness
-  framework and the v0.2 → v0.3 → v0.4 → v1.0 gate definitions.
+> **단일 진실원 (single source of truth)**:
+> **`docs/handovers/v0.6.2-restart-roadmap-2026-08-21.md`**.
+> 아래는 그 요약입니다. 충돌하면 로드맵 문서가 우선입니다.
+
+- **최신 공식 릴리스**: **v0.4.4** — DOI `10.5281/zenodo.20652679`.
+  v0.5 는 `main` 에서 **closed (2026-06-13)** 이지만 DOI 미발행.
+- **사이클 상태**: **v0.5 closed / v0.6 정식 미진입.** v0.5 → v0.6 게이트
+  = **Dim F** (외부 고객 6 개월 이상 파일럿) **미통과**. 2-fork 계약이
+  유효 — **Fork A** LOI 체결 → Track D 버티컬 팩 / **Fork B** 6 개월
+  무LOI → 전략 재평가. 판정 시점 ≈ **2026-12-13**. 둘 다 **operator 결정**이며,
+  결정 전에도 아래 Phase 1–5 는 전부 진행 가능합니다.
+- **실제로 진행된 것**: v0.6 / v0.6.1 **제품 하드닝 스트림** — PR
+  **#886–#1078** (약 190 PR, 2026-06-13 → 2026-06-26, **릴리스 태그 없음**).
+  주요 산출물: 운영 하드닝 P1–P4 (신뢰 프록시 / HTTPS 가이드 / 테넌트
+  미들웨어 / 온보딩·롤백·추론 시각화·용어집) · **템플릿(양식) 엔진** ·
+  **에이전트 트랙** (`core/agent_tools` + tool-use 루프 + `run_shell`
+  기본 OFF) · LLM 라우팅 통합 + 모드별 측정 라우팅 · 채팅 UX 전면 개편 ·
+  UI 8→5 페이지 통합 + **비주얼 회귀 하네스** · CSP 인라인 스타일 이관 ·
+  이미지-OCR/비전 체인 수리 · heartbeat 스트리밍 · detailed 답변 스타일.
+- **🔴 lifecycle live-consistency arc (#1018–#1027, #1033–#1034)**:
+  프로브(#1020)가 **라이브 그래프 탐색이 lifecycle status 를 무시**함을
+  측정으로 증명 (캐스케이드가 라이브 계층에서 사실상 무효였음) →
+  `relation_is_live()` 게이트를 탐색 / 그래프 스코어 / T1 유효 윈도우 /
+  3D 스냅샷 전 표면에 적용, 시간여행 경로 격리 검증, 백로그 재측정으로
+  회귀 없음 확인 (#1028–#1032). 이것이 `core/graph` traversal **0-라인
+  streak 의 유일한, 측정 근거로 승인된 예외**입니다. 이전 핸드오버의
+  "0 라인 streak 유지" 문장을 그대로 복사하지 마세요.
+- **🔴 P0 — `main` CI 가 빨간불입니다**: `.github/workflows/test.yml`
+  (pytest) 이 **확인된 최근 60 회 실행 전부 `failure`** (2026-06-22 →
+  2026-08-19, 최신 커밋 #1078 포함). 로컬 재현 = 3,694 tests 중
+  **60 failures** (같은 실행의 errors 는 의존성 미설치 환경 탓).
+  대부분은 UI 재작업을 못 따라간 계약 테스트이지만,
+  **`core/response_style.py` (22,036 B) + `core/reasoning/engine.py`
+  (21,464 B) 는 rule #5 (20 KB) 실질 위반**입니다.
+  → **재개 첫 작업 = 로드맵 Phase 2 (CI 그린 복구). 그 전에 새 기능 금지.**
+- **유휴 구간**: 마지막 기능 세션 **2026-06-26**, 마지막 커밋
+  **2026-08-19** (문서/CI 정리) → 약 **2 개월** 정지 후 재개하는 상황.
+- **전략 프레임**: 여전히 **mother platform**. v1.0 이전 버티컬 분화 금지
+  (rule #1). v0.5 후보 도메인 = enterprise internal knowledge ontology
+  (horizontal) — 이는 *선택 기준*이지 구현 승인이 아닙니다.
+- **브랜드 규약**: **SEKOS** = 제품 브랜드 (UI / 대외 / 마케팅),
+  **JAMES** = 엔진 코드명 (소스, `JAMES_*` env, `--sut james`, RAB/LRB,
+  Zenodo DOI). PR #934 에서 확정 — 재현성 때문에 코드/논문 쪽은 JAMES 유지.
+
 
 ## Critical rules for this session
 
@@ -163,12 +127,30 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 5. **Module size gate**: no file in `core/` exceeds 20 KB. If your
    change pushes a file over, split first.
+   ⚠️ **현재 2 건 위반 중** (2026-08-21): `core/response_style.py`
+   22,036 B / `core/reasoning/engine.py` 21,464 B. `tests/
+   test_v06_module_size_gate.py` 가 빨간불이며 grandfather 목록은
+   비어 있습니다 — 로드맵 Phase 2 의 첫 항목입니다.
+
+6. **상태는 한 곳에만 쓴다 (state single-source)** — NEW 2026-08-21.
+   사이클 상태의 원본은 `docs/handovers/` 의 **최신 문서 하나**이고,
+   루트 문서 (`CLAUDE.md` / `SUMMARY.md` / `README*.md` / `ROADMAP.md` /
+   `CHANGELOG.md` / `HANDOVER.md`) 는 **거기를 가리키기만** 합니다.
+   상태 문장을 복제하면 다음 유휴 구간에 다시 갈라집니다 — 2026-06~08
+   의 문서 최신성 편차가 정확히 그 실패였습니다.
+   가드: `tests/test_v06_claude_md_entry_pointer.py` 가 "Where to look
+   next" 첫 행이 **가장 최신 핸드오버**를 가리키는지 검사합니다.
 
 ## Where to look next
 
 | Purpose | File |
 |---|---|
-| **🟢🟢🟢 NEXT SESSION ENTRY (read this first — 2026-06-13 v0.6 entry skeleton)** | **`docs/handovers/v0.6-entry-skeleton-2026-06-13.md`** (v0.5 closed + Dim F gate 미통과 = "v0.5 closed, v0.6 not yet entered" state. v0.5 close §5 작업 큐 실질 소진: 20 LANDED + 4 LOI-blocked (Track D / G8.d / F.2 CR.e) + 6 operator-pending (Track E) + 2 prerequisite-gated. v0.5 마감 후 23 PR 추가 (#863-#885) — F.1 Time-Travel Dashboard quartet 완성 (TT.a-d) + G1/G2 SaaS-readiness trio + SDK trio + Track C CSP nonce + graph-RAG Step 1 결과 + Step 2 scaffold. 2-fork v0.6 entry contract: Fork A LOI signed → Track D + G8.d 진입 / Fork B 6 개월 내 no-LOI → reassess. 둘 다 operator 결정. 다음 세션 mechanical entry checklist (§7): Fork A → v0.6-entry-<date>.md + Track D / Fork B → v0.6-reassess-<date>.md + 새 방향 / 미해결 → 이 스켈레톤 + NEW solo-doable items (§5). Rule #1 4-layer 보호 contract 그대로. core/retrieval+graph traversal+reasoning 0 라인 변경 streak 유지.) |
+| **🟢🟢🟢 NEXT SESSION ENTRY (이것부터 읽으세요 — 2026-08-21 재개 로드맵)** | **`docs/handovers/v0.6.2-restart-roadmap-2026-08-21.md`** (약 2 개월 유휴 후 재개용 **단일 진실원**. §1 현재 상태 사실 확인 (main HEAD / 유휴 구간 / **🔴 CI 60 회 연속 실패** / rule #5 2 건 위반 / 문서 최신성 편차 표) + §2 **Phase 1–7 재개 로드맵** (1 문서 동기화 ✅ → 2 CI 그린 복구 → 3 유휴 부채 청산 → 4 v0.6.1 정식 마감 → 5 측정 백로그 → 6 Fork A/B 전략 결정 (operator) → 7 v0.6 진입) + §3 #886–#1078 실제 진행 요약 + §5 재개 첫 세션 30 분 체크리스트 + §6 하지 말 것. **Phase 2 전에는 새 기능 PR 금지.**) |
+| **🟢🟢 직전 기능 세션 close (2026-06-26, PR #1062–#1075)** | `docs/handovers/v0.6.1-session-close-2026-06-26.md` (CSP `style-src` HTML 이관 596 attrs + 모바일 업로드 UX + **이미지 인제스트 4 단 병목 수리** (비전 모델 라우팅 / 이진화 제거 / EasyOCR fallback / qwen2.5vl:7b / num_ctx 8192) + `/query/`·`/upload/` heartbeat 스트리밍 + detailed 답변 스타일. §4 operator open 2 건 (모바일 긴 질의 드롭 / detailed dogfood), §5 deferred, §3 서버 background 실행 금지 교훈.) |
+| **🟢🟢 v0.6.1 세션 close (2026-06-23, PR #992–#1037)** | `docs/handovers/v0.6.1-session-close-2026-06-23.md` (UI 8→5 페이지 통합 / de-emoji / 인트로 프론트도어 / 그래프 허브 / trace 링크 루프 / entity-edit cascade Phase 1-3 / **lifecycle live-consistency arc** / 비주얼 회귀 하네스 / 백로그 재측정.) |
+| **🟢🟢 lifecycle live-consistency arc (측정 근거)** | `docs/handovers/v0.6.1-measurement-fix-loop-2026-06-22.md` + `reports/research-runs/lifecycle-live-consistency-arc-20260622.md` (프로브 #1020 = 라이브 탐색이 lifecycle status 를 무시 → `relation_is_live()` 게이트. `core/graph` traversal streak 의 **유일한 승인된 예외** — kill-switch `JAMES_DISABLE_STATUS_FILTER`.) |
+| **🟢🟢 v0.6 템플릿(양식) 엔진 close (2026-06-13)** | `docs/handovers/v0.6-template-engine-close-2026-06-13.md` (도메인 무관 양식 포맷팅 엔진 PR #909 + `core/templating/` + `routes/templating.py` + 워크스페이스 탭 / 챗 모달. rule #1 준수 = JAMES 는 템플릿을 하나도 동봉하지 않음.) |
+| **🟢🟢 v0.6 2-fork 진입 계약 (2026-06-13)** | **`docs/handovers/v0.6-entry-skeleton-2026-06-13.md`** (v0.5 closed + Dim F gate 미통과 = "v0.5 closed, v0.6 not yet entered" state. v0.5 close §5 작업 큐 실질 소진: 20 LANDED + 4 LOI-blocked (Track D / G8.d / F.2 CR.e) + 6 operator-pending (Track E) + 2 prerequisite-gated. v0.5 마감 후 23 PR 추가 (#863-#885) — F.1 Time-Travel Dashboard quartet 완성 (TT.a-d) + G1/G2 SaaS-readiness trio + SDK trio + Track C CSP nonce + graph-RAG Step 1 결과 + Step 2 scaffold. 2-fork v0.6 entry contract: Fork A LOI signed → Track D + G8.d 진입 / Fork B 6 개월 내 no-LOI → reassess. 둘 다 operator 결정. 다음 세션 mechanical entry checklist (§7): Fork A → v0.6-entry-<date>.md + Track D / Fork B → v0.6-reassess-<date>.md + 새 방향 / 미해결 → 이 스켈레톤 + NEW solo-doable items (§5). Rule #1 4-layer 보호 contract 그대로. core/retrieval+graph traversal+reasoning 0 라인 변경 streak 유지.) |
 | **🟢🟢 직전 v0.5 close handover** | **`docs/handovers/v0.5-close-2026-06-12.md`** (v0.5 cycle close handover — 21 PR (#841-#861) 마감 정리 + 2026-06-12 PM 전략 review 반영 (Track B SDK.a-c + Track F mother-level UI 정식 편입). B.5 series 4 + B.1 audit + 4 gap 구현 5 + B.2/B.3 design memo 2 + UI improvement 6 + 평가 외부 노출 1 + server-side hardening 3. 측정 0, vertical 토큰 0, `core/retrieval`+`core/graph` traversal+`core/reasoning` 0 라인 변경. B.1 8 gap 결과: 4 LANDED + 2 primitive LANDED (G1.a/G2.a) + 2 contract-locked + 1 v1.0-deferred (G6). Solo-doable mother-platform 스코프 **달성 완료**. **v0.5 → v0.6 gate = Dim F**, **아직 미통과** (LOI 또는 reassess 결정 필요). v0.6 entry 시 작업 큐: Track A (G1.b/c+G2.b/c) / Track B (G8.a-c mount + **SDK.a-c CLI/PLUGIN_AUTHORING/PyPI**) / Track C (CSP nonce) / Track D (Dim F, **LOI 필수**) / Track E (operator-pending) / **Track F (NEW)** (F.1 Time-Travel Dashboard TT.a-d + F.2 Change Review Workspace CR.a-d, mother-level UI). Rule #1 4-layer 보호 (code capability gate + doc Out-of-scope + naming domain-agnostic + LOI-gated trigger tagging). Track A/B/C/F 는 solo / LOI 무관. **참고: 위의 entry skeleton 이 close 이후 #863-#885 진행 + 작업 큐 status sweep + 2-fork entry contract 를 종합**.) |
 | **🟢🟢 직전 v0.5 entry doc** | `docs/handovers/v0.5-entry-2026-06-12.md` (v0.4.4 closed → v0.5 entry 선언. Stream A/B/C/D scope. 3 new rules. 위의 close doc 가 cycle 결과를 종합) |
 | **🟢🟢 직전 entry (2026-06-12 PM, 9 PR v0.4.4 closure)** | `docs/handovers/v0.4-next-session-entry-2026-06-12-pm.md` (사용자 직접 명령 cycle: D-alce + D-2wiki research-tier infra (cycle γ 4/4 promise closure) + S3 publication-scale generator + 4-point scale ladder measurement (R@1 V<N<J PRESERVED S2→S3 1000, 12.5×) + **자기 catch self-correction** (PR #824 의 ±0.05 magnitude claim → broken-category artifact → PR #825 retract → ⭐⭐⭐ pattern + ⭐⭐ magnitude honest framing) + preprint §4.6+§5+§6.1+§7.4 통합 + v0.2.3b cross-model runner ready (operator action). 솔로 가능 모두 마감.) |
@@ -236,15 +218,26 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 - Bypass `PolicyEngine` for a "quick fix"
 - Disable the human approval gate on self-evolution
 - Enable auto-merge on PRs touching trust boundaries (auth, policy, sandbox)
-- Promise plugin API stability before v0.3 lands
+- Promise plugin API stability before v1.0 (the SDK ships with a SemVer +
+  12-month deprecation policy — `docs/SDK_VERSIONING.md` — but the API
+  freeze itself is a v1.0 gate)
+- **Ship a new feature while `main` CI is red** — 로드맵 Phase 2 가 먼저
+- **Delete / skip / xfail a failing test to make CI green** — 각 실패는
+  "제품 회귀"인지 "테스트 낡음"인지 판정해 기록해야 합니다
+- **Launch the dev server with `run_in_background`** — 이전 세션에서 고아
+  프로세스가 `:8000` 을 중복 바인딩해 operator 의 요청을 가로챘습니다.
+  테스트는 operator 가 띄운 서버에 curl 로 붙거나 단발 foreground 실행으로
+- **Wrap an LLM measurement run in `nohup` or your own `timeout`** —
+  detach 되면 완료 통지가 오지 않고, timeout 은 실행을 EXIT 124 로 죽입니다
+- **Declare "v0.6 entry"** — Fork A/B 는 operator 의 전략 결정입니다
 
 ## Operational conventions (PR / commit / branch)
 
-- Branch naming: current convention is `feat/v0.4-<topic>` / `fix/v0.4-<topic>` /
-  `docs/v0.4-<topic>` / `chore/v0.4-<topic>`. (Use `feat/v0.5-<topic>` only
-  after v0.4.x cycle closure — currently still in α-6/α-7/α-8 measurement
-  phase. Older v0.2 / v0.3 branch prefixes are retained in history but not
-  used for new work.)
+- Branch naming: current convention is `feat/v0.6.2-<topic>` /
+  `fix/v0.6.2-<topic>` / `docs/v0.6.2-<topic>` / `chore/v0.6.2-<topic>`
+  (재개 사이클). v0.6.1 접두사는 2026-06-26 까지의 작업에 쓰였고, 그 이전
+  v0.2 / v0.3 / v0.4 / v0.5 접두사는 히스토리에만 남습니다. `feat/v0.6-<topic>`
+  은 **Fork 결정 후 v0.6 정식 진입 시점부터** 사용하세요.
 - Commit messages: conventional commits (`fix:`, `feat:`, `refactor:`,
   `chore:`, `docs:`, `test:`)
 - PR body: include `## Summary`, `## Verification`, `## Out of scope`
@@ -257,8 +250,41 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 ## 한국어 요약
 
-자메스는 **v1.0까지 "범용 모체"로만** 강화합니다. 도메인 분화(법률·식품·유통·여행 등)는 v1.0 이후에만 시작합니다. 이 세션에서 도메인 코드를 추가하지 마세요.
+자메스는 **v1.0 까지 "범용 모체(mother platform)"로만** 강화합니다.
+도메인 분화(법률·식품·유통·여행·금융)는 v1.0 이후, 또는 Fork A (고객 LOI)
+확정 이후에만 시작합니다. 이 세션에서 도메인 코드를 추가하지 마세요.
 
-**현재 위치 (2026-06-08, BIG 세션 + Phase D + 6 user catches)**: **Cycle γ Phase A+B+C+D 완료. Phase D 정직 framing 정정 — single-axis ablation evidence ≠ structural defect**. Phase A 10 PRs + Phase B 3 PRs + Option A wiring 1 PR + handovers 2 PRs + Phase C handover 1 PR + positioning doc 1 PR = 17 PRs + 사용자 scope catch + 정정 PR + Robin DOI 답장. 200 LLM 측정 (4 모델 × 50 query × 2 modes) 자체 valid. **핵심 measurement**: mxtral JAMES abstention set = llama JAMES set EXACTLY {3,9,14,15,17,18} on RGB-en. **그러나 prior art 가 이미 cover**: Schapire 1990 boosting / RAG "cheat-sheet effect" / AbstentionBench (facebookresearch 2025) 20 dataset 35k query / HALT-RAG 2025 F1 0.9786 / KD capacity gap. JAMES contribution = empirical reproducibility + per-query overlap method, mechanism discovery 아님. **★사용자 5번째 catch (BIG)**: cycle γ Phase B+C 를 mid-June joint piece evidence 로 framing 한 게 위반. **Joint piece = 별도 4주+ 협업 arc** (Topic "Two operating modes, one model" / 3-axis: mode split (Robin) + workload gradient (JAMES Direction 1 7-tier closure PR #461/#463, DOI 10.5281/zenodo.20363998 — V3'.e PR #440 은 3단계 선행 결과이지 7-tier 가 아님) + model-scale (Robin) / 4-way contributors Robin/Ali/Vadym/Jiwon / headline "Substitution is free. Synthesis costs in proportion..."). Cycle γ RGB-en abstention 작업 모두 joint piece scope 밖. 새 룰 박힘 `feedback_eval_cycle_vs_collab_arc_separation` (4-질문 점검: vehicle/publication/scope/framing-link). 사용자 **9건 catch** (8 framing narrow + 1 framing expand) + **Phase E-min direct validation**. Phase E-min mxtral 측정 결과: rerank/typed_filter/cognitive_stages 3 component 양 axis Pareto net positive when disabled (cognitive_stages noise +0.16 가장 강함). Phase D speculative finding = mxtral 위에서 fundamental defect 확정. 9th catch ("multi-axis 측정 의무, lock-in X") 가 정확히 catch 한 over-conservative 위험 회피한 첫 evidence. ⭐⭐ candidate pending cross-model (gemma4 + llama). 다음 세션 자연 entry = cross-model Phase E-min ~2시간 → 3/3 일관 시 cycle β default revision PR.
+**현재 위치 (2026-08-21 기준)**
 
-사용자 **9건 catch** (이전):: post-hoc fit / 0.000 진위 / family vs size / prior art / cycle ↔ collab arc 분리 / 단일 axis ablation → defect framing 위반 (Phase D) / Path D positioning = JAMES ≠ HALT-RAG specialty verifier / D2 V2 softener bilingual regression = JAMES ≠ Korean-only / **JAMES identity = measurement-driven discovery (9번째 = framing equilibrium 정정, 1-8 의 mirror correction)**. 9번째 = "사이클 베타 이후를 정체성으로 삼는것이 맞는가?" — JAMES 정체성 = ongoing measurement-driven discovery, cycle β code = '지금까지의 발견' snapshot. Phase D speculative finding multi-axis 측정 = 의무 (별도 cycle 미루기 X). Path D / cycle β / mother platform 모두 measurement evidence conditional. 8번째 = D2 V2 측정 (mxtral n=25 negrej, BILINGUAL=1) F1 -0.111 regression + "Korean-only 정당" framing 사용자 catch. PR #746 negative evidence 박힘 (default OFF byte-identical). 다음 path = D1 retrieval pivot (Phase D 가 보여준 5/6 lever). 7번째 = Path A/B/C 모두 reject = abst_f1 단일 axis HALT-RAG 0.978 매칭 시도 거부. JAMES = full-RAG + replayable audit 카테고리, HALT-RAG = post-hoc verification specialty 카테고리, axis-by-axis 비교 카테고리-aware 하지 않음. 새 룰 `feedback_path_d_james_not_specialty_verifier` 박힘 — 미래 세션이 "JAMES 부족" framing 시작하면 reject template 사용. Phase D 진짜 valid finding 좁음: softener -0.054 (1 query design-intent contribution) + retrieval -0.173 (dominant grounding) + graph/verify zero-op expected. Speculative +0.050 abst_f1 lifts (rerank/typed_filter/cog_stages) 는 primary axis 측정 안 됨 → α-5 wrong-fix #7 패턴 위반. 새 룰 `feedback_single_axis_ablation_misframing` 박힘. Robin DOI 10.5281/zenodo.20570701 답장 완료, Joint piece track 별도 진행 (M9 prep + M6 Vadym Phase 1 piggyback + Ali 6/7+ resume rendezvous). Phase B 라이브 smoke 3회 catch (JSONL / 4000자 cap / RGB negrej scope). Path 1: cycle β ✅ → v0.4.2 T5 ✅ → **cycle γ Phase A+B+C ✅ + prior-art positioning ✅ + scope correction ✅** → 다음 자연 단계 = (A) M9 joint piece prep (별도 collab arc, internal prep solo ok, publish 보류) OR (B) cycle γ Phase D mechanistic ablation (Path B novel mechanism 탐색 — solo internal arc) OR (C) Phase B Option B cross-bench → v0.5 진입. PR convention 위반 1건 (chore main 직접 push, commit `ff74243`) 기록. v0.5 도메인 여전히 gated. 자세한 내용 = `docs/research/cycle-gamma-prior-art-positioning.md` (정정된 §5 = JAMES-internal 명확화) + `docs/handovers/v0.4-cycle-gamma-phase-c-4model-true-signal-2026-06-08.md` (raw 4-model data + §1 scope warning) + memory `project_cycle_gamma_phase_b_rgb_baseline` + `feedback_eval_cycle_vs_collab_arc_separation` (새 룰). Joint piece 진행은 `docs/handovers/v0.4.x-session-2026-05-29-collaboration-checkpoint.md` (collab arc single source of truth) 참조.
+- **v0.5 closed (2026-06-13), v0.6 정식 미진입.** 게이트 = Dim F (외부 고객
+  6 개월 파일럿) 미통과. 2-fork 계약 (Fork A LOI / Fork B 6 개월 무LOI
+  재평가) 판정 시점 ≈ 2026-12-13. **operator 결정 사항**.
+- **최신 공식 릴리스 = v0.4.4** (DOI `10.5281/zenodo.20652679`).
+  v0.5 / v0.6 / v0.6.1 은 `main` 에만 존재, 태그·DOI 없음.
+- **v0.6 / v0.6.1 제품 하드닝 스트림** (#886–#1078, 약 190 PR) 이
+  2026-06-13 → 06-26 에 진행. 운영 하드닝 · 양식 엔진 · 에이전트 트랙 ·
+  LLM 라우팅 통합 · 채팅 UX 개편 · UI 8→5 통합 · CSP 이관 · 이미지 OCR/비전
+  수리 · heartbeat 스트리밍.
+- **🔴 재개 시 첫 작업 = CI 그린 복구.** `test.yml` 이 2026-06-22 이후
+  확인된 60 회 실행 전부 실패. 로컬 3,694 tests 중 60 failures (대부분
+  UI 계약 테스트 낡음) + **rule #5 실질 위반 2 건**
+  (`core/response_style.py`, `core/reasoning/engine.py`).
+  **초록을 만들려고 테스트를 지우거나 skip 하지 마세요** — 각 실패마다
+  "제품이 틀렸나 / 테스트가 낡았나"를 판정해 기록합니다.
+- **약 2 개월 유휴** (마지막 기능 세션 2026-06-26 → 마지막 커밋 2026-08-19).
+- **단계별 재개 계획 = `docs/handovers/v0.6.2-restart-roadmap-2026-08-21.md`
+  §2 (Phase 1–7).** Phase 1(문서 동기화)은 완료, Phase 2(CI 그린)가 다음.
+
+**과거 사이클의 방법론 규율은 그대로 유효합니다** — 사용자의 9 건 catch
+(post-hoc fit / 0.000 진위 / family vs size / prior art / cycle ↔ collab arc
+분리 / 단일 axis ablation → defect framing 금지 / Path D positioning /
+D2 V2 bilingual regression / JAMES 정체성 = measurement-driven discovery)
+와 그로부터 박힌 measurement-side 룰
+(`feedback_methodological_chain_before_plan` /
+`feedback_fixture_fitness_before_verdict` /
+`feedback_evidence_grounded_validity_check` /
+`feedback_finding_size_honest_framing` /
+`feedback_single_axis_ablation_misframing` /
+`feedback_eval_cycle_vs_collab_arc_separation`) 는 다음 측정 사이클
+(로드맵 Phase 5) 진입 시 의무 reading 입니다. 자세한 서술은
+`memory/` 와 v0.4 cycle γ 핸드오버들에 보존돼 있습니다.

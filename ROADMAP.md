@@ -1253,6 +1253,79 @@ Until one resolves, mother-platform hardening continues; vertical content stays 
 
 ---
 
+## v0.6.x — Product hardening + restart (2026-06-13 → 2026-06-26, resumed 2026-08-21)
+
+**Status**: on `main`, **unreleased** (no tag, no DOI). This is not a
+formal cycle — the v0.5 → v0.6 gate (Dim F) is still open, so the work
+below is mother-platform product hardening carried out *inside* the
+"v0.5 closed, v0.6 not yet entered" interval.
+
+**Canonical state doc**:
+[`docs/handovers/v0.6.2-restart-roadmap-2026-08-21.md`](handovers/v0.6.2-restart-roadmap-2026-08-21.md)
+— read it before this section; per CLAUDE.md rule #6 it wins on any
+disagreement.
+
+### What landed (PRs #886 – #1078, ~190 PRs)
+
+| Stream | PRs | Summary |
+|---|---|---|
+| Deployment hardening (P1 / P3) | #890 – #894 | trusted `X-Forwarded-*` (rate-limit bypass + audit IP spoof closed), HTTPS guide, per-request tenant middleware + workspace path resolver |
+| Operator surfaces (P4) | #895 – #899 | onboarding flow, knowledge rollback, 3-swimlane reasoning-flow view, glossary + tooltips, Korean quickstart |
+| Rule #5 split series | #900 – #908 | 7 oversize `core/` modules split into packages |
+| Template-formatting engine | #909, #913, #916 | domain-agnostic form shaping (register → apply → download; md/txt/html/docx; image OCR). **Zero templates shipped** — rule #1 held |
+| Agent track | #918 – #921, #1039 – #1047 | `core/agent_tools`, tool-use loop, agent chat panel, folder/model pickers, cloud Claude via Max-plan CLI, `run_shell` (default-OFF, admin-only) |
+| LLM routing unification | #922, #961 – #977 | DB-first settings repo + admin UI, per-mode `DEFAULT_PREFERENCE`, 3-cell paired measurements per mode, measurement-environment isolation contract |
+| Chat UX rebuild | #927 – #960 | Claude-style sidebar/sessions/favourites, typography, mobile readability, truncation guardrail, **SEKOS / JAMES naming split (#934)** |
+| Privacy + cost cap | #980 – #988 | privacy gate + monthly cost cap, wired into cloud egress with defence-in-depth |
+| UI consolidation 8 → 5 pages | #998 – #1017 | de-emoji, intro front door (`/` intro, `/chat` chat), graph hub tabs, workspace source-docs tab, answer→trace→graph loop, **visual-regression harness** |
+| **Lifecycle live-consistency arc** | #1018 – #1027, #1033 – #1034 | probe proved live traversal ignored lifecycle `status` → `relation_is_live()` gate across traversal / score / T1 / 3D snapshot; time-travel isolation pinned; 0 active-relation loss |
+| Backlog re-measurement | #1028 – #1032 | D-alce / HR N=100 (identical) / v0.2.3b (J−N +0.21) — no regression from the lifecycle filter |
+| CSP + image ingest + long requests | #1062 – #1075 | 596 inline styles → classes, multi-file upload, `qwen2.5vl:7b` + `num_ctx` 8192, vision→OCR routing, `/query/`+`/upload/` heartbeat, detailed answer style |
+| Citation + CI | #1077, #1078 | v0.3.3 DOI lineage correction, ruff F-class gate cleared |
+
+### Invariant status — one sanctioned break
+
+CLAUDE.md rules #1 (no vertical), #3 (self-evolution opt-in) and #4
+(architecture label) held across the whole stream. Two notes:
+
+- **Rule #2 / traversal streak — broken once, on purpose.** The
+  lifecycle live-consistency arc changed `core/graph` traversal. It was
+  probe-first (#1020 measured the defect), measurement-gated,
+  kill-switch-equipped (`JAMES_DISABLE_STATUS_FILTER`), and re-measured
+  against the LRB SUT backlog afterwards. Later documents must **not**
+  restate "0 lines changed in `core/graph` traversal" for this period.
+- **Rule #5 — currently violated (2 files).** `core/response_style.py`
+  (22,036 B) and `core/reasoning/engine.py` (21,464 B) exceed the
+  20,480 B cap with an empty grandfather list;
+  `tests/test_v06_module_size_gate.py` is red.
+
+### Known-red CI
+
+`.github/workflows/test.yml` (pytest) has failed on `main` continuously
+since 2026-06-22 — the 60 most recent runs checked, through the latest
+commit (2026-08-19). ~60 assertion failures across 23 modules, 20 of
+which are not on CI's `--ignore` list. Most are UI-contract tests that
+did not follow the page rebuilds and the de-emoji series; one is the
+genuine rule #5 violation above. The deterministic benchmark tier
+(`bash benchmarks/run_all.sh`) and the published RAB / LRB numbers are
+unaffected.
+
+### Restart plan (Phase 1 – 7)
+
+Detailed in the restart roadmap §2; summarised here:
+
+| Phase | Name | Owner | Blocked by |
+|---|---|---|---|
+| 1 | Documentation-currency restore + recurrence guard | solo | — (**done 2026-08-21**) |
+| 2 | CI green restore (P0 — blocks new features) | solo | Phase 1 |
+| 3 | Idle-debt closure (mobile long-query drop, CSP enforce, OCR remainder) | solo + device check | Phase 2 |
+| 4 | v0.6.1 formal cycle close (handover + release notes + tag) | solo | Phases 2, 3 |
+| 5 | Measurement backlog (graph-RAG Step 2 cross-model, v0.2.3b matrix, D-alce, arXiv) | operator-attended | Phase 2 |
+| 6 | **Fork A / Fork B strategy decision** (decision point ≈ 2026-12-13) | **operator** | — |
+| 7 | v0.6 formal entry | per fork | Phases 4 + 6 |
+
+---
+
 ## v0.5.0 — First Domain Pilot (Fork A of v0.6 entry contract)
 
 **Theme**: prove the platform contract by running ONE real domain
@@ -1424,7 +1497,16 @@ We follow [Semantic Versioning](https://semver.org/):
 
 ---
 
-**Last updated**: 2026-05-22 — **v0.4 retarget to Layer 4
+**Last updated**: 2026-08-21 — **문서 최신성 복구 + 재개 로드맵**.
+약 2 개월 유휴 (마지막 기능 세션 2026-06-26, 마지막 커밋 2026-08-19) 후
+루트 문서 6 종이 서로 다른 시점에 멈춰 있던 것을 동기화하고, 위의
+`v0.6.x` 섹션 + [restart roadmap](handovers/v0.6.2-restart-roadmap-2026-08-21.md)
+를 단일 진실원으로 세웠습니다. 신규 CLAUDE.md rule #6 (상태는 한 곳에만) +
+entry-pointer 가드의 recency 불변식이 재발을 막습니다. 이번 갱신에서 처음
+문서화된 사실: **`main` CI (pytest) 가 2026-06-22 이후 계속 실패** —
+재개 Phase 2 가 이를 초록으로 되돌리기 전까지 신규 기능 금지.
+
+**Prior update (2026-05-22)**: **v0.4 retarget to Layer 4
 Lifecycle Semantics + CASCADE/EVENT 분리 axiom 채택**. v0.3 cycle
 의 Knowledge Cascade (Layer 3 Memory OS) 가 안정화되며, 2026-05-21
 사용자 비판 시리즈에서 "Layer 3 alone" 의 governance gap (stale facts
