@@ -90,6 +90,11 @@
       "resource_type": "software"
     },
     {
+      "identifier": "10.5281/zenodo.22030935",
+      "relation": "cites",
+      "resource_type": "publication-report"
+    },
+    {
       "identifier": "10.5281/zenodo.20625533",
       "relation": "isNewVersionOf",
       "resource_type": "software"
@@ -240,5 +245,5 @@
       "resource_type": "publication-other"
     }
   ],
-  "notes": "v0.4.4 extends v0.4.3 with the LRB v0.2.3 release (cross-scale reproducibility: 4-point S2→S3 ladder spanning 12.5× scale, R@1 V<N<J preserved at every cell, J−N gap > +0.10 throughout) plus the cycle γ 4-bench measurement infrastructure closure (D-alce research-tier NLI adapter; D-2wiki supporting-fact-aware producer). The S3.1 contract-vocabulary fix retracted a pre-S3.1 over-tight ‘within ±0.05 magnitude band' verdict (broken-category artefact) — this is the 12th wrong-fix-averted in the JAMES cycle history and the first self-catch (the prior 11 were user-catches). Pattern + gap are scale-robust ⭐⭐⭐; absolute magnitudes are scenario-sensitive ⭐⭐ (honest framing locked in preprint §5). The arXiv preprint LRB v0.2.5 (papers/lrb-preprint/main.tex) cites this v0.4.4 DOI for data availability; the LLM-grounded S3 cross-model 12-cell sweep is operator-gated and runs in a separate cycle. The isNewVersionOf chain pins v0.4.3 (10.5281/zenodo.20625533) as immediate predecessor; v0.4.1 (10.5281/zenodo.20426719) and earlier chained via isDerivedFrom. The mid-June joint-piece collab arc with Robin Converse (Triava Labs) and Ali Afana (Provia) on the substitution/synthesis cost-asymmetry finding remains a separate trajectory (not auto-linked to this release per feedback_eval_cycle_vs_collab_arc_separation rule)."
+  "notes": "v0.4.4 extends v0.4.3 with the LRB v0.2.3 release (cross-scale reproducibility: 4-point S2→S3 ladder spanning 12.5× scale, R@1 V<N<J preserved at every cell, J−N gap > +0.10 throughout) plus the cycle γ 4-bench measurement infrastructure closure (D-alce research-tier NLI adapter; D-2wiki supporting-fact-aware producer). The S3.1 contract-vocabulary fix retracted a pre-S3.1 over-tight ‘within ±0.05 magnitude band' verdict (broken-category artefact) — this is the 12th wrong-fix-averted in the JAMES cycle history and the first self-catch (the prior 11 were user-catches). Pattern + gap are scale-robust ⭐⭐⭐; absolute magnitudes are scenario-sensitive ⭐⭐ (honest framing locked in preprint §5). The arXiv preprint LRB v0.2.5 (papers/lrb-preprint/main.tex) cites this v0.4.4 DOI for data availability; the LLM-grounded S3 cross-model 12-cell sweep is operator-gated and runs in a separate cycle. The isNewVersionOf chain pins v0.4.3 (10.5281/zenodo.20625533) as immediate predecessor; v0.4.1 (10.5281/zenodo.20426719) and earlier chained via isDerivedFrom. The three-author convergence record with Ali Afana (Provia) and Robin Converse (Triava Labs) on the substitution/synthesis cost-asymmetry finding was published 2026-08-19 as 10.5281/zenodo.22030935 (report, CC-BY-4.0). It cites the v0.3.1-v0.3.3 records as the middleware leg rather than this release, and the cycle-vs-collab separation rule (feedback_eval_cycle_vs_collab_arc_separation) still governs which JAMES findings may enter it."
 }

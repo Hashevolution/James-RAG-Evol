@@ -73,6 +73,17 @@ audit / lifecycle / time-travel / on-prem 이 용도라면 — SEKOS 가 그것�
 
 > *LRB 는 temporal validity (`query_time`, `valid_time`) retrieval 품질을 3 결정론 시나리오 (S1 quarterly, S2 yearly-with-time-travel, S3 publication-scale 1000 docs) 에서 측정. 3 SUT (Vanilla append-only / Naive-supersede / JAMES validity-window) 를 7 결정론 axis + 3 exploratory top-1 axis 로 비교. Headline: R@1 V < N < J 가 **4 모델 × 4 스케일** (12.5× 스케일 폭) 모두에서 보존, JAMES − Naive gap +0.10 이상.*
 
+### 크로스-스택 수렴 기록 (3-author)
+
+[🔗 DOI 10.5281/zenodo.22030935](https://doi.org/10.5281/zenodo.22030935) · Afana, Converse & Seo (2026) · report, CC-BY-4.0
+
+> *substitution-vs-synthesis 를 세 스택에서 독립 측정한 수렴 기록의 한 다리 —
+> sovereign 26B MoE (Converse) / JAMES cognitive middleware (Seo) /
+> production Arabic e-commerce router (Afana). 세 다리가 **함께 입증하는 것**과
+> **명시적으로 주장하지 않는 것**을 그 기록이 규정하며, 본 repo 는 middleware
+> 다리의 데이터와 드라이버 — [v0.3.1](https://doi.org/10.5281/zenodo.20363998)
+> 에서 마감한 7-tier natural-stop gradient (PR #461/#463) 를 보유.*
+
 ### Citation (BibTeX)
 
 <details>

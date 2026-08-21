@@ -1,4 +1,12 @@
-# M9 — Joint Zenodo deposit prep (INTERNAL DRAFT, NOT YET PUBLISHED)
+# M9 — Joint Zenodo deposit prep (CLOSED — PUBLISHED 2026-08-19)
+
+> **This folder is historical.** The deposit went live on 2026-08-19 as
+> DOI `10.5281/zenodo.22030935` (report, CC-BY-4.0, Afana / Converse /
+> Seo). The authoritative outcome record is
+> `reports/promo-assets/m9-joint-deposit-record.md`. Everything below
+> is the pre-publication draft state, kept as the audit trail — the
+> publish gates, the draft metadata and the title/description options
+> are all superseded by the published text.
 
 **Status**: INTERNAL PREP ONLY. Publish requires Ali Afana
 explicit confirm after 6/7+ resume window.
