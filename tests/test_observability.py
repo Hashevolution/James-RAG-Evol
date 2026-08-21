@@ -108,6 +108,61 @@ class TraceContextTests(unittest.TestCase):
         self.assertIsInstance(rows[0]["a_set"], str)
 
 
+class Uuid7FallbackTests(unittest.TestCase):
+    """`uuid.uuid7()` is Python 3.14+; this project supports 3.10+.
+
+    The unguarded call raised AttributeError on every supported
+    interpreter below 3.14, taking `start_trace` — and with it the
+    `/query/` edge for any caller that does not mint its own trace_id —
+    down entirely. These pin the fallback's shape so a future cleanup
+    cannot quietly drop it while the CI interpreter is still < 3.14.
+    """
+
+    def test_start_trace_works_without_stdlib_uuid7(self):
+        import uuid as _uuid
+        from unittest.mock import patch
+        from core.observability import start_trace
+        # Force the fallback even on an interpreter that has uuid7.
+        with patch.object(_uuid, "uuid7", create=True, side_effect=AssertionError(
+                "the fallback must not call stdlib uuid7")):
+            with patch("core.observability.uuid") as _mod:
+                _mod.UUID = _uuid.UUID
+                del _mod.uuid7
+                tid = start_trace()
+        self.assertEqual(len(tid), 32)
+        self.assertEqual(_uuid.UUID(hex=tid).version, 7)
+
+    def test_fallback_ids_are_valid_version_7(self):
+        import uuid as _uuid
+        import time as _time
+        from core.observability import _new_uuid7_hex
+        u = _uuid.UUID(hex=_new_uuid7_hex())
+        self.assertEqual(u.version, 7)
+        self.assertEqual(u.variant, _uuid.RFC_4122)
+        ts_ms = (u.int >> 80) & 0xFFFFFFFFFFFF
+        self.assertLess(abs(ts_ms - _time.time_ns() // 1_000_000), 5000,
+            "the leading 48 bits must be a current Unix-millisecond stamp")
+
+    def test_fallback_ids_sort_by_time(self):
+        import time as _time
+        from core.observability import _new_uuid7_hex
+        first = _new_uuid7_hex()
+        _time.sleep(0.005)
+        second = _new_uuid7_hex()
+        self.assertLess(first, second,
+            "trace ids must stay lexicographically time-sortable — "
+            "the trace directory listing depends on it")
+
+    def test_fallback_ids_are_unique(self):
+        from core.observability import _new_uuid7_hex
+        ids = {_new_uuid7_hex() for _ in range(5000)}
+        self.assertEqual(len(ids), 5000)
+
+    def test_client_supplied_id_still_passes_through(self):
+        from core.observability import start_trace
+        self.assertEqual(start_trace("abc-123-def"), "abc-123-def")
+
+
 class EdgeContractTests(unittest.TestCase):
     """Source-level: the API edge + pipeline must call into observability.
 
