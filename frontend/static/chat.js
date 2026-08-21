@@ -2089,7 +2089,10 @@ function isLikelyTruncated(text) {
     // Dangling terminators: colon / hyphen / bullet / em-dash / star.
     if (/[:\-*•—]\s*$/.test(trimmed)) return true;
     // Numbered list item with no body — "4단계:" / "3."
-    if (/(?:^|\n)\s*\d+[.)]\s*$/.test(trimmed)) return true;
+    // [2026-08-19] JS \d is ASCII-only; a model answering in
+    // Arabic-Indic digits produced no match at all. See DIGIT note
+    // above SUGGESTION_PATTERNS.
+    if (/(?:^|\n)\s*[0-9٠-٩۰-۹]+[.)]\s*$/.test(trimmed)) return true;
     // Ellipsis (...) / single ellipsis char (…) at end.
     if (/[…]{1,}$/.test(trimmed)) return true;
     if (/\.{2,}\s*$/.test(trimmed)) return true;
@@ -2139,10 +2142,20 @@ function isLikelyTruncated(text) {
 
    답변 끝 600자만 검사 — 본문 중간 "(1) 첫째" 등을 제안으로
    오해하지 않도록 tail 제한. */
+// [2026-08-19] DIGIT — Ali Afana's second finding: `\d` is ASCII-only.
+// Unlike Python's, JavaScript's \d never matches Arabic-Indic digits, so
+// a reply enumerated as "(١) … (٢) …" produced zero suggestion chips and
+// the enumeration was left in the answer body. The class below is
+// ASCII + Arabic-Indic (U+0660-0669) + extended Arabic-Indic
+// (U+06F0-06F9), written with escapes rather than literal digits so a
+// reviewer never has to read an RTL range inside a character class.
+// Kept as inline literals, not a shared constant: tests/test_suggestion_click.py
+// extracts these `/.../g` literals and recompiles them in Python, and
+// the class is valid in both engines.
 const SUGGESTION_PATTERNS = [
-  /\((\d)\)\s*([^\n()][^\n(]*?)(?=\s*\(\d\)|\s*$)/g,
-  /(?:^|[\s\n])(\d)\)\s+([^\n)]+?)(?=\s+\d\)|\n|$)/g,
-  /(?:^|\n)\s*(\d)\.\s+([^\n]+)/g,
+  /\(([0-9٠-٩۰-۹])\)\s*([^\n()][^\n(]*?)(?=\s*\([0-9٠-٩۰-۹]\)|\s*$)/g,
+  /(?:^|[\s\n])([0-9٠-٩۰-۹])\)\s+([^\n)]+?)(?=\s+[0-9٠-٩۰-۹]\)|\n|$)/g,
+  /(?:^|\n)\s*([0-9٠-٩۰-۹])\.\s+([^\n]+)/g,
   /([①②③④⑤⑥⑦⑧⑨])\s+([^\n①-⑨]+?)(?=\s*[①-⑨]|$)/g,
   // ⑤ "혹시 X 궁금하신가요?" / "혹시 X 알고 싶으세요?" — 한 LLM follow-up
   //    group 1 = 앵커("혹시"), group 2 = chip 텍스트
@@ -2216,7 +2229,10 @@ function extractNextActionSuggestions(answerText) {
             /[.*+?^${}()|[\]\\]/g, '\\$&'
           );
           const enumRe = new RegExp(
-            '(?:^|\\n)\\s*(?:\\(\\d\\)|\\d[\\.)]|[①②③④⑤⑥⑦⑧⑨])\\s*'
+            '(?:^|\\n)\\s*(?:'
+            + '\\([0-9\\u0660-\\u0669\\u06F0-\\u06F9]\\)'
+            + '|[0-9\\u0660-\\u0669\\u06F0-\\u06F9][\\.)]'
+            + '|[①②③④⑤⑥⑦⑧⑨])\\s*'
             + escaped
             + '[\\.。?？]?\\s*(?=\\n|$)',
             'g'
@@ -2951,7 +2967,8 @@ function formatAnswer(text) {
   // Convert leading "- " / "* " / "1. " to li markers in a single
   // pass, then collapse adjacent markers under a list parent.
   text = text.replace(/^[ \t]*[-*]\s+(.+)$/gm, '<li class="md-li">$1</li>');
-  text = text.replace(/^[ \t]*\d+\.\s+(.+)$/gm, '<li class="md-li md-li-ordered">$1</li>');
+  text = text.replace(/^[ \t]*[0-9٠-٩۰-۹]+\.\s+(.+)$/gm,
+                      '<li class="md-li md-li-ordered">$1</li>');
   text = text.replace(
     /(<li class="md-li md-li-ordered">[\s\S]+?<\/li>)(?=(?:\s*<li class="md-li md-li-ordered">)?)/g,
     (m) => m,
