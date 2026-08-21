@@ -84,6 +84,38 @@ mis-parsed number. A validator that sees no number asks again; one that
 sees the wrong number does not. Both counts land in the audit dict, so
 the removal is forensically visible.
 
+Arabic orthographic variants (v2.1, 2026-08-19)
+-----------------------------------------------
+
+Ali Afana's third finding: *"Keyword gates over Arabic break on ordinary
+orthography — tatweel, alef maqsura, presentation forms — variants real
+keyboards produce every day. Where a check is gated behind such
+matching, ordinary traffic goes unchecked and nothing is logged."*
+
+JAMES has no Arabic keyword gate today — ``ATTACK_PATTERNS`` is English
+and Korean only — so there is no bypass to close here. What the gate can
+do is stop the same word arriving in several byte forms, which is what
+makes such a bypass possible in the first place:
+
+- **Tatweel (U+0640)** is a display-only elongation (``جاكيـــت``). It
+  survives *both* NFC and NFKC, so it has to be removed explicitly.
+- **Arabic presentation forms** (U+FB50-FDFF, U+FE70-FEFF) are
+  positional/ligature variants that fold to their base letters only
+  under NFKC (``ﻛﺘﺎﺏ`` → ``كتاب``, ``ﻻ`` → ``لا``).
+
+NFKC is applied **only to characters in those two Arabic blocks**, not
+globally: a global NFKC would also rewrite ``①②③`` → ``123``, ``ﬁ`` →
+``fi`` and full-width forms → half-width, which is a behaviour change a
+Korean-first system should not take on for an Arabic fix.
+
+What this gate deliberately does **not** do is fold letters — alef
+maqsura ``ى`` → ``ي``, the alef family ``أ إ آ`` → ``ا``, teh marbuta
+``ة`` → ``ه``, or the harakat. Those change what the user actually
+wrote, and some pairs are distinct letters rather than variants. They
+belong at *matching* time, against a keyword list, not in the text that
+gets forwarded to the model — see ``scripts/adversarial_sweep.py``
+``_fold_for_match``.
+
 Out of scope (for this gate; potential follow-up):
 - Emoji ZWJ sequences (e.g. 👨‍👩‍👧) are NOT this gate's concern — it
   fires only at ``/query/`` user-text input. Emoji handling at chat /
@@ -136,6 +168,42 @@ _PDF_OPENERS: frozenset = _OVERRIDES | frozenset((chr(0x202A), chr(0x202B)))
 
 _PDF: str = chr(0x202C)
 
+# Arabic display-only elongation. Survives NFC *and* NFKC.
+_TATWEEL: str = chr(0x0640)
+
+# Arabic Presentation Forms-A / -B. NFKC folds these to base letters;
+# applied per-character so the rest of the string keeps NFC semantics.
+_ARABIC_PRESENTATION: tuple = ((0xFB50, 0xFDFF), (0xFE70, 0xFEFF))
+
+
+def _is_arabic_presentation(ch: str) -> bool:
+    cp = ord(ch)
+    return any(lo <= cp <= hi for lo, hi in _ARABIC_PRESENTATION)
+
+
+def _fold_arabic_variants(s: str) -> Tuple[str, int, int]:
+    """Remove tatweel and fold Arabic presentation forms.
+
+    Returns ``(text, tatweel_removed, forms_folded)``. Meaning-preserving
+    by construction: tatweel carries no semantic content, and the
+    presentation blocks are compatibility variants of ordinary letters.
+    Letter folding is *not* done here — see the module docstring.
+    """
+    tatweel_n = s.count(_TATWEEL)
+    if tatweel_n:
+        s = s.replace(_TATWEEL, "")
+    folded_n = 0
+    if any(_is_arabic_presentation(c) for c in s):
+        out = []
+        for c in s:
+            if _is_arabic_presentation(c):
+                out.append(unicodedata.normalize("NFKC", c))
+                folded_n += 1
+            else:
+                out.append(c)
+        s = "".join(out)
+    return s, tatweel_n, folded_n
+
 
 def _remove_override_spans(s: str) -> Tuple[str, int, int]:
     """Delete LRO/RLO spans, contents included.
@@ -180,7 +248,9 @@ def normalize_user_input(s: str) -> Tuple[str, Dict[str, object]]:
         invisible_stripped:     int  invisible / ZW chars removed
         override_spans_removed: int  LRO/RLO spans deleted whole
         override_span_chars:    int  chars deleted as part of those spans
-        chars_dropped:          int  bidi + invisible + override_span_chars
+        tatweel_stripped:       int  U+0640 elongation chars removed
+        arabic_forms_folded:    int  presentation-form chars folded
+        chars_dropped:          int  bidi + invisible + span + tatweel
         nfc_applied:            bool True if NFC changed the string
 
     Caller is expected to log the audit dict per request when
@@ -201,6 +271,8 @@ def normalize_user_input(s: str) -> Tuple[str, Dict[str, object]]:
             "invisible_stripped":     0,
             "override_spans_removed": 0,
             "override_span_chars":    0,
+            "tatweel_stripped":       0,
+            "arabic_forms_folded":    0,
             "chars_dropped":          0,
             "nfc_applied":            False,
         }
@@ -217,11 +289,16 @@ def normalize_user_input(s: str) -> Tuple[str, Dict[str, object]]:
     # 3. Canonicalise.
     nfc = unicodedata.normalize("NFC", stripped)
 
-    return nfc, {
+    # 4. Arabic orthographic variants — tatweel and presentation forms.
+    folded, tatweel_n, forms_n = _fold_arabic_variants(nfc)
+
+    return folded, {
         "bidi_stripped":          bidi_n,
         "invisible_stripped":     invis_n,
         "override_spans_removed": spans_n,
         "override_span_chars":    span_chars,
-        "chars_dropped":          bidi_n + invis_n + span_chars,
+        "tatweel_stripped":       tatweel_n,
+        "arabic_forms_folded":    forms_n,
+        "chars_dropped":          bidi_n + invis_n + span_chars + tatweel_n,
         "nfc_applied":            (nfc != stripped),
     }

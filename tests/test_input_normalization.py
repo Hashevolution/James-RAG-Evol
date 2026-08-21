@@ -197,6 +197,65 @@ class TestAliBidiCases(unittest.TestCase):
         self.assertIn("e3teeni el pants b", out)
 
 
+class TestArabicOrthographicVariants(unittest.TestCase):
+    """v2.1 (2026-08-19) — Ali Afana's third finding. Tatweel and the
+    Arabic presentation blocks make one word arrive in several byte
+    forms; both are meaning-free, so the gate folds them. Letters are
+    deliberately NOT folded here — see the module docstring."""
+
+    TATWEEL = "\u0640"
+
+    def test_tatweel_is_stripped(self):
+        out, audit = normalize_user_input("جاكيـــت")
+        self.assertEqual(out, "جاكيت")
+        self.assertEqual(audit["tatweel_stripped"], 3)
+        self.assertEqual(audit["chars_dropped"], 3)
+
+    def test_presentation_forms_fold_to_base_letters(self):
+        out, audit = normalize_user_input("ﻛﺘﺎﺏ")
+        self.assertEqual(out, "كتاب")
+        self.assertEqual(audit["arabic_forms_folded"], 4)
+
+    def test_lam_alef_ligature_expands(self):
+        out, _ = normalize_user_input("ﻻ")
+        self.assertEqual(out, "لا")
+
+    def test_ordinary_arabic_is_untouched(self):
+        s = "بدي أعرف سعر القميص القطن"
+        out, audit = normalize_user_input(s)
+        self.assertEqual(out, s)
+        self.assertEqual(audit["chars_dropped"], 0)
+        self.assertEqual(audit["arabic_forms_folded"], 0)
+
+    def test_nfkc_is_not_applied_globally(self):
+        # The fix must not drag a Korean-first system onto NFKC: circled
+        # numerals, ligatures and full-width forms all survive.
+        s = "한국어 ①②③ ｱｲｳ ２０２６"
+        out, audit = normalize_user_input(s)
+        self.assertEqual(out, s)
+        self.assertEqual(audit["arabic_forms_folded"], 0)
+
+    def test_letters_are_not_folded(self):
+        # alef maqsura, the alef family and teh marbuta are what the user
+        # typed. Folding them belongs at matching time, not here.
+        for ch in ("\u0649", "\u0623", "\u0625", "\u0622", "\u0629"):
+            out, _ = normalize_user_input(f"x{ch}y")
+            self.assertIn(ch, out, f"{ch!r} must survive the input gate")
+
+    def test_harakat_survive(self):
+        s = "سِعْر"
+        out, _ = normalize_user_input(s)
+        self.assertEqual(out, s)
+
+    def test_idempotent_over_arabic(self):
+        s = f"جاكي{self.TATWEEL}ت ﻛﺘﺎﺏ"
+        out1, _ = normalize_user_input(s)
+        out2, audit2 = normalize_user_input(out1)
+        self.assertEqual(out1, out2)
+        self.assertEqual(audit2["chars_dropped"], 0)
+        self.assertEqual(audit2["arabic_forms_folded"], 0)
+
+
 class TestNFCNormalization(unittest.TestCase):
     """NFC canonicalisation handles decomposed accent sequences."""
 
