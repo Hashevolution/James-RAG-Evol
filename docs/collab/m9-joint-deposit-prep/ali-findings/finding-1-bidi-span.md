@@ -6,6 +6,16 @@
 **Ali 번호**: 그의 첫 번째 항목 (커밋 `e19f239` 이 인용한 원문 표현).
 **발송 가능**: **지금.** 재현 · 수정 · 회귀 테스트 모두 끝남.
 
+## Ali 4차 요구와의 관계
+
+그는 *"if the bidi span removal or the Arabic normalisation does not
+hold on your stack, that is a result about scope"* 라며 **bidi 를 이름
+대고** 비재현 후보로 지목했다. 우리 답은 **완전 재현**이라 비재현이
+없다. 그래서 이 통은 "재현됨" 한 마디로 닫지 않고 **scope 경계 2건을
+명시적으로** 보고한다 — (1) override 한정, embedding/isolate 는 내용
+보존, (2) bidi_04 의 숫자가 살아남지 않음. 그가 요구한 "same weight" 를
+재현 항목에서 갚는 방식.
+
 ## 발송 전 확인
 
 - PR #1079 머지 여부. 아직 열려 있으면 커밋 SHA 대신 PR 번호로만 지칭
@@ -22,9 +32,10 @@
 Ali,
 
 Four messages, one per finding, in your numbering. The first three are
-measured, and follow over the next three. The fourth reproduced as a
+measured — this one and the two behind it. The fourth reproduced as a
 mechanism, but the measurement it invalidates has not been re-run yet,
-so it comes when there is a number rather than now.
+so it comes when there is a number rather than now, and I am taking you
+at your word about the time.
 
 **Your first finding — the bidi gate. Reproduced.**
 
@@ -64,6 +75,16 @@ bidi_02's LRE-wrapped digits still survive. Clean multilingual input is
 byte-identical through the gate. The adversarial fixtures themselves are
 untouched — the runner still must not normalise, since the
 fixture-to-server boundary is what those cases exist to test.
+
+You asked for the scope results at the same weight as the
+confirmations, so to be explicit about this one: it held, and it holds
+inside two boundaries. Overrides only — embeddings and isolates keep
+their contents, which is a deliberate limit and not an oversight, since
+neither forces a character-level reversal, but it is still a limit and
+anything I have not thought of that conceals without an override is
+outside what this change does. And the bidi_04 boundary is a real loss
+rather than a clean win: the number does not survive, it is only made
+absent rather than wrong.
 
 This one was a live security defect and we had been shipping it.
 
