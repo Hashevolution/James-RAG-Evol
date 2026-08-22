@@ -9,7 +9,8 @@
 **판정(현재)**: 메커니즘 **재현**, 수치 **미측정**.
 **근거**: commit `dace68f` (PR #1079) ·
 `reports/research-runs/track-2c-run-identity-contamination-20260819.md` ·
-`tests/test_sweep_run_identity.py` 11 passed.
+`tests/test_sweep_run_identity.py` 11 passed ·
+**표 해석 한계 = `reports/research-runs/arabic-pipeline-capability-audit-20260822.md` §7**.
 
 ## 발송 전 실행해야 할 것 (운영자)
 
@@ -61,6 +62,10 @@ re-run, and here is what it said.**
 > 재실행 일시 · 이력 초기화 여부 / 케이스별 판정 변화 (없음 or N건,
 > 어느 케이스 어느 방향) / `bidi_02` 슬립 재현 여부 / `sqlite3` 점검
 > 결과. **변화가 없으면 없다고 쓰고, 불리해도 그대로 쓴다.**
+>
+> ⚠️ 판정 변화를 **언어군별로 묶어 해석하지 말 것** — 18건이 12 ko /
+> 6 en 으로 갈리고 픽스처 라벨과 불일치한다 (감사 문서 §7). 케이스별
+> 전후 비교만 유효하다.
 
 Three lines make a shared conversation key harmful here. Our query route
 defaults a missing session id to the literal string `default`. The
@@ -89,15 +94,39 @@ produced, so they stop being comparable to the baselines they are
 measured against; that is a re-baselining decision and I have left it as
 one rather than making it quietly.
 
-One limit on the re-run above, which I would rather state than have you
-infer. The third finding independently broke the scorer this same suite
-runs through — a forbidden phrase in variant Arabic spelling scored as a
-clean resist — and both fixes sit on the same branch. So the re-run
-clears both faults at once, and if a verdict moves I cannot attribute
-the movement to contamination rather than to scoring. Separating them
-would need a run with one fix and not the other. I have not done that,
-and my own read is that it does not earn the cycles unless the re-run
-actually moves a verdict — but you are welcome to think otherwise.
+Two limits on that re-run, which I would rather state than have you
+infer.
+
+The first is confounding. The third finding independently broke the
+scorer this same suite runs through — a forbidden phrase in variant
+Arabic spelling scored as a clean resist — and both fixes sit on the
+same branch. So the re-run clears both faults at once, and if a verdict
+moves I cannot attribute the movement to contamination rather than to
+scoring. Separating them would need a run with one fix and not the
+other. I have not done that, and my own read is that it does not earn
+the cycles unless the re-run actually moves a verdict — but you are
+welcome to think otherwise.
+
+The second is about what the table can be read for, and it is the one
+that would change how you use it. As I said in the third message, our
+pipeline has no Arabic classification: script that scores zero on both
+of our counters falls through to the Korean branch, and a few Latin
+characters flip it to English. I ran the eighteen cases through that
+classifier to see what it actually did to them. Twelve came out Korean
+and six English — and the split does not follow the fixture's own
+language labels. Six `ar-LV` cases split five/one. Three `msa` cases
+split two/one. So cases carrying the same language label were answered
+under different prompt scaffolding, decided by how many Latin
+characters happened to be in them.
+
+For the re-run itself that is harmless: the text does not change, so the
+classification does not change, and it cannot mask the salt effect —
+it is a constant, not a variable. Where it does bite is comparison
+*across* rows. A difference between two cases in that table may be a
+difference in scaffolding rather than in anything either of us set out
+to measure, and I would not want you drawing a language-family
+conclusion from it. That is not a contamination I can fix by re-running;
+it is a limit on what the table was ever measuring.
 
 The one thing worth taking back to your stack: it was not the missing
 key that hurt, it was the key being *found* rather than *created*. A
