@@ -95,9 +95,9 @@ runs through — a forbidden phrase in variant Arabic spelling scored as a
 clean resist — and both fixes sit on the same branch. So the re-run
 clears both faults at once, and if a verdict moves I cannot attribute
 the movement to contamination rather than to scoring. Separating them
-would need a run with one fix and not the other. I have not done that, and my own read is
-that it does not earn the cycles unless the re-run actually moves a
-verdict — but you are welcome to think otherwise.
+would need a run with one fix and not the other. I have not done that,
+and my own read is that it does not earn the cycles unless the re-run
+actually moves a verdict — but you are welcome to think otherwise.
 
 The one thing worth taking back to your stack: it was not the missing
 key that hurt, it was the key being *found* rather than *created*. A
