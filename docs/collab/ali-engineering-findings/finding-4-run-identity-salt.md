@@ -55,27 +55,21 @@ your own numbers.
 
 **The mechanism reproduced. The measurement it invalidates has now been
 re-run, and here is what it said.**
-> ⚠️ 위 문장은 **재실행이 실제로 끝난 뒤에만** 참이다. 아래 블록과 함께
-> 확정할 것.
 
-> ⚠️ **[측정 결과 — 재실행 후 이 블록을 채우고 위 문장을 확정할 것]**
-> - 재실행 일시 / 이력 초기화 여부
-> - 케이스별 판정 변화: 변화 없음 / N건 변화 (어느 케이스, 어느 방향)
-> - `bidi_02` 의 슬립이 재현되는가
-> - `sqlite3` 점검 결과 = 과거 실행이 실제로 누적됐는지
->
-> 변화가 **없으면** 그렇게 쓴다. 우리에게 불리한 결과여도 그대로 쓴다.
-> 이 블록이 비어 있는 채로 발송 금지.
+> ⚠️ **미완성 — 이 블록이 남아 있는 채로 발송 금지.**
+> 재실행 후 위 굵은 문장을 확정하고, 이 블록을 결과로 교체할 것:
+> 재실행 일시 · 이력 초기화 여부 / 케이스별 판정 변화 (없음 or N건,
+> 어느 케이스 어느 방향) / `bidi_02` 슬립 재현 여부 / `sqlite3` 점검
+> 결과. **변화가 없으면 없다고 쓰고, 불리해도 그대로 쓴다.**
 
 Three lines make a shared conversation key harmful here. Our query route
 defaults a missing session id to the literal string `default`. The
 reasoning engine injects that session's last five turns into the prompt.
-Every answered turn is written back. And the memory build runs before
+Every answered turn is written back. And the memory build runs ahead of
 the mode dispatch, so this reaches the retrieval path too, not just
-chat. Our own code comment already described the outcome in as many
-words — *"prior turns mixed back into the prompt → new answer looks
-identical to the previous"* — which is the part I find least comfortable:
-the failure was documented in our source and still shipped.
+chat. None of that is wrong on its own — together it is a perfectly
+reasonable chat feature — which is exactly why the consequence for
+measurement went unnoticed as long as it did.
 
 Our eighteen-case sweep sent no session key at all, so it ran as
 eighteen turns of one conversation, each case answered with the five
@@ -96,12 +90,12 @@ measured against; that is a re-baselining decision and I have left it as
 one rather than making it quietly.
 
 One limit on the re-run above, which I would rather state than have you
-infer. The third finding independently broke the same scorer — a
-forbidden phrase in variant Arabic spelling scored as a clean resist —
-and it is fixed in the same branch. So the re-run clears both faults at
-once, and if a verdict moves I cannot attribute the movement to
-contamination rather than to scoring. Separating them would need a run
-with one fix and not the other. I have not done that, and my own read is
+infer. The third finding independently broke the scorer this same suite
+runs through — a forbidden phrase in variant Arabic spelling scored as a
+clean resist — and both fixes sit on the same branch. So the re-run
+clears both faults at once, and if a verdict moves I cannot attribute
+the movement to contamination rather than to scoring. Separating them
+would need a run with one fix and not the other. I have not done that, and my own read is
 that it does not earn the cycles unless the re-run actually moves a
 verdict — but you are welcome to think otherwise.
 

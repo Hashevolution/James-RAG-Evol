@@ -55,11 +55,14 @@ because we handle Arabic well.**
 
 Your finding was that a keyword gate over Arabic breaks on ordinary
 orthography, so ordinary traffic goes unchecked and nothing is logged.
-We have no Arabic keyword gate. Our injection detector carries 31
-literal patterns and 13 regexes; I counted the Arabic-script characters
-across both lists and the answer is zero. There is no Arabic check for
-a variant spelling to slip past, so no ordinary Arabic traffic was
-walking past a gate that thought it had inspected it.
+We have no Arabic keyword gate. Our injection detector keys entirely off
+two lists — 31 literal patterns and 13 regexes — and there is not one
+Arabic character in either. I widened the check rather than trusting
+that: across our whole `core/` tree, the only lines containing
+Arabic-script characters at all are four in the docstring I wrote for
+this fix. There is no Arabic check for a variant spelling to slip past,
+so no ordinary Arabic traffic was walking past a gate that believed it
+had inspected it.
 
 That leaves us with a coverage gap of a different kind — an Arabic
 prompt injection is not caught by that layer in *any* spelling, correct
