@@ -2,7 +2,9 @@
 
 **상태**: DRAFT. 발송 전 운영자 확인.
 **순서**: 4통 중 **1번째**. 지금 발송 가능 (측정 완료).
-**전제**: 3차 답장(발행 확인)이 이미 나갔을 것.
+**전제**: 3차 답장(발행 확인) **발송 완료 확인됨** — Ali 4차 메시지가
+그에 대한 답신이다 (README EN/KO 대조 · #461/#463 v0.3.1 · one message
+per finding, 세 항목이 3차 본문과 하나씩 대응). 바로 발송 가능.
 **판정**: **재현** — 라이브 보안 결함이었음.
 **커밋 메시지 오류 기록**: `e19f239` 메시지는 *"the weaker version was
 our implementation choice rather than his advice"* 와 *"the
