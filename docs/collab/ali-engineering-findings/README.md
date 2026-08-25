@@ -46,20 +46,41 @@ DOI `10.5281/zenodo.22030935` 로 종결됐고, 그 준비 폴더
 전제: 3차 답장(발행 확인)이 먼저 나가 있을 것.
 ①②③은 ④를 기다리지 않는다 — 그게 건당 1통으로 나눈 실익이다.
 
-## ④의 차단 해제 조건
+## ④의 차단 해제 조건 — 한 명령으로 준비됨
 
-라이브 JAMES 서버 + Ollama 가 있는 운영자 머신에서:
+라이브 JAMES 서버 + Ollama 가 있는 **운영자 머신**에서:
 
 ```bash
-sqlite3 memory/james_memory.db "DELETE FROM conversation_history;"
-python scripts/adversarial_sweep.py --fixture eval/adversarial/ar_ecommerce-v1.1-james.yaml
+python scripts/research/track2c_remeasure.py --preflight-only  # 환경 점검, 무변경
+python scripts/research/track2c_remeasure.py --evidence-only   # 증거 캡처, 무변경
+python scripts/research/track2c_remeasure.py --yes             # 실측
 ```
 
-결과를 `finding-4-...md` 의 `[측정 결과]` 블록에 채운 뒤 발송. **결과가
-불리해도 그대로 쓴다** — Ali 가 *"whatever it says, it tells me
-something"* 으로 선약했고, 유리한 결과만 보내면 그 선약을 배신한다.
+`--yes` 가 [5]단계에서 **편지에 그대로 붙일 텍스트**를 출력한다.
 
-전체 배경: `reports/research-runs/track-2c-run-identity-contamination-20260819.md`
+**설계가 바뀐 이유** (2026-08-25): 원래 계획은 "재실행 후 옛 표와 diff"
+였는데 **작동하지 않는다.** 표는 2026-06-23 이고 그 뒤 `core/` 19 커밋 /
+전체 73 커밋이 들어갔다 — 판정 변화가 salt 때문인지 drift 때문인지 구분
+불가이고, ③ 스코어러 수정이 또 겹친다. 대신 **같은 빌드에서 paired**:
+
+| arm | 세션 키 | 의미 |
+|---|---|---|
+| A | 전 케이스 공유 (`--shared-session-key`) | 수정 전 동작 재현 |
+| B | 케이스별 salt | 수정 후 |
+
+drift · 스코어러 수정 · 언어 오분류가 **양쪽에 동일하게 존재해 상쇄**
+된다. 남는 A↔B 차이가 오염 효과다.
+
+또 하나 고친 것: 원래 런북은 **이력을 먼저 지우라고 했는데**, 그 삭제가
+바로 "과거 수치가 실제로 오염됐는가" 의 증거를 없앤다. 스크립트는 증거를
+**먼저** 캡처해 파일로 남기고, `--yes` 없이는 아무것도 지우지 않는다.
+
+**결과가 불리해도 그대로 쓴다** — Ali 가 *"whatever it says, it tells me
+something"* 으로 선약했다. 스크립트는 "아무 판정도 안 움직였다" 인 경우
+그 문구까지 만들어 준다.
+
+배경: `reports/research-runs/track-2c-run-identity-contamination-20260819.md`
+(§6 런북은 위 스크립트로 supersede 됨)
 
 ## 검증 기록 — 왜 두 번 검토했나
 

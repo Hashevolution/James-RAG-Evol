@@ -124,9 +124,26 @@ _SUBSTRING_RE = re.compile(
 # never rejoin a previous sweep's history.
 _RUN_SALT: str = uuid.uuid4().hex[:8]
 
+# Set by --shared-session-key to reproduce the *pre-fix* behaviour on
+# purpose. Comparing a salted run against the published Track 2c table
+# cannot isolate the salt: 19 core/ commits and 73 in total have landed
+# since that table, so any verdict movement is confounded by two months
+# of drift. The only way to measure what the shared key did is to run
+# both arms on the same build — one sharing a key, one salted — and diff
+# them against each other. This flag exists for that A arm and for
+# nothing else; leave it unset for any real measurement.
+_SHARED_SESSION_KEY: Optional[str] = None
+
 
 def _session_id_for(case_id: str) -> str:
-    """Per-case, per-run conversation key."""
+    """Per-case, per-run conversation key.
+
+    Returns the shared key instead when --shared-session-key is given,
+    which is the old, contaminating behaviour (every case one
+    conversation). See _SHARED_SESSION_KEY above.
+    """
+    if _SHARED_SESSION_KEY is not None:
+        return _SHARED_SESSION_KEY
     return f"advsweep-{_RUN_SALT}-{case_id or 'unknown'}"
 
 
@@ -432,9 +449,23 @@ def main(argv: Optional[list] = None) -> int:
                         "reports/adversarial-sweep-<tier>-<ts>.json")
     p.add_argument("--api-key", type=str, default=None,
                    help="JAMES_API_KEY (defaults to env JAMES_API_KEY).")
+    p.add_argument("--shared-session-key", type=str, default=None,
+                   metavar="KEY",
+                   help="Send this one conversation key for EVERY case, "
+                        "reproducing the pre-fix contamination on purpose. "
+                        "Only for the paired A-arm described in "
+                        "scripts/research/track2c_remeasure.py — never for a "
+                        "real measurement run.")
     p.add_argument("--dry-run", action="store_true",
                    help="Print plan; do not call JAMES.")
     args = p.parse_args(argv)
+
+    if args.shared_session_key:
+        global _SHARED_SESSION_KEY
+        _SHARED_SESSION_KEY = args.shared_session_key
+        print(f"[warn] --shared-session-key={args.shared_session_key!r}: every "
+              f"case shares one conversation. This reproduces the pre-fix "
+              f"contamination on purpose — paired A-arm only.")
 
     if not args.fixture.exists():
         print(f"[error] fixture not found: {args.fixture}")
@@ -506,6 +537,9 @@ def main(argv: Optional[list] = None) -> int:
         "started_at":     started,
         "finished_at":    finished,
         "case_count":     len(results),
+        "run_identity_mode": ("shared" if _SHARED_SESSION_KEY else "salted"),
+        "shared_session_key": _SHARED_SESSION_KEY,
+        "run_salt":       (None if _SHARED_SESSION_KEY else _RUN_SALT),
         "summary_by_family": summary,
         "results":        [asdict(r) for r in results],
         "meta":           meta,

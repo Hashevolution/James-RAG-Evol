@@ -58,14 +58,23 @@ your own numbers.
 re-run, and here is what it said.**
 
 > ⚠️ **미완성 — 이 블록이 남아 있는 채로 발송 금지.**
-> 재실행 후 위 굵은 문장을 확정하고, 이 블록을 결과로 교체할 것:
-> 재실행 일시 · 이력 초기화 여부 / 케이스별 판정 변화 (없음 or N건,
-> 어느 케이스 어느 방향) / `bidi_02` 슬립 재현 여부 / `sqlite3` 점검
-> 결과. **변화가 없으면 없다고 쓰고, 불리해도 그대로 쓴다.**
 >
-> ⚠️ 판정 변화를 **언어군별로 묶어 해석하지 말 것** — 18건이 12 ko /
-> 6 en 으로 갈리고 픽스처 라벨과 불일치한다 (감사 문서 §7). 케이스별
-> 전후 비교만 유효하다.
+> 운영자 머신(라이브 서버 + Ollama)에서 **한 명령**:
+> ```
+> python scripts/research/track2c_remeasure.py --yes
+> ```
+> 스크립트가 [5]단계에서 여기 붙일 텍스트를 그대로 출력한다.
+> 그 출력으로 이 블록을 교체하고 위 굵은 문장을 확정할 것.
+>
+> **옛 표와 비교하지 않는다.** 표는 2026-06-23 이고 그 뒤 `core/` 19
+> 커밋이 들어갔다 — 판정 변화가 salt 때문인지 drift 때문인지 구분
+> 불가. 스크립트는 대신 **같은 빌드에서 A(공유 키) / B(salt) 두 arm**
+> 을 돌려 A↔B 차이를 측정한다. 그게 유일하게 깨끗한 비교다.
+>
+> 사전에 안전하게 볼 수 있는 것: `--preflight-only` (환경 점검),
+> `--evidence-only` (**이력 삭제 전** 누적 증거 캡처, 아무것도 안 바꿈).
+>
+> **변화가 없으면 없다고 쓴다.** 스크립트가 그 문구를 만들어 준다.
 
 Three lines make a shared conversation key harmful here. Our query route
 defaults a missing session id to the literal string `default`. The
@@ -94,18 +103,27 @@ produced, so they stop being comparable to the baselines they are
 measured against; that is a re-baselining decision and I have left it as
 one rather than making it quietly.
 
-Two limits on that re-run, which I would rather state than have you
-infer.
+A word on how that re-run is built, because the obvious version of it
+does not work.
 
-The first is confounding. The third finding independently broke the
-scorer this same suite runs through — a forbidden phrase in variant
-Arabic spelling scored as a clean resist — and both fixes sit on the
-same branch. So the re-run clears both faults at once, and if a verdict
-moves I cannot attribute the movement to contamination rather than to
-scoring. Separating them would need a run with one fix and not the
-other. I have not done that, and my own read is that it does not earn
-the cycles unless the re-run actually moves a verdict — but you are
-welcome to think otherwise.
+The obvious version is: re-run the suite now and diff against the table
+I sent you. It cannot answer the question. That table was written in
+late June, and something like nineteen commits to our reasoning and
+retrieval code have landed since. Any verdict that moved would be
+confounded by two months of drift, and any verdict that held would
+prove nothing either — and the third finding's scorer fix sits in the
+same branch, confounding it again.
+
+So it runs paired instead, both arms on the same build: one arm where
+every case shares a conversation key, which is the old behaviour
+reproduced deliberately, and one arm with the salted per-case keys.
+Same build, same fixture, same model, history wiped before each arm.
+Everything that would otherwise confound — the drift, the scorer fix,
+even our language misclassification — is present in both arms and
+cancels. What is left between them is the contamination effect itself,
+measured rather than argued. Whatever it says is what I will send you,
+including "it moved nothing", which is a live possibility I would
+rather name in advance than explain away afterwards.
 
 The second is about what the table can be read for, and it is the one
 that would change how you use it. As I said in the third message, our

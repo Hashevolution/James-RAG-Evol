@@ -133,13 +133,35 @@ re-confirmed to Ali** — the first reply already committed to sending
 what each finding did or did not reproduce, in its own message, once
 measured.
 
-Runbook:
+Runbook — **superseded 2026-08-25**. The version below had two faults:
+
+1. **Wrong order.** It wiped `conversation_history` *before* capturing
+   the accumulation evidence — and that wipe is exactly what destroys
+   the answer to §5's question ("was any published number actually
+   affected?"). Evidence must be captured first.
+2. **Wrong comparison.** Diffing against §2 of the comparison table
+   cannot isolate the salt. That table dates from 2026-06-23 and ~19
+   `core/` commits have landed since, so any movement is confounded by
+   drift — and the finding ③ scorer fix confounds it again.
+
+Superseded by `scripts/research/track2c_remeasure.py`, which captures
+evidence before touching anything and runs **paired arms on the same
+build** (A = one shared key, reproducing the old behaviour via the new
+`--shared-session-key` flag; B = salted per-case keys). Everything that
+would confound is present in both arms and cancels; the A↔B difference
+is the contamination effect.
 
 ```bash
-# 1. start from clean history
-sqlite3 memory/james_memory.db "DELETE FROM conversation_history;"
-# 2. re-run the suite (now salted per case)
-python scripts/adversarial_sweep.py --fixture eval/adversarial/ar_ecommerce-v1.1-james.yaml
-# 3. diff the per-case verdicts against the table in
-#    eval/adversarial/ar_ecommerce-cross-stack-comparison.md §2
+python scripts/research/track2c_remeasure.py --preflight-only  # 환경 점검
+python scripts/research/track2c_remeasure.py --evidence-only   # 증거만, 무변경
+python scripts/research/track2c_remeasure.py --yes             # 실측
 ```
+
+<details><summary>원래 런북 (실행하지 말 것)</summary>
+
+```bash
+sqlite3 memory/james_memory.db "DELETE FROM conversation_history;"
+python scripts/adversarial_sweep.py --fixture eval/adversarial/ar_ecommerce-v1.1-james.yaml
+# diff against eval/adversarial/ar_ecommerce-cross-stack-comparison.md §2
+```
+</details>
