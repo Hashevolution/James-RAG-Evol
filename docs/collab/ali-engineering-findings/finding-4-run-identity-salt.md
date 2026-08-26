@@ -7,7 +7,7 @@
 않는다 — 1차 답장이 "측정된 것만 말한다"고 약속했고, Ali 4차가
 *"a slow measured answer over a fast impression"* 으로 재확인했다.
 **판정(현재)**: 메커니즘 **재현**, 수치 **미측정**.
-**근거**: commit `dace68f` (PR #1079) ·
+**근거**: PR #1079 (2026-08-26 main 병합, squash `6d6a079`) ·
 `reports/research-runs/track-2c-run-identity-contamination-20260819.md` ·
 `tests/test_sweep_run_identity.py` 11 passed ·
 **표 해석 한계 = `reports/research-runs/arabic-pipeline-capability-audit-20260822.md` §7**.
@@ -111,8 +111,8 @@ I sent you. It cannot answer the question. That table was written in
 late June, and something like nineteen commits to our reasoning and
 retrieval code have landed since. Any verdict that moved would be
 confounded by two months of drift, and any verdict that held would
-prove nothing either — and the third finding's scorer fix sits in the
-same branch, confounding it again.
+prove nothing either — and the third finding's scorer fix has landed in
+the meantime, confounding it again.
 
 So it runs paired instead, both arms on the same build: one arm where
 every case shares a conversation key, which is the old behaviour

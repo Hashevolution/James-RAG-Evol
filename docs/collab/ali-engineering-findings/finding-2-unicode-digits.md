@@ -3,7 +3,8 @@
 **상태**: DRAFT. 발송 전 운영자 확인.
 **순서**: 4통 중 **2번째**. 지금 발송 가능 (측정 완료).
 **판정**: **재현** — 단, 넷 중 가장 작고 안전성 결함이 아님.
-**근거**: commit `a9d96f4` (PR #1079) · `frontend/static/chat.js`
+**근거**: PR #1079 (2026-08-26 main 병합, squash `6d6a079`) ·
+`frontend/static/chat.js`
 4개소 6개 리터럴 (2095 / 2156-2158 / 2233 / 2970) ·
 node v22 실동작 6케이스 + `tests/test_chat_ux_n4_n5.py`.
 

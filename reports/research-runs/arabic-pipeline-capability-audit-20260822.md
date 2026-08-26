@@ -108,7 +108,8 @@ LLM 이 아랍어 엔티티명을 반환하면 이름이 지워진다. 실행 �
 `core/security_layer/_policies.py` 의 `ATTACK_PATTERNS`(31) +
 `ATTACK_REGEX`(13) 에 아랍 문자 0건. 더 넓게 스캔해도 `core/` 트리
 전체에서 아랍 문자를 담은 라인은 `input_normalization.py` 의 docstring
-4줄뿐이며, `git blame` 상 전부 `8c6f726`(발견 ③ 수정)에서 왔다.
+4줄뿐이며, 발견 ③ 수정에서 왔다 (당시 `git blame` 으로 확인. 그 커밋은
+PR #1079 squash 병합으로 소멸 → 현재는 `6d6a079` 에 포함).
 
 ## 5. UI 층
 
