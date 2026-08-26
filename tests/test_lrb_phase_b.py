@@ -9,9 +9,10 @@ from eval.external.lrb.adapters import (
 from eval.external.lrb.driver import fixture_sha, load_scenario
 from eval.external.lrb.driver_phase_b import run_sut_phase_b, score_run
 
+from tests._lrb_fixtures import ensure_scenario
+
 ROOT = Path(__file__).resolve().parent.parent
-FIXTURE_S2 = ROOT / "eval" / "external" / "_fixtures" / "lrb" / \
-    "scenario_S2_yearly_timetravel.json"
+FIXTURE_S2 = ensure_scenario("S2")
 
 
 def test_s2_fixture_shape():

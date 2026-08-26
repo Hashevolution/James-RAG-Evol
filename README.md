@@ -348,6 +348,19 @@ Two benchmarks released as a sibling pair, both pre-registered before measuremen
 
 > *LRB scores temporal-validity (`query_time`, `valid_time`) retrieval quality across three deterministic scenarios (S1 quarterly, S2 yearly-with-time-travel, S3 publication-scale 1000 docs). Three systems-under-test (Vanilla append-only / Naive-supersede / JAMES validity-window) compared on 7 deterministic axes + 3 exploratory top-1 axes. Headline: Vanilla < Naive < JAMES on R@1 preserved across **4 model families × 4 scale points** (12.5× scale span) with the JAMES − Naive gap > +0.10 throughout.*
 
+### Cross-stack convergence record
+
+[🔗 DOI 10.5281/zenodo.22030935](https://doi.org/10.5281/zenodo.22030935) · Afana, Converse & Seo (2026) · report, CC-BY-4.0
+
+> *This work is one leg of a three-stack convergence record —
+> substitution-vs-synthesis measured independently on a sovereign 26B MoE
+> (Converse), the JAMES cognitive middleware (Seo), and a production Arabic
+> e-commerce router (Afana) — archived at [10.5281/zenodo.22030935](https://doi.org/10.5281/zenodo.22030935).
+> That record states what the three legs jointly establish and what they
+> explicitly do not; this repository holds the middleware leg's data and
+> drivers — the seven-tier natural-stop gradient closed in
+> [v0.3.1](https://doi.org/10.5281/zenodo.20363998) (PRs #461/#463).*
+
 ### Reproduce in 60 seconds
 
 **One command** (wraps everything below; deterministic core tier, no GPU/Ollama, ~2 min):

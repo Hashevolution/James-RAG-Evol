@@ -15,11 +15,11 @@ from eval.external.lrb.driver_phase_b import (
 from eval.external.lrb.llm_rerank import (
     _build_prompt, _is_claude_model, _is_ollama_model, _parse_scores)
 
+from tests._lrb_fixtures import ensure_scenario
+
 ROOT = Path(__file__).resolve().parent.parent
-FIXTURE_S1 = ROOT / "eval" / "external" / "_fixtures" / "lrb" / \
-    "scenario_S1_quarterly.json"
-FIXTURE_S2 = ROOT / "eval" / "external" / "_fixtures" / "lrb" / \
-    "scenario_S2_yearly_timetravel.json"
+FIXTURE_S1 = ensure_scenario("S1")
+FIXTURE_S2 = ensure_scenario("S2")
 
 
 # ── get_doc accessor ─────────────────────────────────────────────────

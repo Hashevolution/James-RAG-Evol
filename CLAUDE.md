@@ -34,7 +34,13 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   - **Track 2c closed** (JAMES side): Phase 6 α-8 retest = poison_01
     promotion failed (typed filter doesn't generalize to catalog
     poisoning); Ali validation reply **sent 2026-06-03** (cross-stack
-    comparison); next Ali action = mid-June 3-author joint-piece.
+    comparison). **Joint arc closed 2026-08-19**: the 3-author convergence
+    record is published — DOI `10.5281/zenodo.22030935` (report, CC-BY-4.0, Afana /
+    Converse / Seo alphabetical). JAMES leg = the v0.3.1 seven-tier
+    closure (PRs #461/#463, DOI `10.5281/zenodo.20363998`). Two JAMES
+    precision fixes landed in the final text. Archive record:
+    `reports/promo-assets/m9-joint-deposit-record.md`. Remaining open
+    thread with Ali = the four engineering findings follow-up.
   - **Direction α landed (2026-06-03)**: design memo
     `docs/design/v0.4-direction-alpha-hybrid-cloud-tier.md`;
     abstraction-layer PoC + real-Claude e2e loop
@@ -168,6 +174,7 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
+| **🔗 3-author 수렴 기록 (발행 완료 2026-08-19)** | **`reports/promo-assets/m9-joint-deposit-record.md`** — DOI `10.5281/zenodo.22030935` (report, CC-BY-4.0, Afana/Converse/Seo). JAMES 다리 = v0.3.1 7-tier closure (PR #461/#463, DOI `10.5281/zenodo.20363998`). #440 = 3단계 선행, #448 = Converse 축. 우리 정밀 수정 2건 반영. 남은 열린 실 = Ali 엔지니어링 4건 후속. |
 | **🟢🟢🟢 NEXT SESSION ENTRY (read this first — 2026-06-13 v0.6 entry skeleton)** | **`docs/handovers/v0.6-entry-skeleton-2026-06-13.md`** (v0.5 closed + Dim F gate 미통과 = "v0.5 closed, v0.6 not yet entered" state. v0.5 close §5 작업 큐 실질 소진: 20 LANDED + 4 LOI-blocked (Track D / G8.d / F.2 CR.e) + 6 operator-pending (Track E) + 2 prerequisite-gated. v0.5 마감 후 23 PR 추가 (#863-#885) — F.1 Time-Travel Dashboard quartet 완성 (TT.a-d) + G1/G2 SaaS-readiness trio + SDK trio + Track C CSP nonce + graph-RAG Step 1 결과 + Step 2 scaffold. 2-fork v0.6 entry contract: Fork A LOI signed → Track D + G8.d 진입 / Fork B 6 개월 내 no-LOI → reassess. 둘 다 operator 결정. 다음 세션 mechanical entry checklist (§7): Fork A → v0.6-entry-<date>.md + Track D / Fork B → v0.6-reassess-<date>.md + 새 방향 / 미해결 → 이 스켈레톤 + NEW solo-doable items (§5). Rule #1 4-layer 보호 contract 그대로. core/retrieval+graph traversal+reasoning 0 라인 변경 streak 유지.) |
 | **🟢🟢 직전 v0.5 close handover** | **`docs/handovers/v0.5-close-2026-06-12.md`** (v0.5 cycle close handover — 21 PR (#841-#861) 마감 정리 + 2026-06-12 PM 전략 review 반영 (Track B SDK.a-c + Track F mother-level UI 정식 편입). B.5 series 4 + B.1 audit + 4 gap 구현 5 + B.2/B.3 design memo 2 + UI improvement 6 + 평가 외부 노출 1 + server-side hardening 3. 측정 0, vertical 토큰 0, `core/retrieval`+`core/graph` traversal+`core/reasoning` 0 라인 변경. B.1 8 gap 결과: 4 LANDED + 2 primitive LANDED (G1.a/G2.a) + 2 contract-locked + 1 v1.0-deferred (G6). Solo-doable mother-platform 스코프 **달성 완료**. **v0.5 → v0.6 gate = Dim F**, **아직 미통과** (LOI 또는 reassess 결정 필요). v0.6 entry 시 작업 큐: Track A (G1.b/c+G2.b/c) / Track B (G8.a-c mount + **SDK.a-c CLI/PLUGIN_AUTHORING/PyPI**) / Track C (CSP nonce) / Track D (Dim F, **LOI 필수**) / Track E (operator-pending) / **Track F (NEW)** (F.1 Time-Travel Dashboard TT.a-d + F.2 Change Review Workspace CR.a-d, mother-level UI). Rule #1 4-layer 보호 (code capability gate + doc Out-of-scope + naming domain-agnostic + LOI-gated trigger tagging). Track A/B/C/F 는 solo / LOI 무관. **참고: 위의 entry skeleton 이 close 이후 #863-#885 진행 + 작업 큐 status sweep + 2-fork entry contract 를 종합**.) |
 | **🟢🟢 직전 v0.5 entry doc** | `docs/handovers/v0.5-entry-2026-06-12.md` (v0.4.4 closed → v0.5 entry 선언. Stream A/B/C/D scope. 3 new rules. 위의 close doc 가 cycle 결과를 종합) |

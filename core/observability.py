@@ -1,7 +1,8 @@
 """Observability — trace_id propagation + structured stage logs (#47, Axis 3 phase 1).
 
 Phase 1 scope: foundation for end-to-end request tracing. Issues a
-`trace_id` (uuid7, time-sortable) at the API edge, propagates via
+`trace_id` (uuid7, time-sortable — see `_new_uuid7_hex` for the
+pre-3.14 fallback) at the API edge, propagates via
 `contextvars.ContextVar` (no per-call kwarg pollution), and writes a
 per-trace JSONL file under `reports/trace/<YYYY-MM-DD>/`.
 
@@ -54,6 +55,7 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
 import time
 import uuid
 from contextvars import ContextVar
@@ -143,6 +145,37 @@ def _trace_file_for(trace_id: str) -> Path:
     return _trace_root() / day / f"{trace_id}.jsonl"
 
 
+def _new_uuid7_hex() -> str:
+    """A fresh time-sortable UUIDv7, as 32 hex characters.
+
+    [fix 2026-08-21] `uuid.uuid7()` only landed in the standard library
+    in Python 3.14. This project declares `requires-python = ">=3.10"`
+    and CI pins 3.11, so the unguarded call raised `AttributeError` on
+    every supported interpreter below 3.14 — taking down `start_trace`,
+    and with it the `/query/` edge, for any caller that did not supply
+    its own trace_id. The browser client always sends one (the
+    reasoning-stream poller mints it before the request), which is why
+    the UI never saw this; API clients and our own measurement runners
+    (`scripts/bench.py`, `scripts/adversarial_sweep.py`) do not.
+
+    The fallback builds the same layout as RFC 9562 §5.7: a 48-bit
+    big-endian Unix millisecond timestamp, version 7, variant 0b10, and
+    74 random bits. Time-sortability — the only property the rest of
+    this module relies on — is preserved, so ids minted either way sort
+    together.
+    """
+    _uuid7 = getattr(uuid, "uuid7", None)
+    if _uuid7 is not None:
+        return _uuid7().hex
+    ms = time.time_ns() // 1_000_000
+    value = (ms & 0xFFFFFFFFFFFF) << 80
+    value |= 0x7 << 76                                  # version 7
+    value |= (secrets.randbits(12)) << 64               # rand_a
+    value |= 0b10 << 62                                 # variant (RFC 9562)
+    value |= secrets.randbits(62)                       # rand_b
+    return uuid.UUID(int=value).hex
+
+
 def start_trace(trace_id: Optional[str] = None) -> str:
     """Generate (or accept) a trace_id and bind it to the current context.
 
@@ -150,13 +183,13 @@ def start_trace(trace_id: Optional[str] = None) -> str:
     Returns the trace_id so the handler can put it in the response
     body (so users can quote it when reporting issues).
 
-    `trace_id=None` (default) generates a fresh uuid7 (time-sortable;
-    Python 3.14+). Pass an explicit string to accept an externally-
-    propagated id (e.g. a downstream service handing JAMES a parent
-    span — out of scope for v0.2 but the seam exists).
+    `trace_id=None` (default) generates a fresh uuid7 (time-sortable).
+    Pass an explicit string to accept an externally-propagated id (e.g.
+    a downstream service handing JAMES a parent span — out of scope for
+    v0.2 but the seam exists).
     """
     if trace_id is None:
-        trace_id = uuid.uuid7().hex
+        trace_id = _new_uuid7_hex()
     current_trace_id.set(trace_id)
     return trace_id
 

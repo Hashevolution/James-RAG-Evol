@@ -12,9 +12,12 @@ from eval.external.lrb.driver import (
 from eval.external.lrb.scorer import (
     _precision_at_k, _recall_at_k, _temporal_accuracy)
 
+from tests._lrb_fixtures import ensure_scenario
+
 ROOT = Path(__file__).resolve().parent.parent
-FIXTURE = ROOT / "eval" / "external" / "_fixtures" / "lrb" / \
-    "scenario_S1_quarterly.json"
+# The fixture dir is gitignored, so build it on demand — see
+# tests/_lrb_fixtures.py for why this is a build and not a skip.
+FIXTURE = ensure_scenario("S1")
 
 
 # ── Fixture determinism ────────────────────────────────────────────
