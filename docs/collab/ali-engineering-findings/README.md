@@ -44,10 +44,12 @@ DOI `10.5281/zenodo.22030935` 로 종결됐고, 그 준비 폴더
 
 | 순서 | 파일 | 상태 |
 |---|---|---|
-| 1 | `finding-1-bidi-span-removal.md` | ✅ 발송 가능 |
-| 2 | `finding-2-unicode-digits.md` | ✅ 발송 가능 |
-| 3 | `finding-3-arabic-normalisation.md` | ✅ 발송 가능 |
+| 1–3 | **`COMBINED-findings-1-2-3.md`** | ✅ **발송 완료 (2026-08-26)** |
+| — | `finding-1/2/3-*.md` | 원본 보존. 발송된 것은 위 통합본 |
 | 4 | `finding-4-run-identity-salt.md` | ⛔ **차단** — Track 2c 재측정 필요 |
+
+**발송 이력**: 1차(4건 검토 요청 답신) · 2차(기탁 최종본 조건부 OK) ·
+3차(발행 확인) · **4차 = ①②③ 통합본, 2026-08-26**. 남은 것은 ④ 하나.
 
 **3차 답장(발행 확인)은 발송 완료** — Ali 4차 메시지가 그에 대한
 답신이다 (README EN/KO 대조 · #461/#463 v0.3.1 · one message per
