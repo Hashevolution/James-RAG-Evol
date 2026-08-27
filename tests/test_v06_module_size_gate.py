@@ -54,8 +54,35 @@ GRANDFATHERED: dict = {
     # core/model_resolver_tiers.py and the classify_fast tables to
     # core/intent_fast_patterns.py. Both are back under the cap, so per
     # the anti-creep rule their entries were removed in the same PR.
-    # No grandfather entries currently — every core/**/*.py is at or
-    # under the rule #5 ceiling.
+    # 2026-08-26 — two files were found over the cap. One was split in
+    # the same change; the other is grandfathered here because it
+    # cannot be split under CLAUDE.md rule #2 from a session container.
+    #
+    #   core/response_style.py (22,036) — SPLIT, not grandfathered. The
+    #   StylePreset dataclass and the three preset bodies moved to
+    #   core/response_style_presets.py; response_style.py re-exports
+    #   them so every call site is untouched. Verified byte-identical:
+    #   all three presets fingerprint the same field-for-field against
+    #   the pre-split module, and resolve_style agrees on 8 inputs.
+    #
+    "reasoning/engine.py": (
+        "21,464 bytes, 984 over. NOT split here on purpose: engine.py "
+        "is core/reasoning, so CLAUDE.md rule #2 requires STEP 7 bench "
+        "numbers and a Quality Delta Card on any PR touching it — and "
+        "bench.py needs a live server plus Ollama, neither of which "
+        "exists in a session container. Splitting it blind would ship "
+        "an unmeasured change to the hottest path in the system.\n"
+        "Split plan, for an operator who can run the bench: the file "
+        "is query() plus its helpers. The memory-context assembly "
+        "already left for engine_memory.py and the canonical RAG synth "
+        "for engine_synth.py, so the remaining seam is the mode "
+        "dispatch block — lift it to core/reasoning/engine_dispatch.py "
+        "the way pipeline_synth was lifted, keeping engine.query() as "
+        "the entry point. Expect ~3-4 KB to move, which clears the cap "
+        "with room. tests/_pipeline_src.py::engine_source already "
+        "concatenates the engine companions, and _module_source walks "
+        "a package, so the structural tests absorb either shape."
+    ),
 }
 
 
