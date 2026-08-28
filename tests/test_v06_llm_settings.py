@@ -98,7 +98,20 @@ class SnapshotTests(unittest.TestCase):
         keys = [s["key"] for s in snap["schema"]]
         self.assertIn("default_model", keys)
         self.assertIn("agent_backend", keys)
-        self.assertEqual(len(snap["schema"]), 10)
+        # [2026-08-26] Was `assertEqual(len(...), 10)`, which went stale
+        # the moment agent_enable_shell (#1042) and agent_allow_cloud
+        # (#1045) were added on purpose, and failed as "12 != 10" —
+        # true, and useless for telling whether something was added or
+        # something went missing. Compare the key set instead: a bare
+        # count catches a disappearance but names nothing, while this
+        # names exactly what moved in either direction.
+        self.assertEqual(sorted(keys), sorted([
+            "default_model", "coding_model", "vision_model",
+            "auto_router", "auto_style",
+            "backend_tier", "backend_synth",
+            "agent_backend", "agent_ollama_model", "agent_anthropic_model",
+            "agent_enable_shell", "agent_allow_cloud",
+        ]), "llm_settings schema changed — update this list deliberately")
 
 
 # ── HTTP endpoint ────────────────────────────────────────────────
@@ -175,7 +188,11 @@ class EndpointTests(unittest.TestCase):
 class ServerRegistrationTests(unittest.TestCase):
     def test_routes_wired(self):
         import server_llmwiki
-        paths = {getattr(r, "path", None) for r in server_llmwiki.app.routes}
+        # [2026-08-26] fastapi 0.141 / starlette 1.6 append an
+        # _IncludedRouter wrapper per include_router instead of
+        # flattening; route_paths unwraps it. See tests/_app_routes.py.
+        from tests._app_routes import route_paths
+        paths = route_paths(server_llmwiki.app)
         self.assertIn("/admin/llm-settings/", paths)
 
 

@@ -205,7 +205,11 @@ class PersonaEndpointTests(unittest.TestCase):
             from server_llmwiki import app
         except Exception as e:
             self.skipTest(f"server import failed: {e}")
-        paths = {r.path for r in app.routes}
+        # [2026-08-26] fastapi 0.141 / starlette 1.6 append an
+        # _IncludedRouter wrapper per include_router instead of
+        # flattening; route_paths unwraps it. See tests/_app_routes.py.
+        from tests._app_routes import route_paths
+        paths = route_paths(app)
         self.assertIn("/admin/persona", paths,
             "GET/POST /admin/persona 는 backward compat 로 유지")
 
