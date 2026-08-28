@@ -87,7 +87,13 @@ class ResolutionTests(unittest.TestCase):
         with mock.patch.dict(os.environ,
                              {"JAMES_DISABLE_MODE_AWARE_ROUTING": "1"}):
             tag, source, _ = _resolve_vision_model("")
-        self.assertEqual(tag, "llava:13b")
+        # [2026-08-26] Was hardcoded "llava:13b". PR #1070 changed the
+        # config default to qwen2.5vl:7b ("proven OCR win") and this
+        # assertion was left behind. The kill-switch path reads
+        # MULTIMODAL_MODEL, so read it here too — a future default
+        # change should not need a test edit.
+        from config import MULTIMODAL_MODEL
+        self.assertEqual(tag, MULTIMODAL_MODEL)
         self.assertEqual(source, "legacy_killswitch")
 
     def test_resolver_consulted_when_no_killswitch(self):
@@ -131,7 +137,10 @@ class AnalysisTests(unittest.TestCase):
         self.assertIn("부산", row["answer"])
         self.assertEqual(row["vision_meta"]["trust"], "low")
         self.assertEqual(row["vision_meta"]["source"], "vision")
-        self.assertEqual(row["vision_meta"]["model"], "llava:13b")
+        # Kill-switch path again — same reasoning as
+        # test_killswitch_uses_legacy_default.
+        from config import MULTIMODAL_MODEL
+        self.assertEqual(row["vision_meta"]["model"], MULTIMODAL_MODEL)
 
     def test_analyze_error_normalised(self):
         with mock.patch("tools.multimodal.image_analyzer.analyze_image",

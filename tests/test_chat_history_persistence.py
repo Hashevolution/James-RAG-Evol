@@ -101,9 +101,11 @@ class ChatHistoryContractTests(unittest.TestCase):
         # If session_id stays in localStorage even after clearHistory,
         # the user can't actually "start fresh" without manually
         # clearing storage. v3-a removes the session key on clear.
-        idx = self.src.index("async function clearHistory")
-        # Look at the 800 chars after the function signature.
-        body = self.src[idx:idx + 800]
+        # [2026-08-26] Was an 800-char window; the confirm copy grew in
+        # v0.6.1 v8 and pushed the removeItem call to ~950, so the test
+        # reported it missing when it was simply further down.
+        from tests._js_source import function_body
+        body = function_body(self.src, "clearHistory")
         self.assertIn(
             "localStorage.removeItem('james_session')",
             body,

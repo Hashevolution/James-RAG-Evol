@@ -139,7 +139,7 @@ class FrontendIndexHtmlTests(unittest.TestCase):
         cls.html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
 
     def test_attach_button_present(self):
-        self.assertIn('data-action="attach-image"', self.html)
+        self.assertIn('data-action="composer-attach"', self.html)
 
     def test_file_input_present(self):
         self.assertIn('id="vision-file-input"', self.html)
@@ -152,7 +152,7 @@ class FrontendIndexHtmlTests(unittest.TestCase):
     def test_no_emoji_icon(self):
         # Operator catch (2026-06-16): chat page uses SVG/text, no emoji.
         # The attach button must use an inline <svg>, not an emoji glyph.
-        idx = self.html.index('data-action="attach-image"')
+        idx = self.html.index('data-action="composer-attach"')
         btn = self.html[idx:idx + 600]
         self.assertIn("<svg", btn, "attach button must use an SVG icon")
 
