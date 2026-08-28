@@ -133,7 +133,11 @@ class TestQueryPathExtractorHas9Types(unittest.TestCase):
     def test_graph_engine_fallback_uses_entity_types_core(self):
         """Pre-extension: hardcoded ['person','org','concept','document'].
         Post-extension: iterate ENTITY_TYPES_CORE so all 9 are tried."""
-        src = (ROOT / "core/graph_engine.py").read_text(encoding="utf-8")
+        # [2026-08-26] core/graph_engine.py became the
+        # core/graph_engine/ package under the 20 KB module-size gate.
+        from tests._pipeline_src import module_source
+        import core.graph_engine as _ge
+        src = module_source(_ge)
         # Hardcoded 4-type literal should be gone from the fallback loop.
         self.assertNotIn(
             '["person", "org", "concept", "document"]', src,
