@@ -21,6 +21,8 @@ import os
 import re
 import sys
 import unittest
+
+from tests._js_source import function_body
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -142,11 +144,13 @@ class IntegrationTests(unittest.TestCase):
 
     def test_placeholder_uses_thinking_label_class(self):
         # Without thinking-label class, the gradient CSS doesn't apply.
-        idx = self.js.index("function appendTyping")
-        body = self.js[idx:idx + 1500]
-        # Find the placeholder div.
+        # [2026-08-26] Was `js[idx:idx + 1500]`. appendTyping grew to
+        # ~12,000 chars, so the placeholder markup fell outside the
+        # window and the test reported it missing when it had only moved
+        # down the same function. Bound at the next function instead.
+        body = function_body(self.js, "appendTyping")
         m = re.search(r"thinking-placeholder.+?</div>", body, re.DOTALL)
-        self.assertIsNotNone(m)
+        self.assertIsNotNone(m, "placeholder div not found in appendTyping")
         ph_html = m.group(0)
         self.assertIn("thinking-label", ph_html,
             "placeholder text must carry .thinking-label so gradient applies")
@@ -154,9 +158,9 @@ class IntegrationTests(unittest.TestCase):
     def test_placeholder_no_longer_uses_static_dot(self):
         # The old .thinking-spinner-dot was a CSS pulse on a single dot —
         # replaced by brain-pulse. Verify it's gone from the placeholder.
-        idx = self.js.index("function appendTyping")
-        body = self.js[idx:idx + 1500]
+        body = function_body(self.js, "appendTyping")
         m = re.search(r"thinking-placeholder.+?</div>", body, re.DOTALL)
+        self.assertIsNotNone(m, "placeholder div not found in appendTyping")
         ph_html = m.group(0)
         self.assertNotIn("thinking-spinner-dot", ph_html,
             "old static dot should be replaced by brainPulseSvg")

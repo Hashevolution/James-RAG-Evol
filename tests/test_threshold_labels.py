@@ -64,8 +64,14 @@ class HtmlElementsTests(unittest.TestCase):
         # Min/max badges next to slider should say 안함 / 강력 instead
         # of raw 0.05 / 0.80 numbers.
         # Locate the min/max badges block (between </input> + button).
+        # [2026-08-26] The endpoints row moved from
+        # `style="display:flex;gap:4px"` to the `d-flex gap-4` utility
+        # classes when inline styles were extracted. Same row, same
+        # labels — match the class form, and stay loose about which
+        # utility names carry it so the next extraction does not break
+        # this again.
         block_match = re.search(
-            r'id="ws-threshold"[\s\S]+?(<div style="display:flex;gap:4px[^>]*">[\s\S]+?</div>)',
+            r'id="ws-threshold"[\s\S]+?(<div class="[^"]*d-flex[^"]*"[^>]*>[\s\S]+?</div>)',
             self.html,
         )
         self.assertIsNotNone(block_match,

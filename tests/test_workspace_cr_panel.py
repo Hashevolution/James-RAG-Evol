@@ -68,9 +68,13 @@ class HtmlTabAndPanelTests(unittest.TestCase):
         self.assertIn('id="tab-cr"', self.html,
             "CR tab content section must exist with id='tab-cr'")
         # Starts hidden — selectTab toggles it visible.
+        # [2026-08-26] The inline `style="display:none"` became the
+        # `d-none` utility class when inline styles were extracted;
+        # tokens.css declares `.d-none{display:none}`. Same behaviour,
+        # different spelling.
         self.assertRegex(
             self.html,
-            r'id="tab-cr"[^>]*display:\s*none',
+            r'<div[^>]*class="[^"]*\bd-none\b[^"]*"[^>]*id="tab-cr"',
             "CR tab section must start hidden",
         )
 

@@ -86,7 +86,19 @@ class PerMessageCopyTests(unittest.TestCase):
         # passes the element to the underlying function.
         self.assertIn('data-action="copy-answer-text"', body,
                       "appendJamesMsg must include a per-answer copy button")
-        self.assertIn("📋 복사", body)
+        # [2026-08-26] The three feedback controls (👍 / 👎 / 📋) became
+        # inline SVG with title + aria-label, so the emoji label is gone.
+        # Assert the accessible name instead — that is what the button
+        # actually promises a user now, and it survives an icon swap.
+        m2 = re.search(
+            r'data-action="copy-answer-text"[^>]*?'
+            r'(?:title|aria-label)="([^"]+)"',
+            body, re.S)
+        self.assertIsNotNone(m2,
+            "the copy button must carry an accessible name (title / "
+            "aria-label) — it is icon-only since the SVG swap")
+        self.assertIn("복사", m2.group(1),
+            f"copy button label should say 복사; got {m2.group(1)!r}")
 
 
 class ConditionalExportTests(unittest.TestCase):
