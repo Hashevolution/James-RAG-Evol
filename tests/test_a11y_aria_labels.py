@@ -63,6 +63,30 @@ class LangToggleButtonsTests(unittest.TestCase):
     def test_graph(self):     self._check("graph.html")
 
 
+def _icon_only_buttons(html: str):
+    """Yield ``(identifier, has_accessible_name)`` for buttons with no
+    visible text.
+
+    A button counts as icon-only when stripping tags, ``aria-hidden``
+    decorations, inline SVG and template expressions leaves nothing —
+    i.e. nothing a screen reader would read as its name. Those must
+    carry ``aria-label`` or ``data-i18n-aria-label``; a button with a
+    visible label needs neither and is skipped.
+    """
+    for m in re.finditer(r"<button\b([^>]*)>(.*?)</button>", html, re.S):
+        attrs, body = m.group(1), m.group(2)
+        text = re.sub(r'<[^>]+aria-hidden="true"[^>]*>.*?</[^>]+>', "",
+                      body, flags=re.S)
+        text = re.sub(r"<svg\b.*?</svg>", "", text, flags=re.S)
+        text = re.sub(r"<[^>]+>", "", text)
+        text = re.sub(r"\$\{[^}]*\}", "", text)      # JS template holes
+        if text.strip():
+            continue
+        ident = re.search(r'(?:id|data-action)="([^"]+)"', attrs)
+        yield (ident.group(1) if ident else "<unidentified>",
+               "aria-label" in attrs or "data-i18n-aria-label" in attrs)
+
+
 class IconOnlyButtonsTests(unittest.TestCase):
     """Specific high-value icon-only buttons that previously lacked
     an accessible name."""
@@ -74,6 +98,8 @@ class IconOnlyButtonsTests(unittest.TestCase):
                      ).read_text(encoding="utf-8")
         self.workspace = (FRONTEND / "workspace.html"
                          ).read_text(encoding="utf-8")
+        self.graph = (FRONTEND / "graph.html"
+                     ).read_text(encoding="utf-8")
 
     def _assert_aria_on_button(self, html: str, locator: str,
                                page: str) -> None:
@@ -86,11 +112,29 @@ class IconOnlyButtonsTests(unittest.TestCase):
         self.assertIn("aria-label=", block,
             f"{page}: button {locator!r} must declare aria-label")
 
-    def test_index_session_open_button(self):
-        # The 💬 button in the header opens the session panel
-        # (id=session-btn).
-        self._assert_aria_on_button(
-            self.index, 'id="session-btn"', "index.html")
+    def test_every_icon_only_button_is_labelled(self):
+        """Every button with no visible text carries an accessible name.
+
+        [2026-08-26] Replaces two tests that named specific buttons —
+        `id="session-btn"` and `data-action="clear-history"` — both of
+        which the v0.6.1 sidebar rework removed. The session list moved
+        into the sidebar rail and "새 대화" replaced the trash control,
+        and that one is *not* icon-only (it ships a visible label), so
+        chasing it would have been wrong twice over.
+
+        Scanning instead of naming keeps the contract — an icon button
+        must be announceable — and survives the next rename. It is also
+        wider: it covers every page, not the handful once listed.
+        """
+        for page, html in (("index.html", self.index),
+                           ("admin.html", self.admin),
+                           ("workspace.html", self.workspace),
+                           ("graph.html", self.graph)):
+            for ident, labelled in _icon_only_buttons(html):
+                self.assertTrue(labelled,
+                    f"{page}: icon-only button {ident!r} has no "
+                    f"aria-label / data-i18n-aria-label — a screen "
+                    f"reader announces it as an unnamed button")
 
     # NOTE: the dedicated ✕ "close session panel" button was removed
     # in #372 (UI-IA Phase 2 sidebar consolidation) — the chat session
@@ -110,12 +154,6 @@ class IconOnlyButtonsTests(unittest.TestCase):
         # [§5 migration] triggerModelInstall() → data-action.
         self._assert_aria_on_button(
             self.index, 'data-action="trigger-model-install"', "index.html")
-
-    def test_index_clear_history_button(self):
-        # 🗑 button next to lang toggle.
-        # [§5 migration] clearHistory() → data-action="clear-history".
-        self._assert_aria_on_button(
-            self.index, 'data-action="clear-history"', "index.html")
 
     def test_index_sidebar_open_button(self):
         # ▶ button shown when sidebar is collapsed (id=sidebar-open-btn).

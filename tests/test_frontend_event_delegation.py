@@ -48,6 +48,9 @@ _MIGRATED_PAGES = {
     "workspace.html",
     "index.html",
     "admin.html",
+    # [2026-08-26] intro.html shipped after this list was written and
+    # carries zero inline handlers — verified, not assumed.
+    "intro.html",
 }
 
 # Pages still using inline handlers. With PR-D landing, this is empty
@@ -196,16 +199,21 @@ class WorkspacePageDelegationTests(unittest.TestCase):
                 self.assertIn(f'data-action="{action}"', self.html)
 
     def test_html_uses_data_action_for_tab_nav(self):
-        # All sidebar tabs route through one 'select-tab' action,
-        # with the tab name pulled from the existing data-tab
-        # attribute. v0.2.x CR-C added the 4th tab ("cr"); future
-        # additions extend the expected count.
+        # All sidebar tabs route through one 'select-tab' action, with
+        # the tab name pulled from the existing data-tab attribute.
+        #
+        # [2026-08-26] Was a hardcoded count of 4, which went stale when
+        # the "templates" tab was added — failing as "5 != 4", accurate
+        # and unable to say whether a tab appeared or vanished. Compare
+        # the names, which report either direction.
+        tabs = set(re.findall(r'data-tab="([^"]+)"', self.html))
+        self.assertEqual(tabs, {"data", "jobs", "search", "cr", "templates"},
+                         "workspace tab set changed — update deliberately")
         self.assertEqual(
-            self.html.count('data-action="select-tab"'), 4,
-            "all four nav-item tabs (data / jobs / search / cr) "
-            "must carry data-action=select-tab",
+            self.html.count('data-action="select-tab"'), len(tabs),
+            "every nav-item tab must carry data-action=select-tab",
         )
-        for tab in ("data", "jobs", "search", "cr"):
+        for tab in sorted(tabs):
             self.assertRegex(
                 self.html,
                 r'data-tab="' + tab + r'"[^>]*data-action="select-tab"',
@@ -296,8 +304,12 @@ class ChatPageDelegationTests(unittest.TestCase):
     # ─── HTML — static actions ────────────────────────────────────
     def test_html_uses_data_action_for_header(self):
         for action in (
-            "set-source", "toggle-lang", "clear-history",
-            "toggle-session-panel", "show-login",
+            # [2026-08-26] `clear-history` and `toggle-session-panel`
+            # were removed by the v0.6.1 sidebar rework: "새 대화"
+            # (new-session) replaced the former, and the session list
+            # moved into the sidebar rail (switch-sidebar-mode).
+            "set-source", "toggle-lang", "new-session",
+            "switch-sidebar-mode", "show-login",
         ):
             with self.subTest(action=action):
                 self.assertIn(f'data-action="{action}"', self.html)
@@ -337,10 +349,17 @@ class ChatPageDelegationTests(unittest.TestCase):
     # ─── chat.js dynamic templates ────────────────────────────────
     def test_chat_js_dynamic_buttons_use_data_action(self):
         for action in (
-            "logout", "approve-wiki-save", "ask-with-force-web",
+            # [2026-08-26] `logout` left this list on purpose: the
+            # role badge assigns `badge.onclick` from chat.js rather
+            # than carrying a data-action, so the click delegation does
+            # not double-fire alongside it (index.html records the
+            # reason). A JS property assignment is not an inline
+            # handler, so the no-inline contract is intact.
+            # Session rename/delete moved to a selection-based popover
+            # in index.html — see SessionActionMenuTests below.
+            "approve-wiki-save", "ask-with-force-web",
             "export-answer", "send-feedback", "copy-answer-text",
-            "ask-suggestion",
-            "switch-session", "rename-session", "delete-session",
+            "ask-suggestion", "switch-session", "session-open-menu",
         ):
             with self.subTest(action=action):
                 self.assertIn(f'data-action="{action}"', self.chat)
@@ -376,14 +395,14 @@ class ChatPageDelegationTests(unittest.TestCase):
             self.chat,
             r'data-action="switch-session"\s+data-sid=',
         )
-        self.assertRegex(
-            self.chat,
-            r'data-action="rename-session"\s+data-sid=',
-        )
-        self.assertRegex(
-            self.chat,
-            r'data-action="delete-session"\s+data-sid=',
-        )
+        # [2026-08-26] rename/delete no longer travel with a data-sid.
+        # They live in a popover that acts on the selected session
+        # (`_selectedSessionSid()`), so the markup is in index.html and
+        # carries no per-row id. Pinned there instead.
+        for action in ("session-action-rename", "session-action-delete"):
+            with self.subTest(action=action):
+                self.assertIn(f'data-action="{action}"', self.html,
+                    "session action moved to the popover in index.html")
 
     # ─── upload.js dynamic templates ──────────────────────────────
     def test_upload_js_uses_data_action(self):
