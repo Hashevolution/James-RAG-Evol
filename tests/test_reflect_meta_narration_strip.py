@@ -29,7 +29,6 @@ text) is covered by a separate source-grep test below.
 """
 from __future__ import annotations
 
-import inspect
 
 import pytest
 
