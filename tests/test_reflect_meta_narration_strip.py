@@ -29,7 +29,6 @@ text) is covered by a separate source-grep test below.
 """
 from __future__ import annotations
 
-import inspect
 
 import pytest
 
@@ -289,8 +288,14 @@ def test_live_verify_nvidia_fixture_stripped_correctly():
 def test_reflect_exposes_strip_helpers():
     """The two helpers must be importable for downstream callers
     (and for these tests)."""
+    # [2026-08-26] reflect is a package now (loop / meta_narration /
+    # issue_extractor / prompts); inspect.getsource on a package returns
+    # only __init__.py, so both helpers looked deleted when they had
+    # only moved into meta_narration.py. The names are still importable
+    # from the package — asserted by the import at the top of this file.
+    from tests._pipeline_src import module_source
     from core.reasoning import reflect as m
-    src = inspect.getsource(m)
+    src = module_source(m)
     assert "def _strip_meta_narration" in src
     assert "def _looks_like_meta_narration" in src
 

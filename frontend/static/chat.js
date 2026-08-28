@@ -1986,7 +1986,6 @@ function appendJamesMsg(data) {
              style="display:flex;align-items:center;gap:6px;
                     font-size:11px;color:var(--accent);font-weight:700;
                     letter-spacing:.4px;text-transform:uppercase">
-          <span style="font-size:14px"></span>
           <span>${escHtml(t('chat.suggestions_label'))}</span>
         </div>
         ${suggestions.map((s, i) => `

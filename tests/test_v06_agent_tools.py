@@ -570,7 +570,11 @@ class TextFallbackEndpointTests(unittest.TestCase):
 class ServerRegistrationTests(unittest.TestCase):
     def test_agent_chat_route_wired(self):
         import server_llmwiki
-        paths = {getattr(r, "path", None) for r in server_llmwiki.app.routes}
+        # [2026-08-26] fastapi 0.141 / starlette 1.6 append an
+        # _IncludedRouter wrapper per include_router instead of
+        # flattening; route_paths unwraps it. See tests/_app_routes.py.
+        from tests._app_routes import route_paths
+        paths = route_paths(server_llmwiki.app)
         self.assertIn("/agent/chat/", paths)
 
 

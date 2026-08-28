@@ -60,7 +60,15 @@ def _present(targets, ctx: str):
     return {t: (t in ctx) for t in targets}
 
 
-def main() -> int:
+def main(out_path: "Path | None" = None) -> int:
+    """Run the probe and write the JSON report.
+
+    ``out_path`` defaults to the committed report under
+    ``reports/research-runs/``. Tests pass a temporary path: the report
+    is a tracked file, so running the probe against the default dirtied
+    the working tree on every test run — and the committed copy is a
+    record of a past measurement, not something a test should overwrite.
+    """
     try:
         sys.stdout.reconfigure(encoding="utf-8")
     except Exception:
@@ -145,9 +153,9 @@ def main() -> int:
         ),
     }
 
-    out_dir = ROOT / "reports" / "research-runs"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / "cascade-consistency-probe.json"
+    if out_path is None:
+        out_path = ROOT / "reports" / "research-runs" / "cascade-consistency-probe.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print(f"[cascade-probe] scenarios={n}  fixture={report['fixture']}")
@@ -162,7 +170,11 @@ def main() -> int:
             print(f"    · {r['scenario']}: CURRENT leaked={r['current']['leaked']} "
                   f"dropped={r['current']['dropped_active']}")
     print(f"  verdict: {report['verdict']}")
-    print(f"  report → {out_path.relative_to(ROOT)}")
+    try:
+        shown = out_path.relative_to(ROOT)
+    except ValueError:
+        shown = out_path          # out_path may sit outside the repo (tests)
+    print(f"  report → {shown}")
     return 0
 
 

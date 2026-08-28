@@ -6,7 +6,8 @@
 그에 대한 답신이다 (README EN/KO 대조 · #461/#463 v0.3.1 · one message
 per finding, 세 항목이 3차 본문과 하나씩 대응). 바로 발송 가능.
 **판정**: **재현** — 라이브 보안 결함이었음.
-**커밋 메시지 오류 기록**: `e19f239` 메시지는 *"the weaker version was
+**커밋 메시지 오류 기록** (해당 커밋은 squash 로 소멸, 내용만 남김):
+브랜치 커밋 메시지는 *"the weaker version was
 our implementation choice rather than his advice"* 와 *"the
 recommendation came from his Track 2c report and we shipped the
 character strip"* 를 동시에 주장한다 — **자기모순**. 원본 대조 결과:
@@ -18,7 +19,8 @@ control characters at input"*, 즉 **우리가 구현한 그것**. span 제거
 "revised your own earlier recommendation" 이라고 단정했다가 이 검토에서
 철회. 편지는 두 텍스트를 병치만 하고 책임은 우리로 둔다.
 (커밋 메시지는 이미 푸시됨 → 여기서 기록으로 남긴다.)
-**근거**: commit `e19f239` (PR #1079) · `core/input_normalization.py` ·
+**근거**: PR #1079 (2026-08-26 main 병합, squash `6d6a079`) ·
+`core/input_normalization.py` ·
 `tests/test_input_normalization.py` 43 passed.
 
 ## 왜 4통으로 나눴나

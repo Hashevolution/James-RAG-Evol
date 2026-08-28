@@ -36,7 +36,7 @@ import inspect
 from pathlib import Path
 
 
-def _module_source(mod) -> str:
+def module_source(mod) -> str:
     """Full source of ``mod``, including every submodule if it is a package.
 
     [2026-08-21] ``pipeline_synth`` grew past the 20 KB module-size gate
@@ -47,6 +47,12 @@ def _module_source(mod) -> str:
     symbol living in the split-out body silently started failing —
     reporting a feature as deleted when it had only moved. Walk the
     package instead, so the next split is absorbed the same way.
+
+    [2026-08-26] Made public, because this keeps recurring:
+    ``pipeline_synth``, then ``core.reasoning.reflect``, then
+    ``core.gemma_client`` each became a package and silently broke a
+    structural test that read it with ``inspect.getsource``. Any test
+    grepping a module that might one day be split should use this.
     """
     src = inspect.getsource(mod)
     if not hasattr(mod, "__path__"):
@@ -74,7 +80,7 @@ def pipeline_source() -> str:
         pipeline_query_expansion,
         pipeline_synth,
     )
-    return "\n".join(_module_source(m) for m in (
+    return "\n".join(module_source(m) for m in (
         pipeline,
         pipeline_context,
         pipeline_loops,
@@ -91,7 +97,10 @@ def engine_source() -> str:
     """
     from core.reasoning import engine, engine_memory, engine_synth
     return "\n".join(
-        _module_source(m) for m in (engine, engine_memory, engine_synth))
+        module_source(m) for m in (engine, engine_memory, engine_synth))
 
 
-__all__ = ["pipeline_source", "engine_source"]
+# Back-compat alias for the private name this started out as.
+_module_source = module_source
+
+__all__ = ["module_source", "pipeline_source", "engine_source"]

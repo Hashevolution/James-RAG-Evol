@@ -121,9 +121,14 @@ class SuggestionClusterHeaderTests(unittest.TestCase):
         block = self.src[idx:idx + 2500]
         self.assertIn("next-actions-header", block,
             "the suggestion render block must include a cluster header")
-        self.assertIn("✨", block,
-            "header must surface the ✨ star icon — user feedback "
-            "explicitly asked for 별 모양 visibility")
+        # [2026-08-26] Was asserting the ✨ glyph. The icon was dropped
+        # in the emoji-to-SVG sweep but its <span> was left behind
+        # empty, so the header rendered a blank 14px box plus the
+        # flex gap — the same shape of defect as the admin password
+        # toggle. The empty span is removed; what the header must still
+        # do is label the cluster, which is asserted above.
+        self.assertNotIn('<span style="font-size:14px"></span>', block,
+            "an empty decorative span leaves a blank gap in the header")
         self.assertIn("t('chat.suggestions_label')", block,
             "header must pull its label from i18n")
 

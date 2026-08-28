@@ -111,20 +111,33 @@ class NodeRenderingTests(unittest.TestCase):
 
     def test_node_val_amplifies_hubs(self):
         # nodeVal returns base for non-hubs, base * (something > 1) for hubs.
-        idx = self.js.index(".nodeVal(function")
+        # [2026-08-26] The accessor moved out of the inline
+        # `.nodeVal(function ...)` into the named `_baseNodeVal`, so
+        # trace-dim mode can swap and restore it (graph.js records that
+        # reason). Same logic, addressable by name now.
+        idx = self.js.index("function _baseNodeVal")
         body = self.js[idx:idx + 400]
         self.assertIn("isHub(n)", body)
         self.assertRegex(body, r"base\s*\*\s*1\.[5-9]\b",
             "hub size multiplier must be in [1.5, 1.9] range — bigger but "
             "not crowding neighbors (1.7x → ~1.2x apparent radius)")
 
-    def test_node_color_uses_isHub(self):
-        # Even if both branches return the same value in current impl
-        # (full saturation either way), the function must reference
-        # isHub to leave the hook open.
-        idx = self.js.index(".nodeColor(function")
-        body = self.js[idx:idx + 300]
-        self.assertIn("isHub(n)", body)
+    def test_node_color_is_type_driven(self):
+        """[2026-08-26] This used to require `_baseNodeColor` to mention
+        isHub "to leave the hook open" for a future hub colour — while
+        both branches returned the same value, so it was a no-op branch
+        kept alive by a test.
+
+        The extraction to `_baseNodeColor` dropped it, with no
+        behavioural change of any kind. Re-adding a dead branch to
+        satisfy a test would be the wrong repair, so the assertion now
+        states what the accessor actually does. Hub emphasis lives in
+        `_baseNodeVal` (size) and the link styling, both still pinned.
+        """
+        idx = self.js.index("function _baseNodeColor")
+        body = self.js[idx:idx + 200]
+        self.assertIn("typeColor(n.type)", body,
+            "node colour is driven by entity type")
 
 
 class LinkRenderingTests(unittest.TestCase):

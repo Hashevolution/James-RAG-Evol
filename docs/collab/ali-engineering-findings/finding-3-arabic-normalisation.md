@@ -5,7 +5,8 @@
 **판정**: **분할 + scope 확대** — 보안 게이트 절반 **비재현**, 런타임
 정규화 + 측정 스코어러 절반 **재현**, 그리고 그 위에 **훨씬 넓은 scope
 한계**(파이프라인에 아랍어 분류 자체가 없음)를 얹었다.
-**근거**: commit `8c6f726` (PR #1079) · `core/input_normalization.py` ·
+**근거**: PR #1079 (2026-08-26 main 병합, squash `6d6a079`) ·
+`core/input_normalization.py` ·
 `scripts/adversarial_sweep.py::_fold_for_match` ·
 `tests/test_input_normalization.py` 43 + `test_adversarial_criteria_parser` 25 ·
 **scope 절반 = `reports/research-runs/arabic-pipeline-capability-audit-20260822.md`**

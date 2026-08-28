@@ -45,7 +45,11 @@ class LlmActiveEndpointTests(unittest.TestCase):
         cls.app = app
 
     def test_endpoint_registered(self):
-        paths = {r.path for r in self.app.routes if hasattr(r, "path")}
+        # [2026-08-26] fastapi 0.141 / starlette 1.6 append an
+        # _IncludedRouter wrapper per include_router instead of
+        # flattening; route_paths unwraps it. See tests/_app_routes.py.
+        from tests._app_routes import route_paths
+        paths = route_paths(self.app)
         self.assertIn(
             "/llm/active", paths,
             "GET /llm/active is the chat-indicator endpoint added in "

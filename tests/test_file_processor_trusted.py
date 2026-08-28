@@ -128,11 +128,52 @@ class FileProcessorTrustedContentTests(unittest.TestCase):
 
     @_silent
     def test_extract_image_vision_success_is_vision_low(self):
+        # [2026-08-26] The old fixture was a markdown table
+        # ("| col1 | col2 |..."), which `_looks_like_text` rejects — see
+        # test_markdown_table_is_rejected_by_the_text_gate below. The
+        # call then fell through to the OCR branch and died on
+        # Image.open("dummy.png"). This test is about the *vision
+        # success* path, so it now uses prose that clears the gate.
         with patch.object(self.fp, "_extract_with_vision_tiling",
-                          return_value="| col1 | col2 |\n|---|---|\n| a | b |"):
+                          return_value="이 문서는 분기 매출 실적을 "
+                                       "요약한 보고서입니다."):
             tc = self.fp.extract_image("dummy.png")
         self.assertEqual(tc.source, "vision")
         self.assertEqual(tc.trust, "low")
+
+    def test_markdown_table_is_rejected_by_the_text_gate(self):
+        """A transcribed table does not survive `_looks_like_text`.
+
+        [2026-08-26] Recorded as a finding, not fixed here. The gate has
+        three guards written for OCR noise, and two of them punish table
+        syntax: pipes and `---` are non-word characters, so they drag the
+        word-char ratio under 0.5, and each `|` is its own whitespace
+        token, dragging the real-word ratio under 0.4.
+
+        The consequence is that when vision *successfully* transcribes a
+        table, the result is discarded and the pipeline falls back to
+        OCR on the same image. A realistic Korean financial table misses
+        by a hair (0.38 vs the 0.40 floor), so this is not only about
+        toy fixtures.
+
+        Fixing it means changing document-ingestion behaviour — most
+        likely excluding table punctuation from both ratios, or gating
+        the vision path differently from the OCR path, since the guards
+        were written for OCR noise and vision output is not OCR noise.
+        That needs a decision and a measurement, so this test pins the
+        current behaviour and will fail loudly the moment it changes.
+        """
+        looks = self.fp._looks_like_text
+        self.assertFalse(looks("| col1 | col2 |\n|---|---|\n| a | b |"),
+            "toy table")
+        self.assertFalse(
+            looks("| 항목 | 금액 |\n|---|---|\n| 매출액 | 1200 |\n"
+                  "| 영업이익 | 340 |"),
+            "a realistic Korean table is rejected too — if this starts "
+            "passing, the gate was fixed and this test should go")
+        self.assertTrue(looks("이 문서는 분기 매출 실적을 요약한 보고서입니다."),
+            "ordinary prose must still pass — the gate is not broken "
+            "in general, only on table syntax")
 
     @_silent
     def test_extract_image_easyocr_fallback_is_ocr_low(self):

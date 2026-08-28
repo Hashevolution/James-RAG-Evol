@@ -25,17 +25,38 @@ ROOT = Path(__file__).resolve().parent.parent
 
 class CascadeProbeTests(unittest.TestCase):
     def test_probe_runs_and_filter_is_clean(self):
+        # [2026-08-26] Was writing to the committed report under
+        # reports/research-runs/, so every test run dirtied the working
+        # tree — and the committed copy is the record of a past
+        # measurement (it still holds the pre-fix numbers, leakage=3,
+        # 1/4 consistent, generated on Windows), not a scratch file for
+        # a test to overwrite. Write to a temp path instead.
+        import tempfile
+        from pathlib import Path as _P
         from scripts.research import cascade_consistency_probe as probe
-        rc = probe.main()
-        self.assertEqual(rc, 0)
-        report = ROOT / "reports" / "research-runs" / "cascade-consistency-probe.json"
-        self.assertTrue(report.exists())
-        data = json.loads(report.read_text(encoding="utf-8"))
-        filt = data["metrics"]["filtered_fix"]
-        # the proposed status-aware filter: zero leakage, no active loss.
-        self.assertEqual(filt["invalidated_leakage"], 0)
-        self.assertEqual(filt["active_dropped"], 0)
-        self.assertEqual(filt["active_retention"], 1.0)
+        with tempfile.TemporaryDirectory() as td:
+            report = _P(td) / "probe.json"
+            rc = probe.main(out_path=report)
+            self.assertEqual(rc, 0)
+            self.assertTrue(report.exists())
+            data = json.loads(report.read_text(encoding="utf-8"))
+            filt = data["metrics"]["filtered_fix"]
+            # status-aware filter: zero leakage, no active loss.
+            self.assertEqual(filt["invalidated_leakage"], 0)
+            self.assertEqual(filt["active_dropped"], 0)
+            self.assertEqual(filt["active_retention"], 1.0)
+
+    def test_probe_does_not_touch_the_committed_report(self):
+        """Guard for the above: the default path still works, but a test
+        must never be the thing that rewrites a tracked measurement."""
+        import inspect
+        from scripts.research import cascade_consistency_probe as probe
+        sig = inspect.signature(probe.main)
+        self.assertIn("out_path", sig.parameters,
+            "probe.main must accept out_path so tests can redirect it")
+        self.assertIsNone(sig.parameters["out_path"].default,
+            "out_path must default to None (→ the committed report) so "
+            "running the script by hand is unchanged")
 
     def test_filter_predicate_excludes_deactivated(self):
         from scripts.research.cascade_consistency_probe import _is_active
