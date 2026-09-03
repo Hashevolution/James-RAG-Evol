@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] — 2026-09-03 — documentation-currency restore + restart roadmap
+
+**Status**: `main`-branch documentation sync. No runtime change.
+
+After a ~2-month idle interval (last feature session 2026-06-26; last commit 2026-08-19) the six root documents had each stopped at a different point — `CLAUDE.md`'s state section was ~10 weeks behind (still describing the v0.4.3 / Direction α cycle), `SUMMARY.md` said "v0.5 entry", `ROADMAP.md` ended at v0.5.x with a "Last updated 2026-05-22" footer, and this file had no entry for the ~190 PRs (#886–#1078) that landed after the v0.5 close.
+
+- **New canonical state doc** — [`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`](docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md): current-state fact table, the documentation-drift ledger, and a **Phase 1–7 restart roadmap** (1 doc sync → 2 CI green → 3 idle-debt closure → 4 v0.6.1 formal close → 5 measurement backlog → 6 Fork A/B decision → 7 v0.6 entry).
+- **Root docs re-synced** — `CLAUDE.md` (state section, entry-pointer table, operational conventions, Korean summary), `SUMMARY.md`, `README.md`, `README.ko.md`, `ROADMAP.md` (new `v0.6.x` section), `HANDOVER.md`, and this file.
+- **NEW CLAUDE.md rule #6 — state single-source**: cycle state is written in exactly one place (the newest `docs/handovers/` doc); root docs only point at it. Duplicated state statements are what drifted.
+- **Guard strengthened** — `tests/test_v06_claude_md_entry_pointer.py` gains a fourth invariant: the "Where to look next" first row must name the **newest date-stamped handover** on disk. The three original invariants only checked that the pointer *resolves*, so they stayed green through the entire drift.
+- **🟠 `main` CI state recorded in the docs for the first time.** The `test.yml` pytest job has failed on every run since 2026-06-22, through the latest (2026-08-28). The 2026-08-21 draft of this entry measured ~60 failures and two rule #5 violations against `73a653a`; **#1080 (2026-08-28) has since taken it to 5 failures / 4,368 passed / 6 skipped** (read from the CI run log) and resolved both size violations, so those numbers are superseded. This PR's own CI run is byte-for-byte the same failure list with one more test passing (`5 failed, 4369 passed`), i.e. the branch is exactly neutral. The five remaining failures are enumerated and adjudicated in the roadmap's §1.1. The deterministic benchmark tier and the published RAB / LRB numbers are unaffected. Restoring green remains roadmap Phase 2 and blocks new feature work.
+- **This entry itself is a worked example of the drift it documents.** The roadmap's first draft was written against a `main` that moved twice (#1079, #1080) before the PR merged; the facts were re-measured and the phase scope reduced rather than shipped stale. That is the intended behaviour under rule #6, not an exception to it.
+
+---
+
+## [0.6.1] — 2026-06-14 → 2026-06-26 — product hardening (UNRELEASED, `main` only)
+
+**Status**: no tag, no Zenodo DOI. v0.4.4 remains the newest published release; the v0.5 → v0.6 gate (Dim F) is still open, so this stream is cycle-less product work rather than a released version.
+
+**Theme**: turn the measured platform into something an operator actually uses daily — agent track, LLM routing unification, chat UX rebuild, page consolidation, and a live-lifecycle correctness fix found by measurement.
+
+- **Agent track** (#918–#921, #1039–#1047) — operator-allowed paths, `core/agent_tools` + an LLM tool-use loop, an agent chat panel inside admin, a folder picker + model select + session list, cloud Claude via the Max-plan CLI (no API key) behind a `JAMES_AGENT_ALLOW_CLOUD` UI toggle, and `run_shell` (**default-OFF, admin-only**).
+- **LLM routing unification + per-mode measurement** (#922, #961–#977) — DB-first settings repository + admin UI; `DEFAULT_PREFERENCE` split per mode (retrieval / meta / wiki_edit / vision / chat); 3-cell paired measurements decide each mode's backend; a measurement-environment isolation contract (lock test + pre-flight) so a mis-set model can't silently invalidate a run.
+- **Chat UX rebuild** (#927–#960) — Claude-style sidebar, session popover + favourites with cross-device sync, answer typography, Korean mobile readability, an answer-truncation guardrail with a "계속" affordance, and **the SEKOS / JAMES naming split (#934)**: SEKOS is the product brand, JAMES stays the engine codename in source, `JAMES_*` env vars, benchmarks and DOIs.
+- **Privacy + cost primitives** (#980–#988) — privacy gate + monthly cost cap, wired into the cloud-egress site with defence-in-depth (#982, #985).
+- **UI consolidation, 8 → 5 pages** (#998–#1017) — de-emoji of all non-chat chrome; `/` becomes a public intro front door with chat at `/chat` (old routes 301); reasoning-flow + knowledge-rollback fold into `/admin/graph` as tabs; the workspace gains a real "원본 자료" find → view → edit surface; answer → trace → graph deep-link loop; **visual-regression harness** (#1013) rendering 7 pages headless with pixel-diff baselines.
+- **🔴 Lifecycle live-consistency arc** (#1018–#1027, #1033–#1034) — the deterministic `cascade_consistency_probe` (#1020) proved live graph traversal filtered relations by confidence **only**, ignoring `status.active` / `mutation_type`: invalidated, superseded and expired relations were leaking into LLM context (3/3 in the fixture) while `status` was honoured only in the time-travel (`reconstruct_*_at`) path — i.e. the cascade was cosmetic at the live layer. `relation_is_live()` (`core/graph_engine/constants.py`, kill-switch `JAMES_DISABLE_STATUS_FILTER`) now gates traversal output (#1021), graph score (#1023), the T1 validity window (#1024) and the current-state 3D snapshot (#1026); time-travel isolation is pinned (#1025). Path-Recall analog 1.0 — **0 active-relation loss**. Report: `reports/research-runs/lifecycle-live-consistency-arc-20260622.md`.
+  - **This is the single sanctioned break** of the `core/graph` traversal zero-line streak: measurement-gated, probe-first, kill-switch-equipped. Later handovers must not restate "0 lines changed" for this stream.
+- **Backlog re-measurement** (#1028–#1032) — D-alce (sampling variance), HR N=100 (**byte-identical to baseline**), v0.2.3b smoke (J − N +0.21 reproduced) ⇒ the lifecycle filter caused no measurable regression on the supersede-sensitive LRB SUTs.
+- **Entity-edit cascade** (#1018 / #1019 / #1033 / #1034) — editing a wiki entity invalidates stale relations, materialises newly-implied edges, propagates inbound-inverse + T6, and surfaces the result in the edit modal. `core/cascade` only.
+- **CSP `style-src` migration** (#1062) — 596 inline `style="..."` attributes across the 5 served pages moved into CSS classes (`scripts/migrate_inline_styles.py`: 103 atoms + 184 `.u-<hash>` components). **Not flipped to enforce**: ~493 JS-injected inline styles (innerHTML + cssText) still require `unsafe-inline`.
+- **Image ingest / vision chain repair** (#1067–#1072) — four stacked bottlenecks found live: vision calls were being sent to the *text* model (`config.MULTIMODAL_MODEL` added); vision → OCR routing via a `<NO_TEXT>` sentinel with the harmful adaptive-threshold binarization removed (measured 296k garbage chars vs ~2k grayscale = 136×); EasyOCR-first fallback (PaddleOCR blocked on Python 3.14); default multimodal model `llava:13b` → **`qwen2.5vl:7b`**; and the final cause — vision `num_ctx` 4096 → 8192, since a 12 MP photo's tokens + prompt overflowed the window into an HTTP 400.
+- **Long-request robustness** (#1073, #1075) — `core/http_heartbeat.stream_json_with_heartbeat` runs blocking work in a worker thread and streams JSON-insignificant whitespace so mobile / tunnel connections don't idle out; applied to `/query/` and `/upload/`; immediate first byte + 5 s interval. No client change.
+- **Detailed answer style** (#1074) — `response_style="detailed"` no longer collapses to NATURAL; detail cues (상세히 / 자세히 / 원문 / in detail / verbatim) route to a DETAILED_PRESET that reproduces source tables and numbers instead of summarising.
+- **Windows one-click setup** (#1051) — `install.bat` / `start.bat` (+ PowerShell variants) create the venv, generate `.env` with fresh secrets, and detect/guide the native deps without silently installing system software.
+- **Citation + CI corrections** (#1077, #1078) — v0.3.3 DOI lineage corrected (a phantom `v0.4.0-alpha.1` row removed) after Ali Afana's third-leg deposit cited the JAMES workload-gradient axis; 9 F-class ruff violations cleared to unblock the lint gate.
+
+**Session handovers**: [2026-06-22 measurement/fix loop](docs/handovers/v0.6.1-measurement-fix-loop-2026-06-22.md) · [2026-06-23 close](docs/handovers/v0.6.1-session-close-2026-06-23.md) · [2026-06-26 close](docs/handovers/v0.6.1-session-close-2026-06-26.md).
+
+---
+
+## [0.6.0] — 2026-06-13 — deployment hardening + operator surfaces + template engine (UNRELEASED, `main` only)
+
+**Status**: no tag, no DOI. Landed in the "v0.5 closed, v0.6 not yet entered" interval; none of it depends on the Fork A / Fork B decision.
+
+- **Documentation + positioning** (#886–#889) — v0.6 entry skeleton (the 2-fork contract); a roadmap / README / CHANGELOG consistency audit; an industry comparison matrix against LangChain / LlamaIndex / Haystack / R2R / ActiveGraph, with 18 verified cell corrections.
+- **P1 — production deployment hardening** (#890, #891) — trusted `X-Forwarded-*` middleware closing a rate-limit bypass and audit-log IP spoof; an HTTPS production deployment guide.
+- **P3 — multi-tenancy wire-in** (#892–#894) — per-request tenant middleware (signed `X-Tenant-Id`), a per-tenant workspace path resolver, and the deployment guide that ties them to the v0.5 G1 primitives.
+- **P4 — non-developer operator surfaces** (#895–#899) — a 5-step onboarding flow, a knowledge-rollback affordance (undo recent / restore to time T), a 3-swimlane reasoning-flow visualisation for audit without reading code, a glossary page with a universal tooltip mechanism, and a Korean operator quickstart.
+- **Rule #5 split series** (#900–#908) — `reflect.py` (29.2 KB), `gemma_client.py`, `replay_graph.py`, `_ingestion.py`, `_frontmatter.py`, `pipeline_synth.py` and `graph_engine.py` each split into packages, bringing every `core/` module under the 20 KB cap at the time.
+- **CLAUDE.md entry-pointer guard** (#906) — the first version of `tests/test_v06_claude_md_entry_pointer.py` (existence / location / marker).
+- **Template-formatting engine** (#909, #913, #916) — a **domain-agnostic** form-shaping engine: register a template (file, image-OCR or pasted text), paste raw content, get one LLM reshaping pass laid onto the template structure, download as md / txt / html / docx. Owner-scoped store (`core/templating/`), `routes/templating.py`, a workspace tab and a chat apply-modal. Rule #1 held: **SEKOS ships zero templates**.
+- **Mobile capture + operator ergonomics** (#915, #917) — phone camera capture + share-target setup guide, workspace badge, `start_james.{ps1,sh}` launcher.
+
+**Handover**: [v0.6 template-engine close](docs/handovers/v0.6-template-engine-close-2026-06-13.md).
+
+---
+
 ## [0.5.0-close] — 2026-06-12 → 2026-06-13 — v0.5 cycle close + post-close mother-platform consolidation (UNRELEASED)
 
 **Status**: `main`-branch cycle close + post-close consolidation. **No Zenodo DOI mint** — the v0.5 → v0.6 gate (Dim F: ≥6 month external customer pilot) is not yet cleared, and the 2-fork v0.6 entry contract (LOI signed → Track D / 6-month no-LOI → reassess; see [v0.6 entry skeleton](docs/handovers/v0.6-entry-skeleton-2026-06-13.md)) is the canonical state pointer. This entry documents the cumulative `main`-branch state at the close + post-close interval boundary.

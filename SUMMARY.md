@@ -62,8 +62,14 @@ Both papers cite **Zenodo DOI [10.5281/zenodo.20652679](https://doi.org/10.5281/
 
 ## Status + provenance
 
-- Current release: **v0.4.4** (LRB v0.2.3 S3 publication-scale + cycle γ 4-bench infrastructure closure) — DOI [`10.5281/zenodo.20652679`](https://doi.org/10.5281/zenodo.20652679)
-- **Current cycle**: **v0.5 entry** (2026-06-12) — first-domain pilot path; enterprise document ontology design LOCK ([entry handover](docs/handovers/v0.5-entry-2026-06-12.md))
+> **Canonical state doc**: [`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`](docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md). If this section and that doc ever disagree, the handover wins (CLAUDE.md rule #6 — state lives in one place).
+
+- Current release: **v0.4.4** (LRB v0.2.3 S3 publication-scale + cycle γ 4-bench infrastructure closure) — DOI [`10.5281/zenodo.20652679`](https://doi.org/10.5281/zenodo.20652679). **This is still the newest tagged release**: v0.5 / v0.6 / v0.6.1 exist on `main` only, with no tag and no DOI.
+- **Current cycle**: **v0.5 closed** (2026-06-13); **v0.6 not formally entered** — the v0.5 → v0.6 gate (Dim F: ≥6 month external customer pilot) is not cleared, and the 2-fork entry contract (Fork A: LOI signed → vertical pack / Fork B: 6-month no-LOI → strategy reassess, decision point ≈ 2026-12-13) is operator-pending ([v0.6 entry skeleton](docs/handovers/v0.6-entry-skeleton-2026-06-13.md) §4).
+- **Since the v0.5 close**: a **v0.6 / v0.6.1 product-hardening stream** landed on `main` — PRs **#886–#1078**, 2026-06-13 → 2026-06-26 (deployment hardening, template-formatting engine, agent track, LLM routing unification, chat UX rebuild, 8→5 page consolidation, visual-regression harness, CSP inline-style migration, image-OCR/vision repair, heartbeat streaming). No release tag.
+- **One measured behaviour change in the retrieval path**: the lifecycle live-consistency arc (#1018–#1027) — a deterministic probe proved live graph traversal ignored lifecycle `status`, so invalidated/superseded relations were leaking into LLM context; `relation_is_live()` now gates traversal, graph score, T1 validity and the 3D snapshot (kill-switch `JAMES_DISABLE_STATUS_FILTER`). Backlog re-measurement (D-alce / HR N=100 / v0.2.3b) showed no regression.
+- **Maintenance PRs #1079 / #1080** (2026-08-26 / 08-28) — Ali Afana's four engineering findings (①②③ sent), a **uuid7 production defect** (`start_trace()` called the Python-3.14-only `uuid.uuid7()`, raising `AttributeError` on every supported interpreter and taking down the `/query/` edge for callers that don't mint their own `trace_id`), an Arabic-pipeline capability audit (recorded, not fixed), and a cause-by-cause CI cleanup.
+- ⚠️ **Known-red CI, much reduced**: the `test.yml` pytest job still fails on `main` (latest run 2026-08-28), but #1080 took it to **5 failures / 4,368 passed** (CI log, `df55e21`) by finding the real causes — FastAPI 0.141.1 / starlette 1.6.0 wrap each `include_router` in an `_IncludedRouter` with no `path`, so 19 wrappers hid ~137 endpoints from every route assertion. The rule #5 module-size violations are resolved (`core/response_style.py` split; `core/reasoning/engine.py` grandfathered with a split plan, since splitting it needs STEP 7 bench numbers per rule #2). The deterministic benchmark tier (`bash benchmarks/run_all.sh`) is unaffected. Restoring green is Phase 2 of the restart roadmap.
 - Predecessor: v0.4.3 (RAB v0.1.1 + Cycle γ multi-hop arc closure) — DOI [`10.5281/zenodo.20625533`](https://doi.org/10.5281/zenodo.20625533)
 - License: MIT
 - Entry: `README.md` → `docs/ARCHITECTURE.md` → `docs/PLATFORM_READINESS.md`
@@ -80,6 +86,7 @@ Both papers cite **Zenodo DOI [10.5281/zenodo.20652679](https://doi.org/10.5281/
 | Read the architecture | `docs/ARCHITECTURE.md` |
 | See the platform-readiness gate definitions | `docs/PLATFORM_READINESS.md` |
 | Reproduce the RAB / LRB benchmarks | the `README.md` 'Reproduce in 60 seconds' code block (no LLM call required) |
+| Know the current state / what to work on next | `docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md` (restart roadmap, Phase 1-7) |
 | Cite the work academically | the `README.md` 'Papers & Reproducibility' section (BibTeX block) |
 | Reproduce a verified number from "What's measured" | the right column of the table above; commands work as-typed |
 | Audit a PR's quality delta | `.github/PULL_REQUEST_TEMPLATE.md` (Quality Delta Card section) |

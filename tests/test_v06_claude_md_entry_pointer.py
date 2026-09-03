@@ -13,7 +13,7 @@ CLAUDE.md 'Where to look next' first row points at the most recent
 handover skeleton OR entry doc — would catch the staleness this
 skeleton exists to prevent").
 
-This test pins three invariants on the first data row:
+This test pins four invariants on the first data row:
 
   1. **Existence** — the file path it links to MUST exist on disk.
   2. **Location** — the file MUST live under `docs/handovers/`
@@ -23,12 +23,22 @@ This test pins three invariants on the first data row:
   3. **Marker** — the row MUST carry an "entry" / "next session" /
      "skeleton" marker so the next session can tell at a glance
      "this is THE entry, not the next-most-recent doc".
+  4. **Recency** (added 2026-08-21) — the file it points at MUST be
+     the NEWEST dated handover on disk. Invariants 1-3 only check
+     that the pointer resolves; they pass happily while the pointer
+     rots. That is exactly what happened between 2026-06-13 and
+     2026-08-19: three newer handovers landed
+     (`v0.6.1-session-close-2026-06-{22,23,26}.md`) while the first
+     row still named the 2026-06-13 entry skeleton, and this test
+     stayed green the whole time. Recency is measured off the
+     ``YYYY-MM-DD`` in the filename; handovers without a date in
+     the name are track docs, not cycle entries, and are ignored.
 
 A future PR that lands a new cycle's entry doc without updating
-CLAUDE.md will fail invariant #1 (the new file isn't yet on disk
-under the old name) OR invariant #3 (the marker still references
-the old cycle). Either failure surfaces at PR time, not 3 weeks
-later when a fresh session reads the stale pointer.
+CLAUDE.md fails invariant #4 (the first row still names an older
+handover), and a renamed/deleted one fails #1. Either failure
+surfaces at PR time, not 3 weeks later when a fresh session reads
+the stale pointer.
 
 Run:
   python -m unittest tests.test_v06_claude_md_entry_pointer
@@ -54,6 +64,38 @@ SECTION_HEADER = "## Where to look next"
 # path with `.md` extension. Tolerates leading/trailing markdown
 # emphasis markers (`**path**`).
 _BACKTICKED_PATH = re.compile(r"`([^`]+\.md)`")
+
+# `v0.6.1-session-close-2026-06-26.md` -> date part. Handover docs
+# without a date (track docs like `v0.2.1-business-track.md`) are not
+# cycle entries and take no part in the recency comparison.
+_DATED_HANDOVER = re.compile(r"(\d{4})-(\d{2})-(\d{2})\.md$")
+
+HANDOVERS_DIR = REPO_ROOT / "docs" / "handovers"
+
+
+def _filename_date(path) -> tuple | None:
+    """Return ``(YYYY, MM, DD)`` from a handover filename, or None."""
+    m = _DATED_HANDOVER.search(str(path).replace("\\", "/"))
+    if not m:
+        return None
+    return tuple(int(g) for g in m.groups())
+
+
+def _newest_dated_handovers() -> list:
+    """Every handover carrying the newest filename date.
+
+    A list rather than a single file because one session can close
+    with two docs dated the same day — either is a legitimate entry
+    pointer.
+    """
+    dated = [
+        (d, p) for p in HANDOVERS_DIR.glob("*.md")
+        if (d := _filename_date(p.name)) is not None
+    ]
+    if not dated:
+        return []
+    newest = max(d for d, _ in dated)
+    return [p for d, p in dated if d == newest]
 
 
 def _find_first_data_row() -> str:
@@ -94,7 +136,7 @@ def _find_first_data_row() -> str:
 
 
 class WhereToLookNextEntryRowTests(unittest.TestCase):
-    """Three invariants on the first data row."""
+    """Invariants #1-#3 on the first data row (see #4 below)."""
 
     @classmethod
     def setUpClass(cls):
@@ -160,6 +202,41 @@ class WhereToLookNextEntryRowTests(unittest.TestCase):
             f"present on disk. The first row IS the cycle entry; "
             f"category-mixing it with a memory file or report "
             f"makes the table un-scannable.",
+        )
+
+
+class EntryPointerRecencyTests(unittest.TestCase):
+    """Invariant #4 — the pointer must be the NEWEST cycle entry.
+
+    CLAUDE.md rule #6 (state single-source): the newest handover in
+    ``docs/handovers/`` IS the state; the root docs only point at it.
+    A newer handover landing without this row moving means the next
+    session reads a stale state — the failure this test exists to
+    make impossible to merge.
+    """
+
+    def test_first_row_points_at_the_newest_handover(self):
+        row = _find_first_data_row()
+        newest = _newest_dated_handovers()
+        self.assertTrue(
+            newest,
+            "docs/handovers/ has no date-stamped handover — the "
+            "cycle-entry convention (`<topic>-YYYY-MM-DD.md`) is gone",
+        )
+        newest_names = {p.name for p in newest}
+        referenced = {
+            p.rsplit("/", 1)[-1]
+            for p in _BACKTICKED_PATH.findall(row)
+        }
+        self.assertTrue(
+            referenced & newest_names,
+            f"CLAUDE.md `Where to look next` first row references "
+            f"{sorted(referenced)!r}, but the newest handover on disk "
+            f"is {sorted(newest_names)!r}. A newer cycle doc landed "
+            f"without moving the entry pointer — the next session "
+            f"would start from stale state. Either make the new doc "
+            f"the first row, or (if it is not a cycle entry) drop the "
+            f"date from its filename.",
         )
 
 

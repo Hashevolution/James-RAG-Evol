@@ -11,7 +11,7 @@
 > [`docs/PLATFORM_READINESS.md`](docs/PLATFORM_READINESS.md)).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-v0.5%20closed-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/blob/main/docs/handovers/v0.5-close-2026-06-12.md)
+[![Status](https://img.shields.io/badge/Status-v0.6.1%20on%20main%20(unreleased)-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/blob/main/docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12806/badge)](https://www.bestpractices.dev/projects/12806)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20652679.svg)](https://doi.org/10.5281/zenodo.20652679)
@@ -501,10 +501,11 @@ The numbers below come from the current `main` branch — not aspirational, not 
 
 ## Project Status
 
-**Current state: `v0.5 closed` — productive "v0.5 closed, v0.6 not yet entered" interval.**
-Full per-release detail (and the post-close PR log) lives in
-[`CHANGELOG.md`](CHANGELOG.md); the canonical state pointer is the
-[v0.6 entry skeleton](docs/handovers/v0.6-entry-skeleton-2026-06-13.md).
+**Current state (2026-09-03): `v0.5 closed` + an unreleased `v0.6 / v0.6.1`
+product-hardening stream on `main`. `v0.6` is not formally entered.**
+The canonical state pointer is the
+[v0.6.2 restart roadmap](docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md);
+full per-release detail lives in [`CHANGELOG.md`](CHANGELOG.md).
 
 The **v0.5 → v0.6 gate** requires a ≥6-month external customer pilot, which
 is not yet cleared, so the project continues in **mother-platform hardening
@@ -512,8 +513,23 @@ mode**: no domain-specific (vertical) features land until v1.0, per
 [CLAUDE.md rule #1](CLAUDE.md). v0.5 and the post-close consolidation shipped
 the Time-Travel Dashboard, multi-tenant / SaaS-readiness primitives, the
 ontology Pack SDK, CSP security-header middleware, and the Graph-RAG
-contribution measurement — all without touching
-`core/retrieval` / `core/graph` traversal / `core/reasoning`.
+contribution measurement. The v0.6 / v0.6.1 stream (PRs #886–#1078,
+2026-06-13 → 2026-06-26) added deployment hardening, the template-formatting
+engine, the agent track, LLM routing unification, a chat-UX rebuild, an 8→5
+page consolidation, a visual-regression harness and the image-OCR / vision
+repair — plus **one measured retrieval-path change**: the lifecycle
+live-consistency arc (#1018–#1027), where a probe proved live graph traversal
+ignored lifecycle `status` and `relation_is_live()` now gates it.
+
+> ⚠️ **Known-red CI (reduced).** The `test.yml` pytest job still fails on
+> `main` (latest run 2026-08-28) at **5 failures / 4,368 passed**, after PR
+> #1080 fixed the causes rather than the symptoms — FastAPI
+> 0.141.1 / starlette 1.6.0 wrap each `include_router` in an
+> `_IncludedRouter` that has no `path`, so 19 wrappers hid ~137 endpoints
+> from every route assertion. Rule #5 module-size violations are resolved.
+> The deterministic benchmark tier (`bash benchmarks/run_all.sh`) and the
+> published RAB / LRB numbers are unaffected. Restoring green is Phase 2 of
+> the restart roadmap.
 
 **Release history** (newest first — see [`CHANGELOG.md`](CHANGELOG.md) for full notes):
 

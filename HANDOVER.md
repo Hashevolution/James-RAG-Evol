@@ -1,17 +1,18 @@
 # PROJECT JAMES — 인수인계서
 
-**작성일**: 2026년 5월 (초기) / 2026-06-12 header refresh (v0.4.4)
+**작성일**: 2026년 5월 (초기) / 2026-09-03 header refresh
 **작성자**: Hashevolution
 **대상**: 다음 세션의 Claude (또는 본인 참조용)
-**현재 상태**: v0.4.4 (LRB v0.2.3 S3 publication-scale + cycle γ 4-bench 인프라 마감). DOI [`10.5281/zenodo.20652679`](https://doi.org/10.5281/zenodo.20652679).
+**현재 상태**: v0.5 closed (2026-06-13) + 미릴리스 v0.6 / v0.6.1 제품 하드닝 스트림 (#886–#1078). **최신 태그 릴리스는 v0.4.4**, DOI [`10.5281/zenodo.20652679`](https://doi.org/10.5281/zenodo.20652679). v0.6 정식 미진입 (Dim F 게이트 미통과).
 
-> ⚠️ **이 문서의 본문 (§1 이하 ~700 줄) 은 초기 v0.1.x 시점의 인수인계 기록 보존본**. v0.4 cycle 의 최신 entry / 의무 reading 묶음은 별도:
+> ⚠️ **이 문서의 본문 (§1 이하 ~700 줄) 은 초기 v0.1.x 시점의 인수인계 기록 보존본**입니다. 현재 상태와 다음 작업은 아래를 보세요:
 >
-> - **신규 세션 진입 시 첫 의무 reading**: `docs/handovers/v0.4-next-session-entry-2026-06-12-pm.md`
-> - **CLAUDE.md "Where to look next" 표 첫 행** 도 동일 doc 으로 pinned
-> - **자세한 한국어 narrative**: `README.ko.md` § "프로젝트 상태: v0.4.4"
+> - **신규 세션 진입 시 첫 의무 reading**: **`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`** (재개 로드맵 Phase 1–7 + 현재 상태 사실 확인 + 🔴 CI 빨간불)
+> - **CLAUDE.md "Where to look next" 표 첫 행** 도 동일 doc 으로 pinned (가드 테스트가 recency 를 강제)
+> - **직전 기능 세션**: `docs/handovers/v0.6.1-session-close-2026-06-26.md`
+> - **자세한 한국어 narrative**: `README.ko.md` § "프로젝트 상태 (2026-09-03 기준)"
 > - **External evaluator first read**: `SUMMARY.md`
-> - **Per-version release narrative**: `docs/release_notes_v0.4.4.md` (이 cycle), `docs/release_notes_v0.4.3.md` (RAB 출시), 그리고 그 이전 chain
+> - **Per-version release narrative**: `docs/release_notes_v0.4.4.md` (최신 태그 릴리스), `docs/release_notes_v0.4.3.md` (RAB 출시), 그리고 그 이전 chain
 
 본문 (§1 이하) 은 프로젝트 출범 시점의 정체성 / 인수인계 맥락 의 historical 기록. 변경하지 않고 보존.
 

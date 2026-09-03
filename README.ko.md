@@ -15,7 +15,7 @@
 > 모순 트리 등도 모두 first-class 차별점.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-v0.5%20closed-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/blob/main/docs/handovers/v0.5-close-2026-06-12.md)
+[![Status](https://img.shields.io/badge/Status-v0.6.1%20on%20main%20(unreleased)-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/blob/main/docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12806/badge)](https://www.bestpractices.dev/projects/12806)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20652679.svg)](https://doi.org/10.5281/zenodo.20652679)
@@ -147,7 +147,42 @@ python scripts/research/lrb_run_s3.py --scale publication
 
 ---
 
-## 프로젝트 상태: v0.5 마감 — Time-Travel Dashboard + SaaS-readiness + Pack SDK + CSP nonce
+## 프로젝트 상태 (2026-09-03 기준) — v0.5 마감 + 미릴리스 v0.6 / v0.6.1 스트림
+
+> **단일 진실원**: [`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`](docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md)
+> (재개 로드맵 Phase 1–7). 아래 섹션들과 충돌하면 로드맵 문서가 우선입니다.
+
+- **최신 태그 릴리스는 여전히 v0.4.4** (DOI `10.5281/zenodo.20652679`).
+  v0.5 / v0.6 / v0.6.1 은 `main` 에만 있고 태그·DOI 가 없습니다.
+- **v0.5 마감 2026-06-13**, **v0.6 정식 미진입** — 게이트 = Dim F
+  (외부 고객 6 개월 파일럿) 미통과. 2-fork 계약 (Fork A LOI / Fork B
+  6 개월 무LOI 재평가) 판정 시점 ≈ **2026-12-13**, operator 결정.
+- **v0.6 / v0.6.1 제품 하드닝 스트림** (#886–#1078, 2026-06-13 → 06-26):
+  운영 하드닝 (신뢰 프록시 / HTTPS 가이드 / 테넌트 미들웨어 / 온보딩 ·
+  지식 롤백 · 추론 시각화 · 용어집) · **양식(템플릿) 엔진** · **에이전트
+  트랙** · LLM 라우팅 통합 · 채팅 UX 전면 개편 · UI 8→5 페이지 통합 ·
+  비주얼 회귀 하네스 · CSP 인라인 스타일 이관 · 이미지 OCR/비전 수리 ·
+  heartbeat 스트리밍 · detailed 답변 스타일.
+- **검색 경로의 유일한 동작 변경** = lifecycle live-consistency arc
+  (#1018–#1027): 프로브가 **라이브 그래프 탐색이 lifecycle status 를
+  무시**함을 측정으로 증명 → `relation_is_live()` 게이트 적용
+  (kill-switch `JAMES_DISABLE_STATUS_FILTER`). 백로그 재측정 결과 회귀 없음.
+- ⚠️ **CI 빨간불 (규모 축소됨)**: `test.yml` (pytest) 은 최신 실행
+  (2026-08-28) 까지 실패이지만 **5건**뿐입니다 (CI 로그 실측:
+  `5 failed, 4368 passed, 6 skipped`). #1080 이 원인을 잡았습니다.
+  진짜 원인은 테스트 노후화가 아니라 **프레임워크 변경**이었습니다 —
+  FastAPI 0.141.1 / starlette 1.6.0 이 `include_router` 마다 `path` 없는
+  `_IncludedRouter` 래퍼를 붙여, 19개 래퍼가 **약 137개 엔드포인트를
+  라우트 assertion 에서 숨겼습니다.** `core/` 20 KB 규칙 위반 2 건도 해소
+  (1건 분할 / 1건은 STEP 7 벤치가 필요해 계획과 함께 grandfather).
+  **결정론 벤치 (`bash benchmarks/run_all.sh`) 와 발표된 RAB / LRB 수치는
+  영향 없습니다.** 초록 복구가 재개 로드맵 Phase 2.
+- 마지막 **기능** 세션 2026-06-26. 이후 4 PR 은 문서·인용·CI 유지보수
+  (#1077 #1078 #1079 #1080).
+
+---
+
+## 프로젝트 상태 (이전): v0.5 마감 — Time-Travel Dashboard + SaaS-readiness + Pack SDK + CSP nonce
 
 **2026-06-12 릴리스** (v0.5 close handover [PR #862](https://github.com/Hashevolution/James-RAG-Evol/pull/862)). v0.5 cycle 은 21 PR (#841 – #861) 로 enterprise document ontology (B.5 시리즈), B.1 audit gap 구현 (G3 / G4 / G5 / G7 LANDED + G1.a / G2.a primitive), B.2 / B.3 multi-tenant / plugin-API design memo, UI 개선 stream (a11y + aria-live + responsive + CSP 경로), 평가 외부 노출 mapping, 그리고 server-side security headers middleware + tenant-id + approval-evidence primitive 를 마감했습니다.
 
