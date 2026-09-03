@@ -168,7 +168,8 @@ python scripts/research/lrb_run_s3.py --scale publication
   무시**함을 측정으로 증명 → `relation_is_live()` 게이트 적용
   (kill-switch `JAMES_DISABLE_STATUS_FILTER`). 백로그 재측정 결과 회귀 없음.
 - ⚠️ **CI 빨간불 (규모 축소됨)**: `test.yml` (pytest) 은 최신 실행
-  (2026-08-28) 까지 실패이지만, **#1080 이 66 → 6 failed** 로 줄였습니다.
+  (2026-08-28) 까지 실패이지만 **5건**뿐입니다 (CI 로그 실측:
+  `5 failed, 4368 passed, 6 skipped`). #1080 이 원인을 잡았습니다.
   진짜 원인은 테스트 노후화가 아니라 **프레임워크 변경**이었습니다 —
   FastAPI 0.141.1 / starlette 1.6.0 이 `include_router` 마다 `path` 없는
   `_IncludedRouter` 래퍼를 붙여, 19개 래퍼가 **약 137개 엔드포인트를

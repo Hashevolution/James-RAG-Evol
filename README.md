@@ -522,8 +522,8 @@ live-consistency arc (#1018–#1027), where a probe proved live graph traversal
 ignored lifecycle `status` and `relation_is_live()` now gates it.
 
 > ⚠️ **Known-red CI (reduced).** The `test.yml` pytest job still fails on
-> `main` (latest run 2026-08-28), but PR #1080 took it from **66 to 6
-> failures** by fixing the causes rather than the symptoms — FastAPI
+> `main` (latest run 2026-08-28) at **5 failures / 4,368 passed**, after PR
+> #1080 fixed the causes rather than the symptoms — FastAPI
 > 0.141.1 / starlette 1.6.0 wrap each `include_router` in an
 > `_IncludedRouter` that has no `path`, so 19 wrappers hid ~137 endpoints
 > from every route assertion. Rule #5 module-size violations are resolved.

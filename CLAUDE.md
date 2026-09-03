@@ -39,11 +39,14 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   "0 라인 streak 유지" 문장을 그대로 복사하지 마세요.
 - **🟠 `main` CI 는 아직 빨간불 — 단 규모가 크게 줄었습니다** (2026-09-03
   재측정): `.github/workflows/test.yml` (pytest) 은 최신 실행(#1080,
-  08-28)까지 `failure` 이지만, **#1080 이 원인별로 정리해 66 → 6 failed**
-  가 됐습니다. 로컬 재현 = 3,742 tests 중 **9 failures** (errors 는 의존성
-  미설치 환경 탓). CI 가 실제로 도는 실패 모듈은 **4개**
-  (`test_v06_agent_paths` / `test_eval_pack_script` (ruff 셸아웃 — 환경
-  의심) / `test_measurement_critical_surfaces` / `test_mobile_responsive`).
+  08-28)까지 `failure` 이지만, **#1080 이 원인별로 정리해 CI 실패 5 건**
+  가 됐습니다. **CI 로그 실측 (`df55e21`): `5 failed, 4368 passed, 6 skipped`**
+  — ① `test_lrb_v021_cross_model` S2 재현 (기대 0.7125 vs 실행 0.6875,
+  README 는 0.688 로 문서화 — **발표 벤치 수치에 직결, 상수를 실행값에
+  맞춰 고치지 말 것**), ②③④ `test_measurement_critical_surfaces`
+  FixtureLock (gitignore 된 픽스처를 요구 → CI 에서 통과 불가, 구조적),
+  ⑤ `test_mobile_responsive` (`mobile.css` `!important` 29 > 25).
+  `ruff` / `bandit` 게이트는 **초록**입니다.
   → **재개 첫 작업 = 로드맵 Phase 2 (CI 그린 복구). 그 전에 새 기능 금지.**
   ⚠️ 이전 핸드오버의 "60 failures / rule #5 2건 위반"은 **낡은 수치**입니다.
 - **유지보수 4 PR** (#1077 #1078 08-19 / **#1079** 08-26 / **#1080** 08-28):
@@ -154,7 +157,7 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
-| **🟢🟢🟢 NEXT SESSION ENTRY (이것부터 읽으세요 — 2026-09-03 재개 로드맵)** | **`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`** (재개용 **단일 진실원**. §1 현재 상태 사실 확인 (main HEAD `df55e21` / 유휴 구간 / **CI 상태 2026-09-03 재측정 — #1080 이 66 → 6 failed 로 축소** / rule #5 해소 + 1건 grandfather / 문서 최신성 편차 표) + §2 **Phase 1–7 재개 로드맵** (1 문서 동기화 ✅ → 2 CI 그린 복구 → 3 유휴 부채 청산 → 4 v0.6.1 정식 마감 → 5 측정 백로그 → 6 Fork A/B 전략 결정 (operator) → 7 v0.6 진입) + §3 #886–#1078 실제 진행 요약 + §5 재개 첫 세션 30 분 체크리스트 + §6 하지 말 것. **Phase 2 전에는 새 기능 PR 금지.**) |
+| **🟢🟢🟢 NEXT SESSION ENTRY (이것부터 읽으세요 — 2026-09-03 재개 로드맵)** | **`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`** (재개용 **단일 진실원**. §1 현재 상태 사실 확인 (main HEAD `df55e21` / 유휴 구간 / **CI 실패 5 건 실측 + 건별 판정** / rule #5 해소 + 1건 grandfather / 문서 최신성 편차 표) + §2 **Phase 1–7 재개 로드맵** (1 문서 동기화 ✅ → 2 CI 그린 복구 → 3 유휴 부채 청산 → 4 v0.6.1 정식 마감 → 5 측정 백로그 → 6 Fork A/B 전략 결정 (operator) → 7 v0.6 진입) + §3 #886–#1078 실제 진행 요약 + §5 재개 첫 세션 30 분 체크리스트 + §6 하지 말 것. **Phase 2 전에는 새 기능 PR 금지.**) |
 | **🟢🟢 직전 기능 세션 close (2026-06-26, PR #1062–#1075)** | `docs/handovers/v0.6.1-session-close-2026-06-26.md` (CSP `style-src` HTML 이관 596 attrs + 모바일 업로드 UX + **이미지 인제스트 4 단 병목 수리** (비전 모델 라우팅 / 이진화 제거 / EasyOCR fallback / qwen2.5vl:7b / num_ctx 8192) + `/query/`·`/upload/` heartbeat 스트리밍 + detailed 답변 스타일. §4 operator open 2 건 (모바일 긴 질의 드롭 / detailed dogfood), §5 deferred, §3 서버 background 실행 금지 교훈.) |
 | **🟢🟢 v0.6.1 세션 close (2026-06-23, PR #992–#1037)** | `docs/handovers/v0.6.1-session-close-2026-06-23.md` (UI 8→5 페이지 통합 / de-emoji / 인트로 프론트도어 / 그래프 허브 / trace 링크 루프 / entity-edit cascade Phase 1-3 / **lifecycle live-consistency arc** / 비주얼 회귀 하네스 / 백로그 재측정.) |
 | **🟢🟢 lifecycle live-consistency arc (측정 근거)** | `docs/handovers/v0.6.1-measurement-fix-loop-2026-06-22.md` + `reports/research-runs/lifecycle-live-consistency-arc-20260622.md` (프로브 #1020 = 라이브 탐색이 lifecycle status 를 무시 → `relation_is_live()` 게이트. `core/graph` traversal streak 의 **유일한 승인된 예외** — kill-switch `JAMES_DISABLE_STATUS_FILTER`.) |
@@ -276,7 +279,7 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   LLM 라우팅 통합 · 채팅 UX 개편 · UI 8→5 통합 · CSP 이관 · 이미지 OCR/비전
   수리 · heartbeat 스트리밍.
 - **🟠 재개 시 첫 작업 = CI 그린 복구** (규모 축소됨). `test.yml` 은
-  최신 실행까지 실패이지만 **#1080 (08-28) 이 66 → 6 failed** 로 줄였고,
+  최신 실행까지 실패이지만 **CI 실측 5 건**뿐이고 (#1080 이 원인 정리),
   rule #5 위반 2건도 해소했습니다 (1건 분할 / 1건 계획과 함께 grandfather).
   남은 로컬 실패 9건 중 **CI 가 실제로 보는 것은 4개 모듈**.
   **초록을 만들려고 테스트를 지우거나 skip 하지 마세요** — 각 실패마다

@@ -1324,18 +1324,22 @@ Two post-idle maintenance PRs landed before this section was written:
   `{r.path for r in app.routes}` assertion (unwrapping now lives once in
   `tests/_app_routes.py`); the two rule #5 violations resolved; a probe that
   overwrote a tracked measurement report on every suite run; two real UI
-  defects. **66 → 6 failures.**
+  defects. The run log at that head reads **5 failed, 4,368 passed**.
 
 ### Known-red CI (reduced)
 
 `.github/workflows/test.yml` (pytest) still fails on `main` — latest run
-2026-08-28 — but at **6 failures / 5 errors / 4,362 passed** (per #1080),
-down from ~60. A local replay of this branch shows 9 failures across 7
-modules, of which 4 modules are not on CI's `--ignore` list and one of
-those (`test_eval_pack_script`) shells out to `python -m ruff` and may be
-environmental. The deterministic benchmark tier
-(`bash benchmarks/run_all.sh`) and the published RAB / LRB numbers are
-unaffected.
+2026-08-28 — but at **5 failures / 4,368 passed / 6 skipped** (read from
+the run log, not estimated). `ruff` and `bandit` are green. The five:
+one LRB S2 reproduction mismatch (test expects R@1 0.7125, the run yields
+0.6875, and the README documents 0.688 — an adjudication the roadmap says
+to settle from committed artifacts before touching either side); three
+`FixtureLockTest` cases that require `workspaces/hotpot_eval/eval/`, which
+`.gitignore` excludes, so they cannot pass in CI as written; and one
+`mobile.css` `!important` count (29 against a 25 ceiling). The
+deterministic benchmark tier (`bash benchmarks/run_all.sh`) is
+unaffected; the LRB item is the one to watch, since it touches a
+published number.
 
 ### Restart plan (Phase 1 – 7)
 
@@ -1531,7 +1535,7 @@ We follow [Semantic Versioning](https://semver.org/):
 를 단일 진실원으로 세웠습니다. 신규 CLAUDE.md rule #6 (상태는 한 곳에만) +
 entry-pointer 가드의 recency 불변식이 재발을 막습니다. 이번 갱신에서 처음
 문서화된 사실: **`main` CI (pytest) 가 2026-06-22 이후 계속 실패** (단
-#1080 이 66 → 6 failed 로 축소) — 재개 Phase 2 가 이를 초록으로
+#1080 이후 CI 실패는 5 건) — 재개 Phase 2 가 이를 초록으로
 되돌리기 전까지 신규 기능 금지.
 
 **Prior update (2026-05-22)**: **v0.4 retarget to Layer 4
