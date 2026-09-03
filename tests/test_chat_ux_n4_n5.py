@@ -121,9 +121,14 @@ class SuggestionClusterHeaderTests(unittest.TestCase):
         block = self.src[idx:idx + 2500]
         self.assertIn("next-actions-header", block,
             "the suggestion render block must include a cluster header")
-        self.assertIn("✨", block,
-            "header must surface the ✨ star icon — user feedback "
-            "explicitly asked for 별 모양 visibility")
+        # [2026-08-26] Was asserting the ✨ glyph. The icon was dropped
+        # in the emoji-to-SVG sweep but its <span> was left behind
+        # empty, so the header rendered a blank 14px box plus the
+        # flex gap — the same shape of defect as the admin password
+        # toggle. The empty span is removed; what the header must still
+        # do is label the cluster, which is asserted above.
+        self.assertNotIn('<span style="font-size:14px"></span>', block,
+            "an empty decorative span leaves a blank gap in the header")
         self.assertIn("t('chat.suggestions_label')", block,
             "header must pull its label from i18n")
 
@@ -231,16 +236,32 @@ class SuggestionPatternsPrO2Tests(unittest.TestCase):
         self.assertNotIn("out.length >= 2", m_fn.group(0),
             "extractNextActionSuggestions 안에 옛 ≥2 게이트가 남아있음")
 
+    # [2026-08-19] The three numeric patterns moved off `\d`, which in
+    # JavaScript is ASCII-only, onto an explicit class covering ASCII +
+    # Arabic-Indic + extended Arabic-Indic digits (Ali Afana's second
+    # finding). The signatures are pinned against that class now; the
+    # intent of this regression — ①~④ must survive PR-O2's ⑤⑥⑦ — is
+    # unchanged.
+    DIGIT_CLASS = "[0-9\u0660-\u0669\u06F0-\u06F9]"
+
     def test_existing_numbered_patterns_intact(self):
-        # 회귀: ①~④ 정규식 시그니처 그대로 남아 있는지.
-        self.assertIn(r"\((\d)\)", self.array_body,
+        d = self.DIGIT_CLASS
+        self.assertIn(r"\((" + d + r")\)", self.array_body,
             "① '(1) X (2) Y' 패턴 누락")
-        self.assertIn(r"(\d)\)\s+", self.array_body,
+        self.assertIn("(" + d + r")\)\s+", self.array_body,
             "② '1) X 2) Y' 패턴 누락")
-        self.assertIn(r"(\d)\.\s+", self.array_body,
+        self.assertIn("(" + d + r")\.\s+", self.array_body,
             "③ '1. X 2. Y' 패턴 누락")
         self.assertIn("①②③④⑤⑥⑦⑧⑨", self.array_body,
             "④ '① X ② Y' 원문자 패턴 누락")
+
+    def test_numeric_patterns_are_not_ascii_only(self):
+        # The point of the change: a reply enumerated in Arabic-Indic
+        # digits must not be invisible to the chip extractor.
+        self.assertNotIn(r"\((\d)\)", self.array_body,
+            "ASCII-only \\d must not come back for the numeric patterns")
+        self.assertIn("\u0660-\u0669", self.array_body,
+            "Arabic-Indic digit range missing from SUGGESTION_PATTERNS")
 
     def test_capture_group_2_convention_maintained(self):
         # 모든 패턴이 group 2 = chip 텍스트 컨벤션을 따라야 함

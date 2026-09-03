@@ -21,13 +21,35 @@ retrieval routing 에만 사용, model prompt 비노출) 은 별도 PR.
 """
 from __future__ import annotations
 
+import importlib
 import inspect
 import re
+from pathlib import Path
+
+
+def _pipeline_synth_sources() -> dict[str, str]:
+    """`{submodule name: source}` for the whole `pipeline_synth` package.
+
+    [2026-08-21] `pipeline_synth` was a single module when these
+    signature tests were written; it is now a package (`generator` /
+    `softener` / `result`), split under the 20 KB module-size gate
+    (CLAUDE.md rule 5). `inspect.getsource()` on a package returns only
+    `__init__.py`, so every assertion here started reporting the P-1
+    gate as missing when the code had simply moved. Read the package.
+    """
+    from core.reasoning import pipeline_synth
+    out = {"__init__": inspect.getsource(pipeline_synth)}
+    for path in sorted(Path(pipeline_synth.__file__).parent.glob("*.py")):
+        if path.stem == "__init__":
+            continue
+        mod = importlib.import_module(
+            f"core.reasoning.pipeline_synth.{path.stem}")
+        out[path.stem] = inspect.getsource(mod)
+    return out
 
 
 def _read_pipeline_synth() -> str:
-    from core.reasoning import pipeline_synth
-    return inspect.getsource(pipeline_synth)
+    return "\n".join(_pipeline_synth_sources().values())
 
 
 def test_generate_answer_uses_resolve_style_for_terse_check():
@@ -64,12 +86,23 @@ def test_terse_gate_precedes_planner_call():
     """terse 결정이 planner.plan() 호출 *이전*에 와야 — terse 면
     LLM round-trip 자체를 절약. planner 호출 후 prepend 만 skip
     하면 자원 낭비 + 의미상 모순."""
-    src = _read_pipeline_synth()
-    style_idx = src.find("_style_is_terse")
-    plan_call_idx = src.find("get_planner().plan(safe_query")
-    assert 0 < style_idx < plan_call_idx, (
-        "terse style check must come before get_planner().plan() call"
-    )
+    # Ordering is only meaningful inside one file, so locate the
+    # submodule that carries the planner call and check the order there.
+    for name, src in _pipeline_synth_sources().items():
+        plan_call_idx = src.find("get_planner().plan(safe_query")
+        if plan_call_idx < 0:
+            continue
+        style_idx = src.find("_style_is_terse")
+        assert 0 <= style_idx < plan_call_idx, (
+            f"terse style check must come before get_planner().plan() "
+            f"in pipeline_synth.{name}"
+        )
+        break
+    else:
+        raise AssertionError(
+            "get_planner().plan(safe_query ...) not found anywhere in "
+            "the pipeline_synth package — the P-1 planner path is gone"
+        )
 
 
 def test_resolve_style_fallback_to_non_terse_on_error():

@@ -1253,7 +1253,7 @@ Until one resolves, mother-platform hardening continues; vertical content stays 
 
 ---
 
-## v0.6.x — Product hardening + restart (2026-06-13 → 2026-06-26, resumed 2026-08-21)
+## v0.6.x — Product hardening + restart (2026-06-13 → 2026-06-26; maintenance 2026-08; restart 2026-09-03)
 
 **Status**: on `main`, **unreleased** (no tag, no DOI). This is not a
 formal cycle — the v0.5 → v0.6 gate (Dim F) is still open, so the work
@@ -1261,7 +1261,7 @@ below is mother-platform product hardening carried out *inside* the
 "v0.5 closed, v0.6 not yet entered" interval.
 
 **Canonical state doc**:
-[`docs/handovers/v0.6.2-restart-roadmap-2026-08-21.md`](handovers/v0.6.2-restart-roadmap-2026-08-21.md)
+[`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`](handovers/v0.6.2-restart-roadmap-2026-09-03.md)
 — read it before this section; per CLAUDE.md rule #6 it wins on any
 disagreement.
 
@@ -1294,19 +1294,46 @@ CLAUDE.md rules #1 (no vertical), #3 (self-evolution opt-in) and #4
   kill-switch-equipped (`JAMES_DISABLE_STATUS_FILTER`), and re-measured
   against the LRB SUT backlog afterwards. Later documents must **not**
   restate "0 lines changed in `core/graph` traversal" for this period.
-- **Rule #5 — currently violated (2 files).** `core/response_style.py`
-  (22,036 B) and `core/reasoning/engine.py` (21,464 B) exceed the
-  20,480 B cap with an empty grandfather list;
-  `tests/test_v06_module_size_gate.py` is red.
+- **Rule #5 — resolved by #1080, one file grandfathered.**
+  `core/response_style.py` (22,036 B) was split into
+  `core/response_style_presets.py` with every public name re-exported and
+  the presets verified field-by-field against the pre-split module.
+  `core/reasoning/engine.py` (21,464 B) is grandfathered **with a split
+  plan**: it lives in `core/reasoning`, so rule #2 requires STEP 7 bench
+  numbers, which need a live server plus Ollama — an operator machine, not
+  a session container. `tests/test_v06_module_size_gate.py` is green.
 
-### Known-red CI
+### Maintenance PRs #1079 / #1080 (2026-08-26 / 08-28)
 
-`.github/workflows/test.yml` (pytest) has failed on `main` continuously
-since 2026-06-22 — the 60 most recent runs checked, through the latest
-commit (2026-08-19). ~60 assertion failures across 23 modules, 20 of
-which are not on CI's `--ignore` list. Most are UI-contract tests that
-did not follow the page rebuilds and the de-emoji series; one is the
-genuine rule #5 violation above. The deterministic benchmark tier
+Two post-idle maintenance PRs landed before this section was written:
+
+- **#1079** — Ali Afana's four engineering findings (bidi override-span
+  removal, non-ASCII numerics in `chat.js`, Arabic tatweel / presentation-form
+  folding, sweep run-identity salt); a **uuid7 production defect**
+  (`start_trace()` called `uuid.uuid7()`, stdlib only from Python 3.14 while
+  `pyproject` declares >=3.10 and CI pins 3.11 — it raised `AttributeError`
+  on every supported interpreter, taking down the `/query/` edge for any
+  caller not minting its own `trace_id`; invisible because browsers always
+  send one and `test_observability.py` is on the CI ignore list); and an
+  Arabic-pipeline capability audit — `detect_language` scores Arabic zero and
+  falls through to the Korean branch, three tokenisers then yield zero tokens
+  — **recorded as evidence for a v0.6 scope conversation, not fixed**.
+- **#1080** — CI worked cause by cause: FastAPI 0.141.1 / starlette 1.6.0
+  append an `_IncludedRouter` wrapper per `include_router`, and the wrapper
+  has no `path`, so 19 wrappers hid ~137 endpoints from every
+  `{r.path for r in app.routes}` assertion (unwrapping now lives once in
+  `tests/_app_routes.py`); the two rule #5 violations resolved; a probe that
+  overwrote a tracked measurement report on every suite run; two real UI
+  defects. **66 → 6 failures.**
+
+### Known-red CI (reduced)
+
+`.github/workflows/test.yml` (pytest) still fails on `main` — latest run
+2026-08-28 — but at **6 failures / 5 errors / 4,362 passed** (per #1080),
+down from ~60. A local replay of this branch shows 9 failures across 7
+modules, of which 4 modules are not on CI's `--ignore` list and one of
+those (`test_eval_pack_script`) shells out to `python -m ruff` and may be
+environmental. The deterministic benchmark tier
 (`bash benchmarks/run_all.sh`) and the published RAB / LRB numbers are
 unaffected.
 
@@ -1316,8 +1343,8 @@ Detailed in the restart roadmap §2; summarised here:
 
 | Phase | Name | Owner | Blocked by |
 |---|---|---|---|
-| 1 | Documentation-currency restore + recurrence guard | solo | — (**done 2026-08-21**) |
-| 2 | CI green restore (P0 — blocks new features) | solo | Phase 1 |
+| 1 | Documentation-currency restore + recurrence guard | solo | — (**done 2026-09-03**) |
+| 2 | CI green restore (P0 — blocks new features; scope reduced by #1080) | solo | Phase 1 |
 | 3 | Idle-debt closure (mobile long-query drop, CSP enforce, OCR remainder) | solo + device check | Phase 2 |
 | 4 | v0.6.1 formal cycle close (handover + release notes + tag) | solo | Phases 2, 3 |
 | 5 | Measurement backlog (graph-RAG Step 2 cross-model, v0.2.3b matrix, D-alce, arXiv) | operator-attended | Phase 2 |
@@ -1497,14 +1524,15 @@ We follow [Semantic Versioning](https://semver.org/):
 
 ---
 
-**Last updated**: 2026-08-21 — **문서 최신성 복구 + 재개 로드맵**.
+**Last updated**: 2026-09-03 — **문서 최신성 복구 + 재개 로드맵**.
 약 2 개월 유휴 (마지막 기능 세션 2026-06-26, 마지막 커밋 2026-08-19) 후
 루트 문서 6 종이 서로 다른 시점에 멈춰 있던 것을 동기화하고, 위의
-`v0.6.x` 섹션 + [restart roadmap](handovers/v0.6.2-restart-roadmap-2026-08-21.md)
+`v0.6.x` 섹션 + [restart roadmap](handovers/v0.6.2-restart-roadmap-2026-09-03.md)
 를 단일 진실원으로 세웠습니다. 신규 CLAUDE.md rule #6 (상태는 한 곳에만) +
 entry-pointer 가드의 recency 불변식이 재발을 막습니다. 이번 갱신에서 처음
-문서화된 사실: **`main` CI (pytest) 가 2026-06-22 이후 계속 실패** —
-재개 Phase 2 가 이를 초록으로 되돌리기 전까지 신규 기능 금지.
+문서화된 사실: **`main` CI (pytest) 가 2026-06-22 이후 계속 실패** (단
+#1080 이 66 → 6 failed 로 축소) — 재개 Phase 2 가 이를 초록으로
+되돌리기 전까지 신규 기능 금지.
 
 **Prior update (2026-05-22)**: **v0.4 retarget to Layer 4
 Lifecycle Semantics + CASCADE/EVENT 분리 axiom 채택**. v0.3 cycle

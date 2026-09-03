@@ -43,7 +43,7 @@ def test_blind_order_deterministic_same_query_run_pair(harness, monkeypatch):
     """Same (id, run_idx) → same a_is_local. Re-runs reproduce the slot
     assignment, so a judge re-grading the same row sees the same A/B."""
     monkeypatch.setattr(harness, "call_local",
-                        lambda p, *, model, timeout=180: "LOCAL_REPLY")
+                        lambda p, *, model, timeout=180, local_backend='ollama': "LOCAL_REPLY")
     monkeypatch.setattr(harness, "call_cloud_via_abstraction",
                         lambda p, *, timeout=180: "CLOUD_REPLY")
     monkeypatch.setattr(harness, "judge",
@@ -60,7 +60,7 @@ def test_blind_order_deterministic_same_query_run_pair(harness, monkeypatch):
 def test_blind_order_changes_between_runs(harness, monkeypatch):
     """Different run_idx → different blind seed → can flip slot."""
     monkeypatch.setattr(harness, "call_local",
-                        lambda p, *, model, timeout=180: "LOCAL_REPLY")
+                        lambda p, *, model, timeout=180, local_backend='ollama': "LOCAL_REPLY")
     monkeypatch.setattr(harness, "call_cloud_via_abstraction",
                         lambda p, *, timeout=180: "CLOUD_REPLY")
     monkeypatch.setattr(harness, "judge",
@@ -218,9 +218,18 @@ def test_aggregate_n_runs_per_question_correct_with_three_runs(harness):
 # ─── Caveat block presence ──────────────────────────────────────────
 
 
-def test_caveat_block_has_all_five_keys(harness):
-    """Per design memo §4.1 — caveat block is mandatory and must cover
-    the 5 known failure modes of this measurement design."""
+def test_caveat_block_covers_every_known_failure_mode(harness):
+    """Per design memo §4.1 — the caveat block is mandatory and must
+    cover the known failure modes of this measurement design.
+
+    [2026-08-21] The set is exact on purpose: dropping a caveat silently
+    is the failure this guards against, so adding one is meant to be a
+    conscious edit here too. `chat_mode_lenient_judge` was added to the
+    harness (chat-mode fixtures are intrinsically judge-only — only the
+    factual_chat sub-class carries gold_signals) and never recorded
+    here. Also renamed off "five" — the list has not been five for a
+    while, and a count in the name goes stale every time it grows.
+    """
     expected = {
         "judge_self_preference",
         "gold_evidence_not_pipeline",
@@ -228,6 +237,7 @@ def test_caveat_block_has_all_five_keys(harness):
         "lenient_judge",
         "local_model_caveat",
         "abstraction_no_op",
+        "chat_mode_lenient_judge",
     }
     assert set(harness.CAVEAT_BLOCK.keys()) == expected
     # each caveat is a non-trivial sentence
@@ -267,7 +277,7 @@ def test_run_one_query_cloud_error_keeps_going(harness, monkeypatch):
     """Symmetric: cloud raises → cloud-side recorded as error, harness
     still produces a row."""
     monkeypatch.setattr(harness, "call_local",
-                        lambda p, *, model, timeout=180: "LOCAL_REPLY")
+                        lambda p, *, model, timeout=180, local_backend='ollama': "LOCAL_REPLY")
 
     def boom(*a, **kw):
         raise RuntimeError("claude cli not found")
@@ -289,7 +299,7 @@ def test_run_one_query_judge_error_recorded(harness, monkeypatch):
     """Both candidates succeed but judge fails → verdict marked as
     INCORRECT, error string recorded."""
     monkeypatch.setattr(harness, "call_local",
-                        lambda p, *, model, timeout=180: "L")
+                        lambda p, *, model, timeout=180, local_backend='ollama': "L")
     monkeypatch.setattr(harness, "call_cloud_via_abstraction",
                         lambda p, *, timeout=180: "C")
 

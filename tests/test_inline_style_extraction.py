@@ -48,6 +48,19 @@ _EXTRACTED = {
     "graph.html": "graph.css",
 }
 
+# Pages that were BORN with external CSS rather than extracted from an
+# inline block. [2026-08-26] intro.html is the first: zero inline
+# styles, links tokens → intro → mobile in order. It belongs in the
+# cascade-order and accounted-for checks, but not in the ≥8 KB size
+# floor — that floor encodes "~600 lines were moved out of this page",
+# which was never true here (intro.css is 4.9 KB and complete).
+_EXTERNAL_FROM_BIRTH = {
+    "intro.html": "intro.css",
+}
+
+# Every page that links a per-page stylesheet, however it got one.
+_ALL_PAGE_CSS = {**_EXTRACTED, **_EXTERNAL_FROM_BIRTH}
+
 # Pages that intentionally keep their inline ``<style>`` block.
 # Empty after PR-#8b — the rollout is complete. The set stays as a
 # named hook so any future page can declare itself opt-out by name
@@ -107,8 +120,12 @@ class CascadeOrderTests(unittest.TestCase):
         -1 if missing."""
         out = []
         for name in filenames:
+            # [2026-08-26] The links carry a cache-buster query string
+            # (`?v=v21-20260625-csp`), so an exact-quote match found
+            # nothing and every page reported all three stylesheets
+            # missing. Allow the query, still anchored on the filename.
             m = re.search(
-                r'<link[^>]+href="/static/' + re.escape(name) + r'"',
+                r'<link[^>]+href="/static/' + re.escape(name) + r'(?:\?[^"]*)?"',
                 html,
             )
             out.append((name, m.start() if m else -1))
@@ -119,7 +136,7 @@ class CascadeOrderTests(unittest.TestCase):
         # one) updates the rollout in one place. Each page must link
         # ``tokens.css → <page>.css → mobile.css`` strictly in that
         # source order.
-        for html_name, css_name in _EXTRACTED.items():
+        for html_name, css_name in _ALL_PAGE_CSS.items():
             with self.subTest(page=html_name):
                 html = (FRONTEND / html_name).read_text(encoding="utf-8")
                 rows = self._link_indexes(html,
@@ -178,12 +195,12 @@ class RolloutCompleteTests(unittest.TestCase):
         names = {
             p.name for p in FRONTEND.glob("*.html") if p.is_file()
         }
-        accounted = set(_EXTRACTED) | _STILL_INLINE
+        accounted = set(_ALL_PAGE_CSS) | _STILL_INLINE
         missing = names - accounted
         self.assertEqual(
             missing, set(),
             "new page-level HTML file(s) without an entry in either "
-            "_EXTRACTED or _STILL_INLINE: " + ", ".join(sorted(missing)),
+            "_EXTRACTED / _EXTERNAL_FROM_BIRTH / _STILL_INLINE: " + ", ".join(sorted(missing)),
         )
 
 

@@ -15,7 +15,7 @@
 > 모순 트리 등도 모두 first-class 차별점.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-v0.6.1%20on%20main%20(unreleased)-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/blob/main/docs/handovers/v0.6.2-restart-roadmap-2026-08-21.md)
+[![Status](https://img.shields.io/badge/Status-v0.6.1%20on%20main%20(unreleased)-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/blob/main/docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12806/badge)](https://www.bestpractices.dev/projects/12806)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20652679.svg)](https://doi.org/10.5281/zenodo.20652679)
@@ -72,6 +72,17 @@ audit / lifecycle / time-travel / on-prem 이 용도라면 — SEKOS 가 그것�
 [📄 PDF (11페이지)](papers/lrb-preprint/main.pdf) · [🧪 Reproduce](#60초-안에-재현)
 
 > *LRB 는 temporal validity (`query_time`, `valid_time`) retrieval 품질을 3 결정론 시나리오 (S1 quarterly, S2 yearly-with-time-travel, S3 publication-scale 1000 docs) 에서 측정. 3 SUT (Vanilla append-only / Naive-supersede / JAMES validity-window) 를 7 결정론 axis + 3 exploratory top-1 axis 로 비교. Headline: R@1 V < N < J 가 **4 모델 × 4 스케일** (12.5× 스케일 폭) 모두에서 보존, JAMES − Naive gap +0.10 이상.*
+
+### 크로스-스택 수렴 기록 (3-author)
+
+[🔗 DOI 10.5281/zenodo.22030935](https://doi.org/10.5281/zenodo.22030935) · Afana, Converse & Seo (2026) · report, CC-BY-4.0
+
+> *substitution-vs-synthesis 를 세 스택에서 독립 측정한 수렴 기록의 한 다리 —
+> sovereign 26B MoE (Converse) / JAMES cognitive middleware (Seo) /
+> production Arabic e-commerce router (Afana). 세 다리가 **함께 입증하는 것**과
+> **명시적으로 주장하지 않는 것**을 그 기록이 규정하며, 본 repo 는 middleware
+> 다리의 데이터와 드라이버 — [v0.3.1](https://doi.org/10.5281/zenodo.20363998)
+> 에서 마감한 7-tier natural-stop gradient (PR #461/#463) 를 보유.*
 
 ### Citation (BibTeX)
 
@@ -136,9 +147,9 @@ python scripts/research/lrb_run_s3.py --scale publication
 
 ---
 
-## 프로젝트 상태 (2026-08-21 기준) — v0.5 마감 + 미릴리스 v0.6 / v0.6.1 스트림
+## 프로젝트 상태 (2026-09-03 기준) — v0.5 마감 + 미릴리스 v0.6 / v0.6.1 스트림
 
-> **단일 진실원**: [`docs/handovers/v0.6.2-restart-roadmap-2026-08-21.md`](docs/handovers/v0.6.2-restart-roadmap-2026-08-21.md)
+> **단일 진실원**: [`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`](docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md)
 > (재개 로드맵 Phase 1–7). 아래 섹션들과 충돌하면 로드맵 문서가 우선입니다.
 
 - **최신 태그 릴리스는 여전히 v0.4.4** (DOI `10.5281/zenodo.20652679`).
@@ -156,12 +167,17 @@ python scripts/research/lrb_run_s3.py --scale publication
   (#1018–#1027): 프로브가 **라이브 그래프 탐색이 lifecycle status 를
   무시**함을 측정으로 증명 → `relation_is_live()` 게이트 적용
   (kill-switch `JAMES_DISABLE_STATUS_FILTER`). 백로그 재측정 결과 회귀 없음.
-- ⚠️ **CI 빨간불**: `test.yml` (pytest) 이 2026-06-22 이후 `main` 에서 계속
-  실패 (최신 커밋 2026-08-19 포함, 확인한 60 회 전부). 실패 ~60 건은 대부분
-  UI 재작업을 못 따라간 계약 테스트이고, `core/` 20 KB 규칙 위반 2 건은
-  실제 부채입니다. **결정론 벤치 (`bash benchmarks/run_all.sh`) 와 발표된
-  RAB / LRB 수치는 영향 없습니다.** 초록 복구가 재개 로드맵 Phase 2.
-- 마지막 기능 세션 2026-06-26 → 약 2 개월 유휴 후 재개하는 상태.
+- ⚠️ **CI 빨간불 (규모 축소됨)**: `test.yml` (pytest) 은 최신 실행
+  (2026-08-28) 까지 실패이지만, **#1080 이 66 → 6 failed** 로 줄였습니다.
+  진짜 원인은 테스트 노후화가 아니라 **프레임워크 변경**이었습니다 —
+  FastAPI 0.141.1 / starlette 1.6.0 이 `include_router` 마다 `path` 없는
+  `_IncludedRouter` 래퍼를 붙여, 19개 래퍼가 **약 137개 엔드포인트를
+  라우트 assertion 에서 숨겼습니다.** `core/` 20 KB 규칙 위반 2 건도 해소
+  (1건 분할 / 1건은 STEP 7 벤치가 필요해 계획과 함께 grandfather).
+  **결정론 벤치 (`bash benchmarks/run_all.sh`) 와 발표된 RAB / LRB 수치는
+  영향 없습니다.** 초록 복구가 재개 로드맵 Phase 2.
+- 마지막 **기능** 세션 2026-06-26. 이후 4 PR 은 문서·인용·CI 유지보수
+  (#1077 #1078 #1079 #1080).
 
 ---
 

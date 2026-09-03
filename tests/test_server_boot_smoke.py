@@ -29,7 +29,15 @@ def _import_app():
 
 
 def _path_set(routes: Iterable) -> set[str]:
-    return {getattr(r, "path", None) for r in routes if getattr(r, "path", None)}
+    # [2026-08-26] fastapi 0.141 / starlette 1.6 append one
+    # _IncludedRouter wrapper per include_router instead of flattening
+    # the router's routes into app.routes. The wrapper carries no
+    # `path`, so the old comprehension dropped every included endpoint —
+    # 19 wrappers hiding ~137 paths here. route_paths unwraps them.
+    # The endpoints were never missing: TestClient gets 422 on /query/,
+    # 401 on /workspace/info, 405 on /templates/ — no 404 anywhere.
+    from tests._app_routes import route_paths
+    return route_paths(routes)
 
 
 def test_app_imports_cleanly():

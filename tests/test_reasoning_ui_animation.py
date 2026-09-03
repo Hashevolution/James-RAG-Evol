@@ -50,7 +50,11 @@ class CssAnimationTests(unittest.TestCase):
         # Active stage: icon spinning + label shimmering.
         self.assertRegex(
             self.css,
-            r"\.thinking-line\.thinking-active\s+\.thinking-icon[^{]*\{[^}]*animation\s*:\s*james-spin",
+            # [2026-08-26] The active-icon animation was renamed
+            # james-spin → james-icon-active (mobile.css:180). The
+            # james-spin keyframe still exists for other spinners, so
+            # this had to follow the rename rather than the keyframe.
+            r"\.thinking-line\.thinking-active\s+\.thinking-icon[^{]*\{[^}]*animation\s*:\s*james-icon-active",
             "active stage icon must run james-spin animation",
         )
         self.assertRegex(

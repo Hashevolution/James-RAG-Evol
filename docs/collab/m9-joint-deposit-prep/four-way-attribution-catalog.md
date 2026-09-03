@@ -112,9 +112,13 @@ article comment thread. Flagged by Robin Phase R6 DM
     that Vadym is in the joint deposit catalog. Pending Ali joint
     deposit discussion DM (post 6/7+ resume).
   - Phase 3 (JAMES → docs): NOT YET. Awaits Phase 1 + Phase 2.
-- **Joint deposit author decision** (3 vs 4-author) is gated on
-  these phases. Default if both confirm = 4-author with Vadym as
-  last alphabetical-by-surname.
+- **RESOLVED 2026-08-19 for the published record.** The deposit went
+  out **three-author** (DOI `10.5281/zenodo.22030935`). "Each variant
+  has its own tax" **does not appear in the published text**, so that
+  record carries no attribution defect and the 3-vs-4 question it was
+  gating is moot for it. Phases 1-3 below stay open only for a *future*
+  deposit that actually uses the phrase — do not reopen them against
+  the published record.
 - Per `memory/feedback_m6_vadym_attribution_3way_timing.md` —
   single-purpose Robin DM for Vadym ask is PROHIBITED. Must
   piggyback natural trigger.

@@ -11,7 +11,7 @@
 > [`docs/PLATFORM_READINESS.md`](docs/PLATFORM_READINESS.md)).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-v0.6.1%20on%20main%20(unreleased)-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/blob/main/docs/handovers/v0.6.2-restart-roadmap-2026-08-21.md)
+[![Status](https://img.shields.io/badge/Status-v0.6.1%20on%20main%20(unreleased)-blue.svg)](https://github.com/Hashevolution/James-RAG-Evol/blob/main/docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12806/badge)](https://www.bestpractices.dev/projects/12806)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20652679.svg)](https://doi.org/10.5281/zenodo.20652679)
@@ -348,6 +348,19 @@ Two benchmarks released as a sibling pair, both pre-registered before measuremen
 
 > *LRB scores temporal-validity (`query_time`, `valid_time`) retrieval quality across three deterministic scenarios (S1 quarterly, S2 yearly-with-time-travel, S3 publication-scale 1000 docs). Three systems-under-test (Vanilla append-only / Naive-supersede / JAMES validity-window) compared on 7 deterministic axes + 3 exploratory top-1 axes. Headline: Vanilla < Naive < JAMES on R@1 preserved across **4 model families × 4 scale points** (12.5× scale span) with the JAMES − Naive gap > +0.10 throughout.*
 
+### Cross-stack convergence record
+
+[🔗 DOI 10.5281/zenodo.22030935](https://doi.org/10.5281/zenodo.22030935) · Afana, Converse & Seo (2026) · report, CC-BY-4.0
+
+> *This work is one leg of a three-stack convergence record —
+> substitution-vs-synthesis measured independently on a sovereign 26B MoE
+> (Converse), the JAMES cognitive middleware (Seo), and a production Arabic
+> e-commerce router (Afana) — archived at [10.5281/zenodo.22030935](https://doi.org/10.5281/zenodo.22030935).
+> That record states what the three legs jointly establish and what they
+> explicitly do not; this repository holds the middleware leg's data and
+> drivers — the seven-tier natural-stop gradient closed in
+> [v0.3.1](https://doi.org/10.5281/zenodo.20363998) (PRs #461/#463).*
+
 ### Reproduce in 60 seconds
 
 **One command** (wraps everything below; deterministic core tier, no GPU/Ollama, ~2 min):
@@ -488,10 +501,10 @@ The numbers below come from the current `main` branch — not aspirational, not 
 
 ## Project Status
 
-**Current state (2026-08-21): `v0.5 closed` + an unreleased `v0.6 / v0.6.1`
+**Current state (2026-09-03): `v0.5 closed` + an unreleased `v0.6 / v0.6.1`
 product-hardening stream on `main`. `v0.6` is not formally entered.**
 The canonical state pointer is the
-[v0.6.2 restart roadmap](docs/handovers/v0.6.2-restart-roadmap-2026-08-21.md);
+[v0.6.2 restart roadmap](docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md);
 full per-release detail lives in [`CHANGELOG.md`](CHANGELOG.md).
 
 The **v0.5 → v0.6 gate** requires a ≥6-month external customer pilot, which
@@ -508,12 +521,15 @@ repair — plus **one measured retrieval-path change**: the lifecycle
 live-consistency arc (#1018–#1027), where a probe proved live graph traversal
 ignored lifecycle `status` and `relation_is_live()` now gates it.
 
-> ⚠️ **Known-red CI.** The `test.yml` pytest job has been failing on `main`
-> since 2026-06-22 (checked through the latest commit, 2026-08-19): ~60
-> assertion failures, mostly UI-contract tests that did not follow the page
-> rebuilds, plus a genuine rule #5 module-size violation. The deterministic
-> benchmark tier (`bash benchmarks/run_all.sh`) and the published RAB / LRB
-> numbers are unaffected. Restoring green is Phase 2 of the restart roadmap.
+> ⚠️ **Known-red CI (reduced).** The `test.yml` pytest job still fails on
+> `main` (latest run 2026-08-28), but PR #1080 took it from **66 to 6
+> failures** by fixing the causes rather than the symptoms — FastAPI
+> 0.141.1 / starlette 1.6.0 wrap each `include_router` in an
+> `_IncludedRouter` that has no `path`, so 19 wrappers hid ~137 endpoints
+> from every route assertion. Rule #5 module-size violations are resolved.
+> The deterministic benchmark tier (`bash benchmarks/run_all.sh`) and the
+> published RAB / LRB numbers are unaffected. Restoring green is Phase 2 of
+> the restart roadmap.
 
 **Release history** (newest first — see [`CHANGELOG.md`](CHANGELOG.md) for full notes):
 

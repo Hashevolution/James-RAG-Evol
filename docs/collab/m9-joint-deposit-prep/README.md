@@ -1,4 +1,12 @@
-# M9 — Joint Zenodo deposit prep (INTERNAL DRAFT, NOT YET PUBLISHED)
+# M9 — Joint Zenodo deposit prep (CLOSED — PUBLISHED 2026-08-19)
+
+> **This folder is historical.** The deposit went live on 2026-08-19 as
+> DOI `10.5281/zenodo.22030935` (report, CC-BY-4.0, Afana / Converse /
+> Seo). The authoritative outcome record is
+> `reports/promo-assets/m9-joint-deposit-record.md`. Everything below
+> is the pre-publication draft state, kept as the audit trail — the
+> publish gates, the draft metadata and the title/description options
+> are all superseded by the published text.
 
 **Status**: INTERNAL PREP ONLY. Publish requires Ali Afana
 explicit confirm after 6/7+ resume window.
@@ -100,3 +108,4 @@ draft. The draft files here become historical record.
 |---|---|---|
 | 2026-06-08 | Folder created with skeleton files | M9 prep, post Robin DOI arrival (10.5281/zenodo.20570701) + Ali resume window opening |
 | 2026-08-19 | Axis-2 citation pointers corrected (PR #440 → Direction 1 PR #461/#463 + DOI 10.5281/zenodo.20363998) across all 4 draft files + `CLAUDE.md`; `eval_count` / thinking-trace caveat + canonical bullet added to `title-description-draft.md` | Ali's third-leg deposit cited this axis as "seven-tier ... PR #440, Issue #448"; the mislabel originated in this folder. See `title-description-draft.md` §Axis 2 |
+| 2026-08-19 | Ali final-text review — conditional OK drafted (`ali-reply-2-draft-2026-08-19.md`) | Ali circulated the submit-ready v1.0.0 text after measuring the instruction on/off arm we asked for. Two body sentences overreach his own "does not claim" section (spread-vs-SE inference on the 9% instruction effect; the no-trace explanation stated as measured). Axis-2 wording, the three v0.3.x DOIs, the no-concept-DOI rule and the managed-Gemini → gpt-4o-mini correction all landed verbatim. Robin's model-scale axis is absent from this version — flagged to her, not decided by us. |

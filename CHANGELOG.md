@@ -7,17 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased] — 2026-08-21 — documentation-currency restore + restart roadmap
+## [Unreleased] — 2026-09-03 — documentation-currency restore + restart roadmap
 
 **Status**: `main`-branch documentation sync. No runtime change.
 
 After a ~2-month idle interval (last feature session 2026-06-26; last commit 2026-08-19) the six root documents had each stopped at a different point — `CLAUDE.md`'s state section was ~10 weeks behind (still describing the v0.4.3 / Direction α cycle), `SUMMARY.md` said "v0.5 entry", `ROADMAP.md` ended at v0.5.x with a "Last updated 2026-05-22" footer, and this file had no entry for the ~190 PRs (#886–#1078) that landed after the v0.5 close.
 
-- **New canonical state doc** — [`docs/handovers/v0.6.2-restart-roadmap-2026-08-21.md`](docs/handovers/v0.6.2-restart-roadmap-2026-08-21.md): current-state fact table, the documentation-drift ledger, and a **Phase 1–7 restart roadmap** (1 doc sync → 2 CI green → 3 idle-debt closure → 4 v0.6.1 formal close → 5 measurement backlog → 6 Fork A/B decision → 7 v0.6 entry).
+- **New canonical state doc** — [`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`](docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md): current-state fact table, the documentation-drift ledger, and a **Phase 1–7 restart roadmap** (1 doc sync → 2 CI green → 3 idle-debt closure → 4 v0.6.1 formal close → 5 measurement backlog → 6 Fork A/B decision → 7 v0.6 entry).
 - **Root docs re-synced** — `CLAUDE.md` (state section, entry-pointer table, operational conventions, Korean summary), `SUMMARY.md`, `README.md`, `README.ko.md`, `ROADMAP.md` (new `v0.6.x` section), `HANDOVER.md`, and this file.
 - **NEW CLAUDE.md rule #6 — state single-source**: cycle state is written in exactly one place (the newest `docs/handovers/` doc); root docs only point at it. Duplicated state statements are what drifted.
 - **Guard strengthened** — `tests/test_v06_claude_md_entry_pointer.py` gains a fourth invariant: the "Where to look next" first row must name the **newest date-stamped handover** on disk. The three original invariants only checked that the pointer *resolves*, so they stayed green through the entire drift.
-- **🔴 Documented for the first time: `main` CI is red.** The `test.yml` pytest job has failed on every one of the 60 most recent runs checked (2026-06-22 → 2026-08-19). ~60 assertion failures across 23 modules, of which 20 are not on CI's `--ignore` list. Most are UI-contract tests left behind by the page rebuilds (#998–#1017, #1062) and the de-emoji series; **`tests/test_v06_module_size_gate.py` is a genuine rule #5 violation** (`core/response_style.py` 22,036 B and `core/reasoning/engine.py` 21,464 B against a 20,480 B cap, with an empty grandfather list). The deterministic benchmark tier and the published RAB / LRB numbers are unaffected. Restoring green is roadmap Phase 2 and blocks new feature work.
+- **🟠 `main` CI state recorded in the docs for the first time.** The `test.yml` pytest job has failed on every run since 2026-06-22, through the latest (2026-08-28). The 2026-08-21 draft of this entry measured ~60 failures and two rule #5 violations against `73a653a`; **#1080 (2026-08-28) has since taken it to 6 failures / 5 errors / 4,362 passed** and resolved both size violations, so those numbers are superseded. A local replay of this branch against `df55e21` shows 9 failures across 7 modules (4 of them not on CI's `--ignore` list; one, `test_eval_pack_script`, shells out to `python -m ruff` and may be environmental). The deterministic benchmark tier and the published RAB / LRB numbers are unaffected. Restoring green remains roadmap Phase 2 and blocks new feature work.
+- **This entry itself is a worked example of the drift it documents.** The roadmap's first draft was written against a `main` that moved twice (#1079, #1080) before the PR merged; the facts were re-measured and the phase scope reduced rather than shipped stale. That is the intended behaviour under rule #6, not an exception to it.
 
 ---
 

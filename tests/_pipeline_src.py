@@ -31,7 +31,40 @@ Usage:
 """
 from __future__ import annotations
 
+import importlib
 import inspect
+from pathlib import Path
+
+
+def module_source(mod) -> str:
+    """Full source of ``mod``, including every submodule if it is a package.
+
+    [2026-08-21] ``pipeline_synth`` grew past the 20 KB module-size gate
+    (CLAUDE.md rule 5) and was split into a package
+    (``generator`` / ``softener`` / ``result``).
+    ``inspect.getsource()`` on a package returns only its
+    ``__init__.py``, so every structural assertion that greps for a
+    symbol living in the split-out body silently started failing —
+    reporting a feature as deleted when it had only moved. Walk the
+    package instead, so the next split is absorbed the same way.
+
+    [2026-08-26] Made public, because this keeps recurring:
+    ``pipeline_synth``, then ``core.reasoning.reflect``, then
+    ``core.gemma_client`` each became a package and silently broke a
+    structural test that read it with ``inspect.getsource``. Any test
+    grepping a module that might one day be split should use this.
+    """
+    src = inspect.getsource(mod)
+    if not hasattr(mod, "__path__"):
+        return src
+    parts = [src]
+    for path in sorted(Path(mod.__file__).parent.glob("*.py")):
+        if path.stem == "__init__":
+            continue
+        parts.append(
+            inspect.getsource(
+                importlib.import_module(f"{mod.__name__}.{path.stem}")))
+    return "\n".join(parts)
 
 
 def pipeline_source() -> str:
@@ -47,17 +80,13 @@ def pipeline_source() -> str:
         pipeline_query_expansion,
         pipeline_synth,
     )
-    return (
-        inspect.getsource(pipeline)
-        + "\n"
-        + inspect.getsource(pipeline_context)
-        + "\n"
-        + inspect.getsource(pipeline_loops)
-        + "\n"
-        + inspect.getsource(pipeline_query_expansion)
-        + "\n"
-        + inspect.getsource(pipeline_synth)
-    )
+    return "\n".join(module_source(m) for m in (
+        pipeline,
+        pipeline_context,
+        pipeline_loops,
+        pipeline_query_expansion,
+        pipeline_synth,
+    ))
 
 
 def engine_source() -> str:
@@ -67,13 +96,11 @@ def engine_source() -> str:
     may live in the memory-context block or the canonical RAG synth.
     """
     from core.reasoning import engine, engine_memory, engine_synth
-    return (
-        inspect.getsource(engine)
-        + "\n"
-        + inspect.getsource(engine_memory)
-        + "\n"
-        + inspect.getsource(engine_synth)
-    )
+    return "\n".join(
+        module_source(m) for m in (engine, engine_memory, engine_synth))
 
 
-__all__ = ["pipeline_source", "engine_source"]
+# Back-compat alias for the private name this started out as.
+_module_source = module_source
+
+__all__ = ["module_source", "pipeline_source", "engine_source"]

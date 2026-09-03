@@ -11,7 +11,7 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 ## Where we are right now
 
 > **단일 진실원 (single source of truth)**:
-> **`docs/handovers/v0.6.2-restart-roadmap-2026-08-21.md`**.
+> **`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`**.
 > 아래는 그 요약입니다. 충돌하면 로드맵 문서가 우선입니다.
 
 - **최신 공식 릴리스**: **v0.4.4** — DOI `10.5281/zenodo.20652679`.
@@ -37,16 +37,23 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   회귀 없음 확인 (#1028–#1032). 이것이 `core/graph` traversal **0-라인
   streak 의 유일한, 측정 근거로 승인된 예외**입니다. 이전 핸드오버의
   "0 라인 streak 유지" 문장을 그대로 복사하지 마세요.
-- **🔴 P0 — `main` CI 가 빨간불입니다**: `.github/workflows/test.yml`
-  (pytest) 이 **확인된 최근 60 회 실행 전부 `failure`** (2026-06-22 →
-  2026-08-19, 최신 커밋 #1078 포함). 로컬 재현 = 3,694 tests 중
-  **60 failures** (같은 실행의 errors 는 의존성 미설치 환경 탓).
-  대부분은 UI 재작업을 못 따라간 계약 테스트이지만,
-  **`core/response_style.py` (22,036 B) + `core/reasoning/engine.py`
-  (21,464 B) 는 rule #5 (20 KB) 실질 위반**입니다.
+- **🟠 `main` CI 는 아직 빨간불 — 단 규모가 크게 줄었습니다** (2026-09-03
+  재측정): `.github/workflows/test.yml` (pytest) 은 최신 실행(#1080,
+  08-28)까지 `failure` 이지만, **#1080 이 원인별로 정리해 66 → 6 failed**
+  가 됐습니다. 로컬 재현 = 3,742 tests 중 **9 failures** (errors 는 의존성
+  미설치 환경 탓). CI 가 실제로 도는 실패 모듈은 **4개**
+  (`test_v06_agent_paths` / `test_eval_pack_script` (ruff 셸아웃 — 환경
+  의심) / `test_measurement_critical_surfaces` / `test_mobile_responsive`).
   → **재개 첫 작업 = 로드맵 Phase 2 (CI 그린 복구). 그 전에 새 기능 금지.**
-- **유휴 구간**: 마지막 기능 세션 **2026-06-26**, 마지막 커밋
-  **2026-08-19** (문서/CI 정리) → 약 **2 개월** 정지 후 재개하는 상황.
+  ⚠️ 이전 핸드오버의 "60 failures / rule #5 2건 위반"은 **낡은 수치**입니다.
+- **유지보수 4 PR** (#1077 #1078 08-19 / **#1079** 08-26 / **#1080** 08-28):
+  v0.3.3 DOI 계보 정정, ruff F-class 해소, Ali 엔지니어링 4건 ①②③ 발송 +
+  **uuid7 production 결함 수리** (`start_trace()` 가 Python 3.14 전용
+  `uuid.uuid7()` 호출 → 지원 인터프리터 전부에서 `/query/` 엣지 다운),
+  아랍어 파이프라인 능력 감사, 그리고 **CI 원인별 정리**
+  (`_IncludedRouter` 래퍼가 137 라우트를 숨긴 문제 + rule #5 2건).
+- **유휴 구간**: 마지막 **기능** 세션 **2026-06-26**. 이후 착륙한 것은
+  전부 문서·인용·CI 유지보수입니다.
 - **전략 프레임**: 여전히 **mother platform**. v1.0 이전 버티컬 분화 금지
   (rule #1). v0.5 후보 도메인 = enterprise internal knowledge ontology
   (horizontal) — 이는 *선택 기준*이지 구현 승인이 아닙니다.
@@ -127,12 +134,14 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 5. **Module size gate**: no file in `core/` exceeds 20 KB. If your
    change pushes a file over, split first.
-   ⚠️ **현재 2 건 위반 중** (2026-08-21): `core/response_style.py`
-   22,036 B / `core/reasoning/engine.py` 21,464 B. `tests/
-   test_v06_module_size_gate.py` 가 빨간불이며 grandfather 목록은
-   비어 있습니다 — 로드맵 Phase 2 의 첫 항목입니다.
+   ✅ **게이트 통과 중** (2026-09-03): #1080 이 `core/response_style.py`
+   를 `core/response_style_presets.py` 로 분할했습니다.
+   `core/reasoning/engine.py` (21,464 B) 만 **분할 계획과 함께
+   grandfather 등록** — 분할하려면 rule #2 상 STEP 7 벤치가 필요하고
+   그건 서버 + Ollama 가 있는 operator 머신에서만 가능합니다.
+   grandfather 를 늘리지 말고, 새로 넘기는 파일은 먼저 분할하세요.
 
-6. **상태는 한 곳에만 쓴다 (state single-source)** — NEW 2026-08-21.
+6. **상태는 한 곳에만 쓴다 (state single-source)** — NEW 2026-09-03.
    사이클 상태의 원본은 `docs/handovers/` 의 **최신 문서 하나**이고,
    루트 문서 (`CLAUDE.md` / `SUMMARY.md` / `README*.md` / `ROADMAP.md` /
    `CHANGELOG.md` / `HANDOVER.md`) 는 **거기를 가리키기만** 합니다.
@@ -145,12 +154,13 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
-| **🟢🟢🟢 NEXT SESSION ENTRY (이것부터 읽으세요 — 2026-08-21 재개 로드맵)** | **`docs/handovers/v0.6.2-restart-roadmap-2026-08-21.md`** (약 2 개월 유휴 후 재개용 **단일 진실원**. §1 현재 상태 사실 확인 (main HEAD / 유휴 구간 / **🔴 CI 60 회 연속 실패** / rule #5 2 건 위반 / 문서 최신성 편차 표) + §2 **Phase 1–7 재개 로드맵** (1 문서 동기화 ✅ → 2 CI 그린 복구 → 3 유휴 부채 청산 → 4 v0.6.1 정식 마감 → 5 측정 백로그 → 6 Fork A/B 전략 결정 (operator) → 7 v0.6 진입) + §3 #886–#1078 실제 진행 요약 + §5 재개 첫 세션 30 분 체크리스트 + §6 하지 말 것. **Phase 2 전에는 새 기능 PR 금지.**) |
+| **🟢🟢🟢 NEXT SESSION ENTRY (이것부터 읽으세요 — 2026-09-03 재개 로드맵)** | **`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`** (재개용 **단일 진실원**. §1 현재 상태 사실 확인 (main HEAD `df55e21` / 유휴 구간 / **CI 상태 2026-09-03 재측정 — #1080 이 66 → 6 failed 로 축소** / rule #5 해소 + 1건 grandfather / 문서 최신성 편차 표) + §2 **Phase 1–7 재개 로드맵** (1 문서 동기화 ✅ → 2 CI 그린 복구 → 3 유휴 부채 청산 → 4 v0.6.1 정식 마감 → 5 측정 백로그 → 6 Fork A/B 전략 결정 (operator) → 7 v0.6 진입) + §3 #886–#1078 실제 진행 요약 + §5 재개 첫 세션 30 분 체크리스트 + §6 하지 말 것. **Phase 2 전에는 새 기능 PR 금지.**) |
 | **🟢🟢 직전 기능 세션 close (2026-06-26, PR #1062–#1075)** | `docs/handovers/v0.6.1-session-close-2026-06-26.md` (CSP `style-src` HTML 이관 596 attrs + 모바일 업로드 UX + **이미지 인제스트 4 단 병목 수리** (비전 모델 라우팅 / 이진화 제거 / EasyOCR fallback / qwen2.5vl:7b / num_ctx 8192) + `/query/`·`/upload/` heartbeat 스트리밍 + detailed 답변 스타일. §4 operator open 2 건 (모바일 긴 질의 드롭 / detailed dogfood), §5 deferred, §3 서버 background 실행 금지 교훈.) |
 | **🟢🟢 v0.6.1 세션 close (2026-06-23, PR #992–#1037)** | `docs/handovers/v0.6.1-session-close-2026-06-23.md` (UI 8→5 페이지 통합 / de-emoji / 인트로 프론트도어 / 그래프 허브 / trace 링크 루프 / entity-edit cascade Phase 1-3 / **lifecycle live-consistency arc** / 비주얼 회귀 하네스 / 백로그 재측정.) |
 | **🟢🟢 lifecycle live-consistency arc (측정 근거)** | `docs/handovers/v0.6.1-measurement-fix-loop-2026-06-22.md` + `reports/research-runs/lifecycle-live-consistency-arc-20260622.md` (프로브 #1020 = 라이브 탐색이 lifecycle status 를 무시 → `relation_is_live()` 게이트. `core/graph` traversal streak 의 **유일한 승인된 예외** — kill-switch `JAMES_DISABLE_STATUS_FILTER`.) |
 | **🟢🟢 v0.6 템플릿(양식) 엔진 close (2026-06-13)** | `docs/handovers/v0.6-template-engine-close-2026-06-13.md` (도메인 무관 양식 포맷팅 엔진 PR #909 + `core/templating/` + `routes/templating.py` + 워크스페이스 탭 / 챗 모달. rule #1 준수 = JAMES 는 템플릿을 하나도 동봉하지 않음.) |
 | **🟢🟢 v0.6 2-fork 진입 계약 (2026-06-13)** | **`docs/handovers/v0.6-entry-skeleton-2026-06-13.md`** (v0.5 closed + Dim F gate 미통과 = "v0.5 closed, v0.6 not yet entered" state. v0.5 close §5 작업 큐 실질 소진: 20 LANDED + 4 LOI-blocked (Track D / G8.d / F.2 CR.e) + 6 operator-pending (Track E) + 2 prerequisite-gated. v0.5 마감 후 23 PR 추가 (#863-#885) — F.1 Time-Travel Dashboard quartet 완성 (TT.a-d) + G1/G2 SaaS-readiness trio + SDK trio + Track C CSP nonce + graph-RAG Step 1 결과 + Step 2 scaffold. 2-fork v0.6 entry contract: Fork A LOI signed → Track D + G8.d 진입 / Fork B 6 개월 내 no-LOI → reassess. 둘 다 operator 결정. 다음 세션 mechanical entry checklist (§7): Fork A → v0.6-entry-<date>.md + Track D / Fork B → v0.6-reassess-<date>.md + 새 방향 / 미해결 → 이 스켈레톤 + NEW solo-doable items (§5). Rule #1 4-layer 보호 contract 그대로. core/retrieval+graph traversal+reasoning 0 라인 변경 streak 유지.) |
+| **🔗 3-author 수렴 기록 (발행 완료 2026-08-19)** | **`reports/promo-assets/m9-joint-deposit-record.md`** — DOI `10.5281/zenodo.22030935` (report, CC-BY-4.0, Afana/Converse/Seo). JAMES 다리 = v0.3.1 7-tier closure (PR #461/#463, DOI `10.5281/zenodo.20363998`). #440 = 3단계 선행, #448 = Converse 축. 우리 정밀 수정 2건 반영. Ali 엔지니어링 4건 = ①②③ **발송 완료 2026-08-26** (`docs/collab/ali-engineering-findings/COMBINED-findings-1-2-3.md`), ④ 는 Track 2c 재측정 대기 (`scripts/research/track2c_remeasure.py --yes`, 운영자 머신). |
 | **🟢🟢 직전 v0.5 close handover** | **`docs/handovers/v0.5-close-2026-06-12.md`** (v0.5 cycle close handover — 21 PR (#841-#861) 마감 정리 + 2026-06-12 PM 전략 review 반영 (Track B SDK.a-c + Track F mother-level UI 정식 편입). B.5 series 4 + B.1 audit + 4 gap 구현 5 + B.2/B.3 design memo 2 + UI improvement 6 + 평가 외부 노출 1 + server-side hardening 3. 측정 0, vertical 토큰 0, `core/retrieval`+`core/graph` traversal+`core/reasoning` 0 라인 변경. B.1 8 gap 결과: 4 LANDED + 2 primitive LANDED (G1.a/G2.a) + 2 contract-locked + 1 v1.0-deferred (G6). Solo-doable mother-platform 스코프 **달성 완료**. **v0.5 → v0.6 gate = Dim F**, **아직 미통과** (LOI 또는 reassess 결정 필요). v0.6 entry 시 작업 큐: Track A (G1.b/c+G2.b/c) / Track B (G8.a-c mount + **SDK.a-c CLI/PLUGIN_AUTHORING/PyPI**) / Track C (CSP nonce) / Track D (Dim F, **LOI 필수**) / Track E (operator-pending) / **Track F (NEW)** (F.1 Time-Travel Dashboard TT.a-d + F.2 Change Review Workspace CR.a-d, mother-level UI). Rule #1 4-layer 보호 (code capability gate + doc Out-of-scope + naming domain-agnostic + LOI-gated trigger tagging). Track A/B/C/F 는 solo / LOI 무관. **참고: 위의 entry skeleton 이 close 이후 #863-#885 진행 + 작업 큐 status sweep + 2-fork entry contract 를 종합**.) |
 | **🟢🟢 직전 v0.5 entry doc** | `docs/handovers/v0.5-entry-2026-06-12.md` (v0.4.4 closed → v0.5 entry 선언. Stream A/B/C/D scope. 3 new rules. 위의 close doc 가 cycle 결과를 종합) |
 | **🟢🟢 직전 entry (2026-06-12 PM, 9 PR v0.4.4 closure)** | `docs/handovers/v0.4-next-session-entry-2026-06-12-pm.md` (사용자 직접 명령 cycle: D-alce + D-2wiki research-tier infra (cycle γ 4/4 promise closure) + S3 publication-scale generator + 4-point scale ladder measurement (R@1 V<N<J PRESERVED S2→S3 1000, 12.5×) + **자기 catch self-correction** (PR #824 의 ±0.05 magnitude claim → broken-category artifact → PR #825 retract → ⭐⭐⭐ pattern + ⭐⭐ magnitude honest framing) + preprint §4.6+§5+§6.1+§7.4 통합 + v0.2.3b cross-model runner ready (operator action). 솔로 가능 모두 마감.) |
@@ -254,7 +264,7 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 도메인 분화(법률·식품·유통·여행·금융)는 v1.0 이후, 또는 Fork A (고객 LOI)
 확정 이후에만 시작합니다. 이 세션에서 도메인 코드를 추가하지 마세요.
 
-**현재 위치 (2026-08-21 기준)**
+**현재 위치 (2026-09-03 기준)**
 
 - **v0.5 closed (2026-06-13), v0.6 정식 미진입.** 게이트 = Dim F (외부 고객
   6 개월 파일럿) 미통과. 2-fork 계약 (Fork A LOI / Fork B 6 개월 무LOI
@@ -265,14 +275,15 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   2026-06-13 → 06-26 에 진행. 운영 하드닝 · 양식 엔진 · 에이전트 트랙 ·
   LLM 라우팅 통합 · 채팅 UX 개편 · UI 8→5 통합 · CSP 이관 · 이미지 OCR/비전
   수리 · heartbeat 스트리밍.
-- **🔴 재개 시 첫 작업 = CI 그린 복구.** `test.yml` 이 2026-06-22 이후
-  확인된 60 회 실행 전부 실패. 로컬 3,694 tests 중 60 failures (대부분
-  UI 계약 테스트 낡음) + **rule #5 실질 위반 2 건**
-  (`core/response_style.py`, `core/reasoning/engine.py`).
+- **🟠 재개 시 첫 작업 = CI 그린 복구** (규모 축소됨). `test.yml` 은
+  최신 실행까지 실패이지만 **#1080 (08-28) 이 66 → 6 failed** 로 줄였고,
+  rule #5 위반 2건도 해소했습니다 (1건 분할 / 1건 계획과 함께 grandfather).
+  남은 로컬 실패 9건 중 **CI 가 실제로 보는 것은 4개 모듈**.
   **초록을 만들려고 테스트를 지우거나 skip 하지 마세요** — 각 실패마다
-  "제품이 틀렸나 / 테스트가 낡았나"를 판정해 기록합니다.
-- **약 2 개월 유휴** (마지막 기능 세션 2026-06-26 → 마지막 커밋 2026-08-19).
-- **단계별 재개 계획 = `docs/handovers/v0.6.2-restart-roadmap-2026-08-21.md`
+  "제품이 틀렸나 / 테스트가 낡았나 / 환경 탓인가"를 판정해 기록합니다.
+  #1080 이 좋은 선례입니다 (137 라우트를 숨긴 프레임워크 래퍼를 찾아냄).
+- **기능 개발은 2026-06-26 에 멈춤.** 이후 4 PR 은 문서·인용·CI 유지보수.
+- **단계별 재개 계획 = `docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`
   §2 (Phase 1–7).** Phase 1(문서 동기화)은 완료, Phase 2(CI 그린)가 다음.
 
 **과거 사이클의 방법론 규율은 그대로 유효합니다** — 사용자의 9 건 catch

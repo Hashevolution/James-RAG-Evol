@@ -160,7 +160,12 @@ def test_is_korean_consistent_with_detect():
 
 @pytest.mark.parametrize("module_path,attr_name", [
     ("core.reasoning.planner",            "_is_korean"),
-    ("core.reasoning.reflect",            "_is_korean"),
+    # [2026-08-26] reflect became a package; the reflection loop that
+    # actually consumes the helper is core.reasoning.reflect.loop, and
+    # the package __init__ does not re-export it. Point at the real
+    # consumer rather than adding a re-export to production code just
+    # to satisfy a test.
+    ("core.reasoning.reflect.loop",       "_is_korean"),
     ("core.reasoning.verify",             "_is_korean"),
     ("core.retrieval.query_rewriter",     "_is_korean"),
 ])

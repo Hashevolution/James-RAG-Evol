@@ -123,9 +123,21 @@ class HtmlLinksMobileCssTests(unittest.TestCase):
     def _read(self, path: Path) -> str:
         return path.read_text(encoding="utf-8")
 
+    def _link_pos(self, html: str) -> int:
+        """Offset of the mobile.css <link>, or -1.
+
+        [2026-08-19] v0.6.1 attached cache-busting query strings to the
+        static assets (``mobile.css?v=v22-20260625-upload``), so the old
+        literal ``html.find('href="/static/mobile.css"')`` returned -1 on
+        pages that do link the stylesheet. Match the path with an optional
+        query instead; the ordering assertion below is unchanged.
+        """
+        m = re.search(r'href="/static/mobile\.css(?:\?[^"]*)?"', html)
+        return m.start() if m else -1
+
     def test_index_html_links_mobile_css_after_style(self):
         html = self._read(INDEX_HTML)
-        link_pos = html.find('href="/static/mobile.css"')
+        link_pos = self._link_pos(html)
         style_close_pos = html.find("</style>")
         self.assertGreater(link_pos, 0,
                            "index.html does not <link> mobile.css")
@@ -135,7 +147,7 @@ class HtmlLinksMobileCssTests(unittest.TestCase):
 
     def test_admin_html_links_mobile_css_after_style(self):
         html = self._read(ADMIN_HTML)
-        link_pos = html.find('href="/static/mobile.css"')
+        link_pos = self._link_pos(html)
         style_close_pos = html.find("</style>")
         self.assertGreater(link_pos, 0,
                            "admin.html does not <link> mobile.css")

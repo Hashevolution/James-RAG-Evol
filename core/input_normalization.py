@@ -51,7 +51,72 @@ Stripped characters (per Unicode TR9 + common zero-width set):
 | U+200D | ZERO WIDTH JOINER (ZWJ) | invisible |
 | U+FEFF | ZERO WIDTH NO-BREAK SPACE (BOM) | invisible |
 
-Out of scope (for this v1 gate; potential follow-up):
+Span removal vs character stripping (v2, 2026-08-19)
+-----------------------------------------------------
+
+The v1 gate stripped every control character and kept the surrounding
+text. Ali Afana (Provia) walked that recommendation back after measuring
+the difference on his own stack: *"Stripping bidi control characters
+removes the concealment but not the concealed text; removing the whole
+marked span is a different operation with a different result."* He is
+right, and the weaker version was our implementation choice, not his
+advice — under v1 the payload of an RLO attack survived as cleartext and
+went to the model as an instruction.
+
+v2 splits the treatment by what the control actually does:
+
+- **Override characters — LRO (U+202D) and RLO (U+202E) — remove the
+  whole span**, opener and contents and terminating PDF together. An
+  override forces direction regardless of the characters' own
+  properties: that is the concealment primitive, and it has no
+  legitimate use inside a user's question. The span runs to the matching
+  PDF (U+202C) or, if unterminated, to end of input. Nesting is tracked,
+  so an inner embedding's PDF cannot close an outer override.
+- **Everything else is stripped, contents kept.** Embeddings (LRE/RLE)
+  and isolates (LRI/RLI/FSI/PDI) are the legitimate way to carry a
+  directional run — an English product name inside an Arabic sentence —
+  and deleting their contents would destroy real text. Marks (LRM/RLM)
+  and the zero-width set are single characters with no span at all.
+
+This is deliberately destructive for override spans: a numeric spoof
+built out of per-digit overrides loses its digits rather than yielding a
+mis-parsed number. A validator that sees no number asks again; one that
+sees the wrong number does not. Both counts land in the audit dict, so
+the removal is forensically visible.
+
+Arabic orthographic variants (v2.1, 2026-08-19)
+-----------------------------------------------
+
+Ali Afana's third finding: *"Keyword gates over Arabic break on ordinary
+orthography — tatweel, alef maqsura, presentation forms — variants real
+keyboards produce every day. Where a check is gated behind such
+matching, ordinary traffic goes unchecked and nothing is logged."*
+
+JAMES has no Arabic keyword gate today — ``ATTACK_PATTERNS`` is English
+and Korean only — so there is no bypass to close here. What the gate can
+do is stop the same word arriving in several byte forms, which is what
+makes such a bypass possible in the first place:
+
+- **Tatweel (U+0640)** is a display-only elongation (``جاكيـــت``). It
+  survives *both* NFC and NFKC, so it has to be removed explicitly.
+- **Arabic presentation forms** (U+FB50-FDFF, U+FE70-FEFF) are
+  positional/ligature variants that fold to their base letters only
+  under NFKC (``ﻛﺘﺎﺏ`` → ``كتاب``, ``ﻻ`` → ``لا``).
+
+NFKC is applied **only to characters in those two Arabic blocks**, not
+globally: a global NFKC would also rewrite ``①②③`` → ``123``, ``ﬁ`` →
+``fi`` and full-width forms → half-width, which is a behaviour change a
+Korean-first system should not take on for an Arabic fix.
+
+What this gate deliberately does **not** do is fold letters — alef
+maqsura ``ى`` → ``ي``, the alef family ``أ إ آ`` → ``ا``, teh marbuta
+``ة`` → ``ه``, or the harakat. Those change what the user actually
+wrote, and some pairs are distinct letters rather than variants. They
+belong at *matching* time, against a keyword list, not in the text that
+gets forwarded to the model — see ``scripts/adversarial_sweep.py``
+``_fold_for_match``.
+
+Out of scope (for this gate; potential follow-up):
 - Emoji ZWJ sequences (e.g. 👨‍👩‍👧) are NOT this gate's concern — it
   fires only at ``/query/`` user-text input. Emoji handling at chat /
   wiki edit endpoints is a separate gate.
@@ -92,6 +157,85 @@ _INVISIBLE: frozenset = frozenset(map(chr, (
 
 _DROP: frozenset = _BIDI_CONTROLS | _INVISIBLE
 
+# Direction *overrides* — the concealment primitive. Their spans are
+# removed whole (see module docstring §"Span removal vs character
+# stripping").
+_OVERRIDES: frozenset = frozenset((chr(0x202D), chr(0x202E)))
+
+# Anything that opens a PDF-terminated run. Needed for depth tracking so
+# an inner embedding's PDF does not close an outer override span.
+_PDF_OPENERS: frozenset = _OVERRIDES | frozenset((chr(0x202A), chr(0x202B)))
+
+_PDF: str = chr(0x202C)
+
+# Arabic display-only elongation. Survives NFC *and* NFKC.
+_TATWEEL: str = chr(0x0640)
+
+# Arabic Presentation Forms-A / -B. NFKC folds these to base letters;
+# applied per-character so the rest of the string keeps NFC semantics.
+_ARABIC_PRESENTATION: tuple = ((0xFB50, 0xFDFF), (0xFE70, 0xFEFF))
+
+
+def _is_arabic_presentation(ch: str) -> bool:
+    cp = ord(ch)
+    return any(lo <= cp <= hi for lo, hi in _ARABIC_PRESENTATION)
+
+
+def _fold_arabic_variants(s: str) -> Tuple[str, int, int]:
+    """Remove tatweel and fold Arabic presentation forms.
+
+    Returns ``(text, tatweel_removed, forms_folded)``. Meaning-preserving
+    by construction: tatweel carries no semantic content, and the
+    presentation blocks are compatibility variants of ordinary letters.
+    Letter folding is *not* done here — see the module docstring.
+    """
+    tatweel_n = s.count(_TATWEEL)
+    if tatweel_n:
+        s = s.replace(_TATWEEL, "")
+    folded_n = 0
+    if any(_is_arabic_presentation(c) for c in s):
+        out = []
+        for c in s:
+            if _is_arabic_presentation(c):
+                out.append(unicodedata.normalize("NFKC", c))
+                folded_n += 1
+            else:
+                out.append(c)
+        s = "".join(out)
+    return s, tatweel_n, folded_n
+
+
+def _remove_override_spans(s: str) -> Tuple[str, int, int]:
+    """Delete LRO/RLO spans, contents included.
+
+    Returns ``(text, spans_removed, chars_removed)``. A span runs from
+    the override to its matching ``PDF``; an unterminated override
+    consumes the rest of the input, which is the conservative reading —
+    an attacker who omits the terminator should not get the payload
+    through.
+    """
+    out: list = []
+    i, n = 0, len(s)
+    spans = chars = 0
+    while i < n:
+        ch = s[i]
+        if ch in _OVERRIDES:
+            j, depth = i + 1, 1
+            while j < n and depth:
+                c = s[j]
+                if c in _PDF_OPENERS:
+                    depth += 1
+                elif c == _PDF:
+                    depth -= 1
+                j += 1
+            spans += 1
+            chars += j - i
+            i = j
+        else:
+            out.append(ch)
+            i += 1
+    return "".join(out), spans, chars
+
 
 def normalize_user_input(s: str) -> Tuple[str, Dict[str, object]]:
     """Strip bidi formatting + zero-width controls from ``s`` and apply
@@ -99,10 +243,15 @@ def normalize_user_input(s: str) -> Tuple[str, Dict[str, object]]:
 
     Returns ``(normalized_string, audit_dict)``. The audit dict carries:
 
-        bidi_stripped:      int   number of bidi formatting chars removed
-        invisible_stripped: int   number of invisible / ZW chars removed
-        chars_dropped:      int   bidi_stripped + invisible_stripped
-        nfc_applied:        bool  True if NFC normalization changed the string
+        bidi_stripped:          int  bidi formatting chars removed by the
+                                     strip pass (outside removed spans)
+        invisible_stripped:     int  invisible / ZW chars removed
+        override_spans_removed: int  LRO/RLO spans deleted whole
+        override_span_chars:    int  chars deleted as part of those spans
+        tatweel_stripped:       int  U+0640 elongation chars removed
+        arabic_forms_folded:    int  presentation-form chars folded
+        chars_dropped:          int  bidi + invisible + span + tatweel
+        nfc_applied:            bool True if NFC changed the string
 
     Caller is expected to log the audit dict per request when
     ``chars_dropped > 0`` (so the forensic trail exists without
@@ -118,20 +267,38 @@ def normalize_user_input(s: str) -> Tuple[str, Dict[str, object]]:
     """
     if not s:
         return s, {
-            "bidi_stripped":      0,
-            "invisible_stripped": 0,
-            "chars_dropped":      0,
-            "nfc_applied":        False,
+            "bidi_stripped":          0,
+            "invisible_stripped":     0,
+            "override_spans_removed": 0,
+            "override_span_chars":    0,
+            "tatweel_stripped":       0,
+            "arabic_forms_folded":    0,
+            "chars_dropped":          0,
+            "nfc_applied":            False,
         }
 
-    bidi_n = sum(1 for c in s if c in _BIDI_CONTROLS)
-    invis_n = sum(1 for c in s if c in _INVISIBLE)
-    stripped = "".join(c for c in s if c not in _DROP)
+    # 1. Override spans go first — their contents must never reach the
+    #    strip pass, or the payload survives as cleartext (the v1 bug).
+    despanned, spans_n, span_chars = _remove_override_spans(s)
+
+    # 2. Remaining controls are stripped in place, contents kept.
+    bidi_n = sum(1 for c in despanned if c in _BIDI_CONTROLS)
+    invis_n = sum(1 for c in despanned if c in _INVISIBLE)
+    stripped = "".join(c for c in despanned if c not in _DROP)
+
+    # 3. Canonicalise.
     nfc = unicodedata.normalize("NFC", stripped)
 
-    return nfc, {
-        "bidi_stripped":      bidi_n,
-        "invisible_stripped": invis_n,
-        "chars_dropped":      bidi_n + invis_n,
-        "nfc_applied":        (nfc != stripped),
+    # 4. Arabic orthographic variants — tatweel and presentation forms.
+    folded, tatweel_n, forms_n = _fold_arabic_variants(nfc)
+
+    return folded, {
+        "bidi_stripped":          bidi_n,
+        "invisible_stripped":     invis_n,
+        "override_spans_removed": spans_n,
+        "override_span_chars":    span_chars,
+        "tatweel_stripped":       tatweel_n,
+        "arabic_forms_folded":    forms_n,
+        "chars_dropped":          bidi_n + invis_n + span_chars + tatweel_n,
+        "nfc_applied":            (nfc != stripped),
     }

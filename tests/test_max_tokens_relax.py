@@ -40,8 +40,15 @@ class ResponseStyleCapTests(unittest.TestCase):
 class GemmaClientDefaultsTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        # [2026-08-26] gemma_client became a package (client / config /
+        # errors / response_parser); inspect.getsource on a package
+        # returns only __init__.py, so the num_predict and num_ctx
+        # defaults — which live in client.py — became invisible and
+        # these tests reported the caps as missing when they had only
+        # moved. module_source walks the package.
         from core import gemma_client
-        cls.src = inspect.getsource(gemma_client)
+        from tests._pipeline_src import module_source
+        cls.src = module_source(gemma_client)
 
     def test_num_predict_fallback_increased(self):
         # The fallback (when caller passes 0) must be ≥ 4096.
