@@ -495,32 +495,39 @@
    *   - conv-action-chip 글자 크기 11 → 10.5, padding 4/10 → 3/8
    *   - mode-picker / model-picker select 폰트 11 → 10
    */
+  /* No !important below: chat.css declares these at the SAME
+   * specificity and loads BEFORE mobile.css on every page, so later
+   * position already wins (this file's header states that contract).
+   * Verified 2026-09-03: none of these elements is touched by a JS
+   * `.style.*` assignment or cssText, so no runtime inline style can
+   * outrank them either — that is what !important was actually for
+   * elsewhere in this file. */
   .conv-actions {
-    padding: 2px 10px !important;
-    gap: 4px !important;
+    padding: 2px 10px;
+    gap: 4px;
   }
   .conv-actions #mode-picker,
   .conv-actions #model-picker {
-    font-size: 10px !important;
-    padding: 3px 8px !important;
+    font-size: 10px;
+    padding: 3px 8px;
   }
   .conv-actions #mode-recommend-link {
-    display: none !important;
+    display: none;
   }
   .conv-actions .conv-action-chip {
-    font-size: 10.5px !important;
-    padding: 3px 8px !important;
+    font-size: 10.5px;
+    padding: 3px 8px;
   }
   /* Chat-topbar — same compaction. The bullet + model name + caret
    * stay; only the spacing tightens. */
   .chat-topbar {
-    padding: 6px 10px !important;
-    gap: 4px !important;
+    padding: 6px 10px;
+    gap: 4px;
   }
   .chat-topbar .model-chip,
   .chat-topbar .workspace-badge {
-    font-size: 10.5px !important;
-    padding: 3px 8px !important;
+    font-size: 10.5px;
+    padding: 3px 8px;
   }
   button, .btn {
     min-height: 36px;

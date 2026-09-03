@@ -349,6 +349,85 @@ class MeasurementSurfaceLockTest(unittest.TestCase):
                 os.environ["JAMES_ENABLE_DIFFUSIONGEMMA"] = prior
 
 
+# The paired fixture is a derivative of MultiHop-RAG, regenerated from
+# an upstream download (`scripts/hotpot/download_multihop_rag.py` then
+# `scripts/hotpot/build_fixture.py`), and `.gitignore:75` excludes
+# `workspaces/hotpot_eval/eval/` as a "benchmark workspace cache
+# (regeneratable from upstream fixture sources)".
+#
+# It therefore CANNOT exist on a CI runner: the build needs network
+# access to a licensed dataset, unlike the LRB scenarios, which have
+# stdlib-only deterministic builders and are rebuilt on demand by
+# `tests/_lrb_fixtures.py`. Asserting its presence unconditionally made
+# three of the five standing CI failures — a red that no PR could ever
+# clear and that says nothing about the code under review.
+#
+# So the content locks below skip when the artifact is absent, and
+# `FixturePathLockTest` keeps the part of the guard CI *can* enforce:
+# that the harness still points at the path those locks describe. A
+# rename would otherwise disarm the lock silently on exactly the runs
+# where it is skipped.
+#
+# ⚠️ Consequence, stated rather than hidden: on CI the schema/count
+# locks are INERT. They protect the operator machine, where the paired
+# measurement actually runs and the fixture actually exists.
+def _paired_fixture_path():
+    """Return the harness's FIXTURE path (importing it if needed)."""
+    _import_harness()
+    from local_vs_cloud_paired import FIXTURE
+    return FIXTURE
+
+
+def _paired_fixture_present() -> bool:
+    try:
+        return _paired_fixture_path().exists()
+    except Exception:                                  # pragma: no cover
+        return False
+
+
+_FIXTURE_SKIP_REASON = (
+    "paired fixture workspaces/hotpot_eval/eval/multihop_rag_queries.json "
+    "is absent (gitignored, regenerated from an upstream licensed "
+    "download). Rebuild with scripts/hotpot/download_multihop_rag.py then "
+    "scripts/hotpot/build_fixture.py to run the schema locks."
+)
+
+
+class FixturePathLockTest(unittest.TestCase):
+    """Runs everywhere, including CI.
+
+    The content locks below can only run where the fixture exists. This
+    one pins the thing that is checkable without it — that the harness
+    still reads the path they describe — so moving or renaming the
+    fixture cannot silently pass on a runner that skips the rest.
+    """
+
+    def test_harness_fixture_path_is_the_locked_one(self):
+        fixture = _paired_fixture_path()
+        root = Path(__file__).resolve().parent.parent
+        self.assertEqual(
+            fixture,
+            root / "workspaces" / "hotpot_eval" / "eval"
+                 / "multihop_rag_queries.json",
+            "local_vs_cloud_paired.FIXTURE moved. The schema locks in "
+            "FixtureLockTest describe the OLD path and skip when it is "
+            "absent, so this rename would have disarmed them silently. "
+            "Update both together, then re-run the paired measurement.",
+        )
+
+    def test_regeneration_path_still_exists(self):
+        """The skip message tells an operator how to rebuild. If that
+        script is gone the message is a dead end."""
+        root = Path(__file__).resolve().parent.parent
+        self.assertTrue(
+            (root / "scripts" / "hotpot" / "build_fixture.py").is_file(),
+            "scripts/hotpot/build_fixture.py is missing — the fixture "
+            "can no longer be regenerated and the skip reason above "
+            "points nowhere.",
+        )
+
+
+@unittest.skipUnless(_paired_fixture_present(), _FIXTURE_SKIP_REASON)
 class FixtureLockTest(unittest.TestCase):
     """The fixture file is the input the harness compares against.
     A silent edit invalidates every Quality Delta Card produced on
@@ -356,6 +435,8 @@ class FixtureLockTest(unittest.TestCase):
     additions to the fixture are legitimate (new questions surface as
     new measurement runs). Instead we lock the SCHEMA + counts so the
     paired path keeps reading what it expects.
+
+    Skipped where the fixture is absent (CI) — see the note above.
     """
 
     @classmethod
@@ -363,14 +444,6 @@ class FixtureLockTest(unittest.TestCase):
         # Force the path-based import so the test class can run alone
         # (unittest.main without the earlier class running).
         _import_harness()
-
-    def test_fixture_exists(self):
-        from local_vs_cloud_paired import FIXTURE
-        self.assertTrue(
-            FIXTURE.exists(),
-            f"paired fixture missing: {FIXTURE}. The harness will "
-            f"fail before producing any row.",
-        )
 
     def test_fixture_has_answerable_rows(self):
         """Each answerable question_type must have ≥ n_per_type × 3
