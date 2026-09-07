@@ -19,7 +19,6 @@ Run:
 """
 from __future__ import annotations
 
-import inspect
 import os
 import sys
 import unittest
@@ -37,7 +36,15 @@ class CallGemmaDefensiveResolutionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from core import gemma_client
-        cls.src = inspect.getsource(gemma_client)
+
+        from tests._pipeline_src import module_source
+
+        # gemma_client became a package (client / config / errors), and
+        # ``inspect.getsource`` on a package returns only __init__.py — so
+        # the ``if model:`` branch this class greps for reads as deleted
+        # when it merely moved to client.py. module_source walks the
+        # package; it exists for exactly this recurring split.
+        cls.src = module_source(gemma_client)
 
     def test_truthy_model_path_checks_installed(self):
         # The 'if model:' branch must consult installed_models() and

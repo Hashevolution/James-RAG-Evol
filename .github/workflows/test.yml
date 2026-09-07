@@ -53,9 +53,7 @@ jobs:
             -p no:cacheprovider \
             \
             `# --- LLM / Ollama service-bound (no CI Ollama service yet) ---` \
-            --ignore=tests/test_chat_recommend_link.py \
             --ignore=tests/test_conversation_continuity.py \
-            --ignore=tests/test_default_llm_model.py \
             --ignore=tests/test_first_run_wizard.py \
             --ignore=tests/test_install_progress.py \
             --ignore=tests/test_llm_catalog.py \
@@ -63,7 +61,6 @@ jobs:
             --ignore=tests/test_model_resolver.py \
             --ignore=tests/test_planner.py \
             --ignore=tests/test_query_rewriter.py \
-            --ignore=tests/test_reasoning_backends.py \
             --ignore=tests/test_reasoning_trace_helpers.py \
             --ignore=tests/test_reasoning_trace_schema.py \
             --ignore=tests/test_reflection_loop.py \
@@ -83,7 +80,6 @@ jobs:
             --ignore=tests/test_api_keys.py \
             --ignore=tests/test_change_request_endpoints.py \
             --ignore=tests/test_chat_mode_picker.py \
-            --ignore=tests/test_chat_wiki_save.py \
             --ignore=tests/test_cleanup_web_noise.py \
             --ignore=tests/test_code_surface_sqlite.py \
             --ignore=tests/test_dashboard_audit_sqlite.py \
@@ -103,14 +99,12 @@ jobs:
             --ignore=tests/test_phase_d_modify_cascade.py \
             --ignore=tests/test_q2a_feature_wiring.py \
             --ignore=tests/test_query_include_contexts.py \
-            --ignore=tests/test_real_reasoning_stream.py \
             --ignore=tests/test_scheduler.py \
             --ignore=tests/test_self_evolution_gate.py \
             --ignore=tests/test_signup_endpoint.py \
             --ignore=tests/test_trace_prune.py \
             --ignore=tests/test_upload_history.py \
             --ignore=tests/test_web_search_admin_panel.py \
-            --ignore=tests/test_web_used_badge.py \
             --ignore=tests/test_workspace_jobs.py
         # Iteration plan: ignored files are tracked for incremental
         # un-ignoring as their CI dependencies become available (Ollama

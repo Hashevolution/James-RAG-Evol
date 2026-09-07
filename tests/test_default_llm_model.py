@@ -36,13 +36,27 @@ class DefaultModelNameTests(unittest.TestCase):
                       / "eval" / "RESULTS.md").read_text(encoding="utf-8")
 
         # Config side — extract the default fallback inside the env getter.
+        #
+        # Matches any single-call accessor that takes JAMES_LLM_MODEL plus a
+        # literal fallback, so changing the accessor does not silently
+        # disarm the check. Both shapes this line has worn are covered:
+        #   GEMMA_MODEL = os.environ.get("JAMES_LLM_MODEL", "...")
+        #   GEMMA_MODEL = _llm_setting("default_model",
+        #                              "JAMES_LLM_MODEL", "...")
+        # The captured group is the literal AFTER JAMES_LLM_MODEL — the
+        # compiled-in default, not the env-resolved value. That is the
+        # point: RESULTS.md calibrates a fresh install, which has no env.
         import re
         m = re.search(
-            r'GEMMA_MODEL\s*=\s*os\.environ\.get\(\s*["\']JAMES_LLM_MODEL["\']\s*,\s*["\']([^"\']+)["\']',
+            r'GEMMA_MODEL\s*=\s*\w+(?:\.\w+)*\(\s*'
+            r'(?:["\'][^"\']+["\']\s*,\s*)*'
+            r'["\']JAMES_LLM_MODEL["\']\s*,\s*["\']([^"\']+)["\']',
             config_src,
         )
         self.assertIsNotNone(m, "GEMMA_MODEL fallback default not found "
-                             "in config.py — pattern broken or refactored")
+                             "in config.py — the accessor changed shape "
+                             "again; widen this pattern rather than "
+                             "deleting the check")
         config_default = m.group(1)
 
         # RESULTS.md side — the model name must appear in the

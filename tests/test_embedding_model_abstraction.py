@@ -36,6 +36,7 @@ import importlib
 import os
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -53,16 +54,38 @@ def _reload_with_env(env_value):
     Returns the freshly-reloaded ``core.vector_store`` module so the
     test can read its module-level constants (LOCAL_MODEL_PATH,
     FALLBACK_MODEL, _chroma_dir_for_model). The test driver should
-    restore the original env in tearDown."""
+    restore the original env in tearDown.
+
+    ``env_value=None`` means "as a fresh install sees it". Popping the
+    variable is not enough on a developer machine: config.py re-reads
+    the project ``.env`` on every import and injects any key not already
+    present, so the reload immediately put the operator's own
+    ``JAMES_EMBEDDING_MODEL=BAAI/bge-m3`` straight back and the
+    default-off assertions failed locally while passing on CI, which has
+    no ``.env``. Suppress that file for the duration of the reload so
+    the "unset" case is genuinely unset for everyone.
+    """
     if env_value is None:
         os.environ.pop("JAMES_EMBEDDING_MODEL", None)
     else:
         os.environ["JAMES_EMBEDDING_MODEL"] = env_value
     import config
-    importlib.reload(config)
-    # vector_store imports from config at module load, so re-import too.
-    if "core.vector_store" in sys.modules:
-        importlib.reload(sys.modules["core.vector_store"])
+
+    env_file = os.path.join(
+        os.path.dirname(os.path.abspath(config.__file__)), ".env")
+    real_exists = os.path.exists
+
+    def _exists(path):
+        if os.path.abspath(str(path)) == os.path.abspath(env_file):
+            return False
+        return real_exists(path)
+
+    with patch("os.path.exists", _exists):
+        importlib.reload(config)
+        # vector_store imports from config at module load, so re-import
+        # too — inside the patch, since it reads config at import time.
+        if "core.vector_store" in sys.modules:
+            importlib.reload(sys.modules["core.vector_store"])
     import core.vector_store as vs
     return vs, config
 
