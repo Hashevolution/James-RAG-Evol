@@ -149,7 +149,13 @@ DEFAULT_PREFERENCE: dict = {
         "gemma3:12b", "gemma4:e4b", "gemma3:27b",
         "mixtral:8x7b", "qwen2.5:14b",
     ],
+    # v0.6.1 (2026-07-01) — qwen2.5vl:7b promoted to the top after the
+    # PR #1070 A/B (llava:13b "too blurry to read" vs qwen2.5vl:7b read
+    # the full schedule table). Keeps this list consistent with
+    # config.MULTIMODAL_MODEL's default; llava retained as fallback for
+    # hosts that only have it pulled.
     "vision": [
+        "qwen2.5vl:7b",
         "llava:13b",
     ],
 }
