@@ -186,15 +186,37 @@ def test_token_mode_s1_reproduces_phase_b_baseline():
                     - expected_r1) < 1e-5
 
 
-def test_token_mode_s2_reproduces_phase_b_baseline():
+def test_token_mode_s2_matches_the_repaired_fixture():
+    """Token-mode R@1 for the three SUTs on the collision-repaired S2.
+
+    These are NOT the published Phase B figures, and the difference is
+    deliberate. The published run (0.225 / 0.5375 / 0.7125) was measured
+    on a fixture whose historical-mid-policy queries injected a bare
+    time offset — "…Policy 1: Operating Standard 16 weeks ago?" — that
+    matched co-pol-016's numbered title, so the cell scored a numeric
+    token collision instead of time-travel retrieval. Diagnosed in
+    reports/research-runs/lrb-s2-fixture-nonreproduction-20260819.md,
+    repaired 2026-09-08 by spelling policy titles out; the numbers below
+    are the re-run that repair requires.
+
+    The artifact suppressed all three SUTs, so the ordering claim and
+    the headline gap survive it: V < N < J still holds and J − N is
+    0.175 on both fixtures, unchanged to four decimals.
+
+    Until the preprint is re-baselined or footnoted — decision #2 in
+    that report, an operator call — papers/lrb-preprint/README.md,
+    .zenodo.json and the v0.4.4 release notes still carry the old
+    figures. Green here means the repository reproduces itself, not
+    that it reproduces the paper.
+    """
     from scripts.research.lrb_run_v021_cross_model import (
         run_sut_cross_model)
     sc = load_scenario(FIXTURE_S2)
     sha = fixture_sha(FIXTURE_S2)
     for cls, expected_r1 in [
-        (VanillaRagAdapter, 0.225),
-        (NaiveSupersedeAdapter, 0.5375),
-        (JamesValidityAdapter, 0.7125),
+        (VanillaRagAdapter, 0.2500),      # published 0.225
+        (NaiveSupersedeAdapter, 0.5875),  # published 0.5375
+        (JamesValidityAdapter, 0.7625),   # published 0.7125
     ]:
         r = run_sut_cross_model(cls, sc, sha, sut_name="t",
                                 mode="token", model="token-baseline",
