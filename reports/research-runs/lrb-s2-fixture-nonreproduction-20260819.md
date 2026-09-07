@@ -97,6 +97,19 @@ publication-scale rung of the S2→S3 ladder. **Not measured here** — but
 the same collision is available to it, and the S1 builder does not use
 the template at all.
 
+> **Update 2026-09-03 — measured, see
+> [`lrb-s3-collision-check-20260903.md`](lrb-s3-collision-check-20260903.md).**
+> S3 does **not** carry the defect at any committed preset, and the S3
+> publication figure reproduces exactly (V/N/J = 0.5020 / 0.7210 /
+> 0.8450 against the published 0.502 / 0.721 / 0.845). Two corrections
+> to this section: S3 computes the offset as `weeks - weeks//3` rather
+> than hard-coding `16`, so the injected token is 16 / 24 / 35 by
+> preset; and S3 numbers policies globally (`dept*1000 + i + 1`), so the
+> bare numbers in titles are `{1, 2, 1001, 1002, …}` and every offset
+> falls in the empty gap. The immunity is arithmetic, not design — it
+> breaks if `policies_per_dept` is ever raised to the offset. Operator
+> decision #4 below can be closed on that evidence; #1-#3 stand.
+
 ## 6. Why this matters and what it does not touch
 
 `papers/lrb-preprint/README.md` records the abstract's token-mode R@1 as
