@@ -65,24 +65,11 @@ GRANDFATHERED: dict = {
     #   all three presets fingerprint the same field-for-field against
     #   the pre-split module, and resolve_style agrees on 8 inputs.
     #
-    "reasoning/engine.py": (
-        "21,464 bytes, 984 over. NOT split here on purpose: engine.py "
-        "is core/reasoning, so CLAUDE.md rule #2 requires STEP 7 bench "
-        "numbers and a Quality Delta Card on any PR touching it — and "
-        "bench.py needs a live server plus Ollama, neither of which "
-        "exists in a session container. Splitting it blind would ship "
-        "an unmeasured change to the hottest path in the system.\n"
-        "Split plan, for an operator who can run the bench: the file "
-        "is query() plus its helpers. The memory-context assembly "
-        "already left for engine_memory.py and the canonical RAG synth "
-        "for engine_synth.py, so the remaining seam is the mode "
-        "dispatch block — lift it to core/reasoning/engine_dispatch.py "
-        "the way pipeline_synth was lifted, keeping engine.query() as "
-        "the entry point. Expect ~3-4 KB to move, which clears the cap "
-        "with room. tests/_pipeline_src.py::engine_source already "
-        "concatenates the engine companions, and _module_source walks "
-        "a package, so the structural tests absorb either shape."
-    ),
+    # core/reasoning/engine.py — DE-GRANDFATHERED 2026-09-07. The
+    # mode/model routing block moved to engine_routing.py (the seam
+    # this entry named), taking engine.py from 21,464 to 16,733
+    # bytes. engine_source() concatenates the companion, so the
+    # structural greps still see the whole query path.
 }
 
 

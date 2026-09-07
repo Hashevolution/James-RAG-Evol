@@ -128,8 +128,13 @@ class EngineWiringTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         import core.reasoning.engine as eng
+        import core.reasoning.engine_routing as eng_routing
         cls.eng = eng
-        cls.src = inspect.getsource(eng)
+        # The mode/model routing block (incl. resolve_model validation)
+        # moved to engine_routing.py in the 2026-07-01 rule #5 split —
+        # concatenate both so the structural greps keep seeing the
+        # whole query path.
+        cls.src = inspect.getsource(eng) + "\n" + inspect.getsource(eng_routing)
 
     def test_query_signature_has_selected_model(self):
         m = re.search(
