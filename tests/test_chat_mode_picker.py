@@ -49,7 +49,12 @@ class BackendModeOverrideTests(unittest.TestCase):
         from tests._server_split_helpers import combined_server_source
         cls.srv_src = combined_server_source()
         import core.reasoning.engine as eng
-        cls.eng_src = inspect.getsource(eng)
+        import core.reasoning.engine_routing as eng_routing
+        # The override-validation block moved to engine_routing.py in
+        # the 2026-07-01 rule #5 split — concatenate so the body scan
+        # below can find it in resolve_mode_and_model.
+        cls.eng_src = (inspect.getsource(eng) + "\n"
+                       + inspect.getsource(eng_routing))
 
     def test_query_request_field(self):
         m = re.search(
@@ -87,7 +92,10 @@ class BackendModeOverrideTests(unittest.TestCase):
         # try/finally wrapper that delegates to ``_query_impl`` where
         # the override validation actually lives. Scan whichever
         # method's body holds the override logic.
-        for fn_name in ("_query_impl", "query"):
+        # resolve_mode_and_model (engine_routing.py) holds the override
+        # logic since the 2026-07-01 split; older names kept for
+        # documentation of the scan's history.
+        for fn_name in ("resolve_mode_and_model", "_query_impl", "query"):
             try:
                 idx = self.eng_src.index(f"def {fn_name}(")
             except ValueError:

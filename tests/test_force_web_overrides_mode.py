@@ -48,8 +48,15 @@ class EngineModeOverrideTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        # The routing block (incl. the force_web override) moved to
+        # engine_routing.py in the 2026-07-01 rule #5 split. Concatenate
+        # routing BEFORE engine so the ordering assertions below keep
+        # their meaning: routing (router → force_web override) runs
+        # before the dispatch (`if mode == "chat":`) that stays in
+        # engine._query_impl.
         import core.reasoning.engine as eng
-        cls.src = inspect.getsource(eng)
+        import core.reasoning.engine_routing as eng_routing
+        cls.src = inspect.getsource(eng_routing) + "\n" + inspect.getsource(eng)
 
     def test_force_web_override_block_present(self):
         # Look for the explicit override snippet: when force_web_search
