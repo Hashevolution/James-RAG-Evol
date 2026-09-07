@@ -46,7 +46,7 @@ DOI `10.5281/zenodo.22030935` 로 종결됐고, 그 준비 폴더
 |---|---|---|
 | 1–3 | **`COMBINED-findings-1-2-3.md`** | ✅ **발송 완료 (2026-08-26)** |
 | — | `finding-1/2/3-*.md` | 원본 보존. 발송된 것은 위 통합본 |
-| 5 | **`finding-5-isolate-downgrade-reply.md`** | 🟢 발송 가능 — **④와 독립** |
+| 5 | **`finding-5-isolate-downgrade-reply.md`** | ✅ **발송 완료 (2026-09-07)** — ④와 독립 |
 | 4 | `finding-4-run-identity-salt.md` | ⛔ **차단** — Track 2c 재측정 필요 |
 
 **발송 이력**: 1차(4건 검토 요청 답신) · 2차(기탁 최종본 조건부 OK) ·
