@@ -36,13 +36,34 @@ class PipelineProposalAlwaysCreatedTests(unittest.TestCase):
         from tests._pipeline_src import pipeline_source
         cls.src = pipeline_source()
 
-    def test_pending_save_proposal_id_in_outer_scope(self):
-        # Like web_results, pending_save_proposal_id must be initialized
-        # before the try: block so it survives early-fail paths.
-        try_idx  = self.src.index("\n    try:\n        sys_prefix = ")
-        init_idx = self.src.index('pending_save_proposal_id: str = ""')
-        self.assertLess(init_idx, try_idx,
-            "pending_save_proposal_id must be initialised BEFORE try:")
+    def test_pending_save_proposal_id_always_present(self):
+        # Original intent: pending_save_proposal_id must survive an
+        # early-fail path, which the first version of this test enforced
+        # by demanding the initialisation appear before the ``try:``.
+        #
+        # The generator was later split into the pipeline_synth package
+        # and the value became a defaulted field on the AnswerBlock
+        # dataclass (pipeline_synth/result.py). Source-index ordering
+        # stopped meaning anything at that point — the initialisation and
+        # the ``try:`` now live in different files, so their positions in
+        # the concatenated source compare two unrelated offsets, which is
+        # what made this fail.
+        #
+        # The dataclass default is a *stronger* guarantee than the
+        # ordering it replaced: the attribute exists on every instance no
+        # matter which path constructed it. Assert that directly.
+        from core.reasoning.pipeline_synth.result import AnswerBlock
+
+        blk = AnswerBlock()
+        self.assertEqual(
+            blk.pending_save_proposal_id, "",
+            "AnswerBlock.pending_save_proposal_id must default to an "
+            "empty string so an early-fail path still yields a usable "
+            "block instead of AttributeError")
+        self.assertEqual(
+            blk.web_results, [],
+            "web_results must default to an empty list for the same "
+            "reason — the two travel together")
 
     def test_proposal_no_longer_gated_on_search_count(self):
         # The old gate `should_promote_to_longterm(safe_query) or

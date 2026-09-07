@@ -41,6 +41,37 @@ def _reimport_backends(env_overrides=None):
     return mod
 
 
+def _stage_source(case, path):
+    """Source text of a stage/middleware module, whether it is still a
+    single ``.py`` or has since become a package directory.
+
+    ``reflect.py`` became ``reflect/`` and ``pipeline_synth.py`` became
+    ``pipeline_synth/`` in the v0.6 module-size splits. The assertions
+    below pin architectural invariants ("must consume the helper",
+    "must not call call_gemma directly") that survived those splits
+    intact — only the paths went stale, and the resulting
+    FileNotFoundError read as a failure of the invariant.
+
+    A missing path fails the test loudly rather than returning "" —
+    a silently-empty source would make ``assertNotIn`` pass forever and
+    turn a renamed module into a permanently green assertion.
+    """
+    if path.is_file():
+        return path.read_text(encoding="utf-8")
+    pkg = path.with_suffix("")
+    if pkg.is_dir():
+        parts = sorted(pkg.rglob("*.py"))
+        case.assertTrue(
+            parts,
+            f"{pkg.name}/ is a package but contains no .py files — "
+            f"the assertion below would vacuously pass")
+        return "\n".join(p.read_text(encoding="utf-8") for p in parts)
+    case.fail(
+        f"{path} is neither a module nor a package. It was renamed or "
+        f"removed; update this list rather than dropping the entry — "
+        f"the invariant it pins still applies wherever the code went.")
+
+
 class RegistryProtocolTests(unittest.TestCase):
 
     def test_ollama_local_always_registered(self):
@@ -415,7 +446,7 @@ class DefaultBackendResolutionTests(unittest.TestCase):
         ]
         for f in stage_files:
             with self.subTest(stage=f.name):
-                src = f.read_text(encoding="utf-8")
+                src = _stage_source(self, f)
                 self.assertIn(
                     "get_default_backend_id",
                     src,
@@ -527,7 +558,7 @@ class SynthCallSitesUseBackendHelperTests(unittest.TestCase):
         ]
         for f in middleware_files:
             with self.subTest(file=f.name):
-                src = f.read_text(encoding="utf-8")
+                src = _stage_source(self, f)
                 self.assertNotIn(
                     "engine.llm.call_gemma",
                     src,

@@ -50,9 +50,15 @@ def route_paths(app_or_routes: Any) -> set[str]:
     the inclusion change, so call sites keep their assertions.
 
     Note: this server calls ``include_router`` without ``prefix``
-    everywhere, so a router's own paths are its final paths. If a prefix
-    is ever introduced, this needs to compose it — there is a test for
-    that assumption in tests/test_app_routes_helper.py.
+    everywhere, so a router's own paths are its final paths.
+
+    If a prefix is ever introduced, whether composition is needed here
+    depends on the installed FastAPI — newer versions already expose the
+    composed path through this same attribute, older ones do not. So
+    check the behaviour before adding composition, or the paths get
+    doubled. tests/test_app_routes_helper.py pins the property that
+    matters either way: this helper forwards the app's own route table
+    without dropping or inventing entries.
     """
     return {p for p in (getattr(r, "path", None) for r in iter_routes(app_or_routes))
             if p is not None}

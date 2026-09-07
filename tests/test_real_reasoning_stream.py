@@ -239,8 +239,14 @@ class FrontendChatJsContractTests(unittest.TestCase):
                   ).read_text(encoding="utf-8")
 
     def test_send_message_generates_trace_id(self):
-        idx = self.js.index("async function sendMessage")
-        body = self.js[idx:idx + 2500]
+        # sendMessage kept growing (vision attach, heartbeat streaming),
+        # and `trace_id:` ended up at +3448 — outside the old fixed
+        # 2500-char window, so this read as "field removed" when it had
+        # only moved. function_body bounds the slice at the next
+        # top-level function instead of guessing a length.
+        from tests._js_source import function_body
+
+        body = function_body(self.js, "sendMessage")
         self.assertIn("crypto.randomUUID", body,
                       "sendMessage should use crypto.randomUUID() for trace_id "
                       "(falls back to manual id when missing)")

@@ -132,8 +132,14 @@ class FrontendBadgeTests(unittest.TestCase):
         body = self.js[idx:end]
         self.assertIn("data.web_used", body,
             "appendJamesMsg must inspect data.web_used flag")
-        self.assertIn("🌐 웹 검색 사용됨", body,
-            "badge label must contain 🌐 웹 검색 사용됨")
+        # The label used to lead with a 🌐. The de-emoji series stripped
+        # decorative emoji from every non-chat chrome surface, so pinning
+        # the glyph here would re-assert a convention the project has
+        # since dropped. The badge TEXT is the invariant — the user must
+        # be told the answer mixed in low-trust web content.
+        self.assertIn("웹 검색 사용됨", body,
+            "badge label must still say 웹 검색 사용됨 — the user has to "
+            "be able to see that external web content was mixed in")
 
     def test_engine_label_humanized(self):
         idx = self.js.index("function appendJamesMsg")
