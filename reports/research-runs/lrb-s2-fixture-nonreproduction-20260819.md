@@ -136,5 +136,18 @@ committed.
    diverge from a published run again.
 4. **Check S3** for the same collision before the ladder is cited further.
 
+> **Update 2026-09-08 — decision #1 taken, see
+> [`lrb-s2-collision-repair-20260908.md`](lrb-s2-collision-repair-20260908.md).**
+> Policy titles are spelled out, the colliding cell goes 2/4 → 4/4, and the
+> re-run gives V/N/J = 0.2500 / 0.5875 / 0.7625. All three rose, so V < N < J
+> holds and J − N stays 0.175 to four decimals. Two corrections to this
+> report: the committed builder reproduces `9f40d2e0…` — the *published*
+> fixture — on a Windows host and scores 0.7125 there, so the artifact is
+> environment-dependent rather than a lost generator; and the cell loses
+> 2 of 4 here against 4 of 4 on CI, which is where the −0.025 came from.
+> Decisions #2 (preprint) and #3 (commit the fixtures) remain open; #3 is
+> now better motivated, since a builder deterministic within an environment
+> but not across one is what SHA pinning would have caught.
+
 Until one is chosen, `test_token_mode_s2_reproduces_phase_b_baseline`
 stays red on purpose: it is reporting a true non-reproduction.

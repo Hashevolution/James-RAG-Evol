@@ -136,7 +136,40 @@ assert len(CONTRACTS) == 40
 
 BUDGETS = [(f"co-bud-{i:03d}", f"FY26 Operating Budget {i}", dep[0])
            for i, dep in enumerate(DEPARTMENTS, start=1)]
-POLICIES = [(f"co-pol-{i:03d}", f"Policy {i}: Operating Standard",
+# Policy titles are spelled out rather than numbered.
+#
+# They used to read "Policy 16: Operating Standard", and the
+# historical-policy query template injects a bare time offset — "What
+# was the text of Policy 1: Operating Standard 16 weeks ago?". That put
+# the token `16` in the query, which then matched co-pol-016's title as
+# strongly as the gold policy's own number matched its title, on top of
+# the three content words every policy title shares. The distractor won
+# the resulting tie, so the cell measured a numeric-token collision
+# rather than time-travel retrieval.
+#
+# Departments and projects never had the problem because their titles
+# are word-based; policies now match that. The spelled-out ordinal is
+# still unique per policy and still one token, so the gold keeps its
+# distinguishing term — it simply is no longer a term the query's time
+# expression can produce by accident.
+#
+# See reports/research-runs/lrb-s2-fixture-nonreproduction-20260819.md
+# for the original diagnosis and lrb-s2-collision-repair-20260908.md
+# for the repair and its measured effect.
+_ORDINAL_WORDS = (
+    "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight",
+    "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen",
+    "Sixteen", "Seventeen", "Eighteen", "Nineteen", "Twenty",
+    "TwentyOne", "TwentyTwo", "TwentyThree", "TwentyFour", "TwentyFive",
+    "TwentySix", "TwentySeven", "TwentyEight", "TwentyNine", "Thirty",
+    "ThirtyOne", "ThirtyTwo", "ThirtyThree", "ThirtyFour", "ThirtyFive",
+    "ThirtySix", "ThirtySeven", "ThirtyEight", "ThirtyNine", "Forty",
+)
+assert len(_ORDINAL_WORDS) == 40
+assert len(set(_ORDINAL_WORDS)) == 40
+
+POLICIES = [(f"co-pol-{i:03d}",
+             f"Policy {_ORDINAL_WORDS[i - 1]}: Operating Standard",
              DEPARTMENTS[(i - 1) % len(DEPARTMENTS)][0])
             for i in range(1, 41)]
 APPOINTMENTS = [(f"co-app-{i:03d}", f"Appointment Record {i}",
