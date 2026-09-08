@@ -1092,15 +1092,18 @@ function loadMineSidebar() {
             month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
           })
         : '-';
-      const statusColor = status === 'indexed' ? '#1e7a3e'
-                        : status === 'failed'  ? '#7a1e1e'
-                        : 'var(--muted)';
+      // The colour used to be interpolated into a style attribute,
+      // which CSP blocks. It only ever had three values, so it is a
+      // class now and the palette lives in chat.css.
+      const statusCls = status === 'indexed' ? 'upload-status-indexed'
+                      : status === 'failed'  ? 'upload-status-failed'
+                      : 'upload-status-other';
       return `<div class="u-ce16bc45">
         <div class="u-ae4f0321"
              title="${(it.origin_name || '').replace(/"/g,'&quot;')}">${it.origin_name || ''}</div>
         <div class="u-02736ec7">
           <span class="c-muted font-mono fs-10">${time}</span>
-          <span style="color:${statusColor};font-family:var(--font-mono);font-size:10px">${status}</span>
+          <span class="upload-status ${statusCls}">${status}</span>
         </div>
       </div>`;
     }).join('');
@@ -1724,13 +1727,8 @@ function appendJamesMsg(data) {
         <div class="mt-8">
           <button class="next-action-chip ${variant.cls}"
                   data-action="ask-with-force-web"
-                  data-question="${encodeURIComponent(q)}"
-                  style="text-align:left;background:${variant.bg};
-                         border:1px solid ${variant.border};border-radius:8px;
-                         padding:8px 12px;cursor:pointer;color:var(--text);
-                         font-size:12px;width:100%;font-family:inherit;
-                         transition:all .15s">
-            <span style="color:${variant.color};font-weight:600;margin-right:6px">${variant.icon}</span>
+                  data-question="${encodeURIComponent(q)}">
+            <span class="force-web-icon">${variant.icon}</span>
             <span>${escHtml(variant.label)}</span>
           </button>
         </div>`;
@@ -1780,18 +1778,21 @@ function appendJamesMsg(data) {
   let confidenceBadge = '';
   if (score != null) {
     const pct = Math.round(score * 100);
-    const barColor = pct >= 70 ? '#4caf7d' : pct >= 40 ? '#ffb74d' : '#f06292';
+    // Three bands, so the colour is a class. Only the width is a real
+    // computed value; it is applied through CSSOM below, which CSP does
+    // not govern (unlike the style attribute it used to live in).
+    const confBand = pct >= 70 ? 'conf-high' : pct >= 40 ? 'conf-mid' : 'conf-low';
     const label    = pct >= 70 ? t('badge.source_based')
                    : pct >= 40 ? t('badge.partial')
                    : t('badge.inference_only');
     const title    = pct < 40 ? t('badge.inference_warn') : '';
     confidenceBadge = `
-      <div class="d-flex items-center gap-6 mt-6" ${title ? `title="${title}"` : ''}>
+      <div class="d-flex items-center gap-6 mt-6 ${confBand}" ${title ? `title="${title}"` : ''}>
         <span class="fs-10 c-muted">${label}</span>
         <div class="u-a14e60e1">
-          <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px;transition:width .5s"></div>
+          <div class="confidence-fill" data-pct="${pct}"></div>
         </div>
-        <span style="font-size:10px;font-family:var(--font-mono);color:${barColor}">${pct}%</span>
+        <span class="confidence-pct">${pct}%</span>
       </div>`;
   }
 
@@ -1863,17 +1864,18 @@ function appendJamesMsg(data) {
   pendingReportRequest = false;   // consume the flag
   const hasCodeBlock = /```[\s\S]*?```/.test(answer);
   const answerEscapedAttr = encodeURIComponent(answer);
-  const _expBtnStyle = "background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;transition:all .15s";
+  // _expBtnStyle was a constant string pasted into four style
+  // attributes; it is the .export-btn class in chat.css now.
   const pyExportBtn = hasCodeBlock ? `
       <button class="fb-btn export-btn" data-action="export-answer" data-format="py" data-content="${answerEscapedAttr}"
-        style="${_expBtnStyle}" title=".py 다운로드 (코드 블록만 추출)">.py</button>` : '';
+        title=".py 다운로드 (코드 블록만 추출)">.py</button>` : '';
   const exportButtons = showExportBtns ? `
       <button class="fb-btn export-btn" data-action="export-answer" data-format="md" data-content="${answerEscapedAttr}"
-        style="${_expBtnStyle}" title=".md 다운로드">.md</button>
+        title=".md 다운로드">.md</button>
       <button class="fb-btn export-btn" data-action="export-answer" data-format="docx" data-content="${answerEscapedAttr}"
-        style="${_expBtnStyle}" title=".docx 다운로드 (Word)">.docx</button>
+        title=".docx 다운로드 (Word)">.docx</button>
       <button class="fb-btn export-btn" data-action="export-answer" data-format="txt" data-content="${answerEscapedAttr}"
-        style="${_expBtnStyle}" title=".txt 다운로드 (Notepad)">.txt</button>${pyExportBtn}`
+        title=".txt 다운로드 (Notepad)">.txt</button>${pyExportBtn}`
     : pyExportBtn;
   const dirIdEsc = dirId ? escHtml(dirId) : '';
   const fbHtml = dirId ? `
@@ -1995,6 +1997,14 @@ function appendJamesMsg(data) {
       ${fbHtml}
     </div>
   `;
+  // The confidence bar's width is the one value here that is not
+  // drawn from a fixed set, so it cannot become a class. It is
+  // applied through CSSOM instead of a style attribute: CSP
+  // governs the attribute, not the property assignment.
+  const _confFill = div.querySelector('.confidence-fill');
+  if (_confFill && _confFill.dataset.pct) {
+    _confFill.style.width = _confFill.dataset.pct + '%';
+  }
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
 }

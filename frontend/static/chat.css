@@ -2183,3 +2183,71 @@ aside.sidebar { height: 100vh; height: 100dvh; }
   text-overflow: ellipsis;
 }
 .chat-attach-status { flex-shrink: 0; }
+
+/* ─────────────────────────────────────────────────────────────
+   CSP style-src migration — chat.js dynamic sites
+   ─────────────────────────────────────────────────────────────
+   These replace `style="…${expr}…"` attributes. Every value that fed
+   them turned out to come from a fixed, enumerable set, so the colours
+   move into CSS keyed on a class the JS already picks. The one truly
+   computed value (the confidence bar's width) is set through CSSOM
+   after insertion, which CSP does not govern.
+   ───────────────────────────────────────────────────────────── */
+
+/* Upload-history row status — statusColor's three branches */
+.upload-status        { font-family: var(--font-mono); font-size: 10px; }
+.upload-status-indexed { color: #1e7a3e; }
+.upload-status-failed  { color: #7a1e1e; }
+.upload-status-other   { color: var(--muted); }
+
+/* Force-web chip — three confidence variants. The button already
+   carried .web-refresh-btn / .web-supplement-btn / .web-collect-btn,
+   so the colours simply key off those instead of being interpolated. */
+.force-web-btn {
+  text-align: left;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 12px;
+  width: 100%;
+  font-family: inherit;
+  transition: all .15s;
+  border: 1px solid transparent;
+}
+.web-refresh-btn    { background: rgba(107,231,208,.10); border-color: rgba(107,231,208,.45); }
+.web-supplement-btn { background: rgba(255,183,77,.10);  border-color: rgba(255,183,77,.45); }
+.web-collect-btn    { background: rgba(79,195,247,.10);  border-color: rgba(79,195,247,.45); }
+
+.force-web-icon { font-weight: 600; margin-right: 6px; }
+.web-refresh-btn    .force-web-icon { color: #6be7d0; }
+.web-supplement-btn .force-web-icon { color: #ffb74d; }
+.web-collect-btn    .force-web-icon { color: #4fc3f7; }
+
+/* Confidence bar — barColor's three bands. Width stays dynamic and is
+   assigned through CSSOM once the bubble is in the DOM. */
+.confidence-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width .5s;
+  width: 0;
+}
+.confidence-pct { font-size: 10px; font-family: var(--font-mono); }
+.conf-high .confidence-fill { background: #4caf7d; }
+.conf-mid  .confidence-fill { background: #ffb74d; }
+.conf-low  .confidence-fill { background: #f06292; }
+.conf-high .confidence-pct  { color: #4caf7d; }
+.conf-mid  .confidence-pct  { color: #ffb74d; }
+.conf-low  .confidence-pct  { color: #f06292; }
+
+/* Export buttons — _expBtnStyle was a constant string, so it is a class */
+.export-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 10px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  transition: all .15s;
+}
