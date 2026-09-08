@@ -117,6 +117,22 @@ class _MarkdownStripBase(unittest.TestCase):
                     pass
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        # The success path. The except branch above covers the case where
+        # setUpClass never got here; this covers the case where it did.
+        # #1092 deleted this in favour of addClassCleanup and left the
+        # normal path with no cleanup at all once the cleanups turned out
+        # not to fire — the pair of files then leaked on every run, not
+        # just on a timeout.
+        for p in reversed(cls._patchers):
+            try:
+                p.stop()
+            except Exception:          # pragma: no cover - best effort
+                pass
+        import core.wiki_generator as wg_mod
+        wg_mod.WIKI_DIR = cls._orig_wiki_dir
+
     def _read_fm(self, path: Path):
         raw = path.read_text(encoding="utf-8")
         parts = raw.split("---", 2)
