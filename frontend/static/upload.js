@@ -179,15 +179,12 @@ dropZone.addEventListener('drop', async e => {
       transition:opacity .15s ease;
     `;
     overlay.innerHTML = `
-      <div style="background:var(--surface,#14161a); padding:24px 32px;
-                  border-radius:16px; border:1px solid var(--border,#25282f);
-                  box-shadow:0 12px 40px rgba(0,0,0,.5); text-align:center;
-                  pointer-events:none">
-        <div style="margin-bottom:8px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
-        <div style="font-size:16px; font-weight:600; color:var(--text,#fff)">
+      <div class="upload-drop-card">
+        <div class="mb-8"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+        <div class="upload-drop-title">
           여기에 놓으면 업로드 큐에 추가됩니다
         </div>
-        <div style="font-size:12px; color:var(--muted,#888); margin-top:6px">
+        <div class="upload-drop-hint">
           이미지 / PDF / Word / 텍스트 파일 지원
         </div>
       </div>
@@ -325,8 +322,8 @@ function renderChatAttachmentRow() {
     const isImg  = /^image\//.test(it.file.type || '');
     const thumb  = isImg && _thumbDataCache.has(it.id)
       ? `<img src="${_thumbDataCache.get(it.id)}" alt=""
-              style="width:100%;height:100%;object-fit:cover;border-radius:5px">`
-      : `<span style="font-size:18px">${
+              class="chat-attach-thumb-img">`
+      : `<span class="chat-attach-icon">${
           (typeof getFileIcon === 'function') ? getFileIcon(it.file.name) : 'DOC'
         }</span>`;
     const status = it.status === 'upload' ? '↑'
@@ -340,17 +337,12 @@ function renderChatAttachmentRow() {
     return `
       <div data-action="chat-attach-click"
            title="${it.file.name.replace(/"/g, '&quot;')}"
-           style="display:flex;align-items:center;gap:6px;padding:4px 8px 4px 4px;
-                  background:var(--surface-2);border:1px solid var(--border);
-                  border-radius:8px;cursor:pointer;font-size:11px;color:var(--text-soft);
-                  max-width:200px;font-family:var(--font-ui)">
-        <span style="width:24px;height:24px;display:flex;align-items:center;
-                     justify-content:center;background:var(--bg);border-radius:5px;
-                     overflow:hidden;flex-shrink:0">${thumb}</span>
-        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+           class="chat-attach-chip">
+        <span class="chat-attach-thumb">${thumb}</span>
+        <span class="chat-attach-name">
           ${name}
         </span>
-        ${status ? `<span style="flex-shrink:0">${status}</span>` : ''}
+        ${status ? `<span class="chat-attach-status">${status}</span>` : ''}
       </div>`;
   }).join('');
 }
@@ -472,7 +464,7 @@ function renderFileItem(item) {
       <button class="folder-toggle" data-action="toggle-folder" data-item-id="${escHtml(item.id)}" aria-label="저장 폴더 설정" title="저장 폴더"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></button>
       <button class="remove-btn" id="action-${item.id}" data-action="remove-or-cancel" data-item-id="${escHtml(item.id)}" title="제거">✕</button>
     </div>
-    <div class="file-progress-row" id="progress-${item.id}" style="display:none;">
+    <div class="file-progress-row d-none" id="progress-${item.id}">
       <div class="file-progress-bar"><div class="file-progress-fill" id="progress-fill-${item.id}"></div></div>
       <span class="file-progress-pct" id="progress-pct-${item.id}">0%</span>
     </div>
@@ -511,7 +503,11 @@ function setStatus(id, status, label) {
   }
   // Per-file progress bar visible only during upload.
   const prog = document.getElementById(`progress-${id}`);
-  if (prog) prog.style.display = (status === 'upload') ? '' : 'none';
+  // Class toggle, not style.display: the row now starts hidden via the
+  // .d-none class (CSP blocks the style attribute it used to carry), and
+  // style.display = '' would clear the inline value and fall straight
+  // back to .d-none — leaving the bar permanently invisible.
+  if (prog) prog.classList.toggle('d-none', status !== 'upload');
   // W6: keep the chat-input mini-thumbnail status indicator in sync
   // (⬆️ / ✅ / ❌).
   if (typeof renderChatAttachmentRow === 'function') {
