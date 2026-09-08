@@ -25,7 +25,7 @@ import os
 import re
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 import pytesseract
 import whisper
 from pdf2image import convert_from_path
@@ -169,13 +169,44 @@ class FileProcessor:
                 words.append(w.strip())
         return " ".join(words)
 
+    # EasyOCR decodes a *path* with cv2.imread, which cannot open a
+    # non-ASCII filename on Windows: it returns None, and EasyOCR then
+    # trips on the empty array ("!ssize.empty()" on older builds,
+    # "'NoneType' object has no attribute 'shape'" on 1.7.2). Every
+    # Korean-named upload therefore lost its OCR pass silently.
+    #
+    # Reproduced 2026-09-08: the same 12 MP photo reads fine as
+    # photo_12mp.jpg and fails as 사진_12메가.jpg, so the trigger is the
+    # filename, not the megapixels the 2026-06-26 note attributed it to.
+    #
+    # PIL opens unicode paths, so decode here and hand EasyOCR the array.
+    # The size bound is separate insurance: EasyOCR's detector scales by
+    # the long edge, and a phone photo's 4000 px carries no more legible
+    # text than 2600 while costing several times the memory.
+    _EASYOCR_MAX_EDGE = 2600
+
     def _extract_with_easyocr(self, filepath):
         reader = self.get_easyocr_reader()
         if not reader:
             return ""
         try:
+            with Image.open(filepath) as im:
+                im = ImageOps.exif_transpose(im).convert("RGB")
+                longest = max(im.size)
+                if longest > self._EASYOCR_MAX_EDGE:
+                    scale = self._EASYOCR_MAX_EDGE / longest
+                    im = im.resize(
+                        (max(1, int(im.width * scale)),
+                         max(1, int(im.height * scale))),
+                        Image.LANCZOS,
+                    )
+                array = np.array(im)
+        except Exception as e:
+            print(f"[DEBUG] EasyOCR 이미지 로드 실패: {e}")
+            return ""
+        try:
             # detail=1 → (bbox, text, confidence); EasyOCR conf is 0-1.
-            results = reader.readtext(filepath, detail=1, paragraph=False)
+            results = reader.readtext(array, detail=1, paragraph=False)
         except Exception as e:
             print(f"[DEBUG] EasyOCR 오류: {e}")
             return ""
