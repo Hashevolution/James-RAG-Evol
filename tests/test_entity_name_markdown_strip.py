@@ -63,6 +63,21 @@ class _MarkdownStripBase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        # Every undo is registered with addClassCleanup the moment the
+        # thing it undoes exists, rather than in tearDownClass.
+        #
+        # tearDownClass does not run when setUpClass raises, and this
+        # setUpClass CAN raise: the docstring above describes the leak,
+        # and it has now cost three CI runs (2026-09-07/08) where a
+        # pytest-timeout=30s expiry landed mid-setup, left the patches
+        # started, and made test_native_done_reason import a MagicMock —
+        # "Expected 'call_router_meta' to be called once. Called 0 times."
+        # The two always failed together because they are one failure.
+        #
+        # unittest calls doClassCleanups even when setUpClass raises, so
+        # cleanups registered as we go unwind whatever was already
+        # started. The timeout still fails this class — it should — but
+        # it stops taking an unrelated file down with it.
         cls.tmp = tempfile.mkdtemp()
         cls._patchers = [
             patch("config.WIKI_DIR", cls.tmp),
@@ -75,18 +90,18 @@ class _MarkdownStripBase(unittest.TestCase):
         ]
         for p in cls._patchers:
             p.start()
+            cls.addClassCleanup(p.stop)
         import core.wiki_generator as wg_mod
-        cls._orig_wiki_dir = wg_mod.WIKI_DIR
+        orig_wiki_dir = wg_mod.WIKI_DIR
+        cls._orig_wiki_dir = orig_wiki_dir
+
+        def _restore_wiki_dir():
+            wg_mod.WIKI_DIR = orig_wiki_dir
+
+        cls.addClassCleanup(_restore_wiki_dir)
         wg_mod.WIKI_DIR = cls.tmp
         from core.wiki_generator import WikiGenerator
         cls.wg = WikiGenerator(source_type="test")
-
-    @classmethod
-    def tearDownClass(cls):
-        for p in cls._patchers:
-            p.stop()
-        import core.wiki_generator as wg_mod
-        wg_mod.WIKI_DIR = cls._orig_wiki_dir
 
     def _read_fm(self, path: Path):
         raw = path.read_text(encoding="utf-8")
