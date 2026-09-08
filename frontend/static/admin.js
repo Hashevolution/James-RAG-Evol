@@ -1688,7 +1688,7 @@ async function loadLongTerm() {
       // present in the API response (memory/store.py:492).
       const sid = s.session_id || '';
       const attrs = sid
-        ? `data-action="open-session-turns" data-sid="${escapeHtml(sid)}" data-title="${escapeHtml((s.topic || '').slice(0, 40))}" style="cursor:pointer"`
+        ? `data-action="open-session-turns" data-sid="${escapeHtml(sid)}" data-title="${escapeHtml((s.topic || '').slice(0, 40))}" class="cursor-pointer"`
         : '';
       const hint   = sid ? '' : ' <em class="c-muted fs-10">(no session_id)</em>';
       return `
@@ -1716,12 +1716,12 @@ async function loadSessions() {
       // (액션 버튼은 그대로 두고 행 일부만 클릭 가능하게 — 실수로
       // summarize&delete 버튼 누르는 사고 방지)
       const expandable = sid
-        ? `data-action="open-session-turns" data-sid="${escapeHtml(sid)}" data-title="${escapeHtml(sid.slice(0,20))}" style="cursor:pointer"`
+        ? `data-action="open-session-turns" data-sid="${escapeHtml(sid)}" data-title="${escapeHtml(sid.slice(0,20))}"`
         : '';
       return `
         <tr>
-          <td class="mono fs-10" ${expandable}>${escapeHtml(sid.slice(0,20)) || '-'}</td>
-          <td class="mono" ${expandable}>${s.turn_count ?? 0} turns</td>
+          <td class="mono fs-10${sid ? ' cursor-pointer' : ''}" ${expandable}>${escapeHtml(sid.slice(0,20)) || '-'}</td>
+          <td class="mono${sid ? ' cursor-pointer' : ''}" ${expandable}>${s.turn_count ?? 0} turns</td>
           <td class="mono">${s.started?.slice(0,16) || '-'}</td>
           <td class="mono">${s.last?.slice(0,16) || '-'}</td>
           <td>
