@@ -11,7 +11,9 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 ## Where we are right now
 
 > **단일 진실원 (single source of truth)**:
-> **`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`**.
+> **`docs/handovers/v0.6.2-session-close-2026-09-08.md`**.
+> (Phase 정의는 `v0.6.2-restart-roadmap-2026-09-03.md` 가 계속
+> 유효하고, 마감 문서가 진행 결과를 갱신합니다.)
 > 아래는 그 요약입니다. 충돌하면 로드맵 문서가 우선입니다.
 
 - **최신 공식 릴리스**: **v0.4.4** — DOI `10.5281/zenodo.20652679`.
@@ -157,7 +159,8 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
-| **🟢🟢🟢 NEXT SESSION ENTRY (이것부터 읽으세요 — 2026-09-03 재개 로드맵)** | **`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`** (재개용 **단일 진실원**. §1 현재 상태 사실 확인 (main HEAD `df55e21` / 유휴 구간 / **CI 실패 5 건 실측 + 건별 판정** / rule #5 해소 + 1건 grandfather / 문서 최신성 편차 표) + §2 **Phase 1–7 재개 로드맵** (1 문서 동기화 ✅ → 2 CI 그린 복구 → 3 유휴 부채 청산 → 4 v0.6.1 정식 마감 → 5 측정 백로그 → 6 Fork A/B 전략 결정 (operator) → 7 v0.6 진입) + §3 #886–#1078 실제 진행 요약 + §5 재개 첫 세션 30 분 체크리스트 + §6 하지 말 것. **Phase 2 전에는 새 기능 PR 금지.**) |
+| **🟢🟢🟢 NEXT SESSION ENTRY (이것부터 — 2026-09-08 세션 마감)** | **`docs/handovers/v0.6.2-session-close-2026-09-08.md`** (PR #1082–#1105, 24건. **Phase 2 (CI 그린) 종료** — main `934e8f7` tests/lint/security 전부 success, 4,469 passed / 0 failed. rule #5 GRANDFATHERED **0건**, CI ignore 57→51. **Phase 3.3 CSP style-src 479 → 26** + 3.4 / 3.5 완료. LRB S2 는 결정 #1 (충돌 수리) 실행 — V/N/J 0.2500/0.5875/0.7625, **J−N 0.175 불변**, ⚠️ **결정 #2 (preprint 재베이스라인) 미결**. 3.1 / 3.2 + #1084 / #1091 은 **operator 실기기 dogfood 대기**. §5 검증 3종 (계산 스타일 대조 / visual regression / node --check) 과 §6 자기 정정 3건은 이어받을 것.) |
+| **🟢🟢 Phase 정의 원본 (2026-09-03 재개 로드맵)** | **`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`** (재개용 **단일 진실원**. §1 현재 상태 사실 확인 (main HEAD `df55e21` / 유휴 구간 / **CI 실패 5 건 실측 + 건별 판정** / rule #5 해소 + 1건 grandfather / 문서 최신성 편차 표) + §2 **Phase 1–7 재개 로드맵** (1 문서 동기화 ✅ → 2 CI 그린 복구 → 3 유휴 부채 청산 → 4 v0.6.1 정식 마감 → 5 측정 백로그 → 6 Fork A/B 전략 결정 (operator) → 7 v0.6 진입) + §3 #886–#1078 실제 진행 요약 + §5 재개 첫 세션 30 분 체크리스트 + §6 하지 말 것. **Phase 2 전에는 새 기능 PR 금지.**) |
 | **🟢🟢 직전 기능 세션 close (2026-06-26, PR #1062–#1075)** | `docs/handovers/v0.6.1-session-close-2026-06-26.md` (CSP `style-src` HTML 이관 596 attrs + 모바일 업로드 UX + **이미지 인제스트 4 단 병목 수리** (비전 모델 라우팅 / 이진화 제거 / EasyOCR fallback / qwen2.5vl:7b / num_ctx 8192) + `/query/`·`/upload/` heartbeat 스트리밍 + detailed 답변 스타일. §4 operator open 2 건 (모바일 긴 질의 드롭 / detailed dogfood), §5 deferred, §3 서버 background 실행 금지 교훈.) |
 | **🟢🟢 v0.6.1 세션 close (2026-06-23, PR #992–#1037)** | `docs/handovers/v0.6.1-session-close-2026-06-23.md` (UI 8→5 페이지 통합 / de-emoji / 인트로 프론트도어 / 그래프 허브 / trace 링크 루프 / entity-edit cascade Phase 1-3 / **lifecycle live-consistency arc** / 비주얼 회귀 하네스 / 백로그 재측정.) |
 | **🟢🟢 lifecycle live-consistency arc (측정 근거)** | `docs/handovers/v0.6.1-measurement-fix-loop-2026-06-22.md` + `reports/research-runs/lifecycle-live-consistency-arc-20260622.md` (프로브 #1020 = 라이브 탐색이 lifecycle status 를 무시 → `relation_is_live()` 게이트. `core/graph` traversal streak 의 **유일한 승인된 예외** — kill-switch `JAMES_DISABLE_STATUS_FILTER`.) |
