@@ -63,21 +63,27 @@ class _MarkdownStripBase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        # Every undo is registered with addClassCleanup the moment the
-        # thing it undoes exists, rather than in tearDownClass.
+        # Undo everything this method started if it does not finish.
         #
         # tearDownClass does not run when setUpClass raises, and this
-        # setUpClass CAN raise: the docstring above describes the leak,
-        # and it has now cost three CI runs (2026-09-07/08) where a
-        # pytest-timeout=30s expiry landed mid-setup, left the patches
-        # started, and made test_native_done_reason import a MagicMock —
-        # "Expected 'call_router_meta' to be called once. Called 0 times."
-        # The two always failed together because they are one failure.
+        # setUpClass CAN raise: a pytest-timeout=30s expiry landing
+        # mid-setup left the four patches started, and the next file to
+        # import llm.router got a MagicMock — "Expected
+        # 'call_router_meta' to be called once. Called 0 times." in
+        # test_native_done_reason. The two always failed together
+        # because they are one failure. Four CI runs, 2026-09-07/08.
         #
-        # unittest calls doClassCleanups even when setUpClass raises, so
-        # cleanups registered as we go unwind whatever was already
-        # started. The timeout still fails this class — it should — but
-        # it stops taking an unrelated file down with it.
+        # addClassCleanup alone does NOT cover it, which the first
+        # attempt at this fix (#1092) got wrong: cleanups run from
+        # unittest's `except Exception` path, and pytest-timeout raises
+        # `_pytest.outcomes.Failed`, whose MRO is
+        # Failed -> OutcomeException -> BaseException. It never reaches
+        # that path. A local probe raising a plain Exception passed and
+        # said the fix worked; CI, raising the real thing, said
+        # otherwise.
+        #
+        # So the unwind is explicit and catches BaseException, which
+        # does not depend on any runner's catch semantics.
         cls.tmp = tempfile.mkdtemp()
         cls._patchers = [
             patch("config.WIKI_DIR", cls.tmp),
@@ -88,20 +94,44 @@ class _MarkdownStripBase(unittest.TestCase):
             patch("core.vector_store.VectorStore"),
             patch("llm.router.RouterWrapper"),
         ]
-        for p in cls._patchers:
-            p.start()
-            cls.addClassCleanup(p.stop)
+        started: list = []
+        wg_mod = None
+        orig_wiki_dir = None
+        try:
+            for p in cls._patchers:
+                p.start()
+                started.append(p)
+            import core.wiki_generator as wg_mod
+            orig_wiki_dir = wg_mod.WIKI_DIR
+            cls._orig_wiki_dir = orig_wiki_dir
+            wg_mod.WIKI_DIR = cls.tmp
+            from core.wiki_generator import WikiGenerator
+            cls.wg = WikiGenerator(source_type="test")
+        except BaseException:
+            if wg_mod is not None and orig_wiki_dir is not None:
+                wg_mod.WIKI_DIR = orig_wiki_dir
+            for p in reversed(started):
+                try:
+                    p.stop()
+                except Exception:      # pragma: no cover - best effort
+                    pass
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        # The success path. The except branch above covers the case where
+        # setUpClass never got here; this covers the case where it did.
+        # #1092 deleted this in favour of addClassCleanup and left the
+        # normal path with no cleanup at all once the cleanups turned out
+        # not to fire — the pair of files then leaked on every run, not
+        # just on a timeout.
+        for p in reversed(cls._patchers):
+            try:
+                p.stop()
+            except Exception:          # pragma: no cover - best effort
+                pass
         import core.wiki_generator as wg_mod
-        orig_wiki_dir = wg_mod.WIKI_DIR
-        cls._orig_wiki_dir = orig_wiki_dir
-
-        def _restore_wiki_dir():
-            wg_mod.WIKI_DIR = orig_wiki_dir
-
-        cls.addClassCleanup(_restore_wiki_dir)
-        wg_mod.WIKI_DIR = cls.tmp
-        from core.wiki_generator import WikiGenerator
-        cls.wg = WikiGenerator(source_type="test")
+        wg_mod.WIKI_DIR = cls._orig_wiki_dir
 
     def _read_fm(self, path: Path):
         raw = path.read_text(encoding="utf-8")
