@@ -534,7 +534,7 @@ function populateModelPopover() {
               aria-selected="${(isActive || isDefault) ? 'true' : 'false'}">
               <span class="model-popover-row-weight">${weightIcon(r.weight)}</span>
               <span>${escHtml(r.tag)}</span>
-              ${disabled ? `<span style="font-size:10px;color:var(--muted);margin-left:auto">${
+              ${disabled ? `<span class="fs-10 c-muted ml-auto">${
                 escHtml(t('mode.not_installed') || '⚠️ 미설치')
               }</span>` : ''}
             </button>`;
@@ -1059,12 +1059,12 @@ function loadMineSidebar() {
   const target = document.getElementById('sidebar-mine-list');
   if (!target) return;
   if (!token) {
-    target.innerHTML = `<div style="color:var(--muted);font-size:11px;padding:16px;text-align:center;line-height:1.5">
+    target.innerHTML = `<div class="c-muted fs-11 p-16 text-center lh-15">
       로그인하면<br>본인 업로드가 표시됩니다.
     </div>`;
     return;
   }
-  target.innerHTML = `<div style="color:var(--muted);font-size:11px;padding:8px;text-align:center">로딩 중...</div>`;
+  target.innerHTML = `<div class="u-60d69e07">로딩 중...</div>`;
   const ak = getApiKey();
   fetch(`${API}/artifacts/mine/list?limit=20&api_key=${encodeURIComponent(ak || '')}`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -1080,7 +1080,7 @@ function loadMineSidebar() {
   }).then(data => {
     const items = data.items || [];
     if (!items.length) {
-      target.innerHTML = `<div style="color:var(--muted);font-size:11px;padding:16px;text-align:center;line-height:1.5">
+      target.innerHTML = `<div class="c-muted fs-11 p-16 text-center lh-15">
         업로드한 파일이 아직 없습니다.<br>(왼쪽 메뉴 ‘파일 업로드’에서 추가)
       </div>`;
       return;
@@ -1095,17 +1095,17 @@ function loadMineSidebar() {
       const statusColor = status === 'indexed' ? '#1e7a3e'
                         : status === 'failed'  ? '#7a1e1e'
                         : 'var(--muted)';
-      return `<div style="padding:8px 10px;border-bottom:1px solid var(--border-2);font-size:11px">
-        <div style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+      return `<div class="u-ce16bc45">
+        <div class="u-ae4f0321"
              title="${(it.origin_name || '').replace(/"/g,'&quot;')}">${it.origin_name || ''}</div>
-        <div style="display:flex;justify-content:space-between;margin-top:3px">
-          <span style="color:var(--muted);font-family:var(--font-mono);font-size:10px">${time}</span>
+        <div class="u-02736ec7">
+          <span class="c-muted font-mono fs-10">${time}</span>
           <span style="color:${statusColor};font-family:var(--font-mono);font-size:10px">${status}</span>
         </div>
       </div>`;
     }).join('');
   }).catch(e => {
-    target.innerHTML = `<div style="color:var(--danger);font-size:11px;padding:8px;text-align:center">${e.message}</div>`;
+    target.innerHTML = `<div class="u-356897e8">${e.message}</div>`;
   });
 }
 
@@ -1623,16 +1623,12 @@ function appendJamesMsg(data) {
   let saveWikiChip = '';
   if (data.web_used && data.pending_save_proposal_id && userRole === 'admin') {
     saveWikiChip = `
-      <div style="margin-top:6px">
-        <button class="next-action-chip save-wiki-btn"
+      <div class="mt-6">
+        <button class="next-action-chip save-wiki-btn u-b87e02c4"
                 data-action="approve-wiki-save"
                 data-proposal-id="${escHtml(data.pending_save_proposal_id)}"
-                style="text-align:left;background:rgba(76,175,125,.10);
-                       border:1px solid rgba(76,175,125,.45);border-radius:8px;
-                       padding:8px 12px;cursor:pointer;color:var(--text);
-                       font-size:12px;width:100%;font-family:inherit;
-                       transition:all .15s">
-          <span style="color:#4caf7d;font-weight:600;margin-right:6px"></span>
+               >
+          <span class="u-3736917b"></span>
           <span>이 자료를 위키로 저장 (장기 기억화)</span>
         </button>
       </div>`;
@@ -1651,19 +1647,16 @@ function appendJamesMsg(data) {
     const sourceLines = sources.slice(0, 5).map(s => {
       const url = s.url || '';
       const title = (s.title || url).slice(0, 80);
-      return `<li style="margin-top:3px"><a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer"
-              style="color:var(--accent-fg);text-decoration:none;font-size:11px"
+      return `<li class="u-1d1dc4d1"><a class="c-accent-fg no-underline fs-11" href="${escHtml(url)}" target="_blank" rel="noopener noreferrer"
+             
               title="${escHtml(url)}">${escHtml(title)}</a></li>`;
     }).join('');
     webBadge = `
-      <details class="web-used-details" style="margin-top:6px">
-        <summary style="cursor:pointer;font-size:11px;color:#4fc3f7;
-                        font-weight:600;user-select:none;display:inline-block;
-                        background:rgba(79,195,247,.10);padding:3px 9px;
-                        border-radius:6px;border:1px solid rgba(79,195,247,.30)">
+      <details class="web-used-details mt-6">
+        <summary class="u-2e05dbe3">
           웹 검색 사용됨 (${escHtml(engineLabel)} · ${sources.length}건) — 출처 보기
         </summary>
-        ${sourceLines ? `<ul style="margin:6px 0 0 18px;padding:0;font-family:var(--font-ui)">${sourceLines}</ul>` : ''}
+        ${sourceLines ? `<ul class="u-800ac3bf">${sourceLines}</ul>` : ''}
       </details>`;
   }
 
@@ -1728,7 +1721,7 @@ function appendJamesMsg(data) {
         };
       }
       forceWebChip = `
-        <div style="margin-top:8px">
+        <div class="mt-8">
           <button class="next-action-chip ${variant.cls}"
                   data-action="ask-with-force-web"
                   data-question="${encodeURIComponent(q)}"
@@ -1775,13 +1768,8 @@ function appendJamesMsg(data) {
       ? t('badge.sensitive_title')
       : 'This answer references sensitive content tracked by JAMES ontology.';
     sensitivityBadge = `
-      <div role="note" aria-live="polite"
-           style="display:inline-flex;align-items:center;gap:6px;
-                  margin-top:6px;padding:4px 10px;border-radius:6px;
-                  background:rgba(239,68,68,.10);
-                  border:1px solid rgba(239,68,68,.45);
-                  font-size:11px;color:#fca5a5;
-                  font-family:var(--font-mono);letter-spacing:.3px"
+      <div class="u-4c8aa240" role="note" aria-live="polite"
+          
            title="${escHtml(sensTitle)}">
         <span aria-hidden="true"></span>
         <span>${escHtml(sensLabel)}</span>
@@ -1798,9 +1786,9 @@ function appendJamesMsg(data) {
                    : t('badge.inference_only');
     const title    = pct < 40 ? t('badge.inference_warn') : '';
     confidenceBadge = `
-      <div style="display:flex;align-items:center;gap:6px;margin-top:6px" ${title ? `title="${title}"` : ''}>
-        <span style="font-size:10px;color:var(--muted)">${label}</span>
-        <div style="flex:1;max-width:80px;background:var(--bg);border-radius:3px;height:4px;overflow:hidden">
+      <div class="d-flex items-center gap-6 mt-6" ${title ? `title="${title}"` : ''}>
+        <span class="fs-10 c-muted">${label}</span>
+        <div class="u-a14e60e1">
           <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px;transition:width .5s"></div>
         </div>
         <span style="font-size:10px;font-family:var(--font-mono);color:${barColor}">${pct}%</span>
@@ -1845,14 +1833,12 @@ function appendJamesMsg(data) {
     const pathsId = 'gp_' + Math.random().toString(36).slice(2, 9);
     const list = paths.map(renderPathRow).join('');
     pathsHtml = `
-      <details class="graph-paths-details" style="margin-top:6px">
-        <summary class="graph-paths-toggle"
-                 style="cursor:pointer;font-size:11px;color:var(--muted);
-                        font-family:var(--font-mono);user-select:none;
-                        padding:2px 0">
+      <details class="graph-paths-details mt-6">
+        <summary class="graph-paths-toggle u-2e56c4a1"
+                >
           그래프 경로 ${paths.length}개 보기
         </summary>
-        <div id="${pathsId}" class="graph-paths" style="margin-top:6px">
+        <div id="${pathsId}" class="graph-paths mt-6">
           <div class="path-title">GRAPH PATHS</div>${list}
         </div>
       </details>`;
@@ -1891,40 +1877,31 @@ function appendJamesMsg(data) {
     : pyExportBtn;
   const dirIdEsc = dirId ? escHtml(dirId) : '';
   const fbHtml = dirId ? `
-    <div class="feedback-btns" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+    <div class="feedback-btns d-flex gap-6 mt-6 flex-wrap">
       <!-- v0.6.1 v7 (2026-06-16) — operator catch: text-only chips
            "좋아요 / 별로 / 복사" read fine but the operator wants
            monochrome OUTLINE icons (no caricature color emoji).
            Feather/Lucide-style stroked SVGs, currentColor + stroke 2,
            inherit the chip's text color. title / aria-label keep the
            hover label + screen-reader name. -->
-      <button class="fb-btn" data-action="send-feedback" data-dir-id="${dirIdEsc}" data-signal="explicit_positive"
-        style="background:none;border:1px solid var(--border);border-radius:6px;
-               padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
-               line-height:1;display:inline-flex;align-items:center;justify-content:center;
-               transition:all .15s" title="좋아요" aria-label="좋아요">
+      <button class="fb-btn u-81f9b541" data-action="send-feedback" data-dir-id="${dirIdEsc}" data-signal="explicit_positive"
+        title="좋아요" aria-label="좋아요">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
              stroke="currentColor" stroke-width="2" stroke-linecap="round"
              stroke-linejoin="round" aria-hidden="true">
           <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
         </svg>
       </button>
-      <button class="fb-btn" data-action="send-feedback" data-dir-id="${dirIdEsc}" data-signal="explicit_negative"
-        style="background:none;border:1px solid var(--border);border-radius:6px;
-               padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
-               line-height:1;display:inline-flex;align-items:center;justify-content:center;
-               transition:all .15s" title="별로예요" aria-label="별로예요">
+      <button class="fb-btn u-81f9b541" data-action="send-feedback" data-dir-id="${dirIdEsc}" data-signal="explicit_negative"
+        title="별로예요" aria-label="별로예요">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
              stroke="currentColor" stroke-width="2" stroke-linecap="round"
              stroke-linejoin="round" aria-hidden="true">
           <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
         </svg>
       </button>
-      <button class="fb-btn" data-action="copy-answer-text" data-content="${answerEscapedAttr}"
-        style="background:none;border:1px solid var(--border);border-radius:6px;
-               padding:3px 10px;cursor:pointer;color:var(--muted);font-size:12px;
-               line-height:1;display:inline-flex;align-items:center;justify-content:center;
-               transition:all .15s" title="이 답변 복사" aria-label="이 답변 복사">
+      <button class="fb-btn u-81f9b541" data-action="copy-answer-text" data-content="${answerEscapedAttr}"
+        title="이 답변 복사" aria-label="이 답변 복사">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
              stroke="currentColor" stroke-width="2" stroke-linecap="round"
              stroke-linejoin="round" aria-hidden="true">
@@ -1956,21 +1933,12 @@ function appendJamesMsg(data) {
     : isLikelyTruncated(cleanAnswer);
   if (_showTrunc) {
     truncationHint = `
-      <div role="note" aria-live="polite"
-           style="display:flex;align-items:center;gap:8px;margin-top:8px;
-                  padding:8px 12px;border-radius:8px;
-                  background:rgba(255,183,77,.08);
-                  border:1px solid rgba(255,183,77,.40);
-                  font-size:12px;color:#ffb74d;line-height:1.5">
-        <span aria-hidden="true" style="font-size:14px">⚠</span>
-        <span style="flex:1">답변이 도중에 끊긴 것 같아요. 이어서 받으려면 아래 버튼을 누르세요.</span>
-        <button data-action="ask-continue"
-                style="background:rgba(255,183,77,.18);
-                       border:1px solid rgba(255,183,77,.60);
-                       border-radius:6px;padding:4px 10px;
-                       color:#ffd180;font-size:12px;cursor:pointer;
-                       font-family:inherit;font-weight:600;
-                       transition:all .15s">계속 ▶</button>
+      <div class="u-172b0816" role="note" aria-live="polite"
+          >
+        <span class="fs-14" aria-hidden="true">⚠</span>
+        <span class="flex-1">답변이 도중에 끊긴 것 같아요. 이어서 받으려면 아래 버튼을 누르세요.</span>
+        <button class="u-e87f4f41" data-action="ask-continue"
+               >계속 ▶</button>
       </div>`;
   }
   let suggestionsHtml = '';
@@ -1980,26 +1948,18 @@ function appendJamesMsg(data) {
     // glance, not "more inline prose". Pre-N-4 the chips appeared bare
     // and users reported missing them entirely on long answers.
     suggestionsHtml = `
-      <div class="next-actions" style="display:flex;flex-direction:column;gap:6px;
-                                       margin-top:10px">
-        <div class="next-actions-header"
-             style="display:flex;align-items:center;gap:6px;
-                    font-size:11px;color:var(--accent);font-weight:700;
-                    letter-spacing:.4px;text-transform:uppercase">
+      <div class="next-actions d-flex flex-col gap-6 mt-10">
+        <div class="next-actions-header u-9ee96dc4"
+            >
           <span>${escHtml(t('chat.suggestions_label'))}</span>
         </div>
         ${suggestions.map((s, i) => `
-          <button class="next-action-chip"
+          <button class="next-action-chip u-8bc9917b"
                   data-action="ask-suggestion"
                   data-index="${i}"
                   data-suggestion="${encodeURIComponent(s.text)}"
-                  style="text-align:left;background:var(--surface-2);
-                         border:1px solid var(--accent-soft, rgba(107,231,208,.30));
-                         border-radius:8px;
-                         padding:8px 12px;cursor:pointer;color:var(--text);
-                         font-size:13px;transition:all .15s;width:100%;
-                         font-family:inherit">
-            <span style="color:var(--accent);font-weight:600;margin-right:6px">→</span>
+                 >
+            <span class="u-5efeca4c">→</span>
             <span>${escHtml(s.text)}</span>
           </button>
         `).join('')}
@@ -2011,11 +1971,10 @@ function appendJamesMsg(data) {
   // auto-loads this trace via ?trace=. Admin-only (the trace viewer is
   // admin-gated — a non-admin would just hit the login modal).
   const traceLink = (data.trace_id && userRole === 'admin') ? `
-      <a class="trace-link" href="/admin/graph?trace=${encodeURIComponent(data.trace_id)}#flow"
+      <a class="trace-link u-9699b833" href="/admin/graph?trace=${encodeURIComponent(data.trace_id)}#flow"
          target="_blank" rel="noopener"
          title="이 답변의 추론 과정 보기"
-         style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;
-                font-size:11px;color:var(--muted);text-decoration:none">
+        >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <span data-i18n="chat.view_reasoning">추론 과정 보기</span>
       </a>` : '';
@@ -2568,7 +2527,7 @@ function appendTyping(traceId) {
   div.className = 'msg james';
   div.innerHTML = `
     <div class="avatar james"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/></svg></div>
-    <div class="bubble" style="min-width:220px">
+    <div class="bubble minw-220">
       <!-- v0.5 UI #5 — aria-live=polite + role=log so screen readers
            announce reasoning stages as they arrive without yanking
            focus. aria-label gives context for what's being streamed. -->
@@ -3061,10 +3020,8 @@ function _ensureJamesConfirmEl() {
   overlay.innerHTML = `
     <div class="modal">
       <div class="modal-title" id="james-confirm-title">▸ <span data-jc="title"></span></div>
-      <div data-jc="message"
-           style="font-size:13px;color:var(--text);
-                  white-space:pre-line;line-height:1.55;
-                  margin-bottom:18px"></div>
+      <div class="u-4278e205" data-jc="message"
+          ></div>
       <div class="modal-actions">
         <button class="modal-btn cancel"  data-jc="cancel"></button>
         <button class="modal-btn primary" data-jc="confirm"></button>
@@ -3154,7 +3111,7 @@ async function loadSessionList() {
     }
 
     if (!sessions.length) {
-      listEl.innerHTML = '<div style="color:var(--muted,#888);font-size:12px;text-align:center;padding:20px">저장된 대화 없음</div>';
+      listEl.innerHTML = '<div class="u-03db33f2">저장된 대화 없음</div>';
       return;
     }
 
@@ -3224,7 +3181,7 @@ async function loadSessionList() {
         </div>`;
     }).join('');
   } catch(e) {
-    listEl.innerHTML = `<div style="color:var(--muted);font-size:12px">로드 실패: ${e.message}</div>`;
+    listEl.innerHTML = `<div class="c-muted fs-12">로드 실패: ${e.message}</div>`;
   }
 }
 

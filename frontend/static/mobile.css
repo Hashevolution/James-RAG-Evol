@@ -646,10 +646,16 @@
   }
 
   /* hardware 카드, 설정 카드 등 min-width 280/260/220px → 100% */
+  /* Both spellings, deliberately. The attribute selectors still carry
+     admin.js, whose inline styles have not been migrated yet; the class
+     selectors carry everything the CSP migration has already moved out
+     of the style attribute (chat.js as of 2026-09-08). Drop the
+     attribute half only once no JS injects these values any more. */
   [style*="min-width:280px"],
   [style*="min-width:260px"],
   [style*="min-width:220px"],
-  [style*="min-width:200px"] {
+  [style*="min-width:200px"],
+  .minw-280, .minw-260, .minw-220, .minw-200 {
     min-width: 0 !important;
     width: 100%;
   }

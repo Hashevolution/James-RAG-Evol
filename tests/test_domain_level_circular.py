@@ -27,6 +27,7 @@ import os
 import re
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -73,16 +74,33 @@ class LevelCapRemovalTests(unittest.TestCase):
         kt = self.KT()
         # 200 score → tier_floor 200, level = 200/5 + 1 = 41.
         kt._scores["coding"] = 200.0
-        levels = kt.get_domain_levels()
+        # get_domain_levels() folds in a vector-store document count,
+        # and _measure_vector_counts() builds a real VectorStore to
+        # read it — which loads the embedding model, i.e. a multi-GB
+        # HuggingFace download on a CI runner inside a 30s timeout.
+        # The count is not what these assertions are about.
+        with patch("core.vector_store.VectorStore") as _VS:
+            # count() must be a real int: the level arithmetic
+            # multiplies it, and a bare MagicMock silently makes
+            # the comparison meaningless rather than failing.
+            _VS.return_value.count.return_value = 0
+            levels = kt.get_domain_levels()
         coding = next(d for d in levels if d["domain"] == "coding")
         self.assertGreater(coding["level"], 10,
             f"score 200 should yield level > 10 (got {coding['level']})")
 
     def test_tier_pct_within_0_100(self):
         kt = self.KT()
+        # get_domain_levels() folds in a vector-store document count,
+        # and _measure_vector_counts() builds a real VectorStore to
+        # read it — which loads the embedding model, i.e. a multi-GB
+        # HuggingFace download on a CI runner inside a 30s timeout.
+        # The count is not what these assertions are about.
         for score in (0, 1.0, 3.5, 5.0, 12.5, 100.0, 999.0):
             kt._scores["coding"] = score
-            levels = kt.get_domain_levels()
+            with patch("core.vector_store.VectorStore") as _VS:
+                _VS.return_value.count.return_value = 0
+                levels = kt.get_domain_levels()
             coding = next(d for d in levels if d["domain"] == "coding")
             self.assertGreaterEqual(coding["tier_pct"], 0,
                 f"tier_pct must be ≥ 0 (got {coding['tier_pct']} at score {score})")

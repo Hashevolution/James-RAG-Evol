@@ -70,7 +70,18 @@ class GraphPathToggleTests(unittest.TestCase):
     def test_existing_graph_paths_class_preserved(self):
         # Existing CSS .graph-paths styles continue to apply once
         # expanded — must keep the same classname inside <details>.
-        self.assertIn('class="graph-paths"', self.js)
+        #
+        # Matched as a class TOKEN rather than the exact attribute text.
+        # The CSP style-src migration merges relocated styles into the
+        # existing class attribute, so this element now reads
+        # class="graph-paths mt-6". The invariant is that .graph-paths is
+        # still applied, not that it is the only class on the element —
+        # pinning the exact string made a stylesheet-neutral change look
+        # like the class had been deleted.
+        self.assertRegex(
+            self.js, r'class="[^"]*\bgraph-paths\b[^"]*"',
+            "the .graph-paths class must still be applied to the paths "
+            "container — its stylesheet rules depend on it")
 
     def test_pathsHtml_uses_paths_length_branch(self):
         # The rendering is gated on paths.length > 0 — empty paths

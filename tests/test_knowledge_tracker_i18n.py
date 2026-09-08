@@ -80,8 +80,26 @@ class GetDomainLevelsSurfacesLabelKey(unittest.TestCase):
     """
 
     def test_label_key_in_output(self):
+        from unittest.mock import patch
+
         from core.knowledge_tracker import get_tracker
-        rows = get_tracker().get_domain_levels()
+
+        # get_domain_levels() folds in a vector-store document count, and
+        # _measure_vector_counts() constructs a real VectorStore to get
+        # it. That loads the embedding model — instant here, where the
+        # model is cached, and a multi-GB HuggingFace download on a CI
+        # runner, which tripped the 30s pytest-timeout (run 34202481350).
+        #
+        # The count is not what this test is about: it asserts the shape
+        # of the rows, specifically that each carries the label_key the
+        # Growth page binds data-i18n to. So the store is mocked out and
+        # the count contributes 0, which the level arithmetic accepts.
+        with patch("core.vector_store.VectorStore") as _VS:
+            # count() must be a real int: the level arithmetic
+            # multiplies it, and a bare MagicMock silently makes
+            # the comparison meaningless rather than failing.
+            _VS.return_value.count.return_value = 0
+            rows = get_tracker().get_domain_levels()
         for row in rows:
             with self.subTest(domain=row.get("domain")):
                 self.assertIn("label_key", row,
