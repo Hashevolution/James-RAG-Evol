@@ -225,6 +225,23 @@ assert len(ATOM_DECL) == len(ATOMS), "duplicate atom class name detected"
 # hand-converted or explicitly deferred.
 JS_FILES = [
     FRONTEND / "static" / "chat.js",
+    # 2026-09-08 batch — the mid-size files. admin.js (235 sites)
+    # is deliberately left for its own pass: it is bigger than all
+    # of these together and deserves a diff a reviewer can read.
+    FRONTEND / "static" / "workspace.js",
+    FRONTEND / "static" / "time-travel-diff.js",
+    FRONTEND / "static" / "graph_editor.js",
+    FRONTEND / "static" / "agent-chat.js",
+    FRONTEND / "static" / "time-travel-trace.js",
+    FRONTEND / "static" / "change-requests.js",
+    FRONTEND / "static" / "time-travel-renderer.js",
+    FRONTEND / "static" / "upload.js",
+    FRONTEND / "static" / "templating-chat.js",
+    FRONTEND / "static" / "i18n.js",
+    FRONTEND / "static" / "graph.js",
+    FRONTEND / "static" / "reasoning-flow.js",
+    FRONTEND / "static" / "a11y-modal.js",
+    FRONTEND / "static" / "glossary.js",
 ]
 
 

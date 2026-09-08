@@ -150,7 +150,7 @@
               'border:1px solid var(--border);border-radius:10px;color:var(--muted)">' +
               _esc(p) + '</span>';
           }).join('')
-        : '<span style="color:var(--muted);font-size:11px">' +
+        : '<span class="c-muted fs-11">' +
             _esc(_tt('tplchat.no_placeholders', 'No placeholders — free-form template.')) +
           '</span>';
     } catch (e) {

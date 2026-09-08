@@ -122,21 +122,21 @@
     var targetText = cr.target_type + '/' + cr.target_id;
     return [
       '<tr data-cr-id="' + escHtml(cr.cr_id) + '">',
-      '<td class="muted-12" style="font-family:var(--font-mono)">',
+      '<td class="muted-12 font-mono">',
       escHtml(cr.cr_id),
       '</td>',
       '<td>' + escHtml(cr.title) + '</td>',
-      '<td class="muted-12" style="font-family:var(--font-mono)">',
+      '<td class="muted-12 font-mono">',
       escHtml(targetText),
       '</td>',
       '<td class="muted-12">' + escHtml(cr.proposer) + '</td>',
       '<td class="muted-12">' + escHtml(ageText) + '</td>',
       '<td>' + statusBadge(cr.status) + '</td>',
       '<td>',
-      '<button class="btn btn-primary"',
+      '<button class="btn btn-primary u-caa31bf0"',
       ' data-action="cr-view" data-cr-id="' + escHtml(cr.cr_id) + '"',
       ' aria-label="View CR ' + escHtml(cr.cr_id) + '"',
-      ' style="padding:5px 12px;font-size:11px">View</button>',
+      '>View</button>',
       '</td>',
       '</tr>'
     ].join('');
@@ -180,8 +180,8 @@
     if (!body) return;
     if (!items.length) {
       body.innerHTML =
-        '<tr><td colspan="7" class="muted-12"' +
-        ' style="text-align:center;padding:18px">' +
+        '<tr><td colspan="7" class="muted-12 u-2057e1f6"' +
+        '>' +
         'No change requests match this filter.</td></tr>';
     } else {
       body.innerHTML = items.map(renderRow).join('');
@@ -289,7 +289,7 @@
   function _renderMetaRow(label, value) {
     return (
       '<div class="muted-12">' + escHtml(label) + '</div>' +
-      '<div style="color:var(--text);word-break:break-all">' +
+      '<div class="c-text wb-all">' +
       escHtml(value) + '</div>'
     );
   }
@@ -435,7 +435,7 @@
     slot.innerHTML = [
       '<div style="display:flex;align-items:center;gap:10px;',
       'flex-wrap:wrap;font-family:var(--font-mono);font-size:11px">',
-      '<span class="muted-12" style="font-family:var(--font-mono)">',
+      '<span class="muted-12 font-mono">',
       'Contradiction classifier:',
       '</span>',
       '<span style="' + badgeStyle + 'padding:3px 10px;',
@@ -512,7 +512,7 @@
     // CR is not open → show terminal state, no actions.
     if (cr.status !== 'open') {
       slot.innerHTML = (
-        '<span class="muted-12" style="font-family:var(--font-mono)">' +
+        '<span class="muted-12 font-mono">' +
         'CR is ' + escHtml(cr.status) + ' — no actions available.' +
         '</span>'
       );

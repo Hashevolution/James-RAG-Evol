@@ -121,7 +121,7 @@
       escapeHtml(t('graph.timetravel.diff.title',
                    'State diff: T → NOW')) +
       '</div>' +
-      '<div style="color:var(--muted)">' +
+      '<div class="c-muted">' +
       escapeHtml(t('graph.timetravel.diff.loading',
                    'Computing diff…')) +
       '</div>'
@@ -137,14 +137,14 @@
       escapeHtml(t('graph.timetravel.diff.title',
                    'State diff: T → NOW')) +
       '</div>' +
-      '<div style="color:var(--danger,#e06)">' +
+      '<div class="u-6812cd91">' +
       escapeHtml(t('graph.timetravel.diff.error', 'Diff unavailable')) +
       safeDetail + '</div>' + closeButtonHtml()
     );
   }
 
   function closeButtonHtml() {
-    return '<div style="margin-top:14px;text-align:right">' +
+    return '<div class="u-4552a90f">' +
            '<button type="button" data-action="diff-close" ' +
            'aria-label="Close diff modal" ' +
            'style="padding:7px 14px;background:var(--surface-2);' +
@@ -179,18 +179,18 @@
       var id = ids[i];
       rows += '<li style="display:flex;align-items:center;' +
               'padding:3px 0;border-bottom:1px dashed rgba(255,255,255,.05)">' +
-              '<span style="flex:1;word-break:break-all">' +
+              '<span class="flex-1 wb-all">' +
               escapeHtml(id) + '</span>' +
               (opts.evidence === false ? '' : evidenceLinkHtml(id)) +
               '</li>';
     }
-    return '<div style="margin-top:10px">' +
+    return '<div class="mt-10">' +
            '<div style="font-weight:600;color:var(--accent-fg);' +
            'font-size:10px;letter-spacing:1px;margin-bottom:4px">' +
            escapeHtml(label) +
            ' <span style="color:var(--muted);font-weight:400;' +
            'letter-spacing:0">(' + ids.length + ')</span></div>' +
-           '<ul style="list-style:none;padding:0;margin:0">' +
+           '<ul class="u-82ef8585">' +
            rows + '</ul></div>';
   }
 
@@ -208,29 +208,29 @@
       var at_now = (c.at_now || []).join(' → ') || '∅';
       rows += '<li style="padding:4px 0;border-bottom:1px dashed ' +
               'rgba(255,255,255,.05)">' +
-              '<div style="display:flex;align-items:center">' +
+              '<div class="d-flex items-center">' +
               '<span style="flex:1;font-weight:600;color:var(--text);' +
               'word-break:break-all">' + escapeHtml(head) + '</span>' +
               evidenceLinkHtml(head) + '</div>' +
-              '<div style="margin-top:2px;color:var(--muted);font-size:10px">' +
+              '<div class="u-1a5d6bb4">' +
               'T: ' + escapeHtml(at_t) + '</div>' +
-              '<div style="color:var(--muted);font-size:10px">' +
+              '<div class="c-muted fs-10">' +
               'NOW: ' + escapeHtml(at_now) + '</div></li>';
     }
-    return '<div style="margin-top:10px">' +
+    return '<div class="mt-10">' +
            '<div style="font-weight:600;color:var(--accent-fg);' +
            'font-size:10px;letter-spacing:1px;margin-bottom:4px">' +
            escapeHtml(label) +
            ' <span style="color:var(--muted);font-weight:400;' +
            'letter-spacing:0">(' + keys.length + ')</span></div>' +
-           '<ul style="list-style:none;padding:0;margin:0">' +
+           '<ul class="u-82ef8585">' +
            rows + '</ul></div>';
   }
 
   function summaryRow(leftLabel, leftVal, rightVal) {
     return '<div style="display:flex;gap:12px;padding:4px 0;' +
            'border-bottom:1px dashed rgba(255,255,255,.05)">' +
-           '<span style="flex:1;color:var(--muted)">' +
+           '<span class="flex-1 c-muted">' +
            escapeHtml(leftLabel) + '</span>' +
            '<span style="flex:0 0 80px;text-align:right;color:var(--text);' +
            'font-weight:600">' + escapeHtml(String(leftVal)) + '</span>' +
@@ -262,7 +262,7 @@
       '<div id="' + MODAL_ID + '-title" style="font-weight:700;' +
       'color:var(--accent-fg);letter-spacing:.4px;margin-bottom:4px">' +
       escapeHtml(title) + '</div>' +
-      '<div style="color:var(--muted);font-size:10px;margin-bottom:10px">' +
+      '<div class="c-muted fs-10 mb-10">' +
       'T: ' + escapeHtml(body.t) + ' • NOW: ' + escapeHtml(body.now) +
       '</div>';
 
@@ -270,7 +270,7 @@
     var summary =
       '<div style="display:flex;gap:12px;padding:4px 0;' +
       'border-bottom:1px solid var(--border)">' +
-      '<span style="flex:1"></span>' +
+      '<span class="flex-1"></span>' +
       '<span style="flex:0 0 80px;text-align:right;font-weight:600;' +
       'color:var(--accent-fg);font-size:10px;letter-spacing:1px">' +
       escapeHtml(thenLabel) + '</span>' +

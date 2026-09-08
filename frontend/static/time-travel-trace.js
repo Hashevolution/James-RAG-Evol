@@ -129,7 +129,7 @@
            escapeHtml(t('graph.timetravel.trace.title',
                         'Reasoning trail')) +
            '</div>' +
-           '<div style="color:var(--muted);margin-bottom:6px">' +
+           '<div class="c-muted mb-6">' +
            stateText + '</div>';
   }
 
@@ -151,7 +151,7 @@
     var safeDetail = detail ? ' — ' + escapeHtml(detail) : '';
     var traceFrag = traceId ? ' (' + escapeHtml(traceId) + ')' : '';
     panel.innerHTML = renderHeader(
-      '<span style="color:var(--danger,#e06)">' +
+      '<span class="u-6812cd91">' +
       escapeHtml(t('graph.timetravel.trace.error', 'Trail unavailable')) +
       safeDetail + traceFrag + '</span>'
     );
@@ -198,10 +198,10 @@
     var label = entry.meta.label || entry.stage || '';
     return '<div style="display:flex;gap:6px;padding:3px 0;' +
            'border-bottom:1px dashed rgba(255,255,255,.05)">' +
-           '<span style="flex:0 0 16px">' + escapeHtml(icon) + '</span>' +
-           '<span style="flex:1;color:var(--text)">' +
+           '<span class="u-fe407230">' + escapeHtml(icon) + '</span>' +
+           '<span class="flex-1 c-text">' +
            escapeHtml(label) + '</span>' +
-           '<span style="color:var(--muted);font-size:10px">' +
+           '<span class="c-muted fs-10">' +
            escapeHtml(tsLabel) + '</span></div>';
   }
 
@@ -213,7 +213,7 @@
     for (var i = 0; i < entries.length; i++) {
       rows += renderStageRow(entries[i]);
     }
-    return '<div style="margin-top:8px">' +
+    return '<div class="mt-8">' +
            '<div style="font-weight:600;color:var(--accent-fg);' +
            'font-size:10px;letter-spacing:1px;margin-bottom:3px">' +
            escapeHtml(label) +
@@ -242,12 +242,12 @@
       '<div style="color:var(--muted);font-size:10px;' +
       'margin-bottom:6px;word-break:break-all">' +
       escapeHtml(traceId) + '</div>' +
-      '<div style="color:var(--muted);font-size:10px;margin-bottom:3px">' +
+      '<div class="u-85503ffb">' +
       escapeHtml(replayedLabel) +
-      '<span style="color:var(--text);font-weight:600">' +
+      '<span class="c-text fw-600">' +
       escapeHtml(String(replayed)) + '</span>' +
       escapeHtml(ofLabel) +
-      '<span style="color:var(--text)">' +
+      '<span class="c-text">' +
       escapeHtml(String(total)) + '</span></div>';
 
     // v0.6.1 (gap ③) — jump to the swimlane flow view of this same trace.
