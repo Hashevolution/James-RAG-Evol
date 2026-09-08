@@ -72,12 +72,8 @@
       'display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);' +
       'z-index:40;align-items:center;justify-content:center;padding:24px';
     div.innerHTML =
-      '<div id="' + MODAL_ID + '-card" class="modal-card" ' +
-      'style="background:var(--surface);border:1px solid var(--border);' +
-      'border-radius:10px;padding:18px 22px;max-width:720px;width:96%;' +
-      'max-height:84vh;overflow-y:auto;color:var(--text);' +
-      'font-family:var(--font-mono);font-size:12px;line-height:1.55;' +
-      'box-shadow:0 6px 22px rgba(0,0,0,.5)">' +
+      '<div id="' + MODAL_ID + '-card" class="modal-card bg-surface bd-1 ovy-auto c-text font-mono fs-12 u-1b4f1f9d" ' +
+      '>' +
       '<div id="' + MODAL_ID + '-body"></div>' +
       '</div>';
     document.body.appendChild(div);
@@ -143,13 +139,9 @@
 
   function closeButtonHtml() {
     return '<div class="u-4552a90f">' +
-           '<button type="button" data-action="diff-close" ' +
+           '<button class="bg-surface-2 bd-1 br-6 c-text-soft cursor-pointer fs-11 fw-600 font-mono u-8d4f1f00" type="button" data-action="diff-close" ' +
            'aria-label="Close diff modal" ' +
-           'style="padding:7px 14px;background:var(--surface-2);' +
-           'border:1px solid var(--border);border-radius:6px;' +
-           'color:var(--text-soft);cursor:pointer;font-size:11px;' +
-           'font-weight:600;font-family:var(--font-mono);' +
-           'letter-spacing:.4px">' +
+           '>' +
            escapeHtml(t('graph.timetravel.diff.close', 'Close')) +
            '</button></div>';
   }
@@ -161,9 +153,8 @@
     // (falls back to the empty filter), so this link is safe even
     // if the operator's admin.html hasn't yet learned the new hash.
     var href = '/admin?q=' + encodeURIComponent(edgeId) + '#audit';
-    return '<a href="' + href + '" target="_blank" rel="noopener" ' +
-           'style="color:var(--accent-fg);text-decoration:none;' +
-           'font-size:10px;margin-left:6px;opacity:.8" ' +
+    return '<a class="c-accent-fg no-underline fs-10 ml-6 u-62f51076" href="' + href + '" target="_blank" rel="noopener" ' +
+           ' ' +
            'aria-label="Open audit log for edge ' + safe + '">' +
            '[' + escapeHtml(t('graph.timetravel.diff.evidence',
                               'View audit evidence')) + ']</a>';

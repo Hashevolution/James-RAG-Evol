@@ -246,10 +246,8 @@
 
     // v0.6.1 (gap ③) — jump to the swimlane flow view of this same trace.
     var toFlowBtn = traceId ?
-      ('<button id="trace-to-flow-btn" type="button" ' +
-       'style="font-size:10px;padding:4px 8px;margin-bottom:8px;cursor:pointer;' +
-       'background:var(--surface-2);border:1px solid var(--border);' +
-       'border-radius:6px;color:var(--text-soft)">' +
+      ('<button class="fs-10 mb-8 cursor-pointer bg-surface-2 bd-1 br-6 c-text-soft u-98aca85a" id="trace-to-flow-btn" type="button" ' +
+       '>' +
        escapeHtml(t('graph.timetravel.trace.to_flow', '추론 흐름으로 보기 →')) +
        '</button>') : '';
 

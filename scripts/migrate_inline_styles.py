@@ -367,8 +367,21 @@ def classes_for(
 # Matches a single opening tag that carries a ``style="..."`` attribute.
 # Attribute values in these files never contain ``>`` (verified), so
 # ``[^>]*`` correctly stops at the tag's own ``>``.
-_TAG_RE = re.compile(r"<[a-zA-Z][^>]*\sstyle=\"[^\"]*\"[^>]*>")
-_STYLE_RE = re.compile(r"\sstyle=\"([^\"]*)\"")
+#
+# A quote counts as a boundary as well as whitespace: in markup built by
+# concatenation the attribute often opens a fresh string literal, so the
+# character before ``style=`` is ``'``, not a space::
+#
+#     '<div class="modal-card" ' +
+#     'style="background:var(--surface);' +
+#
+# Requiring whitespace there left 11 such tags invisible to the tool.
+_TAG_RE = re.compile(r"""<[a-zA-Z][^>]*['"\s]style="[^"]*"[^>]*>""")
+
+# The boundary is a LOOKBEHIND here, so removing the attribute does not
+# take the quote with it — that quote opens the surrounding JS string
+# literal, and deleting it would leave the file unparseable.
+_STYLE_RE = re.compile(r"""(?<=['"\s])style="([^"]*)\"""")
 _CLASS_RE = re.compile(r"\sclass=\"([^\"]*)\"")
 _TAGNAME_RE = re.compile(r"^<([a-zA-Z][\w-]*)")
 

@@ -156,18 +156,14 @@
     // Per-row actions: ✏️ (edit weight/note) and ✕ (delete this source only).
     var actions = '' +
       '<div class="d-flex flex-col gap-4 items-end">' +
-        '<button type="button" data-action="edit-src" data-idx="' + idx + '" ' +
+        '<button class="bg-transparent bd-1 c-text-soft cursor-pointer fs-11 u-622c5404" type="button" data-action="edit-src" data-idx="' + idx + '" ' +
                 'title="Edit this source" ' +
-                'style="background:transparent;border:1px solid var(--border);' +
-                       'color:var(--text-soft);width:24px;height:22px;' +
-                       'border-radius:4px;cursor:pointer;font-size:11px;line-height:1">' +
+                '>' +
           '수정' +
         '</button>' +
-        '<button type="button" data-action="del-src" data-idx="' + idx + '" ' +
+        '<button class="bg-transparent c-danger cursor-pointer fs-11 u-31384694" type="button" data-action="del-src" data-idx="' + idx + '" ' +
                 'title="Delete this source" ' +
-                'style="background:transparent;border:1px solid var(--danger);' +
-                       'color:var(--danger);width:24px;height:22px;' +
-                       'border-radius:4px;cursor:pointer;font-size:11px;line-height:1">' +
+                '>' +
           '✕' +
         '</button>' +
       '</div>';
@@ -193,38 +189,29 @@
     var w    = (typeof s.weight === 'number') ? s.weight.toFixed(2) : '0.50';
     var note = s.note ? String(s.note) : '';
     return '' +
-      '<div data-src-idx="' + idx + '" data-edit="1" ' +
-           'style="padding:6px 0;border-bottom:1px solid var(--border);' +
-                  'background:rgba(99,102,241,.05)">' +
+      '<div class="u-18c7c87c" data-src-idx="' + idx + '" data-edit="1" ' +
+           '>' +
         '<div class="d-flex gap-6 items-center font-mono fs-11 mb-6">' +
           roleBadge(s.role || '?') +
           '<span class="c-muted fs-10">editing #' + idx + '</span>' +
         '</div>' +
         '<div class="d-flex gap-6 items-center mb-4">' +
           '<label class="u-81e3f213">weight</label>' +
-          '<input type="number" min="0" max="1" step="0.05" value="' + w + '" ' +
+          '<input class="flex-1 bg-bg bd-1 c-text font-mono fs-11 u-5a561387" type="number" min="0" max="1" step="0.05" value="' + w + '" ' +
                  'data-edit-weight="' + idx + '" ' +
-                 'style="flex:1;background:var(--bg);border:1px solid var(--border);' +
-                        'color:var(--text);padding:3px 6px;border-radius:4px;' +
-                        'font-family:var(--font-mono);font-size:11px">' +
+                 '>' +
         '</div>' +
         '<div class="d-flex gap-6 items-center mb-6">' +
           '<label class="u-81e3f213">note</label>' +
-          '<input type="text" value="' + escapeHtml(note) + '" ' +
+          '<input class="flex-1 bg-bg bd-1 c-text font-mono fs-11 u-5a561387" type="text" value="' + escapeHtml(note) + '" ' +
                  'data-edit-note="' + idx + '" placeholder="(optional)" ' +
-                 'style="flex:1;background:var(--bg);border:1px solid var(--border);' +
-                        'color:var(--text);padding:3px 6px;border-radius:4px;' +
-                        'font-family:var(--font-mono);font-size:11px">' +
+                 '>' +
         '</div>' +
         '<div class="d-flex gap-6 justify-end">' +
-          '<button type="button" data-action="cancel-edit-src" data-idx="' + idx + '" ' +
-                  'style="background:transparent;border:1px solid var(--border);' +
-                         'color:var(--text-soft);padding:3px 10px;border-radius:4px;' +
-                         'cursor:pointer;font-size:11px">Cancel</button>' +
-          '<button type="button" data-action="save-edit-src" data-idx="' + idx + '" ' +
-                  'style="background:var(--accent);border:1px solid var(--accent);' +
-                         'color:#fff;padding:3px 10px;border-radius:4px;' +
-                         'cursor:pointer;font-size:11px">Save</button>' +
+          '<button class="bg-transparent bd-1 c-text-soft p-3-10 cursor-pointer fs-11 u-b6a17f66" type="button" data-action="cancel-edit-src" data-idx="' + idx + '" ' +
+                  '>Cancel</button>' +
+          '<button class="bg-accent p-3-10 cursor-pointer fs-11 u-7f92644d" type="button" data-action="save-edit-src" data-idx="' + idx + '" ' +
+                  '>Save</button>' +
         '</div>' +
       '</div>';
   }
