@@ -261,6 +261,31 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 - Always work on a non-main branch; PR into main; self-merge after
   bench verification
 
+### Running the JAMES server from a session
+
+**Default: don't.** The operator usually has one on `:8000`. To check
+something, attach to it (`curl localhost:8000/...`), not to your own copy.
+
+The 2026-06-26 session background-launched servers repeatedly; they
+orphaned, co-bound `:8000` and stole the operator's requests
+nondeterministically — and the cleanup that followed
+(`taskkill //IM python.exe`) killed the operator's server too.
+
+When a session genuinely needs its own — a bench run the operator asked
+for, say — all five of these apply:
+
+1. **Operator approves it first.** Not implied by "run the measurement".
+2. **Check `:8000` is free before starting**, and never start a second one.
+   More than one listener is orphan pollution, not a working setup.
+3. **The session owns the lifecycle**: stop what you started, by task id.
+   Never `taskkill //IM python.exe` — that is the operator's process too.
+4. **Verify the port is released** before moving on, and say so.
+5. **Disable reload** (`--log-level warning`, no `--reload`); the reloader
+   spawns a child that survives a naive kill.
+
+`Get-NetTCPConnection -LocalPort 8000 -State Listen | Select OwningProcess`
+should show exactly one PID — the operator's, once you are done.
+
 ## 한국어 요약
 
 자메스는 **v1.0 까지 "범용 모체(mother platform)"로만** 강화합니다.
