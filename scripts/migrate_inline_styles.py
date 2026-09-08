@@ -242,6 +242,8 @@ JS_FILES = [
     FRONTEND / "static" / "reasoning-flow.js",
     FRONTEND / "static" / "a11y-modal.js",
     FRONTEND / "static" / "glossary.js",
+    # 2026-09-08 — the last and largest, on its own pass.
+    FRONTEND / "static" / "admin.js",
 ]
 
 
@@ -286,19 +288,37 @@ def classes_for(
     decls = split_decls(style_value)
     if not decls:
         return []
-    if all(d in ATOMS for d in decls):
-        # de-dup while preserving declaration order
-        seen, atoms = set(), []
-        for d in decls:
-            cls = ATOMS[d]
-            if cls not in seen:
-                seen.add(cls)
-                atoms.append(cls)
-                used_atoms[cls] = None
+
+    # Hybrid split: every declaration the whitelist covers becomes its
+    # atom, and only the remainder goes into a verbatim class.
+    #
+    # This used to be all-or-nothing — one declaration outside the
+    # whitelist sent the whole value into a single .u-<hash>. That is
+    # lossless, but it buries declarations other stylesheets target by
+    # name. Concretely, mobile.css collapses wide cards on narrow
+    # screens and reaches them through min-width; a value of
+    # "min-width:280px;padding:4px 8px;…" became one opaque component
+    # and stopped being collapsed, which is a real mobile regression
+    # (caught 2026-09-08 comparing computed styles on /admin).
+    #
+    # Atoms and the remainder are disjoint by construction, so they
+    # never fight over a property and their order in the block does not
+    # matter.
+    seen, atoms, rest = set(), [], []
+    for d in decls:
+        cls = ATOMS.get(d)
+        if cls is None:
+            rest.append(d)
+            continue
+        if cls not in seen:
+            seen.add(cls)
+            atoms.append(cls)
+            used_atoms[cls] = None
+    if not rest:
         return atoms
-    name = component_name(decls)
-    components.setdefault(name, decls)
-    return [name]
+    name = component_name(rest)
+    components.setdefault(name, rest)
+    return atoms + [name]
 
 
 # Matches a single opening tag that carries a ``style="..."`` attribute.
