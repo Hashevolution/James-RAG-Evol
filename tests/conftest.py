@@ -109,9 +109,23 @@ import server_llmwiki  # noqa: F401 — pulls all routes/ + heavy startup deps
 # at session start. Side-effects are recoverable; we only need caches
 # primed for create_entity_file's first call to stay under 30s on cold
 # CI runners.
+#
+# 2026-09-08 — the warm-up itself must not build a real VectorStore.
+# WikiGenerator.__init__ constructs one, and VectorStore._load_model()
+# downloads BAAI/bge-m3 from HuggingFace and writes the shards to disk
+# when the model is not already cached. That is invisible on a developer
+# machine and a multi-GB fetch on a CI runner — paid here at session
+# start, and paid again by every test whose own patch missed the use
+# site (see #1094 and the sweep alongside this change). The mixin
+# __init__ chain still runs; only the embedding model is mocked out.
+from unittest.mock import patch as _patch
+
+_INIT_STATE = "core.wiki_generator._frontmatter.init_state"
 try:
     from core.wiki_generator import WikiGenerator
-    WikiGenerator(source_type="test")
+    with _patch(f"{_INIT_STATE}.VectorStore"), \
+            _patch(f"{_INIT_STATE}.RouterWrapper"):
+        WikiGenerator(source_type="test")
 except Exception:
     # Instantiation side-effects (filesystem, network, config) are not
     # required to succeed — the goal is just to trigger any lazy
