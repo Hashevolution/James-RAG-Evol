@@ -851,3 +851,20 @@ body::before {
 .wb-word{word-break:break-word}
 .ws-pre-wrap{white-space:pre-wrap}
 /* ==== END generated inline-style migration (v0.6.1 CSP) ==== */
+
+/* ─────────────────────────────────────────────────────────────
+   Semantic text colours — hand-maintained, OUTSIDE the generated
+   block above (which is rebuilt from whatever the migration script
+   converts on a given run, so anything written inside it would be
+   dropped).
+   ─────────────────────────────────────────────────────────────
+   admin.js used to interpolate these straight into style attributes
+   via small lookup maps — riskColor, gradeColor and a few ternaries.
+   CSP blocks that, and the values were never really dynamic: each map
+   has three to five fixed outcomes. The maps now return class names.
+   ───────────────────────────────────────────────────────────── */
+.c-success { color: var(--success); }
+.c-warn    { color: var(--warn, #ffb74d); }
+.c-brand-2 { color: var(--brand-2); }
+.c-red     { color: var(--red, #f06292); }
+.c-blocked { color: #d97a7a; }

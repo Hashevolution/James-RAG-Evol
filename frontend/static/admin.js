@@ -817,9 +817,12 @@ async function loadDashboard() {
     const cards = document.getElementById('dash-cards');
 
     // ── 통계 카드 ──────────────────────────────────────────
-    const avgColor  = (data.avg_elapsed > 20) ? 'var(--red,#f06292)' :
-                      (data.avg_elapsed > 10) ? 'var(--warn,#ffb74d)' : 'var(--accent)';
-    const blkColor  = data.blocked_count > 0 ? 'var(--warn,#ffb74d)' : 'var(--accent)';
+    // Classes, not colours. These fed style="color:${…}" attributes,
+    // which CSP blocks — and the values were never dynamic, just three
+    // fixed outcomes each. Palette lives in tokens.css.
+    const avgCls  = (data.avg_elapsed > 20) ? 'c-red' :
+                    (data.avg_elapsed > 10) ? 'c-warn' : 'c-accent';
+    const blkCls  = data.blocked_count > 0 ? 'c-warn' : 'c-accent';
 
     cards.innerHTML = `
       <div class="card">
@@ -834,12 +837,12 @@ async function loadDashboard() {
       </div>
       <div class="card">
         <div class="card-label">${t('dash.avg_elapsed')}</div>
-        <div class="card-value" style="color:${avgColor}">${data.avg_elapsed ?? '-'}s</div>
+        <div class="card-value ${avgCls}">${data.avg_elapsed ?? '-'}s</div>
         <div class="card-sub">${t('dash.subtext_avg')}</div>
       </div>
       <div class="card">
         <div class="card-label">${t('dash.blocked_count')}</div>
-        <div class="card-value" style="color:${blkColor}">${data.blocked_count ?? '-'}</div>
+        <div class="card-value ${blkCls}">${data.blocked_count ?? '-'}</div>
         <div class="card-sub">${t('dash.subtext_blocked')}</div>
       </div>
       <div class="card">
@@ -1980,7 +1983,7 @@ async function loadAudit() {
       const isBlock = it.blocked
         || /fail|rejected|blocked|denied|invalid/i.test(ev);
       const evCell = ev
-        ? `<span style="${isBlock ? 'color:#d97a7a' : 'color:var(--text)'}">${_auditEscapeHtml(ev)}</span>`
+        ? `<span class="${isBlock ? 'c-blocked' : 'c-text'}">${_auditEscapeHtml(ev)}</span>`
         : '<span class="c-muted">—</span>';
       return `
         <tr>
@@ -2988,7 +2991,7 @@ async function loadProposals() {
       return;
     }
 
-    const riskColor = { low:'var(--success)', medium:'var(--warn)', high:'var(--danger)' };
+    const riskCls = { low:'c-success', medium:'c-warn', high:'c-danger' };
     tbody.innerHTML = proposals.map(p => {
       const isWebLearn = p.type === 'knowledge_update' &&
                          p.metadata?.auto_action === 'web_learn';
@@ -3008,7 +3011,7 @@ async function loadProposals() {
 
       return `<tr>
         <td><span class="mono fs-10">${p.type}</span></td>
-        <td><span style="color:${riskColor[p.risk]||'var(--muted)'}">
+        <td><span class="${riskCls[p.risk] || 'c-muted'}">
           ${p.risk?.toUpperCase() || '-'}</span></td>
         <td class="fs-12 u-f758c5d0">${p.title}</td>
         <td class="mono">${p.created_at?.slice(0,16) || '-'}</td>
@@ -3152,7 +3155,7 @@ async function loadEvoReports() {
             <td class="mono">${r.executed_at?.slice(0,16) || '-'}</td>
             <td class="mono">${r.type || '-'}</td>
             <td class="fs-12">${r.title || '-'}</td>
-            <td style="color:${r.success ? 'var(--success)' : 'var(--danger)'}">
+            <td class="${r.success ? 'c-success' : 'c-danger'}">
               ${r.success ? '✅ Success' : '❌ Failed'}: ${(r.message||'').slice(0,40)}</td>
             <td class="mono">${r.elapsed_sec ?? '-'}s</td>
           </tr>`)
@@ -3172,14 +3175,14 @@ async function loadPerformance() {
     const perf = data.performance || {};
     const imp  = data.importance  || {};
 
-    const gradeColor = { A:'var(--success)', B:'var(--brand-2)',
-                         C:'var(--warn)', D:'var(--danger)', 'N/A':'var(--muted)' };
+    const gradeCls = { A:'c-success', B:'c-brand-2',
+                       C:'c-warn', D:'c-danger', 'N/A':'c-muted' };
     const last = await api('/admin/performance/history/?limit=1');
     const lastGrade = last.history?.[0]?.grade || 'N/A';
 
     document.getElementById('perf-cards').innerHTML = `
       <div class="card"><div class="card-label">${t('perf.grade')}</div>
-        <div class="card-value" style="color:${gradeColor[lastGrade]}">${lastGrade}</div></div>
+        <div class="card-value ${gradeCls[lastGrade] || 'c-muted'}">${lastGrade}</div></div>
       <div class="card"><div class="card-label">${t('perf.avg_retrieval')}</div>
         <div class="card-value accent">${((perf.avg_retrieval_score||0)*100).toFixed(0)}%</div></div>
       <div class="card"><div class="card-label">${t('perf.avg_speed')}</div>
@@ -3203,12 +3206,12 @@ async function loadPerfHistory() {
   try {
     const data  = await api('/admin/performance/history/?limit=10');
     const tbody = document.getElementById('perf-history-body');
-    const gradeColor = { A:'var(--success)', B:'var(--brand-2)',
-                         C:'var(--warn)', D:'var(--danger)' };
+    const gradeCls2 = { A:'c-success', B:'c-brand-2',
+                        C:'c-warn', D:'c-danger' };
     tbody.innerHTML = (data.history || []).map(h => `
       <tr>
         <td class="mono">${h.evaluated_at?.slice(0,16)||'-'}</td>
-        <td style="color:${gradeColor[h.grade]||'var(--muted)'}">
+        <td class="${gradeCls2[h.grade] || 'c-muted'}">
           <strong>${h.grade}</strong></td>
         <td class="mono">${h.total_score?.toFixed(1)||'-'}/100</td>
         <td class="mono">${((h.metrics?.avg_retrieval_score||0)*100).toFixed(0)}%</td>
