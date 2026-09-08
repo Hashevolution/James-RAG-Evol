@@ -37,18 +37,18 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   회귀 없음 확인 (#1028–#1032). 이것이 `core/graph` traversal **0-라인
   streak 의 유일한, 측정 근거로 승인된 예외**입니다. 이전 핸드오버의
   "0 라인 streak 유지" 문장을 그대로 복사하지 마세요.
-- **🟠 `main` CI 는 아직 빨간불 — 단 규모가 크게 줄었습니다** (2026-09-03
-  재측정): `.github/workflows/test.yml` (pytest) 은 최신 실행(#1080,
-  08-28)까지 `failure` 이지만, **#1080 이 원인별로 정리해 CI 실패 5 건**
-  가 됐습니다. **CI 로그 실측 (`df55e21`): `5 failed, 4368 passed, 6 skipped`**
-  — ① `test_lrb_v021_cross_model` S2 재현 (기대 0.7125 vs 실행 0.6875,
-  README 는 0.688 로 문서화 — **발표 벤치 수치에 직결, 상수를 실행값에
-  맞춰 고치지 말 것**), ②③④ `test_measurement_critical_surfaces`
-  FixtureLock (gitignore 된 픽스처를 요구 → CI 에서 통과 불가, 구조적),
-  ⑤ `test_mobile_responsive` (`mobile.css` `!important` 29 > 25).
-  `ruff` / `bandit` 게이트는 **초록**입니다.
-  → **재개 첫 작업 = 로드맵 Phase 2 (CI 그린 복구). 그 전에 새 기능 금지.**
-  ⚠️ 이전 핸드오버의 "60 failures / rule #5 2건 위반"은 **낡은 수치**입니다.
+- **✅ `main` CI 그린 (2026-09-08)** — `4,464 passed / 0 failed`
+  (`f410c3c`, run 34171536814). 2026-06-22 이후 처음입니다. 로드맵
+  **Phase 2 종료**. 마지막 남았던 LRB S2 는 operator 가 §7 결정 #1
+  (충돌 수리) 을 택해 PR #1089 로 처리했고 (V/N/J = 0.2500 / 0.5875 /
+  0.7625, **J − N 은 0.175 로 불변**), 그 과정에서 CI 가 57개 테스트
+  파일을 `--ignore` 하며 **902 테스트 / 적색 8건**을 가리고 있던 것이
+  드러나 PR #1088 이 8건 전부 수리 + 6개 un-ignore (**57 → 51**).
+  ⚠️ **결정 #2 미결**: preprint README / `.zenodo.json` / v0.4.4
+  릴리스 노트는 여전히 수리 전 수치 (0.225 / 0.5375 / 0.7125) 입니다 —
+  발표 수치 재베이스라인은 operator 판단.
+  `ruff` / `bandit` 은 계속 초록.
+  → **다음 = 로드맵 Phase 3 (유휴 부채 청산).**
 - **유지보수 4 PR** (#1077 #1078 08-19 / **#1079** 08-26 / **#1080** 08-28):
   v0.3.3 DOI 계보 정정, ruff F-class 해소, Ali 엔지니어링 4건 ①②③ 발송 +
   **uuid7 production 결함 수리** (`start_trace()` 가 Python 3.14 전용
@@ -137,12 +137,12 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 5. **Module size gate**: no file in `core/` exceeds 20 KB. If your
    change pushes a file over, split first.
-   ✅ **게이트 통과 중** (2026-09-03): #1080 이 `core/response_style.py`
-   를 `core/response_style_presets.py` 로 분할했습니다.
-   `core/reasoning/engine.py` (21,464 B) 만 **분할 계획과 함께
-   grandfather 등록** — 분할하려면 rule #2 상 STEP 7 벤치가 필요하고
-   그건 서버 + Ollama 가 있는 operator 머신에서만 가능합니다.
-   grandfather 를 늘리지 말고, 새로 넘기는 파일은 먼저 분할하세요.
+   ✅ **게이트 통과 중, 예외 0건** (2026-09-08): #1080 이
+   `core/response_style.py` 를, **#1083 이 `core/reasoning/engine.py` 를**
+   (21,464 → 16,733 B, 라우팅 블록 → `core/reasoning/engine_routing.py`)
+   분할했습니다. `GRANDFATHERED` 딕셔너리는 **비어 있습니다** — vision-wire
+   PR 이후 처음으로 rule #5 예외가 하나도 없습니다. 늘리지 말고, 새로
+   넘기는 파일은 먼저 분할하세요.
 
 6. **상태는 한 곳에만 쓴다 (state single-source)** — NEW 2026-09-03.
    사이클 상태의 원본은 `docs/handovers/` 의 **최신 문서 하나**이고,
