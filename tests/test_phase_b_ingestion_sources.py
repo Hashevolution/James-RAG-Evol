@@ -138,6 +138,15 @@ class CreateEntityFileSourcesPropagationTests(unittest.TestCase):
                 "core.memory.verify_before_write",
                 return_value=(True, "ok", 0.99),
             ),
+            # Patch at the USE site too. init_state.py binds both
+            # names at module import ("from core.vector_store import
+            # VectorStore"), so patching only the definition site
+            # leaves WikiGenerator building a REAL VectorStore —
+            # which calls _load_model() and downloads BAAI/bge-m3
+            # from HuggingFace. Invisible locally (the model is
+            # cached) and a >30s pytest-timeout on CI. See #1094.
+            patch("core.wiki_generator._frontmatter.init_state.VectorStore"),
+            patch("core.wiki_generator._frontmatter.init_state.RouterWrapper"),
             patch("core.vector_store.VectorStore"),
             patch("llm.router.RouterWrapper"),
         ]
@@ -242,6 +251,15 @@ class ProcessDocumentSourcesIntegrationTests(unittest.TestCase):
                 "core.memory.verify_before_write",
                 return_value=(True, "ok", 0.99),
             ),
+            # Patch at the USE site too. init_state.py binds both
+            # names at module import ("from core.vector_store import
+            # VectorStore"), so patching only the definition site
+            # leaves WikiGenerator building a REAL VectorStore —
+            # which calls _load_model() and downloads BAAI/bge-m3
+            # from HuggingFace. Invisible locally (the model is
+            # cached) and a >30s pytest-timeout on CI. See #1094.
+            patch("core.wiki_generator._frontmatter.init_state.VectorStore"),
+            patch("core.wiki_generator._frontmatter.init_state.RouterWrapper"),
             patch("core.vector_store.VectorStore"),
             patch("llm.router.RouterWrapper"),
         ]
@@ -387,6 +405,15 @@ class CrossDocSourceAggregationTests(unittest.TestCase):
                 "core.memory.verify_before_write",
                 return_value=(True, "ok", 0.99),
             ),
+            # Patch at the USE site too. init_state.py binds both
+            # names at module import ("from core.vector_store import
+            # VectorStore"), so patching only the definition site
+            # leaves WikiGenerator building a REAL VectorStore —
+            # which calls _load_model() and downloads BAAI/bge-m3
+            # from HuggingFace. Invisible locally (the model is
+            # cached) and a >30s pytest-timeout on CI. See #1094.
+            patch("core.wiki_generator._frontmatter.init_state.VectorStore"),
+            patch("core.wiki_generator._frontmatter.init_state.RouterWrapper"),
             patch("core.vector_store.VectorStore"),
             patch("llm.router.RouterWrapper"),
         ]
