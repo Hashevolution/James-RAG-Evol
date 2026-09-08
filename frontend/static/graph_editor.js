@@ -172,16 +172,14 @@
         '</button>' +
       '</div>';
     return '' +
-      '<div data-src-idx="' + idx + '" style="display:flex;align-items:flex-start;' +
-         'gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">' +
+      '<div class="d-flex items-start gap-8 u-0765bc70" data-src-idx="' + idx + '">' +
         '<div class="u-89bd09bd">' +
           '<div class="d-flex gap-6 items-center font-mono fs-11">' +
             roleBadge(s.role || '?') +
             '<span class="c-text-soft">w=' + w + '</span>' +
             (ts ? '<span class="c-muted fs-10">' + ts + '</span>' : '') +
           '</div>' +
-          '<div style="margin-top:2px;color:var(--text-soft);font-family:var(--font-mono);' +
-                'font-size:10px;word-break:break-all">' + doc + '</div>' +
+          '<div class="c-text-soft font-mono fs-10 wb-all u-f005b881">' + doc + '</div>' +
           meta +
         '</div>' +
         actions +
@@ -198,8 +196,7 @@
       '<div data-src-idx="' + idx + '" data-edit="1" ' +
            'style="padding:6px 0;border-bottom:1px solid var(--border);' +
                   'background:rgba(99,102,241,.05)">' +
-        '<div style="display:flex;gap:6px;align-items:center;font-family:var(--font-mono);' +
-              'font-size:11px;margin-bottom:6px">' +
+        '<div class="d-flex gap-6 items-center font-mono fs-11 mb-6">' +
           roleBadge(s.role || '?') +
           '<span class="c-muted fs-10">editing #' + idx + '</span>' +
         '</div>' +

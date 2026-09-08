@@ -247,6 +247,41 @@ JS_FILES = [
 ]
 
 
+# Matches the join between two adjacent JS string literals inside a
+# captured attribute value: `' + '`, across newlines and indentation.
+# No backreference — a mismatched quote pair would leave a stray quote
+# behind, which resolve_literal_concat then rejects.
+_CONCAT_JOIN = re.compile(r"""['"]\s*\+\s*['"]""")
+
+
+def resolve_literal_concat(value: str):
+    """Join a style value split across adjacent JS string literals.
+
+    Markup assembled with ``+`` puts the attribute across several
+    literals::
+
+        '<div style="background:var(--surface);' +
+        'border-radius:10px">'
+
+    The captured value then carries the join text (``' + '``) as if it
+    were part of a declaration. Migrating that verbatim emitted a
+    truncated rule and silently dropped whatever followed the join —
+    which is why these were skipped outright until now (#1097).
+
+    A join between two LITERALS is removable: the value is static, it
+    is only written in pieces. A join around an expression
+    (``' + badgeStyle + '``) is not — that value exists only at
+    runtime.
+
+    Returns the joined value, or None when anything other than
+    literal-to-literal joins remains.
+    """
+    joined = _CONCAT_JOIN.sub("", value)
+    if "'" in joined or '"' in joined or "${" in joined or "+" in joined:
+        return None
+    return joined
+
+
 def normalise_decl(decl: str) -> str:
     """Normalise one ``prop:value`` declaration (semantics-preserving)."""
     decl = decl.strip()
@@ -334,11 +369,16 @@ def rewrite_tag(
     tag: str,
     components: Dict[str, List[str]],
     used_atoms: Dict[str, None],
+    style_override: str | None = None,
 ) -> str:
     m_style = _STYLE_RE.search(tag)
     if not m_style:
         return tag
-    new_classes = classes_for(m_style.group(1), components, used_atoms)
+    # ``style_override`` carries the value with literal concatenation
+    # joins removed; the span deleted below still covers the whole
+    # attribute, joins included, so the surrounding literals merge.
+    value = style_override if style_override is not None else m_style.group(1)
+    new_classes = classes_for(value, components, used_atoms)
     # remove the style attribute
     tag = tag[: m_style.start()] + tag[m_style.end():]
     if not new_classes:
@@ -412,8 +452,16 @@ def migrate_js(
         #                on chat.js:354, the one site in the file with
         #                this shape).
         if m_style and ("${" in val or "'" in val or '"' in val or " + " in val):
-            skipped[0] += 1
-            return tag
+            # A purely literal concatenation is still a static value —
+            # join it and carry on. Anything else (an interpolated
+            # expression, a template placeholder) cannot become a class.
+            resolved = resolve_literal_concat(val) if "${" not in val else None
+            if resolved is None:
+                skipped[0] += 1
+                return tag
+            done[0] += 1
+            return rewrite_tag(tag, components, used_atoms,
+                               style_override=resolved)
         done[0] += 1
         return rewrite_tag(tag, components, used_atoms)
 

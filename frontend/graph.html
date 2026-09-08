@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#04060a">
 <title>Secure Enterprise Knowledge Operating System — Reasoning Graph</title>
-<link rel="stylesheet" href="/static/tokens.css?v=v27-20260908-csp-admin">
+<link rel="stylesheet" href="/static/tokens.css?v=v30-20260908-csp-concat">
 <!-- v=v14-20260616 cache-bust: graph.css markdown render + conf chip
      + bottom-sheet panel on phones (v9 node-detail panel reorg). -->
 <link rel="stylesheet" href="/static/graph.css?v=v14-20260616">
@@ -519,7 +519,7 @@
 <script src="/static/i18n.js?v=v26-20260908-csp-batch"></script>
 <script src="/static/auth.js"></script>
 <script src="/static/graph.js?v=v26-20260908-csp-batch"></script>
-<script src="/static/graph_editor.js?v=v26-20260908-csp-batch"></script>
+<script src="/static/graph_editor.js?v=v30-20260908-csp-concat"></script>
 <script src="/static/graph_node_editor.js"></script>
 <script src="/static/a11y-modal.js" defer></script>
 <!-- v0.5 Track F.1 TT.a — Time-Travel picker UI shell (event-dispatch
@@ -532,19 +532,19 @@
      /graph stage. Edge colour-decoration is gated on a join key
      (link.edge_id) that arrives with later T5 mutation-site wiring —
      until then the overlay is summary-only. -->
-<script src="/static/time-travel-renderer.js?v=v26-20260908-csp-batch"></script>
+<script src="/static/time-travel-renderer.js?v=v30-20260908-csp-concat"></script>
 <!-- v0.5 Track F.1 TT.c — Reasoning trail replay. Renders one
      trace_id's stages in the same 3-phase format chat.js uses
      (RETRIEVE → EXPAND → VERIFY), filtered to the active time-travel
      cutoff. Loads after the picker (TT.a) + corpus renderer (TT.b)
      so the cutoff event has already wired the panel state. -->
-<script src="/static/time-travel-trace.js?v=v26-20260908-csp-batch"></script>
+<script src="/static/time-travel-trace.js?v=v30-20260908-csp-concat"></script>
 <!-- v0.5 Track F.1 TT.d — Now-vs-T diff view. Renders a side-by-side
      modal comparing the audit-replay snapshot at the picker's T
      against the live audit-replay snapshot at "now". Loads last so
      it can hook the picker button + the `james:timetravel:*`
      events the prior shells dispatch. -->
-<script src="/static/time-travel-diff.js?v=v26-20260908-csp-batch"></script>
+<script src="/static/time-travel-diff.js?v=v30-20260908-csp-concat"></script>
 <!-- v0.6 Phase 4 P4.4 — universal glossary tooltip script.
      Scans the page for elements with `data-glossary="<term>"` and
      attaches hover/focus tooltips with plain-Korean definitions. -->
@@ -554,7 +554,7 @@
 <script src="/static/workspace-badge.js"></script>
 <!-- v0.6.1 graph-hub: 추론 흐름 + 롤백 tab drivers (wire on load; fetch on
      demand) + tab switcher (hash sync + 3D resize on return to graph). -->
-<script src="/static/reasoning-flow.js"></script>
+<script src="/static/reasoning-flow.js?v=v30-20260908-csp-concat"></script>
 <script src="/static/knowledge-rollback.js"></script>
 <script src="/static/graph-tabs.js"></script>
 </body>

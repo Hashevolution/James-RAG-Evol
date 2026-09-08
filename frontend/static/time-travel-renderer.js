@@ -80,8 +80,7 @@
     if (!panel) return;
     panel.style.display = 'block';
     panel.innerHTML =
-      '<div style="font-weight:600;color:var(--accent-fg);' +
-      'margin-bottom:6px;letter-spacing:.4px">' +
+      '<div class="fw-600 c-accent-fg mb-6 u-bedf52b8">' +
       escapeHtml(t('graph.timetravel.replay.title', 'Replay state')) +
       '</div>' +
       '<div class="c-muted">' +
@@ -95,8 +94,7 @@
     panel.style.display = 'block';
     var safeDetail = detail ? ' — ' + escapeHtml(detail) : '';
     panel.innerHTML =
-      '<div style="font-weight:600;color:var(--accent-fg);' +
-      'margin-bottom:6px;letter-spacing:.4px">' +
+      '<div class="fw-600 c-accent-fg mb-6 u-bedf52b8">' +
       escapeHtml(t('graph.timetravel.replay.title', 'Replay state')) +
       '</div>' +
       '<div class="u-6812cd91">' +
@@ -141,31 +139,26 @@
     rows += rowHtml(chainsLabel, chainCount);
     if (packs.length > 0) {
       rows += rowHtml(packsLabel, packs.length);
-      rows += '<div style="margin:4px 0 0 8px;color:var(--muted);' +
-              'font-size:10px;word-break:break-all">' +
+      rows += '<div class="c-muted fs-10 wb-all u-57ae8689">' +
               escapeHtml(packs.join(', ')) + '</div>';
     }
 
     var body = rows;
     if (snap.event_count === 0) {
-      body += '<div style="margin-top:8px;color:var(--muted);' +
-              'font-style:italic">' + escapeHtml(emptyLabel) + '</div>';
+      body += '<div class="mt-8 c-muted u-4ddbd91c">' + escapeHtml(emptyLabel) + '</div>';
     }
     if (snap.truncated) {
-      body += '<div style="margin-top:6px;color:var(--muted);' +
-              'font-size:10px">' + escapeHtml(truncatedLabel) + '</div>';
+      body += '<div class="mt-6 c-muted fs-10">' + escapeHtml(truncatedLabel) + '</div>';
     }
 
     panel.innerHTML =
-      '<div style="font-weight:600;color:var(--accent-fg);' +
-      'margin-bottom:6px;letter-spacing:.4px">' +
+      '<div class="fw-600 c-accent-fg mb-6 u-bedf52b8">' +
       escapeHtml(t('graph.timetravel.replay.title', 'Replay state')) +
       '</div>' + body;
   }
 
   function rowHtml(label, value) {
-    return '<div style="display:flex;justify-content:space-between;' +
-           'gap:8px">' +
+    return '<div class="d-flex justify-between gap-8">' +
            '<span>' + escapeHtml(label) + '</span>' +
            '<span class="c-text fw-600">' +
            escapeHtml(String(value)) + '</span></div>';
