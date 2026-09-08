@@ -287,14 +287,14 @@ async function reloadData() {
       const uploaderCell = adminPath
         ? `<td class="mono">${_esc(it.uploaded_by || '-')}</td>`
         : '';
-      return `<tr data-action="open-detail" data-artifact-id="${_esc(it.artifact_id)}" style="cursor:pointer">
+      return `<tr class="cursor-pointer" data-action="open-detail" data-artifact-id="${_esc(it.artifact_id)}">
         <td>${_esc(it.origin_name || '')}
-            <span style="color:var(--muted);font-size:10px;display:block;font-family:var(--font-mono)">${_fmtBytes(it.origin_size)}</span>
+            <span class="c-muted fs-10 d-block font-mono">${_fmtBytes(it.origin_size)}</span>
         </td>
         ${uploaderCell}
         <td class="mono">${_fmtTs(it.uploaded_at)}</td>
         <td><span class="status-badge status-${status}">${status}</span></td>
-        <td class="mono" style="text-align:center">${it.entity_count || 0}</td>
+        <td class="mono text-center">${it.entity_count || 0}</td>
       </tr>`;
     }).join('');
   } catch (e) {
@@ -315,7 +315,7 @@ async function openDetail(artifactId) {
     document.getElementById('d-status').textContent   = it.status || '-';
     const ents = document.getElementById('d-entities');
     if (!it.entities || !it.entities.length) {
-      ents.innerHTML = `<span style="color:var(--muted);font-size:11px">${t('workspace.no_entities')}</span>`;
+      ents.innerHTML = `<span class="c-muted fs-11">${t('workspace.no_entities')}</span>`;
     } else {
       ents.innerHTML = it.entities.map(e =>
         `<span class="chip">${_esc(e)}</span>`).join('');
@@ -351,27 +351,27 @@ async function srcSearch() {
   const qel = document.getElementById('src-q');
   const q = (qel && qel.value) || '';
   if (!q.trim()) {
-    list.innerHTML = `<div style="padding:14px;font-size:12px;color:var(--muted)">${t('workspace.src_hint')}</div>`;
+    list.innerHTML = `<div class="u-6fd9cc46">${t('workspace.src_hint')}</div>`;
     return;
   }
-  list.innerHTML = `<div style="padding:14px;font-size:12px;color:var(--muted)">…</div>`;
+  list.innerHTML = `<div class="u-6fd9cc46">…</div>`;
   try {
     const root = _srcRoot();
     const data = await _apiFetch(
       `/admin/files/search?q=${encodeURIComponent(q.trim())}&root=${encodeURIComponent(root)}`);
     const rows = data.matches || [];
     if (!rows.length) {
-      list.innerHTML = `<div style="padding:14px;font-size:12px;color:var(--muted)">${t('workspace.src_no_match')}</div>`;
+      list.innerHTML = `<div class="u-6fd9cc46">${t('workspace.src_no_match')}</div>`;
       return;
     }
     list.innerHTML = rows.map(r =>
-      `<div data-action="src-open" data-path="${_esc(r.path)}" style="padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer">
-         <div style="font-size:12px;color:var(--text);word-break:break-all">${_esc(r.name)}</div>
-         <div style="font-size:10px;color:var(--muted)">${_esc(r.path)} · ${_fmtBytes(r.size)}</div>
+      `<div class="u-ad422ade" data-action="src-open" data-path="${_esc(r.path)}">
+         <div class="fs-12 c-text wb-all">${_esc(r.name)}</div>
+         <div class="fs-10 c-muted">${_esc(r.path)} · ${_fmtBytes(r.size)}</div>
        </div>`).join('')
-      + (data.truncated ? `<div style="padding:8px;font-size:10px;color:var(--muted)">${t('workspace.src_truncated')}</div>` : '');
+      + (data.truncated ? `<div class="u-0b0be5ab">${t('workspace.src_truncated')}</div>` : '');
   } catch (e) {
-    list.innerHTML = `<div style="padding:14px;font-size:12px;color:#e66">${_esc(e.message)}</div>`;
+    list.innerHTML = `<div class="u-42ac55af">${_esc(e.message)}</div>`;
   }
 }
 async function srcOpen(path) {
@@ -381,35 +381,35 @@ async function srcOpen(path) {
   const editable = (root === 'wiki' && /\.md$/i.test(path));
   const dlUrl = `${API}/admin/files/download?root=${encodeURIComponent(root)}&path=${encodeURIComponent(path)}&api_key=${encodeURIComponent(_apiKey || '')}`;
   const head =
-    `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
-       <div style="font-weight:600;font-size:13px;flex:1;min-width:0;word-break:break-all">${_esc(path)}</div>
+    `<div class="d-flex gap-8 items-center mb-8 flex-wrap">
+       <div class="u-79f6fd5b">${_esc(path)}</div>
        ${editable ? `<button class="modal-btn primary" data-action="src-edit" data-path="${_esc(path)}">${t('workspace.src_edit')}</button>` : ''}
        <a class="modal-btn" href="${dlUrl}" target="_blank" rel="noopener">${t('workspace.src_download')}</a>
      </div>`;
-  view.innerHTML = `<div style="padding:14px;font-size:12px;color:var(--muted)">…</div>`;
+  view.innerHTML = `<div class="u-6fd9cc46">…</div>`;
   try {
     const data = await _apiFetch(
       `/admin/files/view?root=${encodeURIComponent(root)}&path=${encodeURIComponent(path)}`);
     // Extracted (PDF/Office) content is read-only text pulled from the
     // binary; flag it so the user knows it's not the raw file.
     const note = data.extracted
-      ? `<div style="font-size:11px;color:#8cf;margin-bottom:6px">📄 ${t('workspace.src_extracted')}</div>`
+      ? `<div class="u-de82cac5">📄 ${t('workspace.src_extracted')}</div>`
       : '';
     // Uploaded originals aren't editable here — editing is for 위키 .md
     // entities. Point the user there so they can reach the edit step.
     const editHint = (!editable && root !== 'wiki')
-      ? `<div style="font-size:11px;color:var(--muted);margin-top:8px">${t('workspace.src_edit_hint')}</div>`
+      ? `<div class="fs-11 c-muted mt-8">${t('workspace.src_edit_hint')}</div>`
       : '';
     view.innerHTML = head + note +
-      `<pre style="white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:12px;max-height:60vh;overflow:auto">${_esc(data.content)}</pre>`
+      `<pre class="u-9b09d1c6">${_esc(data.content)}</pre>`
       + editHint;
   } catch (e) {
     // 415 (binary, no text) / 413 (too big) → view unavailable, download works.
     const editHint = (root !== 'wiki')
-      ? `<div style="font-size:11px;color:var(--muted);margin-top:8px">${t('workspace.src_edit_hint')}</div>`
+      ? `<div class="fs-11 c-muted mt-8">${t('workspace.src_edit_hint')}</div>`
       : '';
     view.innerHTML = head +
-      `<div style="padding:14px;font-size:12px;color:var(--muted)">${_esc(e.message)}<br>${t('workspace.src_download_only')}</div>`
+      `<div class="u-6fd9cc46">${_esc(e.message)}<br>${t('workspace.src_download_only')}</div>`
       + editHint;
   }
 }
@@ -522,15 +522,15 @@ async function reloadJobs() {
       const ownerCell = adminPath
         ? `<td class="mono">${_esc(j.owner || '-')}</td>` : '';
       const resultCell = j.output_path
-        ? `<span class="mono" style="font-size:10px;color:var(--muted)">${_esc(j.output_path.split('/').pop())}</span>`
-        : '<span style="color:var(--muted)">—</span>';
+        ? `<span class="mono fs-10 c-muted">${_esc(j.output_path.split('/').pop())}</span>`
+        : '<span class="c-muted">—</span>';
       const dlBtn = (j.status === 'done' && j.output_path)
-        ? `<button data-action="download-job" data-job-id="${_esc(j.job_id)}" data-admin="${adminPath ? 'true' : 'false'}"
-                   style="padding:4px 10px;background:#1e7a3e;color:#fff;border:0;border-radius:4px;cursor:pointer;font-size:11px">다운로드</button>`
+        ? `<button class="u-14449c57" data-action="download-job" data-job-id="${_esc(j.job_id)}" data-admin="${adminPath ? 'true' : 'false'}"
+                  >다운로드</button>`
         : (j.status === 'failed'
-            ? `<button data-action="show-job-error" data-job-id="${_esc(j.job_id)}" data-admin="${adminPath ? 'true' : 'false'}"
-                       style="padding:4px 10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:4px;cursor:pointer;font-size:11px">에러 보기</button>`
-            : '<span style="color:var(--muted)">—</span>');
+            ? `<button class="u-b7092eba" data-action="show-job-error" data-job-id="${_esc(j.job_id)}" data-admin="${adminPath ? 'true' : 'false'}"
+                      >에러 보기</button>`
+            : '<span class="c-muted">—</span>');
       return `<tr>
         <td class="mono">${_esc(j.job_type)}</td>
         <td class="mono">${_fmtTs(j.created_at)}</td>
@@ -638,10 +638,10 @@ async function reloadCrs() {
     body.innerHTML = items.map(cr => {
       const statusBadge =
         `<span class="status-badge status-${cr.status}">${cr.status}</span>`;
-      return `<tr style="cursor:pointer" data-action="cr-open" data-cr-id="${_esc(cr.cr_id)}">
+      return `<tr class="cursor-pointer" data-action="cr-open" data-cr-id="${_esc(cr.cr_id)}">
         <td>${statusBadge}</td>
-        <td class="mono" style="font-size:11px">${_esc(cr.target_type)}<br>
-            <span style="color:var(--muted);font-size:10px">${_esc(cr.target_id)}</span></td>
+        <td class="mono fs-11">${_esc(cr.target_type)}<br>
+            <span class="c-muted fs-10">${_esc(cr.target_id)}</span></td>
         <td>${_esc(cr.title)}</td>
         <td class="mono">${_esc(cr.proposer)}</td>
         <td class="mono">${_fmtTs(cr.created_at)}</td>
@@ -710,17 +710,15 @@ function _renderCrDetail(cr, reviews) {
   const reviewsEl = document.getElementById('cr-detail-reviews');
   if (!reviews.length) {
     reviewsEl.innerHTML =
-      `<div class="empty" style="font-size:11px">${t('workspace.cr_no_reviews')}</div>`;
+      `<div class="empty fs-11">${t('workspace.cr_no_reviews')}</div>`;
   } else {
     reviewsEl.innerHTML = reviews.map(rv => `
-      <div style="background:var(--bg);border:1px solid var(--border-2);
-                  border-radius:6px;padding:8px 10px">
-        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);
-                    display:flex;justify-content:space-between">
+      <div class="u-91d91dbb">
+        <div class="fs-11 c-muted font-mono d-flex justify-between">
           <span>${_esc(rv.reviewer)} · ${_esc(rv.decision)}</span>
           <span>${_fmtTs(rv.created_at)}</span>
         </div>
-        <div style="font-size:12px;margin-top:3px">${_esc(rv.body) || ''}</div>
+        <div class="u-0aece2c5">${_esc(rv.body) || ''}</div>
       </div>
     `).join('');
   }
@@ -1036,14 +1034,14 @@ async function reloadTemplates() {
       return;
     }
     body.innerHTML = items.map(it => `
-      <tr style="cursor:pointer" data-action="tpl-open"
+      <tr class="cursor-pointer" data-action="tpl-open"
           data-tpl-id="${_esc(it.id)}" data-tpl-name="${_esc(it.name)}">
         <td>${_esc(it.name)}</td>
-        <td class="mono" style="font-size:11px">${_esc(it.mode || 'text')}</td>
+        <td class="mono fs-11">${_esc(it.mode || 'text')}</td>
         <td class="mono">${_fmtTs(_tsToSec(it.created_at))}</td>
         <td>
-          <button data-action="tpl-delete" data-tpl-id="${_esc(it.id)}"
-                  style="padding:4px 10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:4px;cursor:pointer;font-size:11px"
+          <button class="u-b7092eba" data-action="tpl-delete" data-tpl-id="${_esc(it.id)}"
+                 
                   >${t('common.delete')}</button>
         </td>
       </tr>`).join('');
@@ -1201,33 +1199,31 @@ async function openTemplate(tplId, tplName) {
   document.getElementById('tpl-result').style.display = 'none';
   document.getElementById('tpl-apply-content').value = '';
   const ph = document.getElementById('tpl-apply-placeholders');
-  ph.innerHTML = `<span style="color:var(--muted);font-size:11px">${t('common.loading')}</span>`;
+  ph.innerHTML = `<span class="c-muted fs-11">${t('common.loading')}</span>`;
   try {
     const data = await _apiFetch(`/templates/${encodeURIComponent(tplId)}`);
     const placeholders = (data.spec && data.spec.placeholders) || [];
     ph.innerHTML = placeholders.length
       ? placeholders.map(p => `<span class="chip">${_esc(p)}</span>`).join('')
-      : `<span style="color:var(--muted);font-size:11px">${t('workspace.tpl_no_placeholders')}</span>`;
+      : `<span class="c-muted fs-11">${t('workspace.tpl_no_placeholders')}</span>`;
     _renderTplOutputs(data.outputs || []);
   } catch (e) {
-    ph.innerHTML = `<span style="color:var(--muted);font-size:11px">${_esc(e.message)}</span>`;
+    ph.innerHTML = `<span class="c-muted fs-11">${_esc(e.message)}</span>`;
   }
 }
 
 function _renderTplOutputs(outputs) {
   const el = document.getElementById('tpl-apply-outputs');
   if (!outputs.length) {
-    el.innerHTML = `<span style="color:var(--muted);font-size:11px">${t('workspace.tpl_no_outputs')}</span>`;
+    el.innerHTML = `<span class="c-muted fs-11">${t('workspace.tpl_no_outputs')}</span>`;
     return;
   }
   el.innerHTML = outputs.map(o => `
-    <div style="display:flex;justify-content:space-between;align-items:center;
-                background:var(--bg);border:1px solid var(--border-2);
-                border-radius:6px;padding:6px 10px">
-      <span class="mono" style="font-size:11px">${_esc(o.filename)}
-        <span style="color:var(--muted)">· ${_fmtBytes(o.size)}</span></span>
-      <button data-action="tpl-download-out" data-out-id="${_esc(o.out_id)}"
-              style="padding:4px 10px;background:#1e7a3e;color:#fff;border:0;border-radius:4px;cursor:pointer;font-size:11px"
+    <div class="u-a2f72b9b">
+      <span class="mono fs-11">${_esc(o.filename)}
+        <span class="c-muted">· ${_fmtBytes(o.size)}</span></span>
+      <button class="u-14449c57" data-action="tpl-download-out" data-out-id="${_esc(o.out_id)}"
+             
               >${t('workspace.tpl_download')}</button>
     </div>`).join('');
 }

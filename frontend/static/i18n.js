@@ -2628,7 +2628,7 @@ function updateLangToggleDisplay() {
     var koActive = currentLang === 'ko';
     btns[i].innerHTML =
       '<span style="opacity:' + (koActive ? 1 : 0.4) + ';font-weight:' + (koActive ? 700 : 400) + '">KO</span>' +
-      '<span style="opacity:0.5;margin:0 4px">|</span>' +
+      '<span class="u-160ef599">|</span>' +
       '<span style="opacity:' + (!koActive ? 1 : 0.4) + ';font-weight:' + (!koActive ? 700 : 400) + '">EN</span>';
   }
 }

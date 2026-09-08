@@ -111,7 +111,7 @@
     $('edge-edit-conf').textContent = (edge.conf != null) ? String(edge.conf) : '—';
     $('edge-edit-error').textContent = '';
     $('edge-edit-sources').innerHTML =
-      '<div style="color:var(--muted);font-family:var(--font-mono);font-size:11px">Loading sources...</div>';
+      '<div class="c-muted font-mono fs-11">Loading sources...</div>';
     modal.classList.add('show');
     refreshSources();
   }
@@ -147,15 +147,15 @@
   // module-scope tracks which row is currently in edit mode.
   function renderSourceRow(s, idx) {
     if (idx === editingIdx) return renderSourceEditRow(s, idx);
-    var doc = s.doc_id ? String(s.doc_id) : '<span style="color:var(--muted)">(none)</span>';
+    var doc = s.doc_id ? String(s.doc_id) : '<span class="c-muted">(none)</span>';
     var w   = (typeof s.weight === 'number') ? s.weight.toFixed(2) : '?';
     var ts  = s.ts ? String(s.ts).slice(0, 19) : '';
     var meta = '';
-    if (s.author) meta += '<div style="color:var(--muted);font-size:10px">author: ' + escapeHtml(s.author) + '</div>';
-    if (s.note)   meta += '<div style="color:var(--muted);font-size:10px;margin-top:2px">note: ' + escapeHtml(s.note) + '</div>';
+    if (s.author) meta += '<div class="c-muted fs-10">author: ' + escapeHtml(s.author) + '</div>';
+    if (s.note)   meta += '<div class="u-67e7f9a2">note: ' + escapeHtml(s.note) + '</div>';
     // Per-row actions: ✏️ (edit weight/note) and ✕ (delete this source only).
     var actions = '' +
-      '<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">' +
+      '<div class="d-flex flex-col gap-4 items-end">' +
         '<button type="button" data-action="edit-src" data-idx="' + idx + '" ' +
                 'title="Edit this source" ' +
                 'style="background:transparent;border:1px solid var(--border);' +
@@ -174,11 +174,11 @@
     return '' +
       '<div data-src-idx="' + idx + '" style="display:flex;align-items:flex-start;' +
          'gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">' +
-        '<div style="flex:1;min-width:0">' +
-          '<div style="display:flex;gap:6px;align-items:center;font-family:var(--font-mono);font-size:11px">' +
+        '<div class="u-89bd09bd">' +
+          '<div class="d-flex gap-6 items-center font-mono fs-11">' +
             roleBadge(s.role || '?') +
-            '<span style="color:var(--text-soft)">w=' + w + '</span>' +
-            (ts ? '<span style="color:var(--muted);font-size:10px">' + ts + '</span>' : '') +
+            '<span class="c-text-soft">w=' + w + '</span>' +
+            (ts ? '<span class="c-muted fs-10">' + ts + '</span>' : '') +
           '</div>' +
           '<div style="margin-top:2px;color:var(--text-soft);font-family:var(--font-mono);' +
                 'font-size:10px;word-break:break-all">' + doc + '</div>' +
@@ -201,25 +201,25 @@
         '<div style="display:flex;gap:6px;align-items:center;font-family:var(--font-mono);' +
               'font-size:11px;margin-bottom:6px">' +
           roleBadge(s.role || '?') +
-          '<span style="color:var(--muted);font-size:10px">editing #' + idx + '</span>' +
+          '<span class="c-muted fs-10">editing #' + idx + '</span>' +
         '</div>' +
-        '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">' +
-          '<label style="color:var(--muted);font-size:10px;font-family:var(--font-mono);width:50px">weight</label>' +
+        '<div class="d-flex gap-6 items-center mb-4">' +
+          '<label class="u-81e3f213">weight</label>' +
           '<input type="number" min="0" max="1" step="0.05" value="' + w + '" ' +
                  'data-edit-weight="' + idx + '" ' +
                  'style="flex:1;background:var(--bg);border:1px solid var(--border);' +
                         'color:var(--text);padding:3px 6px;border-radius:4px;' +
                         'font-family:var(--font-mono);font-size:11px">' +
         '</div>' +
-        '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">' +
-          '<label style="color:var(--muted);font-size:10px;font-family:var(--font-mono);width:50px">note</label>' +
+        '<div class="d-flex gap-6 items-center mb-6">' +
+          '<label class="u-81e3f213">note</label>' +
           '<input type="text" value="' + escapeHtml(note) + '" ' +
                  'data-edit-note="' + idx + '" placeholder="(optional)" ' +
                  'style="flex:1;background:var(--bg);border:1px solid var(--border);' +
                         'color:var(--text);padding:3px 6px;border-radius:4px;' +
                         'font-family:var(--font-mono);font-size:11px">' +
         '</div>' +
-        '<div style="display:flex;gap:6px;justify-content:flex-end">' +
+        '<div class="d-flex gap-6 justify-end">' +
           '<button type="button" data-action="cancel-edit-src" data-idx="' + idx + '" ' +
                   'style="background:transparent;border:1px solid var(--border);' +
                          'color:var(--text-soft);padding:3px 10px;border-radius:4px;' +
@@ -249,7 +249,7 @@
       var r = await fetch(url, { headers: authHeaders() });
       if (!r.ok) {
         var j = await r.json().catch(function () { return {}; });
-        box.innerHTML = '<div style="color:var(--danger);font-size:11px">' +
+        box.innerHTML = '<div class="c-danger fs-11">' +
                         escapeHtml(j.detail || ('error ' + r.status)) + '</div>';
         return;
       }
@@ -258,7 +258,7 @@
       var srcs = rel.sources || [];
       currentSources = srcs.slice();   // [Stage E.1] cache for per-row mutations
       if (!srcs.length) {
-        box.innerHTML = '<div style="color:var(--muted);font-size:11px">No sources (legacy or unmigrated relation).</div>';
+        box.innerHTML = '<div class="c-muted fs-11">No sources (legacy or unmigrated relation).</div>';
         editingIdx = -1;
         return;
       }
@@ -270,7 +270,7 @@
         $('edge-edit-conf').textContent = String(rel.confidence);
       }
     } catch (e) {
-      box.innerHTML = '<div style="color:var(--danger);font-size:11px">' +
+      box.innerHTML = '<div class="c-danger fs-11">' +
                       escapeHtml(String(e)) + '</div>';
     }
   }

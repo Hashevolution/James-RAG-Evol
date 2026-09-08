@@ -84,7 +84,7 @@
       'margin-bottom:6px;letter-spacing:.4px">' +
       escapeHtml(t('graph.timetravel.replay.title', 'Replay state')) +
       '</div>' +
-      '<div style="color:var(--muted)">' +
+      '<div class="c-muted">' +
       escapeHtml(t('graph.timetravel.replay.loading', 'Loading replay…')) +
       '</div>';
   }
@@ -99,7 +99,7 @@
       'margin-bottom:6px;letter-spacing:.4px">' +
       escapeHtml(t('graph.timetravel.replay.title', 'Replay state')) +
       '</div>' +
-      '<div style="color:var(--danger,#e06)">' +
+      '<div class="u-6812cd91">' +
       escapeHtml(t('graph.timetravel.replay.error',
                    'Replay unavailable')) + safeDetail +
       '</div>';
@@ -167,7 +167,7 @@
     return '<div style="display:flex;justify-content:space-between;' +
            'gap:8px">' +
            '<span>' + escapeHtml(label) + '</span>' +
-           '<span style="color:var(--text);font-weight:600">' +
+           '<span class="c-text fw-600">' +
            escapeHtml(String(value)) + '</span></div>';
   }
 

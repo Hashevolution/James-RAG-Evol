@@ -174,7 +174,7 @@
     const box = _log();
     if (box) {
       box.innerHTML =
-        `<div style="color:var(--muted);font-size:12px">${
+        `<div class="c-muted fs-12">${
           _esc(_t('agentchat.empty', '(아직 대화 없음 — 아래에 메시지를 입력하세요)'))
         }</div>`;
     }
@@ -206,7 +206,7 @@
 
   function _renderUserBubble(text) {
     _appendNode(`
-      <div style="align-self:flex-end;max-width:80%;background:var(--accent,#3b82f6);color:var(--on-accent,#fff);padding:8px 12px;border-radius:12px 12px 4px 12px;font-size:13px;white-space:pre-wrap;word-break:break-word">
+      <div class="u-d03fd082">
         ${_esc(text)}
       </div>
     `);
@@ -215,7 +215,7 @@
   function _renderAssistantBubble(text) {
     if (!text) return;
     _appendNode(`
-      <div style="align-self:flex-start;max-width:80%;background:var(--surface-2,#1e293b);color:var(--text);padding:8px 12px;border-radius:12px 12px 12px 4px;font-size:13px;white-space:pre-wrap;word-break:break-word">
+      <div class="u-cfa36ab5">
         ${_esc(text)}
       </div>
     `);
@@ -223,7 +223,7 @@
 
   function _renderErrorBubble(msg) {
     _appendNode(`
-      <div style="align-self:flex-start;max-width:90%;background:#5b1e1e;color:#fcc;padding:8px 12px;border-radius:8px;font-size:12px;font-family:var(--font-mono)">
+      <div class="u-f101c803">
         ❌ ${_esc(msg)}
       </div>
     `);
@@ -240,16 +240,16 @@
     const isShell = call.name === 'run_shell';
     const border = isShell ? '#a16207' : 'var(--border,#334155)';
     const shellTag = isShell
-      ? ` <span style="color:#fc8" title="${_esc(_t('agentchat.shell_tag_title', '셸 명령 실행 — 운영자 허용 폴더 안에서만'))}">⚠ shell</span>`
+      ? ` <span class="u-6b219d48" title="${_esc(_t('agentchat.shell_tag_title', '셸 명령 실행 — 운영자 허용 폴더 안에서만'))}">⚠ shell</span>`
       : '';
     _appendNode(`
       <div style="align-self:flex-start;max-width:92%;background:var(--bg,#0f172a);border:1px solid ${border};border-radius:8px;padding:8px 12px;font-family:var(--font-mono);font-size:11px;color:var(--text)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <div class="d-flex justify-between items-center mb-4">
           <span><strong>${okIcon} ${_esc(call.name)}</strong>${shellTag}
-                <span style="color:var(--muted);margin-left:6px">iter ${call.iter || ''}</span></span>
-          <span style="color:var(--muted)">${call.elapsed_ms != null ? call.elapsed_ms + ' ms' : ''}</span>
+                <span class="c-muted ml-6">iter ${call.iter || ''}</span></span>
+          <span class="c-muted">${call.elapsed_ms != null ? call.elapsed_ms + ' ms' : ''}</span>
         </div>
-        <div style="color:var(--muted);word-break:break-all;margin-bottom:2px">args: ${_esc(argsJson)}</div>
+        <div class="u-1ad59c6e">args: ${_esc(argsJson)}</div>
         <div style="color:${call.ok ? 'var(--muted)' : '#fcc'};word-break:break-all">${detail}</div>
       </div>
     `);
@@ -288,7 +288,7 @@
     box.innerHTML = '';
     if (!_history.length) {
       box.innerHTML =
-        `<div style="color:var(--muted);font-size:12px">${
+        `<div class="c-muted fs-12">${
           _esc(_t('agentchat.empty', '(아직 대화 없음 — 아래에 메시지를 입력하세요)'))
         }</div>`;
       return;
@@ -304,7 +304,7 @@
     const box = document.getElementById('agent-session-list');
     if (!box) return;
     if (!_sessions.length) {
-      box.innerHTML = `<div style="color:var(--muted);font-size:11px">${
+      box.innerHTML = `<div class="c-muted fs-11">${
         _esc(_t('agentsess.empty', '세션 없음 — + 새 대화'))}</div>`;
       return;
     }
@@ -315,7 +315,7 @@
         padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px;
         background:${active ? 'var(--accent,#3b82f6)' : 'var(--bg)'};
         color:${active ? '#fff' : 'var(--text)'};border:1px solid var(--border)">
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(s.title)}</span>
+        <span class="u-7afdde9c">${_esc(s.title)}</span>
         <button data-action="agent-session-del" data-sid="${_esc(s.id)}"
           title="${_esc(_t('agentsess.del', '삭제'))}"
           style="border:0;background:transparent;color:${active ? '#fff' : 'var(--muted)'};
@@ -541,7 +541,7 @@
       _renderBrowse(d);
     } catch (e) {
       const l = document.getElementById('agent-browse-list');
-      if (l) l.innerHTML = `<div style="color:#f88;font-size:12px;padding:6px">${_esc(e.message || e)}</div>`;
+      if (l) l.innerHTML = `<div class="u-72af977b">${_esc(e.message || e)}</div>`;
     }
   }
   function _renderBrowse(d) {
@@ -553,22 +553,19 @@
     if (!list) return;
     let html = '';
     if (d.parent !== null && d.current) {
-      html += `<div data-action="agent-browse-nav" data-path="${_esc(d.parent)}"
-        style="padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px;
-        font-family:var(--font-mono);background:var(--bg);border:1px solid var(--border)">⬑ ${
+      html += `<div class="u-bbdb0a17" data-action="agent-browse-nav" data-path="${_esc(d.parent)}"
+       >⬑ ${
         _esc(_t('agent.browse_up', '상위 폴더'))}</div>`;
     }
     const entries = d.entries || [];
     if (!entries.length && d.current) {
-      html += `<div style="color:var(--muted);font-size:12px;padding:6px">${
+      html += `<div class="u-59298278">${
         _esc(_t('agent.browse_empty', '(하위 폴더 없음)'))}</div>`;
     }
-    html += entries.map(en => `<div data-action="agent-browse-nav" data-path="${_esc(en.path)}"
-      style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;
-      border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--font-mono);
-      background:var(--bg);border:1px solid var(--border)">
-      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📁 ${_esc(en.name)}</span>
-      ${en.registerable ? '' : `<span style="color:#f88;font-size:10px" title="${_esc(_t('agent.browse_blocked', '등록 불가'))}">⛔</span>`}
+    html += entries.map(en => `<div class="u-b7e2de6c" data-action="agent-browse-nav" data-path="${_esc(en.path)}"
+     >
+      <span class="u-7afdde9c">📁 ${_esc(en.name)}</span>
+      ${en.registerable ? '' : `<span class="u-f10d923e" title="${_esc(_t('agent.browse_blocked', '등록 불가'))}">⛔</span>`}
     </div>`).join('');
     list.innerHTML = html;
   }

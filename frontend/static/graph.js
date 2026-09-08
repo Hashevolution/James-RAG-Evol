@@ -357,7 +357,7 @@
           '<div><strong>' + (meta.node_count || 0) + '</strong> nodes</div>' +
           '<div><strong>' + (meta.edge_count || 0) + '</strong> edges</div>' +
           '<div>source: ' + (meta.source_type || source) + '</div>' +
-          (meta.truncated ? '<div style="color:var(--warn)">⚠ truncated to ' + meta.edge_hard_cap + ' edges</div>' : '');
+          (meta.truncated ? '<div class="u-f95e7372">⚠ truncated to ' + meta.edge_hard_cap + ' edges</div>' : '');
       }
       setOverlayCounts(meta);
       setStatus('');
