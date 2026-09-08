@@ -18,6 +18,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 import yaml
@@ -168,13 +169,19 @@ class ApplyTests(unittest.TestCase):
             cleanup_entities, identify_noise_entities,
         )
         candidates = identify_noise_entities(self.concept_dir)
-        plan = cleanup_entities(
-            candidates,
-            apply       = True,
-            backup_root = self.backup_root,
-            source_type = "prod",
-            concept_dir = self.concept_dir,
-        )
+        # apply=True reaches cleanup_entities' ChromaDB step, which
+        # builds a real VectorStore and so loads the embedding model —
+        # a HuggingFace download on a cold CI runner, inside the 30s
+        # timeout. These assertions are about the file/zip side of the
+        # plan, so the store is mocked and delete_by_source is a no-op.
+        with patch("core.vector_store.VectorStore"):
+            plan = cleanup_entities(
+                candidates,
+                apply       = True,
+                backup_root = self.backup_root,
+                source_type = "prod",
+                concept_dir = self.concept_dir,
+            )
         self.assertTrue(plan["applied"])
         self.assertEqual(len(plan["deleted_files"]), 1)
         # 노이즈 삭제됨
@@ -190,13 +197,19 @@ class ApplyTests(unittest.TestCase):
             cleanup_entities, identify_noise_entities,
         )
         candidates = identify_noise_entities(self.concept_dir)
-        plan = cleanup_entities(
-            candidates,
-            apply       = True,
-            backup_root = None,           # ← --no-backup 효과
-            source_type = "prod",
-            concept_dir = self.concept_dir,
-        )
+        # apply=True reaches cleanup_entities' ChromaDB step, which
+        # builds a real VectorStore and so loads the embedding model —
+        # a HuggingFace download on a cold CI runner, inside the 30s
+        # timeout. These assertions are about the file/zip side of the
+        # plan, so the store is mocked and delete_by_source is a no-op.
+        with patch("core.vector_store.VectorStore"):
+            plan = cleanup_entities(
+                candidates,
+                apply       = True,
+                backup_root = None,           # ← --no-backup 효과
+                source_type = "prod",
+                concept_dir = self.concept_dir,
+            )
         self.assertTrue(plan["applied"])
         self.assertIsNone(plan["backup_zip"])
         self.assertFalse(self.noise_path.exists())

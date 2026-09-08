@@ -16,6 +16,7 @@ from __future__ import annotations
 import os
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -90,8 +91,14 @@ class PublicImportSurfaceTests(unittest.TestCase):
         # End-to-end smoke that the MRO composition + WikiGenerator
         # façade still works post-split.
         from core.wiki_generator import WikiGenerator
-        # Construction touches every sub-mixin's __init__ path.
-        wg = WikiGenerator(source_type="test")
+        # Construction touches every sub-mixin's __init__ path — which
+        # includes building a VectorStore, and that loads the embedding
+        # model (a HuggingFace download on a cold CI runner). The MRO
+        # composition is what this smoke checks, not the model.
+        _INIT_STATE = "core.wiki_generator._frontmatter.init_state"
+        with patch(f"{_INIT_STATE}.VectorStore"), \
+                patch(f"{_INIT_STATE}.RouterWrapper"):
+            wg = WikiGenerator(source_type="test")
         self.assertEqual(wg.source_type, "test")
         self.assertTrue(hasattr(wg, "entity_id_index"))
         self.assertTrue(hasattr(wg, "wiki_base_path"))
