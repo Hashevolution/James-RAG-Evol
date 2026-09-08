@@ -251,7 +251,15 @@ JS_FILES = [
 # captured attribute value: `' + '`, across newlines and indentation.
 # No backreference — a mismatched quote pair would leave a stray quote
 # behind, which resolve_literal_concat then rejects.
-_CONCAT_JOIN = re.compile(r"""['"]\s*\+\s*['"]""")
+#
+# Two shapes occur in this codebase and both are static:
+#
+#   '<div style="a;' +        concatenation
+#   'b">'
+#
+#   ['<div style="a;',        array literal that is join()ed later
+#    'b">']
+_CONCAT_JOIN = re.compile(r"""['"]\s*[+,]\s*['"]""")
 
 
 def resolve_literal_concat(value: str):
