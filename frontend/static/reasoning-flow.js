@@ -245,8 +245,7 @@
       summary.innerHTML =
         '<dl>' +
         '<dt>' + escapeHtml(t('flow.summary.trace_id', 'Trace ID')) +
-        '</dt><dd style="font-family:var(--font-mono);font-size:11px;' +
-        'word-break:break-all">' + escapeHtml(body.trace_id || '?') +
+        '</dt><dd class="font-mono fs-11 wb-all">' + escapeHtml(body.trace_id || '?') +
         '</dd>' +
         '<dt>' + escapeHtml(t('flow.summary.day', '날짜')) +
         '</dt><dd>' + escapeHtml(body.day || '?') + '</dd>' +

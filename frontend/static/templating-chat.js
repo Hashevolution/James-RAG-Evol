@@ -146,8 +146,7 @@
       var phs = (data.spec && data.spec.placeholders) || [];
       ph.innerHTML = phs.length
         ? phs.map(function (p) {
-            return '<span class="chip" style="font-size:11px;padding:2px 8px;' +
-              'border:1px solid var(--border);border-radius:10px;color:var(--muted)">' +
+            return '<span class="chip fs-11 bd-1 c-muted u-519c6b2e">' +
               _esc(p) + '</span>';
           }).join('')
         : '<span class="c-muted fs-11">' +

@@ -116,8 +116,7 @@
   function renderLoading() {
     showModal();
     setBody(
-      '<div id="' + MODAL_ID + '-title" style="font-weight:700;' +
-      'color:var(--accent-fg);letter-spacing:.4px;margin-bottom:8px">' +
+      '<div class="fw-700 c-accent-fg mb-8 u-bedf52b8" id="' + MODAL_ID + '-title">' +
       escapeHtml(t('graph.timetravel.diff.title',
                    'State diff: T → NOW')) +
       '</div>' +
@@ -132,8 +131,7 @@
     showModal();
     var safeDetail = detail ? ' — ' + escapeHtml(detail) : '';
     setBody(
-      '<div id="' + MODAL_ID + '-title" style="font-weight:700;' +
-      'color:var(--accent-fg);letter-spacing:.4px;margin-bottom:8px">' +
+      '<div class="fw-700 c-accent-fg mb-8 u-bedf52b8" id="' + MODAL_ID + '-title">' +
       escapeHtml(t('graph.timetravel.diff.title',
                    'State diff: T → NOW')) +
       '</div>' +
@@ -177,19 +175,16 @@
     var rows = '';
     for (var i = 0; i < ids.length; i++) {
       var id = ids[i];
-      rows += '<li style="display:flex;align-items:center;' +
-              'padding:3px 0;border-bottom:1px dashed rgba(255,255,255,.05)">' +
+      rows += '<li class="d-flex items-center u-5c9e3ed5">' +
               '<span class="flex-1 wb-all">' +
               escapeHtml(id) + '</span>' +
               (opts.evidence === false ? '' : evidenceLinkHtml(id)) +
               '</li>';
     }
     return '<div class="mt-10">' +
-           '<div style="font-weight:600;color:var(--accent-fg);' +
-           'font-size:10px;letter-spacing:1px;margin-bottom:4px">' +
+           '<div class="fw-600 c-accent-fg fs-10 ls-1 mb-4">' +
            escapeHtml(label) +
-           ' <span style="color:var(--muted);font-weight:400;' +
-           'letter-spacing:0">(' + ids.length + ')</span></div>' +
+           ' <span class="c-muted fw-400 ls-0">(' + ids.length + ')</span></div>' +
            '<ul class="u-82ef8585">' +
            rows + '</ul></div>';
   }
@@ -206,11 +201,9 @@
       var c = chainsObj[head];
       var at_t = (c.at_t || []).join(' → ') || '∅';
       var at_now = (c.at_now || []).join(' → ') || '∅';
-      rows += '<li style="padding:4px 0;border-bottom:1px dashed ' +
-              'rgba(255,255,255,.05)">' +
+      rows += '<li class="u-c2bfc000">' +
               '<div class="d-flex items-center">' +
-              '<span style="flex:1;font-weight:600;color:var(--text);' +
-              'word-break:break-all">' + escapeHtml(head) + '</span>' +
+              '<span class="flex-1 fw-600 c-text wb-all">' + escapeHtml(head) + '</span>' +
               evidenceLinkHtml(head) + '</div>' +
               '<div class="u-1a5d6bb4">' +
               'T: ' + escapeHtml(at_t) + '</div>' +
@@ -218,24 +211,19 @@
               'NOW: ' + escapeHtml(at_now) + '</div></li>';
     }
     return '<div class="mt-10">' +
-           '<div style="font-weight:600;color:var(--accent-fg);' +
-           'font-size:10px;letter-spacing:1px;margin-bottom:4px">' +
+           '<div class="fw-600 c-accent-fg fs-10 ls-1 mb-4">' +
            escapeHtml(label) +
-           ' <span style="color:var(--muted);font-weight:400;' +
-           'letter-spacing:0">(' + keys.length + ')</span></div>' +
+           ' <span class="c-muted fw-400 ls-0">(' + keys.length + ')</span></div>' +
            '<ul class="u-82ef8585">' +
            rows + '</ul></div>';
   }
 
   function summaryRow(leftLabel, leftVal, rightVal) {
-    return '<div style="display:flex;gap:12px;padding:4px 0;' +
-           'border-bottom:1px dashed rgba(255,255,255,.05)">' +
+    return '<div class="d-flex u-1507212a">' +
            '<span class="flex-1 c-muted">' +
            escapeHtml(leftLabel) + '</span>' +
-           '<span style="flex:0 0 80px;text-align:right;color:var(--text);' +
-           'font-weight:600">' + escapeHtml(String(leftVal)) + '</span>' +
-           '<span style="flex:0 0 80px;text-align:right;color:var(--text);' +
-           'font-weight:600">' + escapeHtml(String(rightVal)) + '</span>' +
+           '<span class="c-text fw-600 u-56876cf6">' + escapeHtml(String(leftVal)) + '</span>' +
+           '<span class="c-text fw-600 u-56876cf6">' + escapeHtml(String(rightVal)) + '</span>' +
            '</div>';
   }
 
@@ -259,8 +247,7 @@
                        'No changes between T and NOW.');
 
     var header =
-      '<div id="' + MODAL_ID + '-title" style="font-weight:700;' +
-      'color:var(--accent-fg);letter-spacing:.4px;margin-bottom:4px">' +
+      '<div class="fw-700 c-accent-fg mb-4 u-bedf52b8" id="' + MODAL_ID + '-title">' +
       escapeHtml(title) + '</div>' +
       '<div class="c-muted fs-10 mb-10">' +
       'T: ' + escapeHtml(body.t) + ' • NOW: ' + escapeHtml(body.now) +
@@ -268,14 +255,11 @@
 
     // Header row of the summary table (T | NOW).
     var summary =
-      '<div style="display:flex;gap:12px;padding:4px 0;' +
-      'border-bottom:1px solid var(--border)">' +
+      '<div class="d-flex u-9d1b88d9">' +
       '<span class="flex-1"></span>' +
-      '<span style="flex:0 0 80px;text-align:right;font-weight:600;' +
-      'color:var(--accent-fg);font-size:10px;letter-spacing:1px">' +
+      '<span class="fw-600 c-accent-fg fs-10 ls-1 u-56876cf6">' +
       escapeHtml(thenLabel) + '</span>' +
-      '<span style="flex:0 0 80px;text-align:right;font-weight:600;' +
-      'color:var(--accent-fg);font-size:10px;letter-spacing:1px">' +
+      '<span class="fw-600 c-accent-fg fs-10 ls-1 u-56876cf6">' +
       escapeHtml(nowLabel) + '</span></div>' +
       summaryRow(eventsT, body.event_count_at_t, body.event_count_at_now);
 
@@ -303,14 +287,12 @@
       listSection(packsRemovedLabel, packsRemoved, { evidence: false });
 
     if (!anyDiff) {
-      sections = '<div style="margin-top:14px;color:var(--muted);' +
-                 'font-style:italic">' + escapeHtml(emptyLabel) +
+      sections = '<div class="c-muted u-3c4d5870">' + escapeHtml(emptyLabel) +
                  '</div>';
     }
 
     if (body.truncated) {
-      sections += '<div style="margin-top:8px;color:var(--muted);' +
-                  'font-size:10px">(' +
+      sections += '<div class="mt-8 c-muted fs-10">(' +
                   escapeHtml('capped at limit — partial view') + ')</div>';
     }
 

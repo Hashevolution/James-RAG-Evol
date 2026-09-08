@@ -124,8 +124,7 @@
   }
 
   function renderHeader(stateText) {
-    return '<div style="font-weight:600;color:var(--accent-fg);' +
-           'margin-bottom:6px;letter-spacing:.4px">' +
+    return '<div class="fw-600 c-accent-fg mb-6 u-bedf52b8">' +
            escapeHtml(t('graph.timetravel.trace.title',
                         'Reasoning trail')) +
            '</div>' +
@@ -196,8 +195,7 @@
     }
     var icon = entry.meta.icon || '·';
     var label = entry.meta.label || entry.stage || '';
-    return '<div style="display:flex;gap:6px;padding:3px 0;' +
-           'border-bottom:1px dashed rgba(255,255,255,.05)">' +
+    return '<div class="d-flex gap-6 u-5c9e3ed5">' +
            '<span class="u-fe407230">' + escapeHtml(icon) + '</span>' +
            '<span class="flex-1 c-text">' +
            escapeHtml(label) + '</span>' +
@@ -214,11 +212,9 @@
       rows += renderStageRow(entries[i]);
     }
     return '<div class="mt-8">' +
-           '<div style="font-weight:600;color:var(--accent-fg);' +
-           'font-size:10px;letter-spacing:1px;margin-bottom:3px">' +
+           '<div class="fw-600 c-accent-fg fs-10 ls-1 u-bf903b75">' +
            escapeHtml(label) +
-           ' <span style="color:var(--muted);font-weight:400;' +
-           'letter-spacing:0">(' + entries.length + ')</span></div>' +
+           ' <span class="c-muted fw-400 ls-0">(' + entries.length + ')</span></div>' +
            rows + '</div>';
   }
 
@@ -235,12 +231,10 @@
     var ofLabel = t('graph.timetravel.trace.of', ' of ');
 
     var header =
-      '<div style="font-weight:600;color:var(--accent-fg);' +
-      'margin-bottom:6px;letter-spacing:.4px">' +
+      '<div class="fw-600 c-accent-fg mb-6 u-bedf52b8">' +
       escapeHtml(t('graph.timetravel.trace.title', 'Reasoning trail')) +
       '</div>' +
-      '<div style="color:var(--muted);font-size:10px;' +
-      'margin-bottom:6px;word-break:break-all">' +
+      '<div class="c-muted fs-10 mb-6 wb-all">' +
       escapeHtml(traceId) + '</div>' +
       '<div class="u-85503ffb">' +
       escapeHtml(replayedLabel) +
@@ -297,8 +291,7 @@
                  '그래프에 %n개 노드 강조됨').replace('%n', String(lit));
     }
     panel.insertAdjacentHTML('afterbegin',
-      '<div style="font-size:10px;color:var(--accent-fg,#6cf);' +
-      'margin-bottom:4px">● ' + escapeHtml(hlNote) + '</div>');
+      '<div class="fs-10 mb-4 u-e8895f24">● ' + escapeHtml(hlNote) + '</div>');
 
     revealPanel(panel);
 

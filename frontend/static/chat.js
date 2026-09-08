@@ -351,8 +351,7 @@ window.addEventListener('DOMContentLoaded', () => {
       const listEl = document.getElementById('session-list');
       if (listEl) {
         listEl.innerHTML =
-          '<div style="color:var(--muted,#888);font-size:12px;'
-          + 'text-align:center;padding:20px">'
+          '<div class="fs-12 text-center p-20 u-6695ffc3">'
           + (t('chat.session_login_hint')
              || '로그인 후 이전 대화가 표시됩니다')
           + '</div>';
