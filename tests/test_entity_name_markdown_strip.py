@@ -85,12 +85,35 @@ class _MarkdownStripBase(unittest.TestCase):
         # So the unwind is explicit and catches BaseException, which
         # does not depend on any runner's catch semantics.
         cls.tmp = tempfile.mkdtemp()
+        _INIT_STATE = "core.wiki_generator._frontmatter.init_state"
         cls._patchers = [
             patch("config.WIKI_DIR", cls.tmp),
             patch(
                 "core.memory.verify_before_write",
                 return_value=(True, "ok", 0.99),
             ),
+            # Patch at the USE site, not the definition site.
+            #
+            # init_state.py binds both names at module import
+            # ("from core.vector_store import VectorStore"), so patching
+            # core.vector_store.VectorStore leaves init_state's own
+            # reference pointing at the real class — and WikiGenerator()
+            # builds a real VectorStore, which calls _load_model(), which
+            # downloads BAAI/bge-m3 from HuggingFace and writes the
+            # shards to disk. That is the 30s timeout: not a slow import,
+            # a model download.
+            #
+            # It never showed locally because the model is already cached
+            # on the operator machine; CI has no cache, so it fetched
+            # ~GBs inside a 30s budget on every run. The stack trace on
+            # run 34189813550 names it exactly:
+            #   WikiGenerator -> VectorStore() -> _load_model()
+            #   -> model.save(LOCAL_MODEL_PATH) -> Writing model shards
+            #
+            # The definition-site patches stay too: harmless, and they
+            # cover any path that resolves the attribute at call time.
+            patch(f"{_INIT_STATE}.VectorStore"),
+            patch(f"{_INIT_STATE}.RouterWrapper"),
             patch("core.vector_store.VectorStore"),
             patch("llm.router.RouterWrapper"),
         ]
