@@ -459,7 +459,7 @@ async function firstRunShow(resolutionData) {
   const hwBox = document.getElementById('firstrun-hw-summary');
   const recBox = document.getElementById('firstrun-recommendations');
   if (hwBox) hwBox.innerHTML = '<div class="loading">측정 중...</div>';
-  if (recBox) recBox.innerHTML = '<div class="loading" style="padding:20px;text-align:center">로딩...</div>';
+  if (recBox) recBox.innerHTML = '<div class="loading p-20 text-center">로딩...</div>';
 
   try {
     const recData = await api('/admin/llm/recommend');
@@ -470,7 +470,7 @@ async function firstRunShow(resolutionData) {
         <div><strong>이 PC 사양</strong></div>
         <div>GPU: ${_escHtml(summary.gpu || '?')}</div>
         <div>RAM: ${_escHtml(summary.ram || '?')}</div>
-        <div>전체 등급: <strong style="color:var(--accent-fg)">Level ${summary.level || '?'}</strong></div>
+        <div>전체 등급: <strong class="c-accent-fg">Level ${summary.level || '?'}</strong></div>
       `;
     }
     // 우선 첫 번째 chat-feasible 모델을 강조, 나머지는 sub list.
@@ -482,7 +482,7 @@ async function firstRunShow(resolutionData) {
     if (recBox) {
       let html = '';
       if (chatFeasible.length === 0) {
-        html += `<div style="padding:14px;color:var(--warn);font-size:12px">
+        html += `<div class="fs-12 u-c288eda3">
           ⚠️ 이 PC 사양에 적합한 chat 모델이 없습니다. 가장 가벼운 모델 (gemma3:1b)을 시도해보세요.
         </div>`;
         // Force-show gemma3:1b as fallback.
@@ -490,12 +490,12 @@ async function firstRunShow(resolutionData) {
                               size_gb:1.0, purpose:['chat']}, true);
       } else {
         // Top chat candidate gets star + 강조
-        html += '<div style="font-size:11px;color:var(--muted);padding:6px 10px;text-transform:uppercase;letter-spacing:.3px">일상 대화</div>';
+        html += '<div class="fs-11 c-muted p-6-10 u-1b1ea0a5">일상 대화</div>';
         chatFeasible.slice(0, 3).forEach((r, i) => {
           html += _firstRunRow(r, i === 0);
         });
         if (codingFeasible.length > 0) {
-          html += '<div style="font-size:11px;color:var(--muted);padding:6px 10px;margin-top:8px;text-transform:uppercase;letter-spacing:.3px">코딩</div>';
+          html += '<div class="fs-11 c-muted p-6-10 mt-8 u-1b1ea0a5">코딩</div>';
           codingFeasible.slice(0, 2).forEach(r => {
             html += _firstRunRow(r, false);
           });
@@ -504,8 +504,8 @@ async function firstRunShow(resolutionData) {
       recBox.innerHTML = html;
     }
   } catch (e) {
-    if (hwBox) hwBox.innerHTML = `<div style="color:#c00">측정 실패: ${_escHtml(e.message)}</div>`;
-    if (recBox) recBox.innerHTML = `<div style="padding:20px;text-align:center;color:#c00">추천 로드 실패: ${_escHtml(e.message)}</div>`;
+    if (hwBox) hwBox.innerHTML = `<div class="u-7e4ce7c5">측정 실패: ${_escHtml(e.message)}</div>`;
+    if (recBox) recBox.innerHTML = `<div class="p-20 text-center u-7e4ce7c5">추천 로드 실패: ${_escHtml(e.message)}</div>`;
   }
 }
 
@@ -518,16 +518,14 @@ function _firstRunRow(r, primary) {
   const border = primary ? 'border:1px solid var(--accent);' : 'border:1px solid var(--border);';
   return `<div style="${border}background:${bg};border-radius:7px;padding:10px 12px;margin:4px 6px;
                        display:flex;align-items:center;gap:10px;font-size:13px">
-    <div style="flex:1;min-width:0">
+    <div class="flex-1 u-3f9f96c6">
       <div style="${primary?'color:var(--accent-fg);font-weight:600':''}">${stars}${tag}</div>
-      <div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+      <div class="fs-11 c-muted ov-hidden u-65dccb4c">
         ${desc}${sizeGB ? ' · ' + sizeGB : ''}
       </div>
     </div>
-    <button data-action="first-run-install" data-tag="${tag}"
-            style="padding:7px 14px;background:var(--accent);color:var(--on-accent);
-                   border:0;border-radius:6px;cursor:pointer;font-size:12px;
-                   font-weight:600;flex-shrink:0">
+    <button class="bg-accent c-on-accent bd-0 br-6 cursor-pointer fs-12 fw-600 u-3d558703" data-action="first-run-install" data-tag="${tag}"
+           >
       설치
     </button>
   </div>`;
@@ -672,10 +670,10 @@ async function loadAgentFolders() {
   const key = (localStorage.getItem('james_api_key') || '');
   const tok = (localStorage.getItem('james_token') || '');
   if (!key && !tok) {
-    list.innerHTML = `<div style="color:var(--muted)">${t('common.login_required') || 'Login required'}</div>`;
+    list.innerHTML = `<div class="c-muted">${t('common.login_required') || 'Login required'}</div>`;
     return;
   }
-  list.innerHTML = `<div style="color:var(--muted)">${t('common.loading') || '…'}</div>`;
+  list.innerHTML = `<div class="c-muted">${t('common.loading') || '…'}</div>`;
   try {
     const r = await fetch(
       `/admin/agent/allowed-paths?api_key=${encodeURIComponent(key)}`,
@@ -694,23 +692,21 @@ async function loadAgentFolders() {
     }
     const items = data.registered_paths || [];
     if (!items.length) {
-      list.innerHTML = `<div style="color:var(--muted)">${t('agent.empty') || '(등록된 폴더 없음)'}</div>`;
+      list.innerHTML = `<div class="c-muted">${t('agent.empty') || '(등록된 폴더 없음)'}</div>`;
       return;
     }
     list.innerHTML = items.map(p => `
-      <div style="display:flex;justify-content:space-between;align-items:center;
-                  background:var(--bg);border:1px solid var(--border);
-                  border-radius:6px;padding:6px 10px">
-        <span style="word-break:break-all">${_escAgent(p)}</span>
-        <button class="btn" data-action="agent-remove-path"
+      <div class="d-flex justify-between items-center bg-bg bd-1 br-6 p-6-10">
+        <span class="wb-all">${_escAgent(p)}</span>
+        <button class="btn p-3-10 fs-11" data-action="agent-remove-path"
                 data-path="${_escAgent(p)}"
-                style="padding:3px 10px;font-size:11px"
+               
                 title="${t('agent.remove_title') || '세션-스코프 제거 (재시작 시 env 가 다시 적용)'}"
                 >${t('agent.remove') || '✕'}</button>
       </div>
     `).join('');
   } catch (e) {
-    list.innerHTML = `<div style="color:#f88">❌ ${_escAgent(e.message)}</div>`;
+    list.innerHTML = `<div class="u-0c8f2ccd">❌ ${_escAgent(e.message)}</div>`;
   }
 }
 
@@ -876,15 +872,13 @@ async function loadDashboard() {
       const chartEl = document.getElementById('dash-chart');
       if (chartEl) {
         chartEl.innerHTML = `
-          <div class="section-title" style="margin-top:16px">
+          <div class="section-title mt-16">
             ${t('dash.elapsed_chart',{count:chart.length})}
-            <span style="font-size:10px;color:var(--muted);margin-left:8px">
+            <span class="fs-10 c-muted ml-8">
               ${t('dash.chart_legend')}
             </span>
           </div>
-          <div style="display:flex;align-items:flex-end;gap:2px;
-                      height:70px;padding:8px 20px;background:var(--bg);
-                      border-radius:6px;border:1px solid var(--border)">
+          <div class="d-flex items-end p-8-20 bg-bg br-6 bd-1 u-cc617d82">
             ${bars}
           </div>`;
       }
@@ -902,12 +896,11 @@ async function loadDashboard() {
           const elapsed = l.elapsed ? `${l.elapsed}s` : '';
           const q = (l.q || l.query || '').slice(0, 60);
           const ts = (l.ts || l.timestamp || '').slice(11, 19);
-          return `<div style="padding:4px 0;border-bottom:1px solid var(--border);
-                              font-size:12px;display:flex;gap:8px;align-items:center">
-            <span style="color:var(--muted);font-family:var(--font-mono);min-width:60px">${ts}</span>
+          return `<div class="fs-12 d-flex gap-8 items-center u-d6f8832c">
+            <span class="c-muted font-mono u-3b76ebd1">${ts}</span>
             <span>${blocked}</span>
-            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${q || '-'}</span>
-            <span style="color:var(--muted);font-family:var(--font-mono)">${elapsed}</span>
+            <span class="flex-1 ov-hidden u-65dccb4c">${q || '-'}</span>
+            <span class="c-muted font-mono">${elapsed}</span>
           </div>`;
         }).join('');
       }
@@ -979,10 +972,10 @@ async function loadUsers() {
           <tr>
             <td class="mono">${u.username}</td>
             <td class="mono">${u.created_at?.slice(0,10) || '-'}</td>
-            <td><select id="approve-role-${safeName}" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text)">${opts}</select></td>
+            <td><select class="bg-bg bd-1 c-text u-b5e73953" id="approve-role-${safeName}">${opts}</select></td>
             <td>
-              <button data-action="approve-user" data-username="${u.username}" style="padding:4px 10px;margin-right:4px;background:#1e7a3e;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.approve')}</button>
-              <button data-action="reject-user" data-username="${u.username}" style="padding:4px 10px;background:#7a1e1e;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.reject')}</button>
+              <button class="mr-4 bd-0 cursor-pointer u-50cd3bbf" data-action="approve-user" data-username="${u.username}">${t('users.approve')}</button>
+              <button class="bd-0 cursor-pointer u-0ff31430" data-action="reject-user" data-username="${u.username}">${t('users.reject')}</button>
             </td>
           </tr>`;
       }).join('') || `<tr><td colspan='4' class='empty'>${t('users.empty_pending')}</td></tr>`;
@@ -994,8 +987,8 @@ async function loadUsers() {
     const all = allData.users || [];
     tbody.innerHTML = all.map(u => {
       const status = u.active
-        ? `<span class="badge" style="background:#1e7a3e;color:#fff">${t('users.status_active')}</span>`
-        : `<span class="badge" style="background:#7a6b1e;color:#fff">${t('users.status_pending')}</span>`;
+        ? `<span class="badge u-b7672836">${t('users.status_active')}</span>`
+        : `<span class="badge u-b901c742">${t('users.status_pending')}</span>`;
       // Hide deactivate on:
       //   - the caller's own row (self-deactivation also rejected
       //     server-side; this is the UX nudge)
@@ -1006,14 +999,14 @@ async function loadUsers() {
       //   - deactivate (hidden on caller's own row, server enforces
       //     anyway with a 400)
       const tokenBtn = u.active
-        ? `<button data-action="issue-reset-token-for" data-username="${u.username}" style="padding:4px 10px;margin-right:4px;background:#1e5a7a;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.issue_token')}</button>`
+        ? `<button class="mr-4 bd-0 cursor-pointer u-8ead22a5" data-action="issue-reset-token-for" data-username="${u.username}">${t('users.issue_token')}</button>`
         : '';
       const deactivateBtn = (u.active && u.username !== selfUser)
-        ? `<button data-action="deactivate-user" data-username="${u.username}" style="padding:4px 10px;background:#444;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.deactivate')}</button>`
+        ? `<button class="bd-0 cursor-pointer u-f4bab274" data-action="deactivate-user" data-username="${u.username}">${t('users.deactivate')}</button>`
         : '';
       const action = (tokenBtn || deactivateBtn)
         ? `${tokenBtn}${deactivateBtn}`
-        : '<span style="color:var(--muted)">—</span>';
+        : '<span class="c-muted">—</span>';
       return `
         <tr>
           <td class="mono">${u.username}</td>
@@ -1052,15 +1045,15 @@ function _renderMyApiKeys(keys) {
   }
   body.innerHTML = keys.map(k => {
     const status = k.revoked
-      ? `<span class="badge" style="background:#7a1e1e;color:#fff">${t('users.mykey_revoked')}</span>`
-      : `<span class="badge" style="background:#1e7a3e;color:#fff">${t('users.status_active')}</span>`;
+      ? `<span class="badge u-e049a809">${t('users.mykey_revoked')}</span>`
+      : `<span class="badge u-b7672836">${t('users.status_active')}</span>`;
     const action = k.revoked
-      ? '<span style="color:var(--muted)">—</span>'
-      : `<button data-action="revoke-my-api-key" data-prefix="${k.key_prefix}" style="padding:4px 10px;background:#7a1e1e;color:#fff;border:0;border-radius:4px;cursor:pointer">${t('users.mykey_revoke')}</button>`;
+      ? '<span class="c-muted">—</span>'
+      : `<button class="bd-0 cursor-pointer u-0ff31430" data-action="revoke-my-api-key" data-prefix="${k.key_prefix}">${t('users.mykey_revoke')}</button>`;
     return `
       <tr>
         <td class="mono">${k.key_prefix}…</td>
-        <td>${k.label || '<span style="color:var(--muted)">—</span>'}</td>
+        <td>${k.label || '<span class="c-muted">—</span>'}</td>
         <td class="mono">${_fmtKeyTs(k.created_at)}</td>
         <td class="mono">${_fmtKeyTs(k.last_used_at)}</td>
         <td>${status}</td>
@@ -1166,8 +1159,8 @@ async function loadPolicy() {
     // Header — first cell is "기능", followed by one column per role,
     // last cell is the "기본값 복원" action.
     thead.innerHTML = `<th data-i18n="policy.col_feature">기능</th>` +
-      roles.map(r => `<th class="mono" style="text-align:center">${r}</th>`).join('') +
-      `<th style="text-align:center">${t('policy.col_action')}</th>`;
+      roles.map(r => `<th class="mono text-center">${r}</th>`).join('') +
+      `<th class="text-center">${t('policy.col_action')}</th>`;
 
     body.innerHTML = features.map(f => {
       const cells = roles.map(r => {
@@ -1175,27 +1168,27 @@ async function loadPolicy() {
         const isOverride = eff.source === 'override';
         // Border / dot indicates an override. Default cells render plain.
         const dot = isOverride
-          ? `<span title="${t('policy.override_label')}" style="display:inline-block;width:6px;height:6px;background:#f0a050;border-radius:50%;margin-left:5px;vertical-align:middle"></span>`
+          ? `<span class="d-inline-block va-middle u-67b29093" title="${t('policy.override_label')}"></span>`
           : '';
-        return `<td style="text-align:center">
-          <label style="display:inline-flex;align-items:center;gap:2px;cursor:pointer">
-            <input type="checkbox" ${eff.allowed ? 'checked' : ''}
+        return `<td class="text-center">
+          <label class="items-center cursor-pointer u-b57c4dbb">
+            <input class="cursor-pointer u-4df3ea2d" type="checkbox" ${eff.allowed ? 'checked' : ''}
                    data-change-action="policy-toggle"
                    data-feature-id="${f.id}" data-role="${r}"
-                   style="cursor:pointer;width:16px;height:16px;accent-color:#1e7a3e">
+                  >
             ${dot}
           </label>
         </td>`;
       }).join('');
       return `<tr>
         <td>
-          <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${f.id}</div>
-          <div style="font-size:12px;color:var(--text);margin-top:1px"><span data-i18n="${f.label_key || ''}">${f.description || ''}</span></div>
+          <div class="font-mono fs-11 c-muted">${f.id}</div>
+          <div class="fs-12 c-text u-0f6e6c09"><span data-i18n="${f.label_key || ''}">${f.description || ''}</span></div>
         </td>
         ${cells}
-        <td style="text-align:center">
-          <button data-action="reset-policy-feature" data-feature-id="${f.id}"
-                  style="padding:4px 8px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:11px;cursor:pointer">
+        <td class="text-center">
+          <button class="bg-transparent bd-1 c-muted fs-11 cursor-pointer u-b5e73953" data-action="reset-policy-feature" data-feature-id="${f.id}"
+                 >
             ${t('policy.reset_default')}
           </button>
         </td>
@@ -1504,8 +1497,8 @@ async function loadEntities() {
     // 테이블 — 행 클릭 → 상세
     const tbody = document.getElementById('entities-body');
     tbody.innerHTML = (data.entities || []).map(e => `
-      <tr style="cursor:pointer" data-action="open-entity-detail" data-entity-id="${escapeHtml(e.entity_id)}">
-        <td>${escapeHtml(e.name) || `<em style="color:var(--muted)">${e.entity_id}</em>`}</td>
+      <tr class="cursor-pointer" data-action="open-entity-detail" data-entity-id="${escapeHtml(e.entity_id)}">
+        <td>${escapeHtml(e.name) || `<em class="c-muted">${e.entity_id}</em>`}</td>
         <td class="mono">${e.entity_type}</td>
         <td><span class="badge-status">${e.sensitivity || '-'}</span></td>
         <td class="mono">${e.relation_count ?? 0}</td>
@@ -1556,13 +1549,11 @@ async function openEntityDetail(entityId) {
     if (relEl) {
       const rels = data.relations || [];
       if (rels.length === 0) {
-        relEl.innerHTML = `<div style="font-size:11px;color:var(--muted)">관계 정보 없음</div>`;
+        relEl.innerHTML = `<div class="fs-11 c-muted">관계 정보 없음</div>`;
       } else {
         relEl.innerHTML = `
           <div class="section-title">▸ 관계 (${rels.length})</div>
-          <div style="font-size:12px;font-family:var(--font-mono);
-                      max-height:120px;overflow-y:auto;background:var(--bg);
-                      padding:8px;border-radius:4px">
+          <div class="fs-12 font-mono ovy-auto bg-bg u-f3d75a59">
             ${rels.slice(0, 30).map(r =>
               `${escapeHtml(r.predicate || r.type || '?')} → ${escapeHtml(r.target || r.target_name || '?')}`
             ).join('<br>')}
@@ -1634,12 +1625,12 @@ async function loadFeedbackStats() {
   try {
     data = await api('/feedback/stats/');
   } catch (e) {
-    root.innerHTML = `<div style="color:var(--danger);font-size:12px">
+    root.innerHTML = `<div class="c-danger fs-12">
       ${_escHtml(String(e.message || e))}</div>`;
     return;
   }
   if (data && data.error) {
-    root.innerHTML = `<div style="color:var(--danger);font-size:12px">
+    root.innerHTML = `<div class="c-danger fs-12">
       ${_escHtml(String(data.error))}</div>`;
     return;
   }
@@ -1656,34 +1647,34 @@ async function loadFeedbackStats() {
 
   root.innerHTML = `
     <div>
-      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px">
+      <div class="c-muted fs-11 u-31664877">
         <span data-i18n="mem.feedback_total">Total signals</span>
       </div>
-      <div style="color:var(--text);font-size:18px;font-weight:600;margin-top:2px">${total}</div>
+      <div class="c-text fw-600 u-20957c52">${total}</div>
     </div>
     <div>
-      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px">
+      <div class="c-muted fs-11 u-31664877">
         <span data-i18n="mem.feedback_positive">Positive</span>
       </div>
-      <div style="color:var(--success);font-size:18px;font-weight:600;margin-top:2px">${pos}</div>
+      <div class="fw-600 u-7b5f0231">${pos}</div>
     </div>
     <div>
-      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px">
+      <div class="c-muted fs-11 u-31664877">
         <span data-i18n="mem.feedback_negative">Negative</span>
       </div>
-      <div style="color:var(--danger);font-size:18px;font-weight:600;margin-top:2px">${neg}</div>
+      <div class="c-danger fw-600 u-20957c52">${neg}</div>
     </div>
     <div>
-      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px">
+      <div class="c-muted fs-11 u-31664877">
         <span data-i18n="mem.feedback_ratio">Positive ratio</span>
       </div>
-      <div style="color:var(--accent);font-size:18px;font-weight:600;margin-top:2px">${_escHtml(ratioLabel)}</div>
+      <div class="c-accent fw-600 u-20957c52">${_escHtml(ratioLabel)}</div>
     </div>
     <div>
-      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px">
+      <div class="c-muted fs-11 u-31664877">
         <span data-i18n="mem.feedback_tracked">Tracked directions</span>
       </div>
-      <div style="color:var(--text);font-size:18px;font-weight:600;margin-top:2px">${dirs}</div>
+      <div class="c-text fw-600 u-20957c52">${dirs}</div>
     </div>`;
   if (typeof applyTranslations === 'function') applyTranslations();
 }
@@ -1699,12 +1690,12 @@ async function loadLongTerm() {
       const attrs = sid
         ? `data-action="open-session-turns" data-sid="${escapeHtml(sid)}" data-title="${escapeHtml((s.topic || '').slice(0, 40))}" style="cursor:pointer"`
         : '';
-      const hint   = sid ? '' : ' <em style="color:var(--muted);font-size:10px">(no session_id)</em>';
+      const hint   = sid ? '' : ' <em class="c-muted fs-10">(no session_id)</em>';
       return `
         <tr ${attrs}>
           <td class="mono">${s.saved_at?.slice(0,10) || '-'}</td>
           <td>${escapeHtml(s.topic || '-')}${hint}</td>
-          <td style="max-width:400px;font-size:12px">${escapeHtml((s.summary || '').slice(0,120) || '-')}</td>
+          <td class="fs-12 u-88efe206">${escapeHtml((s.summary || '').slice(0,120) || '-')}</td>
           <td>${sid ? '펼침' : '-'}</td>
         </tr>
       `;
@@ -1729,14 +1720,14 @@ async function loadSessions() {
         : '';
       return `
         <tr>
-          <td class="mono" style="font-size:10px" ${expandable}>${escapeHtml(sid.slice(0,20)) || '-'}</td>
+          <td class="mono fs-10" ${expandable}>${escapeHtml(sid.slice(0,20)) || '-'}</td>
           <td class="mono" ${expandable}>${s.turn_count ?? 0} turns</td>
           <td class="mono">${s.started?.slice(0,16) || '-'}</td>
           <td class="mono">${s.last?.slice(0,16) || '-'}</td>
           <td>
-            <button class="btn" style="font-size:10px;background:rgba(240,98,146,.10);border:1px solid var(--red,#f06292);color:var(--red,#f06292);margin-right:4px"
+            <button class="btn fs-10 mr-4 u-ca89036b"
               data-action="delete-session-only" data-sid="${escapeHtml(sid)}" data-i18n='mem.delete_only'>Delete</button>
-            <button class="btn btn-approve" style="font-size:10px"
+            <button class="btn btn-approve fs-10"
               data-action="summarize-and-delete" data-sid="${escapeHtml(sid)}" data-i18n='mem.summarize_delete'>Summarize & Delete</button>
           </td>
         </tr>
@@ -1765,7 +1756,7 @@ async function openSessionTurns(sessionId, label) {
     const turns = data.turns || [];
     if (metaEl) metaEl.textContent = `session_id=${sessionId} · ${turns.length} 턴`;
     if (turns.length === 0) {
-      bodyEl.innerHTML = `<div style="color:var(--muted);text-align:center;padding:20px">이 세션에 저장된 턴이 없습니다.</div>`;
+      bodyEl.innerHTML = `<div class="c-muted text-center p-20">이 세션에 저장된 턴이 없습니다.</div>`;
       return;
     }
     bodyEl.innerHTML = turns.map(turn => {
@@ -1778,18 +1769,17 @@ async function openSessionTurns(sessionId, label) {
                     background:${isUser ? 'rgba(124,106,247,.10)' : 'var(--bg)'};
                     border-left:3px solid ${isUser ? '#7c6af7' : '#3da78a'};
                     padding:10px 12px;border-radius:4px">
-          <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono);
-                      display:flex;justify-content:space-between">
+          <div class="fs-10 c-muted font-mono d-flex justify-between">
             <span>${isUser ? 'user' : 'james'}${turn.mode ? ' · mode=' + escapeHtml(turn.mode) : ''}</span>
             <span>${escapeHtml(tsShort)}</span>
           </div>
-          <div style="white-space:pre-wrap;font-size:13px">${escapeHtml(text)}</div>
+          <div class="ws-pre-wrap fs-13">${escapeHtml(text)}</div>
         </div>
       `;
     }).join('');
   } catch (e) {
     if (metaEl) metaEl.textContent = '';
-    bodyEl.innerHTML = `<div style="color:var(--red,#f06292);text-align:center;padding:20px">로드 실패: ${escapeHtml(e.message)}</div>`;
+    bodyEl.innerHTML = `<div class="text-center p-20 u-74e0942c">로드 실패: ${escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -1991,15 +1981,15 @@ async function loadAudit() {
         || /fail|rejected|blocked|denied|invalid/i.test(ev);
       const evCell = ev
         ? `<span style="${isBlock ? 'color:#d97a7a' : 'color:var(--text)'}">${_auditEscapeHtml(ev)}</span>`
-        : '<span style="color:var(--muted)">—</span>';
+        : '<span class="c-muted">—</span>';
       return `
         <tr>
-          <td class="mono" style="font-size:11px;white-space:nowrap">${_auditEscapeHtml((it.timestamp || '').slice(0, 19))}</td>
-          <td class="mono" style="font-size:11px">${_auditEscapeHtml(it.endpoint || '')}</td>
+          <td class="mono fs-11 u-4ddbe905">${_auditEscapeHtml((it.timestamp || '').slice(0, 19))}</td>
+          <td class="mono fs-11">${_auditEscapeHtml(it.endpoint || '')}</td>
           <td><span class="badge-role role-${_auditEscapeHtml(it.user_role || '')}">${_auditEscapeHtml(it.user_role || '')}</span></td>
           <td>${evCell}</td>
-          <td class="mono" style="font-size:11px">${_auditEscapeHtml(it.query || '')}</td>
-          <td class="mono" style="font-size:11px;color:var(--muted)">${_auditEscapeHtml(it.ip_address || '')}</td>
+          <td class="mono fs-11">${_auditEscapeHtml(it.query || '')}</td>
+          <td class="mono fs-11 c-muted">${_auditEscapeHtml(it.ip_address || '')}</td>
         </tr>`;
     }).join('') || `<tr><td colspan='6' class='empty'>${t('audit.empty')}</td></tr>`;
   } catch (e) {
@@ -2039,19 +2029,19 @@ async function loadUploads(resetOffset = true) {
     const total = data.total || 0;
 
     if (items.length === 0) {
-      tbody.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:var(--muted)">
+      tbody.innerHTML = `<div class="empty text-center c-muted u-35a11d6a">
         ${q ? `'${_escHtml(q)}' 검색 결과 없음` : '업로드 이력 없음'}
       </div>`;
     } else {
       tbody.innerHTML = `
-        <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <table class="w-full fs-13 u-be09ba81">
           <thead>
-            <tr style="background:var(--surface-2);text-align:left">
-              <th style="padding:10px 14px;color:var(--muted);font-weight:600">시간</th>
-              <th style="padding:10px 14px;color:var(--muted);font-weight:600">파일명</th>
-              <th style="padding:10px 14px;color:var(--muted);font-weight:600">역할</th>
-              <th style="padding:10px 14px;color:var(--muted);font-weight:600">IP</th>
-              <th style="padding:10px 14px;color:var(--muted);font-weight:600">상태</th>
+            <tr class="bg-surface-2 u-200a92a0">
+              <th class="p-10-14 c-muted fw-600">시간</th>
+              <th class="p-10-14 c-muted fw-600">파일명</th>
+              <th class="p-10-14 c-muted fw-600">역할</th>
+              <th class="p-10-14 c-muted fw-600">IP</th>
+              <th class="p-10-14 c-muted fw-600">상태</th>
             </tr>
           </thead>
           <tbody>
@@ -2059,20 +2049,16 @@ async function loadUploads(resetOffset = true) {
               const ts = (it.timestamp || '').slice(0, 19).replace('T', ' ');
               const blocked = it.blocked;
               const statusBadge = blocked
-                ? `<span style="background:#fee;color:#c00;padding:2px 8px;
-                    border-radius:4px;font-size:11px;font-weight:600">차단</span>`
-                : `<span style="background:#efe;color:#080;padding:2px 8px;
-                    border-radius:4px;font-size:11px;font-weight:600">성공</span>`;
+                ? `<span class="fs-11 fw-600 u-b0960a1c">차단</span>`
+                : `<span class="fs-11 fw-600 u-e08d89f4">성공</span>`;
               const sevTitle = it.security_event
                 ? ` title="${_escHtml(it.security_event)}"` : '';
-              return `<tr style="border-top:1px solid var(--border)"${sevTitle}>
-                <td style="padding:10px 14px;font-family:var(--font-mono);
-                           font-size:11px;color:var(--muted)">${_escHtml(ts)}</td>
-                <td style="padding:10px 14px">${_escHtml(it.filename)}</td>
-                <td style="padding:10px 14px;font-size:12px">${_escHtml(it.user_role)}</td>
-                <td style="padding:10px 14px;font-family:var(--font-mono);
-                           font-size:11px;color:var(--muted)">${_escHtml(it.ip_address)}</td>
-                <td style="padding:10px 14px">${statusBadge}</td>
+              return `<tr class="u-accfabec"${sevTitle}>
+                <td class="p-10-14 font-mono fs-11 c-muted">${_escHtml(ts)}</td>
+                <td class="p-10-14">${_escHtml(it.filename)}</td>
+                <td class="p-10-14 fs-12">${_escHtml(it.user_role)}</td>
+                <td class="p-10-14 font-mono fs-11 c-muted">${_escHtml(it.ip_address)}</td>
+                <td class="p-10-14">${statusBadge}</td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -2105,7 +2091,7 @@ async function loadUploads(resetOffset = true) {
         </button>`;
     }
   } catch (e) {
-    tbody.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:#c00">
+    tbody.innerHTML = `<div class="empty text-center u-890c13e6">
       로딩 실패: ${_escHtml(e.message)}
     </div>`;
   }
@@ -2170,14 +2156,14 @@ async function loadFiles() {
     // in the tree even though the bucket actually had files.
     const data = await api(`/admin/files/tree?root=${encodeURIComponent(root)}&max_depth=5`);
     if (!data.exists) {
-      container.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:var(--muted)">
+      container.innerHTML = `<div class="empty text-center c-muted u-35a11d6a">
         '${_escHtml(root)}' 디렉토리 없음 (아직 생성 안 됨)
       </div>`;
       return;
     }
     const children = data.children || [];
     if (children.length === 0) {
-      container.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:var(--muted)">
+      container.innerHTML = `<div class="empty text-center c-muted u-35a11d6a">
         비어 있음
       </div>`;
       if (info) info.textContent = `root=${root} · 0 entries`;
@@ -2186,7 +2172,7 @@ async function loadFiles() {
     container.innerHTML = _renderTree(children, '', root);
     if (info) info.textContent = `root=${root} · ${children.length} top-level entries`;
   } catch (e) {
-    container.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:#c00">
+    container.innerHTML = `<div class="empty text-center u-890c13e6">
       트리 로드 실패: ${_escHtml(e.message)}
     </div>`;
   }
@@ -2225,28 +2211,16 @@ function _ensureFileViewModal() {
     'z-index:9000;backdrop-filter:blur(2px)'
   );
   overlay.innerHTML = `
-    <div style="background:var(--bg-1);border:1px solid var(--border-2);
-                border-radius:8px;max-width:min(900px,90vw);
-                max-height:85vh;display:flex;flex-direction:column;
-                box-shadow:0 8px 32px rgba(0,0,0,0.5)">
-      <div style="display:flex;align-items:center;gap:12px;
-                  padding:12px 16px;border-bottom:1px solid var(--border-2)">
+    <div class="br-8 d-flex flex-col u-e729a61a">
+      <div class="d-flex items-center u-fbe94ef8">
         
-        <span id="file-view-name" style="flex:1;font-weight:600;
-              font-family:var(--font-mono);font-size:13px;
-              color:var(--accent-fg);word-break:break-all"></span>
-        <span id="file-view-meta" style="color:var(--muted);
-              font-size:11px"></span>
-        <button type="button" data-action="close-file-view"
-                style="background:none;border:none;color:var(--muted);
-                       cursor:pointer;font-size:18px;padding:0 4px"
+        <span class="flex-1 fw-600 font-mono fs-13 c-accent-fg wb-all" id="file-view-name"></span>
+        <span class="c-muted fs-11" id="file-view-meta"></span>
+        <button class="bd-none c-muted cursor-pointer u-646de506" type="button" data-action="close-file-view"
+               
                 title="닫기 (Esc)">✕</button>
       </div>
-      <pre id="file-view-body" style="margin:0;padding:14px 16px;
-           overflow:auto;flex:1;font-family:var(--font-mono);
-           font-size:12px;line-height:1.5;color:var(--fg-1);
-           white-space:pre-wrap;word-break:break-word;
-           background:var(--bg-2)"></pre>
+      <pre class="m-0 ov-auto flex-1 font-mono fs-12 lh-15 ws-pre-wrap wb-word u-4d0151d9" id="file-view-body"></pre>
     </div>
   `;
   overlay.addEventListener('click', (e) => {
@@ -2325,20 +2299,19 @@ async function downloadFile(root, path, name) {
 
 function _renderTree(nodes, parentPath, root) {
   if (!nodes || !nodes.length) return '';
-  let html = '<ul style="list-style:none;padding-left:0;margin:0">';
+  let html = '<ul class="m-0 u-c2647b7a">';
   for (const n of nodes) {
     const fullRel = parentPath ? `${parentPath}/${n.name}` : n.name;
     if (n.type === 'dir') {
       const childHtml = (n.children && n.children.length)
         ? _renderTree(n.children, fullRel, root)
-        : '<div style="padding:4px 0 4px 18px;color:var(--muted);font-size:11px">(empty)</div>';
-      html += `<li style="margin:2px 0">
-        <details style="padding-left:12px;border-left:1px dashed var(--border-2)">
-          <summary style="cursor:pointer;color:var(--accent-fg);
-                          padding:3px 6px;border-radius:4px">
+        : '<div class="c-muted fs-11 u-d9d66a98">(empty)</div>';
+      html += `<li class="u-511ac2fa">
+        <details class="u-4960344c">
+          <summary class="cursor-pointer c-accent-fg u-5a561387">
             ${_escHtml(n.name)}/
           </summary>
-          <div style="padding-left:14px;margin-top:2px">${childHtml}</div>
+          <div class="u-ceda86b5">${childHtml}</div>
         </details>
       </li>`;
     } else {
@@ -2346,28 +2319,24 @@ function _renderTree(nodes, parentPath, root) {
       const canDownload = _DOWNLOAD_OK_EXTS.has(ext);
       const canView     = _VIEW_OK_EXTS.has(ext);
       const viewBtn = canView
-        ? `<button type="button" data-action="open-file-view"
+        ? `<button class="bd-none c-accent-fg cursor-pointer fs-13 ml-8 u-3d4b0f59" type="button" data-action="open-file-view"
               data-root="${_escHtml(root)}"
               data-path="${_escHtml(fullRel)}"
               data-name="${_escHtml(n.name)}"
-              style="background:none;border:none;color:var(--accent-fg);
-                     cursor:pointer;font-size:13px;padding:0;margin-left:8px"
+             
               title="열기">열기</button>`
         : '';
       const dlBtn = canDownload
-        ? `<button type="button" data-action="download-file"
+        ? `<button class="bd-none c-accent-fg cursor-pointer fs-13 ml-6 u-3d4b0f59" type="button" data-action="download-file"
               data-root="${_escHtml(root)}"
               data-path="${_escHtml(fullRel)}"
               data-name="${_escHtml(n.name)}"
-              style="background:none;border:none;color:var(--accent-fg);
-                     cursor:pointer;font-size:13px;padding:0;margin-left:6px"
+             
               title="다운로드">받기</button>`
         : '';
-      html += `<li style="margin:2px 0;padding:3px 6px 3px 18px;
-                          border-left:1px dashed var(--border-2);
-                          display:flex;align-items:center;gap:6px">
+      html += `<li class="d-flex items-center gap-6 u-07bf82f0">
         <span>${_escHtml(n.name)}</span>
-        <span style="color:var(--muted);font-size:11px;flex:1">
+        <span class="c-muted fs-11 flex-1">
           ${_humanSize(n.size)} · ${_humanMtime(n.mtime)}
         </span>${viewBtn}${dlBtn}
       </li>`;
@@ -2392,41 +2361,36 @@ async function searchFiles() {
     const data = await api(`/admin/files/search?root=${encodeURIComponent(root)}&q=${encodeURIComponent(q)}&limit=200`);
     const matches = data.matches || [];
     if (matches.length === 0) {
-      container.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:var(--muted)">
+      container.innerHTML = `<div class="empty text-center c-muted u-35a11d6a">
         '${_escHtml(q)}' 일치 없음 (root=${_escHtml(root)})
       </div>`;
       if (info) info.textContent = `'${q}' · 0 matches`;
       return;
     }
-    let html = '<ul style="list-style:none;padding-left:0;margin:0">';
+    let html = '<ul class="m-0 u-c2647b7a">';
     for (const m of matches) {
       const ext = (m.name.split('.').pop() || '').toLowerCase();
       const canDownload = _DOWNLOAD_OK_EXTS.has(ext);
       const canView     = _VIEW_OK_EXTS.has(ext);
       const viewBtn = canView
-        ? `<button type="button" data-action="open-file-view"
+        ? `<button class="bd-none c-accent-fg cursor-pointer fs-13 ml-8 u-3d4b0f59" type="button" data-action="open-file-view"
               data-root="${_escHtml(root)}"
               data-path="${_escHtml(m.path)}"
               data-name="${_escHtml(m.name)}"
-              style="background:none;border:none;color:var(--accent-fg);
-                     cursor:pointer;font-size:13px;padding:0;margin-left:8px"
+             
               title="열기">열기</button>`
         : '';
       const dlBtn = canDownload
-        ? `<button type="button" data-action="download-file"
+        ? `<button class="bd-none c-accent-fg cursor-pointer fs-13 ml-6 u-3d4b0f59" type="button" data-action="download-file"
               data-root="${_escHtml(root)}"
               data-path="${_escHtml(m.path)}"
               data-name="${_escHtml(m.name)}"
-              style="background:none;border:none;color:var(--accent-fg);
-                     cursor:pointer;font-size:13px;padding:0;margin-left:6px"
+             
               title="다운로드">받기</button>`
         : '';
-      html += `<li style="margin:3px 0;padding:6px 8px;
-                          border-bottom:1px dotted var(--border-2);
-                          display:flex;align-items:center;gap:8px">
-        <span style="color:var(--muted);font-size:11px;
-                     font-family:var(--font-mono);flex-shrink:0">${_escHtml(m.path)}</span>
-        <span style="color:var(--muted);font-size:11px;flex:1;text-align:right">
+      html += `<li class="d-flex items-center gap-8 u-d6f461d2">
+        <span class="c-muted fs-11 font-mono u-5cd105e1">${_escHtml(m.path)}</span>
+        <span class="c-muted fs-11 flex-1 u-f6e3d7fe">
           ${_humanSize(m.size)} · ${_humanMtime(m.mtime)}
         </span>${viewBtn}${dlBtn}
       </li>`;
@@ -2436,7 +2400,7 @@ async function searchFiles() {
     const truncMsg = data.truncated ? ` (limit ${matches.length}; refine query)` : '';
     if (info) info.textContent = `'${q}' · ${matches.length} matches${truncMsg}`;
   } catch (e) {
-    container.innerHTML = `<div class="empty" style="padding:30px;text-align:center;color:#c00">
+    container.innerHTML = `<div class="empty text-center u-890c13e6">
       검색 실패: ${_escHtml(e.message)}
     </div>`;
   }
@@ -2471,13 +2435,12 @@ function buildProtectedCheckboxes(currentProtected = []) {
       : (Array.isArray(currentProtected) ? currentProtected : [])
   );
   container.innerHTML = PROTECTED_CANDIDATES.map(c => `
-    <label style="display:flex;align-items:center;gap:8px;
-                  cursor:pointer;font-size:13px;padding:3px 0">
-      <input type="checkbox" class="protected-chk" value="${c.file}"
+    <label class="d-flex items-center gap-8 cursor-pointer fs-13 u-2dab903f">
+      <input type="checkbox" class="protected-chk accent-accent u-12da9e4d" value="${c.file}"
              ${checked.has(c.file) || (checked.size === 0 && c.default) ? 'checked' : ''}
-             style="accent-color:var(--accent);width:14px;height:14px">
+            >
       <span data-i18n="${c.label_key}">${c.label}</span>
-      <span style="font-size:10px;color:var(--muted);font-family:var(--font-mono)">${c.file}</span>
+      <span class="fs-10 c-muted font-mono">${c.file}</span>
     </label>
   `).join('');
   // Re-translate the just-rendered nodes so the freshly-injected
@@ -2592,13 +2555,13 @@ async function loadLlmSelections() {
     installed  = (instRes && instRes.models) || [];
     selections = (selRes  && selRes.selections) || {};
   } catch (e) {
-    root.innerHTML = `<div style="color:var(--danger);font-size:12px">
+    root.innerHTML = `<div class="c-danger fs-12">
       Failed to load LLM selections: ${_escHtml(String(e.message || e))}</div>`;
     return;
   }
 
   if (!installed.length) {
-    root.innerHTML = `<div style="color:var(--muted);font-size:12px">
+    root.innerHTML = `<div class="c-muted fs-12">
       ${_escHtml(t('set.llm_no_models')
         || 'No models installed yet. Use the first-run wizard or "ollama pull <model>".')}
     </div>`;
@@ -2618,12 +2581,12 @@ async function loadLlmSelections() {
       }),
     ].join('');
     return `
-      <div class="setting-row" style="padding: 6px 0;">
+      <div class="setting-row u-716b3db7">
         <div>
           <div class="setting-label">
             <span data-i18n="${_escHtml(taskT.label_key)}">${_escHtml(taskT.label_default)}</span>
           </div>
-          <div class="setting-sub" style="font-family:var(--font-mono);font-size:11px">
+          <div class="setting-sub font-mono fs-11">
             task_type=${_escHtml(taskT.key)} · ${
               current
                 ? `current: ${_escHtml(current)}`
@@ -2631,10 +2594,10 @@ async function loadLlmSelections() {
             }
           </div>
         </div>
-        <select class="setting-value llm-task-select"
+        <select class="setting-value llm-task-select cursor-pointer minw-260"
                 data-task-key="${_escHtml(taskT.key)}"
                 data-task-initial="${_escHtml(current)}"
-                style="cursor:pointer; min-width: 260px">
+               >
           ${options}
         </select>
       </div>`;
@@ -2739,13 +2702,13 @@ async function loadCognitiveFlags() {
   try {
     data = await api('/admin/settings/cognitive');
   } catch (e) {
-    root.innerHTML = `<div style="color:var(--danger);font-size:12px">
+    root.innerHTML = `<div class="c-danger fs-12">
       Failed to load cognitive flags: ${_escHtml(String(e.message || e))}</div>`;
     return;
   }
   const flags = (data && data.flags) || [];
   if (!flags.length) {
-    root.innerHTML = `<div style="color:var(--muted);font-size:12px"
+    root.innerHTML = `<div class="c-muted fs-12"
       data-i18n="common.empty">No data</div>`;
     return;
   }
@@ -2754,23 +2717,23 @@ async function loadCognitiveFlags() {
     const id  = `cog-flag-${_escHtml(f.key)}`;
     const def = f.default ? 'ON' : 'OFF';
     return `
-      <div class="setting-row" style="padding: 6px 0;">
+      <div class="setting-row u-716b3db7">
         <div>
           <div class="setting-label">
-            <label for="${id}" style="cursor:pointer">
+            <label class="cursor-pointer" for="${id}">
               <span data-i18n="${_escHtml(f.label_key || '')}">${_escHtml(f.label)}</span>
             </label>
           </div>
-          <div class="setting-sub" style="font-family:var(--font-mono);font-size:11px">
+          <div class="setting-sub font-mono fs-11">
             ${_escHtml(f.env)} · default ${def} · ${_escHtml(f.module)}
           </div>
         </div>
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <label class="d-flex items-center gap-8 cursor-pointer">
           <input type="checkbox" id="${id}"
                  class="cognitive-flag-checkbox"
                  data-flag-key="${_escHtml(f.key)}"
                  ${f.on ? 'checked' : ''}>
-          <span style="font-size:11px;color:var(--muted);min-width:32px;display:inline-block">
+          <span class="fs-11 c-muted d-inline-block u-acd4aa44">
             ${f.on ? 'ON' : 'OFF'}
           </span>
         </label>
@@ -3031,27 +2994,26 @@ async function loadProposals() {
                          p.metadata?.auto_action === 'web_learn';
       const topic = p.metadata?.topic || '';
       const actionBtns = isWebLearn
-        ? `<button class="btn btn-approve" style="font-size:10px;background:#4fc3f7"
+        ? `<button class="btn btn-approve fs-10 u-da43aeb1"
              data-action="execute-web-learn-proposal"
              data-proposal-id="${p.proposal_id}" data-topic="${escAdm(topic)}">
              ${t('prop.web_search')}
            </button>
-           <button class="btn btn-reject" style="font-size:10px"
+           <button class="btn btn-reject fs-10"
              data-action="reject-proposal-by-id" data-proposal-id="${p.proposal_id}">❌ Reject</button>`
-        : `<button class="btn btn-approve" style="font-size:10px"
+        : `<button class="btn btn-approve fs-10"
              data-action="approve-proposal" data-proposal-id="${p.proposal_id}">✅ Approve</button>
-           <button class="btn btn-reject" style="font-size:10px"
+           <button class="btn btn-reject fs-10"
              data-action="reject-proposal-by-id" data-proposal-id="${p.proposal_id}">❌ Reject</button>`;
 
       return `<tr>
-        <td><span class="mono" style="font-size:10px">${p.type}</span></td>
+        <td><span class="mono fs-10">${p.type}</span></td>
         <td><span style="color:${riskColor[p.risk]||'var(--muted)'}">
           ${p.risk?.toUpperCase() || '-'}</span></td>
-        <td style="max-width:320px;font-size:12px">${p.title}</td>
+        <td class="fs-12 u-f758c5d0">${p.title}</td>
         <td class="mono">${p.created_at?.slice(0,16) || '-'}</td>
-        <td style="display:flex;gap:4px;flex-wrap:wrap">
-          <button class="btn" style="font-size:10px;background:var(--surface);
-            border:1px solid var(--border);color:var(--text)"
+        <td class="d-flex gap-4 flex-wrap">
+          <button class="btn fs-10 bg-surface bd-1 c-text"
             data-action="show-proposal-detail"
             data-proposal-id="${p.proposal_id}">
             ${t('prop.detail')}
@@ -3189,7 +3151,7 @@ async function loadEvoReports() {
           <tr>
             <td class="mono">${r.executed_at?.slice(0,16) || '-'}</td>
             <td class="mono">${r.type || '-'}</td>
-            <td style="font-size:12px">${r.title || '-'}</td>
+            <td class="fs-12">${r.title || '-'}</td>
             <td style="color:${r.success ? 'var(--success)' : 'var(--danger)'}">
               ${r.success ? '✅ Success' : '❌ Failed'}: ${(r.message||'').slice(0,40)}</td>
             <td class="mono">${r.elapsed_sec ?? '-'}s</td>
@@ -3251,7 +3213,7 @@ async function loadPerfHistory() {
         <td class="mono">${h.total_score?.toFixed(1)||'-'}/100</td>
         <td class="mono">${((h.metrics?.avg_retrieval_score||0)*100).toFixed(0)}%</td>
         <td class="mono">${h.metrics?.avg_response_sec?.toFixed(1)||'-'}s</td>
-        <td style="font-size:11px;color:var(--warn)">
+        <td class="fs-11 u-f95e7372">
           ${(h.issues||[]).slice(0,2).join(' / ')||'-'}</td>
       </tr>`).join('')
       || `<tr><td colspan='6' class='empty'>${t('perf.no_history')}</td></tr>`;
@@ -3284,12 +3246,12 @@ async function loadLearning() {
     const tbody = document.getElementById('error-queries-body');
     tbody.innerHTML = (data.error_queries || []).map(q => `
       <tr>
-        <td style="font-size:12px">${q.query?.slice(0,50)||'-'}</td>
+        <td class="fs-12">${q.query?.slice(0,50)||'-'}</td>
         <td class="mono">${q.count} times</td>
         <td class="mono">${(q.avg_score*100).toFixed(0)}%</td>
         <td class="mono">${q.last?.slice(0,10)||'-'}</td>
         <td>
-          <button class="btn btn-approve" style="font-size:10px"
+          <button class="btn btn-approve fs-10"
             data-action="learn-single-topic" data-query="${escapeHtml(q.query || '')}">
             Learn</button>
         </td>
@@ -3319,13 +3281,13 @@ async function webLearnTopic() {
   if (result) {
     result.style.display = 'block';
     result.innerHTML = `
-      <div style="color:var(--muted)">
+      <div class="c-muted">
         ${t('learn.web_step1')}<br>
         ${t('learn.web_step2')}<br>
         ${t('learn.web_step3')}<br>
         ${t('learn.web_step4')}
       </div>
-      <div style="color:var(--muted);font-size:11px;margin-top:6px">
+      <div class="c-muted fs-11 mt-6">
         (20-40s)
       </div>`;
   }
@@ -3337,30 +3299,26 @@ async function webLearnTopic() {
 
     if (r.success) {
       const sourceLinks = (r.sources||[])
-        .map(u => `<a href="${u}" target="_blank"
-          style="color:var(--accent);font-size:10px;word-break:break-all">${u.slice(0,60)}</a>`)
+        .map(u => `<a class="c-accent fs-10 wb-all" href="${u}" target="_blank"
+         >${u.slice(0,60)}</a>`)
         .join('<br>');
 
       const domainBadge = r.domain
-        ? `<span style="background:var(--accent);color:var(--on-accent);border-radius:4px;
-                        padding:2px 8px;font-size:10px">${r.domain}</span>`
+        ? `<span class="bg-accent c-on-accent fs-10 u-4c23b32f">${r.domain}</span>`
         : '';
 
       const fetchedNote = r.fetched_urls > 0
-        ? `<span style="color:#4caf7d;font-size:10px">
+        ? `<span class="fs-10 u-2ea04eea">
              ✅ ${r.fetched_urls} URL(s) fetched</span>`
-        : `<span style="color:var(--muted);font-size:10px">
+        : `<span class="c-muted fs-10">
              ${t('learn.web_no_url')}</span>`;
 
       result.innerHTML = `
-        <div style="color:#4caf7d;font-weight:700;margin-bottom:8px;
-                    display:flex;align-items:center;gap:8px">
+        <div class="fw-700 mb-8 d-flex items-center gap-8 u-2ea04eea">
           ${t('learn.web_done')}  ${domainBadge}
         </div>
-        <div style="background:var(--bg);border-radius:6px;padding:10px;
-                    margin-bottom:8px;font-size:12px;line-height:1.7;
-                    white-space:pre-wrap">${r.knowledge || ''}</div>
-        <div style="font-size:11px;color:var(--muted)">
+        <div class="bg-bg br-6 p-10 mb-8 fs-12 ws-pre-wrap u-43ff79ff">${r.knowledge || ''}</div>
+        <div class="fs-11 c-muted">
           wiki: ${r.wiki_path ? r.wiki_path.split(/[\\/]/).pop() : '-'}<br>
           ${fetchedNote}<br>
           Sources (${(r.sources||[]).length}):<br>
@@ -3371,11 +3329,11 @@ async function webLearnTopic() {
       setTimeout(() => loadKnowledge(), 1000);
       if (input) input.value = '';
     } else {
-      result.innerHTML = `<span style="color:var(--warn)">⚠️ ${r.message}</span>`;
+      result.innerHTML = `<span class="u-f95e7372">⚠️ ${r.message}</span>`;
     }
   } catch(e) {
     if (result) result.innerHTML =
-      `<span style="color:var(--red)">❌ Failed: ${e.message}</span>`;
+      `<span class="u-e0936291">❌ Failed: ${e.message}</span>`;
   }
 }
 
@@ -3882,7 +3840,7 @@ function renderConnectionsPanel(tid) {
 
   let html = `<div class="char-conn-header">
                 ${escapeHtml(tr.icon)} ${escapeHtml(traitName)}
-                <span style="color:var(--muted);font-size:11px;font-weight:400">
+                <span class="c-muted fs-11 fw-400">
                   · ${Math.round(tr.value*100)}%</span>
               </div>`;
 
@@ -3951,7 +3909,7 @@ function renderConnectionsPanel(tid) {
 
   // 독립 성향 (어디에도 연결 없음)
   if (!oppTr && outEdges.length === 0 && inEdges.length === 0) {
-    html += `<div class="char-connections-empty" style="padding: 10px 0">
+    html += `<div class="char-connections-empty u-416c260c">
                ${escapeHtml(t('char.conn.indep_empty'))}
              </div>`;
   }
@@ -3982,23 +3940,21 @@ function renderTraitSliders(traits) {
   let html = '';
   Object.keys(byGroup).sort().forEach(g => {
     html += `<div class="trait-group">
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);
-                  letter-spacing:1px;margin:6px 0">
+      <div class="c-muted font-mono ls-1 u-8bb2948c">
         GROUP ${g} — ${escapeHtml(groups[g])}
       </div>`;
     byGroup[g].forEach(tr => {
       const pct = Math.round(tr.value * 100);
       html += `
-        <div class="trait-row" data-trait-id="${escapeHtml(tr.id)}"
-             style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-          <span style="width:22px;text-align:center">${escapeHtml(tr.icon)}</span>
-          <span style="width:90px;font-size:12px;color:var(--text)"${tr.label_key ? ` data-i18n="${escapeHtml(tr.label_key)}"` : ''}>${escapeHtml(tr.label_ko || tr.label)}</span>
-          <input type="range" min="0" max="100" value="${pct}"
+        <div class="trait-row d-flex items-center gap-10 mb-6" data-trait-id="${escapeHtml(tr.id)}"
+            >
+          <span class="text-center u-f1eb96f0">${escapeHtml(tr.icon)}</span>
+          <span class="fs-12 c-text u-c78f4943"${tr.label_key ? ` data-i18n="${escapeHtml(tr.label_key)}"` : ''}>${escapeHtml(tr.label_ko || tr.label)}</span>
+          <input class="flex-1 accent-accent" type="range" min="0" max="100" value="${pct}"
                  data-slider-id="${escapeHtml(tr.id)}"
-                 style="flex:1;accent-color:var(--accent)">
-          <span class="trait-pct" data-pct-id="${escapeHtml(tr.id)}"
-                style="width:36px;font-size:11px;font-family:var(--font-mono);
-                       color:var(--accent);text-align:right">${pct}%</span>
+                >
+          <span class="trait-pct fs-11 font-mono c-accent u-ccf56278" data-pct-id="${escapeHtml(tr.id)}"
+               >${pct}%</span>
         </div>`;
     });
     html += `</div>`;
@@ -4121,16 +4077,16 @@ function renderCapabilities(caps) {
   const el = document.getElementById('capability-bars');
   if (!el) return;
   el.innerHTML = caps.map(c => `
-    <div style="margin-bottom:14px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <span style="font-size:13px">${c.icon} <strong><span data-i18n="${c.label_key || ''}">${c.label}</span></strong></span>
-        <span style="font-size:12px;font-family:var(--font-mono);color:var(--accent)">${c.pct}%</span>
+    <div class="mb-14">
+      <div class="d-flex justify-between mb-4">
+        <span class="fs-13">${c.icon} <strong><span data-i18n="${c.label_key || ''}">${c.label}</span></strong></span>
+        <span class="fs-12 font-mono c-accent">${c.pct}%</span>
       </div>
-      <div style="background:var(--border);border-radius:4px;height:8px;overflow:hidden">
+      <div class="ov-hidden u-7b9f9868">
         <div style="width:${c.pct}%;height:100%;background:var(--accent);
           border-radius:4px;transition:width .5s ease"></div>
       </div>
-      <div style="font-size:10px;color:var(--muted);margin-top:3px"><span data-i18n="${c.desc_key || ''}">${c.desc}</span></div>
+      <div class="fs-10 c-muted u-1d1dc4d1"><span data-i18n="${c.desc_key || ''}">${c.desc}</span></div>
     </div>`).join('');
   // Re-translate freshly-injected data-i18n spans (matches the
   // loadCognitiveFlags / loadLlmSelections / buildProtectedCheckboxes
@@ -4169,10 +4125,8 @@ function _domainDonut(d) {
                    font-family:var(--font-mono, ui-monospace, monospace);
                    letter-spacing:-1px">${d.level}</text>
       <!-- "Lv" 레이블 -->
-      <text x="${cx}" y="${cy - 13}" text-anchor="middle"
-            style="font-size:8px;fill:var(--muted, #888);
-                   font-family:var(--font-mono, ui-monospace, monospace);
-                   letter-spacing:1px">LV</text>
+      <text class="ls-1 u-ceecb8ce" x="${cx}" y="${cy - 13}" text-anchor="middle"
+           >LV</text>
     </svg>
   `;
 }
@@ -4183,19 +4137,17 @@ function renderDomains(domains) {
   // [#2-C] 도넛 차트 그리드. 카드별 좌측 도넛 + 우측 메타데이터.
   // [#2-B] level cap 제거 — "/10" 표기 삭제. 큰 숫자는 도넛 중앙에서
   // 자동 fit (font-size 20px가 두 자리도 안전).
-  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">` +
+  el.innerHTML = `<div class="d-grid u-ad4b16a3">` +
     domains.map(d => `
-      <div style="background:var(--surface);border:1px solid var(--border);
-        border-radius:8px;padding:14px;display:flex;align-items:center;gap:14px">
+      <div class="bg-surface bd-1 br-8 d-flex items-center gap-14 u-6069bb57">
         <!-- 좌: 도넛 -->
-        <div style="flex-shrink:0">${_domainDonut(d)}</div>
+        <div class="u-5cd105e1">${_domainDonut(d)}</div>
         <!-- 우: 메타 -->
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;margin-bottom:6px">
+        <div class="flex-1 u-3f9f96c6">
+          <div class="fs-13 mb-6">
             ${d.icon} <strong><span data-i18n="${d.label_key || ''}">${d.label}</span></strong>
           </div>
-          <div style="font-size:10px;color:var(--muted);
-                      font-family:var(--font-mono);line-height:1.6">
+          <div class="fs-10 c-muted font-mono lh-16">
             <div><span data-i18n="growth.next_level">다음까지</span> <strong style="color:${d.color}">${d.tier_pct ?? d.pct}%</strong></div>
             <div>${d.wiki_count ?? 0} wiki · score ${d.score ?? 0}</div>
           </div>
@@ -4249,19 +4201,19 @@ async function loadHardware() {
         const roleDi = w.role_key ? ` data-i18n="${_escHtml(w.role_key)}"` : '';
         const descDi = w.desc_key ? ` data-i18n="${_escHtml(w.desc_key)}"` : '';
         return `
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-              <div style="font-size:28px">${w.icon||''}</div>
-              <div><div style="font-weight:700;font-size:15px"${nameDi}>${w.name||'?'}</div>
-                   <div style="font-size:10px;color:var(--muted)"${roleDi}>${w.role||key}</div></div>
+          <div class="bg-surface bd-1 p-16 u-9d329304">
+            <div class="d-flex items-center gap-10 mb-10">
+              <div class="u-2cbabd6c">${w.icon||''}</div>
+              <div><div class="fw-700 fs-15"${nameDi}>${w.name||'?'}</div>
+                   <div class="fs-10 c-muted"${roleDi}>${w.role||key}</div></div>
               <div style="margin-left:auto;font-size:26px;font-weight:900;color:${col};font-family:var(--font-mono)">
-                ${lv}<span style="font-size:11px;font-weight:400;color:var(--muted)">/10</span></div>
+                ${lv}<span class="fs-11 fw-400 c-muted">/10</span></div>
             </div>
-            <div style="background:var(--bg);border-radius:4px;height:6px;overflow:hidden;margin-bottom:8px">
+            <div class="bg-bg ov-hidden mb-8 u-28f00506">
               <div style="width:${Math.min(100,lv*10)}%;height:100%;background:${col};border-radius:4px;transition:width .8s;box-shadow:0 0 8px ${col}66"></div>
             </div>
-            <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:4px">${detail}</div>
-            <div style="font-size:11px;color:var(--text)"${descDi}>${w.desc||''}</div>
+            <div class="fs-11 c-muted font-mono mb-4">${detail}</div>
+            <div class="fs-11 c-text"${descDi}>${w.desc||''}</div>
           </div>`;
       }).join('');
       // Re-translate freshly-injected data-i18n spans so the active
@@ -4286,7 +4238,7 @@ async function loadHardware() {
 
   } catch(e) {
     const el = document.getElementById('hw-cards');
-    if (el) el.innerHTML = `<div style="color:var(--muted)">측정 실패: ${e.message}</div>`;
+    if (el) el.innerHTML = `<div class="c-muted">측정 실패: ${e.message}</div>`;
   }
 }
 
@@ -4318,13 +4270,13 @@ async function loadLLMRecommend() {
       return `<div style="display:flex;align-items:center;gap:12px;padding:10px;
                            margin-bottom:8px;border-radius:8px;
                            background:${cardBg};border:1px solid var(--border)">
-        <div style="flex:1">
-          <div style="font-weight:700;font-size:13px">${m.name}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">
+        <div class="flex-1">
+          <div class="fw-700 fs-13">${m.name}</div>
+          <div class="fs-11 c-muted u-f005b881">
             ${purposes} ${m.desc}
           </div>
         </div>
-        <div style="font-size:11px;color:var(--muted);text-align:right;min-width:60px">
+        <div class="fs-11 c-muted u-a94d207d">
           ${m.size_gb}GB
         </div>
         <button data-action="install-llm" data-model-name="${escapeHtml(m.name)}"
@@ -4337,30 +4289,28 @@ async function loadLLMRecommend() {
     };
 
     el.innerHTML = `
-      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+      <div class="fs-12 c-muted mb-10">
         GPU ${recData.specs_summary?.gpu || '?'} · RAM ${recData.specs_summary?.ram || '?'}
         · ${t('hw.llm_feasible',{count:feasible.length})}
       </div>
       ${feasible.map(renderCard).join('')}
       ${infeasible.length > 0 ? `
-        <details style="margin-top:8px">
-          <summary style="font-size:11px;color:var(--muted);cursor:pointer">
+        <details class="mt-8">
+          <summary class="fs-11 c-muted cursor-pointer">
             ${t('hw.llm_low_specs',{count:infeasible.length})}
           </summary>
-          <div style="margin-top:8px;opacity:.6">
+          <div class="mt-8 u-492a71fc">
             ${infeasible.map(m => `
-              <div style="display:flex;justify-content:space-between;
-                          padding:6px 0;border-bottom:1px solid var(--border);
-                          font-size:11px">
+              <div class="d-flex justify-between fs-11 u-0765bc70">
                 <span>${m.name}</span>
-                <span style="color:var(--muted)">${m.reason_fail||''}</span>
+                <span class="c-muted">${m.reason_fail||''}</span>
               </div>`).join('')}
           </div>
         </details>` : ''}`;
   } catch(e) {
-    el.innerHTML = `<div style="color:var(--muted);font-size:12px">
+    el.innerHTML = `<div class="c-muted fs-12">
       LLM 추천 실패: ${e.message}<br>
-      <span style="font-size:10px">Ollama가 실행 중인지 확인하세요</span>
+      <span class="fs-10">Ollama가 실행 중인지 확인하세요</span>
     </div>`;
   }
 }
@@ -4409,7 +4359,7 @@ async function loadLLMSettings() {
   if (!list) return;
   const key = localStorage.getItem('james_api_key') || '';
   const tok = localStorage.getItem('james_token')   || '';
-  list.innerHTML = '<div style="color:var(--muted)">' + (t('common.loading') || '…') + '</div>';
+  list.innerHTML = '<div class="c-muted">' + (t('common.loading') || '…') + '</div>';
   try {
     const r = await fetch('/admin/llm-settings/?api_key=' + encodeURIComponent(key),
                           { headers: tok ? { Authorization: 'Bearer ' + tok } : {} });
@@ -4422,7 +4372,7 @@ async function loadLLMSettings() {
     _llmDirty = {};
     _renderLLMSettings();
   } catch (e) {
-    list.innerHTML = '<div style="color:#f88">❌ ' + _escLLM(e.message) + '</div>';
+    list.innerHTML = '<div class="u-0c8f2ccd">❌ ' + _escLLM(e.message) + '</div>';
   }
 }
 
@@ -4444,28 +4394,28 @@ function _renderLLMSettings() {
     const dbVal = snap.db[k]     || '';
     let input;
     if (s.type === 'bool') {
-      input = '<select data-action="llm-settings-edit" data-llm-key="' + k +
-              '" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px">' +
+      input = '<select class="bg-bg bd-1 c-text fs-12 u-b5e73953" data-action="llm-settings-edit" data-llm-key="' + k +
+              '">' +
               ['1','0'].map(v => '<option value="' + v + '"' + (val === v ? ' selected' : '') + '>' +
                 (v === '1' ? 'on (1)' : 'off (0)') + '</option>').join('') +
               '</select>';
     } else if (s.type && s.type.indexOf('enum:') === 0) {
       const opts = s.type.substring(5).split(',');
-      input = '<select data-action="llm-settings-edit" data-llm-key="' + k +
-              '" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px">' +
+      input = '<select class="bg-bg bd-1 c-text fs-12 u-b5e73953" data-action="llm-settings-edit" data-llm-key="' + k +
+              '">' +
               opts.map(v => '<option value="' + _escLLM(v) + '"' + (val === v ? ' selected' : '') + '>' + _escLLM(v) + '</option>').join('') +
               '</select>';
     } else {
-      input = '<input type="text" data-action="llm-settings-edit" data-llm-key="' + k +
-              '" value="' + _escLLM(val) + '" style="min-width:280px;padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;font-family:var(--font-mono)">';
+      input = '<input class="minw-280 bg-bg bd-1 c-text fs-12 font-mono u-b5e73953" type="text" data-action="llm-settings-edit" data-llm-key="' + k +
+              '" value="' + _escLLM(val) + '">';
     }
     const source = dbVal ? 'DB' : (env ? 'env (' + s.env + ')' : 'default');
-    return '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px">' +
-           '  <div style="flex:1;min-width:200px"><strong>' + _escLLM(k) + '</strong>' +
-           '  <span style="color:var(--muted);margin-left:8px;font-size:11px">source: ' + source + '</span></div>' +
+    return '<div class="d-flex flex-wrap gap-8 items-center bg-bg bd-1 br-6 p-8-10">' +
+           '  <div class="flex-1 minw-200"><strong>' + _escLLM(k) + '</strong>' +
+           '  <span class="c-muted ml-8 fs-11">source: ' + source + '</span></div>' +
            '  ' + input +
-           '  <button class="btn" data-action="llm-settings-reset-row" data-llm-key="' + k +
-           '" style="padding:3px 10px;font-size:11px" title="' + (t('set.llm_reset_row') || 'env 로 되돌리기 (DB 행 삭제)') +
+           '  <button class="btn p-3-10 fs-11" data-action="llm-settings-reset-row" data-llm-key="' + k +
+           '" title="' + (t('set.llm_reset_row') || 'env 로 되돌리기 (DB 행 삭제)') +
            '">↺</button>' +
            '</div>';
   }).join('');
