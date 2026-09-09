@@ -19,6 +19,7 @@ Usage from a test module::
 """
 from __future__ import annotations
 
+import io
 import runpy
 import sys
 from pathlib import Path
@@ -55,7 +56,12 @@ def ensure_scenario(key: str) -> Path:
     # The builders print a short summary to stdout; keep it out of the
     # test report but let a real failure propagate.
     _FIXTURE_DIR.mkdir(parents=True, exist_ok=True)
-    stdout, sys.stdout = sys.stdout, open("/dev/null", "w")
+    # Not "/dev/null": that path does not exist on Windows, and this
+    # branch only runs when the fixture is absent — which never happens
+    # in a checkout that already has it, so the failure stayed hidden
+    # until a fresh clone was tested on Windows. An in-memory sink needs
+    # no platform-specific path at all.
+    stdout, sys.stdout = sys.stdout, io.StringIO()
     try:
         runpy.run_path(str(script), run_name="__main__")
     finally:
