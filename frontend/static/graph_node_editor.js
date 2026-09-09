@@ -81,12 +81,10 @@
     btn.type = 'button';
     btn.id = 'np-summary-edit-btn';
     btn.textContent = _t('graph.node.edit.button', '노드 편집');
-    btn.setAttribute('style',
-      'margin-top:10px;width:100%;padding:8px 10px;' +
-      'background:var(--surface-2);border:1px solid var(--border);' +
-      'border-radius:6px;color:var(--text-soft);font-size:12px;' +
-      'font-family:var(--font-mono);letter-spacing:.4px;cursor:pointer'
-    );
+    // A class. This was built by setting the style ATTRIBUTE, which
+    // strict style-src blocks exactly like an inline style in markup
+    // (unlike el.style.x, which is CSSOM and is not governed by CSP).
+    btn.className = 'node-edit-btn';
     btn.addEventListener('click', function () { openModal(data.entity_id); });
     host.appendChild(btn);
   }

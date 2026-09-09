@@ -812,6 +812,31 @@ async function api(path, method='GET', body=null) {
 }
 
 /* ── 대시보드 ── */
+/* ── CSSOM size helpers (CSP style-src) ─────────────────────────
+ * A width in percent or pixels derived from live data cannot become a
+ * class, and `style="width:…"` in injected markup is exactly what
+ * strict `style-src` blocks. CSSOM writes are NOT governed by CSP
+ * (measured 2026-09-08, #1095), so the value is carried on a data-*
+ * attribute through innerHTML and applied here afterwards.
+ *
+ * Both helpers are no-ops when the container holds no marked element,
+ * so callers do not need to guard.
+ */
+function _applyPctWidths(root) {
+  if (!root) return;
+  root.querySelectorAll('[data-pct]').forEach(el => {
+    el.style.width = el.dataset.pct + '%';
+  });
+}
+
+function _applySizedBars(root) {
+  if (!root) return;
+  root.querySelectorAll('[data-w][data-h]').forEach(el => {
+    el.style.width  = el.dataset.w + 'px';
+    el.style.height = el.dataset.h + 'px';
+  });
+}
+
 async function loadDashboard() {
   try {
     const data = await api('/admin/dashboard');
@@ -865,12 +890,12 @@ async function loadDashboard() {
     const chart = data.elapsed_chart || [];
     if (chart.length > 0) {
       const max_v = Math.max(...chart, 1);
+      const barW = Math.floor(280 / chart.length) - 2;
       const bars  = chart.map(v => {
         const h   = Math.max(4, Math.round((v / max_v) * 60));
-        const col = v > 20 ? '#f06292' : v > 10 ? '#ffb74d' : '#7c6af7';
-        return `<div title="${v}s" style="width:${Math.floor(280/chart.length)-2}px;
-          height:${h}px;background:${col};border-radius:2px 2px 0 0;
-          flex-shrink:0"></div>`;
+        const cls = v > 20 ? 'is-slow' : v > 10 ? 'is-mid' : 'is-fast';
+        return `<div class="dash-bar ${cls}" title="${v}s"
+          data-w="${barW}" data-h="${h}"></div>`;
       }).join('');
 
       const chartEl = document.getElementById('dash-chart');
@@ -885,6 +910,7 @@ async function loadDashboard() {
           <div class="d-flex items-end p-8-20 bg-bg br-6 bd-1 u-cc617d82">
             ${bars}
           </div>`;
+        _applySizedBars(chartEl);
       }
     }
 
@@ -3550,7 +3576,7 @@ function renderInteractiveRadar() {
     inner += `<path class="${cls}" d="M${p1.x.toFixed(1)},${p1.y.toFixed(1)}
                                        Q${tx.toFixed(1)},${ty.toFixed(1)}
                                        ${p2.x.toFixed(1)},${p2.y.toFixed(1)}"
-                    style="stroke-width:${sw}"/>`;
+                    data-sw="${sw}"/>`;
   });
 
   // ─── 5) 데이터 폴리곤 (값 영역) ──────────────────────────────
@@ -3574,6 +3600,11 @@ function renderInteractiveRadar() {
   });
 
   svg.innerHTML = inner;
+  // CSSOM, not a style attribute (CSP style-src) and not a
+  // presentation attribute (admin.css's .corr-edge rule would win).
+  svg.querySelectorAll('path[data-sw]').forEach(el => {
+    el.style.strokeWidth = el.dataset.sw;
+  });
 
   // ─── 7) Pointer events on vertices ───────────────────────────
   // [PR #157 패턴 준수] inline onclick 없이 addEventListener 로만.
@@ -4076,11 +4107,11 @@ function renderCapabilities(caps) {
         <span class="fs-12 font-mono c-accent">${c.pct}%</span>
       </div>
       <div class="ov-hidden u-7b9f9868">
-        <div style="width:${c.pct}%;height:100%;background:var(--accent);
-          border-radius:4px;transition:width .5s ease"></div>
+        <div class="capability-bar-fill" data-pct="${c.pct}"></div>
       </div>
       <div class="fs-10 c-muted u-1d1dc4d1"><span data-i18n="${c.desc_key || ''}">${c.desc}</span></div>
     </div>`).join('');
+  _applyPctWidths(el);
   // Re-translate freshly-injected data-i18n spans (matches the
   // loadCognitiveFlags / loadLlmSelections / buildProtectedCheckboxes
   // / loadPolicy pattern).
@@ -4109,14 +4140,11 @@ function _domainDonut(d) {
               stroke-linecap="round"
               transform="rotate(-90 ${cx} ${cy})"
               stroke-dasharray="${filled} ${circ}"
-              style="filter:drop-shadow(0 0 4px ${d.color}88);
-                     transition:stroke-dasharray .6s ease"/>
+              class="domain-donut-arc" data-glow="${d.color}"/>
       <!-- 중앙 레벨 숫자 -->
       <text x="${cx}" y="${cy + 1}" text-anchor="middle"
             dominant-baseline="middle"
-            style="font-size:20px;font-weight:900;fill:${d.color};
-                   font-family:var(--font-mono, ui-monospace, monospace);
-                   letter-spacing:-1px">${d.level}</text>
+            class="domain-donut-level" data-fill="${d.color}">${d.level}</text>
       <!-- "Lv" 레이블 -->
       <text class="ls-1 u-ceecb8ce" x="${cx}" y="${cy - 13}" text-anchor="middle"
            >LV</text>
@@ -4141,11 +4169,23 @@ function renderDomains(domains) {
             ${d.icon} <strong><span data-i18n="${d.label_key || ''}">${d.label}</span></strong>
           </div>
           <div class="fs-10 c-muted font-mono lh-16">
-            <div><span data-i18n="growth.next_level">다음까지</span> <strong style="color:${d.color}">${d.tier_pct ?? d.pct}%</strong></div>
+            <div><span data-i18n="growth.next_level">다음까지</span> <strong data-color="${d.color}">${d.tier_pct ?? d.pct}%</strong></div>
             <div>${d.wiki_count ?? 0} wiki · score ${d.score ?? 0}</div>
           </div>
         </div>
       </div>`).join('') + '</div>';
+  // The domain palette is server data (core/knowledge_tracker.py owns
+  // it), so these are not enumerable in the frontend — CSSOM rather
+  // than a class, which also keeps the palette in one place.
+  el.querySelectorAll('[data-glow]').forEach(n => {
+    n.style.filter = `drop-shadow(0 0 4px ${n.dataset.glow}88)`;
+  });
+  el.querySelectorAll('[data-fill]').forEach(n => {
+    n.style.fill = n.dataset.fill;
+  });
+  el.querySelectorAll('[data-color]').forEach(n => {
+    n.style.color = n.dataset.color;
+  });
   // Re-translate freshly-injected data-i18n spans.
   if (typeof applyTranslations === 'function') applyTranslations();
 }
@@ -4174,13 +4214,13 @@ async function loadHardware() {
         { key:'gpu',  spec: specs.gpu  || {} },
         { key:'disk', spec: specs.disk || {} },
       ];
-      const lvColor = lv => lv >= 9 ? '#f06292' : lv >= 7 ? '#7c6af7'
-                           : lv >= 5 ? '#4fc3f7' : lv >= 3 ? '#4caf7d' : '#aaa';
+      const lvClass = lv => lv >= 9 ? 'lv-5' : lv >= 7 ? 'lv-4'
+                          : lv >= 5 ? 'lv-3' : lv >= 3 ? 'lv-2' : 'lv-1';
 
       cardsEl.innerHTML = comps.map(({ key, spec }) => {
         const w   = spec.weapon || {};
         const lv  = spec.level  || 0;
-        const col = lvColor(lv);
+        const lvc = lvClass(lv);
         let detail = '';
         if (key==='cpu')  detail=`${spec.cores||'?'} cores · ${spec.freq_mhz||'?'}MHz ${spec.usage_pct!=null?`· ${spec.usage_pct}%`:''}`;
         if (key==='ram')  detail=`${spec.total_gb||'?'}GB total · ${spec.available_gb||'?'}GB free`;
@@ -4199,16 +4239,18 @@ async function loadHardware() {
               <div class="u-2cbabd6c">${w.icon||''}</div>
               <div><div class="fw-700 fs-15"${nameDi}>${w.name||'?'}</div>
                    <div class="fs-10 c-muted"${roleDi}>${w.role||key}</div></div>
-              <div style="margin-left:auto;font-size:26px;font-weight:900;color:${col};font-family:var(--font-mono)">
+              <div class="worker-level ${lvc}">
                 ${lv}<span class="fs-11 fw-400 c-muted">/10</span></div>
             </div>
             <div class="bg-bg ov-hidden mb-8 u-28f00506">
-              <div style="width:${Math.min(100,lv*10)}%;height:100%;background:${col};border-radius:4px;transition:width .8s;box-shadow:0 0 8px ${col}66"></div>
+              <div class="worker-level-bar ${lvc}"
+                   data-pct="${Math.min(100, lv * 10)}"></div>
             </div>
             <div class="fs-11 c-muted font-mono mb-4">${detail}</div>
             <div class="fs-11 c-text"${descDi}>${w.desc||''}</div>
           </div>`;
       }).join('');
+      _applyPctWidths(cardsEl);
       // Re-translate freshly-injected data-i18n spans so the active
       // lang takes effect immediately (matches the loadCognitiveFlags
       // / loadLlmSelections / buildProtectedCheckboxes / loadPolicy /

@@ -244,7 +244,28 @@ JS_FILES = [
     FRONTEND / "static" / "glossary.js",
     # 2026-09-08 — the last and largest, on its own pass.
     FRONTEND / "static" / "admin.js",
+    # Added 2026-09-09: these ten were never in the list, so the tool
+    # reported a per-file count for everything EXCEPT them. They hold
+    # no style attributes today; listing them means a new one shows up
+    # in the report instead of being invisible.
+    FRONTEND / "static" / "auth.js",
+    FRONTEND / "static" / "graph-tabs.js",
+    FRONTEND / "static" / "graph_node_editor.js",
+    FRONTEND / "static" / "index-init.js",
+    FRONTEND / "static" / "intro.js",
+    FRONTEND / "static" / "knowledge-rollback.js",
+    FRONTEND / "static" / "llm-install.js",
+    FRONTEND / "static" / "onboarding.js",
+    FRONTEND / "static" / "time-travel.js",
+    FRONTEND / "static" / "workspace-badge.js",
 ]
+
+# ``setAttribute('style', …)`` sets the style ATTRIBUTE, so strict
+# ``style-src`` blocks it exactly like an inline style in markup — but
+# it never looks like a tag, so the tag regex above cannot see it. It
+# is reported, never rewritten: the call site has to be read to know
+# whether it becomes a class or a CSSOM write.
+_SETATTR_STYLE_RE = re.compile(r"""setAttribute\(\s*['"]style['"]""")
 
 
 # Matches the join between two adjacent JS string literals inside a
@@ -580,17 +601,23 @@ def main() -> int:
         print(f"  {n:4d}  {page.relative_to(REPO)}")
 
     js_skipped = 0
+    setattr_sites = 0
     for jsf in JS_FILES:
         text = jsf.read_text(encoding="utf-8")
         new_text, n, sk = migrate_js(text, components, used_atoms)
+        sa = len(_SETATTR_STYLE_RE.findall(text))
         total += n
         js_skipped += sk
+        setattr_sites += sa
         rewrites[jsf] = new_text
-        print(f"  {n:4d}  {jsf.relative_to(REPO)}  ({sk} dynamic skipped)")
+        extra = f", {sa} setAttribute" if sa else ""
+        print(f"  {n:4d}  {jsf.relative_to(REPO)}  ({sk} dynamic skipped{extra})")
 
     print(f"\nTotal inline style attrs migrated: {total}")
     if js_skipped:
         print(f"Dynamic sites left for hand conversion: {js_skipped}")
+    if setattr_sites:
+        print(f"setAttribute('style') sites (also CSP-blocked): {setattr_sites}")
     print(f"Atoms used: {len(used_atoms)} / {len(ATOMS)} defined")
     print(f"Verbatim component classes: {len(components)}")
 
