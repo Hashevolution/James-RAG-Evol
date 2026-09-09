@@ -533,7 +533,8 @@ ignored lifecycle `status` and `relation_is_live()` now gates it.
 
 **Release history** (newest first — see [`CHANGELOG.md`](CHANGELOG.md) for full notes):
 
-- **v0.5** (2026-06-12) — Time-Travel Dashboard + SaaS-readiness primitives + ontology Pack SDK + CSP nonce.
+- **v0.6.1** (2026-09-10) — product hardening: agent track, LLM routing chosen by paired measurement, chat UX rebuild, 8 → 5 pages, a measurement-gated live-traversal correctness fix, and a CSP `style-src` that no longer needs `'unsafe-inline'`. First tag since v0.4.4; **no DOI yet**.
+- **v0.5** (2026-06-12, never tagged in its own right — ships inside v0.6.1) — Time-Travel Dashboard + SaaS-readiness primitives + ontology Pack SDK + CSP nonce.
 - **v0.4.4** (2026-06-12) — LRB v0.2.3 S3 publication-scale (12.5× scale ladder) + 4-benchmark measurement-infrastructure closure. Papers ready for submission ([RAB](papers/rab-preprint/main.pdf), [LRB](papers/lrb-preprint/main.pdf)); arXiv endorsement pending.
 - **v0.4.3** (2026-06-10) — RAB v0.1.1, the first replayable-audit benchmark mapping AC/RF/PC to EU AI Act Art. 10/12/19; multi-hop arc closed with honest nulls.
 - **v0.4.2** (2026-06-06) — T5 Replayable Audit Graph (`reconstruct_graph_at(t)`), the primitive RAB measures the quality of.

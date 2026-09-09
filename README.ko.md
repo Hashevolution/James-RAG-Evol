@@ -152,8 +152,11 @@ python scripts/research/lrb_run_s3.py --scale publication
 > **단일 진실원**: [`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`](docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md)
 > (재개 로드맵 Phase 1–7). 아래 섹션들과 충돌하면 로드맵 문서가 우선입니다.
 
-- **최신 태그 릴리스는 여전히 v0.4.4** (DOI `10.5281/zenodo.20652679`).
-  v0.5 / v0.6 / v0.6.1 은 `main` 에만 있고 태그·DOI 가 없습니다.
+- **최신 태그 릴리스는 v0.6.1** (2026-09-10). v0.4.4 이후 태그 없이
+  떠 있던 282 PR (`#831`–`#1112`) 을 전부 담습니다.
+  **DOI 는 미발행** — 인용 가능한 최신 DOI 는 여전히 v0.4.4
+  (`10.5281/zenodo.20652679`) 이고, v0.6.1 DOI 발행과 `v0.5` 소급
+  태그는 둘 다 operator 판단입니다.
 - **v0.5 마감 2026-06-13**, **v0.6 정식 미진입** — 게이트 = Dim F
   (외부 고객 6 개월 파일럿) 미통과. 2-fork 계약 (Fork A LOI / Fork B
   6 개월 무LOI 재평가) 판정 시점 ≈ **2026-12-13**, operator 결정.

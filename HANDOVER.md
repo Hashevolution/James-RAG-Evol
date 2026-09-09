@@ -3,7 +3,7 @@
 **작성일**: 2026년 5월 (초기) / 2026-09-03 header refresh
 **작성자**: Hashevolution
 **대상**: 다음 세션의 Claude (또는 본인 참조용)
-**현재 상태**: v0.5 closed (2026-06-13) + 미릴리스 v0.6 / v0.6.1 제품 하드닝 스트림 (#886–#1078). **최신 태그 릴리스는 v0.4.4**, DOI [`10.5281/zenodo.20652679`](https://doi.org/10.5281/zenodo.20652679). v0.6 정식 미진입 (Dim F 게이트 미통과).
+**현재 상태**: **v0.6.1 released (2026-09-10)** — v0.4.4 이후 태그 없이 떠 있던 282 PR (#831–#1112) 을 전부 담은 태그입니다. **DOI 미발행** (인용은 여전히 v0.4.4 [`10.5281/zenodo.20652679`](https://doi.org/10.5281/zenodo.20652679)). v0.6 정식 미진입 (Dim F 게이트 미통과) — 태그는 제품 릴리스이지 사이클 진입이 아닙니다.
 
 > ⚠️ **이 문서의 본문 (§1 이하 ~700 줄) 은 초기 v0.1.x 시점의 인수인계 기록 보존본**입니다. 현재 상태와 다음 작업은 아래를 보세요:
 >
@@ -12,7 +12,7 @@
 > - **직전 기능 세션**: `docs/handovers/v0.6.1-session-close-2026-06-26.md`
 > - **자세한 한국어 narrative**: `README.ko.md` § "프로젝트 상태 (2026-09-03 기준)"
 > - **External evaluator first read**: `SUMMARY.md`
-> - **Per-version release narrative**: `docs/release_notes_v0.4.4.md` (최신 태그 릴리스), `docs/release_notes_v0.4.3.md` (RAB 출시), 그리고 그 이전 chain
+> - **Per-version release narrative**: `docs/release_notes_v0.6.1.md` (최신 태그 릴리스), `docs/release_notes_v0.4.4.md` (최신 DOI 릴리스), `docs/release_notes_v0.4.3.md` (RAB 출시), 그리고 그 이전 chain
 
 본문 (§1 이하) 은 프로젝트 출범 시점의 정체성 / 인수인계 맥락 의 historical 기록. 변경하지 않고 보존.
 
