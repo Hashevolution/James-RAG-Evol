@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   pytest:
-    name: pytest (tests/ — externally-bound files excluded)
+    name: pytest (tests/ — full suite, no exclusions)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -50,64 +50,30 @@ jobs:
           python -m pytest tests/ \
             --tb=short -q \
             --timeout=30 \
-            -p no:cacheprovider \
-            \
-            `# --- LLM / Ollama service-bound (no CI Ollama service yet) ---` \
-            --ignore=tests/test_conversation_continuity.py \
-            --ignore=tests/test_first_run_wizard.py \
-            --ignore=tests/test_install_progress.py \
-            --ignore=tests/test_llm_catalog.py \
-            --ignore=tests/test_model_names_install.py \
-            --ignore=tests/test_model_resolver.py \
-            --ignore=tests/test_planner.py \
-            --ignore=tests/test_query_rewriter.py \
-            --ignore=tests/test_reasoning_trace_helpers.py \
-            --ignore=tests/test_reasoning_trace_schema.py \
-            --ignore=tests/test_reflection_loop.py \
-            --ignore=tests/test_replay_trace.py \
-            --ignore=tests/test_requirements_consistency.py \
-            --ignore=tests/test_verifier.py \
-            \
-            `# --- Admin / endpoint tests needing DB or server setup ---` \
-            --ignore=tests/test_a2_phase2_selected_model.py \
-            --ignore=tests/test_admin_audit_endpoint.py \
-            --ignore=tests/test_admin_entities.py \
-            --ignore=tests/test_admin_metrics.py \
-            --ignore=tests/test_admin_trace_endpoint.py \
-            --ignore=tests/test_admin_users_endpoints.py \
-            --ignore=tests/test_admin_wiki_resolve_relations.py \
-            --ignore=tests/test_api_key_middleware.py \
-            --ignore=tests/test_api_keys.py \
-            --ignore=tests/test_change_request_endpoints.py \
-            --ignore=tests/test_chat_mode_picker.py \
-            --ignore=tests/test_cleanup_web_noise.py \
-            --ignore=tests/test_code_surface_sqlite.py \
-            --ignore=tests/test_dashboard_audit_sqlite.py \
-            --ignore=tests/test_data_artifacts.py \
-            --ignore=tests/test_document_export.py \
-            --ignore=tests/test_evolution_audit_query.py \
-            --ignore=tests/test_evolution_bench_gate.py \
-            --ignore=tests/test_feature_registry.py \
-            --ignore=tests/test_file_mgmt_tab.py \
-            --ignore=tests/test_force_web_chip.py \
-            --ignore=tests/test_model_catalog_per_mode.py \
-            --ignore=tests/test_multimodal_trusted.py \
-            --ignore=tests/test_observability.py \
-            --ignore=tests/test_password_change.py \
-            --ignore=tests/test_password_reset_token.py \
-            --ignore=tests/test_phase_b_ingestion_sources.py \
-            --ignore=tests/test_phase_d_modify_cascade.py \
-            --ignore=tests/test_q2a_feature_wiring.py \
-            --ignore=tests/test_query_include_contexts.py \
-            --ignore=tests/test_scheduler.py \
-            --ignore=tests/test_self_evolution_gate.py \
-            --ignore=tests/test_signup_endpoint.py \
-            --ignore=tests/test_trace_prune.py \
-            --ignore=tests/test_upload_history.py \
-            --ignore=tests/test_web_search_admin_panel.py \
-            --ignore=tests/test_workspace_jobs.py
-        # Iteration plan: ignored files are tracked for incremental
-        # un-ignoring as their CI dependencies become available (Ollama
-        # service container) or as test isolation is improved (DB fixture
-        # cleanup, FastAPI TestClient app-factory pattern). Removing an
-        # entry from this list is itself the success signal.
+            -p no:cacheprovider
+        # The 51-entry --ignore list that used to live here is gone.
+        #
+        # The list carried an iteration plan: un-ignore each file as its
+        # CI dependency arrives (an Ollama service container) or as its
+        # isolation improves (DB fixture cleanup, TestClient app-factory).
+        # Measured 2026-09-09, that plan had already been overtaken — the
+        # files were passing and nobody had checked.
+        #
+        # How it was measured, since "it passes on my machine" is exactly
+        # what an ignore list is protection against: a detached git
+        # worktree, which has no .env because that file is untracked;
+        # OLLAMA_API_URL and OLLAMA_HOST pointed at a dead port so
+        # anything genuinely needing Ollama fails fast rather than
+        # reaching a running instance; and the environment stripped to 73
+        # fewer variables, dropping the real service keys (TAVILY_API_KEY
+        # among them) that a developer shell carries and a runner does
+        # not.
+        #
+        # Under those conditions: each of the 51 passes alone, and the
+        # whole tests/ directory passes together — 5,312 passed, 0
+        # failed, slowest test 6.6s against this 30s timeout.
+        #
+        # Two differences from this runner remain, which is why the CI
+        # run on the PR that removed the list is the real evidence:
+        # ubuntu vs Windows, and 3.11 vs 3.14. If a file has to come back,
+        # bring back that file — not the list.

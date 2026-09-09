@@ -196,8 +196,9 @@ class PersonaEndpointTests(unittest.TestCase):
         "skipped in CI — `from server_llmwiki import app` pulls the "
         "vector store + HuggingFace model into memory, which routinely "
         "exceeds the 30s pytest-timeout on cache-miss runners. Local "
-        "runs cover this test; CI workflow already excludes other "
-        "server-import tests via --ignore=. See "
+        "runs cover this test. (The workflow no longer excludes any "
+        "file: the --ignore list this note used to point at was "
+        "measured obsolete and removed 2026-09-09.) See "
         "docs/handovers/v0.3.0-platform-track.md `CI pytest 3 fail` note.",
     )
     def test_persona_endpoint_still_registered(self):
