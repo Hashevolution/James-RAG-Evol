@@ -39,7 +39,20 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   회귀 없음 확인 (#1028–#1032). 이것이 `core/graph` traversal **0-라인
   streak 의 유일한, 측정 근거로 승인된 예외**입니다. 이전 핸드오버의
   "0 라인 streak 유지" 문장을 그대로 복사하지 마세요.
-- **✅ `main` CI 그린 (2026-09-08)** — `4,464 passed / 0 failed`
+- **✅ `main` CI 그린, 그리고 넓어짐 (2026-09-09)** — `--ignore` 목록
+  51건을 전부 회수해 CI 가 실제로 도는 테스트가 **4,469 → 5,309 (+840)**,
+  여전히 **0 failed**. 목록에 달려 있던 "의존성이 생기면 회수" 계획은
+  이미 추월당해 있었습니다 — 파일들은 통과하고 있었고 아무도 확인하지
+  않았습니다. 측정은 detached worktree (`.env` 없음) + 죽은 Ollama 포트 +
+  환경변수 73개 제거로 "내 머신에서는 통과한다" 를 배제한 뒤, 실제 CI
+  실행으로 확정했습니다.
+- **✅ Phase 3.3 종료 (2026-09-09)** — JS 인라인 `style=` **26 → 0**,
+  `setAttribute('style')` **1 → 0**. CSP `style-src` 가 `'unsafe-inline'`
+  을 떼고 `'self'` 로 졸업했습니다. **모드 기본값은 `report-only` 그대로**
+  — enforce 플립은 operator 판단이고, 🔴 **남은 블로커는 style 이 아니라
+  `graph.html` 의 `unpkg.com` 스크립트 3종**입니다 (`script-src 'self'` 가
+  차단; 로컬 우선 원칙상 vendoring 이 답).
+- **이전 마감 (2026-09-08)** — `4,464 passed / 0 failed`
   (`f410c3c`, run 34171536814). 2026-06-22 이후 처음입니다. 로드맵
   **Phase 2 종료**. 마지막 남았던 LRB S2 는 operator 가 §7 결정 #1
   (충돌 수리) 을 택해 PR #1089 로 처리했고 (V/N/J = 0.2500 / 0.5875 /
@@ -50,7 +63,7 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   릴리스 노트는 여전히 수리 전 수치 (0.225 / 0.5375 / 0.7125) 입니다 —
   발표 수치 재베이스라인은 operator 판단.
   `ruff` / `bandit` 은 계속 초록.
-  → **다음 = 로드맵 Phase 3 (유휴 부채 청산).**
+  → 로드맵 **Phase 3 은 3.1 / 3.2 (operator 실기기 dogfood) 만** 남았습니다.
 - **유지보수 4 PR** (#1077 #1078 08-19 / **#1079** 08-26 / **#1080** 08-28):
   v0.3.3 DOI 계보 정정, ruff F-class 해소, Ali 엔지니어링 4건 ①②③ 발송 +
   **uuid7 production 결함 수리** (`start_trace()` 가 Python 3.14 전용
@@ -159,7 +172,8 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
-| **🟢🟢🟢 NEXT SESSION ENTRY (이것부터 — 2026-09-08 세션 마감)** | **`docs/handovers/v0.6.2-session-close-2026-09-08.md`** (PR #1082–#1105, 24건. **Phase 2 (CI 그린) 종료** — main `934e8f7` tests/lint/security 전부 success, 4,469 passed / 0 failed. rule #5 GRANDFATHERED **0건**, CI ignore 57→51. **Phase 3.3 CSP style-src 479 → 26** + 3.4 / 3.5 완료. LRB S2 는 결정 #1 (충돌 수리) 실행 — V/N/J 0.2500/0.5875/0.7625, **J−N 0.175 불변**, ⚠️ **결정 #2 (preprint 재베이스라인) 미결**. 3.1 / 3.2 + #1084 / #1091 은 **operator 실기기 dogfood 대기**. §5 검증 3종 (계산 스타일 대조 / visual regression / node --check) 과 §6 자기 정정 3건은 이어받을 것.) |
+| **🟢🟢🟢 NEXT SESSION ENTRY (이것부터 — 2026-09-09 세션 마감)** | **`docs/handovers/v0.6.2-session-close-2026-09-09.md`** (PR #1107–#1111. **Phase 3.3 종료 — JS 인라인 `style=` 26 → 0**, `setAttribute('style')` 1 → 0. **CSP `style-src` 졸업** = `'unsafe-inline'` 제거 (모드는 `report-only` 그대로, 플립은 operator). **CI `--ignore` 51 → 0** — worktree + 최소 환경 측정 후 실제 CI 초록, 도는 테스트 4,469 → **5,309** (+840, 0 failed). 🔴 **enforce 플립의 남은 블로커 = `graph.html` 의 `unpkg.com` 스크립트 3종** (`script-src 'self'` 가 차단, vendoring 은 operator 판단). 신규 `scripts/csp_enforce_probe.py` = 서버 없이 enforce 위반 측정. §5 검증이 잡은 4건 (오짝 셀렉터 / 죽은 셀렉터가 숨긴 모바일 회귀 / Windows `/dev/null` / `--apply` 비파괴 확인) 은 이어받을 것.) |
+| **🟢🟢 직전 세션 마감 (2026-09-08, PR #1082–#1105)** | `docs/handovers/v0.6.2-session-close-2026-09-08.md` (**Phase 2 (CI 그린) 종료** — 2026-06-22 이후 처음. rule #5 GRANDFATHERED 0건, CI ignore 57→51, CSP style-src 479 → 26. LRB S2 결정 #1 실행 — V/N/J 0.2500/0.5875/0.7625, **J−N 0.175 불변**, ⚠️ **결정 #2 (preprint 재베이스라인) 미결**. §5 검증 3종 + §6 자기 정정 3건.) |
 | **🟢🟢 Phase 정의 원본 (2026-09-03 재개 로드맵)** | **`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`** (재개용 **단일 진실원**. §1 현재 상태 사실 확인 (main HEAD `df55e21` / 유휴 구간 / **CI 실패 5 건 실측 + 건별 판정** / rule #5 해소 + 1건 grandfather / 문서 최신성 편차 표) + §2 **Phase 1–7 재개 로드맵** (1 문서 동기화 ✅ → 2 CI 그린 복구 → 3 유휴 부채 청산 → 4 v0.6.1 정식 마감 → 5 측정 백로그 → 6 Fork A/B 전략 결정 (operator) → 7 v0.6 진입) + §3 #886–#1078 실제 진행 요약 + §5 재개 첫 세션 30 분 체크리스트 + §6 하지 말 것. **Phase 2 전에는 새 기능 PR 금지.**) |
 | **🟢🟢 직전 기능 세션 close (2026-06-26, PR #1062–#1075)** | `docs/handovers/v0.6.1-session-close-2026-06-26.md` (CSP `style-src` HTML 이관 596 attrs + 모바일 업로드 UX + **이미지 인제스트 4 단 병목 수리** (비전 모델 라우팅 / 이진화 제거 / EasyOCR fallback / qwen2.5vl:7b / num_ctx 8192) + `/query/`·`/upload/` heartbeat 스트리밍 + detailed 답변 스타일. §4 operator open 2 건 (모바일 긴 질의 드롭 / detailed dogfood), §5 deferred, §3 서버 background 실행 금지 교훈.) |
 | **🟢🟢 v0.6.1 세션 close (2026-06-23, PR #992–#1037)** | `docs/handovers/v0.6.1-session-close-2026-06-23.md` (UI 8→5 페이지 통합 / de-emoji / 인트로 프론트도어 / 그래프 허브 / trace 링크 루프 / entity-edit cascade Phase 1-3 / **lifecycle live-consistency arc** / 비주얼 회귀 하네스 / 백로그 재측정.) |
@@ -306,7 +320,13 @@ should show exactly one PID — the operator's, once you are done.
   2026-06-13 → 06-26 에 진행. 운영 하드닝 · 양식 엔진 · 에이전트 트랙 ·
   LLM 라우팅 통합 · 채팅 UX 개편 · UI 8→5 통합 · CSP 이관 · 이미지 OCR/비전
   수리 · heartbeat 스트리밍.
-- **🟠 재개 시 첫 작업 = CI 그린 복구** (규모 축소됨). `test.yml` 은
+- **✅ CI 는 그린이고 (2026-09-09) 무시 목록이 없습니다.** `--ignore` 51건
+  회수로 CI 가 실제로 도는 테스트가 4,469 → **5,309**. 파일이 다시 빠져야
+  한다면 **목록이 아니라 그 파일 하나로** 빠집니다.
+- **✅ Phase 3.3 (CSP style-src) 종료.** JS 인라인 style 26 → 0,
+  `'unsafe-inline'` 제거. enforce 모드 플립은 operator 이고, 남은 블로커는
+  `graph.html` 의 `unpkg.com` 스크립트 3종입니다.
+- **(과거, 2026-09-03 시점 기록)** 재개 시 첫 작업 = CI 그린 복구. `test.yml` 은
   최신 실행까지 실패이지만 **CI 실측 5 건**뿐이고 (#1080 이 원인 정리),
   rule #5 위반 2건도 해소했습니다 (1건 분할 / 1건 계획과 함께 grandfather).
   남은 로컬 실패 9건 중 **CI 가 실제로 보는 것은 4개 모듈**.
