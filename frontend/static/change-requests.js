@@ -103,18 +103,20 @@
     return d + 'd ago';
   }
 
+  // Four fixed statuses, so four classes — the tinted background /
+  // text / border trio used to be interpolated into a style attribute,
+  // which CSP's style-src blocks. Palette lives in tokens.css.
+  var STATUS_CLASS = {
+    open:       'cr-status-open',
+    merged:     'cr-status-merged',
+    rejected:   'cr-status-rejected',
+    superseded: 'cr-status-superseded'
+  };
+
   function statusBadge(status) {
-    var colors = {
-      open:       'background:rgba(255,183,77,.12);color:#ffb74d;border:1px solid rgba(255,183,77,.35);',
-      merged:     'background:rgba(76,175,125,.12);color:#4caf7d;border:1px solid rgba(76,175,125,.35);',
-      rejected:   'background:rgba(239,68,68,.12);color:#fca5a5;border:1px solid rgba(239,68,68,.35);',
-      superseded: 'background:rgba(138,141,153,.12);color:var(--muted);border:1px solid rgba(138,141,153,.35);'
-    };
-    var style = colors[status] || colors.superseded;
-    return '<span style="' + style +
-           'padding:3px 9px;border-radius:6px;' +
-           'font-size:11px;font-family:var(--font-mono);' +
-           'letter-spacing:.3px">' + escHtml(status) + '</span>';
+    var cls = STATUS_CLASS[status] || STATUS_CLASS.superseded;
+    return '<span class="cr-status-badge ' + cls + '">' +
+           escHtml(status) + '</span>';
   }
 
   function renderRow(cr) {
@@ -411,18 +413,11 @@
     return map[why] || '(no explanation available)';
   }
 
-  function _ruleBadgeStyle(rule) {
-    if (rule === 'A_invalidate') {
-      return 'background:rgba(239,68,68,.12);color:#fca5a5;' +
-             'border:1px solid rgba(239,68,68,.45);';
-    }
-    if (rule === 'ignore') {
-      return 'background:rgba(138,141,153,.12);color:var(--muted);' +
-             'border:1px solid rgba(138,141,153,.35);';
-    }
+  function _ruleBadgeClass(rule) {
+    if (rule === 'A_invalidate') return 'cr-rule-invalidate';
+    if (rule === 'ignore')       return 'cr-rule-ignore';
     // B_supersede — accent-tinted (the most common path)
-    return 'background:rgba(107,231,208,.10);color:var(--accent-fg);' +
-           'border:1px solid rgba(107,231,208,.30);';
+    return 'cr-rule-supersede';
   }
 
   function _renderArbiterSlot(cr) {
@@ -430,15 +425,14 @@
     if (!slot) return;
     var result = _syntheticArbiterResult(cr);
     var explanation = _arbiterRuleExplanation(result.why);
-    var badgeStyle = _ruleBadgeStyle(result.rule);
+    var badgeClass = _ruleBadgeClass(result.rule);
     var explanationId = 'cr-arbiter-explanation-' + cr.cr_id;
     slot.innerHTML = [
       '<div class="d-flex items-center gap-10 flex-wrap font-mono fs-11">',
       '<span class="muted-12 font-mono">',
       'Contradiction classifier:',
       '</span>',
-      '<span style="' + badgeStyle + 'padding:3px 10px;',
-      'border-radius:6px;font-weight:600;letter-spacing:.4px">',
+      '<span class="cr-rule-badge ' + badgeClass + '">',
       escHtml(result.rule),
       '</span>',
       '<button class="bg-transparent bd-1 c-muted cursor-pointer fs-10 font-mono u-53f47ba5" data-action="cr-arbiter-toggle"',

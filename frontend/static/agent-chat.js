@@ -237,20 +237,22 @@
       : _esc(call.error || 'error');
     // run_shell is the highest-risk tool — flag it with a warning border
     // + a ⚠ marker so the operator can spot a shell call at a glance.
+    // Two booleans here (is this a shell call, did it succeed) drove
+    // a border colour and a text colour. Both are fixed pairs, so they
+    // are modifier classes — CSP style-src blocks the attribute.
     const isShell = call.name === 'run_shell';
-    const border = isShell ? '#a16207' : 'var(--border,#334155)';
     const shellTag = isShell
       ? ` <span class="u-6b219d48" title="${_esc(_t('agentchat.shell_tag_title', '셸 명령 실행 — 운영자 허용 폴더 안에서만'))}">⚠ shell</span>`
       : '';
     _appendNode(`
-      <div style="align-self:flex-start;max-width:92%;background:var(--bg,#0f172a);border:1px solid ${border};border-radius:8px;padding:8px 12px;font-family:var(--font-mono);font-size:11px;color:var(--text)">
+      <div class="agent-call${isShell ? ' is-shell' : ''}">
         <div class="d-flex justify-between items-center mb-4">
           <span><strong>${okIcon} ${_esc(call.name)}</strong>${shellTag}
                 <span class="c-muted ml-6">iter ${call.iter || ''}</span></span>
           <span class="c-muted">${call.elapsed_ms != null ? call.elapsed_ms + ' ms' : ''}</span>
         </div>
         <div class="u-1ad59c6e">args: ${_esc(argsJson)}</div>
-        <div style="color:${call.ok ? 'var(--muted)' : '#fcc'};word-break:break-all">${detail}</div>
+        <div class="agent-call-detail${call.ok ? '' : ' is-err'}">${detail}</div>
       </div>
     `);
   }
@@ -310,16 +312,12 @@
     }
     box.innerHTML = _sessions.map(s => {
       const active = _activeSession && _activeSession.id === s.id;
-      return `<div data-action="agent-session-open" data-sid="${_esc(s.id)}"
-        style="display:flex;justify-content:space-between;align-items:center;gap:4px;
-        padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px;
-        background:${active ? 'var(--accent,#3b82f6)' : 'var(--bg)'};
-        color:${active ? '#fff' : 'var(--text)'};border:1px solid var(--border)">
+      return `<div class="agent-sess${active ? ' is-active' : ''}"
+        data-action="agent-session-open" data-sid="${_esc(s.id)}">
         <span class="u-7afdde9c">${_esc(s.title)}</span>
-        <button data-action="agent-session-del" data-sid="${_esc(s.id)}"
-          title="${_esc(_t('agentsess.del', '삭제'))}"
-          style="border:0;background:transparent;color:${active ? '#fff' : 'var(--muted)'};
-          cursor:pointer;font-size:12px;padding:0 2px">✕</button>
+        <button class="agent-sess-del" data-action="agent-session-del"
+          data-sid="${_esc(s.id)}"
+          title="${_esc(_t('agentsess.del', '삭제'))}">✕</button>
       </div>`;
     }).join('');
   }

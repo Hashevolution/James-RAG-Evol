@@ -2626,10 +2626,12 @@ function updateLangToggleDisplay() {
   var btns = document.querySelectorAll('[data-lang-toggle]');
   for (var i = 0; i < btns.length; i++) {
     var koActive = currentLang === 'ko';
+    // Active/inactive is a boolean, so the opacity + weight pair is a
+    // modifier class rather than a style attribute (CSP style-src).
     btns[i].innerHTML =
-      '<span style="opacity:' + (koActive ? 1 : 0.4) + ';font-weight:' + (koActive ? 700 : 400) + '">KO</span>' +
+      '<span class="lang-seg' + (koActive ? ' is-active' : '') + '">KO</span>' +
       '<span class="u-160ef599">|</span>' +
-      '<span style="opacity:' + (!koActive ? 1 : 0.4) + ';font-weight:' + (!koActive ? 700 : 400) + '">EN</span>';
+      '<span class="lang-seg' + (koActive ? '' : ' is-active') + '">EN</span>';
   }
 }
 

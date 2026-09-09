@@ -514,12 +514,13 @@ function _firstRunRow(r, primary) {
   const desc = _escHtml(r.desc || r.description || '');
   const tag = _escHtml(r.tag || r.name || '');
   const stars = primary ? '● ' : '   ';
-  const bg = primary ? 'rgba(99,102,241,.10)' : 'transparent';
-  const border = primary ? 'border:1px solid var(--accent);' : 'border:1px solid var(--border);';
-  return `<div style="${border}background:${bg};border-radius:7px;padding:10px 12px;margin:4px 6px;
-                       display:flex;align-items:center;gap:10px;font-size:13px">
+  // `primary` is a boolean, so the background/border/colour it drove
+  // are two fixed appearances — a modifier class, not a style attribute
+  // (which CSP's style-src blocks).
+  const primaryCls = primary ? ' is-primary' : '';
+  return `<div class="first-run-row${primaryCls}">
     <div class="flex-1 u-3f9f96c6">
-      <div style="${primary?'color:var(--accent-fg);font-weight:600':''}">${stars}${tag}</div>
+      <div class="first-run-row-title">${stars}${tag}</div>
       <div class="fs-11 c-muted ov-hidden u-65dccb4c">
         ${desc}${sizeGB ? ' · ' + sizeGB : ''}
       </div>
@@ -1768,10 +1769,7 @@ async function openSessionTurns(sessionId, label) {
       const ts     = turn.created_at || turn.time || turn.timestamp || '';
       const tsShort = (ts || '').slice(0, 19).replace('T', ' ');
       return `
-        <div style="display:flex;flex-direction:column;gap:4px;
-                    background:${isUser ? 'rgba(124,106,247,.10)' : 'var(--bg)'};
-                    border-left:3px solid ${isUser ? '#7c6af7' : '#3da78a'};
-                    padding:10px 12px;border-radius:4px">
+        <div class="session-turn ${isUser ? 'is-user' : 'is-james'}">
           <div class="fs-10 c-muted font-mono d-flex justify-between">
             <span>${isUser ? 'user' : 'james'}${turn.mode ? ' · mode=' + escapeHtml(turn.mode) : ''}</span>
             <span>${escapeHtml(tsShort)}</span>
@@ -2078,18 +2076,10 @@ async function loadUploads(resetOffset = true) {
       const hasPrev = _uploadsOffset > 0;
       const hasNext = (_uploadsOffset + items.length) < total;
       pager.innerHTML = `
-        <button data-action="uploads-prev" ${hasPrev ? '' : 'disabled'}
-                style="padding:6px 14px;background:var(--surface-2);
-                       border:1px solid var(--border);border-radius:6px;
-                       color:var(--text);cursor:${hasPrev ? 'pointer' : 'not-allowed'};
-                       opacity:${hasPrev ? '1' : '0.4'};font-size:12px">
+        <button class="pager-btn" data-action="uploads-prev" ${hasPrev ? '' : 'disabled'}>
           ‹ 이전
         </button>
-        <button data-action="uploads-next" ${hasNext ? '' : 'disabled'}
-                style="padding:6px 14px;background:var(--surface-2);
-                       border:1px solid var(--border);border-radius:6px;
-                       color:var(--text);cursor:${hasNext ? 'pointer' : 'not-allowed'};
-                       opacity:${hasNext ? '1' : '0.4'};font-size:12px">
+        <button class="pager-btn" data-action="uploads-next" ${hasNext ? '' : 'disabled'}>
           다음 ›
         </button>`;
     }
@@ -4264,15 +4254,12 @@ async function loadLLMRecommend() {
       const purposes    = (m.purpose||[]).map(p => ({
         chat:'',retrieval:'',coding:'',multimodal:''
       }[p]||p)).join(' ');
-      const btnStyle = isInstalled
-        ? `background:#4caf7d;cursor:default`
-        : `background:var(--accent);cursor:pointer`;
+      // One boolean, two fixed appearances — modifier classes rather
+      // than a style attribute (CSP style-src).
+      const installedCls = isInstalled ? ' is-installed' : '';
       const btnLabel = isInstalled ? t('hw.llm_installed') : `${t('hw.llm_install_btn',{size:m.size_gb})}`;
-      const cardBg   = isInstalled ? 'rgba(76,175,125,.08)' : 'var(--surface)';
 
-      return `<div style="display:flex;align-items:center;gap:12px;padding:10px;
-                           margin-bottom:8px;border-radius:8px;
-                           background:${cardBg};border:1px solid var(--border)">
+      return `<div class="llm-card${installedCls}">
         <div class="flex-1">
           <div class="fw-700 fs-13">${m.name}</div>
           <div class="fs-11 c-muted u-f005b881">
@@ -4282,10 +4269,8 @@ async function loadLLMRecommend() {
         <div class="fs-11 c-muted u-a94d207d">
           ${m.size_gb}GB
         </div>
-        <button data-action="install-llm" data-model-name="${escapeHtml(m.name)}"
-                style="border:none;border-radius:6px;padding:5px 12px;
-                       font-size:11px;font-weight:600;color:#fff;
-                       ${btnStyle}" ${isInstalled?'disabled':''}>
+        <button class="llm-install-btn${installedCls}" data-action="install-llm"
+                data-model-name="${escapeHtml(m.name)}" ${isInstalled?'disabled':''}>
           ${btnLabel}
         </button>
       </div>`;

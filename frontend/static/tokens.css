@@ -876,3 +876,208 @@ body::before {
 .c-brand-2 { color: var(--brand-2); }
 .c-red     { color: var(--red, #f06292); }
 .c-blocked { color: #d97a7a; }
+
+/* ─────────────────────────────────────────────────────────────
+   Phase 3.3 tail — the enumerable half of the last 26 JS-built
+   inline styles. Hand-maintained, OUTSIDE the generated block
+   above (which is rebuilt on every `--apply` run).
+
+   Each of these used to be interpolated into a `style="…"`
+   attribute that CSP's `style-src` blocks. In every case the
+   interpolated value came from a boolean or a lookup with three
+   to five outcomes — enumerable, not computed — so the outcomes
+   became modifier classes and the palette moved here.
+   ───────────────────────────────────────────────────────────── */
+
+/* graph_editor.js — per-source provenance badge (5 roles).
+   NOT `.role-badge`: that name is already taken by the login
+   chip in chat.css / tokens.css, and graph.html loads both. */
+.source-role-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid var(--muted);
+  color: var(--muted);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  letter-spacing: .5px;
+}
+.source-role-manual  { border-color: var(--accent); color: var(--accent); }
+.source-role-extract { border-color: #a5b4fc; color: #a5b4fc; }
+.source-role-inverse { border-color: #94a3b8; color: #94a3b8; }
+.source-role-legacy  { border-color: #f59e0b; color: #f59e0b; }
+/* `.source-role-default` is the base appearance — no rule needed. */
+
+/* admin.js — first-run model recommendation row. */
+.first-run-row {
+  border: 1px solid var(--border);
+  background: transparent;
+  border-radius: 7px;
+  padding: 10px 12px;
+  margin: 4px 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+.first-run-row.is-primary {
+  border-color: var(--accent);
+  background: rgba(99, 102, 241, .10);
+}
+.first-run-row.is-primary .first-run-row-title {
+  color: var(--accent-fg);
+  font-weight: 600;
+}
+
+/* admin.js — uploads pager. `:disabled` already carries the state,
+   so the disabled appearance needs no class of its own. */
+.pager-btn {
+  padding: 6px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  opacity: 1;
+  font-size: 12px;
+}
+.pager-btn:disabled { cursor: not-allowed; opacity: .4; }
+
+/* admin.js — hardware LLM recommendation card + install button. */
+.llm-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.llm-card.is-installed { background: rgba(76, 175, 125, .08); }
+.llm-install-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  cursor: pointer;
+}
+.llm-install-btn.is-installed { background: #4caf7d; cursor: default; }
+
+/* admin.js — session transcript turn (user vs james). */
+.session-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  border-left: 3px solid transparent;
+}
+.session-turn.is-user {
+  background: rgba(124, 106, 247, .10);
+  border-left-color: #7c6af7;
+}
+.session-turn.is-james {
+  background: var(--bg);
+  border-left-color: #3da78a;
+}
+
+/* agent-chat.js — tool-call bubble and session list row. */
+.agent-call {
+  align-self: flex-start;
+  max-width: 92%;
+  background: var(--bg, #0f172a);
+  border: 1px solid var(--border, #334155);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text);
+}
+.agent-call.is-shell { border-color: #a16207; }
+.agent-call-detail { color: var(--muted); word-break: break-all; }
+.agent-call-detail.is-err { color: #fcc; }
+
+.agent-sess {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.agent-sess.is-active { background: var(--accent, #3b82f6); color: #fff; }
+.agent-sess-del {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 2px;
+}
+.agent-sess.is-active .agent-sess-del { color: #fff; }
+
+/* change-requests.js — CR status badge (4 statuses). */
+.cr-status-badge {
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  letter-spacing: .3px;
+}
+.cr-status-open {
+  background: rgba(255, 183, 77, .12);
+  color: #ffb74d;
+  border: 1px solid rgba(255, 183, 77, .35);
+}
+.cr-status-merged {
+  background: rgba(76, 175, 125, .12);
+  color: #4caf7d;
+  border: 1px solid rgba(76, 175, 125, .35);
+}
+.cr-status-rejected {
+  background: rgba(239, 68, 68, .12);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, .35);
+}
+.cr-status-superseded {
+  background: rgba(138, 141, 153, .12);
+  color: var(--muted);
+  border: 1px solid rgba(138, 141, 153, .35);
+}
+
+/* change-requests.js — contradiction-classifier rule badge. */
+.cr-rule-badge {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  letter-spacing: .4px;
+}
+.cr-rule-invalidate {
+  background: rgba(239, 68, 68, .12);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, .45);
+}
+.cr-rule-ignore {
+  background: rgba(138, 141, 153, .12);
+  color: var(--muted);
+  border: 1px solid rgba(138, 141, 153, .35);
+}
+.cr-rule-supersede {
+  background: rgba(107, 231, 208, .10);
+  color: var(--accent-fg);
+  border: 1px solid rgba(107, 231, 208, .30);
+}
+
+/* i18n.js — KO | EN language toggle segments. */
+.lang-seg { opacity: .4; font-weight: 400; }
+.lang-seg.is-active { opacity: 1; font-weight: 700; }
