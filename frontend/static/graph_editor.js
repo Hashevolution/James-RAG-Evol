@@ -130,16 +130,19 @@
     if (el) el.textContent = msg || '';
   }
 
+  // A class per role, not an interpolated colour: CSP's style-src
+  // blocks the style attribute this used to build, and the value was
+  // never computed — five fixed roles. Palette lives in tokens.css.
+  var ROLE_CLASS = {
+    manual:  'source-role-manual',
+    extract: 'source-role-extract',
+    inverse: 'source-role-inverse',
+    legacy:  'source-role-legacy'
+  };
+
   function roleBadge(role) {
-    var color = 'var(--muted)';
-    if (role === 'manual')  color = 'var(--accent)';
-    if (role === 'extract') color = '#a5b4fc';
-    if (role === 'inverse') color = '#94a3b8';
-    if (role === 'legacy')  color = '#f59e0b';
-    return '<span style="display:inline-block;padding:1px 6px;border-radius:4px;' +
-           'background:rgba(255,255,255,.05);border:1px solid ' + color + ';' +
-           'color:' + color + ';font-size:10px;font-family:var(--font-mono);' +
-           'letter-spacing:.5px">' + role + '</span>';
+    var cls = ROLE_CLASS[role] || 'source-role-default';
+    return '<span class="source-role-badge ' + cls + '">' + role + '</span>';
   }
 
   // [Stage E.1, 2026-05-24] per-source row — view mode (✏️ + ✕ actions)
