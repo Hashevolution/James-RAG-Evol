@@ -276,8 +276,15 @@ class MiddlewareIntegrationTests(unittest.TestCase):
             r = c.get("/healthz")
             csp = self._csp_value(r.headers)
             self.assertRegex(csp, r"script-src[^;]*'nonce-[A-Za-z0-9_\-]{20,}'")
-            # style-src still carries 'unsafe-inline' (flag off)
-            self.assertIn("'unsafe-inline'", csp)
+            # style-src carries no nonce (flag off) and, since
+            # 2026-09-09, no 'unsafe-inline' either — the directive
+            # graduated to plain 'self' when the conversion finished.
+            style_src = next(
+                (p.strip() for p in csp.split(";")
+                 if p.strip().startswith("style-src ")), "",
+            )
+            self.assertNotIn("nonce-", style_src)
+            self.assertNotIn("'unsafe-inline'", style_src)
 
     def test_response_csp_carries_style_nonce_when_flag_set(self):
         with _patched_env(

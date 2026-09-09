@@ -61,12 +61,15 @@ from typing import Dict, Final, Literal, Optional
 #   default-src 'self'      — local-first floor
 #   script-src 'self'       — v0.5 UI #4 PR #855 extracted last inline
 #                             script → strict mode safe
-#   style-src 'self'
-#     'unsafe-inline'       — 409 inline `style="..."` attributes still
-#                             remain; report-only mode lets us SEE
-#                             violations without breaking the UI.
-#                             Removed once nonce middleware OR mass
-#                             conversion lands.
+#   style-src 'self'       — graduated 2026-09-09. The mass conversion
+#                             finished: zero `style="..."` attributes in
+#                             the 5 served pages (#1062) and zero emitted
+#                             by JS (#1097-#1108), and no page carries an
+#                             inline <style> element. CSSOM writes
+#                             (`el.style.x`) are what remains and CSP does
+#                             not govern them (measured #1095).
+#                             tests/test_v06_csp_inline_style_migration.py
+#                             is the guard that keeps it true.
 #   img-src 'self' data:    — `data:` for inline SVG icons + brand-pulse
 #                             icons (chat.js `brainPulseSvg`)
 #   font-src 'self'
@@ -85,8 +88,7 @@ from typing import Dict, Final, Literal, Optional
 CSP_DIRECTIVES_DEFAULT: Final[Dict[str, str]] = {
     "default-src":     "'self'",
     "script-src":      "'self'",
-    "style-src":       "'self' 'unsafe-inline' "
-                       "https://fonts.googleapis.com",
+    "style-src":       "'self' https://fonts.googleapis.com",
     "img-src":         "'self' data:",
     "font-src":        "'self' https://fonts.gstatic.com",
     "connect-src":     "'self'",

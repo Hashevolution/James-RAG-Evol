@@ -907,7 +907,7 @@ async function loadDashboard() {
               ${t('dash.chart_legend')}
             </span>
           </div>
-          <div class="d-flex items-end p-8-20 bg-bg br-6 bd-1 u-cc617d82">
+          <div class="dash-chart-bars d-flex items-end p-8-20 bg-bg br-6 bd-1 u-cc617d82">
             ${bars}
           </div>`;
         _applySizedBars(chartEl);

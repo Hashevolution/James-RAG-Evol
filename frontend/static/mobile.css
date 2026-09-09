@@ -646,15 +646,10 @@
   }
 
   /* hardware 카드, 설정 카드 등 min-width 280/260/220px → 100% */
-  /* Both spellings, deliberately. The attribute selectors still carry
-     admin.js, whose inline styles have not been migrated yet; the class
-     selectors carry everything the CSP migration has already moved out
-     of the style attribute (chat.js as of 2026-09-08). Drop the
-     attribute half only once no JS injects these values any more. */
-  [style*="min-width:280px"],
-  [style*="min-width:260px"],
-  [style*="min-width:220px"],
-  [style*="min-width:200px"],
+  /* The four `[style*="min-width:…"]` selectors that used to lead this
+     rule are gone: nothing injects those values into a style attribute
+     any more (checked 2026-09-09 across every JS file and served page),
+     so they matched nothing. The class half carries all of it. */
   .minw-280, .minw-260, .minw-220, .minw-200 {
     min-width: 0 !important;
     width: 100%;
@@ -716,9 +711,13 @@
     font-size: 15px;
   }
 
-  /* dashboard 차트 — 너비 100% */
-  #dash-chart > div[style*="display:flex"],
-  #dash-chart > div[style*="display: flex"] {
+  /* dashboard 차트 — 너비 100%.
+     Was `#dash-chart > div[style*="display:flex"]`, which stopped
+     matching when #1099 moved that wrapper's inline style into classes
+     — the chart quietly lost its horizontal scroll on phones. Desktop-
+     width visual regression cannot see that, which is the same blind
+     spot #1099 itself found. Anchored to a stable class now. */
+  #dash-chart > .dash-chart-bars {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }

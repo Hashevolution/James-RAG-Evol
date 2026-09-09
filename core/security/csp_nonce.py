@@ -33,18 +33,15 @@ UI #6 audit §4):
     ones see the unchanged `'self'`. Operators can set the flag
     today without any HTML rewrite.
 
-  * **`style-src`** contains `'unsafe-inline'` because 409 inline
-    ``style="..."`` attributes remain across the 4 HTML pages.
-    Adding `'nonce-<value>'` triggers CSP3 §6.6.2.4: modern
-    browsers ignore `'unsafe-inline'` when ANY nonce is present →
-    every inline attribute becomes a violation. Setting this flag
-    BEFORE the inline-style mass conversion **WILL break the UI**.
-    The flag exists to graduate cleanly once the migration lands.
+  * **`style-src`** no longer contains `'unsafe-inline'` — the
+    mass conversion (Option B of the UI #6 audit) finished
+    2026-09-09, so there is nothing left for it to permit. The
+    flag stays because it is still meaningful for inline
+    ``<style>`` ELEMENTS should any be introduced; it is a no-op
+    for style ATTRIBUTES, which a nonce cannot cover at all.
+    Setting it today only narrows `'self'` further.
 
-The split lets the operator graduate `script-src` to strict-mode
-nonce binding TODAY while leaving `style-src` for a later cycle
-that picks Option A (per-style nonce injection) or Option B (mass
-conversion to utility classes) from the UI #6 audit.
+The audit's Option A (per-style nonce injection) was not taken.
 
 ## Integration
 
