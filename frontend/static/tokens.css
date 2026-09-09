@@ -1081,3 +1081,88 @@ body::before {
 /* i18n.js — KO | EN language toggle segments. */
 .lang-seg { opacity: .4; font-weight: 400; }
 .lang-seg.is-active { opacity: 1; font-weight: 700; }
+
+/* ─────────────────────────────────────────────────────────────
+   Phase 3.3 tail, part 2 — the genuinely computed sites. The
+   value that really varies (a bar width, a stroke width, a
+   per-domain glow) is applied through CSSOM, which CSP does not
+   govern; everything around it that was static, or enumerable,
+   is a class here.
+   ───────────────────────────────────────────────────────────── */
+
+/* admin.js — dashboard elapsed-time bar chart. Width and height come
+   from the data (see `_applySizedBars`); the colour is three fixed
+   speed bands. */
+.dash-bar {
+  border-radius: 2px 2px 0 0;
+  flex-shrink: 0;
+}
+.dash-bar.is-slow { background: #f06292; }
+.dash-bar.is-mid  { background: #ffb74d; }
+.dash-bar.is-fast { background: #7c6af7; }
+
+/* admin.js — capability progress bar. Width via `_applyPctWidths`. */
+.capability-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: width .5s ease;
+}
+
+/* admin.js — domain donut. `filter` and `fill` carry the per-domain
+   colour, which is server data (core/knowledge_tracker.py owns the
+   palette), so they are set via CSSOM rather than duplicated here. */
+.domain-donut-arc { transition: stroke-dasharray .6s ease; }
+.domain-donut-level {
+  font-size: 20px;
+  font-weight: 900;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  letter-spacing: -1px;
+}
+
+/* admin.js — hardware worker level number and bar. Five fixed level
+   bands, so the colour is a class; only the bar width is computed. */
+.worker-level {
+  margin-left: auto;
+  font-size: 26px;
+  font-weight: 900;
+  font-family: var(--font-mono);
+}
+.worker-level.lv-5 { color: #f06292; }
+.worker-level.lv-4 { color: #7c6af7; }
+.worker-level.lv-3 { color: #4fc3f7; }
+.worker-level.lv-2 { color: #4caf7d; }
+.worker-level.lv-1 { color: #aaa; }
+
+.worker-level-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .8s;
+}
+.worker-level-bar.lv-5 { background: #f06292; box-shadow: 0 0 8px #f0629266; }
+.worker-level-bar.lv-4 { background: #7c6af7; box-shadow: 0 0 8px #7c6af766; }
+.worker-level-bar.lv-3 { background: #4fc3f7; box-shadow: 0 0 8px #4fc3f766; }
+.worker-level-bar.lv-2 { background: #4caf7d; box-shadow: 0 0 8px #4caf7d66; }
+/* lv-1 has no glow on purpose: the original built the shadow colour by
+   appending "66" to the level colour, and for this band that colour was
+   the 4-char "#aaa" — "#aaa66" is not a valid hex colour, so the
+   declaration was dropped. Reproduced rather than quietly fixed. */
+.worker-level-bar.lv-1 { background: #aaa; }
+
+/* graph_node_editor.js — "노드 편집" button. Was built with
+   setAttribute('style', …), which sets the style ATTRIBUTE and so is
+   blocked by strict style-src exactly like an inline one in markup
+   (unlike el.style.x, which is CSSOM and is not governed by CSP). */
+.node-edit-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  letter-spacing: .4px;
+  cursor: pointer;
+}
