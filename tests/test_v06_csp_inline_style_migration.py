@@ -3,10 +3,15 @@
 The 5 served HTML pages (index / admin / graph / workspace / intro) had
 ~600 inline ``style="..."`` attributes relocated into CSS classes
 (atoms + verbatim components in ``tokens.css``) by
-``scripts/migrate_inline_styles.py``. This is the HTML half of the
-``style-src 'self'`` graduation (the JS-injected inline-style surface
-remains, so CSP is NOT yet flipped to enforce — see
-``docs/reviews/v0.5-ui-6-inline-style-audit.md``).
+``scripts/migrate_inline_styles.py``. That was the HTML half of the
+``style-src 'self'`` graduation; the JS-injected surface followed in
+#1097-#1108, and the directive dropped ``'unsafe-inline'`` once both
+were at zero (see ``docs/reviews/v0.5-ui-6-inline-style-audit.md``).
+
+Because the directive no longer permits inline styles, this guard is
+now load-bearing rather than advisory: a reintroduced ``style="..."``
+would be a broken UI under ``JAMES_CSP_MODE=enforce``, not a future
+inconvenience.
 
 This lock-test pins the result so a future edit that reintroduces an
 inline ``style="..."`` attribute on a served page is caught in CI
@@ -15,6 +20,12 @@ break the `style-src` procurement bar without anyone noticing).
 
 Covers:
   * Zero inline ``style="..."`` attributes in each of the 5 pages.
+  * Zero inline ``style="..."`` attributes emitted by any frontend JS
+    file, and zero ``setAttribute('style', …)`` call sites — that call
+    writes the style ATTRIBUTE, so ``style-src`` blocks it exactly like
+    one in markup, even though it looks nothing like a tag.
+  * No inline ``<style>`` element on a served page: ``style-src 'self'``
+    blocks those too, and none of the pages has ever had one.
   * ``tokens.css`` carries the generated migration block (markers).
   * ``.d-none`` is defined WITHOUT ``!important`` so JS that toggles
     ``el.style.display`` can still override it (the migration relies on
@@ -45,6 +56,20 @@ PAGES = [
 # An inline style attribute on an HTML tag: ``<... style="...">``.
 _STYLE_ATTR = re.compile(r'\sstyle="[^"]*"')
 
+# The same thing inside JS-built markup. The boundary is a quote as well
+# as whitespace, because template literals concatenate right up against
+# the attribute (`'…surface);' + 'style="…"'`).
+_JS_STYLE_ATTR = re.compile(r'''(?<=['"\s])style="[^"]*"''')
+_SETATTR_STYLE = re.compile(r'''setAttribute\(\s*['"]style['"]''')
+_STYLE_ELEMENT = re.compile(r"<style[\s>]", re.I)
+
+# Comments quote the banned patterns while explaining them, so they are
+# removed before scanning. Crude but sufficient here: no frontend file
+# contains a string literal holding "//" or "/*" outside a URL, and
+# "://" is guarded against explicitly.
+_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.S)
+_LINE_COMMENT = re.compile(r"(?<!:)//[^\n]*")
+
 
 class InlineStyleMigrationGuard(unittest.TestCase):
     def test_no_inline_style_attrs_on_served_pages(self):
@@ -60,6 +85,63 @@ class InlineStyleMigrationGuard(unittest.TestCase):
             "page(s) — relocate them to a class (run "
             "scripts/migrate_inline_styles.py --apply) so the CSP "
             "style-src migration stays intact: " + repr(offenders),
+        )
+
+    def test_no_inline_style_attrs_emitted_by_frontend_js(self):
+        """Every .js under frontend/static, not just the migrated ones.
+
+        The migration tool works from its own ``JS_FILES`` list, which
+        for a long time was missing ten files — so a clean report did
+        not mean a clean surface. This walks the directory instead.
+        """
+        offenders = {}
+        for js in sorted((FRONTEND / "static").glob("*.js")):
+            text = js.read_text(encoding="utf-8")
+            # Strip // and /* */ comments first: several of them quote
+            # the very pattern being banned while explaining the ban.
+            stripped = _BLOCK_COMMENT.sub("", text)
+            stripped = _LINE_COMMENT.sub("", stripped)
+            hits = _JS_STYLE_ATTR.findall(stripped)
+            if hits:
+                offenders[js.name] = len(hits)
+        self.assertEqual(
+            offenders, {},
+            "JS emits inline style=\"...\" attribute(s). style-src no "
+            "longer carries 'unsafe-inline', so these are blocked at "
+            "render: use a class when the value is enumerable, or a "
+            "data-* attribute plus a CSSOM write (el.style.x) when it "
+            "is genuinely computed. Offenders: " + repr(offenders),
+        )
+
+    def test_no_set_attribute_style_call_sites(self):
+        offenders = {}
+        for js in sorted((FRONTEND / "static").glob("*.js")):
+            text = js.read_text(encoding="utf-8")
+            stripped = _BLOCK_COMMENT.sub("", text)
+            stripped = _LINE_COMMENT.sub("", stripped)
+            hits = _SETATTR_STYLE.findall(stripped)
+            if hits:
+                offenders[js.name] = len(hits)
+        self.assertEqual(
+            offenders, {},
+            "setAttribute('style', ...) writes the style ATTRIBUTE, "
+            "which style-src blocks just like an inline one in markup "
+            "(el.style.x is CSSOM and is fine). Offenders: "
+            + repr(offenders),
+        )
+
+    def test_no_inline_style_elements_on_served_pages(self):
+        offenders = {}
+        for name in PAGES:
+            text = (FRONTEND / name).read_text(encoding="utf-8")
+            hits = _STYLE_ELEMENT.findall(text)
+            if hits:
+                offenders[name] = len(hits)
+        self.assertEqual(
+            offenders, {},
+            "Inline <style> element(s) on a served page — style-src "
+            "'self' blocks those as well: move the rules into a linked "
+            "stylesheet. Offenders: " + repr(offenders),
         )
 
     def test_tokens_css_has_generated_migration_block(self):

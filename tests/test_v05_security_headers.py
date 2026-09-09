@@ -123,15 +123,19 @@ class CspContentTests(unittest.TestCase):
         self.assertNotIn("unsafe-inline", script_part)
         self.assertNotIn("unsafe-eval", script_part)
 
-    def test_style_src_has_unsafe_inline_for_now(self):
-        # Documented in audit doc §3 — 409 inline `style="..."`
-        # attributes still present; style-src needs 'unsafe-inline'
-        # until nonce middleware OR mass conversion lands.
+    def test_style_src_has_no_unsafe_inline(self):
+        # Inverted 2026-09-09. The audit's Option B (mass conversion)
+        # finished: no `style="..."` attribute survives in the served
+        # pages or in JS-built markup, and no page carries an inline
+        # <style> element, so there is nothing left for 'unsafe-inline'
+        # to permit. tests/test_v06_csp_inline_style_migration.py is the
+        # guard that keeps that true; this asserts the payoff.
         self.assertIn("style-src", self.csp)
         style_part = next(
             (p for p in self.csp.split(";") if "style-src" in p), "",
         )
-        self.assertIn("'unsafe-inline'", style_part)
+        self.assertIn("'self'", style_part)
+        self.assertNotIn("'unsafe-inline'", style_part)
 
     def test_frame_ancestors_none(self):
         self.assertIn("frame-ancestors 'none'", self.csp)
