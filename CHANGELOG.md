@@ -7,7 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased] — 2026-09-03 — documentation-currency restore + restart roadmap
+## [0.6.1] — 2026-09-10 — RELEASED: the first published artifact since v0.4.4
+
+**Tag**: `v0.6.1` · **DOI**: not issued (operator decision — see below) ·
+**Release notes**: [`docs/release_notes_v0.6.1.md`](docs/release_notes_v0.6.1.md) ·
+**Close handover**: [`docs/handovers/v0.6.1-close-2026-09-10.md`](docs/handovers/v0.6.1-close-2026-09-10.md)
+
+`v0.4.4` was the last tag. Everything after it — the v0.5 cycle close, the v0.6 deployment-hardening stream, the v0.6.1 product work, and the 2026-09 restart that brought CI back to green — shipped to `main` untagged. **This release publishes all of it**: 282 PRs (`#831`–`#1112`), 2026-06-12 → 2026-09-09, 522 files changed, +90,289 / −5,838.
+
+The sections below are the per-window record and are unchanged; the tag is what publishes them.
+
+| Window | PRs | Count |
+|---|---|---:|
+| v0.5 close + v0.6 entry skeleton — `[0.5.0-close]` | #831 – #911 | 81 |
+| v0.6 / v0.6.1 product hardening — `[0.6.0]`, `[0.6.1-stream]` | #912 – #1076 | 165 |
+| Idle-period maintenance | #1077 – #1082 | 6 |
+| Restart — `[0.6.2-restart]` | #1083 – #1112 | 30 |
+
+**Scope vs name**: the tag is called `v0.6.1` because that is the cycle most of the work belongs to, but it carries the v0.5 and restart streams too. **`v0.5` has no tag of its own**; whether to add one retroactively is an operator decision, because it changes the DOI lineage this project has already had to correct once (#1077).
+
+**This is not a v0.6 cycle entry.** The v0.5 → v0.6 gate (Dim F — a ≥6-month external customer pilot) is still open and the 2026-06-13 2-fork contract stands, decision point ≈ 2026-12-13. A product release is not a strategy decision.
+
+**Invariants at close** — measured across the whole span, not copied from a prior handover:
+
+| Invariant | Status |
+|---|---|
+| `core/retrieval` + `core/retrieval_engine.py` | **0 lines changed** across all 282 PRs |
+| `core/graph` traversal | **Broken, deliberately** — the lifecycle live-consistency arc (#1018–#1027), probe-first and measurement-gated, with kill-switch `JAMES_DISABLE_STATUS_FILTER` |
+| `core/reasoning` | Changed — rule #5 splits, `modes/vision.py`, per-mode routing wire (each preceded by a 3-cell paired measurement) |
+| rule #5 (20 KB module cap) | **0 exceptions** — `GRANDFATHERED` is empty |
+| rule #1 (no vertical domain code) | **0 violations** — 13 token hits, all boundary-asserting comments or ordinary English |
+| CI (`5307ab3`) | `tests` / `lint` / `security-scan` all success — **5,309 passed / 0 failed** |
+
+**⚠️ Known discrepancy, deliberately not resolved here.** `docs/release_notes_v0.4.4.md`, the preprint README and `.zenodo.json` carry LRB S2 as V/N/J = **0.225 / 0.5375 / 0.7125**. Since #1089 repaired a fixture collision the repository reproduces **0.2500 / 0.5875 / 0.7625** — V < N < J still holds and **J − N is 0.175 in both**, identical to four decimals. This release does **not** rebase the published figures; restating vs footnoting them is LRB decision #2, open for the operator since 2026-09-08. A green suite means the repository reproduces *itself*, not the paper.
+
+---
+
+## [0.6.2-restart] — 2026-09-03 → 2026-09-09 — documentation currency, CI green, CSP `style-src` graduation
 
 **Status**: `main`-branch documentation sync. No runtime change.
 
@@ -18,13 +54,29 @@ After a ~2-month idle interval (last feature session 2026-06-26; last commit 202
 - **NEW CLAUDE.md rule #6 — state single-source**: cycle state is written in exactly one place (the newest `docs/handovers/` doc); root docs only point at it. Duplicated state statements are what drifted.
 - **Guard strengthened** — `tests/test_v06_claude_md_entry_pointer.py` gains a fourth invariant: the "Where to look next" first row must name the **newest date-stamped handover** on disk. The three original invariants only checked that the pointer *resolves*, so they stayed green through the entire drift.
 - **🟠 `main` CI state recorded in the docs for the first time.** The `test.yml` pytest job has failed on every run since 2026-06-22, through the latest (2026-08-28). The 2026-08-21 draft of this entry measured ~60 failures and two rule #5 violations against `73a653a`; **#1080 (2026-08-28) has since taken it to 5 failures / 4,368 passed / 6 skipped** (read from the CI run log) and resolved both size violations, so those numbers are superseded. This PR's own CI run is byte-for-byte the same failure list with one more test passing (`5 failed, 4369 passed`), i.e. the branch is exactly neutral. The five remaining failures are enumerated and adjudicated in the roadmap's §1.1. The deterministic benchmark tier and the published RAB / LRB numbers are unaffected. Restoring green remains roadmap Phase 2 and blocks new feature work.
+### 2026-09-07 → 2026-09-09 — the restart actually executed (#1082–#1112)
+
+- **Roadmap Phase 2 — CI green (#1082–#1089)**. First fully green `main` since 2026-06-22. The last standing failure was LRB S2, which the operator adjudicated as a fixture collision to repair (#1089); doing so exposed that CI was `--ignore`-ing 57 test files, hiding **902 tests and 8 red ones**. #1088 repaired all 8 and un-ignored 6.
+- **Roadmap Phase 3 — idle-debt closure (#1090–#1105)**. Operating rules documented (#1090); the image/OCR remainder fixed (#1091) — the `cv2.imread` failure was **the filename, not the megapixels**: the same 12MP photo read fine as `photo_12mp.jpg` and returned `None` as `사진_12메가.jpg`, with an `except` swallowing it, so Korean-named uploads passed silently without OCR. CSP `style-src` went 479 → 26 inline styles.
+- **CSP `style-src` graduated (#1107–#1109)**. The JS-injected surface reached **0** (enumerable values → classes; genuinely computed values → `data-*` + a CSSOM write, which CSP does not govern), `setAttribute('style')` call sites 1 → 0, and the directive dropped `'unsafe-inline'`:
+
+  ```
+  - style-src 'self' 'unsafe-inline' https://fonts.googleapis.com
+  + style-src 'self' https://fonts.googleapis.com
+  ```
+
+  `JAMES_CSP_MODE` still defaults to `report-only`. The remaining blocker for `enforce` is **not** a style one: the new `scripts/csp_enforce_probe.py` — which measures violations under an enforced header without starting a server — found `graph.html` loading three libraries from `unpkg.com`, all blocked by `script-src 'self'`.
+- **CI `--ignore` list retired, 51 → 0 (#1111)**. The list carried an iteration plan (un-ignore each file as its dependency arrives) that had been overtaken: the files were passing and nobody had checked. Measured in a detached worktree with no `.env`, Ollama pointed at a dead port and 73 environment variables stripped — all 51 pass alone and together — then confirmed by the real CI run. **CI now runs 5,309 tests instead of 4,469 (+840), 0 failed.**
+- **A Windows-only latent defect (#1110)** — `tests/_lrb_fixtures.py` silenced a fixture builder with `open("/dev/null")`, a path that does not exist on Windows. The branch only runs when the fixture is absent, so a working checkout never hit it; a fresh worktree failed three LRB files at collection.
+- **A mobile regression that had been hiding behind a dead selector (#1109)** — `#dash-chart > div[style*="display:flex"]` stopped matching when #1099 moved that wrapper's inline style into classes, so the dashboard chart quietly lost horizontal scroll on phones. Desktop-width visual regression cannot see it.
+
 - **This entry itself is a worked example of the drift it documents.** The roadmap's first draft was written against a `main` that moved twice (#1079, #1080) before the PR merged; the facts were re-measured and the phase scope reduced rather than shipped stale. That is the intended behaviour under rule #6, not an exception to it.
 
 ---
 
-## [0.6.1] — 2026-06-14 → 2026-06-26 — product hardening (UNRELEASED, `main` only)
+## [0.6.1-stream] — 2026-06-14 → 2026-06-26 — product hardening
 
-**Status**: no tag, no Zenodo DOI. v0.4.4 remains the newest published release; the v0.5 → v0.6 gate (Dim F) is still open, so this stream is cycle-less product work rather than a released version.
+**Status**: shipped in the `v0.6.1` tag (2026-09-10). At the time it landed it had no tag and no Zenodo DOI; v0.4.4 was then the newest published release; the v0.5 → v0.6 gate (Dim F) is still open, so this stream is cycle-less product work rather than a released version.
 
 **Theme**: turn the measured platform into something an operator actually uses daily — agent track, LLM routing unification, chat UX rebuild, page consolidation, and a live-lifecycle correctness fix found by measurement.
 
@@ -48,9 +100,9 @@ After a ~2-month idle interval (last feature session 2026-06-26; last commit 202
 
 ---
 
-## [0.6.0] — 2026-06-13 — deployment hardening + operator surfaces + template engine (UNRELEASED, `main` only)
+## [0.6.0] — 2026-06-13 — deployment hardening + operator surfaces + template engine
 
-**Status**: no tag, no DOI. Landed in the "v0.5 closed, v0.6 not yet entered" interval; none of it depends on the Fork A / Fork B decision.
+**Status**: shipped in the `v0.6.1` tag (2026-09-10). Landed in the "v0.5 closed, v0.6 not yet entered" interval; none of it depends on the Fork A / Fork B decision.
 
 - **Documentation + positioning** (#886–#889) — v0.6 entry skeleton (the 2-fork contract); a roadmap / README / CHANGELOG consistency audit; an industry comparison matrix against LangChain / LlamaIndex / Haystack / R2R / ActiveGraph, with 18 verified cell corrections.
 - **P1 — production deployment hardening** (#890, #891) — trusted `X-Forwarded-*` middleware closing a rate-limit bypass and audit-log IP spoof; an HTTPS production deployment guide.
@@ -65,9 +117,9 @@ After a ~2-month idle interval (last feature session 2026-06-26; last commit 202
 
 ---
 
-## [0.5.0-close] — 2026-06-12 → 2026-06-13 — v0.5 cycle close + post-close mother-platform consolidation (UNRELEASED)
+## [0.5.0-close] — 2026-06-12 → 2026-06-13 — v0.5 cycle close + post-close mother-platform consolidation
 
-**Status**: `main`-branch cycle close + post-close consolidation. **No Zenodo DOI mint** — the v0.5 → v0.6 gate (Dim F: ≥6 month external customer pilot) is not yet cleared, and the 2-fork v0.6 entry contract (LOI signed → Track D / 6-month no-LOI → reassess; see [v0.6 entry skeleton](docs/handovers/v0.6-entry-skeleton-2026-06-13.md)) is the canonical state pointer. This entry documents the cumulative `main`-branch state at the close + post-close interval boundary.
+**Status**: shipped in the `v0.6.1` tag (2026-09-10); **v0.5 itself was never tagged** — adding one retroactively is an open operator decision, since it changes the DOI lineage. **No Zenodo DOI mint** — the v0.5 → v0.6 gate (Dim F: ≥6 month external customer pilot) is not yet cleared, and the 2-fork v0.6 entry contract (LOI signed → Track D / 6-month no-LOI → reassess; see [v0.6 entry skeleton](docs/handovers/v0.6-entry-skeleton-2026-06-13.md)) is the canonical state pointer. This entry documents the cumulative `main`-branch state at the close + post-close interval boundary.
 
 **Theme**: enterprise document ontology mount (B.5 series) + SaaS-readiness primitives (G1 + G2) + Time-Travel Dashboard surface (F.1) + Change Review Workspace surface (F.2) + Pack SDK trio (G8.a-c + SDK.a-c) + CSP nonce middleware (Track C). **Streak preserved across 44 PRs**: zero vertical content, zero `core/retrieval` / `core/graph` traversal / `core/reasoning` lines changed, 4-layer rule #1 protection contract held throughout.
 

@@ -11,20 +11,28 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 ## Where we are right now
 
 > **단일 진실원 (single source of truth)**:
-> **`docs/handovers/v0.6.2-session-close-2026-09-08.md`**.
+> **`docs/handovers/v0.6.1-close-2026-09-10.md`**.
 > (Phase 정의는 `v0.6.2-restart-roadmap-2026-09-03.md` 가 계속
 > 유효하고, 마감 문서가 진행 결과를 갱신합니다.)
 > 아래는 그 요약입니다. 충돌하면 로드맵 문서가 우선입니다.
 
-- **최신 공식 릴리스**: **v0.4.4** — DOI `10.5281/zenodo.20652679`.
-  v0.5 는 `main` 에서 **closed (2026-06-13)** 이지만 DOI 미발행.
-- **사이클 상태**: **v0.5 closed / v0.6 정식 미진입.** v0.5 → v0.6 게이트
+- **최신 릴리스**: **v0.6.1** — 태그 `v0.6.1` (`5307ab3`, 2026-09-10),
+  **DOI 미발행** (operator 판단). v0.4.4 이후 태그 없이 떠 있던 **282 PR
+  (`#831`–`#1112`)** 을 전부 담습니다 — v0.5 마감 · v0.6 · v0.6.1 · v0.6.2
+  재개분. 릴리스 노트 `docs/release_notes_v0.6.1.md`, 마감 핸드오버
+  `docs/handovers/v0.6.1-close-2026-09-10.md`.
+  **⚠️ `v0.5` 는 자체 태그가 없습니다** — 소급 태깅은 DOI 계보를 바꾸므로
+  operator 판단.
+  **최신 DOI 는 여전히 v0.4.4** `10.5281/zenodo.20652679`.
+- **사이클 상태**: **v0.6.1 released / v0.6 정식 미진입.** 태그는
+  *제품 릴리스*이지 사이클 진입이 아닙니다. v0.5 → v0.6 게이트
   = **Dim F** (외부 고객 6 개월 이상 파일럿) **미통과**. 2-fork 계약이
   유효 — **Fork A** LOI 체결 → Track D 버티컬 팩 / **Fork B** 6 개월
   무LOI → 전략 재평가. 판정 시점 ≈ **2026-12-13**. 둘 다 **operator 결정**이며,
   결정 전에도 아래 Phase 1–5 는 전부 진행 가능합니다.
 - **실제로 진행된 것**: v0.6 / v0.6.1 **제품 하드닝 스트림** — PR
-  **#886–#1078** (약 190 PR, 2026-06-13 → 2026-06-26, **릴리스 태그 없음**).
+  **#886–#1078** (2026-06-13 → 2026-06-26). **2026-09-10 에 `v0.6.1` 로
+  태깅됐습니다** (그 태그의 실제 범위는 #831–#1112 로 더 넓습니다).
   주요 산출물: 운영 하드닝 P1–P4 (신뢰 프록시 / HTTPS 가이드 / 테넌트
   미들웨어 / 온보딩·롤백·추론 시각화·용어집) · **템플릿(양식) 엔진** ·
   **에이전트 트랙** (`core/agent_tools` + tool-use 루프 + `run_shell`
@@ -63,7 +71,10 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   릴리스 노트는 여전히 수리 전 수치 (0.225 / 0.5375 / 0.7125) 입니다 —
   발표 수치 재베이스라인은 operator 판단.
   `ruff` / `bandit` 은 계속 초록.
-  → 로드맵 **Phase 3 은 3.1 / 3.2 (operator 실기기 dogfood) 만** 남았습니다.
+  → 로드맵 **Phase 3 은 3.1 / 3.2 (operator dogfood) 만** 남았고,
+  **Phase 4 (v0.6.1 정식 마감) 는 2026-09-10 에 종료**됐습니다.
+  다음 솔로 = `mobile.css` 잔여 `!important` 20개 → 로드맵 **Phase 5
+  측정 백로그**.
 - **유지보수 4 PR** (#1077 #1078 08-19 / **#1079** 08-26 / **#1080** 08-28):
   v0.3.3 DOI 계보 정정, ruff F-class 해소, Ali 엔지니어링 4건 ①②③ 발송 +
   **uuid7 production 결함 수리** (`start_trace()` 가 Python 3.14 전용
@@ -172,8 +183,9 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
-| **🟢🟢🟢 NEXT SESSION ENTRY (이것부터 — 2026-09-09 세션 마감)** | **`docs/handovers/v0.6.2-session-close-2026-09-09.md`** (PR #1107–#1111. **Phase 3.3 종료 — JS 인라인 `style=` 26 → 0**, `setAttribute('style')` 1 → 0. **CSP `style-src` 졸업** = `'unsafe-inline'` 제거 (모드는 `report-only` 그대로, 플립은 operator). **CI `--ignore` 51 → 0** — worktree + 최소 환경 측정 후 실제 CI 초록, 도는 테스트 4,469 → **5,309** (+840, 0 failed). 🔴 **enforce 플립의 남은 블로커 = `graph.html` 의 `unpkg.com` 스크립트 3종** (`script-src 'self'` 가 차단, vendoring 은 operator 판단). 신규 `scripts/csp_enforce_probe.py` = 서버 없이 enforce 위반 측정. §5 검증이 잡은 4건 (오짝 셀렉터 / 죽은 셀렉터가 숨긴 모바일 회귀 / Windows `/dev/null` / `--apply` 비파괴 확인) 은 이어받을 것.) |
-| **🟢🟢 직전 세션 마감 (2026-09-08, PR #1082–#1105)** | `docs/handovers/v0.6.2-session-close-2026-09-08.md` (**Phase 2 (CI 그린) 종료** — 2026-06-22 이후 처음. rule #5 GRANDFATHERED 0건, CI ignore 57→51, CSP style-src 479 → 26. LRB S2 결정 #1 실행 — V/N/J 0.2500/0.5875/0.7625, **J−N 0.175 불변**, ⚠️ **결정 #2 (preprint 재베이스라인) 미결**. §5 검증 3종 + §6 자기 정정 3건.) |
+| **🟢🟢🟢 NEXT SESSION ENTRY (이것부터 — 2026-09-10 v0.6.1 마감)** | **`docs/handovers/v0.6.1-close-2026-09-10.md`** (로드맵 **Phase 4 종료**. 태그 `v0.6.1` = v0.4.4 이후 태그 없이 떠 있던 **282 PR (#831–#1112)** 전부. §2 = 범위 실측과 이름-범위 불일치, §4 = **불변식 마감 실측** (`core/retrieval` 0 라인 / graph traversal 의도적 break / rule #5 예외 0 / rule #1 위반 0 / CI 5,309 passed), §5 = **이 마감이 하지 않은 것 5가지** (발표 수치 미변경 · DOI 미발행 · enforce 플립 안 함 · `v0.5` 소급 태그 안 함 · v0.6 진입 선언 안 함), §6 = operator 결정 6건, §7 = 남은 솔로 3건.) |
+| **🟢🟢 직전 세션 마감 (2026-09-09, PR #1107–#1111)** | `docs/handovers/v0.6.2-session-close-2026-09-09.md` (**Phase 3.3 종료** — JS 인라인 `style=` 26 → 0, CSP `style-src` 졸업, CI `--ignore` 51 → 0 (도는 테스트 4,469 → **5,309**). 🔴 enforce 플립의 남은 블로커 = `graph.html` 의 `unpkg.com` 스크립트 3종. 신규 `scripts/csp_enforce_probe.py`.) |
+| **🟢🟢 그 이전 세션 마감 (2026-09-08, PR #1082–#1105)** | `docs/handovers/v0.6.2-session-close-2026-09-08.md` (**Phase 2 (CI 그린) 종료** — 2026-06-22 이후 처음. rule #5 GRANDFATHERED 0건, CI ignore 57→51, CSP style-src 479 → 26. LRB S2 결정 #1 실행 — V/N/J 0.2500/0.5875/0.7625, **J−N 0.175 불변**, ⚠️ **결정 #2 (preprint 재베이스라인) 미결**. §5 검증 3종 + §6 자기 정정 3건.) |
 | **🟢🟢 Phase 정의 원본 (2026-09-03 재개 로드맵)** | **`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`** (재개용 **단일 진실원**. §1 현재 상태 사실 확인 (main HEAD `df55e21` / 유휴 구간 / **CI 실패 5 건 실측 + 건별 판정** / rule #5 해소 + 1건 grandfather / 문서 최신성 편차 표) + §2 **Phase 1–7 재개 로드맵** (1 문서 동기화 ✅ → 2 CI 그린 복구 → 3 유휴 부채 청산 → 4 v0.6.1 정식 마감 → 5 측정 백로그 → 6 Fork A/B 전략 결정 (operator) → 7 v0.6 진입) + §3 #886–#1078 실제 진행 요약 + §5 재개 첫 세션 30 분 체크리스트 + §6 하지 말 것. **Phase 2 전에는 새 기능 PR 금지.**) |
 | **🟢🟢 직전 기능 세션 close (2026-06-26, PR #1062–#1075)** | `docs/handovers/v0.6.1-session-close-2026-06-26.md` (CSP `style-src` HTML 이관 596 attrs + 모바일 업로드 UX + **이미지 인제스트 4 단 병목 수리** (비전 모델 라우팅 / 이진화 제거 / EasyOCR fallback / qwen2.5vl:7b / num_ctx 8192) + `/query/`·`/upload/` heartbeat 스트리밍 + detailed 답변 스타일. §4 operator open 2 건 (모바일 긴 질의 드롭 / detailed dogfood), §5 deferred, §3 서버 background 실행 금지 교훈.) |
 | **🟢🟢 v0.6.1 세션 close (2026-06-23, PR #992–#1037)** | `docs/handovers/v0.6.1-session-close-2026-06-23.md` (UI 8→5 페이지 통합 / de-emoji / 인트로 프론트도어 / 그래프 허브 / trace 링크 루프 / entity-edit cascade Phase 1-3 / **lifecycle live-consistency arc** / 비주얼 회귀 하네스 / 백로그 재측정.) |
@@ -311,11 +323,14 @@ should show exactly one PID — the operator's, once you are done.
 
 **현재 위치 (2026-09-03 기준)**
 
-- **v0.5 closed (2026-06-13), v0.6 정식 미진입.** 게이트 = Dim F (외부 고객
+- **v0.6.1 released (2026-09-10), v0.6 정식 미진입.** 태그는 제품
+  릴리스이지 사이클 진입이 아닙니다. 게이트 = Dim F (외부 고객
   6 개월 파일럿) 미통과. 2-fork 계약 (Fork A LOI / Fork B 6 개월 무LOI
   재평가) 판정 시점 ≈ 2026-12-13. **operator 결정 사항**.
-- **최신 공식 릴리스 = v0.4.4** (DOI `10.5281/zenodo.20652679`).
-  v0.5 / v0.6 / v0.6.1 은 `main` 에만 존재, 태그·DOI 없음.
+- **최신 릴리스 = v0.6.1** (태그 `5307ab3`, 2026-09-10, **DOI 미발행**).
+  v0.4.4 이후 미발행이던 282 PR 을 전부 담습니다. **최신 DOI 는 여전히
+  v0.4.4** (`10.5281/zenodo.20652679`) — v0.6.1 DOI 발행과 `v0.5` 소급
+  태그는 둘 다 operator 판단.
 - **v0.6 / v0.6.1 제품 하드닝 스트림** (#886–#1078, 약 190 PR) 이
   2026-06-13 → 06-26 에 진행. 운영 하드닝 · 양식 엔진 · 에이전트 트랙 ·
   LLM 라우팅 통합 · 채팅 UX 개편 · UI 8→5 통합 · CSP 이관 · 이미지 OCR/비전
