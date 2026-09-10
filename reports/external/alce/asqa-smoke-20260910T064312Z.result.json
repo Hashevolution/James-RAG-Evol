@@ -1,0 +1,235 @@
+{
+  "benchmark": "alce-asqa",
+  "loader": "alce-asqa",
+  "producer": "alce-closed-corpus",
+  "split": "dev",
+  "n_queries": 20,
+  "n_rows": 20,
+  "n_errors": 0,
+  "elapsed_s": 53.11,
+  "started_at": "2026-09-10T06:42:19.532259+00:00",
+  "axes": [
+    {
+      "name": "citation_precision",
+      "score": 0.567,
+      "n_queries": 20,
+      "per_query": {
+        "alce-asqa--7013890438520559398": 0.3333,
+        "alce-asqa-7089015503030534342": 1.0,
+        "alce-asqa-8793099883447006698": 0.6,
+        "alce-asqa--881464876144297194": 0.25,
+        "alce-asqa-1650309494326541834": 1.0,
+        "alce-asqa-2378678654868379935": 0.1429,
+        "alce-asqa--3322598412088356524": 0.0,
+        "alce-asqa--4633355453516911545": 1.0,
+        "alce-asqa--7464414779466400769": 0.4,
+        "alce-asqa-1562758409663917015": 0.5,
+        "alce-asqa-7813254335895169912": 0.5,
+        "alce-asqa-732619765350082410": 1.0,
+        "alce-asqa-6962706727076805207": 1.0,
+        "alce-asqa-3127369420834732535": 0.5,
+        "alce-asqa--8056895208806271453": 1.0,
+        "alce-asqa-4131723857510142703": 0.25,
+        "alce-asqa--6617858863213285972": 0.3333,
+        "alce-asqa--7031499911070053371": 0.5,
+        "alce-asqa--2419910984507145175": 0.75,
+        "alce-asqa-3228155858422343609": 0.3636
+      },
+      "notes": "verifier=research-tier:roberta-large-mnli; is_alce_grade=False. DEFAULT FALLBACK — NOT ALCE-grade. Pass a real NLI verifier (e.g. T5-XXL TRUE NLI Mixture) for publishable ALCE scores."
+    },
+    {
+      "name": "citation_recall",
+      "score": 0.6981,
+      "n_queries": 20,
+      "per_query": {
+        "alce-asqa--7013890438520559398": 1.0,
+        "alce-asqa-7089015503030534342": 1.0,
+        "alce-asqa-8793099883447006698": 1.0,
+        "alce-asqa--881464876144297194": 0.3333,
+        "alce-asqa-1650309494326541834": 1.0,
+        "alce-asqa-2378678654868379935": 0.3333,
+        "alce-asqa--3322598412088356524": 0.0,
+        "alce-asqa--4633355453516911545": 1.0,
+        "alce-asqa--7464414779466400769": 0.3333,
+        "alce-asqa-1562758409663917015": 0.5,
+        "alce-asqa-7813254335895169912": 1.0,
+        "alce-asqa-732619765350082410": 1.0,
+        "alce-asqa-6962706727076805207": 1.0,
+        "alce-asqa-3127369420834732535": 0.5,
+        "alce-asqa--8056895208806271453": 1.0,
+        "alce-asqa-4131723857510142703": 0.3333,
+        "alce-asqa--6617858863213285972": 0.5,
+        "alce-asqa--7031499911070053371": 0.5,
+        "alce-asqa--2419910984507145175": 1.0,
+        "alce-asqa-3228155858422343609": 0.6667
+      },
+      "notes": "verifier=research-tier:roberta-large-mnli; is_alce_grade=False. DEFAULT FALLBACK — NOT ALCE-grade. Pass a real NLI verifier (e.g. T5-XXL TRUE NLI Mixture) for publishable ALCE scores."
+    }
+  ],
+  "rows": [
+    {
+      "id": "alce-asqa--7013890438520559398",
+      "answer": "The search results provide information regarding various records for top goalscorers, but do not definitively name one person with the absolute highest goals in world football.\n\n*   Pelé's 1,281 goals are recognized by FIFA as the highest total for a professional footballer, though the Soccer Statistic Foundation (rssf) only acknowledges 767 goals, placing him third behind Josef Bican (805) and Romario (772) [1].\n*   Josef Bican, a Czech-Austrian professional footballer, is estimated by the Rec.Sport.Soccer Statistics Foundation (RSSSF) to have scored at least 805 goals in all competitive matches, which would make him the most prolific scorer of all time [5].\n*   Godfrey Chitalu's record of 116 goals in a year during 1972 was claimed by the Football Association of Zambia, but FIFA officials stated they would not ratify records for domestic competitions, including Chitalu's [2].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-7089015503030534342",
+      "answer": "The song \"The Sound of Silence\" is by the American music duo Simon & Garfunkel [1][3]. Paul Simon wrote the song over several months spanning 1963 and 1964 [1][3]. The original title of the song was \"The Sounds of Silence\" [1][3].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-8793099883447006698",
+      "answer": "The first iPhone was officially announced on January 9, 2007, at the Macworld convention [2][4]. Subsequently, the first version of the iPhone became publicly available on June 29, 2007, in select markets [1][3][5].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa--881464876144297194",
+      "answer": "The identical twin British actors James and Oliver Phelps are best known for portraying Fred and George Weasley in the *Harry Potter* film series [1][4]. The Phelps twins were cast as Fred and George Weasley after auditioning for the film *Harry Potter and the Philosopher's Stone* when they were 14 years old [3]. James and Oliver Phelps were born on February 25, 1986, in the Sutton Coldfield area of Birmingham, England [1].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-1650309494326541834",
+      "answer": "Virginia has 34 state parks [1][2]. Additionally, the state maintains 17 state forests, which are managed by the Department of Forestry and the Department of Conservation and Recreation [1][2].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-2378678654868379935",
+      "answer": "The search results provide details about different years' Champions League Finals, but one document specifies the 2018 UEFA Champions League Final [4]. This final, which was the match for the 2017–18 UEFA Champions League, took place at the NSC Olimpiyskiy Stadium in Kiev, Ukraine, on May 26, 2018 [4]. However, the provided texts do not specify who performed at the opening ceremony for this particular final [1][2][3][4][5].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa--3322598412088356524",
+      "answer": "The provided search results do not contain information specifying who killed the man in *Thelma and Louise* [1][2][3][4][5]. However, one document mentions that a killer arrived at Rhyme's house and killed both Thelma and police Captain Howard Cheney, and this killer was revealed to be Richard Thompson, whose real name is Marcus Andrews [4].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa--4633355453516911545",
+      "answer": "Charlie Day portrays the character Charlie Kelly, who is featured in the FX series *It's Always Sunny in Philadelphia* [1][2]. Charlie Kelly is a fictional character who is depicted as a co-owner of Paddy's [1][2]. The series follows the antics of \"The Gang,\" a group of friends who operate the bar Paddy's Pub in South Philadelphia [3][5].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa--7464414779466400769",
+      "answer": "The provided search results offer varying information regarding the total number of times the Lakers have won the Finals. One source notes that the Lakers and Celtics have won the two highest number of championships, with the Lakers having 16 titles and the Celtics having 17 [1][2]. Another source mentions the Lakers winning the 2010 NBA Finals [1][2]. Furthermore, one document states that the Lakers won three consecutive championships from 2000 to 2002, and then won in 2010 [5].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-1562758409663917015",
+      "answer": "The Congress party (INC) holds majority support in several states, including Punjab, Chhattisgarh, Rajasthan, and Madhya Pradesh [2]. In Karnataka and Puducherry, the party shares power with its alliance partner, Janata Dal (Secular) and Dravida [2].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-7813254335895169912",
+      "answer": "The provided search results mention different individuals associated with the role of Fruma Sarah in *Fiddler on the Roof*.\n\n*   In 1971, Ruth Madoc portrayed Fruma Sarah in the film adaptation of the musical *Fiddler on the Roof* [1].\n*   Separately, an actress played the role of Fruma Sarah during the 2015-2016 Broadway Revival of *Fiddler on the Roof* [4].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-732619765350082410",
+      "answer": "Toronto hosted the MLB All-Star Game in 1991 [1]. Specifically, the 62nd Major League Baseball All-Star Game took place on July 9, 1991, at SkyDome, which is the home stadium for the Toronto Blue Jays [1].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-6962706727076805207",
+      "answer": "Law enforcement agencies utilize a vehicle known as a bait car, which can also be called a decoy car, hot car, or trap car, to apprehend car thieves or those who steal items from vehicles [1][3]. These vehicles are outfitted with various technologies, including audio/video surveillance and GPS tracking, allowing them to be remotely monitored and controlled [1][3]. For instance, a \"kill switch\" might be installed to enable police to remotely lock all doors and disable the engine, thereby preventing escape [1][3].\n\nWhen set up to catch thieves who steal items from cars, the bait car might be disabled so it cannot be started and will contain specially prepared \"bait property\" [2]. In some instances, the car is left unlocked with the keys in the ignition, and the bait car may be filled with valuable items to attract attention [2]. If the car is stolen, officers are immediately alerted and can use the monitoring capabilities to control the vehicle, such as honking the horn, locking doors, or disabling the engine [2]. Furthermore, the bait car can be part of a sting operation, or \"honey trap,\" to lure criminals into exposing themselves [4].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-3127369420834732535",
+      "answer": "The original run of the *Jersey Shore* television series on MTV spanned from December 3, 2009, to December 20, 2012 [1][2]. However, later information indicates that MTV renewed the series for a fourth and final season on April 24, 2014 [4][5].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa--8056895208806271453",
+      "answer": "The plane crash storyline appeared in multiple seasons of *Grey's Anatomy*. Specifically, the eighth season featured an episode titled \"Flight,\" where six doctors survived an aviation accident, and Dr. Lexie Grey died [1][4]. Furthermore, the eleventh season included an episode called \"One Flight Down,\" which featured a plane crash in Seattle and revisited memories of the tragic plane crash from season 8, which resulted in the deaths of Mark Sloan and Lexie Grey [2][3].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-4131723857510142703",
+      "answer": "The provided search results do not state the current number of branches for the Oriental Bank of Commerce [1][3]. However, one document mentions that after the acquisition of Global Trust Bank (GTB) on August 14, 2004, the acquisition increased OBC's branch total to 1092 [1]. Another document notes that at one point, a bank's branches crossed 2000 [2].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa--6617858863213285972",
+      "answer": "The Rams franchise relocated from Los Angeles to St. Louis in 1995 [2][3]. Specifically, owner Georgia Frontiere announced the move to St. Louis on January 15, 1995 [5]. The team played in St. Louis, Missouri, as the St. Louis Rams from the 1995 through the 2015 seasons [2][3]. The Rams' first game in their St. Louis stadium, the Edward Jones Dome, took place on October 22, 1996 [1].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa--7031499911070053371",
+      "answer": "The provided search results do not state a specific date for the arrival of the Voortrekkers in South Africa; however, one source mentions a 1916 film that recounts the Boers' Great Trek during the late 1830s [3]. The official establishment of the Voortrekker movement is noted as dating from September 30, 1931 [2].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa--2419910984507145175",
+      "answer": "Heath Ledger played the character Patrick in the film *10 Things I Hate About You* [4]. The film is a 1999 American teen romantic comedy-drama directed by Gil Junger, which is a loose modernization of William Shakespeare's late-16th century comedy, *The Taming of the Shrew* [3][4]. In the story, Cameron attempts to get the \"bad boy\" Patrick to help him in order to date Bianca Stratford [4].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    },
+    {
+      "id": "alce-asqa-3228155858422343609",
+      "answer": "The provided search results describe Windows Movie Maker, which was formerly known as Windows Live Movie Maker [1][2]. This software was part of the Windows Essentials software suite [1][2]. While one result mentions that the software was available through the Windows Live Essentials suite [4][5], the search results do not explicitly state whether Microsoft Live Movie Maker was entirely free [1][2][3][4][5].",
+      "mode": "alce-closed-corpus",
+      "model": "gemma4:e4b",
+      "n_docs": 5,
+      "status": "ok"
+    }
+  ],
+  "honest_tier": "research-tier: smoke n=20 with NLI adapter (roberta-mnli). STRONGER than string-containment fallback, but NOT ALCE-official-grade (T5-XXL TRUE NLI Mixture, GPU-only, remains deferred). Useful for cross-checking the fallback result and for paper methods cross-verifier robustness claims. Pre-reg: docs/research/cycle-gamma-c3-alce-smoke-preregistration-2026-06-11.md + docs/research/v024-hr-nli-axis-preregistration-2026-06-11.md (verifier provenance).",
+  "verifier_grade": "research-tier-roberta-mnli",
+  "fixture_sha": "d72737ce7d46629d3504fc508f29ec0c270e0ddd5cff3fad69625d2c0e4be35b",
+  "n_docs_per_query": 5
+}
