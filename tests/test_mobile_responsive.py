@@ -181,20 +181,35 @@ class HtmlLinksMobileCssTests(unittest.TestCase):
 
 
 class AvoidsUnreachableCssTests(unittest.TestCase):
-    """Sanity: rules using !important should be limited to cases
-    where overriding inline-style is actually necessary."""
+    """mobile.css wins by cascade position, never by !important.
 
-    def test_no_excessive_important(self):
+    The file's header promised "no !important needed — same
+    specificity, later position" from the start; what actually kept
+    twenty of them alive was inline ``style="…"`` attributes, which
+    beat any class rule. Those attributes are gone (CSP style-src
+    graduation, #1062 / #1107–#1109), and on 2026-09-10 every
+    remaining declaration was proven redundant: 36 targets × 3
+    viewports (375 / 480 / 768) computed-style identical with and
+    without, and the mobile values demonstrably apply at 375 / 768
+    and yield to desktop values at 1280. The cap therefore drops
+    from "≤ 25" to **zero declarations** — a new one is a cascade
+    bug to fix, not a budget to spend.
+
+    Comments may still mention the token (this file's header does),
+    so declarations are counted, not substrings."""
+
+    def test_no_important_declarations(self):
         css = CSS_PATH.read_text(encoding="utf-8")
-        # Count !important occurrences. Inline-style overrides need
-        # this; a small number is fine. Excessive use indicates the
-        # cascade strategy is broken.
-        count = css.count("!important")
-        self.assertLessEqual(
-            count, 25,
-            f"!important used {count} times in mobile.css; aim for "
-            f"≤ 25 (inline-style overrides only). Restructure rules "
-            f"or rely on source-order cascade if higher."
+        # A declaration: the token followed by the end of a declaration.
+        # Comment mentions ("No !important needed") never are.
+        decls = re.findall(r"!important\s*[;}]", css)
+        self.assertEqual(
+            decls, [],
+            f"{len(decls)} !important declaration(s) in mobile.css. "
+            f"mobile.css loads last and its selectors already outrank "
+            f"or out-position every competitor; prove the cascade with "
+            f"a mobile-width computed-style comparison instead of "
+            f"forcing it."
         )
 
 
