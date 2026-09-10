@@ -73,8 +73,10 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   `ruff` / `bandit` 은 계속 초록.
   → 로드맵 **Phase 3 은 3.1 / 3.2 (operator dogfood) 만** 남았고,
   **Phase 4 (v0.6.1 정식 마감) 는 2026-09-10 에 종료**됐습니다.
-  다음 솔로 = `mobile.css` 잔여 `!important` 20개 → 로드맵 **Phase 5
-  측정 백로그**.
+  `mobile.css` 잔여 `!important` 도 #1116 으로 **20 → 0** (모바일 폭
+  계산 스타일 대조로 증명). **서버·LLM 없이 세션 혼자 할 수 있는 큐는
+  소진** — 다음은 로드맵 **Phase 5 측정 백로그 (operator-attended)**
+  이고, 시작은 operator 지시가 필요합니다.
 - **유지보수 4 PR** (#1077 #1078 08-19 / **#1079** 08-26 / **#1080** 08-28):
   v0.3.3 DOI 계보 정정, ruff F-class 해소, Ali 엔지니어링 4건 ①②③ 발송 +
   **uuid7 production 결함 수리** (`start_trace()` 가 Python 3.14 전용
