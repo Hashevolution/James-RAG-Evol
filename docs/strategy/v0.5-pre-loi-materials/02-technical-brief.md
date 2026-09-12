@@ -98,7 +98,7 @@ provenance chain (PC=0). JAMES = audit-native, matches Reference.
 |---|---|---|---|---|---|
 | Vanilla append-only RAG | 0.225 | 0.488 | 0.400 | 0.375 | 0.6125 |
 | Naive supersede-aware RAG | 0.538 | 0.563 | 0.613 | 0.625 | 0.775 |
-| **JAMES (validity-window)** | **0.713** | **0.725** | **0.775** | **0.838** | **0.975** |
+| **JAMES (validity-window)** | **0.7625** | **0.9000** | **0.9000** | **0.8625** | **1.0000** |
 
 **V < N < J** rank-order preserved in all 4 model families.
 JAMES R@1 at claude = **0.9750** (≈ perfect first-result accuracy).

@@ -141,7 +141,7 @@ Total: 1-3 months to LOI, +6 months to pilot completion.
 ---
 
 *Disclaimer: The measurement-evidenced claims in this document (RAB
-AC/RF/PC = 1.000 / 0.275; LRB S2 R@1 J=0.975) are reproducible bit-for-bit
+AC/RF/PC = 1.000 / 0.275; LRB S2 R@1 J=1.000) are reproducible bit-for-bit
 from committed `result.json` artefacts in the JAMES repository, given the
 pre-registered scenario fixtures. JAMES is a local-first auditable knowledge
 reasoning system; the purpose of this pilot is to validate the measurement

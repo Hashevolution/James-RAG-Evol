@@ -57,7 +57,7 @@ toolchain — no additional packages).
 Per RAB preprint pattern, before arXiv submission verify:
 
 ### Item 1 — Numbers cross-checked
-- [x] **Abstract**: R@1 numbers `token-mode 0.225/0.5375/0.7125` cross-checked against `reports/external/lrb/phase-b-s2-20260611T121934Z.{vanilla,naive-supersede,james}.result.json` (PR #786).
+- [x] **Abstract**: R@1 numbers `token-mode 0.2500/0.5875/0.7625` (repaired S2 fixture) cross-checked against `reports/external/lrb/phase-b-s2-20260912T090537Z.{vanilla,naive-supersede,james}.result.json` (2026-09-12; the 2026-06-12 version cited 0.225/0.5375/0.7125 from the `…20260611T121934Z` files, PR #786).
 - [x] **Table 1** (Phase A): values match `reports/external/lrb/phase-a-smoke-20260611T115935Z.*` (PR #784).
 - [x] **Table 2** (Phase B S2): values match `reports/external/lrb/phase-b-s2-20260611T121934Z.*` (PR #786).
 - [x] **Table 3** (per-category): values match same Phase B artefacts.

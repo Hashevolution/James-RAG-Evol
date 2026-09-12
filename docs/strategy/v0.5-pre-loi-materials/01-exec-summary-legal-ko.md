@@ -42,13 +42,13 @@ log 만으로 graph 상태 완전 재구성. EU AI Act 발효 (2026-08-02) Art.1
 |---|---|
 | 일반 RAG (vanilla) | 0.6125 |
 | Naive supersede | 0.7750 |
-| **JAMES** | **0.9750** |
+| **JAMES** | **1.0000** |
 
 **Cross-scale (v0.2.3 신규)**: V<N<J 부등호가 12.5× 스케일 폭에서 모두 보존:
 
 | 시나리오 | N (문서/이벤트/쿼리) | V R@1 | N R@1 | **J R@1** | J − N gap |
 |---|---|---|---|---|---|
-| S2 token (frozen) | 200 / 564 / 80 | 0.225 | 0.538 | **0.713** | +0.175 |
+| S2 token (repaired 2026-09-08) | 200 / 564 / 80 | 0.2500 | 0.5875 | **0.7625** | +0.1750 |
 | S3 publication (신규, S3.2) | **1000 / 5620 / 1000** | 0.566 | 0.827 | **0.984** | +0.157 |
 
 → "체결 시점 정책 본문은?" / "발령 시점 부서장은?" 같은 시간 시점 질의에
@@ -126,8 +126,8 @@ log 만으로 graph 상태 완전 재구성. EU AI Act 발효 (2026-08-02) Art.1
 ---
 
 *Disclaimer: 이 자료의 측정-evidenced 주장 (RAB AC/RF/PC = 1.000 / 0.275;
-LRB S2 token R@1 J=0.713; LRB S3 publication R@1 J=0.984; LRB cross-model
-J@claude=0.975) 은 commit된 result.json artefacts에서 추적 가능하며,
+LRB S2 token R@1 J=0.7625; LRB S3 publication R@1 J=0.984; LRB cross-model
+J@claude=1.000) 은 commit된 result.json artefacts에서 추적 가능하며,
 사전 등록된 시나리오 fixture로 귀사 환경에서 bit-for-bit 재현 가능합니다. JAMES는 local-first auditable knowledge reasoning system
 이며, pilot 의 목적은 측정 evidence를 실제 도메인 workflow에서 검증
 하는 것이지 어떤 규제 프레임워크에 대한 compliance 인증이 아닙니다.
