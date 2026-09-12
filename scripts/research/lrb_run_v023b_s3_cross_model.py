@@ -87,10 +87,12 @@ def run_s3_cell(scale: str, sut_name: str, model: str, mode: str,
 
     print(f"  cell: scale={scale} sut={sut_name} model={model} mode={mode}")
     factory = v021.SUT_FACTORIES[sut_name]
+    wait0 = v021.llm_rerank.STATS.quota_wait_s
     run = v021.run_sut_cross_model(
         factory, scenario, sha,
         sut_name=sut_name, mode=mode, model=model,
         ollama_url=ollama_url, timeout=timeout, k=k)
+    quota_wait = round(v021.llm_rerank.STATS.quota_wait_s - wait0, 1)
     # S3 has query_time always, so Phase B scorer applies.
     axes = v021.score_run_phase_b(run, k_recall=k)
     rows = [{
@@ -121,6 +123,9 @@ def run_s3_cell(scale: str, sut_name: str, model: str, mode: str,
         # token-overlap order (see llm_rerank.RerankStats).
         "rerank_fallbacks": n_fallback,
         "rerank_fallback_rate": round(n_fallback / max(1, len(rows)), 4),
+        # Seconds this cell spent sleeping for an exhausted cloud usage
+        # window (llm_rerank quota-aware retry); 0 for local rerankers.
+        "rerank_quota_wait_s": quota_wait,
         "honest_tier": (
             f"v0.2.3b S3-{scale} cross-model cell; deterministic axes "
             "(RAB H1). NOT publication. Pre-reg: docs/research/"
@@ -146,7 +151,7 @@ def run_s3_cell(scale: str, sut_name: str, model: str, mode: str,
     ex = ov["exploratory"]
     print(f"    R@10={ov['R@10']}  temporal_acc={ov['temporal_accuracy']}  "
           f"R@1={ex['R@1']}  elapsed={result['elapsed_s']}s  "
-          f"rerank_fallbacks={n_fallback}")
+          f"rerank_fallbacks={n_fallback}  quota_wait={quota_wait}s")
     return result
 
 

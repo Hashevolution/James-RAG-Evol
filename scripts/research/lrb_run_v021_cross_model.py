@@ -232,10 +232,12 @@ def run_cell(scenario_label: str, sut_name: str, model: str, mode: str,
     print(f"  cell: scenario={scenario_label} sut={sut_name} "
           f"model={model} mode={mode}")
     factory = SUT_FACTORIES[sut_name]
+    wait0 = llm_rerank.STATS.quota_wait_s
     run = run_sut_cross_model(factory, scenario, sha, sut_name=sut_name,
                               mode=mode, model=model,
                               ollama_url=ollama_url, timeout=timeout,
                               k=k)
+    quota_wait = round(llm_rerank.STATS.quota_wait_s - wait0, 1)
     has_qt = bool(scenario["queries"]) and \
         "query_time" in scenario["queries"][0]
     axes = score_run_phase_b(run, k_recall=k) if has_qt \
@@ -268,6 +270,10 @@ def run_cell(scenario_label: str, sut_name: str, model: str, mode: str,
         # mode by construction.
         "rerank_fallbacks": n_fallback,
         "rerank_fallback_rate": round(n_fallback / max(1, len(rows)), 4),
+        # Seconds this cell spent sleeping for an exhausted cloud usage
+        # window (llm_rerank quota-aware retry). Included in elapsed_s
+        # and in the affected rows' latency_s; 0 for local rerankers.
+        "rerank_quota_wait_s": quota_wait,
         "honest_tier": (
             "v0.2.1 cross-model cell; deterministic scoring (RAB H1). "
             "NOT publication. Pre-reg: docs/research/lrb-v021-"
@@ -291,7 +297,7 @@ def run_cell(scenario_label: str, sut_name: str, model: str, mode: str,
     ex = ov["exploratory"]
     print(f"    R@10={ov['R@10']}  temporal_acc={ov['temporal_accuracy']}  "
           f"R@1={ex['R@1']}  elapsed={result['elapsed_s']}s  "
-          f"rerank_fallbacks={n_fallback}")
+          f"rerank_fallbacks={n_fallback}  quota_wait={quota_wait}s")
     return result
 
 

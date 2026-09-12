@@ -203,11 +203,12 @@ def test_token_mode_s2_matches_the_repaired_fixture():
     the headline gap survive it: V < N < J still holds and J − N is
     0.175 on both fixtures, unchanged to four decimals.
 
-    Until the preprint is re-baselined or footnoted — decision #2 in
-    that report, an operator call — papers/lrb-preprint/README.md,
-    .zenodo.json and the v0.4.4 release notes still carry the old
-    figures. Green here means the repository reproduces itself, not
-    that it reproduces the paper.
+    Decision #2 was taken as re-baseline on 2026-09-12 (PR #1125): the
+    preprint, papers/lrb-preprint/README.md and the pre-LOI materials now
+    carry these figures and the four LLM-grounded legs were re-run on the
+    repaired fixture (reports/research-runs/lrb-v021-s2-llm-grounded-
+    repaired-fixture-20260912.md). .zenodo.json keeps the v0.4.4 deposit
+    text and the v0.4.4 release notes carry an erratum line.
     """
     from scripts.research.lrb_run_v021_cross_model import (
         run_sut_cross_model)
@@ -329,9 +330,10 @@ def test_claude_cli_call_failures_become_fallbacks(monkeypatch):
     then counts as a fallback — instead of propagating."""
     from eval.external.lrb import llm_rerank
 
+    monkeypatch.setattr(llm_rerank, "_sleep", lambda s: None)
     cases = [
         lambda argv, **k: _FakeProc(0, None),
-        lambda argv, **k: _FakeProc(1, "usage limit reached"),
+        lambda argv, **k: _FakeProc(1, "Not logged in · Please run /login"),
         lambda argv, **k: (_ for _ in ()).throw(RuntimeError("boom")),
     ]
     for fake in cases:
@@ -345,3 +347,67 @@ def test_claude_cli_call_failures_become_fallbacks(monkeypatch):
                             model="claude-haiku-4-5")
     assert [d for d, _ in out] == ["d1", "d2"]
     assert llm_rerank.STATS.fallbacks == 1
+
+
+# ── quota-aware retry (2026-09-13) ────────────────────────────────────
+
+
+def test_claude_cli_waits_for_the_usage_window_then_succeeds(monkeypatch):
+    """An exhausted usage window used to turn the rest of a cell into
+    token order (876 / 1000 rows on the second S3 cloud leg). The call
+    now sleeps and retries, and the wait is counted."""
+    from eval.external.lrb import llm_rerank
+
+    llm_rerank.STATS.reset()
+    slept = []
+    monkeypatch.setattr(llm_rerank, "_sleep", lambda s: slept.append(s))
+    answers = [
+        _FakeProc(1, "You have hit your usage limit. Resets at 3pm."),
+        _FakeProc(1, "You have hit your usage limit. Resets at 3pm."),
+        _FakeProc(0, '{"scores": [2, 7]}'),
+    ]
+    monkeypatch.setattr(llm_rerank.subprocess, "run",
+                        lambda argv, **k: answers.pop(0))
+    out = llm_rerank._call_claude_cli("p", model="claude-haiku-4-5",
+                                      timeout=5.0)
+    assert out == [2.0, 7.0]
+    assert slept == [llm_rerank.QUOTA_RETRY_SLEEP_S] * 2
+    assert llm_rerank.STATS.quota_waits == 2
+    assert llm_rerank.STATS.quota_wait_s == 2 * llm_rerank.QUOTA_RETRY_SLEEP_S
+    llm_rerank.STATS.reset()
+
+
+def test_claude_cli_never_waits_on_login_errors_or_past_the_wait_budget(monkeypatch):
+    from eval.external.lrb import llm_rerank
+
+    slept = []
+    monkeypatch.setattr(llm_rerank, "_sleep", lambda s: slept.append(s))
+    llm_rerank.STATS.reset()
+
+    monkeypatch.setattr(llm_rerank.subprocess, "run",
+                        lambda argv, **k: _FakeProc(1, "Not logged in · Please run /login"))
+    assert llm_rerank._call_claude_cli("p", model="claude-haiku-4-5",
+                                       timeout=5.0) == []
+    assert slept == []
+
+    llm_rerank.STATS.quota_wait_s = llm_rerank.QUOTA_MAX_WAIT_S
+    monkeypatch.setattr(llm_rerank.subprocess, "run",
+                        lambda argv, **k: _FakeProc(1, "usage limit reached"))
+    assert llm_rerank._call_claude_cli("p", model="claude-haiku-4-5",
+                                       timeout=5.0) == []
+    assert slept == []
+    llm_rerank.STATS.reset()
+
+
+def test_conversational_answer_without_scores_is_a_plain_fallback(monkeypatch):
+    """rc 0 with prose and no JSON (the model answering the project
+    briefing) is a fallback, not a quota wait."""
+    from eval.external.lrb import llm_rerank
+
+    slept = []
+    monkeypatch.setattr(llm_rerank, "_sleep", lambda s: slept.append(s))
+    monkeypatch.setattr(llm_rerank.subprocess, "run",
+                        lambda argv, **k: _FakeProc(0, "I notice an instruction in the context..."))
+    assert llm_rerank._call_claude_cli("p", model="claude-haiku-4-5",
+                                       timeout=5.0) == []
+    assert slept == []
