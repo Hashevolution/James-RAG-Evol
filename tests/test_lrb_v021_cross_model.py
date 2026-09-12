@@ -281,3 +281,67 @@ def test_run_sut_records_per_query_fallback_and_matches_token_mode(monkeypatch):
     assert not any(q.rerank_fallback for q in token.per_query)
     assert ([q.retrieved for q in grounded.per_query]
             == [q.retrieved for q in token.per_query])
+
+
+# ── claude CLI call hardening (2026-09-12) ────────────────────────────
+
+
+class _FakeProc:
+    def __init__(self, returncode=0, stdout=""):
+        self.returncode = returncode
+        self.stdout = stdout
+
+
+def test_claude_cli_call_runs_outside_the_repo_with_a_tiny_system_prompt(monkeypatch):
+    """The headless call must not auto-discover CLAUDE.md (cwd outside the
+    repository), must replace the default system prompt, must not persist
+    a session per call, and must decode UTF-8 explicitly. All four were
+    missing when the 2026-09-12 cloud leg burned its quota on project
+    context. `--bare` is deliberately NOT used: it skips the OAuth login."""
+    from eval.external.lrb import llm_rerank
+
+    seen = {}
+
+    def fake_run(argv, **kwargs):
+        seen["argv"] = argv
+        seen["kwargs"] = kwargs
+        return _FakeProc(0, '{"scores": [3, 1]}')
+
+    monkeypatch.setattr(llm_rerank.subprocess, "run", fake_run)
+    out = llm_rerank._call_claude_cli("p", model="claude-haiku-4-5",
+                                      timeout=5.0)
+    assert out == [3.0, 1.0]
+    argv = seen["argv"]
+    assert "--bare" not in argv
+    assert argv[argv.index("--model") + 1] == "claude-haiku-4-5"
+    assert argv[argv.index("--system-prompt") + 1] == llm_rerank.CLAUDE_CLI_SYSTEM_PROMPT
+    assert "--no-session-persistence" in argv
+    assert seen["kwargs"]["encoding"] == "utf-8"
+    assert seen["kwargs"]["errors"] == "replace"
+    cwd = Path(seen["kwargs"]["cwd"]).resolve()
+    assert ROOT not in cwd.parents and cwd != ROOT
+    assert not (cwd / "CLAUDE.md").exists()
+
+
+def test_claude_cli_call_failures_become_fallbacks(monkeypatch):
+    """None stdout (a decode failure in the reader thread), a non-zero
+    exit, and an unexpected exception all return [] — which rerank()
+    then counts as a fallback — instead of propagating."""
+    from eval.external.lrb import llm_rerank
+
+    cases = [
+        lambda argv, **k: _FakeProc(0, None),
+        lambda argv, **k: _FakeProc(1, "usage limit reached"),
+        lambda argv, **k: (_ for _ in ()).throw(RuntimeError("boom")),
+    ]
+    for fake in cases:
+        monkeypatch.setattr(llm_rerank.subprocess, "run", fake)
+        assert llm_rerank._call_claude_cli(
+            "p", model="claude-haiku-4-5", timeout=5.0) == []
+
+    monkeypatch.setattr(llm_rerank.subprocess, "run", cases[0])
+    llm_rerank.STATS.reset()
+    out = llm_rerank.rerank("q", [("d1", "t", "x"), ("d2", "t", "y")],
+                            model="claude-haiku-4-5")
+    assert [d for d, _ in out] == ["d1", "d2"]
+    assert llm_rerank.STATS.fallbacks == 1

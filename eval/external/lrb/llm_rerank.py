@@ -168,6 +168,14 @@ OLLAMA_MODEL_PREFIXES = ("gemma", "mixtral", "mistral", "llama", "qwen",
                           "phi", "deepseek")
 CLAUDE_MODEL_PREFIXES = ("claude-",)
 
+# Replaces the CLI's default (agentic, multi-thousand-token) system prompt
+# for the headless rerank call. The rerank prompt itself carries the
+# query, the candidates and the output contract.
+CLAUDE_CLI_SYSTEM_PROMPT = (
+    "You are a retrieval relevance scorer. Answer with the JSON object "
+    "the user asks for and nothing else."
+)
+
 
 def _is_ollama_model(model: str) -> bool:
     name = model.split(":")[0].lower()
@@ -231,6 +239,7 @@ def _call_claude_cli(prompt: str, *, model: str,
     pre-flighted via Direction α S4 measurement.
     """
     import os
+    import tempfile
     from pathlib import Path as _Path
 
     # Minimal env whitelist for Windows + claude CLI (Node-wrapped)
@@ -240,10 +249,6 @@ def _call_claude_cli(prompt: str, *, model: str,
                 "HOME", "ANTHROPIC_API_KEY"):
         if var in os.environ:
             base_env[var] = os.environ[var]
-
-    # cwd = project root (Claude Code auto-mode classifier rejects
-    # cwd outside project scope as "scope escalation").
-    project_root = _Path(__file__).resolve().parents[3]
 
     # On Windows, subprocess Popen can't find `claude` (which is a
     # shim) — it needs `claude.cmd` or shell=True. Use the .cmd
@@ -255,21 +260,43 @@ def _call_claude_cli(prompt: str, *, model: str,
         if npm_claude_cmd.exists():
             cmd_executable = str(npm_claude_cmd)
 
+    # 2026-09-12: run from a neutral directory OUTSIDE the repository
+    # with an explicit, tiny system prompt and no session persistence.
+    # With cwd = project root the CLI auto-discovered CLAUDE.md and every
+    # rerank call carried the whole project briefing (~12k tokens) as
+    # context: the S3 cloud leg burned the Max-plan window after ~200
+    # queries and the remaining 763 rows of the cell fell back to token
+    # order; the S2 claude leg the same evening was 237/240 rows token
+    # order; at least once the model answered the briefing instead of
+    # the prompt. (`--bare` would also skip CLAUDE.md, but it skips the
+    # OAuth login too — "Not logged in" on a Max-plan machine.)
+    neutral_cwd = _Path(tempfile.gettempdir()) / "lrb-claude-cwd"
+    neutral_cwd.mkdir(parents=True, exist_ok=True)
+
     try:
         proc = subprocess.run(
-            [cmd_executable, "-p", "--model", model],
+            [cmd_executable, "-p", "--model", model,
+             "--system-prompt", CLAUDE_CLI_SYSTEM_PROMPT,
+             "--no-session-persistence"],
             input=prompt,
             capture_output=True,
             text=True,
+            # 2026-09-12: the CLI writes UTF-8 (a usage-limit notice
+            # carries a curly apostrophe). Without an explicit encoding
+            # Windows decodes with cp949, the reader thread raises, and
+            # stdout comes back None — an AttributeError that escaped
+            # the except clause below and would have killed a 12 h run.
+            encoding="utf-8",
+            errors="replace",
             timeout=timeout,
-            cwd=str(project_root),
+            cwd=str(neutral_cwd),
             env=base_env,
             shell=False,
         )
-        if proc.returncode != 0:
+        if proc.returncode != 0 or not proc.stdout:
             return []
         return _parse_scores(proc.stdout)
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+    except Exception:  # noqa: BLE001 — any failure is a counted fallback
         return []
 
 
