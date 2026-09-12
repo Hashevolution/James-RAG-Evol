@@ -35,6 +35,31 @@ from typing import List, Sequence, Tuple
 # ──────────────────────────────────────────────────────────────────────
 
 
+class RerankStats:
+    """Process-wide counters for silent reranker fallbacks.
+
+    ``rerank()`` pads a failed LLM call with 0.0 scores, so the stable
+    sort hands back the token-overlap order and the row looks like any
+    other. Without these counters a throttled cloud CLI or a timed-out
+    Ollama call turns an "LLM-grounded" cell into token mode with no
+    trace (the 2026-06-11 claude cell with 0.0 s latencies, and 1 of
+    1000 mixtral vanilla rows on 2026-09-10, are the known cases).
+    Runners reset ``last_fallback`` before each query and copy it into
+    the per-query row; ``calls`` / ``fallbacks`` are per process.
+    """
+
+    def __init__(self) -> None:
+        self.reset()
+
+    def reset(self) -> None:
+        self.calls = 0
+        self.fallbacks = 0
+        self.last_fallback = False
+
+
+STATS = RerankStats()
+
+
 def rerank(query: str,
            candidates: Sequence[Tuple[str, str, str]],
            *,
@@ -81,6 +106,15 @@ def rerank(query: str,
     # If the LLM produced fewer scores than candidates, pad with 0.0
     # (relevance unknown → end of list, but preserve token-overlap
     # rank by stable sort + index tie-break).
+    # Fallback accounting (2026-09-12): an empty score list means the LLM
+    # call failed (timeout / HTTP error / unparseable output) and this
+    # query silently degrades to token-overlap order below. Runners read
+    # STATS per query so a cell can say how many rows were LLM-reranked.
+    STATS.calls += 1
+    STATS.last_fallback = not scores
+    if not scores:
+        STATS.fallbacks += 1
+
     n = len(candidates)
     if len(scores) < n:
         scores = list(scores) + [0.0] * (n - len(scores))

@@ -94,14 +94,16 @@ def run_s3_cell(scale: str, sut_name: str, model: str, mode: str,
     # S3 has query_time always, so Phase B scorer applies.
     axes = v021.score_run_phase_b(run, k_recall=k)
     rows = [{
-        "query_id":      qr.query_id,
-        "timestamp":     qr.timestamp,
-        "gold":          qr.gold,
-        "retrieved":     qr.retrieved,
-        "latency_s":     qr.latency_s,
-        "context_chars": qr.context_chars,
+        "query_id":        qr.query_id,
+        "timestamp":       qr.timestamp,
+        "gold":            qr.gold,
+        "retrieved":       qr.retrieved,
+        "latency_s":       qr.latency_s,
+        "context_chars":   qr.context_chars,
+        "rerank_fallback": qr.rerank_fallback,
     } for qr in run.per_query]
     axes["per_category"] = v021.per_category_breakdown(rows, qid_to_cat)
+    n_fallback = sum(1 for qr in run.per_query if qr.rerank_fallback)
 
     result = {
         "benchmark":     "lrb",
@@ -115,6 +117,10 @@ def run_s3_cell(scale: str, sut_name: str, model: str, mode: str,
         "n_evaluations": len(rows),
         "elapsed_s":     round(run.elapsed_s, 4),
         "fixture_sha":   sha,
+        # Rows whose LLM rerank call failed and silently kept the
+        # token-overlap order (see llm_rerank.RerankStats).
+        "rerank_fallbacks": n_fallback,
+        "rerank_fallback_rate": round(n_fallback / max(1, len(rows)), 4),
         "honest_tier": (
             f"v0.2.3b S3-{scale} cross-model cell; deterministic axes "
             "(RAB H1). NOT publication. Pre-reg: docs/research/"
@@ -139,7 +145,8 @@ def run_s3_cell(scale: str, sut_name: str, model: str, mode: str,
     ov = result["axes"]["overall"]
     ex = ov["exploratory"]
     print(f"    R@10={ov['R@10']}  temporal_acc={ov['temporal_accuracy']}  "
-          f"R@1={ex['R@1']}  elapsed={result['elapsed_s']}s")
+          f"R@1={ex['R@1']}  elapsed={result['elapsed_s']}s  "
+          f"rerank_fallbacks={n_fallback}")
     return result
 
 
