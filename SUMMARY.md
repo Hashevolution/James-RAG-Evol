@@ -30,7 +30,7 @@ Direct copy of the README's "What's Verified" table (numbers from current `main`
 |---|---|
 | Test suite | **~3500+ tests** across 230+ files, all green on PR CI |
 | **RAB v0.1.1** | **JAMES AC/RF/PC = 1.000 / 1.000 / 1.000 vs Baseline-0 = 0.275 / 0.000 / 0.000** on scenario-S1 (3 deterministic metrics; EU AI Act Art. 10/12/19 anchor) — `eval/rab/SPEC-v0.1.md` |
-| **LRB v0.2.3** | **R@1 V<N<J preserved across 4 model families × 4 scale points** (12.5× scale span); S3 publication V/N/J = 0.502 / 0.721 / **0.845**; J − N gap > +0.10 throughout — [`papers/lrb-preprint/main.pdf`](papers/lrb-preprint/main.pdf) |
+| **LRB v0.2.3** | **R@1 V<N<J preserved across 4 model families × 4 scale points** (12.5× scale span); S3 publication V/N/J = 0.566 / 0.827 / **0.984** (S3.2); J − N gap > +0.10 throughout — [`papers/lrb-preprint/main.pdf`](papers/lrb-preprint/main.pdf) |
 | Release-gating invariants | 5 (T7 separation, `tests/test_t7_release_gating_invariants.py`) + 4 (T6 causality, `tests/test_t6_release_gating_invariants.py`) |
 | QVT 3-axis baseline | path_recall **1.00** / graded_answer **0.58** / abstention_f1 **0.67** (median, N=3 paired reruns) — `eval/qvt/baseline_2a31b20.json` |
 | STEP 7 regression | 17-query suite (v6) with gold_signals + abstention_truth + 5 path-annotated queries |

@@ -177,7 +177,10 @@ LAST_NAMES: Tuple[str, ...] = (
 )
 
 
-# 20 verbs x 20 nouns = 400 unique project titles per dept.
+# 20 nouns x 20 verbs = 400 unique project titles per corpus. S3.2
+# (2026-09-12): titles are enumerated by the GLOBAL project index (see
+# make_project) — the pre-S3.2 formula was periodic in dept_idx with
+# period 20, so at 100 departments every title recurred five times.
 PROJECT_VERBS: Tuple[str, ...] = (
     "Renewal", "Survey", "Inspection", "Expansion", "Refresh",
     "Modernisation", "Audit", "Tracker", "Mobile", "Backlog",
@@ -234,15 +237,47 @@ def make_person(idx: int) -> str:
     return f"{first} {last}"
 
 
-def make_project(dept_idx: int, prj_idx: int) -> Tuple[str, str]:
+def project_title_for_pair(pair_idx: int) -> str:
+    """Title for the pair_idx-th slot of the (noun, verb) table.
+
+    Verb cycles fastest, noun advances every ``len(PROJECT_VERBS)``
+    slots, so slots ``0 .. 399`` are pairwise distinct titles. Base
+    projects take slots ``0 .. n_base-1`` (see ``make_project``) and
+    new-project ingests take ``n_base ..`` (see ``build_supersede_plan``)
+    so the two ranges never share a title.
+    """
+    if pair_idx < 0:
+        raise ValueError(f"pair idx must be non-negative; got {pair_idx!r}")
+    n_verbs = len(PROJECT_VERBS)
+    verb = PROJECT_VERBS[pair_idx % n_verbs]
+    noun = PROJECT_NOUNS[(pair_idx // n_verbs) % len(PROJECT_NOUNS)]
+    return f"Project {noun} {verb}"
+
+
+def make_project(dept_idx: int, prj_idx: int,
+                 projects_per_dept: int = 3) -> Tuple[str, str]:
     """Returns (prj_id, prj_title) for the prj_idx-th project in dept_idx.
 
     Project IDs use global index so the loader can dedup easily.
+
+    Title: ``Project {NOUN} {VERB}`` enumerated by the global project
+    index ``dept_idx * projects_per_dept + prj_idx`` over the 20 × 20
+    (noun, verb) table, so scenarios up to 400 base projects get unique
+    titles (publication preset: 300).
+
+    Replaces the pre-S3.2 formula ``VERBS[(dept_idx + prj_idx) % 20]`` /
+    ``NOUNS[(dept_idx*7 + prj_idx*3) % 20]``, which was periodic in
+    dept_idx with period 20: at 100 departments every title recurred
+    five times and — the project-lead query carries no department — no
+    SUT could exceed R@1 0.288 on the two project-lead categories
+    (19.1 % of publication queries; N and J sat at an identical 0.256
+    under token mode and three LLM rerankers). See
+    `reports/research-runs/lrb-v023b-3model-llm-grounded-publication-20260910.md`
+    §4.
     """
     global_idx = dept_idx * 1000 + prj_idx + 1
-    verb = PROJECT_VERBS[(dept_idx + prj_idx) % len(PROJECT_VERBS)]
-    noun = PROJECT_NOUNS[(dept_idx * 7 + prj_idx * 3) % len(PROJECT_NOUNS)]
-    return f"prj-{global_idx:06d}", f"Project {noun} {verb}"
+    pair_idx = dept_idx * projects_per_dept + prj_idx
+    return f"prj-{global_idx:06d}", project_title_for_pair(pair_idx)
 
 
 # Contract title vocabulary — 30 domains × 7 types = 210 unique titles
@@ -410,7 +445,7 @@ def build_corpus_plan(preset: ScalePreset) -> CorpusPlan:
     projects: List[Tuple[str, str, int]] = []
     for di in range(preset.n_dept):
         for pi in range(preset.projects_per_dept):
-            pid, ptitle = make_project(di, pi)
+            pid, ptitle = make_project(di, pi, preset.projects_per_dept)
             projects.append((pid, ptitle, di))
 
     contracts: List[Tuple[str, str, int, str]] = []
@@ -599,15 +634,25 @@ def build_supersede_plan(plan: CorpusPlan,
 
     # NEW project INGEST.
     n_new = int(round(plan.n_dept * preset.new_project_frac))
+    # S3.2: new-project titles continue the (noun, verb) table right
+    # after the base projects, so they collide with neither the base
+    # titles nor each other. Fail loudly if a denser preset ever runs
+    # the 400-slot table out — a silent wrap would re-create the
+    # pre-S3.2 oracle ceiling.
+    n_base = len(plan.projects)
+    title_space = len(PROJECT_VERBS) * len(PROJECT_NOUNS)
+    if n_base + n_new > title_space:
+        raise ValueError(
+            f"project title space exhausted: {n_base} base + {n_new} new "
+            f"> {title_space} unique (noun, verb) titles — extend "
+            f"PROJECT_VERBS / PROJECT_NOUNS before raising density")
     new_projects: List[Tuple[str, str, int, int, int]] = []
     for i in range(n_new):
         di = i % plan.n_dept
         # Global idx well above the initial-corpus range to avoid collision.
         new_prj_global_idx = 800_000 + i + 1
-        verb = PROJECT_VERBS[(i * 11) % len(PROJECT_VERBS)]
-        noun = PROJECT_NOUNS[(i * 7) % len(PROJECT_NOUNS)]
         pid = f"prj-{new_prj_global_idx:06d}"
-        ptitle = f"Project {noun} {verb}"
+        ptitle = project_title_for_pair(n_base + i)
         week = 2 + (i * max(1, (weeks - 3))) // max(1, n_new)
         week = min(max(week, 2), weeks - 1)
         lead_idx = (i * 17) % (len(FIRST_NAMES) * len(LAST_NAMES))

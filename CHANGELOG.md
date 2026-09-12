@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] — 2026-09-12 — LRB S3.2: project-title collision fixed, S3 figures re-baselined
+
+- **#1121** Phase 5 — v0.2.3b LLM-grounded S3 publication 3-model results (V<N<J 3/3, J−N +0.127 … +0.142, james temporal accuracy 0.994–1.000; claude cloud leg not attempted) and the self-catch that found the S3 project-lead oracle ceiling (`reports/research-runs/lrb-v023b-3model-llm-grounded-publication-20260910.md` §4).
+- **S3.2 generator fix** (`scripts/research/build_lrb_scenario_s3.py::make_project`): project titles enumerated by global project index — 330/330 unique at publication (was 70 unique for 330 docs; 50 titles × 5). Two new guards in `tests/test_lrb_s3_generator.py` (project-title uniqueness in every preset; no query text carries more than one gold — the pre-S3.2 generator fails it with 36 ambiguous texts). Token-mode S3 re-measured: **publication V/N/J 0.502 / 0.721 / 0.845 → 0.566 / 0.827 / 0.984** (J − N +0.124 → +0.157), smoke 0.930 → 0.950, dev 0.913 → 0.973; eight of ten categories byte-identical. README / SUMMARY / benchmarks README / evaluation docs / pre-LOI materials / preprint §4.6 re-baselined; the pre-S3.2 ladder is retained in the 2026-06-12 results doc and the v0.4.4 release notes carry an erratum line. Operator decision 2026-09-12 (close handover §6 #7). Result doc: `docs/research/lrb-v023-s3-publication-scale-results-2026-09-12-s32.md`. The LLM-grounded S3 re-run on the S3.2 fixture and the S2 re-baseline (decision #2) follow in later PRs.
+
 ## [0.6.1] — 2026-09-10 — RELEASED: the first published artifact since v0.4.4
 
 **Tag**: `v0.6.1` · **DOI**: not issued (operator decision — see below) ·

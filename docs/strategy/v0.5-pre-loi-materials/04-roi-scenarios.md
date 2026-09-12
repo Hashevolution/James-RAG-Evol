@@ -11,7 +11,7 @@
 >
 > **v0.4.4 update (2026-06-12)**: ROI 시나리오 의 측정 evidence
 > footnote 들이 LRB v0.2.3 cross-scale 결과 (S3 publication N=1000
-> J=0.845) 까지 강화됨. JAMES 의 audit + temporal 강점은 단일 모델
+> J=0.984) 까지 강화됨. JAMES 의 audit + temporal 강점은 단일 모델
 > fluke 도 단일 corpus 크기 fluke 도 아님이 확인됨 → ROI 추정의 신뢰도
 > 가 cross-scale evidence 만큼 향상. Reference DOI: `10.5281/zenodo.20652679`.
 
