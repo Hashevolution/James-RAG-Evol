@@ -1,0 +1,156 @@
+{
+  "benchmark": "lrb",
+  "version": "v0.2.3b",
+  "scenario": "S3-publication",
+  "scenario_spec": "v0.2.3-draft-publication",
+  "scale_preset": "publication",
+  "sut": "vanilla",
+  "model": "gemma4:e4b",
+  "mode": "llm-grounded",
+  "n_evaluations": 1000,
+  "elapsed_s": 3002.0491,
+  "fixture_sha": "662fc2b76b8aa484913081ad7b1a5db1819c45efd00dd719f7022635192b1a1c",
+  "honest_tier": "v0.2.3b S3-publication cross-model cell; deterministic axes (RAB H1). NOT publication. Pre-reg: docs/research/lrb-v023b-s3-cross-model-preregistration-2026-06-12.md",
+  "axes": {
+    "overall": {
+      "R@5": 0.882,
+      "R@10": 0.985,
+      "P@5": 0.1764,
+      "P@10": 0.0985,
+      "latency_s_mean": 3.001995,
+      "token_cost_mean": 324.3537,
+      "temporal_accuracy": 0.985,
+      "n": 1000,
+      "exploratory": {
+        "R@1": 0.502,
+        "P@1": 0.502,
+        "temporal_accuracy_strict_top1": 0.502
+      }
+    },
+    "per_timestamp": {
+      "qt=52/vt=0": {
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "latency_s_mean": 3.065588,
+        "token_cost_mean": 352.1375,
+        "n": 100
+      },
+      "qt=52/vt=17": {
+        "R@5": 0.805,
+        "R@10": 0.925,
+        "P@5": 0.161,
+        "P@10": 0.0925,
+        "temporal_accuracy": 0.925,
+        "latency_s_mean": 3.016942,
+        "token_cost_mean": 344.4737,
+        "n": 200
+      },
+      "qt=52/vt=52": {
+        "R@5": 0.887143,
+        "R@10": 1.0,
+        "P@5": 0.177429,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "latency_s_mean": 2.98864,
+        "token_cost_mean": 314.6361,
+        "n": 700
+      }
+    },
+    "per_category": {
+      "current-contract": {
+        "n": 125,
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 0.072
+      },
+      "current-director": {
+        "n": 125,
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 1.0
+      },
+      "current-policy": {
+        "n": 125,
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 0.0
+      },
+      "current-project-lead": {
+        "n": 125,
+        "R@5": 0.368,
+        "R@10": 1.0,
+        "P@5": 0.0736,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 0.08
+      },
+      "historical-early-contract": {
+        "n": 50,
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 0.94
+      },
+      "historical-early-director": {
+        "n": 50,
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 0.52
+      },
+      "historical-mid-director": {
+        "n": 66,
+        "R@5": 0.954545,
+        "R@10": 0.954545,
+        "P@5": 0.190909,
+        "P@10": 0.095455,
+        "temporal_accuracy": 0.954545,
+        "R@1": 0.575758
+      },
+      "historical-mid-policy": {
+        "n": 68,
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 0.455882
+      },
+      "historical-mid-project-lead": {
+        "n": 66,
+        "R@5": 0.454545,
+        "R@10": 0.818182,
+        "P@5": 0.090909,
+        "P@10": 0.081818,
+        "temporal_accuracy": 0.818182,
+        "R@1": 0.242424
+      },
+      "never-stale-budget": {
+        "n": 200,
+        "R@5": 1.0,
+        "R@10": 1.0,
+        "P@5": 0.2,
+        "P@10": 0.1,
+        "temporal_accuracy": 1.0,
+        "R@1": 1.0
+      }
+    }
+  },
+  "started_at": "2026-09-10T07:36:44.158808+00:00"
+}
