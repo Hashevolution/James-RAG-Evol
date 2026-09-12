@@ -75,8 +75,16 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   **Phase 4 (v0.6.1 정식 마감) 는 2026-09-10 에 종료**됐습니다.
   `mobile.css` 잔여 `!important` 도 #1116 으로 **20 → 0** (모바일 폭
   계산 스타일 대조로 증명). **서버·LLM 없이 세션 혼자 할 수 있는 큐는
-  소진** — 다음은 로드맵 **Phase 5 측정 백로그 (operator-attended)**
-  이고, 시작은 operator 지시가 필요합니다.
+  소진**됐고, 로드맵 **Phase 5 측정 백로그 3건은 2026-09-10 → 09-11 에
+  전부 실행**됐습니다 — Graph-RAG Step 2 cross-model (#1118 / #1119) ·
+  D-alce cross-NLI 양 leg (#1120) · **v0.2.3b LLM-grounded S3 publication
+  3-model** (9 셀 × n=1000, 20.4 h; **V<N<J 3/3, J−N +0.127 ~ +0.142**;
+  리포트 `reports/research-runs/lrb-v023b-3model-llm-grounded-publication-20260910.md`).
+  🔴 그 리포트 §4 **자기 catch**: S3 publication fixture 의 project-lead
+  질의 191건이 제목 충돌로 **어떤 SUT 도 R@1 0.288 을 못 넘는** 상한 —
+  발표된 token-mode 0.845 도 같은 fixture 입니다. 생성기 수정은 발표
+  수치를 바꾸므로 operator 결정 (마감 핸드오버 §6 #7). Phase 5 잔여 =
+  claude cloud leg + QVT 3축, 둘 다 operator-attended.
 - **유지보수 4 PR** (#1077 #1078 08-19 / **#1079** 08-26 / **#1080** 08-28):
   v0.3.3 DOI 계보 정정, ruff F-class 해소, Ali 엔지니어링 4건 ①②③ 발송 +
   **uuid7 production 결함 수리** (`start_trace()` 가 Python 3.14 전용
@@ -185,7 +193,7 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 
 | Purpose | File |
 |---|---|
-| **🟢🟢🟢 NEXT SESSION ENTRY (이것부터 — 2026-09-10 v0.6.1 마감)** | **`docs/handovers/v0.6.1-close-2026-09-10.md`** (로드맵 **Phase 4 종료**. 태그 `v0.6.1` = v0.4.4 이후 태그 없이 떠 있던 **282 PR (#831–#1112)** 전부. §2 = 범위 실측과 이름-범위 불일치, §4 = **불변식 마감 실측** (`core/retrieval` 0 라인 / graph traversal 의도적 break / rule #5 예외 0 / rule #1 위반 0 / CI 5,309 passed), §5 = **이 마감이 하지 않은 것 5가지** (발표 수치 미변경 · DOI 미발행 · enforce 플립 안 함 · `v0.5` 소급 태그 안 함 · v0.6 진입 선언 안 함), §6 = operator 결정 6건, §7 = 남은 솔로 3건.) |
+| **🟢🟢🟢 NEXT SESSION ENTRY (이것부터 — 2026-09-10 v0.6.1 마감)** | **`docs/handovers/v0.6.1-close-2026-09-10.md`** (로드맵 **Phase 4 종료**. 태그 `v0.6.1` = v0.4.4 이후 태그 없이 떠 있던 **282 PR (#831–#1112)** 전부. §2 = 범위 실측과 이름-범위 불일치, §4 = **불변식 마감 실측** (`core/retrieval` 0 라인 / graph traversal 의도적 break / rule #5 예외 0 / rule #1 위반 0 / CI 5,309 passed), §5 = **이 마감이 하지 않은 것 5가지** (발표 수치 미변경 · DOI 미발행 · enforce 플립 안 함 · `v0.5` 소급 태그 안 함 · v0.6 진입 선언 안 함), §6 = operator 결정 7건 (#7 = S3.2 project-lead 제목 충돌 수정, 발표 수치 변경), §7 = 솔로 큐 소진 + **Phase 5 3/3 실행 기록 (2026-09-10 → 09-11)** — 잔여는 claude cloud leg + QVT 3축.) |
 | **🟢🟢 직전 세션 마감 (2026-09-09, PR #1107–#1111)** | `docs/handovers/v0.6.2-session-close-2026-09-09.md` (**Phase 3.3 종료** — JS 인라인 `style=` 26 → 0, CSP `style-src` 졸업, CI `--ignore` 51 → 0 (도는 테스트 4,469 → **5,309**). 🔴 enforce 플립의 남은 블로커 = `graph.html` 의 `unpkg.com` 스크립트 3종. 신규 `scripts/csp_enforce_probe.py`.) |
 | **🟢🟢 그 이전 세션 마감 (2026-09-08, PR #1082–#1105)** | `docs/handovers/v0.6.2-session-close-2026-09-08.md` (**Phase 2 (CI 그린) 종료** — 2026-06-22 이후 처음. rule #5 GRANDFATHERED 0건, CI ignore 57→51, CSP style-src 479 → 26. LRB S2 결정 #1 실행 — V/N/J 0.2500/0.5875/0.7625, **J−N 0.175 불변**, ⚠️ **결정 #2 (preprint 재베이스라인) 미결**. §5 검증 3종 + §6 자기 정정 3건.) |
 | **🟢🟢 Phase 정의 원본 (2026-09-03 재개 로드맵)** | **`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`** (재개용 **단일 진실원**. §1 현재 상태 사실 확인 (main HEAD `df55e21` / 유휴 구간 / **CI 실패 5 건 실측 + 건별 판정** / rule #5 해소 + 1건 grandfather / 문서 최신성 편차 표) + §2 **Phase 1–7 재개 로드맵** (1 문서 동기화 ✅ → 2 CI 그린 복구 → 3 유휴 부채 청산 → 4 v0.6.1 정식 마감 → 5 측정 백로그 → 6 Fork A/B 전략 결정 (operator) → 7 v0.6 진입) + §3 #886–#1078 실제 진행 요약 + §5 재개 첫 세션 30 분 체크리스트 + §6 하지 말 것. **Phase 2 전에는 새 기능 PR 금지.**) |
