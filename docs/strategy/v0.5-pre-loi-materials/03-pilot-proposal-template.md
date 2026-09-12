@@ -8,7 +8,7 @@
 >
 > **v0.4.4 update (2026-06-12)**: Success metric thresholds in §3.3
 > updated to reflect LRB v0.2.3 cross-scale evidence (S3 publication
-> J@token = 0.845; J@claude S2 cell = 0.975). Zenodo DOI = `10.5281/zenodo.20652679`.
+> J@token = 0.984; J@claude S2 cell = 0.975). Zenodo DOI = `10.5281/zenodo.20652679`.
 
 ---
 

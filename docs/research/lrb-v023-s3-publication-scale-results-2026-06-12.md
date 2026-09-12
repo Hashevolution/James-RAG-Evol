@@ -7,6 +7,8 @@
 > **Mode**: token (deterministic; no LLM grounding)
 > **Date**: 2026-06-12
 
+> **⚠️ Superseded (2026-09-12, S3.2)**: a second per-category audit found a project-title collision in the generator (period-20 arithmetic in `make_project`; 70 unique titles for 330 project docs at publication) that capped both project-lead categories at R@1 ≤ 0.288 for every SUT. The ladder in §2 and the per-category table in §3 are the **pre-S3.2** measurement, retained as the historical record. Current figures (publication V/N/J 0.566 / 0.827 / 0.984): `lrb-v023-s3-publication-scale-results-2026-09-12-s32.md`.
+
 ---
 
 ## 1. Headline finding

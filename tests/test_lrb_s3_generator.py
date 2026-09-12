@@ -283,5 +283,87 @@ class ScaleProportionsTests(unittest.TestCase):
         self.assertLess(len(d["events"]), len(p["events"]))
 
 
+def _project_titles_by_base_id(scenario: dict) -> dict:
+    """title -> set of base project ids (``prj-000001``, version suffix
+    stripped) across the initial corpus and every event that carries a
+    project title (INGEST / SUPERSEDE)."""
+    by_title: dict = {}
+    for doc in scenario["initial_corpus"]:
+        if doc["doc_id"].startswith("prj-"):
+            by_title.setdefault(doc["title"], set()).add(doc["doc_id"])
+    for ev in scenario["events"]:
+        args = ev["args"]
+        doc_id = args.get("doc_id") or args.get("new_doc_id") or ""
+        if doc_id.startswith("prj-") and "title" in args:
+            by_title.setdefault(args["title"], set()).add(
+                doc_id.split(".")[0])
+    return by_title
+
+
+class ProjectDiversityTests(unittest.TestCase):
+    """S3.2 fix (2026-09-12) — project titles must be unique across the
+    whole corpus, new-project ingests included. The pre-S3.2
+    ``make_project`` formula was periodic in dept_idx with period 20, so
+    the publication preset (100 departments) carried only 70 unique
+    titles for 330 project docs: 50 titles × 5 projects. Because the
+    project-lead query names only the title, no SUT could exceed R@1
+    0.288 on ``current-project-lead`` (N and J sat at an identical 0.256
+    under token mode and three LLM rerankers). See
+    ``reports/research-runs/lrb-v023b-3model-llm-grounded-publication-20260910.md``
+    §4. Same class of defect as S3.1 (``ContractDiversityTests``)."""
+
+    def test_base_project_titles_unique_in_every_preset(self):
+        for name, preset in PRESETS.items():
+            with self.subTest(preset=name):
+                plan = build_corpus_plan(preset)
+                titles = [p[1] for p in plan.projects]
+                self.assertEqual(len(set(titles)), len(titles),
+                                 f"{name}: project titles collided "
+                                 f"({len(titles)} total, "
+                                 f"{len(set(titles))} unique)")
+
+    def test_every_project_doc_has_a_unique_title_in_every_preset(self):
+        # Includes the new-project INGEST events, which pre-S3.2 drew
+        # from the same 20-slot cycle as the base projects.
+        for name, preset in PRESETS.items():
+            with self.subTest(preset=name):
+                by_title = _project_titles_by_base_id(build_scenario(preset))
+                collided = {t: sorted(ids) for t, ids in by_title.items()
+                            if len(ids) > 1}
+                self.assertEqual(collided, {},
+                                 f"{name}: {len(collided)} project titles "
+                                 f"shared by more than one project")
+
+    def test_publication_project_title_space_is_not_exhausted(self):
+        # 300 base + 30 new = 330 of the 400 (noun, verb) slots.
+        plan = build_corpus_plan(PRESETS["publication"])
+        n_new = int(round(plan.n_dept * PRESETS["publication"].new_project_frac))
+        self.assertLessEqual(len(plan.projects) + n_new, 400)
+
+
+class QueryOracleUnambiguityTests(unittest.TestCase):
+    """The guard that would have caught S3.2 before any SUT ran: within a
+    category, one query text at one (query_time, valid_time) must map to
+    exactly one gold set. Identical input cannot yield gold-specific
+    output, so any such collision is an oracle ceiling below 1.0 for
+    every SUT — deterministic or stochastic — and shows up as an
+    "SUT-independent" per-category floor rather than as a defect."""
+
+    def test_no_query_text_maps_to_multiple_golds_in_every_preset(self):
+        for name, preset in PRESETS.items():
+            with self.subTest(preset=name):
+                seen: dict = {}
+                for q in build_scenario(preset)["queries"]:
+                    key = (q["category"], q["q"],
+                           q["query_time"], q["valid_time"])
+                    seen.setdefault(key, set()).add(tuple(q["gold"]))
+                ambiguous = {k: sorted(v) for k, v in seen.items()
+                             if len(v) > 1}
+                self.assertEqual(
+                    ambiguous, {},
+                    f"{name}: {len(ambiguous)} query texts carry more than "
+                    f"one gold — an oracle ceiling below 1.0 for every SUT")
+
+
 if __name__ == "__main__":
     unittest.main()

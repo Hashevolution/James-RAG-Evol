@@ -73,13 +73,13 @@ one — the three metrics operationalise EU AI Act Articles 10 / 12 / 19
 
 The S2 gap table must show `R@1` strictly ordered **Vanilla < Naive < JAMES**,
 with the JAMES − Naive gap above +0.10. Publication-scale (`--full`) R@1
-reference values:
+reference values (S3.2 fixture, 2026-09-12):
 
 | SUT | R@1 (S3 publication, 1000 docs) |
 |---|---|
-| Vanilla (append-only) | 0.502 |
-| Naive-supersede | 0.721 |
-| **JAMES (validity-window)** | **0.845** |
+| Vanilla (append-only) | 0.566 |
+| Naive-supersede | 0.827 |
+| **JAMES (validity-window)** | **0.984** |
 
 Honest framing (locked in the preprint): the **pattern + gap are
 scale-robust**; the **absolute magnitudes are scenario-sensitive**.
