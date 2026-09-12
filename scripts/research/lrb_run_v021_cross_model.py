@@ -34,6 +34,7 @@ from typing import Any, Callable, Dict, List
 
 from eval.external.lrb.adapters import (
     JamesValidityAdapter, NaiveSupersedeAdapter, VanillaRagAdapter)
+from eval.external.lrb import llm_rerank
 from eval.external.lrb.cross_model import retrieve_at_cross_model
 from eval.external.lrb.driver import (
     fixture_sha, load_scenario, QueryResult, SutRunResult)
@@ -158,6 +159,9 @@ def _run_one_query(result: SutRunResult, adapter, q: dict, k: int,
                    ts_label: str, week: int,
                    gold_override=None) -> None:
     gold = gold_override if gold_override is not None else q["gold"]
+    # Reset before the call so a query whose pool was empty (no rerank
+    # call at all) is not tagged with the previous query's fallback.
+    llm_rerank.STATS.last_fallback = False
     t0 = time.perf_counter()
     retrieved = retrieve_at_cross_model(
         adapter, q["q"], k=k,
@@ -166,6 +170,7 @@ def _run_one_query(result: SutRunResult, adapter, q: dict, k: int,
         ollama_url=ollama_url, timeout=timeout)
     lat = time.perf_counter() - t0
     chars = adapter.retrieved_text_length(retrieved)
+    fallback = mode == "llm-grounded" and llm_rerank.STATS.last_fallback
     result.per_query.append(QueryResult(
         query_id=q["query_id"],
         timestamp=ts_label,
@@ -174,6 +179,7 @@ def _run_one_query(result: SutRunResult, adapter, q: dict, k: int,
         retrieved=retrieved,
         latency_s=lat,
         context_chars=chars,
+        rerank_fallback=fallback,
     ))
 
 
@@ -235,14 +241,16 @@ def run_cell(scenario_label: str, sut_name: str, model: str, mode: str,
     axes = score_run_phase_b(run, k_recall=k) if has_qt \
         else score_run_phase_a(run, k_recall=k)
     rows = [{
-        "query_id":      qr.query_id,
-        "timestamp":     qr.timestamp,
-        "gold":          qr.gold,
-        "retrieved":     qr.retrieved,
-        "latency_s":     qr.latency_s,
-        "context_chars": qr.context_chars,
+        "query_id":        qr.query_id,
+        "timestamp":       qr.timestamp,
+        "gold":            qr.gold,
+        "retrieved":       qr.retrieved,
+        "latency_s":       qr.latency_s,
+        "context_chars":   qr.context_chars,
+        "rerank_fallback": qr.rerank_fallback,
     } for qr in run.per_query]
     axes["per_category"] = per_category_breakdown(rows, qid_to_cat)
+    n_fallback = sum(1 for qr in run.per_query if qr.rerank_fallback)
 
     result = {
         "benchmark":     "lrb",
@@ -255,6 +263,11 @@ def run_cell(scenario_label: str, sut_name: str, model: str, mode: str,
         "n_evaluations": len(rows),
         "elapsed_s":     round(run.elapsed_s, 4),
         "fixture_sha":   sha,
+        # Rows whose LLM rerank call failed and silently kept the
+        # token-overlap order (see llm_rerank.RerankStats). 0 in token
+        # mode by construction.
+        "rerank_fallbacks": n_fallback,
+        "rerank_fallback_rate": round(n_fallback / max(1, len(rows)), 4),
         "honest_tier": (
             "v0.2.1 cross-model cell; deterministic scoring (RAB H1). "
             "NOT publication. Pre-reg: docs/research/lrb-v021-"
@@ -277,7 +290,8 @@ def run_cell(scenario_label: str, sut_name: str, model: str, mode: str,
     ov = result["axes"]["overall"]
     ex = ov["exploratory"]
     print(f"    R@10={ov['R@10']}  temporal_acc={ov['temporal_accuracy']}  "
-          f"R@1={ex['R@1']}  elapsed={result['elapsed_s']}s")
+          f"R@1={ex['R@1']}  elapsed={result['elapsed_s']}s  "
+          f"rerank_fallbacks={n_fallback}")
     return result
 
 

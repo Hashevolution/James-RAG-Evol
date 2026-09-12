@@ -62,6 +62,10 @@ class QueryResult:
     retrieved: List[str]
     latency_s: float
     context_chars: int
+    # LLM-grounded mode only: True when the rerank call failed and the
+    # row silently kept token-overlap order (llm_rerank.RerankStats).
+    # Token-mode drivers leave the default.
+    rerank_fallback: bool = False
 
 
 @dataclass

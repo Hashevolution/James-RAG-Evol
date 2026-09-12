@@ -225,3 +225,59 @@ def test_token_mode_s2_matches_the_repaired_fixture():
         axes = score_run(r)
         assert abs(axes["overall"]["exploratory"]["R@1"]
                     - expected_r1) < 1e-5
+
+
+# ── Reranker fallback accounting (2026-09-12) ─────────────────────────
+
+
+def test_rerank_counts_a_failed_llm_call_as_fallback(monkeypatch):
+    """An empty score list (timeout / HTTP error / garbage output) pads
+    every candidate with 0.0, so the stable sort returns the
+    token-overlap order. That row must be visible as a fallback."""
+    from eval.external.lrb import llm_rerank
+
+    llm_rerank.STATS.reset()
+    cands = [("d1", "t1", "x"), ("d2", "t2", "y")]
+
+    monkeypatch.setattr(llm_rerank, "_call_ollama", lambda *a, **k: [])
+    out = llm_rerank.rerank("q", cands, model="gemma4:e4b")
+    assert [d for d, _ in out] == ["d1", "d2"]
+    assert llm_rerank.STATS.calls == 1
+    assert llm_rerank.STATS.fallbacks == 1
+    assert llm_rerank.STATS.last_fallback is True
+
+    monkeypatch.setattr(llm_rerank, "_call_ollama",
+                        lambda *a, **k: [1.0, 9.0])
+    out = llm_rerank.rerank("q", cands, model="gemma4:e4b")
+    assert [d for d, _ in out] == ["d2", "d1"]
+    assert llm_rerank.STATS.calls == 2
+    assert llm_rerank.STATS.fallbacks == 1
+    assert llm_rerank.STATS.last_fallback is False
+
+
+def test_run_sut_records_per_query_fallback_and_matches_token_mode(monkeypatch):
+    """With a reranker that always fails, every llm-grounded row is
+    flagged and the retrieved lists equal token mode exactly; token
+    mode itself never flags."""
+    from eval.external.lrb import llm_rerank
+    from scripts.research.lrb_run_v021_cross_model import (
+        run_sut_cross_model)
+
+    sc = load_scenario(FIXTURE_S2)
+    sha = fixture_sha(FIXTURE_S2)
+    monkeypatch.setattr(llm_rerank, "_call_ollama", lambda *a, **k: [])
+
+    grounded = run_sut_cross_model(
+        JamesValidityAdapter, sc, sha, sut_name="t", mode="llm-grounded",
+        model="gemma4:e4b", ollama_url="http://127.0.0.1:9",
+        timeout=1.0, k=10)
+    token = run_sut_cross_model(
+        JamesValidityAdapter, sc, sha, sut_name="t", mode="token",
+        model="token-baseline", ollama_url="http://127.0.0.1:9",
+        timeout=1.0, k=10)
+
+    assert len(grounded.per_query) == len(token.per_query) == 80
+    assert all(q.rerank_fallback for q in grounded.per_query)
+    assert not any(q.rerank_fallback for q in token.per_query)
+    assert ([q.retrieved for q in grounded.per_query]
+            == [q.retrieved for q in token.per_query])
