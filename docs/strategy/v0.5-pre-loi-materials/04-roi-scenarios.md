@@ -24,7 +24,7 @@ JAMES pilot 이 가져올 수 있는 financial impact 는 4 가지 카테고리:
 | 카테고리 | 측정-evidenced 자메스 moat | Pilot 으로 검증 가능? |
 |---|---|---|
 | **R1** 감사 / 컴플라이언스 cost reduction | RAB AC = 1.000 (자동 감사 log) | ✓ Yes (Dim F F.4 측정) |
-| **R2** 시점 정확 retrieval → 잘못된 정보 기반 결정 risk avoidance | LRB R@1 = 0.975 | ✓ Yes (Dim F F.5 측정) |
+| **R2** 시점 정확 retrieval → 잘못된 정보 기반 결정 risk avoidance | LRB R@1 = 1.000 | ✓ Yes (Dim F F.5 측정) |
 | **R3** 법무 검색 / 정리 시간 단축 (사용자 생산성) | latency 동급 (LRB) | ✓ Yes (Dim F F.3 + survey) |
 | **R4** 신규 매출 (legal tech 솔루션 도입으로 client 확장) | — (자메스 moat 아님) | ✗ Not claimed |
 

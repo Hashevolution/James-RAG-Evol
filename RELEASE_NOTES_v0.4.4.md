@@ -1,6 +1,6 @@
 # v0.4.4 — LRB v0.2.3 S3 publication-scale + cycle γ 4-bench infrastructure closure
 
-> **Erratum (2026-09-12, LRB S3.2)**: the LRB S3 publication figure V/N/J = 0.502 / 0.721 / 0.845 quoted below was capped by a generator artefact (project-title collision; both project-lead categories held at R@1 ≤ 0.288 for every SUT). Re-measured on the fixed generator: 0.566 / 0.827 / 0.984 (J − N +0.157). The v0.4.4 artefacts and DOI are unchanged; see `docs/research/lrb-v023-s3-publication-scale-results-2026-09-12-s32.md`.
+> **Erratum (2026-09-12, LRB S3.2)**: the LRB S3 publication figure V/N/J = 0.502 / 0.721 / 0.845 quoted below was capped by a generator artefact (project-title collision; both project-lead categories held at R@1 ≤ 0.288 for every SUT). Re-measured on the fixed generator: 0.566 / 0.827 / 0.984 (J − N +0.157). The LRB S2 figure 0.225 / 0.5375 / 0.7125 was measured on a fixture the committed generator could not rebuild; on the repaired fixture (PR #1089) it is 0.2500 / 0.5875 / 0.7625 with the same J − N of +0.175 (decision #2, 2026-09-12). The v0.4.4 artefacts and DOI are unchanged; see `docs/research/lrb-v023-s3-publication-scale-results-2026-09-12-s32.md`.
 
 **Date**: 2026-06-12
 **Predecessor**: v0.4.3 — `10.5281/zenodo.20625533` (deposited 2026-06-10)

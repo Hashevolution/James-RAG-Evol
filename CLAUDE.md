@@ -67,9 +67,10 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   0.7625, **J − N 은 0.175 로 불변**), 그 과정에서 CI 가 57개 테스트
   파일을 `--ignore` 하며 **902 테스트 / 적색 8건**을 가리고 있던 것이
   드러나 PR #1088 이 8건 전부 수리 + 6개 un-ignore (**57 → 51**).
-  ⚠️ **결정 #2 미결**: preprint README / `.zenodo.json` / v0.4.4
-  릴리스 노트는 여전히 수리 전 수치 (0.225 / 0.5375 / 0.7125) 입니다 —
-  발표 수치 재베이스라인은 operator 판단.
+  ✅ **결정 #2 실행 (2026-09-12)**: preprint / pre-LOI 자료 / CLAUDE.md 의 S2
+  수치를 수리 fixture 값 (0.2500 / 0.5875 / 0.7625) 으로 재베이스라인했고,
+  S2 llm-grounded 4-model 도 수리 fixture 에서 재측정 (J@claude 1.000).
+  v0.4.4 릴리스 노트는 erratum 줄만, `.zenodo.json` 은 v0.4.4 예치 원문 그대로.
   `ruff` / `bandit` 은 계속 초록.
   → 로드맵 **Phase 3 은 3.1 / 3.2 (operator dogfood) 만** 남았고,
   **Phase 4 (v0.6.1 정식 마감) 는 2026-09-10 에 종료**됐습니다.
@@ -87,9 +88,12 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   S3.2 생성기 수정 + 가드 2종 + 토큰 모드 재측정 완료 (publication V/N/J
   **0.566 / 0.827 / 0.984**, J−N +0.157; README / SUMMARY / preprint §4.6
   재베이스라인, `docs/research/lrb-v023-s3-publication-scale-results-2026-09-12-s32.md`).
-  진행 중: S2 llm-grounded 재측정 (수리 fixture, 결정 #1) · S3 llm-grounded
-  재측정 (S3.2 fixture, ~20 h) · preprint §4.7. Phase 5 잔여 = QVT 3축
-  (서버 필요, operator 승인 대기).
+  **S2 결정 #1 도 실행** — 수리 fixture 에서 token + llm-grounded 4-model 재측정
+  (V<N<J 5/5, J−N +0.1750 / +0.1625 / +0.1750 / +0.1750 / +0.2250), preprint §4 표 3종 + pre-LOI 자료 재베이스라인.
+  측정 위생 2건 (#1123 fallback 계수, #1124 headless CLI 컨텍스트) — 첫 claude
+  시도가 쿼터 소진으로 763/1000 행 fallback 이었던 것을 잡아 폐기·재실행.
+  진행 중: S3 llm-grounded 재측정 (S3.2 fixture, 로컬 ~20 h + claude ~10 h) →
+  PR-C + preprint §4.7. Phase 5 잔여 = QVT 3축 (서버 필요, operator 승인 대기).
 - **유지보수 4 PR** (#1077 #1078 08-19 / **#1079** 08-26 / **#1080** 08-28):
   v0.3.3 DOI 계보 정정, ruff F-class 해소, Ali 엔지니어링 4건 ①②③ 발송 +
   **uuid7 production 결함 수리** (`start_trace()` 가 Python 3.14 전용

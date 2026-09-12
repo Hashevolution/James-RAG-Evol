@@ -48,7 +48,7 @@
 \maketitle
 
 \begin{abstract}
-Real-world enterprise corpora change over time: policies are amended, directors are replaced, contracts are renegotiated. Standard retrieval-augmented generation (RAG) benchmarks (MuSiQue, 2WikiMultiHop, ALCE, TimeQA) evaluate on \emph{frozen} corpora and therefore cannot measure whether a system retrieves the \emph{time-valid} version of a document. We present \textbf{LRB} (Lifecycle Retrieval Benchmark) v0.2, a pre-registered deterministic benchmark for the \emph{temporal validity} axis of RAG. LRB ships three scenarios (S1 lifecycle-quarterly, S2 lifecycle-yearly-with-time-travel, S3 publication-scale with programmatic vocabulary) with 100/200/1000 documents undergoing 160/564/5620 INGEST/UPDATE/SUPERSEDE/DELETE events across 12/24/52 weeks. Each query carries a \texttt{(query\_time, valid\_time)} pair so the benchmark can score \emph{current-state} retrieval (\texttt{query\_time = valid\_time}) and \emph{time-travel} retrieval (\texttt{query\_time > valid\_time}) on the same fixture. We score seven deterministic axes (R@5, R@10, P@5, P@10, latency, token cost, temporal\_accuracy) and three exploratory top-1 axes; an optional Hallucination Resistance (HR) axis is computed via NLI entailment with two checkpoint-pinned verifiers. We measure three SUTs: a vanilla append-only RAG (Baseline-0), a naive supersede-aware RAG that removes superseded documents (Baseline-1), and JAMES, an audit-native runtime with per-document validity windows. \textbf{Headline gap (S2, R@1)}: token-mode 0.225/0.5375/0.7125 across V/N/J; under LLM-grounded rerank, the V $<$ N $<$ J rank order is preserved across four models (gemma4:e4b 4B, gemma3:12b 12B, mixtral:8x7b 47B, claude-haiku-4-5). \textbf{Cross-scale (S2 $\to$ S3, R@1)}: V $<$ N $<$ J is preserved at every cell of a 4-point scale ladder spanning a 12.5$\times$ jump (S2 N=80 $\to$ S3 publication N=1000) with the JAMES $-$ Naive gap above $+$0.10 throughout (S3 publication: V/N/J $=$ 0.566/0.827/0.984). The benchmark, the six pre-registrations, and all 80+ measurement artefacts are committed in the JAMES repository; the headline is the \emph{gap structure}, not any single system's score. LRB does not claim the validity-window architecture is novel (cf.~\cite{nakajima2026activegraph}); the benchmark, the lifecycle-versus-current decomposition, and the three-scenario / four-model / four-scale / two-NLI cross-validation are the contribution.
+Real-world enterprise corpora change over time: policies are amended, directors are replaced, contracts are renegotiated. Standard retrieval-augmented generation (RAG) benchmarks (MuSiQue, 2WikiMultiHop, ALCE, TimeQA) evaluate on \emph{frozen} corpora and therefore cannot measure whether a system retrieves the \emph{time-valid} version of a document. We present \textbf{LRB} (Lifecycle Retrieval Benchmark) v0.2, a pre-registered deterministic benchmark for the \emph{temporal validity} axis of RAG. LRB ships three scenarios (S1 lifecycle-quarterly, S2 lifecycle-yearly-with-time-travel, S3 publication-scale with programmatic vocabulary) with 100/200/1000 documents undergoing 160/564/5620 INGEST/UPDATE/SUPERSEDE/DELETE events across 12/24/52 weeks. Each query carries a \texttt{(query\_time, valid\_time)} pair so the benchmark can score \emph{current-state} retrieval (\texttt{query\_time = valid\_time}) and \emph{time-travel} retrieval (\texttt{query\_time > valid\_time}) on the same fixture. We score seven deterministic axes (R@5, R@10, P@5, P@10, latency, token cost, temporal\_accuracy) and three exploratory top-1 axes; an optional Hallucination Resistance (HR) axis is computed via NLI entailment with two checkpoint-pinned verifiers. We measure three SUTs: a vanilla append-only RAG (Baseline-0), a naive supersede-aware RAG that removes superseded documents (Baseline-1), and JAMES, an audit-native runtime with per-document validity windows. \textbf{Headline gap (S2, R@1)}: token-mode 0.2500/0.5875/0.7625 across V/N/J (repaired S2 fixture, 2026-09-08); under LLM-grounded rerank, the V $<$ N $<$ J rank order is preserved across four models (gemma4:e4b 4B, gemma3:12b 12B, mixtral:8x7b 47B, claude-haiku-4-5). \textbf{Cross-scale (S2 $\to$ S3, R@1)}: V $<$ N $<$ J is preserved at every cell of a 4-point scale ladder spanning a 12.5$\times$ jump (S2 N=80 $\to$ S3 publication N=1000) with the JAMES $-$ Naive gap above $+$0.10 throughout (S3 publication: V/N/J $=$ 0.566/0.827/0.984). The benchmark, the six pre-registrations, and all 80+ measurement artefacts are committed in the JAMES repository; the headline is the \emph{gap structure}, not any single system's score. LRB does not claim the validity-window architecture is novel (cf.~\cite{nakajima2026activegraph}); the benchmark, the lifecycle-versus-current decomposition, and the three-scenario / four-model / four-scale / two-NLI cross-validation are the contribution.
 \end{abstract}
 
 \section{Introduction}
@@ -148,19 +148,19 @@ JAMES & 0.844 & 0.917 & 0.917 & 0.739 \\
 \subsection{Phase B: time-travel retrieval (S2)}
 \label{sec:phase_b}
 
-LRB-S2 has 80 queries on a 200-document corpus with 24 weeks of evolution; queries cover four types (current 40, historical-mid 20, historical-early 10, never-stale 10) with explicit \texttt{(query\_time, valid\_time)} pairs.
+LRB-S2 has 80 queries on a 200-document corpus with 24 weeks of evolution (fixture rebuilt 2026-09-08 after a policy-title collision in its generator was repaired, PR \#1089; every S2 number in this version is on the repaired fixture — the 2026-06-12 version reported token-mode 0.225/0.538/0.713 with the same J $-$ N of +0.175); queries cover four types (current 40, historical-mid 20, historical-early 10, never-stale 10) with explicit \texttt{(query\_time, valid\_time)} pairs.
 
 \begin{table}[h]
 \centering
-\caption{LRB-S2 token-mode results. Vanilla can retrieve historical documents (it never deleted them), but ranks them indistinguishably from current versions $\rightarrow$ R@1 floor 0.225. Naive cannot reach prior-T states (deleted on supersede) $\rightarrow$ R@10 floor 0.75 on historical types. JAMES uniquely both \emph{retains} prior versions \emph{and} \emph{discriminates} by valid\_time.}
+\caption{LRB-S2 token-mode results. Vanilla can retrieve historical documents (it never deleted them), but ranks them indistinguishably from current versions $\rightarrow$ R@1 floor 0.2500. Naive cannot reach prior-T states (deleted on supersede) $\rightarrow$ R@10 floor 0.7750 on historical types. JAMES uniquely both \emph{retains} prior versions \emph{and} \emph{discriminates} by valid\_time.}
 \label{tab:phase_b}
 \begin{tabular}{l c c c c}
 \toprule
 \textbf{SUT} & \textbf{R@5} & \textbf{R@10} & \textbf{temporal\_accuracy} & \textbf{R@1 (exp)} \\
 \midrule
-Vanilla & 0.875 & 0.950 & 0.950 & 0.225 \\
-Naive-supersede & 0.663 & 0.750 & 0.750 & 0.538 \\
-\textbf{JAMES} & \textbf{0.900} & \textbf{0.975} & \textbf{0.975} & \textbf{0.713} \\
+Vanilla & 0.9375 & 1.0000 & 1.0000 & 0.2500 \\
+Naive-supersede & 0.7250 & 0.7750 & 0.7750 & 0.5875 \\
+\textbf{JAMES} & \textbf{0.9500} & \textbf{1.0000} & \textbf{1.0000} & \textbf{0.7625} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -176,12 +176,12 @@ The rank \textbf{V $<$ N $<$ J on R@1} is the publishable headline for the time-
 \textbf{Category} & \textbf{Vanilla} & \textbf{Naive} & \textbf{JAMES} \\
 \midrule
 current-director & 1.000 & 1.000 & 1.000 \\
-current-policy & 0.750 & 1.000 & 1.000 \\
+current-policy & 1.000 & 1.000 & 1.000 \\
 current-project-lead & 1.000 & 1.000 & 1.000 \\
 \textbf{historical-early-contract} & 1.000 & \textbf{0.000} & 1.000 \\
 \textbf{historical-early-director} & 1.000 & \textbf{0.000} & 1.000 \\
 \textbf{historical-mid-director} & 1.000 & 0.600 & 1.000 \\
-historical-mid-policy & 0.500 & 0.000 & 0.500 \\
+historical-mid-policy & 1.000 & 0.500 & 1.000 \\
 historical-mid-project-lead & 1.000 & 0.667 & 1.000 \\
 never-stale-budget & 1.000 & 1.000 & 1.000 \\
 \bottomrule
@@ -195,17 +195,17 @@ We extend Phase B's token-only retrieval with an optional LLM-grounded retrieval
 
 \begin{table}[h]
 \centering
-\caption{S2 R@1 across four model families. The V $<$ N $<$ J rank order is preserved at every model size, from token-overlap baseline (no LLM) to cloud frontier. JAMES R@1 scales monotonically from 0.713 to 0.975 (claude); the validity-window contribution (J $-$ N) ranges +0.163 to +0.213 across models. Single-model fluke ruled out.}
+\caption{S2 R@1 across four model families. The V $<$ N $<$ J rank order is preserved at every model size, from token-overlap baseline (no LLM) to cloud frontier. JAMES R@1 scales from 0.7625 (token) to 1.0000 (claude); the validity-window contribution (J $-$ N) ranges +0.1625 to +0.2250 across models (repaired S2 fixture, 2026-09-12 re-run). Single-model fluke ruled out.}
 \label{tab:cross_model}
 \begin{tabular}{l c c c c c}
 \toprule
 \textbf{SUT} & \textbf{token} & \textbf{4B} & \textbf{12B} & \textbf{47B} & \textbf{claude} \\
 \midrule
-Vanilla & 0.225 & 0.488 & 0.400 & 0.375 & 0.6125 \\
-Naive-supersede & 0.538 & 0.563 & 0.613 & 0.625 & 0.775 \\
-\textbf{JAMES} & \textbf{0.713} & \textbf{0.725} & \textbf{0.775} & \textbf{0.838} & \textbf{0.975} \\
+Vanilla & 0.2500 & 0.4750 & 0.4500 & 0.3625 & 0.5250 \\
+Naive-supersede & 0.5875 & 0.7375 & 0.7250 & 0.6875 & 0.7750 \\
+\textbf{JAMES} & \textbf{0.7625} & \textbf{0.9000} & \textbf{0.9000} & \textbf{0.8625} & \textbf{1.0000} \\
 \midrule
-J $-$ N gap & +0.175 & +0.163 & +0.163 & +0.213 & +0.200 \\
+J $-$ N gap & +0.1750 & +0.1625 & +0.1750 & +0.1750 & +0.2250 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -289,7 +289,7 @@ Phase B (time-travel) measurement of all three scale presets through the determi
 \toprule
 Scenario & V R@1 & N R@1 & J R@1 & V $<$ N $<$ J \\
 \midrule
-S2 token (frozen)     & 0.225 & 0.538 & 0.713 & yes \\
+S2 token (repaired)   & 0.2500 & 0.5875 & 0.7625 & yes \\
 S3 smoke              & 0.540 & 0.760 & 0.950 & yes \\
 S3 dev                & 0.553 & 0.777 & 0.973 & yes \\
 \textbf{S3 publication} & \textbf{0.566} & \textbf{0.827} & \textbf{0.984} & \textbf{yes} \\

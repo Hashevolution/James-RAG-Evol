@@ -61,7 +61,7 @@
 ```
 This pilot materials set is provided AS-IS for evaluation. The
 measurement-evidenced claims (RAB AC/RF/PC = 1.000 / 0.275; LRB
-S2 R@1 J=0.975) trace to committed result.json artefacts in
+S2 R@1 J=1.000) trace to committed result.json artefacts in
 https://github.com/Hashevolution/James-RAG-Evol; reproducible
 bit-for-bit on the operator's environment given the pre-registered
 scenario fixtures. JAMES is a local-first auditable knowledge
