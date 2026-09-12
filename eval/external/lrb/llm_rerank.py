@@ -26,6 +26,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import time
 import urllib.error
 import urllib.request
 from typing import List, Sequence, Tuple
@@ -55,6 +56,10 @@ class RerankStats:
         self.calls = 0
         self.fallbacks = 0
         self.last_fallback = False
+        # Cloud CLI only: how often, and for how long in total, this
+        # process slept for an exhausted usage window (2026-09-13).
+        self.quota_waits = 0
+        self.quota_wait_s = 0.0
 
 
 STATS = RerankStats()
@@ -176,6 +181,39 @@ CLAUDE_CLI_SYSTEM_PROMPT = (
     "the user asks for and nothing else."
 )
 
+# Quota-aware retry (2026-09-13). The Max-plan usage window is shared
+# with everything else the operator account does; when it runs out the
+# CLI returns in ~5 s with a notice and, without this, every remaining
+# row of a cell silently becomes token order (second S3 cloud leg,
+# 2026-09-12 night: 876 / 1000, 1000 / 1000 and 281 / 1000 rows). A call
+# whose answer looks like an exhausted window sleeps and retries; the
+# total sleep per process is capped so a persistent failure still ends
+# as counted fallbacks instead of a run that never finishes.
+QUOTA_PATTERNS = (
+    "usage limit", "rate limit", "limit reached", "reached your limit",
+    "resets at", "resets in", "try again later", "overloaded",
+    "too many requests", "429",
+)
+NO_RETRY_PATTERNS = (
+    "not logged in", "please run /login", "invalid api key",
+    "authentication_error", "unauthorized",
+)
+QUOTA_RETRY_SLEEP_S = 600.0
+QUOTA_MAX_WAIT_S = 12 * 3600.0
+_sleep = time.sleep  # monkeypatched in tests
+
+
+def _quota_exhausted(returncode: int, stdout: str, stderr: str) -> bool:
+    """True when the CLI answer looks like an exhausted usage window
+    (worth waiting for), False for a normal answer that merely failed
+    to parse or for a condition waiting will not clear."""
+    text = f"{stdout}\n{stderr}".lower()
+    if any(p in text for p in NO_RETRY_PATTERNS):
+        return False
+    if any(p in text for p in QUOTA_PATTERNS):
+        return True
+    return returncode != 0
+
 
 def _is_ollama_model(model: str) -> bool:
     name = model.split(":")[0].lower()
@@ -273,31 +311,44 @@ def _call_claude_cli(prompt: str, *, model: str,
     neutral_cwd = _Path(tempfile.gettempdir()) / "lrb-claude-cwd"
     neutral_cwd.mkdir(parents=True, exist_ok=True)
 
-    try:
-        proc = subprocess.run(
-            [cmd_executable, "-p", "--model", model,
-             "--system-prompt", CLAUDE_CLI_SYSTEM_PROMPT,
-             "--no-session-persistence"],
-            input=prompt,
-            capture_output=True,
-            text=True,
-            # 2026-09-12: the CLI writes UTF-8 (a usage-limit notice
-            # carries a curly apostrophe). Without an explicit encoding
-            # Windows decodes with cp949, the reader thread raises, and
-            # stdout comes back None — an AttributeError that escaped
-            # the except clause below and would have killed a 12 h run.
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-            cwd=str(neutral_cwd),
-            env=base_env,
-            shell=False,
-        )
-        if proc.returncode != 0 or not proc.stdout:
+    argv = [cmd_executable, "-p", "--model", model,
+            "--system-prompt", CLAUDE_CLI_SYSTEM_PROMPT,
+            "--no-session-persistence"]
+    while True:
+        try:
+            proc = subprocess.run(
+                argv,
+                input=prompt,
+                capture_output=True,
+                text=True,
+                # 2026-09-12: the CLI writes UTF-8 (a usage-limit notice
+                # carries a curly apostrophe). Without an explicit
+                # encoding Windows decodes with cp949, the reader thread
+                # raises, and stdout comes back None — an AttributeError
+                # that escaped the except clause and would have killed a
+                # 12 h run.
+                encoding="utf-8",
+                errors="replace",
+                timeout=timeout,
+                cwd=str(neutral_cwd),
+                env=base_env,
+                shell=False,
+            )
+        except Exception:  # noqa: BLE001 — any failure is a counted fallback
             return []
-        return _parse_scores(proc.stdout)
-    except Exception:  # noqa: BLE001 — any failure is a counted fallback
-        return []
+        out = proc.stdout or ""
+        err = getattr(proc, "stderr", "") or ""
+        if proc.returncode == 0 and out:
+            scores = _parse_scores(out)
+            if scores:
+                return scores
+        if not _quota_exhausted(proc.returncode, out, err):
+            return []
+        if STATS.quota_wait_s >= QUOTA_MAX_WAIT_S:
+            return []
+        STATS.quota_waits += 1
+        STATS.quota_wait_s += QUOTA_RETRY_SLEEP_S
+        _sleep(QUOTA_RETRY_SLEEP_S)
 
 
 # ──────────────────────────────────────────────────────────────────────
