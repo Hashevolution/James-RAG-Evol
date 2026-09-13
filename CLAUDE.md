@@ -92,8 +92,11 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   (V<N<J 5/5, J−N +0.1750 / +0.1625 / +0.1750 / +0.1750 / +0.2250), preprint §4 표 3종 + pre-LOI 자료 재베이스라인.
   측정 위생 2건 (#1123 fallback 계수, #1124 headless CLI 컨텍스트) — 첫 claude
   시도가 쿼터 소진으로 763/1000 행 fallback 이었던 것을 잡아 폐기·재실행.
-  진행 중: S3 llm-grounded 재측정 (S3.2 fixture, 로컬 ~20 h + claude ~10 h) →
-  PR-C + preprint §4.7. Phase 5 잔여 = QVT 3축 (서버 필요, operator 승인 대기).
+  **S3 llm-grounded 재측정 (S3.2 fixture) 로컬 3-model 완료 (2026-09-13)** —
+  V<N<J 3/3, J−N +0.170 / +0.178 / +0.139, 9,000행 fallback 0, 리포트
+  `reports/research-runs/lrb-v023b-3model-llm-grounded-publication-s32-20260913.md`.
+  claude leg 는 쿼터 대기 포함 진행 중 (#1126) → 완료 시 preprint §4.7 +
+  README cross-model 문구. Phase 5 잔여 = QVT 3축 (서버 필요, operator 승인 대기).
 - **유지보수 4 PR** (#1077 #1078 08-19 / **#1079** 08-26 / **#1080** 08-28):
   v0.3.3 DOI 계보 정정, ruff F-class 해소, Ali 엔지니어링 4건 ①②③ 발송 +
   **uuid7 production 결함 수리** (`start_trace()` 가 Python 3.14 전용

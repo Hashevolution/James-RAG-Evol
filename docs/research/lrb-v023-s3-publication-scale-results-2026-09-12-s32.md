@@ -149,6 +149,13 @@ the S2 re-baseline), the LLM-grounded S3 publication re-run on the S3.2
 fixture (≈ 20 h, in progress after this PR), and preprint §4.7 (needs that
 re-run).
 
+> **Update 2026-09-13**: both landed — S2 in PR #1125
+> (`reports/research-runs/lrb-v021-s2-llm-grounded-repaired-fixture-20260912.md`),
+> the S3 LLM-grounded re-run (3 local rerankers) in
+> `reports/research-runs/lrb-v023b-3model-llm-grounded-publication-s32-20260913.md`
+> (J 0.989 / 0.991 / 0.893, J−N +0.170 / +0.178 / +0.139). The claude leg and
+> preprint §4.7 follow.
+
 ## 7. Reproduce
 
 ```bash

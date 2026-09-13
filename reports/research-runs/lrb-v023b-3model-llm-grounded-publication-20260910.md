@@ -1,6 +1,6 @@
 # LRB v0.2.3b — 3-model LLM-grounded S3 **publication** results (2026-09-10)
 
-> **Update 2026-09-12**: the §4 ceiling was removed by the S3.2 generator fix (`docs/research/lrb-v023-s3-publication-scale-results-2026-09-12-s32.md`; token-mode publication now V/N/J 0.566 / 0.827 / 0.984). Every number in this report is on the **pre-S3.2** fixture (sha `662fc2b7…`); the LLM-grounded re-run on the S3.2 fixture is reported separately.
+> **Update 2026-09-12**: the §4 ceiling was removed by the S3.2 generator fix (`docs/research/lrb-v023-s3-publication-scale-results-2026-09-12-s32.md`; token-mode publication now V/N/J 0.566 / 0.827 / 0.984). Every number in this report is on the **pre-S3.2** fixture (sha `662fc2b7…`); the LLM-grounded re-run on the S3.2 fixture is `lrb-v023b-3model-llm-grounded-publication-s32-20260913.md` (3 local legs: J 0.989 / 0.991 / 0.893, J−N +0.170 / +0.178 / +0.139, 0 fallbacks).
 
 Runner: `scripts/research/lrb_run_v023b_s3_cross_model.py
 --scale publication --modes llm-grounded --models gemma4:e4b,gemma3:12b,mixtral:8x7b`
