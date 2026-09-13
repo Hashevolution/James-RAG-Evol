@@ -95,8 +95,13 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
   **S3 llm-grounded 재측정 (S3.2 fixture) 로컬 3-model 완료 (2026-09-13)** —
   V<N<J 3/3, J−N +0.170 / +0.178 / +0.139, 9,000행 fallback 0, 리포트
   `reports/research-runs/lrb-v023b-3model-llm-grounded-publication-s32-20260913.md`.
-  claude leg 는 쿼터 대기 포함 진행 중 (#1126) → 완료 시 preprint §4.7 +
-  README cross-model 문구. Phase 5 잔여 = QVT 3축 (서버 필요, operator 승인 대기).
+  **claude leg 완료 (2026-09-14)** — 0.852 / 0.833 / **0.990**, fallback 0, 쿼터
+  대기 1.8 h. JAMES 주장 (J > N, J > V, gap > +0.10) 은 4 leg 전부 성립하지만
+  엄격한 V<N<J 는 claude 에서 V ≈ N (0.019 차) 으로 깨져 사전등록대로 **3/4 →
+  ⭐⭐ partial + attribution finding** (S3 대체 문서의 "Supersedes" 문장을 강한
+  reader 가 읽어 vanilla 를 구제; S2 는 그 문장이 없어 5/5). preprint §4.7 +
+  README/SUMMARY 반영: `reports/research-runs/lrb-v023b-claude-leg-publication-s32-20260914.md`.
+  Phase 5 측정 백로그는 이것으로 소진. 잔여 = QVT 3축 (서버 필요, operator 승인 대기).
 - **유지보수 4 PR** (#1077 #1078 08-19 / **#1079** 08-26 / **#1080** 08-28):
   v0.3.3 DOI 계보 정정, ruff F-class 해소, Ali 엔지니어링 4건 ①②③ 발송 +
   **uuid7 production 결함 수리** (`start_trace()` 가 Python 3.14 전용

@@ -16,7 +16,7 @@ project-lead ceiling that S3.2 removed — `docs/research/lrb-v023-s3-publicatio
 | Wall clock | 2026-09-12 21:14 → 09-13 19:48 KST = **22 h 34 min** (gemma4 ≈ 50 min per cell, gemma3:12b ≈ 70 min, mixtral 4.9–6.2 h) |
 | Code | generator/fixture at `e2c59b1` (#1122); runner at `2549266` (#1123, fallback flags); the claude CLI changes (#1124, #1126) do not touch the Ollama path |
 | Log | `reports/research-runs/_v023b_publication_3model_s32_20260912.log` (gitignored, `EXIT=0`) |
-| 4th leg | `claude-haiku-4-5` **in progress** on the same fixture with quota-aware retry (#1126); reported separately when it lands |
+| 4th leg | `claude-haiku-4-5` — landed 2026-09-14: `lrb-v023b-claude-leg-publication-s32-20260914.md` (0.852 / 0.833 / **0.990**, 0 fallbacks; strict V<N<J breaks on that leg, V ≈ N; composite 3/4 → ⭐⭐ partial per prereg) |
 
 ## 1. Gap table (R@1 = the fact that is correct *for the queried valid_time*, at rank 1)
 
