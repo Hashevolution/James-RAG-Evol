@@ -7,7 +7,8 @@
 
 > ⚠️ **이 문서의 본문 (§1 이하 ~700 줄) 은 초기 v0.1.x 시점의 인수인계 기록 보존본**입니다. 현재 상태와 다음 작업은 아래를 보세요:
 >
-> - **신규 세션 진입 시 첫 의무 reading**: **`docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md`** (재개 로드맵 Phase 1–7 + 현재 상태 사실 확인 + 🔴 CI 빨간불)
+> - **신규 세션 진입 시 첫 의무 reading**: **`docs/handovers/v0.6.2-lrb-rebaseline-close-2026-09-21.md`** (현재 상태 원본 — LRB 재베이스라인 arc #1121–#1128 마감 + 남은 일 solo 3건 / operator 9건)
+> - **Phase 정의 원본**: `docs/handovers/v0.6.2-restart-roadmap-2026-09-03.md` (재개 로드맵 Phase 1–7). ✅ CI 는 2026-09-09 이후 그린이고 `--ignore` 목록도 없습니다 — 그 문서의 "🔴 CI 빨간불" 서술은 2026-09-03 시점 기록입니다
 > - **CLAUDE.md "Where to look next" 표 첫 행** 도 동일 doc 으로 pinned (가드 테스트가 recency 를 강제)
 > - **직전 기능 세션**: `docs/handovers/v0.6.1-session-close-2026-06-26.md`
 > - **자세한 한국어 narrative**: `README.ko.md` § "프로젝트 상태 (2026-09-03 기준)"
