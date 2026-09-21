@@ -964,8 +964,55 @@ def _classify_delta(deltas: Dict[str, float], noise_band: Dict[str, float]) -> s
     return "zero"
 
 
-def _classify_five_axis_delta(deltas: Dict[str, float],
-                              noise_band: Dict[str, float]) -> str:
+_ALL_AXES: Tuple[str, ...] = _QUALITY_AXES + _COST_AXES
+
+
+def _deltas_vs_baseline(
+    med: Dict[str, Optional[float]],
+    base_med: Dict[str, Optional[float]],
+) -> Tuple[Dict[str, Optional[float]], set]:
+    """Per-axis Δ, with "never compared" kept distinct from "equal".
+
+    The previous shape collapsed both into ``0.0``::
+
+        if med[axis] is None or base_med[axis] is None:
+            deltas[axis] = 0.0
+
+    That is a silent null. The on-disk baseline is
+    ``qvt-baseline-v1`` (2026-05, three axes: path / graded /
+    abstention) — it carries no ``token_cost`` or ``latency_cost``. So
+    every cell rendered against it got ``token_cost Δ = 0.0`` with
+    ``noise_band = 0.0``, the cost loop in
+    ``_classify_five_axis_delta`` scored neither cost-positive nor
+    cost-regression, and the verdict read *"cost flat"*. A cell that
+    doubled token cost classified as **adopt** on the strength of a
+    comparison that never happened.
+
+    Returning ``None`` (and the axis name in ``unavailable``) lets the
+    caller print ``n/a`` and lets the classifier abstain on that axis
+    instead of inventing a flat reading.
+    """
+    deltas: Dict[str, Optional[float]] = {}
+    unavailable: set = set()
+    for axis in _ALL_AXES:
+        base_v = base_med.get(axis)
+        cell_v = med.get(axis)
+        if base_v is None or cell_v is None:
+            deltas[axis] = None
+            unavailable.add(axis)
+        else:
+            deltas[axis] = round(cell_v - base_v, 4)
+    return deltas, unavailable
+
+
+def _fmt_delta(value: Optional[float], spec: str) -> str:
+    """Render a Δ, or ``n/a`` when the axis was never comparable."""
+    return "n/a" if value is None else format(value, spec)
+
+
+def _classify_five_axis_delta(deltas: Dict[str, Any],
+                              noise_band: Dict[str, float],
+                              unavailable: Optional[set] = None) -> str:
     """5-axis Pareto-aware verdict (plan Step 5).
 
     Quality side: any quality axis Δ > +noise_band ⇒ quality_positive.
@@ -982,23 +1029,42 @@ def _classify_five_axis_delta(deltas: Dict[str, float],
       - quality_negative + *              → "reject"  (no cost gain redeems quality loss)
       - else (quality_flat + cost_flat)   → "zero"
     """
+    skip = unavailable or set()
     q_pos = q_neg = 0
     for axis in _QUALITY_AXES:
-        d = deltas.get(axis, 0.0)
+        if axis in skip:
+            continue
+        d = deltas.get(axis)
+        if d is None:
+            continue
         band = noise_band.get(axis, 0.0)
         if d > band:
             q_pos += 1
         elif d < -band:
             q_neg += 1
     c_pos = c_neg = 0
+    cost_axes_compared = 0
     for axis in _COST_AXES:
-        d = deltas.get(axis, 0.0)
+        if axis in skip:
+            continue
+        d = deltas.get(axis)
+        if d is None:
+            continue
+        cost_axes_compared += 1
         band = noise_band.get(axis, 0.0)
         # Cost down (Δ < -band) is good; cost up (Δ > +band) is bad.
         if d < -band:
             c_pos += 1
         elif d > band:
             c_neg += 1
+    # No cost axis was comparable — say so rather than letting the
+    # cost-flat branches ("adopt" / "zero") stand on nothing.
+    if cost_axes_compared == 0:
+        if q_neg > 0:
+            return "reject (quality only — cost not in baseline)"
+        if q_pos > 0:
+            return "quality-positive (cost not in baseline)"
+        return "quality-flat (cost not in baseline)"
     if q_neg > 0:
         return "reject"
     if q_pos > 0 and c_pos > 0 and c_neg == 0:
@@ -1075,16 +1141,15 @@ def _render_report(out_path: Path) -> int:
         "|---|---|---|---|---|---|---|---|---|",
     ]
     _router_gap_cells: List[Tuple[Dict[str, Any], Dict[str, Any]]] = []
+    # Axes the baseline (or a cell) never carried — rendered n/a and
+    # abstained on, rather than silently compared as flat.
+    _missing_axis_cells: set = set()
     for c in cells:
         agg = c.get("aggregate", {})
         med = {ax: agg.get(ax, {}).get("median") for ax in _ALL_AXES}
-        deltas: Dict[str, float] = {}
-        for axis in _ALL_AXES:
-            if med[axis] is None or base_med[axis] is None:
-                deltas[axis] = 0.0
-            else:
-                deltas[axis] = round(med[axis] - base_med[axis], 4)
-        verdict = _classify_five_axis_delta(deltas, base_noise)
+        deltas, _unavail = _deltas_vs_baseline(med, base_med)
+        _missing_axis_cells.update(_unavail)
+        verdict = _classify_five_axis_delta(deltas, base_noise, _unavail)
         # α-8 cloud tier (2026-06-04) — local cells show model tag;
         # cloud cells (empty model + non-default backend_id) show the
         # backend id instead so the row is informative either way.
@@ -1103,13 +1168,40 @@ def _render_report(out_path: Path) -> int:
             _router_gap_cells.append((c, router_ev))
         rows.append(
             f"| {c['row']} ({c['row_label']}) | {c['tier']} | "
-            f"{tier_label} | {deltas['path_coverage']:+.3f} | "
-            f"{deltas['graded_answer']:+.3f} | "
-            f"{deltas['abstention_f1']:+.3f} | "
-            f"{deltas['token_cost']:+.0f} | "
-            f"{deltas['latency_cost']:+.2f} | "
+            f"{tier_label} | {_fmt_delta(deltas['path_coverage'], '+.3f')} | "
+            f"{_fmt_delta(deltas['graded_answer'], '+.3f')} | "
+            f"{_fmt_delta(deltas['abstention_f1'], '+.3f')} | "
+            f"{_fmt_delta(deltas['token_cost'], '+.0f')} | "
+            f"{_fmt_delta(deltas['latency_cost'], '+.2f')} | "
             f"{verdict_cell} |"
         )
+
+    if _missing_axis_cells:
+        rows += [
+            "",
+            "## ⚠ axes not comparable against this baseline",
+            "",
+            "    " + ", ".join(sorted(_missing_axis_cells)),
+            "",
+            f"Baseline schema: `{baseline.get('schema', 'unknown')}` "
+            f"(captured {baseline.get('captured_at', 'unknown')}).",
+            "",
+            "These axes are rendered **n/a** and the verdict abstains on",
+            "them. They are *not* reported as Δ 0.000 — that was the old",
+            "behaviour, and it silently turned \"never compared\" into",
+            "\"flat\": a cell that doubled token cost classified as",
+            "**adopt**, because the 3-axis `qvt-baseline-v1` carries no",
+            "`token_cost` / `latency_cost` and the cost loop scored",
+            "neither improvement nor regression.",
+            "",
+            "To restore the cost half of the Pareto verdict, re-capture",
+            "the baseline (`python scripts/qvt_capture_baseline.py`,",
+            "~70 min) — it writes `qvt-baseline-v2`, which carries all",
+            "five axes plus per-question-type. CLAUDE.md rule #2's α-5",
+            "Pareto rule is written to apply \"once the 5-axis baseline is",
+            "the canonical reference\"; until then these cells are",
+            "quality-only readings.",
+        ]
 
     if _router_gap_cells:
         gap_rows = sorted({
@@ -1243,20 +1335,17 @@ def _render_report(out_path: Path) -> int:
                 if not ag_qt:
                     continue
                 med = {ax: ag_qt.get(ax, {}).get("median") for ax in _ALL_AXES}
-                deltas_qt: Dict[str, float] = {}
-                for axis in _ALL_AXES:
-                    if med[axis] is None or base_med_qt[axis] is None:
-                        deltas_qt[axis] = 0.0
-                    else:
-                        deltas_qt[axis] = round(med[axis] - base_med_qt[axis], 4)
-                verdict_qt = _classify_five_axis_delta(deltas_qt, base_noise_qt)
+                deltas_qt, _unavail_qt = _deltas_vs_baseline(med, base_med_qt)
+                _missing_axis_cells.update(_unavail_qt)
+                verdict_qt = _classify_five_axis_delta(
+                    deltas_qt, base_noise_qt, _unavail_qt)
                 rows.append(
                     f"| {c['row']} | {c['tier']} | `{c['model']}` | "
-                    f"{deltas_qt['path_coverage']:+.3f} | "
-                    f"{deltas_qt['graded_answer']:+.3f} | "
-                    f"{deltas_qt['abstention_f1']:+.3f} | "
-                    f"{deltas_qt['token_cost']:+.0f} | "
-                    f"{deltas_qt['latency_cost']:+.2f} | "
+                    f"{_fmt_delta(deltas_qt['path_coverage'], '+.3f')} | "
+                    f"{_fmt_delta(deltas_qt['graded_answer'], '+.3f')} | "
+                    f"{_fmt_delta(deltas_qt['abstention_f1'], '+.3f')} | "
+                    f"{_fmt_delta(deltas_qt['token_cost'], '+.0f')} | "
+                    f"{_fmt_delta(deltas_qt['latency_cost'], '+.2f')} | "
                     f"**{verdict_qt}** |"
                 )
                 if verdict_qt in ("strong-adopt", "adopt", "efficiency-adopt"):
@@ -1325,22 +1414,19 @@ def _render_report(out_path: Path) -> int:
         for c in sector_cells:
             agg = c.get("aggregate", {})
             med = {ax: agg.get(ax, {}).get("median") for ax in _ALL_AXES}
-            deltas_sc: Dict[str, float] = {}
-            for axis in _ALL_AXES:
-                if med[axis] is None or base_med[axis] is None:
-                    deltas_sc[axis] = 0.0
-                else:
-                    deltas_sc[axis] = round(med[axis] - base_med[axis], 4)
-            verdict_sc = _classify_five_axis_delta(deltas_sc, base_noise)
+            deltas_sc, _unavail_sc = _deltas_vs_baseline(med, base_med)
+            _missing_axis_cells.update(_unavail_sc)
+            verdict_sc = _classify_five_axis_delta(
+                deltas_sc, base_noise, _unavail_sc)
             sc_id = c.get("sector_cell") or c.get("row")
             sc_label = c.get("sector_cell_label") or ""
             rows.append(
                 f"| {sc_id} ({sc_label}) | {c['tier']} | "
-                f"`{c['model']}` | {deltas_sc['path_coverage']:+.3f} | "
-                f"{deltas_sc['graded_answer']:+.3f} | "
-                f"{deltas_sc['abstention_f1']:+.3f} | "
-                f"{deltas_sc['token_cost']:+.0f} | "
-                f"{deltas_sc['latency_cost']:+.2f} | "
+                f"`{c['model']}` | {_fmt_delta(deltas_sc['path_coverage'], '+.3f')} | "
+                f"{_fmt_delta(deltas_sc['graded_answer'], '+.3f')} | "
+                f"{_fmt_delta(deltas_sc['abstention_f1'], '+.3f')} | "
+                f"{_fmt_delta(deltas_sc['token_cost'], '+.0f')} | "
+                f"{_fmt_delta(deltas_sc['latency_cost'], '+.2f')} | "
                 f"**{verdict_sc}** |"
             )
         # Pairwise progression — the intended α-6 reading. Each row
