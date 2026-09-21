@@ -232,7 +232,7 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 | Previous session entry (α-7 launch — sealed) | `docs/handovers/v0.4-next-session-entry-2026-06-02-alpha7.md` |
 | Previous-previous (Phase 3a launch — sealed) | `docs/handovers/v0.4-next-session-entry-2026-06-01-PM.md` |
 | Track 2c integration design memo | `docs/design/v0.4-track-2c-arabic-adversarial-integration.md` |
-| Bidi normalization audit | `reports/research-runs/bidi-normalization-audit-20260602.md` |
+| Bidi normalization audit ⚠️ **not on `main`** | `reports/research-runs/bidi-normalization-audit-20260602.md` — lives only on the unmerged branch `docs/v0.4-track-2c-ali-integration` (`c317dda`). `docs/ARCHITECTURE.md` §5.7.12 cites it too. Recover with `git show c317dda:<path>`, or merge that branch — **operator judgment** |
 | α-7 closure analysis (mid-fill) | `reports/research-runs/alpha-7-closure-analysis-20260602.md` |
 | α-7 baseline run log | `reports/research-runs/_alpha7-baseline-capture.log` |
 | α-7 5-tier remeasurement log | `reports/research-runs/_alpha7-5tier-remeasurement.log` |
@@ -258,7 +258,7 @@ See `docs/ARCHITECTURE.md` for full design principles and non-goals.
 | Matrix runner tier override trap | `memory/feedback_matrix_runner_tier_model_override.md` |
 | Mother framing position guard | `memory/feedback_jameses_positioning_replayable_rag.md` §"정정 2026-05-31" |
 | Open issues by priority | `gh issue list --label priority:high` |
-| STEP 7 regression baseline | `eval/regression/step7_queries.json` (or `scripts/step7_query_test.py`) |
+| STEP 7 regression baseline | `eval/regression/step7_queries.json`. Runner = `scripts/bench.py --suite=step7 --mode=retrieval` (as rule #2 says). ⚠️ This row used to offer `scripts/step7_query_test.py` as an alternative — **that file does not exist** and appears nowhere in the repo |
 
 ## What this session should NOT do
 
