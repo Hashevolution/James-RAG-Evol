@@ -850,6 +850,13 @@ at 20.4 KB, above the gate — α-7's separate concern).
 Pointers:
 
 - Audit doc + recommended PR shape: `reports/research-runs/bidi-normalization-audit-20260602.md`
+  ⚠️ **This file is not on `main`.** It exists only on the unmerged branch
+  `docs/v0.4-track-2c-ali-integration` (`c317dda`). The normalization
+  behaviour described in this section *is* on `main` —
+  `core/input_normalization.py`, covered by `tests/test_input_normalization.py`
+  (43 tests, green) — so the section is not describing absent code; it is
+  the *audit write-up* that never landed. Recover with
+  `git show c317dda:reports/research-runs/bidi-normalization-audit-20260602.md`.
 - Track 2c integration design memo: `docs/design/v0.4-track-2c-arabic-adversarial-integration.md`
 - Ali `bidi_01-04` test cases: `eval/adversarial/ar_ecommerce-v1.1-pending.yaml`
 - Unit tests (29 cases): `tests/test_input_normalization.py`
