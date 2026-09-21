@@ -71,6 +71,18 @@ from typing import Any, Dict, List, Optional, Tuple
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+# Windows consoles default to cp949 in this operator's environment, and
+# this module's help text / report strings contain em dashes. Without
+# this, `--help` itself dies with UnicodeEncodeError before printing a
+# single option. Same class as the UTF-8 fix in the LRB claude reranker
+# (#1124) — a measurement tool that cannot print is a measurement tool
+# the operator cannot drive.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
+    except Exception:
+        pass
+
 from eval.qvt.oracle import (  # noqa: E402
     FiveAxisResult,
     score_five_axis,
@@ -310,6 +322,127 @@ def _tier_backend_id(tier: str) -> str:
     """
     override = _TIER_BACKEND_OVERRIDE.get(tier, {})
     return override.get("JAMES_REASONING_BACKEND", "ollama_local")
+
+
+# ---------------------------------------------------------------------------
+# Layer-evidence capture (cell JSON v5)
+# ---------------------------------------------------------------------------
+#
+# CLAUDE.md rule #2: "Layer measurement prerequisites must also be
+# confirmed — e.g., AUTO_ROUTER PRs require multi-tier backend
+# registration evidence (otherwise the layer is no-op and the PR's
+# number is 'not in evidence,' not 'no effect')."
+#
+# Until cell JSON v5 the matrix recorded the *flag* (JAMES_AUTO_ROUTER=1)
+# but never whether the router had anywhere to route to. With a
+# single-backend registry `_first_in_tier` returns None for every
+# non-small tier and the router falls back to the legacy backend —
+# `core/reasoning/router.py::_legacy_backend_id` documents exactly this
+# "small-tier-only fleet" case. A null Δ on L2/L5 then reads as "the
+# layer does nothing" when the truth is "the layer was never exercised".
+#
+# This is the same failure shape as the LRB reranker fallback (#1123):
+# something silently did not happen, and the artifact looked clean.
+
+_ROUTER_TIERS: Tuple[str, ...] = ("small", "medium", "large", "cloud")
+_FLAG_ON = {"1", "true", "yes", "on"}
+_registry_snapshot_cache: Optional[Dict[str, Any]] = None
+
+
+def _backend_registry_snapshot() -> Dict[str, Any]:
+    """Registered backends + tier membership, as seen by this process.
+
+    ``probe`` is recorded honestly: this is the *runner's* registry, not
+    the spawned server's. They run the same code on the same machine, and
+    the cell env this runner passes does not enable extra backends, so the
+    two agree — but a future cell that sets e.g.
+    ``JAMES_ENABLE_CLAUDE_BACKEND`` in the server env only would diverge,
+    and the field name says where the number came from.
+    """
+    global _registry_snapshot_cache
+    if _registry_snapshot_cache is not None:
+        return _registry_snapshot_cache
+    try:
+        from core.reasoning import backends as _backends  # noqa: WPS433
+        snap: Dict[str, Any] = {
+            "registered": sorted(_backends.list_backends()),
+            "by_tier": {
+                tier: sorted(_backends.list_backends_by_tier(tier))
+                for tier in _ROUTER_TIERS
+            },
+            "probe": "runner-process",
+            "error": None,
+        }
+    except Exception as exc:  # pragma: no cover - defensive
+        snap = {
+            "registered": None,
+            "by_tier": None,
+            "probe": "runner-process",
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+    _registry_snapshot_cache = snap
+    return snap
+
+
+def _router_evidence(
+    effective_env: Dict[str, str],
+    snapshot: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Is AUTO_ROUTER actually exercisable in this cell's environment?
+
+    ``in_evidence`` is deliberately tri-state:
+
+      True  — flag on AND ≥2 tiers hold a backend, so an escalation
+              decision can change which backend answers.
+      False — flag on but <2 tiers populated: the router runs, logs its
+              audit rows, and resolves to the same backend every time.
+              A Δ measured here is **not in evidence**, not "no effect".
+      None  — flag off (nothing claimed), or the registry probe failed.
+    """
+    raw = str(effective_env.get("JAMES_AUTO_ROUTER", "0")).strip().lower()
+    enabled = raw in _FLAG_ON
+    by_tier = snapshot.get("by_tier")
+
+    if by_tier is None:
+        return {
+            "enabled": enabled,
+            "in_evidence": None,
+            "reason": f"registry probe failed ({snapshot.get('error')})",
+            "populated_tiers": None,
+        }
+
+    populated = [tier for tier, names in by_tier.items() if names]
+
+    if not enabled:
+        return {
+            "enabled": False,
+            "in_evidence": None,
+            "reason": "AUTO_ROUTER off in this row — nothing claimed",
+            "populated_tiers": populated,
+        }
+
+    if len(populated) >= 2:
+        return {
+            "enabled": True,
+            "in_evidence": True,
+            "reason": (
+                f"{len(populated)} tiers populated ({', '.join(populated)}) "
+                f"— an escalation can change the answering backend"
+            ),
+            "populated_tiers": populated,
+        }
+
+    return {
+        "enabled": True,
+        "in_evidence": False,
+        "reason": (
+            f"only {len(populated)} tier populated "
+            f"({', '.join(populated) or 'none'}) out of "
+            f"{len(_ROUTER_TIERS)} — every escalation resolves to the same "
+            f"backend, so this cell measures AUTO_ROUTER as NOT IN EVIDENCE"
+        ),
+        "populated_tiers": populated,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -731,6 +864,16 @@ def _run_cell(row: str, tier: str, n_runs: int, fixture: Dict[str, Any],
     if sector_cell:
         effective_env.update(_SECTOR_CELL_ENVS[sector_cell])
 
+    # v5 — capture the layer prerequisite alongside the numbers, so the
+    # artifact carries its own interpretation limits (rule #2).
+    _registry_snap = _backend_registry_snapshot()
+    _router_ev = _router_evidence(effective_env, _registry_snap)
+    if _router_ev.get("in_evidence") is False:
+        print(
+            f"[cell {cell_label}] ⚠ AUTO_ROUTER is ON but NOT IN EVIDENCE — "
+            f"{_router_ev['reason']}"
+        )
+
     payload = {
         # Schema versioning (additive, forward-compat):
         #   v2 — base cell shape
@@ -738,7 +881,13 @@ def _run_cell(row: str, tier: str, n_runs: int, fixture: Dict[str, Any],
         #   v4 — adds backend_id (α-8 cloud tier extension, 2026-06-04)
         #        — old renderers fall back to "ollama_local" for the
         #        missing field; new renderers distinguish cloud cells.
-        "schema": "qvt-ablation-cell-v4",
+        #   v5 — adds backend_registry + layer_evidence (2026-09-22).
+        #        Records whether AUTO_ROUTER had ≥2 populated tiers to
+        #        route between, so an L2/L5 null Δ can be read as "not
+        #        in evidence" rather than "no effect" (CLAUDE.md rule
+        #        #2 layer-prerequisite clause). Pre-v5 cells simply
+        #        lack the keys and render as "unknown".
+        "schema": "qvt-ablation-cell-v5",
         "captured_at": datetime.now(timezone.utc).isoformat(),
         "git_sha": sha,
         "row": row,
@@ -748,6 +897,9 @@ def _run_cell(row: str, tier: str, n_runs: int, fixture: Dict[str, Any],
         "backend_id": _tier_backend_id(tier),  # α-8 cloud tier extension
         "env": effective_env,
         "fixed_env": _FIXED_ENV,
+        # v5 — layer prerequisites (rule #2). See _router_evidence.
+        "backend_registry": _registry_snap,
+        "layer_evidence": {"auto_router": _router_ev},
         # Step 9 — sanity cell flag travels in the JSON so the report
         # writer can distinguish it from the primary L1/M_M (think=OFF).
         "sanity_think_on": bool(sanity_think_on),
@@ -922,6 +1074,7 @@ def _render_report(out_path: Path) -> int:
         "Token Δ | Latency Δ (s) | Verdict |",
         "|---|---|---|---|---|---|---|---|---|",
     ]
+    _router_gap_cells: List[Tuple[Dict[str, Any], Dict[str, Any]]] = []
     for c in cells:
         agg = c.get("aggregate", {})
         med = {ax: agg.get(ax, {}).get("median") for ax in _ALL_AXES}
@@ -940,6 +1093,14 @@ def _render_report(out_path: Path) -> int:
         model_tag = c.get("model") or ""
         backend_tag = c.get("backend_id", "ollama_local")
         tier_label = f"`{model_tag}`" if model_tag else f"`{backend_tag}`"
+        # v5 — a cell whose AUTO_ROUTER had nowhere to route is flagged
+        # in the verdict column. Pre-v5 cells have no such key and are
+        # left unmarked (unknown, not asserted either way).
+        router_ev = (c.get("layer_evidence") or {}).get("auto_router") or {}
+        verdict_cell = f"**{verdict}**"
+        if router_ev.get("in_evidence") is False:
+            verdict_cell += " ⚠ router not in evidence"
+            _router_gap_cells.append((c, router_ev))
         rows.append(
             f"| {c['row']} ({c['row_label']}) | {c['tier']} | "
             f"{tier_label} | {deltas['path_coverage']:+.3f} | "
@@ -947,8 +1108,41 @@ def _render_report(out_path: Path) -> int:
             f"{deltas['abstention_f1']:+.3f} | "
             f"{deltas['token_cost']:+.0f} | "
             f"{deltas['latency_cost']:+.2f} | "
-            f"**{verdict}** |"
+            f"{verdict_cell} |"
         )
+
+    if _router_gap_cells:
+        gap_rows = sorted({
+            f"{c['row']}/{c['tier']}" for c, _ev in _router_gap_cells
+        })
+        _, _first_ev = _router_gap_cells[0]
+        rows += [
+            "",
+            "## ⚠ AUTO_ROUTER not in evidence",
+            "",
+            f"**{len(gap_rows)} cell(s)** ran with `JAMES_AUTO_ROUTER=1` while",
+            "the backend registry had fewer than two populated tiers:",
+            "",
+            "    " + ", ".join(gap_rows),
+            "",
+            f"Registry at capture: {_first_ev.get('reason')}",
+            "",
+            "Read these cells as **\"the layer was never exercised\"**, not",
+            "\"the layer does nothing\". `core/reasoning/router.py`",
+            "(`_legacy_backend_id`) documents the small-tier-only fleet case:",
+            "every escalation resolves to the same backend, so the router",
+            "emits audit rows and changes no answer. A Δ here measures the",
+            "*other* layers in the row.",
+            "",
+            "CLAUDE.md rule #2 calls this **\"not in evidence,\" not \"no",
+            "effect\"** — and α-5's post-closure self-audit",
+            "(`feedback_oracle_phrase_artifacts`) is the precedent: AUTO_ROUTER",
+            "was scored as a null in a single-backend environment once already.",
+            "",
+            "To put it in evidence, register a second tier before the run",
+            "(e.g. `JAMES_ENABLE_CLAUDE_BACKEND=1` for the cloud tier) and",
+            "re-run the affected rows.",
+        ]
 
     rows += [
         "",
