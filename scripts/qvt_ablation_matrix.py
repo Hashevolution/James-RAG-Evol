@@ -1105,15 +1105,62 @@ def _fixture_mismatch(
 
 
 def _read_baseline() -> Optional[Dict[str, Any]]:
+    """Load the most recently *captured* baseline.
+
+    This used to be ``sorted(glob(...))[-1]`` under the comment "Most
+    recent SHA". Filenames are ``baseline_<git-sha>.json`` and git SHAs
+    are hex — their lexicographic order has nothing to do with time. The
+    call picked the alphabetically greatest SHA and called it the latest.
+
+    Concretely: once ``baseline_721e109.json`` exists, a *later* capture
+    at any SHA sorting below it (``1a2b3c4``, ``0ff9911``, …) is silently
+    ignored and every Δ in the report is measured against the stale one.
+    Nothing in the output says which baseline lost.
+
+    ``captured_at`` is the real recency signal, is ISO-8601 (so it sorts
+    correctly as a string), and is written by
+    ``scripts/qvt_capture_baseline.py`` into every baseline. Files that
+    predate the field, or carry an unreadable one, fall back to mtime and
+    are reported as such rather than silently ranked.
+    """
     baseline_dir = _resolve_baseline_dir()
     files = sorted(baseline_dir.glob("baseline_*.json"))
     if not files:
         print(f"[report] no baseline JSON under {baseline_dir}")
         return None
-    # Most recent SHA — operator captures one baseline per release.
-    latest = files[-1]
-    print(f"[report] using baseline {latest}")
-    return json.loads(latest.read_text(encoding="utf-8"))
+
+    candidates: List[Tuple[str, str, Path, Dict[str, Any]]] = []
+    for path in files:
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as exc:
+            print(f"[report] skipping unreadable baseline {path.name}: {exc}")
+            continue
+        captured = payload.get("captured_at")
+        if isinstance(captured, str) and captured:
+            candidates.append((captured, "captured_at", path, payload))
+        else:
+            stamp = datetime.fromtimestamp(
+                path.stat().st_mtime, tz=timezone.utc).isoformat()
+            print(f"[report] {path.name} has no captured_at — ranking by "
+                  f"file mtime ({stamp})")
+            candidates.append((stamp, "mtime", path, payload))
+
+    if not candidates:
+        print(f"[report] no readable baseline JSON under {baseline_dir}")
+        return None
+
+    candidates.sort(key=lambda item: item[0])
+    captured, how, latest, payload = candidates[-1]
+    print(f"[report] using baseline {latest} "
+          f"(captured {captured}, by {how}, "
+          f"schema {payload.get('schema', 'unknown')}, "
+          f"fixture {payload.get('fixture_version', 'unknown')})")
+    if len(candidates) > 1:
+        others = ", ".join(p.name for _c, _h, p, _pl in candidates[:-1])
+        print(f"[report] {len(candidates) - 1} older baseline(s) ignored: "
+              f"{others}")
+    return payload
 
 
 def _render_report(out_path: Path) -> int:
