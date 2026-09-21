@@ -1078,6 +1078,32 @@ def _classify_five_axis_delta(deltas: Dict[str, Any],
     return "zero"
 
 
+def _fixture_mismatch(
+    cell: Dict[str, Any],
+    baseline: Dict[str, Any],
+) -> Optional[str]:
+    """Return a human-readable mismatch, or None when comparable.
+
+    A Δ is only a measurement of the *layer* when both sides answered the
+    same questions. step7 has moved v5 → v7 (queries were added: q13 meta
+    inventory, then q14/q15/q16 narrow-scope), so a v7 cell minus a v5
+    baseline is partly a measurement of the fixture change.
+
+    The committed artifacts are exactly that shape — baseline
+    ``step7-v5`` (2026-05-28) against cells ``step7-v7`` (2026-06-03) —
+    and until now nothing compared the two fields. ``fixture_version``
+    was written into every cell and never read.
+
+    Unknown on either side returns None: absence of the field is not
+    evidence of a mismatch, and pre-v3 cells predate it.
+    """
+    cell_fx = cell.get("fixture_version")
+    base_fx = baseline.get("fixture_version")
+    if not cell_fx or not base_fx or cell_fx == base_fx:
+        return None
+    return f"baseline {base_fx} vs cell {cell_fx}"
+
+
 def _read_baseline() -> Optional[Dict[str, Any]]:
     baseline_dir = _resolve_baseline_dir()
     files = sorted(baseline_dir.glob("baseline_*.json"))
@@ -1129,6 +1155,16 @@ def _render_report(out_path: Path) -> int:
               f"{_resolve_output_dir()}")
         return 5
 
+    # Cells whose fixture_version differs from the baseline's — their Δ
+    # measures the fixture change as much as the layer. Computed over
+    # every loaded cell up front, because the row table renders its
+    # warning section before the sector table is walked.
+    _fixture_gap_cells: List[Tuple[Dict[str, Any], str]] = [
+        (c, gap)
+        for c in (cells + sector_cells)
+        if (gap := _fixture_mismatch(c, baseline)) is not None
+    ]
+
     rows: List[str] = [
         "# QVT α-5 ablation matrix — 5-axis × 18-cell verdict",
         "",
@@ -1149,7 +1185,14 @@ def _render_report(out_path: Path) -> int:
         med = {ax: agg.get(ax, {}).get("median") for ax in _ALL_AXES}
         deltas, _unavail = _deltas_vs_baseline(med, base_med)
         _missing_axis_cells.update(_unavail)
-        verdict = _classify_five_axis_delta(deltas, base_noise, _unavail)
+        _fx_gap = _fixture_mismatch(c, baseline)
+        if _fx_gap:
+            # Both sides answered different question sets — the Δ is not
+            # a reading of this layer. Refuse the verdict outright rather
+            # than qualify it; a qualified Pareto verdict still invites use.
+            verdict = f"not comparable ({_fx_gap})"
+        else:
+            verdict = _classify_five_axis_delta(deltas, base_noise, _unavail)
         # α-8 cloud tier (2026-06-04) — local cells show model tag;
         # cloud cells (empty model + non-default backend_id) show the
         # backend id instead so the row is informative either way.
@@ -1175,6 +1218,35 @@ def _render_report(out_path: Path) -> int:
             f"{_fmt_delta(deltas['latency_cost'], '+.2f')} | "
             f"{verdict_cell} |"
         )
+
+    if _fixture_gap_cells:
+        gap_rows = sorted({f"{c['row']}/{c['tier']}" for c, _g in _fixture_gap_cells})
+        rows += [
+            "",
+            "## 🔴 fixture mismatch — these cells are not comparable",
+            "",
+            f"**{len(gap_rows)} cell(s)** were measured on a different",
+            "step7 fixture version than the baseline:",
+            "",
+            "    " + ", ".join(gap_rows),
+            "",
+            f"    {_fixture_gap_cells[0][1]}",
+            "",
+            "A Δ is a reading of the *layer* only when both sides answered",
+            "the same questions. step7 moved v5 → v7 by **adding** queries",
+            "(q13 meta inventory, then q14/q15/q16 narrow-scope), so a v7",
+            "cell minus a v5 baseline is partly a reading of the fixture",
+            "change. Their verdict column says `not comparable` rather than",
+            "a Pareto verdict — the Δ numbers are left visible because they",
+            "are real arithmetic, but they do not answer the question the",
+            "matrix is asking.",
+            "",
+            "`fixture_version` was written into every cell from the start",
+            "and never read until now. Re-capturing the baseline",
+            "(`python scripts/qvt_capture_baseline.py`) pins it to the",
+            "current fixture and makes these cells comparable again — or",
+            "re-run the affected cells if the baseline is intentionally held.",
+        ]
 
     if _missing_axis_cells:
         rows += [
@@ -1337,8 +1409,12 @@ def _render_report(out_path: Path) -> int:
                 med = {ax: ag_qt.get(ax, {}).get("median") for ax in _ALL_AXES}
                 deltas_qt, _unavail_qt = _deltas_vs_baseline(med, base_med_qt)
                 _missing_axis_cells.update(_unavail_qt)
-                verdict_qt = _classify_five_axis_delta(
-                    deltas_qt, base_noise_qt, _unavail_qt)
+                _fx_qt = _fixture_mismatch(c, baseline)
+                if _fx_qt:
+                    verdict_qt = f"not comparable ({_fx_qt})"
+                else:
+                    verdict_qt = _classify_five_axis_delta(
+                        deltas_qt, base_noise_qt, _unavail_qt)
                 rows.append(
                     f"| {c['row']} | {c['tier']} | `{c['model']}` | "
                     f"{_fmt_delta(deltas_qt['path_coverage'], '+.3f')} | "
@@ -1416,8 +1492,12 @@ def _render_report(out_path: Path) -> int:
             med = {ax: agg.get(ax, {}).get("median") for ax in _ALL_AXES}
             deltas_sc, _unavail_sc = _deltas_vs_baseline(med, base_med)
             _missing_axis_cells.update(_unavail_sc)
-            verdict_sc = _classify_five_axis_delta(
-                deltas_sc, base_noise, _unavail_sc)
+            _fx_sc = _fixture_mismatch(c, baseline)
+            if _fx_sc:
+                verdict_sc = f"not comparable ({_fx_sc})"
+            else:
+                verdict_sc = _classify_five_axis_delta(
+                    deltas_sc, base_noise, _unavail_sc)
             sc_id = c.get("sector_cell") or c.get("row")
             sc_label = c.get("sector_cell_label") or ""
             rows.append(
