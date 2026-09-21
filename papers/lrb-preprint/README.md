@@ -1,9 +1,22 @@
 # LRB v0.2 — arXiv preprint draft
 
-> **Status**: scaffolding. Skeleton sections written; Results / Discussion
-> sections marked TODO; Future Work + Limitations done. Awaits final
-> 4-model × 3-SUT × 2-scenario sweep completion (claude james cell
-> pending) and TimeQA / TempReason measurements (operator action).
+> **Status** (refreshed 2026-09-21): **drafted, not scaffolding.** All
+> eight top-level sections carry real content — Results (§5, eight
+> subsections) and Discussion (§6) are written, not TODO. One `% TODO`
+> comment survives in the source, at `main.tex:86`; see §3 below. The measurement programme
+> the earlier status line was waiting on is **complete**: the 4-model ×
+> 3-SUT S2 sweep landed re-baselined on the repaired fixture
+> (2026-09-12, #1125) and the cloud `claude` leg landed 2026-09-14
+> (#1128), closing the S3 publication composite at **3/4 → ⭐⭐ partial
+> + attribution finding** per the pre-registration.
+>
+> **Two content gaps remain**, both named below: §3 specifies S1 and S2
+> only — it predates S3 and still says "LRB v0.2 ships two scenarios"
+> while §5.7/§5.8 report S3 at dev and publication scale — and
+> TimeQA / TempReason are unmeasured (operator action). The rest of the
+> open items are pre-flight verifications, not new content.
+>
+> Cycle state: `docs/handovers/v0.6.2-lrb-rebaseline-close-2026-09-21.md`.
 >
 > **Sibling submission**: `papers/rab-preprint/` (RAB v0.1.1, already
 > drafted). Both papers share submission discipline + author + Zenodo
@@ -27,10 +40,27 @@ toolchain — no additional packages).
 - [x] Title + abstract (placeholder R@1 numbers from measured cells)
 - [x] Introduction (positioning vs.~RAB sibling; multi-axis taxonomy)
 - [x] Related Work (multi-hop / temporal / audit / lifecycle four families)
-- [ ] Benchmark Specification §3 — scenario shapes lifted from
-      `docs/design/v0.4-lrb-lifecycle-retrieval-benchmark-design.md`
-- [ ] SUTs §4 — adapter contract from `eval/external/lrb/adapters/*.py`
-- [ ] Experiments §5 — fill from measurement artefacts:
+- [ ] **Benchmark Specification §3 — S1 + S2 written, S3 MISSING.**
+      Scenarios / lifecycle event types / seven deterministic axes /
+      three exploratory top-1 axes / HR axis are all specified. What is
+      absent is **S3**: §3 still opens "LRB v0.2 ships two scenarios"
+      while §5.7 and §5.8 report S3 at dev (n=200) and publication
+      (n=1000) scale, and §4.7's cross-scale × cross-model table is
+      built on the S3.2 fixture. A reader meets S3 in Results with no
+      specification. Needs: S3 shape (1000 docs / 5620 events / 1000
+      queries / ten query categories), the **S3.2** generator repair
+      (`build_lrb_scenario_s3.py::make_project` title collision —
+      #1122, fixture sha `cc98e141…`, 330/330 unique titles), and the
+      `Supersedes <old id>` body sentence that §4.7's attribution
+      finding turns on (260/260 S3 SUPERSEDE events; S2: 0/48).
+      Source: `docs/design/v0.4-lrb-lifecycle-retrieval-benchmark-design.md`
+      + `docs/research/lrb-v023-s3-publication-scale-results-2026-09-12-s32.md`.
+      A `% TODO` at `main.tex:86` marks the spot.
+- [x] SUTs §4 — adapter contract written (Vanilla / Naive-supersede /
+      JAMES paragraphs + the shared
+      `retrieve_at(q, k, query_time, valid_time)` interface)
+- [x] Experiments §5 — eight subsections, all filled from measurement
+      artefacts:
   - Phase A: PR #784 / handover `v0.4-lrb-phase-a-results-2026-06-11.md`
   - Phase B: PR #786 / handover `v0.4-lrb-phase-b-cross-scenario-2026-06-11.md`
   - v0.2.1 cross-model: PR #790 / #791 / #797 / #807 / handover
@@ -38,7 +68,14 @@ toolchain — no additional packages).
   - v0.2.4 HR: PR #797 / #798 / #807
   - MuSiQue cross-bench: PR #802 / #803 / #805 / handover
     `v0.4-track-c-musique-honest-negative-2026-06-12.md`
-- [ ] Discussion §6 — mother-platform positioning + honest framing
+  - §5.7 cross-scale S3: `docs/research/lrb-v023-s3-publication-scale-results-2026-09-12-s32.md` (S3.2, PR #1122)
+  - §5.8 / §4.7 cross-scale × cross-model: PR #1127 (3 local legs) +
+    #1128 (claude leg, 4-leg composite) /
+    `reports/research-runs/lrb-v023b-claude-leg-publication-s32-20260914.md`
+- [x] Discussion §6 — mother-platform positioning + honest framing
+      (validity-window as the publishable contribution; ActiveGraph
+      independent co-invention; explicit "does not claim JAMES is better
+      at multi-hop reasoning")
 - [x] Limitations §7
 - [x] Future Work §8
 
@@ -46,8 +83,14 @@ toolchain — no additional packages).
 
 * TimeQA / TempReason measurement — operator action (data download +
   license confirmation)
-* claude S2 james cell — background running (last 1/4 ⭐⭐⭐ leg of the
-  v0.2.1 prereg ladder)
+* ~~claude S2 james cell — background running~~ — **landed.** S2 on the
+  repaired fixture reads J@claude **1.0000** (#1125, 2026-09-12), and
+  the S3 publication cloud leg landed 2026-09-14 (#1128). The S2 ladder
+  is ⭐⭐⭐ 5/5; the **S3 publication** composite is ⭐⭐ **partial
+  (3/4)** — strict V<N<J breaks on the claude leg where V ≈ N
+  (0.019, inside the ≈10 pp reranker band), an attribution finding
+  about the fixture's supersession sentence rather than a change to the
+  validity-window claim. Do not round it to 4/4.
 * GraphRAG / ActiveGraph SUT adapters — separate cycles
 * External reproducer replication — collab arc (joint piece 자동
   연결 금지 룰 적용)
@@ -66,12 +109,33 @@ Per RAB preprint pattern, before arXiv submission verify:
 - [x] **Table 6** (MuSiQue): values match `reports/external/musique/track-c-musique-smoke-20260611T171151Z.*-gemma3-12b.result.json` (PR #810).
 - [x] **Improvement loop paragraph**: 5-variant numbers match `reports/external/musique/track-c-musique-smoke-2026061{1,2}T*.result.json` k=5/k=10/k=20/llm-rerank/cot cells (PRs #810 / #811).
 
-### Item 2 — Citations exist
-- [ ] arXiv IDs of `nakajima2026activegraph` (2605.21997) / `reflow2026dfah` (2601.15322) / `liu2019roberta` (1907.11692) verified accessible
-- [ ] HuggingFace card of `laurer2024deberta` verified accessible (`MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli`)
-- [ ] TACL paper of `trivedi2022musique` verified accessible (DOI lookup)
-- [ ] ACL Anthology entry of `tan2023tempreason` + `chu2024timebench` verified
-- [ ] Snodgrass 1995 TSQL2 reference verified (book entry)
+### Item 2 — Citations exist ✅ (verified 2026-09-21)
+
+**Every cited identifier resolves to the claimed work — 8/8, no dead or
+misdirected IDs.** A control ID (`arXiv:2699.99999`) was checked in the
+same pass and returned 404, so the check discriminates rather than
+rubber-stamps. Verification found **no accessibility problem** but
+**five metadata defects**, all fixed in `refs.bib` in the same PR.
+
+- [x] arXiv IDs of `nakajima2026activegraph` (2605.21997) / **`khatchadourian2026dfah`** (2601.15322) / `liu2019roberta` (1907.11692) verified accessible — all HTTP 200 with matching `citation_title`. ⚠️ **This line previously named `reflow2026dfah`, a key that exists nowhere in the preprint**; `main.tex:79` cites `khatchadourian2026dfah`. The checklist, not the citation, was wrong.
+- [x] HuggingFace card of `laurer2024deberta` verified accessible (`MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli`)
+- [x] TACL paper of `trivedi2022musique` verified — `10.1162/tacl_a_00475`, TACL vol. 10, pp. 539–554
+- [x] ACL Anthology entries of `tan2023tempreason` (`10.18653/v1/2023.acl-long.828`, pp. 14820–14835) + `chu2024timebench` (`10.18653/v1/2024.acl-long.66`, pp. 1204–1228) verified
+- [x] Snodgrass 1995 TSQL2 verified — Kluwer Academic Publishers, ISBN 9780792396147
+
+**Metadata defects found and fixed** (accessibility was never the problem):
+
+| Entry | Defect | Fix |
+|---|---|---|
+| `chu2024timebench` | **Listed 10 authors; the paper has 7.** He Tao, Peng Weihua and Liu Ting are not on it (ACL Anthology and arXiv 2311.17667 agree) | 3 non-authors removed |
+| `khatchadourian2026dfah` | `and others` on a **single-author** paper → spurious "et al."; `(DFAH)` inserted into a title that does not contain it | both corrected; DFAH expansion stays in `note` |
+| `trivedi2022musique` | `@inproceedings` + `booktitle` for a **journal** article | → `@article` + journal/volume/pages/DOI |
+| `snodgrass1995tsql` | `@article` with the **publisher in the `journal` field** for a book | → `@book` + `publisher` + `isbn` |
+| 4 entries | canonical DOIs absent | DOIs + Anthology URLs added |
+
+The author-list correction was confirmed against the primary source
+directly, not accepted from a summary — removing three named people from
+a bibliography is a factual claim about them.
 
 ### Item 3 — Pre-registration commit hashes verified
 - [x] LRB design memo PR #782 (commit hash in main.tex thanks footnote — see PR title `(#782)`).
@@ -123,13 +187,21 @@ Per RAB preprint pattern, before arXiv submission verify:
 
 ## Submission decision summary
 
-Solo-doable items completed: ★ 1, 3, 5, 6, 7, 8, 9, 10 (8 of 11 items).
+Solo-doable items completed: ★ 1, **2**, 3, 5, 6, 7, 8, 9, 10
+(**9 of 11** items — Item 2 closed 2026-09-21).
 
-Operator-action items remaining: ★ 2 (refs.bib URL verification), 4 (Zenodo bundling decision), 11 (arXiv category decision), and the LaTeX \thanks{} commit-hash insertions noted in Item 3.
+Operator-action items remaining: ★ 4 (Zenodo bundling decision),
+11 (arXiv category decision), and the LaTeX `\thanks{}` commit-hash
+insertions noted in Item 3.
 
-The current draft is ready for an arXiv submission attempt; the
-operator-action items above are pre-flight verifications, not new
-content.
+**One content item stands between this draft and a submission attempt,
+and it is not on the honesty checklist**: §3 specifies S1 and S2 only,
+while §5.7 / §5.8 / §4.7 report and reason about S3. A reader meets the
+publication-scale fixture in Results with no specification of it. That
+is a writing task, not an operator decision — see the §3 entry in the
+status checklist above for exactly what it needs.
+
+Everything else remaining is a pre-flight verification, not new content.
 
 ## Sibling RAB cross-link
 
