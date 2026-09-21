@@ -59,7 +59,7 @@ A growing fraction of enterprise RAG deployments operates over corpora that chan
 LRB fills this gap. The benchmark is the \emph{measurement infrastructure}, not the system; LRB does not claim that any one of the three SUT regimes is novel (an event-sourced-log architecture with deterministic replay was independently demonstrated by \cite{nakajima2026activegraph}; lifecycle-aware retrieval is well-established in industry data warehouses). The contribution is:
 
 \begin{enumerate}[leftmargin=*]
-  \item \textbf{Two pre-registered scenarios} (S1 lifecycle-quarterly, S2 lifecycle-yearly-with-time-travel), with deterministic generators reproducible from the JAMES repository.
+  \item \textbf{Three pre-registered scenarios} (S1 lifecycle-quarterly, S2 lifecycle-yearly-with-time-travel, S3 publication-scale-time-travel), with deterministic generators reproducible from the JAMES repository.
   \item \textbf{An explicit \texttt{(query\_time, valid\_time)} query interface} that separates current-state retrieval from time-travel retrieval on the same fixture.
   \item \textbf{Seven deterministic scoring axes} plus three exploratory top-1 axes, with no LLM judge anywhere in the scoring pipeline.
   \item \textbf{Cross-model validation across four model families} (gemma4:e4b, gemma3:12b, mixtral:8x7b, claude-haiku-4-5) under both token-overlap-only and LLM-grounded retrieval modes.
@@ -83,19 +83,21 @@ LRB is positioned as a sibling axis to RAB~\cite{seo2026rab}, which measures the
 \section{Benchmark Specification}
 \label{sec:spec}
 
-% TODO: full spec — scenario fixture shape, event types, query format,
-% scoring axes, honest tier ladder.
-% Reference: docs/design/v0.4-lrb-lifecycle-retrieval-benchmark-design.md
-% + all four pre-reg docs.
-
-\paragraph{Scenarios.} LRB v0.2 ships two scenarios:
+\paragraph{Scenarios.} LRB v0.2 ships three scenarios:
 
 \begin{itemize}[leftmargin=*]
   \item \textbf{S1 (lifecycle-quarterly)}: 100 initial documents, 12 weeks, 160 lifecycle events, 60 queries $\times$ 3 timestamps (T=0, T=6w, T=12w) = 180 evaluations. Designed for \emph{current-state} retrieval evaluation.
   \item \textbf{S2 (lifecycle-yearly-with-time-travel)}: 200 initial documents, 24 weeks, 564 lifecycle events, 80 queries with explicit \texttt{(query\_time, valid\_time)} pairs covering four query types (current 40, historical-mid 20, historical-early 10, never-stale 10).
+  \item \textbf{S3 (publication-scale-time-travel)}: schema-identical to S2 at a 12.5$\times$ query count, for the scale leg of Section~\ref{sec:experiments}. Three presets share one generator: \emph{smoke} (100 documents / 24 weeks / 100 queries, CI-safe), \emph{dev} (300 / 36 weeks / 300), and \emph{publication} (1000 documents / 52 weeks / 5{,}620 events / 1000 queries). The publication preset composes its corpus from 100 departments $\times$ (1 department record, 3 projects, 2 contracts, 1 budget, 2 policies, 1 appointment). All queries are asked at \texttt{query\_time} = week 52 against three valid-time windows: \texttt{valid\_time} = 0 (early, $n$=100), 17 (mid, $n$=200) and 52 (current, $n$=700).
 \end{itemize}
 
-Both fixtures derive their vocabulary from the RAB scenario-S2 city-operations corpus (license friction 0), with sha-pinned JSON outputs reproducible from \texttt{scripts/research/build\_lrb\_scenario\_s\{1,2\}.py}.
+All three fixtures derive their vocabulary from the RAB scenario-S2 city-operations corpus (license friction 0), with sha-pinned JSON outputs reproducible from \texttt{scripts/research/build\_lrb\_scenario\_s\{1,2,3\}.py}. The S3 publication fixture used throughout this paper is sha \texttt{cc98e141a4b4\ldots} (the \emph{S3.2} generator revision; see below).
+
+\paragraph{S3 query categories.} The publication preset's 1000 queries divide into four pre-registered types --- current 500, historical-mid 200, historical-early 100, never-stale 200 --- which the per-category tables resolve into ten cells by the entity asked about: \texttt{current-\{contract, director, policy, project-lead\}} (125 each), \texttt{historical-early-\{contract, director\}} (50 each), \texttt{historical-mid-\{director, policy, project-lead\}} (66 / 68 / 66) and \texttt{never-stale-budget} (200).
+
+\paragraph{S3.2: a generator repair, and why it is specified here.} The first S3 generator derived project titles from arithmetic periodic in the department index, so at 100 departments 330 project documents carried only 70 distinct titles. Because the project-lead query is \emph{Who leads \{title\}?} with no department, 191 of 1000 queries (19.1\%) were textually identical to other queries carrying different golds --- an \emph{oracle ceiling}: no system, however good, could exceed R@1 0.288 on those cells. The defect was invisible to R@10, which the first results table reported, and was found only when four unrelated scorers returned an identical 0.256 for two different SUTs. The repaired generator (S3.2) enumerates titles by global project index, yielding 330/330 unique titles and 0 ambiguous query texts, and two guards now hold the property: \texttt{ProjectDiversityTests} (unique titles across all presets, new ingests included) and \texttt{QueryOracleUnambiguityTests} (no query text at one \texttt{(query\_time, valid\_time)} maps to more than one gold). The second guard fails with 36 ambiguous texts against the pre-repair generator. Every S3 figure in this paper is measured on the repaired fixture; the pre-repair numbers are retained in the artefact record rather than deleted.
+
+\paragraph{S3 supersession is self-announcing --- S2's is not.} Each S3 superseding document states its own supersession in its body (\texttt{Supersedes <old id>}, 260 of 260 SUPERSEDE events); no S2 superseding body does (0 of 48). This is a property of the fixture text, not of any SUT, and Section~\ref{sec:experiments} shows it is load-bearing: a sufficiently strong reranker can exploit that sentence to rank the current version first \emph{without} any validity-window machinery, which is exactly what separates the S3 and S2 baseline orderings under the cloud reranker.
 
 \paragraph{Lifecycle event types.} INGEST (add document), UPDATE (in-place revision), SUPERSEDE (replace document at a specific week; the old version remains valid up to week-1 of the supersede, the new version becomes valid from the supersede week), DELETE (mark document invalid from a week). The SUTs differ in how they handle SUPERSEDE: Vanilla keeps both versions; Naive removes the old version on supersede; JAMES annotates per-document validity windows and applies the time-travel filter at query time.
 
