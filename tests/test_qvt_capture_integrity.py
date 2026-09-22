@@ -185,40 +185,69 @@ class BaselineModelPinTests(unittest.TestCase):
         ):
             self.assertEqual(env.get(k), v, f"{k} must keep its v0.4.0 value")
 
-    def test_effective_model_is_the_pin_not_the_preference(self):
-        """The provenance must name what actually answers. With the
-        kill-switch set the engine never calls resolve_for_mode, so
-        recording the preference alone would put a model in the record
-        that never ran."""
-        import os
-        prev = {k: os.environ.get(k) for k in self.m._BASELINE_ENV}
-        try:
-            os.environ.update(self.m._BASELINE_ENV)
-            snap = self.m._resolved_models()
-            self.assertTrue(snap["mode_aware_routing_disabled"])
-            self.assertEqual(snap["effective"]["tag"], "gemma4:e4b")
-            self.assertIn("GEMMA_MODEL", snap["effective"]["source"])
-        finally:
-            for k, v in prev.items():
-                if v is None:
-                    os.environ.pop(k, None)
-                else:
-                    os.environ[k] = v
+    def test_effective_model_is_the_pin_without_presetting_environ(self):
+        """The regression that shipped in #1142 and was caught by the
+        2026-09-22 artifact.
 
-    def test_effective_follows_routing_when_not_disabled(self):
-        import os
-        prev = os.environ.get("JAMES_DISABLE_MODE_AWARE_ROUTING")
+        `_resolved_models` originally read `os.environ`. `_BASELINE_ENV`
+        is applied to the *spawned server*, never to the runner, so the
+        pin was invisible and the written baseline recorded
+        effective=gemma3:12b for a run Ollama confirms was served by
+        gemma4:e4b throughout.
+
+        The #1142 test did not catch it because it set `os.environ` from
+        `_BASELINE_ENV` first — it reproduced the bug's own assumption
+        instead of the runner's real conditions. This one deliberately
+        does NOT preset anything: the function must derive the answer
+        from `_BASELINE_ENV` itself.
+        """
+        snap = self.m._resolved_models()
+        self.assertTrue(
+            snap["mode_aware_routing_disabled"],
+            "must read the kill-switch from _BASELINE_ENV, not os.environ",
+        )
+        self.assertEqual(snap["effective"]["tag"], "gemma4:e4b")
+        self.assertIn("GEMMA_MODEL", snap["effective"]["source"])
+        self.assertEqual(snap["probe"], "baseline-env")
+
+    def test_both_the_pin_and_the_routing_answer_are_recorded(self):
+        """Both are recorded on purpose: a reader should see the gap
+        between the pinned baseline and live production routing without
+        having to already know about it.
+
+        The *values* are deliberately not asserted. `resolve_for_mode`
+        consults the installed model catalogue, so on a host without
+        Ollama it returns an empty tag — an earlier revision of this
+        test asserted "gemma3:12b" and went red in CI for describing
+        this machine rather than the contract.
+        """
+        snap = self.m._resolved_models()
+        # From _BASELINE_ENV, so this one IS environment-independent.
+        self.assertEqual(snap["effective"]["tag"], "gemma4:e4b")
+        self.assertIn("retrieval", snap)
+        self.assertIn("tag", snap["retrieval"])
+        self.assertIsNot(
+            snap["effective"], snap["retrieval"],
+            "the pinned model and the routing answer must be separate "
+            "entries, not the same object",
+        )
+
+    def test_effective_follows_routing_when_the_pin_is_absent(self):
+        """Without the kill-switch in the applied env, the effective
+        model is whatever the preference list tops."""
+        pinless = {k: v for k, v in self.m._BASELINE_ENV.items()
+                   if k != "JAMES_DISABLE_MODE_AWARE_ROUTING"}
+        prev = dict(self.m._BASELINE_ENV)
         try:
-            os.environ.pop("JAMES_DISABLE_MODE_AWARE_ROUTING", None)
+            self.m._BASELINE_ENV.clear()
+            self.m._BASELINE_ENV.update(pinless)
             snap = self.m._resolved_models()
             self.assertFalse(snap["mode_aware_routing_disabled"])
             self.assertEqual(
-                snap["effective"]["tag"], snap["retrieval"]["tag"],
-                "with routing live the effective model is the preference top",
-            )
+                snap["effective"]["tag"], snap["retrieval"]["tag"])
         finally:
-            if prev is not None:
-                os.environ["JAMES_DISABLE_MODE_AWARE_ROUTING"] = prev
+            self.m._BASELINE_ENV.clear()
+            self.m._BASELINE_ENV.update(prev)
 
 
 class PayloadShapeTests(unittest.TestCase):
