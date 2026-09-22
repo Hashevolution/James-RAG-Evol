@@ -147,6 +147,122 @@ def _spawn_server(env: Dict[str, str]) -> Optional[subprocess.Popen]:
     return proc
 
 
+# ---------------------------------------------------------------------------
+# Capture integrity — infrastructure failure must not become a measurement
+# ---------------------------------------------------------------------------
+#
+# `core/reasoning/pipeline.py` treats a synth failure as a no-data trigger
+# and `pipeline_synth/softener.py` softens it into an abstention. That is
+# reasonable for a live answer — the user gets a decline rather than a
+# stack trace — but it is ruinous for a baseline: an LLM call that timed
+# out is scored as the system *correctly declining to answer*. It lands in
+# abstention_f1 as a true abstention and in graded_answer as an absent
+# answer, and nothing downstream can tell it apart from a semantic one.
+#
+# Observed 2026-09-22: a capture attempt on this machine produced 9 of 17
+# queries reading "답변 생성에 실패했습니다." with 54 `gemma.timeout`
+# events in the audit log, at 175–303 s per query against a 90 s per-call
+# timeout. Left alone the run would have written that as the canonical
+# 5-axis baseline every future Quality Delta Card is paired against.
+#
+# So: a *semantic* abstention ("자료에 없음") is a measurement. An
+# *infrastructure* failure is not, and the capture refuses to write.
+
+_SYNTH_FAILURE_PREFIXES: Tuple[str, ...] = (
+    # Source of truth: core/reasoning/pipeline.py:321 — the pair it
+    # treats as generation failure (deliberately NOT including
+    # "자료에 없음. 관련된", which is a real abstention).
+    "답변 생성에 실패",
+    "LLM 응답 생성 중 오류",
+)
+
+
+def _infrastructure_failure_prefixes() -> Tuple[str, ...]:
+    """Synth-failure markers plus the backend's own error prefixes.
+
+    `core.cache_manager._ERROR_PREFIXES` is the repo's existing list of
+    "this is an error, do not cache it" markers; reusing it keeps this
+    guard aligned with what the rest of the system already calls broken
+    instead of inventing a second vocabulary.
+    """
+    extra: Tuple[str, ...] = ()
+    try:
+        from core.cache_manager import _ERROR_PREFIXES  # noqa: WPS433
+        extra = tuple(_ERROR_PREFIXES)
+    except Exception:
+        pass
+    return _SYNTH_FAILURE_PREFIXES + extra
+
+
+def _answer_health(bench_path: Path) -> Dict[str, Any]:
+    """Count rows whose answer is an infrastructure failure, not an answer.
+
+    `blocked` rows are excluded: step7 carries security fixtures that are
+    *supposed* to be refused, and counting them as breakage would make the
+    guard cry wolf on a healthy run.
+    """
+    prefixes = _infrastructure_failure_prefixes()
+    try:
+        data = json.loads(bench_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return {"total": 0, "failed": 0, "examples": [],
+                "error": f"{type(exc).__name__}: {exc}"}
+    rows = data.get("results") or []
+    considered = 0
+    failed: List[str] = []
+    for row in rows:
+        if row.get("blocked"):
+            continue
+        considered += 1
+        preview = str(row.get("answer_preview") or "").lstrip()
+        if any(preview.startswith(p) for p in prefixes):
+            failed.append(f"{row.get('id')}: {preview[:48]}")
+    return {
+        "total": considered,
+        "failed": len(failed),
+        "examples": failed[:5],
+        "error": None,
+    }
+
+
+def _resolved_models() -> Dict[str, Any]:
+    """What the routing layer will actually pick, per mode.
+
+    _BASELINE_ENV pins six flags — entity anchor, embedding model, query
+    rewrite, AUTO_ROUTER, ADAPTIVE_BUDGET, SCOPE_ROUTING. That was the
+    complete set of controls when this script was written (2026-05).
+    Mode-aware routing landed afterwards (PRs #969–#990, 2026-06-16) and
+    chooses the model *outside* that set, so the pinned env no longer
+    controls what it says it controls: at 2a31b20 `resolve_for_mode`
+    had no "retrieval" key and the capture ran the config default
+    `gemma4:e4b`; today it resolves to `gemma3:12b`.
+
+    Recording it does not decide which is right — that is an operator
+    call about what the baseline means — but it stops the swap from
+    happening silently and unrecorded.
+    """
+    out: Dict[str, Any] = {"probe": "runner-process", "error": None}
+    try:
+        from core.model_resolver import resolve_for_mode  # noqa: WPS433
+        for mode in ("retrieval", "chat"):
+            resolved = resolve_for_mode(mode, requested="")
+            out[mode] = {
+                "tag": getattr(resolved, "tag", None),
+                "source": getattr(resolved, "source", None),
+            }
+    except Exception as exc:
+        out["error"] = f"{type(exc).__name__}: {exc}"
+    try:
+        import config  # noqa: WPS433
+        out["config_default"] = getattr(config, "GEMMA_MODEL", None)
+    except Exception:
+        out["config_default"] = None
+    out["mode_aware_routing_disabled"] = bool(
+        os.environ.get("JAMES_DISABLE_MODE_AWARE_ROUTING", "").strip()
+    )
+    return out
+
+
 def _shutdown_server(proc: subprocess.Popen) -> None:
     if proc.poll() is not None:
         return
@@ -391,13 +507,34 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     runs: List[FiveAxisResult] = []
     run_paths: List[str] = []
+    health_by_run: List[Dict[str, Any]] = []
     for i in range(args.n_runs):
         bench_path = _run_single_bench(i, args.suite)
         if bench_path is None:
             print(f"[error] run {i + 1} failed to produce bench output")
             return 3
+        health = _answer_health(bench_path)
+        health_by_run.append(health)
+        if health["failed"]:
+            print(
+                f"[run {i + 1}] ABORT — {health['failed']}/{health['total']} "
+                f"answers are infrastructure failures, not measurements."
+            )
+            for ex in health["examples"]:
+                print(f"    {ex}")
+            print(
+                "    These are softened into abstentions by "
+                "core/reasoning/pipeline.py, so they would be scored as the "
+                "system correctly declining. A baseline must not encode a "
+                "timed-out LLM as measured behaviour.\n"
+                "    Check the audit log for gemma.timeout, and confirm "
+                "which model the routing layer picked:\n"
+                f"    {_resolved_models()}"
+            )
+            return 6
         result = score_five_axis(bench_path, fixture)
-        print(f"[run {i + 1}] {result.summary()}")
+        print(f"[run {i + 1}] {result.summary()}  (answers ok: "
+              f"{health['total'] - health['failed']}/{health['total']})")
         runs.append(result)
         run_paths.append(str(bench_path.relative_to(ROOT)))
 
@@ -424,7 +561,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                 aggregate_by_question_type[qt] = _aggregate_runs(sub)
 
     payload = {
-        "schema": "qvt-baseline-v2",  # v2 adds 5-axis + per_question_type
+        "schema": "qvt-baseline-v3",  # v3 adds resolved_models +
+        # answer_health (2026-09-22). v2 added 5-axis +
+        # per_question_type. Readers of v2 ignore the new keys.
         "captured_at": datetime.now(timezone.utc).isoformat(),
         "git_sha": sha,
         "suite": args.suite,
@@ -432,6 +571,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         "fixture_path": str(fixture_path),
         "n_runs": args.n_runs,
         "env": _BASELINE_ENV,
+        # v3 provenance — _BASELINE_ENV predates mode-aware routing and
+        # no longer determines the model on its own. Record what was
+        # actually resolved, and that every run's answers were real.
+        "resolved_models": _resolved_models(),
+        "answer_health": health_by_run,
         "aggregate": aggregate,
         "aggregate_by_question_type": aggregate_by_question_type,
         "runs": [
