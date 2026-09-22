@@ -210,13 +210,27 @@ class BaselineModelPinTests(unittest.TestCase):
         self.assertIn("GEMMA_MODEL", snap["effective"]["source"])
         self.assertEqual(snap["probe"], "baseline-env")
 
-    def test_effective_differs_from_what_production_would_route_to(self):
+    def test_both_the_pin_and_the_routing_answer_are_recorded(self):
         """Both are recorded on purpose: a reader should see the gap
         between the pinned baseline and live production routing without
-        having to already know about it."""
+        having to already know about it.
+
+        The *values* are deliberately not asserted. `resolve_for_mode`
+        consults the installed model catalogue, so on a host without
+        Ollama it returns an empty tag — an earlier revision of this
+        test asserted "gemma3:12b" and went red in CI for describing
+        this machine rather than the contract.
+        """
         snap = self.m._resolved_models()
+        # From _BASELINE_ENV, so this one IS environment-independent.
         self.assertEqual(snap["effective"]["tag"], "gemma4:e4b")
-        self.assertEqual(snap["retrieval"]["tag"], "gemma3:12b")
+        self.assertIn("retrieval", snap)
+        self.assertIn("tag", snap["retrieval"])
+        self.assertIsNot(
+            snap["effective"], snap["retrieval"],
+            "the pinned model and the routing answer must be separate "
+            "entries, not the same object",
+        )
 
     def test_effective_follows_routing_when_the_pin_is_absent(self):
         """Without the kill-switch in the applied env, the effective
