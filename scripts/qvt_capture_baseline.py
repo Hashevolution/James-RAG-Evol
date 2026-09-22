@@ -76,6 +76,36 @@ _BASELINE_ENV: Dict[str, str] = {
     "JAMES_AUTO_ROUTER": "0",
     "JAMES_ADAPTIVE_BUDGET": "0",
     "JAMES_SCOPE_ROUTING": "0",
+    # ── Model pin (2026-09-22, operator decision) ──────────────────
+    # The six flags above were the complete set of controls when this
+    # script was written (2026-05). They no longer determine which
+    # model answers, so the baseline they describe stopped being the
+    # baseline they produce. Three vars are needed, and all three
+    # matter — any one missing and the pin is silently bypassed:
+    #
+    #   JAMES_LLM_MODEL                  the model itself. At 2a31b20
+    #       DEFAULT_PREFERENCE had no "retrieval" key and the capture
+    #       ran the config default gemma4:e4b. Pinning it keeps the
+    #       re-captured baseline comparable to the one it replaces —
+    #       the Δ is then the code since May, not a model swap.
+    #   JAMES_DISABLE_MODE_AWARE_ROUTING mode-aware routing (#969–#990,
+    #       2026-06-16) overrides the above for chat/retrieval/
+    #       wiki_edit and today resolves to gemma3:12b. The kill-switch
+    #       reverts all three to GEMMA_MODEL
+    #       (core/reasoning/engine_routing.py).
+    #   JAMES_SETTINGS_USE_DB            config._llm_setting is
+    #       DB-first: "if the operator set the env AND the DB has a
+    #       different value, the DB silently wins". Its own docstring
+    #       says measurement runners disable the DB layer. The
+    #       llm_settings table carries no default_model row today, so
+    #       this changes nothing now — it stops an admin-UI edit from
+    #       quietly redefining a future baseline.
+    #
+    # Changing the pin is an intentional baseline-environment change
+    # under this script's own re-capture rule — not a refresh.
+    "JAMES_LLM_MODEL": "gemma4:e4b",
+    "JAMES_DISABLE_MODE_AWARE_ROUTING": "1",
+    "JAMES_SETTINGS_USE_DB": "0",
 }
 
 _FIXTURE_PATH = ROOT / "eval" / "regression" / "step7_queries.json"
@@ -257,9 +287,26 @@ def _resolved_models() -> Dict[str, Any]:
         out["config_default"] = getattr(config, "GEMMA_MODEL", None)
     except Exception:
         out["config_default"] = None
-    out["mode_aware_routing_disabled"] = bool(
+    disabled = bool(
         os.environ.get("JAMES_DISABLE_MODE_AWARE_ROUTING", "").strip()
     )
+    out["mode_aware_routing_disabled"] = disabled
+    # What will actually answer. `resolve_for_mode` above reports what
+    # the preference list *would* pick; when the kill-switch is set,
+    # `core/reasoning/engine_routing.py` never calls it and the engine
+    # falls back to GEMMA_MODEL. Recording the preference alone would
+    # put a model in the provenance that never ran — the same
+    # not-in-evidence confusion this field exists to prevent.
+    if disabled:
+        out["effective"] = {
+            "tag": out.get("config_default"),
+            "source": "GEMMA_MODEL (mode-aware routing disabled)",
+        }
+    else:
+        out["effective"] = {
+            "tag": (out.get("retrieval") or {}).get("tag"),
+            "source": "mode-aware routing (retrieval preference)",
+        }
     return out
 
 
