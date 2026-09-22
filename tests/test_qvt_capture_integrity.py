@@ -148,6 +148,79 @@ class ResolvedModelProvenanceTests(unittest.TestCase):
         self.assertIn("mode_aware_routing_disabled", self.m._resolved_models())
 
 
+class BaselineModelPinTests(unittest.TestCase):
+    """Operator decision 2026-09-22 — option 1: hold the model fixed so
+    the re-captured baseline stays comparable to the one it replaces.
+
+    Three vars, and all three matter. Any one missing and the pin is
+    silently bypassed:
+      JAMES_LLM_MODEL                   the model
+      JAMES_DISABLE_MODE_AWARE_ROUTING  else routing overrides it
+      JAMES_SETTINGS_USE_DB             else a DB row silently wins
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.m = _load()
+
+    def test_all_three_pin_vars_present(self):
+        env = self.m._BASELINE_ENV
+        self.assertEqual(env.get("JAMES_LLM_MODEL"), "gemma4:e4b")
+        self.assertEqual(env.get("JAMES_DISABLE_MODE_AWARE_ROUTING"), "1")
+        self.assertEqual(
+            env.get("JAMES_SETTINGS_USE_DB"), "0",
+            "config._llm_setting is DB-first — without this an admin-UI "
+            "edit silently redefines the baseline",
+        )
+
+    def test_original_six_flags_are_untouched(self):
+        env = self.m._BASELINE_ENV
+        for k, v in (
+            ("JAMES_ENABLE_ENTITY_ANCHOR", "1"),
+            ("JAMES_EMBEDDING_MODEL", "BAAI/bge-m3"),
+            ("JAMES_ENABLE_QUERY_REWRITE", "1"),
+            ("JAMES_AUTO_ROUTER", "0"),
+            ("JAMES_ADAPTIVE_BUDGET", "0"),
+            ("JAMES_SCOPE_ROUTING", "0"),
+        ):
+            self.assertEqual(env.get(k), v, f"{k} must keep its v0.4.0 value")
+
+    def test_effective_model_is_the_pin_not_the_preference(self):
+        """The provenance must name what actually answers. With the
+        kill-switch set the engine never calls resolve_for_mode, so
+        recording the preference alone would put a model in the record
+        that never ran."""
+        import os
+        prev = {k: os.environ.get(k) for k in self.m._BASELINE_ENV}
+        try:
+            os.environ.update(self.m._BASELINE_ENV)
+            snap = self.m._resolved_models()
+            self.assertTrue(snap["mode_aware_routing_disabled"])
+            self.assertEqual(snap["effective"]["tag"], "gemma4:e4b")
+            self.assertIn("GEMMA_MODEL", snap["effective"]["source"])
+        finally:
+            for k, v in prev.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+
+    def test_effective_follows_routing_when_not_disabled(self):
+        import os
+        prev = os.environ.get("JAMES_DISABLE_MODE_AWARE_ROUTING")
+        try:
+            os.environ.pop("JAMES_DISABLE_MODE_AWARE_ROUTING", None)
+            snap = self.m._resolved_models()
+            self.assertFalse(snap["mode_aware_routing_disabled"])
+            self.assertEqual(
+                snap["effective"]["tag"], snap["retrieval"]["tag"],
+                "with routing live the effective model is the preference top",
+            )
+        finally:
+            if prev is not None:
+                os.environ["JAMES_DISABLE_MODE_AWARE_ROUTING"] = prev
+
+
 class PayloadShapeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
