@@ -271,7 +271,16 @@ def _resolved_models() -> Dict[str, Any]:
     call about what the baseline means — but it stops the swap from
     happening silently and unrecorded.
     """
-    out: Dict[str, Any] = {"probe": "runner-process", "error": None}
+    # The env that actually reaches the server, not the runner's own.
+    # The first version of this read os.environ directly and got it
+    # wrong: _BASELINE_ENV is applied to the *spawned server*, never to
+    # the runner, so the pin was invisible here and the 2026-09-22
+    # capture recorded effective=gemma3:12b for a run that Ollama
+    # confirms was served by gemma4:e4b throughout. The field was
+    # labelled probe="runner-process" — honest about where it looked,
+    # while the value it produced was a claim about somewhere else.
+    effective_env: Dict[str, str] = {**os.environ, **_BASELINE_ENV}
+    out: Dict[str, Any] = {"probe": "baseline-env", "error": None}
     try:
         from core.model_resolver import resolve_for_mode  # noqa: WPS433
         for mode in ("retrieval", "chat"):
@@ -282,13 +291,21 @@ def _resolved_models() -> Dict[str, Any]:
             }
     except Exception as exc:
         out["error"] = f"{type(exc).__name__}: {exc}"
-    try:
-        import config  # noqa: WPS433
-        out["config_default"] = getattr(config, "GEMMA_MODEL", None)
-    except Exception:
-        out["config_default"] = None
+    # config.GEMMA_MODEL is read at import against the runner's env, so
+    # consult _BASELINE_ENV first — that is what the server will see.
+    pinned = _BASELINE_ENV.get("JAMES_LLM_MODEL", "").strip()
+    if pinned:
+        out["config_default"] = pinned
+        out["config_default_source"] = "_BASELINE_ENV[JAMES_LLM_MODEL]"
+    else:
+        try:
+            import config  # noqa: WPS433
+            out["config_default"] = getattr(config, "GEMMA_MODEL", None)
+        except Exception:
+            out["config_default"] = None
+        out["config_default_source"] = "config.GEMMA_MODEL"
     disabled = bool(
-        os.environ.get("JAMES_DISABLE_MODE_AWARE_ROUTING", "").strip()
+        effective_env.get("JAMES_DISABLE_MODE_AWARE_ROUTING", "").strip()
     )
     out["mode_aware_routing_disabled"] = disabled
     # What will actually answer. `resolve_for_mode` above reports what
