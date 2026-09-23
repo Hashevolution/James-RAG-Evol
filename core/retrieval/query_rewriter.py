@@ -46,6 +46,70 @@ from core.reasoning.budget import TaskBudget, adaptive_budget_enabled
 
 DEFAULT_BACKEND_ID = _get_default_backend()
 DEFAULT_TIMEOUT_S = 10.0
+# Measured 2026-09-22 (reports/research-runs/latency-decomposition-20260922.md):
+# on the host the QVT 5-axis baseline was captured on, this budget is
+# exhausted on 65 of 78 queries. The rewriter burns ~11 s/query and
+# completes roughly one query in six, so an operator who sets
+# JAMES_ENABLE_QUERY_REWRITE=1 gets the flag without the feature —
+# baseline_6deca66.json records it as ON for a stage that mostly did not
+# run.
+#
+# The budget is now overridable so that can be *measured* rather than
+# guessed at. Default is unchanged: with the env unset this module is
+# byte-identical to before, per the same default-off invariant PR #461
+# states below — a research knob ships with the experiment, not with a
+# silent default flip. Whether 10 s is the wrong number is for a paired
+# run against eval/qvt/baseline_6deca66.json to say, not this wiring.
+_TIMEOUT_ENV = "JAMES_QUERY_REWRITE_TIMEOUT_S"
+_timeout_notice_lock = threading.Lock()
+_timeout_notice_emitted = False
+
+
+def resolve_timeout_s() -> float:
+    """Per-call LLM budget for the rewriter, honouring the env override.
+
+    Public (unprefixed) because it is a measurement-critical surface:
+    a run that silently used a different budget than the one recorded in
+    its artifact is the failure mode this whole file's neighbourhood has
+    been fixing all week. Lock-tests and pre-flight assert on it.
+
+    Unset / empty / malformed / non-positive all fall back to
+    ``DEFAULT_TIMEOUT_S``. A malformed value is reported rather than
+    silently swallowed — an operator who typed ``30s`` instead of ``30``
+    should not discover it from a latency chart three hours later.
+    """
+    raw = os.environ.get(_TIMEOUT_ENV, "").strip()
+    if not raw:
+        return DEFAULT_TIMEOUT_S
+    try:
+        value = float(raw)
+    except ValueError:
+        _notice_once(
+            "[query_rewriter] {}={!r} is not a number - using default {}s"
+            .format(_TIMEOUT_ENV, raw, DEFAULT_TIMEOUT_S)
+        )
+        return DEFAULT_TIMEOUT_S
+    if value <= 0:
+        _notice_once(
+            "[query_rewriter] {}={} must be > 0 - using default {}s"
+            .format(_TIMEOUT_ENV, value, DEFAULT_TIMEOUT_S)
+        )
+        return DEFAULT_TIMEOUT_S
+    _notice_once(
+        "[query_rewriter] per-call budget {}s (env {}; default {}s)"
+        .format(value, _TIMEOUT_ENV, DEFAULT_TIMEOUT_S)
+    )
+    return value
+
+
+def _notice_once(message: str) -> None:
+    """One line per process, so a bench loop does not print 20x."""
+    global _timeout_notice_emitted
+    with _timeout_notice_lock:
+        if _timeout_notice_emitted:
+            return
+        _timeout_notice_emitted = True
+    print(message, file=sys.stderr)
 # Legacy fixed cap — the runtime default until the experiment
 # (`scripts/research/v3prime_direction1_adaptive_budget.py`) validates
 # the dynamic-budget heuristic on real corpus. Adaptive budget is gated
@@ -191,7 +255,7 @@ class QueryRewriter:
         self,
         backend_id: str = DEFAULT_BACKEND_ID,
         *,
-        timeout: float = DEFAULT_TIMEOUT_S,
+        timeout: Optional[float] = None,
         max_tokens: Optional[int] = None,
         budget: Optional[TaskBudget] = None,
     ) -> None:
@@ -217,7 +281,10 @@ class QueryRewriter:
         v3prime_direction1_adaptive_budget.py`'s job, not the wiring's.
         """
         self._backend_id = backend_id
-        self._timeout = timeout
+        # None -> resolve from env (default 10.0, i.e. unchanged).
+        # An explicit value still wins, so callers that pin a budget for
+        # a measurement arm are unaffected by the operator's env.
+        self._timeout = timeout if timeout is not None else resolve_timeout_s()
         self._max_tokens = max_tokens
         self._budget = budget if budget is not None else TaskBudget()
 
