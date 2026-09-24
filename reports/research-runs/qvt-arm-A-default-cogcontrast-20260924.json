@@ -1,0 +1,849 @@
+{
+  "schema": "qvt-baseline-v4",
+  "captured_at": "2026-09-24T06:25:32.621932+00:00",
+  "git_sha": "65d25e4",
+  "suite": "step7",
+  "fixture_version": "step7-v7",
+  "fixture_path": "C:\\Project\\James-RAG-Evol-v010\\eval\\regression\\step7_queries.json",
+  "n_runs": 1,
+  "env": {
+    "JAMES_ENABLE_ENTITY_ANCHOR": "1",
+    "JAMES_EMBEDDING_MODEL": "BAAI/bge-m3",
+    "JAMES_ENABLE_QUERY_REWRITE": "1",
+    "JAMES_AUTO_ROUTER": "0",
+    "JAMES_ADAPTIVE_BUDGET": "0",
+    "JAMES_SCOPE_ROUTING": "0",
+    "JAMES_LLM_MODEL": "gemma4:e4b",
+    "JAMES_DISABLE_MODE_AWARE_ROUTING": "1",
+    "JAMES_SETTINGS_USE_DB": "0"
+  },
+  "resolved_models": {
+    "probe": "applied-env",
+    "error": null,
+    "retrieval": {
+      "tag": "gemma3:12b",
+      "source": "preference"
+    },
+    "chat": {
+      "tag": "gemma3:12b",
+      "source": "preference"
+    },
+    "config_default": "gemma4:e4b",
+    "config_default_source": "applied_env[JAMES_LLM_MODEL]",
+    "mode_aware_routing_disabled": true,
+    "effective": {
+      "tag": "gemma4:e4b",
+      "source": "GEMMA_MODEL (mode-aware routing disabled)"
+    }
+  },
+  "answer_health": [
+    {
+      "total": 18,
+      "failed": 0,
+      "examples": [],
+      "error": null
+    }
+  ],
+  "host_state": [
+    {
+      "run": 1,
+      "before": {
+        "captured_at": "2026-09-24T06:00:47.297315+00:00",
+        "platform": "Windows-11-10.0.26200-SP0",
+        "python": "3.14.4",
+        "gpu": {
+          "name": "NVIDIA GeForce RTX 4070 SUPER",
+          "driver_version": "596.36",
+          "memory.used": 3482.0,
+          "memory.total": 12282.0,
+          "utilization.gpu": 0.0,
+          "temperature.gpu": 41.0,
+          "clocks.sm": 2490.0,
+          "clocks.max.sm": 3120.0,
+          "power.draw": 35.05
+        },
+        "ollama": {
+          "models": []
+        },
+        "host": {
+          "cpu_percent": 1.0,
+          "cpu_count": 16,
+          "memory_percent": 46.0,
+          "top_by_rss": [
+            {
+              "pid": 21856,
+              "name": "python.exe",
+              "rss_mb": 1355
+            },
+            {
+              "pid": 3468,
+              "name": "MemCompression",
+              "rss_mb": 901
+            },
+            {
+              "pid": 2424,
+              "name": "claude.exe",
+              "rss_mb": 798
+            },
+            {
+              "pid": 15700,
+              "name": "claude.exe",
+              "rss_mb": 520
+            },
+            {
+              "pid": 7068,
+              "name": "claude.exe",
+              "rss_mb": 385
+            },
+            {
+              "pid": 26084,
+              "name": "explorer.exe",
+              "rss_mb": 375
+            },
+            {
+              "pid": 25316,
+              "name": "claude.exe",
+              "rss_mb": 359
+            },
+            {
+              "pid": 17340,
+              "name": "chrome.exe",
+              "rss_mb": 326
+            }
+          ]
+        }
+      },
+      "gpu_during_bench": {
+        "started_at": "2026-09-24T06:00:48.847538+00:00",
+        "stopped_at": "2026-09-24T06:25:30.464005+00:00",
+        "interval_s": 15.0,
+        "n_samples": 99,
+        "utilization.gpu": {
+          "min": 0.0,
+          "mean": 89.5,
+          "max": 100.0
+        },
+        "clocks.sm": {
+          "min": 555.0,
+          "mean": 2716.5,
+          "max": 2760.0
+        },
+        "temperature.gpu": {
+          "min": 41.0,
+          "mean": 76.2,
+          "max": 81.0
+        },
+        "power.draw": {
+          "min": 35.0,
+          "mean": 185.6,
+          "max": 206.0
+        },
+        "memory.used": {
+          "min": 3482.0,
+          "mean": 8598.3,
+          "max": 9632.0
+        }
+      },
+      "ollama_after_bench": {
+        "models": [
+          {
+            "name": "gemma4:e4b",
+            "loaded_gib": 3.01,
+            "vram_gib": 3.01,
+            "gpu_fraction": 1.0
+          }
+        ]
+      }
+    }
+  ],
+  "aggregate": {
+    "path_coverage": {
+      "median": 0.9091,
+      "min": 0.9091,
+      "max": 0.9091,
+      "noise_band": 0.0
+    },
+    "graded_answer": {
+      "median": 0.6667,
+      "min": 0.6667,
+      "max": 0.6667,
+      "noise_band": 0.0
+    },
+    "abstention_f1": {
+      "median": 0.5,
+      "min": 0.5,
+      "max": 0.5,
+      "noise_band": 0.0
+    },
+    "n_runs": 1,
+    "token_cost": {
+      "median": 1628.55,
+      "min": 1628.55,
+      "max": 1628.55,
+      "noise_band": 0.0
+    },
+    "latency_cost": {
+      "median": 74.065,
+      "min": 74.065,
+      "max": 74.065,
+      "noise_band": 0.0
+    }
+  },
+  "aggregate_by_question_type": {},
+  "runs": [
+    {
+      "bench_output": "reports\\bench_65d25e4_step7_20260924_152530.json",
+      "scores": {
+        "git_sha": "65d25e4",
+        "suite": "step7",
+        "fixture_version": "step7-v7",
+        "n_queries": 20,
+        "path_coverage": {
+          "mean_recall": 0.9091,
+          "queries_with_expected_path": 11,
+          "queries_at_full_recall": 10,
+          "per_query": [
+            {
+              "id": 1,
+              "expected_count": 1,
+              "hits": 1,
+              "recall": 1.0,
+              "via_graph": 1,
+              "via_sources": 0
+            },
+            {
+              "id": 2,
+              "expected_count": 1,
+              "hits": 1,
+              "recall": 1.0,
+              "via_graph": 1,
+              "via_sources": 0
+            },
+            {
+              "id": 3,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 2,
+              "via_sources": 0
+            },
+            {
+              "id": 4,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 2,
+              "via_sources": 0
+            },
+            {
+              "id": 5,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 2,
+              "via_sources": 0
+            },
+            {
+              "id": 6,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 2,
+              "via_sources": 0
+            },
+            {
+              "id": 9,
+              "expected_count": 1,
+              "hits": 1,
+              "recall": 1.0,
+              "via_graph": 1,
+              "via_sources": 0
+            },
+            {
+              "id": 15,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 2,
+              "via_sources": 0
+            },
+            {
+              "id": 18,
+              "expected_count": 3,
+              "hits": 0,
+              "recall": 0.0,
+              "via_graph": 0,
+              "via_sources": 0
+            },
+            {
+              "id": 19,
+              "expected_count": 3,
+              "hits": 3,
+              "recall": 1.0,
+              "via_graph": 3,
+              "via_sources": 0
+            },
+            {
+              "id": 20,
+              "expected_count": 4,
+              "hits": 4,
+              "recall": 1.0,
+              "via_graph": 4,
+              "via_sources": 0
+            }
+          ]
+        },
+        "graded_answer": {
+          "mean_accuracy": 0.6667,
+          "queries_with_signals": 20,
+          "per_query": [
+            {
+              "id": 1,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "검색 증강 생성"
+              ]
+            },
+            {
+              "id": 2,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Claude"
+              ]
+            },
+            {
+              "id": 3,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "Anthropic",
+                "Claude"
+              ]
+            },
+            {
+              "id": 4,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "BlackRock",
+                "비트코인 ETF",
+                "출시"
+              ]
+            },
+            {
+              "id": 5,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "RAG"
+              ]
+            },
+            {
+              "id": 6,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "BlackRock",
+                "Fidelity",
+                "비트코인 ETF"
+              ]
+            },
+            {
+              "id": 7,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "RAG",
+                "Graph RAG"
+              ]
+            },
+            {
+              "id": 8,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "약자",
+                "BTC",
+                "비트코인"
+              ]
+            },
+            {
+              "id": 9,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "Retrieval-Augmented Generation",
+                "external knowledge",
+                "augment"
+              ]
+            },
+            {
+              "id": 10,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "OpenAI"
+              ]
+            },
+            {
+              "id": 11,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "보안"
+              ]
+            },
+            {
+              "id": 12,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 13,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "wiki"
+              ]
+            },
+            {
+              "id": 14,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "GPT-6",
+                "발표",
+                "OpenAI"
+              ]
+            },
+            {
+              "id": 15,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "David Soria Parra",
+                "MCP",
+                "designer"
+              ]
+            },
+            {
+              "id": 16,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "기준 금리",
+                "인하",
+                "FRB"
+              ]
+            },
+            {
+              "id": 17,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 18,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "Martin Eberhard",
+                "Marc Tarpenning",
+                "Tesla"
+              ]
+            },
+            {
+              "id": 19,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "BlackRock",
+                "Fidelity",
+                "IBIT"
+              ]
+            },
+            {
+              "id": 20,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "Claude Code",
+                "Cursor",
+                "Aider"
+              ]
+            }
+          ]
+        },
+        "abstention": {
+          "f1": 0.5,
+          "precision": 0.6667,
+          "recall": 0.4,
+          "tp_abstain": 2,
+          "fp_incorrect_abstention": 1,
+          "fn_hallucination": 3,
+          "tn_answer": 14,
+          "n_queries": 20,
+          "per_query": [
+            {
+              "id": 1,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 2,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 3,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 4,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 5,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 6,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 7,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 8,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 9,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 10,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 11,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 12,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 13,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 14,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 15,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 16,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 17,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 18,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 19,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 20,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            }
+          ]
+        },
+        "token_cost": {
+          "mean_chars": 1628.55,
+          "p95_chars": 5341.0,
+          "n_queries": 20,
+          "per_query": [
+            {
+              "id": 1,
+              "elapsed_s": 114.4,
+              "answer_chars": 2640
+            },
+            {
+              "id": 2,
+              "elapsed_s": 83.8,
+              "answer_chars": 3387
+            },
+            {
+              "id": 3,
+              "elapsed_s": 89.5,
+              "answer_chars": 4538
+            },
+            {
+              "id": 4,
+              "elapsed_s": 142.6,
+              "answer_chars": 1765
+            },
+            {
+              "id": 5,
+              "elapsed_s": 107.8,
+              "answer_chars": 7037
+            },
+            {
+              "id": 6,
+              "elapsed_s": 48.7,
+              "answer_chars": 115
+            },
+            {
+              "id": 7,
+              "elapsed_s": 139.9,
+              "answer_chars": 5341
+            },
+            {
+              "id": 8,
+              "elapsed_s": 105.5,
+              "answer_chars": 1928
+            },
+            {
+              "id": 9,
+              "elapsed_s": 46.3,
+              "answer_chars": 246
+            },
+            {
+              "id": 10,
+              "elapsed_s": 181.7,
+              "answer_chars": 2933
+            },
+            {
+              "id": 11,
+              "elapsed_s": 0.0,
+              "answer_chars": 26
+            },
+            {
+              "id": 12,
+              "elapsed_s": 0.0,
+              "answer_chars": 26
+            },
+            {
+              "id": 13,
+              "elapsed_s": 99.7,
+              "answer_chars": 1570
+            },
+            {
+              "id": 14,
+              "elapsed_s": 60.9,
+              "answer_chars": 266
+            },
+            {
+              "id": 15,
+              "elapsed_s": 46.8,
+              "answer_chars": 171
+            },
+            {
+              "id": 16,
+              "elapsed_s": 43.8,
+              "answer_chars": 93
+            },
+            {
+              "id": 17,
+              "elapsed_s": 23.3,
+              "answer_chars": 138
+            },
+            {
+              "id": 18,
+              "elapsed_s": 45.6,
+              "answer_chars": 143
+            },
+            {
+              "id": 19,
+              "elapsed_s": 43.9,
+              "answer_chars": 56
+            },
+            {
+              "id": 20,
+              "elapsed_s": 57.1,
+              "answer_chars": 152
+            }
+          ]
+        },
+        "latency_cost": {
+          "mean_s": 74.065,
+          "p95_s": 142.6,
+          "n_queries": 20,
+          "per_query": [
+            {
+              "id": 1,
+              "elapsed_s": 114.4,
+              "answer_chars": 2640
+            },
+            {
+              "id": 2,
+              "elapsed_s": 83.8,
+              "answer_chars": 3387
+            },
+            {
+              "id": 3,
+              "elapsed_s": 89.5,
+              "answer_chars": 4538
+            },
+            {
+              "id": 4,
+              "elapsed_s": 142.6,
+              "answer_chars": 1765
+            },
+            {
+              "id": 5,
+              "elapsed_s": 107.8,
+              "answer_chars": 7037
+            },
+            {
+              "id": 6,
+              "elapsed_s": 48.7,
+              "answer_chars": 115
+            },
+            {
+              "id": 7,
+              "elapsed_s": 139.9,
+              "answer_chars": 5341
+            },
+            {
+              "id": 8,
+              "elapsed_s": 105.5,
+              "answer_chars": 1928
+            },
+            {
+              "id": 9,
+              "elapsed_s": 46.3,
+              "answer_chars": 246
+            },
+            {
+              "id": 10,
+              "elapsed_s": 181.7,
+              "answer_chars": 2933
+            },
+            {
+              "id": 11,
+              "elapsed_s": 0.0,
+              "answer_chars": 26
+            },
+            {
+              "id": 12,
+              "elapsed_s": 0.0,
+              "answer_chars": 26
+            },
+            {
+              "id": 13,
+              "elapsed_s": 99.7,
+              "answer_chars": 1570
+            },
+            {
+              "id": 14,
+              "elapsed_s": 60.9,
+              "answer_chars": 266
+            },
+            {
+              "id": 15,
+              "elapsed_s": 46.8,
+              "answer_chars": 171
+            },
+            {
+              "id": 16,
+              "elapsed_s": 43.8,
+              "answer_chars": 93
+            },
+            {
+              "id": 17,
+              "elapsed_s": 23.3,
+              "answer_chars": 138
+            },
+            {
+              "id": 18,
+              "elapsed_s": 45.6,
+              "answer_chars": 143
+            },
+            {
+              "id": 19,
+              "elapsed_s": 43.9,
+              "answer_chars": 56
+            },
+            {
+              "id": 20,
+              "elapsed_s": 57.1,
+              "answer_chars": 152
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
