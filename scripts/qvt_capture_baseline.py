@@ -54,6 +54,7 @@ from eval.qvt.oracle import (  # noqa: E402
     score_five_axis,
     score_five_axis_by_question_type,
 )
+from eval.qvt import host_state  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -361,7 +362,9 @@ def _mint_employee_jwt() -> Optional[str]:
 # Per-run execution
 # ---------------------------------------------------------------------------
 
-def _run_single_bench(run_index: int, suite: str) -> Optional[Path]:
+def _run_single_bench(run_index: int, suite: str,
+                      host_log: Optional[List[Dict[str, Any]]] = None,
+                      ) -> Optional[Path]:
     """Spawn server, run bench.py once, return path to the bench JSON
     output. Server is torn down between runs so each run starts from
     the same warm-cache-cold state.
@@ -374,15 +377,24 @@ def _run_single_bench(run_index: int, suite: str) -> Optional[Path]:
     server_env = os.environ.copy()
     server_env.update(_BASELINE_ENV)
 
-    print(
-        f"\n=== run {run_index + 1}/N — suite={suite} "
-        f"(env: ENTITY_ANCHOR=1 EMBEDDING=bge-m3 REWRITE=1 "
-        f"AUTO_ROUTER=0 ADAPTIVE_BUDGET=0 SCOPE_ROUTING=0) ==="
-    )
+    # The banner used to hard-code the six v0.4.0 flags, so it went on
+    # announcing "the environment" after the model pin (#1142) and the
+    # rewrite-budget knob (#1146) joined it. Print what the server will
+    # actually receive for every key this capture controls, plus the
+    # budget override if one is exported.
+    shown = {k: server_env.get(k) for k in _BASELINE_ENV}
+    rw = server_env.get("JAMES_QUERY_REWRITE_TIMEOUT_S")
+    shown["JAMES_QUERY_REWRITE_TIMEOUT_S"] = rw if rw else "(unset -> default)"
+    print(f"\n=== run {run_index + 1}/N - suite={suite} ===")
+    for key in sorted(shown):
+        print(f"    {key} = {shown[key]}")
+
     server = _spawn_server(server_env)
     if server is None:
         return None
 
+    host: Dict[str, Any] = {"run": run_index + 1,
+                            "before": host_state.static_snapshot()}
     bench_output: Optional[Path] = None
     try:
         glob_pattern = f"bench_*_{suite}_*.json"
@@ -393,15 +405,21 @@ def _run_single_bench(run_index: int, suite: str) -> Optional[Path]:
             bearer = _mint_employee_jwt()
             if bearer:
                 bench_env["JAMES_BENCH_BEARER"] = bearer
-            subprocess.run(
-                [sys.executable, str(ROOT / "scripts" / "bench.py"),
-                 f"--suite={suite}", "--mode=retrieval"],
-                env=bench_env,
-                cwd=str(ROOT),
-                capture_output=False,
-                check=False,
-                timeout=BENCH_SUBPROCESS_TIMEOUT_SEC,
-            )
+            with host_state.GpuSampler(interval_s=15.0) as gpu:
+                subprocess.run(
+                    [sys.executable, str(ROOT / "scripts" / "bench.py"),
+                     f"--suite={suite}", "--mode=retrieval"],
+                    env=bench_env,
+                    cwd=str(ROOT),
+                    capture_output=False,
+                    check=False,
+                    timeout=BENCH_SUBPROCESS_TIMEOUT_SEC,
+                )
+            host["gpu_during_bench"] = gpu.summary()
+            # Which models were actually resident when the bench ended —
+            # independent of _resolved_models, which says what *should*
+            # answer. The two disagreeing is itself a finding (#1143).
+            host["ollama_after_bench"] = host_state.read_ollama_ps()
         except subprocess.TimeoutExpired:
             print(f"[run {run_index + 1}] bench TIMEOUT after "
                   f"{BENCH_SUBPROCESS_TIMEOUT_SEC}s")
@@ -417,6 +435,8 @@ def _run_single_bench(run_index: int, suite: str) -> Optional[Path]:
             print(f"[run {run_index + 1}] no new bench output under reports/")
     finally:
         _shutdown_server(server)
+        if host_log is not None:
+            host_log.append(host)
     return bench_output
 
 
@@ -572,8 +592,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     runs: List[FiveAxisResult] = []
     run_paths: List[str] = []
     health_by_run: List[Dict[str, Any]] = []
+    host_state_by_run: List[Dict[str, Any]] = []
     for i in range(args.n_runs):
-        bench_path = _run_single_bench(i, args.suite)
+        bench_path = _run_single_bench(i, args.suite, host_state_by_run)
         if bench_path is None:
             print(f"[error] run {i + 1} failed to produce bench output")
             return 3
@@ -625,9 +646,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                 aggregate_by_question_type[qt] = _aggregate_runs(sub)
 
     payload = {
-        "schema": "qvt-baseline-v3",  # v3 adds resolved_models +
-        # answer_health (2026-09-22). v2 added 5-axis +
-        # per_question_type. Readers of v2 ignore the new keys.
+        # v4 adds host_state (2026-09-24). v3 added resolved_models +
+        # answer_health (2026-09-22). v2 added 5-axis + per_question_type.
+        # Additive throughout: readers of an older schema ignore new keys.
+        "schema": "qvt-baseline-v4",
         "captured_at": datetime.now(timezone.utc).isoformat(),
         "git_sha": sha,
         "suite": args.suite,
@@ -640,6 +662,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         # actually resolved, and that every run's answers were real.
         "resolved_models": _resolved_models(),
         "answer_health": health_by_run,
+        # v4 — the host the numbers were produced on. Without it the
+        # 2026-09-22 capture's ~2.4x slowdown against 09-24 is known to
+        # exist and impossible to explain. latency_cost is only
+        # comparable across artifacts whose host_state is comparable.
+        "host_state": host_state_by_run,
         "aggregate": aggregate,
         "aggregate_by_question_type": aggregate_by_question_type,
         "runs": [

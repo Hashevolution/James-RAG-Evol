@@ -255,8 +255,36 @@ class PayloadShapeTests(unittest.TestCase):
     def setUpClass(cls):
         cls.src = _SCRIPT.read_text(encoding="utf-8")
 
-    def test_schema_is_v3(self):
-        self.assertIn('"schema": "qvt-baseline-v3"', self.src)
+    def test_schema_is_v4(self):
+        """Bumped from v3 when host_state was added (2026-09-24). This
+        test was updated, not deleted: the bump is intentional, and the
+        new payload keys it implies are pinned below."""
+        self.assertIn('"schema": "qvt-baseline-v4"', self.src)
+
+    def test_payload_carries_host_state(self):
+        """Without this the 2026-09-22 capture's ~2.4x slowdown against
+        09-24 is known to exist and impossible to explain."""
+        self.assertIn('"host_state": host_state_by_run', self.src)
+
+    def test_host_state_is_recorded_even_when_a_run_aborts(self):
+        """Appended in the ``finally`` block — a run that fails is
+        exactly the run whose host conditions you need."""
+        body = self.src.split("def _run_single_bench", 1)[1].split("\ndef ", 1)[0]
+        finally_block = body.split("finally:", 1)[1]
+        self.assertIn("host_log.append(host)", finally_block)
+
+    def test_gpu_is_sampled_during_the_bench_not_snapshotted(self):
+        self.assertIn("host_state.GpuSampler(", self.src)
+        self.assertIn('host["gpu_during_bench"] = gpu.summary()', self.src)
+
+    def test_banner_shows_the_pin_and_the_rewrite_budget(self):
+        """The banner used to hard-code six flags and kept announcing
+        'the environment' after #1142 and #1146 joined it."""
+        self.assertIn("shown = {k: server_env.get(k) for k in _BASELINE_ENV}",
+                      self.src)
+        self.assertIn('shown["JAMES_QUERY_REWRITE_TIMEOUT_S"]', self.src)
+        self.assertNotIn("AUTO_ROUTER=0 ADAPTIVE_BUDGET=0 SCOPE_ROUTING=0) ===",
+                         self.src)
 
     def test_payload_carries_provenance_and_health(self):
         self.assertIn('"resolved_models": _resolved_models()', self.src)
