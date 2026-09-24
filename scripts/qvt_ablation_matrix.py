@@ -88,6 +88,12 @@ from eval.qvt.oracle import (  # noqa: E402
     score_five_axis,
     score_five_axis_by_question_type,
 )
+# Shared with scripts/qvt_capture_baseline.py. This runner's server
+# lifecycle was a copy of that script, so its guards (#1141-#1143, #1147)
+# never reached here - the 2026-09-22 T0 smoke measured 4/7 generation
+# failures as abstentions. See eval/qvt/capture_integrity.py.
+from eval.qvt import capture_integrity  # noqa: E402
+from eval.qvt import host_state  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Matrix definition (memo §2)
@@ -625,7 +631,12 @@ def _cell_env(row: str, tier: str,
     # source-of-truth. Without this an operator that set the admin
     # Settings card mid-cycle could silently shadow JAMES_LLM_MODEL.
     # See core/llm_settings.py::_use_db.
-    env["JAMES_SETTINGS_USE_DB"] = "0"
+    # 2026-09-24 - plus the mode-aware routing kill-switch. Without it
+    # resolve_for_mode(mode, requested="") answers chat / retrieval with
+    # its preference-list top and ignores JAMES_LLM_MODEL, so every local
+    # tier measured the same model under five labels. Applied before the
+    # tier / sector overlays; neither sets these keys.
+    env.update(capture_integrity.ROUTING_PIN_ENV)
     if tier in _TIER_BACKEND_OVERRIDE:
         env.update(_TIER_BACKEND_OVERRIDE[tier])
         # Explicitly remove JAMES_LLM_MODEL inherited from the OS env —
@@ -653,8 +664,15 @@ def _cell_env(row: str, tier: str,
 def _run_single_bench(row: str, tier: str, run_index: int,
                       suite: str = "step7",
                       think_override: Optional[bool] = None,
-                      sector_cell: Optional[str] = None) -> Optional[Path]:
+                      sector_cell: Optional[str] = None,
+                      host_log: Optional[List[Dict[str, Any]]] = None,
+                      ) -> Optional[Path]:
     """Run one bench subprocess against the configured suite.
+
+    `host_log` (cell v6) - when given, one host-state record per run is
+    appended to it, including runs that time out, since a slow host is
+    the likeliest reason a run times out. Same shape as the baseline
+    capture's `host_state` entries.
 
     `suite` carries the matrix runner's --suite argument through; the
     pre-α-5 default was hardcoded "step7" (the legacy regression suite)
@@ -686,10 +704,14 @@ def _run_single_bench(row: str, tier: str, run_index: int,
         f"(model={_TIER_MODELS[tier]}, suite={suite}, "
         f"env={flagged}{think_tag}) ==="
     )
+    pin = {k: server_env.get(k) for k in capture_integrity.ROUTING_PIN_ENV}
+    print(f"    routing pin: {pin}")
     server = _spawn_server(server_env)
     if server is None:
         return None
 
+    host: Dict[str, Any] = {"run": run_index + 1,
+                            "before": host_state.static_snapshot()}
     bench_output: Optional[Path] = None
     try:
         glob_pattern = f"bench_*_{suite}_*.json"
@@ -700,15 +722,20 @@ def _run_single_bench(row: str, tier: str, run_index: int,
             bearer = _mint_employee_jwt()
             if bearer:
                 bench_env["JAMES_BENCH_BEARER"] = bearer
-            subprocess.run(
-                [sys.executable, str(ROOT / "scripts" / "bench.py"),
-                 f"--suite={suite}", "--mode=retrieval"],
-                env=bench_env,
-                cwd=str(ROOT),
-                capture_output=False,
-                check=False,
-                timeout=BENCH_SUBPROCESS_TIMEOUT_SEC,
-            )
+            with host_state.GpuSampler(interval_s=15.0) as gpu:
+                subprocess.run(
+                    [sys.executable, str(ROOT / "scripts" / "bench.py"),
+                     f"--suite={suite}", "--mode=retrieval"],
+                    env=bench_env,
+                    cwd=str(ROOT),
+                    capture_output=False,
+                    check=False,
+                    timeout=BENCH_SUBPROCESS_TIMEOUT_SEC,
+                )
+            host["gpu_during_bench"] = gpu.summary()
+            # Which models were resident when the bench ended - checked
+            # against resolved_models, which says what *should* answer.
+            host["ollama_after_bench"] = host_state.read_ollama_ps()
         except subprocess.TimeoutExpired:
             print(f"[cell {row}/{tier} run {run_index + 1}] bench TIMEOUT "
                   f"after {BENCH_SUBPROCESS_TIMEOUT_SEC}s")
@@ -726,6 +753,8 @@ def _run_single_bench(row: str, tier: str, run_index: int,
                   f"output under reports/")
     finally:
         _shutdown_server(server)
+        if host_log is not None:
+            host_log.append(host)
     return bench_output
 
 
@@ -824,6 +853,13 @@ def _run_cell(row: str, tier: str, n_runs: int, fixture: Dict[str, Any],
     # simply skip the per-type aggregation.
     runs_by_type: List[Dict[str, FiveAxisResult]] = []
     run_paths: List[str] = []
+    health_by_run: List[Dict[str, Any]] = []
+    host_state_by_run: List[Dict[str, Any]] = []
+    # What the spawned server will answer with - resolved from the env
+    # _run_single_bench applies, not this process's env (#1143).
+    resolved = capture_integrity.resolved_models(
+        _cell_env(row, tier, think_override=think_override,
+                  sector_cell=sector_cell))
     cell_label = (f"{sector_cell}/{tier}" if sector_cell
                   else f"{row}/{tier}")
     cell_label += " (sanity think=ON)" if sanity_think_on else ""
@@ -831,13 +867,31 @@ def _run_cell(row: str, tier: str, n_runs: int, fixture: Dict[str, Any],
         bench_path = _run_single_bench(row, tier, i,
                                        suite=suite,
                                        think_override=think_override,
-                                       sector_cell=sector_cell)
+                                       sector_cell=sector_cell,
+                                       host_log=host_state_by_run)
         if bench_path is None:
             print(f"[cell {cell_label}] run {i + 1} failed to produce "
                   f"bench output — aborting cell")
             return None
+        health = capture_integrity.answer_health(bench_path)
+        health_by_run.append(health)
+        reason = capture_integrity.abort_reason(health)
+        if reason:
+            # No cell JSON is written: a partial or laundered cell on
+            # disk would be picked up by --resume and --render-report
+            # as if it were a measurement.
+            print(f"[cell {cell_label} run {i + 1}] ABORT — {reason}.")
+            for ex in health.get("examples") or []:
+                print(f"    {ex}")
+            print("    core/reasoning/pipeline.py softens these into "
+                  "abstentions, so scoring them would record a failing "
+                  "LLM as the system correctly declining.\n"
+                  f"    effective model: {resolved.get('effective')}")
+            return None
         result = score_five_axis(bench_path, fixture)
-        print(f"[cell {cell_label} run {i + 1}] {result.summary()}")
+        print(f"[cell {cell_label} run {i + 1}] {result.summary()}  "
+              f"(answers ok: {health['total'] - health['failed']}"
+              f"/{health['total']})")
         runs.append(result)
         runs_by_type.append(score_five_axis_by_question_type(bench_path, fixture))
         run_paths.append(str(bench_path.relative_to(ROOT)))
@@ -887,7 +941,12 @@ def _run_cell(row: str, tier: str, n_runs: int, fixture: Dict[str, Any],
         #        in evidence" rather than "no effect" (CLAUDE.md rule
         #        #2 layer-prerequisite clause). Pre-v5 cells simply
         #        lack the keys and render as "unknown".
-        "schema": "qvt-ablation-cell-v5",
+        #   v6 - adds resolved_models + answer_health + host_state
+        #        (2026-09-24), the baseline capture's guards, now shared
+        #        via eval/qvt/capture_integrity.py. Pre-v6 cells ran
+        #        without the routing pin: their `model` field is the
+        #        tier label, not evidence of what answered.
+        "schema": "qvt-ablation-cell-v6",
         "captured_at": datetime.now(timezone.utc).isoformat(),
         "git_sha": sha,
         "row": row,
@@ -900,6 +959,11 @@ def _run_cell(row: str, tier: str, n_runs: int, fixture: Dict[str, Any],
         # v5 — layer prerequisites (rule #2). See _router_evidence.
         "backend_registry": _registry_snap,
         "layer_evidence": {"auto_router": _router_ev},
+        # v6 - integrity record. resolved_models.effective is what
+        # answered; `model` above is only the tier's label.
+        "resolved_models": resolved,
+        "answer_health": health_by_run,
+        "host_state": host_state_by_run,
         # Step 9 — sanity cell flag travels in the JSON so the report
         # writer can distinguish it from the primary L1/M_M (think=OFF).
         "sanity_think_on": bool(sanity_think_on),

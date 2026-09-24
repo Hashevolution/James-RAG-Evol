@@ -55,6 +55,7 @@ from eval.qvt.oracle import (  # noqa: E402
     score_five_axis_by_question_type,
 )
 from eval.qvt import host_state  # noqa: E402
+from eval.qvt import capture_integrity  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -199,133 +200,32 @@ def _spawn_server(env: Dict[str, str]) -> Optional[subprocess.Popen]:
 # So: a *semantic* abstention ("자료에 없음") is a measurement. An
 # *infrastructure* failure is not, and the capture refuses to write.
 
-_SYNTH_FAILURE_PREFIXES: Tuple[str, ...] = (
-    # Source of truth: core/reasoning/pipeline.py:321 — the pair it
-    # treats as generation failure (deliberately NOT including
-    # "자료에 없음. 관련된", which is a real abstention).
-    "답변 생성에 실패",
-    "LLM 응답 생성 중 오류",
-)
+# The guards themselves live in eval/qvt/capture_integrity.py so the
+# matrix runner uses the same code. Until 2026-09-24 they were written
+# here only, and scripts/qvt_ablation_matrix.py — a parallel copy of
+# this file's lifecycle helpers — never received them; that is how the
+# T0 smoke reached 4/7 generation failures under tier labels that were
+# not the model answering. These names are kept as thin wrappers so
+# existing callers and tests keep working.
+_SYNTH_FAILURE_PREFIXES: Tuple[str, ...] = capture_integrity.SYNTH_FAILURE_PREFIXES
 
 
 def _infrastructure_failure_prefixes() -> Tuple[str, ...]:
-    """Synth-failure markers plus the backend's own error prefixes.
-
-    `core.cache_manager._ERROR_PREFIXES` is the repo's existing list of
-    "this is an error, do not cache it" markers; reusing it keeps this
-    guard aligned with what the rest of the system already calls broken
-    instead of inventing a second vocabulary.
-    """
-    extra: Tuple[str, ...] = ()
-    try:
-        from core.cache_manager import _ERROR_PREFIXES  # noqa: WPS433
-        extra = tuple(_ERROR_PREFIXES)
-    except Exception:
-        pass
-    return _SYNTH_FAILURE_PREFIXES + extra
+    return capture_integrity.infrastructure_failure_prefixes()
 
 
 def _answer_health(bench_path: Path) -> Dict[str, Any]:
-    """Count rows whose answer is an infrastructure failure, not an answer.
-
-    `blocked` rows are excluded: step7 carries security fixtures that are
-    *supposed* to be refused, and counting them as breakage would make the
-    guard cry wolf on a healthy run.
-    """
-    prefixes = _infrastructure_failure_prefixes()
-    try:
-        data = json.loads(bench_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError) as exc:
-        return {"total": 0, "failed": 0, "examples": [],
-                "error": f"{type(exc).__name__}: {exc}"}
-    rows = data.get("results") or []
-    considered = 0
-    failed: List[str] = []
-    for row in rows:
-        if row.get("blocked"):
-            continue
-        considered += 1
-        preview = str(row.get("answer_preview") or "").lstrip()
-        if any(preview.startswith(p) for p in prefixes):
-            failed.append(f"{row.get('id')}: {preview[:48]}")
-    return {
-        "total": considered,
-        "failed": len(failed),
-        "examples": failed[:5],
-        "error": None,
-    }
+    return capture_integrity.answer_health(bench_path)
 
 
 def _resolved_models() -> Dict[str, Any]:
-    """What the routing layer will actually pick, per mode.
+    """Resolve against the env the *server* receives, not os.environ.
 
-    _BASELINE_ENV pins six flags — entity anchor, embedding model, query
-    rewrite, AUTO_ROUTER, ADAPTIVE_BUDGET, SCOPE_ROUTING. That was the
-    complete set of controls when this script was written (2026-05).
-    Mode-aware routing landed afterwards (PRs #969–#990, 2026-06-16) and
-    chooses the model *outside* that set, so the pinned env no longer
-    controls what it says it controls: at 2a31b20 `resolve_for_mode`
-    had no "retrieval" key and the capture ran the config default
-    `gemma4:e4b`; today it resolves to `gemma3:12b`.
-
-    Recording it does not decide which is right — that is an operator
-    call about what the baseline means — but it stops the swap from
-    happening silently and unrecorded.
+    The first version read os.environ and recorded effective=gemma3:12b
+    for a capture Ollama confirmed was served by gemma4:e4b (#1143):
+    _BASELINE_ENV is applied to the spawned server, never the runner.
     """
-    # The env that actually reaches the server, not the runner's own.
-    # The first version of this read os.environ directly and got it
-    # wrong: _BASELINE_ENV is applied to the *spawned server*, never to
-    # the runner, so the pin was invisible here and the 2026-09-22
-    # capture recorded effective=gemma3:12b for a run that Ollama
-    # confirms was served by gemma4:e4b throughout. The field was
-    # labelled probe="runner-process" — honest about where it looked,
-    # while the value it produced was a claim about somewhere else.
-    effective_env: Dict[str, str] = {**os.environ, **_BASELINE_ENV}
-    out: Dict[str, Any] = {"probe": "baseline-env", "error": None}
-    try:
-        from core.model_resolver import resolve_for_mode  # noqa: WPS433
-        for mode in ("retrieval", "chat"):
-            resolved = resolve_for_mode(mode, requested="")
-            out[mode] = {
-                "tag": getattr(resolved, "tag", None),
-                "source": getattr(resolved, "source", None),
-            }
-    except Exception as exc:
-        out["error"] = f"{type(exc).__name__}: {exc}"
-    # config.GEMMA_MODEL is read at import against the runner's env, so
-    # consult _BASELINE_ENV first — that is what the server will see.
-    pinned = _BASELINE_ENV.get("JAMES_LLM_MODEL", "").strip()
-    if pinned:
-        out["config_default"] = pinned
-        out["config_default_source"] = "_BASELINE_ENV[JAMES_LLM_MODEL]"
-    else:
-        try:
-            import config  # noqa: WPS433
-            out["config_default"] = getattr(config, "GEMMA_MODEL", None)
-        except Exception:
-            out["config_default"] = None
-        out["config_default_source"] = "config.GEMMA_MODEL"
-    disabled = bool(
-        effective_env.get("JAMES_DISABLE_MODE_AWARE_ROUTING", "").strip()
-    )
-    out["mode_aware_routing_disabled"] = disabled
-    # What will actually answer. `resolve_for_mode` above reports what
-    # the preference list *would* pick; when the kill-switch is set,
-    # `core/reasoning/engine_routing.py` never calls it and the engine
-    # falls back to GEMMA_MODEL. Recording the preference alone would
-    # put a model in the provenance that never ran — the same
-    # not-in-evidence confusion this field exists to prevent.
-    if disabled:
-        out["effective"] = {
-            "tag": out.get("config_default"),
-            "source": "GEMMA_MODEL (mode-aware routing disabled)",
-        }
-    else:
-        out["effective"] = {
-            "tag": (out.get("retrieval") or {}).get("tag"),
-            "source": "mode-aware routing (retrieval preference)",
-        }
-    return out
+    return capture_integrity.resolved_models({**os.environ, **_BASELINE_ENV})
 
 
 def _shutdown_server(proc: subprocess.Popen) -> None:
@@ -600,11 +500,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 3
         health = _answer_health(bench_path)
         health_by_run.append(health)
-        if health["failed"]:
-            print(
-                f"[run {i + 1}] ABORT — {health['failed']}/{health['total']} "
-                f"answers are infrastructure failures, not measurements."
-            )
+        reason = capture_integrity.abort_reason(health)
+        if reason:
+            print(f"[run {i + 1}] ABORT — {reason}.")
             for ex in health["examples"]:
                 print(f"    {ex}")
             print(

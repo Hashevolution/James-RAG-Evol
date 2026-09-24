@@ -142,8 +142,11 @@ class CellSchemaTests(unittest.TestCase):
     def setUpClass(cls):
         cls.src = _SCRIPT.read_text(encoding="utf-8")
 
-    def test_cell_schema_is_v5(self):
-        self.assertIn('"schema": "qvt-ablation-cell-v5"', self.src)
+    def test_cell_schema_carries_v5_evidence(self):
+        # v6 (2026-09-24) is additive over v5: it adds resolved_models /
+        # answer_health / host_state. The v5 keys this class exists for
+        # are pinned by test_payload_carries_registry_and_evidence.
+        self.assertIn('"schema": "qvt-ablation-cell-v6"', self.src)
 
     def test_payload_carries_registry_and_evidence(self):
         self.assertIn('"backend_registry": _registry_snap', self.src)
