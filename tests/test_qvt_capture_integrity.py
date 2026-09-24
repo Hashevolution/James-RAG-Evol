@@ -208,7 +208,11 @@ class BaselineModelPinTests(unittest.TestCase):
         )
         self.assertEqual(snap["effective"]["tag"], "gemma4:e4b")
         self.assertIn("GEMMA_MODEL", snap["effective"]["source"])
-        self.assertEqual(snap["probe"], "baseline-env")
+        # "applied-env", not "baseline-env": since 2026-09-24 the resolver
+        # lives in eval/qvt/capture_integrity.py and also serves matrix
+        # cells, whose env is not a baseline env. The label names what is
+        # probed — the env the server receives — for both callers.
+        self.assertEqual(snap["probe"], "applied-env")
 
     def test_both_the_pin_and_the_routing_answer_are_recorded(self):
         """Both are recorded on purpose: a reader should see the gap
@@ -291,8 +295,15 @@ class PayloadShapeTests(unittest.TestCase):
         self.assertIn('"answer_health": health_by_run', self.src)
 
     def test_capture_aborts_instead_of_writing(self):
+        # The message moved to eval/qvt/capture_integrity.abort_reason
+        # (2026-09-24) so the matrix runner applies the same rule; what
+        # this test pins is that the capture still routes through it and
+        # still exits instead of writing.
         self.assertIn("return 6", self.src)
-        self.assertIn("infrastructure failures, not measurements", self.src)
+        self.assertIn("capture_integrity.abort_reason(health)", self.src)
+        from eval.qvt import capture_integrity as ci
+        reason = ci.abort_reason({"total": 7, "failed": 4, "error": None})
+        self.assertIn("infrastructure failures, not measurements", reason)
 
 
 if __name__ == "__main__":
