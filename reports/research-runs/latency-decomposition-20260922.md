@@ -11,6 +11,30 @@
 > **Method + its two judgment calls** are in that script's docstring and
 > pinned by `tests/test_latency_decomposition.py` (11 tests).
 
+> ## ⚠️ Erratum (2026-09-24)
+>
+> **The magnitudes in this report are one day's host state, not a
+> property of the code.** Re-measured at the *same* 10 s budget on
+> 2026-09-24 (arm A of `query-rewrite-budget-paired-20260924.md`):
+>
+> | | this report (09-22) | 09-24 |
+> |---|---:|---:|
+> | rewriter failed | 83.3% | **15.4%** |
+> | timeout share of wall clock | 32.0% | **6.3%** |
+> | `reason:synth` mean | 33.8 s | **14.2 s** |
+>
+> `synth` has no timeout interaction and no code change touched it, so
+> its 2.4x speed-up isolates the host: the machine was materially slower
+> on 09-22, for a reason nothing recorded and that cannot now be
+> recovered. The **method and the shape** of the findings stand —
+> retrieval is a small share, timeouts are a large one, and every
+> observed timeout maps to a declared budget. The **headline numbers**
+> should be read as that day's state.
+>
+> §5's "raise the budget -> recovers ~11 s/query" was also imprecise,
+> and so was the correction offered afterwards. The paired run measures
+> the knob at ~4.7 s/query on 09-24's host; see that report §3–§4.
+
 ## 1. Headline
 
 **Retrieval is 1% of the wall clock. 32% is spent on LLM calls that

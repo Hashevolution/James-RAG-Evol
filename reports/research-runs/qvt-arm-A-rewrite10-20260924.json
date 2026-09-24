@@ -1,0 +1,743 @@
+{
+  "schema": "qvt-baseline-v3",
+  "captured_at": "2026-09-24T03:21:16.045512+00:00",
+  "git_sha": "b9aa8a0",
+  "suite": "step7",
+  "fixture_version": "step7-v7",
+  "fixture_path": "C:\\Project\\James-RAG-Evol-v010\\eval\\regression\\step7_queries.json",
+  "n_runs": 1,
+  "env": {
+    "JAMES_ENABLE_ENTITY_ANCHOR": "1",
+    "JAMES_EMBEDDING_MODEL": "BAAI/bge-m3",
+    "JAMES_ENABLE_QUERY_REWRITE": "1",
+    "JAMES_AUTO_ROUTER": "0",
+    "JAMES_ADAPTIVE_BUDGET": "0",
+    "JAMES_SCOPE_ROUTING": "0",
+    "JAMES_LLM_MODEL": "gemma4:e4b",
+    "JAMES_DISABLE_MODE_AWARE_ROUTING": "1",
+    "JAMES_SETTINGS_USE_DB": "0"
+  },
+  "resolved_models": {
+    "probe": "baseline-env",
+    "error": null,
+    "retrieval": {
+      "tag": "gemma3:12b",
+      "source": "preference"
+    },
+    "chat": {
+      "tag": "gemma3:12b",
+      "source": "preference"
+    },
+    "config_default": "gemma4:e4b",
+    "config_default_source": "_BASELINE_ENV[JAMES_LLM_MODEL]",
+    "mode_aware_routing_disabled": true,
+    "effective": {
+      "tag": "gemma4:e4b",
+      "source": "GEMMA_MODEL (mode-aware routing disabled)"
+    }
+  },
+  "answer_health": [
+    {
+      "total": 18,
+      "failed": 0,
+      "examples": [],
+      "error": null
+    }
+  ],
+  "aggregate": {
+    "path_coverage": {
+      "median": 0.9091,
+      "min": 0.9091,
+      "max": 0.9091,
+      "noise_band": 0.0
+    },
+    "graded_answer": {
+      "median": 0.75,
+      "min": 0.75,
+      "max": 0.75,
+      "noise_band": 0.0
+    },
+    "abstention_f1": {
+      "median": 0.5,
+      "min": 0.5,
+      "max": 0.5,
+      "noise_band": 0.0
+    },
+    "n_runs": 1,
+    "token_cost": {
+      "median": 1318.65,
+      "min": 1318.65,
+      "max": 1318.65,
+      "noise_band": 0.0
+    },
+    "latency_cost": {
+      "median": 73.51,
+      "min": 73.51,
+      "max": 73.51,
+      "noise_band": 0.0
+    }
+  },
+  "aggregate_by_question_type": {},
+  "runs": [
+    {
+      "bench_output": "reports\\bench_b9aa8a0_step7_20260924_122113.json",
+      "scores": {
+        "git_sha": "b9aa8a0",
+        "suite": "step7",
+        "fixture_version": "step7-v7",
+        "n_queries": 20,
+        "path_coverage": {
+          "mean_recall": 0.9091,
+          "queries_with_expected_path": 11,
+          "queries_at_full_recall": 10,
+          "per_query": [
+            {
+              "id": 1,
+              "expected_count": 1,
+              "hits": 1,
+              "recall": 1.0,
+              "via_graph": 1,
+              "via_sources": 0
+            },
+            {
+              "id": 2,
+              "expected_count": 1,
+              "hits": 1,
+              "recall": 1.0,
+              "via_graph": 1,
+              "via_sources": 0
+            },
+            {
+              "id": 3,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 2,
+              "via_sources": 0
+            },
+            {
+              "id": 4,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 2,
+              "via_sources": 0
+            },
+            {
+              "id": 5,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 2,
+              "via_sources": 0
+            },
+            {
+              "id": 6,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 2,
+              "via_sources": 0
+            },
+            {
+              "id": 9,
+              "expected_count": 1,
+              "hits": 1,
+              "recall": 1.0,
+              "via_graph": 1,
+              "via_sources": 0
+            },
+            {
+              "id": 15,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 2,
+              "via_sources": 0
+            },
+            {
+              "id": 18,
+              "expected_count": 3,
+              "hits": 0,
+              "recall": 0.0,
+              "via_graph": 0,
+              "via_sources": 0
+            },
+            {
+              "id": 19,
+              "expected_count": 3,
+              "hits": 3,
+              "recall": 1.0,
+              "via_graph": 3,
+              "via_sources": 0
+            },
+            {
+              "id": 20,
+              "expected_count": 4,
+              "hits": 4,
+              "recall": 1.0,
+              "via_graph": 4,
+              "via_sources": 0
+            }
+          ]
+        },
+        "graded_answer": {
+          "mean_accuracy": 0.75,
+          "queries_with_signals": 20,
+          "per_query": [
+            {
+              "id": 1,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "검색 증강 생성",
+                "지식 베이스",
+                "정확성"
+              ]
+            },
+            {
+              "id": 2,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "인공지능",
+                "LLM",
+                "AI 안전"
+              ]
+            },
+            {
+              "id": 3,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "Anthropic",
+                "Claude",
+                "개발"
+              ]
+            },
+            {
+              "id": 4,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "BlackRock",
+                "비트코인 ETF"
+              ]
+            },
+            {
+              "id": 5,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "RAG"
+              ]
+            },
+            {
+              "id": 6,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "BlackRock",
+                "Fidelity"
+              ]
+            },
+            {
+              "id": 7,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "RAG",
+                "Graph RAG"
+              ]
+            },
+            {
+              "id": 8,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "BTC",
+                "비트코인"
+              ]
+            },
+            {
+              "id": 9,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "Retrieval-Augmented Generation",
+                "external knowledge",
+                "augment"
+              ]
+            },
+            {
+              "id": 10,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "OpenAI"
+              ]
+            },
+            {
+              "id": 11,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "보안"
+              ]
+            },
+            {
+              "id": 12,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 13,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "wiki",
+                "목록"
+              ]
+            },
+            {
+              "id": 14,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "GPT-6",
+                "발표",
+                "OpenAI"
+              ]
+            },
+            {
+              "id": 15,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "David Soria Parra",
+                "MCP",
+                "creator"
+              ]
+            },
+            {
+              "id": 16,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "기준 금리",
+                "인하"
+              ]
+            },
+            {
+              "id": 17,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "Anthropic",
+                "CEO",
+                "Dario"
+              ]
+            },
+            {
+              "id": 18,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "Martin Eberhard",
+                "Marc Tarpenning",
+                "테슬라"
+              ]
+            },
+            {
+              "id": 19,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "BlackRock",
+                "Fidelity",
+                "IBIT"
+              ]
+            },
+            {
+              "id": 20,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "Claude Code",
+                "Cursor",
+                "Aider"
+              ]
+            }
+          ]
+        },
+        "abstention": {
+          "f1": 0.5,
+          "precision": 0.6667,
+          "recall": 0.4,
+          "tp_abstain": 2,
+          "fp_incorrect_abstention": 1,
+          "fn_hallucination": 3,
+          "tn_answer": 14,
+          "n_queries": 20,
+          "per_query": [
+            {
+              "id": 1,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 2,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 3,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 4,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 5,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 6,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 7,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 8,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 9,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 10,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 11,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 12,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 13,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 14,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 15,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 16,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 17,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 18,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 19,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 20,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            }
+          ]
+        },
+        "token_cost": {
+          "mean_chars": 1318.65,
+          "p95_chars": 5184.0,
+          "n_queries": 20,
+          "per_query": [
+            {
+              "id": 1,
+              "elapsed_s": 105.8,
+              "answer_chars": 2650
+            },
+            {
+              "id": 2,
+              "elapsed_s": 48.9,
+              "answer_chars": 187
+            },
+            {
+              "id": 3,
+              "elapsed_s": 91.9,
+              "answer_chars": 2830
+            },
+            {
+              "id": 4,
+              "elapsed_s": 101.1,
+              "answer_chars": 1828
+            },
+            {
+              "id": 5,
+              "elapsed_s": 67.3,
+              "answer_chars": 5184
+            },
+            {
+              "id": 6,
+              "elapsed_s": 57.6,
+              "answer_chars": 256
+            },
+            {
+              "id": 7,
+              "elapsed_s": 117.0,
+              "answer_chars": 6620
+            },
+            {
+              "id": 8,
+              "elapsed_s": 134.6,
+              "answer_chars": 1582
+            },
+            {
+              "id": 9,
+              "elapsed_s": 54.8,
+              "answer_chars": 229
+            },
+            {
+              "id": 10,
+              "elapsed_s": 171.4,
+              "answer_chars": 2748
+            },
+            {
+              "id": 11,
+              "elapsed_s": 0.0,
+              "answer_chars": 26
+            },
+            {
+              "id": 12,
+              "elapsed_s": 0.0,
+              "answer_chars": 26
+            },
+            {
+              "id": 13,
+              "elapsed_s": 134.0,
+              "answer_chars": 876
+            },
+            {
+              "id": 14,
+              "elapsed_s": 97.7,
+              "answer_chars": 280
+            },
+            {
+              "id": 15,
+              "elapsed_s": 39.4,
+              "answer_chars": 238
+            },
+            {
+              "id": 16,
+              "elapsed_s": 51.9,
+              "answer_chars": 315
+            },
+            {
+              "id": 17,
+              "elapsed_s": 30.9,
+              "answer_chars": 149
+            },
+            {
+              "id": 18,
+              "elapsed_s": 49.7,
+              "answer_chars": 127
+            },
+            {
+              "id": 19,
+              "elapsed_s": 37.3,
+              "answer_chars": 48
+            },
+            {
+              "id": 20,
+              "elapsed_s": 78.9,
+              "answer_chars": 174
+            }
+          ]
+        },
+        "latency_cost": {
+          "mean_s": 73.51,
+          "p95_s": 134.6,
+          "n_queries": 20,
+          "per_query": [
+            {
+              "id": 1,
+              "elapsed_s": 105.8,
+              "answer_chars": 2650
+            },
+            {
+              "id": 2,
+              "elapsed_s": 48.9,
+              "answer_chars": 187
+            },
+            {
+              "id": 3,
+              "elapsed_s": 91.9,
+              "answer_chars": 2830
+            },
+            {
+              "id": 4,
+              "elapsed_s": 101.1,
+              "answer_chars": 1828
+            },
+            {
+              "id": 5,
+              "elapsed_s": 67.3,
+              "answer_chars": 5184
+            },
+            {
+              "id": 6,
+              "elapsed_s": 57.6,
+              "answer_chars": 256
+            },
+            {
+              "id": 7,
+              "elapsed_s": 117.0,
+              "answer_chars": 6620
+            },
+            {
+              "id": 8,
+              "elapsed_s": 134.6,
+              "answer_chars": 1582
+            },
+            {
+              "id": 9,
+              "elapsed_s": 54.8,
+              "answer_chars": 229
+            },
+            {
+              "id": 10,
+              "elapsed_s": 171.4,
+              "answer_chars": 2748
+            },
+            {
+              "id": 11,
+              "elapsed_s": 0.0,
+              "answer_chars": 26
+            },
+            {
+              "id": 12,
+              "elapsed_s": 0.0,
+              "answer_chars": 26
+            },
+            {
+              "id": 13,
+              "elapsed_s": 134.0,
+              "answer_chars": 876
+            },
+            {
+              "id": 14,
+              "elapsed_s": 97.7,
+              "answer_chars": 280
+            },
+            {
+              "id": 15,
+              "elapsed_s": 39.4,
+              "answer_chars": 238
+            },
+            {
+              "id": 16,
+              "elapsed_s": 51.9,
+              "answer_chars": 315
+            },
+            {
+              "id": 17,
+              "elapsed_s": 30.9,
+              "answer_chars": 149
+            },
+            {
+              "id": 18,
+              "elapsed_s": 49.7,
+              "answer_chars": 127
+            },
+            {
+              "id": 19,
+              "elapsed_s": 37.3,
+              "answer_chars": 48
+            },
+            {
+              "id": 20,
+              "elapsed_s": 78.9,
+              "answer_chars": 174
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
