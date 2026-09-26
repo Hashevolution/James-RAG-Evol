@@ -81,6 +81,39 @@ class GroundedCritiqueTests(unittest.TestCase):
         self.assertIn("hallucination", en)
         self.assertIn("is not grounds for that claim", en)
 
+    def test_a_correct_abstention_is_not_overturned_by_a_wrong_subject(self):
+        """The guard the first version of this fix was missing.
+
+        Arm E of the 2026-09-26 paired run, Q17 "Anthropic의 CEO는
+        누구야?": retrieval returned Palantir material, synth correctly
+        answered "insufficient information", and the newly grounded
+        critique called that "factually incorrect ... the provided
+        evidence explicitly an[swers it]" — revise then shipped
+        "Alex Karp", Palantir's CEO. Telling the model to judge against
+        the evidence removed the training-data yardstick that had been
+        rejecting the wrong entity; nothing replaced it. (Verify did
+        not catch it either: at 9 characters the answer fell under
+        MIN_ANSWER_LEN_FOR_VERIFY = 30 and was never checked.)
+        """
+        ko = P.build_critique_prompt("Q?", DRAFT, EVIDENCE, is_ko=True)
+        self.assertIn("질문이 묻는 대상", ko)
+        self.assertIn("올바른 답이다", ko)
+        self.assertIn("다른 대상", ko)
+        self.assertIn("환각이다", ko)
+        en = P.build_critique_prompt("Q?", DRAFT, EVIDENCE, is_ko=False)
+        self.assertIn("the subject the question asks about", en)
+        self.assertIn("the correct answer", en)
+        self.assertIn("DIFFERENT subject", en)
+        self.assertIn("would be the hallucination", en)
+
+    def test_missing_core_is_scoped_to_the_questions_subject(self):
+        """Unscoped, "key information present in the evidence but
+        omitted" is what licensed pulling B's CEO into A's answer."""
+        ko = P.build_critique_prompt("Q?", DRAFT, EVIDENCE, is_ko=True)
+        self.assertIn("**질문의 대상에 대해**", ko)
+        en = P.build_critique_prompt("Q?", DRAFT, EVIDENCE, is_ko=False)
+        self.assertIn("about the question's subject", en)
+
     def test_every_placeholder_is_filled(self):
         """A stray {context} would ship the literal brace to the model."""
         for is_ko in (True, False):
