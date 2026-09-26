@@ -213,6 +213,51 @@ class ContextBudgetTests(unittest.TestCase):
         self.assertNotIn("evidence truncated", p)
 
 
+# ─── revise: unsupported means remove ───────────────────────────────
+
+
+class ReviseRemovalTests(unittest.TestCase):
+    """Arm F, Q17: the critique DID catch it — "the evidence lists
+    'Alex Karp, CEO' in the heading ... but the evidence does [not
+    establish he is Anthropic's CEO]" — and revise shipped
+    "ANSWER: Alex Karp. 제공된 내부 데이터의 '경영진 코멘트' 섹션에서
+    ...언급되었습니다." It answered an unsupported-claim flag with a
+    citation instead of a deletion, and "Preserve meaning" was the only
+    instruction it had about what to keep.
+    """
+
+    def test_unsupported_claims_are_removed_not_cited(self):
+        self.assertIn("삭제하라", P.REVISE_PROMPT_KO)
+        self.assertIn("출처를 덧붙여 정당화하지 마라", P.REVISE_PROMPT_KO)
+        self.assertIn("remove it.", P.REVISE_PROMPT_EN)
+        self.assertIn("Do not keep it and attach a citation",
+                      P.REVISE_PROMPT_EN)
+
+    def test_removal_outranks_preserve_meaning(self):
+        """Unordered, "preserve meaning" reads as "keep the claim"."""
+        self.assertIn("위 삭제 규칙이 우선", P.REVISE_PROMPT_KO)
+        self.assertIn("removal rule above takes precedence",
+                      P.REVISE_PROMPT_EN)
+        for tmpl, remove_tok, preserve_tok in (
+            (P.REVISE_PROMPT_KO, "삭제하라", "의미를 보존하고"),
+            (P.REVISE_PROMPT_EN, "remove it.", "Preserve meaning"),
+        ):
+            self.assertLess(tmpl.index(remove_tok), tmpl.index(preserve_tok))
+
+    def test_removal_that_empties_the_answer_abstains(self):
+        self.assertIn("자료에 답이 없다고 밝혀라", P.REVISE_PROMPT_KO)
+        self.assertIn("추측으로 빈자리를 채우지 마라", P.REVISE_PROMPT_KO)
+        self.assertIn("does not contain the answer", P.REVISE_PROMPT_EN)
+        self.assertIn("Do not fill the gap with a guess",
+                      P.REVISE_PROMPT_EN)
+
+    def test_revise_placeholders_still_intact(self):
+        for tmpl in (P.REVISE_PROMPT_KO, P.REVISE_PROMPT_EN):
+            out = tmpl.format(query="Q", draft="D", critique="C")
+            for ph in ("{query}", "{draft}", "{critique}"):
+                self.assertNotIn(ph, out)
+
+
 # ─── the loop threads it through ────────────────────────────────────
 
 
