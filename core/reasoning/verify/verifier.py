@@ -103,7 +103,12 @@ class Verifier:
             return VerifyResult(final_answer=answer, recommendation="accept")
 
         # ── security scan (heuristic) ──────────────────────────
-        sec_flags = _build_security_flags(answer, user_role)
+        # `context` reaches the scan since 2026-09-27 so an injection
+        # pattern is only an echo when the matched span is really in the
+        # evidence. Without it, citing a source ("the context is
+        # \"<title>\"") read as instruction bleed-through and a correct
+        # answer was replaced by the refusal message.
+        sec_flags = _build_security_flags(answer, user_role, context)
         self._emit(
             applied_rule="reasoning.verify.security",
             prompt=answer,
