@@ -1,38 +1,17 @@
-"""Verification engine — Cognitive Layer Phase 2 PR-6.
+"""``VerifyResult`` and the ``Verifier`` stage itself.
 
-ARCHITECTURE.md §5.7.1 verifier stage. Two sub-passes:
-
-  1. Security scan — heuristic, fast (~5 ms). Reuses
-     INSTRUCTION_INJECTION_PATTERNS + SENSITIVE_PATTERNS from
-     core/security_layer.py (single source of truth for ingest +
-     post-synth). Flags injection echo, sensitive-data leak (API key
-     / password / 주민번호), role-context privilege over-share.
-  2. Fact check — optional, LLM-based (JAMES_ENABLE_FACT_CHECK=1).
-     Asks the backend whether each claim is supported by context;
-     parses a small JSON response. Silent skip on failure.
-
-Recommendations: ``block`` (injection echo → safe refusal),
-``annotate`` (≥ 2 unsupported claims → verification note appended),
-``accept`` (default).
-
-Opt-in: JAMES_ENABLE_VERIFY=1. Fact-check doubly gated
-(JAMES_ENABLE_VERIFY + JAMES_ENABLE_FACT_CHECK) so the cheap
-heuristic can run without the LLM call.
-
-CR-E hook: PR-6 verdicts don't write — they modify the answer
-string. Future planner / tool router will introduce
-verifier-triggered writes via core/change_request.py (CLAUDE.md
-rule #3) in Phase 2 PR-7 / PR-8.
+Split out of the single-file ``core/reasoning/verify.py`` on 2026-09-26.
+The file had reached 20,008 B against CLAUDE.md rule #5's 20 KB cap —
+472 B of headroom — so it could not take another line. Same shape as the
+v0.6 ``core/reasoning/reflect/`` split; ``__init__`` re-exports the
+pre-split surface, so the move is a no-op for callers.
 """
 from __future__ import annotations
 
-import json
-import os
-import re
-import threading
 import time
 from dataclasses import dataclass, field
 from typing import List, Optional
+
 
 from core.reasoning.budget import (
     TaskBudget,
@@ -46,19 +25,24 @@ from core.reasoning.trace_schema import (
     truncate_summary,
 )
 
+# v0.4 Sprint 1 #2 — unified language detection (see core/i18n.py).
+from core.i18n import is_korean as _is_korean  # noqa: F401
 
-# [JAMES_REASONING_BACKEND wiring 2026-05-18] resolved at import time.
-from core.reasoning.backends import get_default_backend_id as _get_default_backend
-DEFAULT_BACKEND_ID = _get_default_backend()
-DEFAULT_FACT_CHECK_TIMEOUT_S = 30.0
-# gemma4:e4b consumes ~500 hidden reasoning tokens before the first
-# visible output on short structured prompts; cap below that floor
-# → deterministic empty response (model burns the budget without
-# surfacing any byte).
-DEFAULT_FACT_CHECK_MAX_TOKENS = 4096
-MIN_ANSWER_LEN_FOR_VERIFY = 30
-# An "unsupported claim" count at or above this triggers annotation.
-ANNOTATE_THRESHOLD = 2
+from core.reasoning.verify.gates import _enabled, _fact_check_enabled
+from core.reasoning.verify.parsing import _parse_fact_check
+from core.reasoning.verify.security_flags import _build_security_flags
+from core.reasoning.verify.prompts import (
+    ANNOTATE_THRESHOLD,
+    DEFAULT_BACKEND_ID,
+    DEFAULT_FACT_CHECK_MAX_TOKENS,
+    DEFAULT_FACT_CHECK_TIMEOUT_S,
+    FACT_CHECK_PROMPT_EN,
+    FACT_CHECK_PROMPT_KO,
+    MIN_ANSWER_LEN_FOR_VERIFY,
+    _BLOCK_MSG_EN,
+    _BLOCK_MSG_KO,
+)
+
 
 
 @dataclass
@@ -75,176 +59,6 @@ class VerifyResult:
     security_flags: List[str] = field(default_factory=list)
     final_answer: str = ""
     recommendation: str = "accept"
-
-
-def _enabled() -> bool:
-    """Verifier base mode (security_validator heuristic) is **default ON**
-    since v0.3.x.
-
-    The base scan is ~5ms of pure-Python pattern matching against the
-    final answer — well below the STEP 7 measurement noise floor and
-    independent of LLM availability. Keeping it always-on means that
-    a vanilla JAMES install gets injection-echo detection from day
-    one without an operator having to discover the env flag.
-
-    The legacy opt-in ``JAMES_ENABLE_VERIFY=1`` is still honoured as
-    a no-op (truthy → True), so a tightly-coupled .env from earlier
-    releases keeps working. The new opt-out is
-    ``JAMES_DISABLE_VERIFY=1`` for the rare case an operator wants
-    to measure baseline cost or silence the verifier's annotate /
-    block recommendations entirely.
-
-    Fact-checking (LLM-driven, +5-15s/query) remains opt-in — see
-    :func:`_fact_check_enabled`.
-    """
-    # α-6 S6 sector ablation — `JAMES_DISABLE_COGNITIVE_STAGES=1`
-    # forces all cognitive stages OFF regardless of per-stage flags.
-    if os.environ.get("JAMES_DISABLE_COGNITIVE_STAGES") == "1":
-        return False
-    return os.environ.get("JAMES_DISABLE_VERIFY") != "1"
-
-
-def _fact_check_enabled() -> bool:
-    """Fact-check stays opt-in via ``JAMES_ENABLE_FACT_CHECK=1``.
-
-    The chain ``_enabled() and ...`` means a hard opt-out
-    (``JAMES_DISABLE_VERIFY=1``) silences both base scan and
-    fact-check in one knob — consistent with operator intent.
-    """
-    return (
-        _enabled()
-        and os.environ.get("JAMES_ENABLE_FACT_CHECK") == "1"
-    )
-
-
-# v0.4 Sprint 1 #2 — unified language detection (see core/i18n.py).
-from core.i18n import is_korean as _is_korean  # noqa: F401
-
-
-_BLOCK_MSG_KO = (
-    "(보안 검증: 응답에서 신뢰할 수 없는 출처의 지시 흔적이 감지되어 "
-    "차단되었습니다. 질문을 다시 표현해 주세요.)"
-)
-_BLOCK_MSG_EN = (
-    "(Security verification: the response contained instruction "
-    "echoes from an untrusted source and was blocked. Please "
-    "rephrase the question.)"
-)
-
-
-FACT_CHECK_PROMPT_KO = (
-    "아래 답변의 핵심 주장들이 제공된 [내부 자료] 에 의해 직접 지지되는지 "
-    "검증하라.\n\n"
-    "[질문]\n{query}\n\n"
-    "[답변]\n{answer}\n\n"
-    "[내부 자료]\n{context}\n\n"
-    "검증 규칙:\n"
-    "- 답변 안의 명시적 주장 (사실 / 수치 / 인용) 만 대상으로 함\n"
-    "- 자료가 지지하는 주장은 통과; 자료에 없거나 모순되는 주장만 'unsupported'\n"
-    "- 일반 상식 (예: 'AI 는 기술이다') 은 자료에 없어도 통과\n\n"
-    "JSON 으로만 응답하라:\n"
-    '{{"grounded": true|false, "unsupported": ["짧은 주장 1", "..."]}}'
-)
-
-FACT_CHECK_PROMPT_EN = (
-    "Verify whether the key claims in the answer are directly "
-    "supported by the [Internal Data] below.\n\n"
-    "[Question]\n{query}\n\n"
-    "[Answer]\n{answer}\n\n"
-    "[Internal Data]\n{context}\n\n"
-    "Rules:\n"
-    "- Only check explicit claims (facts, numbers, citations) inside "
-    "the answer\n"
-    "- Claims the data supports → pass; only claims that the data "
-    "lacks or contradicts go into 'unsupported'\n"
-    "- General common knowledge (e.g., 'AI is a technology') passes "
-    "even without data support\n\n"
-    "Respond with JSON only:\n"
-    '{{"grounded": true|false, "unsupported": ["short claim 1", "..."]}}'
-)
-
-
-def _build_security_flags(answer: str, user_role: str) -> List[str]:
-    """Heuristic scan. Reuses the existing INSTRUCTION_INJECTION_PATTERNS
-    + SENSITIVE_PATTERNS so the verifier and the v0.2 security layer
-    agree on what counts as a leak.
-    """
-    flags: List[str] = []
-    if not answer:
-        return flags
-
-    try:
-        from core.security_layer import (
-            INSTRUCTION_INJECTION_PATTERNS,
-            SENSITIVE_PATTERNS,
-            BLOCKED_KEYWORDS_BY_ROLE,
-        )
-    except Exception:
-        return flags
-
-    # Injection echo — a low-trust source's instruction text bled into
-    # the answer despite ingest-time sanitization. This is the highest-
-    # severity signal; triggers "block".
-    for pattern in INSTRUCTION_INJECTION_PATTERNS:
-        try:
-            if re.search(pattern, answer, flags=re.IGNORECASE):
-                snippet = pattern[:30] + ("…" if len(pattern) > 30 else "")
-                flags.append(f"security.injection_echo:{snippet}")
-        except re.error:
-            continue
-
-    # Sensitive data leak — the output filter still does the redaction;
-    # we just flag for audit.
-    for pattern, label in SENSITIVE_PATTERNS:
-        try:
-            if re.search(pattern, answer):
-                flags.append(f"security.sensitive_leak:{label}")
-        except re.error:
-            continue
-
-    # Role-aware blocked keywords — covers the existing role gating
-    # for external / employee viewers.
-    role_blocked = BLOCKED_KEYWORDS_BY_ROLE.get(user_role, [])
-    for kw in role_blocked:
-        if kw and kw.lower() in answer.lower():
-            flags.append(f"security.role_blocked:{kw}")
-
-    return flags
-
-
-_JSON_OBJ_RE = re.compile(r'\{[^{}]*"grounded"\s*:\s*(?:true|false)[^{}]*\}', re.DOTALL | re.IGNORECASE)
-
-
-def _parse_fact_check(llm_text: str):
-    """Return ``(grounded: bool, unsupported: List[str])`` or ``None``
-    on parse failure (caller treats as "skip, accept").
-    """
-    if not llm_text:
-        return None
-    try:
-        blob = json.loads(llm_text)
-        if isinstance(blob, dict):
-            grounded = bool(blob.get("grounded", True))
-            unsupported = blob.get("unsupported", []) or []
-            if not isinstance(unsupported, list):
-                unsupported = []
-            unsupported = [str(c)[:120] for c in unsupported if c]
-            return (grounded, unsupported)
-    except (json.JSONDecodeError, ValueError):
-        pass
-    # Slower path: regex sniff for the object body
-    m = _JSON_OBJ_RE.search(llm_text)
-    if m:
-        try:
-            blob = json.loads(m.group(0))
-            grounded = bool(blob.get("grounded", True))
-            unsupported = blob.get("unsupported", []) or []
-            if isinstance(unsupported, list):
-                unsupported = [str(c)[:120] for c in unsupported if c]
-            return (grounded, unsupported)
-        except (json.JSONDecodeError, ValueError):
-            pass
-    return None
 
 
 class Verifier:
@@ -289,7 +103,12 @@ class Verifier:
             return VerifyResult(final_answer=answer, recommendation="accept")
 
         # ── security scan (heuristic) ──────────────────────────
-        sec_flags = _build_security_flags(answer, user_role)
+        # `context` reaches the scan since 2026-09-27 so an injection
+        # pattern is only an echo when the matched span is really in the
+        # evidence. Without it, citing a source ("the context is
+        # \"<title>\"") read as instruction bleed-through and a correct
+        # answer was replaced by the refusal message.
+        sec_flags = _build_security_flags(answer, user_role, context)
         self._emit(
             applied_rule="reasoning.verify.security",
             prompt=answer,
@@ -520,31 +339,3 @@ class Verifier:
         except Exception:
             pass
 
-
-# ─── module-level singleton ────────────────────────────────────────
-_SINGLETON: Optional[Verifier] = None
-_SINGLETON_LOCK = threading.Lock()
-
-
-def get_verifier() -> Verifier:
-    global _SINGLETON
-    if _SINGLETON is None:
-        with _SINGLETON_LOCK:
-            if _SINGLETON is None:
-                _SINGLETON = Verifier()
-    return _SINGLETON
-
-
-def _clear_singleton_for_tests() -> None:
-    """Test helper. Production code never calls this."""
-    global _SINGLETON
-    with _SINGLETON_LOCK:
-        _SINGLETON = None
-
-
-__all__ = [
-    "DEFAULT_BACKEND_ID",
-    "Verifier",
-    "VerifyResult",
-    "get_verifier",
-]
