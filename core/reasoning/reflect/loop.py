@@ -37,6 +37,7 @@ from core.reasoning.trace_schema import (
 )
 
 from core.reasoning.reflect.prompts import (
+    build_critique_prompt,
     DEFAULT_BACKEND_ID,
     DEFAULT_CRITIQUE_TIMEOUT_S,
     DEFAULT_REVISE_TIMEOUT_S,
@@ -119,10 +120,19 @@ class ReflectionLoop:
         query: str,
         draft: str,
         *,
+        context: str = "",
         user_role: str = "system",
         force: bool = False,
     ) -> str:
         """Run critique → (optional) revise and return the final text.
+
+        ``context`` is the evidence the draft was written from. Pass it
+        whenever the caller has it: the critique then judges facts
+        against the evidence instead of against the model's training
+        data, which is what made a correct, grounded answer read as a
+        hallucination on 2026-09-24 (see ``build_critique_prompt``).
+        Omitting it is supported and safe — the critique then withdraws
+        the factual dimension rather than guessing.
 
         Always returns SOMETHING — either the revised answer or the
         original draft. Never raises.
@@ -210,7 +220,11 @@ class ReflectionLoop:
         )
 
         # ── critique pass ────────────────────────────────────
-        critique_prompt = crit_tmpl.format(query=query, draft=draft)
+        # Routing above intentionally still keys off the bare template
+        # (`router_prompt`), so backend selection is unchanged by this
+        # call's evidence — only the critique's own prompt gains it.
+        critique_prompt = build_critique_prompt(
+            query, draft, context, is_ko=is_ko)
         critique_text, critique_err = self._call(
             backend,
             critique_prompt,

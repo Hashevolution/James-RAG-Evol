@@ -308,8 +308,13 @@ def generate_answer(
     # unchanged so the synth contract is preserved end-to-end.
     try:
         from core.reasoning.reflect import get_reflection_loop
+        # `safe_context` is the evidence this answer was written from,
+        # and it is the same string handed to the verifier a few lines
+        # below. Until 2026-09-26 reflect was the only stage here that
+        # did not receive it, so its critique judged facts against the
+        # model's training data (contrast report §4.1).
         reflected = get_reflection_loop().reflect(
-            safe_query, answer, user_role=user_role
+            safe_query, answer, context=safe_context, user_role=user_role
         )
         if reflected and reflected != answer and not any(
             reflected.startswith(p) for p in engine._LLM_ERROR_PREFIXES
