@@ -18,7 +18,11 @@ that import shape so the split is a no-op for callers.
 """
 from __future__ import annotations
 
-import os
+from core.reasoning.evidence_budget import (
+    DEFAULT_EVIDENCE_CHARS,
+    EVIDENCE_CHARS_ENV,
+    resolve_evidence_chars,
+)
 
 
 # [JAMES_REASONING_BACKEND wiring 2026-05-18] resolved at import time.
@@ -65,18 +69,16 @@ MAX_REVISE_RATIO = 2.5
 # Related: the 1000-char synth cap that caused over-abstention
 # (memory `feedback_synth_context_1000_truncation_rootcause`) is the
 # same failure shape — a prompt that cannot see its evidence.
-DEFAULT_CRITIQUE_CONTEXT_CHARS = 8000
-_CONTEXT_CHARS_ENV = "JAMES_SYNTH_CONTEXT_CHARS"
+# 2026-09-27 — moved to core/reasoning/evidence_budget.py when verify's
+# fact check turned out to have the same defect (context[:2000] against
+# synth's 8000). Two stages reading one number, not two copies of it.
+DEFAULT_CRITIQUE_CONTEXT_CHARS = DEFAULT_EVIDENCE_CHARS
+_CONTEXT_CHARS_ENV = EVIDENCE_CHARS_ENV
 
 
 def resolve_critique_context_chars() -> int:
     """Evidence characters the critique may see. See the block above."""
-    raw = os.environ.get(_CONTEXT_CHARS_ENV, "")
-    try:
-        value = int(str(raw).strip())
-    except (TypeError, ValueError):
-        return DEFAULT_CRITIQUE_CONTEXT_CHARS
-    return value if value > 0 else DEFAULT_CRITIQUE_CONTEXT_CHARS
+    return resolve_evidence_chars()
 
 
 _TRUNCATED_KO = (

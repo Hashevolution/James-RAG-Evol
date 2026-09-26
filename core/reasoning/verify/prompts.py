@@ -16,8 +16,28 @@ DEFAULT_FACT_CHECK_TIMEOUT_S = 30.0
 # → deterministic empty response (model burns the budget without
 # surfacing any byte).
 DEFAULT_FACT_CHECK_MAX_TOKENS = 4096
+
+# 2026-09-27 — this number used to be a floor on *whether to verify at
+# all*: `len(answer) < 30 → return accept`, skipping the security scan
+# and the fact check together. It was backwards. A short answer is
+# usually a bare factual claim, which is the kind that most needs
+# grounding — the 9-character "Alex Karp" (Palantir's CEO, offered as
+# Anthropic's) went out unverified because of it.
+#
+# Same number, opposite job: an answer at or under this length is
+# treated as a **single bare claim**, so one unsupported claim means the
+# whole answer is unsupported and annotation does not wait for
+# ANNOTATE_THRESHOLD.
+BARE_CLAIM_ANSWER_CHARS = 30
+
+# Retained for the pre-2026-09-27 import surface. No longer gates
+# anything — `verify()` now short-circuits only on an empty answer.
 MIN_ANSWER_LEN_FOR_VERIFY = 30
+
 # An "unsupported claim" count at or above this triggers annotation.
+# The threshold exists so one borderline claim inside a long answer
+# does not attach a warning to an otherwise sound response. It does not
+# apply to a bare claim — see BARE_CLAIM_ANSWER_CHARS.
 ANNOTATE_THRESHOLD = 2
 
 
