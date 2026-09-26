@@ -88,10 +88,21 @@ class KnownResidualTests(unittest.TestCase):
     INSTRUCTION_INJECTION_PATTERNS, the **input**-side list, over
     output. Four of its six patterns describe ordinary answer content
     (a command to run, a display operation, closing a session, citing a
-    source). Narrowing that list, or downgrading `block` to `annotate`
-    for the ambiguous patterns, is a trust-boundary decision and an
-    operator call — so this test pins the behaviour as it stands rather
-    than quietly changing it.
+    source).
+
+    ⚠️ **Correction, 2026-09-27.** #1153 described this residual as
+    something that "still blocks" in production. That overstated it.
+    The case needs **unsanitized** context, and no production path
+    supplies one: both `PolicyEngine.sanitize_for_ingestion` and
+    `PolicyEngine.quarantine` route through `extract_data_only`, which
+    replaces every one of these patterns with `[INSTRUCTION_REMOVED]`
+    before the text can reach the evidence. See
+    `tests/test_verify_echo_reachability.py` and
+    `reports/research-runs/verify-echo-reachability-20260927.md`.
+
+    What this test pins is the *function's* contract on the input it is
+    given, which is still worth locking — if the chokepoints ever stop
+    sanitizing, this is the behaviour that goes live again.
     """
 
     def test_quoting_a_runbook_still_blocks(self):
