@@ -58,6 +58,7 @@ from core.reasoning.verify.security_flags import (  # noqa: F401
 )
 from core.reasoning.verify.prompts import (  # noqa: F401
     ANNOTATE_THRESHOLD,
+    BARE_CLAIM_ANSWER_CHARS,
     DEFAULT_BACKEND_ID,
     DEFAULT_FACT_CHECK_MAX_TOKENS,
     DEFAULT_FACT_CHECK_TIMEOUT_S,
@@ -94,6 +95,7 @@ def _clear_singleton_for_tests() -> None:
 
 __all__ = [
     "ANNOTATE_THRESHOLD",
+    "BARE_CLAIM_ANSWER_CHARS",
     "DEFAULT_BACKEND_ID",
     "DEFAULT_FACT_CHECK_MAX_TOKENS",
     "DEFAULT_FACT_CHECK_TIMEOUT_S",

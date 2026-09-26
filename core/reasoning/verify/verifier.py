@@ -30,15 +30,39 @@ from core.i18n import is_korean as _is_korean  # noqa: F401
 
 from core.reasoning.verify.gates import _enabled, _fact_check_enabled
 from core.reasoning.verify.parsing import _parse_fact_check
+from core.reasoning.evidence_budget import resolve_evidence_chars
 from core.reasoning.verify.security_flags import _build_security_flags
+
+
+_TRUNC_KO = (
+    "\n\n[...이후 생략됨. 생략된 부분에 근거가 있을 수 있으므로, 여기 "
+    "보이지 않는다는 이유만으로 '근거 없음' 으로 판정하지 마라.]"
+)
+_TRUNC_EN = (
+    "\n\n[...truncated here. Support may exist in the omitted part, so "
+    "do NOT mark a claim unsupported merely because you cannot see it "
+    "above.]"
+)
+
+
+def _with_truncation_notice(text: str, limit: int, is_ko: bool) -> str:
+    """Trim to ``limit`` and say so.
+
+    Silent truncation is the trap: an absent tail reads to the model as
+    absent support, which is the defect this budget exists to prevent.
+    """
+    text = text or ""
+    if len(text) <= limit:
+        return text
+    return text[:limit] + (_TRUNC_KO if is_ko else _TRUNC_EN)
 from core.reasoning.verify.prompts import (
     ANNOTATE_THRESHOLD,
+    BARE_CLAIM_ANSWER_CHARS,
     DEFAULT_BACKEND_ID,
     DEFAULT_FACT_CHECK_MAX_TOKENS,
     DEFAULT_FACT_CHECK_TIMEOUT_S,
     FACT_CHECK_PROMPT_EN,
     FACT_CHECK_PROMPT_KO,
-    MIN_ANSWER_LEN_FOR_VERIFY,
     _BLOCK_MSG_EN,
     _BLOCK_MSG_KO,
 )
@@ -97,7 +121,11 @@ class Verifier:
         ``final_answer`` field is the string the caller should use
         (modified for ``annotate``/``block``, unchanged for ``accept``).
         """
-        if not answer or len(answer.strip()) < MIN_ANSWER_LEN_FOR_VERIFY:
+        # Only an empty answer short-circuits. The old floor here
+        # (`len(answer) < MIN_ANSWER_LEN_FOR_VERIFY`) skipped the
+        # security scan AND the fact check for exactly the answers that
+        # are a single bare claim — see BARE_CLAIM_ANSWER_CHARS.
+        if not answer or not answer.strip():
             return VerifyResult(final_answer=answer, recommendation="accept")
         if not force and not _enabled():
             return VerifyResult(final_answer=answer, recommendation="accept")
@@ -127,7 +155,8 @@ class Verifier:
             )
 
         # ── decide + format ────────────────────────────────────
-        recommendation = self._decide(sec_flags, is_grounded, unsupported)
+        recommendation = self._decide(sec_flags, is_grounded, unsupported,
+                                      answer)
         final = self._format(
             query, answer, sec_flags, is_grounded, unsupported, recommendation
         )
@@ -162,10 +191,18 @@ class Verifier:
         """
         is_ko = _is_korean(query) or _is_korean(answer)
         tmpl = FACT_CHECK_PROMPT_KO if is_ko else FACT_CHECK_PROMPT_EN
+        # Both windows used to be a hard-coded 2000 while synth wrote
+        # the draft from JAMES_SYNTH_CONTEXT_CHARS (default 8000). A
+        # claim supported only by evidence past char 2000 was annotated
+        # "not directly supported by the source data" for no reason but
+        # the window, and a claim past char 2000 of the answer was never
+        # checked at all (answer p95 reached 6133 chars on 2026-09-26).
+        # Shared budget, so the two cannot drift apart again.
+        limit = resolve_evidence_chars()
         prompt = tmpl.format(
             query=query[:300],
-            answer=answer[:2000],
-            context=context[:2000],
+            answer=_with_truncation_notice(answer, limit, is_ko),
+            context=_with_truncation_notice(context, limit, is_ko),
         )
 
         # v0.4 Sprint 3 #7c — D1 cap resolution. assess on the query
@@ -257,12 +294,23 @@ class Verifier:
         sec_flags: List[str],
         is_grounded: bool,
         unsupported: List[str],
+        answer: str = "",
     ) -> str:
         # Highest severity wins.
         if any(f.startswith("security.injection_echo") for f in sec_flags):
             return "block"
-        if not is_grounded and len(unsupported) >= ANNOTATE_THRESHOLD:
-            return "annotate"
+        if not is_grounded and unsupported:
+            # A bare claim contains one claim. Requiring two before
+            # annotating means a short answer that is entirely
+            # unsupported ships clean — which is how "Alex Karp" would
+            # have passed even once the length gate was removed.
+            # An omitted `answer` is "the caller did not say", not "the
+            # answer is empty, therefore bare" — fall back to the
+            # threshold rather than annotating on one claim.
+            stripped = (answer or "").strip()
+            bare = bool(stripped) and len(stripped) <= BARE_CLAIM_ANSWER_CHARS
+            if bare or len(unsupported) >= ANNOTATE_THRESHOLD:
+                return "annotate"
         return "accept"
 
     def _format(
