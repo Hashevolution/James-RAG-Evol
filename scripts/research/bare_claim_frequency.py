@@ -41,7 +41,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sqlite3
 import sys
 import time
@@ -114,12 +113,12 @@ def _ask(text: str, api_key: str, qid: int, bearer: Optional[str],
 # string `_decide` measured. Measuring the row directly reported every
 # annotated bare claim as a ~130-character answer and concluded the path
 # had not fired, when it had fired four times. Stripped back off here.
-_NOTE_RE = re.compile(r"\n\n\(검증: .*$|\n\n\(Verification: .*$", re.S)
-
-
-def _pre_note(final_answer: str) -> str:
-    """The answer as the verifier saw it, before its own annotation."""
-    return _NOTE_RE.sub("", final_answer or "").strip()
+#
+# The pattern itself lives in eval/qvt/annotation_axis.py since
+# 2026-09-28, where tests/test_qvt_annotation_axis.py pins it against
+# what Verifier._format actually emits. One definition, two readers —
+# the #1149 lesson about copied guards applies to copied regexes too.
+from eval.qvt.annotation_axis import strip_note as _pre_note  # noqa: E402
 
 
 def _verify_rows(since: str, until: str) -> List[Dict[str, Any]]:
