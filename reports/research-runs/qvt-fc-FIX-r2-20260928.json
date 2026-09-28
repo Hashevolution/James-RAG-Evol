@@ -1,0 +1,863 @@
+{
+  "schema": "qvt-baseline-v4",
+  "captured_at": "2026-09-28T03:09:49.638011+00:00",
+  "git_sha": "6eac521",
+  "suite": "step7",
+  "fixture_version": "step7-v7",
+  "fixture_path": "C:\\Project\\James-RAG-Evol-v010\\eval\\regression\\step7_queries.json",
+  "n_runs": 1,
+  "env": {
+    "JAMES_ENABLE_ENTITY_ANCHOR": "1",
+    "JAMES_EMBEDDING_MODEL": "BAAI/bge-m3",
+    "JAMES_ENABLE_QUERY_REWRITE": "1",
+    "JAMES_AUTO_ROUTER": "0",
+    "JAMES_ADAPTIVE_BUDGET": "0",
+    "JAMES_SCOPE_ROUTING": "0",
+    "JAMES_LLM_MODEL": "gemma4:e4b",
+    "JAMES_DISABLE_MODE_AWARE_ROUTING": "1",
+    "JAMES_SETTINGS_USE_DB": "0"
+  },
+  "resolved_models": {
+    "probe": "applied-env",
+    "error": null,
+    "retrieval": {
+      "tag": "gemma3:12b",
+      "source": "preference"
+    },
+    "chat": {
+      "tag": "gemma3:12b",
+      "source": "preference"
+    },
+    "config_default": "gemma4:e4b",
+    "config_default_source": "applied_env[JAMES_LLM_MODEL]",
+    "mode_aware_routing_disabled": true,
+    "effective": {
+      "tag": "gemma4:e4b",
+      "source": "GEMMA_MODEL (mode-aware routing disabled)"
+    }
+  },
+  "answer_health": [
+    {
+      "total": 18,
+      "failed": 0,
+      "examples": [],
+      "error": null
+    }
+  ],
+  "host_state": [
+    {
+      "run": 1,
+      "before": {
+        "captured_at": "2026-09-28T02:56:32.939561+00:00",
+        "platform": "Windows-11-10.0.26200-SP0",
+        "python": "3.14.4",
+        "gpu": {
+          "name": "NVIDIA GeForce RTX 4070 SUPER",
+          "driver_version": "596.36",
+          "memory.used": 7933.0,
+          "memory.total": 12282.0,
+          "utilization.gpu": 0.0,
+          "temperature.gpu": 52.0,
+          "clocks.sm": 2490.0,
+          "clocks.max.sm": 3120.0,
+          "power.draw": 36.81
+        },
+        "ollama": {
+          "models": [
+            {
+              "name": "gemma4:e4b",
+              "loaded_gib": 3.01,
+              "vram_gib": 3.01,
+              "gpu_fraction": 1.0
+            }
+          ]
+        },
+        "host": {
+          "cpu_percent": 2.0,
+          "cpu_count": 16,
+          "memory_percent": 77.7,
+          "top_by_rss": [
+            {
+              "pid": 27808,
+              "name": "llama-server.exe",
+              "rss_mb": 9940
+            },
+            {
+              "pid": 12916,
+              "name": "python.exe",
+              "rss_mb": 1359
+            },
+            {
+              "pid": 3468,
+              "name": "MemCompression",
+              "rss_mb": 898
+            },
+            {
+              "pid": 2984,
+              "name": "claude.exe",
+              "rss_mb": 680
+            },
+            {
+              "pid": 2972,
+              "name": "claude.exe",
+              "rss_mb": 626
+            },
+            {
+              "pid": 26228,
+              "name": "claude.exe",
+              "rss_mb": 496
+            },
+            {
+              "pid": 26084,
+              "name": "explorer.exe",
+              "rss_mb": 418
+            },
+            {
+              "pid": 17340,
+              "name": "chrome.exe",
+              "rss_mb": 388
+            }
+          ]
+        }
+      },
+      "gpu_during_bench": {
+        "started_at": "2026-09-28T02:56:34.395297+00:00",
+        "stopped_at": "2026-09-28T03:09:47.484293+00:00",
+        "interval_s": 15.0,
+        "n_samples": 53,
+        "utilization.gpu": {
+          "min": 0.0,
+          "mean": 89.6,
+          "max": 96.0
+        },
+        "clocks.sm": {
+          "min": 555.0,
+          "mean": 2696.3,
+          "max": 2760.0
+        },
+        "temperature.gpu": {
+          "min": 52.0,
+          "mean": 78.0,
+          "max": 83.0
+        },
+        "power.draw": {
+          "min": 36.7,
+          "mean": 191.9,
+          "max": 206.5
+        },
+        "memory.used": {
+          "min": 7933.0,
+          "mean": 9003.8,
+          "max": 9025.0
+        }
+      },
+      "ollama_after_bench": {
+        "models": [
+          {
+            "name": "gemma4:e4b",
+            "loaded_gib": 3.01,
+            "vram_gib": 3.01,
+            "gpu_fraction": 1.0
+          }
+        ]
+      }
+    }
+  ],
+  "aggregate": {
+    "path_coverage": {
+      "median": 0.9091,
+      "min": 0.9091,
+      "max": 0.9091,
+      "noise_band": 0.0
+    },
+    "graded_answer": {
+      "median": 0.7667,
+      "min": 0.7667,
+      "max": 0.7667,
+      "noise_band": 0.0
+    },
+    "abstention_f1": {
+      "median": 0.75,
+      "min": 0.75,
+      "max": 0.75,
+      "noise_band": 0.0
+    },
+    "n_runs": 1,
+    "token_cost": {
+      "median": 1481.45,
+      "min": 1481.45,
+      "max": 1481.45,
+      "noise_band": 0.0
+    },
+    "latency_cost": {
+      "median": 39.63,
+      "min": 39.63,
+      "max": 39.63,
+      "noise_band": 0.0
+    }
+  },
+  "aggregate_by_question_type": {},
+  "runs": [
+    {
+      "bench_output": "reports\\bench_6eac521_step7_20260928_120947.json",
+      "scores": {
+        "git_sha": "6eac521",
+        "suite": "step7",
+        "fixture_version": "step7-v7",
+        "n_queries": 20,
+        "path_coverage": {
+          "mean_recall": 0.9091,
+          "queries_with_expected_path": 11,
+          "queries_at_full_recall": 10,
+          "per_query": [
+            {
+              "id": 1,
+              "expected_count": 1,
+              "hits": 1,
+              "recall": 1.0,
+              "via_graph": 1,
+              "via_sources": 0
+            },
+            {
+              "id": 2,
+              "expected_count": 1,
+              "hits": 1,
+              "recall": 1.0,
+              "via_graph": 1,
+              "via_sources": 0
+            },
+            {
+              "id": 3,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 2,
+              "via_sources": 0
+            },
+            {
+              "id": 4,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 2,
+              "via_sources": 0
+            },
+            {
+              "id": 5,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 2,
+              "via_sources": 0
+            },
+            {
+              "id": 6,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 2,
+              "via_sources": 0
+            },
+            {
+              "id": 9,
+              "expected_count": 1,
+              "hits": 1,
+              "recall": 1.0,
+              "via_graph": 1,
+              "via_sources": 0
+            },
+            {
+              "id": 15,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 2,
+              "via_sources": 0
+            },
+            {
+              "id": 18,
+              "expected_count": 3,
+              "hits": 0,
+              "recall": 0.0,
+              "via_graph": 0,
+              "via_sources": 0
+            },
+            {
+              "id": 19,
+              "expected_count": 3,
+              "hits": 3,
+              "recall": 1.0,
+              "via_graph": 3,
+              "via_sources": 0
+            },
+            {
+              "id": 20,
+              "expected_count": 4,
+              "hits": 4,
+              "recall": 1.0,
+              "via_graph": 4,
+              "via_sources": 0
+            }
+          ]
+        },
+        "graded_answer": {
+          "mean_accuracy": 0.7667,
+          "queries_with_signals": 20,
+          "per_query": [
+            {
+              "id": 1,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "검색 증강 생성",
+                "지식 베이스",
+                "정확성"
+              ]
+            },
+            {
+              "id": 2,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "AI 기업"
+              ]
+            },
+            {
+              "id": 3,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "Anthropic",
+                "Claude"
+              ]
+            },
+            {
+              "id": 4,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "BlackRock",
+                "IBIT",
+                "운용"
+              ]
+            },
+            {
+              "id": 5,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "CodeRAG",
+                "agent",
+                "RAG"
+              ]
+            },
+            {
+              "id": 6,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "BlackRock",
+                "피델리티",
+                "비트코인 ETF"
+              ]
+            },
+            {
+              "id": 7,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "RAG",
+                "Graph RAG"
+              ]
+            },
+            {
+              "id": 8,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "BTC",
+                "비트코인"
+              ]
+            },
+            {
+              "id": 9,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "Retrieval-Augmented Generation",
+                "external knowledge",
+                "augment"
+              ]
+            },
+            {
+              "id": 10,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "OpenAI"
+              ]
+            },
+            {
+              "id": 11,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "보안"
+              ]
+            },
+            {
+              "id": 12,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 13,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "위키",
+                "목록"
+              ]
+            },
+            {
+              "id": 14,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "GPT-6",
+                "발표",
+                "OpenAI"
+              ]
+            },
+            {
+              "id": 15,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "David Soria Parra",
+                "MCP",
+                "설계자"
+              ]
+            },
+            {
+              "id": 16,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "기준 금리",
+                "인하",
+                "FRB"
+              ]
+            },
+            {
+              "id": 17,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "Anthropic",
+                "CEO"
+              ]
+            },
+            {
+              "id": 18,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "Martin Eberhard",
+                "Marc Tarpenning",
+                "테슬라"
+              ]
+            },
+            {
+              "id": 19,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "BlackRock",
+                "Fidelity",
+                "IBIT"
+              ]
+            },
+            {
+              "id": 20,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "Claude Code",
+                "Cursor",
+                "Aider"
+              ]
+            }
+          ]
+        },
+        "abstention": {
+          "f1": 0.75,
+          "precision": 1.0,
+          "recall": 0.6,
+          "tp_abstain": 3,
+          "fp_incorrect_abstention": 0,
+          "fn_hallucination": 2,
+          "tn_answer": 15,
+          "n_queries": 20,
+          "per_query": [
+            {
+              "id": 1,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 2,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 3,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 4,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 5,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 6,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 7,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 8,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 9,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 10,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 11,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 12,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 13,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 14,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 15,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 16,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 17,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 18,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 19,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 20,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            }
+          ]
+        },
+        "token_cost": {
+          "mean_chars": 1481.45,
+          "p95_chars": 4990.0,
+          "n_queries": 20,
+          "per_query": [
+            {
+              "id": 1,
+              "elapsed_s": 76.7,
+              "answer_chars": 2561
+            },
+            {
+              "id": 2,
+              "elapsed_s": 42.8,
+              "answer_chars": 161
+            },
+            {
+              "id": 3,
+              "elapsed_s": 48.0,
+              "answer_chars": 3260
+            },
+            {
+              "id": 4,
+              "elapsed_s": 67.0,
+              "answer_chars": 2019
+            },
+            {
+              "id": 5,
+              "elapsed_s": 69.4,
+              "answer_chars": 9437
+            },
+            {
+              "id": 6,
+              "elapsed_s": 31.2,
+              "answer_chars": 123
+            },
+            {
+              "id": 7,
+              "elapsed_s": 60.7,
+              "answer_chars": 4990
+            },
+            {
+              "id": 8,
+              "elapsed_s": 67.3,
+              "answer_chars": 1829
+            },
+            {
+              "id": 9,
+              "elapsed_s": 27.3,
+              "answer_chars": 218
+            },
+            {
+              "id": 10,
+              "elapsed_s": 59.4,
+              "answer_chars": 2132
+            },
+            {
+              "id": 11,
+              "elapsed_s": 0.0,
+              "answer_chars": 26
+            },
+            {
+              "id": 12,
+              "elapsed_s": 0.0,
+              "answer_chars": 26
+            },
+            {
+              "id": 13,
+              "elapsed_s": 57.4,
+              "answer_chars": 1818
+            },
+            {
+              "id": 14,
+              "elapsed_s": 21.1,
+              "answer_chars": 79
+            },
+            {
+              "id": 15,
+              "elapsed_s": 23.4,
+              "answer_chars": 156
+            },
+            {
+              "id": 16,
+              "elapsed_s": 25.7,
+              "answer_chars": 95
+            },
+            {
+              "id": 17,
+              "elapsed_s": 23.6,
+              "answer_chars": 107
+            },
+            {
+              "id": 18,
+              "elapsed_s": 22.5,
+              "answer_chars": 122
+            },
+            {
+              "id": 19,
+              "elapsed_s": 36.1,
+              "answer_chars": 289
+            },
+            {
+              "id": 20,
+              "elapsed_s": 33.0,
+              "answer_chars": 181
+            }
+          ]
+        },
+        "latency_cost": {
+          "mean_s": 39.63,
+          "p95_s": 69.4,
+          "n_queries": 20,
+          "per_query": [
+            {
+              "id": 1,
+              "elapsed_s": 76.7,
+              "answer_chars": 2561
+            },
+            {
+              "id": 2,
+              "elapsed_s": 42.8,
+              "answer_chars": 161
+            },
+            {
+              "id": 3,
+              "elapsed_s": 48.0,
+              "answer_chars": 3260
+            },
+            {
+              "id": 4,
+              "elapsed_s": 67.0,
+              "answer_chars": 2019
+            },
+            {
+              "id": 5,
+              "elapsed_s": 69.4,
+              "answer_chars": 9437
+            },
+            {
+              "id": 6,
+              "elapsed_s": 31.2,
+              "answer_chars": 123
+            },
+            {
+              "id": 7,
+              "elapsed_s": 60.7,
+              "answer_chars": 4990
+            },
+            {
+              "id": 8,
+              "elapsed_s": 67.3,
+              "answer_chars": 1829
+            },
+            {
+              "id": 9,
+              "elapsed_s": 27.3,
+              "answer_chars": 218
+            },
+            {
+              "id": 10,
+              "elapsed_s": 59.4,
+              "answer_chars": 2132
+            },
+            {
+              "id": 11,
+              "elapsed_s": 0.0,
+              "answer_chars": 26
+            },
+            {
+              "id": 12,
+              "elapsed_s": 0.0,
+              "answer_chars": 26
+            },
+            {
+              "id": 13,
+              "elapsed_s": 57.4,
+              "answer_chars": 1818
+            },
+            {
+              "id": 14,
+              "elapsed_s": 21.1,
+              "answer_chars": 79
+            },
+            {
+              "id": 15,
+              "elapsed_s": 23.4,
+              "answer_chars": 156
+            },
+            {
+              "id": 16,
+              "elapsed_s": 25.7,
+              "answer_chars": 95
+            },
+            {
+              "id": 17,
+              "elapsed_s": 23.6,
+              "answer_chars": 107
+            },
+            {
+              "id": 18,
+              "elapsed_s": 22.5,
+              "answer_chars": 122
+            },
+            {
+              "id": 19,
+              "elapsed_s": 36.1,
+              "answer_chars": 289
+            },
+            {
+              "id": 20,
+              "elapsed_s": 33.0,
+              "answer_chars": 181
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
