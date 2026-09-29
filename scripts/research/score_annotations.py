@@ -82,6 +82,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--window", action="append", required=True,
                     help="LABEL=SINCE,UNTIL (repeatable; same label aggregates)")
+    ap.add_argument("--fixture", type=str, default=str(FIXTURE),
+                    help="fixture the windows' questions are joined to "
+                         "(default: step7). Use the workspace fixture for "
+                         "external suites, e.g. workspaces/hotpot_eval/eval/"
+                         "multihop_rag_queries.json — joined against the "
+                         "wrong fixture every question is 'unmatched' and "
+                         "the run exits non-zero rather than scoring nothing")
     ap.add_argument("--graded", action="store_true",
                     help="graded mode: also score answered truth=present "
                          "queries, treating graded==1.0 as right. Has a "
@@ -90,7 +97,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                     help="emit per-label axis dicts as JSON")
     args = ap.parse_args(argv)
 
-    fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    fixture = json.loads(Path(args.fixture).read_text(encoding="utf-8"))
     groups: "OrderedDict[str, List[Dict[str, Any]]]" = OrderedDict()
     problems: List[str] = []
     for spec in args.window:
@@ -120,7 +127,13 @@ def main(argv: Optional[List[str]] = None) -> int:
                          ensure_ascii=False, indent=2))
     for p in problems:
         print(f"[warn] {p}", file=sys.stderr)
-    return 1 if any("0 episodes" in p for p in problems) else 0
+    # An all-unmatched window is the wrong-fixture case: episodes exist
+    # but none joined. Same rule as an empty window — refuse, don't score.
+    unjoined = [p for p in problems if "unmatched" in p]
+    if any("0 episodes" in p for p in problems) or (
+            unjoined and not any(groups.values())):
+        return 1
+    return 0
 
 
 if __name__ == "__main__":

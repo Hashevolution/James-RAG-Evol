@@ -1,0 +1,3420 @@
+{
+  "schema": "qvt-baseline-v4",
+  "captured_at": "2026-09-29T02:10:58.431270+00:00",
+  "git_sha": "2650f3c",
+  "suite": "multihop_rag",
+  "fixture_version": "multihop-rag-v1",
+  "fixture_path": "C:\\Project\\James-RAG-Evol-v010\\workspaces\\hotpot_eval\\eval\\multihop_rag_queries.json",
+  "n_runs": 1,
+  "env": {
+    "JAMES_ENABLE_ENTITY_ANCHOR": "1",
+    "JAMES_EMBEDDING_MODEL": "BAAI/bge-m3",
+    "JAMES_ENABLE_QUERY_REWRITE": "1",
+    "JAMES_AUTO_ROUTER": "0",
+    "JAMES_ADAPTIVE_BUDGET": "0",
+    "JAMES_SCOPE_ROUTING": "0",
+    "JAMES_LLM_MODEL": "gemma4:e4b",
+    "JAMES_DISABLE_MODE_AWARE_ROUTING": "1",
+    "JAMES_SETTINGS_USE_DB": "0"
+  },
+  "resolved_models": {
+    "probe": "applied-env",
+    "error": null,
+    "retrieval": {
+      "tag": "gemma3:12b",
+      "source": "preference"
+    },
+    "chat": {
+      "tag": "gemma3:12b",
+      "source": "preference"
+    },
+    "config_default": "gemma4:e4b",
+    "config_default_source": "applied_env[JAMES_LLM_MODEL]",
+    "mode_aware_routing_disabled": true,
+    "effective": {
+      "tag": "gemma4:e4b",
+      "source": "GEMMA_MODEL (mode-aware routing disabled)"
+    }
+  },
+  "answer_health": [
+    {
+      "total": 100,
+      "failed": 0,
+      "examples": [],
+      "error": null
+    }
+  ],
+  "host_state": [
+    {
+      "run": 1,
+      "before": {
+        "captured_at": "2026-09-29T01:03:29.375535+00:00",
+        "platform": "Windows-11-10.0.26200-SP0",
+        "python": "3.14.4",
+        "gpu": {
+          "name": "NVIDIA GeForce RTX 4070 SUPER",
+          "driver_version": "596.36",
+          "memory.used": 7881.0,
+          "memory.total": 12282.0,
+          "utilization.gpu": 0.0,
+          "temperature.gpu": 51.0,
+          "clocks.sm": 2490.0,
+          "clocks.max.sm": 3120.0,
+          "power.draw": 36.56
+        },
+        "ollama": {
+          "models": [
+            {
+              "name": "gemma4:e4b",
+              "loaded_gib": 3.01,
+              "vram_gib": 3.01,
+              "gpu_fraction": 1.0
+            }
+          ]
+        },
+        "host": {
+          "cpu_percent": 4.3,
+          "cpu_count": 16,
+          "memory_percent": 80.6,
+          "top_by_rss": [
+            {
+              "pid": 25384,
+              "name": "llama-server.exe",
+              "rss_mb": 10049
+            },
+            {
+              "pid": 30928,
+              "name": "python.exe",
+              "rss_mb": 1360
+            },
+            {
+              "pid": 3468,
+              "name": "MemCompression",
+              "rss_mb": 849
+            },
+            {
+              "pid": 2972,
+              "name": "claude.exe",
+              "rss_mb": 832
+            },
+            {
+              "pid": 2984,
+              "name": "claude.exe",
+              "rss_mb": 684
+            },
+            {
+              "pid": 17340,
+              "name": "chrome.exe",
+              "rss_mb": 539
+            },
+            {
+              "pid": 26084,
+              "name": "explorer.exe",
+              "rss_mb": 456
+            },
+            {
+              "pid": 26228,
+              "name": "claude.exe",
+              "rss_mb": 403
+            }
+          ]
+        }
+      },
+      "gpu_during_bench": {
+        "started_at": "2026-09-29T01:03:30.915511+00:00",
+        "stopped_at": "2026-09-29T02:10:56.257693+00:00",
+        "interval_s": 15.0,
+        "n_samples": 269,
+        "utilization.gpu": {
+          "min": 0.0,
+          "mean": 85.7,
+          "max": 100.0
+        },
+        "clocks.sm": {
+          "min": 255.0,
+          "mean": 2634.0,
+          "max": 2775.0
+        },
+        "temperature.gpu": {
+          "min": 50.0,
+          "mean": 76.3,
+          "max": 82.0
+        },
+        "power.draw": {
+          "min": 30.0,
+          "mean": 185.6,
+          "max": 208.7
+        },
+        "memory.used": {
+          "min": 7881.0,
+          "mean": 8334.0,
+          "max": 8371.0
+        }
+      },
+      "ollama_after_bench": {
+        "models": [
+          {
+            "name": "gemma4:e4b",
+            "loaded_gib": 3.01,
+            "vram_gib": 3.01,
+            "gpu_fraction": 1.0
+          }
+        ]
+      }
+    }
+  ],
+  "aggregate": {
+    "path_coverage": {
+      "median": 0.4,
+      "min": 0.4,
+      "max": 0.4,
+      "noise_band": 0.0
+    },
+    "graded_answer": {
+      "median": 0.2633,
+      "min": 0.2633,
+      "max": 0.2633,
+      "noise_band": 0.0
+    },
+    "abstention_f1": {
+      "median": 0.3256,
+      "min": 0.3256,
+      "max": 0.3256,
+      "noise_band": 0.0
+    },
+    "n_runs": 1,
+    "token_cost": {
+      "median": 1522.28,
+      "min": 1522.28,
+      "max": 1522.28,
+      "noise_band": 0.0
+    },
+    "latency_cost": {
+      "median": 40.449,
+      "min": 40.449,
+      "max": 40.449,
+      "noise_band": 0.0
+    }
+  },
+  "aggregate_by_question_type": {
+    "comparison_query": {
+      "path_coverage": {
+        "median": 0.4333,
+        "min": 0.4333,
+        "max": 0.4333,
+        "noise_band": 0.0
+      },
+      "graded_answer": {
+        "median": 0.28,
+        "min": 0.28,
+        "max": 0.28,
+        "noise_band": 0.0
+      },
+      "abstention_f1": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "noise_band": 0.0
+      },
+      "n_runs": 1,
+      "token_cost": {
+        "median": 631.8,
+        "min": 631.8,
+        "max": 631.8,
+        "noise_band": 0.0
+      },
+      "latency_cost": {
+        "median": 35.448,
+        "min": 35.448,
+        "max": 35.448,
+        "noise_band": 0.0
+      }
+    },
+    "inference_query": {
+      "path_coverage": {
+        "median": 0.38,
+        "min": 0.38,
+        "max": 0.38,
+        "noise_band": 0.0
+      },
+      "graded_answer": {
+        "median": 0.2933,
+        "min": 0.2933,
+        "max": 0.2933,
+        "noise_band": 0.0
+      },
+      "abstention_f1": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "noise_band": 0.0
+      },
+      "n_runs": 1,
+      "token_cost": {
+        "median": 1365.68,
+        "min": 1365.68,
+        "max": 1365.68,
+        "noise_band": 0.0
+      },
+      "latency_cost": {
+        "median": 40.192,
+        "min": 40.192,
+        "max": 40.192,
+        "noise_band": 0.0
+      }
+    },
+    "null_query": {
+      "path_coverage": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "noise_band": 0.0
+      },
+      "graded_answer": {
+        "median": 0.1733,
+        "min": 0.1733,
+        "max": 0.1733,
+        "noise_band": 0.0
+      },
+      "abstention_f1": {
+        "median": 0.7179,
+        "min": 0.7179,
+        "max": 0.7179,
+        "noise_band": 0.0
+      },
+      "n_runs": 1,
+      "token_cost": {
+        "median": 2363.96,
+        "min": 2363.96,
+        "max": 2363.96,
+        "noise_band": 0.0
+      },
+      "latency_cost": {
+        "median": 43.384,
+        "min": 43.384,
+        "max": 43.384,
+        "noise_band": 0.0
+      }
+    },
+    "temporal_query": {
+      "path_coverage": {
+        "median": 0.3867,
+        "min": 0.3867,
+        "max": 0.3867,
+        "noise_band": 0.0
+      },
+      "graded_answer": {
+        "median": 0.3067,
+        "min": 0.3067,
+        "max": 0.3067,
+        "noise_band": 0.0
+      },
+      "abstention_f1": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "noise_band": 0.0
+      },
+      "n_runs": 1,
+      "token_cost": {
+        "median": 1727.68,
+        "min": 1727.68,
+        "max": 1727.68,
+        "noise_band": 0.0
+      },
+      "latency_cost": {
+        "median": 42.772,
+        "min": 42.772,
+        "max": 42.772,
+        "noise_band": 0.0
+      }
+    }
+  },
+  "runs": [
+    {
+      "bench_output": "reports\\bench_2650f3c_multihop_rag_20260929_111056.json",
+      "scores": {
+        "git_sha": "2650f3c",
+        "suite": "multihop_rag",
+        "fixture_version": "multihop-rag-v1",
+        "n_queries": 100,
+        "path_coverage": {
+          "mean_recall": 0.4,
+          "queries_with_expected_path": 75,
+          "queries_at_full_recall": 6,
+          "per_query": [
+            {
+              "id": 1,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 2,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 3,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 0,
+              "via_sources": 2
+            },
+            {
+              "id": 4,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 5,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 6,
+              "expected_count": 4,
+              "hits": 1,
+              "recall": 0.25,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 7,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 8,
+              "expected_count": 4,
+              "hits": 1,
+              "recall": 0.25,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 9,
+              "expected_count": 4,
+              "hits": 1,
+              "recall": 0.25,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 10,
+              "expected_count": 3,
+              "hits": 2,
+              "recall": 0.6667,
+              "via_graph": 0,
+              "via_sources": 2
+            },
+            {
+              "id": 11,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 12,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 13,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 14,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 15,
+              "expected_count": 3,
+              "hits": 2,
+              "recall": 0.6667,
+              "via_graph": 0,
+              "via_sources": 2
+            },
+            {
+              "id": 16,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 17,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 18,
+              "expected_count": 4,
+              "hits": 2,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 2
+            },
+            {
+              "id": 19,
+              "expected_count": 3,
+              "hits": 0,
+              "recall": 0.0,
+              "via_graph": 0,
+              "via_sources": 0
+            },
+            {
+              "id": 20,
+              "expected_count": 4,
+              "hits": 2,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 2
+            },
+            {
+              "id": 21,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 22,
+              "expected_count": 4,
+              "hits": 1,
+              "recall": 0.25,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 23,
+              "expected_count": 2,
+              "hits": 0,
+              "recall": 0.0,
+              "via_graph": 0,
+              "via_sources": 0
+            },
+            {
+              "id": 24,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 25,
+              "expected_count": 4,
+              "hits": 0,
+              "recall": 0.0,
+              "via_graph": 0,
+              "via_sources": 0
+            },
+            {
+              "id": 26,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 27,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 28,
+              "expected_count": 2,
+              "hits": 0,
+              "recall": 0.0,
+              "via_graph": 0,
+              "via_sources": 0
+            },
+            {
+              "id": 29,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 30,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 0,
+              "via_sources": 2
+            },
+            {
+              "id": 31,
+              "expected_count": 2,
+              "hits": 0,
+              "recall": 0.0,
+              "via_graph": 0,
+              "via_sources": 0
+            },
+            {
+              "id": 32,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 33,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 34,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 35,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 36,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 37,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 38,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 39,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 40,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 41,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 42,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 0,
+              "via_sources": 2
+            },
+            {
+              "id": 43,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 44,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 45,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 46,
+              "expected_count": 2,
+              "hits": 0,
+              "recall": 0.0,
+              "via_graph": 0,
+              "via_sources": 0
+            },
+            {
+              "id": 47,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 0,
+              "via_sources": 2
+            },
+            {
+              "id": 48,
+              "expected_count": 2,
+              "hits": 0,
+              "recall": 0.0,
+              "via_graph": 0,
+              "via_sources": 0
+            },
+            {
+              "id": 49,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 50,
+              "expected_count": 3,
+              "hits": 0,
+              "recall": 0.0,
+              "via_graph": 0,
+              "via_sources": 0
+            },
+            {
+              "id": 76,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 0,
+              "via_sources": 2
+            },
+            {
+              "id": 77,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 78,
+              "expected_count": 3,
+              "hits": 0,
+              "recall": 0.0,
+              "via_graph": 0,
+              "via_sources": 0
+            },
+            {
+              "id": 79,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 80,
+              "expected_count": 3,
+              "hits": 0,
+              "recall": 0.0,
+              "via_graph": 0,
+              "via_sources": 0
+            },
+            {
+              "id": 81,
+              "expected_count": 3,
+              "hits": 0,
+              "recall": 0.0,
+              "via_graph": 0,
+              "via_sources": 0
+            },
+            {
+              "id": 82,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 83,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 84,
+              "expected_count": 3,
+              "hits": 2,
+              "recall": 0.6667,
+              "via_graph": 0,
+              "via_sources": 2
+            },
+            {
+              "id": 85,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 86,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 87,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 88,
+              "expected_count": 3,
+              "hits": 0,
+              "recall": 0.0,
+              "via_graph": 0,
+              "via_sources": 0
+            },
+            {
+              "id": 89,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 90,
+              "expected_count": 2,
+              "hits": 2,
+              "recall": 1.0,
+              "via_graph": 0,
+              "via_sources": 2
+            },
+            {
+              "id": 91,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 92,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 93,
+              "expected_count": 2,
+              "hits": 0,
+              "recall": 0.0,
+              "via_graph": 0,
+              "via_sources": 0
+            },
+            {
+              "id": 94,
+              "expected_count": 2,
+              "hits": 0,
+              "recall": 0.0,
+              "via_graph": 0,
+              "via_sources": 0
+            },
+            {
+              "id": 95,
+              "expected_count": 3,
+              "hits": 2,
+              "recall": 0.6667,
+              "via_graph": 0,
+              "via_sources": 2
+            },
+            {
+              "id": 96,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 97,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 98,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 99,
+              "expected_count": 2,
+              "hits": 1,
+              "recall": 0.5,
+              "via_graph": 0,
+              "via_sources": 1
+            },
+            {
+              "id": 100,
+              "expected_count": 3,
+              "hits": 1,
+              "recall": 0.3333,
+              "via_graph": 0,
+              "via_sources": 1
+            }
+          ]
+        },
+        "graded_answer": {
+          "mean_accuracy": 0.2633,
+          "queries_with_signals": 100,
+          "per_query": [
+            {
+              "id": 1,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "Sam Bankman-Fried",
+                "Sam"
+              ]
+            },
+            {
+              "id": 2,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 3,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "Sam Altman",
+                "Altman"
+              ]
+            },
+            {
+              "id": 4,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 5,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "Sam Bankman-Fried",
+                "Bankman-Fried"
+              ]
+            },
+            {
+              "id": 6,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "OpenAI",
+                "AI"
+              ]
+            },
+            {
+              "id": 7,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 8,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 9,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Amazon"
+              ]
+            },
+            {
+              "id": 10,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "Valve",
+                "Steam"
+              ]
+            },
+            {
+              "id": 11,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Google"
+              ]
+            },
+            {
+              "id": 12,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 13,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Uber"
+              ]
+            },
+            {
+              "id": 14,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 15,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 16,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 17,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 18,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "Sam Bankman-Fried",
+                "Sam",
+                "Bankman-Fried"
+              ]
+            },
+            {
+              "id": 19,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "Meta",
+                "GDPR"
+              ]
+            },
+            {
+              "id": 20,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 21,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "Google",
+                "Search"
+              ]
+            },
+            {
+              "id": 22,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Apple"
+              ]
+            },
+            {
+              "id": 23,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 24,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 25,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Amazon"
+              ]
+            },
+            {
+              "id": 26,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 27,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 28,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 29,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 30,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 31,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "no"
+              ]
+            },
+            {
+              "id": 32,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 33,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "no",
+                "Sales"
+              ]
+            },
+            {
+              "id": 34,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 35,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 36,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "Caesars",
+                "New"
+              ]
+            },
+            {
+              "id": 37,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 38,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Altman"
+              ]
+            },
+            {
+              "id": 39,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "Yes",
+                "Google"
+              ]
+            },
+            {
+              "id": 40,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "no"
+              ]
+            },
+            {
+              "id": 41,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "no",
+                "Mattel",
+                "However"
+              ]
+            },
+            {
+              "id": 42,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "United"
+              ]
+            },
+            {
+              "id": 43,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Israel"
+              ]
+            },
+            {
+              "id": 44,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Cowboys"
+              ]
+            },
+            {
+              "id": 45,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Apple"
+              ]
+            },
+            {
+              "id": 46,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "no",
+                "Astros"
+              ]
+            },
+            {
+              "id": 47,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 48,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Kirk"
+              ]
+            },
+            {
+              "id": 49,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 50,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "Yes",
+                "Week"
+              ]
+            },
+            {
+              "id": 51,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "cannot"
+              ]
+            },
+            {
+              "id": 52,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Insufficient"
+              ]
+            },
+            {
+              "id": 53,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 54,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "cannot"
+              ]
+            },
+            {
+              "id": 55,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "cannot"
+              ]
+            },
+            {
+              "id": 56,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "cannot"
+              ]
+            },
+            {
+              "id": 57,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 58,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 59,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 60,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 61,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "cannot"
+              ]
+            },
+            {
+              "id": 62,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 63,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 64,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 65,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "cannot"
+              ]
+            },
+            {
+              "id": 66,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "cannot"
+              ]
+            },
+            {
+              "id": 67,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Insufficient"
+              ]
+            },
+            {
+              "id": 68,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "cannot"
+              ]
+            },
+            {
+              "id": 69,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 70,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 71,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 72,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "cannot"
+              ]
+            },
+            {
+              "id": 73,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "cannot"
+              ]
+            },
+            {
+              "id": 74,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 75,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "cannot"
+              ]
+            },
+            {
+              "id": 76,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "Yes",
+                "Petersen"
+              ]
+            },
+            {
+              "id": 77,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "no"
+              ]
+            },
+            {
+              "id": 78,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "no"
+              ]
+            },
+            {
+              "id": 79,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 80,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 81,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "no"
+              ]
+            },
+            {
+              "id": 82,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "no"
+              ]
+            },
+            {
+              "id": 83,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "no"
+              ]
+            },
+            {
+              "id": 84,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Google"
+              ]
+            },
+            {
+              "id": 85,
+              "hits": 3,
+              "total": 3,
+              "score": 1.0,
+              "matched_signals": [
+                "no",
+                "All",
+                "Argentina"
+              ]
+            },
+            {
+              "id": 86,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 87,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "Epic",
+                "Google"
+              ]
+            },
+            {
+              "id": 88,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Google"
+              ]
+            },
+            {
+              "id": 89,
+              "hits": 2,
+              "total": 3,
+              "score": 0.6667,
+              "matched_signals": [
+                "no",
+                "New"
+              ]
+            },
+            {
+              "id": 90,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 91,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 92,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "New"
+              ]
+            },
+            {
+              "id": 93,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 94,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "no"
+              ]
+            },
+            {
+              "id": 95,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Google"
+              ]
+            },
+            {
+              "id": 96,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Yes"
+              ]
+            },
+            {
+              "id": 97,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Because"
+              ]
+            },
+            {
+              "id": 98,
+              "hits": 0,
+              "total": 3,
+              "score": 0.0,
+              "matched_signals": []
+            },
+            {
+              "id": 99,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "no"
+              ]
+            },
+            {
+              "id": 100,
+              "hits": 1,
+              "total": 3,
+              "score": 0.3333,
+              "matched_signals": [
+                "Google"
+              ]
+            }
+          ]
+        },
+        "abstention": {
+          "f1": 0.3256,
+          "precision": 0.2295,
+          "recall": 0.56,
+          "tp_abstain": 14,
+          "fp_incorrect_abstention": 47,
+          "fn_hallucination": 11,
+          "tn_answer": 28,
+          "n_queries": 100,
+          "per_query": [
+            {
+              "id": 1,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 2,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 3,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 4,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 5,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 6,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 7,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 8,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 9,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 10,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 11,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 12,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 13,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 14,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 15,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 16,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 17,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 18,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 19,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 20,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 21,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 22,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 23,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 24,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 25,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 26,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 27,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 28,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 29,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 30,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 31,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 32,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 33,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 34,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 35,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 36,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 37,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 38,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 39,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 40,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 41,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 42,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 43,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 44,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 45,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 46,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 47,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 48,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 49,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 50,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 51,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 52,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 53,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 54,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 55,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 56,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 57,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 58,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 59,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 60,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 61,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 62,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 63,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 64,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 65,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 66,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 67,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 68,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 69,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 70,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 71,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 72,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 73,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 74,
+              "truth": "absent",
+              "abstained": false,
+              "classification": "fn_hallucination"
+            },
+            {
+              "id": 75,
+              "truth": "absent",
+              "abstained": true,
+              "classification": "tp_abstain"
+            },
+            {
+              "id": 76,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 77,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 78,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 79,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 80,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 81,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 82,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 83,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 84,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 85,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 86,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 87,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 88,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 89,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 90,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 91,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 92,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 93,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 94,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 95,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 96,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 97,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 98,
+              "truth": "present",
+              "abstained": true,
+              "classification": "fp_incorrect_abstention"
+            },
+            {
+              "id": 99,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            },
+            {
+              "id": 100,
+              "truth": "present",
+              "abstained": false,
+              "classification": "tn_answer"
+            }
+          ]
+        },
+        "token_cost": {
+          "mean_chars": 1522.28,
+          "p95_chars": 3651.0,
+          "n_queries": 100,
+          "per_query": [
+            {
+              "id": 1,
+              "elapsed_s": 44.8,
+              "answer_chars": 200
+            },
+            {
+              "id": 2,
+              "elapsed_s": 35.2,
+              "answer_chars": 32
+            },
+            {
+              "id": 3,
+              "elapsed_s": 25.4,
+              "answer_chars": 490
+            },
+            {
+              "id": 4,
+              "elapsed_s": 37.2,
+              "answer_chars": 32
+            },
+            {
+              "id": 5,
+              "elapsed_s": 29.1,
+              "answer_chars": 269
+            },
+            {
+              "id": 6,
+              "elapsed_s": 25.0,
+              "answer_chars": 305
+            },
+            {
+              "id": 7,
+              "elapsed_s": 51.7,
+              "answer_chars": 3636
+            },
+            {
+              "id": 8,
+              "elapsed_s": 34.3,
+              "answer_chars": 32
+            },
+            {
+              "id": 9,
+              "elapsed_s": 57.7,
+              "answer_chars": 3535
+            },
+            {
+              "id": 10,
+              "elapsed_s": 43.8,
+              "answer_chars": 1710
+            },
+            {
+              "id": 11,
+              "elapsed_s": 37.0,
+              "answer_chars": 294
+            },
+            {
+              "id": 12,
+              "elapsed_s": 30.4,
+              "answer_chars": 32
+            },
+            {
+              "id": 13,
+              "elapsed_s": 50.6,
+              "answer_chars": 2574
+            },
+            {
+              "id": 14,
+              "elapsed_s": 53.7,
+              "answer_chars": 2928
+            },
+            {
+              "id": 15,
+              "elapsed_s": 32.9,
+              "answer_chars": 240
+            },
+            {
+              "id": 16,
+              "elapsed_s": 34.6,
+              "answer_chars": 32
+            },
+            {
+              "id": 17,
+              "elapsed_s": 49.6,
+              "answer_chars": 1980
+            },
+            {
+              "id": 18,
+              "elapsed_s": 50.6,
+              "answer_chars": 2941
+            },
+            {
+              "id": 19,
+              "elapsed_s": 47.7,
+              "answer_chars": 2885
+            },
+            {
+              "id": 20,
+              "elapsed_s": 28.5,
+              "answer_chars": 240
+            },
+            {
+              "id": 21,
+              "elapsed_s": 49.2,
+              "answer_chars": 2683
+            },
+            {
+              "id": 22,
+              "elapsed_s": 49.5,
+              "answer_chars": 3786
+            },
+            {
+              "id": 23,
+              "elapsed_s": 26.7,
+              "answer_chars": 295
+            },
+            {
+              "id": 24,
+              "elapsed_s": 27.0,
+              "answer_chars": 32
+            },
+            {
+              "id": 25,
+              "elapsed_s": 52.6,
+              "answer_chars": 2959
+            },
+            {
+              "id": 26,
+              "elapsed_s": 29.0,
+              "answer_chars": 238
+            },
+            {
+              "id": 27,
+              "elapsed_s": 26.7,
+              "answer_chars": 32
+            },
+            {
+              "id": 28,
+              "elapsed_s": 29.6,
+              "answer_chars": 408
+            },
+            {
+              "id": 29,
+              "elapsed_s": 31.1,
+              "answer_chars": 247
+            },
+            {
+              "id": 30,
+              "elapsed_s": 30.1,
+              "answer_chars": 32
+            },
+            {
+              "id": 31,
+              "elapsed_s": 41.0,
+              "answer_chars": 2185
+            },
+            {
+              "id": 32,
+              "elapsed_s": 84.4,
+              "answer_chars": 32
+            },
+            {
+              "id": 33,
+              "elapsed_s": 24.7,
+              "answer_chars": 309
+            },
+            {
+              "id": 34,
+              "elapsed_s": 30.6,
+              "answer_chars": 208
+            },
+            {
+              "id": 35,
+              "elapsed_s": 39.0,
+              "answer_chars": 693
+            },
+            {
+              "id": 36,
+              "elapsed_s": 35.2,
+              "answer_chars": 240
+            },
+            {
+              "id": 37,
+              "elapsed_s": 27.0,
+              "answer_chars": 32
+            },
+            {
+              "id": 38,
+              "elapsed_s": 33.0,
+              "answer_chars": 255
+            },
+            {
+              "id": 39,
+              "elapsed_s": 32.6,
+              "answer_chars": 400
+            },
+            {
+              "id": 40,
+              "elapsed_s": 33.9,
+              "answer_chars": 406
+            },
+            {
+              "id": 41,
+              "elapsed_s": 46.5,
+              "answer_chars": 2946
+            },
+            {
+              "id": 42,
+              "elapsed_s": 32.4,
+              "answer_chars": 336
+            },
+            {
+              "id": 43,
+              "elapsed_s": 23.7,
+              "answer_chars": 255
+            },
+            {
+              "id": 44,
+              "elapsed_s": 32.6,
+              "answer_chars": 301
+            },
+            {
+              "id": 45,
+              "elapsed_s": 30.6,
+              "answer_chars": 240
+            },
+            {
+              "id": 46,
+              "elapsed_s": 44.8,
+              "answer_chars": 2585
+            },
+            {
+              "id": 47,
+              "elapsed_s": 37.0,
+              "answer_chars": 32
+            },
+            {
+              "id": 48,
+              "elapsed_s": 33.2,
+              "answer_chars": 426
+            },
+            {
+              "id": 49,
+              "elapsed_s": 47.9,
+              "answer_chars": 2660
+            },
+            {
+              "id": 50,
+              "elapsed_s": 29.6,
+              "answer_chars": 297
+            },
+            {
+              "id": 51,
+              "elapsed_s": 44.7,
+              "answer_chars": 2242
+            },
+            {
+              "id": 52,
+              "elapsed_s": 23.9,
+              "answer_chars": 32
+            },
+            {
+              "id": 53,
+              "elapsed_s": 53.4,
+              "answer_chars": 3217
+            },
+            {
+              "id": 54,
+              "elapsed_s": 45.8,
+              "answer_chars": 2226
+            },
+            {
+              "id": 55,
+              "elapsed_s": 55.7,
+              "answer_chars": 3275
+            },
+            {
+              "id": 56,
+              "elapsed_s": 44.5,
+              "answer_chars": 1677
+            },
+            {
+              "id": 57,
+              "elapsed_s": 44.0,
+              "answer_chars": 2864
+            },
+            {
+              "id": 58,
+              "elapsed_s": 49.0,
+              "answer_chars": 3142
+            },
+            {
+              "id": 59,
+              "elapsed_s": 44.2,
+              "answer_chars": 2397
+            },
+            {
+              "id": 60,
+              "elapsed_s": 40.7,
+              "answer_chars": 2790
+            },
+            {
+              "id": 61,
+              "elapsed_s": 46.8,
+              "answer_chars": 2717
+            },
+            {
+              "id": 62,
+              "elapsed_s": 50.1,
+              "answer_chars": 2838
+            },
+            {
+              "id": 63,
+              "elapsed_s": 39.5,
+              "answer_chars": 2120
+            },
+            {
+              "id": 64,
+              "elapsed_s": 40.8,
+              "answer_chars": 1749
+            },
+            {
+              "id": 65,
+              "elapsed_s": 45.2,
+              "answer_chars": 2237
+            },
+            {
+              "id": 66,
+              "elapsed_s": 40.7,
+              "answer_chars": 2241
+            },
+            {
+              "id": 67,
+              "elapsed_s": 25.8,
+              "answer_chars": 32
+            },
+            {
+              "id": 68,
+              "elapsed_s": 41.4,
+              "answer_chars": 2613
+            },
+            {
+              "id": 69,
+              "elapsed_s": 44.2,
+              "answer_chars": 2975
+            },
+            {
+              "id": 70,
+              "elapsed_s": 43.8,
+              "answer_chars": 2250
+            },
+            {
+              "id": 71,
+              "elapsed_s": 38.5,
+              "answer_chars": 2060
+            },
+            {
+              "id": 72,
+              "elapsed_s": 50.5,
+              "answer_chars": 2887
+            },
+            {
+              "id": 73,
+              "elapsed_s": 40.4,
+              "answer_chars": 2136
+            },
+            {
+              "id": 74,
+              "elapsed_s": 43.1,
+              "answer_chars": 2830
+            },
+            {
+              "id": 75,
+              "elapsed_s": 47.9,
+              "answer_chars": 3552
+            },
+            {
+              "id": 76,
+              "elapsed_s": 57.9,
+              "answer_chars": 3651
+            },
+            {
+              "id": 77,
+              "elapsed_s": 37.1,
+              "answer_chars": 322
+            },
+            {
+              "id": 78,
+              "elapsed_s": 31.4,
+              "answer_chars": 330
+            },
+            {
+              "id": 79,
+              "elapsed_s": 23.2,
+              "answer_chars": 32
+            },
+            {
+              "id": 80,
+              "elapsed_s": 30.1,
+              "answer_chars": 32
+            },
+            {
+              "id": 81,
+              "elapsed_s": 29.2,
+              "answer_chars": 331
+            },
+            {
+              "id": 82,
+              "elapsed_s": 30.1,
+              "answer_chars": 249
+            },
+            {
+              "id": 83,
+              "elapsed_s": 66.4,
+              "answer_chars": 3861
+            },
+            {
+              "id": 84,
+              "elapsed_s": 59.8,
+              "answer_chars": 3973
+            },
+            {
+              "id": 85,
+              "elapsed_s": 36.1,
+              "answer_chars": 334
+            },
+            {
+              "id": 86,
+              "elapsed_s": 31.6,
+              "answer_chars": 32
+            },
+            {
+              "id": 87,
+              "elapsed_s": 51.3,
+              "answer_chars": 2814
+            },
+            {
+              "id": 88,
+              "elapsed_s": 59.6,
+              "answer_chars": 3912
+            },
+            {
+              "id": 89,
+              "elapsed_s": 35.6,
+              "answer_chars": 246
+            },
+            {
+              "id": 90,
+              "elapsed_s": 25.6,
+              "answer_chars": 32
+            },
+            {
+              "id": 91,
+              "elapsed_s": 32.2,
+              "answer_chars": 32
+            },
+            {
+              "id": 92,
+              "elapsed_s": 48.4,
+              "answer_chars": 3628
+            },
+            {
+              "id": 93,
+              "elapsed_s": 26.8,
+              "answer_chars": 32
+            },
+            {
+              "id": 94,
+              "elapsed_s": 55.6,
+              "answer_chars": 3398
+            },
+            {
+              "id": 95,
+              "elapsed_s": 50.1,
+              "answer_chars": 2866
+            },
+            {
+              "id": 96,
+              "elapsed_s": 48.9,
+              "answer_chars": 2082
+            },
+            {
+              "id": 97,
+              "elapsed_s": 56.7,
+              "answer_chars": 3228
+            },
+            {
+              "id": 98,
+              "elapsed_s": 26.3,
+              "answer_chars": 32
+            },
+            {
+              "id": 99,
+              "elapsed_s": 61.2,
+              "answer_chars": 4382
+            },
+            {
+              "id": 100,
+              "elapsed_s": 58.1,
+              "answer_chars": 3361
+            }
+          ]
+        },
+        "latency_cost": {
+          "mean_s": 40.449,
+          "p95_s": 58.1,
+          "n_queries": 100,
+          "per_query": [
+            {
+              "id": 1,
+              "elapsed_s": 44.8,
+              "answer_chars": 200
+            },
+            {
+              "id": 2,
+              "elapsed_s": 35.2,
+              "answer_chars": 32
+            },
+            {
+              "id": 3,
+              "elapsed_s": 25.4,
+              "answer_chars": 490
+            },
+            {
+              "id": 4,
+              "elapsed_s": 37.2,
+              "answer_chars": 32
+            },
+            {
+              "id": 5,
+              "elapsed_s": 29.1,
+              "answer_chars": 269
+            },
+            {
+              "id": 6,
+              "elapsed_s": 25.0,
+              "answer_chars": 305
+            },
+            {
+              "id": 7,
+              "elapsed_s": 51.7,
+              "answer_chars": 3636
+            },
+            {
+              "id": 8,
+              "elapsed_s": 34.3,
+              "answer_chars": 32
+            },
+            {
+              "id": 9,
+              "elapsed_s": 57.7,
+              "answer_chars": 3535
+            },
+            {
+              "id": 10,
+              "elapsed_s": 43.8,
+              "answer_chars": 1710
+            },
+            {
+              "id": 11,
+              "elapsed_s": 37.0,
+              "answer_chars": 294
+            },
+            {
+              "id": 12,
+              "elapsed_s": 30.4,
+              "answer_chars": 32
+            },
+            {
+              "id": 13,
+              "elapsed_s": 50.6,
+              "answer_chars": 2574
+            },
+            {
+              "id": 14,
+              "elapsed_s": 53.7,
+              "answer_chars": 2928
+            },
+            {
+              "id": 15,
+              "elapsed_s": 32.9,
+              "answer_chars": 240
+            },
+            {
+              "id": 16,
+              "elapsed_s": 34.6,
+              "answer_chars": 32
+            },
+            {
+              "id": 17,
+              "elapsed_s": 49.6,
+              "answer_chars": 1980
+            },
+            {
+              "id": 18,
+              "elapsed_s": 50.6,
+              "answer_chars": 2941
+            },
+            {
+              "id": 19,
+              "elapsed_s": 47.7,
+              "answer_chars": 2885
+            },
+            {
+              "id": 20,
+              "elapsed_s": 28.5,
+              "answer_chars": 240
+            },
+            {
+              "id": 21,
+              "elapsed_s": 49.2,
+              "answer_chars": 2683
+            },
+            {
+              "id": 22,
+              "elapsed_s": 49.5,
+              "answer_chars": 3786
+            },
+            {
+              "id": 23,
+              "elapsed_s": 26.7,
+              "answer_chars": 295
+            },
+            {
+              "id": 24,
+              "elapsed_s": 27.0,
+              "answer_chars": 32
+            },
+            {
+              "id": 25,
+              "elapsed_s": 52.6,
+              "answer_chars": 2959
+            },
+            {
+              "id": 26,
+              "elapsed_s": 29.0,
+              "answer_chars": 238
+            },
+            {
+              "id": 27,
+              "elapsed_s": 26.7,
+              "answer_chars": 32
+            },
+            {
+              "id": 28,
+              "elapsed_s": 29.6,
+              "answer_chars": 408
+            },
+            {
+              "id": 29,
+              "elapsed_s": 31.1,
+              "answer_chars": 247
+            },
+            {
+              "id": 30,
+              "elapsed_s": 30.1,
+              "answer_chars": 32
+            },
+            {
+              "id": 31,
+              "elapsed_s": 41.0,
+              "answer_chars": 2185
+            },
+            {
+              "id": 32,
+              "elapsed_s": 84.4,
+              "answer_chars": 32
+            },
+            {
+              "id": 33,
+              "elapsed_s": 24.7,
+              "answer_chars": 309
+            },
+            {
+              "id": 34,
+              "elapsed_s": 30.6,
+              "answer_chars": 208
+            },
+            {
+              "id": 35,
+              "elapsed_s": 39.0,
+              "answer_chars": 693
+            },
+            {
+              "id": 36,
+              "elapsed_s": 35.2,
+              "answer_chars": 240
+            },
+            {
+              "id": 37,
+              "elapsed_s": 27.0,
+              "answer_chars": 32
+            },
+            {
+              "id": 38,
+              "elapsed_s": 33.0,
+              "answer_chars": 255
+            },
+            {
+              "id": 39,
+              "elapsed_s": 32.6,
+              "answer_chars": 400
+            },
+            {
+              "id": 40,
+              "elapsed_s": 33.9,
+              "answer_chars": 406
+            },
+            {
+              "id": 41,
+              "elapsed_s": 46.5,
+              "answer_chars": 2946
+            },
+            {
+              "id": 42,
+              "elapsed_s": 32.4,
+              "answer_chars": 336
+            },
+            {
+              "id": 43,
+              "elapsed_s": 23.7,
+              "answer_chars": 255
+            },
+            {
+              "id": 44,
+              "elapsed_s": 32.6,
+              "answer_chars": 301
+            },
+            {
+              "id": 45,
+              "elapsed_s": 30.6,
+              "answer_chars": 240
+            },
+            {
+              "id": 46,
+              "elapsed_s": 44.8,
+              "answer_chars": 2585
+            },
+            {
+              "id": 47,
+              "elapsed_s": 37.0,
+              "answer_chars": 32
+            },
+            {
+              "id": 48,
+              "elapsed_s": 33.2,
+              "answer_chars": 426
+            },
+            {
+              "id": 49,
+              "elapsed_s": 47.9,
+              "answer_chars": 2660
+            },
+            {
+              "id": 50,
+              "elapsed_s": 29.6,
+              "answer_chars": 297
+            },
+            {
+              "id": 51,
+              "elapsed_s": 44.7,
+              "answer_chars": 2242
+            },
+            {
+              "id": 52,
+              "elapsed_s": 23.9,
+              "answer_chars": 32
+            },
+            {
+              "id": 53,
+              "elapsed_s": 53.4,
+              "answer_chars": 3217
+            },
+            {
+              "id": 54,
+              "elapsed_s": 45.8,
+              "answer_chars": 2226
+            },
+            {
+              "id": 55,
+              "elapsed_s": 55.7,
+              "answer_chars": 3275
+            },
+            {
+              "id": 56,
+              "elapsed_s": 44.5,
+              "answer_chars": 1677
+            },
+            {
+              "id": 57,
+              "elapsed_s": 44.0,
+              "answer_chars": 2864
+            },
+            {
+              "id": 58,
+              "elapsed_s": 49.0,
+              "answer_chars": 3142
+            },
+            {
+              "id": 59,
+              "elapsed_s": 44.2,
+              "answer_chars": 2397
+            },
+            {
+              "id": 60,
+              "elapsed_s": 40.7,
+              "answer_chars": 2790
+            },
+            {
+              "id": 61,
+              "elapsed_s": 46.8,
+              "answer_chars": 2717
+            },
+            {
+              "id": 62,
+              "elapsed_s": 50.1,
+              "answer_chars": 2838
+            },
+            {
+              "id": 63,
+              "elapsed_s": 39.5,
+              "answer_chars": 2120
+            },
+            {
+              "id": 64,
+              "elapsed_s": 40.8,
+              "answer_chars": 1749
+            },
+            {
+              "id": 65,
+              "elapsed_s": 45.2,
+              "answer_chars": 2237
+            },
+            {
+              "id": 66,
+              "elapsed_s": 40.7,
+              "answer_chars": 2241
+            },
+            {
+              "id": 67,
+              "elapsed_s": 25.8,
+              "answer_chars": 32
+            },
+            {
+              "id": 68,
+              "elapsed_s": 41.4,
+              "answer_chars": 2613
+            },
+            {
+              "id": 69,
+              "elapsed_s": 44.2,
+              "answer_chars": 2975
+            },
+            {
+              "id": 70,
+              "elapsed_s": 43.8,
+              "answer_chars": 2250
+            },
+            {
+              "id": 71,
+              "elapsed_s": 38.5,
+              "answer_chars": 2060
+            },
+            {
+              "id": 72,
+              "elapsed_s": 50.5,
+              "answer_chars": 2887
+            },
+            {
+              "id": 73,
+              "elapsed_s": 40.4,
+              "answer_chars": 2136
+            },
+            {
+              "id": 74,
+              "elapsed_s": 43.1,
+              "answer_chars": 2830
+            },
+            {
+              "id": 75,
+              "elapsed_s": 47.9,
+              "answer_chars": 3552
+            },
+            {
+              "id": 76,
+              "elapsed_s": 57.9,
+              "answer_chars": 3651
+            },
+            {
+              "id": 77,
+              "elapsed_s": 37.1,
+              "answer_chars": 322
+            },
+            {
+              "id": 78,
+              "elapsed_s": 31.4,
+              "answer_chars": 330
+            },
+            {
+              "id": 79,
+              "elapsed_s": 23.2,
+              "answer_chars": 32
+            },
+            {
+              "id": 80,
+              "elapsed_s": 30.1,
+              "answer_chars": 32
+            },
+            {
+              "id": 81,
+              "elapsed_s": 29.2,
+              "answer_chars": 331
+            },
+            {
+              "id": 82,
+              "elapsed_s": 30.1,
+              "answer_chars": 249
+            },
+            {
+              "id": 83,
+              "elapsed_s": 66.4,
+              "answer_chars": 3861
+            },
+            {
+              "id": 84,
+              "elapsed_s": 59.8,
+              "answer_chars": 3973
+            },
+            {
+              "id": 85,
+              "elapsed_s": 36.1,
+              "answer_chars": 334
+            },
+            {
+              "id": 86,
+              "elapsed_s": 31.6,
+              "answer_chars": 32
+            },
+            {
+              "id": 87,
+              "elapsed_s": 51.3,
+              "answer_chars": 2814
+            },
+            {
+              "id": 88,
+              "elapsed_s": 59.6,
+              "answer_chars": 3912
+            },
+            {
+              "id": 89,
+              "elapsed_s": 35.6,
+              "answer_chars": 246
+            },
+            {
+              "id": 90,
+              "elapsed_s": 25.6,
+              "answer_chars": 32
+            },
+            {
+              "id": 91,
+              "elapsed_s": 32.2,
+              "answer_chars": 32
+            },
+            {
+              "id": 92,
+              "elapsed_s": 48.4,
+              "answer_chars": 3628
+            },
+            {
+              "id": 93,
+              "elapsed_s": 26.8,
+              "answer_chars": 32
+            },
+            {
+              "id": 94,
+              "elapsed_s": 55.6,
+              "answer_chars": 3398
+            },
+            {
+              "id": 95,
+              "elapsed_s": 50.1,
+              "answer_chars": 2866
+            },
+            {
+              "id": 96,
+              "elapsed_s": 48.9,
+              "answer_chars": 2082
+            },
+            {
+              "id": 97,
+              "elapsed_s": 56.7,
+              "answer_chars": 3228
+            },
+            {
+              "id": 98,
+              "elapsed_s": 26.3,
+              "answer_chars": 32
+            },
+            {
+              "id": 99,
+              "elapsed_s": 61.2,
+              "answer_chars": 4382
+            },
+            {
+              "id": 100,
+              "elapsed_s": 58.1,
+              "answer_chars": 3361
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
